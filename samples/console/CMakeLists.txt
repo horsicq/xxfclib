@@ -1,0 +1,10 @@
+add_executable(xxfc_dump main.c pe_dump.c pe_dump.h)
+target_link_libraries(xxfc_dump PRIVATE xxfclib::xxfclib)
+target_compile_features(xxfc_dump PRIVATE c_std_11)
+
+if(MSVC)
+    target_compile_options(xxfc_dump PRIVATE /W4 /utf-8)
+    target_compile_definitions(xxfc_dump PRIVATE _CRT_SECURE_NO_WARNINGS)
+else()
+    target_compile_options(xxfc_dump PRIVATE -Wall -Wextra -Wpedantic)
+endif()

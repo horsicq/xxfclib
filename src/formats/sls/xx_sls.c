@@ -1,0 +1,560 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com>
+ * SPDX-License-Identifier: MIT
+ *
+ * WinSense "SLS" compressed files.
+ *
+ *   header, 13 bytes at offset 0:
+ *     0x00  9 bytes  1F 'S' '/' 'L' '?' 'S' 'O' 'A' '_'  (the '?' is literal)
+ *     0x09  i32 LE   uncompressed size of the single member
+ *     0x0d  ...      the LZHUF stream, running to the end of the file
+ *
+ * There is exactly ONE member, it has no stored name, and the stream carries
+ * no terminator - the header's size field is the only thing that says where
+ * the plaintext ends, which is why it is also the only field worth
+ * validating: it is read SIGNED, and a non-positive value is a rejection.
+ *
+ * The member codec (LZHUF with an 8 KiB window, F = 90 and a 13-bit position
+ * code) lives in xx_sls_decode_memory() and is NOT duplicated here; this file
+ * is the container only.
+ */
+
+#include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/formats/sls/xx_sls.h"
+
+#include "xxfclib/algo/sls/xx_sls.h"
+#include "xxfclib/algo/store/xx_store.h"
+#include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/strings/xx_string.h"
+
+#include <stdio.h>
+
+/* REGISTRATION PENDING.  xxfc_defs.h carries no XX_FILE_TYPE_SLS yet and this
+ * port must not edit that shared header.  Delete this block when the enum is
+ * added - until then the reader reports itself as plain binary. */
+
+#define XX_SLS_MAGIC_SIZE 9
+#define XX_SLS_HEADER_SIZE 13
+#define XX_SLS_MAX_UNCOMPRESSED ((int64_t)0x10000000)
+#define XX_SLS_METHOD_LZHUF 1U
+
+/* The container stores no name whatsoever.  The reference names the member
+ * after the archive file itself, but a reader here is handed a device, not a
+ * path, so a placeholder is the only truthful thing to publish. */
+#define XX_SLS_MEMBER_NAME "sls_data"
+
+typedef struct xx_sls_member_s {
+    char *name;
+    int64_t header_offset;
+    int64_t header_size;
+    int64_t data_offset;
+    int64_t compressed_size;
+    int64_t uncompressed_size;
+    uint32_t method;
+    bool is_folder;
+} xx_sls_member;
+
+typedef struct xx_sls_stream_s {
+    xx_sls_member *items;
+    size_t count;
+    size_t index;
+    int64_t archive_size;
+} xx_sls_stream;
+
+static void xx_sls_vtable_destroy(Abstractformat *self);
+
+/* ------------------------------------------------------------- helpers -- */
+
+static uint32_t xx_sls_le32(const uint8_t *data) {
+    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
+           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
+}
+
+static bool xx_sls_read_at(Abstractformat *self, int64_t offset,
+                           uint8_t *buffer, size_t size) {
+    size_t completed = 0U;
+
+    if (!self || !self->device || offset < 0 ||
+        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+        return false;
+    }
+    while (completed < size) {
+        ssize_t received =
+            xx_io_read(self->device, buffer + completed, size - completed);
+        if (received <= 0 || (size_t)received > size - completed) {
+            return false;
+        }
+        completed += (size_t)received;
+    }
+    return true;
+}
+
+/* Refuse anything that would escape the extraction directory.  The name is a
+ * constant here, but the check stays: it is what makes that a property of the
+ * extraction path rather than of the constant. */
+static bool xx_sls_path_safe(const char *name) {
+    const char *cursor = name;
+
+    if (!name || !name[0] || name[0] == '/') return false;
+    while (*cursor) {
+        const char *end = cursor;
+        size_t length;
+        while (*end && *end != '/') ++end;
+        length = (size_t)(end - cursor);
+        if (length == 2U && cursor[0] == '.' && cursor[1] == '.') return false;
+        cursor = *end ? end + 1 : end;
+    }
+    return true;
+}
+
+static void xx_sls_stream_free(void *pointer) {
+    xx_sls_stream *stream = (xx_sls_stream *)pointer;
+    size_t index;
+
+    if (!stream) return;
+    for (index = 0U; index < stream->count; ++index) {
+        xx_str_free(stream->items[index].name);
+    }
+    xx_mem_free(stream->items);
+    xx_mem_free(stream);
+}
+
+/* Append a member, taking ownership of @p member->name. */
+static bool xx_sls_add(xx_sls_stream *stream, const xx_sls_member *member) {
+    xx_sls_member *grown = (xx_sls_member *)xx_mem_realloc(
+        stream->items, sizeof(*grown) * (stream->count + 1U));
+
+    if (!grown) return false;
+    stream->items = grown;
+    stream->items[stream->count++] = *member;
+    return true;
+}
+
+/* --------------------------------------------------------------- parse -- */
+
+static xx_sls_stream *xx_sls_parse(Abstractformat *self, xx_pd_struct *pd) {
+    static const uint8_t magic[XX_SLS_MAGIC_SIZE] = {
+        0x1fU,        (uint8_t)'S', (uint8_t)'/', (uint8_t)'L', (uint8_t)'?',
+        (uint8_t)'S', (uint8_t)'O', (uint8_t)'A', (uint8_t)'_'};
+    xx_sls_stream *stream;
+    xx_sls_member member;
+    uint8_t header[XX_SLS_HEADER_SIZE];
+    char *name;
+    int64_t total;
+    int64_t span;
+    int64_t uncompressed_size;
+
+    if (!self || !self->device || self->base_address < 0) return NULL;
+    total = xx_io_total_size(self->device);
+    if (total < self->base_address) return NULL;
+    span = total - self->base_address;
+    /* A container with no payload byte at all cannot decode to anything. */
+    if (span < (int64_t)XX_SLS_HEADER_SIZE + 1) return NULL;
+    if (pd && xx_pd_is_stopped(pd)) return NULL;
+
+    if (!xx_sls_read_at(self, self->base_address, header, sizeof(header))) {
+        return NULL;
+    }
+    /* Nine bytes of magic is the whole detection: there is no checksum, no
+     * member table and no terminator behind it. */
+    if (xx_rt_memcmp(header, magic, sizeof(magic)) != 0) return NULL;
+
+    /* Written as u32, read signed, exactly as the reference does. */
+    uncompressed_size = (int64_t)(int32_t)xx_sls_le32(header + XX_SLS_MAGIC_SIZE);
+    if (uncompressed_size <= 0) return NULL;
+    if (uncompressed_size > XX_SLS_MAX_UNCOMPRESSED) return NULL;
+
+    name = xx_str_dup(XX_SLS_MEMBER_NAME);
+    if (!name) return NULL;
+    stream = (xx_sls_stream *)xx_mem_alloc(sizeof(*stream));
+    if (!stream) {
+        xx_str_free(name);
+        return NULL;
+    }
+    xx_mem_zero(stream, sizeof(*stream));
+
+    xx_mem_zero(&member, sizeof(member));
+    member.name = name;
+    member.header_offset = self->base_address;
+    member.header_size = (int64_t)XX_SLS_HEADER_SIZE;
+    member.data_offset = self->base_address + (int64_t)XX_SLS_HEADER_SIZE;
+    /* The stream runs to the end of the file; nothing records its length. */
+    member.compressed_size = span - (int64_t)XX_SLS_HEADER_SIZE;
+    member.uncompressed_size = uncompressed_size;
+    member.method = XX_SLS_METHOD_LZHUF;
+    member.is_folder = false;
+
+    if (!xx_sls_add(stream, &member)) {
+        xx_str_free(name);
+        xx_sls_stream_free(stream);
+        return NULL;
+    }
+    stream->archive_size = span;
+    return stream;
+}
+
+/* -------------------------------------------------------------- decode -- */
+
+/* Decode the single member.  The stream has no terminator, so the header's
+ * stored size is both the allocation and the stopping point, and the codec
+ * produces exactly that many bytes or fails. */
+static bool xx_sls_decode(Abstractformat *self, const xx_sls_member *member,
+                          uint8_t **out, size_t *out_size, xx_pd_struct *pd) {
+    uint8_t *input;
+    uint8_t *output;
+    size_t written = 0U;
+    bool decoded;
+
+    *out = NULL;
+    *out_size = 0U;
+    if (!self || !member) return false;
+    if (pd && xx_pd_is_stopped(pd)) return false;
+    if (member->compressed_size <= 0 || member->uncompressed_size <= 0) {
+        return false;
+    }
+    if (member->compressed_size > XX_SLS_MAX_UNCOMPRESSED) return false;
+    if (member->uncompressed_size > XX_SLS_MAX_UNCOMPRESSED) return false;
+
+    input = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
+    if (!input) return false;
+    if (!xx_sls_read_at(self, member->data_offset, input,
+                        (size_t)member->compressed_size)) {
+        xx_mem_free(input);
+        return false;
+    }
+    if (pd && xx_pd_is_stopped(pd)) {
+        xx_mem_free(input);
+        return false;
+    }
+
+    output = (uint8_t *)xx_mem_alloc((size_t)member->uncompressed_size);
+    if (!output) {
+        xx_mem_free(input);
+        return false;
+    }
+
+    decoded = xx_sls_decode_memory(input, (size_t)member->compressed_size,
+                                   output, (size_t)member->uncompressed_size,
+                                   &written);
+    /* The codec already demands an exact fill; the second half of this test is
+     * what makes that a property of this reader rather than of the codec. */
+    if (!decoded || written != (size_t)member->uncompressed_size) {
+        xx_mem_free(output);
+        xx_mem_free(input);
+        return false;
+    }
+    xx_mem_free(input);
+
+    *out = output;
+    *out_size = (size_t)member->uncompressed_size;
+    return true;
+}
+
+/* ----------------------------------------------------------- lifecycle -- */
+
+void xx_sls_init(xx_sls *archive, xx_io_device *device, int64_t base_address) {
+    if (!archive) return;
+    xx_mem_zero(archive, sizeof(*archive));
+    xx_format_init(&archive->format, device, base_address);
+    archive->format.endian = XX_ENDIAN_LITTLE;
+    archive->format.file_type = XX_FILE_TYPE_SLS;
+    archive->format.format_type = XX_TYPE_ARCHIVE;
+    archive->format.is_archive = true;
+    xx_format_set_mime_type(&archive->format, "application/x-sls");
+    xx_format_set_extension(&archive->format, "sl$");
+    archive->format.check_is_valid = xx_sls_check_is_valid;
+    archive->format.handle_base_info = xx_sls_handle_base_info;
+    archive->format.get_format_size = xx_sls_get_format_size;
+    archive->format.get_number_of_archive_records =
+        xx_sls_get_number_of_archive_records;
+    archive->format.create_archive_records_reading =
+        xx_sls_create_archive_records_reading;
+    archive->format.get_current_archive_record =
+        xx_sls_get_current_archive_record;
+    archive->format.unpack_current_archive_record =
+        xx_sls_unpack_current_archive_record;
+    archive->format.archive_record_move_to_next =
+        xx_sls_archive_record_move_to_next;
+    archive->format.free_archive_records_reading =
+        xx_sls_free_archive_records_reading;
+    archive->format.destroy = xx_sls_vtable_destroy;
+    archive->uncompressed_size = -1;
+}
+
+xx_sls *xx_sls_create(xx_io_device *device, int64_t base_address) {
+    xx_sls *archive = (xx_sls *)xx_mem_alloc(sizeof(*archive));
+
+    if (!archive) return NULL;
+    xx_sls_init(archive, device, base_address);
+    return archive;
+}
+
+void xx_sls_destroy(xx_sls *archive) {
+    if (!archive) return;
+    /* Not xx_format_destroy: it dispatches through format.destroy, which is
+     * the wrapper below, and the two would recurse. */
+    if (archive->format.close) archive->format.close(&archive->format);
+    xx_format_cleanup_extra_parameters(&archive->format);
+    archive->number_of_records = 0U;
+}
+
+void xx_sls_free(xx_sls *archive) {
+    if (!archive) return;
+    xx_sls_destroy(archive);
+    xx_mem_free(archive);
+}
+
+static void xx_sls_vtable_destroy(Abstractformat *self) {
+    xx_sls_destroy((xx_sls *)self);
+}
+
+/* -------------------------------------------------------------- format -- */
+
+bool xx_sls_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+    xx_sls_stream *stream;
+
+    if (!self || (pd && xx_pd_is_stopped(pd))) return false;
+    stream = xx_sls_parse(self, pd);
+    if (!stream) return false;
+    xx_sls_stream_free(stream);
+    return true;
+}
+
+bool xx_sls_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+    xx_sls *archive = (xx_sls *)self;
+    xx_sls_stream *stream;
+
+    if (!self || (pd && xx_pd_is_stopped(pd))) return false;
+
+    self->base_info_handled = true;
+    stream = xx_sls_parse(self, pd);
+    if (!stream) {
+        self->is_valid = false;
+        self->format_size = 0;
+        return false;
+    }
+    self->is_valid = true;
+    self->format_size = stream->archive_size;
+    self->number_of_archive_records = stream->count;
+    archive->number_of_records = stream->count;
+    archive->uncompressed_size = stream->items[0].uncompressed_size;
+    xx_sls_stream_free(stream);
+    return true;
+}
+
+int64_t xx_sls_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
+    if (!self ||
+        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+        return 0;
+    }
+    return self->is_valid ? self->format_size : 0;
+}
+
+uint64_t xx_sls_get_number_of_archive_records(Abstractformat *self,
+                                              xx_pd_struct *pd) {
+    if (!self ||
+        (!self->base_info_handled && !xx_format_handle_base_info(self, pd))) {
+        return 0U;
+    }
+    return self->is_valid ? ((xx_sls *)self)->number_of_records : 0U;
+}
+
+/* ------------------------------------------------------------- records -- */
+
+static bool xx_sls_set_record(xx_archive_record *record,
+                              const xx_sls_member *member) {
+    xx_archive_record_cleanup(record);
+    xx_archive_record_init(record);
+    record->header_offset = member->header_offset;
+    record->header_size = member->header_size;
+    record->data_offset = member->data_offset;
+    record->compressed_size = member->compressed_size;
+    return xx_archive_record_set_original_name(record, member->name) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
+                                          (uint64_t)member->compressed_size) &&
+           xx_archive_record_set_meta_u64(
+               record, XX_META_ID_UNCOMPRESSED_SIZE,
+               (uint64_t)member->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
+                                          member->method) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
+                                           member->is_folder) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
+                                           false);
+}
+
+static bool xx_sls_copy_options(xx_list_s *target, const xx_list_s *options) {
+    size_t index;
+
+    if (!target || !options) return options == NULL;
+    for (index = 0U; index < options->count; ++index) {
+        const xx_meta *source =
+            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        xx_meta copied;
+        if (!source) continue;
+        xx_meta_init(&copied, source->meta_id);
+        if (!xx_var_copy(&copied.var, &source->var) ||
+            !xx_list_append(target, &copied)) {
+            xx_meta_cleanup(&copied);
+            return false;
+        }
+    }
+    return true;
+}
+
+static const xx_var *xx_sls_get_option(const xx_list_s *options,
+                                       uint32_t meta_id) {
+    size_t index;
+
+    if (!options) return NULL;
+    for (index = 0U; index < options->count; ++index) {
+        const xx_meta *meta =
+            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        if (meta && meta->meta_id == meta_id) return &meta->var;
+    }
+    return NULL;
+}
+
+xx_archive_record_state *xx_sls_create_archive_records_reading(
+    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+    xx_sls_stream *stream;
+    xx_archive_record_state *state;
+
+    if (!self || !self->device) return NULL;
+    stream = xx_sls_parse(self, pd);
+    if (!stream) return NULL;
+    state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
+    if (!state) {
+        xx_sls_stream_free(stream);
+        return NULL;
+    }
+    xx_archive_record_state_init(state, self);
+    state->internal_state = stream;
+    state->free_internal = xx_sls_stream_free;
+    state->total_records = (int64_t)stream->count;
+    if (!xx_sls_copy_options(&state->options, options) ||
+        (stream->count != 0U &&
+         !xx_sls_set_record(&state->current_record, &stream->items[0]))) {
+        xx_archive_record_state_free(state);
+        return NULL;
+    }
+    state->has_record = stream->count != 0U;
+    state->current_index = 0;
+    return state;
+}
+
+const xx_archive_record *xx_sls_get_current_archive_record(
+    Abstractformat *self, xx_archive_record_state *state) {
+    return self && state && state->format == self && state->has_record
+               ? &state->current_record
+               : NULL;
+}
+
+bool xx_sls_archive_record_move_to_next(Abstractformat *self,
+                                        xx_archive_record_state *state,
+                                        xx_pd_struct *pd) {
+    xx_sls_stream *stream;
+
+    if (!self || !state || state->format != self || !state->has_record ||
+        (pd && xx_pd_is_stopped(pd))) {
+        return false;
+    }
+    stream = (xx_sls_stream *)state->internal_state;
+    /* There is only ever one member, so this always ends the walk; it is
+     * written as the general move so the state is torn down the same way. */
+    if (!stream || stream->index + 1U >= stream->count) {
+        xx_archive_record_cleanup(&state->current_record);
+        xx_archive_record_init(&state->current_record);
+        state->has_record = false;
+        return false;
+    }
+    ++stream->index;
+    ++state->current_index;
+    state->has_record =
+        xx_sls_set_record(&state->current_record, &stream->items[stream->index]);
+    return state->has_record;
+}
+
+bool xx_sls_unpack_current_archive_record(Abstractformat *self,
+                                          xx_archive_record_state *state,
+                                          xx_pd_struct *pd) {
+    xx_sls_stream *stream;
+    const xx_sls_member *member;
+    const xx_var *path_option;
+    const char *base_path = NULL;
+    char *converted_path = NULL;
+    char *target_path = NULL;
+    uint8_t *plain = NULL;
+    size_t plain_size = 0U;
+    bool result = false;
+
+    if (!self || !state || state->format != self || !state->has_record ||
+        (pd && xx_pd_is_stopped(pd))) {
+        return false;
+    }
+    stream = (xx_sls_stream *)state->internal_state;
+    if (!stream || stream->index >= stream->count) return false;
+    member = &stream->items[stream->index];
+    if (!xx_sls_path_safe(member->name)) return false;
+
+    path_option = xx_sls_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
+    if (!path_option) {
+        /* No destination: decode and discard, which verifies the member
+         * without writing anything. */
+        result = xx_sls_decode(self, member, &plain, &plain_size, pd);
+        xx_mem_free(plain);
+        return result;
+    }
+    if (path_option->type == XX_VAR_TYPE_STRING ||
+        path_option->type == XX_VAR_TYPE_STRING_VIEW) {
+        base_path = xx_var_get_str(path_option);
+    } else if (path_option->type == XX_VAR_TYPE_WSTRING ||
+               path_option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+        converted_path = xx_str_unicode_to_utf8(xx_var_get_wstr(path_option));
+        base_path = converted_path;
+    }
+    if (!base_path) {
+        xx_str_free(converted_path);
+        return false;
+    }
+    if (base_path[0] != '\0' &&
+        base_path[xx_str_len(base_path) - 1U] != '/' &&
+        base_path[xx_str_len(base_path) - 1U] != '\\') {
+        target_path = xx_str_concat3(base_path, "/", member->name);
+    } else {
+        target_path = xx_str_concat(base_path, member->name);
+    }
+    xx_str_free(converted_path);
+    if (!target_path) return false;
+
+    if (!xx_store_create_dirs_a(target_path, false) ||
+        !xx_sls_decode(self, member, &plain, &plain_size, pd)) {
+        xx_str_free(target_path);
+        return false;
+    }
+    {
+        xx_io_device *output = xx_io_file_open(target_path, "wb");
+        size_t completed = 0U;
+
+        result = output != NULL;
+        while (result && completed < plain_size) {
+            ssize_t sent =
+                xx_io_write(output, plain + completed, plain_size - completed);
+            if (sent <= 0 || (size_t)sent > plain_size - completed) {
+                result = false;
+                break;
+            }
+            completed += (size_t)sent;
+        }
+        if (output && xx_io_close(output) != 0) result = false;
+    }
+    xx_mem_free(plain);
+    if (!result) xx_rt_remove(target_path);
+    xx_str_free(target_path);
+    return result;
+}
+
+void xx_sls_free_archive_records_reading(Abstractformat *self,
+                                         xx_archive_record_state *state) {
+    (void)self;
+    xx_archive_record_state_free(state);
+}
