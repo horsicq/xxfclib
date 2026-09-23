@@ -35,9 +35,13 @@
 /* The largest of the five, so one read covers every layout. */
 #define XX_ANDROIDBOOT_HDR_READ_SIZE XX_ANDROIDBOOT_HDR_V2_SIZE
 
+/* The last header_version AOSP defines. */
+#define XX_ANDROIDBOOT_MAX_VERSION 4U
+
 #define XX_ANDROIDBOOT_V3_PAGE_SIZE 4096
+/* AOSP mkbootimg accepts --pagesize 2^11 .. 2^17. */
 #define XX_ANDROIDBOOT_MIN_PAGE_SIZE 2048
-#define XX_ANDROIDBOOT_MAX_PAGE_SIZE 65536
+#define XX_ANDROIDBOOT_MAX_PAGE_SIZE 131072
 
 /* Field offsets. header_version is the one offset shared by all versions. */
 #define XX_ANDROIDBOOT_OFF_HEADER_VERSION 40U
@@ -326,6 +330,7 @@ static bool xx_androidboot_parse(Abstractformat *self,
     int64_t position;
     int64_t page_size;
     uint32_t header_version;
+    int64_t qcom_dt_size = 0;
     uint8_t *cmdline = NULL;
     size_t cmdline_size = 0U;
     /* Initialise before the guard clause: callers such as
@@ -359,12 +364,21 @@ static bool xx_androidboot_parse(Abstractformat *self,
     }
     header_version = xx_data_get_u32(header, header_read,
                                      XX_ANDROIDBOOT_OFF_HEADER_VERSION, false);
+    /* Qualcomm's CAF mkbootimg predates header_version and reused the v0
+     * "unused" word at +40 as dt_size: the byte count of a device-tree table
+     * placed on its own pages after the second stage. A real table is far
+     * larger than 4 bytes, so a value past the last defined version is that
+     * size, and the image is otherwise laid out exactly as v0. */
+    if (header_version > XX_ANDROIDBOOT_MAX_VERSION) {
+        qcom_dt_size = (int64_t)header_version;
+        header_version = 0U;
+    }
     parsed->header_version = header_version;
 
     if (header_version <= 2U) {
-        int64_t sizes[5];
-        static const char *const names[5] = {"kernel", "ramdisk", "second",
-                                             "recovery_dtbo", "dtb"};
+        int64_t sizes[6];
+        static const char *const names[6] = {
+            "kernel", "ramdisk", "second", "recovery_dtbo", "dtb", "dt"};
         int64_t declared_header_size = XX_ANDROIDBOOT_HDR_V0_SIZE;
         int64_t recovery_dtbo_size = 0;
         uint64_t recovery_dtbo_offset = 0U;
@@ -420,20 +434,25 @@ static bool xx_androidboot_parse(Abstractformat *self,
             header, header_read, XX_ANDROIDBOOT_OFF_V0_SECOND_SIZE, false);
         sizes[3] = recovery_dtbo_size;
         sizes[4] = dtb_size;
+        /* Only a v0-layout header can carry the Qualcomm table, and only
+         * v1/v2 carry sizes[3..4], so the dt never shares a layout with
+         * them and its slot after them is also its place after second. */
+        sizes[5] = qcom_dt_size;
         position = page_size;
-        /* The recovery dtbo carries its own absolute offset; it has to agree
-         * with where the page layout puts it. Placing the first three blobs
-         * separately is what makes that comparison possible. */
+        /* The recovery dtbo carries its own offset, measured from the start
+         * of the boot image (not of the device); it has to agree with where
+         * the page layout puts it. Placing the first three blobs separately
+         * is what makes that comparison possible. */
         if (!xx_androidboot_place_blobs(parsed, self->base_address, sizes,
                                         names, 3U, page_size, &position)) {
             goto fail;
         }
         if (recovery_dtbo_size != 0 &&
-            recovery_dtbo_offset != (uint64_t)(self->base_address + position)) {
+            recovery_dtbo_offset != (uint64_t)position) {
             goto fail;
         }
         if (!xx_androidboot_place_blobs(parsed, self->base_address, sizes + 3,
-                                        names + 3, 2U, page_size, &position)) {
+                                        names + 3, 3U, page_size, &position)) {
             goto fail;
         }
     } else if (header_version == 3U || header_version == 4U) {
@@ -464,7 +483,8 @@ static bool xx_androidboot_parse(Abstractformat *self,
             goto fail;
         }
     } else {
-        /* Versions past 4 are not specified; refusing beats guessing. */
+        /* Unreachable: anything past 4 was folded into the Qualcomm v0
+         * layout above. Kept so a future edit cannot fall through. */
         goto fail;
     }
 

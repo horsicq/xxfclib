@@ -201,6 +201,9 @@ bool xx_ecos_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     ecos->big_endian = parsed.big_endian;
     ecos->has_nop = parsed.has_nop;
     self->endian = parsed.big_endian ? XX_ENDIAN_BIG : XX_ENDIAN_LITTLE;
+    /* mfc0/andi are MIPS instructions, so the stub itself names the
+     * architecture; the word size is not knowable from it, hence plain MIPS. */
+    self->arch = XX_ARCH_MIPS;
     /* The whole remaining region is the kernel image.  There is no length
      * field anywhere in it, so this is a statement about what was handed to
      * the reader, not a claim recovered from the file - which is also why

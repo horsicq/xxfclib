@@ -24,8 +24,10 @@ extern "C" {
  *
  * There is no end marker, no stored content size and no checksum: the chain
  * simply runs to the end of the file.  Each block decodes to at most 8 MiB,
- * which is the only bound the format gives.  A legacy magic or a skippable
- * frame magic (0x184d2a5x) where a block size would be starts a new frame.
+ * which is the only bound the format gives, so a stored block is at most
+ * LZ4_COMPRESSBOUND(8 MiB) bytes.  A legacy magic or a skippable frame magic
+ * (0x184d2a5x) where a block size would be starts a new frame.  A bare magic
+ * (what `lz4 -l` writes for empty input) is an empty payload.
  *
  * This is NOT the modern LZ4 frame format (magic 0x184d2204); that one has
  * its own reader.  Deriving the member's unpacked size means decoding it,
@@ -34,7 +36,8 @@ extern "C" {
 typedef struct xx_lz4demo {
     Abstractformat format;
     uint64_t number_of_records;
-    uint64_t unpacked_size; /**< 0 when the size pass was skipped. */
+    uint64_t unpacked_size; /**< 0 when unknown: the size pass is skipped
+                                 above 64 MiB packed and stops past 1 GiB. */
     uint64_t block_count;
 } xx_lz4demo;
 

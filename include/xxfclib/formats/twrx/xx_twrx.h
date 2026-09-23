@@ -23,24 +23,37 @@ extern "C" {
  *   0x00  char[4] "TWRX"
  *   0x04  u16 LE  version, 0x0100 in every known block
  *   0x06  u16 LE  zero in every known block
- *   0x08  u16 LE  method: 0 stored, 6 and 8 are the producer's own codecs
- *   0x0a  8 bytes stamp; zero on some producers, opaque on others
+ *   0x08  u16 LE  method: 0 stored, 6 PKWARE DCL, 8 Deflate
+ *   0x0a  u32 LE  tag, opaque (constant within an archive, often zero)
+ *   0x0e  u32 LE  check: reflected CRC-32 (poly 0xEDB88320, seed 0, no
+ *                 final complement) of the packed payload; 0 = not stored
  *   0x12  u32 LE  packed size, the bytes that follow the name
  *   0x16  u32 LE  unpacked size
  *   0x1a  u32 LE  name length
- *   0x1e  char[name length] member name, ANSI, not NUL terminated
+ *   0x1e  char[name length] member name, CP437, not NUL terminated
  *   then the payload, `packed size` bytes; the next block starts right after.
  *
- * Derived from the 22-archive, 225-member reference corpus: the chain tiles
- * every one of the 22 files to the last byte, and the method word takes only
- * three values there.
+ * Payloads:
+ *   method 0  the bytes themselves; packed size equals unpacked size;
+ *   method 6  one bare PKWARE DCL (explode) stream, "00 04..06" header,
+ *             that ends exactly at the payload's end;
+ *   method 8  u16 8, u32 (packed size - 6), then one raw Deflate stream
+ *             that ends exactly at the payload's end.
  *
- * Method 0 is stored and is decoded here - packed size equals unpacked size
- * in all 89 of its corpus members, which is the anchor.  Methods 6 and 8 are
- * compressed with codecs that are not identified (method 8 payloads open on
- * a six-byte `08 00` plus u32 sub-header, method 6 payloads on `00 05`);
- * those members are listed with their real names and sizes and unpack fails
- * closed for them.
+ * Extraction refuses a member whose stream leaves bytes over or needs bytes
+ * past its payload, whose output differs from the unpacked size, whose
+ * check fails, or whose name is absolute, drive-qualified, holds a ".."
+ * component or a control character, or names a Windows device (CON, NUL,
+ * AUX, PRN, COMn, LPTn, ...).  Such a member is still listed.  Stored and
+ * Deflate members hold only their packed bytes in memory; a DCL member is
+ * measured before its output buffer is allocated.
+ *
+ * Derived from the 22-archive, 225-member reference corpus: the chain tiles
+ * every file to the last byte; 89 stored, 46 DCL and 90 Deflate members.
+ * The check is present on all 135 stored and DCL members and matches every
+ * one; the 90 Deflate members come from producers that leave it zero.
+ * Member names are DOS 8.3; 0xF6 (CP437 U+00F7) is the producer's
+ * part-number marker (e.g. "MARIO\xF6A.V2L") and is kept as U+00F7.
  */
 typedef struct xx_twrx {
     Abstractformat format;

@@ -28,6 +28,11 @@
 #define XX_SREC_FILE_TYPE XX_FILE_TYPE_UNKNOWN
 #endif
 
+/* The single member is the reassembled binary image.  The S0 header text is
+ * NOT used as its name: producers such as objcopy store the name of the
+ * S-record file itself there ("prog.s19"), which would label raw binary as
+ * S-record text, and the text is attacker controlled.  It is reported as a
+ * comment and through xx_srec_get_header_text() instead. */
 #define XX_SRECFMT_PAYLOAD_NAME "image.bin"
 
 /* Absolute parse-time ceilings.
@@ -39,33 +44,58 @@
  * the measuring pass, before any buffer is allocated:
  *
  *   1. an absolute span ceiling (XX_SRECFMT_MAX_IMAGE_SIZE), and
- *   2. a density rule - the span may not exceed the payload actually carried
- *      by the file by more than XX_SRECFMT_MAX_DENSITY times, with a small
- *      constant floor so genuinely small sparse images still load.
+ *   2. a density rule - above XX_SRECFMT_DENSITY_FLOOR the span may not
+ *      exceed the payload actually carried by the file by more than
+ *      XX_SRECFMT_MAX_DENSITY times.
  *
- * Rule 2 is what refuses "a 100 KB file forcing a 100 MiB allocation" even
+ * Rule 2 is what refuses "a 100 KB file forcing a 64 MiB allocation" even
  * when rule 1 alone would have allowed it. */
 #define XX_SRECFMT_MAX_IMAGE_SIZE (UINT64_C(64) * UINT64_C(1024) * UINT64_C(1024))
 #define XX_SRECFMT_MAX_DENSITY UINT64_C(64)
-#define XX_SRECFMT_DENSITY_FLOOR (UINT64_C(64) * UINT64_C(1024))
-#define XX_SRECFMT_MAX_LINES UINT64_C(4000000)
-/* Consecutive non-record lines tolerated before the file is rejected. */
-#define XX_SRECFMT_MAX_BLANK_LINES 64U
+#define XX_SRECFMT_DENSITY_FLOOR (UINT64_C(1024) * UINT64_C(1024))
+/* Records accepted per file.  Generous enough for the largest image at one
+ * data byte per record (objcopy's default is 16 per record, which already
+ * needs 4.2 million records for a 64 MiB image); the walk itself is bounded by
+ * the device size. */
+#define XX_SRECFMT_MAX_LINES (XX_SRECFMT_MAX_IMAGE_SIZE + UINT64_C(1048576))
+/* Leading blank lines the cheap probe tolerates before the first record. */
+#define XX_SRECFMT_PROBE_BLANK_LINES 4U
+/* The strict window.  check_is_valid() walks only the lines that start in the
+ * first XX_SRECFMT_VALIDATE_WINDOW bytes of text, so the detector never walks
+ * a 100 MB image.  handle_base_info() applies exactly the same strict rules to
+ * the same lines, and past the window it keeps the longest prefix that obeys
+ * every rule (the rest is overlay) instead of refusing the file.  Therefore
+ * every file check_is_valid() accepts is also accepted by handle_base_info():
+ * the detector never types a file SREC that cannot then be opened. */
+#define XX_SRECFMT_VALIDATE_WINDOW (INT64_C(64) * INT64_C(1024))
 /* Bytes filled into address ranges no record covers. */
 #define XX_SRECFMT_FILL_BYTE UINT8_C(0x00)
-/* Longest S0 header text kept as a record name. */
+/* Longest S0 header text kept. */
 #define XX_SRECFMT_MAX_HEADER_TEXT 64U
+/* DOS end-of-file marker. */
+#define XX_SRECFMT_CTRL_Z 0x1AU
+/* A run of Ctrl-Z padding up to this long at the end of the file is counted as
+ * part of the text rather than reported as overlay. */
+#define XX_SRECFMT_MAX_CTRL_Z_TAIL 4096
 
 /** Buffered forward line reader over a device. */
 typedef struct xx_srecfmt_lines_s {
     xx_io_device *device;
-    int64_t position;      /**< Device offset of buffer[fill_start]. */
+    int64_t position;      /**< Device offset just past the buffered bytes. */
     int64_t end;
     uint8_t buffer[4096];
     size_t fill;           /**< Valid bytes in buffer. */
     size_t cursor;         /**< Next unread byte in buffer. */
     bool exhausted;
+    bool skip_lf;          /**< Last line ended in CR: swallow one LF. */
 } xx_srecfmt_lines;
+
+typedef enum xx_srecfmt_line_status_e {
+    XX_SRECFMT_LINE_OK = 0,
+    XX_SRECFMT_LINE_END,      /**< No more input. */
+    XX_SRECFMT_LINE_OVERLONG, /**< Longer than XX_SREC_MAX_LINE_LENGTH. */
+    XX_SRECFMT_LINE_MARKER    /**< Ctrl-Z at the start of a line. */
+} xx_srecfmt_line_status;
 
 /** One decoded S-record line. */
 typedef struct xx_srecfmt_record_s {
@@ -75,6 +105,23 @@ typedef struct xx_srecfmt_record_s {
     uint8_t data[255];
     size_t data_size;
 } xx_srecfmt_record;
+
+/** Running totals of the measuring pass.  Small enough to copy whole at every
+ *  point where the text could end (a cut point). */
+typedef struct xx_srecfmt_tally_s {
+    uint64_t lines;
+    uint64_t data_records;
+    uint64_t data_bytes;
+    uint64_t low;          /**< Lowest addressed byte; UINT64_MAX when none. */
+    uint64_t high;         /**< Highest addressed byte. */
+    uint64_t entry_point;
+    uint64_t declared_record_count;
+    bool has_entry_point;
+    bool has_record_count;
+    bool seen_terminator;
+    bool has_header;       /**< The scan owns header_text from this prefix. */
+    uint8_t address_width;
+} xx_srecfmt_tally;
 
 /** Everything the measuring pass learns. */
 typedef struct xx_srecfmt_scan_s {
@@ -128,35 +175,78 @@ static bool xx_srecfmt_lines_fill(xx_srecfmt_lines *lines) {
     return true;
 }
 
-/* Copy the next line, without its terminator, into out.  Returns false at end
- * of input or when the line is longer than XX_SREC_MAX_LINE_LENGTH - an
- * over-long line is a hard failure rather than a truncation, because an
- * unterminated multi-megabyte "line" is exactly what a hostile text file
- * looks like. */
-static bool xx_srecfmt_lines_next(xx_srecfmt_lines *lines, char *out,
-                                  size_t out_capacity, size_t *out_length,
-                                  bool *out_overlong) {
+/* Device offset of the next unread byte. */
+static int64_t xx_srecfmt_lines_offset(const xx_srecfmt_lines *lines) {
+    return lines->position - (int64_t)(lines->fill - lines->cursor);
+}
+
+/* Swallow the LF of a CR LF pair left pending by the previous line, so that
+ * xx_srecfmt_lines_offset() is the first byte of the next line.  This does not
+ * change what the next xx_srecfmt_lines_next() returns. */
+static void xx_srecfmt_lines_settle(xx_srecfmt_lines *lines) {
+    if (lines->skip_lf && xx_srecfmt_lines_fill(lines)) {
+        lines->skip_lf = false;
+        if (lines->buffer[lines->cursor] == (uint8_t)'\n') ++lines->cursor;
+    }
+}
+
+/* Copy the next line, without its terminator, into out.  LF, CR and CR LF all
+ * end a line.  A line longer than out_capacity is a hard stop rather than a
+ * truncation, because an unterminated multi-megabyte "line" is exactly what a
+ * hostile or binary file looks like.  A Ctrl-Z as the first byte of a line is
+ * reported, unconsumed, as the DOS end-of-text marker.  *out_start gets the
+ * device offset of the line's first byte. */
+static xx_srecfmt_line_status xx_srecfmt_lines_next(xx_srecfmt_lines *lines,
+                                                    char *out,
+                                                    size_t out_capacity,
+                                                    size_t *out_length,
+                                                    int64_t *out_start) {
     size_t used = 0U;
     bool any = false;
-    if (out_overlong) *out_overlong = false;
+    *out_length = 0U;
+    *out_start = -1;
     for (;;) {
         uint8_t ch;
         if (!xx_srecfmt_lines_fill(lines)) break;
-        ch = lines->buffer[lines->cursor++];
-        any = true;
-        if (ch == (uint8_t)'\n') {
-            if (out_length) *out_length = used;
-            return true;
+        ch = lines->buffer[lines->cursor];
+        if (lines->skip_lf) {
+            lines->skip_lf = false;
+            if (ch == (uint8_t)'\n') {
+                ++lines->cursor;
+                continue;
+            }
         }
-        if (used >= out_capacity) {
-            if (out_overlong) *out_overlong = true;
-            return false;
+        if (!any) {
+            *out_start = xx_srecfmt_lines_offset(lines);
+            if (ch == XX_SRECFMT_CTRL_Z) return XX_SRECFMT_LINE_MARKER;
+            any = true;
         }
+        ++lines->cursor;
+        if (ch == (uint8_t)'\n' || ch == (uint8_t)'\r') {
+            lines->skip_lf = ch == (uint8_t)'\r';
+            *out_length = used;
+            return XX_SRECFMT_LINE_OK;
+        }
+        if (used >= out_capacity) return XX_SRECFMT_LINE_OVERLONG;
         out[used++] = (char)ch;
     }
-    if (!any) return false;
-    if (out_length) *out_length = used;
-    return true;
+    if (!any) return XX_SRECFMT_LINE_END;
+    *out_length = used;
+    return XX_SRECFMT_LINE_OK;
+}
+
+/* True when every byte from the reader's position to the end of its range is
+ * Ctrl-Z and there are at most XX_SRECFMT_MAX_CTRL_Z_TAIL of them. */
+static bool xx_srecfmt_lines_tail_is_ctrl_z(xx_srecfmt_lines *lines) {
+    if (lines->end - xx_srecfmt_lines_offset(lines) >
+        (int64_t)XX_SRECFMT_MAX_CTRL_Z_TAIL) {
+        return false;
+    }
+    while (xx_srecfmt_lines_fill(lines)) {
+        if (lines->buffer[lines->cursor] != XX_SRECFMT_CTRL_Z) return false;
+        ++lines->cursor;
+    }
+    return !lines->exhausted || lines->position >= lines->end;
 }
 
 /* ------------------------------------------------------------------ */
@@ -202,6 +292,10 @@ static uint8_t xx_srecfmt_address_width(uint8_t type) {
     }
 }
 
+static bool xx_srecfmt_is_space(char ch) {
+    return ch == ' ' || ch == '\t';
+}
+
 /* Decode one line.  Every field is validated: the type, the hex alphabet, the
  * declared byte count against the real length, and the checksum. */
 static bool xx_srecfmt_decode_line(const char *line, size_t length,
@@ -213,13 +307,17 @@ static bool xx_srecfmt_decode_line(const char *line, size_t length,
     uint32_t sum;
     size_t payload;
     size_t index;
-    /* Trailing carriage return and spaces are tolerated; nothing else is. */
-    while (length != 0U && (line[length - 1U] == '\r' ||
-                            line[length - 1U] == ' ' ||
-                            line[length - 1U] == '\t')) {
+    /* Surrounding spaces and tabs are tolerated, and so is a DOS Ctrl-Z glued
+     * to the end of the last line; nothing else is. */
+    while (length != 0U && (xx_srecfmt_is_space(line[length - 1U]) ||
+                            (uint8_t)line[length - 1U] == XX_SRECFMT_CTRL_Z)) {
         --length;
     }
-    if (length < 6U || length > XX_SREC_MAX_LINE_LENGTH ||
+    while (length != 0U && xx_srecfmt_is_space(line[0])) {
+        ++line;
+        --length;
+    }
+    if (length < 10U || length > XX_SREC_MAX_LINE_LENGTH ||
         (length & 1U) != 0U || line[0] != 'S') {
         return false;
     }
@@ -265,8 +363,48 @@ static bool xx_srecfmt_decode_line(const char *line, size_t length,
 static bool xx_srecfmt_line_is_blank(const char *line, size_t length) {
     size_t index;
     for (index = 0U; index < length; ++index) {
-        char ch = line[index];
-        if (ch != ' ' && ch != '\t' && ch != '\r') return false;
+        if (!xx_srecfmt_is_space(line[index])) return false;
+    }
+    return true;
+}
+
+bool xx_srec_check_magic(const uint8_t *magic, size_t magic_size) {
+    uint8_t type;
+    uint8_t width;
+    uint8_t count;
+    size_t length;
+    size_t limit;
+    size_t index;
+    if (!magic || magic_size < 10U || magic[0] != (uint8_t)'S' ||
+        magic[1] < (uint8_t)'0' || magic[1] > (uint8_t)'9') {
+        return false;
+    }
+    type = (uint8_t)(magic[1] - (uint8_t)'0');
+    /* A file that opens with a termination record (S7/S8/S9) carries no data
+     * record before it and so can never pass check_is_valid(). */
+    if (type >= 7U) return false;
+    width = xx_srecfmt_address_width(type);
+    if (width == 0U ||
+        !xx_srecfmt_hex_byte((const char *)magic + 2, &count) ||
+        count < (uint8_t)(width + 1U)) {
+        return false;
+    }
+    /* Every character of the first record that lies inside the window must
+     * be a hex digit, and if the record ends inside the window it must be
+     * followed by a line end (or trailing blank / Ctrl-Z). */
+    length = 4U + (size_t)count * 2U;
+    limit = length < magic_size ? length : magic_size;
+    for (index = 4U; index < limit; ++index) {
+        uint8_t value;
+        if (!xx_srecfmt_hex_digit((char)magic[index], &value)) return false;
+    }
+    if (length < magic_size) {
+        uint8_t ch = magic[length];
+        if (ch != (uint8_t)'\r' && ch != (uint8_t)'\n' &&
+            ch != (uint8_t)' ' && ch != (uint8_t)'\t' &&
+            ch != XX_SRECFMT_CTRL_Z) {
+            return false;
+        }
     }
     return true;
 }
@@ -277,44 +415,99 @@ static bool xx_srecfmt_line_is_blank(const char *line, size_t length) {
 
 static void xx_srecfmt_scan_cleanup(xx_srecfmt_scan *scan) {
     if (!scan) return;
-    if (scan->header_text) xx_str_free(scan->header_text);
+    if (scan->header_text) xx_mem_free(scan->header_text);
     xx_mem_zero(scan, sizeof(*scan));
     scan->stream_size = -1;
 }
 
-/* S0 text is free-form vendor data.  It is kept as the record name only when
- * it looks like a single printable path component. */
-static bool xx_srecfmt_plausible_name(const uint8_t *text, size_t length) {
+/* Keep the S0 text when it is short printable ASCII (NUL / space padding at
+ * the end is dropped).  It is only ever used as metadata, never as a path. */
+static char *xx_srecfmt_header_copy(const uint8_t *text, size_t length) {
     size_t index;
-    if (!text || length == 0U || length > XX_SRECFMT_MAX_HEADER_TEXT) {
-        return false;
+    char *copy;
+    while (length != 0U &&
+           (text[length - 1U] == 0U || text[length - 1U] == (uint8_t)' ')) {
+        --length;
     }
+    if (length == 0U || length > XX_SRECFMT_MAX_HEADER_TEXT) return NULL;
     for (index = 0U; index < length; ++index) {
-        uint8_t ch = text[index];
-        if (ch < 32U || ch >= 127U || ch == '/' || ch == '\\' || ch == ':' ||
-            ch == '<' || ch == '>' || ch == '"' || ch == '|' || ch == '?' ||
-            ch == '*' || ch == ' ') {
-            return false;
-        }
+        if (text[index] < 32U || text[index] >= 127U) return NULL;
     }
-    if (text[0] == '.' && (length == 1U || (length == 2U && text[1] == '.'))) {
-        return false;
-    }
-    return text[length - 1U] != '.';
+    copy = (char *)xx_mem_alloc(length + 1U);
+    if (!copy) return NULL;
+    xx_rt_memcpy(copy, text, length);
+    copy[length] = '\0';
+    return copy;
 }
 
-/* Walk the whole text once.  No image is built here; the pass only measures
- * the addressed span so that the span can be refused before it is allocated. */
+/* The span rules on a running tally: the absolute ceiling and, above the
+ * density floor, the density rule. */
+static bool xx_srecfmt_tally_span_ok(const xx_srecfmt_tally *tally) {
+    uint64_t span;
+    if (tally->data_bytes == 0U) return true;
+    span = tally->high - tally->low + 1U;
+    if (span > XX_SRECFMT_MAX_IMAGE_SIZE) return false;
+    if (span > XX_SRECFMT_DENSITY_FLOOR &&
+        (tally->data_bytes > UINT64_MAX / XX_SRECFMT_MAX_DENSITY ||
+         span > tally->data_bytes * XX_SRECFMT_MAX_DENSITY)) {
+        return false;
+    }
+    return true;
+}
+
+/* May the text end here?  Every rule a complete file must obey, applied to
+ * the prefix read so far.  Detection (need_data) also demands at least one
+ * data byte: a file of only S0 / S5 / termination records, or of empty data
+ * records, is never auto-detected, because one checksummed S9 line in front
+ * of anything would otherwise be enough to claim it.  Parsing a file that was
+ * opened by name still accepts such a file as an empty image. */
+static bool xx_srecfmt_tally_acceptable(const xx_srecfmt_tally *tally,
+                                        bool need_data) {
+    if (tally->lines == 0U) return false;
+    if (need_data) {
+        if (tally->data_bytes == 0U) return false;
+    } else if (tally->data_records == 0U && !tally->seen_terminator) {
+        /* A lone S0 header in front of binary matter is not S-record text. */
+        return false;
+    }
+    return xx_srecfmt_tally_span_ok(tally);
+}
+
+/* Walk the text once.  No image is built here; the pass only measures the
+ * addressed span so that the span can be refused before it is allocated.
+ *
+ * As in GNU BFD's reader, the termination record (S7/S8/S9) ends the image:
+ * blank lines after it belong to the text, and the first non-blank byte after
+ * it starts the overlay (a second concatenated block, trailing notes, padding).
+ * A Ctrl-Z at the start of a line ends the text too; a run of Ctrl-Z to the end
+ * of the device is counted as text.
+ *
+ * Lines that start in the first XX_SRECFMT_VALIDATE_WINDOW bytes are strict:
+ * each non-blank one must be a well formed record and the span must stay under
+ * the ceiling, or the file is refused.
+ *
+ * detect == true is the bounded walk check_is_valid() uses: it stops at the
+ * window and then applies every end-of-text rule (span ceiling, density, at
+ * least one data byte) to what it has read.
+ *
+ * detect == false is the full walk handle_base_info() uses.  Past the window it
+ * never refuses: a malformed or overlong line, a record that would break the
+ * span ceiling, or the record cap ends the text at that line.  If the text read
+ * then breaks a rule (the density rule, say), the walk falls back to the last
+ * cut point at which every rule held.  The cut taken at the window itself is
+ * the very state check_is_valid() accepted, so whatever the detector accepts,
+ * this walk accepts too, and anything after the chosen end is overlay. */
 static bool xx_srecfmt_scan_run(Abstractformat *self, xx_srecfmt_scan *scan,
-                                xx_pd_struct *pd) {
+                                xx_pd_struct *pd, bool detect) {
     xx_srecfmt_lines lines;
     char line[XX_SREC_MAX_LINE_LENGTH];
     int64_t total_size;
-    uint64_t low = UINT64_MAX;
-    uint64_t high = 0U;
-    unsigned blanks = 0U;
-    bool seen_record = false;
-    bool seen_terminator = false;
+    int64_t stream_end;
+    int64_t cut_end = -1;
+    xx_srecfmt_tally tally;
+    xx_srecfmt_tally cut;
+    bool have_cut = false;
+    bool lenient = false;
     if (scan) {
         xx_mem_zero(scan, sizeof(*scan));
         scan->stream_size = -1;
@@ -324,101 +517,151 @@ static bool xx_srecfmt_scan_run(Abstractformat *self, xx_srecfmt_scan *scan,
         (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
+    xx_mem_zero(&tally, sizeof(tally));
+    xx_mem_zero(&cut, sizeof(cut));
+    tally.low = UINT64_MAX;
     total_size = xx_io_total_size(self->device);
     if (total_size <= self->base_address ||
         xx_io_seek64(self->device, self->base_address, SEEK_SET) != 0) {
         goto fail;
     }
+    stream_end = total_size;
     xx_srecfmt_lines_init(&lines, self->device, self->base_address,
                           total_size);
     for (;;) {
         size_t length = 0U;
-        bool overlong = false;
+        int64_t start = -1;
+        int64_t offset;
+        xx_srecfmt_line_status status;
         xx_srecfmt_record record;
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        if (!xx_srecfmt_lines_next(&lines, line, sizeof(line), &length,
-                                   &overlong)) {
-            if (overlong) goto fail;
+        xx_srecfmt_lines_settle(&lines);
+        offset = xx_srecfmt_lines_offset(&lines);
+        if (!lenient &&
+            offset - self->base_address >= XX_SRECFMT_VALIDATE_WINDOW) {
+            if (detect) break;
+            lenient = true;
+        }
+        if (lenient && xx_srecfmt_tally_acceptable(&tally, false)) {
+            /* The text could end right here, before the next line. */
+            xx_rt_memcpy(&cut, &tally, sizeof(cut));
+            cut_end = offset;
+            have_cut = true;
+        }
+        status = xx_srecfmt_lines_next(&lines, line, sizeof(line), &length,
+                                       &start);
+        if (status == XX_SRECFMT_LINE_END) break;
+        if (status == XX_SRECFMT_LINE_MARKER) {
+            if (!xx_srecfmt_lines_tail_is_ctrl_z(&lines)) stream_end = start;
             break;
         }
-        if (xx_srecfmt_line_is_blank(line, length)) {
-            /* Blank padding is common, an unbounded run of it is not. */
-            if (++blanks > XX_SRECFMT_MAX_BLANK_LINES) goto fail;
+        if (status == XX_SRECFMT_LINE_OK &&
+            xx_srecfmt_line_is_blank(line, length)) {
             continue;
         }
-        blanks = 0U;
-        if (!xx_srecfmt_decode_line(line, length, &record)) goto fail;
-        if (++scan->lines > XX_SRECFMT_MAX_LINES) goto fail;
-        seen_record = true;
-        /* Records after a termination record are a malformed file. */
-        if (seen_terminator) goto fail;
+        if (tally.seen_terminator) {
+            /* First non-blank matter after the termination record. */
+            stream_end = start;
+            break;
+        }
+        if (status != XX_SRECFMT_LINE_OK ||
+            !xx_srecfmt_decode_line(line, length, &record) ||
+            tally.lines >= XX_SRECFMT_MAX_LINES) {
+            if (!lenient) goto fail;
+            stream_end = start;  /* Past the window: the text ends here. */
+            break;
+        }
         switch (record.type) {
             case 0U:
-                if (!scan->header_text && record.data_size != 0U &&
-                    xx_srecfmt_plausible_name(record.data, record.data_size)) {
-                    char *copy =
-                        (char *)xx_mem_alloc(record.data_size + 1U);
-                    if (!copy) goto fail;
-                    xx_rt_memcpy(copy, record.data, record.data_size);
-                    copy[record.data_size] = '\0';
-                    scan->header_text = copy;
+                if (!scan->header_text && record.data_size != 0U) {
+                    scan->header_text =
+                        xx_srecfmt_header_copy(record.data, record.data_size);
+                    tally.has_header = scan->header_text != NULL;
                 }
                 break;
             case 1U:
             case 2U:
             case 3U: {
-                uint64_t start = record.address;
-                uint64_t last;
-                if (record.data_size == 0U) break;
-                last = start + (uint64_t)record.data_size - 1U;
-                if (record.address_width > scan->address_width) {
-                    scan->address_width = record.address_width;
+                uint64_t first = record.address;
+                uint64_t low = tally.low;
+                uint64_t high = tally.high;
+                if (record.data_size != 0U) {
+                    uint64_t last = first + (uint64_t)record.data_size - 1U;
+                    if (first < low) low = first;
+                    if (last > high) high = last;
+                    /* Bound the span as it grows so a hostile address cannot
+                     * be accumulated and only noticed at the end. */
+                    if (high - low >= XX_SRECFMT_MAX_IMAGE_SIZE) {
+                        if (!lenient) goto fail;
+                        stream_end = start;
+                        goto walked;
+                    }
                 }
-                if (start < low) low = start;
-                if (last > high) high = last;
-                scan->data_bytes += record.data_size;
-                ++scan->data_records;
-                /* Bound the span as it grows so a hostile address cannot be
-                 * accumulated and only noticed at the end. */
-                if (high - low >= XX_SRECFMT_MAX_IMAGE_SIZE) goto fail;
+                ++tally.data_records;
+                if (record.address_width > tally.address_width) {
+                    tally.address_width = record.address_width;
+                }
+                tally.low = low;
+                tally.high = high;
+                tally.data_bytes += record.data_size;
                 break;
             }
             case 5U:
             case 6U:
-                scan->declared_record_count = record.address;
-                scan->has_record_count = true;
+                /* The count is advisory: a mismatch (a producer counting
+                 * differently, or a 16-bit count that wrapped) does not make
+                 * the checksummed data any less valid, so it is recorded
+                 * rather than enforced. */
+                tally.declared_record_count = record.address;
+                tally.has_record_count = true;
                 break;
             case 7U:
             case 8U:
             case 9U:
-                scan->entry_point = record.address;
-                scan->has_entry_point = true;
-                seen_terminator = true;
+                tally.entry_point = record.address;
+                tally.has_entry_point = true;
+                tally.seen_terminator = true;
                 break;
             default:
                 goto fail;
         }
+        ++tally.lines;
     }
-    if (!seen_record || scan->data_records == 0U || low > high) goto fail;
-    scan->load_address = low;
-    scan->end_address = high;
-    scan->image_size = high - low + 1U;
-    scan->is_contiguous = scan->image_size == scan->data_bytes;
-    /* Absolute ceiling, then the density rule. */
+walked:
+    if (!xx_srecfmt_tally_acceptable(&tally, detect)) {
+        /* In the strict window (and in detection) this refuses the file.  Past
+         * the window, fall back to the last prefix that obeyed every rule. */
+        if (detect || !lenient || !have_cut) goto fail;
+        xx_rt_memcpy(&tally, &cut, sizeof(tally));
+        stream_end = cut_end;
+        if (!tally.has_header && scan->header_text) {
+            xx_mem_free(scan->header_text);
+            scan->header_text = NULL;
+        }
+    }
+    scan->lines = tally.lines;
+    scan->data_records = tally.data_records;
+    scan->data_bytes = tally.data_bytes;
+    scan->entry_point = tally.entry_point;
+    scan->has_entry_point = tally.has_entry_point;
+    scan->declared_record_count = tally.declared_record_count;
+    scan->has_record_count = tally.has_record_count;
+    scan->address_width = tally.address_width;
+    if (tally.data_bytes != 0U) {
+        scan->load_address = tally.low;
+        scan->end_address = tally.high;
+        scan->image_size = tally.high - tally.low + 1U;
+    }
+    /* Records may overlap - EASy68K, for one, repeats the last data record -
+     * and the later record wins when the image is built, as it does in
+     * objcopy.  Overlap cannot inflate the image: the span is bounded by the
+     * ceiling and density rules, and data_bytes by the text size. */
+    scan->is_contiguous = scan->data_bytes >= scan->image_size;
+    /* Absolute ceiling (already part of the tally rules; kept as a guard for
+     * the allocation that follows). */
     if (scan->image_size > XX_SRECFMT_MAX_IMAGE_SIZE) goto fail;
-    if (scan->image_size > XX_SRECFMT_DENSITY_FLOOR &&
-        (scan->data_bytes > UINT64_MAX / XX_SRECFMT_MAX_DENSITY ||
-         scan->image_size > scan->data_bytes * XX_SRECFMT_MAX_DENSITY)) {
-        goto fail;
-    }
-    /* Overlapping records would make data_bytes exceed the span; that is a
-     * malformed file rather than a last-writer-wins merge. */
-    if (scan->data_bytes > scan->image_size) goto fail;
-    if (scan->has_record_count &&
-        scan->declared_record_count != scan->data_records) {
-        goto fail;
-    }
-    scan->stream_size = total_size - self->base_address;
+    if (stream_end < self->base_address) goto fail;
+    scan->stream_size = stream_end - self->base_address;
     return true;
 fail:
     xx_srecfmt_scan_cleanup(scan);
@@ -426,7 +669,8 @@ fail:
 }
 
 /* Second pass: allocate the already bounded span and place every data record
- * into it.  Gaps keep XX_SRECFMT_FILL_BYTE. */
+ * into it.  Gaps keep XX_SRECFMT_FILL_BYTE.  Only the text the first pass
+ * accepted is read. */
 static bool xx_srecfmt_build(Abstractformat *self,
                              const xx_srecfmt_scan *scan, uint8_t **out_image,
                              size_t *out_size, xx_pd_struct *pd) {
@@ -438,7 +682,7 @@ static bool xx_srecfmt_build(Abstractformat *self,
     if (!self || !self->device || !scan || !out_image || !out_size ||
         scan->image_size == 0U ||
         scan->image_size > XX_SRECFMT_MAX_IMAGE_SIZE ||
-        scan->image_size > (uint64_t)SIZE_MAX ||
+        scan->image_size > (uint64_t)SIZE_MAX || scan->stream_size <= 0 ||
         xx_io_seek64(self->device, self->base_address, SEEK_SET) != 0) {
         return false;
     }
@@ -449,17 +693,22 @@ static bool xx_srecfmt_build(Abstractformat *self,
                           self->base_address + scan->stream_size);
     for (;;) {
         size_t length = 0U;
-        bool overlong = false;
+        int64_t start = -1;
+        xx_srecfmt_line_status status;
         xx_srecfmt_record record;
         uint64_t offset;
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        if (!xx_srecfmt_lines_next(&lines, line, sizeof(line), &length,
-                                   &overlong)) {
-            if (overlong) goto fail;
+        status = xx_srecfmt_lines_next(&lines, line, sizeof(line), &length,
+                                       &start);
+        /* The first pass fixed where the text ends; the same stops apply. */
+        if (status == XX_SRECFMT_LINE_END ||
+            status == XX_SRECFMT_LINE_MARKER) {
             break;
         }
+        if (status != XX_SRECFMT_LINE_OK) goto fail;
         if (xx_srecfmt_line_is_blank(line, length)) continue;
         if (!xx_srecfmt_decode_line(line, length, &record)) goto fail;
+        if (record.type >= 7U) break;  /* Termination record. */
         if (record.type > 3U || record.type == 0U || record.data_size == 0U) {
             continue;
         }
@@ -501,14 +750,14 @@ bool xx_srec_probe_device(xx_io_device *dev, int64_t base_address) {
     xx_srecfmt_lines_init(&lines, dev, base_address, base_address + window);
     for (;;) {
         size_t length = 0U;
-        bool overlong = false;
+        int64_t start = -1;
         xx_srecfmt_record record;
-        if (!xx_srecfmt_lines_next(&lines, line, sizeof(line), &length,
-                                   &overlong)) {
+        if (xx_srecfmt_lines_next(&lines, line, sizeof(line), &length,
+                                  &start) != XX_SRECFMT_LINE_OK) {
             return false;
         }
         if (xx_srecfmt_line_is_blank(line, length)) {
-            if (++blanks > 4U) return false;
+            if (++blanks > XX_SRECFMT_PROBE_BLANK_LINES) return false;
             continue;
         }
         return xx_srecfmt_decode_line(line, length, &record);
@@ -550,51 +799,55 @@ static const xx_var *xx_srecfmt_find_option(const xx_list_s *options,
     return NULL;
 }
 
-/* Format "load=0x... entry=0x..." without the CRT. */
+static void xx_srecfmt_append(char *out, size_t capacity, size_t *used,
+                              const char *text) {
+    size_t index;
+    for (index = 0U; text && text[index] != '\0'; ++index) {
+        if (*used + 1U >= capacity) break;
+        out[(*used)++] = text[index];
+    }
+    out[*used] = '\0';
+}
+
+/* Format "load=0x... entry=0x... header=..." without the CRT. */
 static void xx_srecfmt_describe(const xx_srec *archive, char *out,
                                 size_t capacity) {
     static const char digits[] = "0123456789ABCDEF";
     size_t used = 0U;
     unsigned pass;
+    const char *header = xx_srec_get_header_text(archive);
     if (!out || capacity == 0U) return;
     out[0] = '\0';
     for (pass = 0U; pass < 2U; ++pass) {
-        const char *label = pass == 0U ? "load=0x" : " entry=0x";
         uint64_t value = pass == 0U ? archive->load_address
                                     : archive->entry_point;
         unsigned shift = 60U;
         bool started = false;
-        size_t index;
         if (pass == 1U && !archive->has_entry_point) break;
-        for (index = 0U; label[index] != '\0'; ++index) {
-            if (used + 1U >= capacity) return;
-            out[used++] = label[index];
-        }
+        xx_srecfmt_append(out, capacity, &used,
+                          pass == 0U ? "load=0x" : " entry=0x");
         for (;;) {
             unsigned nibble = (unsigned)((value >> shift) & 0xFU);
             if (nibble != 0U || started || shift == 0U) {
                 if (used + 1U >= capacity) return;
                 out[used++] = digits[nibble];
+                out[used] = '\0';
                 started = true;
             }
             if (shift == 0U) break;
             shift -= 4U;
         }
-        out[used] = '\0';
     }
-}
-
-static const char *xx_srecfmt_record_name(const xx_srec *archive) {
-    const xx_srecfmt_scan *scan =
-        archive ? (const xx_srecfmt_scan *)archive->internal : NULL;
-    return (scan && scan->header_text) ? scan->header_text
-                                       : XX_SRECFMT_PAYLOAD_NAME;
+    if (header) {
+        xx_srecfmt_append(out, capacity, &used, " header=");
+        xx_srecfmt_append(out, capacity, &used, header);
+    }
 }
 
 static bool xx_srecfmt_populate_record(Abstractformat *self,
                                        xx_archive_record *record) {
     const xx_srec *archive;
-    char description[96];
+    char description[160];
     if (!self || !record || !self->base_info_handled || !self->is_valid) {
         return false;
     }
@@ -606,8 +859,8 @@ static bool xx_srecfmt_populate_record(Abstractformat *self,
     record->header_size = 0;
     record->data_offset = self->base_address;
     record->compressed_size = self->format_size;
-    return xx_archive_record_set_original_name(
-               record, xx_srecfmt_record_name(archive)) &&
+    return xx_archive_record_set_original_name(record,
+                                               XX_SRECFMT_PAYLOAD_NAME) &&
            xx_archive_record_set_meta_u64(record,
                                           XX_META_ID_UNCOMPRESSED_SIZE,
                                           archive->image_size) &&
@@ -624,26 +877,6 @@ static bool xx_srecfmt_populate_record(Abstractformat *self,
             * accessors xx_srec_get_load_address()/xx_srec_get_entry_point(). */
            xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT,
                                           description);
-}
-
-static bool xx_srecfmt_safe_name(const char *name) {
-    size_t length;
-    size_t index;
-    if (!name) return false;
-    length = xx_str_len(name);
-    if (length == 0U || length > XX_SRECFMT_MAX_HEADER_TEXT) return false;
-    for (index = 0U; index < length; ++index) {
-        unsigned char ch = (unsigned char)name[index];
-        if (ch < 32U || ch >= 127U || ch == '/' || ch == '\\' || ch == ':' ||
-            ch == '<' || ch == '>' || ch == '"' || ch == '|' || ch == '?' ||
-            ch == '*') {
-            return false;
-        }
-    }
-    if (name[0] == '.' && (length == 1U || (length == 2U && name[1] == '.'))) {
-        return false;
-    }
-    return name[length - 1U] != ' ' && name[length - 1U] != '.';
 }
 
 /* ------------------------------------------------------------------ */
@@ -687,13 +920,17 @@ xx_srec *xx_srec_create(xx_io_device *dev, int64_t base_address) {
     return archive;
 }
 
-void xx_srec_destroy(xx_srec *archive) {
-    if (!archive) return;
-    if (archive->internal) {
+static void xx_srecfmt_release_internal(xx_srec *archive) {
+    if (archive && archive->internal) {
         xx_srecfmt_scan_cleanup((xx_srecfmt_scan *)archive->internal);
         xx_mem_free(archive->internal);
         archive->internal = NULL;
     }
+}
+
+void xx_srec_destroy(xx_srec *archive) {
+    if (!archive) return;
+    xx_srecfmt_release_internal(archive);
     xx_format_cleanup_extra_parameters(&archive->format);
     archive->number_of_lines = 0U;
     archive->number_of_data_records = 0U;
@@ -719,13 +956,16 @@ void xx_srec_free(xx_srec *archive) {
 bool xx_srec_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     xx_srecfmt_scan scan;
     bool result;
-    /* Cheap bounded probe first so a binary file is rejected without a full
-     * text walk. */
+    /* Cheap bounded probe first so a binary file is rejected after at most
+     * one line, then a bounded walk of the lines that start in the first
+     * XX_SRECFMT_VALIDATE_WINDOW bytes of text.  The walk demands at least one
+     * data byte and applies the span ceiling and the density rule to what it
+     * read; handle_base_info() accepts every file this accepts. */
     if (!self || !self->device || !xx_srec_probe_device(self->device,
                                                         self->base_address)) {
         return false;
     }
-    result = xx_srecfmt_scan_run(self, &scan, pd);
+    result = xx_srecfmt_scan_run(self, &scan, pd, true);
     xx_srecfmt_scan_cleanup(&scan);
     return result;
 }
@@ -733,11 +973,13 @@ bool xx_srec_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
 bool xx_srec_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     xx_srecfmt_scan *scan;
     xx_srec *archive = (xx_srec *)self;
+    int64_t total_size;
     if (!self) return false;
     scan = (xx_srecfmt_scan *)xx_mem_alloc(sizeof(*scan));
     if (!scan || !xx_srec_probe_device(self->device, self->base_address) ||
-        !xx_srecfmt_scan_run(self, scan, pd)) {
+        !xx_srecfmt_scan_run(self, scan, pd, false)) {
         if (scan) xx_mem_free(scan);
+        xx_srecfmt_release_internal(archive);
         archive->number_of_lines = 0U;
         archive->number_of_data_records = 0U;
         archive->data_bytes = 0U;
@@ -751,10 +993,7 @@ bool xx_srec_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
         self->base_info_handled = false;
         return false;
     }
-    if (archive->internal) {
-        xx_srecfmt_scan_cleanup((xx_srecfmt_scan *)archive->internal);
-        xx_mem_free(archive->internal);
-    }
+    xx_srecfmt_release_internal(archive);
     archive->internal = scan;
     archive->number_of_lines = scan->lines;
     archive->number_of_data_records = scan->data_records;
@@ -770,11 +1009,20 @@ bool xx_srec_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     archive->address_width = scan->address_width;
     archive->stream_end = self->base_address + scan->stream_size;
     self->format_size = scan->stream_size;
-    /* The parser consumes the text to the end of the device, so there is no
-     * overlay to report. */
-    self->overlay_offset = -1;
-    self->overlay_size = 0;
-    self->number_of_archive_records = 1U;
+    /* Whatever follows the text is reported as overlay: matter after an
+     * end-of-text marker or a complete block, and, past the strict window,
+     * the first line that broke a rule and everything after it. */
+    total_size = xx_io_total_size(self->device);
+    if (total_size > archive->stream_end) {
+        self->overlay_offset = archive->stream_end;
+        self->overlay_size = total_size - archive->stream_end;
+    } else {
+        self->overlay_offset = -1;
+        self->overlay_size = 0;
+    }
+    /* An S-record file that carries no data bytes (header and termination
+     * only) is valid and has no member. */
+    self->number_of_archive_records = scan->image_size != 0U ? 1U : 0U;
     self->file_type = XX_SREC_FILE_TYPE;
     self->format_type = XX_TYPE_ARCHIVE;
     self->is_archive = true;
@@ -799,7 +1047,7 @@ uint64_t xx_srec_get_number_of_archive_records(Abstractformat *self,
                   !xx_format_handle_base_info(self, pd))) {
         return 0U;
     }
-    return 1U;
+    return self->number_of_archive_records;
 }
 
 bool xx_srec_unpack_to_device(xx_srec *archive, xx_io_device *destination,
@@ -816,8 +1064,9 @@ bool xx_srec_unpack_to_device(xx_srec *archive, xx_io_device *destination,
         return false;
     }
     scan = (const xx_srecfmt_scan *)archive->internal;
-    if (!scan || !xx_srecfmt_build(&archive->format, scan, &image, &image_size,
-                                   pd)) {
+    if (!scan) return false;
+    if (scan->image_size == 0U) return true;  /* Empty image. */
+    if (!xx_srecfmt_build(&archive->format, scan, &image, &image_size, pd)) {
         return false;
     }
     while (done < image_size) {
@@ -844,13 +1093,22 @@ xx_archive_record_state *xx_srec_create_archive_records_reading(
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
     if (!state) return NULL;
     xx_archive_record_state_init(state, self);
-    if (!xx_srecfmt_copy_options(&state->options, options) ||
-        !xx_srecfmt_populate_record(self, &state->current_record)) {
+    if (!xx_srecfmt_copy_options(&state->options, options)) {
+        xx_archive_record_state_free(state);
+        return NULL;
+    }
+    state->current_index = 0;
+    if (self->number_of_archive_records == 0U) {
+        /* Empty image: a valid reading session with no record. */
+        state->has_record = false;
+        state->total_records = 0;
+        return state;
+    }
+    if (!xx_srecfmt_populate_record(self, &state->current_record)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
     state->has_record = true;
-    state->current_index = 0;
     state->total_records = 1;
     return state;
 }
@@ -881,7 +1139,6 @@ bool xx_srec_unpack_current_archive_record(Abstractformat *self,
                                            xx_pd_struct *pd) {
     const xx_var *path_value;
     const char *base_path = NULL;
-    const char *name;
     char *owned_path = NULL;
     char *destination_path;
     bool result;
@@ -890,8 +1147,6 @@ bool xx_srec_unpack_current_archive_record(Abstractformat *self,
         (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
-    name = xx_archive_record_get_original_name(&state->current_record);
-    if (!xx_srecfmt_safe_name(name)) name = XX_SRECFMT_PAYLOAD_NAME;
     path_value = xx_srecfmt_find_option(&state->options,
                                         XX_META_ID_OPT_UNPACK_PATH);
     if (!path_value) {
@@ -917,12 +1172,15 @@ bool xx_srec_unpack_current_archive_record(Abstractformat *self,
         if (owned_path) xx_str_free(owned_path);
         return false;
     }
+    /* The member name is the fixed XX_SRECFMT_PAYLOAD_NAME; nothing from the
+     * file reaches the destination path. */
     if (base_path[0] != '\0' &&
         base_path[xx_str_len(base_path) - 1U] != '/' &&
         base_path[xx_str_len(base_path) - 1U] != '\\') {
-        destination_path = xx_str_concat3(base_path, "/", name);
+        destination_path =
+            xx_str_concat3(base_path, "/", XX_SRECFMT_PAYLOAD_NAME);
     } else {
-        destination_path = xx_str_concat(base_path, name);
+        destination_path = xx_str_concat(base_path, XX_SRECFMT_PAYLOAD_NAME);
     }
     if (owned_path) xx_str_free(owned_path);
     if (!destination_path || !xx_store_create_dirs_a(destination_path, false)) {

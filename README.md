@@ -18,7 +18,7 @@ xxfclib/
 │       ├── die_engine/                 # die_engine.h
 │       └── io/ data/ buf/ ...          # One library-level header each
 ├── src/
-│   ├── formats/                        # One directory per format, 405 compiled
+│   ├── formats/                        # One directory per format, 430 compiled
 │   │   ├── xx_format.c                 # File-type detection and reader dispatch
 │   │   ├── xx_memory_map.c             # Offset/address mapping shared by readers
 │   │   ├── xx_data_signature.c         # Signature notation and matching

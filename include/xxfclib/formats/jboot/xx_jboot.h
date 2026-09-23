@@ -56,12 +56,23 @@
  *   +12  u16  image_checksum
  *   +14  u16  header_checksum
  *
+ * id is always 0x04 (binwalk's two STAG signatures are 04 04 24 2B and
+ * FF 04 24 2B, and OpenWrt's mkdlinkfw writes STAG_ID 0x04), so any other id
+ * is rejected: with no verifiable checksum, the fixed id is part of what
+ * keeps this short signature from matching arbitrary data.
  * cmark == 0xFF marks a factory image; cmark == id marks a system-upgrade
  * image.  Anything else is rejected.  The two 16-bit checksums are NOT
  * verified: binwalk does not verify them either and the exact JBOOT sum
  * algorithm could not be established from a source available here, so a
  * "verification" would have been a guess.  image_size is taken as the size of
  * the payload FOLLOWING the header, which is how binwalk bounds it.
+ *
+ * timestamp (here and in ARM at +28) is NOT a Unix time: mkdlinkfw writes
+ * (unix_seconds - 0x35016f00) >> 2, 4-second ticks since 1998-03-07 16:00:00
+ * UTC.  The xx_jboot.timestamp field keeps the raw value; the record's
+ * XX_META_ID_TIMESTAMP carries it converted to Unix seconds (see
+ * XX_JBOOT_TIMESTAMP_*), and is omitted when the field is 0 or above
+ * XX_JBOOT_TIMESTAMP_MAX.
  *
  * ----------------------------------------------------------------- ARM ----
  *   +0   char[12] rom_id, a NUL-padded board string
@@ -72,7 +83,7 @@
  *   +24  u16  reserved3, must be 0
  *   +26  u8   lpvs, must be 1
  *   +27  u8   mbz, must be 0
- *   +28  u32  timestamp
+ *   +28  u32  timestamp, JBOOT ticks (see STAG above)
  *   +32  u32  erase_start
  *   +36  u32  erase_size
  *   +40  u32  data_start
@@ -112,7 +123,17 @@ extern "C" {
 
 #define XX_JBOOT_SCH2_MAGIC UINT32_C(0x2124) /**< u16 LE, bytes "$!". */
 #define XX_JBOOT_STAG_MAGIC UINT32_C(0x2B24) /**< u16 LE at +2. */
+#define XX_JBOOT_STAG_ID 0x04U               /**< STAG id byte at +1. */
+#define XX_JBOOT_STAG_FACTORY_CMARK 0xFFU    /**< STAG cmark of a factory image. */
 #define XX_JBOOT_ARM_MAGIC UINT32_C(0x4842)  /**< u16 LE at +64, "BH". */
+
+/* STAG/ARM time_stamp encoding (OpenWrt mkdlinkfw-lib jboot_timestamp):
+ * field = (((uint32_t)unix_seconds) - 0x35016f00) >> 2, so
+ * unix_seconds = field * TICK + EPOCH.  The >> 2 caps a real field at
+ * 0x3FFFFFFF. */
+#define XX_JBOOT_TIMESTAMP_EPOCH UINT64_C(0x35016F00) /**< 1998-03-07 16:00:00 UTC. */
+#define XX_JBOOT_TIMESTAMP_TICK 4U                    /**< Seconds per tick. */
+#define XX_JBOOT_TIMESTAMP_MAX UINT32_C(0x3FFFFFFF)   /**< Largest producible field. */
 
 #define XX_JBOOT_SCH2_HEADER_SIZE 40U
 #define XX_JBOOT_STAG_HEADER_SIZE 16U
@@ -174,7 +195,10 @@ struct xx_jboot {
     uint32_t section_id;
     uint32_t family;
 
-    uint32_t timestamp; /**< SCH2 has none; STAG and ARM both carry one. */
+    /** Raw STAG/ARM time_stamp in JBOOT 4-second ticks, not Unix time
+     * (unix = timestamp * XX_JBOOT_TIMESTAMP_TICK + XX_JBOOT_TIMESTAMP_EPOCH);
+     * SCH2 has none. */
+    uint32_t timestamp;
     void *internal;
 };
 

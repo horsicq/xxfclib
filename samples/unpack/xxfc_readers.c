@@ -30,6 +30,7 @@
 #include <xxfclib/formats/amigahunk/xx_amigahunk.h>
 #include <xxfclib/formats/amigalzx/xx_amigalzx.h>
 #include <xxfclib/formats/ampk/xx_ampk.h>
+#include <xxfclib/formats/androidboot/xx_androidboot.h>
 #include <xxfclib/formats/aodos/xx_aodos.h>
 #include <xxfclib/formats/ap4/xx_ap4.h>
 #include <xxfclib/formats/apfs/xx_apfs.h>
@@ -37,6 +38,7 @@
 #include <xxfclib/formats/applesingle/xx_applesingle.h>
 #include <xxfclib/formats/apricot/xx_apricot.h>
 #include <xxfclib/formats/ar/xx_ar.h>
+#include <xxfclib/formats/arcadyan/xx_arcadyan.h>
 #include <xxfclib/formats/arcfs/xx_arcfs.h>
 #include <xxfclib/formats/arcv/xx_arcv.h>
 #include <xxfclib/formats/arcv2/xx_arcv2.h>
@@ -51,6 +53,7 @@
 #include <xxfclib/formats/ash0/xx_ash0.h>
 #include <xxfclib/formats/asymetrix/xx_asymetrix.h>
 #include <xxfclib/formats/atarist/xx_atarist.h>
+#include <xxfclib/formats/autel/xx_autel.h>
 #include <xxfclib/formats/bagf/xx_bagf.h>
 #include <xxfclib/formats/battleisle/xx_battleisle.h>
 #include <xxfclib/formats/bcm/xx_bcm.h>
@@ -100,12 +103,16 @@
 #include <xxfclib/formats/csman/xx_csman.h>
 #include <xxfclib/formats/dbz/xx_dbz.h>
 #include <xxfclib/formats/dclft/xx_dclft.h>
+#include <xxfclib/formats/dclraw/xx_dclraw.h>
 #include <xxfclib/formats/debugscr/xx_debugscr.h>
 #include <xxfclib/formats/dex/xx_dex.h>
 #include <xxfclib/formats/diskdoubler/xx_diskdoubler.h>
 #include <xxfclib/formats/diskdupe/xx_diskdupe.h>
 #include <xxfclib/formats/diskexpress/xx_diskexpress.h>
 #include <xxfclib/formats/diskjuggler/xx_diskjuggler.h>
+#include <xxfclib/formats/dkbs/xx_dkbs.h>
+#include <xxfclib/formats/dlink_tlv/xx_dlink_tlv.h>
+#include <xxfclib/formats/dlke/xx_dlke.h>
 #include <xxfclib/formats/dlob/xx_dlob.h>
 #include <xxfclib/formats/dmapacked/xx_dmapacked.h>
 #include <xxfclib/formats/dmg/xx_dmg.h>
@@ -119,10 +126,13 @@
 #include <xxfclib/formats/ealib/xx_ealib.h>
 #include <xxfclib/formats/earefpack/xx_earefpack.h>
 #include <xxfclib/formats/ecmpacked/xx_ecmpacked.h>
+#include <xxfclib/formats/ecos/xx_ecos.h>
 #include <xxfclib/formats/edc/xx_edc.h>
 #include <xxfclib/formats/edilzss/xx_edilzss.h>
 #include <xxfclib/formats/elf/xx_elf.h>
 #include <xxfclib/formats/emt/xx_emt.h>
+#include <xxfclib/formats/encfw/xx_encfw.h>
+#include <xxfclib/formats/encrpted_img/xx_encrpted_img.h>
 #include <xxfclib/formats/ext/xx_ext.h>
 #include <xxfclib/formats/fat/xx_fat.h>
 #include <xxfclib/formats/fdi/xx_fdi.h>
@@ -165,6 +175,7 @@
 #include <xxfclib/formats/igf2/xx_igf2.h>
 #include <xxfclib/formats/imd/xx_imd.h>
 #include <xxfclib/formats/imp/xx_imp.h>
+#include <xxfclib/formats/infogramesft/xx_infogramesft.h>
 #include <xxfclib/formats/inteduft/xx_inteduft.h>
 #include <xxfclib/formats/ipa/xx_ipa.h>
 #include <xxfclib/formats/irixsa/xx_irixsa.h>
@@ -181,6 +192,7 @@
 #include <xxfclib/formats/jar/xx_jar.h>
 #include <xxfclib/formats/jasc/xx_jasc.h>
 #include <xxfclib/formats/jbf/xx_jbf.h>
+#include <xxfclib/formats/jboot/xx_jboot.h>
 #include <xxfclib/formats/jetbbs/xx_jetbbs.h>
 #include <xxfclib/formats/jffs2/xx_jffs2.h>
 #include <xxfclib/formats/jgpak/xx_jgpak.h>
@@ -195,6 +207,7 @@
 #include <xxfclib/formats/lif/xx_lif.h>
 #include <xxfclib/formats/lifkd/xx_lifkd.h>
 #include <xxfclib/formats/lim/xx_lim.h>
+#include <xxfclib/formats/lingvoarc/xx_lingvoarc.h>
 #include <xxfclib/formats/lizard/xx_lizard.h>
 #include <xxfclib/formats/lofi/xx_lofi.h>
 #include <xxfclib/formats/logfs/xx_logfs.h>
@@ -205,12 +218,14 @@
 #include <xxfclib/formats/luks/xx_luks.h>
 #include <xxfclib/formats/lx/xx_lx.h>
 #include <xxfclib/formats/lz4/xx_lz4.h>
+#include <xxfclib/formats/lz4demo/xx_lz4demo.h>
 #include <xxfclib/formats/lz5/xx_lz5.h>
 #include <xxfclib/formats/lzdiet/xx_lzdiet.h>
 #include <xxfclib/formats/lzhcxp/xx_lzhcxp.h>
 #include <xxfclib/formats/lzip/xx_lzip.h>
 #include <xxfclib/formats/lzk00/xx_lzk00.h>
 #include <xxfclib/formats/lzma/xx_lzma.h>
+#include <xxfclib/formats/lzop/xx_lzop.h>
 #include <xxfclib/formats/lzpis2/xx_lzpis2.h>
 #include <xxfclib/formats/lzv1/xx_lzv1.h>
 #include <xxfclib/formats/lzw15v/xx_lzw15v.h>
@@ -219,10 +234,12 @@
 #include <xxfclib/formats/macho/xx_macho.h>
 #include <xxfclib/formats/marc/xx_marc.h>
 #include <xxfclib/formats/mathcad/xx_mathcad.h>
+#include <xxfclib/formats/matter_ota/xx_matter_ota.h>
 #include <xxfclib/formats/mbr/xx_mbr.h>
 #include <xxfclib/formats/mcc/xx_mcc.h>
 #include <xxfclib/formats/mdcd/xx_mdcd.h>
 #include <xxfclib/formats/megatechvol/xx_megatechvol.h>
+#include <xxfclib/formats/mh01/xx_mh01.h>
 #include <xxfclib/formats/mi10/xx_mi10.h>
 #include <xxfclib/formats/minidump/xx_minidump.h>
 #include <xxfclib/formats/miz/xx_miz.h>
@@ -255,6 +272,7 @@
 #include <xxfclib/formats/pcommos2/xx_pcommos2.h>
 #include <xxfclib/formats/pcsecure/xx_pcsecure.h>
 #include <xxfclib/formats/pcxlib/xx_pcxlib.h>
+#include <xxfclib/formats/pdb/xx_pdb.h>
 #include <xxfclib/formats/pdp11ar/xx_pdp11ar.h>
 #include <xxfclib/formats/pe/xx_pe.h>
 #include <xxfclib/formats/pea/xx_pea.h>
@@ -313,6 +331,8 @@
 #include <xxfclib/formats/sfpack/xx_sfpack.h>
 #include <xxfclib/formats/shar/xx_shar.h>
 #include <xxfclib/formats/shrinkwrap/xx_shrinkwrap.h>
+#include <xxfclib/formats/shrs/xx_shrs.h>
+#include <xxfclib/formats/silmarilsft/xx_silmarilsft.h>
 #include <xxfclib/formats/sinner/xx_sinner.h>
 #include <xxfclib/formats/sls/xx_sls.h>
 #include <xxfclib/formats/smsipak/xx_smsipak.h>
@@ -329,6 +349,7 @@
 #include <xxfclib/formats/squeeze2/xx_squeeze2.h>
 #include <xxfclib/formats/sqx/xx_sqx.h>
 #include <xxfclib/formats/sqz/xx_sqz.h>
+#include <xxfclib/formats/srec/xx_srec.h>
 #include <xxfclib/formats/ssm/xx_ssm.h>
 #include <xxfclib/formats/stac/xx_stac.h>
 #include <xxfclib/formats/starkit/xx_starkit.h>
@@ -361,6 +382,7 @@
 #include <xxfclib/formats/tivoli/xx_tivoli.h>
 #include <xxfclib/formats/tnef/xx_tnef.h>
 #include <xxfclib/formats/topspeed/xx_topspeed.h>
+#include <xxfclib/formats/tplink/xx_tplink.h>
 #include <xxfclib/formats/tps/xx_tps.h>
 #include <xxfclib/formats/tpwm/xx_tpwm.h>
 #include <xxfclib/formats/trc/xx_trc.h>
@@ -368,9 +390,11 @@
 #include <xxfclib/formats/trdos/xx_trdos.h>
 #include <xxfclib/formats/trx/xx_trx.h>
 #include <xxfclib/formats/twoimg/xx_twoimg.h>
+#include <xxfclib/formats/twrx/xx_twrx.h>
 #include <xxfclib/formats/tws/xx_tws.h>
 #include <xxfclib/formats/ubi/xx_ubi.h>
 #include <xxfclib/formats/ubifs/xx_ubifs.h>
+#include <xxfclib/formats/uboot/xx_uboot.h>
 #include <xxfclib/formats/udf/xx_udf.h>
 #include <xxfclib/formats/uefi_capsule/xx_uefi_capsule.h>
 #include <xxfclib/formats/uefi_fv/xx_uefi_fv.h>
@@ -401,6 +425,7 @@
 #include <xxfclib/formats/xeditpack/xx_xeditpack.h>
 #include <xxfclib/formats/xlas/xx_xlas.h>
 #include <xxfclib/formats/xorarchive/xx_xorarchive.h>
+#include <xxfclib/formats/xpak/xx_xpak.h>
 #include <xxfclib/formats/xz/xx_xz.h>
 #include <xxfclib/formats/yaffs/xx_yaffs.h>
 #include <xxfclib/formats/zap/xx_zap.h>
@@ -475,6 +500,11 @@ static Abstractformat *mk_ampk(xx_io_device *d, int64_t b) {
     return r ? &r->format : NULL;
 }
 static void rm_ampk(void *p) { xx_ampk_free((xx_ampk *)p); }
+static Abstractformat *mk_androidboot(xx_io_device *d, int64_t b) {
+    xx_androidboot *r = xx_androidboot_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_androidboot(void *p) { xx_androidboot_free((xx_androidboot *)p); }
 static Abstractformat *mk_aodos(xx_io_device *d, int64_t b) {
     xx_aodos *r = xx_aodos_create(d, b);
     return r ? &r->format : NULL;
@@ -510,6 +540,11 @@ static Abstractformat *mk_ar(xx_io_device *d, int64_t b) {
     return r ? &r->format : NULL;
 }
 static void rm_ar(void *p) { xx_ar_free((xx_ar *)p); }
+static Abstractformat *mk_arcadyan(xx_io_device *d, int64_t b) {
+    xx_arcadyan *r = xx_arcadyan_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_arcadyan(void *p) { xx_arcadyan_free((xx_arcadyan *)p); }
 static Abstractformat *mk_arcfs(xx_io_device *d, int64_t b) {
     xx_arcfs *r = xx_arcfs_create(d, b);
     return r ? &r->format : NULL;
@@ -580,6 +615,11 @@ static Abstractformat *mk_atarist(xx_io_device *d, int64_t b) {
     return r ? &r->format : NULL;
 }
 static void rm_atarist(void *p) { xx_atarist_free((xx_atarist *)p); }
+static Abstractformat *mk_autel(xx_io_device *d, int64_t b) {
+    xx_autel *r = xx_autel_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_autel(void *p) { xx_autel_free((xx_autel *)p); }
 static Abstractformat *mk_bagf(xx_io_device *d, int64_t b) {
     xx_bagf *r = xx_bagf_create(d, b);
     return r ? &r->format : NULL;
@@ -825,6 +865,11 @@ static Abstractformat *mk_dclft(xx_io_device *d, int64_t b) {
     return r ? &r->format : NULL;
 }
 static void rm_dclft(void *p) { xx_dclft_free((xx_dclft *)p); }
+static Abstractformat *mk_dclraw(xx_io_device *d, int64_t b) {
+    xx_dclraw *r = xx_dclraw_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_dclraw(void *p) { xx_dclraw_free((xx_dclraw *)p); }
 static Abstractformat *mk_debugscr(xx_io_device *d, int64_t b) {
     xx_debugscr *r = xx_debugscr_create(d, b);
     return r ? &r->format : NULL;
@@ -855,6 +900,21 @@ static Abstractformat *mk_diskjuggler(xx_io_device *d, int64_t b) {
     return r ? &r->format : NULL;
 }
 static void rm_diskjuggler(void *p) { xx_diskjuggler_free((xx_diskjuggler *)p); }
+static Abstractformat *mk_dkbs(xx_io_device *d, int64_t b) {
+    xx_dkbs *r = xx_dkbs_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_dkbs(void *p) { xx_dkbs_free((xx_dkbs *)p); }
+static Abstractformat *mk_dlink_tlv(xx_io_device *d, int64_t b) {
+    xx_dlink_tlv *r = xx_dlink_tlv_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_dlink_tlv(void *p) { xx_dlink_tlv_free((xx_dlink_tlv *)p); }
+static Abstractformat *mk_dlke(xx_io_device *d, int64_t b) {
+    xx_dlke *r = xx_dlke_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_dlke(void *p) { xx_dlke_free((xx_dlke *)p); }
 static Abstractformat *mk_dlob(xx_io_device *d, int64_t b) {
     xx_dlob *r = xx_dlob_create(d, b);
     return r ? &r->format : NULL;
@@ -920,6 +980,11 @@ static Abstractformat *mk_ecmpacked(xx_io_device *d, int64_t b) {
     return r ? &r->format : NULL;
 }
 static void rm_ecmpacked(void *p) { xx_ecmpacked_free((xx_ecmpacked *)p); }
+static Abstractformat *mk_ecos(xx_io_device *d, int64_t b) {
+    xx_ecos *r = xx_ecos_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_ecos(void *p) { xx_ecos_free((xx_ecos *)p); }
 static Abstractformat *mk_edc(xx_io_device *d, int64_t b) {
     xx_edc *r = xx_edc_create(d, b);
     return r ? &r->format : NULL;
@@ -940,6 +1005,16 @@ static Abstractformat *mk_emt(xx_io_device *d, int64_t b) {
     return r ? &r->format : NULL;
 }
 static void rm_emt(void *p) { xx_emt_free((xx_emt *)p); }
+static Abstractformat *mk_encfw(xx_io_device *d, int64_t b) {
+    xx_encfw *r = xx_encfw_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_encfw(void *p) { xx_encfw_free((xx_encfw *)p); }
+static Abstractformat *mk_encrpted_img(xx_io_device *d, int64_t b) {
+    xx_encrpted_img *r = xx_encrpted_img_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_encrpted_img(void *p) { xx_encrpted_img_free((xx_encrpted_img *)p); }
 static Abstractformat *mk_ext(xx_io_device *d, int64_t b) {
     xx_ext *r = xx_ext_create(d, b);
     return r ? &r->format : NULL;
@@ -1150,6 +1225,11 @@ static Abstractformat *mk_imp(xx_io_device *d, int64_t b) {
     return r ? &r->format : NULL;
 }
 static void rm_imp(void *p) { xx_imp_free((xx_imp *)p); }
+static Abstractformat *mk_infogramesft(xx_io_device *d, int64_t b) {
+    xx_infogramesft *r = xx_infogramesft_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_infogramesft(void *p) { xx_infogramesft_free((xx_infogramesft *)p); }
 static Abstractformat *mk_inteduft(xx_io_device *d, int64_t b) {
     xx_inteduft *r = xx_inteduft_create(d, b);
     return r ? &r->format : NULL;
@@ -1230,6 +1310,11 @@ static Abstractformat *mk_jbf(xx_io_device *d, int64_t b) {
     return r ? &r->format : NULL;
 }
 static void rm_jbf(void *p) { xx_jbf_free((xx_jbf *)p); }
+static Abstractformat *mk_jboot(xx_io_device *d, int64_t b) {
+    xx_jboot *r = xx_jboot_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_jboot(void *p) { xx_jboot_free((xx_jboot *)p); }
 static Abstractformat *mk_jetbbs(xx_io_device *d, int64_t b) {
     xx_jetbbs *r = xx_jetbbs_create(d, b);
     return r ? &r->format : NULL;
@@ -1300,6 +1385,11 @@ static Abstractformat *mk_lim(xx_io_device *d, int64_t b) {
     return r ? &r->format : NULL;
 }
 static void rm_lim(void *p) { xx_lim_free((xx_lim *)p); }
+static Abstractformat *mk_lingvoarc(xx_io_device *d, int64_t b) {
+    xx_lingvoarc *r = xx_lingvoarc_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_lingvoarc(void *p) { xx_lingvoarc_free((xx_lingvoarc *)p); }
 static Abstractformat *mk_lizard(xx_io_device *d, int64_t b) {
     xx_lizard *r = xx_lizard_create(d, b);
     return r ? &r->format : NULL;
@@ -1350,6 +1440,11 @@ static Abstractformat *mk_lz4(xx_io_device *d, int64_t b) {
     return r ? &r->format : NULL;
 }
 static void rm_lz4(void *p) { xx_lz4_free((xx_lz4 *)p); }
+static Abstractformat *mk_lz4demo(xx_io_device *d, int64_t b) {
+    xx_lz4demo *r = xx_lz4demo_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_lz4demo(void *p) { xx_lz4demo_free((xx_lz4demo *)p); }
 static Abstractformat *mk_lz5(xx_io_device *d, int64_t b) {
     xx_lz5 *r = xx_lz5_create(d, b);
     return r ? &r->format : NULL;
@@ -1380,6 +1475,11 @@ static Abstractformat *mk_lzma(xx_io_device *d, int64_t b) {
     return r ? &r->format : NULL;
 }
 static void rm_lzma(void *p) { xx_lzma_free((xx_lzma *)p); }
+static Abstractformat *mk_lzop(xx_io_device *d, int64_t b) {
+    xx_lzop *r = xx_lzop_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_lzop(void *p) { xx_lzop_free((xx_lzop *)p); }
 static Abstractformat *mk_lzpis2(xx_io_device *d, int64_t b) {
     xx_lzpis2 *r = xx_lzpis2_create(d, b);
     return r ? &r->format : NULL;
@@ -1420,6 +1520,11 @@ static Abstractformat *mk_mathcad(xx_io_device *d, int64_t b) {
     return r ? &r->format : NULL;
 }
 static void rm_mathcad(void *p) { xx_mathcad_free((xx_mathcad *)p); }
+static Abstractformat *mk_matter_ota(xx_io_device *d, int64_t b) {
+    xx_matter_ota *r = xx_matter_ota_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_matter_ota(void *p) { xx_matter_ota_free((xx_matter_ota *)p); }
 static Abstractformat *mk_mbr(xx_io_device *d, int64_t b) {
     xx_mbr *r = xx_mbr_create(d, b);
     return r ? &r->format : NULL;
@@ -1440,6 +1545,11 @@ static Abstractformat *mk_megatechvol(xx_io_device *d, int64_t b) {
     return r ? &r->format : NULL;
 }
 static void rm_megatechvol(void *p) { xx_megatechvol_free((xx_megatechvol *)p); }
+static Abstractformat *mk_mh01(xx_io_device *d, int64_t b) {
+    xx_mh01 *r = xx_mh01_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_mh01(void *p) { xx_mh01_free((xx_mh01 *)p); }
 static Abstractformat *mk_mi10(xx_io_device *d, int64_t b) {
     xx_mi10 *r = xx_mi10_create(d, b);
     return r ? &r->format : NULL;
@@ -1600,6 +1710,11 @@ static Abstractformat *mk_pcxlib(xx_io_device *d, int64_t b) {
     return r ? &r->format : NULL;
 }
 static void rm_pcxlib(void *p) { xx_pcxlib_free((xx_pcxlib *)p); }
+static Abstractformat *mk_pdb(xx_io_device *d, int64_t b) {
+    xx_pdb *r = xx_pdb_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_pdb(void *p) { xx_pdb_free((xx_pdb *)p); }
 static Abstractformat *mk_pdp11ar(xx_io_device *d, int64_t b) {
     xx_pdp11ar *r = xx_pdp11ar_create(d, b);
     return r ? &r->format : NULL;
@@ -1890,6 +2005,16 @@ static Abstractformat *mk_shrinkwrap(xx_io_device *d, int64_t b) {
     return r ? &r->format : NULL;
 }
 static void rm_shrinkwrap(void *p) { xx_shrinkwrap_free((xx_shrinkwrap *)p); }
+static Abstractformat *mk_shrs(xx_io_device *d, int64_t b) {
+    xx_shrs *r = xx_shrs_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_shrs(void *p) { xx_shrs_free((xx_shrs *)p); }
+static Abstractformat *mk_silmarilsft(xx_io_device *d, int64_t b) {
+    xx_silmarilsft *r = xx_silmarilsft_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_silmarilsft(void *p) { xx_silmarilsft_free((xx_silmarilsft *)p); }
 static Abstractformat *mk_sinner(xx_io_device *d, int64_t b) {
     xx_sinner *r = xx_sinner_create(d, b);
     return r ? &r->format : NULL;
@@ -1970,6 +2095,11 @@ static Abstractformat *mk_sqz(xx_io_device *d, int64_t b) {
     return r ? &r->format : NULL;
 }
 static void rm_sqz(void *p) { xx_sqz_free((xx_sqz *)p); }
+static Abstractformat *mk_srec(xx_io_device *d, int64_t b) {
+    xx_srec *r = xx_srec_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_srec(void *p) { xx_srec_free((xx_srec *)p); }
 static Abstractformat *mk_ssm(xx_io_device *d, int64_t b) {
     xx_ssm *r = xx_ssm_create(d, b);
     return r ? &r->format : NULL;
@@ -2130,6 +2260,11 @@ static Abstractformat *mk_topspeed(xx_io_device *d, int64_t b) {
     return r ? &r->format : NULL;
 }
 static void rm_topspeed(void *p) { xx_topspeed_free((xx_topspeed *)p); }
+static Abstractformat *mk_tplink(xx_io_device *d, int64_t b) {
+    xx_tplink *r = xx_tplink_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_tplink(void *p) { xx_tplink_free((xx_tplink *)p); }
 static Abstractformat *mk_tps(xx_io_device *d, int64_t b) {
     xx_tps *r = xx_tps_create(d, b);
     return r ? &r->format : NULL;
@@ -2165,6 +2300,11 @@ static Abstractformat *mk_twoimg(xx_io_device *d, int64_t b) {
     return r ? &r->format : NULL;
 }
 static void rm_twoimg(void *p) { xx_twoimg_free((xx_twoimg *)p); }
+static Abstractformat *mk_twrx(xx_io_device *d, int64_t b) {
+    xx_twrx *r = xx_twrx_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_twrx(void *p) { xx_twrx_free((xx_twrx *)p); }
 static Abstractformat *mk_tws(xx_io_device *d, int64_t b) {
     xx_tws *r = xx_tws_create(d, b);
     return r ? &r->format : NULL;
@@ -2180,6 +2320,11 @@ static Abstractformat *mk_ubifs(xx_io_device *d, int64_t b) {
     return r ? &r->format : NULL;
 }
 static void rm_ubifs(void *p) { xx_ubifs_free((xx_ubifs *)p); }
+static Abstractformat *mk_uboot(xx_io_device *d, int64_t b) {
+    xx_uboot *r = xx_uboot_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_uboot(void *p) { xx_uboot_free((xx_uboot *)p); }
 static Abstractformat *mk_udf(xx_io_device *d, int64_t b) {
     xx_udf *r = xx_udf_create(d, b);
     return r ? &r->format : NULL;
@@ -2330,6 +2475,11 @@ static Abstractformat *mk_xorarchive(xx_io_device *d, int64_t b) {
     return r ? &r->container.format : NULL;
 }
 static void rm_xorarchive(void *p) { xx_xorarchive_free((xx_xorarchive *)p); }
+static Abstractformat *mk_xpak(xx_io_device *d, int64_t b) {
+    xx_xpak *r = xx_xpak_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_xpak(void *p) { xx_xpak_free((xx_xpak *)p); }
 static Abstractformat *mk_xz(xx_io_device *d, int64_t b) {
     xx_xz *r = xx_xz_create(d, b);
     return r ? &r->format : NULL;
@@ -2433,6 +2583,7 @@ static xxfc_reader_entry g_readers[] = {
     { "amigahunk", mk_amigahunk, rm_amigahunk, XX_FILE_TYPE_UNKNOWN },
     { "amigalzx", mk_amigalzx, rm_amigalzx, XX_FILE_TYPE_UNKNOWN },
     { "ampk", mk_ampk, rm_ampk, XX_FILE_TYPE_UNKNOWN },
+    { "androidboot", mk_androidboot, rm_androidboot, XX_FILE_TYPE_UNKNOWN },
     { "aodos", mk_aodos, rm_aodos, XX_FILE_TYPE_UNKNOWN },
     { "ap4", mk_ap4, rm_ap4, XX_FILE_TYPE_UNKNOWN },
     { "apfs", mk_apfs, rm_apfs, XX_FILE_TYPE_UNKNOWN },
@@ -2440,6 +2591,7 @@ static xxfc_reader_entry g_readers[] = {
     { "applesingle", mk_applesingle, rm_applesingle, XX_FILE_TYPE_UNKNOWN },
     { "apricot", mk_apricot, rm_apricot, XX_FILE_TYPE_UNKNOWN },
     { "ar", mk_ar, rm_ar, XX_FILE_TYPE_UNKNOWN },
+    { "arcadyan", mk_arcadyan, rm_arcadyan, XX_FILE_TYPE_UNKNOWN },
     { "arcfs", mk_arcfs, rm_arcfs, XX_FILE_TYPE_UNKNOWN },
     { "arcv", mk_arcv, rm_arcv, XX_FILE_TYPE_UNKNOWN },
     { "arcv2", mk_arcv2, rm_arcv2, XX_FILE_TYPE_UNKNOWN },
@@ -2454,6 +2606,7 @@ static xxfc_reader_entry g_readers[] = {
     { "ash0", mk_ash0, rm_ash0, XX_FILE_TYPE_UNKNOWN },
     { "asymetrix", mk_asymetrix, rm_asymetrix, XX_FILE_TYPE_UNKNOWN },
     { "atarist", mk_atarist, rm_atarist, XX_FILE_TYPE_UNKNOWN },
+    { "autel", mk_autel, rm_autel, XX_FILE_TYPE_UNKNOWN },
     { "bagf", mk_bagf, rm_bagf, XX_FILE_TYPE_UNKNOWN },
     { "battleisle", mk_battleisle, rm_battleisle, XX_FILE_TYPE_UNKNOWN },
     { "bcm", mk_bcm, rm_bcm, XX_FILE_TYPE_UNKNOWN },
@@ -2503,12 +2656,16 @@ static xxfc_reader_entry g_readers[] = {
     { "csman", mk_csman, rm_csman, XX_FILE_TYPE_UNKNOWN },
     { "dbz", mk_dbz, rm_dbz, XX_FILE_TYPE_UNKNOWN },
     { "dclft", mk_dclft, rm_dclft, XX_FILE_TYPE_UNKNOWN },
+    { "dclraw", mk_dclraw, rm_dclraw, XX_FILE_TYPE_UNKNOWN },
     { "debugscr", mk_debugscr, rm_debugscr, XX_FILE_TYPE_UNKNOWN },
     { "dex", mk_dex, rm_dex, XX_FILE_TYPE_UNKNOWN },
     { "diskdoubler", mk_diskdoubler, rm_diskdoubler, XX_FILE_TYPE_UNKNOWN },
     { "diskdupe", mk_diskdupe, rm_diskdupe, XX_FILE_TYPE_UNKNOWN },
     { "diskexpress", mk_diskexpress, rm_diskexpress, XX_FILE_TYPE_UNKNOWN },
     { "diskjuggler", mk_diskjuggler, rm_diskjuggler, XX_FILE_TYPE_UNKNOWN },
+    { "dkbs", mk_dkbs, rm_dkbs, XX_FILE_TYPE_UNKNOWN },
+    { "dlink_tlv", mk_dlink_tlv, rm_dlink_tlv, XX_FILE_TYPE_UNKNOWN },
+    { "dlke", mk_dlke, rm_dlke, XX_FILE_TYPE_UNKNOWN },
     { "dlob", mk_dlob, rm_dlob, XX_FILE_TYPE_UNKNOWN },
     { "dmapacked", mk_dmapacked, rm_dmapacked, XX_FILE_TYPE_UNKNOWN },
     { "dmg", mk_dmg, rm_dmg, XX_FILE_TYPE_UNKNOWN },
@@ -2522,10 +2679,13 @@ static xxfc_reader_entry g_readers[] = {
     { "ealib", mk_ealib, rm_ealib, XX_FILE_TYPE_UNKNOWN },
     { "earefpack", mk_earefpack, rm_earefpack, XX_FILE_TYPE_UNKNOWN },
     { "ecmpacked", mk_ecmpacked, rm_ecmpacked, XX_FILE_TYPE_UNKNOWN },
+    { "ecos", mk_ecos, rm_ecos, XX_FILE_TYPE_UNKNOWN },
     { "edc", mk_edc, rm_edc, XX_FILE_TYPE_UNKNOWN },
     { "edilzss", mk_edilzss, rm_edilzss, XX_FILE_TYPE_UNKNOWN },
     { "elf", mk_elf, rm_elf, XX_FILE_TYPE_UNKNOWN },
     { "emt", mk_emt, rm_emt, XX_FILE_TYPE_UNKNOWN },
+    { "encfw", mk_encfw, rm_encfw, XX_FILE_TYPE_UNKNOWN },
+    { "encrpted_img", mk_encrpted_img, rm_encrpted_img, XX_FILE_TYPE_UNKNOWN },
     { "ext", mk_ext, rm_ext, XX_FILE_TYPE_UNKNOWN },
     { "fat", mk_fat, rm_fat, XX_FILE_TYPE_UNKNOWN },
     { "fdi", mk_fdi, rm_fdi, XX_FILE_TYPE_UNKNOWN },
@@ -2568,6 +2728,7 @@ static xxfc_reader_entry g_readers[] = {
     { "igf2", mk_igf2, rm_igf2, XX_FILE_TYPE_UNKNOWN },
     { "imd", mk_imd, rm_imd, XX_FILE_TYPE_UNKNOWN },
     { "imp", mk_imp, rm_imp, XX_FILE_TYPE_UNKNOWN },
+    { "infogramesft", mk_infogramesft, rm_infogramesft, XX_FILE_TYPE_UNKNOWN },
     { "inteduft", mk_inteduft, rm_inteduft, XX_FILE_TYPE_UNKNOWN },
     { "ipa", mk_ipa, rm_ipa, XX_FILE_TYPE_UNKNOWN },
     { "irixsa", mk_irixsa, rm_irixsa, XX_FILE_TYPE_UNKNOWN },
@@ -2584,6 +2745,7 @@ static xxfc_reader_entry g_readers[] = {
     { "jar", mk_jar, rm_jar, XX_FILE_TYPE_UNKNOWN },
     { "jasc", mk_jasc, rm_jasc, XX_FILE_TYPE_UNKNOWN },
     { "jbf", mk_jbf, rm_jbf, XX_FILE_TYPE_UNKNOWN },
+    { "jboot", mk_jboot, rm_jboot, XX_FILE_TYPE_UNKNOWN },
     { "jetbbs", mk_jetbbs, rm_jetbbs, XX_FILE_TYPE_UNKNOWN },
     { "jffs2", mk_jffs2, rm_jffs2, XX_FILE_TYPE_UNKNOWN },
     { "jgpak", mk_jgpak, rm_jgpak, XX_FILE_TYPE_UNKNOWN },
@@ -2598,6 +2760,7 @@ static xxfc_reader_entry g_readers[] = {
     { "lif", mk_lif, rm_lif, XX_FILE_TYPE_UNKNOWN },
     { "lifkd", mk_lifkd, rm_lifkd, XX_FILE_TYPE_UNKNOWN },
     { "lim", mk_lim, rm_lim, XX_FILE_TYPE_UNKNOWN },
+    { "lingvoarc", mk_lingvoarc, rm_lingvoarc, XX_FILE_TYPE_UNKNOWN },
     { "lizard", mk_lizard, rm_lizard, XX_FILE_TYPE_UNKNOWN },
     { "lofi", mk_lofi, rm_lofi, XX_FILE_TYPE_UNKNOWN },
     { "logfs", mk_logfs, rm_logfs, XX_FILE_TYPE_UNKNOWN },
@@ -2608,12 +2771,14 @@ static xxfc_reader_entry g_readers[] = {
     { "luks", mk_luks, rm_luks, XX_FILE_TYPE_UNKNOWN },
     { "lx", mk_lx, rm_lx, XX_FILE_TYPE_UNKNOWN },
     { "lz4", mk_lz4, rm_lz4, XX_FILE_TYPE_UNKNOWN },
+    { "lz4demo", mk_lz4demo, rm_lz4demo, XX_FILE_TYPE_UNKNOWN },
     { "lz5", mk_lz5, rm_lz5, XX_FILE_TYPE_UNKNOWN },
     { "lzdiet", mk_lzdiet, rm_lzdiet, XX_FILE_TYPE_UNKNOWN },
     { "lzhcxp", mk_lzhcxp, rm_lzhcxp, XX_FILE_TYPE_UNKNOWN },
     { "lzip", mk_lzip, rm_lzip, XX_FILE_TYPE_UNKNOWN },
     { "lzk00", mk_lzk00, rm_lzk00, XX_FILE_TYPE_UNKNOWN },
     { "lzma", mk_lzma, rm_lzma, XX_FILE_TYPE_UNKNOWN },
+    { "lzop", mk_lzop, rm_lzop, XX_FILE_TYPE_UNKNOWN },
     { "lzpis2", mk_lzpis2, rm_lzpis2, XX_FILE_TYPE_UNKNOWN },
     { "lzv1", mk_lzv1, rm_lzv1, XX_FILE_TYPE_UNKNOWN },
     { "lzw15v", mk_lzw15v, rm_lzw15v, XX_FILE_TYPE_UNKNOWN },
@@ -2622,10 +2787,12 @@ static xxfc_reader_entry g_readers[] = {
     { "macho", mk_macho, rm_macho, XX_FILE_TYPE_UNKNOWN },
     { "marc", mk_marc, rm_marc, XX_FILE_TYPE_UNKNOWN },
     { "mathcad", mk_mathcad, rm_mathcad, XX_FILE_TYPE_UNKNOWN },
+    { "matter_ota", mk_matter_ota, rm_matter_ota, XX_FILE_TYPE_UNKNOWN },
     { "mbr", mk_mbr, rm_mbr, XX_FILE_TYPE_UNKNOWN },
     { "mcc", mk_mcc, rm_mcc, XX_FILE_TYPE_UNKNOWN },
     { "mdcd", mk_mdcd, rm_mdcd, XX_FILE_TYPE_UNKNOWN },
     { "megatechvol", mk_megatechvol, rm_megatechvol, XX_FILE_TYPE_UNKNOWN },
+    { "mh01", mk_mh01, rm_mh01, XX_FILE_TYPE_UNKNOWN },
     { "mi10", mk_mi10, rm_mi10, XX_FILE_TYPE_UNKNOWN },
     { "minidump", mk_minidump, rm_minidump, XX_FILE_TYPE_UNKNOWN },
     { "miz", mk_miz, rm_miz, XX_FILE_TYPE_UNKNOWN },
@@ -2658,6 +2825,7 @@ static xxfc_reader_entry g_readers[] = {
     { "pcommos2", mk_pcommos2, rm_pcommos2, XX_FILE_TYPE_UNKNOWN },
     { "pcsecure", mk_pcsecure, rm_pcsecure, XX_FILE_TYPE_UNKNOWN },
     { "pcxlib", mk_pcxlib, rm_pcxlib, XX_FILE_TYPE_UNKNOWN },
+    { "pdb", mk_pdb, rm_pdb, XX_FILE_TYPE_UNKNOWN },
     { "pdp11ar", mk_pdp11ar, rm_pdp11ar, XX_FILE_TYPE_UNKNOWN },
     { "pe", mk_pe, rm_pe, XX_FILE_TYPE_UNKNOWN },
     { "pea", mk_pea, rm_pea, XX_FILE_TYPE_UNKNOWN },
@@ -2716,6 +2884,8 @@ static xxfc_reader_entry g_readers[] = {
     { "sfpack", mk_sfpack, rm_sfpack, XX_FILE_TYPE_UNKNOWN },
     { "shar", mk_shar, rm_shar, XX_FILE_TYPE_UNKNOWN },
     { "shrinkwrap", mk_shrinkwrap, rm_shrinkwrap, XX_FILE_TYPE_UNKNOWN },
+    { "shrs", mk_shrs, rm_shrs, XX_FILE_TYPE_UNKNOWN },
+    { "silmarilsft", mk_silmarilsft, rm_silmarilsft, XX_FILE_TYPE_UNKNOWN },
     { "sinner", mk_sinner, rm_sinner, XX_FILE_TYPE_UNKNOWN },
     { "sls", mk_sls, rm_sls, XX_FILE_TYPE_UNKNOWN },
     { "smsipak", mk_smsipak, rm_smsipak, XX_FILE_TYPE_UNKNOWN },
@@ -2732,6 +2902,7 @@ static xxfc_reader_entry g_readers[] = {
     { "squeeze2", mk_squeeze2, rm_squeeze2, XX_FILE_TYPE_UNKNOWN },
     { "sqx", mk_sqx, rm_sqx, XX_FILE_TYPE_UNKNOWN },
     { "sqz", mk_sqz, rm_sqz, XX_FILE_TYPE_UNKNOWN },
+    { "srec", mk_srec, rm_srec, XX_FILE_TYPE_UNKNOWN },
     { "ssm", mk_ssm, rm_ssm, XX_FILE_TYPE_UNKNOWN },
     { "stac", mk_stac, rm_stac, XX_FILE_TYPE_UNKNOWN },
     { "starkit", mk_starkit, rm_starkit, XX_FILE_TYPE_UNKNOWN },
@@ -2764,6 +2935,7 @@ static xxfc_reader_entry g_readers[] = {
     { "tivoli", mk_tivoli, rm_tivoli, XX_FILE_TYPE_UNKNOWN },
     { "tnef", mk_tnef, rm_tnef, XX_FILE_TYPE_UNKNOWN },
     { "topspeed", mk_topspeed, rm_topspeed, XX_FILE_TYPE_UNKNOWN },
+    { "tplink", mk_tplink, rm_tplink, XX_FILE_TYPE_UNKNOWN },
     { "tps", mk_tps, rm_tps, XX_FILE_TYPE_UNKNOWN },
     { "tpwm", mk_tpwm, rm_tpwm, XX_FILE_TYPE_UNKNOWN },
     { "trc", mk_trc, rm_trc, XX_FILE_TYPE_UNKNOWN },
@@ -2771,9 +2943,11 @@ static xxfc_reader_entry g_readers[] = {
     { "trdos", mk_trdos, rm_trdos, XX_FILE_TYPE_UNKNOWN },
     { "trx", mk_trx, rm_trx, XX_FILE_TYPE_UNKNOWN },
     { "twoimg", mk_twoimg, rm_twoimg, XX_FILE_TYPE_UNKNOWN },
+    { "twrx", mk_twrx, rm_twrx, XX_FILE_TYPE_UNKNOWN },
     { "tws", mk_tws, rm_tws, XX_FILE_TYPE_UNKNOWN },
     { "ubi", mk_ubi, rm_ubi, XX_FILE_TYPE_UNKNOWN },
     { "ubifs", mk_ubifs, rm_ubifs, XX_FILE_TYPE_UNKNOWN },
+    { "uboot", mk_uboot, rm_uboot, XX_FILE_TYPE_UNKNOWN },
     { "udf", mk_udf, rm_udf, XX_FILE_TYPE_UNKNOWN },
     { "uefi_capsule", mk_uefi_capsule, rm_uefi_capsule, XX_FILE_TYPE_UNKNOWN },
     { "uefi_fv", mk_uefi_fv, rm_uefi_fv, XX_FILE_TYPE_UNKNOWN },
@@ -2804,6 +2978,7 @@ static xxfc_reader_entry g_readers[] = {
     { "xeditpack", mk_xeditpack, rm_xeditpack, XX_FILE_TYPE_UNKNOWN },
     { "xlas", mk_xlas, rm_xlas, XX_FILE_TYPE_UNKNOWN },
     { "xorarchive", mk_xorarchive, rm_xorarchive, XX_FILE_TYPE_UNKNOWN },
+    { "xpak", mk_xpak, rm_xpak, XX_FILE_TYPE_UNKNOWN },
     { "xz", mk_xz, rm_xz, XX_FILE_TYPE_UNKNOWN },
     { "yaffs", mk_yaffs, rm_yaffs, XX_FILE_TYPE_UNKNOWN },
     { "zap", mk_zap, rm_zap, XX_FILE_TYPE_UNKNOWN },

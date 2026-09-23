@@ -18,7 +18,8 @@
  *     +16   u32 ramdisk size     +20  u32 ramdisk address
  *     +24   u32 second size      +28  u32 second address
  *     +32   u32 tags address
- *     +36   u32 page size        (a power of two, 2048..65536)
+ *     +36   u32 page size        (a power of two, 2048..131072, as
+ *                                  mkbootimg's --pagesize accepts)
  *     +40   u32 header version   (in v0 this doubles as "unused")
  *     +44   u32 os version/patch level
  *     +48   char name[16]
@@ -26,7 +27,7 @@
  *     +576  u32 id[8]            (SHA-1 of the payload, unverified here)
  *     +608  char extra cmdline[1024]
  *     +1632 u32 recovery dtbo size   (v1+)
- *     +1636 u64 recovery dtbo offset (v1+)
+ *     +1636 u64 recovery dtbo offset (v1+, from the start of the image)
  *     +1644 u32 header size          (v1+, must equal the version's size)
  *     +1648 u32 dtb size             (v2+)
  *     +1652 u64 dtb address          (v2+)
@@ -44,9 +45,15 @@
  *     +44   char cmdline[1536]
  *     +1580 u32 signature size   (v4 only)
  *
+ *   Qualcomm CAF variant: the v0 layout with +40 reused as u32 dt_size, the
+ *   byte count of a device-tree table ("QCDT" and similar) stored on its own
+ *   pages after the second stage.  Any +40 value past 4 is read this way and
+ *   the image is reported as version 0 with an extra "dt" record.
+ *
  * The payload blobs follow the header, each starting on a page boundary:
- * kernel, ramdisk, second, recovery dtbo, dtb for v0-v2, and kernel,
- * ramdisk, boot signature for v3-v4.  They are published verbatim as
+ * kernel, ramdisk, second, recovery dtbo, dtb for v0-v2 (kernel, ramdisk,
+ * second, dt for the Qualcomm variant), and kernel, ramdisk, boot
+ * signature for v3-v4.  They are published verbatim as
  * records, so a caller can feed the ramdisk (customarily gzip or lz4 over
  * cpio) straight back into the format detector.  The reassembled kernel
  * command line is published alongside them as a synthesised "cmdline.txt".
@@ -74,7 +81,7 @@ struct xx_androidboot {
     Abstractformat format;
     uint64_t number_of_records;
     uint64_t number_of_members;
-    uint32_t header_version; /**< 0..4, from offset 40. */
+    uint32_t header_version; /**< 0..4, from offset 40 (0 for Qualcomm dt). */
     uint32_t page_size;      /**< Declared for v0-v2, fixed 4096 for v3-v4. */
     uint32_t header_size;    /**< Declared size of the header structure. */
     int64_t archive_end;     /**< base_address + the last blob's page end. */

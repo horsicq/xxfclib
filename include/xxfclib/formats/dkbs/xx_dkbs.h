@@ -4,8 +4,9 @@
 
 /** @file xx_dkbs.h @brief DKBS firmware header reader. */
 
-/* DKBS is the firmware wrapper used by a family of Chinese set-top-box and
- * router SoC reference designs.  The header is a fixed 0xA0 byte block of
+/* DKBS is a firmware wrapper recognised by binwalk ("DKBS firmware header");
+ * binwalk names no vendor, so none is claimed here.  The header is a fixed
+ * 0xA0 byte block of
  * NUL terminated identification strings with one binary length field wedged
  * in the middle of them; everything after the header is one contiguous
  * payload, normally a uImage, an LZMA kernel or a squashfs rootfs that other
@@ -29,16 +30,23 @@
  * The magic is the six bytes "_dkbs_" SEVEN bytes into the header, not at
  * the start: the board ID string begins with a short vendor prefix.  A
  * detector therefore has to look at header+7, and the reported start of the
- * image is magic_offset - 7.
+ * image is magic_offset - 7.  This reader also requires the board ID string
+ * to run through the literal (no NUL in the seven prefix bytes), which
+ * binwalk does not check.
+ *
+ * Like binwalk (src/signatures/dkbs.rs), the header plus the declared
+ * payload must fit in the input: a truncated image is rejected, and bytes
+ * after the payload are reported as overlay.
  *
  * The size field carries no endianness marker.  binwalk resolves this by
  * reading it big endian first and accepting that reading when its top byte
  * is zero - i.e. when the big endian value is under 16 MiB, which every real
- * payload is - and falling back to little endian otherwise.  That heuristic
- * is ported verbatim, because guessing differently from binwalk on the same
- * image would be worse than sharing its blind spot.  Both readings are then
- * bounded against the device, so a wrong guess yields a rejection rather
- * than a runaway length.
+ * payload is - and falling back to little endian otherwise.  Alone, that
+ * misreads a little endian payload whose low byte is zero (1 MiB stored LE
+ * reads as 4 KiB big endian, fits, and splits the image in the wrong
+ * place).  This reader therefore first prefers whichever reading ends the
+ * payload exactly at the end of the input, then applies binwalk's rule, and
+ * never takes a reading that overruns the device.
  *
  * Source: binwalk src/structures/dkbs.rs and src/signatures/dkbs.rs.  No
  * vendor GPL drop describing this header was available, so nothing beyond
@@ -75,7 +83,9 @@ struct xx_dkbs {
     uint64_t number_of_members;
     uint32_t data_size;   /**< Payload length from +0x68. */
     uint32_t header_size; /**< Always XX_DKBS_HEADER_SIZE. */
-    bool size_is_big_endian; /**< Which reading of +0x68 was accepted. */
+    bool size_is_big_endian; /**< Which reading of +0x68 was accepted;
+                                  handle_base_info mirrors it into
+                                  format.endian. */
     int64_t archive_end;  /**< base_address + header + payload, or -1. */
     void *internal;
 };

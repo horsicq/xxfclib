@@ -11,6 +11,15 @@
  * the format's 8 MiB block ceiling, and the chain has to end exactly on the
  * last byte of the file.  Detection trial-decodes the first block; the size
  * pass decodes the rest.
+ *
+ * A declared block length above LZ4_COMPRESSBOUND(8 MiB) cannot be a block:
+ * lz4io reads such a word as the next frame's magic.  Only the legacy and
+ * skippable magics are followed here, so any other oversize word ends the
+ * grammar and the file is refused -- which also bounds the packed-block
+ * buffer at about 8 MiB whatever the file claims.
+ *
+ * `lz4 -l` on empty input writes the magic alone; that decodes to an empty
+ * payload and is accepted as such.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -39,7 +48,15 @@
 #define LZ4DEMO_SKIP_MAGIC_HIGH UINT32_C(0x184d2a5f)
 /* The legacy format fixes the uncompressed block at 8 MiB. */
 #define LZ4DEMO_BLOCK_SIZE ((size_t)8U * 1024U * 1024U)
+/* LZ4_COMPRESSBOUND(LZ4DEMO_BLOCK_SIZE): the largest a stored block can be. */
+#define LZ4DEMO_MAX_PACKED \
+    ((int64_t)(LZ4DEMO_BLOCK_SIZE + LZ4DEMO_BLOCK_SIZE / 255U + 16U))
 #define LZ4DEMO_MAX_BLOCKS 262144U
+/* Every word the walk consumes (block, repeated magic, skippable frame)
+ * counts here, so a file of nothing but magics cannot spin the walk. */
+#define LZ4DEMO_MAX_CHAIN (2U * LZ4DEMO_MAX_BLOCKS)
+/* The size pass stops measuring (and reports the size as unknown) past this
+ * much output; it never rejects a frame for being large. */
 #define LZ4DEMO_MAX_OUTPUT ((uint64_t)1024U * 1024U * 1024U)
 /* Above this much packed input the size pass is skipped: a listing is worth
  * more than a multi-gigabyte decode nobody asked for. */
@@ -81,81 +98,169 @@ static bool lz4demo_read_at(xx_io_device *device, int64_t offset,
     return true;
 }
 
-/* Walk the frame.  `scratch`, when given, receives each block's plaintext and
- * the decoded lengths are summed into `unpacked`; without it the walk is
- * purely structural apart from the first block, which is always trial
- * decoded because a bare u32 chain is far too weak to accept on its own. */
-static bool lz4demo_walk(Abstractformat *format, int64_t base, int64_t size,
-                         uint8_t *scratch, uint64_t *unpacked,
-                         uint64_t *block_count, xx_pd_struct *pd) {
-    uint8_t *packed = NULL;
-    size_t packed_capacity = 0U;
-    int64_t position = 0;
-    uint64_t blocks = 0U, total = 0U;
-    bool first = true, result = false;
-    while (position < size) {
-        uint32_t word;
+/* A 4 KiB read window over the stream.  Size words, skippable-frame headers
+ * and small blocks are served from it, so a chain of tiny elements costs one
+ * device read per window instead of a seek and a read per word; spans longer
+ * than the window are read directly. */
+#define LZ4DEMO_WINDOW 4096U
+
+typedef struct lz4demo_window_s {
+    xx_io_device *device;
+    int64_t base;   /**< Device offset of stream position 0. */
+    int64_t size;   /**< Stream length. */
+    int64_t start;  /**< Stream position of buffer[0]. */
+    size_t length;  /**< Valid bytes in buffer. */
+    uint8_t buffer[LZ4DEMO_WINDOW];
+} lz4demo_window;
+
+static void lz4demo_window_init(lz4demo_window *window, xx_io_device *device,
+                                int64_t base, int64_t size) {
+    window->device = device;
+    window->base = base;
+    window->size = size;
+    window->start = 0;
+    window->length = 0U;
+}
+
+static bool lz4demo_fetch(lz4demo_window *window, int64_t position,
+                          uint8_t *out, size_t count) {
+    int64_t offset;
+    if (position < 0 || position > window->size ||
+        (uint64_t)count > (uint64_t)(window->size - position))
+        return false;
+    if (count > LZ4DEMO_WINDOW)
+        return lz4demo_read_at(window->device, window->base + position, out,
+                               count);
+    offset = position - window->start;
+    if (offset < 0 || (uint64_t)offset > (uint64_t)window->length ||
+        count > window->length - (size_t)offset) {
+        int64_t available = window->size - position;
+        size_t want = available < (int64_t)LZ4DEMO_WINDOW
+                          ? (size_t)available : (size_t)LZ4DEMO_WINDOW;
+        window->length = 0U;
+        if (!lz4demo_read_at(window->device, window->base + position,
+                             window->buffer, want)) return false;
+        window->start = position;
+        window->length = want;
+        offset = 0;
+    }
+    xx_rt_memcpy(out, window->buffer + (size_t)offset, count);
+    return true;
+}
+
+/* Advance to the next LZ4 block of the chain, consuming repeated legacy
+ * magics (concatenated streams) and skippable frames on the way.  Returns 1
+ * with the block's stream offset and packed size, 0 at the exact end of the
+ * stream, -1 on anything the grammar does not allow. */
+static int lz4demo_next_block(lz4demo_window *window, int64_t *position,
+                              uint64_t *chain, int64_t *block_offset,
+                              int64_t *block_size) {
+    for (;;) {
         uint8_t header[4];
+        uint32_t word;
         int64_t declared;
-        if (pd && xx_pd_is_stopped(pd)) goto done;
-        if (size - position < 4) goto done;
-        if (!lz4demo_read_at(format->device, base + position, header,
-                             sizeof(header))) goto done;
+        if (*position == window->size) return 0;
+        if (++*chain > (uint64_t)LZ4DEMO_MAX_CHAIN ||
+            !lz4demo_fetch(window, *position, header, sizeof(header)))
+            return -1;
         word = lz4demo_le32(header);
-        position += 4;
+        *position += 4;
         if (word == LZ4DEMO_MAGIC) continue;
         if (word >= LZ4DEMO_SKIP_MAGIC_LOW && word <= LZ4DEMO_SKIP_MAGIC_HIGH) {
             /* A skippable frame: its length word, then that many bytes. */
-            if (size - position < 4 ||
-                !lz4demo_read_at(format->device, base + position, header,
-                                 sizeof(header))) goto done;
+            if (!lz4demo_fetch(window, *position, header, sizeof(header)))
+                return -1;
             declared = (int64_t)lz4demo_le32(header);
-            position += 4;
-            if (declared < 0 || declared > size - position) goto done;
-            position += declared;
+            *position += 4;
+            if (declared > window->size - *position) return -1;
+            *position += declared;
             continue;
         }
         declared = (int64_t)word;
-        if (declared <= 0 || declared > size - position) goto done;
+        if (declared <= 0 || declared > LZ4DEMO_MAX_PACKED ||
+            declared > window->size - *position) return -1;
+        *block_offset = *position;
+        *block_size = declared;
+        *position += declared;
+        return 1;
+    }
+}
+
+static bool lz4demo_load_block(lz4demo_window *window, int64_t offset,
+                               int64_t size, uint8_t **packed,
+                               size_t *capacity) {
+    if ((size_t)size > *capacity) {
+        uint8_t *grown = (uint8_t *)(*packed
+                                         ? xx_mem_realloc(*packed, (size_t)size)
+                                         : xx_mem_alloc((size_t)size));
+        if (!grown) return false;
+        *packed = grown;
+        *capacity = (size_t)size;
+    }
+    return lz4demo_fetch(window, offset, *packed, (size_t)size);
+}
+
+/* Walk the frame.  `scratch`, when given, receives each block's plaintext and
+ * the decoded lengths are summed into `unpacked`; without it the walk is
+ * purely structural apart from the first block, which is always trial
+ * decoded because a bare u32 chain is far too weak to accept on its own.
+ * Past LZ4DEMO_MAX_OUTPUT the size pass gives up measuring (the size is then
+ * reported as 0, "unknown") but the structural walk still runs to the end. */
+static bool lz4demo_walk(Abstractformat *format, int64_t base, int64_t size,
+                         uint8_t *scratch, uint64_t *unpacked,
+                         uint64_t *block_count, xx_pd_struct *pd) {
+    lz4demo_window window;
+    uint8_t *packed = NULL;
+    size_t packed_capacity = 0U;
+    int64_t position = 0;
+    uint64_t blocks = 0U, total = 0U, chain = 0U;
+    bool first = true, result = false, measured = scratch != NULL;
+    lz4demo_window_init(&window, format->device, base, size);
+    for (;;) {
+        int64_t block_offset = 0, block_size = 0;
+        int step;
+        if (pd && xx_pd_is_stopped(pd)) goto done;
+        step = lz4demo_next_block(&window, &position, &chain, &block_offset,
+                                  &block_size);
+        if (step < 0) goto done;
+        if (step == 0) break;
         if (blocks >= (uint64_t)LZ4DEMO_MAX_BLOCKS) goto done;
         if (scratch || first) {
             size_t written = 0U;
-            if ((size_t)declared > packed_capacity) {
-                uint8_t *grown = (uint8_t *)(packed
-                                                 ? xx_mem_realloc(packed,
-                                                                  (size_t)declared)
-                                                 : xx_mem_alloc((size_t)declared));
-                if (!grown) goto done;
-                packed = grown;
-                packed_capacity = (size_t)declared;
-            }
-            if (!lz4demo_read_at(format->device, base + position, packed,
-                                 (size_t)declared)) goto done;
+            if (!lz4demo_load_block(&window, block_offset, block_size, &packed,
+                                    &packed_capacity)) goto done;
             if (!scratch) {
                 /* Detection path: one block is enough to prove the codec. */
                 uint8_t *probe = (uint8_t *)xx_mem_alloc(LZ4DEMO_BLOCK_SIZE);
                 bool decoded;
                 if (!probe) goto done;
-                decoded = xx_lz4_decompress_block(packed, (size_t)declared,
+                decoded = xx_lz4_decompress_block(packed, (size_t)block_size,
                                                   probe, LZ4DEMO_BLOCK_SIZE,
                                                   &written);
                 xx_mem_free(probe);
                 if (!decoded || written == 0U) goto done;
             } else {
-                if (!xx_lz4_decompress_block(packed, (size_t)declared, scratch,
-                                             LZ4DEMO_BLOCK_SIZE, &written) ||
+                if (!xx_lz4_decompress_block(packed, (size_t)block_size,
+                                             scratch, LZ4DEMO_BLOCK_SIZE,
+                                             &written) ||
                     written == 0U) goto done;
-                if ((uint64_t)written > LZ4DEMO_MAX_OUTPUT - total) goto done;
-                total += (uint64_t)written;
+                if ((uint64_t)written > LZ4DEMO_MAX_OUTPUT - total) {
+                    /* Too large to be worth measuring: stop decoding, keep
+                     * validating the structure. */
+                    scratch = NULL;
+                    measured = false;
+                } else {
+                    total += (uint64_t)written;
+                }
             }
             first = false;
         }
-        position += declared;
         ++blocks;
     }
-    if (blocks == 0U) goto done;
+    /* No blocks at all is the empty stream `lz4 -l` writes for empty input:
+     * the magic alone (plus, at most, further magics / skippable frames). */
     if (block_count) *block_count = blocks;
-    if (unpacked) *unpacked = total;
+    if (unpacked) *unpacked = measured ? total : 0U;
     result = true;
 done:
     if (packed) xx_mem_free(packed);
@@ -178,8 +283,8 @@ static bool lz4demo_parse(Abstractformat *format, lz4demo_context *out,
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    /* Magic, one block-size word and at least one payload byte. */
-    if (size < 9 ||
+    /* At least the magic; a bare magic is an empty stream. */
+    if (size < 4 ||
         !lz4demo_read_at(format->device, format->base_address, magic,
                          sizeof(magic))) return false;
     if (lz4demo_le32(magic) != LZ4DEMO_MAGIC) return false;
@@ -378,58 +483,37 @@ bool xx_lz4demo_archive_record_move_to_next(Abstractformat *format,
 }
 
 /* Decode the whole frame to `destination`, block by block.  The scratch
- * buffer is the format's own 8 MiB block ceiling, so a frame of any length
- * costs one block's worth of memory beyond the output file. */
+ * buffer is the format's own 8 MiB block ceiling and the packed buffer is
+ * capped at LZ4DEMO_MAX_PACKED, so a frame of any length costs about 16 MiB
+ * of memory beyond the output file. */
 static bool lz4demo_unpack_to_device(Abstractformat *format,
                                      const lz4demo_context *context,
                                      xx_io_device *destination,
                                      xx_pd_struct *pd) {
+    lz4demo_window window;
     uint8_t *packed = NULL;
     uint8_t *scratch = NULL;
     size_t packed_capacity = 0U;
     int64_t position = 0;
+    uint64_t blocks = 0U, chain = 0U;
     bool result = false;
     scratch = (uint8_t *)xx_mem_alloc(LZ4DEMO_BLOCK_SIZE);
     if (!scratch) return false;
-    while (position < context->stream_size) {
-        uint8_t header[4];
-        uint32_t word;
-        int64_t declared;
+    lz4demo_window_init(&window, format->device, context->stream_offset,
+                        context->stream_size);
+    for (;;) {
+        int64_t block_offset = 0, block_size = 0;
         size_t written = 0U, done = 0U;
+        int step;
         if (pd && xx_pd_is_stopped(pd)) goto done;
-        if (context->stream_size - position < 4 ||
-            !lz4demo_read_at(format->device, context->stream_offset + position,
-                             header, sizeof(header))) goto done;
-        word = lz4demo_le32(header);
-        position += 4;
-        if (word == LZ4DEMO_MAGIC) continue;
-        if (word >= LZ4DEMO_SKIP_MAGIC_LOW && word <= LZ4DEMO_SKIP_MAGIC_HIGH) {
-            if (context->stream_size - position < 4 ||
-                !lz4demo_read_at(format->device,
-                                 context->stream_offset + position, header,
-                                 sizeof(header))) goto done;
-            declared = (int64_t)lz4demo_le32(header);
-            position += 4;
-            if (declared < 0 || declared > context->stream_size - position)
-                goto done;
-            position += declared;
-            continue;
-        }
-        declared = (int64_t)word;
-        if (declared <= 0 || declared > context->stream_size - position)
-            goto done;
-        if ((size_t)declared > packed_capacity) {
-            uint8_t *grown = (uint8_t *)(packed
-                                             ? xx_mem_realloc(packed,
-                                                              (size_t)declared)
-                                             : xx_mem_alloc((size_t)declared));
-            if (!grown) goto done;
-            packed = grown;
-            packed_capacity = (size_t)declared;
-        }
-        if (!lz4demo_read_at(format->device, context->stream_offset + position,
-                             packed, (size_t)declared) ||
-            !xx_lz4_decompress_block(packed, (size_t)declared, scratch,
+        step = lz4demo_next_block(&window, &position, &chain, &block_offset,
+                                  &block_size);
+        if (step < 0) goto done;
+        if (step == 0) break;
+        if (++blocks > (uint64_t)LZ4DEMO_MAX_BLOCKS ||
+            !lz4demo_load_block(&window, block_offset, block_size, &packed,
+                                &packed_capacity) ||
+            !xx_lz4_decompress_block(packed, (size_t)block_size, scratch,
                                      LZ4DEMO_BLOCK_SIZE, &written) ||
             written == 0U) goto done;
         while (done < written) {
@@ -438,7 +522,6 @@ static bool lz4demo_unpack_to_device(Abstractformat *format,
             if (amount <= 0 || (size_t)amount > written - done) goto done;
             done += (size_t)amount;
         }
-        position += declared;
     }
     result = true;
 done:

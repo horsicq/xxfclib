@@ -232,6 +232,35 @@ fail:
     return false;
 }
 
+/*
+ * handle_base_info has already parsed the header and hashed the whole
+ * payload; hashing it again for every record walk costs a full pass over a
+ * multi-megabyte image.  Reuse that result when it still describes this
+ * device at this base address, and parse afresh otherwise.
+ */
+static bool xx_dlink_tlv_reuse_or_parse(Abstractformat *self,
+                                        xx_dlink_tlv_private *parsed,
+                                        xx_pd_struct *pd) {
+    const xx_dlink_tlv *tlv = (const xx_dlink_tlv *)self;
+    const xx_dlink_tlv_private *cached;
+    int64_t expected_offset;
+    if (!self || !parsed) return false;
+    cached = (const xx_dlink_tlv_private *)tlv->internal;
+    if (cached && self->device &&
+        xx_dlink_tlv_add(self->base_address, XX_DLINK_TLV_HEADER_SIZE,
+                         &expected_offset) &&
+        cached->data_offset == expected_offset &&
+        cached->input_size == xx_io_total_size(self->device) &&
+        xx_dlink_tlv_range_within(cached->input_size, cached->data_offset,
+                                  cached->data_size)) {
+        /* xx_rt_memcpy rather than a struct assignment, which a compiler is
+         * free to lower into a CRT memcpy call. */
+        xx_rt_memcpy(parsed, cached, sizeof(*parsed));
+        return true;
+    }
+    return xx_dlink_tlv_parse(self, parsed, pd);
+}
+
 /* ------------------------------------------------------------------------ */
 /* Record plumbing                                                           */
 /* ------------------------------------------------------------------------ */
@@ -442,7 +471,7 @@ xx_archive_record_state *xx_dlink_tlv_create_archive_records_reading(
     }
     xx_archive_record_state_init(state, self);
     if (!xx_dlink_tlv_copy_options(&state->options, options) ||
-        !xx_dlink_tlv_parse(self, &stream->parsed, pd)) {
+        !xx_dlink_tlv_reuse_or_parse(self, &stream->parsed, pd)) {
         xx_dlink_tlv_archive_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;

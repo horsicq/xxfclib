@@ -37,8 +37,23 @@ extern "C" {
  * the next one and the last runs to EOF, which is what makes the monotonic
  * offset walk the format's real validator.
  *
+ * There is no magic, so the parse is also the detection probe (run late, after
+ * every signature-gated format): printable NUL-padded name, clear reserved
+ * attribute bits, printable type and creator, and a first block that starts
+ * 0..2 bytes behind the entry table are checked before anything is
+ * allocated.  A database with zero entries is refused: it has nothing to
+ * extract and too little structure to be told apart from noise.
+ *
  * Every record or resource, plus the optional appInfo and sortInfo blocks,
- * is exposed as a STORED member.  Payload codecs that individual Palm
+ * is exposed as a STORED member and extracted in 64 KiB chunks.  Member names
+ * are generated, never taken from the file: appinfo.bin, sortinfo.bin,
+ * record_<entry index>.bin, and <4CC reduced to [A-Za-z0-9_-]>_<id>.bin for
+ * resources, every number five digits.  Member names are unique within one
+ * database, even compared case-insensitively.  When a resource name repeats
+ * an earlier one, which happens with a duplicate (type, id), types that
+ * differ only in case, or types that sanitise alike, the later member gets
+ * _<entry index> inserted before ".bin" (e.g. tSTR_00001_00003.bin), so no
+ * member overwrites another.  Payload codecs that individual Palm
  * applications layer inside their records - iSilo's "ToGoToGo" block codec
  * above all - are NOT decoded; those records are emitted verbatim.
  *

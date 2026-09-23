@@ -12,7 +12,8 @@
  * module for the environment at all, so there is nothing to port and the
  * layout below comes from U-Boot's own env/ and tools/env/ sources.
  *
- *   +0   u32   crc32, LITTLE endian
+ *   +0   u32   crc32, in the TARGET's byte order (U-Boot stores it with a
+ *              plain native u32 write; mkenvimage -b makes a big-endian one)
  *   +4   u8    flags       - ONLY in the redundant layout
  *   +4/5 ...   NUL separated "key=value" entries, terminated by an empty
  *              entry (a second NUL), padded to the end of the block with 0xFF
@@ -24,8 +25,19 @@
  * no magic, and the only way to recognise one is to guess the size and see
  * whether the CRC comes out.  This reader tries a table of the sizes real
  * boards use, largest first, plus the whole remainder of the device, in both
- * the plain and redundant layouts, and accepts the first combination whose
- * CRC32 matches and whose data parses as at least one `key=value` pair.
+ * the plain and redundant layouts (never a size below XX_UBOOT_MIN_ENV_SIZE
+ * or above XX_UBOOT_MAX_ENV_SIZE), and accepts the first combination whose
+ * CRC32 matches (read little or big endian) and whose data parses as at
+ * least one `key=value` pair.  format.endian reports which byte order the
+ * stored CRC used.
+ *
+ * Detection cost: before any CRC is computed, the first entry must already
+ * look like a variable name - 1..XX_UBOOT_MAX_KEY_LENGTH printable,
+ * non-space ASCII bytes followed by '=' - right after the 4- or 5-byte
+ * header.  Only a layout that passes this check is CRC-tested, and all the
+ * candidate sizes are checked in ONE incremental CRC pass over one bounded
+ * read, so garbage costs a single small read and a genuine block costs at
+ * most two passes over min(file, 1 MiB).
  *
  * The CRC is the ordinary ISO-HDLC CRC32 - U-Boot's crc32() is zlib's - so
  * xx_crc32_calc(0, ...) computes it directly, with no JAMCRC complement of
@@ -59,12 +71,19 @@ extern "C" {
 #define XX_UBOOT_CRC_SIZE 4U
 /** Largest environment block buffered, and the largest candidate size tried. */
 #define XX_UBOOT_MAX_ENV_SIZE (1024U * 1024U)
-/** Smallest block worth considering; CONFIG_ENV_SIZE is never below this. */
+/** Smallest block accepted.  Every size tried must be at least this: the
+ * whole remainder of the device, each candidate-table size (the table starts
+ * at 0x400) and a size pinned with xx_uboot_set_env_size().  A device with
+ * fewer bytes left than this is refused before anything is read, so tiny
+ * files never reach the CRC. */
 #define XX_UBOOT_MIN_ENV_SIZE 256U
 /** Upper bound on the variable count in one block. */
 #define XX_UBOOT_MAX_VARIABLES 4096U
 /** Upper bound on one "key=value" entry, key and value together. */
 #define XX_UBOOT_MAX_ENTRY_LENGTH 32768U
+/** Upper bound on a variable name.  Names are printable ASCII other than
+ * space and '='; U-Boot's own names are identifiers well under this. */
+#define XX_UBOOT_MAX_KEY_LENGTH 128U
 
 /** Which of the two on-flash layouts was recognised. */
 typedef enum xx_uboot_layout_e {
@@ -107,7 +126,9 @@ XXFC_API int64_t xx_uboot_get_format_size(Abstractformat *self,
  * CONFIG_ENV_SIZE is not in the block, so by default a table of common sizes
  * is tried.  A caller that knows the board's value can set it here before
  * validation; the candidate search is then skipped entirely.  Pass 0 to go
- * back to searching.  Must be called before the first validation.
+ * back to searching.  Must be called before the first validation.  A value
+ * above XX_UBOOT_MAX_ENV_SIZE is ignored; a non-zero value below
+ * XX_UBOOT_MIN_ENV_SIZE is kept, and validation then refuses the block.
  */
 XXFC_API void xx_uboot_set_env_size(xx_uboot *uboot, uint32_t env_size);
 

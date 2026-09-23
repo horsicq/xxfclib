@@ -16,6 +16,7 @@
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/jboot/xx_jboot.h"
 
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/data/xx_data.h"
 #include "xxfclib/io/xx_io.h"
@@ -272,11 +273,14 @@ static bool xx_jboot_parse_stag(Abstractformat *self, xx_jboot_private *parsed,
         XX_JBOOT_STAG_MAGIC) {
         return false;
     }
-    /* 0xFF marks a factory image; otherwise cmark must repeat id.  The
+    /* id is fixed at 0x04 by every known producer and by both of binwalk's
+     * STAG signatures; with no verifiable checksum it is part of the magic.
+     * 0xFF marks a factory image; otherwise cmark must repeat id.  The
      * reference requires image_size to exceed the header size, which is the
-     * only thing standing between this 4-byte magic and every run of
+     * only other thing standing between this 4-byte magic and every run of
      * 04 04 24 2B in a random binary, so it is kept. */
-    parsed->is_factory_image = parsed->stag_cmark == 0xFFU;
+    if (parsed->stag_id != XX_JBOOT_STAG_ID) return false;
+    parsed->is_factory_image = parsed->stag_cmark == XX_JBOOT_STAG_FACTORY_CMARK;
     parsed->is_sysupgrade_image = parsed->stag_cmark == parsed->stag_id;
     if (!parsed->is_factory_image && !parsed->is_sysupgrade_image) return false;
     if (parsed->payload_size <= XX_JBOOT_STAG_HEADER_SIZE) return false;
@@ -486,8 +490,27 @@ static const xx_var *xx_jboot_find_option(const xx_list_s *options,
     return NULL;
 }
 
+/* The STAG/ARM time_stamp is not a Unix time.  OpenWrt firmware-utils
+ * (mkdlinkfw-lib.c jboot_timestamp) writes it as
+ *     (((uint32_t)unix_seconds) - TIMESTAMP_MAGIC) >> 2
+ * with TIMESTAMP_MAGIC 0x35016f00 (mkdlinkfw-lib.h), i.e. 4-second ticks since 1998-03-07 16:00:00 UTC.  XX_META_ID_TIMESTAMP
+ * carries Unix seconds in this library (tar, cpio, igf1, bwcf, miz; the tar
+ * and cpio writers read it back as an mtime), so the field is converted.
+ * 0 is "no timestamp", and a value with either of the top two bits set cannot
+ * come out of the >> 2, so neither is published. */
+static bool xx_jboot_timestamp_to_unix(uint32_t field, uint64_t *unix_time) {
+    if (!unix_time || field == 0U || field > XX_JBOOT_TIMESTAMP_MAX) {
+        return false;
+    }
+    *unix_time = (uint64_t)field * XX_JBOOT_TIMESTAMP_TICK +
+                 XX_JBOOT_TIMESTAMP_EPOCH;
+    return true;
+}
+
 static bool xx_jboot_populate_record(xx_archive_record *record,
                                      const xx_jboot_private *parsed) {
+    uint64_t unix_time = 0U;
+
     if (!record || !parsed || !parsed->name) return false;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
@@ -510,9 +533,9 @@ static bool xx_jboot_populate_record(xx_archive_record *record,
                                          false)) {
         return false;
     }
-    if (parsed->timestamp != 0U &&
+    if (xx_jboot_timestamp_to_unix(parsed->timestamp, &unix_time) &&
         !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                        (uint64_t)parsed->timestamp)) {
+                                        unix_time)) {
         return false;
     }
     return true;

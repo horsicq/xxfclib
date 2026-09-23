@@ -16,16 +16,16 @@
  * is also the map binwalk uses (src/structures/tplink.rs).  It is a fixed
  * 0x200-byte header in front of a concatenated kernel and rootfs:
  *
- *   +0x00  u32   version, 1
+ *   +0x00  u32   version, 0x01000000 (bytes 01 00 00 00)
  *   +0x04  char  vendor_name[24],  "TP-LINK Technologies"
  *   +0x1C  char  fw_version[36],   e.g. "ver. 1.0"
  *   +0x40  u32   hw_id
  *   +0x44  u32   hw_rev
- *   +0x48  u32   reserved
+ *   +0x48  u32   region_code       0, or 1 for US builds
  *   +0x4C  u8    md5sum1[16]       over the whole image, see below
- *   +0x5C  u32   reserved
+ *   +0x5C  u32   unk2, zero
  *   +0x60  u8    md5sum2[16]       over the vendor's boot image
- *   +0x70  u32   reserved
+ *   +0x70  u32   unk3, zero
  *   +0x74  u32   kernel_load_address
  *   +0x78  u32   kernel_entry_point
  *   +0x7C  u32   fw_length         whole image INCLUDING this header
@@ -36,26 +36,50 @@
  *   +0x90  u32   bootloader_offset
  *   +0x94  u32   bootloader_length
  *   +0x98  u16   ver_hi, ver_mid, ver_lo
- *   +0x9E  u32   reserved
- *   +0xA2        padding to 0x200
+ *   +0x9E        padding, region strings, padding to 0x200
  *
  * md5sum1 is an MD5 over the entire image with the md5sum1 field itself
- * replaced by a fixed 16-byte salt.  mktplinkfw.c and mktplinkfw2.c use
- * DIFFERENT salts, and vendor-modified builds use others again.  This reader
- * therefore tries the two published salts, records which one matched (if any)
- * in xx_tplink_get_md5_salt_index(), and NEVER rejects an image on the basis
+ * replaced by a fixed 16-byte salt.  mktplinkfw.c uses one salt for images
+ * without a bootloader and another for images with one, and vendor-modified
+ * builds use others again.  This reader therefore tries the two mktplinkfw
+ * salts (from handle_base_info only), records which one matched (if any) in
+ * xx_tplink_get_md5_salt_index(), and NEVER rejects an image on the basis
  * of the digest.  See the comment on the salt table in xx_tplink.c: the salt
  * constants are the one thing in this reader that could not be checked against
  * a local copy of their source, and making the check advisory means a wrong
  * constant cannot cause a false negative.
  *
- * Byte order is the other unsettled point.  mktplinkfw.c writes the header
- * with htonl(), i.e. big endian, but binwalk parses it little endian and the
- * magic it matches - the bytes 01 00 00 00 for version == 1 - is only
- * consistent with little endian.  Both conventions exist in the wild, so this
- * reader decodes the header both ways and keeps whichever one yields a
- * fw_length and an offset table that fit the device.  The choice is reported
- * by xx_tplink_get_header_endian().
+ * Byte order: mktplinkfw.c writes every field with htonl()/htons(), i.e. big
+ * endian (the version word 0x01000000 is what produces the bytes 01 00 00 00
+ * binwalk matches), while binwalk's structure parser reads the block little
+ * endian.  This reader decodes big endian first and falls back to little
+ * endian, and keeps the first order whose fw_length AND kernel/rootfs offset
+ * table both fit the device.  The choice is reported by
+ * xx_tplink_get_header_big_endian().
+ *
+ * kernel and rootfs spans are strict (declared means it must fit); the
+ * bootloader span is published only when it fits after the header and is
+ * otherwise skipped.  All offsets are read as FILE offsets from the start of
+ * this header.
+ *
+ * Unverified: stock "_up_boot" images.  The offset convention of TP-Link's
+ * stock firmware files that carry a bootloader (names ending "_up_boot") has
+ * NOT been checked against a real image; none was available when this reader
+ * was written.  The reader treats every offset as a file offset, and that is
+ * a guess.  One recalled recipe for stripping these files ("dd skip=257
+ * bs=512", i.e. drop 0x20200 bytes) suggests the layout is: this 0x200
+ * header, a 0x20000 bootloader, then an inner image with its own TP-Link
+ * header at file offset 0x20200, with the outer offsets counted from the END
+ * of the outer header (flash offsets).  If that is right, this reader, on
+ * such a file:
+ *   - skips the bootloader silently (bootloader_offset 0 lies inside the
+ *     header), and
+ *   - accepts the image and extracts kernel.bin and rootfs.bin from positions
+ *     0x200 bytes too early, so kernel.bin starts with the inner header.
+ * No error is reported in that case.  It cannot crash or read or write out of
+ * bounds, since every span is still checked against fw_length and the
+ * device.  The behaviour is deliberately left as is until a real image
+ * confirms the layout.
  *
  * ---------------------------------------------------------------- variant 2
  * The RTOS header, per binwalk's parse_tplink_rtos_header().  Big endian, a

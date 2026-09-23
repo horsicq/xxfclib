@@ -260,16 +260,49 @@ static char *xx_matter_ota_copy_string(const uint8_t *data, size_t offset,
     return result;
 }
 
+static bool xx_matter_ota_is_unsigned(const xx_matter_ota_tlv *element) {
+    return element->element_type >= 0x04U && element->element_type <= 0x07U;
+}
+
+static bool xx_matter_ota_is_utf8(const xx_matter_ota_tlv *element) {
+    return element->element_type >= 0x0CU && element->element_type <= 0x0FU;
+}
+
+static bool xx_matter_ota_is_octets(const xx_matter_ota_tlv *element) {
+    return element->element_type >= 0x10U && element->element_type <= 0x13U;
+}
+
+/*
+ * The header is ONE anonymous structure (control octet 0x15) and the fields
+ * are its direct members.  The walk mirrors connectedhomeip's
+ * OTAImageHeaderParser::DecodeTlv:
+ *
+ *  - the first element must be that anonymous structure, otherwise the bytes
+ *    are not an OTA header at all;
+ *  - only members at depth 1 are fields.  A nested container belonging to a
+ *    future field may carry its own context tag 4, and that must not be
+ *    mistaken for PayloadSize;
+ *  - the walk stops at the structure's own end-of-container.  HeaderSize
+ *    bytes left over after it are ignored, as the reference parser does.
+ */
 static bool xx_matter_ota_parse_tlv(const uint8_t *data, size_t size,
                                     xx_matter_ota_private *parsed,
                                     bool *saw_payload_size) {
     size_t cursor = 0U;
     size_t elements = 0U;
     unsigned depth = 0U;
+    xx_matter_ota_tlv element;
     if (!data || !parsed || !saw_payload_size) return false;
     *saw_payload_size = false;
-    while (cursor < size) {
-        xx_matter_ota_tlv element;
+    if (!xx_matter_ota_tlv_next(data, size, &cursor, &element) ||
+        element.element_type != 0x15U || element.has_tag) {
+        return false;
+    }
+    depth = 1U;
+    while (depth != 0U) {
+        unsigned member_depth = depth;
+        /* Running out of header before the structure closes is truncation. */
+        if (cursor >= size) return false;
         if (++elements > XX_MATTER_OTA_MAX_ELEMENTS) return false;
         if (!xx_matter_ota_tlv_next(data, size, &cursor, &element)) return false;
         if (element.element_type == 0x15U || element.element_type == 0x16U ||
@@ -278,50 +311,68 @@ static bool xx_matter_ota_parse_tlv(const uint8_t *data, size_t size,
             continue;
         }
         if (element.element_type == 0x18U) {
-            if (depth == 0U) return false;
             --depth;
             continue;
         }
-        if (!element.has_tag) continue;
+        if (member_depth != 1U || !element.has_tag) continue;
         switch (element.tag) {
             case XX_MATTER_OTA_TAG_VENDOR_ID:
-                parsed->vendor_id = element.unsigned_value;
+                if (xx_matter_ota_is_unsigned(&element)) {
+                    parsed->vendor_id = element.unsigned_value;
+                }
                 break;
             case XX_MATTER_OTA_TAG_PRODUCT_ID:
-                parsed->product_id = element.unsigned_value;
+                if (xx_matter_ota_is_unsigned(&element)) {
+                    parsed->product_id = element.unsigned_value;
+                }
                 break;
             case XX_MATTER_OTA_TAG_SOFTWARE_VERSION:
-                parsed->software_version = element.unsigned_value;
+                if (xx_matter_ota_is_unsigned(&element)) {
+                    parsed->software_version = element.unsigned_value;
+                }
                 break;
             case XX_MATTER_OTA_TAG_VERSION_STRING:
-                if (element.value_length != 0U && !parsed->version_string) {
+                if (xx_matter_ota_is_utf8(&element) &&
+                    element.value_length != 0U && !parsed->version_string) {
                     parsed->version_string = xx_matter_ota_copy_string(
                         data, element.value_offset, element.value_length);
                     if (!parsed->version_string) return false;
                 }
                 break;
             case XX_MATTER_OTA_TAG_PAYLOAD_SIZE:
+                /* The consistency check below rests on this value, so a
+                 * PayloadSize that is not an unsigned integer is refused
+                 * rather than read as zero. */
+                if (!xx_matter_ota_is_unsigned(&element)) return false;
                 parsed->payload_size = element.unsigned_value;
                 *saw_payload_size = true;
                 break;
             case XX_MATTER_OTA_TAG_MIN_VERSION:
-                parsed->min_applicable_version = element.unsigned_value;
+                if (xx_matter_ota_is_unsigned(&element)) {
+                    parsed->min_applicable_version = element.unsigned_value;
+                }
                 break;
             case XX_MATTER_OTA_TAG_MAX_VERSION:
-                parsed->max_applicable_version = element.unsigned_value;
+                if (xx_matter_ota_is_unsigned(&element)) {
+                    parsed->max_applicable_version = element.unsigned_value;
+                }
                 break;
             case XX_MATTER_OTA_TAG_RELEASE_NOTES:
-                if (element.value_length != 0U && !parsed->release_notes_url) {
+                if (xx_matter_ota_is_utf8(&element) &&
+                    element.value_length != 0U && !parsed->release_notes_url) {
                     parsed->release_notes_url = xx_matter_ota_copy_string(
                         data, element.value_offset, element.value_length);
                     if (!parsed->release_notes_url) return false;
                 }
                 break;
             case XX_MATTER_OTA_TAG_DIGEST_TYPE:
-                parsed->image_digest_type = element.unsigned_value;
+                if (xx_matter_ota_is_unsigned(&element)) {
+                    parsed->image_digest_type = element.unsigned_value;
+                }
                 break;
             case XX_MATTER_OTA_TAG_DIGEST: {
                 size_t keep = element.value_length;
+                if (!xx_matter_ota_is_octets(&element)) break;
                 if (keep > sizeof(parsed->image_digest)) {
                     keep = sizeof(parsed->image_digest);
                 }
@@ -336,17 +387,19 @@ static bool xx_matter_ota_parse_tlv(const uint8_t *data, size_t size,
                 break; /* A field this reader does not model. */
         }
     }
-    /* An unbalanced container means the header was truncated mid-structure. */
-    return depth == 0U;
+    return true;
 }
 
 /* ------------------------------------------------------------------------ */
 /* Parse                                                                     */
 /* ------------------------------------------------------------------------ */
 
+/* compute_digest: recompute the payload's sha-256 when the header carries
+ * one.  Only handle_base_info asks for it: the detector's probe and the record
+ * walk need the structure, not a hash of a payload that may be megabytes. */
 static bool xx_matter_ota_parse(Abstractformat *self,
                                 xx_matter_ota_private *parsed,
-                                xx_pd_struct *pd) {
+                                bool compute_digest, xx_pd_struct *pd) {
     uint8_t preamble[XX_MATTER_OTA_PREAMBLE_SIZE];
     uint8_t *header_data = NULL;
     bool saw_payload_size = false;
@@ -430,7 +483,8 @@ static bool xx_matter_ota_parse(Abstractformat *self,
      * IANA registry (sha-256-128 and friends) are truncations and full-length
      * SHA-384/512, which this library does not all provide.
      */
-    if (parsed->image_digest_type == XX_MATTER_OTA_DIGEST_SHA256 &&
+    if (compute_digest &&
+        parsed->image_digest_type == XX_MATTER_OTA_DIGEST_SHA256 &&
         parsed->image_digest_size == XX_SHA256_DIGEST_SIZE) {
         uint8_t computed[XX_SHA256_DIGEST_SIZE];
         if (xx_hash_device(XX_HASH_SHA256, self->device, parsed->payload_offset,
@@ -579,7 +633,7 @@ void xx_matter_ota_free(xx_matter_ota *ota) {
 
 bool xx_matter_ota_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     xx_matter_ota_private parsed;
-    bool result = xx_matter_ota_parse(self, &parsed, pd);
+    bool result = xx_matter_ota_parse(self, &parsed, false, pd);
     xx_matter_ota_private_cleanup(&parsed);
     return result;
 }
@@ -590,7 +644,7 @@ bool xx_matter_ota_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     int64_t total_size;
     if (!self || !ota) return false;
     parsed = (xx_matter_ota_private *)xx_mem_alloc(sizeof(*parsed));
-    if (!parsed || !xx_matter_ota_parse(self, parsed, pd)) {
+    if (!parsed || !xx_matter_ota_parse(self, parsed, true, pd)) {
         if (parsed) xx_mem_free(parsed);
         self->is_valid = false;
         self->base_info_handled = false;
@@ -671,7 +725,7 @@ xx_archive_record_state *xx_matter_ota_create_archive_records_reading(
     }
     xx_archive_record_state_init(state, self);
     if (!xx_matter_ota_copy_options(&state->options, options) ||
-        !xx_matter_ota_parse(self, &stream->parsed, pd)) {
+        !xx_matter_ota_parse(self, &stream->parsed, false, pd)) {
         xx_matter_ota_archive_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
