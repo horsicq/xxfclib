@@ -464,7 +464,29 @@ typedef enum xx_file_type_e {
     XX_FILE_TYPE_WOLFFT = 405,
     XX_FILE_TYPE_BOO = 406,
     XX_FILE_TYPE_VMSSAVESET = 407,
-    XX_FILE_TYPE_RAWSTAC = 410
+    XX_FILE_TYPE_RAWSTAC = 410,
+    XX_FILE_TYPE_ANDROIDBOOT = 411,
+    XX_FILE_TYPE_ARCADYAN = 412,
+    XX_FILE_TYPE_AUTEL = 413,
+    XX_FILE_TYPE_DKBS = 414,
+    XX_FILE_TYPE_DLINK_TLV = 415,
+    XX_FILE_TYPE_DLKE = 416,
+    XX_FILE_TYPE_ECOS = 417,
+    XX_FILE_TYPE_ENCFW = 418,
+    XX_FILE_TYPE_ENCRPTED_IMG = 419,
+    XX_FILE_TYPE_JBOOT = 420,
+    XX_FILE_TYPE_LINGVOARC = 421,
+    XX_FILE_TYPE_LZ4DEMO = 422,
+    XX_FILE_TYPE_MATTER_OTA = 423,
+    XX_FILE_TYPE_MH01 = 424,
+    XX_FILE_TYPE_SHRS = 425,
+    XX_FILE_TYPE_SILMARILSFT = 426,
+    XX_FILE_TYPE_TPLINK = 427,
+    XX_FILE_TYPE_TWRX = 428,
+    XX_FILE_TYPE_UBOOT_ENV = 429,
+    XX_FILE_TYPE_INFOGRAMESFT = 430,
+    XX_FILE_TYPE_PDB = 431,
+    XX_FILE_TYPE_XPAK = 432
 } xx_file_type_t;
 
 typedef xx_file_type_t xx_file_type;
@@ -1969,6 +1991,72 @@ XXFC_API const char *xx_os_to_string(xx_os_t os);
 #endif
 #ifndef RAWSTAC
 #define RAWSTAC XX_FILE_TYPE_RAWSTAC
+#endif
+#ifndef ANDROIDBOOT
+#define ANDROIDBOOT XX_FILE_TYPE_ANDROIDBOOT
+#endif
+#ifndef ARCADYAN
+#define ARCADYAN XX_FILE_TYPE_ARCADYAN
+#endif
+#ifndef AUTEL
+#define AUTEL XX_FILE_TYPE_AUTEL
+#endif
+#ifndef DKBS
+#define DKBS XX_FILE_TYPE_DKBS
+#endif
+#ifndef DLINK_TLV
+#define DLINK_TLV XX_FILE_TYPE_DLINK_TLV
+#endif
+#ifndef DLKE
+#define DLKE XX_FILE_TYPE_DLKE
+#endif
+#ifndef ECOS
+#define ECOS XX_FILE_TYPE_ECOS
+#endif
+#ifndef ENCFW
+#define ENCFW XX_FILE_TYPE_ENCFW
+#endif
+#ifndef ENCRPTED_IMG
+#define ENCRPTED_IMG XX_FILE_TYPE_ENCRPTED_IMG
+#endif
+#ifndef JBOOT
+#define JBOOT XX_FILE_TYPE_JBOOT
+#endif
+#ifndef LINGVOARC
+#define LINGVOARC XX_FILE_TYPE_LINGVOARC
+#endif
+#ifndef LZ4DEMO
+#define LZ4DEMO XX_FILE_TYPE_LZ4DEMO
+#endif
+#ifndef MATTER_OTA
+#define MATTER_OTA XX_FILE_TYPE_MATTER_OTA
+#endif
+#ifndef MH01
+#define MH01 XX_FILE_TYPE_MH01
+#endif
+#ifndef SHRS
+#define SHRS XX_FILE_TYPE_SHRS
+#endif
+#ifndef SILMARILSFT
+#define SILMARILSFT XX_FILE_TYPE_SILMARILSFT
+#endif
+#ifndef TPLINK
+#define TPLINK XX_FILE_TYPE_TPLINK
+#endif
+#ifndef TWRX
+#define TWRX XX_FILE_TYPE_TWRX
+#endif
+#ifndef UBOOT_ENV
+#define UBOOT_ENV XX_FILE_TYPE_UBOOT_ENV
+#endif
+#ifndef INFOGRAMESFT
+#define INFOGRAMESFT XX_FILE_TYPE_INFOGRAMESFT
+#endif
+#ifndef PDB
+#define PDB XX_FILE_TYPE_PDB
+#endif
+#ifndef XPAK
+#define XPAK XX_FILE_TYPE_XPAK
 #endif
 #ifndef DMS
 #define DMS XX_FILE_TYPE_DMS

@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-/** @file xx_lzop.h @brief lzop (.lzo) single-stream container reader. */
+/** @file xx_lzop.h @brief lzop (.lzo) container reader, one record per stream. */
 
 /* lzop - the container the lzop(1) utility writes around LZO1X blocks.
  * Every scalar is BIG ENDIAN.
@@ -39,8 +39,29 @@
  * discovering it while extracting: see XX_LZOPFMT_MAX_BLOCK_SIZE and
  * XX_LZOPFMT_MAX_TOTAL_OUTPUT in the implementation.
  *
- * The reader publishes exactly one archive record - the concatenation of every
- * decoded block - named after the stored file name when the header carries one.
+ * The reader publishes one archive record per stream, named after the file
+ * name that stream's header stores.  A path (as `lzop -P` stores it) is kept
+ * as a safe relative path, the way U3 extracts it: '/' and '\' separate
+ * components and the record name uses '/'; empty, "." and ".." components, a
+ * leading "\\?\" or "\\.\", leading separators and a leading drive
+ * ("C:") are dropped, so "../x.txt" is "x.txt" and "/etc/passwd" is
+ * "etc/passwd"; trailing dots and spaces of a component are dropped as Win32
+ * does; a component holding a control character, or that is a Windows device
+ * name such as "NUL .txt", "COM1" or "CONIN$", is dropped; the characters
+ * < > : " | ? * become '_'.  "payload" is used when nothing is left, or when
+ * the header stores no name.
+ * Paths are compared the way NTFS compares them (case-insensitive, non-ASCII
+ * letters included), and a later record may not reuse an earlier record's
+ * path, put a directory where an earlier record put a file (or the reverse),
+ * or add an NTFS 8.3 alias such as "LONGFI~1.TXT" to a directory that already
+ * holds entries (it could be the short name of one of them).  The first such
+ * component gets "_<stream number>" appended, or "_<stream number>_<k>" if an
+ * earlier record already holds that spelling; directories that do not clash
+ * are shared.  This is the model of `lzop -c a b > ab.lzo` / `lzop -x`, of U3
+ * and of the gz reader.
+ * xx_lzop_unpack_to_device() writes the concatenation of every stream, which
+ * is what `lzop -dc` produces.  An empty stream (no blocks) is a valid, empty
+ * record.  Bytes after the last complete stream are overlay.
  */
 
 #ifndef XXFCLIB_FORMAT_LZOP_H
@@ -98,8 +119,9 @@ XXFC_API bool xx_lzop_archive_record_move_to_next(
 XXFC_API void xx_lzop_free_archive_records_reading(
     Abstractformat *self, xx_archive_record_state *state);
 
-/** Decode the whole container into destination.  Returns false unless every
- *  block of every stream decodes and its checksums verify. */
+/** Decode the whole container (every stream, concatenated) into destination.
+ *  Returns false unless every block of every stream decodes and its checksums
+ *  verify. */
 XXFC_API bool xx_lzop_unpack_to_device(xx_lzop *archive,
                                        xx_io_device *destination,
                                        xx_pd_struct *pd);
@@ -111,8 +133,19 @@ XXFC_API int64_t xx_lzop_get_stream_end(const xx_lzop *archive);
 XXFC_API uint32_t xx_lzop_get_flags(const xx_lzop *archive);
 XXFC_API uint8_t xx_lzop_get_method(const xx_lzop *archive);
 XXFC_API uint8_t xx_lzop_get_level(const xx_lzop *archive);
-/** Stored file name, or NULL when the header carried none. */
+/** Record name (safe relative path) of the FIRST stream, or NULL when its
+ *  header carried no name, or nothing of it was safe to keep. */
 XXFC_API const char *xx_lzop_get_stored_name(const xx_lzop *archive);
+/** Record name of stream index: a relative path with '/' separators, always
+ *  set after handle_base_info. */
+XXFC_API const char *xx_lzop_get_stream_name(const xx_lzop *archive,
+                                             uint64_t index);
+XXFC_API uint64_t xx_lzop_get_stream_uncompressed_size(const xx_lzop *archive,
+                                                       uint64_t index);
+/** Decode one stream (one archive record) into destination. */
+XXFC_API bool xx_lzop_unpack_stream_to_device(xx_lzop *archive, uint64_t index,
+                                              xx_io_device *destination,
+                                              xx_pd_struct *pd);
 
 static inline Abstractformat *xx_lzop_to_format(xx_lzop *archive) {
     return archive ? &archive->format : NULL;

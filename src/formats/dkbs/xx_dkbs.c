@@ -113,6 +113,8 @@ static bool xx_dkbs_parse(Abstractformat *self, xx_dkbs_private *parsed,
     static const char magic[XX_DKBS_MAGIC_SIZE] = {'_', 'd', 'k', 'b', 's', '_'};
     uint8_t header[XX_DKBS_HEADER_SIZE];
     uint32_t big_value;
+    uint32_t little_value;
+    int64_t available;
     /* Initialise before the guard clause: callers run the cleanup on their
      * stack copy whatever this returns. */
     if (parsed) {
@@ -145,29 +147,17 @@ static bool xx_dkbs_parse(Abstractformat *self, xx_dkbs_private *parsed,
                              parsed->boot_device)) {
         goto fail;
     }
-
     /*
-     * The size field has no endianness marker.  Read it big endian; accept
-     * that reading when the top byte is clear (the value is under 16 MiB,
-     * which every real payload is) and fall back to little endian otherwise.
-     * This is binwalk's heuristic, ported as-is so the two agree on the same
-     * image.  It is a heuristic, not a proof: a little endian payload of
-     * exactly the wrong shape could be misread, and the bound below is what
-     * turns that into a clean rejection.
+     * The literal is part of the board ID string ("<prefix>_dkbs_<model>"),
+     * so the string must run through it.  binwalk does not check this; a
+     * NUL inside the seven prefix bytes would leave "_dkbs_" floating in the
+     * padding of a short string, which no producer does and which only
+     * widens what random data can pass for a header.
      */
-    big_value = xx_data_get_u32(header, XX_DKBS_HEADER_SIZE,
-                                XX_DKBS_DATA_SIZE_OFFSET, true);
-    if ((big_value & UINT32_C(0xFF000000)) == 0U) {
-        parsed->raw_data_size = big_value;
-        parsed->size_is_big_endian = true;
-    } else {
-        parsed->raw_data_size = xx_data_get_u32(header, XX_DKBS_HEADER_SIZE,
-                                                XX_DKBS_DATA_SIZE_OFFSET,
-                                                false);
-        parsed->size_is_big_endian = false;
+    if (xx_str_len(parsed->board_id) <
+        (size_t)(XX_DKBS_MAGIC_OFFSET + XX_DKBS_MAGIC_SIZE)) {
+        goto fail;
     }
-    /* A zero length describes no payload; no producer emits one. */
-    if (parsed->raw_data_size == 0U) goto fail;
 
     /*
      * The declared length is attacker controlled, so it is bounded against
@@ -176,9 +166,50 @@ static bool xx_dkbs_parse(Abstractformat *self, xx_dkbs_private *parsed,
      * before any buffer is sized from it.
      */
     if (!xx_dkbs_add(self->base_address, XX_DKBS_HEADER_SIZE,
-                     &parsed->data_offset)) {
+                     &parsed->data_offset) ||
+        parsed->data_offset > parsed->input_size) {
         goto fail;
     }
+    available = parsed->input_size - parsed->data_offset;
+
+    /*
+     * The size field has no endianness marker.  binwalk reads it big endian
+     * and keeps that reading whenever its top byte is clear (under 16 MiB),
+     * falling back to little endian otherwise.  On its own that misreads a
+     * little endian payload whose low byte is zero: 1 MiB stored LE is
+     * 00 00 10 00, which big endian reads as 4 KiB, fits, and silently
+     * splits the image in the wrong place.
+     *
+     * So the reading that ends the payload exactly at the end of the input
+     * wins first -- the shape of every standalone image, and decisive
+     * evidence of the field's byte order.  Only when neither reading does is
+     * binwalk's rule applied, and a reading that does not fit is never
+     * taken.  Where binwalk accepts an image this picks the same reading
+     * unless the other one explains the file exactly; it additionally
+     * accepts a little endian image whose big endian reading has a clear
+     * top byte but overruns the input, which binwalk rejects outright.
+     */
+    big_value = xx_data_get_u32(header, XX_DKBS_HEADER_SIZE,
+                                XX_DKBS_DATA_SIZE_OFFSET, true);
+    little_value = xx_data_get_u32(header, XX_DKBS_HEADER_SIZE,
+                                   XX_DKBS_DATA_SIZE_OFFSET, false);
+    /* A zero length describes no payload; no producer emits one.  Zero
+     * reads the same in both byte orders. */
+    if (big_value == 0U) goto fail;
+    if ((int64_t)big_value == available) {
+        parsed->size_is_big_endian = true;
+    } else if ((int64_t)little_value == available) {
+        parsed->size_is_big_endian = false;
+    } else if ((big_value & UINT32_C(0xFF000000)) == 0U &&
+               (int64_t)big_value <= available) {
+        parsed->size_is_big_endian = true;
+    } else if ((int64_t)little_value <= available) {
+        parsed->size_is_big_endian = false;
+    } else {
+        goto fail;
+    }
+    parsed->raw_data_size =
+        parsed->size_is_big_endian ? big_value : little_value;
     parsed->data_size = (int64_t)parsed->raw_data_size;
     if (!xx_dkbs_range_within(parsed->input_size, parsed->data_offset,
                               parsed->data_size) ||
@@ -264,9 +295,9 @@ void xx_dkbs_init(xx_dkbs *dkbs, xx_io_device *dev, int64_t base_address) {
     xx_mem_zero(dkbs, sizeof(*dkbs));
     xx_format_init(&dkbs->format, dev, base_address);
     /* The identification strings are bytes and the one numeric field is
-     * endianness-detected per image, so the container itself has no fixed
-     * endianness; big is reported because that is what the size field is on
-     * every image the heuristic accepts outright. */
+     * endianness-detected per image.  Big is only the default until
+     * handle_base_info replaces it with the byte order the size field was
+     * actually read in. */
     dkbs->format.endian = XX_ENDIAN_BIG;
     dkbs->format.file_type = XX_DKBS_FILE_TYPE;
     dkbs->format.format_type = XX_TYPE_ARCHIVE;
@@ -347,6 +378,10 @@ bool xx_dkbs_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     dkbs->data_size = parsed->raw_data_size;
     dkbs->header_size = XX_DKBS_HEADER_SIZE;
     dkbs->size_is_big_endian = parsed->size_is_big_endian;
+    /* The size field is the header's only numeric field, so the byte order
+     * it was read in is the image's endianness. */
+    self->endian =
+        parsed->size_is_big_endian ? XX_ENDIAN_BIG : XX_ENDIAN_LITTLE;
     dkbs->archive_end = parsed->archive_end;
     self->format_size = parsed->archive_end - self->base_address;
     total_size = xx_io_total_size(self->device);

@@ -22,10 +22,17 @@
  * first four bytes of the file are dropped.
  *
  * Working the signature back through the transform shows what it pins down:
- * 00 D5 08 00 becomes the LZMA properties byte 0x5D and the dictionary size
- * 0x00800000, which is exactly the lzma_alone header a stock Arcadyan build
- * emits.  The eight bytes that follow are the declared uncompressed size, and
- * those are attacker controlled - they are bounded here rather than believed.
+ * 00 D5 08 00 becomes the LZMA properties byte 0x5D and the low three bytes
+ * of the dictionary size, 0x??800000 (0x00800000 in a stock Arcadyan build).
+ * The dictionary's top byte and the eight-byte declared uncompressed size
+ * that follow are attacker controlled - they are bounded here rather than
+ * believed.
+ *
+ * Four bytes at a fixed offset are a weak signature, so, like binwalk (which
+ * dry-runs the whole decode), the reader only accepts an image whose stream
+ * actually decodes: the range coder's leading zero byte is checked and the
+ * first 64 KiB of output (or the whole stream, when shorter) is trial
+ * decoded, with bounded input, bounded dictionary and no output kept.
  *
  * Because the first 0x88 bytes are shuffled, the record this reader publishes
  * does NOT correspond to a contiguous run of bytes on the device.  Reading
@@ -77,7 +84,7 @@ struct xx_arcadyan {
     uint64_t number_of_members;
     uint64_t declared_size; /**< LZMA uncompressed size, UINT64_MAX if unset. */
     uint32_t dictionary_size; /**< LZMA dictionary size from the header. */
-    uint8_t properties;       /**< LZMA properties byte; 0x5D in practice. */
+    uint8_t properties;       /**< LZMA properties byte; always 0x5D. */
     int64_t stream_size;      /**< Bytes of LZMA-alone stream published. */
     int64_t archive_end;      /**< End of the image, or -1. */
     void *internal;

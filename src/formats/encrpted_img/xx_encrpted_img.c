@@ -2,8 +2,9 @@
  * SPDX-License-Identifier: MIT
  *
  * D-Link "encrpted_img" encrypted firmware images.  The framing follows
- * binwalk's src/signatures/encrpted_img.rs, which is the whole of what is
- * established about this container: a twelve-byte ASCII tag and ciphertext to
+ * binwalk's src/signatures/encrpted_img.rs and the `delink` decryptor it
+ * calls, which is the whole of what is established about this container: a
+ * twelve-byte ASCII tag, four uninterpreted bytes, and ciphertext from +16 to
  * end of file.  The notes live in xx_encrpted_img.h.
  *
  * NO DECRYPTION IS ATTEMPTED, EVER.  There is no key table here, no key
@@ -87,9 +88,9 @@ static bool xx_encrpted_img_parse(Abstractformat *self,
     parsed->input_size = xx_io_total_size(self->device);
     if (parsed->input_size < self->base_address) return false;
     span = parsed->input_size - self->base_address;
-    /* Strictly more than the tag: a tag with no ciphertext behind it is not
-     * an image. */
-    if (span <= (int64_t)XX_ENCRPTED_IMG_MAGIC_SIZE) return false;
+    /* Strictly more than the header: a header with no ciphertext behind it
+     * is not an image. */
+    if (span <= (int64_t)XX_ENCRPTED_IMG_HEADER_SIZE) return false;
 
     if (!xx_encrpted_img_read_at(self->device, self->base_address, magic,
                                  XX_ENCRPTED_IMG_MAGIC_SIZE)) {
@@ -99,9 +100,11 @@ static bool xx_encrpted_img_parse(Abstractformat *self,
                      XX_ENCRPTED_IMG_MAGIC_SIZE) != 0) {
         return false;
     }
+    /* span > HEADER_SIZE and base_address + span == input_size, so neither
+     * expression can overflow. */
     parsed->payload_offset =
-        self->base_address + (int64_t)XX_ENCRPTED_IMG_MAGIC_SIZE;
-    parsed->payload_size = span - (int64_t)XX_ENCRPTED_IMG_MAGIC_SIZE;
+        self->base_address + (int64_t)XX_ENCRPTED_IMG_HEADER_SIZE;
+    parsed->payload_size = span - (int64_t)XX_ENCRPTED_IMG_HEADER_SIZE;
     return true;
 }
 
@@ -133,8 +136,8 @@ static bool xx_encrpted_img_populate_record(
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset =
-        parsed->payload_offset - (int64_t)XX_ENCRPTED_IMG_MAGIC_SIZE;
-    record->header_size = (int64_t)XX_ENCRPTED_IMG_MAGIC_SIZE;
+        parsed->payload_offset - (int64_t)XX_ENCRPTED_IMG_HEADER_SIZE;
+    record->header_size = (int64_t)XX_ENCRPTED_IMG_HEADER_SIZE;
     record->data_offset = parsed->payload_offset;
     record->compressed_size = parsed->payload_size;
     /* The plaintext size is unknown and unknowable without the key, so the
@@ -243,7 +246,7 @@ bool xx_encrpted_img_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     image->payload_size = parsed->payload_size;
     /* The ciphertext runs to end of file, so there is never an overlay. */
     self->format_size =
-        (int64_t)XX_ENCRPTED_IMG_MAGIC_SIZE + parsed->payload_size;
+        (int64_t)XX_ENCRPTED_IMG_HEADER_SIZE + parsed->payload_size;
     self->overlay_offset = -1;
     self->overlay_size = 0;
     self->number_of_archive_records = 1U;

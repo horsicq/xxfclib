@@ -20,7 +20,6 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 
-#include <limits.h>
 #include <stdio.h>
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
@@ -44,9 +43,12 @@
 /* PalmOS aligns the first block to an even offset, so writers emit either
  * nothing or a two-byte filler between the entry list and the first block. */
 #define PDB_MAX_FILLER 2
-/* "record_" + 5 digits + ".bin", or a sanitised 4CC + '_' + 5 digits +
- * ".bin"; the widest of those is 17 bytes plus its terminator. */
+/* "record_" + 5 digits + ".bin" (16), a sanitised 4CC + '_' + 5 digits +
+ * ".bin" (14), or that resource name with "_" + a 5-digit entry index
+ * inserted before ".bin" (20); plus the terminator. */
 #define PDB_NAME_BUFFER 24
+/* Extraction streams through a buffer of this size, never a whole block. */
+#define PDB_COPY_CHUNK 65536U
 
 typedef enum pdb_kind_e {
     PDB_KIND_APPINFO = 0,
@@ -95,6 +97,44 @@ static bool pdb_read_at(xx_io_device *device, int64_t offset, void *buffer,
         done += (size_t)amount;
     }
     return true;
+}
+
+/* Stream `size` bytes at `offset` into `destination` (or just read them
+ * through when it is NULL) in fixed chunks.  The last block runs to EOF, so a
+ * member can be as large as the file itself; buffering it whole would let
+ * one crafted database demand an allocation of the file's size. */
+static bool pdb_copy_range(xx_io_device *source, int64_t offset, int64_t size,
+                           xx_io_device *destination, xx_pd_struct *pd) {
+    uint8_t *buffer;
+    int64_t remaining = size;
+    bool ok = true;
+    if (!source || offset < 0 || size < 0) return false;
+    if (size == 0) return true;
+    buffer = (uint8_t *)xx_mem_alloc(PDB_COPY_CHUNK);
+    if (!buffer) return false;
+    while (ok && remaining > 0) {
+        size_t chunk = remaining > (int64_t)PDB_COPY_CHUNK
+                           ? (size_t)PDB_COPY_CHUNK
+                           : (size_t)remaining;
+        size_t written = 0U;
+        if ((pd && xx_pd_is_stopped(pd)) ||
+            !pdb_read_at(source, offset + (size - remaining), buffer, chunk)) {
+            ok = false;
+            break;
+        }
+        while (destination && written < chunk) {
+            ssize_t amount = xx_io_write(destination, buffer + written,
+                                         chunk - written);
+            if (amount <= 0 || (size_t)amount > chunk - written) {
+                ok = false;
+                break;
+            }
+            written += (size_t)amount;
+        }
+        remaining -= (int64_t)chunk;
+    }
+    xx_mem_free(buffer);
+    return ok;
 }
 
 static bool pdb_range_within(int64_t total, int64_t offset, int64_t size) {
@@ -168,6 +208,76 @@ static size_t pdb_write_token(char *out, uint32_t value) {
     return 4U;
 }
 
+/* Resource names are "<token>_<id>.bin", and nothing in the format stops two
+ * entries from sharing a (type, id) - or from having types that differ only
+ * in case, or that sanitise to the same token ("../." and "...." both give
+ * "____").  Written as they are, the later member would silently overwrite
+ * the earlier one, on a case-insensitive filesystem even for "abcd"/"ABCD".
+ *
+ * So each resource gets a 64-bit key: the token as it is written, folded to
+ * lower case (32 bits), the id (16 bits), and the entry index (16 bits).
+ * Sorting the keys puts every group of case-insensitively equal names next
+ * to each other, lowest entry index first.  The first entry of a group keeps
+ * its plain name and every later one has "_<entry index>" appended.  The sort
+ * is a heapsort, O(n log n) whatever the input, so a crafted table cannot
+ * make the probe quadratic.
+ *
+ * That makes every member name unique, even case-insensitively.  A suffixed
+ * name is 20 characters long, a plain resource name 14, "record_NNNNN.bin"
+ * 16, "appinfo.bin" 11 and "sortinfo.bin" 12, so different shapes never
+ * collide.  Within a shape, record names carry their unique entry index,
+ * plain resource names are unique by construction, and suffixed names carry
+ * their unique entry index. */
+static uint64_t pdb_resource_key(uint32_t type, uint32_t id, int32_t index) {
+    uint32_t folded = 0U;
+    size_t at;
+    char token[4];
+    (void)pdb_write_token(token, type);
+    for (at = 0U; at < 4U; ++at) {
+        uint8_t c = (uint8_t)token[at];
+        if (c >= 'A' && c <= 'Z') c = (uint8_t)(c - 'A' + 'a');
+        folded = (folded << 8U) | (uint32_t)c;
+    }
+    return ((uint64_t)folded << 32U) | ((uint64_t)(id & 0xffffU) << 16U) |
+           (uint64_t)((uint32_t)index & 0xffffU);
+}
+
+static int pdb_compare_keys(const void *left, const void *right) {
+    uint64_t a = *(const uint64_t *)left;
+    uint64_t b = *(const uint64_t *)right;
+    return a < b ? -1 : (a > b ? 1 : 0);
+}
+
+/* Insert "_" + five digits in front of the ".bin" that ends `name`. */
+static bool pdb_append_index(char *name, uint32_t index) {
+    size_t length = 0U;
+    size_t at;
+    while (length < PDB_NAME_BUFFER && name[length] != 0) ++length;
+    if (length < 4U || length + 6U >= PDB_NAME_BUFFER) return false;
+    at = length - 4U;
+    name[at++] = '_';
+    at += pdb_write_number(name + at, index);
+    at += pdb_write_literal(name + at, ".bin");
+    name[at] = 0;
+    return true;
+}
+
+/* `resources` are the entry members in entry order and `keys` holds one
+ * pdb_resource_key per entry; the keys are sorted in place. */
+static bool pdb_make_names_unique(pdb_member *resources, uint64_t *keys,
+                                  size_t count) {
+    size_t index;
+    if (count < 2U) return true;
+    xx_rt_qsort(keys, count, sizeof(*keys), pdb_compare_keys);
+    for (index = 1U; index < count; ++index) {
+        uint32_t entry = (uint32_t)(keys[index] & 0xffffU);
+        if ((keys[index] >> 16U) != (keys[index - 1U] >> 16U)) continue;
+        if (entry >= count || !pdb_append_index(resources[entry].name, entry))
+            return false;
+    }
+    return true;
+}
+
 static void pdb_stream_free(void *opaque) {
     pdb_stream *stream = (pdb_stream *)opaque;
     if (!stream) return;
@@ -178,6 +288,7 @@ static void pdb_stream_free(void *opaque) {
 static bool pdb_parse(Abstractformat *format, pdb_stream **result) {
     uint8_t header[PDB_HEADER_SIZE];
     uint8_t *entries = NULL;
+    uint64_t *keys = NULL;
     pdb_stream *stream = NULL;
     pdb_member *items = NULL;
     int64_t total, size, app_info, sort_info, entry_size, table_size;
@@ -217,11 +328,34 @@ static bool pdb_parse(Abstractformat *format, pdb_stream **result) {
     if (!pdb_range_within(size, PDB_HEADER_SIZE, table_size)) return false;
     header_size = (int64_t)PDB_HEADER_SIZE + table_size;
 
+    /* Cheap gate before anything is allocated: the first block in file
+     * order (appInfo, else sortInfo, else entry 0) has to start right behind
+     * the entry table and before EOF.  This parse doubles as the magic-less
+     * detection probe, so garbage must fall out here after two small reads
+     * rather than after a table-sized allocation. */
+    {
+        int64_t first = app_info != 0 ? app_info : sort_info;
+        if (first == 0) {
+            uint8_t entry[PDB_RESOURCE_ENTRY_SIZE];
+            if (!pdb_read_at(format->device,
+                             format->base_address + PDB_HEADER_SIZE, entry,
+                             (size_t)entry_size))
+                return false;
+            first = (int64_t)pdb_be32(entry + (resource_database ? 6U : 0U));
+        }
+        if (first < header_size || first - header_size > PDB_MAX_FILLER ||
+            first >= size)
+            return false;
+    }
+
     entries = (uint8_t *)xx_mem_alloc((size_t)table_size);
     /* Two extra slots hold the optional appInfo and sortInfo blocks. */
     capacity = (size_t)entry_count + 2U;
     items = (pdb_member *)xx_mem_alloc(capacity * sizeof(*items));
-    if (!entries || !items ||
+    /* One uniqueness key per resource: at most 65535 * 8 bytes. */
+    if (resource_database)
+        keys = (uint64_t *)xx_mem_alloc((size_t)entry_count * sizeof(*keys));
+    if (!entries || !items || (resource_database && !keys) ||
         !pdb_read_at(format->device, format->base_address + PDB_HEADER_SIZE,
                      entries, (size_t)table_size))
         goto fail;
@@ -261,6 +395,7 @@ static bool pdb_parse(Abstractformat *format, pdb_stream **result) {
             member->name[at++] = '_';
             at += pdb_write_number(member->name + at, resource_id);
             at += pdb_write_literal(member->name + at, ".bin");
+            keys[index] = pdb_resource_key(resource_type, resource_id, index);
         } else {
             member->kind = PDB_KIND_RECORD;
             member->offset = (int64_t)pdb_be32(entry);
@@ -273,6 +408,13 @@ static bool pdb_parse(Abstractformat *format, pdb_stream **result) {
         }
         member->name[at] = 0;
     }
+    /* Record names carry their entry index and are unique already; resource
+     * names are not (see pdb_make_names_unique).  The entry members are the
+     * last entry_count items, after the optional appInfo and sortInfo. */
+    if (resource_database &&
+        !pdb_make_names_unique(items + (count - (size_t)entry_count), keys,
+                               (size_t)entry_count))
+        goto fail;
 
     /* Monotonic, in range, and starting right behind the entry table apart
      * from the two-byte alignment filler PalmOS writers emit. */
@@ -302,10 +444,12 @@ static bool pdb_parse(Abstractformat *format, pdb_stream **result) {
     stream->header_size = header_size;
     stream->is_resource_database = resource_database;
     xx_mem_free(entries);
+    if (keys) xx_mem_free(keys);
     *result = stream;
     return true;
 fail:
     if (entries) xx_mem_free(entries);
+    if (keys) xx_mem_free(keys);
     if (items) xx_mem_free(items);
     return false;
 }
@@ -499,27 +643,18 @@ bool xx_pdb_unpack_current_archive_record(Abstractformat *format,
     const char *base = NULL;
     char *owned_base = NULL;
     char *path = NULL;
-    uint8_t *plain = NULL;
-    size_t plain_size = 0U, written = 0U;
     bool result = false;
     if (!format || !state || state->format != format || !state->has_record ||
         !(stream = (pdb_stream *)state->internal_state) ||
         stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
-    if (member->size < 0 || (uint64_t)member->size > (uint64_t)SIZE_MAX)
-        return false;
-    plain_size = (size_t)member->size;
-    plain = (uint8_t *)xx_mem_alloc(plain_size != 0U ? plain_size : 1U);
-    if (!plain) return false;
-    if (plain_size != 0U &&
-        !pdb_read_at(format->device, member->offset, plain, plain_size))
-        goto done;
+    if (member->size < 0 || member->offset < 0) return false;
     path_option = pdb_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option) {
-        result = true;
-        goto done;
-    }
+    if (!path_option)
+        /* No destination: read the block through, which verifies it. */
+        return pdb_copy_range(format->device, member->offset, member->size,
+                              NULL, pd);
     if (path_option->type == XX_VAR_TYPE_STRING ||
         path_option->type == XX_VAR_TYPE_STRING_VIEW)
         base = xx_var_get_str(path_option);
@@ -529,6 +664,9 @@ bool xx_pdb_unpack_current_archive_record(Abstractformat *format,
         base = owned_base;
     }
     if (!base) goto done;
+    /* member->name is generated here, never taken from the file: "record_",
+     * "appinfo", "sortinfo" or a 4CC reduced to [A-Za-z0-9_-], plus digits
+     * and ".bin" - so it can carry no separator, drive or "..". */
     path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
             base[xx_str_len(base) - 1U] != '\\')
                ? xx_str_concat3(base, "/", member->name)
@@ -537,21 +675,12 @@ bool xx_pdb_unpack_current_archive_record(Abstractformat *format,
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
         if (!destination) goto done;
-        result = true;
-        while (written < plain_size) {
-            ssize_t amount = xx_io_write(destination, plain + written,
-                                         plain_size - written);
-            if (amount <= 0 || (size_t)amount > plain_size - written) {
-                result = false;
-                break;
-            }
-            written += (size_t)amount;
-        }
+        result = pdb_copy_range(format->device, member->offset, member->size,
+                                destination, pd);
         if (xx_io_close(destination) != 0) result = false;
     }
 done:
     if (!result && path) xx_rt_remove(path);
-    if (plain) xx_mem_free(plain);
     if (path) xx_str_free(path);
     if (owned_base) xx_str_free(owned_base);
     return result;

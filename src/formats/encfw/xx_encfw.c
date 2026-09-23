@@ -9,14 +9,20 @@
  *
  * NO DECRYPTION IS ATTEMPTED, EVER.  There is no key table here, no key
  * search, no passphrase input.  The reader identifies the container, names
- * the device, publishes the ciphertext region as one record carrying
- * XX_META_ID_IS_ENCRYPTED, and returns false from the unpack entry point.
- * src/formats/luks/xx_luks.c is the model.
+ * the device, publishes the ciphertext - the whole image, tag included, since
+ * delink decrypts from byte 0 - as one record carrying
+ * XX_META_ID_IS_ENCRYPTED, and returns false from the unpack entry point, so
+ * extraction writes nothing.  src/formats/luks/xx_luks.c is the model.
+ *
+ * The record's XX_META_ID_ENCRYPTION_METHOD is XX_ZIP_ENCRYPTION_AES_256, the
+ * library's one named AES-256 value; the device tag is not a method and goes
+ * into XX_META_ID_COMMENT instead, next to the device name.
  */
 
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/encfw/xx_encfw.h"
 
+#include "xxfclib/formats/zip/xx_zip.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
@@ -31,6 +37,24 @@
 #endif
 
 #define XX_ENCFW_MEMBER_NAME "payload.enc"
+
+/* What the record publishes as its encryption method.  Every image is
+ * AES-256-CBC (delink's encimg.rs); the library's only AES-256 identifier is
+ * the ZIP one, so that value is reused rather than a new number invented.
+ * The CBC mode is spelled out in the record comment. */
+#define XX_ENCFW_ENCRYPTION_METHOD ((uint64_t)XX_ZIP_ENCRYPTION_AES_256)
+#define XX_ENCFW_CIPHER_NAME "AES-256-CBC"
+
+/* Room for "device=" + the longest device name + " tag=" + 8 hex digits +
+ * " cipher=" + the cipher name + NUL, with slack. */
+#define XX_ENCFW_COMMENT_CAPACITY 96U
+
+/* The statistics sample must lie inside every image the size floor admits. */
+typedef char xx_encfw_sample_fits_check
+    [(XX_ENCFW_SAMPLE_SIZE <= XX_ENCFW_MIN_SIZE &&
+      XX_ENCFW_MAGIC_SIZE <= XX_ENCFW_SAMPLE_SIZE)
+         ? 1
+         : -1];
 
 typedef struct xx_encfw_entry_s {
     uint8_t magic[XX_ENCFW_MAGIC_SIZE];
@@ -92,6 +116,83 @@ static const char *xx_encfw_lookup(const uint8_t *magic) {
     return NULL;
 }
 
+/* Streams the first XX_ENCFW_SAMPLE_SIZE bytes of the image through a byte
+ * histogram and reports whether they look like block-cipher output.  The
+ * caller has already established that the image is at least that long.  The
+ * buffer is small and fixed; the read is bounded by the sample size. */
+static bool xx_encfw_looks_like_ciphertext(xx_io_device *device,
+                                           int64_t offset) {
+    uint8_t buffer[512];
+    uint16_t counts[256];
+    size_t done = 0U;
+    size_t index;
+    unsigned distinct = 0U;
+
+    xx_rt_memset(counts, 0, sizeof(counts));
+    while (done < (size_t)XX_ENCFW_SAMPLE_SIZE) {
+        size_t chunk = (size_t)XX_ENCFW_SAMPLE_SIZE - done;
+        if (chunk > sizeof(buffer)) chunk = sizeof(buffer);
+        if (!xx_encfw_read_at(device, offset + (int64_t)done, buffer, chunk)) {
+            return false;
+        }
+        for (index = 0U; index < chunk; ++index) {
+            if (++counts[buffer[index]] > XX_ENCFW_MAX_BYTE_COUNT) {
+                return false;
+            }
+        }
+        done += chunk;
+    }
+    for (index = 0U; index < 256U; ++index) {
+        if (counts[index] != 0U) ++distinct;
+    }
+    return distinct >= XX_ENCFW_MIN_DISTINCT;
+}
+
+/* Bounded append: never writes past capacity, always leaves a terminator. */
+static void xx_encfw_append_text(char *buffer, size_t capacity, size_t *used,
+                                 const char *text) {
+    size_t index = 0U;
+
+    if (!buffer || !used || capacity == 0U || *used >= capacity) return;
+    if (text) {
+        while (text[index] != '\0' && *used + 1U < capacity) {
+            buffer[*used] = text[index];
+            ++(*used);
+            ++index;
+        }
+    }
+    buffer[*used] = '\0';
+}
+
+/* The tag as eight lowercase hex digits, in file order. */
+static void xx_encfw_append_tag(char *buffer, size_t capacity, size_t *used,
+                                uint32_t magic) {
+    static const char digits[] = "0123456789abcdef";
+    char text[9];
+    unsigned index;
+
+    for (index = 0U; index < 8U; ++index) {
+        text[index] = digits[(magic >> (28U - 4U * index)) & 0x0FU];
+    }
+    text[8] = '\0';
+    xx_encfw_append_text(buffer, capacity, used, text);
+}
+
+/* "device=<name> tag=<8 hex digits> cipher=AES-256-CBC" */
+static void xx_encfw_describe(char *buffer, size_t capacity,
+                              const xx_encfw_private *parsed) {
+    size_t used = 0U;
+
+    if (!buffer || capacity == 0U) return;
+    buffer[0] = '\0';
+    xx_encfw_append_text(buffer, capacity, &used, "device=");
+    xx_encfw_append_text(buffer, capacity, &used, parsed->device);
+    xx_encfw_append_text(buffer, capacity, &used, " tag=");
+    xx_encfw_append_tag(buffer, capacity, &used, parsed->magic);
+    xx_encfw_append_text(buffer, capacity, &used, " cipher=");
+    xx_encfw_append_text(buffer, capacity, &used, XX_ENCFW_CIPHER_NAME);
+}
+
 static void xx_encfw_private_free(void *pointer) {
     /* The device name is a static string and the struct owns nothing else. */
     if (pointer) xx_mem_free(pointer);
@@ -118,11 +219,13 @@ static bool xx_encfw_parse(Abstractformat *self, xx_encfw_private *parsed,
     if (parsed->input_size < self->base_address) return false;
     span = parsed->input_size - self->base_address;
 
-    /* The four-byte tag carries no structure to check it against, so the size
-     * floor below is the only corroboration there is.  A real D-Link image is
-     * megabytes; a coincidental four-byte hit in something small is not one.
-     * This is still weak - see the WEAK MAGIC note in xx_encfw.h. */
-    if (span < (int64_t)XX_ENCFW_MAGIC_SIZE + XX_ENCFW_MIN_PAYLOAD) {
+    /* The four-byte tag carries no structure to check it against, so what a
+     * genuine image must also be stands in for it (see the WEAK MAGIC note in
+     * xx_encfw.h).  The cheap checks run first: size and alignment need no
+     * read, the tag needs four bytes, and only a file that carries a known
+     * tag pays for the statistics sample. */
+    if (span < (int64_t)XX_ENCFW_MIN_SIZE ||
+        (span % (int64_t)XX_ENCFW_BLOCK_SIZE) != 0) {
         return false;
     }
     if (!xx_encfw_read_at(self->device, self->base_address, magic,
@@ -131,13 +234,19 @@ static bool xx_encfw_parse(Abstractformat *self, xx_encfw_private *parsed,
     }
     device = xx_encfw_lookup(magic);
     if (!device) return false;
+    if (pd && xx_pd_is_stopped(pd)) return false;
+    if (!xx_encfw_looks_like_ciphertext(self->device, self->base_address)) {
+        return false;
+    }
 
     parsed->device = device;
     /* Read big endian purely so the value prints in file order. */
     parsed->magic = ((uint32_t)magic[0] << 24) | ((uint32_t)magic[1] << 16) |
                     ((uint32_t)magic[2] << 8) | (uint32_t)magic[3];
-    parsed->payload_offset = self->base_address + (int64_t)XX_ENCFW_MAGIC_SIZE;
-    parsed->payload_size = span - (int64_t)XX_ENCFW_MAGIC_SIZE;
+    /* The tag is the start of the first cipher block, so the ciphertext is
+     * the whole image. */
+    parsed->payload_offset = self->base_address;
+    parsed->payload_size = span;
     return true;
 }
 
@@ -165,11 +274,15 @@ static bool xx_encfw_copy_options(xx_list_s *destination,
 
 static bool xx_encfw_populate_record(xx_archive_record *record,
                                      const xx_encfw_private *parsed) {
-    if (!record || !parsed) return false;
+    char detail[XX_ENCFW_COMMENT_CAPACITY];
+
+    if (!record || !parsed || !parsed->device) return false;
+    xx_encfw_describe(detail, sizeof(detail), parsed);
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
-    record->header_offset = parsed->payload_offset - XX_ENCFW_MAGIC_SIZE;
-    record->header_size = (int64_t)XX_ENCFW_MAGIC_SIZE;
+    /* There is no cleartext header: the tag is ciphertext too. */
+    record->header_offset = parsed->payload_offset;
+    record->header_size = 0;
     record->data_offset = parsed->payload_offset;
     record->compressed_size = parsed->payload_size;
     /* The plaintext size is unknown and unknowable without the key, so the
@@ -186,8 +299,11 @@ static bool xx_encfw_populate_record(xx_archive_record *record,
                                            false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
                                            true) &&
+           /* The cipher, not the tag: the tag is ciphertext, not a code. */
            xx_archive_record_set_meta_u64(record, XX_META_ID_ENCRYPTION_METHOD,
-                                          (uint64_t)parsed->magic);
+                                          XX_ENCFW_ENCRYPTION_METHOD) &&
+           /* Device name and tag, for display. */
+           xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, detail);
 }
 
 /* ----------------------------------------------------------- lifecycle -- */
@@ -279,7 +395,7 @@ bool xx_encfw_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     encfw->payload_offset = parsed->payload_offset;
     encfw->payload_size = parsed->payload_size;
     /* The ciphertext runs to end of file, so there is never an overlay. */
-    self->format_size = (int64_t)XX_ENCFW_MAGIC_SIZE + parsed->payload_size;
+    self->format_size = parsed->payload_size;
     self->overlay_offset = -1;
     self->overlay_size = 0;
     self->number_of_archive_records = 1U;
@@ -373,12 +489,12 @@ bool xx_encfw_unpack_current_archive_record(Abstractformat *self,
     (void)self;
     (void)state;
     (void)pd;
-    /* The refusal this reader exists to make.  Every byte of the payload is
+    /* The refusal this reader exists to make.  Every byte of the image is
      * ciphertext under a vendor key this library does not hold and does not
      * look for; there is nothing to unpack, and copying the ciphertext out
      * under the member's name would misrepresent it as the firmware's
-     * contents.  XX_META_ID_OPT_PASSWORD is deliberately NOT honoured: no
-     * passphrase is involved in this scheme at all. */
+     * contents.  Nothing is written.  XX_META_ID_OPT_PASSWORD is deliberately
+     * NOT honoured: no passphrase is involved in this scheme at all. */
     return false;
 }
 

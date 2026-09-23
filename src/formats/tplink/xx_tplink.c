@@ -31,8 +31,9 @@
 #define XX_TPLINK_FWVERSION_FIELD_SIZE 36U
 
 /*
- * The two salts published with OpenWrt's firmware-utils: the first is
- * mktplinkfw.c's, the second mktplinkfw2.c's.
+ * The two salts of OpenWrt's firmware-utils mktplinkfw.c (the v1, vendor-
+ * string header this reader parses): md5salt_normal for an image without a
+ * bootloader, md5salt_boot for one with.
  *
  * These are the one thing in this reader that could not be checked against a
  * local copy of their source - no copy of firmware-utils was available in the
@@ -42,14 +43,20 @@
  * nothing.  If one of these constants is wrong, the cost is a missing
  * "md5 verified" flag, never a rejected image - and vendor-rebuilt firmware
  * uses its own salts anyway, so the check could never have been mandatory.
+ * The digest is computed only by handle_base_info, never by the detection
+ * probe (check_is_valid), so it costs nothing at detection time.
  */
 #define XX_TPLINK_SALT_COUNT 2
 static const uint8_t xx_tplink_md5_salts[XX_TPLINK_SALT_COUNT]
                                         [XX_TPLINK_MD5_SIZE] = {
-    {0xEEU, 0xBBU, 0x74U, 0xC3U, 0xE9U, 0xEDU, 0x8BU, 0x5EU, 0x7DU, 0xD4U,
-     0x48U, 0xA4U, 0x6DU, 0x6CU, 0x5BU, 0x2DU},
-    {0x7AU, 0x2BU, 0x15U, 0xEDU, 0x9BU, 0x98U, 0x59U, 0x6DU, 0xE5U, 0x04U,
-     0xABU, 0x44U, 0xACU, 0x2AU, 0x9FU, 0x4EU}};
+    {0xDCU, 0xD7U, 0x3AU, 0xA5U, 0xC3U, 0x95U, 0x98U, 0xFBU, 0xDDU, 0xF9U,
+     0xE7U, 0xF4U, 0x0EU, 0xAEU, 0x47U, 0x38U},
+    {0x8CU, 0xEFU, 0x33U, 0x5BU, 0xD5U, 0xC5U, 0xCEU, 0xFAU, 0xA7U, 0x9CU,
+     0x28U, 0xDAU, 0xB2U, 0xE9U, 0x0FU, 0x42U}};
+
+/** region_code at +0x48 is a small enumerator (mktplinkfw: US = 1, the
+ *  universal/EU/BR builds 0); anything past this is not a TP-Link header. */
+#define XX_TPLINK_MAX_REGION_CODE 0xFFFFU
 
 typedef struct xx_tplink_region_s {
     const char *name; /**< A literal chosen here, never from the file. */
@@ -223,23 +230,23 @@ static bool xx_tplink_image_md5(xx_io_device *device, int64_t offset,
 /* ------------------------------------------------------------------------ */
 
 /* Decode the binary field block at +0x40 using one byte order and report
- * whether it is self-consistent: the three reserved words that binwalk checks
- * must be zero, fw_length must cover the header, and every declared region
- * must sit inside the image. */
+ * whether it is self-consistent: the two reserved words that binwalk checks
+ * (unk2 at +0x5C, unk3 at +0x70) must be zero, region_code at +0x48 must be a
+ * small enumerator (mktplinkfw writes 1 for US builds, so it is NOT required
+ * to be zero), and fw_length must cover the header and fit the device. */
 static bool xx_tplink_decode_linux(const uint8_t *header, int64_t input_size,
                                    int64_t base_address, bool big_endian,
                                    xx_tplink_private *out) {
     const size_t size = XX_TPLINK_HEADER_SIZE;
     const size_t at = XX_TPLINK_STRUCTURE_OFFSET;
-    uint32_t reserved1, reserved2, reserved3, reserved4;
+    uint32_t region_code, reserved2, reserved3;
     uint32_t image_size;
     int64_t archive_end;
-    reserved1 = xx_data_get_u32(header, size, at + 0x08U, big_endian);
+    region_code = xx_data_get_u32(header, size, at + 0x08U, big_endian);
     reserved2 = xx_data_get_u32(header, size, at + 0x1CU, big_endian);
     reserved3 = xx_data_get_u32(header, size, at + 0x30U, big_endian);
-    reserved4 = xx_data_get_u32(header, size, at + 0x5EU, big_endian);
-    if (reserved1 != 0U || reserved2 != 0U || reserved3 != 0U ||
-        reserved4 != 0U) {
+    if (region_code > XX_TPLINK_MAX_REGION_CODE || reserved2 != 0U ||
+        reserved3 != 0U) {
         return false;
     }
     image_size = xx_data_get_u32(header, size, at + 0x3CU, big_endian);
@@ -283,49 +290,97 @@ static bool xx_tplink_decode_linux(const uint8_t *header, int64_t input_size,
     return true;
 }
 
-/* Publish one of the three named regions, if it is declared and fits.  The
- * offsets are measured from the start of the header. */
-static bool xx_tplink_publish_region(xx_tplink_private *parsed,
-                                     int64_t base_address, const char *name,
-                                     uint32_t offset, uint32_t length) {
-    int64_t absolute;
-    if (length == 0U) return true; /* Absent, not malformed. */
-    /* Both fields come straight out of the file: the region has to lie inside
-     * the declared image AND inside the device. */
-    if (offset < XX_TPLINK_HEADER_SIZE || offset > parsed->image_size ||
-        length > parsed->image_size - offset) {
+/* True when a declared region [offset, offset + length) lies after the header,
+ * inside the declared image AND inside the device.  Both fields come straight
+ * out of the file. */
+static bool xx_tplink_region_fits(const xx_tplink_private *parsed,
+                                  int64_t base_address, uint32_t offset,
+                                  uint32_t length, int64_t *absolute) {
+    if (length == 0U || offset < XX_TPLINK_HEADER_SIZE ||
+        offset > parsed->image_size || length > parsed->image_size - offset) {
         return false;
     }
-    if (!xx_tplink_add(base_address, offset, &absolute) ||
-        !xx_tplink_range_within(parsed->input_size, absolute,
-                                (int64_t)length)) {
+    return xx_tplink_add(base_address, offset, absolute) &&
+           xx_tplink_range_within(parsed->input_size, *absolute,
+                                  (int64_t)length);
+}
+
+/* Publish the kernel, rootfs and bootloader regions of a decoded header.
+ *
+ * kernel and rootfs are strict: when one is declared (non-zero length) it must
+ * fit, otherwise the decode is rejected - that is what lets a wrong byte-order
+ * guess fall through to the other one.  The bootloader span is lenient: it is
+ * published when it fits and skipped when it does not.  At least one of
+ * kernel/rootfs must be present: an empty table describes no payload, which
+ * means the layout was misread.
+ *
+ * Every offset is taken as a FILE offset from the start of this header.  That
+ * is unverified for stock TP-Link "_up_boot" images; see "Unverified: stock
+ * _up_boot images" in xx_tplink.h for what goes wrong if they use flash
+ * offsets instead (kernel/rootfs silently shifted, bootloader skipped). */
+static bool xx_tplink_publish_regions(xx_tplink_private *parsed,
+                                      int64_t base_address) {
+    int64_t absolute = 0;
+    parsed->count = 0U;
+    if (parsed->kernel_length == 0U && parsed->rootfs_length == 0U) {
         return false;
     }
-    xx_tplink_push(parsed, name, absolute, (int64_t)length);
-    return true;
+    if (parsed->kernel_length != 0U) {
+        if (!xx_tplink_region_fits(parsed, base_address, parsed->kernel_offset,
+                                   parsed->kernel_length, &absolute)) {
+            return false;
+        }
+        xx_tplink_push(parsed, "kernel.bin", absolute,
+                       (int64_t)parsed->kernel_length);
+    }
+    if (parsed->rootfs_length != 0U) {
+        if (!xx_tplink_region_fits(parsed, base_address, parsed->rootfs_offset,
+                                   parsed->rootfs_length, &absolute)) {
+            return false;
+        }
+        xx_tplink_push(parsed, "rootfs.bin", absolute,
+                       (int64_t)parsed->rootfs_length);
+    }
+    if (parsed->bootloader_length != 0U &&
+        xx_tplink_region_fits(parsed, base_address, parsed->bootloader_offset,
+                              parsed->bootloader_length, &absolute)) {
+        xx_tplink_push(parsed, "bootloader.bin", absolute,
+                       (int64_t)parsed->bootloader_length);
+    }
+    return parsed->count != 0U;
 }
 
 static bool xx_tplink_parse_linux(Abstractformat *self, const uint8_t *header,
                                   int64_t input_size,
-                                  xx_tplink_private *parsed,
+                                  xx_tplink_private *parsed, bool want_md5,
                                   xx_pd_struct *pd) {
     xx_tplink_private candidate;
-    bool have = false;
+    int attempt;
     int salt;
+    bool have = false;
+
+    /* Only read after a successful decode fills it; zeroed so that is
+     * obvious to the compiler too (MSVC /W4 C4701). */
+    xx_mem_zero(&candidate, sizeof(candidate));
 
     /*
-     * mktplinkfw.c writes this header with htonl(), but binwalk decodes it
-     * little endian and the version word it matches - 01 00 00 00 - only reads
-     * as 1 that way.  Rather than pick a side, decode both and keep whichever
-     * is self-consistent; little endian is tried first so that a header which
-     * somehow satisfies both keeps binwalk's interpretation.
+     * mktplinkfw.c writes every field with htonl()/htons(), i.e. big endian;
+     * its version word HEADER_VERSION_V1 = 0x01000000 is what puts the bytes
+     * 01 00 00 00 at +0, which binwalk matches as a literal.  Big endian is
+     * therefore tried first.  A header whose big-endian decode does not yield
+     * a consistent image AND offset table falls back to little endian, the
+     * order binwalk's structure parser uses.  The whole decode, including the
+     * offset table, is redone per byte order: a fw_length can happen to fit
+     * the device in the wrong order (00 3C 00 00 reads as 0x3C00 little
+     * endian) while the offsets then cannot.
      */
-    if (xx_tplink_decode_linux(header, input_size, self->base_address, false,
-                               &candidate)) {
-        have = true;
-    } else if (xx_tplink_decode_linux(header, input_size, self->base_address,
-                                      true, &candidate)) {
-        have = true;
+    for (attempt = 0; attempt < 2 && !have; ++attempt) {
+        bool big_endian = (attempt == 0);
+        if (xx_tplink_decode_linux(header, input_size, self->base_address,
+                                   big_endian, &candidate) &&
+            xx_tplink_publish_regions(&candidate, self->base_address)) {
+            have = true;
+        }
     }
     if (!have) return false;
     *parsed = candidate;
@@ -337,26 +392,10 @@ static bool xx_tplink_parse_linux(Abstractformat *self, const uint8_t *header,
         XX_TPLINK_FWVERSION_FIELD_SIZE);
     if (!parsed->vendor_name || !parsed->firmware_version) return false;
 
-    if (!xx_tplink_publish_region(parsed, self->base_address, "kernel.bin",
-                                  parsed->kernel_offset,
-                                  parsed->kernel_length) ||
-        !xx_tplink_publish_region(parsed, self->base_address, "rootfs.bin",
-                                  parsed->rootfs_offset,
-                                  parsed->rootfs_length) ||
-        !xx_tplink_publish_region(parsed, self->base_address, "bootloader.bin",
-                                  parsed->bootloader_offset,
-                                  parsed->bootloader_length)) {
-        return false;
-    }
-    /*
-     * A header with an entirely empty offset table describes no payload.
-     * Unlike the reserved words, the offsets ARE reliably filled in by every
-     * producer, so publishing nothing means the layout was misread.
-     */
-    if (parsed->count == 0U) return false;
-
-    /* Advisory digest check; see the salt table comment.  Never fatal. */
-    if ((int64_t)parsed->image_size <= (int64_t)XX_TPLINK_MD5_LIMIT) {
+    /* Advisory digest check; see the salt table comment.  Never fatal, and
+     * never run from the detection probe. */
+    if (want_md5 &&
+        (int64_t)parsed->image_size <= (int64_t)XX_TPLINK_MD5_LIMIT) {
         for (salt = 0; salt < XX_TPLINK_SALT_COUNT; ++salt) {
             uint8_t computed[XX_TPLINK_MD5_SIZE];
             if (!xx_tplink_image_md5(self->device, self->base_address,
@@ -427,8 +466,10 @@ static bool xx_tplink_parse_rtos(Abstractformat *self, const uint8_t *header,
 /* Parse                                                                     */
 /* ------------------------------------------------------------------------ */
 
+/* want_md5 runs the advisory image digest; only handle_base_info asks for it,
+ * so the detection probe never streams the whole image. */
 static bool xx_tplink_parse(Abstractformat *self, xx_tplink_private *parsed,
-                            xx_pd_struct *pd) {
+                            bool want_md5, xx_pd_struct *pd) {
     uint8_t header[XX_TPLINK_HEADER_SIZE];
     int64_t input_size;
     if (parsed) {
@@ -455,7 +496,8 @@ static bool xx_tplink_parse(Abstractformat *self, xx_tplink_private *parsed,
          * required here. */
         xx_rt_memcmp(header + XX_TPLINK_VENDOR_OFFSET, XX_TPLINK_VENDOR_STRING,
                      XX_TPLINK_VENDOR_LENGTH) == 0) {
-        if (xx_tplink_parse_linux(self, header, input_size, parsed, pd)) {
+        if (xx_tplink_parse_linux(self, header, input_size, parsed, want_md5,
+                                  pd)) {
             return true;
         }
         xx_tplink_private_cleanup(parsed);
@@ -603,7 +645,7 @@ void xx_tplink_free(xx_tplink *tplink) {
 
 bool xx_tplink_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     xx_tplink_private parsed;
-    bool result = xx_tplink_parse(self, &parsed, pd);
+    bool result = xx_tplink_parse(self, &parsed, false, pd);
     xx_tplink_private_cleanup(&parsed);
     return result;
 }
@@ -614,7 +656,7 @@ bool xx_tplink_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     int64_t total_size;
     if (!self || !tplink) return false;
     parsed = (xx_tplink_private *)xx_mem_alloc(sizeof(*parsed));
-    if (!parsed || !xx_tplink_parse(self, parsed, pd)) {
+    if (!parsed || !xx_tplink_parse(self, parsed, true, pd)) {
         if (parsed) xx_mem_free(parsed);
         self->is_valid = false;
         self->base_info_handled = false;
@@ -705,7 +747,7 @@ xx_archive_record_state *xx_tplink_create_archive_records_reading(
     }
     xx_archive_record_state_init(state, self);
     if (!xx_tplink_copy_options(&state->options, options) ||
-        !xx_tplink_parse(self, &stream->parsed, pd)) {
+        !xx_tplink_parse(self, &stream->parsed, false, pd)) {
         xx_tplink_archive_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;

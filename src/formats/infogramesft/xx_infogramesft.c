@@ -9,14 +9,13 @@
  * The container is headerless, so acceptance rests on two independent
  * descriptions of the same set of records agreeing: the offset table and the
  * record chain.  Every non-zero table slot must land exactly on a chain record
- * header, the chain must tile the file, and one compressed member must decode
- * to exactly its declared size before the file is accepted.
+ * header, the chain must tile the file, and one compressed member must pass a
+ * bounded trial decode before the file is accepted (see ipak_trial_decode).
  */
 
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/infogramesft/xx_infogramesft.h"
 
-#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/algo/deflate/xx_deflate.h"
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/io/xx_io.h"
@@ -42,8 +41,27 @@
 /* A table of at least three slots: [0] = 0, [1] = table size, [2] = one id. */
 #define IPAK_MIN_TABLE_SIZE 12
 #define IPAK_MIN_FILE_SIZE (IPAK_MIN_TABLE_SIZE + IPAK_RECORD_HEADER_SIZE)
-#define IPAK_MAX_ENTRIES 1048576
+/* Resource ids and chain records alike.  The largest reference archive holds
+ * 1483 records behind a 1484-slot table; 65536 keeps the member array of a
+ * hostile file to a few MB and keeps every published number at 5 digits. */
+#define IPAK_MAX_ENTRIES 65536
 #define IPAK_MAX_UNCOMPRESSED_SIZE 0x10000000 /* 256 MB sanity cap */
+/* Physical expansion limits of the two codecs, used to refuse a declared
+ * unpacked size no packed stream of that length could ever produce, before
+ * anything is allocated for it.  Implode's best case is a 17-bit match of
+ * 320 bytes (< 151 bytes per packed byte); deflate's is 258 bytes per 2 bits
+ * (1032 per packed byte).  The slack covers the final copy's overshoot. */
+#define IPAK_IMPLODE_MAX_RATIO 160
+#define IPAK_DEFLATE_MAX_RATIO 1032
+#define IPAK_RATIO_SLACK 4096
+/* Detection trial bounds.  The trial never produces more than 64 KiB of
+ * output, whatever the member declares, and never reads more packed bytes
+ * than any sane stream needs for that much output: implode's costliest
+ * symbol is a 2-byte match of 1+6+16+16 bits (< 2.5 packed bytes per output
+ * byte, plus at most 130 bytes of trees) and deflate's is a 3-byte match of
+ * 15+5+15+13 bits (2 bytes per output byte, plus block headers). */
+#define IPAK_TRIAL_MAX_OUTPUT 0x10000
+#define IPAK_TRIAL_MAX_INPUT (4 * IPAK_TRIAL_MAX_OUTPUT + 4096)
 #define IPAK_MAX_EXTRA_SIZE 0x10000
 #define IPAK_MAX_DESCRIPTOR_SIZE 4096
 /* The chain tiles the file, so the only slack an archive may end on is the
@@ -62,8 +80,12 @@
 #define IPAK_STEP_PROBE \
     (IPAK_CRUMB_SIZE + IPAK_RECORD_HEADER_SIZE + IPAK_DESCRIPTOR_PROBE)
 
-/* 5 digits, '_', an 8.3 name, NUL. */
-#define IPAK_NAME_SIZE 24
+/* 5 digits, '_', the stored name, NUL.  The stored name is whatever of the
+ * inline descriptor fits the per-step read window (at most
+ * IPAK_DESCRIPTOR_PROBE + IPAK_CRUMB_SIZE - 2 bytes); real archives carry an
+ * 8.3 name. */
+#define IPAK_STORED_NAME_MAX (IPAK_DESCRIPTOR_PROBE + IPAK_CRUMB_SIZE - 2)
+#define IPAK_NAME_SIZE (5 + 1 + IPAK_STORED_NAME_MAX + 1)
 
 typedef struct ipak_member_s {
     char name[IPAK_NAME_SIZE];
@@ -75,11 +97,9 @@ typedef struct ipak_member_s {
     int64_t unpacked_size;
     uint32_t extra_size;
     uint16_t descriptor_size;
-    uint16_t crc16;
     uint16_t dos_time;
     uint16_t dos_date;
     uint8_t method;
-    bool has_crc;
     bool has_stored_name;
 } ipak_member;
 
@@ -389,22 +409,71 @@ static size_t ipak_find_slot(const ipak_slot *slots, size_t count,
     return (low < count && slots[low].offset == offset) ? low : (size_t)-1;
 }
 
+/* Separators and the characters Windows forbids in any file name. */
+static bool ipak_is_reserved_char(uint8_t c) {
+    return c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' ||
+           c == '"' || c == '<' || c == '>' || c == '|';
+}
+
+static uint8_t ipak_ascii_upper(uint8_t c) {
+    return (uint8_t)(c >= 'a' && c <= 'z' ? c - ('a' - 'A') : c);
+}
+
+/* Whether name[0..length) equals `word` (upper case ASCII), ignoring case. */
+static bool ipak_equals_word(const char *name, size_t length,
+                             const char *word) {
+    size_t index = 0U;
+    while (index < length && word[index] != 0) {
+        if (ipak_ascii_upper((uint8_t)name[index]) != (uint8_t)word[index])
+            return false;
+        ++index;
+    }
+    return index == length && word[index] == 0;
+}
+
+/* Windows reserves these device names in every folder, with or without an
+ * extension and in any case: the stem is everything before the first dot,
+ * with the blanks Windows would trim from it removed. */
+static bool ipak_is_device_name(const char *name, size_t length) {
+    static const char *const devices[] = {"CON",    "PRN",     "AUX",
+                                          "NUL",    "CONIN$",  "CONOUT$",
+                                          "CLOCK$"};
+    size_t stem = 0U, index;
+    while (stem < length && name[stem] != '.') ++stem;
+    while (stem > 0U && name[stem - 1U] == ' ') --stem;
+    if (stem == 4U && name[3] >= '0' && name[3] <= '9' &&
+        (ipak_equals_word(name, 3U, "COM") || ipak_equals_word(name, 3U, "LPT")))
+        return true;
+    for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index)
+        if (ipak_equals_word(name, stem, devices[index])) return true;
+    return false;
+}
+
 /* The 8.3 name is NUL padded to the end of its field.  A name that fills the
  * field exactly leaves no terminator, so the scan is bounded by the field
- * size and never by a terminator search. */
+ * size and never by a terminator search.  A name that could not be created
+ * as a file of exactly that name is refused, and the member then falls back
+ * to its numbered NNNNN.bin name, so it is never lost. */
 static bool ipak_decode_name(const uint8_t *field, size_t size, char *out,
                              size_t out_size) {
     size_t index = 0U;
+    bool meaningful = false;
     if (!field || !out || out_size == 0U || size >= out_size) return false;
     while (index < size) {
         uint8_t c = field[index];
         if (c == 0U) break;
-        if (c < 0x20U || c > 0x7eU || c == '/' || c == '\\' || c == ':')
-            return false;
+        if (c < 0x20U || c > 0x7eU || ipak_is_reserved_char(c)) return false;
+        /* A name of nothing but dots and blanks ("..", "...", " ") is never
+         * used: it names no file, and the file system would trim it. */
+        if (c != '.' && c != ' ') meaningful = true;
         out[index++] = (char)c;
     }
     out[index] = 0;
-    return index != 0U;
+    if (!meaningful) return false;
+    /* Windows silently drops a trailing dot or blank, so the file written
+     * would not carry the published name. */
+    if (out[index - 1U] == '.' || out[index - 1U] == ' ') return false;
+    return !ipak_is_device_name(out, index);
 }
 
 /* Write `value` as five decimal digits into `out`, returning the count. */
@@ -418,9 +487,57 @@ static size_t ipak_write_id(char *out, uint32_t value) {
     return 5U;
 }
 
-static bool ipak_decode_member(Abstractformat *format,
-                               const ipak_member *member, uint8_t **plain,
-                               size_t *plain_size);
+/* The detection trial: the format has no magic, so one real member has to
+ * decode before the file is accepted.  Its cost is bounded whatever the
+ * member declares: at most IPAK_TRIAL_MAX_INPUT packed bytes are read and at
+ * most IPAK_TRIAL_MAX_OUTPUT bytes are produced.
+ *
+ * A member that declares no more than the output bound is decoded in full
+ * and must come out at exactly its declared size (an implode stream must
+ * also consume exactly its packed size, as it does on every reference
+ * record).  A larger member is decoded only up to the bound, and its first
+ * IPAK_TRIAL_MAX_OUTPUT bytes must decode without error and without the
+ * stream ending early. */
+static bool ipak_trial_decode(Abstractformat *format,
+                              const ipak_member *member) {
+    uint8_t *packed = NULL;
+    uint8_t *output = NULL;
+    int64_t input_size, output_size;
+    bool prefix, decoded = false;
+    if (!format || !member || member->packed_size <= 0 ||
+        member->unpacked_size <= 0)
+        return false;
+    input_size = member->packed_size < (int64_t)IPAK_TRIAL_MAX_INPUT
+                     ? member->packed_size : (int64_t)IPAK_TRIAL_MAX_INPUT;
+    prefix = member->unpacked_size > (int64_t)IPAK_TRIAL_MAX_OUTPUT;
+    output_size = prefix ? (int64_t)IPAK_TRIAL_MAX_OUTPUT
+                         : member->unpacked_size;
+    packed = (uint8_t *)xx_mem_alloc((size_t)input_size);
+    output = (uint8_t *)xx_mem_alloc((size_t)output_size);
+    if (!packed || !output ||
+        !ipak_read_at(format->device, member->data_offset, packed,
+                      (size_t)input_size))
+        goto done;
+    if (member->method == IPAK_METHOD_DEFLATE) {
+        size_t written = 0U;
+        /* A full output buffer stops the decoder with a failure; that is the
+         * expected outcome of a prefix trial, and a stream that ENDS within
+         * the bound while declaring more is short. */
+        bool ended = xx_deflate_decompress_memory(packed, (size_t)input_size,
+                                                  output, (size_t)output_size,
+                                                  &written, false);
+        decoded = written == (size_t)output_size && ended != prefix;
+    } else if (member->method == IPAK_METHOD_IMPLODE) {
+        int64_t consumed = 0;
+        decoded = ipak_implode_decode(packed, input_size, output, output_size,
+                                      &consumed) &&
+                  (prefix || consumed == member->packed_size);
+    }
+done:
+    if (packed) xx_mem_free(packed);
+    if (output) xx_mem_free(output);
+    return decoded;
+}
 
 static bool ipak_parse(Abstractformat *format, ipak_stream **result) {
     uint8_t prefix[8];
@@ -535,6 +652,14 @@ static bool ipak_parse(Abstractformat *format, ipak_stream **result) {
         } else {
             if (packed_size <= 0 || unpacked_size <= 0) goto fail;
             if (method == IPAK_METHOD_IMPLODE && packed_size < 3) goto fail;
+            /* Both sizes are below 2^28 here, so the products cannot
+             * overflow. */
+            if (unpacked_size >
+                packed_size * (method == IPAK_METHOD_IMPLODE
+                                   ? (int64_t)IPAK_IMPLODE_MAX_RATIO
+                                   : (int64_t)IPAK_DEFLATE_MAX_RATIO) +
+                    (int64_t)IPAK_RATIO_SLACK)
+                goto fail;
         }
 
         xx_mem_zero(&member, sizeof(member));
@@ -563,11 +688,14 @@ static bool ipak_parse(Abstractformat *format, ipak_stream **result) {
             member.has_stored_name = ipak_decode_name(
                 record + IPAK_RECORD_HEADER_SIZE + 2,
                 (size_t)(descriptor_size - 2), member.name, IPAK_NAME_SIZE);
+        /* The crumb's last two bytes are the low half of a CRC32, but it is
+         * not a usable integrity check: one 1203-record reference archive
+         * re-uses crumbs across records, and 352 of its crumbs disagree with
+         * members whose bytes 7-Zip's own implode decoder reproduces exactly.
+         * It is neither verified nor published; only the DOS stamp is kept. */
         if (header_shift != 0) {
-            member.has_crc = true;
             member.dos_time = ipak_le16(probe + 10U);
             member.dos_date = ipak_le16(probe + 12U);
-            member.crc16 = ipak_le16(probe + 14U);
         }
         if (unpacked_size > 0) any_payload = true;
         if (!ipak_add_member(stream, &member)) goto fail;
@@ -615,20 +743,13 @@ static bool ipak_parse(Abstractformat *format, ipak_stream **result) {
         member->name[at] = 0;
     }
 
-    /* Bounded trial decode: the format has no magic, so one real member has
-     * to come out at exactly its declared size before the file is accepted.
-     * A compressed member is picked over a stored one because a stored member
-     * proves nothing about the codec. */
+    /* Bounded trial decode of the first compressed member in chain order (a
+     * stored member proves nothing about the codec). */
     for (index = 0U; index < stream->count; ++index) {
-        uint8_t *plain = NULL;
-        size_t plain_size = 0U;
-        bool decoded;
         if (stream->items[index].method == IPAK_METHOD_STORED ||
-            stream->items[index].unpacked_size <= 0) continue;
-        decoded = ipak_decode_member(format, &stream->items[index], &plain,
-                                     &plain_size);
-        if (plain) xx_mem_free(plain);
-        if (!decoded) goto fail;
+            stream->items[index].unpacked_size <= 0)
+            continue;
+        if (!ipak_trial_decode(format, &stream->items[index])) goto fail;
         break;
     }
 
@@ -645,6 +766,11 @@ fail:
     return false;
 }
 
+/* Extraction of one member at its full declared size (the parse already
+ * capped it by what its packed length can physically produce).  Unlike the
+ * detection trial, extraction only needs the declared size to come out:
+ * trailing packed bytes are ignored, as the engine's own loader ignores
+ * them. */
 static bool ipak_decode_member(Abstractformat *format,
                                const ipak_member *member, uint8_t **plain,
                                size_t *plain_size) {
@@ -679,19 +805,10 @@ static bool ipak_decode_member(Abstractformat *format,
                                                false) &&
                   written == output_size;
     } else if (member->method == IPAK_METHOD_IMPLODE) {
-        int64_t consumed = 0;
         decoded = ipak_implode_decode(packed, member->packed_size, output,
-                                      member->unpacked_size, &consumed) &&
-                  consumed == member->packed_size;
+                                      member->unpacked_size, NULL);
     }
     if (!decoded) goto fail;
-    /* The crumb carries only the LOW HALF of the member's CRC32, so it is a
-     * real anchor but never a whole checksum: it is verified here and never
-     * published as a CRC32. */
-    if (member->has_crc && member->method != IPAK_METHOD_IMPLODE &&
-        (uint16_t)(xx_crc32_calc(0U, output, output_size) & 0xffffU) !=
-            member->crc16)
-        goto fail;
     xx_mem_free(packed);
     *plain = output;
     *plain_size = output_size;
@@ -803,6 +920,43 @@ void xx_infogramesft_free(xx_infogramesft *archive) {
     xx_mem_free(archive);
 }
 
+/* Cheap pre-check over the detector's first-bytes window.  It only applies
+ * rules ipak_parse() enforces anyway, restricted to the bytes in `magic`:
+ * slot 0 is zero, slot 1 is a plausible table size, every table slot inside
+ * the window is 0 or an offset between the table's end and the file's end,
+ * and when the first record header also falls inside the window its method
+ * and codec-parameter bytes are legal. */
+bool xx_infogramesft_test_magic(const uint8_t *magic, size_t magic_size,
+                                int64_t total_size) {
+    uint32_t table_size;
+    size_t slots, index, record;
+    if (!magic || magic_size < 12U ||
+        total_size < (int64_t)IPAK_MIN_FILE_SIZE ||
+        ipak_le32(magic) != 0U)
+        return false;
+    table_size = ipak_le32(magic + 4U);
+    if (table_size < (uint32_t)IPAK_MIN_TABLE_SIZE || (table_size & 3U) != 0U ||
+        (int64_t)table_size + IPAK_RECORD_HEADER_SIZE > total_size ||
+        table_size / 4U - 1U > (uint32_t)IPAK_MAX_ENTRIES)
+        return false;
+    slots = (size_t)(table_size / 4U);
+    if (slots > magic_size / 4U) slots = magic_size / 4U;
+    for (index = 2U; index < slots; ++index) {
+        uint32_t slot = ipak_le32(magic + index * 4U);
+        if (slot != 0U && (slot < table_size || (int64_t)slot >= total_size))
+            return false;
+    }
+    record = (size_t)table_size;
+    if (record + 4U <= magic_size &&
+        xx_rt_memcmp(magic + record, "PK\x03\x04", 4U) == 0)
+        record += IPAK_CRUMB_SIZE;
+    if (record + IPAK_RECORD_HEADER_SIZE <= magic_size &&
+        (!ipak_is_known_method(magic[record + 12U]) ||
+         magic[record + 13U] != 0U))
+        return false;
+    return true;
+}
+
 bool xx_infogramesft_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     ipak_stream *stream;
     (void)pd;
@@ -904,7 +1058,8 @@ bool xx_infogramesft_unpack_current_archive_record(
         stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
-    if (!ipak_decode_member(format, member, &plain, &plain_size)) goto done;
+    if (!ipak_decode_member(format, member, &plain, &plain_size))
+        goto done;
     path_option = ipak_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         result = true;

@@ -222,6 +222,28 @@
 #include "xxfclib/formats/logfs/xx_logfs.h"
 #include "xxfclib/formats/dmg/xx_dmg.h"
 #include "xxfclib/formats/dms/xx_dms.h"
+#include "xxfclib/formats/xpak/xx_xpak.h"
+#include "xxfclib/formats/pdb/xx_pdb.h"
+#include "xxfclib/formats/infogramesft/xx_infogramesft.h"
+#include "xxfclib/formats/uboot/xx_uboot.h"
+#include "xxfclib/formats/twrx/xx_twrx.h"
+#include "xxfclib/formats/tplink/xx_tplink.h"
+#include "xxfclib/formats/silmarilsft/xx_silmarilsft.h"
+#include "xxfclib/formats/shrs/xx_shrs.h"
+#include "xxfclib/formats/mh01/xx_mh01.h"
+#include "xxfclib/formats/matter_ota/xx_matter_ota.h"
+#include "xxfclib/formats/lz4demo/xx_lz4demo.h"
+#include "xxfclib/formats/lingvoarc/xx_lingvoarc.h"
+#include "xxfclib/formats/jboot/xx_jboot.h"
+#include "xxfclib/formats/encrpted_img/xx_encrpted_img.h"
+#include "xxfclib/formats/encfw/xx_encfw.h"
+#include "xxfclib/formats/ecos/xx_ecos.h"
+#include "xxfclib/formats/dlke/xx_dlke.h"
+#include "xxfclib/formats/dlink_tlv/xx_dlink_tlv.h"
+#include "xxfclib/formats/dkbs/xx_dkbs.h"
+#include "xxfclib/formats/autel/xx_autel.h"
+#include "xxfclib/formats/arcadyan/xx_arcadyan.h"
+#include "xxfclib/formats/androidboot/xx_androidboot.h"
 #include "xxfclib/formats/rawstac/xx_rawstac.h"
 #include "xxfclib/formats/rtpatch/xx_rtpatch.h"
 #include "xxfclib/formats/softronics/xx_softronics.h"
@@ -4706,6 +4728,226 @@ static bool xx_format_is_rawstac_device(xx_io_device *device) {
     return result;
 }
 
+static bool xx_format_is_androidboot_device(xx_io_device *device) {
+    xx_androidboot value;
+    bool result;
+    if (!device) return false;
+    xx_androidboot_init(&value, device, 0);
+    result = xx_androidboot_check_is_valid(&value.format, NULL);
+    xx_androidboot_destroy(&value);
+    return result;
+}
+
+static bool xx_format_is_arcadyan_device(xx_io_device *device) {
+    xx_arcadyan value;
+    bool result;
+    if (!device) return false;
+    xx_arcadyan_init(&value, device, 0);
+    result = xx_arcadyan_check_is_valid(&value.format, NULL);
+    xx_arcadyan_destroy(&value);
+    return result;
+}
+
+static bool xx_format_is_autel_device(xx_io_device *device) {
+    xx_autel value;
+    bool result;
+    if (!device) return false;
+    xx_autel_init(&value, device, 0);
+    result = xx_autel_check_is_valid(&value.format, NULL);
+    xx_autel_destroy(&value);
+    return result;
+}
+
+static bool xx_format_is_dkbs_device(xx_io_device *device) {
+    xx_dkbs value;
+    bool result;
+    if (!device) return false;
+    xx_dkbs_init(&value, device, 0);
+    result = xx_dkbs_check_is_valid(&value.format, NULL);
+    xx_dkbs_destroy(&value);
+    return result;
+}
+
+static bool xx_format_is_dlink_tlv_device(xx_io_device *device) {
+    xx_dlink_tlv value;
+    bool result;
+    if (!device) return false;
+    xx_dlink_tlv_init(&value, device, 0);
+    result = xx_dlink_tlv_check_is_valid(&value.format, NULL);
+    xx_dlink_tlv_destroy(&value);
+    return result;
+}
+
+static bool xx_format_is_dlke_device(xx_io_device *device) {
+    xx_dlke value;
+    bool result;
+    if (!device) return false;
+    xx_dlke_init(&value, device, 0);
+    result = xx_dlke_check_is_valid(&value.format, NULL);
+    xx_dlke_destroy(&value);
+    return result;
+}
+
+static bool xx_format_is_ecos_device(xx_io_device *device) {
+    xx_ecos value;
+    bool result;
+    if (!device) return false;
+    xx_ecos_init(&value, device, 0);
+    result = xx_ecos_check_is_valid(&value.format, NULL);
+    xx_ecos_destroy(&value);
+    return result;
+}
+
+static bool xx_format_is_encfw_device(xx_io_device *device) {
+    xx_encfw value;
+    bool result;
+    if (!device) return false;
+    xx_encfw_init(&value, device, 0);
+    result = xx_encfw_check_is_valid(&value.format, NULL);
+    xx_encfw_destroy(&value);
+    return result;
+}
+
+static bool xx_format_is_encrpted_img_device(xx_io_device *device) {
+    xx_encrpted_img value;
+    bool result;
+    if (!device) return false;
+    xx_encrpted_img_init(&value, device, 0);
+    result = xx_encrpted_img_check_is_valid(&value.format, NULL);
+    xx_encrpted_img_destroy(&value);
+    return result;
+}
+
+static bool xx_format_is_jboot_device(xx_io_device *device) {
+    xx_jboot value;
+    bool result;
+    if (!device) return false;
+    xx_jboot_init(&value, device, 0);
+    result = xx_jboot_check_is_valid(&value.format, NULL);
+    xx_jboot_destroy(&value);
+    return result;
+}
+
+static bool xx_format_is_lingvoarc_device(xx_io_device *device) {
+    xx_lingvoarc value;
+    bool result;
+    if (!device) return false;
+    xx_lingvoarc_init(&value, device, 0);
+    result = xx_lingvoarc_check_is_valid(&value.format, NULL);
+    xx_lingvoarc_destroy(&value);
+    return result;
+}
+
+static bool xx_format_is_lz4demo_device(xx_io_device *device) {
+    xx_lz4demo value;
+    bool result;
+    if (!device) return false;
+    xx_lz4demo_init(&value, device, 0);
+    result = xx_lz4demo_check_is_valid(&value.format, NULL);
+    xx_lz4demo_destroy(&value);
+    return result;
+}
+
+static bool xx_format_is_matter_ota_device(xx_io_device *device) {
+    xx_matter_ota value;
+    bool result;
+    if (!device) return false;
+    xx_matter_ota_init(&value, device, 0);
+    result = xx_matter_ota_check_is_valid(&value.format, NULL);
+    xx_matter_ota_destroy(&value);
+    return result;
+}
+
+static bool xx_format_is_mh01_device(xx_io_device *device) {
+    xx_mh01 value;
+    bool result;
+    if (!device) return false;
+    xx_mh01_init(&value, device, 0);
+    result = xx_mh01_check_is_valid(&value.format, NULL);
+    xx_mh01_destroy(&value);
+    return result;
+}
+
+static bool xx_format_is_shrs_device(xx_io_device *device) {
+    xx_shrs value;
+    bool result;
+    if (!device) return false;
+    xx_shrs_init(&value, device, 0);
+    result = xx_shrs_check_is_valid(&value.format, NULL);
+    xx_shrs_destroy(&value);
+    return result;
+}
+
+static bool xx_format_is_silmarilsft_device(xx_io_device *device) {
+    xx_silmarilsft value;
+    bool result;
+    if (!device) return false;
+    xx_silmarilsft_init(&value, device, 0);
+    result = xx_silmarilsft_check_is_valid(&value.format, NULL);
+    xx_silmarilsft_destroy(&value);
+    return result;
+}
+
+static bool xx_format_is_tplink_device(xx_io_device *device) {
+    xx_tplink value;
+    bool result;
+    if (!device) return false;
+    xx_tplink_init(&value, device, 0);
+    result = xx_tplink_check_is_valid(&value.format, NULL);
+    xx_tplink_destroy(&value);
+    return result;
+}
+
+static bool xx_format_is_twrx_device(xx_io_device *device) {
+    xx_twrx value;
+    bool result;
+    if (!device) return false;
+    xx_twrx_init(&value, device, 0);
+    result = xx_twrx_check_is_valid(&value.format, NULL);
+    xx_twrx_destroy(&value);
+    return result;
+}
+
+static bool xx_format_is_uboot_device(xx_io_device *device) {
+    xx_uboot value;
+    bool result;
+    if (!device) return false;
+    xx_uboot_init(&value, device, 0);
+    result = xx_uboot_check_is_valid(&value.format, NULL);
+    xx_uboot_destroy(&value);
+    return result;
+}
+
+static bool xx_format_is_infogramesft_device(xx_io_device *device) {
+    xx_infogramesft value;
+    bool result;
+    if (!device) return false;
+    xx_infogramesft_init(&value, device, 0);
+    result = xx_infogramesft_check_is_valid(&value.format, NULL);
+    xx_infogramesft_destroy(&value);
+    return result;
+}
+
+static bool xx_format_is_pdb_device(xx_io_device *device) {
+    xx_pdb value;
+    bool result;
+    if (!device) return false;
+    xx_pdb_init(&value, device, 0);
+    result = xx_pdb_check_is_valid(&value.format, NULL);
+    xx_pdb_destroy(&value);
+    return result;
+}
+
+static bool xx_format_is_xpak_device(xx_io_device *device) {
+    xx_xpak value;
+    bool result;
+    if (!device) return false;
+    xx_xpak_init(&value, device, 0);
+    result = xx_xpak_check_is_valid(&value.format, NULL);
+    xx_xpak_destroy(&value);
+    return result;
+}
+
 static bool xx_format_is_dms_device(xx_io_device *device) {
     xx_dms value;
     bool result;
@@ -5203,6 +5445,24 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
     bool is_volitionvpft = (magic_size >= 16U && xx_rt_memcmp(magic, "VPVP", 4U) == 0 && magic[4] == 2U && magic[5] == 0U && magic[6] == 0U && magic[7] == 0U);
     bool is_wintermutedcp = (magic_size >= 12U && magic[0] == 0xdeU && magic[1] == 0xadU && magic[2] == 0xc0U && magic[3] == 0xdeU);
     bool is_bsn = (magic_size >= 6U && magic[0] == 0xffU && magic[1] == 'B' && magic[2] == 'S');
+    bool is_androidboot = magic_size >= 8U && xx_rt_memcmp(magic, "ANDROID!", 8U) == 0;
+    bool is_autel = magic_size >= 32 && xx_rt_memcmp(magic, "ECC0101\0", 8U) == 0 && magic[12] == 0x20U && magic[13] == 0U && magic[14] == 0U && magic[15] == 0U && xx_rt_memcmp(magic + 16U, "Copyright Autel\0", 16U) == 0;
+    bool is_dkbs = magic_size >= 13U && total_size > 0xA0 && xx_rt_memcmp(magic + 7U, "_dkbs_", 6U) == 0;
+    bool is_dlink_tlv = magic_size >= 0x25U && total_size > 0x74 && magic[0]==0x64U && magic[1]==0x80U && magic[2]==0x19U && magic[3]==0x40U && magic[4] >= 0x20U && magic[4] <= 0x7EU && magic[0x24] >= 0x20U && magic[0x24] <= 0x7EU;
+    bool is_dlke = magic_size >= 64U && (xx_rt_memcmp(magic, "DLK6E8202001", 12U) == 0 || xx_rt_memcmp(magic, "DLK6E6110002", 12U) == 0);
+    bool is_ecos = magic_size >= 8 && ((magic[0] == 0x40U && magic[1] == 0x1AU && magic[2] == 0x68U && magic[3] == 0x00U) || (magic[0] == 0x00U && magic[1] == 0x68U && magic[2] == 0x1AU && magic[3] == 0x40U));
+    bool is_encrpted_img = magic_size >= 17U && xx_rt_memcmp(magic, "encrpted_img", 12U) == 0;
+    bool is_jboot = ((magic_size >= 40 && magic[0] == 0x24U && magic[1] == 0x21U && magic[2] <= 3U && magic[3] == 2U && magic[36] == 40U && magic[37] == 0U) || (magic_size >= 16 && magic[1] == 4U && magic[2] == 0x24U && magic[3] == 0x2BU && (magic[0] == 4U || magic[0] == 0xFFU)) || (magic_size >= 64 && total_size >= 80 && (magic[20] | magic[21] | magic[22] | magic[23] | magic[24] | magic[25] | magic[27]) == 0U && magic[26] == 1U && (magic[48] | magic[49] | magic[50] | magic[51] | magic[52] | magic[53] | magic[54] | magic[55] | magic[56] | magic[57] | magic[58] | magic[59] | magic[60] | magic[61] | magic[62] | magic[63]) == 0U));
+    bool is_lingvoarc = ((magic_size >= 18 && xx_rt_memcmp(magic, "lingvoArc", 9) == 0 && (magic[9] == '1' || magic[9] == '2') && magic[10] == 0x00 && magic[11] == 0xFD && magic[12] == 0x00 && magic[13] == 0xDF && magic[14] == 0x00 && magic[15] == 0xFF && (magic[16] != 0 || magic[17] != 0)) || (magic_size >= 26 && xx_rt_memcmp(magic, "LingvoArch", 10) == 0 && magic[10] == 0x01 && magic[11] == 0x00 && magic[12] == 0xF0 && magic[13] == 0x1F && magic[14] == 0x00 && magic[15] == 0x01 && magic[16] == 0x40 && magic[17] == 0x00 && magic[18] == 0x47 && magic[19] == 0x01 && magic[20] == 0x47 && magic[21] == 0x01 && magic[22] == 0x1F && magic[23] == 0x83 && magic[24] == 0x41 && magic[25] == 0x01));
+    bool is_lz4demo = magic_size >= 4 && magic[0] == 0x02 && magic[1] == 0x21 && magic[2] == 0x4C && magic[3] == 0x18;
+    bool is_matter_ota = magic_size >= 17U && magic[0] == 0x1EU && magic[1] == 0xF1U && magic[2] == 0xEEU && magic[3] == 0x1BU && magic[16] == 0x15U;
+    bool is_mh01 = magic_size >= 32U && xx_rt_memcmp(magic, "MH01", 4U) == 0 && xx_rt_memcmp(magic + 16U, "MH01", 4U) == 0;
+    bool is_shrs = magic_size >= 12U && xx_rt_memcmp(magic, "SHRS", 4U) == 0;
+    bool is_silmarilsft = magic_size >= 15U && ((magic[4] == 0x01U && magic[5] == 0x00U && (magic[0] & 0x07U) == 0x06U && (magic[3] == 0x81U || (magic[3] == 0xa1U && magic[6] == 0x0bU && magic[7] == 0x09U))) || (magic[4] == 0x00U && magic[5] == 0x01U && (magic[3] & 0x07U) == 0x06U && (magic[0] == 0x81U || (magic[0] == 0xa1U && magic[6] == 0x0bU && magic[7] == 0x09U))));
+    bool is_tplink = magic_size >= 24U && (xx_rt_memcmp(magic + 4U, "TP-LINK Technologies", 20U) == 0 || (magic[0] == 0x00U && magic[1] == 0x14U && magic[2] == 0x2FU && magic[3] == 0xC0U && xx_rt_memcmp(magic + 20U, "IMG0", 4U) == 0));
+    bool is_twrx = magic_size >= 30U && xx_rt_memcmp(magic, "TWRX", 4U) == 0 && magic[4] == 0U && magic[5] == 1U && magic[6] == 0U && magic[7] == 0U && magic[0x1aU] != 0U && magic[0x1bU] == 0U && magic[0x1cU] == 0U && magic[0x1dU] == 0U;
+    bool is_infogramesft = xx_infogramesft_test_magic(magic, magic_size, total_size);
+    bool is_xpak = magic_size >= 36 && xx_rt_memcmp(magic, "XPAK", 4U) == 0 && magic[0x1A] == 0xFFU && magic[0x1B] == 0xFEU;
     bool is_dms = magic_size >= 4U && magic[0]==0x44U && magic[1]==0x4DU &&
         magic[2]==0x53U && magic[3]==0x21U;   /* "DMS!" */
     bool is_csman = magic_size >= 2U &&
@@ -5654,6 +5914,20 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         if (valid_msdos) return XX_FILE_TYPE_MSDOS;
     }
 
+    if (is_encrpted_img) {
+        if (xx_format_is_encrpted_img_device(dev)) {
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            return XX_FILE_TYPE_ENCRPTED_IMG;
+        }
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+    }
+    if (is_matter_ota) {
+        if (xx_format_is_matter_ota_device(dev)) {
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            return XX_FILE_TYPE_MATTER_OTA;
+        }
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+    }
     if (is_7zip) {
         return XX_FILE_TYPE_7ZIP;
     }
@@ -5712,6 +5986,20 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         if (xx_format_is_softronics_device(dev)) {
             (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
             return XX_FILE_TYPE_SOFTRONICS;
+        }
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+    }
+    if (is_autel) {
+        if (xx_format_is_autel_device(dev)) {
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            return XX_FILE_TYPE_AUTEL;
+        }
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+    }
+    if (is_xpak) {
+        if (xx_format_is_xpak_device(dev)) {
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            return XX_FILE_TYPE_XPAK;
         }
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
     }
@@ -6550,6 +6838,13 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         }
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
     }
+    if (is_lz4demo) {
+        if (xx_format_is_lz4demo_device(dev)) {
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            return XX_FILE_TYPE_LZ4DEMO;
+        }
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+    }
     if (is_lz5) {
         if (xx_format_is_lz5_device(dev)) {
             (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
@@ -6838,6 +7133,13 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
     if (is_tar) {
         return XX_FILE_TYPE_TAR;
     }
+    if (is_dkbs) {
+        if (xx_format_is_dkbs_device(dev)) {
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            return XX_FILE_TYPE_DKBS;
+        }
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+    }
     /* An IzPack pack is a Java serialization stream that happens to
      * carry ZIP members further in, so the ZIP probe claims it
      * first and then fails. IzPack has the stronger evidence -- a
@@ -6941,6 +7243,13 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
     }
 
+    if (is_dlke) {
+        if (xx_format_is_dlke_device(dev)) {
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            return XX_FILE_TYPE_DLKE;
+        }
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+    }
     /* No signature at all: GTU keys on its own file size, STK on a
      * plausible member count, TERSE and the rest on a trial decode.
      * They must not get first refusal on a file another format can
@@ -7174,6 +7483,13 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         }
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
     }
+    if (is_androidboot) {
+        if (xx_format_is_androidboot_device(dev)) {
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            return XX_FILE_TYPE_ANDROIDBOOT;
+        }
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+    }
     if (is_uimage) {
         if (xx_format_is_uimage_device(dev)) {
             (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
@@ -7226,6 +7542,13 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         if (xx_format_is_trx_device(dev)) {
             (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
             return XX_FILE_TYPE_TRX;
+        }
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+    }
+    if (is_tplink) {
+        if (xx_format_is_tplink_device(dev)) {
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            return XX_FILE_TYPE_TPLINK;
         }
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
     }
@@ -7303,6 +7626,27 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         if (xx_format_is_seama_device(dev)) {
             (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
             return XX_FILE_TYPE_SEAMA;
+        }
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+    }
+    if (is_dlink_tlv) {
+        if (xx_format_is_dlink_tlv_device(dev)) {
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            return XX_FILE_TYPE_DLINK_TLV;
+        }
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+    }
+    if (is_mh01) {
+        if (xx_format_is_mh01_device(dev)) {
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            return XX_FILE_TYPE_MH01;
+        }
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+    }
+    if (is_infogramesft) {
+        if (xx_format_is_infogramesft_device(dev)) {
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            return XX_FILE_TYPE_INFOGRAMESFT;
         }
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
     }
@@ -7457,6 +7801,13 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         if (xx_format_is_finear_device(dev)) {
             (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
             return XX_FILE_TYPE_FINEAR;
+        }
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+    }
+    if (is_lingvoarc) {
+        if (xx_format_is_lingvoarc_device(dev)) {
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            return XX_FILE_TYPE_LINGVOARC;
         }
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
     }
@@ -8090,6 +8441,13 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         }
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
     }
+    if (is_shrs) {
+        if (xx_format_is_shrs_device(dev)) {
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            return XX_FILE_TYPE_SHRS;
+        }
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+    }
     if (is_dms) {
         if (xx_format_is_dms_device(dev)) {
             (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
@@ -8105,6 +8463,20 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
     }
 
+    if (is_ecos) {
+        if (xx_format_is_ecos_device(dev)) {
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            return XX_FILE_TYPE_ECOS;
+        }
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+    }
+    if (is_jboot) {
+        if (xx_format_is_jboot_device(dev)) {
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            return XX_FILE_TYPE_JBOOT;
+        }
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+    }
     /* These carry no signature either -- a record tag byte, a name
      * length, a single constant field. Their prefilters cannot
      * identify anything on their own, and several of their probes
@@ -8153,6 +8525,13 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
     }
 
+    if (is_twrx) {
+        if (xx_format_is_twrx_device(dev)) {
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            return XX_FILE_TYPE_TWRX;
+        }
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+    }
     /* TWS carries no signature, only three fixed header fields, so it goes
      * after every format that can identify itself by magic. */
     if (is_tws) {
@@ -8163,6 +8542,13 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
     }
 
+    if (is_silmarilsft) {
+        if (xx_format_is_silmarilsft_device(dev)) {
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            return XX_FILE_TYPE_SILMARILSFT;
+        }
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+    }
     /* AP4 has no magic either, and its table of contents can sit anywhere in
      * the first 64 KiB, so no fixed-offset prefilter is possible -- the gate
      * is the whole table chain plus the MPEG classification of the first
@@ -8321,6 +8707,26 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
     if (xx_format_is_lzw15v_device(dev)) {
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
         return XX_FILE_TYPE_RAW_LZW15V;
+    }
+    (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+    if (xx_format_is_arcadyan_device(dev)) {
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+        return XX_FILE_TYPE_ARCADYAN;
+    }
+    (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+    if (xx_format_is_encfw_device(dev)) {
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+        return XX_FILE_TYPE_ENCFW;
+    }
+    (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+    if (xx_format_is_uboot_device(dev)) {
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+        return XX_FILE_TYPE_UBOOT_ENV;
+    }
+    (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+    if (xx_format_is_pdb_device(dev)) {
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+        return XX_FILE_TYPE_PDB;
     }
     (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
     return XX_FILE_TYPE_BINARY;
@@ -9032,6 +9438,28 @@ const char *xx_format_file_type_to_string(xx_file_type_t type) {
         case XX_FILE_TYPE_LOGFS: return "LogFS";
         case XX_FILE_TYPE_DMG: return "DMG";
         case XX_FILE_TYPE_DMS: return "DMS";
+        case XX_FILE_TYPE_XPAK: return "XPAK";
+        case XX_FILE_TYPE_PDB: return "Palm PDB";
+        case XX_FILE_TYPE_INFOGRAMESFT: return "Infogrames PAK";
+        case XX_FILE_TYPE_UBOOT_ENV: return "U-Boot environment";
+        case XX_FILE_TYPE_TWRX: return "TWRX";
+        case XX_FILE_TYPE_TPLINK: return "TP-Link firmware";
+        case XX_FILE_TYPE_SILMARILSFT: return "Silmarils";
+        case XX_FILE_TYPE_SHRS: return "D-Link SHRS";
+        case XX_FILE_TYPE_MH01: return "D-Link MH01";
+        case XX_FILE_TYPE_MATTER_OTA: return "Matter OTA image";
+        case XX_FILE_TYPE_LZ4DEMO: return "LZ4Demo";
+        case XX_FILE_TYPE_LINGVOARC: return "LingvoArc";
+        case XX_FILE_TYPE_JBOOT: return "JBOOT";
+        case XX_FILE_TYPE_ENCRPTED_IMG: return "D-Link encrpted_img";
+        case XX_FILE_TYPE_ENCFW: return "D-Link encfw encrypted firmware";
+        case XX_FILE_TYPE_ECOS: return "eCos kernel";
+        case XX_FILE_TYPE_DLKE: return "DLKE";
+        case XX_FILE_TYPE_DLINK_TLV: return "D-Link TLV firmware";
+        case XX_FILE_TYPE_DKBS: return "DKBS";
+        case XX_FILE_TYPE_AUTEL: return "AUTEL";
+        case XX_FILE_TYPE_ARCADYAN: return "Arcadyan obfuscated LZMA";
+        case XX_FILE_TYPE_ANDROIDBOOT: return "Android boot image";
         case XX_FILE_TYPE_RAWSTAC: return "RawStac";
         case XX_FILE_TYPE_VMSSAVESET: return "VMSSaveset";
         case XX_FILE_TYPE_BOO: return "BOO";

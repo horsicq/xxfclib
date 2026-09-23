@@ -26,12 +26,19 @@
  *             encrypted image, encrypted_data_size bytes, OpenSSL "Salted__"
  *             signature, signature_size bytes
  *
+ * The IV field is the output of `openssl rand -hex 16`: 32 hex digits and a
+ * trailing newline, so iv_size is 33 on genuine images and the payload starts
+ * at 0x41 (delink's src/mh01.rs hard-codes exactly those offsets; binwalk
+ * trim()s the field).  The reader accepts hex digits followed by ASCII
+ * whitespace; iv.bin carries the raw field and xx_mh01_get_iv() the digits.
+ *
  * signature_offset is relative to offset 16, so the signature sits at
  * 16 + signature_offset and the file ends at 16 + signature_offset +
  * signature_size.  In every sample binwalk was built against the signature
  * follows the encrypted image immediately, but nothing in the header forces
- * that, so this reader derives both regions from their own fields and only
- * requires that each one is inside the file.
+ * that, so this reader derives both regions from their own fields and
+ * requires that each one is inside the file and that the signature does not
+ * start before the end of the encrypted image.
  *
  * Nothing here is checksummed - the integrity check is the RSA signature over
  * the encrypted image, which cannot be verified without the vendor key - so
@@ -115,7 +122,8 @@ XXFC_API uint64_t xx_mh01_get_number_of_records(const xx_mh01 *mh01);
 XXFC_API uint32_t xx_mh01_get_iv_size(const xx_mh01 *mh01);
 XXFC_API uint32_t xx_mh01_get_encrypted_data_size(const xx_mh01 *mh01);
 XXFC_API uint32_t xx_mh01_get_signature_size(const xx_mh01 *mh01);
-/** The ASCII-hex IV as a NUL terminated string, or NULL before parsing. */
+/** The ASCII-hex IV digits (trailing whitespace removed) as a NUL terminated
+ *  string, or NULL before parsing. */
 XXFC_API const char *xx_mh01_get_iv(const xx_mh01 *mh01);
 XXFC_API int64_t xx_mh01_get_archive_end(const xx_mh01 *mh01);
 

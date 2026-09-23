@@ -23,6 +23,8 @@
 /** OpenSSL's "enc" container prefix, expected at the start of the payload. */
 #define XX_MH01_OPENSSL_MAGIC "Salted__"
 #define XX_MH01_OPENSSL_MAGIC_SIZE 8U
+/** "Salted__" plus the eight-byte salt: the least an "enc" container holds. */
+#define XX_MH01_OPENSSL_HEADER_SIZE 16U
 
 typedef struct xx_mh01_region_s {
     const char *name; /**< A literal chosen here, never from the file. */
@@ -115,7 +117,9 @@ static bool xx_mh01_parse(Abstractformat *self, xx_mh01_private *parsed,
     uint8_t header[XX_MH01_HEADER_SIZE];
     uint8_t openssl_magic[XX_MH01_OPENSSL_MAGIC_SIZE];
     uint64_t total_span;
+    int64_t payload_end = -1;
     uint32_t index;
+    uint32_t hex_digits;
     if (parsed) {
         xx_mem_zero(parsed, sizeof(*parsed));
         parsed->input_size = -1;
@@ -152,9 +156,12 @@ static bool xx_mh01_parse(Abstractformat *self, xx_mh01_private *parsed,
 
     /* The IV is buffered whole, so it is capped independently of the device
      * size; an AES-128 IV is 32 hex characters and nothing legitimate is
-     * anywhere near the limit. */
+     * anywhere near the limit.  The payload is an OpenSSL "enc" container,
+     * whose own header ("Salted__" plus an eight-byte salt) is sixteen bytes,
+     * so anything shorter cannot be one. */
     if (parsed->iv_size == 0U || parsed->iv_size > XX_MH01_MAX_IV_SIZE ||
-        parsed->encrypted_data_size == 0U || parsed->signature_size == 0U) {
+        parsed->encrypted_data_size < XX_MH01_OPENSSL_HEADER_SIZE ||
+        parsed->signature_size == 0U) {
         goto fail;
     }
 
@@ -180,9 +187,14 @@ static bool xx_mh01_parse(Abstractformat *self, xx_mh01_private *parsed,
         goto fail;
     }
 
-    /* The IV is stored as ASCII hex with no terminator.  A field that is not
-     * hex is a decisive sign that the layout was guessed wrong, so it is a
-     * parse failure rather than something to tidy up. */
+    /* The IV is stored as ASCII hex with no NUL terminator, but on genuine
+     * images it is NOT pure hex: the field is what `openssl rand -hex 16`
+     * prints, 32 hex digits and a newline, so iv_size is 33 and the payload
+     * starts at 0x41 (delink hard-codes exactly that; binwalk trim()s the
+     * field).  Accept a non-empty run of hex digits followed only by ASCII
+     * whitespace, and keep the trimmed digits as the IV.  Anything else -
+     * a NUL, a non-hex byte, whitespace before or between digits - means
+     * the layout was guessed wrong, so it is a parse failure. */
     parsed->iv = xx_str_create_len(parsed->iv_size);
     if (!parsed->iv ||
         !xx_mh01_read_at(self->device, parsed->iv_offset, parsed->iv,
@@ -190,25 +202,41 @@ static bool xx_mh01_parse(Abstractformat *self, xx_mh01_private *parsed,
         goto fail;
     }
     parsed->iv[parsed->iv_size] = '\0';
+    hex_digits = 0U;
     for (index = 0U; index < parsed->iv_size; ++index) {
         char c = parsed->iv[index];
         bool is_hex = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
                       (c >= 'A' && c <= 'F');
-        if (!is_hex) goto fail;
+        bool is_space = c == ' ' || c == '\t' || c == '\r' || c == '\n';
+        if (is_hex && hex_digits == index) {
+            ++hex_digits;
+        } else if (!is_space || hex_digits == 0U) {
+            goto fail;
+        }
     }
+    parsed->iv[hex_digits] = '\0';
 
     /* binwalk's signature module requires the payload to parse as an OpenSSL
      * "enc" container, and so does this reader: without it "MH01" plus four
-     * plausible lengths is not enough evidence. */
-    if (!xx_mh01_range_within(parsed->input_size, parsed->encrypted_data_offset,
-                              XX_MH01_OPENSSL_MAGIC_SIZE) ||
-        !xx_mh01_read_at(self->device, parsed->encrypted_data_offset,
+     * plausible lengths is not enough evidence.  encrypted_data_size >= 16
+     * was checked above and the region is inside the file, so the magic read
+     * stays inside the payload. */
+    if (!xx_mh01_read_at(self->device, parsed->encrypted_data_offset,
                          openssl_magic, XX_MH01_OPENSSL_MAGIC_SIZE) ||
         xx_rt_memcmp(openssl_magic, XX_MH01_OPENSSL_MAGIC,
                      XX_MH01_OPENSSL_MAGIC_SIZE) != 0) {
         goto fail;
     }
 
+    /* The signature is detached and trails the image: it may follow after a
+     * gap, but it may not start inside the header, the IV or the payload it
+     * signs.  With that ordering the end of the signature is the end of the
+     * whole image. */
+    if (!xx_mh01_add(parsed->encrypted_data_offset,
+                     parsed->encrypted_data_size, &payload_end) ||
+        parsed->signature_data_offset < payload_end) {
+        goto fail;
+    }
     total_span = (uint64_t)XX_MH01_SUBHEADER_SIZE +
                  (uint64_t)parsed->signature_offset +
                  (uint64_t)parsed->signature_size;

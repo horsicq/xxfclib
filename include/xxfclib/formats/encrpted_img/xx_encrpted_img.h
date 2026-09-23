@@ -6,18 +6,22 @@
 
 /* Several D-Link images ship with the literal ASCII string "encrpted_img" -
  * the vendor's own spelling, missing the 'y' - at offset zero, followed by
- * the encrypted image.  There is no length field, no checksum, no version and
- * no key identifier: the tag is the entire header.
+ * four bytes nobody interprets and then the encrypted image.  There is no
+ * checksum, no version and no key identifier.
  *
  *   +0   char[12]  "encrpted_img"
- *   +12  ...       ciphertext, to end of file
+ *   +12  u8[4]     not interpreted (skipped unread by the decryptor)
+ *   +16  ...       ciphertext, to end of file
  *
  * That is genuinely all that is established.  binwalk's
- * src/signatures/encrpted_img.rs matches the twelve bytes and its parser says
- * so in as many words - it validates nothing because there is nothing to
- * validate.  No further structure is invented here: any "version" or "size"
- * field this reader claimed to find would be a guess, and a guess in a
- * container reader turns into a record pointing at the wrong bytes.
+ * src/signatures/encrpted_img.rs matches the twelve bytes and validates
+ * nothing else ("nothing to really validate"); the decryptor binwalk hands the
+ * image to (the `delink` crate, src/encrpted.rs) starts the ciphertext at the
+ * constant offset 16 and never reads bytes 12..15.  Those four bytes are
+ * therefore part of the header here, so the published record covers the
+ * ciphertext and nothing else, but no meaning is assigned to them: calling
+ * them a "size" or "version" would be a guess, and a guess in a container
+ * reader turns into a record pointing at the wrong bytes.
  *
  * NO DECRYPTION IS ATTEMPTED, EVER.  binwalk routes this format into the
  * `delink` crate's decryptor; none of that key material is reproduced here
@@ -43,6 +47,8 @@ extern "C" {
 /** The vendor's misspelling is the magic; do not "fix" it. */
 #define XX_ENCRPTED_IMG_MAGIC "encrpted_img"
 #define XX_ENCRPTED_IMG_MAGIC_SIZE 12U
+/** Tag plus the four uninterpreted bytes; the ciphertext starts here. */
+#define XX_ENCRPTED_IMG_HEADER_SIZE 16U
 
 typedef struct xx_encrpted_img xx_encrpted_img;
 typedef struct xx_encrpted_img xx_encrpted_img_t;

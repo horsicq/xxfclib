@@ -5,6 +5,7 @@
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/arcadyan/xx_arcadyan.h"
 
+#include "xxfclib/algo/lzma/xx_lzma.h"
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/data/xx_data.h"
 #include "xxfclib/io/xx_io.h"
@@ -26,6 +27,27 @@
 #define XX_ARCADYAN_STAGING_SIZE 65536U
 /** Largest LZMA properties byte; (4 * 5 + 4) * 9 + 8 = 224. */
 #define XX_ARCADYAN_MAX_PROPERTIES 224U
+/** Size of the lzma_alone header: properties, dictionary, declared size. */
+#define XX_ARCADYAN_LZMA_HEADER_SIZE 13U
+/** Offset, in the de-obfuscated image, of the first range-coder byte. */
+#define XX_ARCADYAN_RC_OFFSET                                                  \
+    (XX_ARCADYAN_LZMA_OFFSET + XX_ARCADYAN_LZMA_HEADER_SIZE)
+/*
+ * Trial decode bounds.  The four signature bytes are the only fixed marker,
+ * so - like binwalk, which dry-runs the whole LZMA decode - the reader only
+ * accepts an image whose stream actually decodes.  It decodes a bounded
+ * prefix: TRIAL_OUTPUT bytes of output (or the whole stream when it is
+ * shorter), from at most TRIAL_INPUT bytes of input, with the dictionary
+ * clamped to TRIAL_DICT.  An encoder never needs more than a sliver over one
+ * input byte per output byte, so TRIAL_INPUT leaves a wide margin; the clamp
+ * is exact because no match in the first TRIAL_DICT output bytes can reach
+ * further back than TRIAL_DICT.  The decoder hands its output over in 64 KiB
+ * flushes, and the sink stops it at the first flush that reaches
+ * TRIAL_OUTPUT.
+ */
+#define XX_ARCADYAN_TRIAL_OUTPUT 0x10000U
+#define XX_ARCADYAN_TRIAL_INPUT 0x40000U
+#define XX_ARCADYAN_TRIAL_DICT 0x100000U
 
 typedef struct xx_arcadyan_private_s {
     /* The de-obfuscated prologue, held because it is not a contiguous run of
@@ -98,6 +120,93 @@ void xx_arcadyan_deobfuscate_prologue(void *data, size_t size) {
     }
 }
 
+typedef struct xx_arcadyan_trial_sink_s {
+    uint64_t written;
+    bool reached; /**< TRIAL_OUTPUT bytes decoded cleanly; decode stopped. */
+} xx_arcadyan_trial_sink;
+
+/* Counts the decoder's output and stops it once enough has been seen.  The
+ * refusal is what ends the decode; `reached` tells the caller that it was the
+ * sink, not the stream, that said no. */
+static ssize_t xx_arcadyan_trial_write(xx_io_device *device, const void *data,
+                                       size_t size) {
+    xx_arcadyan_trial_sink *sink =
+        device ? (xx_arcadyan_trial_sink *)device->priv : NULL;
+    if (!sink || (!data && size != 0U)) return -1;
+    if ((uint64_t)size >= (uint64_t)XX_ARCADYAN_TRIAL_OUTPUT - sink->written) {
+        sink->reached = true;
+        return -1;
+    }
+    sink->written += (uint64_t)size;
+    return (ssize_t)size;
+}
+
+/*
+ * Decode the start of the stream.  Accepts when the decoder produced
+ * TRIAL_OUTPUT bytes without error, or ended the stream cleanly before that:
+ * at the declared size, or - size unknown - at the end marker.
+ */
+static bool xx_arcadyan_trial_decode(xx_io_device *device, int64_t base,
+                                     const xx_arcadyan_private *parsed,
+                                     xx_pd_struct *pd) {
+    const size_t in_prologue =
+        XX_ARCADYAN_PROLOGUE_SIZE - XX_ARCADYAN_RC_OFFSET;
+    uint8_t properties[XX_LZMA_PROPS_SIZE];
+    xx_arcadyan_trial_sink counter;
+    xx_io_device sink;
+    uint8_t *input;
+    int64_t available;
+    int64_t uncompressed;
+    size_t input_size;
+    uint32_t dictionary;
+    bool decoded;
+    bool ok = false;
+    if (!device || !parsed || base < 0 ||
+        parsed->image_size <= (int64_t)XX_ARCADYAN_PROLOGUE_SIZE) {
+        return false;
+    }
+    available = parsed->image_size - (int64_t)XX_ARCADYAN_RC_OFFSET;
+    input_size = available < (int64_t)XX_ARCADYAN_TRIAL_INPUT
+                     ? (size_t)available
+                     : (size_t)XX_ARCADYAN_TRIAL_INPUT;
+    if (input_size <= in_prologue) return false;
+    input = (uint8_t *)xx_mem_alloc(input_size);
+    if (!input) return false;
+    xx_rt_memcpy(input, parsed->prologue + XX_ARCADYAN_RC_OFFSET, in_prologue);
+    if (!xx_arcadyan_read_at(device, base + (int64_t)XX_ARCADYAN_PROLOGUE_SIZE,
+                             input + in_prologue, input_size - in_prologue)) {
+        goto done;
+    }
+    dictionary = parsed->dictionary_size < XX_ARCADYAN_TRIAL_DICT
+                     ? parsed->dictionary_size
+                     : XX_ARCADYAN_TRIAL_DICT;
+    properties[0] = parsed->properties;
+    properties[1] = (uint8_t)dictionary;
+    properties[2] = (uint8_t)(dictionary >> 8U);
+    properties[3] = (uint8_t)(dictionary >> 16U);
+    properties[4] = (uint8_t)(dictionary >> 24U);
+    /* declared_size was bounded to XX_ARCADYAN_MAX_DECODED by the caller. */
+    uncompressed = parsed->declared_size == UINT64_MAX
+                       ? -1
+                       : (int64_t)parsed->declared_size;
+    xx_mem_zero(&counter, sizeof(counter));
+    xx_mem_zero(&sink, sizeof(sink));
+    sink.write = xx_arcadyan_trial_write;
+    sink.priv = &counter;
+    decoded = xx_lzma_unpack_memory_to_device(input, input_size, properties,
+                                              XX_LZMA_PROPS_SIZE, uncompressed,
+                                              &sink, pd);
+    if (counter.reached) {
+        ok = !(pd && xx_pd_is_stopped(pd));
+    } else if (decoded) {
+        ok = counter.written != 0U &&
+             (uncompressed < 0 || counter.written == (uint64_t)uncompressed);
+    }
+done:
+    xx_mem_free(input);
+    return ok;
+}
+
 static void xx_arcadyan_private_cleanup(xx_arcadyan_private *parsed) {
     if (!parsed) return;
     xx_mem_zero(parsed, sizeof(*parsed));
@@ -151,11 +260,11 @@ static bool xx_arcadyan_parse(Abstractformat *self, xx_arcadyan_private *parsed,
     /*
      * What the shuffle uncovers is an lzma_alone header: one properties byte,
      * a 32-bit dictionary size and a 64-bit uncompressed size, all little
-     * endian.  The first five are fixed by the signature itself, so checking
-     * them is cheap insurance rather than real discrimination; the declared
-     * uncompressed size is the field that is genuinely free, and it is the
-     * one that has to be bounded.  A header claiming gigabytes of output is
-     * an expansion bomb and is rejected here, at parse time, not later.
+     * endian.  The signature fixes the properties byte (0x5D) and the low
+     * three dictionary bytes (00 00 80); the dictionary's top byte and the
+     * declared uncompressed size are free.  A header claiming gigabytes of
+     * output is an expansion bomb and is rejected here, at parse time, not
+     * later.
      */
     parsed->properties = parsed->prologue[XX_ARCADYAN_LZMA_OFFSET];
     parsed->dictionary_size = xx_data_get_u32(
@@ -176,11 +285,17 @@ static bool xx_arcadyan_parse(Abstractformat *self, xx_arcadyan_private *parsed,
          parsed->declared_size > XX_ARCADYAN_MAX_DECODED)) {
         goto fail;
     }
+    /* An LZMA range coder always opens with a zero byte. */
+    if (parsed->prologue[XX_ARCADYAN_RC_OFFSET] != 0U) goto fail;
 
     /* The published stream is the de-obfuscated image minus its first four
      * bytes, which are not part of the LZMA data. */
     parsed->stream_size = parsed->image_size - (int64_t)XX_ARCADYAN_LZMA_OFFSET;
     parsed->archive_end = self->base_address + parsed->image_size;
+    if (!xx_arcadyan_trial_decode(self->device, self->base_address, parsed,
+                                  pd)) {
+        goto fail;
+    }
     return true;
 fail:
     xx_arcadyan_private_cleanup(parsed);

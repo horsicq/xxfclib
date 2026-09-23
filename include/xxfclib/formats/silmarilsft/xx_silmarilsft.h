@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-/** @file xx_silmarilsft.h @brief Silmarils game-resource container reader. */
+/** @file xx_silmarilsft.h @brief Silmarils ALIS script container reader. */
 
 #ifndef XXFCLIB_FORMAT_SILMARILSFT_H
 #define XXFCLIB_FORMAT_SILMARILSFT_H
@@ -14,37 +14,39 @@ extern "C" {
 #endif
 
 /**
- * @brief A Silmarils game-resource container (.IO / .CO / .DO).
+ * @brief A Silmarils ALIS script container (.IO / .CO / .DO).
  *
  * One header plus one packed stream: no directory, no member name, no
  * checksum.
  *
  *   0x00  u32  method << 24 | raw size      ENDIAN DEPENDENT
- *   0x04  u16  version, always 1
- *   0x06  u8[8] code table, method 0xa1 only, always
+ *   0x04  u16  "not main script" flag, always 1 in a resource file
+ *   0x06  u8[8] offset-width table, method 0xa1 only, always
  *                0b 09 0a 0b 07 05 06 07
  *
- * THE FILE HAS NO MAGIC.  The version word is the only constant field and it
+ * THE FILE HAS NO MAGIC.  The flag word is the only constant field and it
  * is what pins the byte order: the PC build writes every scalar little
  * endian, the Amiga/ST build big endian, so `01 00` at 0x04 means little and
- * `00 01` means big.  The packed stream itself is a byte stream and is
- * identical in both builds.
+ * `00 01` means big.  The packed stream itself is identical in both builds.
+ * (A main script has 0 there plus 16 bytes of VM specs; it is not claimed.)
  *
  * The 24-bit raw size counts the six-byte header, so the plaintext is
  * `raw size - 6`.
  *
- * Two methods exist:
- *   0x81  byte-run codec - implemented
- *   0xa1  bit-stream LZ codec - NOT implemented.  Its header, byte order and
- *         constant parameter block are understood but its match token is not,
- *         so those members are listed and extraction refuses rather than
- *         writing plausible-looking garbage.
+ * Two methods are decoded:
+ *   0x81  byte-run codec: c < 0x80 copies c literals, c >= 0x80 repeats the
+ *         next byte (c & 0x7f) times.
+ *   0xa1  bit-stream LZ codec: MSB-first bits from big-endian 16-bit words;
+ *         a flag bit for an optional literal run, then a 3-bit selector
+ *         choosing the offset width from the table and the match length.
+ * (0x80, the interleaved byte-run variant, does not occur in the reference
+ * corpus and is not claimed.)
  *
  * Detection is earned rather than assumed: a 0x81 stream is trial-walked in
  * full and has to produce exactly `raw size - 6` bytes and stop exactly on
  * the last input byte; a 0xa1 stream has to carry the constant parameter
- * block.  Ported from XArchive's games/xsilmarils.cpp and
- * Algos/xsilmarilsdecoder.cpp.
+ * block and a plausible packed/unpacked ratio, and its decode has to end
+ * within four bytes of the stream end.
  */
 typedef struct xx_silmarilsft {
     Abstractformat format;
@@ -52,7 +54,7 @@ typedef struct xx_silmarilsft {
     uint64_t unpacked_size;
     uint32_t method;      /**< 0x81 byte-run, 0xa1 bit-stream. */
     bool big_endian;
-    bool method_supported;
+    bool method_supported; /**< Both claimed methods decode; kept for API. */
 } xx_silmarilsft;
 
 typedef xx_silmarilsft xx_silmarilsft_t;

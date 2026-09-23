@@ -16,6 +16,9 @@ extern "C" {
 /**
  * @brief An XPAK container: one 25-byte header and one packed stream.
  *
+ * This is the Software Toolworks "XPAK" wrapper (Star Wars Chess, 1993), not
+ * Gentoo's "XPAKPACK" metadata block.
+ *
  *   0x00  char[4] "XPAK"
  *   0x04  u32 LE  archive size, counting this header
  *   0x08  char[13] member name, NUL padded to the full field (8.3 plus the
@@ -23,17 +26,22 @@ extern "C" {
  *   0x15  u32 LE  unpacked size of the member
  *   0x19  the packed stream, running to the end of the archive
  *
- * Derived from the 65-file reference corpus: the field table above accounts
- * for every header byte of all 65, the archive-size word equals the real file
- * length in 64 of them (the 65th is truncated), and the name field is
- * printable and zero padded in every one.
+ * The packed stream is a commercial LZ77 + adaptive-Huffman codec whose
+ * decoder survives in 3Com's COMSLINK INST.EXE (the same stream format is
+ * wrapped there in a ".SAC" container):
  *
- * THE CODEC IS NOT IDENTIFIED.  Every stream in the corpus opens on the same
- * ten bytes - 09 ff fe 00 80 00 04 00 20 ff - and the byte entropy of the
- * payload runs 7.94 to 7.99 bits, which is an entropy coder rather than a
- * plain LZ.  Neither XArchive nor U3 carries a handler for it.  Members are
- * therefore listed with their real name and both real sizes, and unpack fails
- * closed rather than emitting plausible-looking garbage.
+ *   +0  u8      encoder hash-size parameter (ignored by the decoder)
+ *   +1  u16 LE  0xFEFF
+ *   +3  u16 LE  window size          0x200..0x8000
+ *   +5  u16 LE  longest match        0x100..0x4000
+ *   +7  u16 LE  model rescale limit  0x200..0x8000
+ *   +9  u8      0xFF, or a count N of bytes to skip whose last one is 0xFF
+ *   then an LSB-first bit stream of adaptive-Huffman symbols: 0..255
+ *   literals, 256 end of stream, 257.. match classes that carry their own
+ *   distance and length extra bits.
+ *
+ * Every one of the 64 complete archives of the reference corpus decodes to
+ * exactly its declared size with the end symbol in the archive's last byte.
  */
 typedef struct xx_xpak {
     Abstractformat format;
@@ -71,6 +79,29 @@ XXFC_API bool xx_xpak_archive_record_move_to_next(
     Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 XXFC_API void xx_xpak_free_archive_records_reading(
     Abstractformat *self, xx_archive_record_state *state);
+
+/**
+ * @brief Decode the member into @p destination (NULL only verifies).
+ *
+ * Succeeds only when the stream reaches its end symbol inside the archive
+ * after producing exactly the declared unpacked size.
+ */
+XXFC_API bool xx_xpak_unpack_to_device(xx_xpak *archive,
+                                       xx_io_device *destination,
+                                       xx_pd_struct *pd);
+
+/**
+ * @brief Decode one packed stream (codec header included) held in memory.
+ *
+ * @param stream       the stream, starting at its 9-byte codec header
+ * @param stream_size  bytes available
+ * @param output       receives exactly @p output_size bytes
+ * @param consumed     optional; bytes of @p stream the decoder used
+ * @return true when the end symbol arrives after exactly @p output_size bytes
+ */
+XXFC_API bool xx_xpak_decode_memory(const uint8_t *stream, size_t stream_size,
+                                    uint8_t *output, size_t output_size,
+                                    size_t *consumed);
 
 #ifdef __cplusplus
 }

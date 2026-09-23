@@ -6,7 +6,10 @@
 
 #include "xxfclib/formats/xx_format.h"
 
-/* Raw PKWARE Data Compression Library (implode) stream. */
+/* Two or more raw PKWARE Data Compression Library (implode) streams laid back
+ * to back with nothing between them (an installer data volume). One record
+ * per stream, named data_00000, data_00001, ... in file order. A file holding
+ * a single stream is refused: that is the dclft reader's "DCLStream". */
 typedef struct xx_dclraw {
     Abstractformat format;
     uint64_t number_of_records;

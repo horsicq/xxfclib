@@ -42,10 +42,19 @@
  * payload, and an image whose digest is wrong is still a structurally valid
  * OTA file that a caller may well want to look inside.
  *
- * The only structural invariant that is enforced is the one the specification
- * makes unambiguous and that binwalk also checks:
+ * The structural invariants that are enforced are the ones connectedhomeip's
+ * own OTAImageHeaderParser relies on:
  *
- *     16 + header_size + PayloadSize == total_size
+ *   - the TLV header opens with an anonymous STRUCTURE (control octet 0x15)
+ *     and fields are read only from its direct members, so a nested
+ *     container carrying its own context tag 4 is not mistaken for
+ *     PayloadSize; bytes left in header_size after the structure closes are
+ *     ignored, as the reference parser ignores them;
+ *   - PayloadSize is present and is an unsigned integer;
+ *   - 16 + header_size + PayloadSize == total_size.
+ *
+ * The digest is recomputed only by handle_base_info, never by the detection
+ * probe (check_is_valid) or the record walk.
  *
  * total_size, header_size and PayloadSize all come straight out of the file
  * and are all bounded against the device before anything is allocated or

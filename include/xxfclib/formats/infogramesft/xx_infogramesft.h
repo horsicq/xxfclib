@@ -32,9 +32,10 @@ extern "C" {
  *   record chain, from `table size` to the last byte:
  *     optional 16-byte PKZIP crumb - a local file header cut off after two CRC
  *     bytes: "PK\3\4", u16 version, u16 flags, u16 method, u16 DOS time,
- *     u16 DOS date, u16 CRC-low.  The checksum is the LOW HALF of the CRC32 of
- *     that record's UNPACKED member, so it is used to verify a decode and is
- *     deliberately not published as a CRC32.
+ *     u16 DOS date, u16 CRC-low.  The checksum is meant to be the LOW HALF of
+ *     the CRC32 of that record's UNPACKED member, but archives re-use crumbs
+ *     across records, so it is neither verified nor published; only the DOS
+ *     stamp is kept.
  *
  *     record header, 16 bytes:
  *       0x00  u32 LE additional-descriptor size
@@ -49,6 +50,16 @@ extern "C" {
  *
  *   A trailing 16-byte "PK\1\2" crumb - the head of a central directory record
  *   cut off with everything behind it - ends the chain.
+ *
+ * Members are published in chain order as "NNNNN_<stored name>", NNNNN being
+ * the lowest resource id naming the record.  A record without a usable stored
+ * name is published as "NNNNN.bin": a name is unusable when it holds a control
+ * or non-ASCII byte, a separator or one of * ? " < > |, is only dots and
+ * blanks, ends in a dot or blank, or is a Windows device name (CON, PRN, AUX,
+ * NUL, COM0-9, LPT0-9, CONIN$, CONOUT$, CLOCK$, with or without extension).
+ *
+ * Detection decodes the first compressed member as a trial, bounded to 64 KiB
+ * of output (and 260 KiB of packed input) whatever the member declares.
  *
  * Layout, validation rule and the method-1 decoder are ported from XArchive's
  * games/xinfogramespak.cpp and Algos/xinfogramespakdecoder.cpp.
@@ -67,6 +78,18 @@ XXFC_API xx_infogramesft *xx_infogramesft_create(xx_io_device *device,
                                                  int64_t base_address);
 XXFC_API void xx_infogramesft_destroy(xx_infogramesft *archive);
 XXFC_API void xx_infogramesft_free(xx_infogramesft *archive);
+
+/**
+ * @brief Detector pre-check over the first bytes of a file (the 64-byte
+ * magic window).  True when slot 0 is zero, slot 1 is a table size that fits
+ * the file, every slot inside the window is 0 or points between the table's
+ * end and the file's end, and - when the first record header lies inside the
+ * window - its method and parameter bytes are legal.  A necessary condition
+ * only: the probe (check_is_valid) decides.
+ */
+XXFC_API bool xx_infogramesft_test_magic(const uint8_t *magic,
+                                         size_t magic_size,
+                                         int64_t total_size);
 
 XXFC_API bool xx_infogramesft_check_is_valid(Abstractformat *self,
                                              xx_pd_struct *pd);

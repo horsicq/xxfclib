@@ -23,6 +23,7 @@
  *     +0x00  4 bytes   magic 64 80 19 40
  *     +0x04  32 bytes  model name string, NUL padded
  *     +0x24  32 bytes  board ID string, NUL padded
+ *     +0x44  8 bytes   not described by any source; ignored (binwalk too)
  *     +0x4C  32 bytes  ASCII lowercase MD5 of the checksum range, or zeros
  *     +0x6C  u32 LE    TLV type, must be 1
  *     +0x70  u32 LE    TLV length, the payload size
@@ -36,6 +37,10 @@
  * The digest field is optional - some images ship it as all zeros.  An empty
  * field means "unchecked" and is accepted, matching binwalk; a present field
  * must match or the image is rejected.
+ *
+ * Deliberately stricter than binwalk, to keep detection quiet: the three
+ * strings must be printable ASCII up to their terminator, and a TLV length
+ * of zero (a header with no payload) is refused.
  *
  * Source: binwalk src/structures/dlink_tlv.rs and src/signatures/dlink_tlv.rs.
  */
