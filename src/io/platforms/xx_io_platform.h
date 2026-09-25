@@ -110,6 +110,41 @@ bool xx_io_platform_apply_dos_time_and_attrs_a(const char *path, uint16_t dos_da
 bool xx_io_platform_secure_random(uint8_t *output, size_t size);
 
 /**
+ * @brief Open another process's address space for reading and writing.
+ *
+ * @p pid is the target process id, or 0 for the current process (which lets
+ * the device be exercised without a child). On POSIX this opens
+ * /proc/<pid>/mem; on Windows it OpenProcess()es with VM read/write rights.
+ * Reads and writes address memory directly (the offset is an absolute
+ * address), so there is no meaningful total size.
+ *
+ * @return An opaque handle, or NULL on failure.
+ */
+void* xx_io_platform_process_open(uint64_t pid);
+
+/** Read @p n bytes at absolute address @p addr. Returns bytes read, or -1. */
+ssize_t xx_io_platform_process_read(void *handle, uint64_t addr, void *buf,
+                                    size_t n);
+
+/** Write @p n bytes at absolute address @p addr. Returns bytes written, or -1. */
+ssize_t xx_io_platform_process_write(void *handle, uint64_t addr,
+                                     const void *buf, size_t n);
+
+/** Release the handle from xx_io_platform_process_open. */
+int xx_io_platform_process_close(void *handle);
+
+/**
+ * @brief Adopt a caller-supplied native process handle for the process device.
+ *
+ * @p native is a Windows process HANDLE, or on POSIX a file descriptor for the
+ * target's memory (such as an open /proc/<pid>/mem), passed as
+ * (void*)(intptr_t)fd. Returns the internal handle the process read/write/close
+ * hooks expect, or NULL if @p native is not usable. The returned handle refers
+ * to the same OS object; the caller keeps ownership.
+ */
+void* xx_io_platform_process_adopt(void *native);
+
+/**
  * @brief The directory separator this platform writes, as a wide character.
  *
  * L'\' on Windows and L'/' elsewhere. The archive readers build extraction

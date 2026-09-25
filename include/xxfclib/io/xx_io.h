@@ -182,6 +182,34 @@ XXFC_API xx_io_device* io_mem_open(void *buf, size_t size);
 XXFC_API xx_io_device* xx_io_mem_open_ro(const void *buf, size_t size);
 XXFC_API xx_io_device* io_mem_open_ro(const void *buf, size_t size);
 
+/**
+ * @brief Open a process's address space as an abstract I/O device.
+ *
+ * The device reads and writes the target process's memory: the stream offset
+ * is an absolute memory address (use xx_io_seek64 / xx_io_tell), and there is
+ * no total size. @p pid is the target process id, or 0 for the current
+ * process. On POSIX this uses /proc/<pid>/mem; on Windows,
+ * ReadProcessMemory / WriteProcessMemory on an OpenProcess() handle.
+ *
+ * @return Allocated xx_io_device pointer, or NULL on error.
+ */
+XXFC_API xx_io_device* xx_io_process_open(uint64_t pid);
+XXFC_API xx_io_device* io_process_open(uint64_t pid);
+
+/**
+ * @brief Wrap an already-open process handle as a process-memory device.
+ *
+ * Like xx_io_process_open, but adopts a handle the caller already holds
+ * instead of opening one: a Windows process HANDLE, or on POSIX a memory file
+ * descriptor (such as /proc/<pid>/mem) passed as (void*)(intptr_t)fd. The
+ * device borrows the handle and does NOT close it - the caller keeps
+ * ownership - so a debugger can share the handle it already has.
+ *
+ * @return Allocated xx_io_device pointer, or NULL on error.
+ */
+XXFC_API xx_io_device* xx_io_process_open_handle(void *native_handle);
+XXFC_API xx_io_device* io_process_open_handle(void *native_handle);
+
 /** One fixed byte range in a multi-volume stream (zero-length ranges allowed). */
 typedef struct xx_io_volume {
     xx_io_device *device;

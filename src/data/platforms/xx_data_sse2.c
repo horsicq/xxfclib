@@ -38,6 +38,11 @@
 #  endif
 #endif
 
+/* Callers dispatch here only when xx_is_sse2_enabled(); 32-bit GCC/Clang
+ * builds do not enable SSE2 globally, so enable it for this function. */
+#if (defined(__GNUC__) || defined(__clang__)) && defined(__i386__) && !defined(__SSE2__)
+__attribute__((target("sse2")))
+#endif
 int64_t xx_data_find_bytes_sse2(const uint8_t *pdata, size_t data_size, size_t start_offset, const uint8_t *pat, size_t pattern_size, xx_pd_struct *pd) {
     if (!pdata || !pat || pattern_size == 0 || start_offset + pattern_size > data_size || start_offset + pattern_size < start_offset) {
         return -1;

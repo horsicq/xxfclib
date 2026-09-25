@@ -562,4 +562,56 @@ wchar_t xx_io_platform_wseparator(void) {
     return L'\\';
 }
 
+/* ---------------------------------------------------------- process memory */
+
+void* xx_io_platform_process_open(uint64_t pid) {
+    HANDLE handle;
+    if (pid == 0) {
+        pid = (uint64_t)GetCurrentProcessId();
+    }
+    handle = OpenProcess(PROCESS_VM_READ | PROCESS_VM_WRITE
+                         | PROCESS_VM_OPERATION | PROCESS_QUERY_INFORMATION,
+                         FALSE, (DWORD)pid);
+    return (void *)handle;
+}
+
+ssize_t xx_io_platform_process_read(void *handle, uint64_t addr, void *buf,
+                                    size_t n) {
+    SIZE_T done = 0;
+    if (!handle || !buf) {
+        return -1;
+    }
+    if (!ReadProcessMemory((HANDLE)handle, (LPCVOID)(uintptr_t)addr, buf, n,
+                           &done)) {
+        return done > 0 ? (ssize_t)done : -1;
+    }
+    return (ssize_t)done;
+}
+
+ssize_t xx_io_platform_process_write(void *handle, uint64_t addr,
+                                     const void *buf, size_t n) {
+    SIZE_T done = 0;
+    if (!handle || !buf) {
+        return -1;
+    }
+    if (!WriteProcessMemory((HANDLE)handle, (LPVOID)(uintptr_t)addr, buf, n,
+                            &done)) {
+        return done > 0 ? (ssize_t)done : -1;
+    }
+    FlushInstructionCache((HANDLE)handle, (LPCVOID)(uintptr_t)addr, done);
+    return (ssize_t)done;
+}
+
+int xx_io_platform_process_close(void *handle) {
+    if (!handle) {
+        return -1;
+    }
+    return CloseHandle((HANDLE)handle) ? 0 : -1;
+}
+
+void* xx_io_platform_process_adopt(void *native) {
+    /* A HANDLE is used directly by the read/write hooks. */
+    return native;
+}
+
 #endif /* _WIN32 */

@@ -549,6 +549,7 @@ set(XXFCLIB_SOURCES
     src/io/xx_io.c
     src/io/xx_io_file.c
     src/io/xx_io_mem.c
+    src/io/xx_io_process.c
     src/memory/xx_memory.c
     src/strings/xx_string.c
     src/data/xx_pd.c

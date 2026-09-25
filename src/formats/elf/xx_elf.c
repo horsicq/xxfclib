@@ -223,9 +223,16 @@ static bool xx_elf_parse_program_headers(Abstractformat *format,
             program->alignment = xx_io_get_u32(format->device, offset + 28,
                                                big_endian);
         }
-        if (!xx_elf_range_is_valid(available, program->offset,
-                                   program->file_size) ||
-            (program->type == XX_ELF_PROGRAM_LOAD &&
+        if (program->offset > (uint64_t)available)
+            return false;
+        /* A UPX-packed ELF rounds its first PT_LOAD's p_filesz up to a page,
+         * so it can name a few bytes past the physical end of file; the kernel
+         * simply zero-fills the tail of the final page. Clamp p_filesz to what
+         * the file actually holds instead of rejecting the image - no consumer
+         * can read past EOF anyway, so this only narrows an impossible read. */
+        if (program->file_size > (uint64_t)available - program->offset)
+            program->file_size = (uint64_t)available - program->offset;
+        if ((program->type == XX_ELF_PROGRAM_LOAD &&
              (program->memory_size < program->file_size ||
               program->memory_size > INT64_MAX ||
               (program->memory_size > 0U &&

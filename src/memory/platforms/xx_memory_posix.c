@@ -78,11 +78,7 @@ size_t xx_memory_platform_usable_size(void *ptr) {
  * the contracts differ, xx_rt_malloc rounds a zero-byte request up to one byte
  * and xx_rt_realloc(ptr, 0) keeps the block, where the xx_memory_platform_*
  * pair returns NULL for both. */
-#include <windows.h>
-#else
-#include <stdlib.h>
 #include <string.h>
-#endif
 
 
 /* ------------------------------------------------------------------------ */
