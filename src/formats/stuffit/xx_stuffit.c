@@ -2,14 +2,16 @@
  * SPDX-License-Identifier: MIT
  *
  * Native reader for Aladdin StuffIt's original "SIT!" container, as written
- * by StuffIt 1.x through 4.x (StuffIt 5's "StuffIt (c)1997-" container is a
- * different format and is deliberately not claimed here).
+ * by StuffIt 1.x through 4.x, and the same layout under the tags later
+ * StuffIt versions and StuffIt InstallerMaker used ("ST46", "ST50", "ST60",
+ * "ST65", "STin", "STi2".."STi4").  StuffIt 5's "StuffIt (c)1997-" container
+ * is a different format and is deliberately not claimed here.
  *
  * Layout, taken from XArchive's StuffIt module
  * (Algos/xdearkmodule_stuffit_p.cpp) and confirmed against the corpus:
  *
  *   master header, 22 bytes
- *     0   "SIT!"
+ *     0   "SIT!" (or one of the tags above)
  *     4   uint16be  number of top-level members
  *     6   uint32be  total archive size -- exact, and used as the anchor
  *     10  "rLau"
@@ -18,8 +20,9 @@
  *
  *   member header, 112 bytes, then the resource fork's packed bytes and then
  *   the data fork's packed bytes
- *     0   uint8     resource fork method (32 = folder, 33 = end of folder,
- *                   bit 0x10 = encrypted)
+ *     0   uint8     resource fork method: low nibble = algorithm, 32 =
+ *                   folder, 33 = end of folder, 0x10 = encrypted (1.x),
+ *                   0x80 = password protected (4.5 and later)
  *     1   uint8     data fork method
  *     2   uint8     name length, name field is 63 bytes
  *     66  4         Mac file type
@@ -36,19 +39,22 @@
  *     104 6 reserved
  *     110 uint16be  CRC-16/ARC of the first 110 header bytes
  *
- * Decoding covers method 0 (stored), method 1 (RLE90) and method 13
- * (LZ+Huffman, the method StuffIt 3 and later use for almost everything);
- * the method-13 decoder is a port of XArchive's xdearkstuffit13_p.cpp, which
- * is itself a C port of the MIT-licensed compcol clean-room implementation
- * (Copyright (c) 2026 Karpeles Lab Inc.).  Methods 2 (LZW), 3 (Huffman),
- * 5 (LZAH), 6 (fixed Huffman), 8 (MW), 14 (installer) and 15 (Arsenic), plus
- * every encrypted fork, fail closed.  Every decode is verified against the
- * fork's stored CRC-16/ARC before it is accepted.
+ * Decoding covers method 0 (stored), 1 (RLE90), 2 (LZW, the compress 4.0
+ * transport), 3 (Huffman with a stored tree), 5 (LZAH, i.e. LHArc -lh1-,
+ * through the library's lzh codec), 6 (fixed Huffman + PackBits, ported from
+ * Deark, MIT) and 13 (LZ+Huffman, the method StuffIt 3 and later use for
+ * almost everything); the method-13 decoder is a port of XArchive's
+ * xdearkstuffit13_p.cpp, which is itself a C port of the MIT-licensed compcol
+ * clean-room implementation (Copyright (c) 2026 Karpeles Lab Inc.).  Methods
+ * 8 (MW), 14 (installer) and 15 (Arsenic), plus every encrypted fork, are
+ * listed but fail closed.  Every decode is verified against the fork's
+ * stored CRC-16/ARC before it is accepted.
  */
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/stuffit/xx_stuffit.h"
 
 #include "xxfclib/algo/crc/xx_crc.h"
+#include "xxfclib/algo/lzh/xx_lzh.h"
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
@@ -69,14 +75,41 @@
 #define SIT_MAX_NAME 63U
 #define SIT_MAX_MEMBERS 262144U
 #define SIT_MAX_DEPTH 32U
-/* Classic Mac forks are 24-bit quantities; nothing legal exceeds this. */
-#define SIT_MAX_FORK UINT32_C(0x00FFFFFF)
+/* A fork is decoded in memory; refuse to allocate more than this for one. */
+#define SIT_MAX_DECODE UINT64_C(0x10000000)
 
 #define SIT_METHOD_NONE 0U
 #define SIT_METHOD_RLE 1U
+#define SIT_METHOD_LZW 2U
+#define SIT_METHOD_HUFFMAN 3U
+#define SIT_METHOD_LZAH 5U
+#define SIT_METHOD_FIXEDHUFF 6U
 #define SIT_METHOD_LZHUFF 13U
 #define SIT_MARK_FOLDER 32U
 #define SIT_MARK_FOLDER_END 33U
+/* Method byte flags: 0x10 is StuffIt 1.x encryption, 0x80 the password
+ * protection of StuffIt 4.5 and later.  On a folder marker 0x10 means the
+ * folder holds encrypted items. */
+#define SIT_FLAG_ENCRYPTED_OLD 0x10U
+#define SIT_FLAG_ENCRYPTED 0x80U
+#define SIT_FLAG_ENCRYPTED_ANY (SIT_FLAG_ENCRYPTED_OLD | SIT_FLAG_ENCRYPTED)
+
+/* The folder-marker value of a method byte, flags stripped. */
+static uint8_t sit_marker(uint8_t method) {
+    return (uint8_t)(method & (uint8_t)~SIT_FLAG_ENCRYPTED_ANY);
+}
+
+/* "SIT!" is StuffIt 1.x-4.x; later StuffIt and its installer maker kept the
+ * same classic layout under other tags, always with "rLau" at offset 10. */
+static bool sit_signature(const uint8_t *header) {
+    static const char tags[9][5] = {"SIT!", "ST46", "ST50", "ST60", "ST65",
+                                    "STin", "STi2", "STi3", "STi4"};
+    size_t index;
+    if (xx_rt_memcmp(header + 10U, "rLau", 4U) != 0) return false;
+    for (index = 0U; index < 9U; ++index)
+        if (xx_rt_memcmp(header, tags[index], 4U) == 0) return true;
+    return false;
+}
 
 /* ------------------------------------------------------------------ */
 /* Method 13: LZ+Huffman.                                             */
@@ -598,6 +631,439 @@ static bool sit_rle90_decode(const uint8_t *input, size_t input_size,
     return out_pos == output_size;
 }
 
+static uint16_t sit_be16(const uint8_t *bytes);
+static uint32_t sit_be32(const uint8_t *bytes);
+
+/* ------------------------------------------------------------------ */
+/* Method 2: LZW.                                                     */
+/* ------------------------------------------------------------------ */
+
+/* The Unix compress 4.0 transport without its 3-byte header: LSB-first
+ * codes from 9 to 14 bits, code 256 clears the table (block mode), the
+ * first free code is 257, and codes travel in groups of eight of one width,
+ * so both a clear and a width change skip the rest of the current group. */
+#define SIT_LZW_MIN_BITS 9U
+#define SIT_LZW_MAX_BITS 14U
+#define SIT_LZW_TABLE (1U << SIT_LZW_MAX_BITS)
+#define SIT_LZW_CLEAR 256U
+#define SIT_LZW_FIRST 257U
+#define SIT_LZW_NONE UINT32_MAX
+
+typedef struct sit_lsb_reader_s {
+    const uint8_t *data;
+    size_t size;
+    size_t byte_pos;
+    uint32_t bits;
+    unsigned count;
+    uint64_t consumed;
+} sit_lsb_reader;
+
+static bool sit_lsb_read(sit_lsb_reader *r, unsigned width, uint32_t *value) {
+    while (r->count < width) {
+        if (r->byte_pos >= r->size) return false;
+        r->bits |= (uint32_t)r->data[r->byte_pos++] << r->count;
+        r->count += 8U;
+    }
+    *value = r->bits & ((UINT32_C(1) << width) - 1U);
+    r->bits >>= width;
+    r->count -= width;
+    r->consumed += width;
+    return true;
+}
+
+/* Skip to the end of the current group of eight codes; running out of input
+ * here is not an error by itself -- the next code read reports it. */
+static void sit_lzw_end_group(sit_lsb_reader *r, unsigned width,
+                              uint64_t *group_start) {
+    uint64_t group_bits = (uint64_t)width * 8U;
+    uint64_t used = r->consumed - *group_start;
+    uint64_t skip = (group_bits - used % group_bits) % group_bits;
+    while (skip != 0U) {
+        uint32_t ignored;
+        unsigned take = skip > 16U ? 16U : (unsigned)skip;
+        if (!sit_lsb_read(r, take, &ignored)) break;
+        skip -= take;
+    }
+    *group_start = r->consumed;
+}
+
+static bool sit_lzw_decode(const uint8_t *input, size_t input_size,
+                           uint8_t *output, size_t output_size) {
+    sit_lsb_reader reader;
+    uint16_t *prefix = NULL;
+    uint8_t *suffix = NULL;
+    uint8_t *stack = NULL;
+    uint64_t group_start = 0U;
+    uint32_t next_code = SIT_LZW_FIRST;
+    uint32_t old_code = SIT_LZW_NONE;
+    uint8_t first_byte = 0U;
+    unsigned width = SIT_LZW_MIN_BITS;
+    size_t out_pos = 0U;
+    bool ok = false;
+
+    if (output_size == 0U) return true;
+    if (!input || !output) return false;
+    xx_mem_zero(&reader, sizeof(reader));
+    reader.data = input;
+    reader.size = input_size;
+    prefix = (uint16_t *)xx_mem_alloc(SIT_LZW_TABLE * sizeof(*prefix));
+    suffix = (uint8_t *)xx_mem_alloc(SIT_LZW_TABLE);
+    stack = (uint8_t *)xx_mem_alloc(SIT_LZW_TABLE);
+    if (!prefix || !suffix || !stack) goto done;
+
+    while (out_pos < output_size) {
+        uint32_t code;
+        uint32_t in_code;
+        size_t depth = 0U;
+        if (!sit_lsb_read(&reader, width, &code)) goto done;
+        if (code == SIT_LZW_CLEAR) {
+            sit_lzw_end_group(&reader, width, &group_start);
+            width = SIT_LZW_MIN_BITS;
+            next_code = SIT_LZW_FIRST;
+            old_code = SIT_LZW_NONE;
+            continue;
+        }
+        if (old_code == SIT_LZW_NONE) {
+            if (code > 0xffU) goto done;
+            output[out_pos++] = (uint8_t)code;
+            old_code = code;
+            first_byte = (uint8_t)code;
+            continue;
+        }
+        in_code = code;
+        if (code >= next_code) {
+            /* Only the code about to be defined may be used early. */
+            if (code != next_code || next_code >= SIT_LZW_TABLE) goto done;
+            stack[depth++] = first_byte;
+            code = old_code;
+        }
+        while (code > 0xffU) {
+            if (code >= next_code || depth >= SIT_LZW_TABLE) goto done;
+            stack[depth++] = suffix[code];
+            code = prefix[code];
+        }
+        if (depth >= SIT_LZW_TABLE) goto done;
+        first_byte = (uint8_t)code;
+        stack[depth++] = first_byte;
+        while (depth != 0U && out_pos < output_size)
+            output[out_pos++] = stack[--depth];
+        if (next_code < SIT_LZW_TABLE) {
+            prefix[next_code] = (uint16_t)old_code;
+            suffix[next_code] = first_byte;
+            ++next_code;
+            if (next_code >= (UINT32_C(1) << width) &&
+                width < SIT_LZW_MAX_BITS) {
+                sit_lzw_end_group(&reader, width, &group_start);
+                ++width;
+            }
+        }
+        old_code = in_code;
+    }
+    ok = true;
+done:
+    if (prefix) xx_mem_free(prefix);
+    if (suffix) xx_mem_free(suffix);
+    if (stack) xx_mem_free(stack);
+    return ok;
+}
+
+/* ------------------------------------------------------------------ */
+/* Methods 3 and 6: Huffman.                                          */
+/* ------------------------------------------------------------------ */
+
+/* A binary decode tree shared by both Huffman methods.  Node 0 is the root;
+ * a node is either a leaf (symbol) or has two children.  Codes are read
+ * MSB-first. */
+#define SIT_HUFF_MAX_NODES 1024U
+#define SIT_HUFF_EMPTY 0xffffU
+
+typedef struct sit_huff_tree_s {
+    uint16_t child[SIT_HUFF_MAX_NODES][2];
+    uint16_t symbol[SIT_HUFF_MAX_NODES];
+    size_t count;
+} sit_huff_tree;
+
+typedef struct sit_msb_reader_s {
+    const uint8_t *data;
+    size_t size;
+    size_t bit_pos;
+} sit_msb_reader;
+
+static bool sit_msb_read(sit_msb_reader *r, unsigned count, uint32_t *value) {
+    uint32_t result = 0U;
+    unsigned index;
+    if (count > 32U || r->bit_pos > r->size * 8U ||
+        (size_t)count > r->size * 8U - r->bit_pos)
+        return false;
+    for (index = 0U; index < count; ++index) {
+        result = (result << 1U) |
+                 ((uint32_t)(r->data[r->bit_pos >> 3U] >>
+                             (7U - (r->bit_pos & 7U))) & 1U);
+        r->bit_pos++;
+    }
+    *value = result;
+    return true;
+}
+
+static bool sit_huff_new_node(sit_huff_tree *tree, uint16_t *index) {
+    if (tree->count >= SIT_HUFF_MAX_NODES) return false;
+    tree->child[tree->count][0] = SIT_HUFF_EMPTY;
+    tree->child[tree->count][1] = SIT_HUFF_EMPTY;
+    tree->symbol[tree->count] = SIT_HUFF_EMPTY;
+    *index = (uint16_t)tree->count++;
+    return true;
+}
+
+/* Method 3 stores its tree in preorder: a 1 bit is a leaf followed by the
+ * 8-bit symbol, a 0 bit is an inner node followed by its 0 and 1 subtrees.
+ * A tree with n leaves has 2n - 1 nodes, so 511 bounds any tree over byte
+ * symbols (and 255 its depth); the walk is iterative with an explicit list
+ * of open slots. */
+static bool sit_huff_read_tree(sit_huff_tree *tree, sit_msb_reader *reader) {
+    uint16_t pending[512];
+    size_t open = 0U;
+    uint16_t root;
+    uint32_t bit;
+    tree->count = 0U;
+    if (!sit_huff_new_node(tree, &root)) return false;
+    if (!sit_msb_read(reader, 1U, &bit)) return false;
+    if (bit) return false; /* a lone leaf carries no code bits */
+    pending[open++] = (uint16_t)(root * 2U + 1U);
+    pending[open++] = (uint16_t)(root * 2U);
+    while (open != 0U) {
+        uint16_t slot = pending[--open];
+        uint16_t node;
+        if (!sit_huff_new_node(tree, &node) || tree->count > 511U) return false;
+        tree->child[slot >> 1U][slot & 1U] = node;
+        if (!sit_msb_read(reader, 1U, &bit)) return false;
+        if (bit) {
+            uint32_t value;
+            if (!sit_msb_read(reader, 8U, &value)) return false;
+            tree->symbol[node] = (uint16_t)value;
+        } else {
+            if (open + 2U > sizeof(pending) / sizeof(pending[0])) return false;
+            pending[open++] = (uint16_t)(node * 2U + 1U);
+            pending[open++] = (uint16_t)(node * 2U);
+        }
+    }
+    return true;
+}
+
+static bool sit_huff_decode_symbol(const sit_huff_tree *tree,
+                                   sit_msb_reader *reader, uint32_t *symbol) {
+    uint16_t node = 0U;
+    unsigned depth = 0U;
+    while (tree->symbol[node] == SIT_HUFF_EMPTY) {
+        uint32_t bit;
+        uint16_t next;
+        if (++depth >= SIT_HUFF_MAX_NODES || !sit_msb_read(reader, 1U, &bit))
+            return false;
+        next = tree->child[node][bit];
+        if (next == SIT_HUFF_EMPTY || next >= tree->count) return false;
+        node = next;
+    }
+    *symbol = tree->symbol[node];
+    return true;
+}
+
+static bool sit_huffman_decode(const uint8_t *input, size_t input_size,
+                               uint8_t *output, size_t output_size) {
+    sit_huff_tree *tree;
+    sit_msb_reader reader;
+    size_t out_pos = 0U;
+    bool ok = false;
+    if (output_size == 0U) return true;
+    if (!input || !output) return false;
+    tree = (sit_huff_tree *)xx_mem_alloc(sizeof(*tree));
+    if (!tree) return false;
+    reader.data = input;
+    reader.size = input_size;
+    reader.bit_pos = 0U;
+    if (!sit_huff_read_tree(tree, &reader)) goto done;
+    while (out_pos < output_size) {
+        uint32_t symbol;
+        if (!sit_huff_decode_symbol(tree, &reader, &symbol)) goto done;
+        output[out_pos++] = (uint8_t)symbol;
+    }
+    ok = true;
+done:
+    xx_mem_free(tree);
+    return ok;
+}
+
+/* Method 6, "fixed Huffman": ported from Deark's modules/stuffit.c
+ * (do_decompr_fixedhuff and sit_fixedhuff_init_tree; Copyright (C) 2018
+ * Jason Summers, MIT license).  A fixed set of 257 codes whose lengths are
+ * given run-length encoded below; the codes are assigned in symbol order
+ * (not canonically).  The data is a sequence of blocks, each introduced by a
+ * signed 32-bit size: a non-negative size is a Huffman block (intermediate
+ * length, a translation table, then codes until the length, the stop code
+ * 256 or the block end), a negative size is a raw PackBits block.  Either
+ * kind is PackBits-expanded into the output. */
+#define SIT_FH_CODES 257U
+
+static bool sit_fixedhuff_build(sit_huff_tree *tree) {
+    static const uint8_t run_counts[13] = {1, 1, 4, 12, 32, 16, 49,
+                                           2, 2, 40, 95, 2, 1};
+    static const uint8_t run_lengths[13] = {3, 4, 5, 6, 7, 8, 9,
+                                            10, 9, 10, 11, 13, 12};
+    uint32_t previous_code = 0U;
+    unsigned previous_length = 0U;
+    unsigned symbol = 0U;
+    size_t run;
+    uint16_t root;
+    tree->count = 0U;
+    if (!sit_huff_new_node(tree, &root)) return false;
+    for (run = 0U; run < 13U; ++run) {
+        unsigned repeat;
+        for (repeat = 0U; repeat < run_counts[run]; ++repeat) {
+            unsigned length = run_lengths[run];
+            uint32_t code;
+            uint16_t node = root;
+            unsigned bit_index;
+            if (symbol >= SIT_FH_CODES) return false;
+            if (previous_length == 0U)
+                code = 0U;
+            else if (length < previous_length)
+                code = (previous_code >> (previous_length - length)) + 1U;
+            else
+                code = (previous_code + 1U) << (length - previous_length);
+            previous_code = code;
+            previous_length = length;
+            for (bit_index = length; bit_index != 0U; --bit_index) {
+                unsigned bit = (unsigned)(code >> (bit_index - 1U)) & 1U;
+                if (tree->symbol[node] != SIT_HUFF_EMPTY) return false;
+                if (tree->child[node][bit] == SIT_HUFF_EMPTY) {
+                    uint16_t created;
+                    if (!sit_huff_new_node(tree, &created)) return false;
+                    tree->child[node][bit] = created;
+                }
+                node = tree->child[node][bit];
+            }
+            if (tree->symbol[node] != SIT_HUFF_EMPTY ||
+                tree->child[node][0] != SIT_HUFF_EMPTY ||
+                tree->child[node][1] != SIT_HUFF_EMPTY)
+                return false;
+            tree->symbol[node] = (uint16_t)symbol++;
+        }
+    }
+    return symbol == SIT_FH_CODES;
+}
+
+typedef struct sit_packbits_s {
+    uint8_t *output;
+    size_t size;
+    size_t pos;
+    uint32_t literal;
+    uint32_t repeat;
+} sit_packbits;
+
+static void sit_packbits_put(sit_packbits *pb, uint8_t byte) {
+    if (pb->literal != 0U) {
+        if (pb->pos < pb->size) pb->output[pb->pos++] = byte;
+        pb->literal--;
+    } else if (pb->repeat != 0U) {
+        uint32_t count = pb->repeat;
+        while (count-- != 0U && pb->pos < pb->size)
+            pb->output[pb->pos++] = byte;
+        pb->repeat = 0U;
+    } else if (byte > 128U) {
+        pb->repeat = 257U - (uint32_t)byte;
+    } else if (byte < 128U) {
+        pb->literal = (uint32_t)byte + 1U;
+    }
+}
+
+static int32_t sit_be32s(const uint8_t *bytes) {
+    uint32_t value = ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
+                     ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3];
+    return value <= INT32_MAX ? (int32_t)value
+                              : -(int32_t)(UINT32_MAX - value) - 1;
+}
+
+static bool sit_fixedhuff_decode(const uint8_t *input, size_t input_size,
+                                 uint8_t *output, size_t output_size) {
+    sit_huff_tree *tree;
+    uint8_t translation[256];
+    sit_packbits pb;
+    size_t pos = 0U;
+    bool ok = false;
+    if (output_size == 0U) return true;
+    if (!input || !output) return false;
+    tree = (sit_huff_tree *)xx_mem_alloc(sizeof(*tree));
+    if (!tree) return false;
+    if (!sit_fixedhuff_build(tree)) goto done;
+    xx_mem_zero(translation, sizeof(translation));
+    xx_mem_zero(&pb, sizeof(pb));
+    pb.output = output;
+    pb.size = output_size;
+    /* Every block consumes at least four bytes, so this loop is bounded. */
+    while (pb.pos < output_size && input_size - pos >= 4U) {
+        int32_t raw = sit_be32s(input + pos);
+        size_t block_end;
+        pb.literal = pb.repeat = 0U;
+        if (raw >= 0) {
+            uint32_t intermediate;
+            uint32_t produced = 0U;
+            uint32_t definitions;
+            uint32_t index;
+            sit_msb_reader reader;
+            if (raw < 10) break;
+            if ((uint32_t)raw > input_size - pos) goto done;
+            block_end = pos + (size_t)raw;
+            intermediate = sit_be32(input + pos + 4U);
+            definitions = sit_be16(input + pos + 8U);
+            if (definitions > 256U || definitions > block_end - pos - 10U)
+                goto done;
+            for (index = 0U; index < definitions; ++index)
+                translation[index] = input[pos + 10U + index];
+            reader.data = input + pos + 10U + definitions;
+            reader.size = block_end - (pos + 10U + definitions);
+            reader.bit_pos = 0U;
+            while (produced < intermediate && pb.pos < output_size) {
+                uint32_t symbol;
+                if (reader.bit_pos >= reader.size * 8U) break;
+                if (!sit_huff_decode_symbol(tree, &reader, &symbol)) {
+                    /* Running off the block end is how a block stops;
+                     * anything else is a code outside the fixed set. */
+                    if (reader.bit_pos >= reader.size * 8U) break;
+                    goto done;
+                }
+                if (symbol > 0xffU) break; /* stop code */
+                sit_packbits_put(&pb, translation[symbol]);
+                produced++;
+            }
+        } else {
+            uint32_t length = raw == INT32_MIN ? UINT32_C(0x80000000)
+                                               : (uint32_t)(-raw);
+            size_t index;
+            if (length < 4U) break;
+            if (length > input_size - pos) goto done;
+            block_end = pos + (size_t)length;
+            for (index = pos + 4U; index < block_end && pb.pos < output_size;
+                 ++index)
+                sit_packbits_put(&pb, input[index]);
+        }
+        pos = block_end;
+    }
+    ok = pb.pos == output_size;
+done:
+    xx_mem_free(tree);
+    return ok;
+}
+
+/* Method 5, LZAH: the LHArc -lh1- coder (4 KiB window preset to spaces,
+ * adaptive Huffman), which the library already implements. */
+static bool sit_lzah_decode(const uint8_t *input, size_t input_size,
+                            uint8_t *output, size_t output_size) {
+    size_t written = 0U;
+    if (output_size == 0U) return true;
+    if (!input || !output) return false;
+    return xx_lzh1_decode_memory(input, input_size, output, output_size,
+                                 &written) &&
+           written == output_size;
+}
+
 /* ------------------------------------------------------------------ */
 /* Container.                                                         */
 /* ------------------------------------------------------------------ */
@@ -652,8 +1118,60 @@ static bool sit_read_at(xx_io_device *device, int64_t offset, void *buffer,
     return true;
 }
 
+/* Mac OS Roman 0x80..0xFF as Unicode (Apple's ROMAN.TXT, euro at 0xDB), the
+ * same table the MacBinary reader uses. */
+static const uint16_t SIT_MAC_ROMAN_HIGH[128] = {
+    0x00C4, 0x00C5, 0x00C7, 0x00C9, 0x00D1, 0x00D6, 0x00DC, 0x00E1,
+    0x00E0, 0x00E2, 0x00E4, 0x00E3, 0x00E5, 0x00E7, 0x00E9, 0x00E8,
+    0x00EA, 0x00EB, 0x00ED, 0x00EC, 0x00EE, 0x00EF, 0x00F1, 0x00F3,
+    0x00F2, 0x00F4, 0x00F6, 0x00F5, 0x00FA, 0x00F9, 0x00FB, 0x00FC,
+    0x2020, 0x00B0, 0x00A2, 0x00A3, 0x00A7, 0x2022, 0x00B6, 0x00DF,
+    0x00AE, 0x00A9, 0x2122, 0x00B4, 0x00A8, 0x2260, 0x00C6, 0x00D8,
+    0x221E, 0x00B1, 0x2264, 0x2265, 0x00A5, 0x00B5, 0x2202, 0x2211,
+    0x220F, 0x03C0, 0x222B, 0x00AA, 0x00BA, 0x03A9, 0x00E6, 0x00F8,
+    0x00BF, 0x00A1, 0x00AC, 0x221A, 0x0192, 0x2248, 0x2206, 0x00AB,
+    0x00BB, 0x2026, 0x00A0, 0x00C0, 0x00C3, 0x00D5, 0x0152, 0x0153,
+    0x2013, 0x2014, 0x201C, 0x201D, 0x2018, 0x2019, 0x00F7, 0x25CA,
+    0x00FF, 0x0178, 0x2044, 0x20AC, 0x2039, 0x203A, 0xFB01, 0xFB02,
+    0x2021, 0x00B7, 0x201A, 0x201E, 0x2030, 0x00C2, 0x00CA, 0x00C1,
+    0x00CB, 0x00C8, 0x00CD, 0x00CE, 0x00CF, 0x00CC, 0x00D3, 0x00D4,
+    0xF8FF, 0x00D2, 0x00DA, 0x00DB, 0x00D9, 0x0131, 0x02C6, 0x02DC,
+    0x00AF, 0x02D8, 0x02D9, 0x02DA, 0x00B8, 0x02DD, 0x02DB, 0x02C7
+};
+
+static char sit_upper(char c) {
+    return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
+}
+
+/* Windows opens a device instead of a file for CON, PRN, AUX, NUL, COM0-9,
+ * LPT0-9, CONIN$, CONOUT$ and CLOCK$, with or without an extension, in any
+ * case and with trailing spaces before the extension. */
+static bool sit_is_device_name(const char *name, size_t length) {
+    static const char *const devices[] = {"CON",    "PRN",     "AUX",
+                                          "NUL",    "CONIN$",  "CONOUT$",
+                                          "CLOCK$"};
+    size_t stem = 0U;
+    size_t index;
+    while (stem < length && name[stem] != '.') ++stem;
+    while (stem > 0U && name[stem - 1U] == ' ') --stem;
+    for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index) {
+        const char *word = devices[index];
+        size_t at = 0U;
+        while (at < stem && word[at] && sit_upper(name[at]) == word[at]) ++at;
+        if (at == stem && word[at] == 0) return true;
+    }
+    return stem == 4U && name[3] >= '0' && name[3] <= '9' &&
+           ((sit_upper(name[0]) == 'C' && sit_upper(name[1]) == 'O' &&
+             sit_upper(name[2]) == 'M') ||
+            (sit_upper(name[0]) == 'L' && sit_upper(name[1]) == 'P' &&
+             sit_upper(name[2]) == 'T'));
+}
+
 /* Mac Roman names may legally contain bytes a file system would choke on, so
- * only the filesystem-facing representation is sanitized.  '/' is not a path
+ * only the filesystem-facing representation is sanitized: the name becomes
+ * UTF-8, separators, wildcards and control codes become '_', trailing dots
+ * and spaces go (so "." and ".." cannot survive), an empty result becomes
+ * "_" and a Windows device name gets a '_' prefix.  '/' is not a path
  * separator in a StuffIt name -- the tree comes from folder markers -- so it
  * is replaced rather than honoured. */
 static char *sit_component(const uint8_t *bytes, size_t size) {
@@ -661,21 +1179,37 @@ static char *sit_component(const uint8_t *bytes, size_t size) {
     size_t input;
     size_t output = 0U;
     if (size > SIT_MAX_NAME) return NULL;
-    name = (char *)xx_mem_alloc(size + 2U);
+    name = (char *)xx_mem_alloc(1U + size * 3U + 2U);
     if (!name) return NULL;
     for (input = 0U; input < size; ++input) {
         uint8_t c = bytes[input];
         if (c < 0x20U || c == '/' || c == '\\' || c == ':' || c == '*' ||
             c == '?' || c == '"' || c == '<' || c == '>' || c == '|' ||
-            c == 0x7fU)
+            c == 0x7fU) {
             name[output++] = '_';
-        else
+        } else if (c < 0x80U) {
             name[output++] = (char)c;
+        } else {
+            uint32_t point = SIT_MAC_ROMAN_HIGH[c - 0x80U];
+            if (point < 0x800U) {
+                name[output++] = (char)(0xC0U | (point >> 6U));
+                name[output++] = (char)(0x80U | (point & 0x3FU));
+            } else {
+                name[output++] = (char)(0xE0U | (point >> 12U));
+                name[output++] = (char)(0x80U | ((point >> 6U) & 0x3FU));
+                name[output++] = (char)(0x80U | (point & 0x3FU));
+            }
+        }
     }
     while (output != 0U &&
            (name[output - 1U] == ' ' || name[output - 1U] == '.'))
         --output;
     if (output == 0U) name[output++] = '_';
+    if (sit_is_device_name(name, output)) {
+        xx_rt_memmove(name + 1U, name, output);
+        name[0] = '_';
+        ++output;
+    }
     name[output] = 0;
     return name;
 }
@@ -708,7 +1242,8 @@ static bool sit_safe_output_name(const char *name) {
         if (c == '/' || c == '\\' || c == 0U) {
             size_t length = (size_t)(at - segment);
             if (length == 0U || (length == 1U && segment[0] == '.') ||
-                (length == 2U && segment[0] == '.' && segment[1] == '.'))
+                (length == 2U && segment[0] == '.' && segment[1] == '.') ||
+                sit_is_device_name(segment, length))
                 return false;
             if (c == 0U) return true;
             segment = at + 1;
@@ -740,6 +1275,133 @@ static bool sit_add_member(sit_stream *stream, const sit_member *member) {
     return true;
 }
 
+typedef struct sit_name_key_s {
+    const char *name;
+    size_t item;
+} sit_name_key;
+
+/* Next code point of a name this reader produced (ASCII plus the two- and
+ * three-byte UTF-8 sequences of the Mac Roman table); anything else is taken
+ * one byte at a time.  A NUL is never a continuation byte, so this cannot
+ * step past the terminator. */
+static uint32_t sit_next_code_point(const char **text) {
+    const unsigned char *at = (const unsigned char *)*text;
+    if (at[0] >= 0xC0U && at[0] < 0xE0U && (at[1] & 0xC0U) == 0x80U) {
+        *text += 2;
+        return ((uint32_t)(at[0] & 0x1FU) << 6U) | (uint32_t)(at[1] & 0x3FU);
+    }
+    if (at[0] >= 0xE0U && at[0] < 0xF0U && (at[1] & 0xC0U) == 0x80U &&
+        (at[2] & 0xC0U) == 0x80U) {
+        *text += 3;
+        return ((uint32_t)(at[0] & 0x0FU) << 12U) |
+               ((uint32_t)(at[1] & 0x3FU) << 6U) | (uint32_t)(at[2] & 0x3FU);
+    }
+    *text += 1;
+    return at[0];
+}
+
+/* Case folding as a case-insensitive file system applies it to the
+ * characters a Mac Roman name can produce: ASCII, Latin-1 letters, y with
+ * diaeresis, the oe ligature, dotless i, pi and micro.  Folding too much only
+ * costs an extra rename; folding too little would let one member overwrite
+ * another. */
+static uint32_t sit_fold_code_point(uint32_t point) {
+    if (point >= 'a' && point <= 'z') return point - 0x20U;
+    if (point >= 0xE0U && point <= 0xFEU && point != 0xF7U)
+        return point - 0x20U;
+    switch (point) {
+    case 0xFFU: return 0x178U;
+    case 0x153U: return 0x152U;
+    case 0x131U: return 'I';
+    case 0x3C0U: return 0x3A0U;
+    case 0xB5U: return 0x39CU;
+    default: return point;
+    }
+}
+
+static int sit_name_order(const char *left, const char *right) {
+    for (;;) {
+        uint32_t a;
+        uint32_t b;
+        if (!*left || !*right) return (*left ? 1 : 0) - (*right ? 1 : 0);
+        a = sit_fold_code_point(sit_next_code_point(&left));
+        b = sit_fold_code_point(sit_next_code_point(&right));
+        if (a != b) return a < b ? -1 : 1;
+    }
+}
+
+static int sit_compare_names(const void *left, const void *right) {
+    const sit_name_key *a = (const sit_name_key *)left;
+    const sit_name_key *b = (const sit_name_key *)right;
+    int order = sit_name_order(a->name, b->name);
+    if (order != 0) return order;
+    return a->item < b->item ? -1 : (a->item > b->item ? 1 : 0);
+}
+
+/* Two members may end up with the same output path, ignoring case: the
+ * same name twice in a folder, names that only differ by the characters the
+ * sanitizer replaces, a data fork called "x.rsrc" next to the resource fork
+ * of "x", or a file named like a folder.  Folders may share a path (they
+ * just merge); every clashing file except the first -- and every file that
+ * clashes with a folder -- gets "_<record index>" appended, repeated until
+ * nothing clashes or the round limit refuses the archive. */
+static bool sit_make_names_unique(sit_stream *stream) {
+    sit_name_key *keys;
+    size_t round;
+    if (stream->count < 2U) return true;
+    if (stream->count > SIZE_MAX / sizeof(*keys)) return false;
+    keys = (sit_name_key *)xx_mem_alloc(stream->count * sizeof(*keys));
+    if (!keys) return false;
+    for (round = 0U; round < 4U; ++round) {
+        size_t index;
+        size_t start;
+        bool changed = false;
+        for (index = 0U; index < stream->count; ++index) {
+            keys[index].name = stream->items[index].name;
+            keys[index].item = index;
+        }
+        xx_rt_qsort(keys, stream->count, sizeof(*keys), sit_compare_names);
+        for (start = 0U; start < stream->count;) {
+            size_t end = start + 1U;
+            bool has_folder = stream->items[keys[start].item].folder;
+            while (end < stream->count &&
+                   sit_name_order(keys[end].name, keys[start].name) == 0) {
+                if (stream->items[keys[end].item].folder) has_folder = true;
+                ++end;
+            }
+            for (index = start; index < end && end - start > 1U; ++index) {
+                sit_member *member = &stream->items[keys[index].item];
+                char suffix[48];
+                char *renamed;
+                if (member->folder || (!has_folder && index == start))
+                    continue;
+                if (round == 0U)
+                    (void)xx_rt_snprintf(suffix, sizeof(suffix), "_%u",
+                                         (unsigned)keys[index].item);
+                else
+                    (void)xx_rt_snprintf(suffix, sizeof(suffix), "_%u_%u",
+                                         (unsigned)keys[index].item,
+                                         (unsigned)round);
+                renamed = xx_str_concat(member->name, suffix);
+                if (!renamed) {
+                    xx_mem_free(keys);
+                    return false;
+                }
+                xx_str_free(member->name);
+                member->name = renamed;
+                changed = true;
+            }
+            start = end;
+        }
+        if (!changed) {
+            xx_mem_free(keys);
+            return true;
+        }
+    }
+    xx_mem_free(keys);
+    return false;
+}
+
 static bool sit_parse(Abstractformat *format, sit_stream **result) {
     uint8_t header[SIT_MASTER_HEADER_SIZE];
     sit_stream *stream = NULL;
@@ -758,8 +1420,7 @@ static bool sit_parse(Abstractformat *format, sit_stream **result) {
     if (size < SIT_MASTER_HEADER_SIZE + SIT_MEMBER_HEADER_SIZE ||
         !sit_read_at(format->device, format->base_address, header,
                      sizeof(header)) ||
-        xx_rt_memcmp(header, "SIT!", 4U) != 0 ||
-        xx_rt_memcmp(header + 10U, "rLau", 4U) != 0)
+        !sit_signature(header))
         return false;
 
     /* The declared archive size is the anchor: bound it against the real
@@ -799,15 +1460,19 @@ static bool sit_parse(Abstractformat *format, sit_stream **result) {
 
         rsrc_method = entry[0];
         data_method = entry[1];
-        if (rsrc_method == SIT_MARK_FOLDER_END ||
-            data_method == SIT_MARK_FOLDER_END) {
+        if (sit_marker(rsrc_method) == SIT_MARK_FOLDER_END ||
+            sit_marker(data_method) == SIT_MARK_FOLDER_END) {
             if (depth == 0U) goto fail;
             xx_str_free(path[depth]);
             path[depth--] = NULL;
             cursor += SIT_MEMBER_HEADER_SIZE;
             continue;
         }
-        if (rsrc_method > SIT_MARK_FOLDER || data_method > SIT_MARK_FOLDER)
+        /* 0x20 and 0x40 only ever appear in the folder markers. */
+        if ((sit_marker(rsrc_method) != SIT_MARK_FOLDER &&
+             (rsrc_method & 0x60U) != 0U) ||
+            (sit_marker(data_method) != SIT_MARK_FOLDER &&
+             (data_method & 0x60U) != 0U))
             goto fail;
 
         name_length = entry[2];
@@ -818,8 +1483,8 @@ static bool sit_parse(Abstractformat *format, sit_stream **result) {
         xx_str_free(component);
         if (!full) goto fail;
 
-        if (rsrc_method == SIT_MARK_FOLDER ||
-            data_method == SIT_MARK_FOLDER) {
+        if (sit_marker(rsrc_method) == SIT_MARK_FOLDER ||
+            sit_marker(data_method) == SIT_MARK_FOLDER) {
             if (depth >= SIT_MAX_DEPTH) {
                 xx_str_free(full);
                 goto fail;
@@ -841,8 +1506,8 @@ static bool sit_parse(Abstractformat *format, sit_stream **result) {
             continue;
         }
 
-        rsrc_encrypted = (rsrc_method & 16U) != 0U;
-        data_encrypted = (data_method & 16U) != 0U;
+        rsrc_encrypted = (rsrc_method & SIT_FLAG_ENCRYPTED_ANY) != 0U;
+        data_encrypted = (data_method & SIT_FLAG_ENCRYPTED_ANY) != 0U;
         rsrc_method = (uint8_t)(rsrc_method & 15U);
         data_method = (uint8_t)(data_method & 15U);
 
@@ -850,13 +1515,9 @@ static bool sit_parse(Abstractformat *format, sit_stream **result) {
         data_unpacked = sit_be32(entry + 88U);
         rsrc_packed = sit_be32(entry + 92U);
         data_packed = sit_be32(entry + 96U);
-        if (rsrc_unpacked > SIT_MAX_FORK || data_unpacked > SIT_MAX_FORK ||
-            rsrc_packed > SIT_MAX_FORK || data_packed > SIT_MAX_FORK) {
-            xx_str_free(full);
-            goto fail;
-        }
         /* Bound both packed extents against what is really there before they
-         * are recorded or used. */
+         * are recorded or used.  Unpacked sizes are only claims; the decoder
+         * caps what it will allocate for them. */
         cursor += SIT_MEMBER_HEADER_SIZE;
         if ((int64_t)rsrc_packed > archive_size - cursor ||
             (int64_t)data_packed > archive_size - cursor -
@@ -910,7 +1571,7 @@ static bool sit_parse(Abstractformat *format, sit_stream **result) {
     }
 
     while (depth != 0U) xx_str_free(path[depth--]);
-    if (stream->count == 0U) goto fail;
+    if (stream->count == 0U || !sit_make_names_unique(stream)) goto fail;
     stream->archive_size = archive_size;
     *result = stream;
     return true;
@@ -979,6 +1640,24 @@ static bool sit_set_record(xx_archive_record *record,
                                            member->folder);
 }
 
+/* The most output one packed byte can yield, rounded up generously: RLE90
+ * gives at most 254 bytes per two-byte pair, method 3 at least one bit per
+ * byte, LZAH at most 60 bytes per match of ten bits or more, fixed Huffman
+ * at most 128 bytes per PackBits pair of two three-bit codes, and LZW and
+ * method 13 at most one 16 KiB string per 9 bits and 32832 bytes per match
+ * of 17 bits or more.  An unpacked size beyond this is a lie that would
+ * only make the decoder allocate for nothing. */
+static uint64_t sit_max_expansion(uint8_t method) {
+    switch (method) {
+    case SIT_METHOD_NONE: return 1U;
+    case SIT_METHOD_RLE: return 128U;
+    case SIT_METHOD_HUFFMAN: return 16U;
+    case SIT_METHOD_LZAH:
+    case SIT_METHOD_FIXEDHUFF: return 256U;
+    default: return 16384U;
+    }
+}
+
 static bool sit_decode_member(Abstractformat *format, const sit_member *member,
                               uint8_t **plain, size_t *plain_size) {
     uint8_t *packed = NULL;
@@ -993,11 +1672,27 @@ static bool sit_decode_member(Abstractformat *format, const sit_member *member,
         *plain_size = 0U;
         return true;
     }
+    if (member->unpacked_size > SIT_MAX_DECODE ||
+        (uint64_t)member->packed_size > SIT_MAX_DECODE)
+        return false;
     output_size = (size_t)member->unpacked_size;
     if (member->method == SIT_METHOD_NONE &&
         (uint64_t)member->packed_size != member->unpacked_size)
         return false;
-    packed = (uint8_t *)xx_mem_alloc(
+    /* Methods 8 (MW), 14 (installer) and 15 (Arsenic) are not decoded; fail
+     * before reading anything. */
+    if (member->method != SIT_METHOD_NONE && member->method != SIT_METHOD_RLE &&
+        member->method != SIT_METHOD_LZW &&
+        member->method != SIT_METHOD_HUFFMAN &&
+        member->method != SIT_METHOD_LZAH &&
+        member->method != SIT_METHOD_FIXEDHUFF &&
+        member->method != SIT_METHOD_LZHUFF)
+        return false;
+    if (member->unpacked_size >
+        (uint64_t)member->packed_size * sit_max_expansion(member->method) +
+            4096U)
+        return false;
+    packed =(uint8_t *)xx_mem_alloc(
         member->packed_size != 0 ? (size_t)member->packed_size : 1U);
     output = (uint8_t *)xx_mem_alloc(output_size != 0U ? output_size : 1U);
     if (!packed || !output ||
@@ -1014,6 +1709,18 @@ static bool sit_decode_member(Abstractformat *format, const sit_member *member,
     } else if (member->method == SIT_METHOD_LZHUFF) {
         decoded = sit13_decode(packed, (size_t)member->packed_size, output,
                                output_size);
+    } else if (member->method == SIT_METHOD_LZW) {
+        decoded = sit_lzw_decode(packed, (size_t)member->packed_size, output,
+                                 output_size);
+    } else if (member->method == SIT_METHOD_HUFFMAN) {
+        decoded = sit_huffman_decode(packed, (size_t)member->packed_size,
+                                     output, output_size);
+    } else if (member->method == SIT_METHOD_LZAH) {
+        decoded = sit_lzah_decode(packed, (size_t)member->packed_size, output,
+                                  output_size);
+    } else if (member->method == SIT_METHOD_FIXEDHUFF) {
+        decoded = sit_fixedhuff_decode(packed, (size_t)member->packed_size,
+                                       output, output_size);
     }
     /* The stored CRC-16 is the only thing that separates a correct decode
      * from a plausible one, so it is a hard gate, not a warning. */
@@ -1183,6 +1890,7 @@ bool xx_stuffit_unpack_current_archive_record(Abstractformat *format,
     size_t plain_size = 0U;
     size_t written = 0U;
     bool result = false;
+    bool created = false;
 
     if (!format || !state || state->format != format || !state->has_record ||
         !(stream = (sit_stream *)state->internal_state) ||
@@ -1218,6 +1926,7 @@ bool xx_stuffit_unpack_current_archive_record(Abstractformat *format,
     if (!xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
+        created = destination != NULL;
         if (!destination) goto done;
         result = true;
         while (written < plain_size) {
@@ -1232,7 +1941,7 @@ bool xx_stuffit_unpack_current_archive_record(Abstractformat *format,
         if (xx_io_close(destination) != 0) result = false;
     }
 done:
-    if (!result && path && !member->folder) xx_rt_remove(path);
+    if (!result && path && !member->folder && created) xx_rt_remove(path);
     if (plain) xx_mem_free(plain);
     if (path) xx_str_free(path);
     if (owned_base) xx_str_free(owned_base);

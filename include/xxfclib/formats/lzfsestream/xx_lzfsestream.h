@@ -40,6 +40,14 @@
  * into a buffer of exactly the sum of the blocks' n_raw_bytes, and every
  * block must produce exactly its declared count.  The one archive record is
  * the decoded data.
+ *
+ * Hostile input: the walk refuses any n_raw_bytes a block's payload could
+ * not decode to (a raw block's bytes must be present, an LZVN payload
+ * expands at most 135.5 times, an FSE block at most 40064 literal bytes plus
+ * 15 per match plus 1720 per L/M/D payload byte), input and output are each
+ * capped at 1 GiB, and a stream declaring more than 16 MiB is decoded in
+ * stages - each prefix ending where the running total first passes 16, 32,
+ * 64 ... MiB must decode before the next, larger buffer is allocated.
  */
 
 #ifndef XXFCLIB_FORMAT_LZFSESTREAM_H

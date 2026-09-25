@@ -14,10 +14,19 @@
  *     0x0b  u16 LE length in bytes / second parameter
  *     0x0d  u8 length in 256-byte sectors
  *
+ *   trailer: u32 LE byte sum of everything in front of it
+ *
  * The data area starts directly behind the catalogue and every file occupies
  * exactly sectors * 256 bytes, in catalogue order, with no per-file header
  * and no padding. That makes the layout fully implied by the catalogue: there
  * is nothing to walk and nothing to resynchronise on.
+ *
+ * The four-byte sum behind the data is counted as part of the image only
+ * when it verifies. Images that were edited after the fact often carry a
+ * stale sum followed by a fresh one that covers the data and the stale sum
+ * alike (half of the corpus looks like that); such a stack counts up to and
+ * including the first sum that verifies. Sums that never verify stay an
+ * overlay.
  *
  * A file extracted from an SCL is written as a 17-byte Hobeta header followed
  * by its sectors, because the catalogue entry is the only place the TR-DOS
@@ -26,10 +35,20 @@
  * 16-bit checksum; the decode is therefore prefix-then-copy, which is exactly
  * what the SCL-sectors pseudo codec does.
  *
+ * TR-DOS puts no restriction on the eight name bytes: '/' is an ordinary
+ * character there (a corpus image names its files "2oo3/mg"), and so are
+ * control codes and the Spectrum's block-graphic and token bytes. The raw
+ * name is therefore never grounds to refuse an image. It is mapped onto a
+ * host-safe file name instead: space padding on either side is dropped (as
+ * the trdos reader and U3 do), every byte a host path cannot carry becomes
+ * '_', a stem that Windows would open as a device gets a '_' prefix, and
+ * names that collide (without regard to case, as on Windows) get a numeric
+ * suffix, so no member can overwrite another.
+ *
  * Truncated images genuinely occur - an image cut short still lists its whole
- * catalogue - so the last member's extent is clamped to end-of-file rather
- * than rejecting the catalogue. The eight-byte signature is what makes that
- * safe.
+ * catalogue - so the straddling member's extent is clamped to end-of-file
+ * rather than rejecting the catalogue, and members with no data left at all
+ * are not published. The eight-byte signature is what makes that safe.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -92,20 +111,91 @@ static bool xx_scl_range_within(int64_t total, int64_t offset,
            size <= total - offset;
 }
 
-/* Refuse anything that would escape the extraction directory. */
-static bool xx_scl_path_safe(const char *name) {
-    const char *cursor = name;
+static char xx_scl_upper(char c) {
+    return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
+}
 
-    if (!name || !name[0] || name[0] == '/') return false;
-    while (*cursor) {
-        const char *end = cursor;
-        size_t length;
-        while (*end && *end != '/') ++end;
-        length = (size_t)(end - cursor);
-        if (length == 2U && cursor[0] == '.' && cursor[1] == '.') return false;
-        cursor = *end ? end + 1 : end;
+/* ASCII compare without case: the names are ASCII by construction, and
+ * Windows treats "BOOT.B" and "boot.B" as one file. */
+static bool xx_scl_same_name(const char *a, const char *b) {
+    size_t index;
+
+    for (index = 0U;; ++index) {
+        if (xx_scl_upper(a[index]) != xx_scl_upper(b[index])) return false;
+        if (a[index] == '\0') return true;
     }
-    return true;
+}
+
+/* True when the @p stem bytes of @p name spell @p word, ignoring case. */
+static bool xx_scl_stem_is(const char *name, size_t stem, const char *word) {
+    size_t index;
+
+    for (index = 0U; index < stem; ++index) {
+        if (!word[index] || xx_scl_upper(name[index]) != word[index]) {
+            return false;
+        }
+    }
+    return word[stem] == '\0';
+}
+
+/* Windows resolves these stems to devices whatever extension follows, so a
+ * member named "CON.B" would be written to the console. */
+static bool xx_scl_is_device_stem(const char *name) {
+    static const char *const devices[] = {"CON",    "PRN",     "AUX",
+                                          "NUL",    "CONIN$",  "CONOUT$",
+                                          "CLOCK$"};
+    size_t stem = 0U;
+    size_t index;
+
+    while (name[stem] && name[stem] != '.') ++stem;
+    while (stem > 0U && (name[stem - 1U] == ' ' || name[stem - 1U] == '.')) {
+        --stem;
+    }
+    for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index) {
+        if (xx_scl_stem_is(name, stem, devices[index])) return true;
+    }
+    if (stem == 4U && name[3] >= '0' && name[3] <= '9' &&
+        ((xx_scl_upper(name[0]) == 'C' && xx_scl_upper(name[1]) == 'O' &&
+          xx_scl_upper(name[2]) == 'M') ||
+         (xx_scl_upper(name[0]) == 'L' && xx_scl_upper(name[1]) == 'P' &&
+          xx_scl_upper(name[2]) == 'T'))) {
+        return true;
+    }
+    return false;
+}
+
+/* A byte a host file name can carry as-is. */
+static bool xx_scl_host_char(uint8_t character) {
+    if (character < 0x20U || character > 0x7EU) return false;
+    switch (character) {
+    case '/': case '\\': case ':': case '*': case '?':
+    case '"': case '<':  case '>': case '|':
+        return false;
+    default:
+        return true;
+    }
+}
+
+/* The final check before a name reaches the file system. The parser only
+ * ever produces names that pass; this is the guard that keeps it that way
+ * if the parser changes. */
+static bool xx_scl_name_safe(const char *name) {
+    size_t length;
+    size_t index;
+    bool meaningful = false;
+
+    if (!name || !name[0]) return false;
+    length = xx_str_len(name);
+    for (index = 0U; index < length; ++index) {
+        if (!xx_scl_host_char((uint8_t)name[index])) return false;
+        if (name[index] != '.' && name[index] != ' ') meaningful = true;
+    }
+    /* Windows drops trailing dots and spaces, and a name of nothing but
+     * dots would be "." or "..". */
+    if (!meaningful || name[length - 1U] == '.' || name[length - 1U] == ' ') {
+        return false;
+    }
+    return !xx_scl_is_device_stem(name);
 }
 
 static void xx_scl_stream_free(void *pointer) {
@@ -137,14 +227,26 @@ static bool xx_scl_add(xx_scl_stream *stream,
 #define XX_SCL_ENTRY_SIZE 14
 #define XX_SCL_SECTOR_SIZE 256
 #define XX_SCL_PREFIX_SIZE 17
+#define XX_SCL_TRAILER_SIZE 4
+/* How many stacked sums behind the data are examined. The corpus shows at
+ * most two; the bound only keeps the look-behind finite. */
+#define XX_SCL_MAX_TRAILERS 4
+/* The file count is a single byte, so this is the format's own ceiling. */
 #define XX_SCL_MAX_MEMBERS 255
+/* 255 files of 255 sectors is well under a megabyte; the cap only exists so
+ * a crafted catalogue cannot ask for an unbounded buffer. */
 #define XX_SCL_MAX_DECODED ((int64_t)256 * 1024 * 1024)
+/* Room for a '_' device prefix, eight name bytes, a "_NNN" collision
+ * suffix, ".T" and the terminator. */
+#define XX_SCL_NAME_BUFFER 24
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
 static bool xx_scl_signature(const uint8_t *header);
-static bool xx_scl_entry_name(const uint8_t *entry, char **out_name);
-static xx_scl_stream *xx_scl_parse(Abstractformat *self, xx_pd_struct *pd);
+static bool xx_scl_entry_name(const xx_scl_stream *stream,
+                              const uint8_t *entry, char **out_name);
+static xx_scl_stream *xx_scl_parse(Abstractformat *self, bool measure,
+                                   xx_pd_struct *pd);
 static void xx_scl_hobeta_prefix(const uint8_t *entry, uint8_t sectors, uint8_t *prefix);
 static bool xx_scl_decode(Abstractformat *self, const xx_scl_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
@@ -154,55 +256,155 @@ static bool xx_scl_signature(const uint8_t *header) {
 
     /* Eight fixed bytes are the entire false-positive defence. The catalogue
      * that follows is 14 bytes of free-form TR-DOS fields with no reserved
-     * words, no checksum and no terminator, and the data area is implied
-     * rather than described, so there is nothing else to cross-check. This
-     * is the check a later reader will be tempted to loosen to seven bytes
-     * or to a case-insensitive compare; doing so is what makes the format
-     * match arbitrary text files. */
+     * words and no terminator, the data area is implied rather than
+     * described, and the name bytes are unrestricted, so there is nothing
+     * else to cross-check. This is the check a later reader will be tempted
+     * to loosen to seven bytes or to a case-insensitive compare; doing so is
+     * what makes the format match arbitrary text files. */
     return xx_rt_memcmp(header, magic, sizeof(magic)) == 0;
 }
 
-/* "NAME    " + type letter -> "NAME.B".
- *
- * TR-DOS pads the name with spaces and stores the type as a single byte that
- * is normally a letter but is a raw code on some disks; the reference maps a
- * control byte onto '_' rather than dropping the extension, because the byte
- * still distinguishes two files that share a name. Everything else must be
- * printable ASCII: a catalogue full of high bytes is not a catalogue. */
-static bool xx_scl_entry_name(const uint8_t *entry, char **out_name) {
-    char buffer[11];
-    size_t end = 8U;
+static bool xx_scl_name_taken(const xx_scl_stream *stream,
+                              const char *candidate) {
     size_t index;
-    uint8_t type;
+
+    for (index = 0U; index < stream->count; ++index) {
+        if (xx_scl_same_name(stream->items[index].name, candidate)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* "NAME    " + type byte -> "NAME.B", made host-safe and unique.
+ *
+ * Spaces at either end are padding and are dropped. Every other byte a host
+ * name cannot hold - separators, drive colons, wildcards, control codes, the
+ * Spectrum's graphic and token bytes above 0x7E - becomes '_'; mapping
+ * rather than dropping keeps two names that differ only there apart until
+ * the collision pass. The type byte is kept as the extension because it
+ * distinguishes "song.B" from "song.C"; a type of '.' or ' ' would vanish
+ * from a Windows name, so it becomes '_' too. A clash with an earlier member
+ * gets "_1", "_2", ... in front of the extension. */
+static bool xx_scl_entry_name(const xx_scl_stream *stream,
+                              const uint8_t *entry, char **out_name) {
+    char base[XX_SCL_NAME_BUFFER];
+    char candidate[XX_SCL_NAME_BUFFER];
+    size_t begin = 0U;
+    size_t end = 8U;
+    size_t length = 0U;
+    size_t index;
+    size_t suffix;
+    char type;
     char *name;
 
     *out_name = NULL;
-    for (index = 0U; index < 8U; ++index) {
-        uint8_t character = entry[index];
-        if (character < 0x20U || character > 0x7EU) return false;
-        /* A separator inside a TR-DOS name would turn one member into a
-         * directory path; the format has no directories. */
-        if (character == '/' || character == '\\') return false;
-        buffer[index] = (char)character;
+    while (end > 0U && entry[end - 1U] == ' ') --end;
+    while (begin < end && entry[begin] == ' ') ++begin;
+    for (index = begin; index < end; ++index) {
+        base[length++] =
+            xx_scl_host_char(entry[index]) ? (char)entry[index] : '_';
     }
-    while (end > 0U && buffer[end - 1U] == ' ') --end;
-    /* A blank name is not a file. */
-    if (end == 0U) return false;
+    /* A blank name still owns sectors; it is published as "_". */
+    if (length == 0U) base[length++] = '_';
+    base[length] = '\0';
+    type = xx_scl_host_char(entry[8]) && entry[8] != '.' && entry[8] != ' '
+               ? (char)entry[8]
+               : '_';
+    /* "CON.B" would open the console, "LPT1.C" the printer port. */
+    if (xx_scl_is_device_stem(base)) {
+        for (index = length + 1U; index > 0U; --index) {
+            base[index] = base[index - 1U];
+        }
+        base[0] = '_';
+        ++length;
+    }
 
-    type = entry[8];
-    if (type > 0x7EU) return false;
-    buffer[end] = '.';
-    buffer[end + 1U] = (type < 0x20U) ? '_' : (char)type;
-    buffer[end + 2U] = '\0';
-    if (buffer[end + 1U] == '/' || buffer[end + 1U] == '\\') return false;
-
-    name = xx_str_dup(buffer);
-    if (!name) return false;
-    *out_name = name;
-    return true;
+    /* At most 254 earlier names exist, so one of the first 255 suffixes is
+     * always free and the loop is bounded by the member ceiling. */
+    for (suffix = 0U; suffix <= XX_SCL_MAX_MEMBERS; ++suffix) {
+        size_t at = length;
+        xx_rt_memcpy(candidate, base, length);
+        if (suffix != 0U) {
+            size_t digits = suffix >= 100U ? 3U : suffix >= 10U ? 2U : 1U;
+            size_t value = suffix;
+            candidate[at++] = '_';
+            for (index = digits; index > 0U; --index) {
+                candidate[at + index - 1U] = (char)('0' + (value % 10U));
+                value /= 10U;
+            }
+            at += digits;
+        }
+        candidate[at++] = '.';
+        candidate[at++] = type;
+        candidate[at] = '\0';
+        if (!xx_scl_name_taken(stream, candidate)) {
+            if (!xx_scl_name_safe(candidate)) return false;
+            name = xx_str_dup(candidate);
+            if (!name) return false;
+            *out_name = name;
+            return true;
+        }
+    }
+    return false;
 }
 
-static xx_scl_stream *xx_scl_parse(Abstractformat *self, xx_pd_struct *pd) {
+/* The number of bytes behind the data that belong to the image: the sums up
+ * to and including the first one that holds the byte sum of everything in
+ * front of it, or 0 when none does. @p span is the size of the image's
+ * window and @p data_end the offset of the first byte behind the data, both
+ * relative to the base address. The data is streamed in chunks; its extent
+ * is at most 9 + 255 * 14 + 255 * 255 * 256 bytes, about 16 MiB. */
+static int64_t xx_scl_trailer_size(Abstractformat *self, int64_t span,
+                                   int64_t data_end, xx_pd_struct *pd) {
+    uint8_t trailer[XX_SCL_TRAILER_SIZE];
+    uint8_t *buffer;
+    uint32_t sum = 0U;
+    int64_t done = 0;
+    int64_t at;
+    int slot;
+
+    /* Nothing to measure when not even one sum fits behind the data. */
+    if (!xx_scl_range_within(span, data_end, XX_SCL_TRAILER_SIZE)) return 0;
+    buffer = (uint8_t *)xx_mem_alloc(XX_SCL_COPY_CHUNK);
+    if (!buffer) return 0;
+    while (done < data_end) {
+        size_t chunk = (data_end - done) > XX_SCL_COPY_CHUNK
+                           ? (size_t)XX_SCL_COPY_CHUNK
+                           : (size_t)(data_end - done);
+        size_t index;
+        if ((pd && xx_pd_is_stopped(pd)) ||
+            !xx_scl_read_at(self, self->base_address + done, buffer, chunk)) {
+            xx_mem_free(buffer);
+            return 0;
+        }
+        for (index = 0U; index < chunk; ++index) sum += buffer[index];
+        done += (int64_t)chunk;
+    }
+    xx_mem_free(buffer);
+
+    at = data_end;
+    for (slot = 0; slot < XX_SCL_MAX_TRAILERS; ++slot) {
+        uint32_t stored;
+        if (!xx_scl_range_within(span, at, XX_SCL_TRAILER_SIZE) ||
+            !xx_scl_read_at(self, self->base_address + at, trailer,
+                            sizeof(trailer))) {
+            break;
+        }
+        stored = (uint32_t)trailer[0] | ((uint32_t)trailer[1] << 8) |
+                 ((uint32_t)trailer[2] << 16) | ((uint32_t)trailer[3] << 24);
+        at += XX_SCL_TRAILER_SIZE;
+        if (stored == sum) return at - data_end;
+        /* A stale sum is covered by the one behind it. */
+        sum += (uint32_t)trailer[0] + trailer[1] + trailer[2] + trailer[3];
+    }
+    return 0;
+}
+
+/* @p measure asks for the trailer check, which only the format size needs;
+ * validity and the member list do not depend on it. */
+static xx_scl_stream *xx_scl_parse(Abstractformat *self, bool measure,
+                                   xx_pd_struct *pd) {
     xx_scl_stream *stream;
     uint8_t header[XX_SCL_HEADER_SIZE];
     uint8_t entry[XX_SCL_ENTRY_SIZE];
@@ -212,6 +414,7 @@ static xx_scl_stream *xx_scl_parse(Abstractformat *self, xx_pd_struct *pd) {
     int64_t catalogue_size;
     int64_t data_offset;
     int64_t index;
+    bool truncated = false;
 
     if (!self || !self->device || self->base_address < 0) return NULL;
     total = xx_io_total_size(self->device);
@@ -252,15 +455,16 @@ static xx_scl_stream *xx_scl_parse(Abstractformat *self, xx_pd_struct *pd) {
         data_size = (int64_t)entry[13] * XX_SCL_SECTOR_SIZE;
 
         /* Truncated images do occur, so the extent is clamped rather than
-         * rejected - but only downwards, and only once the start is known to
-         * be inside the file. A member whose data even begins past EOF ends
-         * the catalogue instead of being published at a bogus offset. */
+         * rejected - but only downwards, and only while some of the data is
+         * still there. A member with sectors of which not one byte survives
+         * ends the catalogue instead of being published empty. */
         if (!xx_scl_range_within(span, data_offset, data_size)) {
-            if (data_offset > span) break;
+            truncated = true;
+            if (data_offset >= span) break;
             data_size = span - data_offset;
         }
 
-        if (!xx_scl_entry_name(entry, &name)) goto fail;
+        if (!xx_scl_entry_name(stream, entry, &name)) goto fail;
 
         xx_mem_zero(&member, sizeof(member));
         member.name = name;
@@ -277,16 +481,22 @@ static xx_scl_stream *xx_scl_parse(Abstractformat *self, xx_pd_struct *pd) {
         member.timestamp = 0U;
         member.is_folder = false;
 
-        if (!xx_scl_path_safe(name) || !xx_scl_add(stream, &member)) {
+        if (!xx_scl_add(stream, &member)) {
             xx_str_free(name);
             goto fail;
         }
         data_offset += data_size;
+        if (truncated) break;
     }
 
     if (stream->count == 0U) goto fail;
-    /* Trailing bytes behind the last sector are an overlay, not a member. */
+    /* Trailing bytes behind the last sector are an overlay, not a member;
+     * only a verified byte sum is counted as part of the image. */
     stream->archive_size = data_offset < span ? data_offset : span;
+    if (measure && !truncated) {
+        stream->archive_size =
+            data_offset + xx_scl_trailer_size(self, span, data_offset, pd);
+    }
     return stream;
 
 fail:
@@ -295,13 +505,9 @@ fail:
 }
 
 
-/* 13 entry bytes, a zero byte, the sector count, and the checksum word. */
-/* The file count is a single byte, so this is the format's own ceiling. */
-/* 255 files of 255 sectors is well under a megabyte; the cap only exists so
- * a crafted catalogue cannot ask for an unbounded buffer. */
-
 /* Build the Hobeta header the image does not store.
  *
+ * 13 entry bytes, a zero byte, the sector count, and the checksum word.
  * The checksum is the byte sum of the 15 bytes in front of it, multiplied by
  * 0x101 and biased by 0x69, truncated to 16 bits. The multiply is what makes
  * it a checksum rather than a parity byte, and getting it wrong produces a
@@ -462,7 +668,7 @@ bool xx_scl_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     xx_scl_stream *stream;
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
-    stream = xx_scl_parse(self, pd);
+    stream = xx_scl_parse(self, false, pd);
     if (!stream) return false;
     xx_scl_stream_free(stream);
     return true;
@@ -475,7 +681,7 @@ bool xx_scl_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
 
     self->base_info_handled = true;
-    stream = xx_scl_parse(self, pd);
+    stream = xx_scl_parse(self, true, pd);
     if (!stream) {
         self->is_valid = false;
         self->format_size = 0;
@@ -571,7 +777,7 @@ xx_archive_record_state *xx_scl_create_archive_records_reading(
     xx_archive_record_state *state;
 
     if (!self || !self->device) return NULL;
-    stream = xx_scl_parse(self, pd);
+    stream = xx_scl_parse(self, false, pd);
     if (!stream) return NULL;
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
     if (!state) {
@@ -635,6 +841,7 @@ bool xx_scl_unpack_current_archive_record(Abstractformat *self,
     uint8_t *plain = NULL;
     size_t plain_size = 0U;
     bool result = false;
+    bool created = false;
 
     if (!self || !state || state->format != self || !state->has_record ||
         (pd && xx_pd_is_stopped(pd))) {
@@ -643,7 +850,7 @@ bool xx_scl_unpack_current_archive_record(Abstractformat *self,
     stream = (xx_scl_stream *)state->internal_state;
     if (!stream || stream->index >= stream->count) return false;
     member = &stream->items[stream->index];
-    if (!xx_scl_path_safe(member->name)) return false;
+    if (!xx_scl_name_safe(member->name)) return false;
 
     path_option = xx_scl_get_option(&state->options,
                                        XX_META_ID_OPT_UNPACK_PATH);
@@ -689,6 +896,7 @@ bool xx_scl_unpack_current_archive_record(Abstractformat *self,
     }
     {
         xx_io_device *output = xx_io_file_open(target_path, "wb");
+        created = output != NULL;
         size_t completed = 0U;
 
         result = output != NULL;
@@ -704,7 +912,7 @@ bool xx_scl_unpack_current_archive_record(Abstractformat *self,
         if (output && xx_io_close(output) != 0) result = false;
     }
     xx_mem_free(plain);
-    if (!result) xx_rt_remove(target_path);
+    if (!result && created) xx_rt_remove(target_path);
     xx_str_free(target_path);
     return result;
 }

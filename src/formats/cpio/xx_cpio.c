@@ -1236,7 +1236,6 @@ bool xx_cpio_unpack_current_archive_record(Abstractformat *self,
         result = xx_store_unpack_device_to_file(
             stream->image_device ? stream->image_device : self->device,
             member->data_offset, (int64_t)member->data_size, destination, pd);
-        if (!result) xx_rt_remove(destination);
     }
 cleanup:
     if (destination) xx_str_free(destination);

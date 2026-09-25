@@ -6,9 +6,10 @@
 
 #include "xxfclib/formats/xx_format.h"
 
-/* Aladdin StuffIt, the original "SIT!" container (StuffIt 1.x through 4.x).
- * Every member carries a Macintosh data fork and a resource fork, each with
- * its own compression method and CRC-16. */
+/* Aladdin StuffIt, the original "SIT!" container (StuffIt 1.x through 4.x)
+ * and the same layout under the later "ST46"/"ST50"/"ST60"/"ST65"/"STin"/
+ * "STi2".."STi4" tags.  Every member carries a Macintosh data fork and a
+ * resource fork, each with its own compression method and CRC-16. */
 typedef struct xx_stuffit {
     Abstractformat format;
     uint64_t number_of_records;

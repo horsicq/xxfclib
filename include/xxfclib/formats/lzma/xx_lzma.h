@@ -2,7 +2,16 @@
  * SPDX-License-Identifier: MIT
  */
 
-/** @file xx_lzma.h @brief Standalone LZMA-Alone stream reader. */
+/**
+ * @file xx_lzma.h
+ * @brief LZMA-alone (.lzma) reader: one "payload" record.
+ *
+ * Accepts known-size streams with or without an end marker (LZMA SDK
+ * `lzma e`), unknown-size streams ended by the marker (xz --format=lzma,
+ * liblzma FORMAT_ALONE), and consecutive streams, which decode as one
+ * payload the way 7-Zip does.  format_size is the exact extent of the
+ * streams; anything after them is reported as overlay.
+ */
 
 #ifndef XXFCLIB_FORMAT_LZMA_H
 #define XXFCLIB_FORMAT_LZMA_H
@@ -38,7 +47,8 @@ XXFC_API int64_t xx_lzma_get_format_size(Abstractformat *self,
 XXFC_API uint64_t xx_lzma_get_number_of_archive_records(
     Abstractformat *self, xx_pd_struct *pd);
 
-/** Decode the LZMA-Alone member to a caller-provided device. */
+/** Decode the payload (every stream measured by handle_base_info, in
+ *  order) to a caller-provided device. */
 XXFC_API bool xx_lzma_unpack_to_device(xx_lzma *archive,
                                        xx_io_device *destination,
                                        xx_pd_struct *pd);
@@ -54,7 +64,9 @@ XXFC_API bool xx_lzma_archive_record_move_to_next(
 XXFC_API void xx_lzma_free_archive_records_reading(
     Abstractformat *self, xx_archive_record_state *state);
 
+/** Payload size (all streams), valid after handle_base_info. */
 XXFC_API uint64_t xx_lzma_get_uncompressed_size(const xx_lzma *archive);
+/** Device offset just past the last stream, or -1. */
 XXFC_API int64_t xx_lzma_get_stream_end(const xx_lzma *archive);
 
 static inline Abstractformat *xx_lzma_to_format(xx_lzma *archive) {

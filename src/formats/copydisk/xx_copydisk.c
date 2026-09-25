@@ -570,6 +570,7 @@ bool xx_copydisk_unpack_current_archive_record(Abstractformat *format,
     char *path = NULL;
     xx_io_device *destination = NULL;
     bool result = false;
+    bool created = false;
     if (!format || !state || state->format != format || !state->has_record ||
         !(stream = (copydisk_stream *)state->internal_state) ||
         stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
@@ -599,12 +600,13 @@ bool xx_copydisk_unpack_current_archive_record(Abstractformat *format,
     }
     if (!xx_store_create_dirs_a(path, false)) goto done;
     destination = xx_io_file_open(path, "wb");
+    created = destination != NULL;
     if (!destination) goto done;
     result = copydisk_write_member(format, stream, member, destination, pd);
     if (xx_io_close(destination) != 0) result = false;
     destination = NULL;
 done:
-    if (!result && path && !member->folder) xx_rt_remove(path);
+    if (!result && path && !member->folder && created) xx_rt_remove(path);
     if (path) xx_str_free(path);
     if (owned_base) xx_str_free(owned_base);
     return result;

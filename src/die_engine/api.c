@@ -3158,7 +3158,11 @@ static JSVal fn_include_script(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pAr
         DBSignature *pRecord = &pEngine->pDb->pRecords[i];
 
         if ((pRecord->fileType == XFT_UNKNOWN) && (cd_stricmp_ascii(pRecord->pName, pScript) == 0)) {
-            js_eval_nested(pCtx, pRecord->pText, pRecord->pName);
+            if (js_is_bytecode(pRecord->pText, pRecord->nSize)) {
+                js_eval_nested_bytecode(pCtx, pRecord->pText, pRecord->nSize, pRecord->pName);
+            } else {
+                js_eval_nested(pCtx, pRecord->pText, pRecord->pName);
+            }
             bFound = 1;
             break;
         }

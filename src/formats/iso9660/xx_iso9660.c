@@ -709,7 +709,6 @@ bool xx_iso9660_unpack_current_archive_record(
         result = xx_store_unpack_device_to_file(self->device, record->data_offset,
                                                  record->compressed_size,
                                                  destination, pd);
-        if (!result) xx_rt_remove(destination);
     } else {
         result = false;
     }

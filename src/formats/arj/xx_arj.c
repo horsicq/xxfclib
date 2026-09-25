@@ -477,6 +477,7 @@ bool xx_arj_unpack_current_archive_record(Abstractformat *format,
     uint8_t *decoded = NULL;
     size_t decoded_size = 0U;
     bool result = false;
+    bool created = false;
     if (!format || !state || state->format != format || !state->has_record ||
         !(stream = (xx_arj_stream *)state->internal_state) ||
         stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
@@ -516,12 +517,12 @@ bool xx_arj_unpack_current_archive_record(Abstractformat *format,
     {
         xx_io_device *output = xx_io_file_open(destination, "wb");
         if (!output) goto cleanup;
+        created = true;
         result = xx_arj_write_all(output, decoded, decoded_size, pd);
         xx_io_close(output);
     }
 cleanup:
-    if (!result && destination && member->file_type != XX_ARJ_FILE_DIRECTORY)
-        xx_rt_remove(destination);
+    if (!result && created) xx_rt_remove(destination);
     if (decoded) xx_mem_free(decoded);
     if (destination) xx_str_free(destination);
     if (owned_base) xx_str_free(owned_base);

@@ -2,7 +2,8 @@
  * SPDX-License-Identifier: MIT
  *
  * The decoders in the implementation are a C99 port of the DMS decoder from
- * the "ancient" library, Copyright (C) Teemu Suutari.
+ * the "ancient" library, Copyright (C) Teemu Suutari. Which chunks form the
+ * disk follows Deark's modules/dms.c (MIT, Copyright (C) Jason Summers).
  */
 
 /** @file xx_dms.h @brief DMS (Amiga DiskMasher System) reader. */
@@ -14,15 +15,19 @@
  *
  *   archive header, 56 bytes
  *     +0   "DMS!"
- *     +4   u16 info header checksum start; the CRC16 at +54 covers +4..+53
- *     +8   u16 info bits
- *     +10  u16 disk type flags - bit 1 obfuscated, bit 4 HD, bit 5 MS-DOS
- *     +12  u32 number of the first track       (advisory, often wrong)
- *     +16  u32 number of the last track        (advisory, often wrong)
- *     +20  u32 packed size                     (advisory, often wrong)
- *     +24  u32 unpacked size                   (advisory, often wrong)
- *     +50  u16 compression mode of the disk as a whole
+ *     +4   u32 unused; the CRC16 at +54 covers +4..+53
+ *     +8   u32 info bits - bit 1 obfuscated, bit 4 HD, bit 5 MS-DOS
+ *     +12  u32 creation date
+ *     +16  u16 first track of the disk's range
+ *     +18  u16 last track of the disk's range
+ *     +20  u32 packed size
+ *     +24  u32 unpacked size
+ *     +46  u16 version of the creating program
+ *     +50  u16 disk type
+ *     +52  u16 compression mode of the disk as a whole
  *     +54  u16 CRC16 of bytes 4..53
+ *   The range at +16/+18 is meaningless when both are zero and a size is
+ *   zero too; the tracks actually present then define it.
  *
  *   track header, 20 bytes, repeated
  *     +0   "TR"
@@ -44,17 +49,31 @@
  * heavy modes with flag bit 2 run their LZ output through the same RLE
  * stage SIMPLE uses.  All seven are implemented here.
  *
+ * Real archives carry more than the disk: BBS banners (track 0xFFFF), a
+ * FILE_ID.DIZ (track 80), boot-block ads stored as short chunks numbered
+ * track 0, and trainer tracks appended outside the header's range.  For
+ * every track number of the range the LAST chunk of more than 2048 bytes
+ * is the disk's; every other chunk is an "extra" chunk.
+ *
+ * Record 0 is disk.adf, the image from the lowest to the highest real track
+ * present (a track missing inside that span reads back as zeros).  Then
+ * one record per chunk, in file order:
+ *   track_NNNNN              a real track
+ *   extra_III_track_NNNNN    any other chunk, III being its position in the
+ *                            file, so repeated numbers never collide
+ * Every chunk is checked against its packed CRC and its unpacked checksum;
+ * one that fails is not extracted, and disk.adf is only extracted when all
+ * real tracks pass.
+ *
  * Obfuscated ("password protected") archives are recognised and listed but
  * not decoded: recovering the key means brute-forcing a 17-bit space with a
  * full image decode per candidate, which is a CPU bomb an attacker controls
  * for free.  Such records are published with the encrypted flag set and
  * extraction of them is refused.
  *
- * The published records are the assembled ADF image first, then one record
- * per real track.  Track numbers are attacker-controlled, so the track count
- * is capped, a track that would write outside the image is refused at parse
- * time, and both the packed and the unpacked sizes are bounded against an
- * absolute ceiling as well as against the device.
+ * Track numbers and lengths are attacker-controlled: the chunk count, the
+ * packed size, the image and the total output of the extra chunks are all
+ * capped, and a real track can only be placed inside the image.
  */
 
 #ifndef XXFCLIB_FORMAT_DMS_H
@@ -75,7 +94,7 @@ struct xx_dms {
     Abstractformat format;
     uint64_t number_of_records;
     uint64_t number_of_members;
-    uint64_t number_of_tracks; /**< Real tracks, informational ones excluded. */
+    uint64_t number_of_tracks; /**< Real tracks, the ones forming the image. */
     uint32_t image_size;       /**< 80 tracks worth of ADF, 901120 or 1802240. */
     uint32_t raw_size;         /**< Bytes the recorded tracks actually cover. */
     uint32_t raw_offset;       /**< Image offset the first recorded track sits at. */

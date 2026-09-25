@@ -1849,6 +1849,7 @@ bool xx_lzop_unpack_current_archive_record(Abstractformat *self,
     char *destination_path;
     size_t base_length;
     bool result;
+    bool created = false;
     xx_lzop *archive = (xx_lzop *)self;
     if (!self || !state || state->format != self || !state->has_record ||
         state->current_index < 0 || (pd && xx_pd_is_stopped(pd))) {
@@ -1892,13 +1893,14 @@ bool xx_lzop_unpack_current_archive_record(Abstractformat *self,
     }
     {
         xx_io_device *output = xx_io_file_open(destination_path, "wb");
+        created = output != NULL;
         result = output &&
                  xx_lzopfmt_decode_stream(archive,
                                           (uint64_t)state->current_index,
                                           output, pd);
         if (output && xx_io_close(output) != 0) result = false;
     }
-    if (!result) xx_rt_remove(destination_path);
+    if (!result && created) xx_rt_remove(destination_path);
     xx_str_free(destination_path);
     return result;
 }

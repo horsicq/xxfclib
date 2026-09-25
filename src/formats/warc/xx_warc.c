@@ -667,6 +667,7 @@ bool xx_warc_unpack_current_archive_record(Abstractformat *format,
     uint8_t buffer[WARC_COPY_BUFFER_SIZE];
     uint64_t copied = 0U;
     bool result = false;
+    bool created = false;
     if (!format || !state || state->format != format || !state->has_record ||
         !(stream = (warc_stream *)state->internal_state) ||
         stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
@@ -691,6 +692,7 @@ bool xx_warc_unpack_current_archive_record(Abstractformat *format,
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
+        created = destination != NULL;
         if (!destination) goto done;
         result = true;
         while (copied < member->data_size) {
@@ -720,7 +722,7 @@ bool xx_warc_unpack_current_archive_record(Abstractformat *format,
         if (xx_io_close(destination) != 0) result = false;
     }
 done:
-    if (!result && path) xx_rt_remove(path);
+    if (!result && path && created) xx_rt_remove(path);
     if (path) xx_str_free(path);
     if (owned_base) xx_str_free(owned_base);
     return result;

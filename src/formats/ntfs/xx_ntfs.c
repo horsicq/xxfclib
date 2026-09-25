@@ -1489,6 +1489,7 @@ static bool xx_ntfs_write_entry(Abstractformat *self,
     uint8_t *buffer;
     uint64_t offset = 0U;
     bool ok = true;
+    bool created = false;
     int64_t total_size = xx_io_total_size(self->device);
     (void)parsed;
     if (total_size < 0 || total_size < self->base_address) return false;
@@ -1502,6 +1503,7 @@ static bool xx_ntfs_write_entry(Abstractformat *self,
     buffer = (uint8_t *)xx_mem_alloc(XX_NTFS_CHUNK);
     if (!buffer) return false;
     output = xx_io_file_open(destination, "wb");
+    created = output != NULL;
     if (!output) {
         xx_mem_free(buffer);
         return false;
@@ -1528,7 +1530,7 @@ static bool xx_ntfs_write_entry(Abstractformat *self,
     }
     xx_io_close(output);
     xx_mem_free(buffer);
-    if (!ok) xx_rt_remove(destination);
+    if (!ok && created) xx_rt_remove(destination);
     return ok;
 }
 

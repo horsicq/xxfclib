@@ -757,6 +757,7 @@ bool xx_qcow_unpack_current_archive_record(Abstractformat *self,
     char *destination = NULL;
     xx_io_device *output = NULL;
     bool result;
+    bool created = false;
 
     if (!self || !self->device || !state || state->format != self ||
         !state->has_record || (pd && xx_pd_is_stopped(pd))) {
@@ -799,9 +800,10 @@ bool xx_qcow_unpack_current_archive_record(Abstractformat *self,
         return false;
     }
     output = xx_io_file_open(destination, "wb");
+    created = output != NULL;
     result = output != NULL && xx_qcow_write_image(self, parsed, output, pd);
     if (output && xx_io_close(output) != 0) result = false;
-    if (!result) xx_rt_remove(destination);
+    if (!result && created) xx_rt_remove(destination);
     xx_str_free(destination);
     return result;
 }

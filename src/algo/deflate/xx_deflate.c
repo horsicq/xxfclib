@@ -67,6 +67,9 @@ bool xx_deflate_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset,
 
     bool success = xx_deflate_unpack_device(src_dev, src_offset, comp_size, out_file, is_deflate64, pd);
     xx_io_close(out_file);
+    if (!success) {
+        xx_io_file_remove_a(dst_file_path);
+    }
     return success;
 }
 

@@ -603,7 +603,7 @@ int64_t xx_io_find_bytes(xx_io_device *dev, int64_t start_offset, int64_t max_se
         bytes_in_buf += (size_t)bytes_read;
 
         if (bytes_in_buf >= pattern_size) {
-            int64_t idx = xx_data_find_bytes(chunk, bytes_in_buf, 0, pattern, pattern_size, pd);
+            int64_t idx = xx_data_find_bytes_buffer_optimize(chunk, bytes_in_buf, 0, pattern, pattern_size, pd);
             if (idx >= 0) {
                 found_offset = current_file_offset + idx;
                 break;

@@ -318,8 +318,10 @@ static bool xx_arcadyan_write_stream(xx_io_device *device, int64_t base,
     int64_t remaining;
     size_t head = XX_ARCADYAN_PROLOGUE_SIZE - XX_ARCADYAN_LZMA_OFFSET;
     bool ok = true;
+    bool created = false;
     if (!device || !parsed || !destination || base < 0) return false;
     output = xx_io_file_open(destination, "wb");
+    created = output != NULL;
     if (!output) return false;
     if (xx_io_write(output, parsed->prologue + XX_ARCADYAN_LZMA_OFFSET, head) !=
         (ssize_t)head) {
@@ -353,7 +355,7 @@ static bool xx_arcadyan_write_stream(xx_io_device *device, int64_t base,
         remaining -= (int64_t)step;
     }
     xx_io_close(output);
-    if (!ok) xx_rt_remove(destination);
+    if (!ok && created) xx_rt_remove(destination);
     return ok;
 }
 

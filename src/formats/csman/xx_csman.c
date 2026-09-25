@@ -618,7 +618,6 @@ bool xx_csman_unpack_current_archive_record(Abstractformat *self,
                                                 (int64_t)entry->plain_offset,
                                                 (int64_t)entry->size,
                                                 destination, pd);
-        if (!result) xx_rt_remove(destination);
     }
 cleanup:
     if (memory) xx_io_close(memory);

@@ -666,6 +666,7 @@ bool xx_solarispkg_unpack_current_archive_record(
     uint8_t *buffer = NULL;
     int64_t remaining;
     bool result = false;
+    bool created = false;
     xx_io_device *destination = NULL;
     if (!format || !state || state->format != format || !state->has_record ||
         !(stream = (solpkg_stream *)state->internal_state) ||
@@ -691,6 +692,7 @@ bool xx_solarispkg_unpack_current_archive_record(
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     buffer = (uint8_t *)xx_mem_alloc(SOLPKG_COPY_BUFFER);
     destination = xx_io_file_open(path, "wb");
+    created = destination != NULL;
     if (!buffer || !destination) goto done;
     result = true;
     remaining = member->data_size;
@@ -725,7 +727,7 @@ bool xx_solarispkg_unpack_current_archive_record(
     }
 done:
     if (destination && xx_io_close(destination) != 0) result = false;
-    if (!result && path) xx_rt_remove(path);
+    if (!result && path && created) xx_rt_remove(path);
     if (buffer) xx_mem_free(buffer);
     if (path) xx_str_free(path);
     if (owned_base) xx_str_free(owned_base);

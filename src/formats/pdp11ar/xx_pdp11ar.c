@@ -486,7 +486,6 @@ bool xx_pdp11ar_unpack_current_archive_record(Abstractformat *format,
     result = xx_store_unpack_device_to_file(format->device, member->data_offset,
                                             member->size, path, pd);
 done:
-    if (!result && path) xx_rt_remove(path);
     if (path) xx_str_free(path);
     if (owned_base) xx_str_free(owned_base);
     return result;

@@ -60,6 +60,12 @@ XXFC_API bool xx_store_unpack_device(xx_io_device *src_dev, int64_t src_offset, 
  * @param dst_file_path UTF-8 destination file path.
  * @param pd Optional progress and cancellation monitor.
  * @return True on success, false on error.
+ *
+ * On failure the destination is removed only if this call opened (created or
+ * truncated) it; a destination that could not be opened is left untouched.
+ * Callers must therefore not remove dst_file_path themselves on failure:
+ * doing so would delete a pre-existing file the call never wrote to.
+ * The same contract applies to the other *_unpack_device_to_file helpers.
  */
 XXFC_API bool xx_store_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, int64_t size,
                                             const char *dst_file_path, xx_pd_struct *pd);

@@ -422,6 +422,7 @@ bool xx_arx_unpack_current_archive_record(Abstractformat *format,
     uint8_t *plain = NULL;
     size_t size = 0U;
     bool ok = false;
+    bool created = false;
     if (!format || !state || state->format != format || !state->has_record ||
         !(stream = (xx_arx_stream *)state->internal_state) ||
         stream->index >= stream->count) return false;
@@ -450,6 +451,7 @@ bool xx_arx_unpack_current_archive_record(Abstractformat *format,
         !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *output = xx_io_file_open(path, "wb");
+        created = output != NULL;
         size_t at = 0U;
         if (!output) goto done;
         ok = true;
@@ -464,7 +466,7 @@ bool xx_arx_unpack_current_archive_record(Abstractformat *format,
         xx_io_close(output);
     }
 done:
-    if (!ok && path) xx_rt_remove(path);
+    if (!ok && path && created) xx_rt_remove(path);
     if (plain) xx_mem_free(plain);
     if (path) xx_str_free(path);
     if (owned) xx_str_free(owned);

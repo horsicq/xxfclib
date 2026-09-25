@@ -883,7 +883,6 @@ bool xx_uefi_capsule_unpack_current_archive_record(
                                                 record->data_offset,
                                                 record->compressed_size,
                                                 destination, pd);
-        if (!result) xx_rt_remove(destination);
     }
 cleanup:
     if (owned_base) xx_str_free(owned_base);

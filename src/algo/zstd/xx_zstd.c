@@ -371,5 +371,8 @@ bool xx_zstd_unpack_device_to_file(xx_io_device *source, int64_t source_offset,
     bool success = xx_zstd_unpack_device_to_device(source, source_offset, compressed_size,
                                                    destination, uncompressed_size, progress);
     xx_io_close(destination);
+    if (!success) {
+        xx_io_file_remove_a(destination_path);
+    }
     return success;
 }

@@ -863,6 +863,7 @@ bool xx_gz_unpack_current_archive_record(Abstractformat *self,
     char *destination = NULL;
     xx_io_device *output = NULL;
     bool result = false;
+    bool created = false;
     if (!self || !state || state->format != self || !state->has_record ||
         !state->internal_state || (pd && xx_pd_is_stopped(pd)) ||
         !(priv = (xx_gz_private *)((xx_gz *)self)->internal)) {
@@ -892,11 +893,12 @@ bool xx_gz_unpack_current_archive_record(Abstractformat *self,
     }
     if (!destination || !xx_io_create_dirs_a(destination, false)) goto cleanup;
     output = xx_io_file_open(destination, "wb");
+    created = output != NULL;
     if (!output) goto cleanup;
     result = xx_gz_extract_member(self, member, output, pd);
     if (xx_io_close(output) != 0) result = false;
     output = NULL;
-    if (!result) xx_rt_remove(destination);
+    if (!result && created) xx_rt_remove(destination);
 
 cleanup:
     if (output) xx_io_close(output);

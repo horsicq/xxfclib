@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-/** @file xx_vhddynamic.h @brief Microsoft Virtual PC dynamic VHD disk image. */
+/** @file xx_vhddynamic.h @brief Microsoft VHD disk image (fixed, dynamic, differencing). */
 
 #ifndef XXFCLIB_FORMAT_VHDDYNAMIC_H
 #define XXFCLIB_FORMAT_VHDDYNAMIC_H
@@ -13,8 +13,13 @@
 extern "C" {
 #endif
 
-/* A dynamic VHD: a "conectix" footer, a "cxsparse" dynamic-disk header
- * and a block allocation table, presented as one flat disk stream. */
+/* A Microsoft VHD, presented as one flat disk stream ("disk.img"):
+ *  - fixed: the raw disk followed by a "conectix" footer;
+ *  - dynamic: footer copy, "cxsparse" dynamic-disk header, block
+ *    allocation table and per-block sector bitmaps, then the footer;
+ *  - differencing: laid out like dynamic; sectors the parent would supply
+ *    read as zeros and the record comment names the parent.
+ * The record's compression-method slot carries the disk type (2, 3, 4). */
 typedef struct xx_vhddynamic {
     Abstractformat format;
     uint64_t number_of_records;

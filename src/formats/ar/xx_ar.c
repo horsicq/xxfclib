@@ -33,6 +33,12 @@
 #include <string.h>
 #include <wchar.h>
 
+typedef enum xx_ar_kind_e {
+    XX_AR_KIND_PLAIN = 0,
+    XX_AR_KIND_DEB,     /* first member "debian-binary" */
+    XX_AR_KIND_MSLIB    /* two leading "/" linker members (Microsoft .lib) */
+} xx_ar_kind;
+
 typedef struct xx_ar_member_s {
     int64_t header_offset;
     int64_t stored_data_offset;
@@ -44,7 +50,8 @@ typedef struct xx_ar_member_s {
     uint64_t owner_id;
     uint64_t group_id;
     uint64_t mode;
-    char *name;
+    char *name;          /* resolved member name (renamed when duplicated) */
+    char *extract_name;  /* relative output path, NULL when refused */
     bool special;
 } xx_ar_member;
 
@@ -53,7 +60,12 @@ typedef struct xx_ar_members_s {
     size_t count;
     uint64_t visible_count;
     int64_t archive_end;
+    xx_ar_kind kind;
 } xx_ar_members;
+
+/* What xx_ar_parse_archive builds beyond the member walk. */
+#define XX_AR_PARSE_MEMBERS 1U       /* member table with resolved names */
+#define XX_AR_PARSE_EXTRACT_NAMES 2U /* plus unique extraction paths */
 
 typedef struct xx_ar_archive_stream_s {
     xx_ar_members members;
@@ -70,16 +82,30 @@ typedef struct xx_ar_record_stream_s {
     size_t count;
 } xx_ar_record_stream;
 
+/* How the 16-byte name field of one member header is to be read. */
+typedef enum xx_ar_name_kind_e {
+    XX_AR_NAME_SHORT = 0, /* the name itself (trailing '/' removed) */
+    XX_AR_NAME_BSD,       /* "#1/<n>": n name bytes open the member data */
+    XX_AR_NAME_GNU        /* "/<n>": offset n in the "//" name table */
+} xx_ar_name_kind;
+
+typedef struct xx_ar_raw_name_s {
+    xx_ar_name_kind kind;
+    char text[17];       /* SHORT: the name; BSD/GNU: the raw field */
+    uint64_t value;      /* BSD: name length; GNU: table offset */
+    bool is_name_table;  /* raw field "//" */
+} xx_ar_raw_name;
+
 static void xx_ar_vtable_destroy(Abstractformat *self);
 
 static bool xx_ar_read_exact_at(xx_io_device *device, int64_t offset,
                                 void *buffer, size_t size) {
     size_t done = 0;
     uint8_t *bytes = (uint8_t *)buffer;
-    if (!device || (!buffer && size != 0U) || offset < 0 || offset > LONG_MAX) {
+    if (!device || (!buffer && size != 0U) || offset < 0) {
         return false;
     }
-    if (xx_io_seek(device, (long)offset, SEEK_SET) != 0) {
+    if (xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -181,15 +207,96 @@ static bool xx_ar_read_header(xx_io_device *device, int64_t total_size,
     return true;
 }
 
+/* Classify the name field of a header that xx_ar_read_header accepted.
+ * Fails only for a "#1/" field whose length is not a usable number: the
+ * member data offset then cannot be known. */
+static bool xx_ar_classify_name(const xx_ar_member_header *header,
+                                uint64_t member_size, xx_ar_raw_name *out) {
+    char raw[17];
+    size_t length;
+
+    xx_ar_copy_raw_name(header, raw);
+    length = xx_str_len(raw);
+    xx_mem_zero(out, sizeof(*out));
+    out->kind = XX_AR_NAME_SHORT;
+    if (length >= 3U && raw[0] == '#' && raw[1] == '1' && raw[2] == '/') {
+        uint64_t name_size;
+        if (length == 3U ||
+            !xx_ar_parse_uint(raw + 3U, length - 3U, 10U, false, &name_size) ||
+            name_size > member_size || name_size > XX_AR_MAX_NAME_SIZE) {
+            return false;
+        }
+        out->kind = XX_AR_NAME_BSD;
+        out->value = name_size;
+        xx_mem_copy(out->text, raw, length + 1U);
+        return true;
+    }
+    out->is_name_table = xx_str_cmp(raw, "//") == 0;
+    if (raw[0] == '/' && raw[1] >= '0' && raw[1] <= '9') {
+        uint64_t name_offset;
+        if (xx_ar_parse_uint(raw + 1U, length - 1U, 10U, false,
+                             &name_offset)) {
+            out->kind = XX_AR_NAME_GNU;
+            out->value = name_offset;
+            xx_mem_copy(out->text, raw, length + 1U);
+            return true;
+        }
+    }
+    /* SysV/GNU/MS end short names with '/', so that trailing spaces are not
+     * lost; "/SYM64/" is the one special name that keeps it. */
+    if (length > 1U && raw[length - 1U] == '/' &&
+        xx_str_cmp(raw, "/SYM64/") != 0) {
+        raw[--length] = '\0';
+    }
+    xx_mem_copy(out->text, raw, length + 1U);
+    return true;
+}
+
+/* Index and name-table members, which are not files: the GNU/SysV and
+ * Microsoft symbol tables ("/", "/SYM64/", Microsoft writes two "/"), the
+ * long-name table ("//"), BSD symbol tables, and the Microsoft linker's
+ * "/<NAME>/" members ("/<XFGHASHMAP>/", "/<ECSYMBOLS>/"). */
 static bool xx_ar_name_is_special(const char *name) {
-    return name &&
-           (xx_str_cmp(name, "/") == 0 || xx_str_cmp(name, "//") == 0 ||
-            xx_str_cmp(name, "/SYM64/") == 0 ||
-            xx_str_cmp(name, "__.SYMDEF") == 0 ||
-            xx_str_cmp(name, "__.SYMDEF SORTED") == 0 ||
-            xx_str_cmp(name, "__.SYMDEF_64") == 0 ||
-            xx_str_cmp(name, "__.SYMDEF_64 SORTED") == 0 ||
-            xx_str_cmp(name, "__.GOSYMDEF") == 0);
+    size_t length;
+    if (!name) {
+        return false;
+    }
+    length = xx_str_len(name);
+    if (length >= 3U && name[0] == '/' && name[1] == '<' &&
+        name[length - 1U] == '>') {
+        return true;
+    }
+    return xx_str_cmp(name, "/") == 0 || xx_str_cmp(name, "//") == 0 ||
+           xx_str_cmp(name, "/SYM64/") == 0 ||
+           xx_str_cmp(name, "__.SYMDEF") == 0 ||
+           xx_str_cmp(name, "__.SYMDEF SORTED") == 0 ||
+           xx_str_cmp(name, "__.SYMDEF_64") == 0 ||
+           xx_str_cmp(name, "__.SYMDEF_64 SORTED") == 0 ||
+           xx_str_cmp(name, "__.GOSYMDEF") == 0;
+}
+
+/* A BSD name is special only when it is short enough to be one of the
+ * index names; the member walk and the table build apply the same rule. */
+static bool xx_ar_bsd_name_is_special(const char *name, uint64_t name_size) {
+    return name_size <= XX_AR_BSD_SPECIAL_PEEK && xx_ar_name_is_special(name);
+}
+
+static bool xx_ar_peek_bsd_special(xx_io_device *device, int64_t offset,
+                                   uint64_t name_size) {
+    char buffer[XX_AR_BSD_SPECIAL_PEEK + 1U];
+    size_t length;
+    if (name_size == 0U || name_size > XX_AR_BSD_SPECIAL_PEEK) {
+        return false;
+    }
+    length = (size_t)name_size;
+    if (!xx_ar_read_exact_at(device, offset, buffer, length)) {
+        return false;
+    }
+    while (length > 0U && buffer[length - 1U] == '\0') {
+        --length;
+    }
+    buffer[length] = '\0';
+    return xx_ar_bsd_name_is_special(buffer, name_size);
 }
 
 static char *xx_ar_read_name_bytes(xx_io_device *device, int64_t offset,
@@ -215,50 +322,58 @@ static char *xx_ar_read_name_bytes(xx_io_device *device, int64_t offset,
     return name;
 }
 
-static char *xx_ar_resolve_gnu_name(xx_io_device *device,
-                                    int64_t table_offset,
-                                    uint64_t table_size,
-                                    uint64_t name_offset) {
-    uint64_t remaining;
-    size_t read_size;
-    char *buffer;
-    size_t length = 0U;
+static char *xx_ar_dup_bytes(const char *text, size_t length) {
+    char *copy = xx_str_create_len(length);
+    if (copy && length != 0U) {
+        xx_mem_copy(copy, text, length);
+    }
+    return copy;
+}
+
+/* Look a GNU "/<n>" reference up in the loaded "//" table. GNU ends each
+ * name with "/\n", SysV with "\n" and Microsoft with a NUL. A name longer
+ * than XX_AR_MAX_NAME_SIZE, or one that runs past the loaded part of an
+ * oversized table, is left unresolved. *scanned receives the number of table
+ * bytes examined, which the caller charges to its name budget: many members
+ * pointing at one unterminated run must not cost a full scan each for free.
+ * At most max_scan bytes are examined; a name not found within them is left
+ * unresolved as well. */
+static char *xx_ar_table_name(const char *table, size_t loaded,
+                              uint64_t table_size, uint64_t name_offset,
+                              uint64_t max_scan, uint64_t *scanned) {
+    size_t start;
+    size_t end;
+    size_t limit;
     bool terminated = false;
 
-    if (!device || table_offset < 0 || name_offset >= table_size) {
+    *scanned = 0U;
+    if (!table || name_offset >= (uint64_t)loaded || max_scan == 0U) {
         return NULL;
     }
-    remaining = table_size - name_offset;
-    read_size = remaining > XX_AR_MAX_NAME_SIZE
-                    ? XX_AR_MAX_NAME_SIZE
-                    : (size_t)remaining;
-    buffer = (char *)xx_mem_alloc(read_size + 1U);
-    if (!buffer) {
-        return NULL;
+    start = (size_t)name_offset;
+    limit = loaded - start > (size_t)XX_AR_MAX_NAME_SIZE
+                ? start + (size_t)XX_AR_MAX_NAME_SIZE + 1U
+                : loaded;
+    if ((uint64_t)(limit - start) > max_scan) {
+        limit = start + (size_t)max_scan;
     }
-    if (!xx_ar_read_exact_at(device, table_offset + (int64_t)name_offset,
-                             buffer, read_size)) {
-        xx_mem_free(buffer);
-        return NULL;
-    }
-    while (length < read_size) {
-        if (buffer[length] == '\0' || buffer[length] == '\n') {
+    for (end = start; end < limit; ++end) {
+        if (table[end] == '\0' || table[end] == '\n') {
             terminated = true;
             break;
         }
-        if (buffer[length] == '/' && length + 1U < read_size &&
-            buffer[length + 1U] == '\n') {
-            terminated = true;
-            break;
-        }
-        ++length;
     }
-    if (!terminated && remaining > (uint64_t)read_size) {
-        xx_mem_free(buffer);
+    *scanned = (uint64_t)(end - start) + 1U;
+    if (!terminated && (limit < loaded || table_size > (uint64_t)loaded)) {
         return NULL;
     }
-    buffer[length] = '\0';
-    return buffer;
+    if (end > start && table[end - 1U] == '/') {
+        --end;
+    }
+    if (end - start > XX_AR_MAX_NAME_SIZE) {
+        return NULL;
+    }
+    return xx_ar_dup_bytes(table + start, end - start);
 }
 
 static void xx_ar_members_cleanup(xx_ar_members *members) {
@@ -270,25 +385,604 @@ static void xx_ar_members_cleanup(xx_ar_members *members) {
             if (members->items[i].name) {
                 xx_str_free(members->items[i].name);
             }
+            if (members->items[i].extract_name) {
+                xx_str_free(members->items[i].extract_name);
+            }
         }
         xx_mem_free(members->items);
     }
     xx_mem_zero(members, sizeof(*members));
 }
 
-static bool xx_ar_parse_archive(Abstractformat *self, xx_ar_members *members,
-                                xx_pd_struct *pd) {
+/* ------------------------------------------------------ extraction names -- */
+
+static char xx_ar_upper(char ch) {
+    return (ch >= 'a' && ch <= 'z') ? (char)(ch - 'a' + 'A') : ch;
+}
+
+static bool xx_ar_equal_ci(const char *text, const char *word, size_t length) {
+    for (size_t i = 0; i < length; ++i) {
+        if (xx_ar_upper(text[i]) != word[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/* Windows opens a device instead of a file for these names, with or without
+ * an extension: CON, PRN, AUX, NUL, COM0-9, LPT0-9 (also with the
+ * superscript digits 1-3), CONIN$, CONOUT$ and CLOCK$. */
+static bool xx_ar_is_device_name(const char *component, size_t length) {
+    static const char *const k_devices[] = {
+        "CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"
+    };
+    size_t base = 0U;
+    while (base < length && component[base] != '.') {
+        ++base;
+    }
+    while (base > 0U && component[base - 1U] == ' ') {
+        --base;
+    }
+    for (size_t i = 0; i < sizeof(k_devices) / sizeof(k_devices[0]); ++i) {
+        if (xx_str_len(k_devices[i]) == base &&
+            xx_ar_equal_ci(component, k_devices[i], base)) {
+            return true;
+        }
+    }
+    if (base >= 4U && (xx_ar_equal_ci(component, "COM", 3U) ||
+                       xx_ar_equal_ci(component, "LPT", 3U))) {
+        const unsigned char *tail = (const unsigned char *)component + 3;
+        if (base == 4U && tail[0] >= '0' && tail[0] <= '9') {
+            return true;
+        }
+        if (base == 5U && tail[0] == 0xC2U &&
+            (tail[1] == 0xB9U || tail[1] == 0xB2U || tail[1] == 0xB3U)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* Length of the well-formed UTF-8 sequence at text (1-4), or 0 when the bytes
+ * there are not one (stray continuation, overlong form, surrogate, a code
+ * point above U+10FFFF, or a truncated sequence). The byte after a
+ * NUL-terminated string's last byte is never read: NUL is no continuation. */
+static size_t xx_ar_utf8_length(const unsigned char *text) {
+    unsigned char lead = text[0];
+    unsigned char low = 0x80U;
+    unsigned char high = 0xBFU;
+    size_t length;
+    if (lead < 0x80U) {
+        return 1U;
+    }
+    if (lead >= 0xC2U && lead <= 0xDFU) {
+        length = 2U;
+    } else if (lead >= 0xE0U && lead <= 0xEFU) {
+        length = 3U;
+        if (lead == 0xE0U) {
+            low = 0xA0U;
+        } else if (lead == 0xEDU) {
+            high = 0x9FU;
+        }
+    } else if (lead >= 0xF0U && lead <= 0xF4U) {
+        length = 4U;
+        if (lead == 0xF0U) {
+            low = 0x90U;
+        } else if (lead == 0xF4U) {
+            high = 0x8FU;
+        }
+    } else {
+        return 0U;
+    }
+    if (text[1] < low || text[1] > high) {
+        return 0U;
+    }
+    for (size_t i = 2U; i < length; ++i) {
+        if (text[i] < 0x80U || text[i] > 0xBFU) {
+            return 0U;
+        }
+    }
+    return length;
+}
+
+/* Build the relative path a member is extracted to. Microsoft librarians
+ * store the path the object was built from: ".\\Release\\foo.obj", or an
+ * absolute "d:\\os\\obj\\...\\dll\\mt\\..\\..\\convert\\...\\atof.obj"
+ * (libucrt.lib: 775 of its 784 members). A drive prefix and leading
+ * separators are dropped (as tar drops a leading '/'), "." components and
+ * empty components are dropped, separators become '/', trailing dots and
+ * spaces, which Windows ignores, are trimmed, and a ".." component removes
+ * the component before it - on the text, before anything touches the disk.
+ * A ".." with nothing left to remove (it would leave the destination), a
+ * control character, one of :<>"|?*, a device name, or nothing left at all
+ * refuses the member (NULL).
+ * Member names are raw bytes (Latin-1, CP437, ...), but the path is opened
+ * as UTF-8, and Windows turns every byte that is not well-formed UTF-8 into
+ * U+FFFD: "\xe4.o" and "\xf6.o" would open the same file. Such bytes are
+ * written as "%XX" instead, so that different names stay different and the
+ * duplicate check below sees exactly the path the file system gets. */
+static char *xx_ar_make_extract_name(const char *name) {
+    const char *cursor = name;
+    char *result;
+    size_t out = 0U;
+    size_t length_in;
+
+    if (!name) {
+        return NULL;
+    }
+    if (((cursor[0] >= 'A' && cursor[0] <= 'Z') ||
+         (cursor[0] >= 'a' && cursor[0] <= 'z')) && cursor[1] == ':') {
+        cursor += 2;
+    }
+    while (*cursor == '/' || *cursor == '\\') {
+        ++cursor;
+    }
+    /* Room for the name plus two more bytes per byte to be escaped. */
+    length_in = 0U;
+    for (const unsigned char *at = (const unsigned char *)cursor; *at != 0U;) {
+        size_t sequence = xx_ar_utf8_length(at);
+        if (length_in > SIZE_MAX - 4U) {
+            return NULL;
+        }
+        length_in += sequence == 0U ? 3U : sequence;
+        at += sequence == 0U ? 1U : sequence;
+    }
+    result = xx_str_create_len(length_in);
+    if (!result) {
+        return NULL;
+    }
+    while (*cursor != '\0') {
+        const char *component = cursor;
+        size_t length;
+        size_t kept;
+        while (*cursor != '\0' && *cursor != '/' && *cursor != '\\') {
+            unsigned char ch = (unsigned char)*cursor;
+            if (ch < 32U || ch == ':' || ch == '<' || ch == '>' ||
+                ch == '"' || ch == '|' || ch == '?' || ch == '*') {
+                xx_str_free(result);
+                return NULL;
+            }
+            ++cursor;
+        }
+        length = (size_t)(cursor - component);
+        if (*cursor != '\0') {
+            ++cursor;
+        }
+        if (length == 0U || (length == 1U && component[0] == '.')) {
+            continue;
+        }
+        if (length == 2U && component[0] == '.' && component[1] == '.') {
+            if (out == 0U) {
+                xx_str_free(result);
+                return NULL;
+            }
+            while (out > 0U && result[out - 1U] != '/') {
+                --out;
+            }
+            if (out > 0U) {
+                --out;  /* the separator before the removed component */
+            }
+            continue;
+        }
+        kept = length;
+        while (kept > 0U && (component[kept - 1U] == '.' ||
+                             component[kept - 1U] == ' ')) {
+            --kept;
+        }
+        if (kept == 0U || xx_ar_is_device_name(component, kept)) {
+            xx_str_free(result);
+            return NULL;
+        }
+        if (out != 0U) {
+            result[out++] = '/';
+        }
+        for (size_t i = 0U; i < kept;) {
+            const unsigned char *at = (const unsigned char *)component + i;
+            size_t sequence = xx_ar_utf8_length(at);
+            if (sequence == 0U) {
+                static const char k_hex[] = "0123456789ABCDEF";
+                result[out++] = '%';
+                result[out++] = k_hex[at[0] >> 4];
+                result[out++] = k_hex[at[0] & 15U];
+                ++i;
+                continue;
+            }
+            /* A well-formed sequence never contains '.', ' ' or a
+             * separator, so it cannot run past kept. */
+            xx_mem_copy(result + out, at, sequence);
+            out += sequence;
+            i += sequence;
+        }
+    }
+    if (out == 0U) {
+        xx_str_free(result);
+        return NULL;
+    }
+    result[out] = '\0';
+    return result;
+}
+
+typedef struct xx_ar_name_key_s {
+    const char *key;
+    size_t item;
+} xx_ar_name_key;
+
+/* Fold value of a code point that has, or may have, a case partner outside
+ * the ranges folded exactly below. */
+#define XX_AR_FOLD_CASED 0x110000U
+/* Fold value base of a byte that is not well-formed UTF-8 (extraction names
+ * never hold one; kept distinct per byte for completeness). */
+#define XX_AR_FOLD_BAD_BYTE 0x110100U
+
+/* Map one code point to the value that the duplicate check compares.
+ * Windows (NTFS $UpCase) and macOS compare names ignoring case, and not
+ * only ASCII case: "\xc3\x84.o" and "\xc3\xa4.o" (A/a umlaut) are one file.
+ * ASCII, Latin-1 and Latin Extended-A are folded exactly (U+0131 dotless i
+ * and U+017F long s upper-case to ASCII I and S). Every other code point in
+ * a script or block that has letter case - Latin Extended-B/IPA, Greek,
+ * Cyrillic, Armenian, Georgian, Cherokee, Latin Extended Additional, Greek
+ * Extended, letter-like symbols and number forms, circled letters,
+ * Glagolitic, Coptic, the extended Latin/Cyrillic blocks, fullwidth Latin
+ * and the case-bearing supplementary scripts - folds to one shared value.
+ * That is conservative: two such names of the same shape are treated as
+ * equal, and the later one is renamed, even when a file system would keep
+ * them apart. A missed collision would overwrite a member; an extra rename
+ * only changes its name. Everything else (CJK, symbols, ...) has no case
+ * and is compared as it is. */
+static uint32_t xx_ar_fold_code_point(uint32_t cp) {
+    static const uint32_t k_cased[][2] = {
+        {0x0180U, 0x02AFU}, {0x0345U, 0x0345U}, {0x0370U, 0x052FU},
+        {0x0531U, 0x058FU}, {0x10A0U, 0x10FFU}, {0x13A0U, 0x13FFU},
+        {0x1C80U, 0x1CBFU}, {0x1D00U, 0x1DBFU}, {0x1E00U, 0x1FFFU},
+        {0x2100U, 0x218FU}, {0x24B6U, 0x24E9U}, {0x2C00U, 0x2D2FU},
+        {0xA640U, 0xA69FU}, {0xA720U, 0xA7FFU}, {0xAB30U, 0xABBFU},
+        {0xFF21U, 0xFF5AU}, {0x10400U, 0x104FFU}, {0x10570U, 0x105BFU},
+        {0x10C80U, 0x10CFFU}, {0x118A0U, 0x118FFU}, {0x16E40U, 0x16E9FU},
+        {0x1E900U, 0x1E95FU}
+    };
+    if (cp < 0x80U) {
+        return (cp >= 'a' && cp <= 'z') ? cp - 0x20U : cp;
+    }
+    if (cp < 0x100U) {
+        if (cp == 0xB5U || cp == 0xDFU) {
+            return XX_AR_FOLD_CASED; /* micro sign -> Greek Mu; sharp s */
+        }
+        if (cp >= 0xE0U && cp <= 0xFEU && cp != 0xF7U) {
+            return cp - 0x20U;
+        }
+        return cp == 0xFFU ? 0x178U : cp;
+    }
+    if (cp < 0x180U) {
+        if (cp == 0x130U || cp == 0x131U) {
+            return 'I';
+        }
+        if (cp == 0x17FU) {
+            return 'S';
+        }
+        if (cp == 0x138U || cp == 0x149U || cp == 0x178U) {
+            return cp;
+        }
+        if ((cp >= 0x139U && cp <= 0x148U) || cp >= 0x179U) {
+            return (cp & 1U) != 0U ? cp : cp - 1U;
+        }
+        return cp & ~1U;
+    }
+    for (size_t i = 0; i < sizeof(k_cased) / sizeof(k_cased[0]); ++i) {
+        if (cp >= k_cased[i][0] && cp <= k_cased[i][1]) {
+            return XX_AR_FOLD_CASED;
+        }
+    }
+    return cp;
+}
+
+/* The next compared unit of a NUL-terminated name (0 at its end). */
+static uint32_t xx_ar_fold_next(const unsigned char **cursor) {
+    const unsigned char *at = *cursor;
+    size_t length;
+    uint32_t cp;
+    if (at[0] == 0U) {
+        return 0U;
+    }
+    length = xx_ar_utf8_length(at);
+    if (length == 0U) {
+        *cursor = at + 1;
+        return XX_AR_FOLD_BAD_BYTE + at[0];
+    }
+    if (length == 1U) {
+        cp = at[0];
+    } else if (length == 2U) {
+        cp = ((uint32_t)(at[0] & 0x1FU) << 6) | (uint32_t)(at[1] & 0x3FU);
+    } else if (length == 3U) {
+        cp = ((uint32_t)(at[0] & 0x0FU) << 12) |
+             ((uint32_t)(at[1] & 0x3FU) << 6) | (uint32_t)(at[2] & 0x3FU);
+    } else {
+        cp = ((uint32_t)(at[0] & 0x07U) << 18) |
+             ((uint32_t)(at[1] & 0x3FU) << 12) |
+             ((uint32_t)(at[2] & 0x3FU) << 6) | (uint32_t)(at[3] & 0x3FU);
+    }
+    *cursor = at + length;
+    return xx_ar_fold_code_point(cp);
+}
+
+/* Order of two extraction paths under the fold above. With prefix_only,
+ * returns 0 as soon as y is used up (x starts with y). */
+static int xx_ar_compare_fold(const char *x, const char *y, bool prefix_only) {
+    const unsigned char *a = (const unsigned char *)x;
+    const unsigned char *b = (const unsigned char *)y;
+    for (;;) {
+        uint32_t ua = xx_ar_fold_next(&a);
+        uint32_t ub = xx_ar_fold_next(&b);
+        if (prefix_only && ub == 0U) {
+            return 0;
+        }
+        if (ua != ub) {
+            return ua < ub ? -1 : 1;
+        }
+        if (ua == 0U) {
+            return 0;
+        }
+    }
+}
+
+static int xx_ar_compare_keys(const void *left, const void *right) {
+    const xx_ar_name_key *a = (const xx_ar_name_key *)left;
+    const xx_ar_name_key *b = (const xx_ar_name_key *)right;
+    int order = xx_ar_compare_fold(a->key, b->key, false);
+    if (order != 0) {
+        return order;
+    }
+    /* Equal names keep archive order, so the first member keeps its name. */
+    return a->item < b->item ? -1 : (a->item > b->item ? 1 : 0);
+}
+
+/* "dir\\NAME.EXT" -> "dir\\NAME_<n>.EXT": the suffix goes before the last dot
+ * of the last component (after it when the component has no dot or starts
+ * with its only dot). */
+static char *xx_ar_suffixed_name(const char *name, uint32_t number) {
+    char digits[12];
+    size_t digit_count = 0U;
+    size_t length = xx_str_len(name);
+    size_t start = 0U;
+    size_t dot;
+    size_t at = 0U;
+    char *result;
+
+    for (size_t i = 0; i < length; ++i) {
+        if (name[i] == '/' || name[i] == '\\') {
+            start = i + 1U;
+        }
+    }
+    dot = length;
+    for (size_t i = start; i < length; ++i) {
+        if (name[i] == '.') {
+            dot = i;
+        }
+    }
+    if (dot == start) {
+        dot = length;
+    }
+    do {
+        digits[digit_count++] = (char)('0' + (number % 10U));
+        number /= 10U;
+    } while (number != 0U && digit_count < sizeof(digits));
+    result = xx_str_create_len(length + digit_count + 1U);
+    if (!result) {
+        return NULL;
+    }
+    for (size_t i = 0; i < dot; ++i) {
+        result[at++] = name[i];
+    }
+    result[at++] = '_';
+    while (digit_count != 0U) {
+        result[at++] = digits[--digit_count];
+    }
+    for (size_t i = dot; i < length; ++i) {
+        result[at++] = name[i];
+    }
+    result[at] = '\0';
+    return result;
+}
+
+/* First index whose key is not below text (prefix_only: whose first units
+ * are not below text). keys is sorted, and truncating every key to the
+ * length of text keeps that order, so both searches are valid. */
+static size_t xx_ar_lower_bound(const xx_ar_name_key *keys, size_t used,
+                                const char *text, bool prefix_only) {
+    size_t low = 0U;
+    size_t high = used;
+    while (low < high) {
+        size_t middle = low + (high - low) / 2U;
+        if (xx_ar_compare_fold(keys[middle].key, text, prefix_only) < 0) {
+            low = middle + 1U;
+        } else {
+            high = middle;
+        }
+    }
+    return low;
+}
+
+/* Is there a key equal to text under the fold? */
+static bool xx_ar_key_exists(const xx_ar_name_key *keys, size_t used,
+                             const char *text) {
+    size_t at = xx_ar_lower_bound(keys, used, text, false);
+    return at < used && xx_ar_compare_fold(keys[at].key, text, false) == 0;
+}
+
+/* Is text a directory of some key, that is, does a key start with
+ * text + "/"? 1 yes, 0 no, -1 out of memory. */
+static int xx_ar_key_is_directory(const xx_ar_name_key *keys, size_t used,
+                                  const char *text) {
+    char *probe = xx_str_concat(text, "/");
+    size_t at;
+    int found;
+    if (!probe) {
+        return -1;
+    }
+    at = xx_ar_lower_bound(keys, used, probe, true);
+    found = at < used && xx_ar_compare_fold(keys[at].key, probe, true) == 0;
+    xx_str_free(probe);
+    return found;
+}
+
+/* Two members must never be written to the same file, and no member may be
+ * written where another one needs a directory. Microsoft import libraries
+ * hold one member per imported function, all named after the DLL, static
+ * libraries can hold one object twice, and a file "a" next to a member
+ * "a/b" would make one of the two fail.
+ * In every group of equal extraction paths (compared under the fold above)
+ * the first member keeps its path and each later one gets PATH_<n>.EXT, with
+ * n counting up past any path that another member has, or that is a
+ * directory of another member. When the group's path is itself such a
+ * directory, its first member is renamed too, so that the directory wins
+ * whatever the member order. Renaming touches only the last component, so
+ * the set of directories never changes.
+ * A candidate is "PATH" + "_" + digits inserted before the extension, so two
+ * different groups can never produce the same candidate, and every number a
+ * group skips is a path, or a directory, that some member already has: the
+ * work stays O(total name length * log(members)).
+ * The record name of a renamed member gets the same "_<n>" suffix, applied to
+ * its stored name, so the listing keeps the stored style of every member
+ * ("d:\\lib\\thing.obj", "d:\\lib\\thing_1.obj") while matching the file
+ * that extraction writes ("lib/thing.obj", "lib/thing_1.obj"). */
+static bool xx_ar_make_names_unique(xx_ar_members *members) {
+    xx_ar_name_key *keys;
+    char **fresh;
+    uint32_t *numbers;
+    size_t used = 0U;
+    bool ok = true;
+
+    if (members->count == 0U) {
+        return true;
+    }
+    if (members->count > SIZE_MAX / sizeof(*keys) ||
+        members->count > SIZE_MAX / sizeof(*fresh) ||
+        members->count > SIZE_MAX / sizeof(*numbers)) {
+        return false;
+    }
+    keys = (xx_ar_name_key *)xx_mem_alloc(members->count * sizeof(*keys));
+    if (!keys) {
+        return false;
+    }
+    for (size_t i = 0; i < members->count; ++i) {
+        const xx_ar_member *member = &members->items[i];
+        if (!member->special && member->extract_name) {
+            keys[used].key = member->extract_name;
+            keys[used].item = i;
+            ++used;
+        }
+    }
+    if (used < 2U) {
+        xx_mem_free(keys);
+        return true;
+    }
+    xx_rt_qsort(keys, used, sizeof(*keys), xx_ar_compare_keys);
+    fresh = (char **)xx_mem_alloc(used * sizeof(*fresh));
+    numbers = (uint32_t *)xx_mem_alloc(used * sizeof(*numbers));
+    if (!fresh || !numbers) {
+        if (fresh) xx_mem_free(fresh);
+        if (numbers) xx_mem_free(numbers);
+        xx_mem_free(keys);
+        return false;
+    }
+    xx_mem_zero(fresh, used * sizeof(*fresh));
+    xx_mem_zero(numbers, used * sizeof(*numbers));
+
+    for (size_t group = 0U; ok && group < used;) {
+        size_t end = group + 1U;
+        uint32_t number = 0U;
+        int is_directory;
+        while (end < used &&
+               xx_ar_compare_fold(keys[end].key, keys[group].key, false) == 0) {
+            ++end;
+        }
+        is_directory = xx_ar_key_is_directory(keys, used, keys[group].key);
+        if (is_directory < 0) {
+            ok = false;
+            break;
+        }
+        for (size_t index = is_directory ? group : group + 1U;
+             ok && index < end; ++index) {
+            char *candidate = NULL;
+            while (ok) {
+                int taken;
+                if (number == UINT32_MAX) {
+                    ok = false;
+                    break;
+                }
+                ++number;
+                candidate = xx_ar_suffixed_name(keys[index].key, number);
+                if (!candidate) {
+                    ok = false;
+                    break;
+                }
+                taken = xx_ar_key_exists(keys, used, candidate)
+                            ? 1
+                            : xx_ar_key_is_directory(keys, used, candidate);
+                if (taken == 0) {
+                    break;
+                }
+                xx_str_free(candidate);
+                candidate = NULL;
+                if (taken < 0) {
+                    ok = false;
+                }
+            }
+            fresh[index] = candidate;
+            numbers[index] = number;
+        }
+        group = end;
+    }
+
+    /* keys[] points at the old paths, so they are replaced only now. */
+    for (size_t index = 0U; index < used; ++index) {
+        xx_ar_member *member = &members->items[keys[index].item];
+        char *record_name;
+        if (!fresh[index]) {
+            continue;
+        }
+        record_name = ok && member->name
+                          ? xx_ar_suffixed_name(member->name, numbers[index])
+                          : NULL;
+        if (!record_name) {
+            ok = false;
+            xx_str_free(fresh[index]);
+            continue;
+        }
+        xx_str_free(member->name);
+        member->name = record_name;
+        xx_str_free(member->extract_name);
+        member->extract_name = fresh[index];
+    }
+    xx_mem_free(numbers);
+    xx_mem_free(fresh);
+    xx_mem_free(keys);
+    return ok;
+}
+
+static bool xx_ar_prepare_extract_names(xx_ar_members *members) {
+    for (size_t i = 0; i < members->count; ++i) {
+        xx_ar_member *member = &members->items[i];
+        if (!member->special && member->name) {
+            member->extract_name = xx_ar_make_extract_name(member->name);
+        }
+    }
+    return xx_ar_make_names_unique(members);
+}
+
+/* ----------------------------------------------------------------- parse -- */
+
+/* Walk the member chain without allocating: member count, visible count,
+ * archive end, flavour, and where the "//" name table is. */
+static bool xx_ar_walk(Abstractformat *self, xx_ar_members *members,
+                       int64_t *table_offset, uint64_t *table_size,
+                       xx_pd_struct *pd) {
     uint8_t magic[XX_AR_MAGIC_SIZE];
     int64_t total_size;
     int64_t offset;
-    int64_t gnu_table_offset = -1;
-    uint64_t gnu_table_size = 0;
     size_t member_count = 0U;
+    uint64_t visible_count = 0U;
+    bool first_is_symbol_table = false;
 
-    if (!self || !self->device || !members || self->base_address < 0) {
-        return false;
-    }
-    xx_mem_zero(members, sizeof(*members));
     total_size = xx_io_total_size(self->device);
     if (total_size < 0 || self->base_address > total_size ||
         total_size - self->base_address < XX_AR_MAGIC_SIZE ||
@@ -309,11 +1003,15 @@ static bool xx_ar_parse_archive(Abstractformat *self, xx_ar_members *members,
     offset = self->base_address + XX_AR_MAGIC_SIZE;
     while (offset < total_size) {
         xx_ar_member_header header;
+        xx_ar_raw_name raw;
         uint64_t member_size;
         int64_t next_offset;
-        char raw_name[17];
+        bool special;
         if (pd && xx_pd_is_stopped(pd)) {
             return false;
+        }
+        if (member_count >= (size_t)XX_AR_MAX_MEMBERS) {
+            break;
         }
         /* The chain ends where it stops making sense.  Archives that were
          * moved through a shell archive or a text-mode transfer routinely
@@ -324,17 +1022,39 @@ static bool xx_ar_parse_archive(Abstractformat *self, xx_ar_members *members,
          * that parses, so a break here can never turn unrelated data into an
          * archive - it only stops a good chain early. */
         if (!xx_ar_read_header(self->device, total_size, offset, &header,
-                               &member_size, &next_offset)) {
-            if (member_count == 0U) return false;
+                               &member_size, &next_offset) ||
+            !xx_ar_classify_name(&header, member_size, &raw)) {
+            if (member_count == 0U) {
+                return false;
+            }
             break;
         }
-        xx_ar_copy_raw_name(&header, raw_name);
-        if (xx_str_cmp(raw_name, "//") == 0) {
-            gnu_table_offset = offset + XX_AR_MEMBER_HEADER_SIZE;
-            gnu_table_size = member_size;
+        if (raw.is_name_table) {
+            *table_offset = offset + XX_AR_MEMBER_HEADER_SIZE;
+            *table_size = member_size;
         }
-        if (member_count == SIZE_MAX) {
-            return false;
+        if (raw.kind == XX_AR_NAME_BSD) {
+            special = xx_ar_peek_bsd_special(
+                self->device, offset + XX_AR_MEMBER_HEADER_SIZE, raw.value);
+        } else {
+            special = raw.kind == XX_AR_NAME_SHORT &&
+                      xx_ar_name_is_special(raw.text);
+        }
+        if (raw.kind == XX_AR_NAME_SHORT) {
+            if (member_count == 0U) {
+                first_is_symbol_table = xx_str_cmp(raw.text, "/") == 0 &&
+                                        !raw.is_name_table;
+                if (xx_str_cmp(raw.text, "debian-binary") == 0) {
+                    members->kind = XX_AR_KIND_DEB;
+                }
+            } else if (member_count == 1U && first_is_symbol_table &&
+                       !raw.is_name_table &&
+                       xx_str_cmp(raw.text, "/") == 0) {
+                members->kind = XX_AR_KIND_MSLIB;
+            }
+        }
+        if (!special) {
+            ++visible_count;
         }
         ++member_count;
         offset = next_offset;
@@ -343,43 +1063,64 @@ static bool xx_ar_parse_archive(Abstractformat *self, xx_ar_members *members,
      * already refused inside the loop, so zero members can only mean the
      * file ends right after "!<arch>\n" -- an empty archive, which is
      * valid and simply has nothing to list. */
-
-    if (member_count > SIZE_MAX / sizeof(*members->items)) {
-        return false;
-    }
-    if (member_count != 0U) {
-        members->items = (xx_ar_member *)xx_mem_alloc(
-            member_count * sizeof(xx_ar_member));
-        if (!members->items) {
-            return false;
-        }
-        xx_mem_zero(members->items, member_count * sizeof(xx_ar_member));
-    }
     members->count = member_count;
+    members->visible_count = visible_count;
     /* The archive ends at the last boundary the chain reached, which is EOF
      * for an intact file and the start of the damaged tail otherwise. */
     members->archive_end = offset;
+    return true;
+}
 
-    offset = self->base_address + XX_AR_MAGIC_SIZE;
-    for (size_t i = 0; i < member_count; ++i) {
+/* Second pass over the chain the walk measured: offsets, metadata and
+ * resolved names of every member. */
+static bool xx_ar_build_members(Abstractformat *self, xx_ar_members *members,
+                                int64_t table_offset, uint64_t table_size,
+                                xx_pd_struct *pd) {
+    int64_t total_size = xx_io_total_size(self->device);
+    int64_t offset = self->base_address + XX_AR_MAGIC_SIZE;
+    char *table = NULL;
+    size_t table_loaded = 0U;
+    bool table_tried = false;
+    uint64_t names_total = 0U;
+    uint64_t visible_count = 0U;
+    bool ok = true;
+
+    if (members->count == 0U) {
+        return true;
+    }
+    if (members->count > SIZE_MAX / sizeof(*members->items)) {
+        return false;
+    }
+    members->items = (xx_ar_member *)xx_mem_alloc(members->count *
+                                                  sizeof(xx_ar_member));
+    if (!members->items) {
+        return false;
+    }
+    xx_mem_zero(members->items, members->count * sizeof(xx_ar_member));
+
+    for (size_t i = 0; ok && i < members->count; ++i) {
         xx_ar_member_header header;
+        xx_ar_raw_name raw;
         xx_ar_member *member = &members->items[i];
         uint64_t member_size;
         int64_t next_offset;
-        char raw_name[17];
+        uint64_t cost = 0U;
         char *name = NULL;
 
-        if (!xx_ar_read_header(self->device, total_size, offset, &header,
-                               &member_size, &next_offset)) {
-            xx_ar_members_cleanup(members);
-            return false;
+        if ((pd && xx_pd_is_stopped(pd)) ||
+            !xx_ar_read_header(self->device, total_size, offset, &header,
+                               &member_size, &next_offset) ||
+            !xx_ar_classify_name(&header, member_size, &raw)) {
+            ok = false;
+            break;
         }
         /* The timestamp/uid/gid/mode fields are informational only: the member
          * chain is defined by name/size/trailer alone. Real archives abuse
          * them freely - MS import libraries pack several values into the
          * timestamp field ("787117117 0 "), Atari/DRI .A libraries store a raw
-         * binary 4-byte time inside the mode field. Treat an unparsable field
-         * as "unknown" (0) instead of discarding the whole archive. */
+         * binary 4-byte time inside the mode field, and Microsoft writes "-1".
+         * Treat an unparsable field as "unknown" (0) instead of discarding
+         * the whole archive. */
         if (!xx_ar_parse_uint(header.timestamp, sizeof(header.timestamp), 10U,
                               true, &member->timestamp)) {
             member->timestamp = 0U;
@@ -402,61 +1143,109 @@ static bool xx_ar_parse_archive(Abstractformat *self, xx_ar_members *members,
         member->data_offset = member->stored_data_offset;
         member->stored_size = (int64_t)member_size;
         member->data_size = (int64_t)member_size;
-        xx_ar_copy_raw_name(&header, raw_name);
 
-        if (xx_rt_strncmp(raw_name, "#1/", 3U) == 0) {
-            uint64_t name_size;
-            size_t raw_length = xx_str_len(raw_name);
-            if (raw_length <= 3U ||
-                !xx_ar_parse_uint(raw_name + 3U, raw_length - 3U, 10U, false,
-                                  &name_size) ||
-                name_size > member_size || name_size > XX_AR_MAX_NAME_SIZE) {
-                xx_ar_members_cleanup(members);
-                return false;
+        /* Every long name costs the bytes read or scanned for it, charged to
+         * one budget: a hostile archive cannot make the member table, or the
+         * time spent building it, grow past XX_AR_MAX_NAMES_TOTAL. Once the
+         * budget is spent, a long name is not read: the member keeps its raw
+         * 16-byte name field ("#1/<n>", "/<n>"), so it is still listed and
+         * extracted, and the table always has every member the walk counted
+         * (raw fields cost at most 17 bytes times XX_AR_MAX_MEMBERS). */
+        if (raw.kind == XX_AR_NAME_BSD) {
+            cost = raw.value + 1U;
+            if (cost <= XX_AR_MAX_NAMES_TOTAL - names_total) {
+                name = xx_ar_read_name_bytes(self->device,
+                                             member->stored_data_offset,
+                                             raw.value);
+            } else {
+                cost = 0U;
             }
-            name = xx_ar_read_name_bytes(self->device,
-                                         member->stored_data_offset, name_size);
+            if (name) {
+                member->special = xx_ar_bsd_name_is_special(name, raw.value);
+            } else {
+                /* Same rule as the walk, so the visible count agrees. */
+                member->special = xx_ar_peek_bsd_special(
+                    self->device, member->stored_data_offset, raw.value);
+                name = xx_str_dup(raw.text);
+            }
+            member->name_prefix_size = raw.value;
+            member->data_offset += (int64_t)raw.value;
+            member->data_size -= (int64_t)raw.value;
+        } else if (raw.kind == XX_AR_NAME_GNU) {
+            if (!table_tried) {
+                table_tried = true;
+                if (table_offset >= 0) {
+                    size_t want = table_size > XX_AR_MAX_NAME_TABLE
+                                      ? (size_t)XX_AR_MAX_NAME_TABLE
+                                      : (size_t)table_size;
+                    table = (char *)xx_mem_alloc(want + 1U);
+                    if (table && want != 0U &&
+                        !xx_ar_read_exact_at(self->device, table_offset, table,
+                                             want)) {
+                        xx_mem_free(table);
+                        table = NULL;
+                    }
+                    table_loaded = table ? want : 0U;
+                }
+            }
+            name = xx_ar_table_name(table, table_loaded, table_size,
+                                    raw.value,
+                                    XX_AR_MAX_NAMES_TOTAL - names_total,
+                                    &cost);
             if (!name) {
-                xx_ar_members_cleanup(members);
-                return false;
+                /* An unresolvable reference keeps its raw "/<n>" field,
+                 * as 7-Zip does; the rest of the archive stays readable. */
+                name = xx_str_dup(raw.text);
             }
-            member->name_prefix_size = name_size;
-            member->data_offset += (int64_t)name_size;
-            member->data_size -= (int64_t)name_size;
-        } else if (raw_name[0] == '/' && raw_name[1] >= '0' &&
-                   raw_name[1] <= '9') {
-            uint64_t name_offset;
-            size_t raw_length = xx_str_len(raw_name);
-            if (!xx_ar_parse_uint(raw_name + 1U, raw_length - 1U, 10U, false,
-                                  &name_offset)) {
-                xx_ar_members_cleanup(members);
-                return false;
-            }
-            name = xx_ar_resolve_gnu_name(self->device, gnu_table_offset,
-                                          gnu_table_size, name_offset);
-            if (!name) {
-                xx_ar_members_cleanup(members);
-                return false;
-            }
+            member->special = false;
         } else {
-            size_t name_length = xx_str_len(raw_name);
-            if (name_length > 1U && raw_name[name_length - 1U] == '/' &&
-                xx_str_cmp(raw_name, "/SYM64/") != 0) {
-                raw_name[--name_length] = '\0';
-            }
-            name = xx_str_dup(raw_name);
-            if (!name) {
-                xx_ar_members_cleanup(members);
-                return false;
-            }
+            name = xx_str_dup(raw.text);
+            member->special = name && xx_ar_name_is_special(name);
         }
-
+        if (!name) {
+            ok = false;  /* out of memory */
+            break;
+        }
         member->name = name;
-        member->special = xx_ar_name_is_special(name);
+        names_total = cost > XX_AR_MAX_NAMES_TOTAL - names_total
+                          ? XX_AR_MAX_NAMES_TOTAL
+                          : names_total + cost;
         if (!member->special) {
-            ++members->visible_count;
+            ++visible_count;
         }
         offset = next_offset;
+    }
+    if (table) {
+        xx_mem_free(table);
+    }
+    if (ok) {
+        members->visible_count = visible_count;
+    }
+    return ok;
+}
+
+static bool xx_ar_parse_archive(Abstractformat *self, xx_ar_members *members,
+                                unsigned flags, xx_pd_struct *pd) {
+    int64_t table_offset = -1;
+    uint64_t table_size = 0U;
+
+    if (!members) {
+        return false;
+    }
+    xx_mem_zero(members, sizeof(*members));
+    if (!self || !self->device || self->base_address < 0 ||
+        !xx_ar_walk(self, members, &table_offset, &table_size, pd)) {
+        xx_mem_zero(members, sizeof(*members));
+        return false;
+    }
+    if ((flags & XX_AR_PARSE_MEMBERS) == 0U) {
+        return true;
+    }
+    if (!xx_ar_build_members(self, members, table_offset, table_size, pd) ||
+        ((flags & XX_AR_PARSE_EXTRACT_NAMES) != 0U &&
+         !xx_ar_prepare_extract_names(members))) {
+        xx_ar_members_cleanup(members);
+        return false;
     }
     return true;
 }
@@ -534,86 +1323,6 @@ static void xx_ar_archive_stream_free(void *pointer) {
         xx_ar_members_cleanup(&stream->members);
         xx_mem_free(stream);
     }
-}
-
-static bool xx_ar_safe_member_name(const char *name) {
-    const char *component;
-    const char *cursor;
-    if (!name || !name[0] || name[0] == '/' || name[0] == '\\') {
-        return false;
-    }
-    if (((name[0] >= 'A' && name[0] <= 'Z') ||
-         (name[0] >= 'a' && name[0] <= 'z')) && name[1] == ':') {
-        return false;
-    }
-    component = name;
-    for (cursor = name;; ++cursor) {
-        unsigned char ch = (unsigned char)*cursor;
-        if (ch == ':' || ch == '<' || ch == '>' || ch == '"' || ch == '|' ||
-            ch == '?' || ch == '*' || (ch != 0U && ch < 32U)) {
-            return false;
-        }
-        if (ch == '/' || ch == '\\' || ch == 0U) {
-            size_t length = (size_t)(cursor - component);
-            /* A "." component is harmless and is dropped by
-             * xx_ar_make_extract_name; "..", an empty component and an
-             * absolute path are not. */
-            if (length == 0U ||
-                (length == 2U && component[0] == '.' && component[1] == '.')) {
-                return false;
-            }
-            if (ch == 0U) {
-                return true;
-            }
-            component = cursor + 1;
-        }
-    }
-}
-
-/* Build the relative path a member is extracted to. The stored name is kept
- * verbatim in the record meta, but MSVC librarians write names such as
- * ".\\Release\\foo.obj", so the extraction path drops the redundant "."
- * components and normalises separators. A name that escapes the destination
- * (absolute, drive-qualified, "..", empty component, control characters)
- * still yields NULL and the member is refused. */
-static char *xx_ar_make_extract_name(const char *name) {
-    char *result;
-    size_t out = 0U;
-    const char *component;
-    const char *cursor;
-
-    if (!xx_ar_safe_member_name(name)) {
-        return NULL;
-    }
-    result = xx_str_create_len(xx_str_len(name));
-    if (!result) {
-        return NULL;
-    }
-    component = name;
-    for (cursor = name;; ++cursor) {
-        char ch = *cursor;
-        if (ch == '/' || ch == '\\' || ch == '\0') {
-            size_t length = (size_t)(cursor - component);
-            if (!(length == 1U && component[0] == '.')) {
-                if (out != 0U) {
-                    result[out++] = '/';
-                }
-                for (size_t i = 0; i < length; ++i) {
-                    result[out++] = component[i];
-                }
-            }
-            if (ch == '\0') {
-                break;
-            }
-            component = cursor + 1;
-        }
-    }
-    result[out] = '\0';
-    if (out == 0U) {
-        xx_str_free(result);
-        return NULL;
-    }
-    return result;
 }
 
 void xx_ar_init(xx_ar *ar, xx_io_device *dev, int64_t base_address) {
@@ -712,13 +1421,25 @@ bool xx_ar_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
 bool xx_ar_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     xx_ar_members members;
     xx_ar *ar;
-    if (!self || !self->device || !xx_ar_parse_archive(self, &members, pd)) {
+    /* Counting needs no member table: the walk alone gives every number
+     * reported here, so opening an archive allocates nothing. */
+    if (!self || !self->device || !xx_ar_parse_archive(self, &members, 0U, pd)) {
         if (self) {
             self->is_valid = false;
         }
         return false;
     }
     ar = (xx_ar *)self;
+    if (members.kind == XX_AR_KIND_DEB) {
+        xx_format_set_extension(self, "deb");
+        xx_format_set_mime_type(self, "application/vnd.debian.binary-package");
+    } else if (members.kind == XX_AR_KIND_MSLIB) {
+        xx_format_set_extension(self, "lib");
+        xx_format_set_mime_type(self, "application/x-archive");
+    } else {
+        xx_format_set_extension(self, "a");
+        xx_format_set_mime_type(self, "application/x-archive");
+    }
     ar->number_of_members = (uint64_t)members.count;
     ar->number_of_records = members.visible_count;
     ar->archive_end = members.archive_end;
@@ -779,7 +1500,9 @@ xx_archive_record_state *xx_ar_create_archive_records_reading(
     xx_archive_record_state_init(state, self);
     xx_mem_zero(stream, sizeof(*stream));
     if (!xx_ar_copy_options(&state->options, options) ||
-        !xx_ar_parse_archive(self, &stream->members, pd)) {
+        !xx_ar_parse_archive(self, &stream->members,
+                             XX_AR_PARSE_MEMBERS | XX_AR_PARSE_EXTRACT_NAMES,
+                             pd)) {
         xx_ar_archive_stream_free(stream);
         xx_archive_record_state_free(state);
         return NULL;
@@ -845,20 +1568,28 @@ bool xx_ar_unpack_current_archive_record(Abstractformat *self,
                                          xx_archive_record_state *state,
                                          xx_pd_struct *pd) {
     const xx_archive_record *record;
+    const xx_ar_archive_stream *stream;
     const xx_var *path_value;
-    char *name;
+    const char *name;
     const char *base_utf8 = NULL;
     char *owned_base = NULL;
     char *destination;
     bool result;
 
     if (!self || !self->device || !state || state->format != self ||
-        !state->has_record ||
+        !state->has_record || !state->internal_state ||
         (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     record = &state->current_record;
-    name = xx_ar_make_extract_name(xx_archive_record_get_original_name(record));
+    stream = (const xx_ar_archive_stream *)state->internal_state;
+    if (stream->member_index >= stream->members.count) {
+        return false;
+    }
+    /* The extraction path was made safe and unique when the member table
+     * was built (see xx_ar_make_extract_name / xx_ar_make_names_unique);
+     * NULL means the member name was refused. */
+    name = stream->members.items[stream->member_index].extract_name;
     if (!name) {
         return false;
     }
@@ -866,7 +1597,6 @@ bool xx_ar_unpack_current_archive_record(Abstractformat *self,
                                    XX_META_ID_OPT_UNPACK_PATH);
     if (!path_value) {
         int64_t total = xx_io_total_size(self->device);
-        xx_str_free(name);
         return record->data_offset >= 0 && record->compressed_size >= 0 &&
                record->data_offset <= total &&
                record->compressed_size <= total - record->data_offset;
@@ -881,7 +1611,6 @@ bool xx_ar_unpack_current_archive_record(Abstractformat *self,
     }
     if (!base_utf8) {
         if (owned_base) xx_str_free(owned_base);
-        xx_str_free(name);
         return false;
     }
     if (base_utf8[0] != '\0' &&
@@ -894,7 +1623,6 @@ bool xx_ar_unpack_current_archive_record(Abstractformat *self,
     if (owned_base) {
         xx_str_free(owned_base);
     }
-    xx_str_free(name);
     if (!destination) {
         return false;
     }
@@ -902,12 +1630,11 @@ bool xx_ar_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(destination);
         return false;
     }
+    /* The helper deletes its own output on failure, and only output it
+     * created; removing destination here could delete a user's file. */
     result = xx_store_unpack_device_to_file(
         self->device, record->data_offset, record->compressed_size,
         destination, pd);
-    if (!result) {
-        xx_rt_remove(destination);
-    }
     xx_str_free(destination);
     return result;
 }
@@ -985,7 +1712,7 @@ xx_data_struct_state *xx_ar_create_data_structs_reading(Abstractformat *self,
     size_t capacity;
     if (!self || !self->device ||
         (!self->base_info_handled && !xx_format_handle_base_info(self, pd)) ||
-        !xx_ar_parse_archive(self, &members, pd)) {
+        !xx_ar_parse_archive(self, &members, XX_AR_PARSE_MEMBERS, pd)) {
         return NULL;
     }
     if (members.count > (SIZE_MAX - 1U) / 4U) {

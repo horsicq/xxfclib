@@ -666,6 +666,7 @@ bool xx_gpgsigned_unpack_current_archive_record(Abstractformat *self,
     char *owned_base = NULL;
     char *destination = NULL;
     bool result = false;
+    bool created = false;
     if (!self || !self->device || !state || state->format != self ||
         !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
@@ -700,10 +701,11 @@ bool xx_gpgsigned_unpack_current_archive_record(Abstractformat *self,
     }
     {
         xx_io_device *output = xx_io_file_open(destination, "wb");
+        created = output != NULL;
         result = output && xx_gpgsigned_unpack_to_device(gpg, output, pd);
         if (output && xx_io_close(output) != 0) result = false;
     }
-    if (!result) xx_rt_remove(destination);
+    if (!result && created) xx_rt_remove(destination);
 cleanup:
     if (owned_base) xx_str_free(owned_base);
     if (destination) xx_str_free(destination);

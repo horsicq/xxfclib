@@ -859,6 +859,7 @@ bool xx_rnc_unpack_current_archive_record(Abstractformat *self,
     char *owned_path = NULL;
     char *destination_path = NULL;
     bool result;
+    bool created = false;
     xx_rnc *archive = (xx_rnc *)self;
     if (!self || !state || state->format != self || !state->has_record ||
         (pd && xx_pd_is_stopped(pd))) {
@@ -897,10 +898,11 @@ bool xx_rnc_unpack_current_archive_record(Abstractformat *self,
     }
     {
         xx_io_device *output = xx_io_file_open(destination_path, "wb");
+        created = output != NULL;
         result = output && xx_rnc_unpack_to_device(archive, output, pd);
         if (output && xx_io_close(output) != 0) result = false;
     }
-    if (!result) xx_rt_remove(destination_path);
+    if (!result && created) xx_rt_remove(destination_path);
     xx_str_free(destination_path);
     return result;
 }

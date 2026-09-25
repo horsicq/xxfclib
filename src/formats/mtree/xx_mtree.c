@@ -1337,6 +1337,7 @@ bool xx_mtree_unpack_current_archive_record(Abstractformat *self,
     char *owned_base = NULL;
     char *destination = NULL;
     bool result = false;
+    bool created = false;
     if (!self || !state || state->format != self || !state->has_record ||
         !(stream = (mtree_stream *)state->internal_state) ||
         stream->index >= stream->count || (pd && xx_pd_is_stopped(pd))) {
@@ -1363,9 +1364,10 @@ bool xx_mtree_unpack_current_archive_record(Abstractformat *self,
         result = xx_store_create_dirs_a(destination, true);
     } else if (xx_store_create_dirs_a(destination, false)) {
         xx_io_device *output = xx_io_file_open(destination, "wb");
+        created = output != NULL;
         if (output) {
             result = xx_io_close(output) == 0;
-            if (!result) xx_rt_remove(destination);
+            if (!result && created) xx_rt_remove(destination);
         }
     }
 done:

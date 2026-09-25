@@ -493,6 +493,7 @@ bool xx_bz2_unpack_current_archive_record(Abstractformat *self,
     char *owned_base = NULL;
     char *destination;
     bool result;
+    bool created = false;
     uint64_t ignored_size;
     int64_t ignored_stream_size;
     uint8_t ignored_block_size;
@@ -541,6 +542,7 @@ bool xx_bz2_unpack_current_archive_record(Abstractformat *self,
     }
     {
         xx_io_device *output = xx_io_file_open(destination, "wb");
+        created = output != NULL;
         result = output != NULL &&
                  xx_bz2_decode_streams(self, output, &ignored_size,
                                         &ignored_stream_size,
@@ -552,7 +554,7 @@ bool xx_bz2_unpack_current_archive_record(Abstractformat *self,
             }
         }
     }
-    if (!result) {
+    if (!result && created) {
         xx_rt_remove(destination);
     }
     xx_str_free(destination);

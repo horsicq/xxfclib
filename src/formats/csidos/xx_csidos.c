@@ -828,7 +828,6 @@ bool xx_csidos_unpack_current_archive_record(Abstractformat *format,
                                             member->data_offset,
                                             member->byte_size, path, pd);
 done:
-    if (!result && path && !member->folder) xx_rt_remove(path);
     if (path) xx_str_free(path);
     if (owned_base) xx_str_free(owned_base);
     return result;

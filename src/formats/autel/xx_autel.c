@@ -232,9 +232,11 @@ static bool xx_autel_write_decoded(xx_io_device *device, int64_t offset,
     xx_io_device *output;
     int64_t produced = 0;
     bool ok = true;
+    bool created = false;
     if (!device || !destination || offset < 0 || size < 0) return false;
     if (size != 0 && xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     output = xx_io_file_open(destination, "wb");
+    created = output != NULL;
     if (!output) return false;
     while (ok && produced < size) {
         int64_t remaining = size - produced;
@@ -260,7 +262,7 @@ static bool xx_autel_write_decoded(xx_io_device *device, int64_t offset,
         produced += (int64_t)step;
     }
     xx_io_close(output);
-    if (!ok) xx_rt_remove(destination);
+    if (!ok && created) xx_rt_remove(destination);
     return ok;
 }
 

@@ -287,6 +287,15 @@ static XFileType pick_file_type(DieFile *pFile, XFTSet *pSet)
     return XFT_BINARY;
 }
 
+static void end_script_profile(DieEngine *pEngine, DBSignature *pRecord, cd_i64 nStart)
+{
+    die_engine_profile_end(pEngine, nStart, "%s:", pRecord->pName);
+
+    if (nStart >= 0) {
+        pRecord->nElapsedTime = (int64_t)((cd_i64)x_clock_ms() - nStart);
+    }
+}
+
 static void run_script(DieEngine *pEngine, DBSignature *pRecord, int bCallDetect)
 {
     JSCtx *pCtx = pEngine->pJs;
@@ -295,6 +304,7 @@ static void run_script(DieEngine *pEngine, DBSignature *pRecord, int bCallDetect
     JSVal args[3];
     JSVal callResult;
     cd_i64 nProfileStart = -1;
+    int bEvalResult = 0;
 
     /* Setting CDIE_TRACE traces the script order, which is the quickest way
      * to find the culprit when a rule misbehaves on an unusual input.      */
@@ -309,17 +319,26 @@ static void run_script(DieEngine *pEngine, DBSignature *pRecord, int bCallDetect
     if (bCallDetect) {
         die_engine_profile_text(pEngine, pRecord->pName);
         nProfileStart = die_engine_profile_start(pEngine);
+        if (nProfileStart >= 0) {
+            pRecord->nElapsedTime = 0;
+        }
     }
 
     js_clear_error(pCtx);
 
-    if (!js_eval_nested(pCtx, pRecord->pText, pRecord->pName)) {
+    if (js_is_bytecode(pRecord->pText, pRecord->nSize)) {
+        bEvalResult = js_eval_nested_bytecode(pCtx, pRecord->pText, pRecord->nSize, pRecord->pName);
+    } else {
+        bEvalResult = js_eval_nested(pCtx, pRecord->pText, pRecord->pName);
+    }
+
+    if (!bEvalResult) {
         char sBuf[1024];
 
         x_snprintf(sBuf, sizeof(sBuf), "%s: %s", pRecord->pName, js_error(pCtx));
         result_add_error(pEngine->pResult, sBuf);
         js_clear_error(pCtx);
-        die_engine_profile_end(pEngine, nProfileStart, "%s:", pRecord->pName);
+        end_script_profile(pEngine, pRecord, nProfileStart);
 
         return;
     }
@@ -334,7 +353,7 @@ static void run_script(DieEngine *pEngine, DBSignature *pRecord, int bCallDetect
     if (!js_is_callable(detect)) {
         js_release(pCtx, detect);
         js_release(pCtx, global);
-        die_engine_profile_end(pEngine, nProfileStart, "%s:", pRecord->pName);
+        end_script_profile(pEngine, pRecord, nProfileStart);
 
         return;
     }
@@ -357,7 +376,7 @@ static void run_script(DieEngine *pEngine, DBSignature *pRecord, int bCallDetect
     js_release(pCtx, detect);
     js_release(pCtx, global);
 
-    die_engine_profile_end(pEngine, nProfileStart, "%s:", pRecord->pName);
+    end_script_profile(pEngine, pRecord, nProfileStart);
 }
 
 /* One detection pass over an already-populated DieFile for a single file type.

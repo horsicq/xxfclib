@@ -13,7 +13,7 @@ extern "C" {
 #endif
 
 /**
- * @brief A ZX Spectrum SCL image: the eight-byte signature "SINCLAIR", a one-byte file count, that many 14-byte TR-DOS catalogue entries, and then every file's sectors laid end to end in catalogue order.
+ * @brief A ZX Spectrum SCL image: the eight-byte signature "SINCLAIR", a one-byte file count, that many 14-byte TR-DOS catalogue entries, then every file's sectors laid end to end in catalogue order, and normally a u32 byte-sum trailer.
  */
 typedef struct xx_scl {
     Abstractformat format;

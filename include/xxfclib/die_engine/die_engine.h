@@ -113,9 +113,11 @@ typedef enum { DB_MAIN = 0, DB_EXTRA, DB_CUSTOM } DBKind;
 typedef struct {
     char *pName;     /* file name including the extension, e.g. "_PE.0.sg" */
     char *pFilePath; /* absolute path                                      */
-    char *pText;     /* script source                                      */
+    char *pText;     /* script source or precompiled bytecode              */
+    size_t nSize;    /* size of pText / bytecode in bytes                  */
     XFileType fileType;
     DBKind databaseType;
+    int64_t nElapsedTime; /* elapsed execution time in ms (when profiling/scan-time enabled) */
 } DBSignature;
 
 typedef struct {
@@ -125,6 +127,9 @@ typedef struct {
 } DBase;
 
 XXFC_API int db_load(DBase *pDb, const char *pPath, DBKind kind);
+XXFC_API int db_load_tar(DBase *pDb, const char *pTarPath, DBKind kind);
+XXFC_API int db_create_tar(const char *pDbPath, const char *pTarPath);
+XXFC_API int db_create_tar_precompiled(const char *pDbPath, const char *pTarPath);
 XXFC_API void db_sort(DBase *pDb);
 XXFC_API void db_free(DBase *pDb);
 XXFC_API int db_count_for_type(DBase *pDb, XFileType fileType);

@@ -1188,7 +1188,6 @@ bool xx_tar_unpack_current_archive_record(Abstractformat *self,
         result = xx_store_unpack_device_to_file(
             self->device, member->data_offset, member->data_size,
             destination, pd);
-        if (!result) xx_rt_remove(destination);
     }
 cleanup:
     if (destination) xx_str_free(destination);

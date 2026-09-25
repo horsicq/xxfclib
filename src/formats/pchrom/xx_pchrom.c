@@ -527,7 +527,6 @@ bool xx_pchrom_unpack_current_archive_record(Abstractformat *self,
     result = xx_store_unpack_device_to_file(self->device, record->data_offset,
                                             record->compressed_size,
                                             destination, pd);
-    if (!result) xx_rt_remove(destination);
 cleanup:
     if (owned_base) xx_str_free(owned_base);
     if (destination) xx_str_free(destination);

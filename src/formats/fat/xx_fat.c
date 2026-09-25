@@ -44,6 +44,15 @@
 #define XX_FAT_MAX_DEPTH 32U
 #define XX_FAT_MAX_PATH 4096U
 #define XX_FAT_CHUNK 65536U
+/* Root entries inspected when a boot sector without the IBM PC markers has to
+ * be corroborated by its root directory (see xx_fat_root_plausible). */
+#define XX_FAT_PROBE_ENTRIES 128U
+/* Bytes of FAT #0 (and of FAT #1) compared by the corroboration checks. The
+ * smallest legal sector is this size, so it never exceeds one FAT. */
+#define XX_FAT_PROBE_FAT_BYTES 512U
+/* Lowest media descriptor accepted. 0xE5 is the 8-inch single-density disk,
+ * 0xED the Tandy 2000 720K disk, 0xF0 and 0xF8..0xFF the IBM set. */
+#define XX_FAT_MIN_MEDIA 0xE5U
 
 /* A VFAT sequence is at most 20 entries of 13 UTF-16 units each. The ordinal
  * is masked to 6 bits and then range-checked against this, so a crafted
@@ -107,6 +116,8 @@ typedef struct xx_fat_geometry_s {
     uint32_t cluster_count;  /**< Data clusters; valid numbers are 2..count+1. */
     uint32_t root_cluster;   /**< FAT32 only. */
     uint32_t kind;           /**< xx_fat_kind. */
+    uint32_t boot_kind;      /**< xx_fat_boot_kind. */
+    bool truncated;          /**< The image ends before volume_end. */
     uint8_t media;
 } xx_fat_geometry;
 
@@ -154,6 +165,11 @@ typedef struct xx_fat_private_s {
     uint64_t chain_steps;
     uint64_t dir_entries;
     char *volume_label;
+    /* Open-addressed set of entry indices + 1, keyed on the case-folded full
+     * path, so a crafted directory cannot make two members share one output
+     * path (see xx_fat_unique_name). */
+    uint32_t *name_slots;
+    size_t name_slot_capacity;
 } xx_fat_private;
 
 typedef struct xx_fat_archive_stream_s {
@@ -537,9 +553,44 @@ static bool xx_fat_is_dot_name(const char *name) {
     return name[1] == '\0' || (name[1] == '.' && name[2] == '\0');
 }
 
+static char xx_fat_upper(char ch) {
+    return (ch >= 'a' && ch <= 'z') ? (char)(ch - 32) : ch;
+}
+
+/* True when the component [text, text + length) names a Windows device - CON,
+ * PRN, AUX, NUL, COM0-9, LPT0-9, CONIN$, CONOUT$ or CLOCK$ - with or without
+ * an extension and trailing spaces, in any case. Opening such a path writes to
+ * the device instead of creating a file. */
+static bool xx_fat_is_device_name(const char *text, size_t length) {
+    static const char *const devices[] = {"CON",    "PRN",     "AUX",
+                                          "NUL",    "CONIN$",  "CONOUT$",
+                                          "CLOCK$"};
+    size_t stem = 0U;
+    size_t index;
+    while (stem < length && text[stem] != '.') ++stem;
+    while (stem > 0U && text[stem - 1U] == ' ') --stem;
+    for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index) {
+        const char *word = devices[index];
+        size_t at = 0U;
+        while (at < stem && word[at] && xx_fat_upper(text[at]) == word[at]) ++at;
+        if (at == stem && word[at] == '\0') return true;
+    }
+    if (stem == 4U && text[3] >= '0' && text[3] <= '9') {
+        char a = xx_fat_upper(text[0]);
+        char b = xx_fat_upper(text[1]);
+        char c = xx_fat_upper(text[2]);
+        if ((a == 'C' && b == 'O' && c == 'M') ||
+            (a == 'L' && b == 'P' && c == 'T')) {
+            return true;
+        }
+    }
+    return false;
+}
+
 /* Extraction-time check: the name must stay inside the destination tree on
- * every host this library builds for, so the reserved Windows punctuation is
- * rejected here even though a FAT long name may legally carry some of it. */
+ * every host this library builds for, so the reserved Windows punctuation and
+ * the device names are rejected here even though a FAT long name may legally
+ * carry some of them. */
 static bool xx_fat_safe_name(const char *name) {
     const char *component;
     const char *cursor;
@@ -555,7 +606,8 @@ static bool xx_fat_safe_name(const char *name) {
             size_t length = (size_t)(cursor - component);
             if (length == 0U || (length == 1U && component[0] == '.') ||
                 (length == 2U && component[0] == '.' && component[1] == '.') ||
-                component[length - 1U] == ' ' || component[length - 1U] == '.') {
+                component[length - 1U] == ' ' || component[length - 1U] == '.' ||
+                xx_fat_is_device_name(component, length)) {
                 return false;
             }
             if (ch == 0U) return true;
@@ -637,6 +689,19 @@ static char *xx_fat_lfn_finish(const xx_fat_lfn *lfn, const uint8_t *entry) {
         ++length;
     }
     if (length == 0U) return NULL;
+    /* A long name may not hold a path separator or a control character. One
+     * that does would change the shape of the member path - "a\b" would be
+     * written as a/b and could land on another member's file - so it is
+     * treated like any other broken sequence and the 8.3 name is used. */
+    {
+        size_t index;
+        for (index = 0U; index < length; ++index) {
+            uint16_t unit = lfn->chars[index];
+            if (unit < 0x20U || unit == (uint16_t)'/' || unit == (uint16_t)'\\') {
+                return NULL;
+            }
+        }
+    }
     return xx_fat_utf16_to_utf8(lfn->chars, length);
 }
 
@@ -654,12 +719,129 @@ static void xx_fat_private_cleanup(xx_fat_private *parsed) {
     if (parsed->touched) xx_mem_free(parsed->touched);
     if (parsed->queue) xx_mem_free(parsed->queue);
     if (parsed->volume_label) xx_str_free(parsed->volume_label);
+    if (parsed->name_slots) xx_mem_free(parsed->name_slots);
     xx_fat_cache_cleanup(&parsed->fat_cache);
     xx_mem_zero(parsed, sizeof(*parsed));
     parsed->geometry.total_size = -1;
     parsed->geometry.volume_end = -1;
     parsed->geometry.root_offset = -1;
     parsed->fat_cache.offset = -1;
+}
+
+/* ------------------------------------------------- unique member names --- */
+
+/* FNV-1a over the ASCII-upper-cased path: Windows and macOS compare names
+ * without case, so "a.txt" and "A.TXT" would land on one output file. */
+static uint32_t xx_fat_name_hash(const char *name) {
+    uint32_t hash = 2166136261U;
+    for (; *name; ++name) {
+        hash ^= (uint8_t)xx_fat_upper(*name);
+        hash *= 16777619U;
+    }
+    return hash;
+}
+
+static bool xx_fat_name_taken(const xx_fat_private *parsed, const char *name) {
+    size_t mask;
+    size_t slot;
+    if (!parsed->name_slots) return false;
+    mask = parsed->name_slot_capacity - 1U;
+    slot = (size_t)xx_fat_name_hash(name) & mask;
+    while (parsed->name_slots[slot] != 0U) {
+        const char *other = parsed->entries[parsed->name_slots[slot] - 1U].name;
+        if (other && xx_str_icmp(other, name) == 0) return true;
+        slot = (slot + 1U) & mask;
+    }
+    return false;
+}
+
+static void xx_fat_name_insert(uint32_t *slots, size_t capacity,
+                               const char *name, uint32_t value) {
+    size_t mask = capacity - 1U;
+    size_t slot = (size_t)xx_fat_name_hash(name) & mask;
+    while (slots[slot] != 0U) slot = (slot + 1U) & mask;
+    slots[slot] = value;
+}
+
+/* Record entries[index] in the name set, growing it to keep the load under
+ * one half. The entry count is capped at XX_FAT_MAX_ENTRIES, so the table
+ * never exceeds 512K slots (2 MiB). */
+static bool xx_fat_name_remember(xx_fat_private *parsed, size_t index) {
+    if ((index + 1U) * 2U > parsed->name_slot_capacity) {
+        size_t capacity =
+            parsed->name_slot_capacity ? parsed->name_slot_capacity : 64U;
+        uint32_t *slots;
+        size_t at;
+        while ((index + 1U) * 2U > capacity) capacity *= 2U;
+        if (capacity > SIZE_MAX / sizeof(*slots)) return false;
+        slots = (uint32_t *)xx_mem_calloc(capacity, sizeof(*slots));
+        if (!slots) return false;
+        for (at = 0U; at < index; ++at) {
+            if (parsed->entries[at].name) {
+                xx_fat_name_insert(slots, capacity, parsed->entries[at].name,
+                                   (uint32_t)(at + 1U));
+            }
+        }
+        if (parsed->name_slots) xx_mem_free(parsed->name_slots);
+        parsed->name_slots = slots;
+        parsed->name_slot_capacity = capacity;
+    }
+    xx_fat_name_insert(parsed->name_slots, parsed->name_slot_capacity,
+                       parsed->entries[index].name, (uint32_t)(index + 1U));
+    return true;
+}
+
+/* Return `full_name` if no earlier member has it (compared without case),
+ * otherwise a fresh "<stem>~<n><.ext>" where n is this member's 1-based
+ * index, or NULL when that is taken too and the member has to be dropped.
+ * `full_name` is consumed either way. A FAT directory never holds two equal
+ * names, so only a damaged or crafted image reaches the rename; each member
+ * costs at most two lookups, whatever the image does. */
+static char *xx_fat_unique_name(xx_fat_private *parsed, char *full_name) {
+    char digits[24];
+    char reversed[20];
+    char *renamed;
+    size_t length;
+    size_t split;
+    size_t count = 0U;
+    size_t used = 0U;
+    size_t value = parsed->count + 1U;
+    size_t index;
+    if (!xx_fat_name_taken(parsed, full_name)) return full_name;
+    length = xx_str_len(full_name);
+    /* Insert before the extension of the last component, if it has one. */
+    split = length;
+    for (index = length; index > 0U; --index) {
+        char ch = full_name[index - 1U];
+        if (ch == '/') break;
+        if (ch == '.' && index - 1U > 0U && full_name[index - 2U] != '/') {
+            split = index - 1U;
+            break;
+        }
+    }
+    digits[count++] = '~';
+    do {
+        reversed[used++] = (char)('0' + (value % 10U));
+        value /= 10U;
+    } while (value != 0U && used < sizeof(reversed));
+    while (used > 0U) digits[count++] = reversed[--used];
+    renamed = NULL;
+    if (length + count <= XX_FAT_MAX_PATH) {
+        renamed = (char *)xx_mem_alloc(length + count + 1U);
+    }
+    if (renamed) {
+        xx_rt_memcpy(renamed, full_name, split);
+        xx_rt_memcpy(renamed + split, digits, count);
+        xx_rt_memcpy(renamed + split + count, full_name + split,
+                     length - split);
+        renamed[length + count] = '\0';
+        if (xx_fat_name_taken(parsed, renamed)) {
+            xx_mem_free(renamed);
+            renamed = NULL;
+        }
+    }
+    xx_str_free(full_name);
+    return renamed;
 }
 
 static bool xx_fat_append_entry(xx_fat_private *parsed, xx_fat_entry *entry) {
@@ -681,15 +863,69 @@ static bool xx_fat_append_entry(xx_fat_private *parsed, xx_fat_entry *entry) {
         parsed->entries = grown;
         parsed->capacity = capacity;
     }
-    parsed->entries[parsed->count++] = *entry;
+    parsed->entries[parsed->count] = *entry;
+    if (!xx_fat_name_remember(parsed, parsed->count)) {
+        parsed->entries[parsed->count].name = NULL;
+        return false;
+    }
+    ++parsed->count;
     xx_mem_zero(entry, sizeof(*entry));
     return true;
 }
 
-/* Decode and validate the BIOS Parameter Block. Nothing downstream re-checks
- * geometry, so every field a later computation depends on is pinned here. */
-static bool xx_fat_read_geometry(Abstractformat *self, xx_fat_geometry *geometry,
-                                 uint8_t *boot) {
+/* Pull the start cluster out of a directory entry. The high half at +20 is
+ * meaningful on FAT32 only; on FAT12/16 it is a different field entirely and
+ * must be masked away. */
+static uint32_t xx_fat_entry_cluster(const xx_fat_geometry *geometry,
+                                     const uint8_t *entry) {
+    uint32_t low = (uint32_t)entry[26] | ((uint32_t)entry[27] << 8U);
+    uint32_t high = (uint32_t)entry[20] | ((uint32_t)entry[21] << 8U);
+    if (geometry->kind != XX_FAT_KIND_FAT32) return low;
+    return low | (high << 16U);
+}
+
+/* The BPB fields, as stored from +11 of the boot sector, or synthesised for a
+ * DOS 1.x disk that carries none. Kept raw so that one validator serves both. */
+typedef struct xx_fat_bpb_s {
+    uint32_t bytes_per_sector;
+    uint32_t sectors_per_cluster;
+    uint32_t reserved_sectors;
+    uint32_t num_fats;
+    uint32_t root_entry_count;
+    uint32_t total_sectors16;
+    uint32_t total_sectors32;
+    uint32_t fat_size16;
+    uint32_t fat_size32;
+    uint32_t root_cluster;
+    uint8_t media;
+} xx_fat_bpb;
+
+static void xx_fat_bpb_decode(const uint8_t *boot, xx_fat_bpb *bpb) {
+    bpb->bytes_per_sector = xx_data_get_u16(boot, XX_FAT_BOOT_SIZE, 11U, false);
+    bpb->sectors_per_cluster = boot[13];
+    bpb->reserved_sectors = xx_data_get_u16(boot, XX_FAT_BOOT_SIZE, 14U, false);
+    bpb->num_fats = boot[16];
+    bpb->root_entry_count = xx_data_get_u16(boot, XX_FAT_BOOT_SIZE, 17U, false);
+    bpb->total_sectors16 = xx_data_get_u16(boot, XX_FAT_BOOT_SIZE, 19U, false);
+    bpb->media = boot[21];
+    bpb->fat_size16 = xx_data_get_u16(boot, XX_FAT_BOOT_SIZE, 22U, false);
+    bpb->total_sectors32 = xx_data_get_u32(boot, XX_FAT_BOOT_SIZE, 32U, false);
+    bpb->fat_size32 = xx_data_get_u32(boot, XX_FAT_BOOT_SIZE, 36U, false);
+    bpb->root_cluster = xx_data_get_u32(boot, XX_FAT_BOOT_SIZE, 44U, false);
+}
+
+/* Validate a BPB and derive the volume layout from it. Nothing downstream
+ * re-checks geometry, so every field a later computation depends on is pinned
+ * here. geometry->base and geometry->total_size must already be set.
+ *
+ * The image may end before the volume does: disk copiers (CopyQM, SaveDskF,
+ * DiskDupe, PM Diskcopy, ...) store only the cylinders in use, and dumps of
+ * 82-track disks are often cut at track 80. Such an image is accepted as long
+ * as the boot sector, FAT #0, the fixed root directory and cluster 2 are all
+ * inside it; `truncated` is set, xx_fat_read_geometry() then asks the FAT
+ * to corroborate the BPB, and any cluster past the end of the image simply
+ * cannot be read. */
+static bool xx_fat_layout(xx_fat_geometry *geometry, const xx_fat_bpb *bpb) {
     uint32_t root_dir_sectors;
     uint32_t fat_size;
     uint32_t total_sectors;
@@ -697,33 +933,13 @@ static bool xx_fat_read_geometry(Abstractformat *self, xx_fat_geometry *geometry
     uint32_t data_sectors;
     uint64_t volume_size;
 
-    geometry->base = self->base_address;
-    geometry->total_size = xx_io_total_size(self->device);
-    geometry->volume_end = -1;
-    geometry->root_offset = -1;
-    if (!xx_fat_range_within(geometry->total_size, geometry->base,
-                             XX_FAT_BOOT_SIZE) ||
-        !xx_fat_read_at(self->device, geometry->base, boot, XX_FAT_BOOT_SIZE)) {
-        return false;
-    }
-    /* The boot signature. It is at +510, past any magic prefilter, which is
-     * why FAT identification needs a device probe and not a byte pattern. */
-    if (boot[510] != 0x55U || boot[511] != 0xAAU) return false;
-    /* A FAT boot sector opens with a jump over the BPB. Accepting anything
-     * else would let an arbitrary 512-byte block with 0x55AA through. */
-    if (!((boot[0] == 0xEBU && boot[2] == 0x90U) || boot[0] == 0xE9U)) {
-        return false;
-    }
-
-    geometry->bytes_per_sector =
-        xx_data_get_u16(boot, XX_FAT_BOOT_SIZE, 11U, false);
-    geometry->sectors_per_cluster = boot[13];
-    geometry->reserved_sectors =
-        xx_data_get_u16(boot, XX_FAT_BOOT_SIZE, 14U, false);
-    geometry->num_fats = boot[16];
-    geometry->root_entry_count =
-        xx_data_get_u16(boot, XX_FAT_BOOT_SIZE, 17U, false);
-    geometry->media = boot[21];
+    geometry->bytes_per_sector = bpb->bytes_per_sector;
+    geometry->sectors_per_cluster = bpb->sectors_per_cluster;
+    geometry->reserved_sectors = bpb->reserved_sectors;
+    geometry->num_fats = bpb->num_fats;
+    geometry->root_entry_count = bpb->root_entry_count;
+    geometry->media = bpb->media;
+    geometry->truncated = false;
 
     if (geometry->bytes_per_sector != 512U &&
         geometry->bytes_per_sector != 1024U &&
@@ -740,7 +956,7 @@ static bool xx_fat_read_geometry(Abstractformat *self, xx_fat_geometry *geometry
      * NTFS boot sector out of this reader. */
     if (geometry->reserved_sectors == 0U) return false;
     if (geometry->num_fats != 1U && geometry->num_fats != 2U) return false;
-    if (geometry->media != 0xF0U && geometry->media < 0xF8U) return false;
+    if (geometry->media < XX_FAT_MIN_MEDIA) return false;
 
     geometry->bytes_per_cluster =
         geometry->bytes_per_sector * geometry->sectors_per_cluster;
@@ -757,14 +973,9 @@ static bool xx_fat_read_geometry(Abstractformat *self, xx_fat_geometry *geometry
                         geometry->bytes_per_sector - 1U) /
                        geometry->bytes_per_sector;
 
-    fat_size = xx_data_get_u16(boot, XX_FAT_BOOT_SIZE, 22U, false);
-    if (fat_size == 0U) {
-        fat_size = xx_data_get_u32(boot, XX_FAT_BOOT_SIZE, 36U, false);
-    }
-    total_sectors = xx_data_get_u16(boot, XX_FAT_BOOT_SIZE, 19U, false);
-    if (total_sectors == 0U) {
-        total_sectors = xx_data_get_u32(boot, XX_FAT_BOOT_SIZE, 32U, false);
-    }
+    fat_size = bpb->fat_size16 != 0U ? bpb->fat_size16 : bpb->fat_size32;
+    total_sectors =
+        bpb->total_sectors16 != 0U ? bpb->total_sectors16 : bpb->total_sectors32;
     if (fat_size == 0U || total_sectors == 0U) return false;
     geometry->fat_size_sectors = fat_size;
     geometry->total_sectors = total_sectors;
@@ -800,18 +1011,15 @@ static bool xx_fat_read_geometry(Abstractformat *self, xx_fat_geometry *geometry
      * non-zero for it. This is what separates a real FAT32 volume from a
      * FAT12/16 boot sector whose cluster arithmetic happened to land high. */
     if (geometry->kind == XX_FAT_KIND_FAT32) {
-        if (geometry->root_entry_count != 0U ||
-            xx_data_get_u16(boot, XX_FAT_BOOT_SIZE, 22U, false) != 0U) {
+        if (geometry->root_entry_count != 0U || bpb->fat_size16 != 0U) {
             return false;
         }
-        geometry->root_cluster =
-            xx_data_get_u32(boot, XX_FAT_BOOT_SIZE, 44U, false);
+        geometry->root_cluster = bpb->root_cluster;
         if (!xx_fat_cluster_is_data(geometry, geometry->root_cluster)) {
             return false;
         }
     } else {
-        if (geometry->root_entry_count == 0U ||
-            xx_data_get_u16(boot, XX_FAT_BOOT_SIZE, 22U, false) == 0U) {
+        if (geometry->root_entry_count == 0U || bpb->fat_size16 == 0U) {
             return false;
         }
         geometry->root_cluster = 0U;
@@ -837,10 +1045,10 @@ static bool xx_fat_read_geometry(Abstractformat *self, xx_fat_geometry *geometry
     volume_size = (uint64_t)total_sectors * geometry->bytes_per_sector;
     if (volume_size == 0U || volume_size > XX_FAT_MAX_VOLUME) return false;
     geometry->volume_size = volume_size;
-    if (!xx_fat_add(geometry->base, volume_size, &geometry->volume_end) ||
-        geometry->volume_end > geometry->total_size) {
+    if (!xx_fat_add(geometry->base, volume_size, &geometry->volume_end)) {
         return false;
     }
+    geometry->truncated = geometry->volume_end > geometry->total_size;
 
     if (!xx_fat_add(geometry->base,
                     (uint64_t)geometry->reserved_sectors *
@@ -878,15 +1086,286 @@ static bool xx_fat_read_geometry(Abstractformat *self, xx_fat_geometry *geometry
                                (int64_t)geometry->bytes_per_cluster);
 }
 
-/* Pull the start cluster out of a directory entry. The high half at +20 is
- * meaningful on FAT32 only; on FAT12/16 it is a different field entirely and
- * must be masked away. */
-static uint32_t xx_fat_entry_cluster(const xx_fat_geometry *geometry,
-                                     const uint8_t *entry) {
-    uint32_t low = (uint32_t)entry[26] | ((uint32_t)entry[27] << 8U);
-    uint32_t high = (uint32_t)entry[20] | ((uint32_t)entry[21] << 8U);
-    if (geometry->kind != XX_FAT_KIND_FAT32) return low;
-    return low | (high << 16U);
+/* The first two FAT entries are reserved and hold fixed values: entry 0 is the
+ * media descriptor padded with ones, entry 1 is end-of-chain (FAT16 and FAT32
+ * may clear its top two bits as the clean-shutdown and no-error flags). A
+ * formatted IBM-compatible FAT therefore opens with md FF FF. */
+static bool xx_fat_fat_id_ok(const uint8_t *fat, uint32_t kind) {
+    if (fat[0] < XX_FAT_MIN_MEDIA || fat[1] != 0xFFU || fat[2] != 0xFFU) {
+        return false;
+    }
+    if (kind == XX_FAT_KIND_FAT16) return (fat[3] & 0x3FU) == 0x3FU;
+    if (kind == XX_FAT_KIND_FAT32) {
+        return (fat[3] & 0x0FU) == 0x0FU && fat[4] == 0xFFU &&
+               fat[5] == 0xFFU && fat[6] == 0xFFU && (fat[7] & 0x03U) == 0x03U;
+    }
+    return true;
+}
+
+static bool xx_fat_is_uniform(const uint8_t *data, size_t size) {
+    size_t index;
+    for (index = 1U; index < size; ++index) {
+        if (data[index] != data[0]) return false;
+    }
+    return true;
+}
+
+/* Bytes that no DOS, TOS or MSX-DOS directory entry name can hold. Characters
+ * that are merely discouraged (lower case, '+', ',', ';', '=', '[', ']') are
+ * let through: non-PC systems wrote them. */
+static bool xx_fat_probe_name_byte(uint8_t ch) {
+    return ch >= 0x20U && ch != 0x7FU && ch != '"' && ch != '*' && ch != '/' &&
+           ch != ':' && ch != '<' && ch != '>' && ch != '?' && ch != '\\' &&
+           ch != '|';
+}
+
+/* Classify one root entry for xx_fat_root_plausible: 1 live and sane, 0 not
+ * counted (deleted or a long-name piece), -1 impossible, 2 end marker. */
+static int xx_fat_probe_entry(const xx_fat_geometry *geometry,
+                              const uint8_t *entry) {
+    uint8_t attributes = entry[11];
+    uint32_t cluster;
+    uint32_t size;
+    size_t index;
+    if (entry[0] == XX_FAT_ENTRY_END) return 2;
+    if (entry[0] == XX_FAT_ENTRY_FREE) return 0;
+    if ((attributes & XX_FAT_ATTR_LONG_MASK) == XX_FAT_ATTR_LONG_NAME) {
+        /* A long-name piece: its cluster field is defined to be zero. */
+        return ((attributes & 0xC0U) == 0U && entry[26] == 0U &&
+                entry[27] == 0U)
+                   ? 0
+                   : -1;
+    }
+    if ((attributes & 0xC0U) != 0U) return -1;
+    if ((attributes & (XX_FAT_ATTR_DIRECTORY | XX_FAT_ATTR_VOLUME_ID)) ==
+        (XX_FAT_ATTR_DIRECTORY | XX_FAT_ATTR_VOLUME_ID)) {
+        return -1;
+    }
+    if (entry[0] == ' ') return -1;
+    for (index = 0U; index < 11U; ++index) {
+        if (index == 0U && entry[0] == XX_FAT_ENTRY_KANJI_E5) continue;
+        if (!xx_fat_probe_name_byte(entry[index])) return -1;
+    }
+    if (attributes & XX_FAT_ATTR_VOLUME_ID) return 1;
+    cluster = xx_fat_entry_cluster(geometry, entry);
+    size = xx_data_get_u32(entry, XX_FAT_DIR_ENTRY_SIZE, 28U, false);
+    if (attributes & XX_FAT_ATTR_DIRECTORY) {
+        return xx_fat_cluster_is_data(geometry, cluster) ? 1 : -1;
+    }
+    if (cluster == 0U) return size == 0U ? 1 : -1;
+    if (!xx_fat_cluster_is_data(geometry, cluster)) return -1;
+    if ((uint64_t)size >
+        (uint64_t)geometry->cluster_count * geometry->bytes_per_cluster) {
+        return -1;
+    }
+    return 1;
+}
+
+/* Does the root directory look like one? Used only when the boot sector lacks
+ * the IBM PC markers, so an arbitrary block whose bytes 11..23 happen to form
+ * a consistent BPB is not taken for a volume. At least one live entry is
+ * required, and at most one impossible entry per four live ones is tolerated
+ * (real disks carry the odd damaged entry). At most XX_FAT_PROBE_ENTRIES
+ * entries (4 KiB) are read. */
+static bool xx_fat_root_plausible(Abstractformat *self,
+                                  const xx_fat_geometry *geometry) {
+    uint8_t buffer[XX_FAT_PROBE_ENTRIES * XX_FAT_DIR_ENTRY_SIZE];
+    int64_t offset;
+    uint64_t available;
+    size_t count;
+    size_t index;
+    unsigned live = 0U;
+    unsigned bad = 0U;
+    if (geometry->kind == XX_FAT_KIND_FAT32) {
+        if (!xx_fat_cluster_offset(geometry, geometry->root_cluster, &offset)) {
+            return false;
+        }
+        available = geometry->bytes_per_cluster;
+    } else {
+        offset = geometry->root_offset;
+        available = (uint64_t)geometry->root_bytes;
+    }
+    count = (size_t)(available / XX_FAT_DIR_ENTRY_SIZE);
+    if (count > XX_FAT_PROBE_ENTRIES) count = XX_FAT_PROBE_ENTRIES;
+    if (count == 0U ||
+        !xx_fat_range_within(geometry->total_size, offset,
+                             (int64_t)(count * XX_FAT_DIR_ENTRY_SIZE)) ||
+        !xx_fat_read_at(self->device, offset, buffer,
+                        count * XX_FAT_DIR_ENTRY_SIZE)) {
+        return false;
+    }
+    for (index = 0U; index < count; ++index) {
+        int verdict =
+            xx_fat_probe_entry(geometry, buffer + index * XX_FAT_DIR_ENTRY_SIZE);
+        if (verdict == 2) break;
+        if (verdict == 1) ++live;
+        if (verdict < 0) ++bad;
+    }
+    return live != 0U && bad * 4U <= live;
+}
+
+/* How much corroboration a boot sector without the IBM PC markers needs. */
+#define XX_FAT_CONFIRM_X86 0     /* FAT id, or matching FATs plus a sane root */
+#define XX_FAT_CONFIRM_FOREIGN 1 /* (FAT id or matching FATs) and a sane root */
+#define XX_FAT_CONFIRM_STATIC 2  /* FAT id and matching FATs and a sane root */
+
+static bool xx_fat_confirm(Abstractformat *self,
+                           const xx_fat_geometry *geometry, int mode) {
+    uint8_t first[XX_FAT_PROBE_FAT_BYTES];
+    uint8_t second[XX_FAT_PROBE_FAT_BYTES];
+    bool id_ok;
+    bool copies_ok = false;
+    if (!xx_fat_read_at(self->device, geometry->fat_offset, first,
+                        sizeof(first))) {
+        return false;
+    }
+    id_ok = xx_fat_fat_id_ok(first, geometry->kind);
+    if (geometry->num_fats >= 2U) {
+        int64_t second_offset;
+        /* The second copy can lie past the end of a truncated image; it then
+         * simply does not count as corroboration. */
+        if (xx_fat_add(geometry->fat_offset, (uint64_t)geometry->fat_bytes,
+                       &second_offset) &&
+            xx_fat_range_within(geometry->total_size, second_offset,
+                                (int64_t)sizeof(second)) &&
+            xx_fat_read_at(self->device, second_offset, second,
+                           sizeof(second))) {
+            /* A blank region matches itself; only a FAT with content counts. */
+            copies_ok = xx_rt_memcmp(first, second, sizeof(first)) == 0 &&
+                        !xx_fat_is_uniform(first, sizeof(first));
+        }
+    }
+    if (mode == XX_FAT_CONFIRM_X86) {
+        return id_ok ||
+               (copies_ok && xx_fat_root_plausible(self, geometry));
+    }
+    if (mode == XX_FAT_CONFIRM_FOREIGN) {
+        return (id_ok || copies_ok) && xx_fat_root_plausible(self, geometry);
+    }
+    return id_ok && copies_ok && xx_fat_root_plausible(self, geometry);
+}
+
+/* DOS 1.x wrote no BPB: the boot sector is all code, and the geometry follows
+ * from the disk size alone, confirmed by the media byte that opens the FAT.
+ * These are the four IBM PC formats of that era (PC DOS 1.0 / 1.1), with the
+ * layout PC DOS 2.0 later recorded in its BPB for the same media bytes. The
+ * same path recovers later disks whose boot sector a boot-sector virus
+ * replaced (Stoned opens with a far jump, EA xx xx C0 07, and no BPB). The
+ * boot sector must open with an x86 jump (EB, E9 or the far jump EA) - IBM
+ * PC boot code always does, and this keeps out disks of other machines that
+ * share these sizes and FAT layouts but carry their own disk label at +0
+ * (ACT Apricot: "IBM  3.3" with its BPB at +0x50). Beyond that the exact
+ * image size, the FAT id, the agreeing FAT copies and the root directory
+ * carry the decision. */
+static bool xx_fat_static_geometry(Abstractformat *self,
+                                   xx_fat_geometry *geometry,
+                                   const uint8_t *boot) {
+    static const struct {
+        int64_t size;
+        uint8_t media;
+        uint8_t sectors_per_cluster;
+        uint8_t fat_sectors;
+        uint16_t root_entries;
+        uint16_t total_sectors;
+    } k_dos1[] = {
+        {163840, 0xFEU, 1U, 1U, 64U, 320U},  /* 160K: 40 x 1 x 8 */
+        {184320, 0xFCU, 1U, 2U, 64U, 360U},  /* 180K: 40 x 1 x 9 */
+        {327680, 0xFFU, 2U, 1U, 112U, 640U}, /* 320K: 40 x 2 x 8 */
+        {368640, 0xFDU, 2U, 2U, 112U, 720U}  /* 360K: 40 x 2 x 9 */
+    };
+    int64_t image;
+    size_t index;
+    if (boot[0] != 0xEBU && boot[0] != 0xE9U && boot[0] != 0xEAU) return false;
+    image = geometry->total_size - geometry->base;
+    for (index = 0U; index < sizeof(k_dos1) / sizeof(k_dos1[0]); ++index) {
+        xx_fat_bpb bpb;
+        uint8_t id[3];
+        if (image != k_dos1[index].size) continue;
+        if (!xx_fat_read_at(self->device, geometry->base + XX_FAT_BOOT_SIZE, id,
+                            sizeof(id)) ||
+            id[0] != k_dos1[index].media) {
+            return false;
+        }
+        xx_mem_zero(&bpb, sizeof(bpb));
+        bpb.bytes_per_sector = XX_FAT_BOOT_SIZE;
+        bpb.sectors_per_cluster = k_dos1[index].sectors_per_cluster;
+        bpb.reserved_sectors = 1U;
+        bpb.num_fats = 2U;
+        bpb.root_entry_count = k_dos1[index].root_entries;
+        bpb.total_sectors16 = k_dos1[index].total_sectors;
+        bpb.fat_size16 = k_dos1[index].fat_sectors;
+        bpb.media = k_dos1[index].media;
+        if (!xx_fat_layout(geometry, &bpb)) return false;
+        geometry->boot_kind = XX_FAT_BOOT_STATIC;
+        return xx_fat_confirm(self, geometry, XX_FAT_CONFIRM_STATIC);
+    }
+    return false;
+}
+
+/* Read the boot sector and settle the geometry. Four kinds are accepted, from
+ * the most self-describing to the least, and the weaker the boot sector's own
+ * evidence the more the FAT and root directory must corroborate it:
+ *
+ *   PC       x86 jump (EB xx 90 / E9) and 0x55AA at +510, consistent BPB;
+ *            a truncated image also needs what X86 needs.
+ *   X86      x86 jump without 0x55AA (MSX-DOS, PC-98, DOS 1.1-2.x disks with a
+ *            BPB): the FAT must open with the media id, or both FAT copies
+ *            must agree and the root directory must be sane.
+ *   FOREIGN  any other opening - Atari ST (68000 BRA.S 0x60 xx, or zeros on a
+ *            non-bootable disk), FM Towns ("IPL4"), and other non-PC machines
+ *            that kept the DOS BPB at +11: the FAT id or matching FAT copies,
+ *            and a sane root directory.
+ *   STATIC   no BPB at all (DOS 1.x): see xx_fat_static_geometry. */
+static bool xx_fat_read_geometry(Abstractformat *self, xx_fat_geometry *geometry,
+                                 uint8_t *boot) {
+    xx_fat_bpb bpb;
+    bool x86_jump;
+    bool pc_signature;
+
+    geometry->base = self->base_address;
+    geometry->total_size = xx_io_total_size(self->device);
+    geometry->volume_end = -1;
+    geometry->root_offset = -1;
+    geometry->boot_kind = XX_FAT_BOOT_PC;
+    if (!xx_fat_range_within(geometry->total_size, geometry->base,
+                             XX_FAT_BOOT_SIZE) ||
+        !xx_fat_read_at(self->device, geometry->base, boot, XX_FAT_BOOT_SIZE)) {
+        return false;
+    }
+    x86_jump = (boot[0] == 0xEBU && boot[2] == 0x90U) || boot[0] == 0xE9U;
+    pc_signature = boot[510] == 0x55U && boot[511] == 0xAAU;
+
+    xx_fat_bpb_decode(boot, &bpb);
+    if (!x86_jump && bpb.reserved_sectors == 0U) {
+        /* Some Atari ST formatters leave the reserved-sector count at zero
+         * although the boot sector still occupies sector 0; TOS ignores the
+         * field. Read it as 1, as Deark does (modules/fat.c). Only a boot
+         * sector without an x86 jump gets this reading: NTFS also stores 0
+         * here, behind an x86 jump, and must stay rejected. */
+        bpb.reserved_sectors = 1U;
+    }
+    if (xx_fat_layout(geometry, &bpb)) {
+        if (x86_jump && pc_signature) {
+            geometry->boot_kind = XX_FAT_BOOT_PC;
+            /* A complete volume behind a PC boot sector needs nothing more.
+             * A short one has lost the size check that corroborates the BPB,
+             * so its FAT has to back it up, as for an X86 boot sector. */
+            return !geometry->truncated ||
+                   xx_fat_confirm(self, geometry, XX_FAT_CONFIRM_X86);
+        }
+        if (x86_jump) {
+            geometry->boot_kind = XX_FAT_BOOT_X86;
+            return xx_fat_confirm(self, geometry, XX_FAT_CONFIRM_X86);
+        }
+        geometry->boot_kind = XX_FAT_BOOT_FOREIGN;
+        return xx_fat_confirm(self, geometry, XX_FAT_CONFIRM_FOREIGN);
+    }
+    /* Only the boot sector without a BPB is left. Reset what the failed
+     * attempt may have filled in before trying the size table. */
+    geometry->volume_end = -1;
+    geometry->root_offset = -1;
+    geometry->truncated = false;
+    return xx_fat_static_geometry(self, geometry, boot);
 }
 
 /* Record a root volume-label entry. The label lives in the eleven raw name
@@ -994,6 +1473,8 @@ static bool xx_fat_handle_entry(Abstractformat *self, xx_fat_private *parsed,
     }
     full_name = xx_fat_join_name(prefix, name);
     xx_str_free(name);
+    if (!full_name) return true;
+    full_name = xx_fat_unique_name(parsed, full_name);
     if (!full_name) return true;
 
     xx_mem_zero(&entry, sizeof(entry));
@@ -1350,8 +1831,12 @@ bool xx_fat_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     fat->root_cluster = parsed->geometry.root_cluster;
     fat->volume_size = parsed->geometry.volume_size;
     fat->volume_end = parsed->geometry.volume_end;
-    self->format_size = parsed->geometry.volume_end - self->base_address;
     total_size = xx_io_total_size(self->device);
+    /* A truncated image is measured by what is actually there. */
+    self->format_size =
+        (parsed->geometry.volume_end > total_size ? total_size
+                                                  : parsed->geometry.volume_end) -
+        self->base_address;
     if (total_size > parsed->geometry.volume_end) {
         self->overlay_offset = parsed->geometry.volume_end;
         self->overlay_size = total_size - parsed->geometry.volume_end;
@@ -1462,6 +1947,7 @@ static bool xx_fat_write_entry(Abstractformat *self, xx_fat_private *parsed,
     uint64_t remaining = entry->size;
     uint32_t cluster = entry->first_cluster;
     bool ok = true;
+    bool created = false;
 
     if (remaining != 0U && !xx_fat_cluster_is_data(geometry, cluster)) {
         return false;
@@ -1469,6 +1955,7 @@ static bool xx_fat_write_entry(Abstractformat *self, xx_fat_private *parsed,
     buffer = (uint8_t *)xx_mem_alloc(geometry->bytes_per_cluster);
     if (!buffer) return false;
     output = xx_io_file_open(destination, "wb");
+    created = output != NULL;
     if (!output) {
         xx_mem_free(buffer);
         return false;
@@ -1518,7 +2005,7 @@ static bool xx_fat_write_entry(Abstractformat *self, xx_fat_private *parsed,
     xx_fat_visit_reset(parsed);
     xx_io_close(output);
     xx_mem_free(buffer);
-    if (!ok) (void)xx_rt_remove(destination);
+    if (!ok && created) (void)xx_rt_remove(destination);
     return ok;
 }
 
@@ -1608,6 +2095,20 @@ uint64_t xx_fat_get_volume_size(const xx_fat *fat) {
 }
 int64_t xx_fat_get_volume_end(const xx_fat *fat) {
     return fat ? fat->volume_end : -1;
+}
+/* The boot kind and the truncation flag live in the private state rather
+ * than in struct xx_fat: code built against the original header embeds an
+ * xx_fat by value (xx_format_is_fat_device), so the public layout must not
+ * grow. */
+uint32_t xx_fat_get_boot_kind(const xx_fat *fat) {
+    return (fat && fat->internal)
+               ? ((const xx_fat_private *)fat->internal)->geometry.boot_kind
+               : 0U;
+}
+bool xx_fat_is_truncated(const xx_fat *fat) {
+    return (fat && fat->internal)
+               ? ((const xx_fat_private *)fat->internal)->geometry.truncated
+               : false;
 }
 const char *xx_fat_get_volume_label(const xx_fat *fat) {
     return (fat && fat->internal)

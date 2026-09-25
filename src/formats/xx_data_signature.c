@@ -75,10 +75,36 @@ bool xx_data_class_check(const void *data, size_t data_size, int64_t offset,
 
     if (!data || !sig_range_within(data_size, offset, window)) return false;
     bytes = (const uint8_t *)data + offset;
-    for (index = 0; index < window; ++index) {
-        if (!sig_byte_ok(bytes[index], kind)) return false;
+
+    switch (kind) {
+        case XX_DATA_SIG_NOT_NULL:
+            for (index = 0; index < window; ++index) {
+                if (bytes[index] == 0U) return false;
+            }
+            return true;
+        case XX_DATA_SIG_ANSI:
+            for (index = 0; index < window; ++index) {
+                if (!sig_byte_is_ansi(bytes[index])) return false;
+            }
+            return true;
+        case XX_DATA_SIG_NOT_ANSI:
+            for (index = 0; index < window; ++index) {
+                if (sig_byte_is_ansi(bytes[index])) return false;
+            }
+            return true;
+        case XX_DATA_SIG_NOT_ANSI_AND_NULL:
+            for (index = 0; index < window; ++index) {
+                if (sig_byte_is_ansi(bytes[index]) || bytes[index] == 0U) return false;
+            }
+            return true;
+        case XX_DATA_SIG_ANSI_NUMBER:
+            for (index = 0; index < window; ++index) {
+                if (bytes[index] < (uint8_t)'0' || bytes[index] > (uint8_t)'9') return false;
+            }
+            return true;
+        default:
+            return false;
     }
-    return true;
 }
 
 /* Read the pointer a jump record stores. Width is validated by the caller. */
@@ -323,9 +349,9 @@ bool xx_data_signature_match(const void *data, size_t data_size,
                     limit = (int64_t)data_size - cursor;
                     if (limit < record->data_size) return false;
                 }
-                found = xx_data_find_bytes((const uint8_t *)data + cursor,
-                                           (size_t)limit, 0U, record->data,
-                                           (size_t)record->data_size, NULL);
+                found = xx_data_find_bytes_buffer_optimize((const uint8_t *)data + cursor,
+                                                           (size_t)limit, 0U, record->data,
+                                                           (size_t)record->data_size, NULL);
                 if (found < 0) return false;
                 cursor += found + record->data_size;
                 break;
@@ -722,24 +748,51 @@ int64_t xx_data_signature_find_text(const void *data, size_t data_size,
 
         if (length < 0 || length > available) length = available;
 
-        if (signature.records[0].kind == XX_DATA_SIG_BYTES &&
-            signature.records[0].data_size > 0) {
-            int64_t search = offset;
-            int64_t limit = offset + length;
+        int anchor_idx = -1;
+        int64_t prefix_len = 0;
+        int j;
+
+        for (j = 0; j < signature.count; ++j) {
+            if (signature.records[j].kind == XX_DATA_SIG_BYTES &&
+                signature.records[j].data_size > 0) {
+                anchor_idx = j;
+                break;
+            }
+            if (signature.records[j].kind == XX_DATA_SIG_SKIP ||
+                signature.records[j].kind == XX_DATA_SIG_NOT_NULL ||
+                signature.records[j].kind == XX_DATA_SIG_ANSI ||
+                signature.records[j].kind == XX_DATA_SIG_NOT_ANSI ||
+                signature.records[j].kind == XX_DATA_SIG_NOT_ANSI_AND_NULL ||
+                signature.records[j].kind == XX_DATA_SIG_ANSI_NUMBER) {
+                prefix_len += signature.records[j].window;
+            } else {
+                /* Jumps or relative finds before the anchor prevent simple fixed prefix extraction */
+                break;
+            }
+        }
+
+        if (anchor_idx >= 0) {
+            int64_t search = offset + prefix_len;
+            int64_t limit = offset + length + prefix_len;
+
+            if (limit > (int64_t)data_size) limit = (int64_t)data_size;
 
             while (search < limit) {
-                int64_t found = xx_data_find_bytes(
+                int64_t found = xx_data_find_bytes_buffer_optimize(
                     (const uint8_t *)data + search, (size_t)(limit - search),
-                    0U, signature.records[0].data,
-                    (size_t)signature.records[0].data_size, NULL);
+                    0U, signature.records[anchor_idx].data,
+                    (size_t)signature.records[anchor_idx].data_size, NULL);
 
                 if (found < 0) break;
                 found += search;
 
-                if (xx_data_signature_match(data, data_size, found, &signature,
-                                            context, NULL)) {
-                    result = found;
-                    break;
+                int64_t candidate = found - prefix_len;
+                if (candidate >= offset && candidate < offset + length) {
+                    if (xx_data_signature_match(data, data_size, candidate,
+                                                &signature, context, NULL)) {
+                        result = candidate;
+                        break;
+                    }
                 }
                 search = found + 1;
             }

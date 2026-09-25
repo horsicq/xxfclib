@@ -1795,6 +1795,7 @@ bool xx_squashfs_unpack_current_archive_record(Abstractformat *self,
     char *destination_path = NULL;
     xx_io_device *destination = NULL;
     bool result = false;
+    bool created = false;
 
     if (!self || !self->device || !state || state->format != self ||
         !state->has_record || !state->internal_state ||
@@ -1833,12 +1834,13 @@ bool xx_squashfs_unpack_current_archive_record(Abstractformat *self,
     if (!destination_path) goto cleanup;
     if (!xx_store_create_dirs_a(destination_path, false)) goto cleanup;
     destination = xx_io_file_open(destination_path, "wb");
+    created = destination != NULL;
     if (!destination) goto cleanup;
     result = xx_squashfs_extract_member(self, &stream->parsed, member,
                                         destination, pd);
     xx_io_close(destination);
     destination = NULL;
-    if (!result) xx_rt_remove(destination_path);
+    if (!result && created) xx_rt_remove(destination_path);
 
 cleanup:
     if (destination) xx_io_close(destination);

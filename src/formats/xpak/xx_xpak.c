@@ -999,6 +999,7 @@ bool xx_xpak_unpack_current_archive_record(Abstractformat *format,
     char *owned_base = NULL;
     char *path = NULL;
     bool result = false;
+    bool created = false;
     if (!format || !state || state->format != format || !state->has_record ||
         !(stream = (xpak_stream *)state->internal_state) ||
         stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
@@ -1023,13 +1024,14 @@ bool xx_xpak_unpack_current_archive_record(Abstractformat *format,
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
+        created = destination != NULL;
         if (!destination) goto done;
         result = xpak_unpack_context(format, &stream->context, destination,
                                      pd);
         if (xx_io_close(destination) != 0) result = false;
     }
 done:
-    if (!result && path) xx_rt_remove(path);
+    if (!result && path && created) xx_rt_remove(path);
     if (path) xx_str_free(path);
     if (owned_base) xx_str_free(owned_base);
     return result;

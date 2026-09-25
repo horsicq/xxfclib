@@ -473,6 +473,7 @@ bool xx_aldus_unpack_current_archive_record(Abstractformat *format,
     uint8_t *plain = NULL;
     size_t plain_size = 0U, written = 0U;
     bool ok = false;
+    bool created = false;
     if (!format || !state || state->format != format || !state->has_record ||
         (pd && xx_pd_is_stopped(pd))) return false;
     stream = (aldus_stream *)state->internal_state;
@@ -499,6 +500,7 @@ bool xx_aldus_unpack_current_archive_record(Abstractformat *format,
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
+        created = destination != NULL;
         if (!destination) goto done;
         ok = true;
         while (written < plain_size) {
@@ -513,7 +515,7 @@ bool xx_aldus_unpack_current_archive_record(Abstractformat *format,
         xx_io_close(destination);
     }
 done:
-    if (!ok && path) xx_rt_remove(path);
+    if (!ok && path && created) xx_rt_remove(path);
     if (plain) xx_mem_free(plain);
     if (path) xx_str_free(path);
     if (owned_base) xx_str_free(owned_base);

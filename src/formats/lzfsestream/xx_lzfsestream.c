@@ -33,6 +33,22 @@
 /* Every data block is at least eight bytes, so the input cap already bounds
  * the walk; this is a second, independent bound on the loop. */
 #define XX_LZFSESTREAM_MAX_BLOCKS (UINT32_C(1) << 22)
+/* The block walk reads the device through a window of this size, so a run of
+ * tiny blocks costs memory copies rather than one device read each. */
+#define XX_LZFSESTREAM_WINDOW_SIZE 65536U
+
+/* The decoder writes into a buffer sized from the blocks' declared
+ * n_raw_bytes, which a hostile header can inflate without supplying the data
+ * behind it.  So a stream that declares more than this is decoded in stages:
+ * the walk marks the block boundary before each point where the running
+ * total first passes 16 MiB, 32 MiB, 64 MiB and so on, and every such prefix
+ * must decode (with a bvx$ patched in after it) before the buffer for the
+ * next one is allocated.  An output buffer is then at most 16 MiB, or less
+ * than twice the output already proven plus the next block's declared size
+ * (itself bounded by the walk's per-block checks). */
+#define XX_LZFSESTREAM_DIRECT_OUTPUT ((uint64_t)16U * 1024U * 1024U)
+/* 16 MiB doubled up to the 1 GiB cap is six steps; two spare. */
+#define XX_LZFSESTREAM_MAX_CHECKPOINTS 8U
 
 /* Block header sizes, as the reference decoder (src/algo/lzfse) skips them. */
 #define XX_LZFSESTREAM_RAW_HEADER 8U
@@ -55,17 +71,46 @@
 #define XX_LZFSESTREAM_FSE_MAX_MATCHES 10000U
 /* The literal buffer the decoder copies runs from, with its 64 byte tail. */
 #define XX_LZFSESTREAM_FSE_LITERAL_BUFFER 40064U
+/* The longest literal run one L/M/D symbol can carry: L base 60 plus 8
+ * bits. */
+#define XX_LZFSESTREAM_FSE_MAX_RUN 315U
 /* The longest match one L/M/D symbol can carry: M base 312 plus 11 bits. */
 #define XX_LZFSESTREAM_FSE_MAX_MATCH 2359U
+/* An M symbol with no extra bits is a match of at most 15.  Every longer
+ * match spends at least one extra bit read from the L/M/D payload, and no M
+ * symbol yields more than 15 + 215 bytes per extra bit it spends (the widest,
+ * 312 + 2047 for 11 bits, is 2359 <= 15 + 11 * 215).  So a block's matches
+ * total at most 15 per symbol plus 215 * 8 per payload byte. */
+#define XX_LZFSESTREAM_FSE_FREE_MATCH 15U
+#define XX_LZFSESTREAM_FSE_MATCH_PER_BYTE (215U * 8U)
 
 #define XX_LZFSESTREAM_20BIT_MASK UINT64_C(0xFFFFF)
+
+/* A block boundary inside the stream and the output produced before it. */
+typedef struct xx_lzfsestream_checkpoint_s {
+    uint64_t offset;
+    uint64_t raw;
+} xx_lzfsestream_checkpoint;
 
 typedef struct xx_lzfsestream_scan_s {
     int64_t stream_size;
     uint64_t uncompressed_size;
     uint32_t number_of_blocks;
     uint32_t block_types;
+    uint32_t number_of_checkpoints;
+    xx_lzfsestream_checkpoint checkpoints[XX_LZFSESTREAM_MAX_CHECKPOINTS];
 } xx_lzfsestream_scan;
+
+/* The walk's view of the device: WINDOW_SIZE bytes starting at stream
+ * offset `start`, of which `size` are valid. */
+typedef struct xx_lzfsestream_window_s {
+    xx_io_device *device;
+    int64_t base;
+    uint64_t limit;
+    uint64_t start;
+    size_t size;
+    uint8_t *buffer;
+} xx_lzfsestream_window;
 
 static void xx_lzfsestream_vtable_destroy(Abstractformat *self);
 
@@ -104,6 +149,39 @@ static bool xx_lzfsestream_write_all(xx_io_device *device, const void *data,
     return true;
 }
 
+/* Copy `size` bytes at stream offset `offset` out of the window, refilling
+ * it from the device first when they are not all inside.  Never reads at or
+ * past window->limit. */
+static bool xx_lzfsestream_window_get(xx_lzfsestream_window *window,
+                                      uint64_t offset, uint8_t *out,
+                                      size_t size) {
+    size_t index;
+    uint64_t skip;
+    if (!window || !window->buffer || !out || size == 0U ||
+        size > XX_LZFSESTREAM_WINDOW_SIZE || size > window->limit ||
+        offset > window->limit - size) {
+        return false;
+    }
+    if (offset < window->start || offset - window->start > window->size ||
+        size > window->size - (size_t)(offset - window->start)) {
+        uint64_t want = window->limit - offset;
+        if (want > XX_LZFSESTREAM_WINDOW_SIZE) want = XX_LZFSESTREAM_WINDOW_SIZE;
+        window->start = offset;
+        window->size = 0U;
+        if (!xx_lzfsestream_read_at(window->device,
+                                    window->base + (int64_t)offset,
+                                    window->buffer, (size_t)want)) {
+            return false;
+        }
+        window->size = (size_t)want;
+    }
+    skip = offset - window->start;
+    for (index = 0U; index < size; ++index) {
+        out[index] = window->buffer[(size_t)skip + index];
+    }
+    return true;
+}
+
 /* ------------------------------------------------------------------------ */
 /* Block walk                                                                */
 /* ------------------------------------------------------------------------ */
@@ -114,30 +192,18 @@ static bool xx_lzfsestream_write_all(xx_io_device *device, const void *data,
  * XX_LZFSESTREAM_MAX_INPUT bytes of the device, and additionally refuses
  * every header the decoder would refuse (so the walk and the decode agree on
  * block boundaries), every payload that does not fit in the device, and any
- * declared n_raw_bytes no payload of that size could decode to.  The last
- * check is what keeps a few hundred hostile bytes from asking for a
- * gigabyte of output buffer.
+ * declared n_raw_bytes no payload of that size could decode to.  It also
+ * marks the checkpoints the staged decode verifies.
  */
-static bool xx_lzfsestream_walk(Abstractformat *self, xx_lzfsestream_scan *scan,
-                                xx_pd_struct *pd) {
-    int64_t total_size;
-    uint64_t limit;
+static bool xx_lzfsestream_walk_window(xx_lzfsestream_window *window,
+                                       xx_lzfsestream_scan *scan,
+                                       xx_pd_struct *pd) {
     uint64_t cursor = 0U;
     uint64_t raw_total = 0U;
+    uint64_t threshold = XX_LZFSESTREAM_DIRECT_OUTPUT;
     uint32_t blocks = 0U;
     uint32_t types = 0U;
-    if (!self || !self->device || !scan || self->base_address < 0) {
-        return false;
-    }
-    xx_mem_zero(scan, sizeof(*scan));
-    scan->stream_size = -1;
-    total_size = xx_io_total_size(self->device);
-    if (total_size < self->base_address ||
-        total_size - self->base_address < (int64_t)XX_LZFSESTREAM_MIN_SIZE) {
-        return false;
-    }
-    limit = (uint64_t)(total_size - self->base_address);
-    if (limit > XX_LZFSESTREAM_MAX_INPUT) limit = XX_LZFSESTREAM_MAX_INPUT;
+    uint32_t checkpoints = 0U;
 
     for (;;) {
         uint8_t header[XX_LZFSESTREAM_V2_FIXED];
@@ -145,13 +211,11 @@ static bool xx_lzfsestream_walk(Abstractformat *self, xx_lzfsestream_scan *scan,
         uint64_t remaining;
         uint64_t raw;
         uint64_t block_size;
-        int64_t position;
         if (pd && xx_pd_is_stopped(pd)) return false;
-        if (cursor > limit) return false;
-        remaining = limit - cursor;
-        if (remaining < 4U) return false;
-        position = self->base_address + (int64_t)cursor;
-        if (!xx_lzfsestream_read_at(self->device, position, header, 4U)) {
+        if (cursor > window->limit) return false;
+        remaining = window->limit - cursor;
+        if (remaining < 4U ||
+            !xx_lzfsestream_window_get(window, cursor, header, 4U)) {
             return false;
         }
         magic = xx_data_get_u32(header, 4U, 0U, false);
@@ -167,8 +231,8 @@ static bool xx_lzfsestream_walk(Abstractformat *self, xx_lzfsestream_scan *scan,
 
         if (magic == XX_LZFSE_MAGIC_UNCOMPRESSED) {
             if (remaining < XX_LZFSESTREAM_RAW_HEADER ||
-                !xx_lzfsestream_read_at(self->device, position, header,
-                                        XX_LZFSESTREAM_RAW_HEADER)) {
+                !xx_lzfsestream_window_get(window, cursor, header,
+                                           XX_LZFSESTREAM_RAW_HEADER)) {
                 return false;
             }
             raw = xx_data_get_u32(header, XX_LZFSESTREAM_RAW_HEADER, 4U, false);
@@ -178,8 +242,8 @@ static bool xx_lzfsestream_walk(Abstractformat *self, xx_lzfsestream_scan *scan,
         } else if (magic == XX_LZFSE_MAGIC_COMPRESSEDLZVN) {
             uint64_t payload;
             if (remaining < XX_LZFSESTREAM_LZVN_HEADER ||
-                !xx_lzfsestream_read_at(self->device, position, header,
-                                        XX_LZFSESTREAM_LZVN_HEADER)) {
+                !xx_lzfsestream_window_get(window, cursor, header,
+                                           XX_LZFSESTREAM_LZVN_HEADER)) {
                 return false;
             }
             raw = xx_data_get_u32(header, XX_LZFSESTREAM_LZVN_HEADER, 4U, false);
@@ -199,14 +263,17 @@ static bool xx_lzfsestream_walk(Abstractformat *self, xx_lzfsestream_scan *scan,
             uint64_t matches;
             uint64_t literal_payload;
             uint64_t lmd_payload;
+            uint64_t run_limit;
+            uint64_t match_limit;
+            uint64_t bit_limit;
             if (magic == XX_LZFSE_MAGIC_COMPRESSEDV1) {
                 /* The v1 header is the reference's C struct copied whole:
                  * the scalars first, then 360 u16 frequencies and two bytes
                  * of alignment padding. */
                 header_size = XX_LZFSESTREAM_V1_HEADER;
                 if (remaining < header_size ||
-                    !xx_lzfsestream_read_at(self->device, position, header,
-                                            XX_LZFSESTREAM_V1_FIELDS)) {
+                    !xx_lzfsestream_window_get(window, cursor, header,
+                                               XX_LZFSESTREAM_V1_FIELDS)) {
                     return false;
                 }
                 raw = xx_data_get_u32(header, sizeof(header), 4U, false);
@@ -221,8 +288,8 @@ static bool xx_lzfsestream_walk(Abstractformat *self, xx_lzfsestream_scan *scan,
                 uint64_t v1;
                 uint64_t v2;
                 if (remaining < XX_LZFSESTREAM_V2_FIXED ||
-                    !xx_lzfsestream_read_at(self->device, position, header,
-                                            XX_LZFSESTREAM_V2_FIXED)) {
+                    !xx_lzfsestream_window_get(window, cursor, header,
+                                               XX_LZFSESTREAM_V2_FIXED)) {
                     return false;
                 }
                 raw = xx_data_get_u32(header, sizeof(header), 4U, false);
@@ -242,9 +309,7 @@ static bool xx_lzfsestream_walk(Abstractformat *self, xx_lzfsestream_scan *scan,
                 types |= XX_LZFSESTREAM_BLOCK_V2;
             }
             if (literals > XX_LZFSESTREAM_FSE_MAX_LITERALS ||
-                matches > XX_LZFSESTREAM_FSE_MAX_MATCHES ||
-                raw > XX_LZFSESTREAM_FSE_LITERAL_BUFFER +
-                          matches * XX_LZFSESTREAM_FSE_MAX_MATCH) {
+                matches > XX_LZFSESTREAM_FSE_MAX_MATCHES) {
                 return false;
             }
             /* Both payloads are at most 2^32 - 1 here, so the sum cannot
@@ -252,12 +317,39 @@ static bool xx_lzfsestream_walk(Abstractformat *self, xx_lzfsestream_scan *scan,
             if (literal_payload + lmd_payload > remaining - header_size) {
                 return false;
             }
+            /* Every output byte of an FSE block comes from one of its
+             * n_matches L/M/D symbols: a literal run, bounded by the
+             * decoder's literal buffer, then a match, bounded both per
+             * symbol and by the bits the payload holds.  A header that
+             * claims more cannot decode.  With matches <= 10000 and
+             * lmd_payload < 2^32 nothing here wraps. */
+            run_limit = matches * XX_LZFSESTREAM_FSE_MAX_RUN;
+            match_limit = matches * XX_LZFSESTREAM_FSE_MAX_MATCH;
+            bit_limit = matches * XX_LZFSESTREAM_FSE_FREE_MATCH +
+                        lmd_payload * XX_LZFSESTREAM_FSE_MATCH_PER_BYTE;
+            if (run_limit > XX_LZFSESTREAM_FSE_LITERAL_BUFFER) {
+                run_limit = XX_LZFSESTREAM_FSE_LITERAL_BUFFER;
+            }
+            if (match_limit > bit_limit) match_limit = bit_limit;
+            if (raw > run_limit + match_limit) return false;
             block_size = header_size + literal_payload + lmd_payload;
         } else {
             return false; /* not a block magic */
         }
 
         if (raw > XX_LZFSESTREAM_MAX_OUTPUT - raw_total) return false;
+        /* raw_total never exceeds threshold, so this cannot wrap. */
+        if (raw > threshold - raw_total) {
+            if (raw_total != 0U) {
+                if (checkpoints >= XX_LZFSESTREAM_MAX_CHECKPOINTS) return false;
+                scan->checkpoints[checkpoints].offset = cursor;
+                scan->checkpoints[checkpoints].raw = raw_total;
+                ++checkpoints;
+            }
+            /* Stops at 1 GiB at the latest, since raw_total + raw is
+             * within the output cap. */
+            while (threshold < raw_total + raw) threshold *= 2U;
+        }
         raw_total += raw;
         cursor += block_size;
         ++blocks;
@@ -267,18 +359,74 @@ static bool xx_lzfsestream_walk(Abstractformat *self, xx_lzfsestream_scan *scan,
     scan->uncompressed_size = raw_total;
     scan->number_of_blocks = blocks;
     scan->block_types = types;
+    scan->number_of_checkpoints = checkpoints;
     return true;
+}
+
+static bool xx_lzfsestream_walk(Abstractformat *self, xx_lzfsestream_scan *scan,
+                                xx_pd_struct *pd) {
+    xx_lzfsestream_window window;
+    int64_t total_size;
+    bool result;
+    if (!self || !self->device || !scan || self->base_address < 0) {
+        return false;
+    }
+    xx_mem_zero(scan, sizeof(*scan));
+    scan->stream_size = -1;
+    total_size = xx_io_total_size(self->device);
+    if (total_size < self->base_address ||
+        total_size - self->base_address < (int64_t)XX_LZFSESTREAM_MIN_SIZE) {
+        return false;
+    }
+    xx_mem_zero(&window, sizeof(window));
+    window.device = self->device;
+    window.base = self->base_address;
+    window.limit = (uint64_t)(total_size - self->base_address);
+    if (window.limit > XX_LZFSESTREAM_MAX_INPUT) {
+        window.limit = XX_LZFSESTREAM_MAX_INPUT;
+    }
+    window.buffer = (uint8_t *)xx_mem_alloc(XX_LZFSESTREAM_WINDOW_SIZE);
+    if (!window.buffer) return false;
+    result = xx_lzfsestream_walk_window(&window, scan, pd);
+    xx_mem_free(window.buffer);
+    if (!result) scan->stream_size = -1;
+    return result;
 }
 
 /* ------------------------------------------------------------------------ */
 /* Decode                                                                    */
 /* ------------------------------------------------------------------------ */
 
+/* Decode input[0, end) followed by a bvx$ patched in over the next four
+ * bytes, which must yield exactly `raw` bytes.  The caller guarantees that
+ * end + 4 is within the input; the four bytes are restored afterwards. */
+static bool xx_lzfsestream_verify_prefix(uint8_t *input, size_t end,
+                                         size_t raw) {
+    uint8_t saved[4];
+    uint8_t *output;
+    size_t written = 0U;
+    bool decoded;
+    output = (uint8_t *)xx_mem_alloc(raw != 0U ? raw : 1U);
+    if (!output) return false;
+    xx_rt_memcpy(saved, input + end, sizeof(saved));
+    input[end] = (uint8_t)(XX_LZFSE_MAGIC_ENDOFSTREAM & 0xFFU);
+    input[end + 1U] = (uint8_t)((XX_LZFSE_MAGIC_ENDOFSTREAM >> 8) & 0xFFU);
+    input[end + 2U] = (uint8_t)((XX_LZFSE_MAGIC_ENDOFSTREAM >> 16) & 0xFFU);
+    input[end + 3U] = (uint8_t)((XX_LZFSE_MAGIC_ENDOFSTREAM >> 24) & 0xFFU);
+    decoded = xx_lzfse_decompress_memory(input, end + 4U, output, raw,
+                                         &written) &&
+              written == raw;
+    xx_rt_memcpy(input + end, saved, sizeof(saved));
+    xx_mem_free(output);
+    return decoded;
+}
+
 /* Walk, then decode every block with src/algo/lzfse into a buffer of exactly
- * the declared size.  The decoder itself insists that each compressed block
- * yields exactly its n_raw_bytes and that the stream reaches bvx$; the total
- * is checked again here.  When destination is set the output is written to
- * it. */
+ * the declared size, after first proving each checkpointed prefix (see
+ * XX_LZFSESTREAM_DIRECT_OUTPUT).  The decoder itself insists that each
+ * compressed block yields exactly its n_raw_bytes and that the stream
+ * reaches bvx$; the total is checked again here.  When destination is set
+ * the output is written to it. */
 static bool xx_lzfsestream_decode(Abstractformat *self,
                                   xx_lzfsestream_scan *scan,
                                   xx_io_device *destination,
@@ -288,28 +436,45 @@ static bool xx_lzfsestream_decode(Abstractformat *self,
     size_t input_size;
     size_t output_size;
     size_t written = 0U;
+    uint32_t index;
     bool result = false;
     if (!xx_lzfsestream_walk(self, scan, pd)) return false;
     if (scan->stream_size < (int64_t)XX_LZFSESTREAM_MIN_SIZE ||
         (uint64_t)scan->stream_size > XX_LZFSESTREAM_MAX_INPUT ||
         (uint64_t)scan->stream_size > (uint64_t)SIZE_MAX ||
         scan->uncompressed_size > XX_LZFSESTREAM_MAX_OUTPUT ||
-        scan->uncompressed_size > (uint64_t)SIZE_MAX) {
+        scan->uncompressed_size > (uint64_t)SIZE_MAX ||
+        scan->number_of_checkpoints > XX_LZFSESTREAM_MAX_CHECKPOINTS) {
         return false;
     }
     if (pd && xx_pd_is_stopped(pd)) return false;
     input_size = (size_t)scan->stream_size;
     output_size = (size_t)scan->uncompressed_size;
     input = (uint8_t *)xx_mem_alloc(input_size);
-    /* An empty stream still gets a buffer, so the decoder is never handed a
-     * NULL destination. */
-    output = (uint8_t *)xx_mem_alloc(output_size != 0U ? output_size : 1U);
-    if (!input || !output ||
+    if (!input ||
         !xx_lzfsestream_read_at(self->device, self->base_address, input,
                                 input_size)) {
         goto cleanup;
     }
-    if (!xx_lzfse_decompress_memory(input, input_size, output, output_size,
+    for (index = 0U; index < scan->number_of_checkpoints; ++index) {
+        const xx_lzfsestream_checkpoint *checkpoint =
+            &scan->checkpoints[index];
+        if (pd && xx_pd_is_stopped(pd)) goto cleanup;
+        /* A checkpoint is where a data block starts, so the stream's own
+         * bvx$ lies at least four bytes beyond it. */
+        if (checkpoint->offset > (uint64_t)(input_size - 4U) ||
+            checkpoint->raw > scan->uncompressed_size ||
+            !xx_lzfsestream_verify_prefix(input, (size_t)checkpoint->offset,
+                                          (size_t)checkpoint->raw)) {
+            goto cleanup;
+        }
+    }
+    if (pd && xx_pd_is_stopped(pd)) goto cleanup;
+    /* An empty stream still gets a buffer, so the decoder is never handed a
+     * NULL destination. */
+    output = (uint8_t *)xx_mem_alloc(output_size != 0U ? output_size : 1U);
+    if (!output ||
+        !xx_lzfse_decompress_memory(input, input_size, output, output_size,
                                     &written) ||
         written != output_size) {
         goto cleanup;
@@ -582,6 +747,7 @@ bool xx_lzfsestream_unpack_current_archive_record(
     char *owned_path = NULL;
     char *destination_path;
     bool result;
+    bool created = false;
     xx_lzfsestream *archive = (xx_lzfsestream *)self;
     if (!self || !state || state->format != self || !state->has_record ||
         (pd && xx_pd_is_stopped(pd))) {
@@ -625,10 +791,11 @@ bool xx_lzfsestream_unpack_current_archive_record(
     }
     {
         xx_io_device *output = xx_io_file_open(destination_path, "wb");
+        created = output != NULL;
         result = output && xx_lzfsestream_unpack_to_device(archive, output, pd);
         if (output && xx_io_close(output) != 0) result = false;
     }
-    if (!result) xx_rt_remove(destination_path);
+    if (!result && created) xx_rt_remove(destination_path);
     xx_str_free(destination_path);
     return result;
 }

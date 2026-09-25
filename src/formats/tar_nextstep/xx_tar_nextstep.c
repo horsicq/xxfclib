@@ -648,7 +648,6 @@ bool xx_tar_nextstep_unpack_current_archive_record(
                                                  member->data_offset,
                                                  member->data_size,
                                                  destination, pd);
-        if (!result) xx_rt_remove(destination);
     }
 cleanup:
     if (destination) xx_str_free(destination);

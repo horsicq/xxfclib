@@ -585,7 +585,6 @@ bool xx_gksetup_unpack_current_archive_record(Abstractformat *format,
                                             member->data_offset, member->size,
                                             path, pd);
 done:
-    if (!result && path) xx_io_file_remove_a(path);
     if (path) xx_str_free(path);
     if (owned_base) xx_str_free(owned_base);
     return result;

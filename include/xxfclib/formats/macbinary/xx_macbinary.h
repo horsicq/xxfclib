@@ -6,8 +6,9 @@
 
 #include "xxfclib/formats/xx_format.h"
 
-/* MacBinary I / II / III: a 128-byte header followed by the data fork and the
- * resource fork, each padded to a 128-byte boundary. */
+/* MacBinary I / II / III: a 128-byte header, an optional secondary header,
+ * the data fork, the resource fork and an optional Get Info comment, each
+ * padded to a 128-byte boundary. */
 typedef struct xx_macbinary {
     Abstractformat format;
     uint64_t number_of_records;
@@ -25,6 +26,12 @@ XXFC_API void xx_macbinary_destroy(xx_macbinary *archive);
 XXFC_API void xx_macbinary_free(xx_macbinary *archive);
 XXFC_API bool xx_macbinary_check_is_valid(Abstractformat *self,
                                           xx_pd_struct *pd);
+/* The strict subset of check_is_valid: only a MacBinary II/III header whose
+ * CRC-16 verifies.  Strong enough for the detector to ask ahead of the
+ * structural tail probes (ZIP's end-of-central-directory scan); MacBinary I
+ * and stale-CRC headers are left to the late magic-less probe. */
+XXFC_API bool xx_macbinary_check_is_valid_verified(Abstractformat *self,
+                                                   xx_pd_struct *pd);
 XXFC_API bool xx_macbinary_handle_base_info(Abstractformat *self,
                                             xx_pd_struct *pd);
 XXFC_API int64_t xx_macbinary_get_format_size(Abstractformat *self,

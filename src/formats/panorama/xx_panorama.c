@@ -396,6 +396,7 @@ bool xx_panorama_unpack_current_archive_record(Abstractformat *self,
     char *converted_path = NULL;
     char *target_path = NULL;
     bool result;
+    bool created = false;
 
     if (!self || !state || state->format != self || !state->has_record ||
         (pd && xx_pd_is_stopped(pd))) {
@@ -434,10 +435,11 @@ bool xx_panorama_unpack_current_archive_record(Abstractformat *self,
     }
     {
         xx_io_device *output = xx_io_file_open(target_path, "wb");
+        created = output != NULL;
         result = output && xx_panorama_decode(self, output, pd);
         if (output && xx_io_close(output) != 0) result = false;
     }
-    if (!result) xx_rt_remove(target_path);
+    if (!result && created) xx_rt_remove(target_path);
     xx_str_free(target_path);
     return result;
 }

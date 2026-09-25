@@ -152,6 +152,21 @@ bool xx_tar_common_load(xx_tar_common *common, Abstractformat *outer,
         !xx_format_handle_base_info(&common->tar->format, pd)) {
         return xx_tar_common_load_failed(common);
     }
+    /* The tar reader rightly takes a zero block for the end-of-archive
+     * marker, so any payload that merely STARTS with 512 zero bytes parses
+     * as an empty tar. A compressed ISO image or disk dump does exactly that
+     * (an ISO's first 32 KiB are zero), and claiming it as an empty tar.xx
+     * loses the whole payload. An empty tar is only believable when the
+     * payload is nothing but zero blocks; otherwise this is not a tar and
+     * the stream belongs to the plain decompressor. */
+    if (common->tar->format.number_of_archive_records == 0U) {
+        size_t i;
+        for (i = 0; i < common->decoded_size; ++i) {
+            if (common->decoded_data[i] != 0U) {
+                return xx_tar_common_load_failed(common);
+            }
+        }
+    }
     common->compressed_size = compressed_size;
     common->valid = true;
     return true;

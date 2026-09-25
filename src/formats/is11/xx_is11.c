@@ -818,6 +818,7 @@ bool xx_is11_unpack_current_archive_record(Abstractformat *format,
     size_t plain_size = 0U;
     size_t written = 0U;
     bool result = false;
+    bool created = false;
     if (!format || !state || state->format != format || !state->has_record ||
         !(stream = (is11_stream *)state->internal_state) ||
         stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
@@ -848,6 +849,7 @@ bool xx_is11_unpack_current_archive_record(Abstractformat *format,
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
+        created = destination != NULL;
         if (!destination) goto done;
         result = true;
         while (written < plain_size) {
@@ -862,7 +864,7 @@ bool xx_is11_unpack_current_archive_record(Abstractformat *format,
         if (xx_io_close(destination) != 0) result = false;
     }
 done:
-    if (!result && path) xx_io_file_remove_a(path);
+    if (!result && path && created) xx_io_file_remove_a(path);
     if (plain) xx_mem_free(plain);
     if (path) xx_str_free(path);
     if (owned_base) xx_str_free(owned_base);

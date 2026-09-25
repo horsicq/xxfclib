@@ -68,7 +68,8 @@
 /* The piggy follows head.o and misc.o (the inflater), a few KiB of code. */
 #define XX_LINUXBOOT_PIGGY_WINDOW 0x10000U
 #define XX_LINUXBOOT_MIN_GZIP 18U
-#define XX_LINUXBOOT_VERSION_SCAN 256U
+/* UTS_RELEASE, " (", user, "@", host, ") ", UTS_VERSION: well under 512. */
+#define XX_LINUXBOOT_VERSION_SCAN 512U
 
 typedef struct xx_linuxboot_info_s {
     uint16_t protocol_version;
@@ -173,8 +174,9 @@ static bool xx_linuxboot_read_version(xx_io_device *device, int64_t base,
  *     the file is truncated.
  *  2. Otherwise the header alone: L = syssize * 16, clamped to EOF when the
  *     file ends inside the last paragraph (the unpadded tail).  A file ending
- *     earlier than that is truncated.  No wrap is guessed here; a pre-2.04
- *     bzImage over 1 MiB without a locatable piggy reports the wrapped size.
+ *     earlier than that is truncated.  A pre-2.04 bzImage over 1 MiB
+ *     without a locatable piggy is unwrapped only when EOF lands in its last
+ *     paragraph; with trailing data it reports the stored (wrapped) size.
  */
 static bool xx_linuxboot_parse(Abstractformat *self, xx_linuxboot_info *info,
                                xx_pd_struct *pd) {
@@ -188,6 +190,7 @@ static bool xx_linuxboot_parse(Abstractformat *self, xx_linuxboot_info *info,
     uint32_t jump_target;
     uint32_t paragraphs;
     uint32_t wraps;
+    uint32_t k_wrap;
     int64_t system_available;
     size_t window_size;
     size_t index;
@@ -330,11 +333,22 @@ static bool xx_linuxboot_parse(Abstractformat *self, xx_linuxboot_info *info,
         }
     }
 
-    /* Step 2: the header alone. */
+    /* Step 2: the header alone.  A wrapped pre-2.04 bzImage is recognised
+     * only when EOF falls inside its last paragraph; otherwise the stored
+     * value is taken as it stands. */
     if (info->payload_offset < 0) {
         int64_t declared;
         paragraphs = info->syssize;
         if (paragraphs == 0U) goto done;
+        for (k_wrap = 1U; k_wrap <= wraps; ++k_wrap) {
+            int64_t wrapped = ((int64_t)paragraphs +
+                               (int64_t)k_wrap * XX_LINUXBOOT_WRAP_PARAS) * 16;
+            if (system_available <= wrapped &&
+                system_available + 15 >= wrapped) {
+                paragraphs += k_wrap * XX_LINUXBOOT_WRAP_PARAS;
+                break;
+            }
+        }
         declared = (int64_t)paragraphs * 16;
         if (system_available + 15 < declared) goto done; /* truncated */
         info->system_paragraphs = paragraphs;
@@ -413,7 +427,7 @@ bool xx_linuxboot_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
 
 static void xx_linuxboot_set_strings(Abstractformat *self,
                                      const xx_linuxboot_info *info) {
-    char text[32];
+    char text[65]; /* a release (UTS_RELEASE) is at most 64 characters */
     size_t i = 0U;
     unsigned minor = (unsigned)(info->protocol_version & 0xFFU);
     /* Boot protocol as boot.txt writes it: "2.03". */

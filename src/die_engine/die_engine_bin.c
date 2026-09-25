@@ -410,11 +410,11 @@ cd_i64 die_find_bytes(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize,
         return -1;
     }
 
-    /* xx_data_find_bytes searches to the end of whatever buffer it is given,
+    /* xx_data_find_bytes_buffer_optimize searches to the end of whatever buffer it is given,
      * so the window is expressed by shortening the buffer rather than by a
      * length argument. The result is relative to that buffer. */
-    nFound = xx_data_find_bytes(pFile->pData + nOffset, (size_t)nSize, 0,
-                                pNeedle, (size_t)nNeedleSize, NULL);
+    nFound = xx_data_find_bytes_buffer_optimize(pFile->pData + nOffset, (size_t)nSize, 0,
+                                                pNeedle, (size_t)nNeedleSize, NULL);
 
     return (nFound < 0) ? -1 : (nOffset + nFound);
 }

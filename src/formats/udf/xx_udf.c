@@ -1596,7 +1596,6 @@ bool xx_udf_unpack_current_archive_record(Abstractformat *self,
                                                 record->data_offset,
                                                 record->compressed_size,
                                                 destination, pd);
-        if (!result) xx_rt_remove(destination);
     } else {
         result = false;
     }

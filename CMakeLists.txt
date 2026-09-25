@@ -509,6 +509,7 @@ set(XXFCLIB_SOURCES
     src/js/xx_js_value.c
     src/js/xx_js_builtins.c
     src/js/xx_js_regexp.c
+    src/js/xx_js_bytecode.c
     # Detect It Easy scan engine, moved here from cdie. The signature database,
     # the script API bound onto the JavaScript interpreter above, and the scan
     # driver. die_engine_compat.* carries the handful of cdie runtime
@@ -2123,6 +2124,11 @@ else()
 
     set(XXFCLIB_INSTALL_TARGETS xxfclib)
 endif()
+
+if(MSVC)
+    set_source_files_properties(src/data/platforms/xx_data_avx2.c PROPERTIES COMPILE_FLAGS "/arch:AVX2")
+endif()
+
 
 # Optional sample programs
 if(XXFC_BUILD_SAMPLES)

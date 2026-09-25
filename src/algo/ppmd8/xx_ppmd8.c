@@ -88,6 +88,7 @@ bool xx_ppmd8_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, i
     bool ok = xx_ppmd8_unpack_device(src_dev, src_offset, comp_size, uncomp_size,
                                      order, mem_mb, restore_method, out, pd);
     xx_io_close(out);
+    if (!ok) xx_io_file_remove_a(dst_file_path);
     return ok;
 }
 
@@ -251,6 +252,7 @@ bool xx_ppmd8_pack_device_to_file(xx_io_device *src_dev, int64_t src_offset, int
     bool ok = xx_ppmd8_pack_device(src_dev, src_offset, uncomp_size, out,
                                    order, mem_mb, restore_method, write_zip_header, pd);
     xx_io_close(out);
+    if (!ok) xx_io_file_remove_a(dst_file_path);
     return ok;
 }
 

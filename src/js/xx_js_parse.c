@@ -47,7 +47,7 @@ static JSNode *parse_function(JSParser *pParser, int bExpression);
 
 /* ------------------------------------------------------------------ util  */
 
-static JSNode *node_new(JSNodeType type, int nLine)
+JSNode *js_node_new(JSNodeType type, int nLine)
 {
     JSNode *pNode = (JSNode *)xx_js_calloc(1, sizeof(JSNode));
 
@@ -56,6 +56,8 @@ static JSNode *node_new(JSNodeType type, int nLine)
 
     return pNode;
 }
+
+#define node_new js_node_new
 
 static void node_add(JSNode *pNode, JSNode *pChild)
 {

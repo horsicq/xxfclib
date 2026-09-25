@@ -1299,7 +1299,6 @@ bool xx_uefi_fv_unpack_current_archive_record(Abstractformat *self,
                 self->device, entry->data_offset, entry->data_size, destination,
                 pd);
         }
-        if (!result) xx_rt_remove(destination);
     }
 cleanup:
     if (owned_base) xx_str_free(owned_base);

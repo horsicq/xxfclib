@@ -37,7 +37,8 @@
  *   (bits per pixel, compression) is a documented pair,
  *   uncompressed pixel rows (without their 4-byte padding, so writers that
  *   forget the padding still pass) fit between bfOffBits and bfSize,
- *   BI_RLE4 / BI_RLE8 have at least one byte of pixel data,
+ *   BI_RLE4 / BI_RLE8 have at least two bytes of pixel data (the shortest
+ *   RLE bitmap is the end-of-bitmap escape 00 01),
  *   BI_JPEG / BI_PNG carry a JPEG SOI / PNG signature at bfOffBits.
  *
  * SIZE.  The format size is bfSize - the same length binwalk carves.  Bytes

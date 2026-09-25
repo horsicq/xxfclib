@@ -2,7 +2,14 @@
  * SPDX-License-Identifier: MIT
  */
 
-/** @file xx_unixcompress.h @brief Standalone Unix compress (.Z) reader. */
+/** @file xx_unixcompress.h @brief Standalone Unix compress (.Z) reader.
+ *
+ * The reader carries its own LZW decoder with the behaviour of compress /
+ * 7-Zip: CLEAR is accepted anywhere (also first, repeated or last), bits
+ * after the last whole code are ignored, and a stream may end inside group
+ * padding.  A maxbits-9 stream is read in the compress 4.0 form first (the
+ * width still grows to 10 bits once the table is full) and in the 9-bit form
+ * when that fails. */
 
 #ifndef XXFCLIB_FORMAT_UNIXCOMPRESS_H
 #define XXFCLIB_FORMAT_UNIXCOMPRESS_H

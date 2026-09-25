@@ -79,6 +79,19 @@ XXFC_API int js_eval(JSCtx *pCtx, const char *pSource, const char *pName, JSVal 
  * evaluation such as the DIE includeScript() helper.                       */
 XXFC_API int js_eval_nested(JSCtx *pCtx, const char *pSource, const char *pName);
 
+/* ------------------------------------------------------------ bytecode  */
+
+/* Checks if a buffer begins with the bytecode magic header. */
+XXFC_API int js_is_bytecode(const void *pData, size_t nSize);
+
+/* Compiles JavaScript source to serialized binary bytecode.
+ * Returns an allocated buffer (owned by caller, free with xx_rt_free or cd_free).
+ * Stores buffer size in *pOutSize. Returns NULL on error. */
+XXFC_API void *js_compile_to_bytecode(JSCtx *pCtx, const char *pSource, const char *pName, size_t *pOutSize);
+
+/* Evaluates precompiled binary bytecode in nested scope. */
+XXFC_API int js_eval_nested_bytecode(JSCtx *pCtx, const void *pBytecode, size_t nSize, const char *pName);
+
 /* Last error string; valid until the next evaluation. */
 XXFC_API const char *js_error(JSCtx *pCtx);
 XXFC_API void js_clear_error(JSCtx *pCtx);

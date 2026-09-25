@@ -133,6 +133,8 @@ bool xx_store_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, i
         return false;
     }
 
+    /* A file that cannot be opened was never touched here, so it is left
+     * alone; only output this call created is discarded on failure. */
     xx_io_device *out_file = xx_io_file_open(dst_file_path, "wb");
     if (!out_file) {
         return false;
@@ -140,6 +142,9 @@ bool xx_store_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, i
 
     bool success = xx_store_unpack_device(src_dev, src_offset, size, out_file, pd);
     xx_io_close(out_file);
+    if (!success) {
+        xx_io_file_remove_a(dst_file_path);
+    }
     return success;
 }
 

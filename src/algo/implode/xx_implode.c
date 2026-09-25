@@ -487,5 +487,8 @@ bool xx_implode_unpack_device_to_file(xx_io_device *src_dev,
                                       expected_size, use_8k_dictionary,
                                       use_literal_tree, pd);
     xx_io_close(dst_dev);
+    if (!result) {
+        xx_io_file_remove_a(dst_file_path);
+    }
     return result;
 }

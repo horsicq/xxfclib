@@ -555,6 +555,7 @@ bool xx_huf_unpack_current_archive_record(
     size_t plain_size = 0U;
     size_t written = 0U;
     bool result = false;
+    bool created = false;
     if (!self || !state || state->format != self || !state->has_record ||
         !(stream = (xx_huf_stream *)state->internal_state) ||
         stream->index >= stream->count || (pd && xx_pd_is_stopped(pd))) {
@@ -592,6 +593,7 @@ bool xx_huf_unpack_current_archive_record(
     }
     {
         xx_io_device *output = xx_io_file_open(destination_path, "wb");
+        created = output != NULL;
         if (!output) goto cleanup;
         result = true;
         while (written < plain_size) {
@@ -610,7 +612,7 @@ bool xx_huf_unpack_current_archive_record(
         if (xx_io_close(output) != 0) result = false;
     }
 cleanup:
-    if (!result && destination_path) xx_rt_remove(destination_path);
+    if (!result && destination_path && created) xx_rt_remove(destination_path);
     xx_str_free(destination_path);
     xx_str_free(owned_path);
     xx_mem_free(plain);

@@ -66,8 +66,10 @@
  * the device is read in blocks of this size instead of per byte. */
 #define XX_JPEG_WINDOW_SIZE ((size_t)65536U)
 
-/* How many markers / window refills between two stop-flag polls. */
+/* How many markers between two stop-flag polls, and how many bytes of
+ * entropy-coded data a scan search covers between two polls. */
 #define XX_JPEG_POLL_INTERVAL 4096U
+#define XX_JPEG_SCAN_POLL_BYTES ((int64_t)1 << 20)
 
 static const uint8_t xx_jpeg_magic_jfif[XX_JPEG_MAX_MAGIC_SIZE] = {
     0xFFU, 0xD8U, 0xFFU, 0xE0U, 0x00U, 0x10U, 'J', 'F', 'I', 'F', 0x00U};
@@ -180,7 +182,7 @@ static bool xx_jpeg_is_frame_marker(uint8_t id) {
 static bool xx_jpeg_scan(xx_jpeg_cursor *cursor, int64_t start,
                          int64_t *marker_offset, xx_pd_struct *pd) {
     int64_t pos = start;
-    uint32_t refills = 0U;
+    int64_t next_poll = start;
 
     if (start < 0) return false;
     while (pos <= cursor->span - 2) {
@@ -189,6 +191,13 @@ static bool xx_jpeg_scan(xx_jpeg_cursor *cursor, int64_t start,
         size_t limit;
         uint8_t next;
 
+        /* pos only grows, so this polls once per XX_JPEG_SCAN_POLL_BYTES of
+         * progress whatever the mix of plain bytes and FF 00 / FF Dn pairs.
+         * next_poll <= span + 1 MiB: no overflow. */
+        if (pos >= next_poll) {
+            if (xx_pd_is_stopped(pd)) return false;
+            next_poll = pos + XX_JPEG_SCAN_POLL_BYTES;
+        }
         if (!xx_jpeg_cursor_cover(cursor, pos)) return false;
         window = cursor->window;
         index = (size_t)(pos - cursor->window_start);
@@ -197,13 +206,7 @@ static bool xx_jpeg_scan(xx_jpeg_cursor *cursor, int64_t start,
             ++index;
         }
         pos = cursor->window_start + (int64_t)index;
-        if (index == limit) {
-            if (++refills % XX_JPEG_POLL_INTERVAL == 0U &&
-                xx_pd_is_stopped(pd)) {
-                return false;
-            }
-            continue;
-        }
+        if (index == limit) continue; /* no 0xFF here: next window */
         /* 0xFF at pos.  binwalk needs both bytes to exist. */
         if (pos > cursor->span - 2) return false;
         if (!xx_jpeg_cursor_byte(cursor, pos + 1, &next)) return false;

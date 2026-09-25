@@ -598,7 +598,9 @@ static bool xx_androidboot_write_blob(const char *path, const uint8_t *data,
     bool result;
     if (!path || (!data && size != 0U)) return false;
     output = xx_io_file_open(path, "wb");
-    result = output != NULL;
+    /* Nothing was written to a file that did not open: leave it alone. */
+    if (!output) return false;
+    result = true;
     while (result && done < size) {
         ssize_t sent = xx_io_write(output, data + done, size - done);
         if (sent <= 0 || (size_t)sent > size - done) {
@@ -607,7 +609,8 @@ static bool xx_androidboot_write_blob(const char *path, const uint8_t *data,
         }
         done += (size_t)sent;
     }
-    if (output && xx_io_close(output) != 0) result = false;
+    if (xx_io_close(output) != 0) result = false;
+    if (!result) xx_rt_remove(path);
     return result;
 }
 
@@ -861,7 +864,6 @@ bool xx_androidboot_unpack_current_archive_record(
                                                 entry->data_size, destination,
                                                 pd);
     }
-    if (!result) xx_rt_remove(destination);
     if (owned_base) xx_str_free(owned_base);
     xx_str_free(destination);
     return result;

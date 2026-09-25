@@ -1,7 +1,7 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  */
-/** @file xx_diskdoubler.h @brief DiskDoubler compressed file reader. */
+/** @file xx_diskdoubler.h @brief DiskDoubler compressed file and DDA2/DDAR archive reader. */
 
 #ifndef XXFCLIB_FORMAT_DISKDOUBLER_H
 #define XXFCLIB_FORMAT_DISKDOUBLER_H
@@ -14,6 +14,8 @@ extern "C" {
 
 /**
  * @brief A DiskDoubler compressed Macintosh file: one 84-byte big-endian header carrying an independent packed length, plaintext length and codec number for each of the file's two Macintosh forks, followed by the data fork's packed bytes and then the resource fork's.
+ *
+ * The same reader opens DiskDoubler's two archive forms, DDA2 and DDAR, which bundle such compressed files (and stored files) with a folder tree. Every file yields one member per non-empty fork: the data fork under the file's name, the resource fork under that name plus ".rsrc".
  */
 typedef struct xx_diskdoubler {
     Abstractformat format;

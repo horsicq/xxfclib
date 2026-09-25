@@ -15,8 +15,9 @@
  *     b9 00 01  movw $256,%cx          29 f6  subw %si,%si
  *     29        (first byte of subw %di,%di)
  *
- * which every kernel from 0.01 up to the 2.5 series carried (2.6.0 replaced
- * the floppy loader with a stub).  The setup header documented in
+ * i.e. the opening of the floppy loader that the 2.x kernels carried until
+ * 2.6.0 replaced it with a stub (modern bzImages start with "MZ" or that stub
+ * and are not this signature).  The setup header documented in
  * Documentation/i386/boot.txt then sits at fixed offsets:
  *
  *   0x1F1  u8   setup_sects       setup length in sectors, 0 means 4

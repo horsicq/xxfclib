@@ -12,25 +12,32 @@
  *   chunk = page_size bytes of page data + spare_size bytes of spare/OOB
  *
  * YAFFS2 tags (struct yaffs_packed_tags2_tags_only), at the start of the
- * spare - or two bytes in when the image was built without the ECC layout:
+ * spare (mkyaffs2image, followed by a 12 byte tag ECC) - or two bytes in,
+ * after the bad block marker, as yaffs2utils and the kernel's MTD layout
+ * place them - or, with in-band tags, in the last 16 bytes of the page:
  *
- *     +0   u32  sequence number of the erase block
+ *     +0   u32  sequence number of the erase block, 0x1000..0xEFFFFF00
  *     +4   u32  object id this chunk belongs to
  *     +8   u32  chunk id - 0 marks an OBJECT HEADER, 1..n a data chunk
  *     +12  u32  number of valid bytes in the page
+ *
+ * A header written by the Linux driver sets bit 31 of the chunk id and
+ * stores the parent id in its low 28 bits, and the object type in the top
+ * nibble of the object id. Sequence 0x21 marks a checkpoint block.
  *
  * YAFFS1 tags (struct yaffs_tags) are eight bytes of bitfields scattered
  * through a sixteen byte struct yaffs_spare, around the page/block status
  * bytes and the two three-byte ECCs:
  *
- *     spare[0..2]   tag bytes 0..2      spare[3]      page status
- *     spare[4]      block status        spare[5..7]   tag bytes 3..5
+ *     spare[0..3]   tag bytes 0..3      spare[4]      page status (0: deleted)
+ *     spare[5]      block status        spare[6..7]   tag bytes 4..5
  *     spare[8..10]  ECC of bytes 0..255 spare[11..12] tag bytes 6..7
  *     spare[13..15] ECC of bytes 256..511
  *
  *   chunk_id : 20, serial_number : 2, byte_count : 10, object_id : 18,
- *   ecc : 12 - packed by the compiler, so the bit order follows the target's
- *   endianness.
+ *   ecc : 12, 2 spare bits - packed by the compiler, so the bit order follows
+ *   the target's endianness. The two-bit serial tells the newer of two copies
+ *   of a chunk.
  *
  * An object header chunk holds a 512 byte struct yaffs_obj_hdr:
  *
@@ -38,7 +45,7 @@
  *                 4 hardlink, 5 special
  *     +4    u32   parent object id (1 is the root directory)
  *     +8    u16   name checksum, no longer used, always 0xFFFF
- *     +10   char  name[], NUL terminated inside a 256 byte field
+ *     +10   char  name[256], at most 255 bytes, NUL terminated below that
  *     +268  u32   mode        +272 uid     +276 gid
  *     +280  u32   atime       +284 mtime   +288 ctime
  *     +292  u32   file size, low 32 bits
@@ -48,19 +55,30 @@
  *     +488  u32   inband shadowed object id   +492 u32 inband is-shrink
  *     +496  u32   file size, high 32 bits, 0xFFFFFFFF when unused
  *
- * YAFFS HAS NO MAGIC NUMBER.  Detection is structural: chunk 0 must hold an
- * object header for the root directory - type 3, checksum 0xFFFF, a non-zero
- * parent - and the tags in that chunk's spare must name object 1, chunk 0.
- * Page size, spare size, spare offset, endianness and the YAFFS1/YAFFS2 tag
- * layout are all unknown up front, so the reader brute-forces that product
- * space and scores each candidate over the first few chunks.  See
- * xx_yaffs_detect() in the implementation for the order and the scoring.
+ * YAFFS HAS NO MAGIC NUMBER.  Detection is structural: chunk 0 must hold the
+ * first object header an image builder writes - an object in the root
+ * directory: type 1, 2, 3 or 5, parent 1, checksum 0xFFFF, a printable name
+ * (empty only for the root directory itself) - and the tags of chunk 0 must
+ * describe an object header. Page size, spare size, spare offset, in-band
+ * tags, endianness and the YAFFS1/YAFFS2 tag layout are all unknown up
+ * front, so the reader brute-forces that product space and scores each
+ * candidate over the first 64 chunks; a candidate whose following chunks
+ * hold more non-YAFFS tags than YAFFS ones is rejected. See xx_yaffs_detect()
+ * in the implementation for the order and the scoring.
  *
  * A file's data lives in chunks scattered through the image and is addressed
- * by (object id, chunk id); the tree is rebuilt from each object's parent id.
- * Both are attacker controlled, so the parent chain is resolved iteratively
- * with an explicit in-progress marker that turns a self-parenting or mutually
- * parenting set of objects into an orphan rather than a hang.
+ * by (object id, chunk id); the newest copy of each wins. The tree is rebuilt
+ * from each object's parent id. Both are attacker controlled, so the parent
+ * chain is resolved iteratively with an explicit in-progress marker that
+ * turns a self-parenting or mutually parenting set of objects into an orphan
+ * (listed under lost+found) rather than a hang. Objects in the unlinked or
+ * deleted pseudo-directories are not listed. Names are made host-safe and
+ * unique within their directory - compared the way a case-insensitive host
+ * compares them, non-ASCII letters included, a later clash becoming
+ * "name~N" - and full paths are rebuilt from the leaves per record rather
+ * than stored per object. Symlink targets are reported in
+ * XX_META_ID_LINK_TARGET; a hard link extracts a copy of its target file,
+ * all such copies together bounded by the image size.
  */
 
 #ifndef XXFCLIB_FORMAT_YAFFS_H
@@ -110,7 +128,8 @@ struct xx_yaffs {
     uint32_t tag_offset;  /**< Byte offset of the tags inside the spare. */
     uint32_t version;     /**< 1 for YAFFS1 tags, 2 for YAFFS2 tags. */
     bool big_endian;      /**< True when the image was built big endian. */
-    bool has_spare;       /**< False for the heuristic no-OOB layout. */
+    bool has_spare;       /**< False for in-band tags and the tag-less
+                               layout (an image whose spare was stripped). */
     int64_t archive_end;  /**< base_address + whole chunks, or -1. */
     void *internal;
 };

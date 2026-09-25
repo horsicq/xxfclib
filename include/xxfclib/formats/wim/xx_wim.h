@@ -13,8 +13,12 @@
 extern "C" {
 #endif
 
-/* A WIM: the header's offset table lists every stream the image holds.
- * Streams are content addressed by SHA-1 and may be LZX or XPRESS coded. */
+/* A WIM, a split WIM part (SWM) or a solid ESD.  Members are the files and
+ * directories of every image (under "<index>/" when there are several),
+ * named data streams as "<file>.__streams__/<name>", the XML resource as
+ * "wim.xml", and any stream no image references as "stream_NNNN.bin".
+ * Streams are content addressed by SHA-1 and may be stored or XPRESS, LZX or
+ * LZMS coded (LZMS in solid resources too). */
 typedef struct xx_wim {
     Abstractformat format;
     uint64_t number_of_records;

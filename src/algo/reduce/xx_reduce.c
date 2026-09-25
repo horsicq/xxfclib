@@ -370,5 +370,8 @@ bool xx_reduce_unpack_device_to_file(xx_io_device *src_dev,
     result = xx_reduce_unpack_device(src_dev, src_offset, comp_size, dst_dev,
                                      expected_size, factor, pd);
     xx_io_close(dst_dev);
+    if (!result) {
+        xx_io_file_remove_a(dst_file_path);
+    }
     return result;
 }

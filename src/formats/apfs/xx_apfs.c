@@ -1675,7 +1675,6 @@ bool xx_apfs_unpack_current_archive_record(Abstractformat *self,
         result = xx_store_unpack_device_to_file(self->device, entry->data_offset,
                                                 entry->data_size, destination,
                                                 pd);
-        if (!result) xx_rt_remove(destination);
     } else {
         result = false;
     }

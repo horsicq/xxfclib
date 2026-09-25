@@ -21,7 +21,10 @@
 
 /**
  * @file xx_ar.h
- * @brief Unix ar archive reader (System V, GNU, and BSD name variants).
+ * @brief Unix ar archive reader (System V, GNU, and BSD name variants),
+ *        including Debian packages and Microsoft .lib static and import
+ *        libraries (linker members, "/<NAME>/" members, NUL-terminated long
+ *        names, absolute and duplicated member names).
  */
 
 #ifndef XXFCLIB_FORMAT_AR_H

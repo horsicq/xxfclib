@@ -1,35 +1,56 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  *
- * Microsoft Virtual Hard Disk, DYNAMIC variant.  Everything in a VHD is BIG
- * endian, which is unusual enough to be a detection aid in itself.
+ * Microsoft Virtual Hard Disk (VHD; Connectix / Virtual PC): fixed, dynamic
+ * and differencing images.  Everything in a VHD is BIG endian.
  *
- * Footer (the LAST 512 bytes, mirrored at offset 0)
+ * Hard disk footer: the LAST 512 bytes of the file.  Writers older than
+ * Virtual PC 2004 leave out the final (reserved, zero) byte and write 511.
  *   +0x00  "conectix"
  *   +0x08  u32  features; bit 1 is reserved-and-always-set
  *   +0x0c  u32  file format version, 0x00010000
- *   +0x10  u64  offset of the dynamic-disk header
- *   +0x18  u32  creation time
+ *   +0x10  u64  offset of the dynamic-disk header; all ones for a fixed disk
+ *   +0x18  u32  creation time, seconds since 2000-01-01 00:00 UTC
  *   +0x30  u64  current disk size
  *   +0x3c  u32  disk type; 2 fixed, 3 dynamic, 4 differencing
  *   +0x40  u32  one's-complement checksum over the footer
+ *   +0x44  16   unique id
  *
- * Dynamic-disk header (1024 bytes at that offset)
+ * A FIXED image is the disk itself, current-size bytes from offset 0, and
+ * then the footer.  Nothing else identifies it, so the footer must sit
+ * exactly at current-size.
+ *
+ * A DYNAMIC or DIFFERENCING image starts with a copy of the footer; the
+ * footer's data offset points at the dynamic-disk header (1024 bytes)
  *   +0x00  "cxsparse"
  *   +0x08  u64  0xffffffffffffffff (no next header)
  *   +0x10  u64  BAT offset
  *   +0x18  u32  header version, 0x00010000
  *   +0x1c  u32  max table entries   +0x20  u32  block size
  *   +0x24  u32  one's-complement checksum
- *   +0x28  16   parent UUID; non-zero means a differencing image
- *
+ *   +0x28  16   parent unique id    +0x38  u32  parent time stamp
+ *   +0x40  512  parent file name, UTF-16 big endian
+ *   +0x240 8 x 24 parent locators
  * Each BAT entry is the 512-byte sector at which a block starts, or
  * 0xffffffff for an unallocated block.  A block opens with a sector
- * allocation bitmap rounded up to 512 bytes, MSB first, and only the
- * sectors whose bit is set carry data; the rest read back as zero.
+ * allocation bitmap rounded up to 512 bytes, MSB first; only the sectors
+ * whose bit is set are stored in the block.
  *
- * Ported from XArchive diskimages/xvirtualdiskarchive.cpp (parseVHD); U3
- * implements the same format as archive/12 (class mfa, VMT 0x0049bef8).
+ * The reader publishes one member, the guest disk ("disk.img", current-size
+ * bytes).  In a dynamic disk a clear bit or an unallocated block reads as
+ * zeros.  A differencing disk takes those sectors from its parent, which is
+ * a separate file a single-device reader cannot open; like the qcow reader
+ * with a backing file and the vdi reader with a differencing image, this
+ * reader publishes the image's own sectors with zeros where the parent
+ * would supply data, and names the parent in the record comment.
+ *
+ * The checks are ported from XArchive diskimages/xvirtualdiskarchive.cpp
+ * (parseVHD; MIT licence, same author), widened to fixed and differencing
+ * images, 511-byte footers, the 32-bit 0xFFFFFFFF data offset the
+ * specification text gives for fixed disks, and a front footer copy that
+ * may differ from the tail one in fields that do not describe the layout
+ * (time stamp, saved-state flag).  U3 implements the dynamic variant as
+ * archive/12 (class mfa, VMT 0x0049bef8).
  */
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/vhddynamic/xx_vhddynamic.h"
@@ -39,9 +60,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 
-#include <limits.h>
 #include <stdio.h>
-#include <string.h>
 
 #ifdef VHDDYNAMIC
 #define XX_VHDDYNAMIC_FILE_TYPE XX_FILE_TYPE_VHDDYNAMIC
@@ -49,50 +68,45 @@
 #define XX_VHDDYNAMIC_FILE_TYPE XX_FILE_TYPE_UNKNOWN
 #endif
 
-#define VHDDYNAMIC_MAX_MEMBERS 16U
+#define VHDDYNAMIC_FOOTER_SIZE 512U
+#define VHDDYNAMIC_DYNHDR_SIZE 1024U
+/* The format tops out at 2040 GiB; anything past 4 TiB is not a VHD. */
+#define VHDDYNAMIC_MAX_DISK ((uint64_t)1U << 42U)
+/* 4 M entries: 2040 GiB at 512 KiB blocks, the smallest block size any
+ * known writer uses for a disk that large. */
+#define VHDDYNAMIC_MAX_ENTRIES (UINT32_C(1) << 22U)
+#define VHDDYNAMIC_MAX_BLOCK (UINT32_C(32) * 1024U * 1024U)
+/* The table is read in slices of this many entries (16 KB). */
+#define VHDDYNAMIC_BAT_SLICE 4096U
+#define VHDDYNAMIC_TYPE_FIXED 2U
+#define VHDDYNAMIC_TYPE_DYNAMIC 3U
+#define VHDDYNAMIC_TYPE_DIFFERENCING 4U
+#define VHDDYNAMIC_MEMBER_NAME "disk.img"
+/* 256 UTF-16 units of parent name, up to 4 UTF-8 bytes each, plus text. */
+#define VHDDYNAMIC_COMMENT_SIZE 1152U
 
-/* One enumerated member.  The aux slots carry whatever the format needs to
- * rebuild the member later without re-parsing the container. */
-typedef struct vhddynamic_member_s {
-    char *name;
-    int64_t header_offset;
-    int64_t header_size;
-    int64_t data_offset;
-    int64_t packed_size;
-    uint64_t unpacked_size;
-    uint64_t timestamp;
-    uint64_t aux0;
-    uint64_t aux1;
-    uint64_t aux2;
-    uint32_t method;
-    uint32_t crc32;
-    uint32_t attributes;
-    uint32_t flags;
-    bool has_crc;
-    bool encrypted;
-    bool folder;
-} vhddynamic_member;
+typedef struct vhddynamic_info_s {
+    int64_t base;
+    int64_t size;          /* bytes from base through the end of the footer */
+    int64_t footer_offset; /* relative to base */
+    uint32_t footer_size;  /* 512, or 511 for pre-2004 Virtual PC */
+    uint32_t disk_type;
+    uint64_t disk_size;
+    uint32_t timestamp;
+    uint64_t header_offset;
+    uint64_t bat_offset;
+    uint32_t entries;
+    uint32_t block_size;
+    uint8_t dynamic[VHDDYNAMIC_DYNHDR_SIZE]; /* types 3 and 4 only */
+} vhddynamic_info;
 
 typedef struct vhddynamic_stream_s {
-    vhddynamic_member *items;
-    size_t count;
-    size_t index;
-    int64_t archive_size;
-    uint64_t aux0;
-    uint64_t aux1;
-    uint64_t aux2;
+    vhddynamic_info info;
+    size_t index; /* 0 while the single record is current */
 } vhddynamic_stream;
 
-static uint16_t vhddynamic_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static uint32_t vhddynamic_le32(const uint8_t *b) {
-    return (uint32_t)vhddynamic_le16(b) | ((uint32_t)vhddynamic_le16(b + 2U) << 16U);
-}
-
-static uint64_t vhddynamic_le64(const uint8_t *b) {
-    return (uint64_t)vhddynamic_le32(b) | ((uint64_t)vhddynamic_le32(b + 4U) << 32U);
+static void vhddynamic_stream_free(void *opaque) {
+    if (opaque) xx_mem_free(opaque);
 }
 
 static uint32_t vhddynamic_be32(const uint8_t *b) {
@@ -101,11 +115,12 @@ static uint32_t vhddynamic_be32(const uint8_t *b) {
 }
 
 static uint64_t vhddynamic_be64(const uint8_t *b) {
-    return ((uint64_t)vhddynamic_be32(b) << 32U) | (uint64_t)vhddynamic_be32(b + 4U);
+    return ((uint64_t)vhddynamic_be32(b) << 32U) |
+           (uint64_t)vhddynamic_be32(b + 4U);
 }
 
-static bool vhddynamic_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool vhddynamic_read_at(xx_io_device *device, int64_t offset,
+                               void *buffer, size_t size) {
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
@@ -119,8 +134,8 @@ static bool vhddynamic_read_at(xx_io_device *device, int64_t offset, void *buffe
     return true;
 }
 
-static bool vhddynamic_write_all(xx_io_device *device, const void *data, size_t size,
-                          xx_pd_struct *pd) {
+static bool vhddynamic_write_all(xx_io_device *device, const void *data,
+                                 size_t size, xx_pd_struct *pd) {
     size_t done = 0U;
     if (!data && size != 0U) return false;
     if (!device) return true; /* verify-only pass: nothing is materialized */
@@ -136,8 +151,9 @@ static bool vhddynamic_write_all(xx_io_device *device, const void *data, size_t 
 }
 
 /* Copy a run of source bytes straight through to the destination. */
-static bool vhddynamic_copy_range(xx_io_device *source, int64_t offset, uint64_t size,
-                           xx_io_device *destination, xx_pd_struct *pd) {
+static bool vhddynamic_copy_range(xx_io_device *source, int64_t offset,
+                                  uint64_t size, xx_io_device *destination,
+                                  xx_pd_struct *pd) {
     uint8_t buffer[0x8000];
     uint64_t left = size;
     if (!source || offset < 0) return false;
@@ -158,13 +174,13 @@ static bool vhddynamic_copy_range(xx_io_device *source, int64_t offset, uint64_t
     return true;
 }
 
-/* Emit `size` zero bytes: the filler every sparse disk image needs. */
+/* Emit `size` zero bytes: unallocated blocks and sectors. */
 static bool vhddynamic_write_zeros(xx_io_device *destination, uint64_t size,
-                            xx_pd_struct *pd) {
+                                   xx_pd_struct *pd) {
     uint8_t buffer[0x8000];
     uint64_t left = size;
     if (!destination) return true;
-    xx_mem_zero(buffer, sizeof(buffer));
+    xx_rt_memset(buffer, 0, sizeof(buffer));
     while (left != 0U) {
         size_t want = left < sizeof(buffer) ? (size_t)left : sizeof(buffer);
         if (!vhddynamic_write_all(destination, buffer, want, pd)) return false;
@@ -173,145 +189,9 @@ static bool vhddynamic_write_zeros(xx_io_device *destination, uint64_t size,
     return true;
 }
 
-/* Reader-owned names are built here, never taken from the container, so they
- * are safe by construction. */
-static char *vhddynamic_make_name(const char *prefix, int64_t index,
-                           const char *suffix) {
-    char buffer[96];
-    size_t used = 0U;
-    size_t at;
-    char *result;
-    for (at = 0U; prefix && prefix[at]; ++at) {
-        if (used >= sizeof(buffer) - 1U) return NULL;
-        buffer[used++] = prefix[at];
-    }
-    if (index >= 0) {
-        char digits[24];
-        size_t count = 0U;
-        int64_t value = index;
-        do {
-            digits[count++] = (char)('0' + (int)(value % 10));
-            value /= 10;
-        } while (value != 0 && count < sizeof(digits));
-        while (count < 4U && count < sizeof(digits)) digits[count++] = '0';
-        while (count != 0U) {
-            if (used >= sizeof(buffer) - 1U) return NULL;
-            buffer[used++] = digits[--count];
-        }
-    }
-    for (at = 0U; suffix && suffix[at]; ++at) {
-        if (used >= sizeof(buffer) - 1U) return NULL;
-        buffer[used++] = suffix[at];
-    }
-    buffer[used] = 0;
-    result = (char *)xx_mem_alloc(used + 1U);
-    if (!result) return NULL;
-    xx_mem_copy(result, buffer, used + 1U);
-    return result;
-}
-
-/* Names that DO come from the container are normalized here: separators are
- * unified, traversal components are removed and anything a filesystem would
- * choke on becomes '_'. */
-static char *vhddynamic_clean_name(const uint8_t *bytes, size_t size) {
-    char *name;
-    size_t input = 0U, output = 0U;
-    if ((!bytes && size != 0U) || size > SIZE_MAX - 2U) return NULL;
-    name = (char *)xx_mem_alloc(size + 2U);
-    if (!name) return NULL;
-    while (input < size) {
-        size_t start, end, component_start;
-        while (input < size && (bytes[input] == '/' || bytes[input] == '\\'))
-            ++input;
-        start = input;
-        while (input < size && bytes[input] != '/' && bytes[input] != '\\')
-            ++input;
-        end = input;
-        if (end == start || (end - start == 1U && bytes[start] == '.'))
-            continue;
-        if (end - start == 2U && bytes[start] == '.' &&
-            bytes[start + 1U] == '.') {
-            if (output != 0U) {
-                while (output != 0U && name[output - 1U] != '/') --output;
-                if (output != 0U) --output;
-            }
-            continue;
-        }
-        if (output != 0U) name[output++] = '/';
-        component_start = output;
-        while (start < end) {
-            uint8_t c = bytes[start++];
-            if (c < 0x20U || c == '"' || c == '*' || c == ':' || c == '<' ||
-                c == '>' || c == '?' || c == '|' || c == 0U)
-                name[output++] = '_';
-            else
-                name[output++] = (char)c;
-        }
-        while (output > component_start &&
-               (name[output - 1U] == ' ' || name[output - 1U] == '.'))
-            --output;
-        if (output == component_start) name[output++] = '_';
-    }
-    if (output == 0U) name[output++] = '_';
-    name[output] = 0;
-    return name;
-}
-
-static bool vhddynamic_safe_output_name(const char *name) {
-    const char *segment;
-    const char *at;
-    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' ||
-        name[1] == ':')
-        return false;
-    segment = name;
-    for (at = name;; ++at) {
-        unsigned char c = (unsigned char)*at;
-        if (c == ':' || c == '<' || c == '>' || c == '"' || c == '|' ||
-            c == '?' || c == '*' || (c != 0U && c < 0x20U))
-            return false;
-        if (c == '/' || c == '\\' || c == 0U) {
-            size_t length = (size_t)(at - segment);
-            if (length == 0U || (length == 1U && segment[0] == '.') ||
-                (length == 2U && segment[0] == '.' && segment[1] == '.'))
-                return false;
-            if (c == 0U) return true;
-            segment = at + 1;
-        }
-    }
-}
-
-static void vhddynamic_stream_free(void *opaque) {
-    vhddynamic_stream *stream = (vhddynamic_stream *)opaque;
-    size_t index;
-    if (!stream) return;
-    for (index = 0U; index < stream->count; ++index)
-        if (stream->items[index].name) xx_mem_free(stream->items[index].name);
-    if (stream->items) xx_mem_free(stream->items);
-    xx_mem_free(stream);
-}
-
-static bool vhddynamic_add_member(vhddynamic_stream *stream, const vhddynamic_member *member) {
-    vhddynamic_member *grown;
-    if (!stream || !member || stream->count >= VHDDYNAMIC_MAX_MEMBERS ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (vhddynamic_member *)xx_mem_realloc(
-        stream->items, (stream->count + 1U) * sizeof(*grown));
-    if (!grown) return false;
-    stream->items = grown;
-    stream->items[stream->count++] = *member;
-    return true;
-}
-
-#define VHDDYNAMIC_FOOTER_SIZE 512
-#define VHDDYNAMIC_DYNHDR_SIZE 1024
-#define VHDDYNAMIC_MAX_DISK ((uint64_t)1U << 42U)
-#define VHDDYNAMIC_MAX_ENTRIES (1U << 22U)
-
 /* One's-complement checksum over the structure with its own checksum field
- * treated as zero.  Both the footer and the dynamic-disk header carry one and
- * both are verified; they are the only thing separating a real VHD from a
- * file whose last sector happens to start with "conectix". */
+ * treated as zero.  Together with the cookie it is what separates a real
+ * VHD from a file whose last sector happens to start with "conectix". */
 static bool vhddynamic_checksum_ok(const uint8_t *data, size_t size,
                                    size_t field) {
     uint32_t sum = 0U;
@@ -324,193 +204,338 @@ static bool vhddynamic_checksum_ok(const uint8_t *data, size_t size,
     return vhddynamic_be32(data + field) == (uint32_t)~sum;
 }
 
+static bool vhddynamic_footer_ok(const uint8_t *footer) {
+    uint32_t features = vhddynamic_be32(footer + 8U);
+    return xx_rt_memcmp(footer, "conectix", 8U) == 0 &&
+           (features & ~UINT32_C(3)) == 0U && (features & 2U) != 0U &&
+           vhddynamic_be32(footer + 12U) == 0x00010000U &&
+           vhddynamic_checksum_ok(footer, VHDDYNAMIC_FOOTER_SIZE, 64U);
+}
+
 static bool vhddynamic_power_of_two(uint64_t value) {
     return value != 0U && (value & (value - 1U)) == 0U;
 }
 
-static bool vhddynamic_parse(Abstractformat *format,
-                             vhddynamic_stream **result) {
+/* Blocks needed to cover the disk; disk_size is known to be non-zero. */
+static uint64_t vhddynamic_needed_blocks(const vhddynamic_info *info) {
+    return (info->disk_size - 1U) / info->block_size + 1U;
+}
+
+/* Everything here is bounded: at most three reads (512, 512 and 1024
+ * bytes) and no allocation.  This is also the detector's probe, and a file
+ * whose size is not 0 or 511 modulo 512 costs no read at all. */
+static bool vhddynamic_parse(Abstractformat *format, vhddynamic_info *info) {
     uint8_t footer[VHDDYNAMIC_FOOTER_SIZE];
     uint8_t front[VHDDYNAMIC_FOOTER_SIZE];
-    uint8_t dynamic[VHDDYNAMIC_DYNHDR_SIZE];
-    vhddynamic_stream *stream = NULL;
-    vhddynamic_member member;
+    uint8_t *dynamic;
     int64_t total, size;
-    uint64_t disk_size, header_offset, bat_offset, bat_bytes;
-    uint32_t features, disk_type, entries, block_size, needed;
-    size_t at;
+    uint64_t data_offset, limit;
 
-    if (!format || !format->device || !result || format->base_address < 0)
+    if (!format || !format->device || !info || format->base_address < 0)
         return false;
+    xx_rt_memset(info, 0, sizeof(*info));
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (size < VHDDYNAMIC_FOOTER_SIZE * 3 || (size % VHDDYNAMIC_FOOTER_SIZE))
+    /* The smallest image is one sector of disk and a 511-byte footer. */
+    if (size < (int64_t)(512U + 511U)) return false;
+    if (size % 512 == 0)
+        info->footer_size = VHDDYNAMIC_FOOTER_SIZE;
+    else if (size % 512 == 511)
+        info->footer_size = VHDDYNAMIC_FOOTER_SIZE - 1U;
+    else
         return false;
+    info->base = format->base_address;
+    info->size = size;
+    info->footer_offset = size - (int64_t)info->footer_size;
+    /* A 511-byte footer is the 512-byte one without its last reserved (zero)
+     * byte, so the zero padding keeps the checksum the same. */
+    xx_rt_memset(footer, 0, sizeof(footer));
     if (!vhddynamic_read_at(format->device,
-                            format->base_address + size -
-                                VHDDYNAMIC_FOOTER_SIZE,
-                            footer, sizeof(footer)) ||
-        xx_rt_memcmp(footer, "conectix", 8U) != 0)
+                            info->base + info->footer_offset, footer,
+                            info->footer_size) ||
+        !vhddynamic_footer_ok(footer))
         return false;
 
-    features = vhddynamic_be32(footer + 8U);
-    if ((features & ~UINT32_C(3)) != 0U || (features & 2U) == 0U) return false;
-    if (vhddynamic_be32(footer + 12U) != 0x00010000U) return false;
-    if (!vhddynamic_checksum_ok(footer, sizeof(footer), 64U)) return false;
-
-    disk_size = vhddynamic_be64(footer + 48U);
-    if (disk_size == 0U || disk_size > VHDDYNAMIC_MAX_DISK ||
-        (disk_size % 512U) != 0U)
-        return false;
-    disk_type = vhddynamic_be32(footer + 60U);
-    /* Fixed images are a different reader and differencing images need a
-     * separately supplied parent, so only type 3 belongs here. */
-    if (disk_type != 3U) return false;
-
-    header_offset = vhddynamic_be64(footer + 16U);
-    if (header_offset < 512U || (header_offset % 512U) != 0U ||
-        header_offset > (uint64_t)(size - VHDDYNAMIC_FOOTER_SIZE) ||
-        VHDDYNAMIC_DYNHDR_SIZE >
-            (uint64_t)(size - VHDDYNAMIC_FOOTER_SIZE) - header_offset)
-        return false;
-    if (!vhddynamic_read_at(format->device,
-                            format->base_address + (int64_t)header_offset,
-                            dynamic, sizeof(dynamic)) ||
-        xx_rt_memcmp(dynamic, "cxsparse", 8U) != 0 ||
-        vhddynamic_be64(dynamic + 8U) != UINT64_C(0xffffffffffffffff) ||
-        vhddynamic_be32(dynamic + 24U) != 0x00010000U ||
-        !vhddynamic_checksum_ok(dynamic, sizeof(dynamic), 36U))
-        return false;
-    /* A non-zero parent UUID means a differencing image. */
-    for (at = 40U; at < 56U; ++at)
-        if (dynamic[at] != 0U) return false;
-    /* The footer is mirrored at offset 0; a file where it is not is either
-     * truncated or not a VHD at all. */
-    if (!vhddynamic_read_at(format->device, format->base_address, front,
-                            sizeof(front)) ||
-        xx_rt_memcmp(front, footer, sizeof(footer)) != 0)
+    info->disk_size = vhddynamic_be64(footer + 48U);
+    info->disk_type = vhddynamic_be32(footer + 60U);
+    info->timestamp = vhddynamic_be32(footer + 24U);
+    data_offset = vhddynamic_be64(footer + 16U);
+    if (info->disk_size == 0U || info->disk_size > VHDDYNAMIC_MAX_DISK ||
+        (info->disk_size % 512U) != 0U)
         return false;
 
-    bat_offset = vhddynamic_be64(dynamic + 16U);
-    entries = vhddynamic_be32(dynamic + 28U);
-    block_size = vhddynamic_be32(dynamic + 32U);
-    if (!vhddynamic_power_of_two(block_size) || block_size < 512U ||
-        block_size > 32U * 1024U * 1024U || entries == 0U ||
-        entries > VHDDYNAMIC_MAX_ENTRIES || (bat_offset % 512U) != 0U)
-        return false;
-    needed = (uint32_t)((disk_size - 1U) / block_size + 1U);
-    if (entries < needed) return false;
-    bat_bytes = (((uint64_t)entries * 4U) + 511U) & ~(uint64_t)511U;
-    if (bat_offset > (uint64_t)(size - VHDDYNAMIC_FOOTER_SIZE) ||
-        bat_bytes > (uint64_t)(size - VHDDYNAMIC_FOOTER_SIZE) - bat_offset)
-        return false;
-
-    stream = (vhddynamic_stream *)xx_mem_calloc(1U, sizeof(*stream));
-    if (!stream) return false;
-    stream->aux0 = bat_offset;
-    stream->aux1 = block_size;
-    stream->aux2 = entries;
-
-    xx_mem_zero(&member, sizeof(member));
-    member.name = vhddynamic_make_name("disk", -1, ".img");
-    if (!member.name) goto fail;
-    member.header_offset = format->base_address + size - VHDDYNAMIC_FOOTER_SIZE;
-    member.header_size = VHDDYNAMIC_FOOTER_SIZE;
-    member.data_offset = format->base_address;
-    member.packed_size = size;
-    member.unpacked_size = disk_size;
-    member.method = 1U; /* dynamic: BAT + per-block allocation bitmap */
-    member.timestamp = vhddynamic_be32(footer + 24U);
-    if (!vhddynamic_add_member(stream, &member)) {
-        xx_mem_free(member.name);
-        goto fail;
+    if (info->disk_type == VHDDYNAMIC_TYPE_FIXED) {
+        /* The specification says "0xFFFFFFFF"; every writer seen so far
+         * stores all 64 bits set.  Accept both. */
+        if (data_offset != UINT64_MAX && data_offset != UINT64_C(0xffffffff))
+            return false;
+        /* No header at the front: the disk fills the file up to the
+         * footer, exactly. */
+        return info->disk_size == (uint64_t)info->footer_offset;
     }
-    stream->archive_size = size;
-    *result = stream;
+    if (info->disk_type != VHDDYNAMIC_TYPE_DYNAMIC &&
+        info->disk_type != VHDDYNAMIC_TYPE_DIFFERENCING)
+        return false;
+
+    /* Dynamic structures all live between the front copy and the footer. */
+    limit = (uint64_t)info->footer_offset;
+    if (limit < VHDDYNAMIC_FOOTER_SIZE + VHDDYNAMIC_DYNHDR_SIZE) return false;
+    /* The front copy must describe the same disk.  Time stamp and saved
+     * state are allowed to differ; the layout fields are not. */
+    if (!vhddynamic_read_at(format->device, info->base, front,
+                            sizeof(front)) ||
+        !vhddynamic_footer_ok(front) ||
+        vhddynamic_be32(front + 60U) != info->disk_type ||
+        vhddynamic_be64(front + 48U) != info->disk_size ||
+        vhddynamic_be64(front + 16U) != data_offset)
+        return false;
+
+    info->header_offset = data_offset;
+    if (data_offset < VHDDYNAMIC_FOOTER_SIZE || (data_offset % 512U) != 0U ||
+        data_offset > limit || VHDDYNAMIC_DYNHDR_SIZE > limit - data_offset)
+        return false;
+    dynamic = info->dynamic;
+    if (!vhddynamic_read_at(format->device,
+                            info->base + (int64_t)data_offset, dynamic,
+                            VHDDYNAMIC_DYNHDR_SIZE) ||
+        xx_rt_memcmp(dynamic, "cxsparse", 8U) != 0 ||
+        vhddynamic_be64(dynamic + 8U) != UINT64_MAX ||
+        vhddynamic_be32(dynamic + 24U) != 0x00010000U ||
+        !vhddynamic_checksum_ok(dynamic, VHDDYNAMIC_DYNHDR_SIZE, 36U))
+        return false;
+
+    info->bat_offset = vhddynamic_be64(dynamic + 16U);
+    info->entries = vhddynamic_be32(dynamic + 28U);
+    info->block_size = vhddynamic_be32(dynamic + 32U);
+    if (!vhddynamic_power_of_two(info->block_size) ||
+        info->block_size < 512U || info->block_size > VHDDYNAMIC_MAX_BLOCK ||
+        info->entries == 0U || info->entries > VHDDYNAMIC_MAX_ENTRIES ||
+        (info->bat_offset % 512U) != 0U ||
+        info->bat_offset < VHDDYNAMIC_FOOTER_SIZE)
+        return false;
+    if ((uint64_t)info->entries < vhddynamic_needed_blocks(info)) return false;
+    /* Only the entries that cover the disk are ever read, but the whole
+     * table is declared and must fit before the footer. */
+    if (info->bat_offset > limit ||
+        (uint64_t)info->entries * 4U > limit - info->bat_offset)
+        return false;
     return true;
-fail:
-    vhddynamic_stream_free(stream);
-    return false;
 }
 
-static bool vhddynamic_write_member(Abstractformat *format,
-                                    vhddynamic_stream *stream,
-                                    const vhddynamic_member *member,
-                                    xx_io_device *destination,
-                                    xx_pd_struct *pd) {
+/* Write (or, with no destination, walk) the guest disk. */
+static bool vhddynamic_emit(Abstractformat *format,
+                            const vhddynamic_info *info,
+                            xx_io_device *destination, xx_pd_struct *pd) {
     uint8_t *table = NULL;
     uint8_t *bitmap = NULL;
-    uint64_t block_size, entries, bat_offset, produced = 0U;
-    uint64_t sectors, bitmap_bytes, index;
-    int64_t limit;
+    uint64_t needed, sectors, bitmap_bytes, index, produced = 0U;
+    uint64_t slice_start = 0U, slice_count = 0U;
+    uint64_t limit;
     bool result = false;
 
-    if (!format || !stream || !member) return false;
-    bat_offset = stream->aux0;
-    block_size = stream->aux1;
-    entries = stream->aux2;
-    if (block_size < 512U || entries == 0U) return false;
-    limit = member->packed_size - VHDDYNAMIC_FOOTER_SIZE;
-    sectors = block_size / 512U;
+    if (!format || !format->device || !info) return false;
+    if (info->disk_type == VHDDYNAMIC_TYPE_FIXED)
+        return vhddynamic_copy_range(format->device, info->base,
+                                     info->disk_size, destination, pd);
+
+    limit = (uint64_t)info->footer_offset;
+    needed = vhddynamic_needed_blocks(info);
+    sectors = info->block_size / 512U;
+    /* parse() capped blocks at 32 MB: at most 8 KB of bitmap. */
     bitmap_bytes = (((sectors + 7U) / 8U) + 511U) & ~(uint64_t)511U;
-    if (entries > (uint64_t)SIZE_MAX / 4U ||
-        bitmap_bytes > (uint64_t)SIZE_MAX)
-        return false;
-
-    table = (uint8_t *)xx_mem_alloc((size_t)entries * 4U);
+    if (needed == 0U || needed > info->entries) return false;
+    table = (uint8_t *)xx_mem_alloc(VHDDYNAMIC_BAT_SLICE * 4U);
     bitmap = (uint8_t *)xx_mem_alloc((size_t)bitmap_bytes);
-    if (!table || !bitmap ||
-        !vhddynamic_read_at(format->device,
-                            member->data_offset + (int64_t)bat_offset, table,
-                            (size_t)entries * 4U))
-        goto done;
+    if (!table || !bitmap) goto done;
 
-    for (index = 0U; index < entries && produced < member->unpacked_size;
-         ++index) {
-        uint32_t entry = vhddynamic_be32(table + index * 4U);
-        uint64_t left = member->unpacked_size - produced;
-        uint64_t output = left < block_size ? left : block_size;
-        uint64_t offset, sector;
+    for (index = 0U; index < needed; ++index) {
+        uint32_t entry;
+        uint64_t left = info->disk_size - produced;
+        uint64_t output = left < info->block_size ? left : info->block_size;
+        uint64_t offset, count, sector;
         if (pd && xx_pd_is_stopped(pd)) goto done;
+        if (index - slice_start >= slice_count) {
+            slice_start = index;
+            slice_count = needed - index < VHDDYNAMIC_BAT_SLICE
+                              ? needed - index
+                              : VHDDYNAMIC_BAT_SLICE;
+            if (!vhddynamic_read_at(format->device,
+                                    info->base +
+                                        (int64_t)(info->bat_offset +
+                                                  index * 4U),
+                                    table, (size_t)slice_count * 4U))
+                goto done;
+        }
+        entry = vhddynamic_be32(table + (index - slice_start) * 4U);
         if (entry == 0xffffffffU) {
             if (!vhddynamic_write_zeros(destination, output, pd)) goto done;
             produced += output;
             continue;
         }
+        /* The block, as far as the disk needs it, must lie between the
+         * front footer copy and the tail footer. */
         offset = (uint64_t)entry * 512U;
-        if (offset > (uint64_t)limit ||
-            bitmap_bytes + block_size > (uint64_t)limit - offset)
+        if (offset < VHDDYNAMIC_FOOTER_SIZE || offset > limit ||
+            bitmap_bytes + output > limit - offset)
             goto done;
         if (!vhddynamic_read_at(format->device,
-                                member->data_offset + (int64_t)offset, bitmap,
+                                info->base + (int64_t)offset, bitmap,
                                 (size_t)bitmap_bytes))
             goto done;
-        for (sector = 0U; sector * 512U < output; ++sector) {
+        /* Present and absent sectors come in runs; copy or zero-fill each
+         * run in one go. */
+        count = output / 512U;
+        sector = 0U;
+        while (sector < count) {
             bool present = (bitmap[sector / 8U] &
                             (uint8_t)(0x80U >> (sector % 8U))) != 0U;
+            uint64_t end = sector + 1U;
+            while (end < count &&
+                   ((bitmap[end / 8U] & (uint8_t)(0x80U >> (end % 8U))) !=
+                    0U) == present)
+                ++end;
             if (present) {
                 if (!vhddynamic_copy_range(
                         format->device,
-                        member->data_offset + (int64_t)(offset + bitmap_bytes +
-                                                        sector * 512U),
-                        512U, destination, pd))
+                        info->base + (int64_t)(offset + bitmap_bytes +
+                                               sector * 512U),
+                        (end - sector) * 512U, destination, pd))
                     goto done;
-            } else if (!vhddynamic_write_zeros(destination, 512U, pd)) {
+            } else if (!vhddynamic_write_zeros(destination,
+                                               (end - sector) * 512U, pd)) {
                 goto done;
             }
+            sector = end;
         }
         produced += output;
     }
-    if (produced != member->unpacked_size) goto done;
-    result = true;
+    result = produced == info->disk_size;
 done:
     if (table) xx_mem_free(table);
     if (bitmap) xx_mem_free(bitmap);
     return result;
 }
 
-static bool vhddynamic_copy_options(xx_list_s *destination, const xx_list_s *source) {
+/* Append one code point as UTF-8; control characters, surrogates and
+ * anything out of range become '?', so the comment is always printable. */
+static size_t vhddynamic_put_utf8(char *out, size_t used, size_t size,
+                                  uint32_t cp) {
+    if (cp < 0x20U || cp == 0x7fU || (cp >= 0xd800U && cp <= 0xdfffU) ||
+        cp > 0x10ffffU)
+        cp = '?';
+    if (cp < 0x80U) {
+        if (used + 1U >= size) return used;
+        out[used++] = (char)cp;
+    } else if (cp < 0x800U) {
+        if (used + 2U >= size) return used;
+        out[used++] = (char)(0xc0U | (cp >> 6U));
+        out[used++] = (char)(0x80U | (cp & 0x3fU));
+    } else if (cp < 0x10000U) {
+        if (used + 3U >= size) return used;
+        out[used++] = (char)(0xe0U | (cp >> 12U));
+        out[used++] = (char)(0x80U | ((cp >> 6U) & 0x3fU));
+        out[used++] = (char)(0x80U | (cp & 0x3fU));
+    } else {
+        if (used + 4U >= size) return used;
+        out[used++] = (char)(0xf0U | (cp >> 18U));
+        out[used++] = (char)(0x80U | ((cp >> 12U) & 0x3fU));
+        out[used++] = (char)(0x80U | ((cp >> 6U) & 0x3fU));
+        out[used++] = (char)(0x80U | (cp & 0x3fU));
+    }
+    return used;
+}
+
+/* "differencing image; parent {id} name" from the dynamic-disk header.  The
+ * id is printed in stored byte order; the name is the header's UTF-16BE
+ * parent file name.  The text is metadata only and never becomes a path. */
+static void vhddynamic_parent_comment(const vhddynamic_info *info, char *out,
+                                      size_t size) {
+    static const char hex[] = "0123456789abcdef";
+    static const char prefix[] = "differencing image; parent";
+    const uint8_t *id = info->dynamic + 40U;
+    const uint8_t *name = info->dynamic + 64U;
+    size_t used, at;
+    bool any_id = false, any_name = false;
+    if (!out || size < 128U) return;
+    for (at = 0U; at < 16U; ++at)
+        if (id[at] != 0U) any_id = true;
+    any_name = name[0] != 0U || name[1] != 0U;
+    xx_rt_memcpy(out, prefix, sizeof(prefix) - 1U);
+    used = sizeof(prefix) - 1U;
+    if (!any_id && !any_name) {
+        static const char none[] = " not recorded";
+        xx_rt_memcpy(out + used, none, sizeof(none));
+        return;
+    }
+    if (any_id) {
+        out[used++] = ' ';
+        out[used++] = '{';
+        for (at = 0U; at < 16U; ++at) {
+            if (at == 4U || at == 6U || at == 8U || at == 10U)
+                out[used++] = '-';
+            out[used++] = hex[id[at] >> 4U];
+            out[used++] = hex[id[at] & 15U];
+        }
+        out[used++] = '}';
+    }
+    if (any_name) {
+        out[used++] = ' ';
+        for (at = 0U; at + 1U < 512U; at += 2U) {
+            uint32_t unit = ((uint32_t)name[at] << 8U) | name[at + 1U];
+            if (unit == 0U) break;
+            if (unit >= 0xd800U && unit <= 0xdbffU && at + 3U < 512U) {
+                uint32_t low = ((uint32_t)name[at + 2U] << 8U) |
+                               name[at + 3U];
+                if (low >= 0xdc00U && low <= 0xdfffU) {
+                    unit = 0x10000U + ((unit - 0xd800U) << 10U) +
+                           (low - 0xdc00U);
+                    at += 2U;
+                }
+            }
+            used = vhddynamic_put_utf8(out, used, size, unit);
+        }
+    }
+    out[used] = 0;
+}
+
+static bool vhddynamic_set_record(xx_archive_record *record,
+                                  const vhddynamic_info *info) {
+    uint64_t stored = info->disk_type == VHDDYNAMIC_TYPE_FIXED
+                          ? info->disk_size
+                          : (uint64_t)info->size;
+    xx_archive_record_cleanup(record);
+    xx_archive_record_init(record);
+    record->header_offset = info->base + info->footer_offset;
+    record->header_size = info->footer_size;
+    record->data_offset = info->base;
+    record->compressed_size = (int64_t)stored;
+    if (!xx_archive_record_set_original_name(record, VHDDYNAMIC_MEMBER_NAME) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
+                                        stored) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
+                                        info->disk_size) ||
+        /* The method slot carries the VHD disk type (2, 3 or 4). */
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
+                                        info->disk_type) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
+                                        info->timestamp) ||
+        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
+                                         false) ||
+        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
+        return false;
+    if (info->disk_type == VHDDYNAMIC_TYPE_DIFFERENCING) {
+        char comment[VHDDYNAMIC_COMMENT_SIZE];
+        vhddynamic_parent_comment(info, comment, sizeof(comment));
+        if (!xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT,
+                                            comment))
+            return false;
+    }
+    return true;
+}
+
+static bool vhddynamic_copy_options(xx_list_s *destination,
+                                    const xx_list_s *source) {
     size_t index;
     if (!source) return true;
     for (index = 0U; index < source->count; ++index) {
@@ -528,7 +553,8 @@ static bool vhddynamic_copy_options(xx_list_s *destination, const xx_list_s *sou
     return true;
 }
 
-static const xx_var *vhddynamic_option(const xx_list_s *options, uint32_t id) {
+static const xx_var *vhddynamic_option(const xx_list_s *options,
+                                       uint32_t id) {
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
@@ -539,38 +565,34 @@ static const xx_var *vhddynamic_option(const xx_list_s *options, uint32_t id) {
     return NULL;
 }
 
-static bool vhddynamic_set_record(xx_archive_record *record,
-                           const vhddynamic_member *member) {
-    xx_archive_record_cleanup(record);
-    xx_archive_record_init(record);
-    record->header_offset = member->header_offset;
-    record->header_size = member->header_size;
-    record->data_offset = member->data_offset;
-    record->compressed_size = member->packed_size;
-    return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)member->packed_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          member->unpacked_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                          member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
-                                          member->crc32) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
-                                          member->attributes) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                          member->timestamp) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS,
-                                          member->flags) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
-                                           member->encrypted) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           member->folder);
+/* XX_META_ID_OPT_MAX_MEMBER_SIZE, when given, caps the guest disk size an
+ * unpack will write.  Absent means unlimited (parse() caps at 4 TiB), as in
+ * the vdi reader. */
+static bool vhddynamic_size_allowed(Abstractformat *format,
+                                    const xx_list_s *options, uint64_t size) {
+    const xx_var *limit = xx_format_resolve_extra_parameter(
+        format, options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
+    if (!limit) return true;
+    switch (limit->type) {
+        case XX_VAR_TYPE_UINT8:
+        case XX_VAR_TYPE_UINT16:
+        case XX_VAR_TYPE_UINT32:
+        case XX_VAR_TYPE_UINT64: return size <= xx_var_get_u64(limit);
+        case XX_VAR_TYPE_INT8:
+        case XX_VAR_TYPE_INT16:
+        case XX_VAR_TYPE_INT32:
+        case XX_VAR_TYPE_INT64: {
+            int64_t value = xx_var_get_i64(limit);
+            return value < 0 || size <= (uint64_t)value;
+        }
+        default: return true;
+    }
 }
 
-void xx_vhddynamic_init(xx_vhddynamic *archive, xx_io_device *device, int64_t base_address) {
+void xx_vhddynamic_init(xx_vhddynamic *archive, xx_io_device *device,
+                        int64_t base_address) {
     if (!archive) return;
-    xx_mem_zero(archive, sizeof(*archive));
+    xx_rt_memset(archive, 0, sizeof(*archive));
     xx_format_init(&archive->format, device, base_address);
     archive->format.endian = XX_ENDIAN_BIG;
     archive->format.file_type = XX_VHDDYNAMIC_FILE_TYPE;
@@ -596,7 +618,8 @@ void xx_vhddynamic_init(xx_vhddynamic *archive, xx_io_device *device, int64_t ba
     archive->archive_end = -1;
 }
 
-xx_vhddynamic *xx_vhddynamic_create(xx_io_device *device, int64_t base_address) {
+xx_vhddynamic *xx_vhddynamic_create(xx_io_device *device,
+                                    int64_t base_address) {
     xx_vhddynamic *archive = (xx_vhddynamic *)xx_mem_alloc(sizeof(*archive));
     if (archive) xx_vhddynamic_init(archive, device, base_address);
     return archive;
@@ -613,18 +636,17 @@ void xx_vhddynamic_free(xx_vhddynamic *archive) {
 }
 
 bool xx_vhddynamic_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
-    vhddynamic_stream *stream;
+    vhddynamic_info info;
     (void)pd;
-    if (!vhddynamic_parse(format, &stream)) return false;
-    vhddynamic_stream_free(stream);
-    return true;
+    return vhddynamic_parse(format, &info);
 }
 
-bool xx_vhddynamic_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
-    vhddynamic_stream *stream;
+bool xx_vhddynamic_handle_base_info(Abstractformat *format,
+                                    xx_pd_struct *pd) {
+    vhddynamic_info info;
     xx_vhddynamic *archive;
     (void)pd;
-    if (!format || !vhddynamic_parse(format, &stream)) {
+    if (!format || !vhddynamic_parse(format, &info)) {
         if (format) {
             format->format_size = -1;
             format->number_of_archive_records = 0U;
@@ -634,10 +656,10 @@ bool xx_vhddynamic_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
         return false;
     }
     archive = (xx_vhddynamic *)format;
-    archive->number_of_records = stream->count;
-    archive->archive_end = format->base_address + stream->archive_size;
-    format->number_of_archive_records = stream->count;
-    format->format_size = stream->archive_size;
+    archive->number_of_records = 1U;
+    archive->archive_end = info.base + info.size;
+    format->number_of_archive_records = 1U;
+    format->format_size = info.size;
     format->file_type = XX_VHDDYNAMIC_FILE_TYPE;
     format->format_type = XX_TYPE_ARCHIVE;
     format->is_archive = true;
@@ -645,11 +667,11 @@ bool xx_vhddynamic_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     format->overlay_size = 0;
     format->is_valid = true;
     format->base_info_handled = true;
-    vhddynamic_stream_free(stream);
     return true;
 }
 
-int64_t xx_vhddynamic_get_format_size(Abstractformat *format, xx_pd_struct *pd) {
+int64_t xx_vhddynamic_get_format_size(Abstractformat *format,
+                                      xx_pd_struct *pd) {
     return format && (format->base_info_handled ||
                       xx_vhddynamic_handle_base_info(format, pd))
                ? format->format_size
@@ -657,7 +679,7 @@ int64_t xx_vhddynamic_get_format_size(Abstractformat *format, xx_pd_struct *pd) 
 }
 
 uint64_t xx_vhddynamic_get_number_of_archive_records(Abstractformat *format,
-                                              xx_pd_struct *pd) {
+                                                     xx_pd_struct *pd) {
     return format && (format->base_info_handled ||
                       xx_vhddynamic_handle_base_info(format, pd))
                ? ((xx_vhddynamic *)format)->number_of_records
@@ -669,18 +691,24 @@ xx_archive_record_state *xx_vhddynamic_create_archive_records_reading(
     vhddynamic_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
-    if (!vhddynamic_parse(format, &stream)) return NULL;
+    stream = (vhddynamic_stream *)xx_mem_alloc(sizeof(*stream));
+    if (!stream) return NULL;
+    xx_rt_memset(stream, 0, sizeof(*stream));
+    if (!vhddynamic_parse(format, &stream->info)) {
+        xx_mem_free(stream);
+        return NULL;
+    }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
     if (!state) {
-        vhddynamic_stream_free(stream);
+        xx_mem_free(stream);
         return NULL;
     }
     xx_archive_record_state_init(state, format);
     state->internal_state = stream;
     state->free_internal = vhddynamic_stream_free;
-    state->total_records = stream->count;
+    state->total_records = 1;
     if (!vhddynamic_copy_options(&state->options, options) ||
-        !vhddynamic_set_record(&state->current_record, &stream->items[0])) {
+        !vhddynamic_set_record(&state->current_record, &stream->info)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -696,42 +724,45 @@ const xx_archive_record *xx_vhddynamic_get_current_archive_record(
 }
 
 bool xx_vhddynamic_archive_record_move_to_next(Abstractformat *format,
-                                        xx_archive_record_state *state,
-                                        xx_pd_struct *pd) {
+                                               xx_archive_record_state *state,
+                                               xx_pd_struct *pd) {
     vhddynamic_stream *stream;
     (void)pd;
     if (!format || !state || state->format != format ||
-        !(stream = (vhddynamic_stream *)state->internal_state) ||
-        ++stream->index >= stream->count) {
+        !(stream = (vhddynamic_stream *)state->internal_state)) {
         if (state) state->has_record = false;
         return false;
     }
-    ++state->current_index;
-    state->has_record =
-        vhddynamic_set_record(&state->current_record, &stream->items[stream->index]);
-    return state->has_record;
+    /* There is exactly one member, so the first step is always the last. */
+    stream->index = 1U;
+    xx_archive_record_cleanup(&state->current_record);
+    xx_archive_record_init(&state->current_record);
+    state->has_record = false;
+    return false;
 }
 
-bool xx_vhddynamic_unpack_current_archive_record(Abstractformat *format,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+bool xx_vhddynamic_unpack_current_archive_record(
+    Abstractformat *format, xx_archive_record_state *state,
+    xx_pd_struct *pd) {
     vhddynamic_stream *stream;
-    vhddynamic_member *member;
     const xx_var *path_option;
     const char *base = NULL;
     char *owned_base = NULL;
     char *path = NULL;
     xx_io_device *destination = NULL;
     bool result = false;
+    bool created = false;
     if (!format || !state || state->format != format || !state->has_record ||
         !(stream = (vhddynamic_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+        stream->index != 0U || (pd && xx_pd_is_stopped(pd)))
         return false;
-    member = &stream->items[stream->index];
-    if (!vhddynamic_safe_output_name(member->name)) return false;
-    path_option = vhddynamic_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
+    if (!vhddynamic_size_allowed(format, &state->options,
+                                 stream->info.disk_size))
+        return false;
+    path_option = vhddynamic_option(&state->options,
+                                    XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option)
-        return vhddynamic_write_member(format, stream, member, NULL, pd);
+        return vhddynamic_emit(format, &stream->info, NULL, pd);
     if (path_option->type == XX_VAR_TYPE_STRING ||
         path_option->type == XX_VAR_TYPE_STRING_VIEW)
         base = xx_var_get_str(path_option);
@@ -741,30 +772,28 @@ bool xx_vhddynamic_unpack_current_archive_record(Abstractformat *format,
         base = owned_base;
     }
     if (!base) goto done;
+    /* The member name is the reader's own constant, never file data. */
     path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
             base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+               ? xx_str_concat3(base, "/", VHDDYNAMIC_MEMBER_NAME)
+               : xx_str_concat(base, VHDDYNAMIC_MEMBER_NAME);
     if (!path) goto done;
-    if (member->folder) {
-        result = xx_store_create_dirs_a(path, true);
-        goto done;
-    }
     if (!xx_store_create_dirs_a(path, false)) goto done;
     destination = xx_io_file_open(path, "wb");
+    created = destination != NULL;
     if (!destination) goto done;
-    result = vhddynamic_write_member(format, stream, member, destination, pd);
+    result = vhddynamic_emit(format, &stream->info, destination, pd);
     if (xx_io_close(destination) != 0) result = false;
     destination = NULL;
 done:
-    if (!result && path && !member->folder) xx_rt_remove(path);
+    if (!result && path && created) xx_rt_remove(path);
     if (path) xx_str_free(path);
     if (owned_base) xx_str_free(owned_base);
     return result;
 }
 
-void xx_vhddynamic_free_archive_records_reading(Abstractformat *format,
-                                         xx_archive_record_state *state) {
+void xx_vhddynamic_free_archive_records_reading(
+    Abstractformat *format, xx_archive_record_state *state) {
     (void)format;
     xx_archive_record_state_free(state);
 }

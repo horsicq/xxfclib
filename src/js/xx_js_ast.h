@@ -131,4 +131,6 @@ struct JSNode {
     size_t nVarNames;
 };
 
+JSNode *js_node_new(JSNodeType type, int nLine);
+
 #endif /* JS_AST_H */

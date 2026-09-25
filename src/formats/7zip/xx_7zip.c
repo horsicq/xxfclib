@@ -2178,6 +2178,7 @@ bool xx_7zip_unpack_current_archive_record(Abstractformat *self,
     wchar_t *full_path = NULL;
     char *utf8_path = NULL;
     bool result = false;
+    bool created = false;
     if (!self || !state || state->format != self || !state->has_record || state->current_index < 0) return false;
     priv = (xx_7zip_private *)((xx_7zip *)self)->internal;
     if (!priv || (uint64_t)state->current_index >= priv->num_files) return false;
@@ -2211,10 +2212,11 @@ bool xx_7zip_unpack_current_archive_record(Abstractformat *self,
         utf8_path = xx_str_unicode_to_utf8(full_path);
         if (!utf8_path) goto cleanup;
         output = xx_io_file_open(utf8_path, "w+b");
+        created = output != NULL;
         if (!output) goto cleanup;
         result = xx_7zip_extract_file_to_device(self, file, output, pd);
         if (xx_io_close(output) != 0) result = false;
-        if (!result) xx_rt_remove(utf8_path);
+        if (!result && created) xx_rt_remove(utf8_path);
     }
 
 cleanup:

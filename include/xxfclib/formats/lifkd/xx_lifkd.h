@@ -21,6 +21,13 @@ typedef struct xx_lifkd {
     int64_t archive_end;
 } xx_lifkd;
 
+/* Detector gate: true when @p bytes (at least 54 of them) are one complete,
+ * well-formed member header -- 34 hex digits, method "01" or "02", stored
+ * sizes equal for method 1, and a printable name terminated and zero padded
+ * inside its 20-byte field.  Pure, allocation-free and reads only @p bytes;
+ * the full chain walk is still check_is_valid's job. */
+XXFC_API bool xx_lifkd_is_member_header(const uint8_t *bytes, size_t size);
+
 XXFC_API void xx_lifkd_init(xx_lifkd *archive, xx_io_device *device,
                             int64_t base_address);
 XXFC_API xx_lifkd *xx_lifkd_create(xx_io_device *device, int64_t base_address);

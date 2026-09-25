@@ -14,22 +14,49 @@
  * volume"; identification is entirely structural. This reader accepts a volume
  * only when the whole BPB is self-consistent:
  *
- *   +0   jump, 0xEB xx 0x90 or 0xE9 xx xx
  *   +11  u16  bytes per sector, one of 512 / 1024 / 2048 / 4096
  *   +13  u8   sectors per cluster, a power of two in 1..128
- *   +14  u16  reserved sectors, non-zero (this is what rejects NTFS)
+ *   +14  u16  reserved sectors, non-zero (this is what rejects NTFS); a zero
+ *             behind a boot sector without an x86 jump (some Atari ST
+ *             formatters) is read as 1
  *   +16  u8   number of FATs, 1 or 2
  *   +17  u16  root entry count  (0 on FAT32, non-zero and 32-byte aligned
  *             against the sector size on FAT12/16)
  *   +19  u16  total sectors, or 0 when the 32-bit field is used
- *   +21  u8   media descriptor, 0xF0 or 0xF8..0xFF
+ *   +21  u8   media descriptor, 0xE5..0xFF (0xE5 8-inch, 0xED Tandy 2000,
+ *             0xF0 and 0xF8..0xFF IBM)
  *   +22  u16  sectors per FAT  (0 on FAT32)
  *   +32  u32  total sectors, used when +19 is 0
  *   +36  u32  sectors per FAT, FAT32 only
  *   +44  u32  first cluster of the root directory, FAT32 only
- *   +510 u16  0x55AA
  *
- * and only after computing the FAT type the way the Microsoft FAT32
+ * and then asks for more corroboration the less PC-like the boot sector is
+ * (see xx_fat_boot_kind):
+ *
+ *   PC       x86 jump (EB xx 90 / E9) at +0 and 0x55AA at +510: nothing more
+ *            unless the image is truncated (see below).
+ *   X86      x86 jump without 0x55AA (MSX-DOS, PC-98, DOS 1.1-2.x with a
+ *            BPB): FAT #0 must open with the media id (md FF FF), or both FAT
+ *            copies must agree and the root directory must look sane.
+ *   FOREIGN  any other opening - Atari ST (68000 BRA.S, or zeros on a disk
+ *            that is not bootable), FM Towns "IPL4", other non-PC machines
+ *            that kept the DOS BPB: the media id or agreeing FAT copies, AND
+ *            a sane root directory with at least one live entry.
+ *   STATIC   no BPB at all (DOS 1.x, or a boot sector overwritten by a boot
+ *            virus): the boot sector must open with an x86 jump (EB, E9 or
+ *            the far jump EA), the image must be exactly 160K, 180K, 320K or
+ *            360K, and its FAT must carry the media id of that size, agree
+ *            with its copy, and have a sane root directory.
+ *
+ * An image may end before the volume does - disk copiers store only the
+ * cylinders in use, and 82-track dumps are often cut at 80. It is accepted as
+ * long as the boot sector, FAT #0, the fixed root directory and cluster 2 are
+ * present and the FAT corroborates the BPB at least as the X86 kind requires
+ * (a PC boot sector is not enough on its own once the size check is lost);
+ * xx_fat_is_truncated() then reports it, the format size is what is actually
+ * there, and a file whose clusters lie past the end fails to unpack.
+ *
+ * The FAT type is computed the way the Microsoft FAT32
  * specification (fatgen103) mandates, from the count of data clusters:
  *
  *   root_dir_sectors = (root_entry_count * 32 + bytes_per_sector - 1)
@@ -86,6 +113,14 @@ typedef enum xx_fat_kind_e {
     XX_FAT_KIND_FAT32 = 32
 } xx_fat_kind;
 
+/** How the boot sector identified the volume. */
+typedef enum xx_fat_boot_kind_e {
+    XX_FAT_BOOT_PC = 0,      /**< x86 jump and 0x55AA. */
+    XX_FAT_BOOT_X86 = 1,     /**< x86 jump, no 0x55AA. */
+    XX_FAT_BOOT_FOREIGN = 2, /**< No x86 jump (Atari ST, FM Towns, ...). */
+    XX_FAT_BOOT_STATIC = 3   /**< No BPB (DOS 1.x); geometry from the size. */
+} xx_fat_boot_kind;
+
 typedef struct xx_fat xx_fat;
 typedef struct xx_fat xx_fat_t;
 typedef struct xx_fat XFat;
@@ -135,6 +170,10 @@ XXFC_API uint32_t xx_fat_get_cluster_count(const xx_fat *fat);
 XXFC_API uint32_t xx_fat_get_root_cluster(const xx_fat *fat);
 XXFC_API uint64_t xx_fat_get_volume_size(const xx_fat *fat);
 XXFC_API int64_t xx_fat_get_volume_end(const xx_fat *fat);
+/** One of the xx_fat_boot_kind values. */
+XXFC_API uint32_t xx_fat_get_boot_kind(const xx_fat *fat);
+/** True when the image ends before the volume its BPB describes. */
+XXFC_API bool xx_fat_is_truncated(const xx_fat *fat);
 /** Volume label, or NULL. Owned by the reader; valid until it is destroyed. */
 XXFC_API const char *xx_fat_get_volume_label(const xx_fat *fat);
 

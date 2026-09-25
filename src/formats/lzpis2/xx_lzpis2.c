@@ -347,6 +347,7 @@ bool xx_lzpis2_unpack_current_archive_record(
     char *target_path = NULL;
     xx_lzpis2 *archive = (xx_lzpis2 *)self;
     bool result;
+    bool created = false;
 
     if (!self || !state || state->format != self || !state->has_record ||
         (pd && xx_pd_is_stopped(pd))) {
@@ -384,10 +385,11 @@ bool xx_lzpis2_unpack_current_archive_record(
     }
     {
         xx_io_device *output = xx_io_file_open(target_path, "wb");
+        created = output != NULL;
         result = output && xx_lzpis2_unpack_to_device(archive, output, pd);
         if (output && xx_io_close(output) != 0) result = false;
     }
-    if (!result) xx_rt_remove(target_path);
+    if (!result && created) xx_rt_remove(target_path);
     xx_str_free(target_path);
     return result;
 }

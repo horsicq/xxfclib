@@ -61,6 +61,7 @@ bool xx_lzma_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, in
     bool ok = xx_lzma_unpack_device(src_dev, src_offset, comp_size, props, props_size,
                                     uncomp_size, out, pd);
     xx_io_close(out);
+    if (!ok) xx_io_file_remove_a(dst_file_path);
     return ok;
 }
 
@@ -161,6 +162,7 @@ bool xx_lzma2_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, i
     if (!out) return false;
     bool ok = xx_lzma2_unpack_device(src_dev, src_offset, comp_size, props2_byte, out, pd);
     xx_io_close(out);
+    if (!ok) xx_io_file_remove_a(dst_file_path);
     return ok;
 }
 

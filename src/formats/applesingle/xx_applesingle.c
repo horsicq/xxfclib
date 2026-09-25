@@ -464,7 +464,6 @@ bool xx_applesingle_unpack_current_archive_record(
     result = xx_store_unpack_device_to_file(format->device, entry->data_offset,
                                             entry->data_size, path, pd);
 done:
-    if (!result && path) xx_rt_remove(path);
     if (path) xx_str_free(path);
     if (owned_base) xx_str_free(owned_base);
     return result;
