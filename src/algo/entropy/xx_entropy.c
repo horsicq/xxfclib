@@ -22,6 +22,9 @@
 /* Independent finite-state and canonical Huffman decoder primitives. */
 
 #include "xx_entropy.h"
+#include "platforms/xx_entropy_platform.h"
+#include "xxfclib/global/xx_global.h"
+#include "xxfclib/rt/xx_rt.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -514,4 +517,56 @@ bool xx_huf_decompress(const uint8_t *source, size_t source_size,
         return xx_huf_decode_4streams(payload, payload_size, &table,
                                       destination, destination_size);
     }
+}
+
+/* -------------------------------------------------------- Shannon Entropy */
+
+double xx_entropy_calculate(const void *data, size_t size) {
+    if (!data || size == 0) {
+        return 0.0;
+    }
+
+    if (xx_is_avx2_enabled() && size >= 64) {
+        return xx_entropy_calculate_avx2(data, size);
+    }
+    if (xx_is_sse2_enabled() && size >= 32) {
+        return xx_entropy_calculate_sse2(data, size);
+    }
+
+    const uint8_t *p = (const uint8_t *)data;
+    uint32_t c0[256] = {0};
+    uint32_t c1[256] = {0};
+    uint32_t c2[256] = {0};
+    uint32_t c3[256] = {0};
+
+    size_t i = 0;
+    size_t limit = size & ~((size_t)3);
+    for (; i < limit; i += 4) {
+        c0[p[i]]++;
+        c1[p[i + 1]]++;
+        c2[p[i + 2]]++;
+        c3[p[i + 3]]++;
+    }
+    for (; i < size; i++) {
+        c0[p[i]]++;
+    }
+
+    double sum = 0.0;
+    for (int k = 0; k < 256; k++) {
+        uint64_t total = (uint64_t)c0[k] + c1[k] + c2[k] + c3[k];
+        if (total > 0) {
+            double c = (double)total;
+            sum += c * xx_rt_log(c);
+        }
+    }
+
+    double dsize = (double)size;
+    double result = xx_rt_log(dsize) - (sum / dsize);
+    const double inv_log2 = 1.44269504088896340736; /* 1.0 / ln(2.0) */
+
+    return result * inv_log2;
+}
+
+double xx_entropy(const void *data, size_t size) {
+    return xx_entropy_calculate(data, size);
 }

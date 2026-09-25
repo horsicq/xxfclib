@@ -23,6 +23,7 @@
 
 #include "xxfclib/algo/adler32/xx_adler32.h"
 #include "xxfclib/algo/crc/xx_crc.h"
+#include "xxfclib/algo/entropy/xx_entropy.h"
 #include "xxfclib/algo/hash/xx_hash.h"
 #include "xxfclib/data/xx_data.h"
 
@@ -482,29 +483,11 @@ cd_i64 die_find_u32(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize, cd_u32 nValue)
 
 double die_entropy(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize)
 {
-    cd_i64 pCount[256];
-    cd_i64 i = 0;
-    double nResult = 0;
-
-    x_memset(pCount, 0, sizeof(pCount));
-
     if ((!die_range_clamp(pFile, nOffset, &nSize)) || (nSize <= 0)) {
-        return 0;
+        return 0.0;
     }
 
-    for (i = 0; i < nSize; i++) {
-        pCount[pFile->pData[nOffset + i]]++;
-    }
-
-    for (i = 0; i < 256; i++) {
-        if (pCount[i]) {
-            double p = (double)pCount[i] / (double)nSize;
-
-            nResult -= p * (x_log(p) / x_log(2.0));
-        }
-    }
-
-    return nResult;
+    return xx_entropy_calculate(pFile->pData + nOffset, (size_t)nSize);
 }
 
 int die_is_zero_filled(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize)

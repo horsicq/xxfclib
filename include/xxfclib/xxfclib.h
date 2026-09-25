@@ -52,6 +52,7 @@
 #include "xxfclib/algo/lzv1/xx_lzv1.h"
 #include "xxfclib/algo/oraclesqueeze/xx_oraclesqueeze.h"
 #include "xxfclib/algo/softronics/xx_softronics.h"
+#include "xxfclib/algo/entropy/xx_entropy.h"
 #include "xxfclib/algo/gashuff/xx_gashuff.h"
 #include "xxfclib/algo/huf/xx_huf.h"
 #include "xxfclib/algo/lzdiet/xx_lzdiet.h"

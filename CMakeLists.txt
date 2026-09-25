@@ -87,6 +87,7 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/algo/adler32/xx_adler32.h
     include/xxfclib/algo/lzfse/xx_lzfse.h
     include/xxfclib/algo/blake2/xx_blake2.h
+    include/xxfclib/algo/entropy/xx_entropy.h
     include/xxfclib/algo/store/xx_store.h
     include/xxfclib/algo/deflate/xx_deflate.h
     include/xxfclib/algo/bzip2/xx_bzip2.h
@@ -568,6 +569,8 @@ set(XXFCLIB_SOURCES
     src/algo/crc/xx_crc64.c
     src/algo/blake2/xx_blake2.c
     src/algo/entropy/xx_entropy.c
+    src/algo/entropy/platforms/xx_entropy_sse2.c
+    src/algo/entropy/platforms/xx_entropy_avx2.c
     src/algo/store/xx_store.c
     src/algo/deflate/xx_deflate.c
     src/algo/deflate/xx_zlib_stream.c
@@ -1230,6 +1233,7 @@ set(XXFCLIB_SOURCES
     src/formats/vhddynamic/xx_vhddynamic.c
     src/formats/vhddynamic/xx_vhddynamic_extractor.c
     src/formats/wim/xx_wim.c
+    src/formats/wim/xx_wim_codec.c
     src/formats/wim/xx_wim_extractor.c
     src/formats/softpaq2/xx_softpaq2.c
     src/formats/softpaq2/xx_softpaq2_extractor.c
@@ -2127,6 +2131,7 @@ endif()
 
 if(MSVC)
     set_source_files_properties(src/data/platforms/xx_data_avx2.c PROPERTIES COMPILE_FLAGS "/arch:AVX2")
+    set_source_files_properties(src/algo/entropy/platforms/xx_entropy_avx2.c PROPERTIES COMPILE_FLAGS "/arch:AVX2")
 endif()
 
 

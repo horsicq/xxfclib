@@ -1656,7 +1656,14 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
 
         case A_getSignature: return str_take(pCtx, die_signature_hex(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_i64(pCtx, nArgc, pArgv, 1, 0)));
 
-        case A_calculateEntropy: return js_num(die_entropy(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_i64(pCtx, nArgc, pArgv, 1, 0)));
+        case A_calculateEntropy: {
+            cd_i64 nStart = die_engine_profile_start(pEngine);
+            cd_i64 nOffset = arg_i64(pCtx, nArgc, pArgv, 0, 0);
+            cd_i64 nSize = arg_i64(pCtx, nArgc, pArgv, 1, 0);
+            double dEntropy = die_entropy(pFile, nOffset, nSize);
+            die_engine_profile_end(pEngine, nStart, "calculateEntropy: %lld %lld", (long long)nOffset, (long long)nSize);
+            return js_num(dEntropy);
+        }
         case A_isZeroFilled: return js_bool(die_is_zero_filled(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_i64(pCtx, nArgc, pArgv, 1, 0)));
         case A_calculateMD5: return str_take(pCtx, die_md5(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_i64(pCtx, nArgc, pArgv, 1, 0)));
         case A_calculateCRC32: return js_num((double)die_crc32(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_i64(pCtx, nArgc, pArgv, 1, 0), 0));
@@ -2182,6 +2189,7 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
         }
 
         case A_readBytes: {
+            cd_i64 nStart = die_engine_profile_start(pEngine);
             cd_i64 nOffset = arg_i64(pCtx, nArgc, pArgv, 0, 0);
             cd_i64 nSize = arg_i64(pCtx, nArgc, pArgv, 1, 0);
             int bReplaceZero = arg_bool(pCtx, nArgc, pArgv, 2, 0);
@@ -2199,6 +2207,8 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
 
                 js_set_index(pCtx, result, i, js_num((bReplaceZero && (nByte == 0)) ? 32 : (double)nByte));
             }
+
+            die_engine_profile_end(pEngine, nStart, "readBytes: %lld %lld", (long long)nOffset, (long long)nSize);
 
             return result;
         }
@@ -3184,6 +3194,14 @@ static JSVal fn_log(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, void *p
 
     (void)thisVal;
     (void)pUser;
+
+    if (pEngine->pOptions->bProfiling) {
+        static cd_i64 s_nLastLogTime = 0;
+        cd_i64 now = (cd_i64)x_clock_ms();
+        cd_i64 delta = (s_nLastLogTime > 0) ? (now - s_nLastLogTime) : 0;
+        s_nLastLogTime = now;
+        x_printf("[WARNING] LOG %s [+%lld ms]\n", pText ? pText : "", (long long)delta);
+    }
 
     if (pEngine->pOptions->bShowMessages) {
         x_fprintf(x_stderr(), "%s\n", pText);
