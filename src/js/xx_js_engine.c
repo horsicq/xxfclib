@@ -44,6 +44,7 @@ JSCtx *js_new(void)
     pCtx->pObjectProto = jsobj_new(pCtx, JCLASS_OBJECT, NULL);
     pCtx->pFunctionProto = jsobj_new(pCtx, JCLASS_OBJECT, pCtx->pObjectProto);
     pCtx->pArrayProto = jsobj_new(pCtx, JCLASS_OBJECT, pCtx->pObjectProto);
+    pCtx->pUint32ArrayProto = jsobj_new(pCtx, JCLASS_OBJECT, pCtx->pObjectProto);
     pCtx->pStringProto = jsobj_new(pCtx, JCLASS_OBJECT, pCtx->pObjectProto);
     pCtx->pNumberProto = jsobj_new(pCtx, JCLASS_OBJECT, pCtx->pObjectProto);
     pCtx->pBooleanProto = jsobj_new(pCtx, JCLASS_OBJECT, pCtx->pObjectProto);
@@ -89,6 +90,7 @@ void js_free(JSCtx *pCtx)
 
             xx_js_free(pObj->props.pEntries);
             xx_js_free(pObj->props.pIndex);
+            xx_js_free(pObj->pUint32Data);
             xx_js_free(pObj->pBoundArgs);
             xx_js_free(pObj->pFnName);
 

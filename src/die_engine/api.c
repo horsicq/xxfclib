@@ -33,8 +33,12 @@
 #include "xxfclib/fs/xx_fs.h"
 #include "xxfclib/list/xx_list.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/memory/xx_memory.h"
 #include "../formats/xft.h"
-#include "xdisasm.h"
+#include "die_engine_disasm.h"
+#include "die_engine_search.h"
+#include "die_engine_primitives.h"
+#include "die_engine_primitives_js.h"
 #include "../formats/iso9660/xiso9660.h"
 #include "../js/xx_js_internal.h"
 
@@ -57,6 +61,9 @@ typedef enum {
     A_readSQword,
     A_getString,
     A_findSignature,
+    A_findSignatures,
+    A_findAnyBytes,
+    A_findByteRelationCandidates,
     A_findString,
     A_findByte,
     A_findWord,
@@ -93,6 +100,8 @@ typedef enum {
     A_isUnicodeText,
     A_isText,
     A_getHeaderString,
+    A_getDisasmInfo,
+    A_mapVirtualRange,
     A_getDisasmLength,
     A_getDisasmString,
     A_getDisasmNextAddress,
@@ -1203,6 +1212,12 @@ static int pdf_is_encrypted(XPDF *pPdf)
 
 /* ------------------------------------------------------------ dispatcher */
 
+static int64_t primitive_va_to_offset(void *context, uint64_t address)
+{
+    return xx_memory_map_address_to_offset_ex((xx_memory_map *)context, address,
+        XX_MEMORY_MAP_LOOKUP_FIRST_MATCH);
+}
+
 static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, void *pUser)
 {
     DieEngine *pEngine = engine_of(pCtx);
@@ -1430,6 +1445,64 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
         case A_read_utf8String: return str_take(pCtx, die_utf8_string(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_i64(pCtx, nArgc, pArgv, 1, 50)));
 
         case A_read_codePageString: return str_take(pCtx, die_ansi_string(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_i64(pCtx, nArgc, pArgv, 1, 256)));
+
+        case A_findAnyBytes:
+            return die_js_find_any_bytes(pCtx, pFile->pData, (size_t)pFile->nSize, nArgc, pArgv);
+        case A_findByteRelationCandidates:
+            return die_js_find_byte_relation_candidates(pCtx, pFile->pData, (size_t)pFile->nSize, nArgc, pArgv);
+
+        case A_findSignatures: {
+            const char *patterns[DIE_SIGNATURE_BATCH_MAX];
+            JSVal strings[DIE_SIGNATURE_BATCH_MAX];
+            int64_t offsets[DIE_SIGNATURE_BATCH_MAX];
+            int64_t count, i;
+            cd_i64 offset, size;
+            size_t budget = 0;
+            JSVal result;
+            if (nArgc < 3 || pArgv[0].tag != JT_NUM || pArgv[1].tag != JT_NUM
+                || pArgv[2].tag != JT_OBJ || !pArgv[2].u.o
+                || pArgv[2].u.o->cls != JCLASS_ARRAY) return js_null();
+            /* Reject unsafe/fractional JS Numbers before integer conversion. */
+            if (!(pArgv[0].u.n >= -9007199254740991.0 && pArgv[0].u.n <= 9007199254740991.0)
+                || !(pArgv[1].u.n >= -9007199254740991.0
+                    && pArgv[1].u.n <= 9007199254740991.0)) return js_null();
+            offset = (cd_i64)pArgv[0].u.n;
+            size = (cd_i64)pArgv[1].u.n;
+            if ((double)offset != pArgv[0].u.n || (double)size != pArgv[1].u.n)
+                return js_null();
+            count = js_array_length(pCtx, pArgv[2]);
+            if (count < 0 || count > DIE_SIGNATURE_BATCH_MAX) return js_null();
+            for (i = 0; i < count; ++i) {
+                strings[i] = js_get_index(pCtx, pArgv[2], i);
+                if (strings[i].tag != JT_STR
+                    || js_str_len(strings[i]) > DIE_SIGNATURE_BATCH_TEXT_MAX - budget) {
+                    js_release(pCtx, strings[i]);
+                    while (i > 0) js_release(pCtx, strings[--i]);
+                    return js_null();
+                }
+                budget += js_str_len(strings[i]);
+                patterns[i] = js_str_data(strings[i]);
+            }
+            fix_offset_size(pEngine, &offset, &size);
+            if (!die_find_signatures(pFile->pData, (size_t)pFile->nSize,
+                    offset, size, patterns, (size_t)count,
+                    &pEngine->sigContext, offsets)) {
+                for (i = 0; i < count; ++i) js_release(pCtx, strings[i]);
+                return js_null();
+            }
+            for (i = 0; i < count; ++i) {
+                if (offsets[i] > INT64_C(9007199254740991)) {
+                    for (i = 0; i < count; ++i) js_release(pCtx, strings[i]);
+                    return js_null();
+                }
+            }
+            result = js_new_array(pCtx);
+            for (i = 0; i < count; ++i) {
+                js_set_index(pCtx, result, i, js_num((double)offsets[i]));
+                js_release(pCtx, strings[i]);
+            }
+            return result;
+        }
 
         case A_findSignature: {
             cd_i64 nOffset = arg_i64(pCtx, nArgc, pArgv, 0, 0);
@@ -1761,16 +1834,86 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
             return js_str(pCtx, "");
         }
 
+        case A_mapVirtualRange: {
+            uint64_t address, length, flags;
+            DieVirtualSection *sections;
+            DieVirtualMapping mapping;
+            int i;
+            bool valid;
+            JSVal result;
+            if (!pEngine->bHasPE || nArgc < 4 || pArgv[3].tag != JT_BOOL
+                || !die_js_safe_unsigned(pArgv[0], UINT64_C(9007199254740991), &address)
+                || !die_js_safe_unsigned(pArgv[1], UINT64_C(9007199254740991), &length)
+                || !die_js_safe_unsigned(pArgv[2], UINT32_MAX, &flags)
+                || !length || length - 1 > UINT64_C(9007199254740991) - address
+                || (pEngine->pe.nSectionCount && !pEngine->pe.pSections)
+                || pEngine->pe.nSectionCount < 0
+                || (unsigned)pEngine->pe.nSectionCount > DIE_VIRTUAL_SECTION_MAX) return js_null();
+            sections = xx_mem_calloc((size_t)pEngine->pe.nSectionCount, sizeof(*sections));
+            if (pEngine->pe.nSectionCount && !sections) return js_null();
+            for (i = 0; i < pEngine->pe.nSectionCount; ++i) {
+                const XPESection *section = &pEngine->pe.pSections[i];
+                sections[i].rva = section->nVirtualAddress;
+                sections[i].virtual_size = section->nVirtualSize;
+                sections[i].file_size = section->nSizeOfRawData;
+                sections[i].file_offset = section->nPointerToRawData;
+                sections[i].flags = section->nCharacteristics;
+            }
+            valid = die_map_virtual_range(pEngine->pe.nImageBase, (uint64_t)pFile->nSize,
+                sections, (size_t)pEngine->pe.nSectionCount, address, length,
+                (uint32_t)flags, pArgv[3].u.b != 0, primitive_va_to_offset, pMap, &mapping);
+            xx_mem_free(sections);
+            if (!valid || !mapping.found || (pArgv[3].u.b
+                    && mapping.file_offset > UINT64_C(9007199254740991))) return js_null();
+            result = js_new_object(pCtx);
+            js_set(pCtx, result, "sectionIndex", js_num((double)mapping.section_index));
+            if (pArgv[3].u.b) js_set(pCtx, result, "fileOffset", js_num((double)mapping.file_offset));
+            return result;
+        }
+
+        case A_getDisasmInfo: {
+            uint64_t address;
+            cd_i64 offset;
+            DieDisasmResult decoded;
+            JSVal result;
+            unsigned slot;
+            if (nArgc < 1 || !die_js_safe_unsigned(pArgv[0], UINT64_C(9007199254740991), &address))
+                return js_null();
+            offset = xx_memory_map_address_to_offset_ex(pMap, address, XX_MEMORY_MAP_LOOKUP_FIRST_MATCH);
+            if (offset < 0 || offset >= pFile->nSize) return js_null();
+            slot = (unsigned)((address ^ (address >> 6)) & 63);
+            if (pEngine->disasmInfoCache[slot].occupied
+                && pEngine->disasmInfoCache[slot].address == address
+                && pEngine->disasmInfoCache[slot].bits == pEngine->nBits)
+                decoded = pEngine->disasmInfoCache[slot].result;
+            else {
+                decoded = die_disasm(pFile, offset, pEngine->nBits);
+                pEngine->disasmInfoCache[slot].address = address;
+                pEngine->disasmInfoCache[slot].bits = pEngine->nBits;
+                pEngine->disasmInfoCache[slot].occupied = 1;
+                pEngine->disasmInfoCache[slot].result = decoded;
+            }
+            if (!decoded.bValid || decoded.nSize < 1 || decoded.nSize > 15
+                || address > UINT64_C(9007199254740991) - (unsigned)decoded.nSize)
+                return js_null();
+            /* Same decode/format and next-address arithmetic as the legacy APIs. */
+            result = js_new_object(pCtx);
+            js_set(pCtx, result, "text", js_str(pCtx, decoded.sMnemonic));
+            js_set(pCtx, result, "length", js_num(decoded.nSize));
+            js_set(pCtx, result, "nextAddress", js_num((double)(address + decoded.nSize)));
+            return result;
+        }
+
         case A_getDisasmLength: {
             cd_i64 nAddress = arg_i64(pCtx, nArgc, pArgv, 0, 0);
             cd_i64 nOffset = xx_memory_map_address_to_offset_ex(pMap, (cd_u64)nAddress, XX_MEMORY_MAP_LOOKUP_FIRST_MATCH);
-            XDisasmResult disasm;
+            DieDisasmResult disasm;
 
             if (nOffset == -1) {
                 return js_num(0);
             }
 
-            disasm = xdisasm(pFile, nOffset, pEngine->nBits);
+            disasm = die_disasm(pFile, nOffset, pEngine->nBits);
 
             return js_num((double)disasm.nSize);
         }
@@ -1778,13 +1921,13 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
         case A_getDisasmString: {
             cd_i64 nAddress = arg_i64(pCtx, nArgc, pArgv, 0, 0);
             cd_i64 nOffset = xx_memory_map_address_to_offset_ex(pMap, (cd_u64)nAddress, XX_MEMORY_MAP_LOOKUP_FIRST_MATCH);
-            XDisasmResult disasm;
+            DieDisasmResult disasm;
 
             if (nOffset == -1) {
                 return js_str(pCtx, "");
             }
 
-            disasm = xdisasm(pFile, nOffset, pEngine->nBits);
+            disasm = die_disasm(pFile, nOffset, pEngine->nBits);
 
             return js_str(pCtx, disasm.sMnemonic);
         }
@@ -1792,13 +1935,13 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
         case A_getDisasmNextAddress: {
             cd_i64 nAddress = arg_i64(pCtx, nArgc, pArgv, 0, 0);
             cd_i64 nOffset = xx_memory_map_address_to_offset_ex(pMap, (cd_u64)nAddress, XX_MEMORY_MAP_LOOKUP_FIRST_MATCH);
-            XDisasmResult disasm;
+            DieDisasmResult disasm;
 
             if (nOffset == -1) {
                 return js_num((double)(nAddress + 1));
             }
 
-            disasm = xdisasm(pFile, nOffset, pEngine->nBits);
+            disasm = die_disasm(pFile, nOffset, pEngine->nBits);
 
             return js_num((double)(nAddress + disasm.nSize));
         }
@@ -3328,6 +3471,9 @@ static const ApiEntry g_apiTable[] = {
     {"readSQword", A_readSQword, 1},
     {"getString", A_getString, 2},
     {"findSignature", A_findSignature, 3},
+    {"findSignatures", A_findSignatures, 3},
+    {"findAnyBytes", A_findAnyBytes, 3},
+    {"findByteRelationCandidates", A_findByteRelationCandidates, 4},
     {"fSig", A_findSignature, 3},
     {"findString", A_findString, 3},
     {"fStr", A_findString, 3},
@@ -3366,6 +3512,8 @@ static const ApiEntry g_apiTable[] = {
     {"isUnicodeText", A_isUnicodeText, 0},
     {"isText", A_isText, 0},
     {"getHeaderString", A_getHeaderString, 0},
+    {"getDisasmInfo", A_getDisasmInfo, 1},
+    {"mapVirtualRange", A_mapVirtualRange, 4},
     {"getDisasmLength", A_getDisasmLength, 1},
     {"getDisasmString", A_getDisasmString, 1},
     {"getDisasmNextAddress", A_getDisasmNextAddress, 1},

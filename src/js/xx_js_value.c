@@ -374,6 +374,7 @@ void jsobj_unref(JSCtx *pCtx, JSObj *pObj)
 
     pCtx->nFreeDepth--;
 
+    xx_js_free(pObj->pUint32Data);
     xx_js_free(pObj->pBoundArgs);
     xx_js_free(pObj->pFnName);
 
@@ -994,6 +995,22 @@ static JSVal jsobj_get_own_hashed(JSCtx *pCtx, JSObj *pObj, const char *pKey, si
         return js_undefined();
     }
 
+    if (pObj->cls == JCLASS_UINT32_ARRAY) {
+        int64_t index;
+        if ((nKeySize == 6 && xx_rt_memcmp(pKey, "length", 6) == 0)
+            || (nKeySize == 10 && xx_rt_memcmp(pKey, "byteLength", 10) == 0)) {
+            if (pbFound) *pbFound = 1;
+            return js_num((double)pObj->nArrayLen * (nKeySize == 10 ? 4 : 1));
+        }
+        if (js_is_array_index(pKey, nKeySize, &index)) {
+            if (index < pObj->nArrayLen) {
+                if (pbFound) *pbFound = 1;
+                return js_num((double)pObj->pUint32Data[index]);
+            }
+            return js_undefined();
+        }
+    }
+
     /* Array/String length and string indices are computed. */
     if ((nKeySize == 6) && (xx_rt_memcmp(pKey, "length", 6) == 0)) {
         if (pObj->cls == JCLASS_ARRAY) {
@@ -1119,6 +1136,21 @@ void jsobj_put(JSCtx *pCtx, JSObj *pObj, const char *pKey, size_t nKeySize, JSVa
         return;
     }
 
+    if (pObj->cls == JCLASS_UINT32_ARRAY) {
+        int64_t index;
+        if ((nKeySize == 6 && xx_rt_memcmp(pKey, "length", 6) == 0)
+            || (nKeySize == 10 && xx_rt_memcmp(pKey, "byteLength", 10) == 0)) {
+            js_release(pCtx, value);
+            return;
+        }
+        if (js_is_array_index(pKey, nKeySize, &index)) {
+            if (index < pObj->nArrayLen)
+                pObj->pUint32Data[index] = (uint32_t)js_to_int32(pCtx, value);
+            js_release(pCtx, value);
+            return;
+        }
+    }
+
     if ((pObj->cls == JCLASS_ARRAY) && (nKeySize == 6) && (xx_rt_memcmp(pKey, "length", 6) == 0)) {
         int64_t nNewLen = js_to_int64(pCtx, value);
         int64_t i = 0;
@@ -1195,6 +1227,25 @@ JSVal js_new_object(JSCtx *pCtx)
 JSVal js_new_array(JSCtx *pCtx)
 {
     return jsval_obj(jsobj_new(pCtx, JCLASS_ARRAY, pCtx->pArrayProto));
+}
+
+JSVal js_new_uint32_array(JSCtx *pCtx, const uint32_t *data, size_t count)
+{
+    JSObj *object;
+    uint32_t *storage = NULL;
+    /* Mirrors the bounded native relation result budget (128 MiB). */
+    if (count > 33554432u) return js_null();
+    if (count) {
+        storage = xx_rt_calloc(count, sizeof(uint32_t));
+        if (!storage) return js_null();
+    }
+    object = jsobj_new(pCtx, JCLASS_UINT32_ARRAY, pCtx->pUint32ArrayProto);
+    object->nArrayLen = (int64_t)count;
+    if (count) {
+        object->pUint32Data = storage;
+        if (data) xx_rt_memcpy(object->pUint32Data, data, count * sizeof(uint32_t));
+    }
+    return jsval_obj(object);
 }
 
 JSVal js_new_native(JSCtx *pCtx, const char *pName, JSNativeFn fn, int nArgc, void *pUser)

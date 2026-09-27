@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/sparse/xx_sparse.h"
 

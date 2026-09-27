@@ -80,6 +80,7 @@ int jsprops_del(JSCtx *pCtx, JSPropMap *pMap, const char *pKey);
 typedef enum {
     JCLASS_OBJECT = 0,
     JCLASS_ARRAY,
+    JCLASS_UINT32_ARRAY,
     JCLASS_FUNCTION,
     JCLASS_NATIVE,
     JCLASS_STRING,
@@ -107,6 +108,7 @@ struct JSObj {
 
     /* array */
     int64_t nArrayLen;
+    uint32_t *pUint32Data;
 
     /* function (script) */
     JSNode *pFnNode;
@@ -154,6 +156,7 @@ struct JSCtx {
     JSObj *pObjectProto;
     JSObj *pFunctionProto;
     JSObj *pArrayProto;
+    JSObj *pUint32ArrayProto;
     JSObj *pStringProto;
     JSObj *pNumberProto;
     JSObj *pBooleanProto;

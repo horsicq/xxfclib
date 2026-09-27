@@ -151,7 +151,7 @@ int64_t xx_data_find_bytes_avx2(const uint8_t *pdata, size_t data_size, size_t s
                 continue;
             }
 
-            int mask0 = _mm256_movemask_epi8(m0);
+            unsigned int mask0 = (unsigned int)_mm256_movemask_epi8(m0);
             if (mask0 != 0) {
                 unsigned long bit_idx;
 #if defined(_MSC_VER)
@@ -162,7 +162,7 @@ int64_t xx_data_find_bytes_avx2(const uint8_t *pdata, size_t data_size, size_t s
                 return (int64_t)(i + bit_idx);
             }
 
-            int mask1 = _mm256_movemask_epi8(m1);
+            unsigned int mask1 = (unsigned int)_mm256_movemask_epi8(m1);
             if (mask1 != 0) {
                 unsigned long bit_idx;
 #if defined(_MSC_VER)
@@ -173,7 +173,7 @@ int64_t xx_data_find_bytes_avx2(const uint8_t *pdata, size_t data_size, size_t s
                 return (int64_t)(i + 32 + bit_idx);
             }
 
-            int mask2 = _mm256_movemask_epi8(m2);
+            unsigned int mask2 = (unsigned int)_mm256_movemask_epi8(m2);
             if (mask2 != 0) {
                 unsigned long bit_idx;
 #if defined(_MSC_VER)
@@ -184,7 +184,7 @@ int64_t xx_data_find_bytes_avx2(const uint8_t *pdata, size_t data_size, size_t s
                 return (int64_t)(i + 64 + bit_idx);
             }
 
-            int mask3 = _mm256_movemask_epi8(m3);
+            unsigned int mask3 = (unsigned int)_mm256_movemask_epi8(m3);
             if (mask3 != 0) {
                 unsigned long bit_idx;
 #if defined(_MSC_VER)
@@ -199,7 +199,7 @@ int64_t xx_data_find_bytes_avx2(const uint8_t *pdata, size_t data_size, size_t s
 
         while (i + 32 <= data_size) {
             __m256i block = _mm256_loadu_si256((const __m256i*)(pdata + i));
-            int mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(block, target_v));
+            unsigned int mask = (unsigned int)_mm256_movemask_epi8(_mm256_cmpeq_epi8(block, target_v));
             if (mask != 0) {
                 unsigned long bit_idx;
 #if defined(_MSC_VER)
@@ -253,7 +253,7 @@ int64_t xx_data_find_bytes_avx2(const uint8_t *pdata, size_t data_size, size_t s
                 continue;
             }
 
-            int mask0 = _mm256_movemask_epi8(m0);
+            unsigned int mask0 = (unsigned int)_mm256_movemask_epi8(m0);
             while (mask0 != 0) {
                 unsigned long bit_idx;
 #if defined(_MSC_VER)
@@ -268,7 +268,7 @@ int64_t xx_data_find_bytes_avx2(const uint8_t *pdata, size_t data_size, size_t s
                 mask0 &= mask0 - 1;
             }
 
-            int mask1 = _mm256_movemask_epi8(m1);
+            unsigned int mask1 = (unsigned int)_mm256_movemask_epi8(m1);
             while (mask1 != 0) {
                 unsigned long bit_idx;
 #if defined(_MSC_VER)
@@ -283,7 +283,7 @@ int64_t xx_data_find_bytes_avx2(const uint8_t *pdata, size_t data_size, size_t s
                 mask1 &= mask1 - 1;
             }
 
-            int mask2 = _mm256_movemask_epi8(m2);
+            unsigned int mask2 = (unsigned int)_mm256_movemask_epi8(m2);
             while (mask2 != 0) {
                 unsigned long bit_idx;
 #if defined(_MSC_VER)
@@ -298,7 +298,7 @@ int64_t xx_data_find_bytes_avx2(const uint8_t *pdata, size_t data_size, size_t s
                 mask2 &= mask2 - 1;
             }
 
-            int mask3 = _mm256_movemask_epi8(m3);
+            unsigned int mask3 = (unsigned int)_mm256_movemask_epi8(m3);
             while (mask3 != 0) {
                 unsigned long bit_idx;
 #if defined(_MSC_VER)
@@ -323,7 +323,7 @@ int64_t xx_data_find_bytes_avx2(const uint8_t *pdata, size_t data_size, size_t s
             }
             __m256i b_first = _mm256_loadu_si256((const __m256i*)(pdata + i + idx1));
             __m256i b_last  = _mm256_loadu_si256((const __m256i*)(pdata + i + idx2));
-            int mask = _mm256_movemask_epi8(_mm256_and_si256(_mm256_cmpeq_epi8(b_first, v1), _mm256_cmpeq_epi8(b_last, v2)));
+            unsigned int mask = (unsigned int)_mm256_movemask_epi8(_mm256_and_si256(_mm256_cmpeq_epi8(b_first, v1), _mm256_cmpeq_epi8(b_last, v2)));
 
             while (mask != 0) {
                 unsigned long bit_idx;

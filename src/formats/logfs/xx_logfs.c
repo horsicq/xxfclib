@@ -12,6 +12,7 @@
 #include "xxfclib/formats/logfs/xx_logfs.h"
 
 #include "xxfclib/data/xx_data.h"
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"

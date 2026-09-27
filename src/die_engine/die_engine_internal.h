@@ -35,6 +35,7 @@
 #include "die_engine_compat.h"
 
 #include "die_engine_bin.h"
+#include "die_engine_disasm.h"
 #include "xxfclib/formats/xx_data_signature.h"
 #include "xxfclib/formats/xx_memory_map.h"
 #include "../formats/pe/xpe.h"
@@ -93,6 +94,13 @@ struct DieEngine {
      * It belongs to the image, not to its memory map, which is why it is
      * here rather than in xx_memory_map. */
     int nBits;
+    /* Finite cache scoped to this image/scan; mode is part of the key. */
+    struct {
+        cd_u64 address;
+        int bits;
+        int occupied;
+        DieDisasmResult result;
+    } disasmInfoCache[64];
     int bIsCliAssembly; /* a .NET PE — bind DOTNET, run PE/DOTNET scripts */
     xx_memory_map *pMap;
     /* How xx_data_signature_match resolves addresses and what it does with a

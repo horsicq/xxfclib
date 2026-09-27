@@ -339,6 +339,33 @@ static JSVal fn_function_tostring(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *
     return js_str(pCtx, sBuf);
 }
 
+/* A compact Uint32Array for bounded native primitive results. */
+static JSVal fn_uint32array_ctor(JSCtx *ctx, JSVal thisVal, int argc, JSVal *argv, void *user)
+{
+    int64_t count = 0, i;
+    JSVal result;
+    (void)thisVal; (void)user;
+    if (argc && argv[0].tag == JT_NUM) {
+        double value = argv[0].u.n;
+        if (!(value >= 0 && value <= 33554432.0) || (double)(int64_t)value != value)
+            return js_throw(ctx, "RangeError: Uint32Array length exceeds native budget");
+        count = (int64_t)value;
+    } else if (argc && argv[0].tag == JT_OBJ) {
+        count = js_array_length(ctx, argv[0]);
+        if (count < 0 || count > 33554432)
+            return js_throw(ctx, "RangeError: Uint32Array length exceeds native budget");
+    } else if (argc && argv[0].tag != JT_UNDEF)
+        return js_throw(ctx, "TypeError: Uint32Array requires length or array");
+    result = js_new_uint32_array(ctx, NULL, (size_t)count);
+    if (result.tag != JT_OBJ) return js_throw(ctx, "RangeError: Uint32Array allocation failed");
+    if (argc && argv[0].tag == JT_OBJ) for (i = 0; i < count; ++i) {
+        JSVal value = js_get_index(ctx, argv[0], i);
+        result.u.o->pUint32Data[i] = (uint32_t)js_to_int32(ctx, value);
+        js_release(ctx, value);
+    }
+    return result;
+}
+
 /* ----------------------------------------------------------------- Array  */
 
 static JSVal fn_array_ctor(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, void *pUser)
@@ -2912,6 +2939,9 @@ void js_install_builtins(JSCtx *pCtx)
     /* Constructors */
     {
         JSVal objectCtor = make_constructor(pCtx, "Object", fn_object_ctor, 1, pCtx->pObjectProto);
+        JSVal uint32Ctor = make_constructor(pCtx, "Uint32Array", fn_uint32array_ctor, 1, pCtx->pUint32ArrayProto);
+        jsobj_put_hidden(pCtx, uint32Ctor.u.o, "BYTES_PER_ELEMENT", js_num(4));
+        jsobj_put_hidden(pCtx, pCtx->pUint32ArrayProto, "BYTES_PER_ELEMENT", js_num(4));
         JSVal arrayCtor = make_constructor(pCtx, "Array", fn_array_ctor, 1, pCtx->pArrayProto);
         JSVal stringCtor = make_constructor(pCtx, "String", fn_string_ctor, 1, pCtx->pStringProto);
         JSVal numberCtor = make_constructor(pCtx, "Number", fn_number_ctor, 1, pCtx->pNumberProto);
@@ -2934,6 +2964,7 @@ void js_install_builtins(JSCtx *pCtx)
 
         js_release(pCtx, objectCtor);
         js_release(pCtx, arrayCtor);
+        js_release(pCtx, uint32Ctor);
         js_release(pCtx, stringCtor);
         js_release(pCtx, numberCtor);
         js_release(pCtx, booleanCtor);

@@ -65,6 +65,29 @@ if(XXFC_MSVC_X64 AND
     enable_language(ASM_MASM)
 endif()
 
+# DIE uses the base x86 decoder. Reuse a parent's target when present;
+# otherwise build the sibling cdisasm library without extra opcode catalogs.
+set(XXFC_CDISASM_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../cdisasm"
+    CACHE PATH "Path to the cdisasm source tree")
+function(xxfclib_add_cdisasm)
+    if(NOT TARGET cdisasm::cdisasm)
+        set(CDISASM_BUILD_SHARED_LIBS OFF)
+        set(CDISASM_BUILD_EXAMPLES OFF)
+        set(CDISASM_BUILD_FUZZERS OFF)
+        set(CDISASM_BUILD_PACKAGE_TESTS OFF)
+        set(CDISASM_VERIFY_GENERATED OFF)
+        set(BUILD_TESTING OFF)
+        set(USE_ARCH_X86 ON)
+        set(USE_ARCH_ARM OFF)
+        set(USE_DISASM_FORMAT ON)
+        set(USE_EXTRA_OPCODES OFF)
+        add_subdirectory("${XXFC_CDISASM_SOURCE_DIR}"
+            "${CMAKE_CURRENT_BINARY_DIR}/_deps/cdisasm" EXCLUDE_FROM_ALL)
+        set_target_properties(cdisasm PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    endif()
+endfunction()
+xxfclib_add_cdisasm()
+
 # Source files
 set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/xxfclib.h
@@ -530,7 +553,10 @@ set(XXFCLIB_SOURCES
     # scripts ("is this import present?"), which is a different job from the
     # readers in src/formats/ -- those enumerate structure for extraction and
     # display. The two are not interchangeable; see docs.
-    src/die_engine/xdisasm.c
+    src/die_engine/die_engine_disasm.c
+    src/die_engine/die_engine_search.c
+    src/die_engine/die_engine_primitives.c
+    src/die_engine/die_engine_primitives_js.c
     src/die_engine/inflate.c
     src/formats/iso9660/xiso9660.c
     src/formats/pe/xpe.c
@@ -1595,6 +1621,7 @@ endif()
 
 # Helper to configure target include dirs, warnings, and export/import definitions
 function(xxfclib_configure_target target is_shared)
+    target_link_libraries(${target} PRIVATE cdisasm::cdisasm)
     target_include_directories(${target}
         PUBLIC
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -2057,9 +2084,9 @@ function(xxfclib_configure_target target is_shared)
         endif()
         if(NOT WIN32)
             if(is_shared)
-                target_link_libraries(${target} PRIVATE Threads::Threads)
+                target_link_libraries(${target} PRIVATE Threads::Threads m)
             else()
-                target_link_libraries(${target} INTERFACE Threads::Threads)
+                target_link_libraries(${target} INTERFACE Threads::Threads m)
             endif()
         endif()
     endif()
@@ -2163,6 +2190,27 @@ install(FILES
 # Optional tests
 if(XXFC_BUILD_TESTS)
     enable_testing()
+    add_executable(test_die_native_api tests/test_die_native_api.c)
+    target_include_directories(test_die_native_api PRIVATE src)
+    target_link_libraries(test_die_native_api PRIVATE xxfclib::xxfclib)
+    add_test(NAME test_die_native_api COMMAND test_die_native_api)
+    add_executable(test_die_primitives tests/test_die_primitives.c)
+    target_include_directories(test_die_primitives PRIVATE src)
+    target_link_libraries(test_die_primitives PRIVATE xxfclib::xxfclib)
+    add_test(NAME test_die_primitives COMMAND test_die_primitives)
+    add_executable(test_die_primitives_js tests/test_die_primitives_js.c)
+    target_include_directories(test_die_primitives_js PRIVATE src)
+    target_link_libraries(test_die_primitives_js PRIVATE xxfclib::xxfclib)
+    add_test(NAME test_die_primitives_js COMMAND test_die_primitives_js)
+    add_executable(test_die_signature_batch tests/test_die_signature_batch.c)
+    target_include_directories(test_die_signature_batch PRIVATE src)
+    target_link_libraries(test_die_signature_batch PRIVATE xxfclib::xxfclib)
+    add_test(NAME test_die_signature_batch COMMAND test_die_signature_batch)
+    add_executable(test_die_disasm
+        tests/test_die_disasm.c src/die_engine/die_engine_disasm.c)
+    target_include_directories(test_die_disasm PRIVATE include src)
+    target_link_libraries(test_die_disasm PRIVATE cdisasm::cdisasm)
+    add_test(NAME test_die_disasm COMMAND test_die_disasm)
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_blake2.c")
         add_executable(test_blake2 tests/test_blake2.c)
         target_link_libraries(test_blake2 PRIVATE xxfclib::xxfclib)

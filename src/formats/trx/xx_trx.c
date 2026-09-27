@@ -6,6 +6,7 @@
 #include "xxfclib/formats/trx/xx_trx.h"
 
 #include "xxfclib/algo/store/xx_store.h"
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/data/xx_data.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"

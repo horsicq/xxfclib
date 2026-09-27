@@ -45,3 +45,11 @@ xxfclib/
     └── windows/
         └── build_portable_windows.cmd  # Packaging script for Windows
 ```
+
+## Disassembler dependency
+
+The DIE script API uses the sibling `cdisasm` library for x86 instruction
+lengths and mnemonics. Standalone CMake builds disable extra opcodes. Set
+`XXFC_CDISASM_SOURCE_DIR` to use a different source location. When a parent
+project already provides `cdisasm::cdisasm`, DIE still selects only base
+opcodes. Static library consumers must also link `cdisasm`.

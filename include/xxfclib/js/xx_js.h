@@ -133,6 +133,8 @@ XXFC_API char *js_to_cstr(JSCtx *pCtx, JSVal value);
 
 XXFC_API JSVal js_new_object(JSCtx *pCtx);
 XXFC_API JSVal js_new_array(JSCtx *pCtx);
+/* Compact fixed-length uint32 storage; NULL data initializes zeroes. */
+XXFC_API JSVal js_new_uint32_array(JSCtx *pCtx, const uint32_t *data, size_t count);
 
 typedef JSVal (*JSNativeFn)(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, void *pUser);
 

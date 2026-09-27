@@ -34,6 +34,7 @@
 #include "xxfclib/algo/zcmp/xx_zcmp.h"
 
 #include "xxfclib/io/xx_io.h"
+#include "xxfclib/algo/deflate/xx_deflate.h"
 
 #define ZCMP_MAX_BLOCKS ((size_t)4000000)
 #define ZCMP_MAX_OUTPUT ((size_t)0x7fffffff)
