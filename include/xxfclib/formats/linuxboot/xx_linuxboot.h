@@ -40,8 +40,8 @@
  * 16-bit field wraps once the system passes 1 MiB.  The reader resolves both
  * from the gzip "piggy" the build appends last (see xx_linuxboot.c).
  *
- * Not an archive: binwalk extracts nothing for this signature.  The
- * setup/system split is exposed through the getters below instead.
+ * The component archive API publishes the boot sector, real-mode setup and
+ * protected-mode system separately. It does not decompress or execute the kernel.
  */
 
 #ifndef XXFCLIB_FORMAT_LINUXBOOT_H

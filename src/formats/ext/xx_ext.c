@@ -33,10 +33,12 @@
  * prefilter, so check_is_valid() reads the superblock from the device.
  *
  * NOT IMPLEMENTED, deliberately: journal replay (the image is read as it lies
- * on disk, which is what every offline reader does), extended attributes,
- * INCOMPAT_INLINE_DATA, encryption, and INCOMPAT_META_BG's relocated
- * descriptor tables.  Images that require those are rejected at parse rather
- * than read approximately.
+ * on disk, which is what every offline reader does), general extended
+ * attributes and encryption. Inline data uses the specifically defined
+ * system.data inode-body attribute; other attributes are not extracted.
+ * META_BG's relocated group
+ * descriptor blocks are located using s_first_meta_bg and the backup
+ * superblock placement rules.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -54,10 +56,16 @@
 #define XX_EXT_SUPERBLOCK_OFFSET 1024
 #define XX_EXT_SUPERBLOCK_SIZE 1024
 #define XX_EXT_INODE_CORE_SIZE 128U
+#define XX_EXT_INLINE_HEAD_SIZE 60U
+#define XX_EXT_INLINE_DIR_PARENT_SIZE 4U
+#define XX_EXT_XATTR_MAGIC 0xEA020000U
+#define XX_EXT_XATTR_INDEX_SYSTEM 7U
 #define XX_EXT_ROOT_INODE 2U
 #define XX_EXT_MIN_BLOCK_SIZE 1024U
 #define XX_EXT_MAX_BLOCK_SIZE 65536U
 #define XX_EXT_MIN_DESC_SIZE 32U
+#define XX_EXT_COMPAT_SPARSE_SUPER2 0x0200U
+#define XX_EXT_RO_COMPAT_SPARSE_SUPER 0x0001U
 
 #define XX_EXT_MAX_ENTRIES 200000U
 #define XX_EXT_MAX_DEPTH 64U
@@ -99,6 +107,8 @@ typedef struct xx_ext_super_s {
     uint32_t feature_compat;
     uint32_t feature_incompat;
     uint32_t feature_ro_compat;
+    uint32_t first_meta_bg;
+    uint32_t backup_bgs[2];
     uint32_t pointers_per_block; /**< block_size / 4, the indirect fan-out. */
 } xx_ext_super;
 
@@ -171,16 +181,22 @@ static bool xx_ext_read_at(xx_io_device *device, int64_t offset, void *data,
                            size_t size) {
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
-        return false;
-    }
-    while (done < size) {
+    int64_t saved;
+    bool ok = true;
+    if (!device || (!data && size != 0U) || offset < 0) return false;
+    saved = xx_io_tell(device);
+    if (saved < 0) return false;
+    if (xx_io_seek64(device, offset, SEEK_SET) != 0) ok = false;
+    while (ok && done < size) {
         ssize_t got = xx_io_read(device, out + done, size - done);
-        if (got <= 0 || (size_t)got > size - done) return false;
+        if (got <= 0 || (size_t)got > size - done) {
+            ok = false;
+            break;
+        }
         done += (size_t)got;
     }
-    return true;
+    if (xx_io_seek64(device, saved, SEEK_SET) != 0) ok = false;
+    return ok && done == size;
 }
 
 /** True when [offset, offset + size) lies inside [0, total_size). */
@@ -561,6 +577,12 @@ static bool xx_ext_parse_superblock(xx_ext_private *parsed,
             xx_data_get_u32(raw, XX_EXT_SUPERBLOCK_SIZE, 0x60U, false);
         super->feature_ro_compat =
             xx_data_get_u32(raw, XX_EXT_SUPERBLOCK_SIZE, 0x64U, false);
+        super->first_meta_bg =
+            xx_data_get_u32(raw, XX_EXT_SUPERBLOCK_SIZE, 0x104U, false);
+        super->backup_bgs[0] =
+            xx_data_get_u32(raw, XX_EXT_SUPERBLOCK_SIZE, 0x24CU, false);
+        super->backup_bgs[1] =
+            xx_data_get_u32(raw, XX_EXT_SUPERBLOCK_SIZE, 0x250U, false);
     } else {
         return false;
     }
@@ -610,8 +632,7 @@ static bool xx_ext_parse_superblock(xx_ext_private *parsed,
     /* Features that change the on-disk meaning of what is read below. The
      * reader refuses them rather than producing plausible-looking rubbish. */
     if ((super->feature_incompat &
-         (XX_EXT_INCOMPAT_META_BG | XX_EXT_INCOMPAT_INLINE_DATA |
-          XX_EXT_INCOMPAT_ENCRYPT | XX_EXT_INCOMPAT_JOURNAL_DEV)) != 0U) {
+         (XX_EXT_INCOMPAT_ENCRYPT | XX_EXT_INCOMPAT_JOURNAL_DEV)) != 0U) {
         return false;
     }
 
@@ -642,27 +663,63 @@ static bool xx_ext_parse_superblock(xx_ext_private *parsed,
 
 /* --------------------------------------------------------------- inodes -- */
 
+static bool xx_ext_power_of(uint32_t value, uint32_t base) {
+    if (value == 0U) return false;
+    while (value % base == 0U) value /= base;
+    return value == 1U;
+}
+
+/* The primary descriptor block of a meta group sits immediately after that
+ * group's backup superblock, if it has one. This is the ext4 sparse-super
+ * rule; sparse_super2 instead names its two backup groups in the superblock. */
+static bool xx_ext_group_has_super(const xx_ext_super *super,
+                                   uint32_t group) {
+    if (group == 0U) return true;
+    if ((super->feature_compat & XX_EXT_COMPAT_SPARSE_SUPER2) != 0U) {
+        return group == super->backup_bgs[0] ||
+               group == super->backup_bgs[1];
+    }
+    if (group == 1U ||
+        (super->feature_ro_compat & XX_EXT_RO_COMPAT_SPARSE_SUPER) == 0U) {
+        return true;
+    }
+    if ((group & 1U) == 0U) return false;
+    return xx_ext_power_of(group, 3U) || xx_ext_power_of(group, 5U) ||
+           xx_ext_power_of(group, 7U);
+}
+
 /** Physical block of a group's inode table, or 0 when unreadable. */
 static uint64_t xx_ext_inode_table(const xx_ext_private *parsed,
                                    uint32_t group) {
     uint8_t descriptor[64];
     uint64_t gdt_block;
+    uint32_t desc_per_block;
+    uint32_t desc_block_index;
+    uint32_t group_in_block;
     int64_t offset;
     uint64_t table;
     size_t size = parsed->super.desc_size < sizeof(descriptor)
                       ? parsed->super.desc_size
                       : sizeof(descriptor);
     if (group >= parsed->super.group_count) return 0U;
-    /* The descriptor table starts in the block following the superblock's. */
-    gdt_block = (uint64_t)parsed->super.first_data_block + 1U;
+    desc_per_block = parsed->super.block_size / parsed->super.desc_size;
+    desc_block_index = group / desc_per_block;
+    group_in_block = group % desc_per_block;
+    if ((parsed->super.feature_incompat & XX_EXT_INCOMPAT_META_BG) != 0U &&
+        desc_block_index >= parsed->super.first_meta_bg) {
+        uint32_t first_group = desc_block_index * desc_per_block;
+        gdt_block = (uint64_t)parsed->super.first_data_block +
+                    (uint64_t)first_group * parsed->super.blocks_per_group;
+        if (xx_ext_group_has_super(&parsed->super, first_group)) ++gdt_block;
+    } else {
+        /* Traditional descriptor blocks follow the primary superblock. */
+        gdt_block = (uint64_t)parsed->super.first_data_block + 1U +
+                    desc_block_index;
+    }
     if (gdt_block >= parsed->super.block_count) return 0U;
     offset = xx_ext_block_offset(parsed, gdt_block);
     if (offset < 0) return 0U;
-    if ((uint64_t)group > (uint64_t)(INT64_MAX - offset) /
-                              parsed->super.desc_size) {
-        return 0U;
-    }
-    offset += (int64_t)((uint64_t)group * parsed->super.desc_size);
+    offset += (int64_t)group_in_block * parsed->super.desc_size;
     if (!xx_ext_range_within(parsed->input_size, offset, (int64_t)size) ||
         !xx_ext_read_at(parsed->device, offset, descriptor, size)) {
         return 0U;
@@ -675,14 +732,17 @@ static uint64_t xx_ext_inode_table(const xx_ext_private *parsed,
     return table;
 }
 
-/** Read the 128-byte core of one inode by number. */
-static bool xx_ext_read_inode(const xx_ext_private *parsed, uint32_t inode,
-                              uint8_t *out) {
+/** Read a bounded prefix of one inode by number. */
+static bool xx_ext_read_inode_bytes(const xx_ext_private *parsed,
+                                     uint32_t inode, uint8_t *out,
+                                     size_t size) {
     uint32_t group;
     uint32_t index;
     uint64_t table;
     int64_t offset;
-    if (!parsed || !out || inode == 0U || inode > parsed->super.inode_count) {
+    if (!parsed || !out || size < XX_EXT_INODE_CORE_SIZE ||
+        size > parsed->super.inode_size || inode == 0U ||
+        inode > parsed->super.inode_count) {
         return false;
     }
     group = (inode - 1U) / parsed->super.inodes_per_group;
@@ -695,11 +755,17 @@ static bool xx_ext_read_inode(const xx_ext_private *parsed, uint32_t inode,
         return false;
     }
     offset += (int64_t)((uint64_t)index * parsed->super.inode_size);
-    if (!xx_ext_range_within(parsed->input_size, offset,
-                             XX_EXT_INODE_CORE_SIZE)) {
+    if (!xx_ext_range_within(parsed->archive_end, offset, (int64_t)size)) {
         return false;
     }
-    return xx_ext_read_at(parsed->device, offset, out, XX_EXT_INODE_CORE_SIZE);
+    return xx_ext_read_at(parsed->device, offset, out, size);
+}
+
+/** Most call sites need only the 128-byte core. */
+static bool xx_ext_read_inode(const xx_ext_private *parsed, uint32_t inode,
+                              uint8_t *out) {
+    return xx_ext_read_inode_bytes(parsed, inode, out,
+                                   XX_EXT_INODE_CORE_SIZE);
 }
 
 /** The size an inode declares, combining the low and high halves. A directory
@@ -715,6 +781,108 @@ static uint64_t xx_ext_inode_size(const xx_ext_private *parsed,
                 << 32U;
     }
     return size;
+}
+
+/* EXT4_INLINE_DATA_FL changes i_block from block pointers into the first 60
+ * payload bytes. The continuation is the inode-body system.data xattr. Its
+ * e_value_offs is relative to IFIRST (the first xattr entry), not the inode
+ * or xattr header. Parse the complete bounded entry list before trusting the
+ * value offset, so it cannot alias a later xattr entry. */
+static bool xx_ext_inline_value(const uint8_t *inode, uint32_t inode_size,
+                                 uint32_t *value_offset,
+                                 uint32_t *value_size) {
+    uint32_t header;
+    uint32_t first;
+    uint32_t at;
+    uint32_t saved_offset = 0U;
+    uint32_t saved_size = 0U;
+    bool found = false;
+    bool terminated = false;
+    uint16_t extra;
+    if (!inode || !value_offset || !value_size ||
+        inode_size < XX_EXT_INODE_CORE_SIZE + 8U) return false;
+    extra = xx_data_get_u16(inode, inode_size, 0x80U, false);
+    if (extra == 0U || extra > inode_size - XX_EXT_INODE_CORE_SIZE - 8U) {
+        return false;
+    }
+    header = XX_EXT_INODE_CORE_SIZE + extra;
+    first = header + 4U;
+    if (xx_data_get_u32(inode, inode_size, header, false) !=
+        XX_EXT_XATTR_MAGIC) return false;
+    at = first;
+    while (at + 4U <= inode_size) {
+        uint32_t entry_size;
+        uint32_t name_size;
+        uint32_t length;
+        if (xx_data_get_u32(inode, inode_size, at, false) == 0U) {
+            terminated = true;
+            break;
+        }
+        if (at > inode_size - 16U) return false;
+        name_size = inode[at];
+        entry_size = (16U + name_size + 3U) & ~3U;
+        if (entry_size > inode_size - at) return false;
+        if (name_size == 4U &&
+            inode[at + 1U] == XX_EXT_XATTR_INDEX_SYSTEM &&
+            xx_rt_memcmp(inode + at + 16U, "data", 4U) == 0) {
+            if (found ||
+                xx_data_get_u32(inode, inode_size, at + 4U, false) != 0U) {
+                return false;
+            }
+            saved_offset =
+                xx_data_get_u16(inode, inode_size, at + 2U, false);
+            length = xx_data_get_u32(inode, inode_size, at + 8U, false);
+            saved_size = length;
+            found = true;
+        }
+        at += entry_size;
+    }
+    if (!terminated || !found) return false;
+    if (saved_size != 0U) {
+        uint32_t value_at;
+        if ((saved_offset & 3U) != 0U ||
+            saved_offset > inode_size - first) return false;
+        value_at = first + saved_offset;
+        if (value_at < at + 4U || saved_size > inode_size - value_at) {
+            return false;
+        }
+        *value_offset = value_at;
+    } else {
+        *value_offset = 0U;
+    }
+    *value_size = saved_size;
+    return true;
+}
+
+static bool xx_ext_read_inline_inode(const xx_ext_private *parsed,
+                                      uint32_t inode_number,
+                                      uint8_t **out_inode,
+                                      uint32_t *value_offset,
+                                      uint32_t *value_size) {
+    uint8_t *inode;
+    uint32_t flags;
+    if (!parsed || !out_inode || !value_offset || !value_size ||
+        (parsed->super.feature_incompat & XX_EXT_INCOMPAT_INLINE_DATA) == 0U) {
+        return false;
+    }
+    *out_inode = NULL;
+    inode = (uint8_t *)xx_mem_alloc(parsed->super.inode_size);
+    if (!inode) return false;
+    if (!xx_ext_read_inode_bytes(parsed, inode_number, inode,
+                                 parsed->super.inode_size)) {
+        xx_mem_free(inode);
+        return false;
+    }
+    flags = xx_data_get_u32(inode, parsed->super.inode_size, 0x20U, false);
+    if ((flags & XX_EXT_FL_INLINE_DATA) == 0U ||
+        (flags & (XX_EXT_FL_EXTENTS | XX_EXT_FL_ENCRYPT)) != 0U ||
+        !xx_ext_inline_value(inode, parsed->super.inode_size,
+                             value_offset, value_size)) {
+        xx_mem_free(inode);
+        return false;
+    }
+    *out_inode = inode;
+    return true;
 }
 
 /** Number of logical blocks a file of `size` bytes occupies. */
@@ -882,13 +1050,13 @@ static char *xx_ext_read_symlink(const xx_ext_private *parsed,
 
 /* ------------------------------------------------------- directory walk -- */
 
-/* Parse one directory data block. A malformed record ends this block only:
- * the rest of the directory is still worth reading, and refusing the whole
- * image over one bad record would lose far more than it protects. */
+/* Parse a directory region. Existing block directories tolerate a malformed
+ * tail so other blocks remain readable; inline inode regions must be exact,
+ * because no later block can recover a record omitted here. */
 static bool xx_ext_parse_dir_block(xx_ext_private *parsed, const uint8_t *data,
+                                   uint32_t block_size, bool strict,
                                    const char *prefix, unsigned depth,
                                    xx_pd_struct *pd) {
-    uint32_t block_size = parsed->super.block_size;
     uint32_t at = 0U;
     bool filetype =
         (parsed->super.feature_incompat & XX_EXT_INCOMPAT_FILETYPE) != 0U;
@@ -909,6 +1077,14 @@ static bool xx_ext_parse_dir_block(xx_ext_private *parsed, const uint8_t *data,
         if (pd && xx_pd_is_stopped(pd)) return false;
         child_inode = xx_data_get_u32(data, block_size, at, false);
         rec_len = xx_data_get_u16(data, block_size, at + 4U, false);
+        /* At a 64 KiB block size, a record spanning the entire block is
+         * encoded as 0xffff (or zero) because rec_len is only 16 bits.
+         * This occurs for a single live entry in a later directory block,
+         * not just for free-space records. */
+        if (block_size == 65536U &&
+            (rec_len == 0xffffU || rec_len == 0U)) {
+            rec_len = block_size;
+        }
         if (filetype) {
             name_len = xx_data_get_u8(data, block_size, at + 6U);
         } else {
@@ -917,9 +1093,9 @@ static bool xx_ext_parse_dir_block(xx_ext_private *parsed, const uint8_t *data,
         /* A zero or unaligned rec_len would step nowhere or step off the
          * record grid; either one ends the block rather than spinning. */
         if (rec_len < 8U || (rec_len & 3U) != 0U || rec_len > block_size - at) {
-            return true;
+            return !strict;
         }
-        if (name_len > rec_len - 8U) return true;
+        if (name_len > rec_len - 8U) return !strict;
         name = data + at + 8U;
         at += rec_len;
 
@@ -927,9 +1103,15 @@ static bool xx_ext_parse_dir_block(xx_ext_private *parsed, const uint8_t *data,
          * directory's interior nodes hide from a linear read. */
         if (child_inode == 0U || name_len == 0U) continue;
         if (xx_ext_is_dot_name(name, name_len)) continue;
-        if (!xx_ext_plausible_name(name, name_len)) continue;
-        if (parsed->count >= XX_EXT_MAX_ENTRIES) return true;
-        if (!xx_ext_read_inode(parsed, child_inode, child)) continue;
+        if (!xx_ext_plausible_name(name, name_len)) {
+            if (strict) return false;
+            continue;
+        }
+        if (parsed->count >= XX_EXT_MAX_ENTRIES) return !strict;
+        /* A live directory record must resolve to an inode. Silently
+         * dropping it would report a partial archive as healthy when a
+         * relocated descriptor or the inode table is corrupt. */
+        if (!xx_ext_read_inode(parsed, child_inode, child)) return false;
 
         mode = xx_data_get_u16(child, sizeof(child), 0x00U, false);
         type = (uint16_t)(mode & XX_EXT_S_IFMT);
@@ -939,13 +1121,33 @@ static bool xx_ext_parse_dir_block(xx_ext_private *parsed, const uint8_t *data,
             /* Devices, fifos and sockets carry no extractable payload. */
             continue;
         }
-        if ((flags & (XX_EXT_FL_INLINE_DATA | XX_EXT_FL_ENCRYPT)) != 0U) {
+        if ((flags & XX_EXT_FL_ENCRYPT) != 0U) {
             continue;
+        }
+        if ((flags & XX_EXT_FL_INLINE_DATA) != 0U) {
+            uint8_t *full = NULL;
+            uint32_t value_at = 0U;
+            uint32_t value_size = 0U;
+            bool valid;
+            if (!xx_ext_read_inline_inode(parsed, child_inode, &full,
+                                           &value_at, &value_size)) {
+                return false;
+            }
+            valid = xx_ext_inode_size(parsed, full, mode) <=
+                    (uint64_t)XX_EXT_INLINE_HEAD_SIZE + value_size;
+            if (type == XX_EXT_S_IFDIR) {
+                valid = valid &&
+                        xx_ext_inode_size(parsed, full, mode) >=
+                            XX_EXT_INLINE_HEAD_SIZE;
+            }
+            xx_mem_free(full);
+            if (!valid) return false;
         }
         size = xx_ext_inode_size(parsed, child, mode);
         /* No file can be larger than the filesystem that holds it; this is
          * what keeps a forged i_size from driving a runaway extraction. */
-        if (size > parsed->super.block_count * (uint64_t)block_size) continue;
+        if (size > parsed->super.block_count *
+                       (uint64_t)parsed->super.block_size) continue;
 
         full_name = xx_ext_join_name(prefix, name, name_len);
         if (!full_name) continue;
@@ -956,7 +1158,31 @@ static bool xx_ext_parse_dir_block(xx_ext_private *parsed, const uint8_t *data,
         entry.data_offset = -1;
 
         if (type == XX_EXT_S_IFLNK) {
-            entry.link_target = xx_ext_read_symlink(parsed, child, size, pd);
+            if ((flags & XX_EXT_FL_INLINE_DATA) != 0U) {
+                uint8_t *full = NULL;
+                uint32_t value_at = 0U;
+                uint32_t value_size = 0U;
+                if (size >= XX_EXT_MAX_PATH ||
+                    !xx_ext_read_inline_inode(parsed, child_inode, &full,
+                                               &value_at, &value_size)) {
+                    xx_ext_entry_cleanup(&entry);
+                    return false;
+                }
+                entry.link_target = (char *)xx_mem_alloc((size_t)size + 1U);
+                if (entry.link_target) {
+                    size_t first = (size_t)(size < XX_EXT_INLINE_HEAD_SIZE
+                                               ? size : XX_EXT_INLINE_HEAD_SIZE);
+                    xx_rt_memcpy(entry.link_target, full + 0x28U, first);
+                    if (size > first) {
+                        xx_rt_memcpy(entry.link_target + first,
+                                     full + value_at, (size_t)size - first);
+                    }
+                    entry.link_target[size] = '\0';
+                }
+                xx_mem_free(full);
+            } else {
+                entry.link_target = xx_ext_read_symlink(parsed, child, size, pd);
+            }
             if (!entry.link_target) {
                 xx_ext_entry_cleanup(&entry);
                 continue;
@@ -972,7 +1198,8 @@ static bool xx_ext_parse_dir_block(xx_ext_private *parsed, const uint8_t *data,
             entry.size = size;
             /* The listing reports where the payload starts; extraction
              * rebuilds the full map from the inode. */
-            if (xx_ext_collect_runs(parsed, child,
+            if ((flags & XX_EXT_FL_INLINE_DATA) == 0U &&
+                xx_ext_collect_runs(parsed, child,
                                     xx_ext_block_total(parsed, size), &runs,
                                     pd)) {
                 size_t run;
@@ -1006,7 +1233,7 @@ static bool xx_ext_parse_dir_block(xx_ext_private *parsed, const uint8_t *data,
             if (!ok) return false;
         }
     }
-    return true;
+    return !strict || at == block_size;
 }
 
 static bool xx_ext_walk_directory(xx_ext_private *parsed, uint32_t inode,
@@ -1029,6 +1256,33 @@ static bool xx_ext_walk_directory(xx_ext_private *parsed, uint32_t inode,
     }
     /* A directory's size is always the low word: the high word is reused. */
     size = xx_data_get_u32(node, sizeof(node), 0x04U, false);
+    if ((xx_data_get_u32(node, sizeof(node), 0x20U, false) &
+         XX_EXT_FL_INLINE_DATA) != 0U) {
+        uint8_t *full = NULL;
+        uint32_t value_at = 0U;
+        uint32_t value_size = 0U;
+        uint32_t parent;
+        if (!xx_ext_read_inline_inode(parsed, inode, &full, &value_at,
+                                       &value_size)) return false;
+        parent = xx_data_get_u32(full, parsed->super.inode_size, 0x28U, false);
+        ok = parent != 0U && parent <= parsed->super.inode_count &&
+             size >= XX_EXT_INLINE_HEAD_SIZE &&
+             size <= (uint64_t)XX_EXT_INLINE_HEAD_SIZE + value_size;
+        if (ok) {
+            ok = xx_ext_parse_dir_block(
+                parsed, full + 0x28U + XX_EXT_INLINE_DIR_PARENT_SIZE,
+                XX_EXT_INLINE_HEAD_SIZE - XX_EXT_INLINE_DIR_PARENT_SIZE,
+                true, prefix, depth, pd);
+        }
+        if (ok && size > XX_EXT_INLINE_HEAD_SIZE) {
+            ok = xx_ext_parse_dir_block(
+                parsed, full + value_at,
+                (uint32_t)(size - XX_EXT_INLINE_HEAD_SIZE), true,
+                prefix, depth, pd);
+        }
+        xx_mem_free(full);
+        return ok;
+    }
     total = xx_ext_block_total(parsed, size);
     if (total > parsed->super.block_count) return false;
     xx_mem_zero(&runs, sizeof(runs));
@@ -1058,7 +1312,9 @@ static bool xx_ext_walk_directory(xx_ext_private *parsed, uint32_t inode,
                 ok = false;
                 break;
             }
-            if (!xx_ext_parse_dir_block(parsed, block, prefix, depth, pd)) {
+            if (!xx_ext_parse_dir_block(parsed, block,
+                                        parsed->super.block_size, false,
+                                        prefix, depth, pd)) {
                 ok = false;
                 break;
             }
@@ -1122,6 +1378,19 @@ fail:
 
 /* ------------------------------------------------------------ extraction - */
 
+static bool xx_ext_write_all(xx_io_device *destination, const uint8_t *data,
+                             size_t size, xx_pd_struct *pd) {
+    size_t done = 0U;
+    while (done < size) {
+        ssize_t got;
+        if (pd && xx_pd_is_stopped(pd)) return false;
+        got = xx_io_write(destination, data + done, size - done);
+        if (got <= 0 || (size_t)got > size - done) return false;
+        done += (size_t)got;
+    }
+    return !pd || !xx_pd_is_stopped(pd);
+}
+
 /* Write one member's bytes to `destination`, assembling the runs in logical
  * order and filling holes - and the gaps an extent tree leaves between its
  * extents - with zeros. */
@@ -1140,6 +1409,31 @@ static bool xx_ext_extract_entry(xx_ext_private *parsed,
     if (!parsed || !entry || !destination) return false;
     block_size = parsed->super.block_size;
     if (!xx_ext_read_inode(parsed, entry->inode, node)) return false;
+    if ((xx_data_get_u16(node, sizeof(node), 0x00U, false) & XX_EXT_S_IFMT) !=
+        XX_EXT_S_IFREG) return false;
+    if ((xx_data_get_u32(node, sizeof(node), 0x20U, false) &
+         XX_EXT_FL_INLINE_DATA) != 0U) {
+        uint8_t *full = NULL;
+        uint32_t value_at = 0U;
+        uint32_t value_size = 0U;
+        size_t first;
+        if (!xx_ext_read_inline_inode(parsed, entry->inode, &full,
+                                       &value_at, &value_size)) return false;
+        ok = xx_ext_inode_size(parsed, full, XX_EXT_S_IFREG) == entry->size &&
+             entry->size <=
+                 (uint64_t)XX_EXT_INLINE_HEAD_SIZE + value_size;
+        first = (size_t)(entry->size < XX_EXT_INLINE_HEAD_SIZE
+                             ? entry->size : XX_EXT_INLINE_HEAD_SIZE);
+        if (ok && first != 0U) {
+            ok = xx_ext_write_all(destination, full + 0x28U, first, pd);
+        }
+        if (ok && entry->size > first) {
+            ok = xx_ext_write_all(destination, full + value_at,
+                                   (size_t)entry->size - first, pd);
+        }
+        xx_mem_free(full);
+        return ok && (!pd || !xx_pd_is_stopped(pd));
+    }
     total = xx_ext_block_total(parsed, entry->size);
     xx_mem_zero(&runs, sizeof(runs));
     if (!xx_ext_collect_runs(parsed, node, total, &runs, pd)) {
@@ -1166,8 +1460,7 @@ static bool xx_ext_extract_entry(xx_ext_private *parsed,
             uint64_t take = entry->size - written;
             if (take > left) take = left;
             if (take > block_size) take = block_size;
-            ok = xx_io_write(destination, zeros, (size_t)take) ==
-                 (ssize_t)take;
+            ok = xx_ext_write_all(destination, zeros, (size_t)take, pd);
             written += take;
         }
         for (index = 0U; ok && index < runs.items[run].count; ++index) {
@@ -1175,16 +1468,16 @@ static bool xx_ext_extract_entry(xx_ext_private *parsed,
             if (take == 0U) break;
             if (take > block_size) take = block_size;
             if (runs.items[run].physical == 0U) {
-                ok = xx_io_write(destination, zeros, (size_t)take) ==
-                     (ssize_t)take;
+                ok = xx_ext_write_all(destination, zeros, (size_t)take, pd);
             } else {
                 int64_t offset = xx_ext_block_offset(
                     parsed, runs.items[run].physical + index);
                 ok = offset >= 0 &&
                      xx_ext_read_at(parsed->device, offset, parsed->block,
                                     (size_t)take) &&
-                     xx_io_write(destination, parsed->block, (size_t)take) ==
-                         (ssize_t)take;
+                     (!pd || !xx_pd_is_stopped(pd)) &&
+                     xx_ext_write_all(destination, parsed->block,
+                                      (size_t)take, pd);
             }
             written += take;
         }
@@ -1193,12 +1486,12 @@ static bool xx_ext_extract_entry(xx_ext_private *parsed,
     while (ok && written < entry->size) {
         uint64_t take = entry->size - written;
         if (take > block_size) take = block_size;
-        ok = xx_io_write(destination, zeros, (size_t)take) == (ssize_t)take;
+        ok = xx_ext_write_all(destination, zeros, (size_t)take, pd);
         written += take;
     }
     xx_mem_free(zeros);
     xx_ext_runs_cleanup(&runs);
-    return ok && written == entry->size;
+    return ok && written == entry->size && (!pd || !xx_pd_is_stopped(pd));
 }
 
 /* -------------------------------------------------------------- records -- */
@@ -1222,15 +1515,42 @@ static bool xx_ext_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_ext_find_option(const xx_list_s *options,
-                                        uint32_t meta_id) {
-    size_t index;
-    if (!options) return NULL;
-    for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
-        if (item && item->meta_id == meta_id) return &item->var;
+/* Create a short sibling file exclusively, so an incomplete extraction can
+ * never truncate a destination that already existed. A legal member may be
+ * named like the first candidate, so exclude the destination itself. */
+static xx_io_device *xx_ext_open_stage(const char *destination,
+                                       char **stage_path) {
+    char *parent;
+    size_t index, prefix = 0U;
+    unsigned attempt;
+    if (!destination || !stage_path) return NULL;
+    *stage_path = NULL;
+    parent = xx_str_dup(destination);
+    if (!parent) return NULL;
+    for (index = 0U; parent[index]; ++index) {
+        if (parent[index] == '/' || parent[index] == '\\') prefix = index + 1U;
     }
+    parent[prefix] = 0;
+    for (attempt = 0U; attempt < 128U; ++attempt) {
+        char suffix[40];
+        char *candidate;
+        xx_io_device *file;
+        (void)xx_rt_snprintf(suffix, sizeof(suffix), ".xx_ext.tmp.%u", attempt);
+        candidate = xx_str_concat(parent, suffix);
+        if (!candidate) break;
+        if (xx_str_iequals(candidate, destination)) {
+            xx_str_free(candidate);
+            continue;
+        }
+        file = xx_io_file_open(candidate, "wbx");
+        if (file) {
+            *stage_path = candidate;
+            xx_str_free(parent);
+            return file;
+        }
+        xx_str_free(candidate);
+    }
+    xx_str_free(parent);
     return NULL;
 }
 
@@ -1469,9 +1789,10 @@ bool xx_ext_unpack_current_archive_record(Abstractformat *self,
     const char *base = NULL;
     char *owned_base = NULL;
     char *destination_path = NULL;
+    char *stage_path = NULL;
     xx_io_device *destination = NULL;
     bool result = false;
-    bool created = false;
+    bool overwrite;
 
     if (!self || !self->device || !state || state->format != self ||
         !state->has_record || !state->internal_state ||
@@ -1483,7 +1804,8 @@ bool xx_ext_unpack_current_archive_record(Abstractformat *self,
     entry = &stream->parsed.entries[stream->index];
     if (!xx_ext_safe_name(entry->name)) return false;
 
-    option = xx_ext_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
+    option = xx_format_resolve_extra_parameter(self, &state->options,
+                                               XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
         /* No destination: report whether the member is addressable at all.
          * A symlink answers no here for the same reason it does below. */
@@ -1521,16 +1843,28 @@ bool xx_ext_unpack_current_archive_record(Abstractformat *self,
      * exists whose contents are a path. */
     if (entry->is_link) goto cleanup;
 
+    option = xx_format_resolve_extra_parameter(self, &state->options,
+                                               XX_META_ID_OPT_OVERWRITE);
+    overwrite = option && xx_var_get_bool(option);
+    if (!overwrite && xx_io_file_exists_a(destination_path)) goto cleanup;
     if (!xx_store_create_dirs_a(destination_path, false)) goto cleanup;
-    destination = xx_io_file_open(destination_path, "wb");
-    created = destination != NULL;
+    destination = xx_ext_open_stage(destination_path, &stage_path);
     if (!destination) goto cleanup;
     result = xx_ext_extract_entry(&stream->parsed, entry, destination, pd);
-    xx_io_close(destination);
+    if (xx_io_close(destination) != 0) result = false;
     destination = NULL;
-    if (!result && created) xx_rt_remove(destination_path);
+    if (result && (!pd || !xx_pd_is_stopped(pd))) {
+        result = xx_io_file_replace_a(stage_path, destination_path, overwrite);
+    } else {
+        result = false;
+    }
 
 cleanup:
+    if (destination) (void)xx_io_close(destination);
+    if (stage_path) {
+        if (!result) (void)xx_io_file_remove_a(stage_path);
+        xx_str_free(stage_path);
+    }
     if (owned_base) xx_str_free(owned_base);
     if (destination_path) xx_str_free(destination_path);
     return result;
@@ -1569,7 +1903,7 @@ const char *xx_ext_get_generation(const xx_ext *ext) {
      * Extents, 64-bit or flex_bg mean ext4; a journal alone means ext3. */
     if ((ext->feature_incompat &
          (XX_EXT_INCOMPAT_EXTENTS | XX_EXT_INCOMPAT_64BIT |
-          XX_EXT_INCOMPAT_FLEX_BG)) != 0U) {
+          XX_EXT_INCOMPAT_FLEX_BG | XX_EXT_INCOMPAT_INLINE_DATA)) != 0U) {
         return "ext4";
     }
     if ((ext->feature_compat & XX_EXT_COMPAT_HAS_JOURNAL) != 0U) return "ext3";

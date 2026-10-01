@@ -12,6 +12,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xx_cramfs_direct_native.h"
 
 #include <limits.h>
 #include <stdio.h>
@@ -722,36 +723,43 @@ static bool xx_cramfs_extract_entry(Abstractformat *self,
         int64_t block_length;
 
         if (pd && xx_pd_is_stopped(pd)) goto done;
-        /* A direct pointer relocates the block somewhere else entirely and
-         * carries its length out of band; it is produced only by the XIP
-         * writer and is not decoded here. */
-        if (flags & XX_CRAMFS_BLK_FLAG_DIRECT_PTR) goto done;
-        if (!xx_cramfs_add(parsed->base, stored, &block_end) ||
-            block_end > parsed->image_end || block_end < previous_end) {
-            goto done;
-        }
-        block_length = block_end - previous_end;
-        /* The kernel's own cap: a block can grow slightly under compression
-         * but never past two pages. */
-        if (block_length > (int64_t)XX_CRAMFS_BLOCK_SIZE * 2) goto done;
-
-        if (block_length == 0) {
-            /* A hole. The image stores nothing and the block reads as zeros. */
-            xx_mem_zero(output, expected);
-        } else if (flags & XX_CRAMFS_BLK_FLAG_UNCOMPRESSED) {
-            if ((size_t)block_length != expected) goto done;
-            if (!xx_cramfs_read_at(self->device, previous_end, output,
+        if (flags & XX_CRAMFS_BLK_FLAG_DIRECT_PTR) {
+            int64_t direct_start;
+            if (!xx_cramfs_direct_native_span(raw, parsed->base,
+                                              parsed->image_end, expected,
+                                              &direct_start, &block_end) ||
+                !xx_cramfs_read_at(self->device, direct_start, output,
                                    expected)) {
                 goto done;
             }
         } else {
-            if (!xx_cramfs_read_at(self->device, previous_end, input,
-                                   (size_t)block_length)) {
+            if (!xx_cramfs_add(parsed->base, stored, &block_end) ||
+                block_end > parsed->image_end || block_end < previous_end) {
                 goto done;
             }
-            if (!xx_cramfs_decode_block(input, (size_t)block_length, output,
-                                        expected)) {
-                goto done;
+            block_length = block_end - previous_end;
+            /* The kernel's own cap: a block can grow slightly under
+             * compression but never past two pages. */
+            if (block_length > (int64_t)XX_CRAMFS_BLOCK_SIZE * 2) goto done;
+
+            if (block_length == 0) {
+                /* A hole. The image stores nothing and reads as zeros. */
+                xx_mem_zero(output, expected);
+            } else if (flags & XX_CRAMFS_BLK_FLAG_UNCOMPRESSED) {
+                if ((size_t)block_length != expected) goto done;
+                if (!xx_cramfs_read_at(self->device, previous_end, output,
+                                       expected)) {
+                    goto done;
+                }
+            } else {
+                if (!xx_cramfs_read_at(self->device, previous_end, input,
+                                       (size_t)block_length)) {
+                    goto done;
+                }
+                if (!xx_cramfs_decode_block(input, (size_t)block_length,
+                                            output, expected)) {
+                    goto done;
+                }
             }
         }
         if (xx_io_write(destination, output, expected) != (ssize_t)expected) {

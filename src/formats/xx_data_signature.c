@@ -62,7 +62,7 @@ static bool sig_byte_ok(uint8_t value, xx_data_sig_kind kind) {
 
 /* Containment written as a subtraction: `offset + size` would overflow on an
  * offset a signature is free to contain. */
-static bool sig_range_within(size_t data_size, int64_t offset, int64_t size) {
+static bool sig_range_within(uint64_t data_size, int64_t offset, int64_t size) {
     if (offset < 0 || size < 0) return false;
     if ((uint64_t)offset > (uint64_t)data_size) return false;
     return (uint64_t)size <= (uint64_t)data_size - (uint64_t)offset;
@@ -107,12 +107,153 @@ bool xx_data_class_check(const void *data, size_t data_size, int64_t offset,
     }
 }
 
+/* Buffer and device matching share record semantics. A device operation
+ * captures the configured I/O capacity once; its reusable scratch buffers
+ * never exceed it, even when a supplied literal is arbitrarily long. */
+typedef struct {
+    const uint8_t *bytes;
+    xx_io_device *device;
+    uint64_t size;
+    bool failed;
+    size_t io_capacity;
+    uint8_t *compare_buffer, *find_buffer;
+    size_t compare_capacity, find_capacity;
+} SigInput;
+
+static bool sig_input_buffer(SigInput *input, uint8_t **buffer,
+                              size_t *capacity, uint64_t needed) {
+    size_t wanted = needed < input->io_capacity ? (size_t)needed : input->io_capacity;
+    uint8_t *replacement;
+    if (!wanted) return false;
+    if (*capacity >= wanted) return true;
+    replacement = (uint8_t *)xx_mem_realloc(*buffer, wanted);
+    if (!replacement) { input->failed = true; return false; }
+    *buffer = replacement;
+    *capacity = wanted;
+    return true;
+}
+
+static void sig_input_release(SigInput *input) {
+    xx_mem_free(input->compare_buffer);
+    xx_mem_free(input->find_buffer);
+}
+
+static bool sig_input_read(SigInput *input, int64_t offset, void *out, size_t size) {
+    size_t done = 0;
+    int64_t previous;
+    bool ok = true;
+    if (input->failed || !sig_range_within(input->size, offset, (int64_t)size)) return false;
+    if (!size) return true;
+    if (input->bytes) {
+        xx_rt_memcpy(out, input->bytes + (size_t)offset, size);
+        return true;
+    }
+    if (!input->device) return false;
+    previous = xx_io_tell(input->device);
+    if (xx_io_seek64(input->device, offset, SEEK_SET) != 0) ok = false;
+    while (ok && done < size) {
+        size_t requested = size - done;
+        ssize_t got;
+        if (requested > input->io_capacity) requested = input->io_capacity;
+        got = xx_io_read(input->device, (uint8_t *)out + done, requested);
+        if (got <= 0 || (size_t)got > requested) ok = false;
+        else done += (size_t)got;
+    }
+    if (previous >= 0 && xx_io_seek64(input->device, previous, SEEK_SET) != 0) ok = false;
+    if (!ok) input->failed = true;
+    return ok;
+}
+
+static bool sig_input_compare(SigInput *input, int64_t offset,
+                              const uint8_t *pattern, int64_t size) {
+    int64_t done = 0;
+    if (!sig_range_within(input->size, offset, size)) return false;
+    if (input->bytes) return xx_rt_memcmp(input->bytes + (size_t)offset, pattern, (size_t)size) == 0;
+    if (!sig_input_buffer(input, &input->compare_buffer, &input->compare_capacity, (uint64_t)size)) return false;
+    while (done < size) {
+        size_t count = (uint64_t)(size - done) < input->compare_capacity ? (size_t)(size - done) : input->compare_capacity;
+        if (!sig_input_read(input, offset + done, input->compare_buffer, count)) return false;
+        if (xx_rt_memcmp(input->compare_buffer, pattern + (size_t)done, count)) return false;
+        done += (int64_t)count;
+    }
+    return true;
+}
+
+static bool sig_input_class(SigInput *input, int64_t offset, int64_t window,
+                            xx_data_sig_kind kind) {
+    int64_t done = 0;
+    if (!sig_range_within(input->size, offset, window)) return false;
+    if (input->bytes) return xx_data_class_check(input->bytes, (size_t)input->size, offset, window, kind);
+    if (!sig_input_buffer(input, &input->compare_buffer, &input->compare_capacity, (uint64_t)window)) return false;
+    while (done < window) {
+        size_t count = (uint64_t)(window - done) < input->compare_capacity ? (size_t)(window - done) : input->compare_capacity;
+        if (!sig_input_read(input, offset + done, input->compare_buffer, count)) return false;
+        if (!xx_data_class_check(input->compare_buffer, count, 0, (int64_t)count, kind)) return false;
+        done += (int64_t)count;
+    }
+    return true;
+}
+
+/* Only complete starts are searched. A two-byte anchor overlaps adjacent
+ * windows by one byte; a one-byte configured capacity uses a one-byte anchor.
+ * Candidate verification has a separate reusable buffer, preserving this
+ * window while a long literal is checked in bounded pieces. */
+static int64_t sig_input_find(SigInput *input, int64_t offset, int64_t length,
+                              const uint8_t *pattern, int64_t pattern_size) {
+    int64_t starts;
+    size_t anchor_size;
+    if (!pattern || pattern_size <= 0 || length < pattern_size ||
+        !sig_range_within(input->size, offset, length)) return -1;
+    if (input->bytes) {
+        int64_t found = xx_data_find_bytes_buffer_optimize(input->bytes + (size_t)offset,
+            (size_t)length, 0, pattern, (size_t)pattern_size, NULL);
+        return found < 0 ? -1 : offset + found;
+    }
+    if (!sig_input_buffer(input, &input->find_buffer, &input->find_capacity, (uint64_t)length)) return -1;
+    anchor_size = pattern_size >= 2 && input->find_capacity >= 2 ? 2 : 1;
+    starts = length - pattern_size + 1;
+    while (starts > 0 && !input->failed) {
+        size_t maximum_starts = input->find_capacity - anchor_size + 1;
+        size_t count = (uint64_t)starts < maximum_starts ? (size_t)starts : maximum_starts;
+        size_t read_size = count + anchor_size - 1;
+        size_t cursor = 0;
+        if (!sig_input_read(input, offset, input->find_buffer, read_size)) return -1;
+        while (cursor < count) {
+            int64_t found = xx_data_find_bytes_buffer_optimize(input->find_buffer, read_size, cursor,
+                pattern, anchor_size, NULL);
+            int64_t candidate;
+            if (found < 0 || (uint64_t)found >= count) break;
+            candidate = offset + found;
+            if (pattern_size == (int64_t)anchor_size ||
+                sig_input_compare(input, candidate, pattern, pattern_size)) return candidate;
+            if (input->failed) return -1;
+            cursor = (size_t)found + 1;
+        }
+        offset += (int64_t)count;
+        starts -= (int64_t)count;
+    }
+    return -1;
+}
+
+static bool sig_input_device(SigInput *input, xx_io_device *device) {
+    int64_t size = xx_io_total_size(device);
+    size_t capacity = xx_get_file_buffer_size();
+    xx_rt_memset(input, 0, sizeof(*input));
+    if (!capacity) capacity = XX_DEFAULT_FILE_BUFFER_SIZE;
+    if (capacity > ((size_t)-1 >> 1)) capacity = (size_t)-1 >> 1;
+    input->device = device;
+    input->size = size >= 0 ? (uint64_t)size : 0;
+    input->io_capacity = capacity;
+    return device && size >= 0;
+}
+
 /* Read the pointer a jump record stores. Width is validated by the caller. */
-static bool sig_read_pointer(const void *data, size_t data_size,
+static bool sig_read_pointer(SigInput *input,
                              int64_t offset, int address_size,
                              bool big_endian, bool sign_extend,
                              bool past_end_as_zero, uint64_t *out) {
-    if (!sig_range_within(data_size, offset, address_size)) {
+    uint8_t bytes[8];
+    if (!sig_range_within(input->size, offset, address_size)) {
         /* The field is not there. Zero is what the DIE engine's readers
          * answer for it, so a caller reproducing that engine takes the zero
          * and lets the record continue; everyone else fails the match. */
@@ -122,30 +263,29 @@ static bool sig_read_pointer(const void *data, size_t data_size,
         }
         return false;
     }
+    if (address_size != 1 && address_size != 2 && address_size != 4 && address_size != 8) return false;
+    if (!sig_input_read(input, offset, bytes, (size_t)address_size)) return false;
     switch (address_size) {
         case 1:
             *out = sign_extend
-                       ? (uint64_t)(int64_t)xx_data_get_i8(data, data_size,
-                                                           (size_t)offset)
-                       : (uint64_t)xx_data_get_u8(data, data_size,
-                                                  (size_t)offset);
+                       ? (uint64_t)(int64_t)xx_data_get_i8(bytes, (size_t)address_size, 0)
+                       : (uint64_t)xx_data_get_u8(bytes, (size_t)address_size, 0);
             return true;
         case 2:
             /* Unsigned even when sign-extending: the reference reads the
              * 16-bit relative form as unsigned, and a 16-bit displacement
              * wrapping inside its segment is the intended behaviour. */
-            *out = (uint64_t)xx_data_get_u16(data, data_size, (size_t)offset,
+            *out = (uint64_t)xx_data_get_u16(bytes, (size_t)address_size, 0,
                                              big_endian);
             return true;
         case 4:
             *out = sign_extend
                        ? (uint64_t)(int64_t)xx_data_get_i32(
-                             data, data_size, (size_t)offset, big_endian)
-                       : (uint64_t)xx_data_get_u32(data, data_size,
-                                                   (size_t)offset, big_endian);
+                             bytes, (size_t)address_size, 0, big_endian)
+                       : (uint64_t)xx_data_get_u32(bytes, (size_t)address_size, 0, big_endian);
             return true;
         case 8:
-            *out = (uint64_t)xx_data_get_u64(data, data_size, (size_t)offset,
+            *out = (uint64_t)xx_data_get_u64(bytes, (size_t)address_size, 0,
                                              big_endian);
             return true;
         default:
@@ -154,7 +294,7 @@ static bool sig_read_pointer(const void *data, size_t data_size,
 }
 
 /* A relative jump: the displacement is measured from the end of the field. */
-static bool sig_apply_rel_offset(const void *data, size_t data_size,
+static bool sig_apply_rel_offset(SigInput *input,
                                  const xx_data_sig_record *record,
                                  const xx_data_sig_context *context,
                                  int64_t *cursor) {
@@ -162,7 +302,7 @@ static bool sig_apply_rel_offset(const void *data, size_t data_size,
     int64_t displacement;
     int64_t target;
 
-    if (!sig_read_pointer(data, data_size, *cursor, record->address_size,
+    if (!sig_read_pointer(input, *cursor, record->address_size,
                           context && context->big_endian, true,
                           context && context->read_past_end_as_zero, &raw)) {
         return false;
@@ -197,14 +337,14 @@ static bool sig_apply_rel_offset(const void *data, size_t data_size,
 }
 
 /* An absolute jump: the stored value is an address, not a displacement. */
-static bool sig_apply_address(const void *data, size_t data_size,
+static bool sig_apply_address(SigInput *input,
                               const xx_data_sig_record *record,
                               const xx_data_sig_context *context,
                               int64_t *cursor) {
     uint64_t address = 0U;
     int64_t target;
 
-    if (!sig_read_pointer(data, data_size, *cursor, record->address_size,
+    if (!sig_read_pointer(input, *cursor, record->address_size,
                           context && context->big_endian, false,
                           context && context->read_past_end_as_zero,
                           &address)) {
@@ -281,7 +421,7 @@ bool xx_data_sig_context_from_memory_map_ex(xx_data_sig_context *context,
     return true;
 }
 
-bool xx_data_signature_match(const void *data, size_t data_size,
+static bool sig_input_match(SigInput *input,
                              int64_t offset,
                              const xx_data_signature *signature,
                              const xx_data_sig_context *context,
@@ -289,7 +429,7 @@ bool xx_data_signature_match(const void *data, size_t data_size,
     int64_t cursor = offset;
     int index;
 
-    if (!data || !signature || !signature->records) return false;
+    if ((!input->bytes && !input->device) || !signature || !signature->records) return false;
     if (signature->count < 0) return false;
 
     for (index = 0; index < signature->count; ++index) {
@@ -298,11 +438,10 @@ bool xx_data_signature_match(const void *data, size_t data_size,
         switch (record->kind) {
             case XX_DATA_SIG_BYTES: {
                 if (record->data_size <= 0 || !record->data) return false;
-                if (!sig_range_within(data_size, cursor, record->data_size)) {
+                if (!sig_range_within(input->size, cursor, record->data_size)) {
                     return false;
                 }
-                if (xx_rt_memcmp((const uint8_t *)data + cursor, record->data,
-                                 (size_t)record->data_size) != 0) {
+                if (!sig_input_compare(input, cursor, record->data, record->data_size)) {
                     return false;
                 }
                 cursor += record->data_size;
@@ -315,7 +454,7 @@ bool xx_data_signature_match(const void *data, size_t data_size,
             case XX_DATA_SIG_NOT_ANSI_AND_NULL:
             case XX_DATA_SIG_ANSI_NUMBER: {
                 if (record->window <= 0) return false;
-                if (!xx_data_class_check(data, data_size, cursor,
+                if (!sig_input_class(input, cursor,
                                          record->window, record->kind)) {
                     return false;
                 }
@@ -324,7 +463,7 @@ bool xx_data_signature_match(const void *data, size_t data_size,
             }
 
             case XX_DATA_SIG_SKIP: {
-                if (!sig_range_within(data_size, cursor, record->window)) {
+                if (!sig_range_within(input->size, cursor, record->window)) {
                     return false;
                 }
                 cursor += record->window;
@@ -336,29 +475,28 @@ bool xx_data_signature_match(const void *data, size_t data_size,
                 int64_t found;
 
                 if (record->data_size <= 0 || !record->data) return false;
-                if (cursor < 0 || (uint64_t)cursor > (uint64_t)data_size) {
+                if (cursor < 0 || (uint64_t)cursor > input->size) {
                     return false;
                 }
                 /* The search may run `find_delta` bytes beyond the pattern's
                  * own length, and no further. */
-                limit = record->find_delta + record->data_size;
-                if (!sig_range_within(data_size, cursor, limit)) {
+                limit = record->find_delta > INT64_MAX - record->data_size ?
+                    INT64_MAX : record->find_delta + record->data_size;
+                if (!sig_range_within(input->size, cursor, limit)) {
                     /* A window reaching past the end searches what is there,
                      * matching the reference's clamped search rather than
                      * refusing outright. */
-                    limit = (int64_t)data_size - cursor;
+                    limit = (int64_t)input->size - cursor;
                     if (limit < record->data_size) return false;
                 }
-                found = xx_data_find_bytes_buffer_optimize((const uint8_t *)data + cursor,
-                                                           (size_t)limit, 0U, record->data,
-                                                           (size_t)record->data_size, NULL);
+                found = sig_input_find(input, cursor, limit, record->data, record->data_size);
                 if (found < 0) return false;
-                cursor += found + record->data_size;
+                cursor = found + record->data_size;
                 break;
             }
 
             case XX_DATA_SIG_REL_OFFSET: {
-                if (!sig_apply_rel_offset(data, data_size, record, context,
+                if (!sig_apply_rel_offset(input, record, context,
                                           &cursor)) {
                     return false;
                 }
@@ -366,7 +504,7 @@ bool xx_data_signature_match(const void *data, size_t data_size,
             }
 
             case XX_DATA_SIG_ADDRESS: {
-                if (!sig_apply_address(data, data_size, record, context,
+                if (!sig_apply_address(input, record, context,
                                        &cursor)) {
                     return false;
                 }
@@ -383,6 +521,24 @@ bool xx_data_signature_match(const void *data, size_t data_size,
 
     if (end_offset) *end_offset = cursor;
     return true;
+}
+
+bool xx_data_signature_match(const void *data, size_t data_size,
+                             int64_t offset, const xx_data_signature *signature,
+                             const xx_data_sig_context *context, int64_t *end_offset) {
+    SigInput input = {(const uint8_t *)data, NULL, (uint64_t)data_size, false};
+    return sig_input_match(&input, offset, signature, context, end_offset);
+}
+
+bool xx_io_signature_match(xx_io_device *device, int64_t offset,
+                           const xx_data_signature *signature,
+                           const xx_data_sig_context *context, int64_t *end_offset) {
+    SigInput input;
+    bool result;
+    if (!sig_input_device(&input, device)) return false;
+    result = sig_input_match(&input, offset, signature, context, end_offset);
+    sig_input_release(&input);
+    return result;
 }
 
 /* ========================================================================= */
@@ -728,7 +884,7 @@ bool xx_data_signature_match_text(const void *data, size_t data_size,
     return result;
 }
 
-int64_t xx_data_signature_find_text(const void *data, size_t data_size,
+static int64_t sig_input_find_text(SigInput *input,
                                     int64_t offset, int64_t length,
                                     const char *text,
                                     const xx_data_sig_context *context) {
@@ -742,9 +898,9 @@ int64_t xx_data_signature_find_text(const void *data, size_t data_size,
 
     /* Clamp the window: a negative length means "to the end", and one
      * running past the end searches what is there. */
-    if (signature.count && data && offset >= 0 &&
-        (uint64_t)offset < (uint64_t)data_size) {
-        int64_t available = (int64_t)data_size - offset;
+    if (signature.count && (input->bytes || input->device) && offset >= 0 &&
+        (uint64_t)offset < input->size) {
+        int64_t available = (int64_t)input->size - offset;
 
         if (length < 0 || length > available) length = available;
 
@@ -764,6 +920,8 @@ int64_t xx_data_signature_find_text(const void *data, size_t data_size,
                 signature.records[j].kind == XX_DATA_SIG_NOT_ANSI ||
                 signature.records[j].kind == XX_DATA_SIG_NOT_ANSI_AND_NULL ||
                 signature.records[j].kind == XX_DATA_SIG_ANSI_NUMBER) {
+                if (signature.records[j].window < 0 ||
+                    signature.records[j].window > INT64_MAX - prefix_len) break;
                 prefix_len += signature.records[j].window;
             } else {
                 /* Jumps or relative finds before the anchor prevent simple fixed prefix extraction */
@@ -772,35 +930,35 @@ int64_t xx_data_signature_find_text(const void *data, size_t data_size,
         }
 
         if (anchor_idx >= 0) {
-            int64_t search = offset + prefix_len;
-            int64_t limit = offset + length + prefix_len;
-
-            if (limit > (int64_t)data_size) limit = (int64_t)data_size;
+            int64_t search;
+            int64_t limit;
+            if (prefix_len > available) goto finished;
+            search = offset + prefix_len;
+            limit = length > (int64_t)input->size - search ?
+                (int64_t)input->size : search + length;
 
             while (search < limit) {
-                int64_t found = xx_data_find_bytes_buffer_optimize(
-                    (const uint8_t *)data + search, (size_t)(limit - search),
-                    0U, signature.records[anchor_idx].data,
-                    (size_t)signature.records[anchor_idx].data_size, NULL);
+                int64_t found = sig_input_find(input, search, limit - search,
+                    signature.records[anchor_idx].data, signature.records[anchor_idx].data_size);
 
                 if (found < 0) break;
-                found += search;
 
                 int64_t candidate = found - prefix_len;
                 if (candidate >= offset && candidate < offset + length) {
-                    if (xx_data_signature_match(data, data_size, candidate,
+                    if (sig_input_match(input, candidate,
                                                 &signature, context, NULL)) {
                         result = candidate;
                         break;
                     }
                 }
+                if (input->failed) break;
                 search = found + 1;
             }
         } else {
             int64_t i;
 
-            for (i = 0; i < length; ++i) {
-                if (xx_data_signature_match(data, data_size, offset + i,
+            for (i = 0; i < length && !input->failed; ++i) {
+                if (sig_input_match(input, offset + i,
                                             &signature, context, NULL)) {
                     result = offset + i;
                     break;
@@ -809,7 +967,26 @@ int64_t xx_data_signature_find_text(const void *data, size_t data_size,
         }
     }
 
+finished:
     xx_data_signature_free(&signature);
     xx_str_free(normalized);
+    return result;
+}
+
+int64_t xx_data_signature_find_text(const void *data, size_t data_size,
+                                    int64_t offset, int64_t length, const char *text,
+                                    const xx_data_sig_context *context) {
+    SigInput input = {(const uint8_t *)data, NULL, (uint64_t)data_size, false};
+    return sig_input_find_text(&input, offset, length, text, context);
+}
+
+int64_t xx_io_signature_find_text(xx_io_device *device, int64_t offset,
+                                  int64_t length, const char *text,
+                                  const xx_data_sig_context *context) {
+    SigInput input;
+    int64_t result;
+    if (!sig_input_device(&input, device)) return -1;
+    result = sig_input_find_text(&input, offset, length, text, context);
+    sig_input_release(&input);
     return result;
 }

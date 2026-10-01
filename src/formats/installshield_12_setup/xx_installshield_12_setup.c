@@ -303,12 +303,14 @@ static bool is12_path_ends_with(const uint8_t *path, size_t path_units,
     return true;
 }
 
-/* "17.0.0.717": one to four groups of one to ten digits. */
+/* "17.0.0.717": one to four groups of one to ten digits.  An empty string
+ * is accepted too: every corpus record writes "0.0.0.0" for a file without
+ * a version, but a builder that leaves it empty must not lose the file. */
 static bool is12_version_ok(const uint8_t *text, size_t units) {
     size_t index;
     size_t digits = 0U;
     size_t groups = 1U;
-    if (units == 0U) return false;
+    if (units == 0U) return true;
     for (index = 0U; index < units; ++index) {
         uint16_t unit = is12_le16(text + index * 2U);
         if (unit >= '0' && unit <= '9') {
@@ -442,6 +444,40 @@ static char *is12_path_to_utf8(const uint8_t *text, size_t units,
 
 /* ---------------------------------------------------------------------- */
 /* Distinct output names                                                   */
+
+/* True when the component at @p segment has the shape of an NTFS 8.3
+ * short-name alias: a '~' followed only by digits up to the end of the
+ * component or up to a '.' ("LONGFI~1.TXT", "LONGDI~12").  On a volume
+ * that makes short names, such a name opens whatever long-named file or
+ * directory the alias belongs to. */
+static bool is12_alias_at(const char *segment, size_t length, size_t tilde) {
+    size_t index = tilde + 1U;
+    if (tilde >= length || segment[tilde] != '~' || index >= length ||
+        segment[index] < '0' || segment[index] > '9')
+        return false;
+    while (index < length && segment[index] >= '0' && segment[index] <= '9')
+        ++index;
+    return index == length || segment[index] == '.';
+}
+
+/* Turns the '~' of every alias-shaped part of @p name into '_' so that no
+ * member can reach another member (or its directory) through a short name.
+ * Only ASCII bytes change, so the UTF-8 stays valid and the length stays
+ * the same; distinctness is settled afterwards by is12_make_unique. */
+static void is12_disarm_short_aliases(char *name) {
+    size_t start = 0U;
+    size_t at;
+    for (at = 0U;; ++at) {
+        if (name[at] == '/' || name[at] == 0) {
+            size_t index;
+            for (index = start; index < at; ++index)
+                if (is12_alias_at(name + start, at - start, index - start))
+                    name[index] = '_';
+            if (name[at] == 0) return;
+            start = at + 1U;
+        }
+    }
+}
 
 static uint32_t is12_utf8_next(const char *text, size_t *at) {
     const uint8_t *p = (const uint8_t *)text + *at;
@@ -578,7 +614,8 @@ static char *is12_renamed(const char *name, size_t number, unsigned attempt) {
 }
 
 /* Gives every member a name no other member shares (as Windows compares
- * names), so extracting one can never replace another.  In each pass the
+ * names, short-name aliases having been disarmed when the names were
+ * made), so extracting one can never replace another.  In each pass the
  * names are sorted; within a group of equal names the earliest record
  * keeps its name and each later one gets "_<record number>" before its
  * extension.  A rename can collide in turn, so the pass repeats; whatever
@@ -729,15 +766,20 @@ static bool is12_parse(Abstractformat *format, xx_pd_struct *pd,
         }
         name_length = is12_utf8_length(buffer + header.path_position,
                                        header.path_units);
-        /* name_bytes never exceeds the budget, so this cannot wrap. */
-        if (name_length + 1U > IS12_MAX_NAME_BYTES - stream->name_bytes)
-            goto fail;
+        /* name_bytes never exceeds the budget, so this cannot wrap.  Past
+         * the budget the chain is treated like a damaged tail: the members
+         * before it are kept. */
+        if (name_length + 1U > IS12_MAX_NAME_BYTES - stream->name_bytes) {
+            stream->truncated = true;
+            break;
+        }
         stream->name_bytes += name_length + 1U;
         xx_mem_zero(&member, sizeof(member));
         if (want_names) {
             member.name = is12_path_to_utf8(buffer + header.path_position,
                                             header.path_units, name_length);
             if (!member.name) goto fail;
+            is12_disarm_short_aliases(member.name);
         }
         member.header_offset = base + cursor;
         member.header_size = (int64_t)header.length;
@@ -757,12 +799,19 @@ static bool is12_parse(Abstractformat *format, xx_pd_struct *pd,
         stream->format_size = available;
     } else {
         stream->format_size = cursor;
-        /* A signed launcher ends with its certificate table. */
-        if (layout.certificate_offset >= cursor &&
-            is12_range_within(available, layout.certificate_offset,
-                              layout.certificate_size))
-            stream->format_size =
-                layout.certificate_offset + layout.certificate_size;
+        /* A signed launcher ends with its certificate table; one cut off
+         * inside (or before) that table is a truncated file whose members
+         * are all complete. */
+        if (layout.certificate_offset >= cursor) {
+            if (is12_range_within(available, layout.certificate_offset,
+                                  layout.certificate_size)) {
+                stream->format_size =
+                    layout.certificate_offset + layout.certificate_size;
+            } else {
+                stream->truncated = true;
+                stream->format_size = available;
+            }
+        }
     }
     if (want_names && !is12_make_unique(stream)) goto fail;
     xx_mem_free(buffer);
@@ -810,6 +859,10 @@ static bool is12_safe_segment(const char *segment, size_t length) {
     if (!meaningful || segment[length - 1U] == '.' ||
         segment[length - 1U] == ' ')
         return false;
+    /* Short-name aliases are disarmed when names are made; refuse any
+     * that got here anyway rather than overwrite another member. */
+    for (index = 0U; index < length; ++index)
+        if (is12_alias_at(segment, length, index)) return false;
     while (stem < length && segment[stem] != '.') ++stem;
     while (stem > 0U && segment[stem - 1U] == ' ') --stem;
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index)

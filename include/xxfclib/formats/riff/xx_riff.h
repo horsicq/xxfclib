@@ -43,8 +43,8 @@
  * after it (the AVIX extension RIFFs of an OpenDML AVI, a missing-pad byte,
  * anything appended) are overlay.
  *
- * Not an archive: binwalk's extractor carves the RIFF itself ("image.riff",
- * or "video.wav" for WAVE), so there are no members to publish.
+ * The component archive API publishes each top-level chunk payload separately.
+ * Nested LIST bodies remain encoded; audio and video are not decoded.
  */
 
 #ifndef XXFCLIB_FORMAT_RIFF_H

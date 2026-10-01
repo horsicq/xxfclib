@@ -17,6 +17,7 @@ typedef struct xx_mame_floppy_image_mfi {
     int64_t archive_end;
     /* Result of the last full track scan, reused by later calls.  Private. */
     bool scanned;
+    bool incomplete_tracks; /**< At least one formatted track was unavailable. */
     bool has_image;
     uint32_t image_size_code;
     uint32_t image_cylinders;

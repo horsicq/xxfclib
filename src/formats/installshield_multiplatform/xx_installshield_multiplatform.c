@@ -574,6 +574,22 @@ static bool ismp_set_record(xx_archive_record *record,
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
+bool xx_installshield_multiplatform_has_footer(xx_io_device *device) {
+    uint8_t magic[4];
+    int64_t position, total;
+    bool matches = false;
+    if (!device) return false;
+    position = xx_io_tell(device);
+    if (position < 0) return false;
+    total = xx_io_total_size(device);
+    if (total >= XX_INSTALLSHIELD_MULTIPLATFORM_FOOTER_SIZE &&
+        ismp_read_at(device, total - (int64_t)sizeof(magic), magic,
+                      sizeof(magic)))
+        matches = ismp_be32(magic) == XX_INSTALLSHIELD_MULTIPLATFORM_MAGIC;
+    if (xx_io_seek64(device, position, SEEK_SET) != 0) return false;
+    return matches;
+}
+
 void xx_installshield_multiplatform_init(
     xx_installshield_multiplatform *archive, xx_io_device *device,
     int64_t base_address) {

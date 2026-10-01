@@ -39,6 +39,7 @@
  * DCL decoder handles it unchanged.
  */
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/softpaq2/xx_softpaq2.h"
 
 #include "xxfclib/algo/crc/xx_crc.h"
@@ -75,7 +76,6 @@
 /* A directory can never be this large in practice; the cap only guards the
  * allocation that the entry count drives. */
 #define SOFTPAQ2_MAX_ENTRIES 1000000U
-#define SOFTPAQ2_SCAN_CHUNK 65536U
 
 #define SOFTPAQ2_METHOD_STORED 0U
 #define SOFTPAQ2_METHOD_IMPLODE 6U
@@ -129,13 +129,16 @@ static int64_t softpaq2_le32s(const uint8_t *bytes) {
 static bool softpaq2_read_at(xx_io_device *device, int64_t offset,
                              void *buffer, size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -255,32 +258,31 @@ static bool softpaq2_find_locator(xx_io_device *device, int64_t base,
                                   int64_t *directory_offset,
                                   int64_t *split_offset, xx_pd_struct *pd) {
     uint8_t *buffer;
+    const size_t io_capacity = xx_get_file_buffer_size();
     int64_t cursor = 0;
     bool found = false;
     if (size < SOFTPAQ2_LOCATOR_SIZE) return false;
-    buffer = (uint8_t *)xx_mem_alloc(SOFTPAQ2_SCAN_CHUNK);
+    buffer = (uint8_t *)xx_mem_alloc(io_capacity);
     if (!buffer) return false;
-    while (!found && cursor + SOFTPAQ2_LOCATOR_SIZE <= size) {
-        int64_t remaining = size - cursor;
-        size_t chunk = remaining > (int64_t)SOFTPAQ2_SCAN_CHUNK
-                           ? SOFTPAQ2_SCAN_CHUNK : (size_t)remaining;
+    while (!found && size - cursor >= SOFTPAQ2_LOCATOR_SIZE) {
+        int64_t remaining = size - cursor - SOFTPAQ2_LOCATOR_SIZE + 1;
+        size_t chunk = remaining > (int64_t)io_capacity
+                           ? io_capacity : (size_t)remaining;
         size_t limit, i;
         if (pd && xx_pd_is_stopped(pd)) break;
         if (!softpaq2_read_at(device, base + cursor, buffer, chunk)) break;
-        limit = chunk < SOFTPAQ2_TAG_SIZE
-                    ? 0U : chunk - SOFTPAQ2_TAG_SIZE + 1U;
+        limit = chunk;
         for (i = 0U; i < limit; ++i) {
             uint8_t locator[SOFTPAQ2_LOCATOR_SIZE];
             int64_t candidate = cursor + (int64_t)i;
             int64_t directory, split;
-            if (buffer[i] != (uint8_t)softpaq2_tag[0] ||
-                xx_rt_memcmp(buffer + i, softpaq2_tag, SOFTPAQ2_TAG_SIZE) != 0)
-                continue;
+            if (buffer[i] != (uint8_t)softpaq2_tag[0]) continue;
             if (candidate + SOFTPAQ2_LOCATOR_SIZE > size) break;
             if (!softpaq2_read_at(device, base + candidate, locator,
                                   sizeof(locator)))
                 continue;
-            if (softpaq2_le32s(locator + 0x10) != candidate) continue;
+            if (xx_rt_memcmp(locator, softpaq2_tag, SOFTPAQ2_TAG_SIZE) != 0 ||
+                softpaq2_le32s(locator + 0x10) != candidate) continue;
             directory = softpaq2_le32s(locator + 0x14);
             split = softpaq2_le32s(locator + 0x18);
             if (directory <= 0 || split <= directory || split > size) continue;
@@ -296,8 +298,7 @@ static bool softpaq2_find_locator(xx_io_device *device, int64_t base,
             break;
         }
         if (found) break;
-        if (chunk < SOFTPAQ2_TAG_SIZE) break;
-        cursor += (int64_t)(chunk - SOFTPAQ2_TAG_SIZE + 1U);
+        cursor += (int64_t)chunk;
     }
     xx_mem_free(buffer);
     return found;

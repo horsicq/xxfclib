@@ -30,19 +30,17 @@
  *    Otherwise binwalk's string is empty and the signature is rejected.
  *  - The string must be non-empty, which the magic already guarantees.
  *
- * SIZE.  binwalk's result.size -- its carve length, counted from the
- * signature's offset -- is the LENGTH OF THAT STRING, i.e. of the bytes
- * from base + 9 up to the NUL.  The nine UEL bytes in front of it are not
- * added.  This reader reports exactly that number as the format size, so
- * the carve [base, base + size) stops nine bytes short of the NUL (or of
- * the end of the input), and everything from there on -- those nine text
- * bytes, the NUL and whatever follows it -- is reported as overlay.  The
- * true end of the text is available from xx_pjl_get_text_end().
+ * SIZE. The validated extent includes the leading nine-byte UEL and the
+ * complete command text, ending at the NUL or EOF. This corrects binwalk's
+ * string-only carve length, which stops nine bytes before the actual text
+ * ends. The NUL and subsequent bytes are overlay. The sole component member
+ * contains the command text at base + 9, without the opening UEL wrapper.
  *
  * There is no size cap: binwalk has none, and the scan is a single forward
  * pass through a fixed buffer, polling the stop flag once per chunk.
  *
- * NOT an archive: binwalk registers no extractor for this signature.
+ * The component archive API publishes that validated UTF-8 command text;
+ * it does not interpret or execute commands or decode binary page data.
  */
 
 #ifndef XXFCLIB_FORMAT_PJL_H

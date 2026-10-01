@@ -34,6 +34,7 @@
  * here, so the alias macro defined next to the enumerator is tested instead;
  * this picks up the real file type as soon as the type is registered. */
 #ifdef INSTALLSHIELD_DEVELOPER
+
 #define XX_INSTALLSHIELD_DEVELOPER_FILE_TYPE \
     XX_FILE_TYPE_INSTALLSHIELD_DEVELOPER
 #else
@@ -113,6 +114,42 @@ static const uint16_t isd_cp1252_high[32] = {
     0,      0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
     0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0,      0x017E, 0x0178};
 
+#include "xxfclib/global/xx_global.h"
+static size_t gb_installshield_developer_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_installshield_developer_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_installshield_developer_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+
+
 static uint32_t isd_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
@@ -124,13 +161,14 @@ static uint32_t isd_le32(const uint8_t *bytes) {
 
 static bool isd_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
+    const size_t file_io_capacity = gb_installshield_developer_capacity();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = gb_installshield_developer_read(device, (uint8_t *)buffer + done,
+                                    size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -351,49 +389,78 @@ static uint8_t isd_fold(uint8_t c) {
     return c;
 }
 
-static uint32_t isd_hash(const char *name) {
-    uint32_t hash = 2166136261U;
-    while (*name) {
-        hash ^= isd_fold((uint8_t)*name++);
-        hash *= 16777619U;
-    }
-    return hash;
-}
-
-static bool isd_same_name(const char *left, const char *right) {
-    while (*left && *right) {
-        if (isd_fold((uint8_t)*left) != isd_fold((uint8_t)*right))
-            return false;
+/* Three-way comparison of two names under isd_fold. */
+static int isd_compare_names(const char *left, const char *right) {
+    for (;;) {
+        uint8_t a, b;
+        if (*left == *right) {
+            /* Equal bytes fold equally: skip the fold on common prefixes. */
+            if (*left == 0) return 0;
+            ++left;
+            ++right;
+            continue;
+        }
+        a = isd_fold((uint8_t)*left);
+        b = isd_fold((uint8_t)*right);
+        if (a != b) return a < b ? -1 : 1;
+        if (a == 0U) return 0;
         ++left;
         ++right;
     }
-    return *left == *right;
 }
 
-typedef struct isd_name_set_s {
-    uint32_t *slots; /**< 0 = empty, otherwise member index + 1. */
-    size_t mask;
-    const isd_member *items;
-    const char *names;
-} isd_name_set;
-
-static bool isd_set_contains(const isd_name_set *set, const char *name,
-                             size_t *free_slot) {
-    size_t slot = (size_t)isd_hash(name) & set->mask;
-    size_t probes;
-    for (probes = 0U; probes <= set->mask; ++probes) {
-        uint32_t entry = set->slots[slot];
-        if (entry == 0U) {
-            *free_slot = slot;
-            return false;
+/* Stable bottom-up merge sort of member indices by folded name; `scratch`
+ * holds `count` entries.  O(n log n) comparisons whatever the names are,
+ * so crafted names cannot make the dedupe quadratic. */
+static void isd_sort_by_name(uint32_t *order, uint32_t *scratch,
+                             size_t count, const isd_member *items,
+                             const char *names) {
+    size_t width;
+    uint32_t *from = order, *to = scratch;
+    for (width = 1U; width < count; width *= 2U) {
+        size_t start;
+        for (start = 0U; start < count; start += 2U * width) {
+            size_t middle = start + width < count ? start + width : count;
+            size_t end = middle + width < count ? middle + width : count;
+            size_t left = start, right = middle, out = start;
+            while (left < middle && right < end) {
+                if (isd_compare_names(names + items[from[right]].name_at,
+                                      names + items[from[left]].name_at) < 0)
+                    to[out++] = from[right++];
+                else
+                    to[out++] = from[left++];
+            }
+            while (left < middle) to[out++] = from[left++];
+            while (right < end) to[out++] = from[right++];
         }
-        if (isd_same_name(set->names + set->items[entry - 1U].name_at, name))
-            return true;
-        slot = (slot + 1U) & set->mask;
+        {
+            uint32_t *swap = from;
+            from = to;
+            to = swap;
+        }
     }
-    /* The table is at least twice the member count, so it never fills. */
-    *free_slot = (size_t)-1;
-    return true;
+    if (from != order) {
+        size_t index;
+        for (index = 0U; index < count; ++index) order[index] = from[index];
+    }
+}
+
+/* Whether `name` equals (folded) any original name; `order` is sorted. */
+static bool isd_sorted_contains(const uint32_t *order, size_t count,
+                                const isd_member *items, const char *names,
+                                const char *name) {
+    size_t low = 0U, high = count;
+    while (low < high) {
+        size_t middle = low + (high - low) / 2U;
+        int order_cmp =
+            isd_compare_names(names + items[order[middle]].name_at, name);
+        if (order_cmp == 0) return true;
+        if (order_cmp < 0)
+            low = middle + 1U;
+        else
+            high = middle;
+    }
+    return false;
 }
 
 static size_t isd_put_decimal(char *out, uint32_t value) {
@@ -407,47 +474,80 @@ static size_t isd_put_decimal(char *out, uint32_t value) {
     return length;
 }
 
-/* Later members whose name a Windows volume would treat as an earlier
- * member's get " (<record>)" appended, or " (<record>_<n>)" when that is
- * taken too.  Candidates for different records never coincide, so each
- * name in the set blocks at most one candidate and the retries over the
- * whole archive stay below the member count. */
+/* Append " (<record>)" or, for attempt > 0, " (<record>_<attempt>)". */
+static size_t isd_put_suffix(char *out, uint32_t record, uint32_t attempt) {
+    size_t at = 0U;
+    out[at++] = ' ';
+    out[at++] = '(';
+    at += isd_put_decimal(out + at, record + 1U);
+    if (attempt > 0U) {
+        out[at++] = '_';
+        at += isd_put_decimal(out + at, attempt);
+    }
+    out[at++] = ')';
+    out[at] = 0;
+    return at;
+}
+
+/* Of the members whose names a Windows volume would treat as equal, the
+ * first in record order keeps its name; each later one gets
+ * " (<record>)", or " (<record>_<n>)" when that equals any original name.
+ * Candidates for different records never coincide (the text after the last
+ * '(' spells the record), and candidates avoid every original name, so the
+ * result is unique.  Each original name blocks at most one candidate in the
+ * whole archive, so the retries stay below the member count.  Cost is a
+ * merge sort plus one binary search per candidate: O(n log n) name
+ * comparisons for any input. */
 static bool isd_make_names_unique(isd_member *items, size_t count,
                                   char *names) {
-    isd_name_set set;
-    size_t capacity = 16U, index;
+    uint32_t *order, *scratch;
+    char candidate[ISD_NAME_FIELD + ISD_SUFFIX_ROOM];
+    size_t index, retries = 0U;
     if (count < 2U) return true;
-    while (capacity < count * 2U) capacity *= 2U;
-    set.slots = (uint32_t *)xx_mem_calloc(capacity, sizeof(uint32_t));
-    if (!set.slots) return false;
-    set.mask = capacity - 1U;
-    set.items = items;
-    set.names = names;
+    if (count > ISD_MAX_FILES) return false;
+    order = (uint32_t *)xx_mem_alloc(count * 2U * sizeof(uint32_t));
+    if (!order) return false;
+    scratch = order + count;
+    for (index = 0U; index < count; ++index) order[index] = (uint32_t)index;
+    isd_sort_by_name(order, scratch, count, items, names);
+    /* scratch[i] = attempt + 1 for a member to rename, 0 to keep. */
+    xx_rt_memset(scratch, 0, count * sizeof(uint32_t));
+    for (index = 1U; index < count; ++index) {
+        /* Stable sort: within a run of equal names, record order holds. */
+        if (isd_compare_names(names + items[order[index - 1U]].name_at,
+                              names + items[order[index]].name_at) == 0)
+            scratch[order[index]] = 1U;
+    }
     for (index = 0U; index < count; ++index) {
-        char *name = names + items[index].name_at;
-        size_t length = xx_str_len(name), slot;
+        const char *name = names + items[index].name_at;
+        size_t length = xx_str_len(name);
         uint32_t attempt = 0U;
-        while (isd_set_contains(&set, name, &slot)) {
-            size_t at = length;
-            if (slot == (size_t)-1 || attempt > (uint32_t)count) {
-                xx_mem_free(set.slots);
+        if (scratch[index] == 0U) continue;
+        if (length >= ISD_NAME_FIELD) {
+            xx_mem_free(order);
+            return false;
+        }
+        xx_rt_memcpy(candidate, name, length);
+        for (;;) {
+            isd_put_suffix(candidate + length, items[index].record, attempt);
+            if (!isd_sorted_contains(order, count, items, names, candidate))
+                break;
+            if (++retries > count) {
+                xx_mem_free(order);
                 return false;
             }
-            name[length] = 0;
-            name[at++] = ' ';
-            name[at++] = '(';
-            at += isd_put_decimal(name + at, items[index].record + 1U);
-            if (attempt > 0U) {
-                name[at++] = '_';
-                at += isd_put_decimal(name + at, attempt);
-            }
-            name[at++] = ')';
-            name[at] = 0;
             ++attempt;
         }
-        set.slots[slot] = (uint32_t)index + 1U;
+        scratch[index] = attempt + 1U;
     }
-    xx_mem_free(set.slots);
+    /* Only now rewrite the pool, which the searches above read. */
+    for (index = 0U; index < count; ++index) {
+        char *name = names + items[index].name_at;
+        if (scratch[index] == 0U) continue;
+        isd_put_suffix(name + xx_str_len(name), items[index].record,
+                       scratch[index] - 1U);
+    }
+    xx_mem_free(order);
     return true;
 }
 
@@ -591,16 +691,17 @@ fail:
  * through when it is NULL) in fixed chunks. */
 static bool isd_copy_range(xx_io_device *source, int64_t offset, int64_t size,
                            xx_io_device *destination, xx_pd_struct *pd) {
+    const size_t file_io_capacity = gb_installshield_developer_capacity();
     uint8_t *buffer;
     int64_t remaining = size;
     bool ok = true;
     if (!source || offset < 0 || size < 0) return false;
     if (size == 0) return true;
-    buffer = (uint8_t *)xx_mem_alloc(ISD_COPY_CHUNK);
+    buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (remaining > 0) {
-        size_t chunk = remaining > (int64_t)ISD_COPY_CHUNK
-                           ? (size_t)ISD_COPY_CHUNK
+        size_t chunk = remaining > (int64_t)file_io_capacity
+                           ? (size_t)file_io_capacity
                            : (size_t)remaining;
         size_t written = 0U;
         if ((pd && xx_pd_is_stopped(pd)) ||
@@ -609,8 +710,8 @@ static bool isd_copy_range(xx_io_device *source, int64_t offset, int64_t size,
             break;
         }
         while (destination && written < chunk) {
-            ssize_t amount = xx_io_write(destination, buffer + written,
-                                         chunk - written);
+            ssize_t amount = gb_installshield_developer_write(destination, buffer + written,
+                                         chunk - written, file_io_capacity);
             if (amount <= 0 || (size_t)amount > chunk - written) {
                 ok = false;
                 break;

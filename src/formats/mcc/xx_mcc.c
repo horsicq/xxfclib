@@ -43,6 +43,7 @@
  * plaintext exactly the declared length.
  */
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/formats/mcc/xx_mcc.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -139,15 +140,7 @@ static char *mcc_copy_name(const uint8_t *field, size_t length) {
  * the checksum U3 computes over the plaintext of every member, and it is the
  * only thing that distinguishes a correct decode from a plausible one. */
 static uint16_t mcc_crc16(const uint8_t *data, size_t size) {
-    uint16_t crc = 0U;
-    size_t index, bit;
-    for (index = 0U; index < size; ++index) {
-        crc ^= (uint16_t)((uint16_t)data[index] << 8U);
-        for (bit = 0U; bit < 8U; ++bit)
-            crc = (uint16_t)((crc & 0x8000U) ? (uint16_t)((crc << 1U) ^ 0x8005U)
-                                             : (uint16_t)(crc << 1U));
-    }
-    return crc;
+    return xx_crc16(XX_CRC_TYPE_CRC16_BUYPASS, data, size);
 }
 
 /* LZW geometry, from U3's shared engine as configured for MCC. */

@@ -164,7 +164,9 @@ typedef struct {
     const uint8_t  *mem;
     size_t          mem_size;
     size_t          mem_pos;
-    uint8_t         ibuf[65536];
+    uint8_t        *ibuf;
+    size_t          ibuf_capacity, io_capacity;
+    uint8_t         input_byte; /* scalar startup/low-level coder state */
     size_t          ibuf_pos;
     size_t          ibuf_len;
     int64_t         remaining;
@@ -191,7 +193,9 @@ typedef struct {
     uint8_t        *mem;
     size_t          mem_cap;
     size_t          mem_pos;
-    uint8_t         obuf[65536];
+    uint8_t        *obuf;
+    size_t          obuf_capacity, io_capacity;
+    uint8_t         output_byte; /* scalar low-level coder state */
     size_t          obuf_pos;
     size_t          total_written;
     uint64_t        low;

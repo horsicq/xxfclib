@@ -15,6 +15,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/rpm/xx_rpm.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -40,7 +41,6 @@
 #define RPM_MAX_ENTRIES 0xFFFFU
 #define RPM_MAX_STORE 0x0FFFFFFFU
 #define RPM_MAX_TYPE 9U
-#define RPM_ENTRY_CHUNK 128U /* entries per read: a 2 KiB stack buffer */
 
 #define RPM_SIGTYPE_NONE 0U
 #define RPM_SIGTYPE_PGP 1U
@@ -153,8 +153,9 @@ static uint64_t rpm_be64(const uint8_t *p) {
 
 /* Read exactly @p size bytes at relative @p offset; the caller has already
  * checked that the range lies inside the device. */
-static bool rpm_read(Abstractformat *format, int64_t offset, void *buffer,
-                     size_t size) {
+static bool rpm_read_sized(Abstractformat *format, int64_t offset, void *buffer,
+                     size_t size, size_t io_capacity) {
+
     size_t done = 0U;
     if (!format || !format->device || offset < 0 ||
         offset > INT64_MAX - format->base_address ||
@@ -162,12 +163,19 @@ static bool rpm_read(Abstractformat *format, int64_t offset, void *buffer,
                      SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(format->device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
+}
+
+static bool rpm_read(Abstractformat *format, int64_t offset, void *buffer,
+                     size_t size) {
+    return rpm_read_sized(format, offset, buffer, size, xx_get_file_buffer_size());
 }
 
 /* Bytes of the device from the package start on. */
@@ -219,21 +227,24 @@ static uint32_t rpm_type_width(uint32_t type) {
 
 /* Check every index entry against the store and note the first entry of
  * each tag in @p tags. */
-static bool rpm_header_walk(Abstractformat *format, const rpm_header *header,
+static bool rpm_header_walk_buffered(Abstractformat *format, const rpm_header *header,
                             rpm_tag *tags, size_t tag_count,
-                            xx_pd_struct *pd) {
-    uint8_t chunk[RPM_ENTRY_CHUNK * RPM_ENTRY_SIZE];
+                            xx_pd_struct *pd, uint8_t *buffer, size_t buffer_capacity) {
+    uint8_t single_entry[RPM_ENTRY_SIZE];
+    size_t entries = buffer_capacity / RPM_ENTRY_SIZE;
+    uint8_t *chunk = entries ? buffer : single_entry;
+    if (!entries) entries = 1U;
     uint32_t done = 0U;
     size_t t;
     for (t = 0U; t < tag_count; ++t) tags[t].found = false;
     while (done < header->count) {
         uint32_t batch = header->count - done, i;
-        if (batch > RPM_ENTRY_CHUNK) batch = RPM_ENTRY_CHUNK;
+        if ((size_t)batch > entries) batch = (uint32_t)entries;
         if (pd && xx_pd_is_stopped(pd)) return false;
-        if (!rpm_read(format,
+        if (!rpm_read_sized(format,
                       header->offset + RPM_INTRO_SIZE +
                           (int64_t)done * RPM_ENTRY_SIZE,
-                      chunk, (size_t)batch * RPM_ENTRY_SIZE))
+                      chunk, (size_t)batch * RPM_ENTRY_SIZE, buffer_capacity))
             return false;
         for (i = 0U; i < batch; ++i) {
             const uint8_t *entry = chunk + (size_t)i * RPM_ENTRY_SIZE;
@@ -265,26 +276,51 @@ static bool rpm_header_walk(Abstractformat *format, const rpm_header *header,
     return true;
 }
 
+static bool rpm_header_walk(Abstractformat *format, const rpm_header *header,
+                            rpm_tag *tags, size_t tag_count,
+                            xx_pd_struct *pd) {
+    size_t capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = (uint8_t *)xx_mem_alloc(capacity);
+    bool ok;
+    if (!buffer) return false;
+    ok = rpm_header_walk_buffered(format, header, tags, tag_count, pd, buffer, capacity);
+    xx_mem_free(buffer);
+    return ok;
+}
+
 /* First string of a STRING entry, cut at RPM_STRING_READ bytes.  Empty when
  * the entry is missing or of another type. */
 static void rpm_tag_string(Abstractformat *format, const rpm_header *header,
                            const rpm_tag *tag, char *out, size_t capacity) {
-    uint8_t buffer[RPM_STRING_READ];
-    size_t size, length = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
+    uint8_t *buffer;
+    size_t size, done = 0U, length = 0U;
+    bool ended = false;
+    if (capacity == 0U) return;
     out[0] = '\0';
     if (!tag->found || tag->type != RPM_TYPE_STRING || tag->count == 0U ||
-        tag->offset >= header->store_size || capacity == 0U)
-        return;
+        tag->offset >= header->store_size) return;
     size = header->store_size - tag->offset;
-    if (size > sizeof(buffer)) size = sizeof(buffer);
-    if (!rpm_read(format, header->store_offset + (int64_t)tag->offset,
-                  buffer, size))
-        return;
-    while (length < size && buffer[length] != 0U && length + 1U < capacity) {
-        out[length] = (char)buffer[length];
-        ++length;
+    if (size > RPM_STRING_READ) size = RPM_STRING_READ;
+    buffer = (uint8_t *)xx_mem_alloc(io_capacity);
+    if (!buffer) return;
+    while (done < size) {
+        size_t take = size - done, i;
+        if (take > io_capacity) take = io_capacity;
+        if (!rpm_read(format, header->store_offset + (int64_t)tag->offset + (int64_t)done,
+                      buffer, take)) {
+            out[0] = '\0';
+            xx_mem_free(buffer);
+            return;
+        }
+        for (i = 0U; i < take && !ended; ++i) {
+            if (buffer[i] == 0U || length + 1U >= capacity) ended = true;
+            else out[length++] = (char)buffer[i];
+        }
+        done += take;
     }
     out[length] = '\0';
+    xx_mem_free(buffer);
 }
 
 static bool rpm_tag_number(Abstractformat *format, const rpm_header *header,

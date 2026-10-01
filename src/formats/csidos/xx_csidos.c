@@ -27,6 +27,7 @@
  * reader does.  Nothing is compressed; every member is stored.
  */
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/csidos/xx_csidos.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -126,14 +127,17 @@ static uint16_t csidos_le16(const uint8_t *bytes) {
 
 static bool csidos_read_at(xx_io_device *device, int64_t offset, void *buffer,
                            size_t size) {
+    size_t transfer_capacity = xx_get_file_buffer_size();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        size_t request = size - done;
+        ssize_t amount;
+        if (request > transfer_capacity) request = transfer_capacity;
+        amount = xx_io_read(device, (uint8_t *)buffer + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -635,10 +639,9 @@ static bool csidos_set_record(xx_archive_record *record,
                                            member->folder);
 }
 
-static bool csidos_verify_data(Abstractformat *format,
+static bool csidos_verify_data_buffered(Abstractformat *format,
                                const csidos_member *member,
-                               xx_pd_struct *pd) {
-    uint8_t buffer[4096];
+                               xx_pd_struct *pd, uint8_t *buffer, size_t buffer_capacity) {
     size_t remaining;
     int64_t offset;
     if (!format || !member) return false;
@@ -646,8 +649,8 @@ static bool csidos_verify_data(Abstractformat *format,
     remaining = member->byte_size;
     offset = member->data_offset;
     while (remaining != 0U) {
-        size_t amount = remaining < sizeof(buffer) ? remaining
-                                                   : sizeof(buffer);
+        size_t amount = remaining < buffer_capacity ? remaining
+                                                   : buffer_capacity;
         if ((pd && xx_pd_is_stopped(pd)) ||
             !csidos_read_at(format->device, offset, buffer, amount))
             return false;
@@ -655,6 +658,18 @@ static bool csidos_verify_data(Abstractformat *format,
         remaining -= amount;
     }
     return true;
+}
+
+static bool csidos_verify_data(Abstractformat *format,
+                               const csidos_member *member,
+                               xx_pd_struct *pd) {
+    size_t buffer_capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
+    bool buffer_result;
+    if (!buffer) return false;
+    buffer_result = csidos_verify_data_buffered(format, member, pd, buffer, buffer_capacity);
+    xx_mem_free(buffer);
+    return buffer_result;
 }
 
 void xx_csidos_init(xx_csidos *image, xx_io_device *device,

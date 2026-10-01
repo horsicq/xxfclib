@@ -173,6 +173,41 @@ typedef struct swf_header_s {
     uint8_t props[XX_LZMA_PROPS_SIZE];
 } swf_header;
 
+#include "xxfclib/global/xx_global.h"
+static size_t gb_swf_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_swf_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_swf_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+
 static uint32_t swf_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
@@ -203,13 +238,14 @@ static void swf_put_be32(uint8_t *bytes, uint32_t value) {
 
 static bool swf_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
+    const size_t file_io_capacity = gb_swf_capacity();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = gb_swf_read(device, (uint8_t *)buffer + done,
+                                    size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -218,11 +254,12 @@ static bool swf_read_at(xx_io_device *device, int64_t offset, void *buffer,
 
 static bool swf_write_all(xx_io_device *device, const void *data,
                           size_t size) {
+    const size_t file_io_capacity = gb_swf_capacity();
     size_t done = 0U;
     if (!device) return true; /* verification only */
     while (done < size) {
-        ssize_t amount = xx_io_write(device, (const uint8_t *)data + done,
-                                     size - done);
+        ssize_t amount = gb_swf_write(device, (const uint8_t *)data + done,
+                                     size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -448,18 +485,19 @@ static void swf_sink_init(swf_sink *sink, swf_sink_mode mode, uint64_t limit) {
 static bool swf_decode_body(Abstractformat *format, const swf_header *h,
                             swf_sink *sink, bool measure, int64_t *consumed,
                             xx_pd_struct *pd) {
+    const size_t file_io_capacity = gb_swf_capacity();
     bool ok = false;
     if (consumed) *consumed = -1;
     if (sink->full) return true;
     if (h->signature == 'F') {
-        uint8_t *block = (uint8_t *)xx_mem_alloc(SWF_IO_BLOCK);
+        uint8_t *block = (uint8_t *)xx_mem_alloc(file_io_capacity);
         int64_t position = h->data_offset;
         int64_t remaining = h->data_size;
         if (!block) return false;
         ok = true;
         while (remaining > 0 && !sink->full) {
-            size_t amount = remaining < (int64_t)SWF_IO_BLOCK
-                                ? (size_t)remaining : SWF_IO_BLOCK;
+            size_t amount = remaining < (int64_t)file_io_capacity
+                                ? (size_t)remaining : file_io_capacity;
             if ((pd && xx_pd_is_stopped(pd)) ||
                 !swf_read_at(format->device, position, block, amount) ||
                 swf_sink_write(&sink->device, block, amount) < 0) {
@@ -558,28 +596,27 @@ typedef struct swf_cursor_s {
     Abstractformat *format;
     uint64_t start;
     size_t length;
-    uint8_t buffer[SWF_WINDOW];
+    uint8_t *buffer;
+    size_t capacity;
 } swf_cursor;
 
-static bool swf_fetch(swf_cursor *cursor, uint64_t offset, uint8_t *out,
-                      size_t size) {
+static bool swf_fetch(swf_cursor *cursor, uint64_t offset, uint8_t *out, size_t size) {
     const swf_parsed *parsed = cursor->parsed;
-    if (size > SWF_WINDOW || offset > parsed->movie_size ||
-        size > parsed->movie_size - offset)
-        return false;
-    if (offset < cursor->start || offset - cursor->start > cursor->length ||
-        size > cursor->length - (size_t)(offset - cursor->start)) {
-        uint64_t available = parsed->movie_size - offset;
-        size_t want = available < SWF_WINDOW ? (size_t)available : SWF_WINDOW;
-        cursor->length = 0U;
-        if (!swf_movie_read(parsed, cursor->format, offset, cursor->buffer,
-                            want))
-            return false;
-        cursor->start = offset;
-        cursor->length = want;
+    if (size > SWF_WINDOW || offset > parsed->movie_size || size > parsed->movie_size - offset) return false;
+    while (size) {
+        size_t available, take;
+        if (!cursor->length || offset < cursor->start || offset - cursor->start >= cursor->length) {
+            uint64_t left = parsed->movie_size - offset;
+            size_t want = left < cursor->capacity ? (size_t)left : cursor->capacity;
+            cursor->length = 0;
+            if (!swf_movie_read(parsed, cursor->format, offset, cursor->buffer, want)) return false;
+            cursor->start = offset; cursor->length = want;
+        }
+        available = cursor->length - (size_t)(offset - cursor->start);
+        take = size < available ? size : available;
+        xx_rt_memcpy(out, cursor->buffer + (size_t)(offset - cursor->start), take);
+        out += take; offset += take; size -= take;
     }
-    xx_rt_memcpy(out, cursor->buffer + (size_t)(offset - cursor->start),
-                 size);
     return true;
 }
 
@@ -847,18 +884,23 @@ static bool swf_walk(swf_parsed *parsed, Abstractformat *format,
     bool in_sprite = false, result = true;
     cursor = (swf_cursor *)xx_mem_calloc(1U, sizeof(*cursor));
     if (!cursor) return false;
+    cursor->capacity = gb_swf_capacity();
+    cursor->buffer = (uint8_t *)xx_mem_alloc(cursor->capacity);
+    if (!cursor->buffer) { xx_mem_free(cursor); return false; }
     cursor->parsed = parsed;
     cursor->format = format;
     xx_mem_zero(&walk, sizeof(walk));
     walk.main_stream = SWF_NONE;
     walk.sprite_stream = SWF_NONE;
     if (!swf_fetch(cursor, SWF_HEADER, head, 1U)) {
+        xx_mem_free(cursor->buffer);
         xx_mem_free(cursor);
         return false;
     }
     position = SWF_HEADER + (5U + 4U * (uint64_t)(head[0] >> 3U) + 7U) / 8U +
                4U;
     if (position > end) {
+        xx_mem_free(cursor->buffer);
         xx_mem_free(cursor);
         return false;
     }
@@ -934,6 +976,7 @@ static bool swf_walk(swf_parsed *parsed, Abstractformat *format,
         }
         swf_top_tag(parsed, cursor, &walk, code, body, length);
     }
+    xx_mem_free(cursor->buffer);
     xx_mem_free(cursor);
     return result;
 }
@@ -950,6 +993,7 @@ typedef struct swf_writer_s {
     size_t pending_count;
     uint8_t *buffer;
     size_t buffer_used;
+    size_t capacity;
     bool failed;
 } swf_writer;
 
@@ -965,7 +1009,8 @@ static bool swf_writer_flush(swf_writer *writer) {
 }
 
 static bool swf_writer_emit(swf_writer *writer, uint8_t value) {
-    if (writer->buffer_used == SWF_IO_BLOCK && !swf_writer_flush(writer))
+    const size_t file_io_capacity = writer->capacity;
+    if (writer->buffer_used == file_io_capacity && !swf_writer_flush(writer))
         return false;
     writer->buffer[writer->buffer_used++] = value;
     return true;
@@ -973,11 +1018,12 @@ static bool swf_writer_emit(swf_writer *writer, uint8_t value) {
 
 static bool swf_writer_put(swf_writer *writer, const uint8_t *data,
                            size_t size) {
+    const size_t file_io_capacity = writer->capacity;
     size_t index;
     if (writer->failed) return false;
     if (!writer->filter) {
         while (size) {
-            size_t room = SWF_IO_BLOCK - writer->buffer_used, amount;
+            size_t room = file_io_capacity - writer->buffer_used, amount;
             if (room == 0U) {
                 if (!swf_writer_flush(writer)) return false;
                 continue;
@@ -1022,7 +1068,8 @@ static bool swf_writer_finish(swf_writer *writer) {
 static bool swf_writer_ranges(const swf_parsed *parsed, Abstractformat *format,
                               const swf_item *item, swf_writer *writer,
                               xx_pd_struct *pd) {
-    uint8_t *block = (uint8_t *)xx_mem_alloc(SWF_IO_BLOCK);
+    const size_t file_io_capacity = writer->capacity;
+    uint8_t *block = (uint8_t *)xx_mem_alloc(file_io_capacity);
     uint32_t range = item->first;
     uint32_t guard = 0U;
     bool ok = block != NULL;
@@ -1037,8 +1084,8 @@ static bool swf_writer_ranges(const swf_parsed *parsed, Abstractformat *format,
         offset = r->offset;
         remaining = r->length;
         while (remaining) {
-            size_t amount = remaining < SWF_IO_BLOCK ? (size_t)remaining
-                                                     : SWF_IO_BLOCK;
+            size_t amount = remaining < file_io_capacity ? (size_t)remaining
+                                                     : file_io_capacity;
             if ((pd && xx_pd_is_stopped(pd)) ||
                 !swf_movie_read(parsed, format, offset, block, amount) ||
                 !swf_writer_put(writer, block, amount)) {
@@ -1059,12 +1106,14 @@ static bool swf_emit_ranges(const swf_parsed *parsed, Abstractformat *format,
                             const swf_item *item, xx_io_device *out,
                             bool filter, uint64_t *written,
                             xx_pd_struct *pd) {
+    const size_t file_io_capacity = gb_swf_capacity();
     swf_writer writer;
     bool ok;
     xx_mem_zero(&writer, sizeof(writer));
     writer.out = out;
     writer.filter = filter;
-    writer.buffer = (uint8_t *)xx_mem_alloc(SWF_IO_BLOCK);
+    writer.capacity = file_io_capacity;
+    writer.buffer = (uint8_t *)xx_mem_alloc(writer.capacity);
     if (!writer.buffer) return false;
     ok = swf_writer_ranges(parsed, format, item, &writer, pd) &&
          swf_writer_finish(&writer) && !writer.failed;

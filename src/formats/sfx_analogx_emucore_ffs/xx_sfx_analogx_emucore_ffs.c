@@ -28,6 +28,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/sfx_analogx_emucore_ffs/xx_sfx_analogx_emucore_ffs.h"
 
 #include "xxfclib/algo/crc/xx_crc.h"
@@ -90,7 +91,6 @@
  * single operation writes 0xFFFF bytes. */
 #define FFS_WINDOW 0x40000U
 #define FFS_KEEP 0x10010U
-#define FFS_INPUT_BUFFER 0x10000U
 
 #define FFS_METHOD_BROKEN 0xFFU
 
@@ -134,13 +134,16 @@ static uint32_t ffs_le32(const uint8_t *bytes) {
 static bool ffs_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -310,8 +313,20 @@ typedef struct ffs_input_s {
     bool failed;
     size_t length;
     size_t position;
-    uint8_t buffer[FFS_INPUT_BUFFER];
+    uint8_t *buffer;
+    size_t io_capacity;
 } ffs_input;
+
+static ffs_input *ffs_input_create(void) {
+    const size_t capacity = xx_get_file_buffer_size();
+    ffs_input *in;
+    if (capacity > SIZE_MAX - sizeof(*in)) return NULL;
+    in = (ffs_input *)xx_mem_calloc(1U, sizeof(*in) + capacity);
+    if (!in) return NULL;
+    in->buffer = (uint8_t *)(in + 1);
+    in->io_capacity = capacity;
+    return in;
+}
 
 /* The next payload byte, or -1 past the end (a device error sets failed). */
 static int32_t ffs_in_get(ffs_input *in) {
@@ -321,8 +336,8 @@ static int32_t ffs_in_get(ffs_input *in) {
             ++in->overrun;
             return -1;
         }
-        amount = in->remaining < (uint64_t)FFS_INPUT_BUFFER
-                     ? (size_t)in->remaining : FFS_INPUT_BUFFER;
+        amount = in->remaining < (uint64_t)in->io_capacity
+                     ? (size_t)in->remaining : in->io_capacity;
         if (in->memory) {
             xx_rt_memcpy(in->buffer, in->memory, amount);
             in->memory += amount;
@@ -348,6 +363,7 @@ typedef struct ffs_output_s {
     uint8_t *window;
     size_t length;        /**< Bytes staged in window. */
     size_t delivered;     /**< Leading window bytes already delivered. */
+    size_t io_capacity;
 } ffs_output;
 
 static bool ffs_deliver(ffs_output *out) {
@@ -360,9 +376,11 @@ static bool ffs_deliver(ffs_output *out) {
     } else if (out->device) {
         size_t done = 0U;
         while (done < amount) {
+            size_t request = amount - done;
+            if (request > out->io_capacity) request = out->io_capacity;
             ssize_t wrote = xx_io_write(out->device, data + done,
-                                        amount - done);
-            if (wrote <= 0 || (size_t)wrote > amount - done) return false;
+                                        request);
+            if (wrote <= 0 || (size_t)wrote > request) return false;
             done += (size_t)wrote;
         }
     }
@@ -829,6 +847,7 @@ static bool ffs_decode_payload(ffs_input *in, uint32_t length, uint32_t method,
                                ffs_output *out, xx_pd_struct *pd) {
     bool result = false;
     uint32_t k;
+    out->io_capacity = in->io_capacity;
     out->window = (uint8_t *)xx_mem_alloc(FFS_WINDOW);
     if (!out->window) return false;
     if (method == XX_SFX_ANALOGX_EMUCORE_FFS_METHOD_STORED) {
@@ -869,7 +888,7 @@ bool xx_sfx_analogx_emucore_ffs_decode_memory(const uint8_t *payload,
     ffs_classify(payload, (uint32_t)payload_size, &method, &unpacked);
     if (method == FFS_METHOD_BROKEN || (size_t)unpacked != output_size)
         return false;
-    in = (ffs_input *)xx_mem_calloc(1U, sizeof(*in));
+    in = ffs_input_create();
     if (!in) return false;
     in->memory = payload;
     in->remaining = (uint64_t)payload_size;
@@ -888,7 +907,7 @@ static bool ffs_decode_member(Abstractformat *format, const ffs_member *member,
     ffs_output out;
     bool result;
     if (member->method == FFS_METHOD_BROKEN) return false;
-    in = (ffs_input *)xx_mem_calloc(1U, sizeof(*in));
+    in = ffs_input_create();
     if (!in) return false;
     in->device = format->device;
     in->offset = format->base_address + member->record + FFS_RECORD_HEADER;
@@ -1065,17 +1084,18 @@ static bool ffs_names_from_stub(Abstractformat *format, int64_t stub_size,
                                 ffs_member *items, size_t count,
                                 xx_pd_struct *pd) {
     uint8_t *chunk;
+    const size_t io_capacity = xx_get_file_buffer_size();
     char run[FFS_NAME_MAX + 1U];
     size_t used = 0U;
     bool overflow = false, result = true;
     int64_t at = 0;
     if (stub_size > FFS_STUB_SCAN_MAX) stub_size = FFS_STUB_SCAN_MAX;
     if (stub_size <= 0) return true;
-    chunk = (uint8_t *)xx_mem_alloc(FFS_INPUT_BUFFER);
+    chunk = (uint8_t *)xx_mem_alloc(io_capacity);
     if (!chunk) return false;
     while (at < stub_size && result) {
-        size_t amount = stub_size - at < (int64_t)FFS_INPUT_BUFFER
-                            ? (size_t)(stub_size - at) : FFS_INPUT_BUFFER;
+        size_t amount = stub_size - at < (int64_t)io_capacity
+                            ? (size_t)(stub_size - at) : io_capacity;
         size_t k;
         if (ffs_stopped(pd) ||
             !ffs_read_at(format->device, format->base_address + at, chunk,

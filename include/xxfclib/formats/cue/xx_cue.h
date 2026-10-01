@@ -37,8 +37,10 @@ extern "C" {
  *   trackNN.pregap.<ext>  INDEX 00 up to INDEX 01, when the data file holds it
  *   trackNN.<ext>         INDEX 01 up to the next track, or the end of the file
  * with <ext> "iso" for 2048-byte data tracks, "bin" for raw data tracks,
- * "cdda" for audio and "cdg" for CD+G.  A WAVE file contributes the PCM of
- * its data chunk (44.1 kHz, 16-bit, stereo).
+ * "cdda" for audio and "cdg" for CD+G. A WAVE file contributes its data
+ * chunk PCM; AIFF and uncompressed AIFF-C (NONE or sowt) contribute their
+ * SSND PCM bytes as stored. These audio containers require 44.1 kHz,
+ * 16-bit stereo PCM. Other encodings are listed but cannot be extracted.
  *
  * An xx_io_device has no path, so the data files cannot be found from the
  * sheet alone: the tracks are listed and measured as far as the sheet allows,

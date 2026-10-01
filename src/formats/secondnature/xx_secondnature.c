@@ -35,6 +35,9 @@
  *              zero offset and size, which is a reference, not a member.
  *
  * Members are STORED; the format has no compression and no method field.
+ * A .JIF member can contain a 554-byte Second Nature picture wrapper before
+ * its JPEG stream. In that case the image payload starts at the JPEG marker,
+ * which is what the reference extractor publishes under the .JIF name.
  * Member offsets are absolute and unordered, so the archive ends at the
  * furthest member extent rather than at the last entry.
  *
@@ -194,6 +197,35 @@ static bool xx_secondnature_decode(Abstractformat *self,
 #define XX_SECONDNATURE_REF_MAX_MEMBERS 64
 #define XX_SECONDNATURE_MAX_ENTRY_SIZE 31
 #define XX_SECONDNATURE_MAX_MEMBER_SIZE 0x10000000
+#define XX_SECONDNATURE_JIF_WRAPPER_SIZE 554
+
+static bool xx_secondnature_wrapped_jpeg(Abstractformat *self,
+                                        int64_t offset, int64_t size,
+                                        const char *name) {
+    static const uint8_t wrapper_magic[4] = {0x18U, 0x9cU, 0x9cU, 0x2aU};
+    uint8_t header[4];
+    uint8_t jpeg_start[2];
+    uint8_t jpeg_end[2];
+    size_t length;
+
+    if (!name || size < XX_SECONDNATURE_JIF_WRAPPER_SIZE + 4) return false;
+    length = xx_rt_strlen(name);
+    if (length < 4U || name[length - 4U] != '.' ||
+        (name[length - 3U] != 'J' && name[length - 3U] != 'j') ||
+        (name[length - 2U] != 'I' && name[length - 2U] != 'i') ||
+        (name[length - 1U] != 'F' && name[length - 1U] != 'f')) {
+        return false;
+    }
+    return xx_secondnature_read_at(self, offset, header, sizeof(header)) &&
+           xx_rt_memcmp(header, wrapper_magic, sizeof(header)) == 0 &&
+           xx_secondnature_read_at(
+               self, offset + XX_SECONDNATURE_JIF_WRAPPER_SIZE,
+               jpeg_start, sizeof(jpeg_start)) &&
+           jpeg_start[0] == 0xffU && jpeg_start[1] == 0xd8U &&
+           xx_secondnature_read_at(self, offset + size - 2,
+                                   jpeg_end, sizeof(jpeg_end)) &&
+           jpeg_end[0] == 0xffU && jpeg_end[1] == 0xd9U;
+}
 
 static uint16_t xx_secondnature_le16(const uint8_t *data) {
     return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
@@ -425,6 +457,12 @@ static xx_secondnature_stream *xx_secondnature_parse(Abstractformat *self,
         member.data_offset = self->base_address + data_offset;
         member.compressed_size = data_size;
         member.uncompressed_size = data_size;
+        if (xx_secondnature_wrapped_jpeg(self, member.data_offset,
+                                         data_size, name)) {
+            member.data_offset += XX_SECONDNATURE_JIF_WRAPPER_SIZE;
+            member.compressed_size -= XX_SECONDNATURE_JIF_WRAPPER_SIZE;
+            member.uncompressed_size -= XX_SECONDNATURE_JIF_WRAPPER_SIZE;
+        }
         if (!xx_secondnature_add(stream, &member)) {
             xx_str_free(name);
             goto fail;

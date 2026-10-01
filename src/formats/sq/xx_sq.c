@@ -22,6 +22,7 @@
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
@@ -123,39 +124,56 @@ static bool sq_write_all(xx_io_device *device, const void *data, size_t size,
 /* Copy a run of source bytes straight through to the destination. */
 static bool sq_copy_range(xx_io_device *source, int64_t offset, uint64_t size,
                            xx_io_device *destination, xx_pd_struct *pd) {
-    uint8_t buffer[0x8000];
+    size_t capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = NULL;
+    bool buffer_result = false;
     uint64_t left = size;
-    if (!source || offset < 0) return false;
-    if (!destination) return true;
-    if (xx_io_seek64(source, offset, SEEK_SET) != 0) return false;
+    if (!source || offset < 0) { buffer_result = (false); goto buffer_done; }
+    if (!destination) { buffer_result = (true); goto buffer_done; }
+    if (xx_io_seek64(source, offset, SEEK_SET) != 0) { buffer_result = (false); goto buffer_done; }
+    if (capacity > (SIZE_MAX >> 1U)) capacity = SIZE_MAX >> 1U;
+    if (left) { if(capacity>left) capacity=(size_t)left; buffer = (uint8_t *)xx_mem_alloc(capacity); if (!buffer) { buffer_result = false; goto buffer_done; } }
     while (left != 0U) {
-        size_t want = left < sizeof(buffer) ? (size_t)left : sizeof(buffer);
+        size_t want = left < capacity ? (size_t)left : capacity;
         size_t done = 0U;
-        if (pd && xx_pd_is_stopped(pd)) return false;
+        if (pd && xx_pd_is_stopped(pd)) { buffer_result = (false); goto buffer_done; }
         while (done < want) {
             ssize_t amount = xx_io_read(source, buffer + done, want - done);
-            if (amount <= 0 || (size_t)amount > want - done) return false;
+            if (amount <= 0 || (size_t)amount > want - done) { buffer_result = (false); goto buffer_done; }
             done += (size_t)amount;
         }
-        if (!sq_write_all(destination, buffer, want, pd)) return false;
+        if (!sq_write_all(destination, buffer, want, pd)) { buffer_result = (false); goto buffer_done; }
         left -= want;
     }
-    return true;
+    { buffer_result = (true); goto buffer_done; }
+
+buffer_done:
+    xx_mem_free(buffer);
+    return buffer_result;
 }
 
 /* Emit `size` zero bytes: the filler every sparse disk image needs. */
 static bool sq_write_zeros(xx_io_device *destination, uint64_t size,
                             xx_pd_struct *pd) {
-    uint8_t buffer[0x8000];
+    size_t capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = NULL;
+    bool buffer_result = false;
     uint64_t left = size;
-    if (!destination) return true;
-    xx_mem_zero(buffer, sizeof(buffer));
+    if (!destination) { buffer_result = (true); goto buffer_done; }
+    if (capacity > (SIZE_MAX >> 1U)) capacity = SIZE_MAX >> 1U;
+    if (left) { if(capacity>left) capacity=(size_t)left; buffer = (uint8_t *)xx_mem_alloc(capacity); if (!buffer) { buffer_result = false; goto buffer_done; } }
+    if (!left) { buffer_result = true; goto buffer_done; }
+    xx_mem_zero(buffer, capacity);
     while (left != 0U) {
-        size_t want = left < sizeof(buffer) ? (size_t)left : sizeof(buffer);
-        if (!sq_write_all(destination, buffer, want, pd)) return false;
+        size_t want = left < capacity ? (size_t)left : capacity;
+        if (!sq_write_all(destination, buffer, want, pd)) { buffer_result = (false); goto buffer_done; }
         left -= want;
     }
-    return true;
+    { buffer_result = (true); goto buffer_done; }
+
+buffer_done:
+    xx_mem_free(buffer);
+    return buffer_result;
 }
 
 /* Reader-owned names are built here, never taken from the container, so they

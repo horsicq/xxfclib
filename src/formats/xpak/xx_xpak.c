@@ -17,6 +17,7 @@
  * a hostile stream can corrupt nothing and cannot spin.
  */
 
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/xpak/xx_xpak.h"
 
@@ -68,7 +69,6 @@
 #define XPAK_WINDOW 0x20000U
 #define XPAK_KEEP 0x8000U
 #define XPAK_MAX_MATCH 0x8000U
-#define XPAK_INPUT_BUFFER 4096U
 
 typedef struct xpak_context_s {
     char name[XX_XPAK_NAME_FIELD + 1];
@@ -117,8 +117,21 @@ typedef struct xpak_input_s {
     size_t position;
     uint32_t bits;
     uint32_t count;
-    uint8_t buffer[XPAK_INPUT_BUFFER];
+    uint8_t *buffer;
+    size_t io_capacity;
 } xpak_input;
+
+static xpak_input *xpak_input_create(void) {
+    size_t capacity = xx_get_file_buffer_size();
+    xpak_input *state;
+    if (capacity > ((size_t)-1 - sizeof(*state)) / 1U) return NULL;
+    state = (xpak_input *)xx_mem_calloc(1U, sizeof(*state) + capacity * 1U);
+    if (!state) return NULL;
+    state->io_capacity = capacity;
+    state->buffer = (uint8_t *)(state + 1);
+    return state;
+}
+
 
 typedef struct xpak_output_s {
     uint8_t *window;
@@ -143,13 +156,16 @@ static uint32_t xpak_le16(const uint8_t *bytes) {
 static bool xpak_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -483,8 +499,8 @@ static bool xpak_next_byte(xpak_input *in, uint32_t *value) {
     if (in->position == in->length) {
         size_t amount;
         if (in->remaining == 0U) return false;
-        amount = in->remaining < (uint64_t)XPAK_INPUT_BUFFER
-                     ? (size_t)in->remaining : XPAK_INPUT_BUFFER;
+        amount = in->remaining < (uint64_t)in->io_capacity
+                     ? (size_t)in->remaining : in->io_capacity;
         if (in->memory) {
             xx_rt_memcpy(in->buffer, in->memory, amount);
             in->memory += amount;
@@ -636,7 +652,7 @@ bool xx_xpak_decode_memory(const uint8_t *stream, size_t stream_size,
     if (!stream || (!output && output_size != 0U) ||
         !xpak_codec_parse(stream, stream_size, (uint64_t)stream_size, &codec))
         return false;
-    in = (xpak_input *)xx_mem_calloc(1U, sizeof(*in));
+    in = xpak_input_create();
     if (!in) return false;
     in->memory = stream + XPAK_CODEC_HEADER;
     in->remaining = (uint64_t)(stream_size - XPAK_CODEC_HEADER);
@@ -840,7 +856,7 @@ static bool xpak_unpack_context(Abstractformat *format,
         check.stream_size != context->stream_size ||
         check.unpacked_size != context->unpacked_size)
         return false;
-    in = (xpak_input *)xx_mem_calloc(1U, sizeof(*in));
+    in = xpak_input_create();
     if (!in) return false;
     in->device = format->device;
     in->offset = context->stream_offset + (int64_t)XPAK_CODEC_HEADER;

@@ -3,6 +3,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/pem/xx_pem.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -21,7 +22,6 @@
 #endif
 
 /* Read granularity of the block scanner. */
-#define XX_PEM_CHUNK_SIZE 16384U
 /* Longest END line ("-----END OPENSSH PRIVATE KEY-----"). */
 #define XX_PEM_MAX_END_SIZE 33U
 #define XX_PEM_HISTORY_SIZE 64U
@@ -89,6 +89,7 @@ typedef struct xx_pem_reader_s {
     int64_t total;
     int64_t buffer_start;
     size_t buffer_size;
+    size_t io_capacity;
     uint8_t *buffer;
     xx_pd_struct *pd;
 } xx_pem_reader;
@@ -128,6 +129,7 @@ static void xx_pem_vtable_destroy(Abstractformat *self);
 
 static bool xx_pem_read_at(xx_io_device *device, int64_t offset, void *data,
                            size_t size) {
+    const size_t io_capacity = xx_get_file_buffer_size();
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
     if (!device || (!data && size != 0U) || offset < 0 ||
@@ -135,8 +137,10 @@ static bool xx_pem_read_at(xx_io_device *device, int64_t offset, void *data,
         return false;
     }
     while (done < size) {
-        ssize_t got = xx_io_read(device, out + done, size - done);
-        if (got <= 0 || (size_t)got > size - done) return false;
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
+        ssize_t got = xx_io_read(device, out + done, request);
+        if (got <= 0 || (size_t)got > request) return false;
         done += (size_t)got;
     }
     return true;
@@ -151,7 +155,8 @@ static bool xx_pem_reader_open(xx_pem_reader *reader, xx_io_device *device,
     reader->buffer_start = -1;
     reader->total = device ? xx_io_total_size(device) : -1;
     if (!device || reader->total < 0) return false;
-    reader->buffer = (uint8_t *)xx_mem_alloc(XX_PEM_CHUNK_SIZE);
+    reader->io_capacity = xx_get_file_buffer_size();
+    reader->buffer = (uint8_t *)xx_mem_alloc(reader->io_capacity);
     return reader->buffer != NULL;
 }
 
@@ -171,8 +176,8 @@ static int xx_pem_byte_at(xx_pem_reader *reader, int64_t pos, uint8_t *out) {
     if (reader->buffer_start < 0 || pos < reader->buffer_start ||
         pos - reader->buffer_start >= (int64_t)reader->buffer_size) {
         int64_t left = reader->total - pos;
-        size_t want = left < (int64_t)XX_PEM_CHUNK_SIZE ? (size_t)left
-                                                        : XX_PEM_CHUNK_SIZE;
+        size_t want = (uint64_t)left < (uint64_t)reader->io_capacity ? (size_t)left
+                                                        : reader->io_capacity;
         if (reader->pd && xx_pd_is_stopped(reader->pd)) return -1;
         reader->buffer_start = -1;
         reader->buffer_size = 0U;

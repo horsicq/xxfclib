@@ -41,6 +41,7 @@
  * are deliberately NOT accepted: SFX containers are out of scope.
  */
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/formats/diskexpress/xx_diskexpress.h"
 
 #include "xxfclib/algo/lzh/xx_lzh.h"
@@ -118,16 +119,7 @@ static bool dxp_read_at(xx_io_device *device, int64_t offset, void *buffer,
 /* The writer's own CRC: the EDB88320 table, a non-standard seed and no final
  * inversion. */
 static uint32_t dxp_crc32(uint32_t seed, const uint8_t *data, size_t size) {
-    uint32_t crc = seed;
-    size_t index;
-    for (index = 0U; index < size; ++index) {
-        unsigned bit;
-        crc ^= (uint32_t)data[index];
-        for (bit = 0U; bit < 8U; ++bit)
-            crc = (crc & 1U) ? ((crc >> 1U) ^ UINT32_C(0xEDB88320))
-                             : (crc >> 1U);
-    }
-    return crc;
+    return xx_crc32_calc(seed ^ UINT32_MAX, data, size) ^ UINT32_MAX;
 }
 
 static void dxp_stream_free(void *opaque) {

@@ -7,6 +7,7 @@
 
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/algo/zstd/xx_zstd.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 
@@ -21,12 +22,6 @@
 /* The native decoder is deliberately bounded and one-shot.  Keep format
  * recognition within the same allocation limit as TAR+Zstandard. */
 #define XX_ZSTD_MAX_STREAM_SIZE ((uint64_t)1024U * 1024U * 1024U)
-
-typedef struct xx_zstd_counter_s {
-    xx_io_device *target;
-    uint64_t written;
-    bool failed;
-} xx_zstd_counter;
 
 static void xx_zstd_vtable_destroy(Abstractformat *self);
 
@@ -81,10 +76,10 @@ static bool xx_zstd_read_variable(const uint8_t **cursor, const uint8_t *end,
     return true;
 }
 
-/* Scan complete standard/skippable frames and determine the exact output
- * allocation the native decoder needs.  Frames without a content-size field
- * cannot be passed safely to its bounded one-shot interface, so they are
- * rejected rather than guessed. */
+/* Scan complete standard/skippable frames and bound the native decoder's
+ * output allocation. A compressed block can emit at most 128 KiB; raw and
+ * RLE block headers give their exact output length. This also covers frames
+ * whose content size is deliberately omitted by streaming producers. */
 static bool xx_zstd_scan_frames(const uint8_t *source, size_t size,
                                 uint64_t *uncompressed_size,
                                 uint64_t *frame_count) {
@@ -106,8 +101,10 @@ static bool xx_zstd_scan_frames(const uint8_t *source, size_t size,
         unsigned content_size_bytes;
         bool single_segment;
         bool checksum;
+        bool unknown_size;
         uint64_t dictionary_id = 0U;
         uint64_t frame_size = 0U;
+        uint64_t frame_capacity = 0U;
         bool last_block = false;
 
         if ((size_t)(end - cursor) < 4U) return false;
@@ -148,17 +145,13 @@ static bool xx_zstd_scan_frames(const uint8_t *source, size_t size,
                                  (single_segment ? 1U : 0U) :
                              content_size_flag == 1U ? 2U :
                              content_size_flag == 2U ? 4U : 8U;
-        if (content_size_bytes == 0U ||
-            !xx_zstd_read_variable(&cursor, end, content_size_bytes,
+        unknown_size = content_size_bytes == 0U;
+        if (!xx_zstd_read_variable(&cursor, end, content_size_bytes,
                                    &frame_size)) {
             return false;
         }
         if (content_size_bytes == 2U) frame_size += 256U;
-        if (frame_size > XX_ZSTD_MAX_STREAM_SIZE ||
-            total > XX_ZSTD_MAX_STREAM_SIZE - frame_size) {
-            return false;
-        }
-        total += frame_size;
+        if (!unknown_size) frame_capacity = frame_size;
 
         while (!last_block) {
             uint32_t header;
@@ -176,8 +169,22 @@ static bool xx_zstd_scan_frames(const uint8_t *source, size_t size,
             }
             encoded_size = block_type == 1U ? 1U : block_size;
             if (!xx_zstd_take(&cursor, end, encoded_size)) return false;
+            if (unknown_size) {
+                uint64_t output_bound = block_type == 2U
+                                            ? XX_ZSTD_BLOCK_MAX
+                                            : (uint64_t)block_size;
+                if (output_bound > XX_ZSTD_MAX_STREAM_SIZE - frame_capacity) {
+                    return false;
+                }
+                frame_capacity += output_bound;
+            }
         }
         if (checksum && !xx_zstd_take(&cursor, end, 4U)) return false;
+        if (frame_capacity > XX_ZSTD_MAX_STREAM_SIZE ||
+            total > XX_ZSTD_MAX_STREAM_SIZE - frame_capacity) {
+            return false;
+        }
+        total += frame_capacity;
         if (frames == UINT64_MAX) return false;
         ++frames;
     }
@@ -225,62 +232,88 @@ cleanup:
     return result;
 }
 
-static ssize_t xx_zstd_counter_write(xx_io_device *device, const void *data,
-                                     size_t size) {
-    xx_zstd_counter *counter =
-        device ? (xx_zstd_counter *)device->priv : NULL;
-    size_t done = 0U;
-    if (!counter || (!data && size != 0U) ||
-        (uint64_t)size > UINT64_MAX - counter->written) {
-        if (counter) counter->failed = true;
-        return -1;
-    }
-    while (counter->target && done < size) {
-        ssize_t amount = xx_io_write(counter->target,
-                                     (const uint8_t *)data + done,
-                                     size - done);
-        if (amount <= 0 || (size_t)amount > size - done) {
-            counter->failed = true;
-            return -1;
-        }
-        done += (size_t)amount;
-    }
-    counter->written += (uint64_t)size;
-    return (ssize_t)size;
-}
-
 static bool xx_zstd_decode_stream(Abstractformat *self,
                                   xx_io_device *destination,
                                   uint64_t *uncompressed_size,
                                   uint64_t *frame_count,
                                   int64_t *stream_size,
                                   xx_pd_struct *pd) {
-    xx_zstd_counter counter;
-    xx_io_device sink;
-    uint64_t declared_size;
+    uint64_t output_capacity;
     uint64_t frames;
     int64_t input_size;
+    uint8_t *input = NULL;
+    uint8_t *output = NULL;
+    size_t capacity;
+    size_t written = 0U;
+    size_t offset = 0U;
+    bool result = false;
 
     if (!self || !uncompressed_size || !frame_count || !stream_size ||
-        !xx_zstd_scan_device(self, &declared_size, &frames, &input_size,
+        !xx_zstd_scan_device(self, &output_capacity, &frames, &input_size,
                              pd)) {
         return false;
     }
-    xx_mem_zero(&counter, sizeof(counter));
-    xx_mem_zero(&sink, sizeof(sink));
-    counter.target = destination;
-    sink.write = xx_zstd_counter_write;
-    sink.priv = &counter;
-    if (!xx_zstd_unpack_device_to_device(self->device, self->base_address,
-                                         input_size, &sink, declared_size,
-                                         pd) || counter.failed ||
-        counter.written != declared_size) {
+    if ((uint64_t)input_size > (uint64_t)SIZE_MAX ||
+        output_capacity > (uint64_t)SIZE_MAX ||
+        (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
-    *uncompressed_size = counter.written;
+    input = (uint8_t *)xx_mem_alloc((size_t)input_size);
+    if (!input || !xx_zstd_read_exact_at(self->device, self->base_address,
+                                         input, (size_t)input_size)) {
+        goto cleanup;
+    }
+    /* The scanner's 128 KiB-per-compressed-block value is a ceiling, not a
+     * size claim. A tiny malformed stream can advertise an enormous ceiling.
+     * Start near the compressed size and grow only when the native decoder
+     * reaches its output capacity before it can finish validating the file. */
+    {
+        uint64_t initial = (uint64_t)input_size * 4U;
+        if (initial < 65536U) initial = 65536U;
+        if (initial > 2U * 1024U * 1024U) initial = 2U * 1024U * 1024U;
+        if (initial > output_capacity) initial = output_capacity;
+        capacity = (size_t)initial;
+    }
+    for (;;) {
+        bool needs_more_output = false;
+        output = (uint8_t *)xx_mem_alloc(capacity ? capacity : 1U);
+        if (!output) goto cleanup;
+        if (xx_zstd_decompress_memory_bounded_ex(
+                input, (size_t)input_size, output, capacity, &written,
+                &needs_more_output)) {
+            break;
+        }
+        xx_mem_free(output);
+        output = NULL;
+        if (!needs_more_output || capacity >= (size_t)output_capacity ||
+            (pd && xx_pd_is_stopped(pd))) {
+            goto cleanup;
+        }
+        capacity = capacity > (size_t)output_capacity / 2U
+                       ? (size_t)output_capacity : capacity * 2U;
+    }
+    if (pd && xx_pd_is_stopped(pd)) goto cleanup;
+    while (destination && offset < written) {
+        size_t request = written - offset;
+        ssize_t amount;
+        if (request > xx_get_file_buffer_size()) {
+            request = xx_get_file_buffer_size();
+        }
+        amount = xx_io_write(destination, output + offset, request);
+        if (amount <= 0 || (size_t)amount > request ||
+            (pd && xx_pd_is_stopped(pd))) {
+            goto cleanup;
+        }
+        offset += (size_t)amount;
+    }
+    *uncompressed_size = (uint64_t)written;
     *frame_count = frames;
     *stream_size = input_size;
-    return true;
+    result = true;
+cleanup:
+    xx_mem_free(output);
+    xx_mem_free(input);
+    return result;
 }
 
 static bool xx_zstd_copy_options(xx_list_s *destination,

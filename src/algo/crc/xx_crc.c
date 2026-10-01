@@ -23,6 +23,7 @@
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "xx_crc_internal.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/data/xx_pd.h"
 #include <string.h>
@@ -342,6 +343,8 @@ uint64_t xx_crc64(xx_crc_type_t type, const void *data, size_t size) {
 
 bool xx_crc_calculate_device(xx_io_device *dev, int64_t offset, int64_t size,
                              const xx_crc_model *model, xx_pd_struct *pd, uint64_t *out_crc) {
+    size_t capacity = xx_get_file_buffer_size();
+    if (capacity > (SIZE_MAX >> 1)) capacity = SIZE_MAX >> 1;
     if (!dev || !model || !out_crc) {
         return false;
     }
@@ -373,7 +376,8 @@ bool xx_crc_calculate_device(xx_io_device *dev, int64_t offset, int64_t size,
         return false;
     }
 
-    uint8_t buffer[8192];
+    uint8_t *buffer = (uint8_t *)xx_mem_alloc(capacity);
+    if (!buffer) return false;
     int64_t remaining = total_to_read;
     int64_t processed = 0;
 
@@ -387,10 +391,11 @@ bool xx_crc_calculate_device(xx_io_device *dev, int64_t offset, int64_t size,
             if (pd_level >= 0) {
                 xx_pd_leave_level(pd, pd_level);
             }
+            xx_mem_free(buffer);
             return false;
         }
 
-        size_t chunk = (remaining > (int64_t)sizeof(buffer)) ? sizeof(buffer) : (size_t)remaining;
+        size_t chunk = ((uint64_t)remaining > capacity) ? capacity : (size_t)remaining;
         ssize_t n = xx_io_read(dev, buffer, chunk);
         if (n <= 0 || (size_t)n > chunk) {
             break;
@@ -409,6 +414,7 @@ bool xx_crc_calculate_device(xx_io_device *dev, int64_t offset, int64_t size,
         xx_pd_leave_level(pd, pd_level);
     }
 
+    xx_mem_free(buffer);
     if (remaining != 0) {
         return false;
     }
@@ -438,6 +444,8 @@ bool xx_crc_verify_device(xx_io_device *dev, int64_t offset, int64_t size,
 bool xx_crc_copy_device_verify(xx_io_device *src_dev, int64_t src_offset, int64_t size,
                                xx_io_device *dst_dev, xx_crc_type_t type,
                                uint64_t expected_crc, bool *out_match, xx_pd_struct *pd) {
+    size_t capacity = xx_get_file_buffer_size();
+    if (capacity > (SIZE_MAX >> 1)) capacity = SIZE_MAX >> 1;
     if (out_match) {
         *out_match = false;
     }
@@ -461,12 +469,13 @@ bool xx_crc_copy_device_verify(xx_io_device *src_dev, int64_t src_offset, int64_
         return false;
     }
 
+    uint8_t *buffer = (uint8_t *)xx_mem_alloc(capacity);
+    if (!buffer) return false;
     int pd_level = -1;
     if (pd) {
         pd_level = xx_pd_enter_level(pd, (uint64_t)size, "Streaming device with CRC verification");
     }
 
-    uint8_t buffer[8192];
     int64_t remaining = size;
     int64_t processed = 0;
     bool success = true;
@@ -477,7 +486,7 @@ bool xx_crc_copy_device_verify(xx_io_device *src_dev, int64_t src_offset, int64_
             break;
         }
 
-        size_t chunk = (remaining > (int64_t)sizeof(buffer)) ? sizeof(buffer) : (size_t)remaining;
+        size_t chunk = ((uint64_t)remaining > capacity) ? capacity : (size_t)remaining;
         ssize_t n_read = xx_io_read(src_dev, buffer, chunk);
         if (n_read <= 0 || (size_t)n_read > chunk) {
             success = false;
@@ -503,6 +512,7 @@ bool xx_crc_copy_device_verify(xx_io_device *src_dev, int64_t src_offset, int64_
         xx_pd_leave_level(pd, pd_level);
     }
 
+    xx_mem_free(buffer);
     uint64_t actual_crc = xx_crc_context_final(&ctx);
     bool matched = (actual_crc == expected_crc);
     if (out_match) {

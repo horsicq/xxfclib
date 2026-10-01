@@ -11,10 +11,11 @@
  * are genuinely different code paths and each is exercised by the harness.
  *
  * Compressed clusters carry a RAW DEFLATE stream - there is no zlib header,
- * so xx_deflate_decompress_memory() is the entry point and
- * xx_zlib_stream_decode_memory() would fail on the first byte. A version 3
- * image may instead declare zstd, which goes to xx_zstd_decompress_memory().
- * No codec is implemented here.
+ * so xx_deflate_decompress_memory() is the entry point. A version 3 image may
+ * instead declare zstd. Its sector-rounded extent can contain the next frame,
+ * so only the bounded first-frame prefix goes to xx_zstd_decompress_memory().
+ * Extended L2 tables use 16-byte entries with allocation/zero subcluster
+ * bitmaps for ordinary clusters. No codec is implemented here.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -86,11 +87,12 @@ typedef struct xx_qcow_private_s {
     uint32_t version;
     uint32_t cluster_bits;
     uint32_t cluster_size;
-    uint32_t l2_bits;            /**< cluster_bits - 3. */
+    uint32_t l2_bits;            /**< cluster_bits - 3, or -4 for extended L2. */
     uint32_t crypt_method;
     uint32_t nb_snapshots;
     uint32_t refcount_order;
     uint8_t compression_type;
+    bool extended_l2;
     bool consumed;               /**< The single member has been stepped past. */
 } xx_qcow_private;
 
@@ -136,6 +138,62 @@ static bool xx_qcow_host_range(const xx_qcow_private *parsed, uint64_t host,
     offset += parsed->base_address;
     if (!xx_qcow_range_within(parsed->input_size, offset, size)) return false;
     *out_offset = offset;
+    return true;
+}
+
+/* QCOW records a sector-rounded compressed extent, not a Zstandard frame
+ * length. QEMU can place the next frame immediately after this one in the
+ * same sector. Walk only the bounded frame headers to find its exact end;
+ * xx_zstd_decompress_memory() still validates and decodes the complete frame. */
+static bool xx_qcow_zstd_frame_size(const uint8_t *data, size_t available,
+                                    size_t *frame_size) {
+    size_t offset;
+    unsigned descriptor;
+    unsigned content_size_flag;
+    unsigned dictionary_size;
+    unsigned content_size_bytes;
+    bool last;
+    if (!data || !frame_size || available < 6U ||
+        data[0] != 0x28U || data[1] != 0xb5U || data[2] != 0x2fU ||
+        data[3] != 0xfdU) return false;
+    descriptor = data[4U];
+    if ((descriptor & 0x18U) != 0U) return false;
+    content_size_flag = descriptor >> 6U;
+    dictionary_size = (descriptor & 3U) == 0U ? 0U :
+                      (descriptor & 3U) == 1U ? 1U :
+                      (descriptor & 3U) == 2U ? 2U : 4U;
+    content_size_bytes = content_size_flag == 0U ?
+                             ((descriptor & 0x20U) != 0U ? 1U : 0U) :
+                         content_size_flag == 1U ? 2U :
+                         content_size_flag == 2U ? 4U : 8U;
+    offset = 5U + ((descriptor & 0x20U) == 0U ? 1U : 0U);
+    if (offset > available ||
+        dictionary_size + content_size_bytes > available - offset)
+        return false;
+    offset += dictionary_size + content_size_bytes;
+    do {
+        uint32_t header;
+        unsigned type;
+        size_t block_size;
+        size_t stored_size;
+        if (available - offset < 3U) return false;
+        header = (uint32_t)data[offset] |
+                 ((uint32_t)data[offset + 1U] << 8U) |
+                 ((uint32_t)data[offset + 2U] << 16U);
+        offset += 3U;
+        last = (header & 1U) != 0U;
+        type = (header >> 1U) & 3U;
+        block_size = header >> 3U;
+        if (type == 3U || block_size > 128U * 1024U) return false;
+        stored_size = type == 1U ? 1U : block_size;
+        if (stored_size > available - offset) return false;
+        offset += stored_size;
+    } while (!last);
+    if ((descriptor & 4U) != 0U) {
+        if (available - offset < 4U) return false;
+        offset += 4U;
+    }
+    *frame_size = offset;
     return true;
 }
 
@@ -246,7 +304,6 @@ static bool xx_qcow_parse(Abstractformat *self, xx_qcow_private *parsed,
         goto fail;
     }
     parsed->cluster_size = UINT32_C(1) << parsed->cluster_bits;
-    parsed->l2_bits = parsed->cluster_bits - 3U;
     if (parsed->virtual_size > XX_QCOW_MAX_VIRTUAL_SIZE) goto fail;
     if (parsed->l1_size > XX_QCOW_MAX_L1_ENTRIES) goto fail;
 
@@ -259,6 +316,11 @@ static bool xx_qcow_parse(Abstractformat *self, xx_qcow_private *parsed,
         }
         parsed->incompatible_features =
             xx_data_get_u64(header, sizeof(header), 72U, true);
+        if ((parsed->incompatible_features & ~UINT64_C(0x1b)) != 0U)
+            goto fail;
+        parsed->extended_l2 =
+            (parsed->incompatible_features & UINT64_C(0x10)) != 0U;
+        if (parsed->extended_l2 && parsed->cluster_bits < 14U) goto fail;
         parsed->refcount_order = xx_data_get_u32(header, sizeof(header), 96U, true);
         header_length = xx_data_get_u32(header, sizeof(header), 100U, true);
         /* compression_type only exists once the header is long enough to
@@ -280,12 +342,17 @@ static bool xx_qcow_parse(Abstractformat *self, xx_qcow_private *parsed,
          * understand does not affect guest data, which never goes through the
          * refcount tables, so it is only sanity checked. */
         if (parsed->refcount_order > 6U) goto fail;
-        if (header_length < XX_QCOW_HEADER_V3_SIZE) goto fail;
+        if (header_length < XX_QCOW_HEADER_V3_SIZE ||
+            (header_length & 7U) != 0U) goto fail;
     }
     /* Only deflate and zstd are defined. An unknown value would make every
      * compressed cluster undecodable, so the image is refused up front rather
      * than half way through an extraction. */
     if (parsed->compression_type > 1U) goto fail;
+    if (((parsed->incompatible_features & UINT64_C(0x08)) != 0U) !=
+        (parsed->compression_type != 0U)) goto fail;
+    parsed->l2_bits = parsed->cluster_bits -
+                      (parsed->extended_l2 ? 4U : 3U);
 
     /* The L1 table has to cover the whole guest address space. A short table
      * is accepted - the clusters it does not reach simply read as zeros - but
@@ -349,7 +416,9 @@ static bool xx_qcow_read_cluster(Abstractformat *self,
     uint64_t l2_index = cluster_index & (((uint64_t)1 << parsed->l2_bits) - 1U);
     uint64_t l2_table;
     uint64_t entry;
-    uint8_t raw[8];
+    uint64_t bitmap;
+    size_t entry_size = parsed->extended_l2 ? 16U : 8U;
+    uint8_t raw[16];
     int64_t at;
 
     xx_mem_zero(out, parsed->cluster_size);
@@ -359,21 +428,26 @@ static bool xx_qcow_read_cluster(Abstractformat *self,
     /* An L2 table is exactly one cluster and is cluster aligned. Checking the
      * alignment here is what stops an entry that points into the middle of
      * the L1 table, or into the header, from being treated as a table. */
-    if ((l2_table & (uint64_t)(parsed->cluster_size - 1U)) != 0U) return true;
+    if ((l2_table & (uint64_t)(parsed->cluster_size - 1U)) != 0U)
+        return false;
     if (!xx_qcow_host_range(parsed, l2_table, (int64_t)parsed->cluster_size,
                             &at)) {
-        return true;
+        return false;
     }
-    /* Only the one entry is read. The L2 table is never materialised, so a
+    /* Only the one 8- or 16-byte entry is read. The L2 table is never
+     * materialised, so a
      * hostile L1 entry cannot drive an allocation, and because the caller
      * walks output clusters in a plain loop there is no recursion for an
      * entry pointing back at the L1 table to exploit. */
-    if (!xx_qcow_read_at(self->device, at + (int64_t)(l2_index * 8U), raw,
-                         sizeof(raw))) {
+    if (!xx_qcow_read_at(self->device,
+                         at + (int64_t)(l2_index * entry_size), raw,
+                         entry_size)) {
         return false;
     }
-    entry = xx_data_get_u64(raw, sizeof(raw), 0U, true);
-    if (entry == 0U) return true;
+    entry = xx_data_get_u64(raw, entry_size, 0U, true);
+    bitmap = parsed->extended_l2 ?
+                 xx_data_get_u64(raw, entry_size, 8U, true) : 0U;
+    if (entry == 0U && bitmap == 0U) return true;
 
     if ((entry & XX_QCOW_FLAG_COMPRESSED) != 0U) {
         uint32_t csize_shift = 62U - (parsed->cluster_bits - 8U);
@@ -383,35 +457,22 @@ static bool xx_qcow_read_cluster(Abstractformat *self,
         int64_t available = (int64_t)(sectors * 512U) - (int64_t)(host & 511U);
         size_t written = 0U;
 
+        if (bitmap != 0U) return false;
         if (available <= 0 || available > (int64_t)parsed->cluster_size * 2 +
                                               512) {
-            return true;
+            return false;
         }
-        if (!xx_qcow_host_range(parsed, host, available, &at)) return true;
+        if (!xx_qcow_host_range(parsed, host, available, &at)) return false;
         if (!xx_qcow_read_at(self->device, at, scratch, (size_t)available)) {
             return false;
         }
         if (parsed->compression_type == 1U) {
-            /* The L2 entry gives the payload's extent rounded up to whole
-             * 512-byte sectors, so the buffer normally carries padding after
-             * the frame - and xx_zstd_decompress_memory() refuses any input
-             * with trailing bytes, having no "bytes consumed" variant to say
-             * where the frame ended. Rather than reimplement a frame-length
-             * parser, the full extent is tried first and, if it is rejected,
-             * the trailing zero padding is dropped and it is tried once more.
-             * Two attempts, no search. A cluster padded with NON-zero bytes
-             * would still fail; see the reader's notes. */
-            size_t exact = (size_t)available;
-            if (!xx_zstd_decompress_memory(scratch, exact, out,
-                                           parsed->cluster_size, &written)) {
-                while (exact != 0U && scratch[exact - 1U] == 0U) --exact;
-                if (exact == 0U ||
-                    !xx_zstd_decompress_memory(scratch, exact, out,
-                                               parsed->cluster_size,
-                                               &written)) {
-                    return false;
-                }
-            }
+            size_t frame_size;
+            if (!xx_qcow_zstd_frame_size(scratch, (size_t)available,
+                                         &frame_size) ||
+                !xx_zstd_decompress_memory(scratch, frame_size, out,
+                                           parsed->cluster_size, &written))
+                return false;
         } else if (!xx_deflate_decompress_memory(scratch, (size_t)available,
                                                  out, parsed->cluster_size,
                                                  &written, false)) {
@@ -419,8 +480,29 @@ static bool xx_qcow_read_cluster(Abstractformat *self,
              * zlib entry point is deliberately not used. */
             return false;
         }
-        /* A short stream leaves the tail of the cluster zeroed, which is what
-         * the buffer was primed with. */
+        return written == parsed->cluster_size;
+    }
+    if (parsed->extended_l2) {
+        uint32_t allocated = (uint32_t)bitmap;
+        uint32_t zero = (uint32_t)(bitmap >> 32U);
+        uint64_t host = entry & XX_QCOW_OFFSET_MASK;
+        uint32_t subcluster_size = parsed->cluster_size / 32U;
+        unsigned index;
+        if ((entry & XX_QCOW_FLAG_ZERO) != 0U ||
+            (allocated & zero) != 0U) return false;
+        if (allocated == 0U) return true;
+        if (host == 0U ||
+            (host & (uint64_t)(parsed->cluster_size - 1U)) != 0U ||
+            !xx_qcow_host_range(parsed, host,
+                                (int64_t)parsed->cluster_size, &at) ||
+            !xx_qcow_read_at(self->device, at, scratch,
+                             parsed->cluster_size)) return false;
+        for (index = 0U; index < 32U; ++index) {
+            if ((allocated & (UINT32_C(1) << index)) != 0U)
+                xx_rt_memcpy(out + (size_t)index * subcluster_size,
+                             scratch + (size_t)index * subcluster_size,
+                             subcluster_size);
+        }
         return true;
     }
     if ((entry & XX_QCOW_FLAG_ZERO) != 0U && parsed->version == 3U) {
@@ -428,10 +510,11 @@ static bool xx_qcow_read_cluster(Abstractformat *self,
     }
     l2_table = entry & XX_QCOW_OFFSET_MASK;
     if (l2_table == 0U) return true;
-    if ((l2_table & (uint64_t)(parsed->cluster_size - 1U)) != 0U) return true;
+    if ((l2_table & (uint64_t)(parsed->cluster_size - 1U)) != 0U)
+        return false;
     if (!xx_qcow_host_range(parsed, l2_table, (int64_t)parsed->cluster_size,
                             &at)) {
-        return true;
+        return false;
     }
     return xx_qcow_read_at(self->device, at, out, parsed->cluster_size);
 }

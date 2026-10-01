@@ -19,6 +19,7 @@
  * SOFTWARE.
  */
 
+#include "xio.h"
 #include "../formats/xft.h"
 #include "../formats/pyc/xpyc.h"
 
@@ -68,11 +69,7 @@ int xft_contains(XFTSet *pSet, XFileType type)
 
 static int match(DieFile *pFile, cd_i64 nOffset, const char *pBytes, size_t nSize)
 {
-    if (nOffset + (cd_i64)nSize > pFile->nSize) {
-        return 0;
-    }
-
-    return (x_memcmp(pFile->pData + nOffset, pBytes, nSize) == 0) ? 1 : 0;
+    return xio_match(pFile, nOffset, pBytes, nSize);
 }
 
 /* XBinary::getFileTypes' fat validation: a CAFEBABE header only counts as a

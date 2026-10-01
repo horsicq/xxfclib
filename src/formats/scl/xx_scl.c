@@ -61,6 +61,7 @@
 
 #include <stdio.h>
 
+
 #define XX_SCL_COPY_CHUNK (64 * 1024)
 
 typedef struct xx_scl_member_s {
@@ -86,8 +87,45 @@ static void xx_scl_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
+#include "xxfclib/global/xx_global.h"
+static size_t gb_scl_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_scl_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_scl_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+
+
 static bool xx_scl_read_at(Abstractformat *self, int64_t offset,
                               uint8_t *buffer, size_t size) {
+    const size_t file_io_capacity = gb_scl_capacity();
     size_t completed = 0U;
 
     if (!self || !self->device || offset < 0 ||
@@ -96,7 +134,7 @@ static bool xx_scl_read_at(Abstractformat *self, int64_t offset,
     }
     while (completed < size) {
         ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+            gb_scl_read(self->device, buffer + completed, size - completed, file_io_capacity);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -164,9 +202,12 @@ static bool xx_scl_is_device_stem(const char *name) {
     return false;
 }
 
-/* A byte a host file name can carry as-is. */
+/* A byte a host file name can carry as-is. '~' is refused too: Windows
+ * gives a long name such as "ABCDEFGH_1.B" the 8.3 alias "ABCDEF~1.B", and
+ * a later member of that name would open the earlier file through the alias.
+ * With no '~' in any published name, no name can equal a generated alias. */
 static bool xx_scl_host_char(uint8_t character) {
-    if (character < 0x20U || character > 0x7EU) return false;
+    if (character < 0x20U || character > 0x7DU) return false;
     switch (character) {
     case '/': case '\\': case ':': case '*': case '?':
     case '"': case '<':  case '>': case '|':
@@ -279,8 +320,9 @@ static bool xx_scl_name_taken(const xx_scl_stream *stream,
 /* "NAME    " + type byte -> "NAME.B", made host-safe and unique.
  *
  * Spaces at either end are padding and are dropped. Every other byte a host
- * name cannot hold - separators, drive colons, wildcards, control codes, the
- * Spectrum's graphic and token bytes above 0x7E - becomes '_'; mapping
+ * name cannot hold - separators, drive colons, wildcards, control codes, '~'
+ * (8.3 aliases), the Spectrum's graphic and token bytes above 0x7E - becomes
+ * '_'; mapping
  * rather than dropping keeps two names that differ only there apart until
  * the collision pass. The type byte is kept as the extension because it
  * distinguishes "song.B" from "song.C"; a type of '.' or ' ' would vanish
@@ -357,6 +399,7 @@ static bool xx_scl_entry_name(const xx_scl_stream *stream,
  * is at most 9 + 255 * 14 + 255 * 255 * 256 bytes, about 16 MiB. */
 static int64_t xx_scl_trailer_size(Abstractformat *self, int64_t span,
                                    int64_t data_end, xx_pd_struct *pd) {
+    size_t file_io_capacity = gb_scl_capacity();
     uint8_t trailer[XX_SCL_TRAILER_SIZE];
     uint8_t *buffer;
     uint32_t sum = 0U;
@@ -366,11 +409,16 @@ static int64_t xx_scl_trailer_size(Abstractformat *self, int64_t span,
 
     /* Nothing to measure when not even one sum fits behind the data. */
     if (!xx_scl_range_within(span, data_end, XX_SCL_TRAILER_SIZE)) return 0;
-    buffer = (uint8_t *)xx_mem_alloc(XX_SCL_COPY_CHUNK);
+    /* The process-wide buffer size may be raised far beyond the data. */
+    if (data_end <= 0) return 0;
+    if ((uint64_t)data_end < (uint64_t)file_io_capacity) {
+        file_io_capacity = (size_t)data_end;
+    }
+    buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return 0;
     while (done < data_end) {
-        size_t chunk = (data_end - done) > XX_SCL_COPY_CHUNK
-                           ? (size_t)XX_SCL_COPY_CHUNK
+        size_t chunk = (uint64_t)(data_end - done) > (uint64_t)file_io_capacity
+                           ? (size_t)file_io_capacity
                            : (size_t)(data_end - done);
         size_t index;
         if ((pd && xx_pd_is_stopped(pd)) ||
@@ -832,6 +880,7 @@ bool xx_scl_archive_record_move_to_next(Abstractformat *self,
 bool xx_scl_unpack_current_archive_record(Abstractformat *self,
                                              xx_archive_record_state *state,
                                              xx_pd_struct *pd) {
+    const size_t file_io_capacity = gb_scl_capacity();
     xx_scl_stream *stream;
     const xx_scl_member *member;
     const xx_var *path_option;
@@ -901,8 +950,8 @@ bool xx_scl_unpack_current_archive_record(Abstractformat *self,
 
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed,
-                                       plain_size - completed);
+            ssize_t sent = gb_scl_write(output, plain + completed,
+                                       plain_size - completed, file_io_capacity);
             if (sent <= 0 || (size_t)sent > plain_size - completed) {
                 result = false;
                 break;

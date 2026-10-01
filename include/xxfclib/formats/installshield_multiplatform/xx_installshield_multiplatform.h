@@ -59,6 +59,10 @@ typedef xx_installshield_multiplatform xx_installshield_multiplatform_t;
 #define XX_INSTALLSHIELD_MULTIPLATFORM_MAGIC 0xCA82CA82U
 #define XX_INSTALLSHIELD_MULTIPLATFORM_FOOTER_SIZE 8
 
+/** Cheap detector prefilter: checks the final magic and preserves the
+ * device cursor. The full reader still validates the index and members. */
+XXFC_API bool xx_installshield_multiplatform_has_footer(xx_io_device *device);
+
 XXFC_API void xx_installshield_multiplatform_init(
     xx_installshield_multiplatform *archive, xx_io_device *device,
     int64_t base_address);

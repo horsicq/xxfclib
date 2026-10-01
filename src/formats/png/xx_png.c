@@ -45,10 +45,8 @@
  * whole image, which a size walk otherwise never does; it is left to a
  * decoder.
  *
- * Not an archive.  binwalk's extractor carves the image itself to image.png
- * and nothing inside is extracted, so the reader validates, reports the size,
- * the IHDR fields and a few counters, and publishes everything past the IEND
- * chunk as overlay.
+ * The component archive API publishes each encoded chunk payload separately
+ * and verifies its CRC during extraction. It does not decode the image.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -58,6 +56,9 @@
 #include "xxfclib/data/xx_pd.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
+
+#include "../bmp/xx_component_archive_impl.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -374,6 +375,7 @@ void xx_png_init(xx_png *png, xx_io_device *dev, int64_t base_address) {
     png->format.get_format_size = xx_png_get_format_size;
     png->format.destroy = xx_png_vtable_destroy;
     png->image_end = -1;
+    xx_components_install(&png->format);
 }
 
 xx_png *xx_png_create(xx_io_device *dev, int64_t base_address) {
@@ -446,6 +448,7 @@ bool xx_png_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
         self->overlay_size = 0;
     }
     self->number_of_archive_records = 0U;
+    if (!xx_components_finish(self, pd)) return false;
     self->is_valid = true;
     self->base_info_handled = true;
     return true;
@@ -497,4 +500,22 @@ bool xx_png_is_animated(const xx_png *png) {
 
 uint32_t xx_png_get_frame_count(const xx_png *png) {
     return png ? png->frame_count : 0U;
+}
+
+/* Encoded/structural component members; this does not decode media. */
+static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd) {
+
+    int64_t pos=8;
+    while(pos<f->format_size) {
+        uint8_t h[8], checksum[4]; uint32_t n; char kind[5];
+        if(xx_pd_is_stopped(pd) || !xx_component_read(f,pos,h,8)) return false;
+        n=xx_data_get_u32(h,8,0,true); xx_rt_memcpy(kind,h+4,4); kind[4]=0;
+        if(!xx_component_add(f,s,pos+8,n,kind)) return false;
+        if(!xx_component_read(f,pos+8+n,checksum,4)) return false;
+        s->items[s->count-1].has_crc32=true;
+        s->items[s->count-1].crc32=xx_data_get_u32(checksum,4,0,true);
+        s->items[s->count-1].crc32_seed=xx_crc32_calc(0,h+4,4);
+        pos+=(int64_t)n+12;
+    }
+    return pos==f->format_size;
 }

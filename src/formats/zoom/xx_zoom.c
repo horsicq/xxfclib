@@ -209,6 +209,42 @@ static bool xx_zoom_decode(Abstractformat *self,
     return true;
 }
 
+static bool xx_zoom_recover_prefix(Abstractformat *self,
+                                   const xx_zoom_context *context,
+                                   uint8_t **out, size_t *out_size,
+                                   xx_pd_struct *pd) {
+    uint8_t *input = NULL;
+    uint8_t *output = NULL;
+    size_t input_size = 0U;
+    size_t written = 0U;
+    bool complete = false;
+
+    if (out) *out = NULL;
+    if (out_size) *out_size = 0U;
+    if (!self || !context || !out || !out_size ||
+        context->uncompressed_size <= 0 ||
+        (uint64_t)context->uncompressed_size > (uint64_t)SIZE_MAX ||
+        (pd && xx_pd_is_stopped(pd)) ||
+        !xx_zoom_read_container(self, context, &input, &input_size)) {
+        return false;
+    }
+    output = (uint8_t *)xx_mem_alloc((size_t)context->uncompressed_size);
+    if (!output ||
+        !xx_zoom_decode_prefix_memory(input, input_size, output,
+                                      (size_t)context->uncompressed_size,
+                                      &written, &complete) ||
+        complete || written == 0U ||
+        (pd && xx_pd_is_stopped(pd))) {
+        xx_mem_free(input);
+        xx_mem_free(output);
+        return false;
+    }
+    xx_mem_free(input);
+    *out = output;
+    *out_size = written;
+    return true;
+}
+
 /* ------------------------------------------------------------ lifetime -- */
 
 void xx_zoom_init(xx_zoom *archive, xx_io_device *device,
@@ -454,6 +490,7 @@ bool xx_zoom_unpack_current_archive_record(Abstractformat *self,
     size_t plain_size = 0U;
     bool result = false;
     bool created = false;
+    bool partial = false;
 
     if (!self || !state || state->format != self || !state->has_record ||
         (pd && xx_pd_is_stopped(pd))) {
@@ -492,10 +529,16 @@ bool xx_zoom_unpack_current_archive_record(Abstractformat *self,
     xx_str_free(converted_path);
     if (!target_path) return false;
 
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_zoom_decode(self, context, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false)) {
         xx_str_free(target_path);
         return false;
+    }
+    if (!xx_zoom_decode(self, context, &plain, &plain_size, pd)) {
+        if (!xx_zoom_recover_prefix(self, context, &plain, &plain_size, pd)) {
+            xx_str_free(target_path);
+            return false;
+        }
+        partial = true;
     }
     {
         xx_io_device *output = xx_io_file_open(target_path, "wb");
@@ -516,7 +559,8 @@ bool xx_zoom_unpack_current_archive_record(Abstractformat *self,
     xx_mem_free(plain);
     if (!result && created) xx_rt_remove(target_path);
     xx_str_free(target_path);
-    return result;
+    /* Keep a committed prefix for salvage, but report the missing remainder. */
+    return result && !partial;
 }
 
 void xx_zoom_free_archive_records_reading(Abstractformat *self,

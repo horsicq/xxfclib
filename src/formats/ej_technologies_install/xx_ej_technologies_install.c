@@ -45,6 +45,7 @@
  * here, so the alias macro defined next to the enumerator is tested instead;
  * this picks up the real file type as soon as the reader is registered. */
 #ifdef EJ_TECHNOLOGIES_INSTALL
+
 #define XX_EJ_TECHNOLOGIES_INSTALL_FILE_TYPE \
     XX_FILE_TYPE_EJ_TECHNOLOGIES_INSTALL
 #else
@@ -114,7 +115,8 @@ typedef struct ejti_cursor_s {
     int64_t size;
     int64_t start;
     size_t length;
-    uint8_t buffer[EJTI_CURSOR_SIZE];
+    uint8_t *buffer;
+    size_t capacity;
 } ejti_cursor;
 
 typedef struct ejti_key_s {
@@ -140,6 +142,42 @@ typedef struct ejti_walk_s {
     int result;
 } ejti_walk;
 
+#include "xxfclib/global/xx_global.h"
+static size_t gb_ej_technologies_install_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_ej_technologies_install_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_ej_technologies_install_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+
+
 static uint32_t ejti_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
@@ -164,13 +202,14 @@ static uint64_t ejti_be64(const uint8_t *bytes) {
 
 static bool ejti_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
+    const size_t file_io_capacity = gb_ej_technologies_install_capacity();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = gb_ej_technologies_install_read(device, (uint8_t *)buffer + done,
+                                    size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -179,24 +218,27 @@ static bool ejti_read_at(xx_io_device *device, int64_t offset, void *buffer,
 
 /* Copy `size` bytes at relative `offset` out of the cursor window, refilling
  * it from the device when the range is not already buffered. */
-static bool ejti_get(ejti_cursor *cursor, int64_t offset, void *out,
-                     size_t size) {
+static bool ejti_get(ejti_cursor *cursor, int64_t offset, void *out, size_t size) {
+    uint8_t *destination = (uint8_t *)out;
     if (!cursor || !out || offset < 0 || size > EJTI_CURSOR_SIZE ||
-        offset > cursor->size || (int64_t)size > cursor->size - offset)
-        return false;
-    if (cursor->length == 0U || offset < cursor->start ||
-        offset - cursor->start > (int64_t)cursor->length ||
-        (int64_t)size > (int64_t)cursor->length - (offset - cursor->start)) {
-        int64_t want = cursor->size - offset;
-        if (want > (int64_t)EJTI_CURSOR_SIZE) want = (int64_t)EJTI_CURSOR_SIZE;
-        cursor->length = 0U;
-        if (!ejti_read_at(cursor->device, cursor->base + offset,
-                          cursor->buffer, (size_t)want))
-            return false;
-        cursor->start = offset;
-        cursor->length = (size_t)want;
+        offset > cursor->size || (int64_t)size > cursor->size - offset) return false;
+    while (size) {
+        size_t available, take;
+        if (!cursor->length || offset < cursor->start ||
+            offset - cursor->start >= (int64_t)cursor->length) {
+            int64_t want = cursor->size - offset;
+            if ((uint64_t)want > cursor->capacity) want = (int64_t)cursor->capacity;
+            cursor->length = 0;
+            if (xx_io_seek64(cursor->device, cursor->base + offset, SEEK_SET) != 0 ||
+                gb_ej_technologies_install_read(cursor->device, cursor->buffer,
+                    (size_t)want, cursor->capacity) != want) return false;
+            cursor->start = offset; cursor->length = (size_t)want;
+        }
+        available = cursor->length - (size_t)(offset - cursor->start);
+        take = size < available ? size : available;
+        xx_rt_memcpy(destination, cursor->buffer + (size_t)(offset - cursor->start), take);
+        destination += take; offset += (int64_t)take; size -= take;
     }
-    xx_rt_memcpy(out, cursor->buffer + (size_t)(offset - cursor->start), size);
     return true;
 }
 
@@ -414,6 +456,19 @@ static int ejti_compare_keys(const void *left, const void *right) {
 static bool ejti_make_names_unique(ejti_member *items, size_t count) {
     ejti_key *keys;
     size_t round, index;
+    /* A '~' followed by a digit becomes '_': that is the shape of an NTFS
+     * 8.3 short name ("LONGFI~1.TXT"), which on a volume with short names
+     * enabled opens the file or directory an earlier long-named member
+     * created instead of a new one.  Done before the collision pass so the
+     * rewritten names are deduplicated too. */
+    for (index = 0U; index < count; ++index) {
+        char *name = items[index].name;
+        size_t at;
+        if (!name) continue;
+        for (at = 0U; name[at] && name[at + 1U]; ++at)
+            if (name[at] == '~' && name[at + 1U] >= '0' && name[at + 1U] <= '9')
+                name[at] = '_';
+    }
     if (count < 2U) return true;
     keys = (ejti_key *)xx_mem_alloc(count * sizeof(*keys));
     if (!keys) return false;
@@ -815,13 +870,20 @@ static bool ejti_parse(Abstractformat *format, ejti_stream **result,
     if (total < format->base_address) return false;
     cursor = (ejti_cursor *)xx_mem_alloc(sizeof(*cursor));
     if (!cursor) return false;
+    /* The window is EJTI_CURSOR_SIZE whatever the file-buffer setting, so
+     * the probe that every MZ file reaches allocates 4 KiB and reads at most
+     * 4 KiB per refill. */
+    cursor->capacity = EJTI_CURSOR_SIZE;
+    cursor->buffer = (uint8_t *)xx_mem_alloc(cursor->capacity);
+    if (!cursor->buffer) { xx_mem_free(cursor); return false; }
     cursor->device = format->device;
     cursor->base = format->base_address;
     cursor->size = total - format->base_address;
     cursor->start = 0;
     cursor->length = 0U;
     /* Every MZ file reaches this probe: the PE headers and the 16-byte
-     * container head are checked before anything else is allocated. */
+     * container head are checked before anything beyond the 4 KiB window is
+     * allocated. */
     if (!ejti_locate(cursor, &container)) goto fail;
     stream = (ejti_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) goto fail;
@@ -894,6 +956,7 @@ static bool ejti_parse(Abstractformat *format, ejti_stream **result,
     }
     xx_mem_free(walk.items);
     if (list) xx_mem_free(list);
+    xx_mem_free(cursor->buffer);
     xx_mem_free(cursor);
     *result = stream;
     return true;
@@ -904,7 +967,7 @@ fail:
         stream->count = 0U;
         ejti_stream_free(stream);
     }
-    if (cursor) xx_mem_free(cursor);
+    if (cursor) { xx_mem_free(cursor->buffer); xx_mem_free(cursor); }
     return false;
 }
 
@@ -916,16 +979,17 @@ fail:
  * it is NULL), undoing the XOR unless the member is stored. */
 static bool ejti_copy_member(xx_io_device *source, const ejti_member *member,
                              xx_io_device *destination, xx_pd_struct *pd) {
+    const size_t file_io_capacity = gb_ej_technologies_install_capacity();
     uint8_t *buffer;
     int64_t done = 0;
     bool ok = true;
     if (!source || member->offset < 0 || member->size < 0) return false;
     if (member->size == 0) return true;
-    buffer = (uint8_t *)xx_mem_alloc(EJTI_COPY_CHUNK);
+    buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (ok && done < member->size) {
-        size_t chunk = member->size - done > (int64_t)EJTI_COPY_CHUNK
-                           ? (size_t)EJTI_COPY_CHUNK
+        size_t chunk = member->size - done > (int64_t)file_io_capacity
+                           ? (size_t)file_io_capacity
                            : (size_t)(member->size - done);
         size_t written = 0U, index;
         if ((pd && xx_pd_is_stopped(pd)) ||
@@ -936,8 +1000,8 @@ static bool ejti_copy_member(xx_io_device *source, const ejti_member *member,
         if (!member->stored)
             for (index = 0U; index < chunk; ++index) buffer[index] ^= EJTI_XOR;
         while (destination && written < chunk) {
-            ssize_t amount = xx_io_write(destination, buffer + written,
-                                         chunk - written);
+            ssize_t amount = gb_ej_technologies_install_write(destination, buffer + written,
+                                         chunk - written, file_io_capacity);
             if (amount <= 0 || (size_t)amount > chunk - written) {
                 ok = false;
                 break;

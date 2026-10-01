@@ -25,12 +25,18 @@
 #define XX_ROMFS_MAX_ENTRIES 100000U
 #define XX_ROMFS_MAX_NODES 200000U
 #define XX_ROMFS_MAX_DEPTH 64U
+#define XX_ROMFS_MAX_HARDLINK_DEPTH 64U
 #define XX_ROMFS_MAX_NAME_SIZE 4096U
 
 /* Low three bits of the "next header" word. */
 #define XX_ROMFS_TYPE_HARDLINK 0U
 #define XX_ROMFS_TYPE_DIRECTORY 1U
 #define XX_ROMFS_TYPE_REGULAR 2U
+#define XX_ROMFS_TYPE_SYMLINK 3U
+#define XX_ROMFS_TYPE_BLOCK_DEVICE 4U
+#define XX_ROMFS_TYPE_CHAR_DEVICE 5U
+#define XX_ROMFS_TYPE_SOCKET 6U
+#define XX_ROMFS_TYPE_FIFO 7U
 
 typedef struct xx_romfs_entry_s {
     char *name;
@@ -75,16 +81,22 @@ static bool xx_romfs_read_at(xx_io_device *device, int64_t offset, void *data,
                              size_t size) {
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 || offset > LONG_MAX ||
-        xx_io_seek(device, (long)offset, SEEK_SET) != 0) {
-        return false;
-    }
-    while (done < size) {
+    int64_t saved;
+    bool ok = true;
+    if (!device || (!data && size != 0U) || offset < 0) return false;
+    saved = xx_io_tell(device);
+    if (saved < 0) return false;
+    if (xx_io_seek64(device, offset, SEEK_SET) != 0) ok = false;
+    while (ok && done < size) {
         ssize_t got = xx_io_read(device, out + done, size - done);
-        if (got <= 0 || (size_t)got > size - done) return false;
+        if (got <= 0 || (size_t)got > size - done) {
+            ok = false;
+            break;
+        }
         done += (size_t)got;
     }
-    return true;
+    if (xx_io_seek64(device, saved, SEEK_SET) != 0) ok = false;
+    return ok && done == size;
 }
 
 static bool xx_romfs_add(int64_t left, uint64_t right, int64_t *result) {
@@ -324,6 +336,79 @@ static char *xx_romfs_join_name(const char *prefix, const char *name) {
     return combined;
 }
 
+/* A hard-link's spec word names another file header, not a data offset.
+ * genromfs can emit links to links, so follow at most 64 distinct headers.
+ * Directory aliases are refused: descending the same physical directory at
+ * another path requires a different traversal-ownership model. Dot entries
+ * are skipped before this helper and are not exposed as members. */
+static bool xx_romfs_resolve_hardlink(Abstractformat *self,
+                                      const xx_romfs_private *parsed,
+                                      uint32_t spec, int64_t *out_data,
+                                      uint32_t *out_size, xx_pd_struct *pd) {
+    int64_t seen[XX_ROMFS_MAX_HARDLINK_DEPTH];
+    unsigned depth;
+    if (!self || !parsed || !out_data || !out_size) return false;
+    *out_data = -1;
+    *out_size = 0U;
+    for (depth = 0U; depth < XX_ROMFS_MAX_HARDLINK_DEPTH; ++depth) {
+        uint8_t header[XX_ROMFS_FILE_HEADER_SIZE];
+        int64_t target, name_end, data_offset;
+        uint32_t type;
+        unsigned previous;
+        char *name = NULL;
+        if (pd && xx_pd_is_stopped(pd)) return false;
+        if (spec == 0U || (spec & (XX_ROMFS_ALIGNMENT - 1U)) != 0U ||
+            !xx_romfs_add(self->base_address, spec, &target) ||
+            !xx_romfs_range_within(parsed->archive_end, target,
+                                   XX_ROMFS_FILE_HEADER_SIZE)) {
+            return false;
+        }
+        for (previous = 0U; previous < depth; ++previous) {
+            if (seen[previous] == target) return false;
+        }
+        seen[depth] = target;
+        if (!xx_romfs_read_at(self->device, target, header, sizeof(header))) {
+            return false;
+        }
+        if (pd && xx_pd_is_stopped(pd)) return false;
+        type = xx_data_get_u32(header, sizeof(header), 0U, true) & 7U;
+        if (type == XX_ROMFS_TYPE_HARDLINK) {
+            if (xx_data_get_u32(header, sizeof(header), 8U, true) != 0U) {
+                return false;
+            }
+            spec = xx_data_get_u32(header, sizeof(header), 4U, true);
+            continue;
+        }
+        if (type != XX_ROMFS_TYPE_REGULAR &&
+            type != XX_ROMFS_TYPE_SYMLINK) {
+            return false;
+        }
+        if (!xx_romfs_read_name(self->device,
+                                target + XX_ROMFS_FILE_HEADER_SIZE,
+                                parsed->archive_end, &name, &name_end)) {
+            return false;
+        }
+        if (pd && xx_pd_is_stopped(pd)) {
+            xx_str_free(name);
+            return false;
+        }
+        if (!xx_romfs_plausible_name(name, xx_str_len(name)) ||
+            !xx_romfs_align(name_end, &data_offset)) {
+            xx_str_free(name);
+            return false;
+        }
+        xx_str_free(name);
+        *out_size = xx_data_get_u32(header, sizeof(header), 8U, true);
+        if (!xx_romfs_range_within(parsed->archive_end, data_offset,
+                                   *out_size)) {
+            return false;
+        }
+        *out_data = data_offset;
+        return true;
+    }
+    return false;
+}
+
 /* Walk one next-header chain, recursing into the directories it names.
  * A malformed entry ends the whole parse; a cycle, an exhausted node budget
  * or an exhausted depth budget only ends the chain, so that the records
@@ -352,7 +437,7 @@ static bool xx_romfs_walk(Abstractformat *self, xx_romfs_private *parsed,
         if (parsed->nodes >= XX_ROMFS_MAX_NODES) return true;
         if (xx_romfs_visited_mark(&parsed->visited, offset)) return true;
         ++parsed->nodes;
-        if (!xx_romfs_range_within(parsed->input_size, offset,
+        if (!xx_romfs_range_within(parsed->archive_end, offset,
                                    XX_ROMFS_FILE_HEADER_SIZE) ||
             !xx_romfs_read_at(self->device, offset, header, sizeof(header))) {
             return false;
@@ -362,7 +447,7 @@ static bool xx_romfs_walk(Abstractformat *self, xx_romfs_private *parsed,
         size = xx_data_get_u32(header, sizeof(header), 8U, true);
         type = raw_next & 7U;
         if (!xx_romfs_read_name(self->device, offset + XX_ROMFS_FILE_HEADER_SIZE,
-                                parsed->input_size, &name, &name_end)) {
+                                parsed->archive_end, &name, &name_end)) {
             return false;
         }
         if (!xx_romfs_plausible_name(name, xx_str_len(name)) ||
@@ -390,8 +475,12 @@ static bool xx_romfs_walk(Abstractformat *self, xx_romfs_private *parsed,
         full_name = xx_romfs_join_name(prefix, name);
         xx_str_free(name);
         if (!full_name) return false;
-        if (type == XX_ROMFS_TYPE_REGULAR) {
-            if (!xx_romfs_range_within(parsed->input_size, data_offset, size)) {
+        if (type == XX_ROMFS_TYPE_REGULAR ||
+            type == XX_ROMFS_TYPE_SYMLINK) {
+            /* U3 exposes a symbolic link as a regular file containing its
+             * stored target path.  This also avoids creating host symlinks
+             * whose destinations could escape the extraction directory. */
+            if (!xx_romfs_range_within(parsed->archive_end, data_offset, size)) {
                 xx_str_free(full_name);
                 return false;
             }
@@ -401,6 +490,26 @@ static bool xx_romfs_walk(Abstractformat *self, xx_romfs_private *parsed,
             entry.header_size = data_offset - offset;
             entry.data_offset = data_offset;
             entry.data_size = size;
+            entry.is_folder = false;
+            if (!xx_romfs_append_entry(parsed, &entry)) {
+                xx_str_free(full_name);
+                return false;
+            }
+        } else if (type == XX_ROMFS_TYPE_HARDLINK) {
+            int64_t linked_data;
+            uint32_t linked_size;
+            if (size != 0U ||
+                !xx_romfs_resolve_hardlink(self, parsed, spec, &linked_data,
+                                           &linked_size, pd)) {
+                xx_str_free(full_name);
+                return false;
+            }
+            xx_mem_zero(&entry, sizeof(entry));
+            entry.name = full_name;
+            entry.header_offset = offset;
+            entry.header_size = data_offset - offset;
+            entry.data_offset = linked_data;
+            entry.data_size = linked_size;
             entry.is_folder = false;
             if (!xx_romfs_append_entry(parsed, &entry)) {
                 xx_str_free(full_name);
@@ -426,11 +535,23 @@ static bool xx_romfs_walk(Abstractformat *self, xx_romfs_private *parsed,
                 return false;
             }
             full_name = NULL;
-        } else {
-            /* Hard links, symlinks, devices, sockets and fifos carry no
-             * extractable payload here and are skipped. */
-            xx_str_free(full_name);
-            full_name = NULL;
+        } else if (type == XX_ROMFS_TYPE_BLOCK_DEVICE ||
+                   type == XX_ROMFS_TYPE_CHAR_DEVICE ||
+                   type == XX_ROMFS_TYPE_SOCKET ||
+                   type == XX_ROMFS_TYPE_FIFO) {
+            /* Device numbers live in spec; there is no byte payload.  U3
+             * publishes these names as empty files on ordinary filesystems. */
+            xx_mem_zero(&entry, sizeof(entry));
+            entry.name = full_name;
+            entry.header_offset = offset;
+            entry.header_size = data_offset - offset;
+            entry.data_offset = data_offset;
+            entry.data_size = 0U;
+            entry.is_folder = false;
+            if (!xx_romfs_append_entry(parsed, &entry)) {
+                xx_str_free(full_name);
+                return false;
+            }
         }
         offset = next;
     }
@@ -479,16 +600,17 @@ static bool xx_romfs_parse(Abstractformat *self, xx_romfs_private *parsed,
     /* Skip the volume name to reach the root directory's first entry. */
     if (!xx_romfs_read_name(self->device,
                             self->base_address + XX_ROMFS_SUPERBLOCK_SIZE,
-                            total_size, &volume_name, &volume_name_end)) {
+                            parsed->archive_end, &volume_name,
+                            &volume_name_end)) {
         goto fail;
     }
     xx_str_free(volume_name);
     volume_name = NULL;
     if (!xx_romfs_align(volume_name_end, &root_offset) ||
-        !xx_romfs_range_within(total_size, root_offset,
+        !xx_romfs_range_within(parsed->archive_end, root_offset,
                                XX_ROMFS_FILE_HEADER_SIZE) ||
         !xx_romfs_walk(self, parsed, root_offset, "", 0U, pd) ||
-        parsed->count == 0U) {
+        parsed->count == 0U || (pd && xx_pd_is_stopped(pd))) {
         goto fail;
     }
     return true;
@@ -515,18 +637,6 @@ static bool xx_romfs_copy_options(xx_list_s *destination,
         }
     }
     return true;
-}
-
-static const xx_var *xx_romfs_find_option(const xx_list_s *options,
-                                          uint32_t meta_id) {
-    size_t index;
-    if (!options) return NULL;
-    for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)options, index);
-        if (item && item->meta_id == meta_id) return &item->var;
-    }
-    return NULL;
 }
 
 static bool xx_romfs_populate_record(xx_archive_record *record,
@@ -711,8 +821,8 @@ const xx_archive_record *xx_romfs_get_current_archive_record(
 }
 
 bool xx_romfs_archive_record_move_to_next(Abstractformat *self,
-                                          xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+                                           xx_archive_record_state *state,
+                                           xx_pd_struct *pd) {
     xx_romfs_archive_stream *stream;
     if (!self || !state || state->format != self || !state->has_record ||
         !state->internal_state || (pd && xx_pd_is_stopped(pd))) return false;
@@ -733,6 +843,85 @@ bool xx_romfs_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
+static bool xx_romfs_copy_member(Abstractformat *self,
+                                  const xx_archive_record *record,
+                                  xx_io_device *destination,
+                                  xx_pd_struct *pd) {
+    uint8_t *buffer;
+    uint64_t remaining;
+    int64_t offset;
+    size_t capacity;
+    if (!self || !self->device || !record || !destination ||
+        record->compressed_size < 0 || record->data_offset < 0 ||
+        (pd && xx_pd_is_stopped(pd))) {
+        return false;
+    }
+    remaining = (uint64_t)record->compressed_size;
+    offset = record->data_offset;
+    if (remaining == 0U) return true;
+    capacity = remaining < 65536U ? (size_t)remaining : 65536U;
+    buffer = (uint8_t *)xx_mem_alloc(capacity);
+    if (!buffer) return false;
+    while (remaining != 0U) {
+        size_t take = remaining < capacity ? (size_t)remaining : capacity;
+        size_t written = 0U;
+        if ((pd && xx_pd_is_stopped(pd)) ||
+            !xx_romfs_read_at(self->device, offset, buffer, take) ||
+            (pd && xx_pd_is_stopped(pd))) {
+            break;
+        }
+        while (written < take) {
+            ssize_t got;
+            if (pd && xx_pd_is_stopped(pd)) break;
+            got = xx_io_write(destination, buffer + written, take - written);
+            if (got <= 0 || (size_t)got > take - written) break;
+            written += (size_t)got;
+        }
+        if (written != take || (pd && xx_pd_is_stopped(pd))) break;
+        remaining -= take;
+        offset += (int64_t)take;
+    }
+    xx_mem_free(buffer);
+    return remaining == 0U && (!pd || !xx_pd_is_stopped(pd));
+}
+
+static xx_io_device *xx_romfs_open_stage(const char *destination,
+                                          char **stage_path) {
+    char *parent;
+    size_t index, prefix = 0U;
+    unsigned attempt;
+    if (!destination || !stage_path) return NULL;
+    *stage_path = NULL;
+    parent = xx_str_dup(destination);
+    if (!parent) return NULL;
+    for (index = 0U; parent[index]; ++index) {
+        if (parent[index] == '/' || parent[index] == '\\') prefix = index + 1U;
+    }
+    parent[prefix] = 0;
+    for (attempt = 0U; attempt < 128U; ++attempt) {
+        char suffix[40];
+        char *candidate;
+        xx_io_device *file;
+        (void)xx_rt_snprintf(suffix, sizeof(suffix), ".xx_romfs.tmp.%u",
+                             attempt);
+        candidate = xx_str_concat(parent, suffix);
+        if (!candidate) break;
+        if (xx_str_iequals(candidate, destination)) {
+            xx_str_free(candidate);
+            continue;
+        }
+        file = xx_io_file_open(candidate, "wbx");
+        if (file) {
+            *stage_path = candidate;
+            xx_str_free(parent);
+            return file;
+        }
+        xx_str_free(candidate);
+    }
+    xx_str_free(parent);
+    return NULL;
+}
+
 bool xx_romfs_unpack_current_archive_record(Abstractformat *self,
                                             xx_archive_record_state *state,
                                             xx_pd_struct *pd) {
@@ -742,16 +931,20 @@ bool xx_romfs_unpack_current_archive_record(Abstractformat *self,
     const char *base = NULL;
     char *owned_base = NULL;
     char *destination = NULL;
+    char *stage_path = NULL;
+    xx_io_device *stage = NULL;
     bool folder;
-    bool result;
+    bool result = false;
+    bool overwrite;
     if (!self || !self->device || !state || state->format != self ||
         !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
     record = &state->current_record;
     name = xx_archive_record_get_original_name(record);
     if (!xx_romfs_safe_name(name)) return false;
-    option = xx_romfs_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
+    option = xx_format_resolve_extra_parameter(self, &state->options,
+                                               XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
-        int64_t total = xx_io_total_size(self->device);
+        int64_t total = ((xx_romfs *)self)->archive_end;
         return record->data_offset >= 0 && record->compressed_size >= 0 &&
                record->data_offset <= total &&
                record->compressed_size <= total - record->data_offset;
@@ -780,22 +973,35 @@ bool xx_romfs_unpack_current_archive_record(Abstractformat *self,
     if (!destination) goto cleanup;
     folder = xx_archive_record_get_meta_bool(record, XX_META_ID_IS_FOLDER, false);
     if (folder) {
-        result = xx_store_create_dirs_a(destination, true);
-    } else if (xx_store_create_dirs_a(destination, false)) {
-        result = xx_store_unpack_device_to_file(self->device,
-                                                record->data_offset,
-                                                record->compressed_size,
-                                                destination, pd);
+        result = xx_store_create_dirs_a(destination, true) &&
+                 (!pd || !xx_pd_is_stopped(pd));
+        goto cleanup;
+    }
+    option = xx_format_resolve_extra_parameter(self, &state->options,
+                                               XX_META_ID_OPT_OVERWRITE);
+    overwrite = option && xx_var_get_bool(option);
+    if (!overwrite && xx_io_file_exists_a(destination)) goto cleanup;
+    if (!xx_store_create_dirs_a(destination, false)) goto cleanup;
+    stage = xx_romfs_open_stage(destination, &stage_path);
+    if (!stage) goto cleanup;
+    result = xx_romfs_copy_member(self, record, stage, pd);
+    if (xx_io_close(stage) != 0) result = false;
+    stage = NULL;
+    if (result && (!pd || !xx_pd_is_stopped(pd))) {
+        result = xx_io_file_replace_a(stage_path, destination, overwrite);
     } else {
         result = false;
     }
-    if (owned_base) xx_str_free(owned_base);
-    xx_str_free(destination);
-    return result;
+
 cleanup:
+    if (stage) (void)xx_io_close(stage);
+    if (stage_path) {
+        if (!result) (void)xx_io_file_remove_a(stage_path);
+        xx_str_free(stage_path);
+    }
     if (owned_base) xx_str_free(owned_base);
     if (destination) xx_str_free(destination);
-    return false;
+    return result;
 }
 
 void xx_romfs_free_archive_records_reading(Abstractformat *self,

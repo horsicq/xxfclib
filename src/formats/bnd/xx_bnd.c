@@ -13,8 +13,9 @@
  * header adds a 128-byte name at +0x3a, the attributes at +0xba and the
  * compressed length at +0xc2.  Payloads are raw PKWARE DCL streams.  A record
  * may hold less than the whole stream -- the last member of a volume is
- * continued on the next disk -- and such an incomplete member is listed but
- * refuses to unpack.  Ported from XArchive's installers/xpcinstall.cpp.
+ * continued on the next disk.  Such a fragment is exposed as its stored
+ * member blob under the volume's 8.3 link name, as PC-Install does; complete
+ * members are decoded.  Ported from XArchive's installers/xpcinstall.cpp.
  */
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/bnd/xx_bnd.h"
@@ -35,6 +36,7 @@
 #endif
 
 #define BND_MAX_MEMBERS 1048576U
+#define BND_MAX_FRAGMENT_BYTES ((int64_t)256 * 1024 * 1024)
 
 typedef struct bnd_member_s {
     char *name;
@@ -42,6 +44,8 @@ typedef struct bnd_member_s {
     int64_t header_size;
     int64_t data_offset;
     int64_t packed_size;
+    int64_t raw_offset;
+    int64_t raw_size;
     uint64_t unpacked_size;
     uint32_t method;
     uint32_t crc;
@@ -289,6 +293,8 @@ static bool bnd_parse(Abstractformat *format, bnd_stream **result) {
         xx_mem_zero(&member, sizeof(member));
         member.header_offset = format->base_address + cursor;
         member.data_offset = format->base_address + member_offset;
+        member.raw_offset = member.data_offset;
+        member.raw_size = stored;
         if (full) {
             int64_t declared;
             if (stored < BND_MEMBER_HEADER_SIZE ||
@@ -319,6 +325,16 @@ static bool bnd_parse(Abstractformat *format, bnd_stream **result) {
                 goto fail;
             }
             member.method = member.packed_size == declared ? 0U : 1U;
+            if (member.method != 0U) {
+                char *link_name = bnd_normalize_name(record + 0x14U, 256U);
+                if (!link_name) {
+                    xx_str_free(member.name);
+                    goto fail;
+                }
+                xx_str_free(member.name);
+                member.name = link_name;
+                member.unpacked_size = (uint64_t)stored;
+            }
             if (member.packed_size >= 2) {
                 uint8_t probe[2];
                 if (!bnd_read_at(format->device, member.data_offset, probe,
@@ -340,6 +356,7 @@ static bool bnd_parse(Abstractformat *format, bnd_stream **result) {
             member.data_offset += BND_MEMBER_PROLOGUE_SIZE;
             member.packed_size = stored - BND_MEMBER_PROLOGUE_SIZE;
             member.method = 1U;
+            member.unpacked_size = (uint64_t)stored;
         }
         if (!member.name) goto fail;
         if (!bnd_add_member(stream, &member)) {
@@ -414,17 +431,32 @@ static bool bnd_set_record(xx_archive_record *record,
                                            member->folder);
 }
 
-/* Only a member whose whole DCL stream lives in this volume can be produced;
- * a fragment continued on another disk refuses rather than emitting a prefix.
- * The stream stores no decoded length, so it is measured first. */
+/* Complete members are decoded from DCL.  A fragment is the stored member
+ * blob (including its header), which can be joined with adjacent volumes.
+ * Complete streams store no decoded length, so they are measured first. */
 static bool bnd_decode_member(Abstractformat *format, const bnd_member *member,
                               uint8_t **plain, size_t *plain_size) {
     uint8_t *packed = NULL;
     uint8_t *output = NULL;
     size_t produced = 0U, consumed = 0U, written = 0U;
-    if (!format || !member || !plain || !plain_size || member->method != 0U ||
-        member->packed_size < 2)
+    if (!format || !member || !plain || !plain_size)
         return false;
+    if (member->method == 1U) {
+        if (member->raw_size < 0 ||
+            member->raw_size > BND_MAX_FRAGMENT_BYTES) return false;
+        output = (uint8_t *)xx_mem_alloc(member->raw_size != 0
+                                            ? (size_t)member->raw_size : 1U);
+        if (!output ||
+            !bnd_read_at(format->device, member->raw_offset, output,
+                         (size_t)member->raw_size)) {
+            xx_mem_free(output);
+            return false;
+        }
+        *plain = output;
+        *plain_size = (size_t)member->raw_size;
+        return true;
+    }
+    if (member->method != 0U || member->packed_size < 2) return false;
     packed = (uint8_t *)xx_mem_alloc((size_t)member->packed_size);
     if (!packed ||
         !bnd_read_at(format->device, member->data_offset, packed,

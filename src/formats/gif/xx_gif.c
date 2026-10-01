@@ -9,8 +9,9 @@
  * one quirk that matters for the size (Application / Plain Text extensions)
  * are described in xx_gif.h.
  *
- * NOT an archive.  binwalk's extractor carves the GIF itself and declines
- * even that at offset 0, so there is nothing inside to publish as a record.
+ * The component archive API publishes the logical screen, colour table,
+ * extension blocks and image descriptor/LZW blocks separately. It does not
+ * decode the LZW pixel stream.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -19,6 +20,9 @@
 #include "xxfclib/data/xx_data.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
+
+#include "../bmp/xx_component_archive_impl.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the file-type constant resolves to UNKNOWN until the enumerator
@@ -294,6 +298,7 @@ void xx_gif_init(xx_gif *gif, xx_io_device *dev, int64_t base_address) {
     gif->format.get_format_size = xx_gif_get_format_size;
     gif->format.destroy = xx_gif_vtable_destroy;
     gif->trailer_offset = -1;
+    xx_components_install(&gif->format);
 }
 
 xx_gif *xx_gif_create(xx_io_device *dev, int64_t base_address) {
@@ -355,6 +360,7 @@ bool xx_gif_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
         self->overlay_size = 0;
     }
     self->number_of_archive_records = 0U;
+    if (!xx_components_finish(self, pd)) return false;
     self->is_valid = true;
     self->base_info_handled = true;
     return true;
@@ -394,4 +400,39 @@ uint64_t xx_gif_get_number_of_extensions(const xx_gif *gif) {
 
 int64_t xx_gif_get_trailer_offset(const xx_gif *gif) {
     return gif ? gif->trailer_offset : -1;
+}
+
+/* Encoded/structural component members; this does not decode media. */
+static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd) {
+
+    xx_gif_cursor cursor;
+    int64_t pos=13, next;
+    uint8_t h[13];
+    if(!xx_component_read(f,0,h,sizeof(h))) return false;
+    xx_mem_zero(&cursor,sizeof(cursor)); cursor.device=f->device; cursor.end=f->base_address+f->format_size;
+    if(!xx_component_add(f,s,6,7,"logical-screen")) return false;
+    if(h[10]&128) {
+        uint32_t n=xx_gif_color_table_size(h[10]);
+        if(!xx_component_add(f,s,pos,n,"global-color-table")) return false; pos+=n;
+    }
+    while(pos<f->format_size-1) {
+        uint8_t type, flags, label, first;
+        int64_t start=pos, data;
+        if(xx_pd_is_stopped(pd) || !xx_component_read(f,pos,&type,1)) return false;
+        if(type==0x2c) {
+            if(!xx_component_read(f,pos+9,&flags,1)) return false;
+            data=pos+10+xx_gif_color_table_size(flags)+1;
+            if(!xx_gif_skip_sub_blocks(&cursor,f->base_address+data,&next,pd)) return false;
+            pos=next-f->base_address;
+            if(!xx_component_add(f,s,start,pos-start,"image-descriptor-and-lzw-blocks")) return false;
+        } else if(type==0x21) {
+            if(!xx_component_read(f,pos+1,&label,1) || !xx_component_read(f,pos+2,&first,1)) return false;
+            data=pos+2;
+            if(label==0xff || label==1) data+=first+1;
+            if(!xx_gif_skip_sub_blocks(&cursor,f->base_address+data,&next,pd)) return false;
+            pos=next-f->base_address;
+            if(!xx_component_add(f,s,start+1,pos-start-1,"extension-label-and-blocks")) return false;
+        } else return false;
+    }
+    return pos==f->format_size-1;
 }

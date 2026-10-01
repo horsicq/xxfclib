@@ -32,6 +32,7 @@
  * here, so the alias macro defined next to the enumerator is tested instead;
  * the real file type is picked up as soon as the format is registered. */
 #ifdef SFX_JGSOFT_DEPLOYMASTER_PACKAGE
+
 #define XX_SFX_JGSOFT_DEPLOYMASTER_PACKAGE_FILE_TYPE \
     XX_FILE_TYPE_SFX_JGSOFT_DEPLOYMASTER_PACKAGE
 #else
@@ -45,12 +46,18 @@
 
 /* The bzip2 engine: a stream header, then a bit-aligned end-of-stream
  * marker (the BCD digits of sqrt(pi)) and the 32-bit stream CRC, padded
- * with zero bits to a byte.  The scan for the marker is bounded; the known
- * engines pack to under 200 KB. */
+ * with zero bits to a byte.  The scan for the marker is bounded: one
+ * overlay search reads at most DM_BZ_SCAN_MAX bytes and checks at most
+ * DM_BZ_CANDIDATES pattern matches in total (the known engines pack to
+ * under 200 KB and hold one match, their own marker). */
 #define DM_BZ_HEADER 10U
 #define DM_BZ_EOS UINT64_C(0x177245385090)
 #define DM_BZ_MASK UINT64_C(0xFFFFFFFFFFFF)
-#define DM_BZ_SCAN_MAX (INT64_C(16) << 20)
+#define DM_BZ_SCAN_MAX (INT64_C(2) << 20)
+#define DM_BZ_CANDIDATES 64U
+/* Bytes behind a marker candidate that decide it: CRC tail, 0xFFFFFFFF,
+ * record length, zlib header. */
+#define DM_BZ_PROBE 12U
 #define DM_BZ_CHUNK 0x10000U
 
 #define DM_MARKER UINT32_C(0xFFFFFFFF)
@@ -80,6 +87,9 @@
 #define DM_NAME_BYTES 1024U
 #define DM_NAME_CHARS 240U
 #define DM_DEDUP_TRIES 32U
+/* Longest probe sequence in the name set; a name whose sequence is full
+ * counts as taken and gets a suffixed name instead. */
+#define DM_NAME_PROBES 64U
 #define DM_COPY_BUFFER 0x10000U
 #define DM_SSIZE_LIMIT (((size_t)-1) >> 1U)
 
@@ -95,6 +105,8 @@ typedef struct dm_layout_s {
     int64_t overlay;        /* the bzip2 stream, from base */
     int64_t bz_end;         /* first byte behind it: the 0xFFFFFFFF marker */
     int64_t after_project;  /* first byte behind the project strings */
+    int64_t cert_offset;    /* Authenticode certificate, from base; -1 */
+    int64_t cert_end;
 } dm_layout;
 
 typedef struct dm_entry_s {
@@ -148,6 +160,42 @@ typedef struct dm_slot_s {
 /* ---------------------------------------------------------------------- */
 /* Helpers                                                                 */
 
+#include "xxfclib/global/xx_global.h"
+static size_t gb_sfx_jgsoft_deploymaster_package_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_sfx_jgsoft_deploymaster_package_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_sfx_jgsoft_deploymaster_package_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+
+
 static uint32_t dm_le16(const uint8_t *p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8U);
 }
@@ -159,13 +207,14 @@ static uint32_t dm_le32(const uint8_t *p) {
 
 static bool dm_read_at(xx_io_device *device, int64_t offset, void *buffer,
                        size_t size) {
+    const size_t file_io_capacity = gb_sfx_jgsoft_deploymaster_package_capacity();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = gb_sfx_jgsoft_deploymaster_package_read(device, (uint8_t *)buffer + done,
+                                    size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -282,11 +331,13 @@ static bool dm_record_at(Abstractformat *format, int64_t offset, int64_t end,
 /* ---------------------------------------------------------------------- */
 /* Locating the package                                                    */
 
-/* End of the PE image's file data (headers and every section's raw data)
- * and where an Authenticode certificate that closes the file begins.  Both
- * are relative to base_address. */
+/* End of the PE image's file data (headers and every section's raw data),
+ * where the package data ends, and the Authenticode certificate the
+ * security directory names (-1 when there is none).  All relative to
+ * base_address. */
 static bool dm_pe_extent(xx_io_device *device, int64_t base, int64_t size,
                          int64_t *raw_end_out, int64_t *data_end_out,
+                         int64_t *cert_offset_out, int64_t *cert_end_out,
                          uint32_t *alignment_out) {
     uint8_t dos[0x40];
     uint8_t nt[24];
@@ -296,6 +347,7 @@ static bool dm_pe_extent(xx_io_device *device, int64_t base, int64_t size,
     uint32_t security_entry, index;
     size_t optional_read;
     int64_t raw_end, section_offset, data_end = size;
+    int64_t cert_start = -1, cert_end = -1;
     if (size < (int64_t)sizeof(dos) ||
         !dm_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' ||
         dos[1] != 'Z')
@@ -336,35 +388,62 @@ static bool dm_pe_extent(xx_io_device *device, int64_t base, int64_t size,
         if (raw_offset > size || raw_size > size - raw_offset) return false;
         if (raw_offset + raw_size > raw_end) raw_end = raw_offset + raw_size;
     }
-    /* The security directory holds a file offset; the certificate is only
-     * taken as the end of the package when it runs to the end of the file.
-     * dm_locate() retries with the whole overlay should that be wrong. */
+    /* The security directory holds a file offset.  A certificate that runs
+     * to the end of the file is taken as it is; one followed by other data
+     * (a package inside a larger blob) must start with a plausible
+     * WIN_CERTIFICATE header.  dm_locate() retries with the whole overlay
+     * should the certificate be wrong. */
     security_entry = directories + 4U * 8U;
     if (optional_read >= security_entry + 8U &&
         dm_le32(optional + directories - 4U) > 4U) {
         int64_t cert_offset = (int64_t)dm_le32(optional + security_entry);
         int64_t cert_size = (int64_t)dm_le32(optional + security_entry + 4U);
         if (cert_size > 0 && cert_offset > raw_end && cert_offset <= size &&
-            cert_size == size - cert_offset)
-            data_end = cert_offset;
+            cert_size <= size - cert_offset) {
+            bool accept = cert_size == size - cert_offset;
+            if (!accept) {
+                uint8_t head[8];
+                if (dm_read_at(device, base + cert_offset, head, sizeof(head))) {
+                    uint32_t length = dm_le32(head);
+                    uint32_t revision = dm_le16(head + 4);
+                    uint32_t type = dm_le16(head + 6);
+                    accept = length >= 8U && (int64_t)length <= cert_size &&
+                             (revision == 0x100U || revision == 0x200U) &&
+                             type >= 1U && type <= 4U;
+                }
+            }
+            if (accept) {
+                data_end = cert_offset;
+                cert_start = cert_offset;
+                cert_end = cert_offset + cert_size;
+            }
+        }
     }
     *raw_end_out = raw_end;
     *data_end_out = data_end;
+    *cert_offset_out = cert_start;
+    *cert_end_out = cert_end;
     *alignment_out = dm_le32(optional + 36); /* FileAlignment */
     return true;
 }
 
+/* What one overlay search may spend on end-of-stream scans, shared by every
+ * start/end combination it tries. */
+typedef struct dm_budget_s {
+    int64_t bytes;          /* bytes the scans may still read */
+    uint32_t candidates;    /* EOS pattern matches still to be checked */
+    xx_pd_struct *pd;
+} dm_budget;
+
 /* A bzip2 end-of-stream marker ending in the byte @p last (from base) at
  * bit shift @p shift: the stream then ends 4 bytes later, and there the
- * 0xFFFFFFFF marker and a zlib record have to follow. */
-static bool dm_engine_end_ok(Abstractformat *format, int64_t last,
+ * 0xFFFFFFFF marker and a zlib record have to follow.  @p probe holds the
+ * DM_BZ_PROBE bytes from last + 4 on (already in memory). */
+static bool dm_engine_end_ok(const uint8_t *probe, int64_t last,
                              unsigned shift, int64_t end, int64_t *stream_end) {
-    uint8_t probe[12];
     int64_t candidate = last + 5;
     uint32_t packed;
-    if (candidate > end || end - candidate < 8 + 4 + (int64_t)DM_ZLIB_MIN ||
-        !dm_read_at(format->device, format->base_address + last + 4, probe,
-                    sizeof(probe)))
+    if (candidate > end || end - candidate < 8 + 4 + (int64_t)DM_ZLIB_MIN)
         return false;
     /* The padding behind the CRC is zero. */
     if ((probe[0] & ((1U << shift) - 1U)) != 0U) return false;
@@ -377,37 +456,58 @@ static bool dm_engine_end_ok(Abstractformat *format, int64_t last,
     return true;
 }
 
+/* Scan [start, end) for the engine's end.  Each chunk is read together
+ * with DM_BZ_PROBE bytes of look-ahead, so a candidate is checked from
+ * memory without another read; the number of candidates and the bytes
+ * read come out of @p budget. */
 static bool dm_engine_end(Abstractformat *format, int64_t start, int64_t end,
-                          int64_t *stream_end) {
+                          dm_budget *budget, int64_t *stream_end) {
+    const size_t file_io_capacity = gb_sfx_jgsoft_deploymaster_package_capacity();
     uint8_t *buffer;
     uint64_t window = 0U;
     int64_t position = start, limit = end;
     int64_t seen = 0;
-    bool found = false;
-    if (limit - start > DM_BZ_SCAN_MAX) limit = start + DM_BZ_SCAN_MAX;
-    buffer = (uint8_t *)xx_mem_alloc(DM_BZ_CHUNK);
+    bool found = false, stop = false;
+    if (budget->bytes <= 0 || budget->candidates == 0U || start >= end)
+        return false;
+    if (limit - start > budget->bytes) limit = start + budget->bytes;
+    buffer = (uint8_t *)xx_mem_alloc(file_io_capacity + DM_BZ_PROBE);
     if (!buffer) return false;
-    while (!found && position < limit) {
-        size_t chunk = limit - position < (int64_t)DM_BZ_CHUNK
+    while (!found && !stop && position < limit) {
+        size_t chunk = limit - position < (int64_t)file_io_capacity
                            ? (size_t)(limit - position)
-                           : DM_BZ_CHUNK;
+                           : file_io_capacity;
+        size_t have = end - position < (int64_t)(chunk + DM_BZ_PROBE)
+                          ? (size_t)(end - position)
+                          : chunk + DM_BZ_PROBE;
         size_t index;
-        if (!dm_read_at(format->device, format->base_address + position,
-                        buffer, chunk))
+        if ((budget->pd && xx_pd_is_stopped(budget->pd)) ||
+            !dm_read_at(format->device, format->base_address + position,
+                        buffer, have))
             break;
-        for (index = 0U; index < chunk && !found; ++index) {
+        for (index = 0U; index < chunk && !found && !stop; ++index) {
             unsigned shift;
             window = (window << 8U) | buffer[index];
             if (++seen < 6) continue;
             for (shift = 0U; shift < 8U; ++shift) {
-                if (((window >> shift) & DM_BZ_MASK) == DM_BZ_EOS &&
-                    dm_engine_end_ok(format, position + (int64_t)index, shift,
-                                     end, stream_end)) {
+                if (((window >> shift) & DM_BZ_MASK) != DM_BZ_EOS) continue;
+                if (budget->candidates == 0U) {
+                    stop = true;
+                    break;
+                }
+                --budget->candidates;
+                /* Too close to the end for the marker and a record: the
+                 * bound check in dm_engine_end_ok() fails as well. */
+                if (index + 4U + DM_BZ_PROBE > have) continue;
+                if (dm_engine_end_ok(buffer + index + 4U,
+                                     position + (int64_t)index, shift, end,
+                                     stream_end)) {
                     found = true;
                     break;
                 }
             }
         }
+        budget->bytes -= (int64_t)chunk;
         position += (int64_t)chunk;
     }
     xx_mem_free(buffer);
@@ -415,10 +515,13 @@ static bool dm_engine_end(Abstractformat *format, int64_t start, int64_t end,
 }
 
 /* The package at @p overlay (from base): the bzip2 engine, the marked
- * string table and the project strings, both of which must inflate. */
+ * string table and the project strings, both of which must inflate.  With
+ * @p known_bz_end > 0 the engine's end is taken from an earlier search
+ * instead of being scanned for. */
 static bool dm_try_overlay(Abstractformat *format, int64_t overlay,
-                           int64_t end, dm_layout *layout, uint8_t **project,
-                           size_t *project_size) {
+                           int64_t end, int64_t known_bz_end,
+                           dm_budget *budget, dm_layout *layout,
+                           uint8_t **project, size_t *project_size) {
     static const uint8_t block_magic[6] = {0x31, 0x41, 0x59, 0x26, 0x53, 0x59};
     uint8_t head[DM_BZ_HEADER];
     int64_t bz_end = 0, position;
@@ -428,10 +531,19 @@ static bool dm_try_overlay(Abstractformat *format, int64_t overlay,
                     sizeof(head)) ||
         head[0] != 'B' || head[1] != 'Z' || head[2] != 'h' ||
         head[3] < '1' || head[3] > '9' ||
-        xx_rt_memcmp(head + 4, block_magic, sizeof(block_magic)) != 0 ||
-        !dm_engine_end(format, overlay, end, &bz_end))
+        xx_rt_memcmp(head + 4, block_magic, sizeof(block_magic)) != 0)
         return false;
-    /* The engine end check guarantees the marker and a sane length. */
+    if (known_bz_end > 0) {
+        uint8_t marker[4];
+        if (known_bz_end <= overlay || known_bz_end > end - 8 ||
+            !dm_read_at(format->device, format->base_address + known_bz_end,
+                        marker, sizeof(marker)) ||
+            dm_le32(marker) != DM_MARKER)
+            return false;
+        bz_end = known_bz_end;
+    } else if (!dm_engine_end(format, overlay, end, budget, &bz_end)) {
+        return false;
+    }
     position = bz_end + 4;
     if (!dm_record_at(format, position, end, DM_STRINGS_MAX_PACKED, &packed) ||
         !dm_inflate_record(format, position + 4, packed,
@@ -451,43 +563,82 @@ static bool dm_try_overlay(Abstractformat *format, int64_t overlay,
 
 static bool dm_find_overlay(Abstractformat *format, int64_t raw_end,
                             int64_t end, uint32_t alignment,
-                            dm_layout *layout, uint8_t **project,
-                            size_t *project_size) {
+                            dm_budget *budget, dm_layout *layout,
+                            uint8_t **project, size_t *project_size) {
     int64_t aligned;
     if (raw_end >= end) return false;
-    if (dm_try_overlay(format, raw_end, end, layout, project, project_size))
+    if (dm_try_overlay(format, raw_end, end, 0, budget, layout, project,
+                       project_size))
         return true;
     if (alignment < 0x200U || alignment > 0x10000U ||
         (alignment & (alignment - 1U)) != 0U)
         return false;
     aligned = (raw_end + (int64_t)alignment - 1) & ~((int64_t)alignment - 1);
     return aligned != raw_end && aligned < end &&
-           dm_try_overlay(format, aligned, end, layout, project, project_size);
+           dm_try_overlay(format, aligned, end, 0, budget, layout, project,
+                          project_size);
 }
 
+/* Find the package.  The first search on a reader is remembered (found or
+ * rejected), so the later calls on the same reader do not scan again. */
 static bool dm_locate(Abstractformat *format, dm_layout *layout,
-                      uint8_t **project, size_t *project_size) {
+                      uint8_t **project, size_t *project_size,
+                      xx_pd_struct *pd) {
+    xx_sfx_jgsoft_deploymaster_package *archive = NULL;
     int64_t total, size, raw_end = 0, data_end = 0;
+    int64_t cert_offset = -1, cert_end = -1;
     uint32_t alignment = 0U;
     dm_layout found;
+    dm_budget budget;
+    bool located;
     if (project) *project = NULL;
     if (project_size) *project_size = 0U;
     if (!format || !format->device || !layout || format->base_address < 0)
         return false;
+    if (format->check_is_valid ==
+        xx_sfx_jgsoft_deploymaster_package_check_is_valid)
+        archive = (xx_sfx_jgsoft_deploymaster_package *)format;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
-    if (!dm_pe_extent(format->device, format->base_address, size, &raw_end,
-                      &data_end, &alignment))
-        return false;
     xx_mem_zero(&found, sizeof(found));
-    if (!dm_find_overlay(format, raw_end, data_end, alignment, &found, project,
-                         project_size) &&
-        (data_end == size ||
-         !dm_find_overlay(format, raw_end, size, alignment, &found, project,
-                          project_size)))
+    budget.bytes = DM_BZ_SCAN_MAX;
+    budget.candidates = DM_BZ_CANDIDATES;
+    budget.pd = pd;
+    if (archive && archive->locate_state != 0 &&
+        archive->locate_total == size) {
+        if (archive->locate_state < 0 ||
+            !dm_try_overlay(format, archive->locate_overlay,
+                            archive->locate_end, archive->locate_bz_end,
+                            &budget, &found, project, project_size))
+            return false;
+        found.total = size;
+        found.cert_offset = archive->locate_cert_offset;
+        found.cert_end = archive->locate_cert_end;
+        *layout = found;
+        return true;
+    }
+    if (!dm_pe_extent(format->device, format->base_address, size, &raw_end,
+                      &data_end, &cert_offset, &cert_end, &alignment))
         return false;
+    located = dm_find_overlay(format, raw_end, data_end, alignment, &budget,
+                              &found, project, project_size) ||
+              (data_end != size &&
+               dm_find_overlay(format, raw_end, size, alignment, &budget,
+                               &found, project, project_size));
+    if (archive && !(pd && xx_pd_is_stopped(pd))) {
+        archive->locate_state = located ? 1 : -1;
+        archive->locate_total = size;
+        archive->locate_overlay = found.overlay;
+        archive->locate_bz_end = found.bz_end;
+        archive->locate_end = found.data_end;
+        archive->locate_cert_offset = cert_offset;
+        archive->locate_cert_end = cert_end;
+    }
+    if (!located) return false;
     found.total = size;
+    found.cert_offset = cert_offset;
+    found.cert_end = cert_end;
     *layout = found;
     return true;
 }
@@ -609,6 +760,12 @@ static uint32_t dm_name_hash(const char *name) {
         hash ^= dm_fold(name, index);
         hash *= UINT32_C(16777619);
     }
+    /* Final mix, so that every byte reaches the slot bits. */
+    hash ^= hash >> 16U;
+    hash *= UINT32_C(0x7FEB352D);
+    hash ^= hash >> 15U;
+    hash *= UINT32_C(0x846CA68B);
+    hash ^= hash >> 16U;
     return hash;
 }
 
@@ -621,7 +778,11 @@ static bool dm_same_name(const char *left, const char *right) {
 
 static bool dm_name_taken(const dm_table *table, const char *name) {
     size_t slot = dm_name_hash(name) & table->mask, probes;
-    for (probes = 0U; probes <= table->mask; ++probes) {
+    /* Names are only ever stored within DM_NAME_PROBES slots of their home
+     * slot, so a bounded search is complete; a full sequence (crafted
+     * colliding names) reports the name as taken. */
+    for (probes = 0U; probes <= table->mask && probes < DM_NAME_PROBES;
+         ++probes) {
         uint32_t value = table->slots[slot];
         if (value == 0U) return false;
         if (table->entries[value - 1U].extractable &&
@@ -635,7 +796,8 @@ static bool dm_name_taken(const dm_table *table, const char *name) {
 static void dm_name_insert(dm_table *table, size_t index) {
     size_t slot = dm_name_hash(table->entries[index].name) & table->mask,
            probes;
-    for (probes = 0U; probes <= table->mask; ++probes) {
+    for (probes = 0U; probes <= table->mask && probes < DM_NAME_PROBES;
+         ++probes) {
         if (table->slots[slot] == 0U) {
             table->slots[slot] = (uint32_t)(index + 1U);
             return;
@@ -746,6 +908,44 @@ static void dm_walk_free(dm_walk_t *walk) {
     if (walk->table) xx_mem_free(walk->table);
     if (walk->files) xx_mem_free(walk->files);
     xx_mem_zero(walk, sizeof(*walk));
+}
+
+static int dm_compare_records(const void *left, const void *right,
+                              void *context) {
+    const dm_slot *files = (const dm_slot *)context;
+    uint32_t a = *(const uint32_t *)left, b = *(const uint32_t *)right;
+    if (files[a].record != files[b].record)
+        return files[a].record < files[b].record ? -1 : 1;
+    return a < b ? -1 : (a > b ? 1 : 0);
+}
+
+/* The packages store every file record once, one after another.  A table
+ * entry whose record starts at or inside another entry's record (the same
+ * record listed many times would pass every check and multiply the
+ * output) is marked broken: it stays listed but fails to unpack. */
+static bool dm_mark_overlaps(dm_walk_t *walk) {
+    uint32_t *order;
+    uint32_t used = 0U, file, k;
+    int64_t previous_end = -1;
+    if (walk->listed == 0U) return true;
+    order = (uint32_t *)xx_mem_alloc((size_t)walk->listed * sizeof(uint32_t));
+    if (!order) return false;
+    for (file = 0U; file < walk->listed; ++file)
+        if (walk->files[file].record >= 0) order[used++] = file;
+    xx_rt_qsort_context(order, used, sizeof(uint32_t), dm_compare_records,
+                        walk->files);
+    for (k = 0U; k < used; ++k) {
+        dm_slot *slot = &walk->files[order[k]];
+        int64_t record_end =
+            slot->record + 4 + (slot->broken ? 0 : slot->packed);
+        if (slot->record < previous_end) {
+            slot->broken = true;
+            continue;
+        }
+        previous_end = record_end;
+    }
+    xx_mem_free(order);
+    return true;
 }
 
 /* Walk the settings from the project strings to the file table.  Fails
@@ -899,6 +1099,7 @@ static bool dm_walk_settings(Abstractformat *format, const dm_layout *layout,
         else
             walk->files[file].packed = packed;
     }
+    if (!dm_mark_overlaps(walk)) goto fail;
     return true;
 fail:
     dm_walk_free(walk);
@@ -1038,6 +1239,7 @@ typedef struct dm_sink_s {
 
 static ssize_t dm_sink_write(xx_io_device *self, const void *buffer,
                              size_t size) {
+    const size_t file_io_capacity = gb_sfx_jgsoft_deploymaster_package_capacity();
     dm_sink *sink = self ? (dm_sink *)self->priv : NULL;
     const uint8_t *bytes = (const uint8_t *)buffer;
     size_t index = 0U, done = 0U;
@@ -1058,7 +1260,7 @@ static ssize_t dm_sink_write(xx_io_device *self, const void *buffer,
         sink->adler_b = b % 65521U;
     }
     while (sink->target && done < size) {
-        ssize_t wrote = xx_io_write(sink->target, bytes + done, size - done);
+        ssize_t wrote = gb_sfx_jgsoft_deploymaster_package_write(sink->target, bytes + done, size - done, file_io_capacity);
         if (wrote <= 0 || (size_t)wrote > size - done) return -1;
         done += (size_t)wrote;
     }
@@ -1078,14 +1280,15 @@ static void dm_sink_init(dm_sink *sink, xx_io_device *target,
 
 static bool dm_copy(xx_io_device *source, int64_t offset, int64_t size,
                     dm_sink *sink, xx_pd_struct *pd) {
+    const size_t file_io_capacity = gb_sfx_jgsoft_deploymaster_package_capacity();
     uint8_t *buffer;
     bool result = true;
     if (size < 0 || (uint64_t)size > sink->limit) return false;
-    buffer = (uint8_t *)xx_mem_alloc(DM_COPY_BUFFER);
+    buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (size > 0) {
-        size_t chunk = size < (int64_t)DM_COPY_BUFFER ? (size_t)size
-                                                      : DM_COPY_BUFFER;
+        size_t chunk = size < (int64_t)file_io_capacity ? (size_t)size
+                                                      : file_io_capacity;
         if ((pd && xx_pd_is_stopped(pd)) ||
             !dm_read_at(source, offset, buffer, chunk) ||
             dm_sink_write(&sink->device, buffer, chunk) != (ssize_t)chunk) {
@@ -1223,15 +1426,17 @@ static bool dm_set_record(xx_archive_record *record, const dm_entry *entry,
 }
 
 /* The package ends with the last file record, or with the Authenticode
- * certificate (8-byte aligned) right behind it.  Without a file record in
- * this file the end of the trailing settings is unknown, so everything to
- * the end of the device is taken. */
+ * certificate (8-byte aligned) right behind it, whatever follows that.
+ * Without a file record in this file the end of the trailing settings is
+ * unknown, so everything to the end of the device is taken. */
 static int64_t dm_format_size(const dm_layout *layout, const dm_table *table) {
     int64_t end = table->records_end;
     if (end < 0 || end > layout->data_end || table->broken)
         return layout->total;
-    if (layout->data_end < layout->total && layout->data_end - end < 8)
-        return layout->total;
+    if (layout->cert_offset >= end && layout->cert_offset - end < 8 &&
+        layout->cert_end > layout->cert_offset &&
+        layout->cert_end <= layout->total)
+        return layout->cert_end;
     return end;
 }
 
@@ -1279,6 +1484,8 @@ void xx_sfx_jgsoft_deploymaster_package_init(
     archive->overlay_start = -1;
     archive->data_end = -1;
     archive->table_offset = -1;
+    archive->locate_cert_offset = -1;
+    archive->locate_cert_end = -1;
 }
 
 xx_sfx_jgsoft_deploymaster_package *xx_sfx_jgsoft_deploymaster_package_create(
@@ -1305,8 +1512,7 @@ void xx_sfx_jgsoft_deploymaster_package_free(
 bool xx_sfx_jgsoft_deploymaster_package_check_is_valid(Abstractformat *format,
                                                        xx_pd_struct *pd) {
     dm_layout layout;
-    (void)pd;
-    return dm_locate(format, &layout, NULL, NULL);
+    return dm_locate(format, &layout, NULL, NULL, pd);
 }
 
 bool xx_sfx_jgsoft_deploymaster_package_handle_base_info(
@@ -1317,7 +1523,8 @@ bool xx_sfx_jgsoft_deploymaster_package_handle_base_info(
     uint8_t *project = NULL;
     size_t project_size = 0U;
     bool built;
-    if (!format || !dm_locate(format, &layout, &project, &project_size))
+    if (!format ||
+        !dm_locate(format, &layout, &project, &project_size, pd))
         return false;
     built = dm_build(format, &layout, project, project_size, &table, false, pd);
     xx_mem_free(project);
@@ -1372,7 +1579,7 @@ xx_sfx_jgsoft_deploymaster_package_create_archive_records_reading(
     if (!format) return NULL;
     stream = (dm_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return NULL;
-    if (!dm_locate(format, &stream->layout, &project, &project_size)) {
+    if (!dm_locate(format, &stream->layout, &project, &project_size, pd)) {
         dm_stream_free(stream);
         return NULL;
     }

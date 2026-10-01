@@ -95,9 +95,9 @@ static bool arcv4_filled(const uint8_t *data, size_t offset, size_t size,
 
 static char *arcv4_name(const uint8_t *raw, size_t size) {
     char *result;
-    size_t index, length = size;
+    size_t index;
     if (!raw || size == 0U) return NULL;
-    result = (char *)xx_mem_alloc(size + 2U);
+    result = (char *)xx_mem_alloc(size + 1U);
     if (!result) return NULL;
     for (index = 0U; index < size; ++index) {
         uint8_t value = raw[index];
@@ -105,36 +105,46 @@ static char *arcv4_name(const uint8_t *raw, size_t size) {
             xx_mem_free(result);
             return NULL;
         }
-        /* Names are ANSI byte strings.  Flatten path separators and map
-         * nonportable bytes so output remains an unambiguous UTF-8 path. */
-        result[index] = (value >= 0x7fU || value == '/' || value == '\\' ||
-                         value == ':' || value == '<' || value == '>' ||
-                         value == '"' || value == '|' || value == '?' ||
-                         value == '*') ? '_' : (char)value;
+        /* Absolute DOS paths are archive member names. Convert the drive
+         * colon to an inert component (H:\\foo -> H_/foo), as U3 does, then
+         * retain directory separators rather than flattening the tree. */
+        if (index == 1U && raw[0] >= 'A' && raw[0] <= 'Z' &&
+            value == ':')
+            result[index] = '_';
+        else if (value == '/' || value == '\\')
+            result[index] = '/';
+        else
+            result[index] = (value >= 0x7fU || value == ':' || value == '<' ||
+                             value == '>' || value == '"' || value == '|' ||
+                             value == '?' || value == '*')
+                                ? '_' : (char)value;
     }
-    while (length != 0U && (result[length - 1U] == ' ' ||
-                             result[length - 1U] == '.')) --length;
-    if ((length == 1U && result[0] == '.') ||
-        (length == 2U && result[0] == '.' && result[1] == '.'))
-        length = 0U;
-    if (length == 0U) result[length++] = '_';
-    result[length] = 0;
+    result[size] = 0;
     return result;
 }
 
 static bool arcv4_safe_output_name(const char *name) {
-    const char *at;
-    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' ||
-        name[1] == ':')
+    const char *at, *component;
+    if (!name || !name[0] || name[0] == '/' || name[0] == '\\')
         return false;
-    for (at = name; *at; ++at) {
+    component = name;
+    for (at = name;; ++at) {
         unsigned char value = (unsigned char)*at;
+        if (value == '/' || value == 0U) {
+            size_t length = (size_t)(at - component);
+            if (length == 0U ||
+                (length == 1U && component[0] == '.') ||
+                (length == 2U && component[0] == '.' &&
+                 component[1] == '.')) return false;
+            if (value == 0U) return true;
+            component = at + 1;
+            continue;
+        }
         if (value < 0x20U || value == ':' || value == '<' || value == '>' ||
             value == '"' || value == '|' || value == '?' || value == '*' ||
-            value == '/' || value == '\\')
+            value == '\\')
             return false;
     }
-    return xx_rt_strcmp(name, ".") != 0 && xx_rt_strcmp(name, "..") != 0;
 }
 
 static void arcv4_stream_free(void *opaque) {
@@ -182,7 +192,10 @@ static bool arcv4_parse(Abstractformat *format, arcv4_stream **result,
     subvariant = arcv4_le16(header + 6U);
     if ((subvariant != 1U && subvariant != 5U) ||
         !arcv4_filled(header, ARCV4_ZERO_OFFSET, ARCV4_ZERO_SIZE, 0U) ||
-        !arcv4_filled(header, ARCV4_AA_OFFSET, ARCV4_AA_SIZE, 0xaaU) ||
+        /* The start of this field carries a short archive-specific token;
+         * only its unused tail is the 0xaa sentinel padding. */
+        !arcv4_filled(header, ARCV4_AA_OFFSET + 16U,
+                      ARCV4_AA_SIZE - 16U, 0xaaU) ||
         !arcv4_filled(header, ARCV4_TAIL_ZERO_OFFSET, ARCV4_TAIL_ZERO_SIZE, 0U))
         return false;
     stream = (arcv4_stream *)xx_mem_calloc(1U, sizeof(*stream));

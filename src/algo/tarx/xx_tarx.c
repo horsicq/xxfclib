@@ -7,14 +7,15 @@
  */
 
 #include "xxfclib/algo/tarx/xx_tarx.h"
+#include "xxfclib/algo/crc/xx_crc.h"
 
 #include <string.h>
+#include "xxfclib/global/xx_global.h"
+#include "xxfclib/memory/xx_memory.h"
 
 #define XX_TARX1_KEY_WINDOW_SIZE 100U
 #define XX_TARX1_ANCHOR_OFFSET 95U
 #define XX_TARX1_CHECK_OFFSET 99U
-#define XX_TARX1_CHUNK_SIZE 4096U
-#define XX_TARX1_CRC_POLYNOMIAL UINT32_C(0xedb88320)
 
 typedef struct xx_tarx1_tables_s {
     uint32_t transform[256];
@@ -25,13 +26,10 @@ static void xx_tarx1_make_tables(xx_tarx1_tables *tables) {
     unsigned index;
     if (!tables) return;
     for (index = 0U; index < 256U; ++index) {
-        uint32_t value = index;
-        unsigned bit;
-        for (bit = 0U; bit < 8U; ++bit) {
-            value = (value >> 1U) ^
-                    ((value & 1U) != 0U ? XX_TARX1_CRC_POLYNOMIAL : 0U);
-        }
-        tables->transform[index] = value;
+        uint8_t byte = (uint8_t)index;
+        /* The cipher needs the raw one-byte CRC transition table, including
+         * its inverse mapping. The common API complements its result. */
+        tables->transform[index] = ~xx_crc32_calc(UINT32_MAX, &byte, 1U);
     }
     for (index = 0U; index < 256U; ++index) {
         tables->inverse_top_byte[tables->transform[index] >> 24U] =
@@ -105,28 +103,32 @@ static bool xx_tarx1_recover_seed(const uint8_t *window, uint32_t *seed) {
 }
 
 static bool xx_tarx1_read_exact_at(xx_io_device *device, int64_t offset,
-                                   void *data, size_t size) {
+                                   void *data, size_t size, size_t io_capacity) {
     size_t done = 0U;
     if (!device || (!data && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)data + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
 static bool xx_tarx1_write_all(xx_io_device *device, const uint8_t *data,
-                               size_t size) {
+                               size_t size, size_t io_capacity) {
     size_t done = 0U;
     if (!device || (!data && size != 0U)) return false;
     while (done < size) {
-        ssize_t amount = xx_io_write(device, data + done, size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
+        ssize_t amount = xx_io_write(device, data + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -143,8 +145,9 @@ bool xx_tarx1_decode_device(xx_io_device *source, int64_t source_offset,
                             int64_t *output_size, xx_pd_struct *pd) {
     uint8_t magic[XX_TARX1_MAGIC_SIZE];
     uint8_t key_window[XX_TARX1_KEY_WINDOW_SIZE];
-    uint8_t input[XX_TARX1_CHUNK_SIZE];
-    uint8_t output[XX_TARX1_CHUNK_SIZE];
+    uint8_t *input=NULL,*output=NULL;
+    size_t capacity=xx_get_file_buffer_size();
+    bool result=false;
     xx_tarx1_tables tables;
     int64_t total_size;
     int64_t cipher_offset;
@@ -153,6 +156,7 @@ bool xx_tarx1_decode_device(xx_io_device *source, int64_t source_offset,
     uint32_t seed;
     uint32_t state;
 
+    if (capacity > (SIZE_MAX >> 1)) capacity = SIZE_MAX >> 1;
     if (output_size) *output_size = -1;
     if (!source || !destination || source_offset < 0 ||
         source_size < (int64_t)(XX_TARX1_MAGIC_SIZE +
@@ -163,7 +167,7 @@ bool xx_tarx1_decode_device(xx_io_device *source, int64_t source_offset,
     }
     total_size = xx_io_total_size(source);
     if (total_size < source_offset || source_size > total_size - source_offset ||
-        !xx_tarx1_read_exact_at(source, source_offset, magic, sizeof(magic)) ||
+        !xx_tarx1_read_exact_at(source, source_offset, magic, sizeof(magic), capacity) ||
         !xx_tarx1_has_header(magic, sizeof(magic))) {
         return false;
     }
@@ -171,23 +175,27 @@ bool xx_tarx1_decode_device(xx_io_device *source, int64_t source_offset,
     cipher_size = source_size - (int64_t)sizeof(magic);
     if (cipher_size <= 0 ||
         !xx_tarx1_read_exact_at(source, cipher_offset, key_window,
-                                 sizeof(key_window)) ||
+                                 sizeof(key_window), capacity) ||
         !xx_tarx1_recover_seed(key_window, &seed) ||
         xx_io_seek64(source, cipher_offset, SEEK_SET) != 0) {
         return false;
     }
+    if ((uint64_t)cipher_size < capacity) capacity=(size_t)cipher_size;
+    input=(uint8_t *)xx_mem_alloc(capacity);
+    output=(uint8_t *)xx_mem_alloc(capacity);
+    if (!input || !output) goto done;
     xx_tarx1_make_tables(&tables);
     state = seed;
     remaining = cipher_size;
     while (remaining != 0) {
-        size_t requested = remaining > (int64_t)sizeof(input)
-                               ? sizeof(input)
+        size_t requested = (uint64_t)remaining > capacity
+                               ? capacity
                                : (size_t)remaining;
         ssize_t amount = xx_io_read(source, input, requested);
         size_t index;
         if ((pd && xx_pd_is_stopped(pd)) || amount <= 0 ||
             (size_t)amount > requested) {
-            return false;
+            goto done;
         }
         for (index = 0U; index < (size_t)amount; ++index) {
             uint32_t plain = input[index] ^ (state & 255U);
@@ -195,11 +203,15 @@ bool xx_tarx1_decode_device(xx_io_device *source, int64_t source_offset,
             output[index] = (uint8_t)plain;
             state = (state >> 8U) ^ tables.transform[table_index];
         }
-        if (!xx_tarx1_write_all(destination, output, (size_t)amount)) {
-            return false;
+        if (!xx_tarx1_write_all(destination, output, (size_t)amount, capacity)) {
+            goto done;
         }
         remaining -= amount;
     }
     if (output_size) *output_size = cipher_size;
-    return true;
+    result=true;
+done:
+    xx_mem_free(input);
+    xx_mem_free(output);
+    return result;
 }

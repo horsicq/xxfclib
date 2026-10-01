@@ -50,6 +50,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/algo/lzh/xx_lzh.h"
+#include "xxfclib/algo/crc/xx_crc.h"
 
 #include <stdio.h>
 
@@ -63,6 +64,7 @@ typedef struct xx_jgpak_member_s {
     int64_t compressed_size;
     int64_t uncompressed_size;
     uint32_t method;
+    uint32_t crc32;
     uint64_t timestamp;
     bool is_folder;
 } xx_jgpak_member;
@@ -349,9 +351,8 @@ static xx_jgpak_stream *xx_jgpak_parse(Abstractformat *self,
         member.compressed_size = compressed_size;
         member.uncompressed_size = uncompressed_size;
         member.method = XX_JGPAK_METHOD_LZH1;
-        /* Raw MS-DOS time and date, packed time | (date << 16). The CRC-32
-         * at tail+16 is already finalised, but the member struct has no
-         * place for it. */
+        member.crc32 = xx_jgpak_le32(tail + 16);
+        /* Raw MS-DOS time and date, packed time | (date << 16). */
         member.timestamp = (uint64_t)xx_jgpak_le16(tail) |
                            ((uint64_t)xx_jgpak_le16(tail + 2) << 16);
         member.is_folder = false;
@@ -446,7 +447,8 @@ static bool xx_jgpak_decode(Abstractformat *self,
     }
 
     if (!xx_lzh1_decode_memory(packed, (size_t)member->compressed_size, plain,
-                               (size_t)member->uncompressed_size, &written)) {
+                               (size_t)member->uncompressed_size, &written) &&
+        written != (size_t)member->uncompressed_size) {
         xx_mem_free(packed);
         xx_mem_free(plain);
         return false;
@@ -455,7 +457,12 @@ static bool xx_jgpak_decode(Abstractformat *self,
 
     /* A short decode reported as success is the one failure the caller
      * cannot detect, so the produced length must match the directory. */
-    if (written != (size_t)member->uncompressed_size) {
+    /* JGPAK's encoder can flush unused bytes beyond the last command. The
+     * shared LH1 decoder reports a complete output even when its strict tail
+     * check rejects those bytes. Only accept that output after checking the
+     * container's finished CRC, never after a short or failed decode. */
+    if (written != (size_t)member->uncompressed_size ||
+        xx_crc32_calc(0U, plain, written) != member->crc32) {
         xx_mem_free(plain);
         return false;
     }

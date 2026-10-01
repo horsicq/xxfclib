@@ -150,6 +150,14 @@ static inline int64_t io_get_size(xx_io_device *d) { return xx_io_total_size(d);
 XXFC_API xx_io_device* xx_io_file_open(const char *path, const char *mode);
 XXFC_API xx_io_device* io_file_open(const char *path, const char *mode);
 
+/**
+ * Return the borrowed path used to open a file-backed device. A one-range
+ * multivolume view inherits it only when the range covers its whole child.
+ * Memory, subdevice, partial-range, and multi-file devices have no source path and
+ * return NULL. The pointer remains valid only while the device is open.
+ */
+XXFC_API const char *xx_io_source_path(xx_io_device *device);
+
 /** UTF-8/wide filesystem helpers used for failure-safe extraction. */
 XXFC_API bool xx_io_file_exists_a(const char *path);
 XXFC_API bool xx_io_file_exists_w(const wchar_t *path);
@@ -181,6 +189,43 @@ XXFC_API xx_io_device* io_mem_open(void *buf, size_t size);
  */
 XXFC_API xx_io_device* xx_io_mem_open_ro(const void *buf, size_t size);
 XXFC_API xx_io_device* io_mem_open_ro(const void *buf, size_t size);
+
+/** True for memory devices and subdevices backed by memory. */
+XXFC_API bool xx_io_is_memory(const xx_io_device *device);
+
+/**
+ * @brief Open a fixed byte range of a parent as an independent logical stream.
+ * The parent is borrowed and must remain open until every view is closed.
+ * Closing a view frees only the view. Offset and size must be nonnegative and
+ * their sum must fit int64_t. The range must fit the parent's known size;
+ * an unknown-size parent accepts any finite, nonoverflowing range.
+ * Reads/writes stop at the range end and never grow it. Short transfers are
+ * retried; an error or premature parent EOF returns prior progress, or -1.
+ * The view has its own cursor; I/O repositions the parent, so concurrent use
+ * of the parent and its views requires external synchronization.
+ */
+XXFC_API xx_io_device *xx_io_sub_open(xx_io_device *parent, int64_t offset,
+                                     int64_t size);
+XXFC_API xx_io_device *io_sub_open(xx_io_device *parent, int64_t offset,
+                                  int64_t size);
+
+/** Open a byte range whose write operations always fail. */
+XXFC_API xx_io_device *xx_io_sub_open_ro(xx_io_device *parent, int64_t offset,
+                                        int64_t size);
+XXFC_API xx_io_device *io_sub_open_ro(xx_io_device *parent, int64_t offset,
+                                     int64_t size);
+
+/**
+ * Query the borrowed parent and physical range of a subdevice. Outputs are
+ * optional and remain unchanged on failure. Returns false for other devices.
+ */
+XXFC_API bool xx_io_sub_get_range(const xx_io_device *device,
+                                 xx_io_device **parent, int64_t *offset,
+                                 int64_t *size);
+static inline bool io_sub_get_range(const xx_io_device *d, xx_io_device **p,
+                                    int64_t *offset, int64_t *size) {
+    return xx_io_sub_get_range(d, p, offset, size);
+}
 
 /**
  * @brief Open a process's address space as an abstract I/O device.

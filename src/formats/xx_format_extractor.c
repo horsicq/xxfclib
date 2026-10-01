@@ -9,13 +9,10 @@
 #include "xx_format_extractor_engine.h"
 
 #include "xxfclib/data/xx_pd.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/rt/xx_rt.h"
-
-/* Bytes scanned per refill. The buffer is this plus the deepest anchor, so a
- * candidate near the end of one chunk is still checked in full. */
-#define XX_FORMAT_SEARCH_CHUNK (64U * 1024U)
 
 struct xx_format_search_state {
     const xx_format_search_desc *desc;
@@ -23,6 +20,7 @@ struct xx_format_search_state {
     int64_t total;
 
     uint8_t *buffer;
+    uint8_t *probe;       /* separate bounded window for crossing anchors */
     size_t buffer_cap;
     int64_t buffer_start; /* device offset of buffer[0] */
     size_t buffer_len;    /* valid bytes in buffer */
@@ -82,9 +80,12 @@ static bool xx_format_search_test(xx_format_search_state *state, int64_t start,
         /* A size the view cannot hold is not a size. */
         if (measured > 0 && measured <= volume.size) size = measured;
     }
+    type = state->desc->reader_classifies ? format->file_type :
+           XX_FILE_TYPE_UNKNOWN;
     state->desc->close(format);
 
-    type = xx_format_get_file_type_device(window);
+    if (!state->desc->reader_classifies)
+        type = xx_format_get_file_type_device(window);
     xx_io_close(window);
     if (!xx_format_search_type_matches(state->desc, type)) return false;
 
@@ -99,17 +100,64 @@ static bool xx_format_search_test(xx_format_search_state *state, int64_t start,
 /* Load the buffer so that it starts at state->next. */
 static bool xx_format_search_refill(xx_format_search_state *state) {
     size_t got = 0;
+    size_t want = state->buffer_cap;
+
+    if ((uint64_t)want > (uint64_t)(state->total - state->next))
+        want = (size_t)(state->total - state->next);
 
     if (xx_io_seek64(state->device, state->next, SEEK_SET) != 0) return false;
-    while (got < state->buffer_cap) {
+    while (got < want) {
         ssize_t n = xx_io_read(state->device, state->buffer + got,
-                               state->buffer_cap - got);
-        if (n <= 0) break;
+                               want - got);
+        if (n <= 0 || (size_t)n > want - got) return false;
         got += (size_t)n;
     }
     state->buffer_start = state->next;
     state->buffer_len = got;
     return got != 0;
+}
+
+/* An anchor is a complete grammar field. It may span arbitrarily many
+ * global-sized windows; the main scan window remains intact. */
+static bool xx_format_search_anchor_matches(xx_format_search_state *state,
+                                             int64_t start,
+                                             const xx_format_search_anchor *anchor) {
+    int64_t absolute,relative;
+    size_t completed = 0;
+    if ((uint64_t)anchor->offset > (uint64_t)(state->total - start)) return false;
+    absolute = start + (int64_t)anchor->offset;
+    if ((uint64_t)anchor->size > (uint64_t)(state->total - absolute)) return false;
+    relative = absolute - state->buffer_start;
+    if (relative >= 0 && (uint64_t)relative <= state->buffer_len &&
+        anchor->size <= state->buffer_len - (size_t)relative) {
+        return xx_rt_memcmp(state->buffer + (size_t)relative, anchor->bytes,
+                             anchor->size) == 0;
+    }
+    if (relative >= 0 && (uint64_t)relative < state->buffer_len &&
+        state->buffer[(size_t)relative] != anchor->bytes[0]) return false;
+    if (!state->probe) {
+        state->probe = (uint8_t *)xx_mem_alloc(state->buffer_cap);
+        if (!state->probe) { state->done = true; return false; }
+    }
+    if (xx_io_seek64(state->device, absolute, SEEK_SET) != 0) {
+        state->done = true; return false;
+    }
+    while (completed < anchor->size) {
+        size_t portion = anchor->size - completed;
+        size_t received = 0;
+        if (portion > state->buffer_cap) portion = state->buffer_cap;
+        while (received < portion) {
+            ssize_t n = xx_io_read(state->device, state->probe + received,
+                                    portion - received);
+            if (n <= 0 || (size_t)n > portion - received) {
+                state->done = true; return false;
+            }
+            received += (size_t)n;
+        }
+        if (xx_rt_memcmp(state->probe, anchor->bytes + completed, portion)) return false;
+        completed += portion;
+    }
+    return true;
 }
 
 static bool xx_format_search_advance(xx_format_search_state *state,
@@ -123,6 +171,7 @@ static bool xx_format_search_advance(xx_format_search_state *state,
         /* No signature to scan for: the format can only be recognised where
          * the detector would recognise it, at the start. */
         state->done = true;
+        if (pd && xx_pd_is_stopped(pd)) return false;
         return state->next == 0 && xx_format_search_test(state, 0, pd);
     }
 
@@ -134,17 +183,11 @@ static bool xx_format_search_advance(xx_format_search_state *state,
         if (pd && xx_pd_is_stopped(pd)) break;
 
         buffer_end = state->buffer_start + (int64_t)state->buffer_len;
-        if (state->next < state->buffer_start ||
-            (buffer_end < state->total &&
-             state->next + (int64_t)state->lookahead > buffer_end)) {
+        if (state->next < state->buffer_start || state->next >= buffer_end) {
             if (!xx_format_search_refill(state)) break;
             buffer_end = state->buffer_start + (int64_t)state->buffer_len;
         }
-        /* Every start below `limit` has all its anchor bytes in the buffer,
-         * or would run past the end of the device. */
-        limit = buffer_end >= state->total
-                    ? state->total
-                    : buffer_end - (int64_t)state->lookahead + 1;
+        limit = buffer_end;
         /* A full refill always moves the limit forward. One that cannot means
          * the device stopped delivering bytes before its reported end. */
         if (limit <= state->next) break;
@@ -154,11 +197,8 @@ static bool xx_format_search_advance(xx_format_search_state *state,
             bool candidate = false;
             for (a = 0; a < desc->anchor_count && !candidate; ++a) {
                 const xx_format_search_anchor *anchor = &desc->anchors[a];
-                int64_t at = s + (int64_t)anchor->offset - state->buffer_start;
-                if (at + (int64_t)anchor->size > (int64_t)state->buffer_len) continue;
-                candidate = state->buffer[at] == anchor->bytes[0] &&
-                            xx_rt_memcmp(state->buffer + at, anchor->bytes,
-                                         anchor->size) == 0;
+                candidate = xx_format_search_anchor_matches(state, s, anchor);
+                if (state->done) return false;
             }
             /* Offset 0 is always a candidate: it is where the detector looks,
              * so a search never finds less than detection does, even for a
@@ -187,6 +227,8 @@ xx_format_search_state *xx_format_search_create(const xx_format_search_desc *des
     if (!state) return NULL;
     state->desc = desc;
     state->device = device;
+    state->buffer_cap = xx_get_file_buffer_size();
+    if (state->buffer_cap > (SIZE_MAX >> 1U)) state->buffer_cap = SIZE_MAX >> 1U;
     state->total = xx_io_total_size(device);
     if (state->total < 0) state->total = 0;
 
@@ -199,7 +241,6 @@ xx_format_search_state *xx_format_search_create(const xx_format_search_desc *des
         if (end > state->lookahead) state->lookahead = end;
     }
     if (desc->anchor_count != 0U) {
-        state->buffer_cap = XX_FORMAT_SEARCH_CHUNK + state->lookahead;
         state->buffer = (uint8_t *)xx_mem_alloc(state->buffer_cap);
         if (!state->buffer) {
             xx_mem_free(state);
@@ -225,6 +266,7 @@ bool xx_format_search_find_next(xx_format_search_state *state, xx_pd_struct *pd)
 void xx_format_search_free(xx_format_search_state *state) {
     if (!state) return;
     xx_mem_free(state->buffer);
+    xx_mem_free(state->probe);
     xx_mem_free(state);
 }
 

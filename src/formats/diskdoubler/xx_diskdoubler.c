@@ -91,8 +91,10 @@
  * 3. DDAR archive (older DiskDoubler archives).
  *
  *   archive header, 78 bytes: "DDAR", CRC over 0x00..0x4b at 0x4c. Then
- *   records until the end of the data, each a 124-byte header followed by
- *   the data fork and the resource fork:
+ *   records, each a 124-byte header followed by the data fork and the
+ *   resource fork. There is no end record: the archive ends at the end of
+ *   the data or, once at least one record has been read, where the next
+ *   bytes are not a record header with a good CRC (trailing padding):
  *     0x00  "DDAR"
  *     0x08  u8   name length; the name is at 0x09, at most 63 bytes are kept
  *     0x48  u8   nonzero: folder start (names the folder)
@@ -124,6 +126,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/formats/diskdoubler/xx_diskdoubler.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -210,6 +213,12 @@
 #define XX_DISKDOUBLER_MAX_PATH 0x1000U
 #define XX_DISKDOUBLER_MAX_NAME_BYTES ((size_t)0x2000000)
 #define XX_DISKDOUBLER_MAX_CLAIM_ATTEMPTS 0x40000U
+/* Candidate names one whole parse may try: a fixed allowance plus this many
+ * per name claimed. The suffix hints keep real and crafted archives far
+ * below it; it only turns a pattern the hints miss into a failed parse
+ * instead of a quadratic one. */
+#define XX_DISKDOUBLER_CLAIM_BASE 0x1000U
+#define XX_DISKDOUBLER_CLAIM_PER_NAME 8U
 #define XX_DISKDOUBLER_MAX_PROBES 1024U
 /* DiskDoubler numbers folders from 2 upwards, one per folder, so no real id
  * exceeds the record cap. Larger ids are not registered: their children are
@@ -308,17 +317,7 @@ static uint16_t xx_diskdoubler_be16(const uint8_t *data) {
  * DiskDoubler form carries one, and it is what keeps a file whose first
  * bytes merely look like a signature from being claimed. */
 static uint16_t xx_diskdoubler_header_crc(const uint8_t *data, int32_t size) {
-    uint32_t crc = 0U;
-    int32_t index;
-    int32_t bit;
-
-    for (index = 0; index < size; ++index) {
-        crc ^= (uint32_t)data[index] << 8;
-        for (bit = 0; bit < 8; ++bit) {
-            crc = ((crc << 1) ^ ((crc & 0x8000U) ? 0x1021U : 0U)) & 0xffffU;
-        }
-    }
-    return (uint16_t)crc;
+    return xx_crc16_xmodem_calc(0U, data, (size_t)size);
 }
 
 /* A header whose last two bytes are the CRC of the bytes before them. */
@@ -440,10 +439,11 @@ static bool xx_diskdoubler_method_known(uint8_t method) {
 }
 
 /* Validate one compressed file's 84-byte header, with @p room bytes
- * available from the header's first byte. Everything the header states must
- * fit in that room. */
+ * available from the header's first byte. A standalone file may have a
+ * truncated resource fork while retaining a complete data fork. */
 static bool xx_diskdoubler_check_forks(const uint8_t *header, int64_t room,
-                                       xx_diskdoubler_forks *forks) {
+                                       xx_diskdoubler_forks *forks,
+                                       bool allow_truncated_resource) {
     uint16_t stored_crc;
 
     xx_mem_zero(forks, sizeof(*forks));
@@ -498,7 +498,10 @@ static bool xx_diskdoubler_check_forks(const uint8_t *header, int64_t room,
     /* Both packed sizes are below 2^32, so the sum cannot overflow. */
     forks->end = XX_DISKDOUBLER_HEADER_SIZE + forks->data_packed +
                  forks->rsrc_packed;
-    if (forks->end > room) return false;
+    if (forks->end > room &&
+        (!allow_truncated_resource || !forks->want_data ||
+         XX_DISKDOUBLER_HEADER_SIZE + forks->data_packed > room))
+        return false;
 
     /* A stored fork's two lengths are the same number written twice. A
      * mismatch means the method byte is not describing this stream, which is
@@ -817,6 +820,8 @@ typedef struct xx_diskdoubler_build_s {
     size_t depth;
     size_t name_bytes;
     uint32_t records;
+    uint64_t claims;       /* names claimed or being claimed */
+    uint64_t attempts;     /* candidate names tried, whole parse */
 } xx_diskdoubler_build;
 
 static void xx_diskdoubler_build_cleanup(xx_diskdoubler_build *build) {
@@ -924,7 +929,13 @@ static char *xx_diskdoubler_candidate(xx_diskdoubler_build *build,
 /* Pick the first free "<stem>[_<n>]" under @p parent. The plain path is
  * always reserved (a folder, a data fork, or just the stem a resource fork
  * hangs off), the ".rsrc" path too when @p want_rsrc. The caller must give
- * both returned strings an owner (a member, a folder, or the keep list). */
+ * both returned strings an owner (a member, a folder, or the keep list).
+ *
+ * The walk starts at the suffix hint of the name that clashed: the plain
+ * path when it is taken, otherwise the ".rsrc" path that is. The hint is
+ * only a starting point (every candidate is still looked up), so two
+ * families sharing one hint can at worst skip a free suffix, never reuse a
+ * taken one. */
 static bool xx_diskdoubler_claim(xx_diskdoubler_build *build,
                                  const char *parent, const char *component,
                                  size_t length, bool want_rsrc, char **plain,
@@ -936,6 +947,7 @@ static bool xx_diskdoubler_claim(xx_diskdoubler_build *build,
     *plain = NULL;
     *rsrc = NULL;
     if (!xx_diskdoubler_names_reserve(&build->names)) return false;
+    ++build->claims;
     for (attempts = 0U; attempts < XX_DISKDOUBLER_MAX_CLAIM_ATTEMPTS;
          ++attempts) {
         char *candidate = xx_diskdoubler_candidate(build, parent, component,
@@ -945,6 +957,12 @@ static bool xx_diskdoubler_claim(xx_diskdoubler_build *build,
         size_t rsrc_slot = 0U;
         bool free_name;
 
+        if (++build->attempts >
+            (uint64_t)XX_DISKDOUBLER_CLAIM_BASE +
+                build->claims * XX_DISKDOUBLER_CLAIM_PER_NAME) {
+            xx_diskdoubler_release(build, candidate);
+            return false;
+        }
         if (!candidate) return false;
         if (!xx_diskdoubler_names_find(&build->names, candidate, &slot)) {
             xx_diskdoubler_release(build, candidate);
@@ -992,20 +1010,18 @@ static bool xx_diskdoubler_claim(xx_diskdoubler_build *build,
         }
         if (suffix == 0U) {
             /* Continue from where the last clash on this name stopped. The
-             * plain name was just found, so this lookup cannot run long. */
-            if (!xx_diskdoubler_names_find(&build->names, candidate,
-                                           &base_slot)) {
+             * clash is the plain path when it is taken; otherwise the plain
+             * path is free and the ".rsrc" path (just looked up, so
+             * rsrc_slot is current) is the taken one. Nothing was inserted
+             * since either lookup, so both slots are still valid. */
+            base_slot = build->names.slots[slot] ? slot : rsrc_slot;
+            if (!build->names.slots[base_slot]) {
                 xx_diskdoubler_release(build, resource);
                 xx_diskdoubler_release(build, candidate);
                 return false;
             }
-            if (build->names.slots[base_slot]) {
-                suffix = build->names.hints[base_slot];
-                if (suffix == 0U) suffix = 1U;
-            } else {
-                suffix = 1U;
-                base_slot = (size_t)-1;
-            }
+            suffix = build->names.hints[base_slot];
+            if (suffix == 0U) suffix = 1U;
         } else {
             ++suffix;
         }
@@ -1165,7 +1181,7 @@ static bool xx_diskdoubler_parse_single(Abstractformat *self, int64_t span,
     if (span < XX_DISKDOUBLER_HEADER_SIZE ||
         !xx_diskdoubler_read_at(self, self->base_address, header,
                                 sizeof(header)) ||
-        !xx_diskdoubler_check_forks(header, span, &forks)) {
+        !xx_diskdoubler_check_forks(header, span, &forks, true)) {
         return false;
     }
 
@@ -1174,7 +1190,7 @@ static bool xx_diskdoubler_parse_single(Abstractformat *self, int64_t span,
      * turn this format into a prefix matcher for any file starting with the
      * magic. */
     trailing = span - forks.end;
-    if (trailing != 0) {
+    if (trailing > 0) {
         if (trailing != XX_DISKDOUBLER_HEADER_SIZE) return false;
         if (!xx_diskdoubler_read_at(self, self->base_address + forks.end,
                                     trailer, sizeof(trailer))) {
@@ -1217,7 +1233,7 @@ static bool xx_diskdoubler_read_forks(Abstractformat *self, int64_t offset,
     return room >= XX_DISKDOUBLER_HEADER_SIZE &&
            xx_diskdoubler_read_at(self, self->base_address + offset, header,
                                   sizeof(header)) &&
-           xx_diskdoubler_check_forks(header, room, forks);
+           xx_diskdoubler_check_forks(header, room, forks, false);
 }
 
 /* Record @p value (1 = top, n + 2 = folder n) as what DDA2 folder id @p id
@@ -1448,8 +1464,13 @@ static bool xx_diskdoubler_parse_ddar(xx_diskdoubler_build *build,
         return false;
     }
 
-    /* DDAR has no end record: the records run to the end of the data, and a
-     * short or unrecognised record there is a damaged archive. */
+    /* DDAR has no end record: the records run to the end of the data or to
+     * the first bytes that are not a record header with a good CRC. Such
+     * bytes right after the archive header are a damaged archive; after at
+     * least one record they are trailing data (padding, or whatever follows
+     * an archive embedded in a larger file), and the archive ends there. A
+     * record whose header checks out but whose content is inconsistent is
+     * still a damaged archive. */
     while (position < span) {
         int64_t data_size;
         int64_t rsrc_size;
@@ -1459,15 +1480,16 @@ static bool xx_diskdoubler_parse_ddar(xx_diskdoubler_build *build,
         xx_diskdoubler_forks forks;
 
         if (build->pd && xx_pd_is_stopped(build->pd)) return false;
-        if (++build->records > XX_DISKDOUBLER_MAX_RECORDS) return false;
         if (!xx_diskdoubler_range_within(span, position,
                                          XX_DISKDOUBLER_DDAR_RECORD) ||
             !xx_diskdoubler_read_at(self, self->base_address + position,
                                     record, sizeof(record)) ||
             xx_diskdoubler_be32(record) != XX_DISKDOUBLER_DDAR_MAGIC ||
             !xx_diskdoubler_crc_ok(record, XX_DISKDOUBLER_DDAR_RECORD)) {
-            return false;
+            if (build->records == 0U) return false;
+            break;
         }
+        if (++build->records > XX_DISKDOUBLER_MAX_RECORDS) return false;
         name_size = record[8];
         if (name_size > XX_DISKDOUBLER_DDAR_NAME_MAX) {
             name_size = XX_DISKDOUBLER_DDAR_NAME_MAX;
@@ -1587,6 +1609,40 @@ static xx_diskdoubler_stream *xx_diskdoubler_parse(Abstractformat *self,
 
 /* ------------------------------------------------------------ decoding -- */
 
+/* The most plaintext @p method can produce from @p packed bytes, so a
+ * claimed size no codec could reach is refused before its buffer is
+ * allocated. Each bound follows from the stream syntax of the decoders in
+ * src/algo/diskdoubler/xx_diskdoubler.c:
+ *   LZW (1):  three header bytes, then codes of at least 9 bits; the k-th
+ *             code expands to at most k bytes, so c codes give at most
+ *             c(c+1)/2 bytes.
+ *   ADn (6/9): blocks of a 12-byte header plus at least one data byte, each
+ *             producing at most 0x2000 bytes.
+ *   DDn (10): blocks of at least a 22-byte header, each producing at most
+ *             65536 bytes.
+ * Method 8 (Compact Pro) has none: its RLE count 1 means "repeat to the end
+ * of the fork", so a few bytes can legitimately fill any size, and only
+ * XX_DISKDOUBLER_MAX_DECODED limits it. Stored forks must match exactly. */
+static uint64_t xx_diskdoubler_max_plain(uint32_t method, uint64_t packed) {
+    uint64_t codes;
+
+    switch (method) {
+    case XX_DISKDOUBLER_METHOD_STORE:
+        return packed;
+    case XX_DISKDOUBLER_METHOD_LZW:
+        if (packed < 3U) return 0U;
+        codes = ((packed - 3U) * 8U) / 9U;
+        return codes * (codes + 1U) / 2U;
+    case XX_DISKDOUBLER_METHOD_ADN_6:
+    case XX_DISKDOUBLER_METHOD_ADN_9:
+        return (packed / 13U) * 0x2000U;
+    case XX_DISKDOUBLER_METHOD_DDN:
+        return (packed / 22U) * 0x10000U;
+    default:
+        return (uint64_t)XX_DISKDOUBLER_MAX_DECODED;
+    }
+}
+
 /* A fork stored as is, proven by the check its record carries. */
 static bool xx_diskdoubler_decode_raw(Abstractformat *self,
                                       const xx_diskdoubler_member *member,
@@ -1675,6 +1731,11 @@ static bool xx_diskdoubler_decode(Abstractformat *self,
         return true;
     }
     if (member->compressed_size == 0) return false;
+    if ((uint64_t)member->uncompressed_size >
+        xx_diskdoubler_max_plain(method,
+                                 (uint64_t)member->compressed_size)) {
+        return false;
+    }
 
     plain_size = (size_t)member->uncompressed_size;
     packed_size = (size_t)member->compressed_size;

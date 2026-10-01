@@ -6,8 +6,10 @@
  *
  * The container is located from the end of the file, the way the installer
  * stub itself finds it: the fixed trailer, then a backward walk over
- * length-suffixed blocks to the 0x98765432 sentinel.  The executable is not
- * parsed beyond its "MZ" signature and no code is run or emulated.
+ * length-suffixed blocks to the 0x98765432 sentinel, which must sit where
+ * the LX image ends.  The executable is parsed only as far as its MZ
+ * header, LX header and the tail of the object page table; no code is run
+ * or emulated.
  *
  * Reference: XArchive sfx/xardi2sfx.cpp (MIT, Copyright (c) 2026
  * hors<horsicq@gmail.com>) - the tag set, the block size limits for member
@@ -62,10 +64,21 @@
 #define ARDI_HEADER_MAX 0x100CU
 /* The chain lies behind at least an MZ header. */
 #define ARDI_STUB_MIN 0x40
+/* LX header bytes read (through the data pages offset at +0x80), how many
+ * object page table entries from the end are measured, and the page count
+ * accepted. */
+#define ARDI_LX_HEADER 0x84U
+#define ARDI_LX_PAGES 64U
+#define ARDI_LX_MAX_PAGES 0x100000U
 /* The walk and the member table are capped; the known carriers hold at most
  * 70 blocks. */
 #define ARDI_MAX_BLOCKS 0x20000U
 #define ARDI_MAX_MEMBERS 0x8000U
+/* Validity and base info check only this many blocks from the end (all of
+ * a known carrier's chain); the rest is walked when the records are read.
+ * This keeps a candidate's cost bounded when a format search opens many
+ * candidates that all lead to one long chain. */
+#define ARDI_QUICK_BLOCKS 128U
 /* Stored names (raw bytes) and the text blocks worth publishing. */
 #define ARDI_NAME_MAX 255U
 #define ARDI_TEXT_MAX 255U
@@ -91,6 +104,8 @@ typedef struct ardi_layout_s {
     int64_t title_size;
     uint32_t blocks;
     uint32_t pairs;
+    bool complete;        /* walked to the sentinel; else only the last
+                             ARDI_QUICK_BLOCKS blocks were checked */
     char year[5];
 } ardi_layout;
 
@@ -207,6 +222,55 @@ static bool ardi_trailer(Abstractformat *format, int64_t size, char *year) {
     return true;
 }
 
+/* The end of the LX image behind the MZ header at base, from base: the
+ * largest "data pages offset + (page offset << shift) + page size" over the
+ * last ARDI_LX_PAGES entries of the object page table.  The installer's
+ * chain starts right there.  A constant number of small reads, whatever
+ * the header says, so every MZ candidate of a format search is cheap. */
+static bool ardi_image_end(Abstractformat *format, int64_t size,
+                           int64_t *image_end) {
+    uint8_t word[4];
+    uint8_t lx[ARDI_LX_HEADER];
+    uint8_t table[ARDI_LX_PAGES * 8U];
+    int64_t lfa, table_offset, data_pages, end = -1;
+    uint32_t pages, shift, count, index;
+    if (!ardi_read_at(format->device, format->base_address + 0x3C, word, 4U))
+        return false;
+    lfa = (int64_t)ardi_le32(word);
+    if (lfa < ARDI_STUB_MIN || lfa > size - (int64_t)ARDI_LX_HEADER ||
+        !ardi_read_at(format->device, format->base_address + lfa, lx,
+                      sizeof(lx)) ||
+        lx[0] != 'L' || lx[1] != 'X' || lx[2] != 0U || lx[3] != 0U)
+        return false;
+    pages = ardi_le32(lx + 0x14);
+    shift = ardi_le32(lx + 0x2C);
+    table_offset = lfa + (int64_t)ardi_le32(lx + 0x48);
+    data_pages = (int64_t)ardi_le32(lx + 0x80);
+    if (pages == 0U || pages > ARDI_LX_MAX_PAGES || shift > 15U) return false;
+    count = pages < ARDI_LX_PAGES ? pages : ARDI_LX_PAGES;
+    table_offset += (int64_t)(pages - count) * 8;
+    if (table_offset < ARDI_STUB_MIN ||
+        table_offset > size - (int64_t)count * 8 ||
+        !ardi_read_at(format->device, format->base_address + table_offset,
+                      table, (size_t)count * 8U))
+        return false;
+    for (index = 0U; index < count; ++index) {
+        const uint8_t *entry = table + (size_t)index * 8U;
+        int64_t page_end = data_pages +
+                           ((int64_t)ardi_le32(entry) << shift) +
+                           (int64_t)((uint32_t)entry[4] |
+                                     ((uint32_t)entry[5] << 8U));
+        if (page_end > end) end = page_end;
+    }
+    /* The image holds its own LX header, and the chain and the trailer
+     * follow it. */
+    if (end < lfa + (int64_t)ARDI_LX_HEADER ||
+        end > size - (4 + 2 * (int64_t)ARDI_BLOCK_MIN + ARDI_TRAILER_SIZE))
+        return false;
+    *image_end = end;
+    return true;
+}
+
 /* Reads the header block at @p offset (from base) into @p block and returns
  * the text length and the position of the first '!' in it.  The name is
  * the text before that '!', which must not be empty. */
@@ -242,14 +306,17 @@ static bool ardi_data_start(Abstractformat *format, int64_t offset,
 /* Walks the chain from the trailer back to the sentinel.  With @p pairs
  * NULL only the layout is measured; otherwise up to @p capacity member
  * pairs are stored, last member first.  Every step moves strictly
- * backwards by at least one block, so the walk ends. */
+ * backwards by at least one block, so the walk ends.  With @p quick the
+ * walk stops after ARDI_QUICK_BLOCKS good blocks and reports an incomplete
+ * layout (sentinel known, counts not). */
 static bool ardi_walk(Abstractformat *format, ardi_layout *layout,
-                      ardi_pair *pairs, size_t capacity, xx_pd_struct *pd) {
+                      ardi_pair *pairs, size_t capacity, bool quick,
+                      xx_pd_struct *pd) {
     uint8_t *header = NULL;
     ardi_layout found;
     ardi_pair pending;
     bool have_data = false, result = false;
-    int64_t position, total;
+    int64_t position, total, image_end = 0;
     if (!format || !format->device || !layout || format->base_address < 0)
         return false;
     total = xx_io_total_size(format->device);
@@ -267,24 +334,43 @@ static bool ardi_walk(Abstractformat *format, ardi_layout *layout,
             return false;
     }
     if (!ardi_trailer(format, found.size, found.year)) return false;
+    /* The sentinel must be where this candidate's own LX image ends; only
+     * then is the chain walked, and never below that point. */
+    {
+        uint8_t word[4];
+        if (!ardi_image_end(format, found.size, &image_end) ||
+            !ardi_read_at(format->device, format->base_address + image_end,
+                          word, 4U) ||
+            ardi_le32(word) != ARDI_SENTINEL)
+            return false;
+    }
     header = (uint8_t *)xx_mem_alloc(ARDI_HEADER_MAX);
     if (!header) return false;
     position = found.size - ARDI_TRAILER_SIZE - 4;
+    found.sentinel = image_end;
     for (;;) {
         uint8_t word[4];
         uint32_t length, tag;
         int64_t tag_offset;
+        if (quick && found.blocks >= ARDI_QUICK_BLOCKS) {
+            *layout = found;
+            result = true;
+            goto done;
+        }
         if (found.blocks > ARDI_MAX_BLOCKS ||
             ((found.blocks & 0xFFU) == 0U && pd && xx_pd_is_stopped(pd)) ||
-            position < ARDI_STUB_MIN ||
+            position < image_end ||
             !ardi_read_at(format->device, format->base_address + position,
                           word, 4U))
             goto done;
         length = ardi_le32(word);
-        if (length == ARDI_SENTINEL) break;
+        if (length == ARDI_SENTINEL) {
+            if (position != image_end) goto done;
+            break;
+        }
         /* The tag must lie behind the sentinel's own four bytes. */
         if (length < ARDI_BLOCK_MIN ||
-            (int64_t)length > position + 4 - (ARDI_STUB_MIN + 4))
+            (int64_t)length > position + 4 - (image_end + 4))
             goto done;
         tag_offset = position + 4 - (int64_t)length;
         if (!ardi_read_at(format->device, format->base_address + tag_offset,
@@ -329,7 +415,7 @@ static bool ardi_walk(Abstractformat *format, ardi_layout *layout,
         position = tag_offset - 4;
     }
     if (have_data || found.pairs == 0U) goto done;
-    found.sentinel = position;
+    found.complete = true;
     *layout = found;
     result = true;
 done:
@@ -468,10 +554,60 @@ static char *ardi_copy(const char *text) {
     return copy;
 }
 
+/* UTF-16 units (what the Windows 255-unit component limit counts) in the
+ * first @p size bytes of UTF-8 @p text; every code page 850 character is in
+ * the BMP, so it is one unit per lead byte. */
+static size_t ardi_units(const char *text, size_t size) {
+    size_t index, units = 0U;
+    for (index = 0U; index < size; ++index)
+        if (((uint8_t)text[index] & 0xC0U) != 0x80U) ++units;
+    return units;
+}
+
+/* Bytes of the longest prefix of @p text (@p size bytes) that ends on a
+ * character boundary and holds at most @p units characters. */
+static size_t ardi_cut(const char *text, size_t size, size_t units) {
+    size_t index, seen = 0U;
+    for (index = 0U; index < size; ++index) {
+        if (((uint8_t)text[index] & 0xC0U) != 0x80U) {
+            if (seen == units) return index;
+            ++seen;
+        }
+    }
+    return size;
+}
+
+/* A name of the 8.3 alias form Windows generates for long names ("LONGFI~1
+ * .TXT", "LO1F2A~1"): a stem of at most 8 characters without dots holding
+ * '~' and then only digits, and an extension of at most 3.  On a volume
+ * with short names such a member would open an earlier long-named member
+ * under its alias and overwrite it. */
+static bool ardi_short_alias(const char *name) {
+    size_t length = xx_str_len(name), dot = length, index, tilde = 0U;
+    bool found = false;
+    while (dot > 0U && name[dot - 1U] != '.') --dot;
+    dot = dot > 0U ? dot - 1U : length;
+    if (dot == 0U || dot > 8U || (dot < length && length - dot - 1U > 3U))
+        return false;
+    for (index = 0U; index < dot; ++index) {
+        if (name[index] == '.') return false;
+        if (name[index] == '~') {
+            tilde = index;
+            found = true;
+        }
+    }
+    if (!found || tilde + 1U >= dot) return false;
+    for (index = tilde + 1U; index < dot; ++index)
+        if (name[index] < '0' || name[index] > '9') return false;
+    return true;
+}
+
 /* Gives member @p index a unique, safe name.  A stored name that is not a
- * safe file name becomes "file_NNNN"; a name already published gets
- * "_NNNN" (and a further counter if needed) in front of its extension, so
- * no member overwrites another.  NNNN is the member's 1-based position. */
+ * safe file name becomes "file_NNNN"; an 8.3 alias form has its '~' turned
+ * into '_'; a name already published gets "_NNNN" (and a further counter
+ * if needed) in front of its extension, the stem shortened so the result
+ * stays within 255 characters, so no member overwrites another.  NNNN is
+ * the member's 1-based position. */
 static bool ardi_publish_name(ardi_stream *stream, size_t index,
                               const char *stored) {
     ardi_member *member = &stream->members[index];
@@ -480,8 +616,11 @@ static bool ardi_publish_name(ardi_stream *stream, size_t index,
     size_t length, dot, attempt;
     unsigned ordinal = (unsigned)(index + 1U);
     if (stored && ardi_safe_name(stored)) {
-        size_t size = xx_str_len(stored);
+        size_t size = xx_str_len(stored), k;
         xx_rt_memcpy(base, stored, size + 1U);
+        if (ardi_short_alias(base))
+            for (k = 0U; k < size; ++k)
+                if (base[k] == '~') base[k] = '_';
     } else {
         (void)xx_rt_snprintf(base, sizeof(base), "file_%04u", ordinal);
     }
@@ -490,18 +629,27 @@ static bool ardi_publish_name(ardi_stream *stream, size_t index,
         if (attempt == 0U) {
             xx_rt_memcpy(candidate, base, xx_str_len(base) + 1U);
         } else {
+            char suffix[32];
+            size_t suffix_size, extension, stem;
+            if (attempt == 1U)
+                (void)xx_rt_snprintf(suffix, sizeof(suffix), "_%04u", ordinal);
+            else
+                (void)xx_rt_snprintf(suffix, sizeof(suffix), "_%04u_%u",
+                                     ordinal, (unsigned)attempt);
+            suffix_size = xx_str_len(suffix);
             length = xx_str_len(base);
             dot = length;
             while (dot > 0U && base[dot - 1U] != '.') --dot;
             dot = dot > 1U ? dot - 1U : length;
-            if (attempt == 1U)
-                (void)xx_rt_snprintf(candidate, sizeof(candidate),
-                                     "%.*s_%04u%s", (int)dot, base, ordinal,
-                                     base + dot);
-            else
-                (void)xx_rt_snprintf(candidate, sizeof(candidate),
-                                     "%.*s_%04u_%u%s", (int)dot, base,
-                                     ordinal, (unsigned)attempt, base + dot);
+            extension = ardi_units(base + dot, length - dot);
+            if (extension + suffix_size >= ARDI_NAME_MAX) {
+                dot = length;
+                extension = 0U;
+            }
+            stem = ardi_cut(base, dot,
+                            ARDI_NAME_MAX - suffix_size - extension);
+            (void)xx_rt_snprintf(candidate, sizeof(candidate), "%.*s%s%s",
+                                 (int)stem, base, suffix, base + dot);
         }
         if (!ardi_name_taken(stream, candidate)) {
             member->extractable = true;
@@ -543,7 +691,7 @@ static bool ardi_build(Abstractformat *format, ardi_stream *stream,
     if (count == 0U || count > ARDI_MAX_MEMBERS) return false;
     pairs = (ardi_pair *)xx_mem_calloc(count, sizeof(ardi_pair));
     if (!pairs) return false;
-    if (!ardi_walk(format, &second, pairs, count, pd) ||
+    if (!ardi_walk(format, &second, pairs, count, false, pd) ||
         second.pairs != count || second.sentinel != stream->layout.sentinel)
         goto done;
     while (slots < count * 2U) slots <<= 1U;
@@ -767,24 +915,43 @@ void xx_ardi_installer_free(xx_ardi_installer *archive) {
 bool xx_ardi_installer_check_is_valid(Abstractformat *format,
                                       xx_pd_struct *pd) {
     ardi_layout layout;
-    return ardi_walk(format, &layout, NULL, 0U, pd);
+    return ardi_walk(format, &layout, NULL, 0U, true, pd);
+}
+
+/* Publishes what a complete walk measured. */
+static void ardi_set_counts(Abstractformat *format,
+                            const ardi_layout *layout) {
+    xx_ardi_installer *archive = (xx_ardi_installer *)format;
+    archive->number_of_records = layout->pairs;
+    archive->block_count = layout->blocks;
+    ardi_block_text(format, layout->title, layout->title_size, archive->title,
+                    sizeof(archive->title));
+    ardi_block_text(format, layout->path, layout->path_size,
+                    archive->install_path, sizeof(archive->install_path));
+    format->number_of_archive_records = layout->pairs;
+    archive->chain_walked = true;
+}
+
+/* A chain longer than ARDI_QUICK_BLOCKS is walked in full on the first
+ * question about its counts. */
+static bool ardi_walk_all(Abstractformat *format, xx_pd_struct *pd) {
+    ardi_layout layout;
+    if (((xx_ardi_installer *)format)->chain_walked) return true;
+    if (!ardi_walk(format, &layout, NULL, 0U, false, pd)) return false;
+    ardi_set_counts(format, &layout);
+    return true;
 }
 
 bool xx_ardi_installer_handle_base_info(Abstractformat *format,
                                         xx_pd_struct *pd) {
     xx_ardi_installer *archive;
     ardi_layout layout;
-    if (!format || !ardi_walk(format, &layout, NULL, 0U, pd)) return false;
+    if (!format || !ardi_walk(format, &layout, NULL, 0U, true, pd))
+        return false;
     archive = (xx_ardi_installer *)format;
-    archive->number_of_records = layout.pairs;
     archive->chain_offset = layout.sentinel;
-    archive->block_count = layout.blocks;
     xx_rt_memcpy(archive->year, layout.year, sizeof(archive->year));
-    ardi_block_text(format, layout.title, layout.title_size, archive->title,
-                    sizeof(archive->title));
-    ardi_block_text(format, layout.path, layout.path_size,
-                    archive->install_path, sizeof(archive->install_path));
-    format->number_of_archive_records = layout.pairs;
+    if (layout.complete) ardi_set_counts(format, &layout);
     format->format_size = layout.size;
     format->overlay_offset = -1;
     format->overlay_size = 0;
@@ -803,8 +970,10 @@ int64_t xx_ardi_installer_get_format_size(Abstractformat *format,
 
 uint64_t xx_ardi_installer_get_number_of_archive_records(
     Abstractformat *format, xx_pd_struct *pd) {
-    return format && (format->base_info_handled ||
-                      xx_ardi_installer_handle_base_info(format, pd))
+    return format &&
+                   (format->base_info_handled ||
+                    xx_ardi_installer_handle_base_info(format, pd)) &&
+                   ardi_walk_all(format, pd)
                ? ((xx_ardi_installer *)format)->number_of_records
                : 0U;
 }
@@ -816,7 +985,7 @@ xx_archive_record_state *xx_ardi_installer_create_archive_records_reading(
     if (!format) return NULL;
     stream = (ardi_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return NULL;
-    if (!ardi_walk(format, &stream->layout, NULL, 0U, pd) ||
+    if (!ardi_walk(format, &stream->layout, NULL, 0U, false, pd) ||
         !ardi_build(format, stream, pd) || stream->count == 0U) {
         ardi_stream_free(stream);
         return NULL;

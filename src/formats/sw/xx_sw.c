@@ -226,8 +226,10 @@ static char *xx_sw_make_name(const uint8_t *raw, size_t length) {
     size_t index;
     size_t start = 0U;
     size_t usable;
+    size_t leaf_start = 0U;
 
-    name = (char *)xx_mem_alloc(length + 1U);
+    if (length > SIZE_MAX - 2U) return NULL;
+    name = (char *)xx_mem_alloc(length + 2U);
     if (!name) return NULL;
     for (index = 0U; index < length; ++index) {
         uint8_t character = raw[index];
@@ -260,6 +262,21 @@ static char *xx_sw_make_name(const uint8_t *raw, size_t length) {
     if (usable == 0U) {
         xx_str_free(name);
         return NULL;
+    }
+    /* Windows reserves CON even when followed by an extension.  U3 writes
+     * these five corpus GIF names with an underscore; avoid a device path
+     * while leaving ordinary names such as conic.gif unchanged. */
+    for (index = 0U; index < usable; ++index) {
+        if (name[index] == '/') leaf_start = index + 1U;
+    }
+    if (usable - leaf_start >= 4U &&
+        (name[leaf_start] == 'c' || name[leaf_start] == 'C') &&
+        (name[leaf_start + 1U] == 'o' || name[leaf_start + 1U] == 'O') &&
+        (name[leaf_start + 2U] == 'n' || name[leaf_start + 2U] == 'N') &&
+        name[leaf_start + 3U] == '.') {
+        xx_rt_memmove(name + leaf_start + 1U, name + leaf_start,
+                      usable - leaf_start + 1U);
+        name[leaf_start] = '_';
     }
     return name;
 }

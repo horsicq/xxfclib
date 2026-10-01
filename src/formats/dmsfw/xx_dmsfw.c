@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/dmsfw/xx_dmsfw.h"
 
@@ -23,7 +24,6 @@
 /** The single record: binwalk's swapped.rs writes the same name. */
 #define XX_DMSFW_MEMBER_NAME "swapped.bin"
 /** Staging buffer for un-swapping; a multiple of XX_DMSFW_SWAP_UNIT. */
-#define XX_DMSFW_CHUNK_SIZE 0x10000U
 
 typedef struct xx_dmsfw_private_s {
     int64_t input_size;
@@ -45,8 +45,9 @@ static void xx_dmsfw_vtable_destroy(Abstractformat *self);
 
 /* All positioning goes through seek64: long is 32-bit on Win64 and an image
  * of this kind is usually found inside a larger flash dump. */
-static bool xx_dmsfw_read_at(xx_io_device *device, int64_t offset, void *data,
-                             size_t size) {
+static bool xx_dmsfw_read_at_sized(xx_io_device *device, int64_t offset, void *data,
+                             size_t size, size_t io_capacity) {
+
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
     if (!device || (!data && size != 0U) || offset < 0 ||
@@ -54,20 +55,30 @@ static bool xx_dmsfw_read_at(xx_io_device *device, int64_t offset, void *data,
         return false;
     }
     while (done < size) {
-        ssize_t got = xx_io_read(device, out + done, size - done);
-        if (got <= 0 || (size_t)got > size - done) return false;
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
+        ssize_t got = xx_io_read(device, out + done, request);
+        if (got <= 0 || (size_t)got > request) return false;
         done += (size_t)got;
     }
     return true;
 }
 
+static bool xx_dmsfw_read_at(xx_io_device *device, int64_t offset, void *data,
+                             size_t size) {
+    return xx_dmsfw_read_at_sized(device, offset, data, size, xx_get_file_buffer_size());
+}
+
 static bool xx_dmsfw_write_all(xx_io_device *device, const uint8_t *data,
-                               size_t size) {
+                               size_t size, size_t io_capacity) {
+
     size_t done = 0U;
     if (!device || (!data && size != 0U)) return false;
     while (done < size) {
-        ssize_t put = xx_io_write(device, data + done, size - done);
-        if (put <= 0 || (size_t)put > size - done) return false;
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
+        ssize_t put = xx_io_write(device, data + done, request);
+        if (put <= 0 || (size_t)put > request) return false;
         done += (size_t)put;
     }
     return true;
@@ -180,6 +191,10 @@ fail:
  * the fixed staging buffer. */
 static bool xx_dmsfw_stream(xx_io_device *device, const xx_dmsfw_private *parsed,
                             xx_io_device *output, xx_pd_struct *pd) {
+    const size_t io_capacity = xx_get_file_buffer_size();
+    size_t swap_capacity = io_capacity & ~(size_t)3U;
+    uint8_t frame[4];
+    uint8_t *allocated;
     uint8_t *buffer;
     uint32_t remaining;
     int64_t position;
@@ -190,30 +205,32 @@ static bool xx_dmsfw_stream(xx_io_device *device, const xx_dmsfw_private *parsed
                                (int64_t)parsed->unswapped_size)) {
         return false;
     }
-    buffer = (uint8_t *)xx_mem_alloc(XX_DMSFW_CHUNK_SIZE);
-    if (!buffer) return false;
+    allocated = (uint8_t *)xx_mem_alloc(io_capacity);
+    if (!allocated) return false;
+    buffer = swap_capacity ? allocated : frame;
+    if (!swap_capacity) swap_capacity = sizeof(frame);
     remaining = parsed->unswapped_size;
     position = parsed->header_offset;
-    /* Each pass consumes at least one 4-byte group (remaining is a multiple
+    /* Each pass consumes at least one complete 4-byte swap frame (remaining is a multiple
      * of four and non-zero inside the loop), so the loop is bounded by
-     * 2^32 / 4 passes and in practice by size / 64 KiB. */
+     * 2^32 / 4 passes and in practice by size / the captured capacity. */
     while (remaining != 0U) {
-        size_t step = remaining < XX_DMSFW_CHUNK_SIZE ? (size_t)remaining
-                                                      : XX_DMSFW_CHUNK_SIZE;
+        size_t step = remaining < swap_capacity ? (size_t)remaining
+                                                      : swap_capacity;
         if ((pd && xx_pd_is_stopped(pd)) ||
-            !xx_dmsfw_read_at(device, position, buffer, step)) {
+            !xx_dmsfw_read_at_sized(device, position, buffer, step, io_capacity)) {
             ok = false;
             break;
         }
         xx_dmsfw_swap_halves(buffer, step);
-        if (!xx_dmsfw_write_all(output, buffer, step)) {
+        if (!xx_dmsfw_write_all(output, buffer, step, io_capacity)) {
             ok = false;
             break;
         }
         position += (int64_t)step;
         remaining -= (uint32_t)step;
     }
-    xx_mem_free(buffer);
+    xx_mem_free(allocated);
     return ok;
 }
 

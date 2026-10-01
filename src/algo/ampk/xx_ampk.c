@@ -24,7 +24,7 @@
 #define AMPK_Q3 (UINT32_C(3) * AMPK_Q1)
 #define AMPK_Q4 (UINT32_C(4) * AMPK_Q1)
 #define AMPK_MAX_CUM (AMPK_Q1 - UINT32_C(1))
-#define AMPK_MAX_OUTPUT ((size_t)UINT32_C(0x10000000))
+#define AMPK_MAX_OUTPUT ((size_t)UINT32_C(0x20000000))
 
 typedef struct ampk_bits_s {
     const uint8_t *input;

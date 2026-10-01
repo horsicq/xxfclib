@@ -58,6 +58,9 @@ typedef struct xx_format_search_desc {
     Abstractformat *(*open)(xx_io_device *window);
     /** Release what @p open returned. Required. */
     void (*close)(Abstractformat *format);
+    /** The reader validates a more specific subtype than the default
+     * detector reports. Trust its file_type after successful validation. */
+    bool reader_classifies;
 } xx_format_search_desc;
 
 /** Deepest anchor the engine accepts (offset + size), in bytes. */

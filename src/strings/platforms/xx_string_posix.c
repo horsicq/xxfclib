@@ -30,14 +30,97 @@
 
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/memory/xx_memory.h"
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <wchar.h>
+
+/* Explicit UTF-8 conversions must not depend on the process locale.  A
+ * command-line program need not call setlocale(), even when its paths are
+ * UTF-8.  wchar_t is a Unicode scalar on the supported POSIX platforms. */
+static wchar_t *xx_string_utf8_to_wide(const char *str) {
+    const unsigned char *read = (const unsigned char *)str;
+    size_t length = strlen(str);
+    wchar_t *result;
+    wchar_t *write;
+
+    if (length > SIZE_MAX / sizeof(wchar_t) - 1U) return NULL;
+    result = (wchar_t *)xx_mem_alloc((length + 1U) * sizeof(wchar_t));
+    if (!result) return NULL;
+    write = result;
+    while (*read) {
+        uint32_t code;
+        unsigned int more;
+        unsigned int i;
+        unsigned char first = *read++;
+        if (first < 0x80U) { code = first; more = 0U; }
+        else if (first >= 0xC2U && first <= 0xDFU) {
+            code = first & 0x1FU; more = 1U;
+        } else if (first >= 0xE0U && first <= 0xEFU) {
+            code = first & 0x0FU; more = 2U;
+        } else if (first >= 0xF0U && first <= 0xF4U) {
+            code = first & 0x07U; more = 3U;
+        } else goto invalid;
+        for (i = 0U; i < more; ++i) {
+            unsigned char next = *read;
+            if ((next & 0xC0U) != 0x80U) goto invalid;
+            code = (code << 6) | (next & 0x3FU);
+            ++read;
+        }
+        if ((more == 1U && code < 0x80U) ||
+            (more == 2U && code < 0x800U) ||
+            (more == 3U && code < 0x10000U) ||
+            (code >= 0xD800U && code <= 0xDFFFU) ||
+            code > 0x10FFFFU || code > (uint32_t)WCHAR_MAX) goto invalid;
+        *write++ = (wchar_t)code;
+    }
+    *write = L'\0';
+    return result;
+invalid:
+    xx_mem_free(result);
+    return NULL;
+}
+
+static char *xx_string_wide_to_utf8(const wchar_t *str) {
+    size_t length = wcslen(str);
+    size_t i;
+    char *result;
+    unsigned char *write;
+    if (length > (SIZE_MAX - 1U) / 4U) return NULL;
+    result = (char *)xx_mem_alloc(length * 4U + 1U);
+    if (!result) return NULL;
+    write = (unsigned char *)result;
+    for (i = 0U; i < length; ++i) {
+        uint32_t code = (uint32_t)str[i];
+        if ((code >= 0xD800U && code <= 0xDFFFU) || code > 0x10FFFFU)
+            goto invalid;
+        if (code < 0x80U) *write++ = (unsigned char)code;
+        else if (code < 0x800U) {
+            *write++ = (unsigned char)(0xC0U | (code >> 6));
+            *write++ = (unsigned char)(0x80U | (code & 0x3FU));
+        } else if (code < 0x10000U) {
+            *write++ = (unsigned char)(0xE0U | (code >> 12));
+            *write++ = (unsigned char)(0x80U | ((code >> 6) & 0x3FU));
+            *write++ = (unsigned char)(0x80U | (code & 0x3FU));
+        } else {
+            *write++ = (unsigned char)(0xF0U | (code >> 18));
+            *write++ = (unsigned char)(0x80U | ((code >> 12) & 0x3FU));
+            *write++ = (unsigned char)(0x80U | ((code >> 6) & 0x3FU));
+            *write++ = (unsigned char)(0x80U | (code & 0x3FU));
+        }
+    }
+    *write = '\0';
+    return result;
+invalid:
+    xx_mem_free(result);
+    return NULL;
+}
 
 wchar_t* xx_string_platform_mb_to_wide(const char *str, unsigned int codepage) {
-    (void)codepage;
     if (!str) {
         return NULL;
     }
+    if (codepage == XX_CODEPAGE_UTF8) return xx_string_utf8_to_wide(str);
 
     size_t len = mbstowcs(NULL, str, 0);
     if (len == (size_t)-1) {
@@ -54,10 +137,10 @@ wchar_t* xx_string_platform_mb_to_wide(const char *str, unsigned int codepage) {
 }
 
 char* xx_string_platform_wide_to_mb(const wchar_t *wstr, unsigned int codepage) {
-    (void)codepage;
     if (!wstr) {
         return NULL;
     }
+    if (codepage == XX_CODEPAGE_UTF8) return xx_string_wide_to_utf8(wstr);
 
     size_t len = wcstombs(NULL, wstr, 0);
     if (len == (size_t)-1) {

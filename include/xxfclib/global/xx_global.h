@@ -21,7 +21,7 @@
 
 /**
  * @file xx_global.h
- * @brief Global configuration options for buffer and file buffer sizes.
+ * @brief Global buffer, CPU feature and terminal configuration.
  */
 
 #ifndef XX_GLOBAL_H
@@ -73,6 +73,28 @@ XXFC_API size_t xx_global_get_file_buffer_size(void);
 
 #define xx_get_file_BufferSize xx_get_file_buffer_size
 #define xx_set_file_BufferSize xx_set_file_buffer_size
+
+/* --- Terminal Configuration --- */
+
+typedef enum xx_terminal_type_e {
+    XX_TERMINAL_TYPE_NONE = 0,    /**< Plain output, including redirected streams. */
+    XX_TERMINAL_TYPE_ANSI,        /**< ANSI escape sequences are supported. */
+    XX_TERMINAL_TYPE_WINDOWS      /**< Native Windows console attributes. */
+} xx_terminal_type_t;
+
+/** @brief Enable or disable colored terminal output globally (default: true). */
+XXFC_API void xx_set_color_output_enabled(bool enable);
+XXFC_API bool xx_is_color_output_enabled(void);
+
+/** @brief Get the terminal type detected once for standard output. */
+XXFC_API xx_terminal_type_t xx_get_terminal_type(void);
+/** @brief Override the standard output terminal type after detection. */
+XXFC_API void xx_set_terminal_type(xx_terminal_type_t type);
+
+XXFC_API void xx_global_set_color_output_enabled(bool enable);
+XXFC_API bool xx_global_is_color_output_enabled(void);
+XXFC_API xx_terminal_type_t xx_global_get_terminal_type(void);
+XXFC_API void xx_global_set_terminal_type(xx_terminal_type_t type);
 
 /* ========================================================================= */
 /* --- CPU Feature Detection & Configuration (SSE2 / AVX2)               --- */

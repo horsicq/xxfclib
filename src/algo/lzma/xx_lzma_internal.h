@@ -65,7 +65,8 @@ typedef struct {
     const uint8_t  *mem;
     size_t          mem_size;
     size_t          mem_pos;
-    uint8_t         ibuf[65536];
+    uint8_t        *ibuf;
+    size_t          ibuf_capacity; /* captured global I/O staging capacity */
     size_t          ibuf_pos;
     size_t          ibuf_len;
     int64_t         remaining;

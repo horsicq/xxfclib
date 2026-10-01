@@ -15,8 +15,8 @@ extern "C" {
 
 /* A VirtualBox VDI image: a 72-byte pre-header (text banner, signature
  * 0xBEDA107F at 0x40, version 1.x), a version-1 header, a block map of u32
- * slots and the data blocks.  The guest disk is published as ONE member,
- * "disk.img", rebuilt through the block map. */
+ * slots and the data blocks.  A validated guest MBR/FAT volume is published
+ * as filesystem members; images without one retain the "disk.img" member. */
 typedef struct xx_vdi {
     Abstractformat format;
     uint64_t number_of_records;

@@ -17,10 +17,11 @@
  * 1 KiB padding tail, so the late probe is cheap: binary input fails on its
  * first byte.  handle_base_info applies the same window rules and then walks
  * the rest of the file only to find where the text ends; it never allocates
- * more than one fixed read buffer.
+ * more than one captured global-size read buffer.
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/base16/xx_base16.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -48,7 +49,6 @@
  * when the text ends inside the window (CP/M and DOS record padding). */
 #define BASE16_MAX_PADDING 1024
 /* Read buffer for scanning; decoding uses the same buffer size. */
-#define BASE16_CHUNK 8192U
 #define BASE16_PAYLOAD_NAME "payload"
 
 enum {
@@ -110,13 +110,15 @@ typedef struct base16_stream_s {
 static bool base16_read_at(xx_io_device *device, int64_t offset,
                            void *buffer, size_t size) {
     size_t done = 0U;
+    const size_t transfer_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        size_t request = size - done;
+        if (request > transfer_capacity) request = transfer_capacity;
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -129,13 +131,12 @@ static void base16_close_run(base16_scan *scan) {
 
 /* Continue `scan` up to relative offset `limit` (never past the first
  * foreign byte).  False only on a read error or a stop request. */
-static bool base16_scan_run(Abstractformat *format, base16_scan *scan,
-                            int64_t limit, xx_pd_struct *pd) {
-    uint8_t buffer[BASE16_CHUNK];
+static bool base16_scan_run_buffered(Abstractformat *format, base16_scan *scan,
+                            int64_t limit, xx_pd_struct *pd, uint8_t *buffer, size_t buffer_capacity) {
     while (!scan->foreign && scan->position < limit) {
         int64_t left = limit - scan->position;
-        size_t want = left < (int64_t)sizeof(buffer) ? (size_t)left
-                                                      : sizeof(buffer);
+        size_t want = (uint64_t)left < (uint64_t)buffer_capacity ? (size_t)left
+                                                      : buffer_capacity;
         size_t index;
         if (pd && xx_pd_is_stopped(pd)) return false;
         if (!base16_read_at(format->device,
@@ -174,20 +175,41 @@ static bool base16_scan_run(Abstractformat *format, base16_scan *scan,
     return true;
 }
 
+static bool base16_scan_run(Abstractformat *format, base16_scan *scan,
+                            int64_t limit, xx_pd_struct *pd) {
+    size_t buffer_capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
+    bool result;
+    if (!buffer) return false;
+    result = base16_scan_run_buffered(format, scan, limit, pd, buffer, buffer_capacity);
+    xx_mem_free(buffer);
+    return result;
+}
+
 /* True when [offset, size) is at most BASE16_MAX_PADDING bytes of 0x1A and
  * 0x00 only. */
 static bool base16_padding_tail(Abstractformat *format, int64_t offset,
                                 int64_t size) {
-    uint8_t buffer[BASE16_MAX_PADDING];
     int64_t length = size - offset;
-    size_t index;
+    size_t capacity = xx_get_file_buffer_size();
+    uint8_t *buffer;
+    bool ok = true;
     if (offset < 0 || length <= 0 || length > BASE16_MAX_PADDING) return false;
-    if (!base16_read_at(format->device, format->base_address + offset,
-                        buffer, (size_t)length))
-        return false;
-    for (index = 0U; index < (size_t)length; ++index)
-        if (buffer[index] != 0x1AU && buffer[index] != 0x00U) return false;
-    return true;
+    buffer = (uint8_t *)xx_mem_alloc(capacity);
+    if (!buffer) return false;
+    while (length > 0 && ok) {
+        size_t count = (uint64_t)length < capacity ? (size_t)length : capacity;
+        if (!base16_read_at(format->device, format->base_address + offset, buffer, count)) {
+            ok = false;
+            break;
+        }
+        for (size_t index = 0U; index < count; ++index)
+            if (buffer[index] != 0x1AU && buffer[index] != 0x00U) { ok = false; break; }
+        offset += (int64_t)count;
+        length -= (int64_t)count;
+    }
+    xx_mem_free(buffer);
+    return ok;
 }
 
 /* Apply the window rules; with `measure`, also find the end of the text. */
@@ -237,9 +259,12 @@ static bool base16_parse(Abstractformat *format, base16_context *out,
 static bool base16_write_all(xx_io_device *destination, const uint8_t *data,
                              size_t size) {
     size_t done = 0U;
+    const size_t transfer_capacity = xx_get_file_buffer_size();
     while (done < size) {
-        ssize_t amount = xx_io_write(destination, data + done, size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        size_t request = size - done;
+        if (request > transfer_capacity) request = transfer_capacity;
+        ssize_t amount = xx_io_write(destination, data + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -248,11 +273,9 @@ static bool base16_write_all(xx_io_device *destination, const uint8_t *data,
 /* Decode the measured text to `destination`.  Every byte inside the text was
  * already classified, so a foreign byte or a count mismatch here means the
  * input changed underneath and is reported as failure. */
-static bool base16_decode(Abstractformat *format,
+static bool base16_decode_buffered(Abstractformat *format,
                           const base16_context *context,
-                          xx_io_device *destination, xx_pd_struct *pd) {
-    uint8_t input[BASE16_CHUNK];
-    uint8_t output[BASE16_CHUNK / 2U + 1U];
+                          xx_io_device *destination, xx_pd_struct *pd, uint8_t *input, uint8_t *output, size_t buffer_capacity) {
     int64_t position = 0;
     uint64_t written = 0U;
     uint8_t high = 0U;
@@ -261,8 +284,8 @@ static bool base16_decode(Abstractformat *format,
         return false;
     while (position < context->text_size) {
         int64_t left = context->text_size - position;
-        size_t want = left < (int64_t)sizeof(input) ? (size_t)left
-                                                     : sizeof(input);
+        size_t want = (uint64_t)left < (uint64_t)buffer_capacity ? (size_t)left
+                                                     : buffer_capacity;
         size_t index, produced = 0U;
         if (pd && xx_pd_is_stopped(pd)) return false;
         if (!base16_read_at(format->device, format->base_address + position,
@@ -290,6 +313,19 @@ static bool base16_decode(Abstractformat *format,
         position += (int64_t)want;
     }
     return !pending && written == context->unpacked_size;
+}
+
+static bool base16_decode(Abstractformat *format,
+                          const base16_context *context,
+                          xx_io_device *destination, xx_pd_struct *pd) {
+    size_t buffer_capacity = xx_get_file_buffer_size();
+    uint8_t *input = (uint8_t *)xx_mem_alloc(buffer_capacity);
+    uint8_t *output = (uint8_t *)xx_mem_alloc(buffer_capacity);
+    bool ok = input && output && base16_decode_buffered(format, context, destination, pd,
+                                               input, output, buffer_capacity);
+    xx_mem_free(output);
+    xx_mem_free(input);
+    return ok;
 }
 
 static bool base16_copy_options(xx_list_s *destination,

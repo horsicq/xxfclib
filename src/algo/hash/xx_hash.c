@@ -8,26 +8,21 @@
  *
  * The three algorithms differ only in their compression function and in how
  * the final state is serialised; the block accumulation, the length counter
- * and the padding rule are identical. So the buffering is written once and
- * the per-algorithm work lives in three transforms.
+ * and the padding rule are identical. SHA blocks use the shared, CPU-
+ * dispatched SHA module; MD5 keeps its own compression function here.
  */
 
 #include "xxfclib/algo/hash/xx_hash.h"
+#include "../sha/xx_sha_internal.h"
 
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/global/xx_global.h"
 
 #define XX_HASH_BLOCK 64U
-/* Chunk used when digesting a device. Large enough that the per-read
- * overhead disappears, small enough to stay off the stack. */
-#define XX_HASH_IO_CHUNK (64U * 1024U)
 
 static uint32_t hash_rotl32(uint32_t value, unsigned bits) {
     return (uint32_t)((value << bits) | (value >> (32U - bits)));
-}
-
-static uint32_t hash_rotr32(uint32_t value, unsigned bits) {
-    return (uint32_t)((value >> bits) | (value << (32U - bits)));
 }
 
 /* ------------------------------------------------------------------- MD5 -- */
@@ -93,119 +88,24 @@ static void hash_md5_transform(uint32_t *state, const uint8_t *block) {
     state[3] += d;
 }
 
-/* ----------------------------------------------------------------- SHA-1 -- */
-
-static void hash_sha1_transform(uint32_t *state, const uint8_t *block) {
-    uint32_t w[80];
-    uint32_t a, b, c, d, e;
-    unsigned i;
-
-    for (i = 0; i < 16U; ++i) {
-        w[i] = ((uint32_t)block[i * 4U] << 24) |
-               ((uint32_t)block[i * 4U + 1U] << 16) |
-               ((uint32_t)block[i * 4U + 2U] << 8) |
-               (uint32_t)block[i * 4U + 3U];
-    }
-    for (i = 16U; i < 80U; ++i) {
-        w[i] = hash_rotl32(w[i - 3U] ^ w[i - 8U] ^ w[i - 14U] ^ w[i - 16U], 1U);
-    }
-
-    a = state[0]; b = state[1]; c = state[2]; d = state[3]; e = state[4];
-
-    for (i = 0; i < 80U; ++i) {
-        uint32_t f, k;
-        if (i < 20U) {
-            f = (b & c) | (~b & d);
-            k = 0x5a827999U;
-        } else if (i < 40U) {
-            f = b ^ c ^ d;
-            k = 0x6ed9eba1U;
-        } else if (i < 60U) {
-            f = (b & c) | (b & d) | (c & d);
-            k = 0x8f1bbcdcU;
-        } else {
-            f = b ^ c ^ d;
-            k = 0xca62c1d6U;
-        }
-        {
-            uint32_t temp = hash_rotl32(a, 5U) + f + e + k + w[i];
-            e = d;
-            d = c;
-            c = hash_rotl32(b, 30U);
-            b = a;
-            a = temp;
-        }
-    }
-
-    state[0] += a; state[1] += b; state[2] += c; state[3] += d; state[4] += e;
-}
-
-/* --------------------------------------------------------------- SHA-256 -- */
-
-static const uint32_t SHA256_K[64] = {
-    0x428a2f98U, 0x71374491U, 0xb5c0fbcfU, 0xe9b5dba5U, 0x3956c25bU,
-    0x59f111f1U, 0x923f82a4U, 0xab1c5ed5U, 0xd807aa98U, 0x12835b01U,
-    0x243185beU, 0x550c7dc3U, 0x72be5d74U, 0x80deb1feU, 0x9bdc06a7U,
-    0xc19bf174U, 0xe49b69c1U, 0xefbe4786U, 0x0fc19dc6U, 0x240ca1ccU,
-    0x2de92c6fU, 0x4a7484aaU, 0x5cb0a9dcU, 0x76f988daU, 0x983e5152U,
-    0xa831c66dU, 0xb00327c8U, 0xbf597fc7U, 0xc6e00bf3U, 0xd5a79147U,
-    0x06ca6351U, 0x14292967U, 0x27b70a85U, 0x2e1b2138U, 0x4d2c6dfcU,
-    0x53380d13U, 0x650a7354U, 0x766a0abbU, 0x81c2c92eU, 0x92722c85U,
-    0xa2bfe8a1U, 0xa81a664bU, 0xc24b8b70U, 0xc76c51a3U, 0xd192e819U,
-    0xd6990624U, 0xf40e3585U, 0x106aa070U, 0x19a4c116U, 0x1e376c08U,
-    0x2748774cU, 0x34b0bcb5U, 0x391c0cb3U, 0x4ed8aa4aU, 0x5b9cca4fU,
-    0x682e6ff3U, 0x748f82eeU, 0x78a5636fU, 0x84c87814U, 0x8cc70208U,
-    0x90befffaU, 0xa4506cebU, 0xbef9a3f7U, 0xc67178f2U};
-
-static void hash_sha256_transform(uint32_t *state, const uint8_t *block) {
-    uint32_t w[64];
-    uint32_t a, b, c, d, e, f, g, h;
-    unsigned i;
-
-    for (i = 0; i < 16U; ++i) {
-        w[i] = ((uint32_t)block[i * 4U] << 24) |
-               ((uint32_t)block[i * 4U + 1U] << 16) |
-               ((uint32_t)block[i * 4U + 2U] << 8) |
-               (uint32_t)block[i * 4U + 3U];
-    }
-    for (i = 16U; i < 64U; ++i) {
-        uint32_t s0 = hash_rotr32(w[i - 15U], 7U) ^
-                      hash_rotr32(w[i - 15U], 18U) ^ (w[i - 15U] >> 3);
-        uint32_t s1 = hash_rotr32(w[i - 2U], 17U) ^
-                      hash_rotr32(w[i - 2U], 19U) ^ (w[i - 2U] >> 10);
-        w[i] = w[i - 16U] + s0 + w[i - 7U] + s1;
-    }
-
-    a = state[0]; b = state[1]; c = state[2]; d = state[3];
-    e = state[4]; f = state[5]; g = state[6]; h = state[7];
-
-    for (i = 0; i < 64U; ++i) {
-        uint32_t s1 = hash_rotr32(e, 6U) ^ hash_rotr32(e, 11U) ^
-                      hash_rotr32(e, 25U);
-        uint32_t ch = (e & f) ^ (~e & g);
-        uint32_t t1 = h + s1 + ch + SHA256_K[i] + w[i];
-        uint32_t s0 = hash_rotr32(a, 2U) ^ hash_rotr32(a, 13U) ^
-                      hash_rotr32(a, 22U);
-        uint32_t maj = (a & b) ^ (a & c) ^ (b & c);
-        uint32_t t2 = s0 + maj;
-        h = g; g = f; f = e;
-        e = d + t1;
-        d = c; c = b; b = a;
-        a = t1 + t2;
-    }
-
-    state[0] += a; state[1] += b; state[2] += c; state[3] += d;
-    state[4] += e; state[5] += f; state[6] += g; state[7] += h;
-}
-
 /* ------------------------------------------------------- shared plumbing -- */
 
-static void hash_transform(xx_hash_context *ctx, const uint8_t *block) {
+static void hash_blocks(xx_hash_context *ctx, const uint8_t *blocks,
+                          size_t block_count) {
     switch (ctx->type) {
-        case XX_HASH_MD5: hash_md5_transform(ctx->state, block); break;
-        case XX_HASH_SHA1: hash_sha1_transform(ctx->state, block); break;
-        default: hash_sha256_transform(ctx->state, block); break;
+        case XX_HASH_MD5:
+            while (block_count-- > 0U) {
+                hash_md5_transform(ctx->state, blocks);
+                blocks += XX_HASH_BLOCK;
+            }
+            break;
+        case XX_HASH_SHA1: xx_sha1_blocks(ctx->state, blocks, block_count); break;
+        default: xx_sha256_blocks(ctx->state, blocks, block_count); break;
     }
+}
+
+static void hash_transform(xx_hash_context *ctx, const uint8_t *block) {
+    hash_blocks(ctx, block, 1U);
 }
 
 size_t xx_hash_digest_size(xx_hash_type_t type) {
@@ -258,6 +158,7 @@ void xx_hash_update(xx_hash_context *ctx, const void *data, size_t size) {
     size_t taken = 0U;
 
     if (!ctx || !ctx->initialized || (!data && size != 0U)) return;
+    if (size == 0U) return;
 
     ctx->length += (uint64_t)size;
 
@@ -274,9 +175,10 @@ void xx_hash_update(xx_hash_context *ctx, const void *data, size_t size) {
         ctx->buffered = 0U;
     }
 
-    while (size - taken >= XX_HASH_BLOCK) {
-        hash_transform(ctx, input + taken);
-        taken += XX_HASH_BLOCK;
+    if (size - taken >= XX_HASH_BLOCK) {
+        size_t blocks = (size - taken) / XX_HASH_BLOCK;
+        hash_blocks(ctx, input + taken, blocks);
+        taken += blocks * XX_HASH_BLOCK;
     }
 
     if (taken < size) {
@@ -363,6 +265,8 @@ bool xx_hash_device(xx_hash_type_t type, xx_io_device *dev, int64_t offset,
     int64_t total;
     int64_t done = 0;
     bool ok = true;
+    size_t capacity = xx_get_file_buffer_size();
+    if (capacity > (SIZE_MAX >> 1)) capacity = SIZE_MAX >> 1;
 
     if (!dev || offset < 0) return false;
     total = xx_io_total_size(dev);
@@ -372,13 +276,13 @@ bool xx_hash_device(xx_hash_type_t type, xx_io_device *dev, int64_t offset,
     if (!xx_hash_init(&ctx, type)) return false;
     if (xx_io_seek64(dev, offset, SEEK_SET) != 0) return false;
 
-    chunk = (uint8_t *)xx_mem_alloc(XX_HASH_IO_CHUNK);
+    chunk = (uint8_t *)xx_mem_alloc(capacity);
     if (!chunk) return false;
 
     while (done < size) {
         int64_t want = size - done;
         ssize_t got;
-        if (want > (int64_t)XX_HASH_IO_CHUNK) want = (int64_t)XX_HASH_IO_CHUNK;
+        if ((uint64_t)want > capacity) want = (int64_t)capacity;
         got = xx_io_read(dev, chunk, (size_t)want);
         if (got <= 0 || got > want) { ok = false; break; }
         xx_hash_update(&ctx, chunk, (size_t)got);
@@ -396,15 +300,6 @@ bool xx_hash_device(xx_hash_type_t type, xx_io_device *dev, int64_t offset,
 
 bool xx_md5_memory(const void *data, size_t size, void *out) {
     return xx_hash_memory(XX_HASH_MD5, data, size, out, XX_MD5_DIGEST_SIZE);
-}
-
-bool xx_sha1_memory(const void *data, size_t size, void *out) {
-    return xx_hash_memory(XX_HASH_SHA1, data, size, out, XX_SHA1_DIGEST_SIZE);
-}
-
-bool xx_sha256_memory(const void *data, size_t size, void *out) {
-    return xx_hash_memory(XX_HASH_SHA256, data, size, out,
-                          XX_SHA256_DIGEST_SIZE);
 }
 
 bool xx_hash_to_hex(const void *digest, size_t digest_size, char *out,

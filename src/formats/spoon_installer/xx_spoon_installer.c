@@ -3,13 +3,16 @@
  *
  * Spoon Installer: a PE stub whose overlay carries one bzip2 stream per
  * installed file, a file directory behind the last stream and a 24-byte
- * footer that ends the file.  xx_spoon_installer.h has the layout.
+ * footer (followed at most by an Authenticode certificate table and zero
+ * padding).  xx_spoon_installer.h has the layout.
  *
  * No reference implementation exists; the layout was measured on the four
  * installers of the reference corpus (every directory field, every stream
  * boundary and the per-file byte sum agree on all of them).  The executable
- * is not parsed beyond its "MZ" signature: the footer locates the directory
- * and the directory locates every stream.  No code is run or emulated.
+ * is not parsed beyond its "MZ" signature and, only when the footer is not at
+ * the very end, the PE security directory that locates a certificate table:
+ * the footer locates the directory and the directory locates every stream.
+ * No code is run or emulated.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -28,6 +31,7 @@
  * here, so the alias macro defined next to the enumerator is tested instead;
  * the real file type is picked up as soon as the format is registered. */
 #ifdef SPOON_INSTALLER
+
 #define XX_SPOON_INSTALLER_FILE_TYPE XX_FILE_TYPE_SPOON_INSTALLER
 #else
 #define XX_SPOON_INSTALLER_FILE_TYPE XX_FILE_TYPE_UNKNOWN
@@ -39,9 +43,15 @@
 #define SPOON_MIN_NAME 2U
 #define SPOON_MIN_RECORD (SPOON_RECORD_FIXED + SPOON_MIN_NAME)
 #define SPOON_MAX_FILES UINT32_C(65536)
-/* A directory record is at most 17 + 255 bytes, so this also bounds the
- * directory buffer: 65536 records of average name length ~47. */
+/* A directory record is at most 17 + 255 bytes; the directory is capped at
+ * 65536 records of average name length ~47. */
 #define SPOON_MAX_DIRECTORY (4U << 20)
+#define SPOON_MAX_RECORD (SPOON_RECORD_FIXED + 255U)
+/* The directory is read through a window that starts small and doubles up
+ * to this size, so a candidate whose first record is wrong costs one small
+ * read (the format search tries every "MZ" in the data). */
+#define SPOON_WINDOW_FIRST 512U
+#define SPOON_WINDOW_MAX 0x10000U
 /* "BZh9", the end-of-stream magic and its CRC: the shortest bzip2 stream. */
 #define SPOON_MIN_STREAM 14U
 #define SPOON_STREAM_HEAD 10U
@@ -49,9 +59,17 @@
 #define SPOON_MIN_PAYLOAD 0x40U
 /* Published names: at most 254 ANSI bytes, three UTF-8 bytes each. */
 #define SPOON_NAME_BUFFER (255U * 3U + 1U)
+/* NTFS limit for one path component, in UTF-16 units; every Windows-1252
+ * character is one unit. */
+#define SPOON_NAME_UNITS 255U
 #define SPOON_DEDUP_TRIES 32U
 #define SPOON_COPY_BUFFER 0x10000U
 #define SPOON_SSIZE_LIMIT (((size_t)-1) >> 1U)
+/* Zero padding tolerated behind the footer (or the certificate table). */
+#define SPOON_PAD_MAX 0x1000U
+/* PE signature, COFF header and a PE32+ optional header up to the end of
+ * its security directory entry (data directory 4). */
+#define SPOON_PE_HEAD (4U + 20U + 112U + 5U * 8U)
 /* ZIP's method number for bzip2. */
 #define SPOON_METHOD_BZIP2 12U
 
@@ -61,6 +79,7 @@ static const uint8_t spoon_signature[XX_SPOON_INSTALLER_SIGNATURE_SIZE] = {
 typedef struct spoon_layout_s {
     int64_t base;           /* device offset of the executable */
     int64_t total;          /* bytes from base to the device end */
+    int64_t footer_end;     /* end of the footer, relative to base */
     int64_t directory;      /* directory offset, relative to base */
     int64_t directory_size;
     int64_t payload;        /* first stream, relative to base */
@@ -99,6 +118,42 @@ typedef struct spoon_stream_s {
 /* ---------------------------------------------------------------------- */
 /* Helpers                                                                 */
 
+#include "xxfclib/global/xx_global.h"
+static size_t gb_spoon_installer_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_spoon_installer_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_spoon_installer_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+
+
 static uint32_t spoon_le32(const uint8_t *p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) |
            ((uint32_t)p[2] << 16U) | ((uint32_t)p[3] << 24U);
@@ -106,13 +161,14 @@ static uint32_t spoon_le32(const uint8_t *p) {
 
 static bool spoon_read_at(xx_io_device *device, int64_t offset, void *buffer,
                           size_t size) {
+    const size_t file_io_capacity = gb_spoon_installer_capacity();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = gb_spoon_installer_read(device, (uint8_t *)buffer + done,
+                                    size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -199,18 +255,93 @@ static void spoon_decode_name(const uint8_t *name, size_t length, char *out) {
     out[used] = 0;
 }
 
+/* The raw name has the shape of an NTFS 8.3 short name alias such as
+ * PROGRA~1.TXT: a stem of 1..8 characters whose last '~' is followed only by
+ * digits, and an extension of at most 3.  Written as is, such a name would
+ * open the short-name alias of an earlier long-named member. */
+static bool spoon_short_alias(const uint8_t *name, size_t length) {
+    size_t dot = length, index, tilde = 0U;
+    bool found = false;
+    while (dot > 0U && name[dot - 1U] != '.') --dot;
+    dot = dot > 0U ? dot - 1U : length;
+    if (dot == 0U || dot > 8U || (dot < length && length - dot - 1U > 3U))
+        return false;
+    for (index = 0U; index < dot; ++index) {
+        if (name[index] == '~') {
+            tilde = index;
+            found = true;
+        }
+    }
+    if (!found || tilde + 1U >= dot) return false;
+    for (index = tilde + 1U; index < dot; ++index)
+        if (name[index] < '0' || name[index] > '9') return false;
+    return true;
+}
+
+/* Characters (code points) in the first @p size bytes of UTF-8 @p text. */
+static size_t spoon_utf8_chars(const char *text, size_t size) {
+    size_t index, chars = 0U;
+    for (index = 0U; index < size; ++index)
+        if (((uint8_t)text[index] & 0xC0U) != 0x80U) ++chars;
+    return chars;
+}
+
+/* Byte length of the first @p limit characters of UTF-8 @p text[0..size). */
+static size_t spoon_utf8_cut(const char *text, size_t size, size_t limit) {
+    size_t index, chars = 0U;
+    for (index = 0U; index < size; ++index) {
+        if (((uint8_t)text[index] & 0xC0U) != 0x80U) {
+            if (chars == limit) return index;
+            ++chars;
+        }
+    }
+    return size;
+}
+
+/* Next code point of a published (valid, CP1252-derived) UTF-8 name, case
+ * folded the way NTFS folds it for every character Windows-1252 can produce:
+ * a-z, U+00E0..U+00FE except U+00F7, and the four CP1252 letters outside
+ * Latin-1 (s/z caron, oe ligature, y diaeresis).  Advances @p cursor. */
+static uint32_t spoon_fold_next(const char **cursor) {
+    const uint8_t *p = (const uint8_t *)*cursor;
+    uint32_t code = p[0];
+    size_t used = 1U;
+    if (code >= 0xE0U && p[1] && p[2]) {
+        code = ((code & 0x0FU) << 12U) | ((uint32_t)(p[1] & 0x3FU) << 6U) |
+               (uint32_t)(p[2] & 0x3FU);
+        used = 3U;
+    } else if (code >= 0xC0U && p[1]) {
+        code = ((code & 0x1FU) << 6U) | (uint32_t)(p[1] & 0x3FU);
+        used = 2U;
+    }
+    *cursor += used;
+    if ((code >= 'a' && code <= 'z') ||
+        (code >= 0xE0U && code <= 0xFEU && code != 0xF7U))
+        return code - 0x20U;
+    switch (code) {
+        case 0x0161U: return 0x0160U;
+        case 0x0153U: return 0x0152U;
+        case 0x017EU: return 0x017DU;
+        case 0x00FFU: return 0x0178U;
+        default: return code;
+    }
+}
+
 static uint32_t spoon_name_hash(const char *name) {
     uint32_t hash = UINT32_C(2166136261);
-    for (; *name; ++name) {
-        hash ^= (uint8_t)spoon_upper(*name);
+    while (*name) {
+        uint32_t code = spoon_fold_next(&name);
+        hash ^= code & 0xFFU;
+        hash *= UINT32_C(16777619);
+        hash ^= code >> 8U;
         hash *= UINT32_C(16777619);
     }
     return hash;
 }
 
 static bool spoon_same_name(const char *left, const char *right) {
-    for (; *left && *right; ++left, ++right)
-        if (spoon_upper(*left) != spoon_upper(*right)) return false;
+    while (*left && *right)
+        if (spoon_fold_next(&left) != spoon_fold_next(&right)) return false;
     return *left == *right;
 }
 
@@ -245,19 +376,27 @@ static char *spoon_strdup(const char *text) {
 }
 
 /* Name entry @p index from its raw ANSI bytes.  An unusable name becomes
- * "file_NNNN"; a name that is already published (ignoring ASCII case) gets
- * "_NNNN" (and a further counter if needed) inserted before its extension,
- * so no member overwrites another.  A member that cannot be given a unique
- * name is listed under its colliding name but never written. */
+ * "file_NNNN"; an 8.3 alias form has its '~' turned into '_'; a name that
+ * is already published (ignoring case as NTFS does for Windows-1252
+ * letters) gets "_NNNN" (and a further counter if needed) inserted before
+ * its extension, the stem shortened so the result stays within 255
+ * characters, so no member overwrites another.  A member that cannot be
+ * given a unique name is listed under its colliding name but never
+ * written. */
 static bool spoon_publish_name(spoon_table *table, size_t index,
                                const uint8_t *raw, size_t length) {
     spoon_entry *entry = &table->entries[index];
     char base[SPOON_NAME_BUFFER];
     char candidate[SPOON_NAME_BUFFER + 32U];
-    size_t base_length, stem, attempt;
-    if (spoon_safe_raw_name(raw, length))
+    size_t base_length, stem, extension, attempt;
+    if (spoon_safe_raw_name(raw, length)) {
         spoon_decode_name(raw, length, base);
-    else
+        if (spoon_short_alias(raw, length)) {
+            size_t k;
+            for (k = 0U; base[k]; ++k)
+                if (base[k] == '~') base[k] = '_';
+        }
+    } else
         (void)xx_rt_snprintf(base, sizeof(base), "file_%04u", (unsigned)index);
     entry->extractable = false;
     if (!spoon_name_taken(table, base)) {
@@ -273,7 +412,7 @@ static bool spoon_publish_name(spoon_table *table, size_t index,
     stem = stem > 1U ? stem - 1U : base_length;
     for (attempt = 0U; attempt < SPOON_DEDUP_TRIES; ++attempt) {
         char suffix[32];
-        size_t suffix_length;
+        size_t suffix_length, dot = stem, kept, extension_chars;
         if (attempt == 0U)
             (void)xx_rt_snprintf(suffix, sizeof(suffix), "_%04u",
                                  (unsigned)index);
@@ -281,10 +420,19 @@ static bool spoon_publish_name(spoon_table *table, size_t index,
             (void)xx_rt_snprintf(suffix, sizeof(suffix), "_%04u_%u",
                                  (unsigned)index, (unsigned)attempt);
         suffix_length = xx_str_len(suffix);
-        xx_rt_memcpy(candidate, base, stem);
-        xx_rt_memcpy(candidate + stem, suffix, suffix_length);
-        xx_rt_memcpy(candidate + stem + suffix_length, base + stem,
-                     base_length - stem + 1U);
+        extension_chars = spoon_utf8_chars(base + dot, base_length - dot);
+        if (extension_chars + suffix_length >= SPOON_NAME_UNITS) {
+            dot = base_length;
+            extension_chars = 0U;
+        }
+        kept = spoon_utf8_cut(base, dot,
+                              SPOON_NAME_UNITS - suffix_length -
+                                  extension_chars);
+        extension = base_length - dot;
+        xx_rt_memcpy(candidate, base, kept);
+        xx_rt_memcpy(candidate + kept, suffix, suffix_length);
+        xx_rt_memcpy(candidate + kept + suffix_length, base + dot,
+                     extension + 1U);
         if (!spoon_name_taken(table, candidate)) {
             entry->extractable = true;
             break;
@@ -299,6 +447,111 @@ static bool spoon_publish_name(spoon_table *table, size_t index,
 /* ---------------------------------------------------------------------- */
 /* Footer and directory                                                    */
 
+/* True when the 24 bytes before @p end (relative to the base) are a footer
+ * with the signature; @p footer receives them. */
+static bool spoon_footer_at(xx_io_device *device, const spoon_layout *layout,
+                            int64_t end, uint8_t *footer) {
+    return end >= SPOON_FOOTER_SIZE && end <= layout->total &&
+           spoon_read_at(device, layout->base + end - SPOON_FOOTER_SIZE,
+                         footer, XX_SPOON_INSTALLER_FOOTER_SIZE) &&
+           xx_rt_memcmp(footer + 16U, spoon_signature,
+                        sizeof(spoon_signature)) == 0;
+}
+
+/* @p end moved back over at most SPOON_PAD_MAX zero bytes, or -1 when the
+ * whole window is zero or cannot be read. */
+static int64_t spoon_skip_zeros(xx_io_device *device,
+                                const spoon_layout *layout, int64_t end) {
+    uint8_t window[SPOON_PAD_MAX];
+    size_t amount;
+    if (end <= 0 || end > layout->total) return -1;
+    amount = end < (int64_t)SPOON_PAD_MAX ? (size_t)end : SPOON_PAD_MAX;
+    if (!spoon_read_at(device, layout->base + end - (int64_t)amount, window,
+                       amount))
+        return -1;
+    while (amount > 0U && window[amount - 1U] == 0U) {
+        --amount;
+        --end;
+    }
+    return amount > 0U ? end : -1;
+}
+
+/* Start of the Authenticode certificate table (relative to the base) when
+ * the PE security directory names one that ends exactly at the end of the
+ * data, otherwise -1.  Only the headers that locate it are read. */
+static int64_t spoon_certificate_start(xx_io_device *device,
+                                       const spoon_layout *layout) {
+    uint8_t mz[0x40];
+    uint8_t pe[SPOON_PE_HEAD];
+    uint32_t pe_offset, directory, start, size, count, amount;
+    uint16_t optional_size, magic;
+    if (layout->total < (int64_t)sizeof(mz) ||
+        !spoon_read_at(device, layout->base, mz, sizeof(mz)))
+        return -1;
+    pe_offset = spoon_le32(mz + 0x3CU);
+    if (pe_offset < sizeof(mz) ||
+        (int64_t)pe_offset > layout->total - (int64_t)(4U + 20U + 2U))
+        return -1;
+    xx_mem_zero(pe, sizeof(pe));
+    amount = layout->total - (int64_t)pe_offset < (int64_t)sizeof(pe)
+                 ? (uint32_t)(layout->total - (int64_t)pe_offset)
+                 : (uint32_t)sizeof(pe);
+    if (!spoon_read_at(device, layout->base + (int64_t)pe_offset, pe,
+                       amount) ||
+        pe[0] != 'P' || pe[1] != 'E' || pe[2] != 0U || pe[3] != 0U)
+        return -1;
+    optional_size = (uint16_t)(pe[20] | (pe[21] << 8U));
+    magic = (uint16_t)(pe[24] | (pe[25] << 8U));
+    if (magic == 0x10BU)
+        directory = 96U;
+    else if (magic == 0x20BU)
+        directory = 112U;
+    else
+        return -1;
+    if (optional_size < directory + 5U * 8U ||
+        amount < 24U + directory + 5U * 8U)
+        return -1;
+    count = spoon_le32(pe + 24U + directory - 4U);
+    start = spoon_le32(pe + 24U + directory + 4U * 8U);
+    size = spoon_le32(pe + 24U + directory + 4U * 8U + 4U);
+    if (count < 5U || start < pe_offset || size < 8U ||
+        (int64_t)start + (int64_t)size != layout->total)
+        return -1;
+    return (int64_t)start;
+}
+
+/* Find the footer: at the end of the data, else before zero padding, else
+ * before a certificate table (and any zero padding in front of it).  Cheap
+ * for any other "MZ" file: 24 bytes at the end, plus one padding window
+ * when the data ends in a zero, plus the PE headers. */
+static bool spoon_find_footer(xx_io_device *device, spoon_layout *layout,
+                              uint8_t *footer) {
+    int64_t end = layout->total, start;
+    if (spoon_footer_at(device, layout, end, footer)) {
+        layout->footer_end = end;
+        return true;
+    }
+    if (footer[XX_SPOON_INSTALLER_FOOTER_SIZE - 1U] == 0U) {
+        end = spoon_skip_zeros(device, layout, layout->total);
+        if (end > 0 && spoon_footer_at(device, layout, end, footer)) {
+            layout->footer_end = end;
+            return true;
+        }
+    }
+    start = spoon_certificate_start(device, layout);
+    if (start <= 0) return false;
+    if (spoon_footer_at(device, layout, start, footer)) {
+        layout->footer_end = start;
+        return true;
+    }
+    end = spoon_skip_zeros(device, layout, start);
+    if (end > 0 && spoon_footer_at(device, layout, end, footer)) {
+        layout->footer_end = end;
+        return true;
+    }
+    return false;
+}
+
 static bool spoon_locate(Abstractformat *format, spoon_layout *layout) {
     uint8_t footer[XX_SPOON_INSTALLER_FOOTER_SIZE];
     uint8_t mz[2];
@@ -306,25 +559,22 @@ static bool spoon_locate(Abstractformat *format, spoon_layout *layout) {
     if (!format || !format->device || !layout || format->base_address < 0)
         return false;
     xx_mem_zero(layout, sizeof(*layout));
+    xx_mem_zero(footer, sizeof(footer));
     device_size = xx_io_total_size(format->device);
     if (device_size < format->base_address) return false;
     layout->base = format->base_address;
     layout->total = device_size - format->base_address;
     if (layout->total < (int64_t)(SPOON_MIN_PAYLOAD + SPOON_MIN_STREAM +
                                   SPOON_MIN_RECORD) + SPOON_FOOTER_SIZE ||
-        !spoon_read_at(format->device,
-                       layout->base + layout->total - SPOON_FOOTER_SIZE,
-                       footer, sizeof(footer)) ||
-        xx_rt_memcmp(footer + 16U, spoon_signature,
-                     sizeof(spoon_signature)) != 0 ||
         !spoon_read_at(format->device, layout->base, mz, sizeof(mz)) ||
-        mz[0] != 'M' || mz[1] != 'Z')
+        mz[0] != 'M' || mz[1] != 'Z' ||
+        !spoon_find_footer(format->device, layout, footer))
         return false;
     layout->value0 = spoon_le32(footer);
     layout->value1 = spoon_le32(footer + 4U);
     layout->directory = (int64_t)spoon_le32(footer + 8U);
     layout->count = spoon_le32(footer + 12U);
-    directory_end = layout->total - SPOON_FOOTER_SIZE;
+    directory_end = layout->footer_end - SPOON_FOOTER_SIZE;
     if (layout->count == 0U || layout->count > SPOON_MAX_FILES ||
         layout->directory < (int64_t)(SPOON_MIN_PAYLOAD + SPOON_MIN_STREAM) ||
         layout->directory >= directory_end)
@@ -332,7 +582,9 @@ static bool spoon_locate(Abstractformat *format, spoon_layout *layout) {
     layout->directory_size = directory_end - layout->directory;
     if (layout->directory_size > (int64_t)SPOON_MAX_DIRECTORY ||
         layout->directory_size <
-            (int64_t)layout->count * (int64_t)SPOON_MIN_RECORD)
+            (int64_t)layout->count * (int64_t)SPOON_MIN_RECORD ||
+        layout->directory_size >
+            (int64_t)layout->count * (int64_t)SPOON_MAX_RECORD)
         return false;
     return true;
 }
@@ -361,13 +613,42 @@ static void spoon_table_free(spoon_table *table) {
     xx_mem_zero(table, sizeof(*table));
 }
 
+/* Make directory bytes [@p position, @p position + @p need) available in
+ * the window, refilling it from the device with a growing read size. */
+typedef struct spoon_window_s {
+    uint8_t *data;
+    size_t start;
+    size_t length;
+    size_t fill;
+} spoon_window;
+
+static bool spoon_window_get(xx_io_device *device, int64_t origin,
+                             size_t size, spoon_window *window,
+                             size_t position, size_t need) {
+    size_t amount;
+    if (position >= window->start &&
+        position - window->start <= window->length &&
+        window->length - (position - window->start) >= need)
+        return true;
+    amount = size - position;
+    if (amount > window->fill) amount = window->fill;
+    if (amount < need ||
+        !spoon_read_at(device, origin + (int64_t)position, window->data,
+                       amount))
+        return false;
+    window->start = position;
+    window->length = amount;
+    if (window->fill < SPOON_WINDOW_MAX) window->fill <<= 1U;
+    return true;
+}
+
 /* Read and check the whole directory.  Every record must lie inside it, the
  * directory must end exactly at the footer, the streams must follow each
  * other without gaps from the first one up to the directory, and each must
  * open with a bzip2 header.  With @p table set the entries are also built. */
 static bool spoon_walk(Abstractformat *format, spoon_layout *layout,
                        spoon_table *table, xx_pd_struct *pd) {
-    uint8_t *directory;
+    spoon_window window;
     uint8_t head[SPOON_STREAM_HEAD];
     size_t position = 0U, size;
     int64_t expected = -1;
@@ -387,19 +668,26 @@ static bool spoon_walk(Abstractformat *format, spoon_layout *layout,
         }
     }
     size = (size_t)layout->directory_size;
-    directory = (uint8_t *)xx_mem_alloc(size);
-    if (!directory ||
-        !spoon_read_at(format->device, layout->base + layout->directory,
-                       directory, size))
-        goto done;
+    xx_mem_zero(&window, sizeof(window));
+    window.fill = SPOON_WINDOW_FIRST;
+    window.data = (uint8_t *)xx_mem_alloc(
+        size < SPOON_WINDOW_MAX ? size : SPOON_WINDOW_MAX);
+    if (!window.data) goto done;
     layout->unpacked_total = 0U;
     for (index = 0U; index < layout->count; ++index) {
         const uint8_t *record;
         uint32_t offset, packed, unpacked, checksum;
         size_t length, name_index;
         if ((index & 0xFFU) == 0U && pd && xx_pd_is_stopped(pd)) goto done;
-        if (size - position < SPOON_MIN_RECORD) goto done;
-        record = directory + position;
+        if (size - position < SPOON_MIN_RECORD ||
+            !spoon_window_get(format->device,
+                              layout->base + layout->directory, size, &window,
+                              position,
+                              size - position < SPOON_MAX_RECORD
+                                  ? size - position
+                                  : SPOON_MAX_RECORD))
+            goto done;
+        record = window.data + (position - window.start);
         offset = spoon_le32(record);
         packed = spoon_le32(record + 4U);
         unpacked = spoon_le32(record + 8U);
@@ -444,7 +732,7 @@ static bool spoon_walk(Abstractformat *format, spoon_layout *layout,
     }
     result = position == size && expected == layout->directory;
 done:
-    if (directory) xx_mem_free(directory);
+    if (window.data) xx_mem_free(window.data);
     if (!result && table) spoon_table_free(table);
     return result;
 }
@@ -463,6 +751,7 @@ typedef struct spoon_sink_s {
 
 static ssize_t spoon_sink_write(xx_io_device *self, const void *buffer,
                                 size_t size) {
+    const size_t file_io_capacity = gb_spoon_installer_capacity();
     spoon_sink *sink = self ? (spoon_sink *)self->priv : NULL;
     const uint8_t *bytes = (const uint8_t *)buffer;
     size_t done = 0U;
@@ -470,7 +759,7 @@ static ssize_t spoon_sink_write(xx_io_device *self, const void *buffer,
         (uint64_t)size > sink->limit - sink->written)
         return -1;
     while (sink->target && done < size) {
-        ssize_t wrote = xx_io_write(sink->target, bytes + done, size - done);
+        ssize_t wrote = gb_spoon_installer_write(sink->target, bytes + done, size - done, file_io_capacity);
         if (wrote <= 0 || (size_t)wrote > size - done) return -1;
         done += (size_t)wrote;
     }
@@ -481,15 +770,16 @@ static ssize_t spoon_sink_write(xx_io_device *self, const void *buffer,
 /* The directory's check value: the packed stream's bytes summed. */
 static bool spoon_checksum_ok(xx_io_device *device, const spoon_entry *entry,
                               xx_pd_struct *pd) {
+    const size_t file_io_capacity = gb_spoon_installer_capacity();
     uint8_t *buffer;
     int64_t offset = entry->data_offset, left = entry->packed_size;
     uint32_t sum = 0U;
     bool result = true;
-    buffer = (uint8_t *)xx_mem_alloc(SPOON_COPY_BUFFER);
+    buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (left > 0) {
-        size_t chunk = left < (int64_t)SPOON_COPY_BUFFER ? (size_t)left
-                                                         : SPOON_COPY_BUFFER;
+        size_t chunk = left < (int64_t)file_io_capacity ? (size_t)left
+                                                         : file_io_capacity;
         size_t index;
         if ((pd && xx_pd_is_stopped(pd)) ||
             !spoon_read_at(device, offset, buffer, chunk)) {
@@ -668,6 +958,7 @@ bool xx_spoon_installer_handle_base_info(Abstractformat *format,
     archive->unpacked_total = layout.unpacked_total;
     archive->footer_value0 = layout.value0;
     archive->footer_value1 = layout.value1;
+    archive->trailing_size = layout.total - layout.footer_end;
     format->number_of_archive_records = layout.count;
     format->format_size = layout.total;
     format->is_valid = true;

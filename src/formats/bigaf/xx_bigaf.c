@@ -61,6 +61,7 @@ typedef struct xx_bigaf_stream_s {
     size_t count;
     size_t index;
     int64_t archive_size;
+    bool complete;
 } xx_bigaf_stream;
 
 static void xx_bigaf_vtable_destroy(Abstractformat *self);
@@ -227,6 +228,7 @@ static xx_bigaf_stream *xx_bigaf_parse(Abstractformat *self,
     int64_t first;
     int64_t last;
     int64_t offset;
+    bool hit_member_limit = false;
 
     if (!self || !self->device || self->base_address < 0) return NULL;
     total = xx_io_total_size(self->device);
@@ -265,21 +267,25 @@ static xx_bigaf_stream *xx_bigaf_parse(Abstractformat *self,
         size_t usable;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        if (stream->count >= (size_t)XX_BIGAF_MAX_MEMBERS) break;
+        if (stream->count >= (size_t)XX_BIGAF_MAX_MEMBERS) {
+            hit_member_limit = true;
+            break;
+        }
         if (!xx_bigaf_range_within(span, offset, XX_BIGAF_MEMBER_HEADER) ||
             !xx_bigaf_read_at(self, self->base_address + offset, entry,
                               sizeof(entry))) {
-            goto fail;
+            goto partial;
         }
         if (!xx_bigaf_number(entry, 20U, &size) ||
             !xx_bigaf_number(entry + 20U, 20U, &next) ||
             !xx_bigaf_number(entry + 108U, 4U, &name_length)) {
-            goto fail;
+            goto partial;
         }
-        if ((name_length <= 0) || (name_length > XX_BIGAF_MAX_NAME)) goto fail;
+        if ((name_length <= 0) || (name_length > XX_BIGAF_MAX_NAME))
+            goto partial;
         if (!xx_bigaf_range_within(span, offset + XX_BIGAF_MEMBER_HEADER,
                                    name_length)) {
-            goto fail;
+            goto partial;
         }
 
         name_field = (uint8_t *)xx_mem_alloc((size_t)name_length);
@@ -294,7 +300,7 @@ static xx_bigaf_stream *xx_bigaf_parse(Abstractformat *self,
         usable = xx_bigaf_name_length(name_field, (size_t)name_length);
         if (usable == 0U) {
             xx_mem_free(name_field);
-            goto fail;
+            goto partial;
         }
         name = (char *)xx_mem_alloc(usable + 1U);
         if (!name) {
@@ -313,7 +319,7 @@ static xx_bigaf_stream *xx_bigaf_parse(Abstractformat *self,
         if (data_offset & 1) ++data_offset;
         if (!xx_bigaf_range_within(span, data_offset, size)) {
             xx_str_free(name);
-            goto fail;
+            goto partial;
         }
 
         xx_mem_zero(&member, sizeof(member));
@@ -334,14 +340,18 @@ static xx_bigaf_stream *xx_bigaf_parse(Abstractformat *self,
          * parsed: that is an endless walk, not an archive. Requiring the
          * chain to move strictly forward is what makes termination a property
          * of the parser rather than of the input. */
-        if ((next != 0) && (next <= offset)) goto fail;
+        if ((next != 0) && (next <= offset)) goto partial;
         offset = next;
     }
 
-    if (stream->count == 0U) goto fail;
+    if (stream->count == 0U || hit_member_limit || offset != last) goto fail;
+    stream->complete = true;
     stream->archive_size = span;
     return stream;
 
+partial:
+    /* An invalid chain or truncated member cannot identify a valid archive,
+     * even when earlier members were readable. */
 fail:
     xx_bigaf_stream_free(stream);
     return NULL;
@@ -435,6 +445,7 @@ bool xx_bigaf_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     self->format_size = stream->archive_size;
     self->number_of_archive_records = stream->count;
     archive->number_of_records = stream->count;
+    archive->is_complete = stream->complete;
     xx_bigaf_stream_free(stream);
     return true;
 }

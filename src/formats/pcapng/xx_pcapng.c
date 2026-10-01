@@ -2,12 +2,20 @@
  * SPDX-License-Identifier: MIT
  */
 
+/* The component archive API publishes captured packet bytes for well-framed
+ * packet blocks and typed block bodies for other blocks. It does not decode
+ * network protocols. The existing first-section byte-order carve rules remain. */
+
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/pcapng/xx_pcapng.h"
 
 #include "xxfclib/data/xx_data.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
+
+#include "../bmp/xx_component_archive_impl.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the file-type constant resolves to UNKNOWN until the enumerator
@@ -20,7 +28,6 @@
 
 /* The size walk visits every block, and a capture is mostly small packets,
  * so the full walk reads through a window instead of seeking per field. */
-#define XX_PCAPNG_WINDOW_SIZE 65536U
 /* How many blocks the walk visits between two looks at the stop flag. */
 #define XX_PCAPNG_STOP_POLL 4096U
 
@@ -53,8 +60,9 @@ static void xx_pcapng_vtable_destroy(Abstractformat *self);
 
 /* All positioning goes through seek64: long is 32-bit on Win64 and a
  * capture is easily larger than 2 GiB. */
-static bool xx_pcapng_read_at(xx_io_device *device, int64_t offset, void *data,
-                              size_t size) {
+static bool xx_pcapng_read_at_sized(xx_io_device *device, int64_t offset, void *data,
+                              size_t size, size_t io_capacity) {
+
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
     if (!device || (!data && size != 0U) || offset < 0 ||
@@ -62,8 +70,10 @@ static bool xx_pcapng_read_at(xx_io_device *device, int64_t offset, void *data,
         return false;
     }
     while (done < size) {
-        ssize_t got = xx_io_read(device, out + done, size - done);
-        if (got <= 0 || (size_t)got > size - done) return false;
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
+        ssize_t got = xx_io_read(device, out + done, request);
+        if (got <= 0 || (size_t)got > request) return false;
         done += (size_t)got;
     }
     return true;
@@ -81,7 +91,7 @@ static bool xx_pcapng_fetch(xx_pcapng_source *source, int64_t offset,
         return false;
     }
     if (!source->buffer || source->capacity < size) {
-        return xx_pcapng_read_at(source->device, offset, out, size);
+        return xx_pcapng_read_at_sized(source->device, offset, out, size, source->capacity);
     }
     if (source->window_size < size || offset < source->window_offset ||
         offset - source->window_offset >
@@ -90,7 +100,7 @@ static bool xx_pcapng_fetch(xx_pcapng_source *source, int64_t offset,
         want = source->capacity;
         if (available < (int64_t)want) want = (size_t)available;
         source->window_size = 0U;
-        if (!xx_pcapng_read_at(source->device, offset, source->buffer, want)) {
+        if (!xx_pcapng_read_at_sized(source->device, offset, source->buffer, want, source->capacity)) {
             return false;
         }
         source->window_offset = offset;
@@ -304,10 +314,10 @@ static bool xx_pcapng_parse(Abstractformat *self, xx_pcapng_private *parsed,
     parsed->input_size = source.limit;
     parsed->start = self->base_address;
     if (source.limit < 0 || self->base_address > source.limit) goto done;
+    source.capacity = xx_get_file_buffer_size();
     if (full) {
         /* Optional: without the window every fetch is a direct read. */
-        source.buffer = (uint8_t *)xx_mem_alloc(XX_PCAPNG_WINDOW_SIZE);
-        source.capacity = source.buffer ? XX_PCAPNG_WINDOW_SIZE : 0U;
+        source.buffer = (uint8_t *)xx_mem_alloc(source.capacity);
     }
     if (!xx_pcapng_parse_head(&source, self->base_address, parsed)) goto done;
     if (full && !xx_pcapng_walk(&source, parsed, pd)) goto done;
@@ -352,6 +362,7 @@ void xx_pcapng_init(xx_pcapng *pcapng, xx_io_device *dev,
     pcapng->format.get_format_size = xx_pcapng_get_format_size;
     pcapng->format.destroy = xx_pcapng_vtable_destroy;
     xx_pcapng_clear_fields(pcapng);
+    xx_components_install(&pcapng->format);
 }
 
 xx_pcapng *xx_pcapng_create(xx_io_device *dev, int64_t base_address) {
@@ -418,6 +429,7 @@ bool xx_pcapng_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
         self->overlay_size = 0;
     }
     self->number_of_archive_records = 0U;
+    if (!xx_components_finish(self, pd)) return false;
     self->is_valid = true;
     self->base_info_handled = true;
     return true;
@@ -457,4 +469,37 @@ uint32_t xx_pcapng_get_link_type(const xx_pcapng *pcapng) {
 }
 int64_t xx_pcapng_get_capture_end(const xx_pcapng *pcapng) {
     return pcapng ? pcapng->capture_end : -1;
+}
+
+/* Encoded/structural component members; this does not decode media. */
+static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd) {
+
+    xx_pcapng *p=(xx_pcapng *)f;
+    int64_t pos=0;
+    while(pos<f->format_size) {
+        uint8_t h[28]; uint32_t type,n; int64_t offset,size; char kind[15]="block-00000000"; unsigned j;
+        if(xx_pd_is_stopped(pd) || !xx_component_read(f,pos,h,8)) return false;
+        type=xx_data_get_u32(h,8,0,p->big_endian); n=xx_data_get_u32(h,8,4,p->big_endian);
+        if(n<4 || n>(uint64_t)(f->format_size-pos)) return false;
+        for(j=0;j<8;++j) kind[6+j]="0123456789ABCDEF"[(type>>((7-j)*4))&15];
+        offset=pos+8; size=n>=12 ? n-12 : 0;
+        if(n>=12) {
+            if(type==6 && n>=32 && xx_component_read(f,pos,h,28)) {
+                uint32_t cap=xx_data_get_u32(h,28,20,p->big_endian);
+                if(cap<=n-32) { offset=pos+28; size=cap; xx_rt_memcpy(kind,"packet-EPB",11); }
+            } else if(type==2 && n>=32 && xx_component_read(f,pos,h,28)) {
+                uint32_t cap=xx_data_get_u32(h,28,20,p->big_endian);
+                if(cap<=n-32) { offset=pos+28; size=cap; xx_rt_memcpy(kind,"packet-PB",10); }
+            } else if(type==3 && n>=16 && xx_component_read(f,pos+8,h,4)) {
+                uint32_t orig=xx_data_get_u32(h,4,0,p->big_endian);
+                /* SPB has no captured-size field. Preserve its padded packet
+                 * body rather than guessing away bytes from a truncated frame. */
+                offset=pos+12; size=n-16; if(orig<(uint64_t)size) size=orig;
+                xx_rt_memcpy(kind,"packet-SPB",11);
+            }
+            if(!xx_component_add(f,s,offset,size,kind)) return false;
+        }
+        pos+=n;
+    }
+    return true;
 }

@@ -121,6 +121,10 @@ XXFC_API bool xx_lzma2_decompress_memory(const void *src_buf, size_t src_size,
 /* --- LZMA2 Compression                                                   --- */
 /* ========================================================================= */
 
+/** Get the dictionary property byte used by the current LZMA2 encoder.
+ *  Its independent 64 KiB chunks use a 64 KiB dictionary at every level. */
+XXFC_API bool xx_lzma2_get_properties(uint8_t *out_props2_byte);
+
 /**
  * @brief Compress data as a raw LZMA2 stream.
  * @param out_props2_byte Receives the single LZMA2 dictionary property byte.
@@ -128,6 +132,14 @@ XXFC_API bool xx_lzma2_decompress_memory(const void *src_buf, size_t src_size,
 XXFC_API bool xx_lzma2_pack_device(xx_io_device *src_dev, int64_t src_offset, int64_t uncomp_size,
                                    xx_io_device *dst_dev, int level,
                                    uint8_t *out_props2_byte, xx_pd_struct *pd);
+
+/** Compress an extent and calculate its XZ CRC64 during the same read pass.
+ *  Optional size/CRC outputs are zero on failure. The compressed size includes
+ *  the LZMA2 end byte. Both devices remain owned by the caller. */
+XXFC_API bool xx_lzma2_pack_device_with_crc64(
+    xx_io_device *src_dev, int64_t src_offset, int64_t uncomp_size,
+    xx_io_device *dst_dev, int level, uint8_t *out_props2_byte,
+    int64_t *out_comp_size, uint64_t *out_crc64, xx_pd_struct *pd);
 
 XXFC_API bool xx_lzma2_pack_source(xx_io_device *src_dev, const char *src_file_path,
                                    int64_t *out_uncomp_size, int64_t *out_comp_size,
@@ -141,6 +153,16 @@ XXFC_API bool xx_lzma2_compress_memory(const void *src_buf, size_t src_size,
 /* ========================================================================= */
 /* --- LZMA Compression                                                   --- */
 /* ========================================================================= */
+
+/**
+ * @brief Get the same properties the encoder will use, before compression.
+ * Levels are clamped to 1..9. The dictionary is a power of two, at least 4 KiB.
+ * The current encoder buffers its input and supports at most UINT32_MAX - 1
+ * bytes per stream. out_props_size is the buffer capacity on entry and is
+ * XX_LZMA_PROPS_SIZE on success, zero on failure.
+ */
+XXFC_API bool xx_lzma_get_properties(int64_t uncomp_size, int level,
+                                     uint8_t *out_props, size_t *out_props_size);
 
 /**
  * @brief Compress data using LZMA.

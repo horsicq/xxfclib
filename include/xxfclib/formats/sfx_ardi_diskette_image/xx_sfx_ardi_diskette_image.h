@@ -34,7 +34,7 @@ extern "C" {
  *
  * The 0x33-byte record sits where the NE segment data ends (the highest
  * segment end, relocation records included).  It is looked for there
- * first; when the NE tables do not lead to it, the first 16 MiB are
+ * first; when the NE tables do not lead to it, the first 1 MiB is
  * scanned for its 85 04 00 00 00 run at +0x2A (at most 64 candidates).
  * A candidate is the record only when the stream it declares ends exactly
  * where the trailer starts:

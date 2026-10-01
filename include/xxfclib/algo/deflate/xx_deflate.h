@@ -100,6 +100,14 @@ XXFC_API bool xx_deflate_decompress_memory(const void *src_buf, size_t src_size,
                                           void *dst_buf, size_t dst_buf_size, size_t *out_written,
                                           bool is_deflate64);
 
+/** Decode a raw Deflate stream whose back-references may use a prior 32 KiB
+ * history, as in consecutive MSZIP cabinet blocks. The dictionary is not
+ * included in the output. */
+XXFC_API bool xx_deflate_decompress_memory_with_dictionary(
+    const void *src_buf, size_t src_size, void *dst_buf, size_t dst_buf_size,
+    size_t *out_written, const void *dictionary, size_t dictionary_size,
+    bool is_deflate64);
+
 /* ========================================================================= */
 /* --- Deflate / Deflate64 Compression (Packing)                         --- */
 /* ========================================================================= */

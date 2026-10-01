@@ -10,6 +10,7 @@
 #include "xxfclib/algo/compress/xx_compress.h"
 
 #include "xxfclib/io/xx_io.h"
+#include "xxfclib/global/xx_global.h"
 
 #include <limits.h>
 #include <stdlib.h>
@@ -20,13 +21,12 @@
 #define XX_COMPRESS_CLEAR 256U
 #define XX_COMPRESS_FIRST 257U
 #define XX_COMPRESS_TABLE_SIZE (UINT32_C(1) << XX_COMPRESS_MAX_BITS)
-#define XX_COMPRESS_INPUT_CHUNK 4096U
-#define XX_COMPRESS_OUTPUT_CHUNK 4096U
 
 typedef struct xx_compress_reader_s {
     xx_io_device *device;
     int64_t remaining;
-    uint8_t input[XX_COMPRESS_INPUT_CHUNK];
+    uint8_t *input;
+    size_t capacity;
     size_t input_used;
     size_t input_position;
     uint64_t bits;
@@ -36,19 +36,22 @@ typedef struct xx_compress_reader_s {
 
 typedef struct xx_compress_writer_s {
     xx_io_device *device;
-    uint8_t output[XX_COMPRESS_OUTPUT_CHUNK];
+    uint8_t *output;
+    size_t capacity;
     size_t output_used;
     int64_t output_size;
 } xx_compress_writer;
 
 static bool xx_compress_read_exact(xx_io_device *device, void *buffer,
-                                   size_t size) {
+                                   size_t size, size_t capacity) {
     size_t done = 0U;
     if (!device || (!buffer && size != 0U)) return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        size_t request = size - done;
+        ssize_t amount;
+        if (request > capacity) request = capacity;
+        amount = xx_io_read(device, (uint8_t *)buffer + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -72,8 +75,8 @@ static int xx_compress_read_byte(xx_compress_reader *reader, uint8_t *value) {
     if (!reader || !value) return -1;
     if (reader->input_position == reader->input_used) {
         if (reader->remaining == 0) return 0;
-        wanted = reader->remaining > (int64_t)sizeof(reader->input)
-                     ? sizeof(reader->input)
+        wanted = reader->remaining > (int64_t)reader->capacity
+                     ? reader->capacity
                      : (size_t)reader->remaining;
         amount = xx_io_read(reader->device, reader->input, wanted);
         if (amount <= 0 || (size_t)amount > wanted) return -1;
@@ -157,7 +160,7 @@ static bool xx_compress_emit(xx_compress_writer *writer, uint8_t value,
     }
     writer->output[writer->output_used++] = value;
     ++writer->output_size;
-    return writer->output_used < sizeof(writer->output) ||
+    return writer->output_used < writer->capacity ||
            xx_compress_flush(writer);
 }
 
@@ -183,6 +186,9 @@ bool xx_compress_decode_device(xx_io_device *source, int64_t source_offset,
     uint32_t code;
     int status;
     bool result = false;
+    size_t capacity = xx_get_file_buffer_size();
+    if (!capacity) capacity = XX_DEFAULT_FILE_BUFFER_SIZE;
+    if (capacity > (SIZE_MAX >> 1)) capacity = SIZE_MAX >> 1;
 
     if (output_size) *output_size = -1;
     if (!source || !destination || source_offset < 0 || source_size < 3 ||
@@ -192,7 +198,7 @@ bool xx_compress_decode_device(xx_io_device *source, int64_t source_offset,
     total_size = xx_io_total_size(source);
     if (total_size < source_offset || source_size > total_size - source_offset ||
         xx_io_seek64(source, source_offset, SEEK_SET) != 0 ||
-        !xx_compress_read_exact(source, header, sizeof(header)) ||
+        !xx_compress_read_exact(source, header, sizeof(header), capacity) ||
         !xx_compress_has_header(header, sizeof(header))) {
         return false;
     }
@@ -202,7 +208,11 @@ bool xx_compress_decode_device(xx_io_device *source, int64_t source_offset,
     prefix = (uint16_t *)xx_rt_malloc((size_t)maximum_codes * sizeof(*prefix));
     suffix = (uint8_t *)xx_rt_malloc((size_t)maximum_codes * sizeof(*suffix));
     stack = (uint8_t *)xx_rt_malloc((size_t)maximum_codes * sizeof(*stack));
-    if (!prefix || !suffix || !stack) goto cleanup;
+    reader.input = (uint8_t *)xx_rt_malloc(capacity);
+    writer.output = (uint8_t *)xx_rt_malloc(capacity);
+    if (!prefix || !suffix || !stack || !reader.input || !writer.output) goto cleanup;
+    reader.capacity = capacity;
+    writer.capacity = capacity;
     reader.device = source;
     reader.remaining = source_size - (int64_t)sizeof(header);
     writer.device = destination;
@@ -286,6 +296,8 @@ bool xx_compress_decode_device(xx_io_device *source, int64_t source_offset,
     }
     result = xx_compress_flush(&writer);
 cleanup:
+    xx_rt_free(writer.output);
+    xx_rt_free(reader.input);
     if (result && output_size) *output_size = writer.output_size;
     xx_rt_free(stack);
     xx_rt_free(suffix);

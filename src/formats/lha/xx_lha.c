@@ -69,19 +69,23 @@
  *              symbolic link rather than a directory
  *
  * Methods this reader decodes: -lh0-/-lz4- (stored), -lh1- (LArc
- * adaptive-Huffman LZSS) and -lh4-/-lh5-/-lh6-/-lh7- (block Huffman, 4/8/32/
- * 64 KiB windows). -lzs-, -lz5-, -lhx- and LHARK's retagged -lk7- are listed
- * but not decoded: no decoder for them exists in the library, and the same is
- * true of -lh2- and -lh3-.
+ * adaptive-Huffman LZSS), -lh2- (up to 8 KiB), -lh3- (block Huffman),
+ * -lh4-/-lh5-/-lh6-/-lh7-
+ * (block Huffman, 4/8/32/64 KiB windows), -lhx- (1 MiB block Huffman),
+ * LHARK's retagged -lk7-, and LArc -lzs-/-lz5- LZSS.
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/formats/lha/xx_lha.h"
 
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/algo/lzh/xx_lzh.h"
+#include "xx_lha_legacy_native.h"
+#include "xx_lha_lh2_native.h"
+#include "xx_lha_lh3_native.h"
 
 #include <stdio.h>
 
@@ -139,7 +143,8 @@ static bool xx_lha_range_within(int64_t total, int64_t offset,
 static bool xx_lha_path_safe(const char *name) {
     const char *cursor = name;
 
-    if (!name || !name[0] || name[0] == '/') return false;
+    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' ||
+        xx_rt_strchr(name, ':') || xx_rt_strchr(name, '\\')) return false;
     while (*cursor) {
         const char *end = cursor;
         size_t length;
@@ -185,6 +190,8 @@ static bool xx_lha_add(xx_lha_stream *stream,
 #define XX_LHA_TAG3(a, b, c) (((uint32_t)(a) << 16) | ((uint32_t)(b) << 8) | (uint32_t)(c))
 #define XX_LHA_M_LH0 XX_LHA_TAG3('l', 'h', '0') /* stored */
 #define XX_LHA_M_LH1 XX_LHA_TAG3('l', 'h', '1') /* LZHUF: adaptive Huffman over a 4 KiB window */
+#define XX_LHA_M_LH2 XX_LHA_TAG3('l', 'h', '2') /* dynamic Huffman over an 8 KiB window */
+#define XX_LHA_M_LH3 XX_LHA_TAG3('l', 'h', '3') /* static block Huffman over an 8 KiB window */
 #define XX_LHA_M_LH4 XX_LHA_TAG3('l', 'h', '4')
 #define XX_LHA_M_LH5 XX_LHA_TAG3('l', 'h', '5')
 #define XX_LHA_M_LH6 XX_LHA_TAG3('l', 'h', '6')
@@ -192,6 +199,9 @@ static bool xx_lha_add(xx_lha_stream *stream,
 #define XX_LHA_M_LHD XX_LHA_TAG3('l', 'h', 'd') /* directory (or, with S_IFLNK, a symlink) */
 #define XX_LHA_M_LK7 XX_LHA_TAG3('l', 'k', '7') /* LHARK's -lh7-, a different bitstream; see below */
 #define XX_LHA_M_LZ4 XX_LHA_TAG3('l', 'z', '4') /* LArc "stored" */
+#define XX_LHA_M_LZ5 XX_LHA_TAG3('l', 'z', '5') /* LArc 4 KiB LZSS */
+#define XX_LHA_M_LZS XX_LHA_TAG3('l', 'z', 's') /* LArc 2 KiB LZSS */
+#define XX_LHA_M_LHX XX_LHA_TAG3('l', 'h', 'x') /* UNLHA32 1 MiB LZH */
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
@@ -221,23 +231,15 @@ static uint32_t xx_lha_le32(const uint8_t *data) {
 }
 
 /* CRC-16/ARC, the polynomial the type-0 common extended header uses. */
-static uint16_t xx_lha_crc16(const uint8_t *data, size_t size,
-                             size_t skip_offset) {
-    uint16_t crc = 0U;
-    size_t index;
-
-    for (index = 0U; index < size; ++index) {
-        uint8_t byte = data[index];
-        int bit;
-
-        /* The stored CRC counts as zero in its own computation. */
-        if (index == skip_offset || index == skip_offset + 1U) byte = 0U;
-        crc = (uint16_t)(crc ^ byte);
-        for (bit = 0; bit < 8; ++bit) {
-            crc = (uint16_t)((crc >> 1) ^ ((crc & 1U) ? 0xA001U : 0U));
-        }
-    }
-    return crc;
+static uint16_t xx_lha_crc16(const uint8_t *data, size_t size, size_t skip_offset) {
+    static const uint8_t zero[2] = {0U, 0U};
+    uint16_t crc;
+    size_t skipped;
+    if (skip_offset >= size) return xx_crc16_arc_calc(0U, data, size);
+    crc = xx_crc16_arc_calc(0U, data, skip_offset);
+    skipped = size - skip_offset < 2U ? size - skip_offset : 2U;
+    crc = xx_crc16_arc_calc(crc, zero, skipped);
+    return xx_crc16_arc_calc(crc, data + skip_offset + skipped, size - skip_offset - skipped);
 }
 
 /* The additive header checksum of levels 0 and 1: the low byte of the sum of
@@ -301,6 +303,38 @@ static xx_lha_stream *xx_lha_parse(Abstractformat *self, xx_pd_struct *pd) {
     span = total - self->base_address;
     /* The smallest member is a level-0 header with no name: 24 bytes. */
     if (span < 24) return NULL;
+
+    /* LHarc 1.x DOS carriers place a normal LHA chain immediately after
+     * their declared DOS image, sometimes after a few padding bytes. Limit
+     * recognition to the named stub and validate the complete archive chain. */
+    {
+        uint8_t carrier[128];
+        size_t bytes = span < 128 ? (size_t)span : 128, i;
+        if (!xx_lha_read_at(self, self->base_address, carrier, bytes)) return NULL;
+        if (carrier[0] == 'M' && carrier[1] == 'Z') {
+            static const char banner[] = "LHarc's SFX ";
+            bool identified = false, found = false;
+            int64_t extent;
+            uint16_t pages = xx_lha_le16(carrier + 4), last = xx_lha_le16(carrier + 2);
+            for (i = 0; i + sizeof(banner) - 1 <= bytes; ++i)
+                if (xx_rt_memcmp(carrier + i, banner, sizeof(banner) - 1) == 0) { identified = true; break; }
+            if (!identified || !pages || last >= 512 || bytes < 28 || xx_lha_le16(carrier + 24) >= 64) return NULL;
+            extent = (int64_t)pages * 512 - (last ? 512 - last : 0);
+            if (extent < 28 || extent > span - 24) return NULL;
+            for (i = 0; i < 64 && extent + (int64_t)i <= span - 24; ++i) {
+                uint8_t candidate[XX_LHA_PREFIX] = {0};
+                size_t available = span - extent - (int64_t)i < XX_LHA_PREFIX
+                    ? (size_t)(span - extent - (int64_t)i) : XX_LHA_PREFIX;
+                if (pd && xx_pd_is_stopped(pd)) return NULL;
+                if (!xx_lha_read_at(self, self->base_address + extent + (int64_t)i,
+                                   candidate, available)) return NULL;
+                if (xx_lha_tag_ok(candidate) && candidate[20] <= 1 && candidate[0] >= 22) {
+                    offset = extent + (int64_t)i; found = true; break;
+                }
+            }
+            if (!found) return NULL;
+        }
+    }
 
     stream = (xx_lha_stream *)xx_mem_alloc(sizeof(*stream));
     if (!stream) return NULL;
@@ -599,9 +633,75 @@ static xx_lha_stream *xx_lha_parse(Abstractformat *self, xx_pd_struct *pd) {
             name[out++] = (char)byte;
         }
         name[out] = '\0';
-        /* An unnamed member cannot be listed or extracted, so it is refused
-         * even for a directory. */
-        if (out == 0U) goto fail;
+        /* GEMDOS self-extractor paths can use a literal pipe in an output
+         * name. U3 maps that Windows-reserved character to an underscore.
+         * Keep the mapping wrapper-only; plain LHA retains stored names. */
+        if (((xx_lha *)self)->sanitize_sfx_drive) {
+            for (index = 0; index < (int32_t)out; ++index)
+                if (name[index] == '|') name[index] = '_';
+            /* Map only the legacy name bytes confirmed against U3 in Atari
+             * self-extractors; plain LHA names retain their stored bytes. */
+            for (index = 0; index < (int32_t)out; ++index) {
+                uint8_t encoded[3];
+                size_t encoded_size;
+                switch ((uint8_t)name[index]) {
+                case 0xf7U: /* approximately equal */
+                    encoded[0] = 0xe2U;
+                    encoded[1] = 0x89U;
+                    encoded[2] = 0x88U;
+                    encoded_size = 3U;
+                    break;
+                case 0xe4U: /* capital sigma */
+                    encoded[0] = 0xceU;
+                    encoded[1] = 0xa3U;
+                    encoded_size = 2U;
+                    break;
+                case 0x9aU: /* capital U with diaeresis */
+                    encoded[0] = 0xc3U;
+                    encoded[1] = 0x9cU;
+                    encoded_size = 2U;
+                    break;
+                case 0x99U: /* capital O with diaeresis */
+                    encoded[0] = 0xc3U;
+                    encoded[1] = 0x96U;
+                    encoded_size = 2U;
+                    break;
+                default:
+                    continue;
+                }
+                if (out > (size_t)XX_LHA_MAX_NAME - encoded_size) goto fail;
+                xx_rt_memmove(name + index + encoded_size, name + index + 1,
+                              out - (size_t)index);
+                xx_rt_memmove(name + index, encoded, encoded_size);
+                out += encoded_size - 1U;
+                index += (int32_t)encoded_size - 1;
+            }
+        }
+        /* A GEMDOS/DOS self-extractor can store either a drive-rooted path
+         * (X:/foo) or a drive-relative name (X:foo).  Its wrapper opts in
+         * to the safe X_ spelling that matches U3; ordinary LHA still
+         * rejects drive designators. */
+        if (((xx_lha *)self)->sanitize_sfx_drive && out >= 3U &&
+            ((name[0] >= 'A' && name[0] <= 'Z') ||
+             (name[0] >= 'a' && name[0] <= 'z')) &&
+            name[1] == ':') name[1] = '_';
+        /* GEMDOS self-extractors can store one nameless level-0 member.
+         * U3 exposes it as "_"; apply that fallback only for the validated
+         * SFX wrapper.  A plain LHA archive still needs a stored name. */
+        if (out == 0U) {
+            if (!((xx_lha *)self)->sanitize_sfx_drive || is_dir) goto fail;
+            name[0] = '_';
+            name[1] = '\0';
+            out = 1U;
+        }
+        /* Some LHArc SFX writers prefix one DOS root separator to a member.
+         * Treat that single separator as archive-relative. A doubled prefix
+         * (UNC), drive designator, or parent segment remains unsafe at the
+         * extraction path check. */
+        if (out > 1U && name[0] == '/' && name[1] != '/') {
+            xx_rt_memmove(name, name + 1, out);
+            --out;
+        }
 
         xx_mem_zero(&member, sizeof(member));
         member.name = xx_str_dup(name);
@@ -671,24 +771,21 @@ static bool xx_lha_decode(Abstractformat *self, const xx_lha_member *member,
     else if (member->method == XX_LHA_M_LH5) window = 5;
     else if (member->method == XX_LHA_M_LH6) window = 6;
     else if (member->method == XX_LHA_M_LH7) window = 7;
+    else if (member->method == XX_LHA_M_LHX) window = 8;
+    else if (member->method == XX_LHA_M_LK7) window = 9;
 
-    /* Everything the container defines but this reader cannot produce bytes
-     * for has to fail here, and that is the larger set:
-     *
-     *   -lh2-, -lh3-   dynamic and static Huffman; no decoder in the library
-     *   -lzs-, -lz5-   LArc LZSS (2 KiB and 4 KiB windows)  -- "LHA legacy"
-     *   -lhx-          UNLHA32's extension
-     *   -lk7-          LHARK's own -lh7- bitstream (see the parse)
-     *
-     * None of these has a decoder in xxfclib, so they are listed by the
-     * parse and refused here. Falling through to the stored path instead
-     * would hand back a compressed bitstream dressed as file data, which
+    /* Unknown compression methods must fail here. Falling through to stored
+     * output would hand back a compressed bitstream dressed as file data, which
      * nothing downstream can tell from the real thing.
      *
      * -lhd- reaching this function at all means a symbolic link: real
      * directories are short-circuited by the caller, and a link's payload is
      * a target path rather than file content. */
-    if (!stored && window == 0 && member->method != XX_LHA_M_LH1) return false;
+    if (!stored && window == 0 && member->method != XX_LHA_M_LH1 &&
+        member->method != XX_LHA_M_LH2 &&
+        member->method != XX_LHA_M_LH3 &&
+        member->method != XX_LHA_M_LZ5 && member->method != XX_LHA_M_LZS)
+        return false;
     if (member->method == XX_LHA_M_LHD) return false;
 
     if (stored && member->compressed_size != member->uncompressed_size) {
@@ -738,6 +835,31 @@ static bool xx_lha_decode(Abstractformat *self, const xx_lha_member *member,
             xx_mem_free(plain);
             return false;
         }
+    } else if (member->method == XX_LHA_M_LH2) {
+        if (!xx_lha_lh2_decode_native(packed, (size_t)member->compressed_size,
+                                      plain, plain_size, pd)) {
+            xx_mem_free(packed);
+            xx_mem_free(plain);
+            return false;
+        }
+        written = plain_size;
+    } else if (member->method == XX_LHA_M_LH3) {
+        if (!xx_lha_lh3_decode_native(packed, (size_t)member->compressed_size,
+                                      plain, plain_size, pd)) {
+            xx_mem_free(packed);
+            xx_mem_free(plain);
+            return false;
+        }
+        written = plain_size;
+    } else if (member->method == XX_LHA_M_LZ5 ||
+               member->method == XX_LHA_M_LZS) {
+        if (!xx_lha_legacy_decode_native(member->method, packed,
+                  (size_t)member->compressed_size, plain, plain_size, pd)) {
+            xx_mem_free(packed);
+            xx_mem_free(plain);
+            return false;
+        }
+        written = plain_size;
     } else if (!xx_lzh5_decode_memory(packed, (size_t)member->compressed_size,
                                       plain, plain_size, window, &written)) {
         xx_mem_free(packed);

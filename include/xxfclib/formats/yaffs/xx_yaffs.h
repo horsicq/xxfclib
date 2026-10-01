@@ -66,6 +66,11 @@
  * hold more non-YAFFS tags than YAFFS ones is rejected. See xx_yaffs_detect()
  * in the implementation for the order and the scoring.
  *
+ * The image ends after its last YAFFS chunk (plus any erased chunks after
+ * it) once four chunks in a row carry no YAFFS tags, or where a second image
+ * starts; the format size stops there, and scoring stops there too, so a
+ * small image followed by other data is still recognised.
+ *
  * A file's data lives in chunks scattered through the image and is addressed
  * by (object id, chunk id); the newest copy of each wins. The tree is rebuilt
  * from each object's parent id. Both are attacker controlled, so the parent

@@ -18,6 +18,7 @@
  * The file is data only: nothing in it is run or emulated.
  */
 
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/installshield_7_setup2/xx_installshield_7_setup2.h"
 
@@ -57,9 +58,7 @@
 #define IS7B_WINDOW_START (IS7B_WINDOW - 16U)
 #define IS7B_MATCH_MINIMUM 3U
 #define IS7B_METHOD_LZSS 0x41U /* 'A' */
-#define IS7B_CHUNK 65536U
 /* The record walk reads ahead this much at a time. */
-#define IS7B_VIEW_BUFFER 16384U
 /* A converted name: at most "%XX" per raw byte, then "%_" and up to ten
  * digits of record index, then the terminator. */
 #define IS7B_NAME_BUFFER (3 * IS7B_MAX_STRING + 2 + 10 + 1)
@@ -106,7 +105,10 @@ typedef struct is7b_window_s {
     int64_t limit;  /**< Relative end of data. */
     int64_t start;  /**< Relative offset of buffer[0]. */
     size_t length;
-    uint8_t buffer[IS7B_VIEW_BUFFER];
+    uint8_t *buffer;
+    size_t capacity;
+    /* One complete grammar frame, assembled through bounded transfers. */
+    uint8_t header[IS7B_MAX_HEADER];
 } is7b_window;
 
 typedef struct is7b_decoder_s {
@@ -119,8 +121,8 @@ typedef struct is7b_decoder_s {
     size_t out_length;
     uint32_t window_at;
     uint8_t window[IS7B_WINDOW];
-    uint8_t input[IS7B_CHUNK];
-    uint8_t output[IS7B_CHUNK];
+    uint8_t *input, *output;
+    size_t io_capacity;
 } is7b_decoder;
 
 static uint32_t is7b_le32(const uint8_t *bytes) {
@@ -131,13 +133,16 @@ static uint32_t is7b_le32(const uint8_t *bytes) {
 static bool is7b_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -392,10 +397,16 @@ static const uint8_t *is7b_view(is7b_window *window, int64_t pos,
     int64_t want = window->limit - pos;
     if (pos < 0 || want <= 0) return NULL;
     if (want > IS7B_MAX_HEADER) want = IS7B_MAX_HEADER;
+    if ((uint64_t)want > window->capacity) {
+        if (!is7b_read_at(window->device, window->origin + pos, window->header,
+                         (size_t)want)) return NULL;
+        *avail = (size_t)want;
+        return window->header;
+    }
     if (pos < window->start ||
         pos + want > window->start + (int64_t)window->length) {
         int64_t chunk = window->limit - pos;
-        if (chunk > (int64_t)IS7B_VIEW_BUFFER) chunk = IS7B_VIEW_BUFFER;
+        if ((uint64_t)chunk > window->capacity) chunk = (int64_t)window->capacity;
         window->length = 0U;
         if (!is7b_read_at(window->device, window->origin + pos, window->buffer,
                           (size_t)chunk))
@@ -417,13 +428,18 @@ static bool is7b_walk(Abstractformat *format, is7b_member *items,
                       size_t *count, int64_t *end, xx_pd_struct *pd) {
     is7b_window *window;
     int64_t total, pos = 0;
-    size_t records = 0U;
+    size_t records = 0U, io_capacity = xx_get_file_buffer_size();
     bool ok = false;
     if (!format || !format->device || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total <= format->base_address) return false;
-    window = (is7b_window *)xx_mem_alloc(sizeof(*window));
+    if ((uint64_t)(total - format->base_address) < io_capacity)
+        io_capacity = (size_t)(total - format->base_address);
+    if (io_capacity > (size_t)-1 - sizeof(*window)) return false;
+    window = (is7b_window *)xx_mem_alloc(sizeof(*window) + io_capacity);
     if (!window) return false;
+    window->buffer = (uint8_t *)(window + 1);
+    window->capacity = io_capacity;
     window->device = format->device;
     window->origin = format->base_address;
     window->limit = total - format->base_address;
@@ -628,8 +644,8 @@ static bool is7b_next(is7b_decoder *decoder, uint8_t *value) {
     if (decoder->in_at == decoder->in_length) {
         size_t chunk;
         if (decoder->remaining <= 0) return false;
-        chunk = decoder->remaining > (int64_t)IS7B_CHUNK
-                    ? (size_t)IS7B_CHUNK
+        chunk = (uint64_t)decoder->remaining > decoder->io_capacity
+                    ? decoder->io_capacity
                     : (size_t)decoder->remaining;
         if (!is7b_read_at(decoder->source, decoder->offset, decoder->input,
                           chunk))
@@ -647,7 +663,7 @@ static bool is7b_emit(is7b_decoder *decoder, uint8_t value, xx_pd_struct *pd) {
     decoder->window[decoder->window_at] = value;
     decoder->window_at = (decoder->window_at + 1U) & (IS7B_WINDOW - 1U);
     decoder->output[decoder->out_length++] = value;
-    return decoder->out_length < IS7B_CHUNK || is7b_flush(decoder, pd);
+    return decoder->out_length < decoder->io_capacity || is7b_flush(decoder, pd);
 }
 
 /* Decode member @p member into @p destination (or only check that it
@@ -661,10 +677,15 @@ static bool is7b_decode(xx_io_device *source, const is7b_member *member,
     unsigned bit = 0U;
     uint8_t flags = 0U;
     bool ok = false;
+    size_t io_capacity = xx_get_file_buffer_size();
     if (!source || member->size < IS7B_SZDD_HEADER || member->data_offset < 0)
         return false;
-    decoder = (is7b_decoder *)xx_mem_alloc(sizeof(*decoder));
+    if (io_capacity > ((size_t)-1 - sizeof(*decoder)) / 2U) return false;
+    decoder = (is7b_decoder *)xx_mem_alloc(sizeof(*decoder) + io_capacity * 2U);
     if (!decoder) return false;
+    decoder->io_capacity = io_capacity;
+    decoder->input = (uint8_t *)(decoder + 1);
+    decoder->output = decoder->input + io_capacity;
     decoder->source = source;
     decoder->destination = destination;
     decoder->offset = member->data_offset + IS7B_SZDD_HEADER;

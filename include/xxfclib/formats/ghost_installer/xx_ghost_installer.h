@@ -58,6 +58,13 @@ typedef struct xx_ghost_installer {
     uint32_t segment_count;
     uint32_t first_trailer; /**< 34, 26, or 0 when the first trailer is absent. */
     bool is_sfx;            /**< Payload found behind a PE image. */
+    /** A later segment was announced (a trailer, then the masked signature)
+     *  but could not be read: damaged, truncated, or over a cap.  Its
+     *  members are missing, so the listing ends with one placeholder record
+     *  named "[damaged segment N]" that never extracts, and the format size
+     *  covers that segment. */
+    bool damaged_segment;
+    uint32_t damaged_index; /**< 1-based number of that segment, else 0. */
 } xx_ghost_installer;
 
 typedef xx_ghost_installer xx_ghost_installer_t;
@@ -98,6 +105,9 @@ XXFC_API uint32_t xx_ghost_installer_get_segment_count(
     const xx_ghost_installer *archive);
 /** True when the package sits behind a PE image (setup.exe). */
 XXFC_API bool xx_ghost_installer_is_sfx(const xx_ghost_installer *archive);
+/** True when a later segment was announced but could not be read. */
+XXFC_API bool xx_ghost_installer_has_damaged_segment(
+    const xx_ghost_installer *archive);
 
 #ifdef __cplusplus
 }

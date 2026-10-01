@@ -37,12 +37,15 @@ extern "C" {
  *   [u32 LE checksum]   only in the two-field layout; 0 means none
  *   u32 LE  packed size
  *   packed bytes: a zlib stream, except that some builds store the
- *                 first file (mmfs2.dll) as a plain MZ image
+ *                 first file (mmfs2.dll) as a plain MZ image; a later
+ *                 record without a zlib header is copied as it is
  *
  * The layout is not self-describing, so the first record is probed with
- * both name encodings and both size layouts, and exactly one reading has
- * to leave an MZ image or a zlib header behind the size fields; that
- * answer applies to the whole pack.  The checksum is the rotate-left-by-1
+ * both name encodings.  Its first dword picks the size layout, as in both
+ * references: 0 is the empty checksum of the two-field layout, anything
+ * else the single packed size.  Exactly one encoding has to leave an MZ
+ * image or a zlib header behind the size fields; that answer applies to
+ * the whole pack.  The checksum is the rotate-left-by-1
  * sum of the unpacked file taken as little-endian dwords, then of its
  * remaining tail bytes one at a time.
  *

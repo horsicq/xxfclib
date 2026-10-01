@@ -14,7 +14,8 @@
  * encoder actually writes.  The full list, and why each one is safe for real
  * files, is in xx_bmp.h.
  *
- * Not an archive: binwalk's extractor carves the image itself.
+ * The component archive API publishes the DIB header, optional palette/masks
+ * and encoded pixel array separately. It does not decode pixels or BMP RLE.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -22,6 +23,9 @@
 
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
+
+#include "../bmp/xx_component_archive_impl.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -296,6 +300,7 @@ void xx_bmp_init(xx_bmp *bmp, xx_io_device *dev, int64_t base_address) {
     bmp->format.handle_base_info = xx_bmp_handle_base_info;
     bmp->format.get_format_size = xx_bmp_get_format_size;
     bmp->format.destroy = xx_bmp_vtable_destroy;
+    xx_components_install(&bmp->format);
 }
 
 xx_bmp *xx_bmp_create(xx_io_device *dev, int64_t base_address) {
@@ -368,6 +373,7 @@ bool xx_bmp_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     self->is_archive = false;
     self->is_executable = false;
     self->is_crypted = false;
+    if (!xx_components_finish(self, pd)) return false;
     self->is_valid = true;
     self->base_info_handled = true;
     return true;
@@ -409,4 +415,16 @@ uint32_t xx_bmp_get_dib_header_size(const xx_bmp *bmp) {
 
 uint32_t xx_bmp_get_data_offset(const xx_bmp *bmp) {
     return bmp ? bmp->data_offset : 0U;
+}
+
+/* Encoded/structural component members; this does not decode media. */
+static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd) {
+
+    xx_bmp *b = (xx_bmp *)f;
+    int64_t palette = 14 + b->dib_header_size;
+    (void)pd;
+    return xx_component_add(f,s,14,b->dib_header_size,"dib-header") &&
+        (palette == b->data_offset || xx_component_add(f,s,palette,b->data_offset-palette,"palette-and-masks")) &&
+        xx_component_add(f,s,b->data_offset,b->file_size-b->data_offset,
+            b->compression == XX_BMP_BI_JPEG ? "jpeg-payload" : b->compression == XX_BMP_BI_PNG ? "png-payload" : "encoded-pixel-array");
 }

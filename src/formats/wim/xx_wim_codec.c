@@ -25,14 +25,21 @@
  *         also uses.
  *
  * Input past the end of a chunk reads as zero bits, the way every reference
- * decoder treats it; output is always bounded by the caller's size, so a
- * hostile chunk can only fail or produce wrong bytes, which the reader then
- * rejects by SHA-1.
+ * decoder treats it, but only for the few words a decoder's look-ahead
+ * needs (WC_SLACK_BYTES): a decoder that keeps consuming past that point
+ * fails, so a chunk of a few zero bytes cannot pass for a full chunk of
+ * literals.  Output is always bounded by the caller's size, so a hostile
+ * chunk can only fail or produce wrong bytes, which the reader then rejects
+ * by SHA-1.
  */
 #include "xxfclib/rt/xx_rt.h"
 #include "xx_wim_codec.h"
 
 #include "xxfclib/memory/xx_memory.h"
+
+/* Bytes of implied zero input a decoder may consume past the end of its
+ * chunk (bit-buffer look-ahead and range-coder normalisation), in bytes. */
+#define WC_SLACK_BYTES 32U
 
 static uint32_t wc_le16(const uint8_t *b) {
     return (uint32_t)b[0] | ((uint32_t)b[1] << 8U);
@@ -167,6 +174,7 @@ static bool xpress_decode(wim_huff *h, const uint8_t *in, size_t in_size,
             extra += 16;
             cur += 2U;
         }
+        if (cur > in_size + WC_SLACK_BYTES) return false;
         if (sym < 256) {
             out[pos++] = (uint8_t)sym;
             continue;
@@ -372,6 +380,7 @@ static bool lzx_decode(lzx_state *x, const uint8_t *in, size_t in_size,
         unsigned type = lzx_read(&b, 3U);
         uint32_t block;
         size_t block_start = target;
+        if (b.pos > in_size + WC_SLACK_BYTES) return false;
         if (lzx_read(&b, 1U)) {
             block = 32768U;
         } else {
@@ -404,7 +413,7 @@ static bool lzx_decode(lzx_state *x, const uint8_t *in, size_t in_size,
                 int sym = lzx_symbol(&b, &x->main);
                 unsigned header, slot;
                 uint32_t length, offset;
-                if (sym < 0) return false;
+                if (sym < 0 || b.pos > in_size + WC_SLACK_BYTES) return false;
                 if (sym < 256) {
                     out[pos++] = (uint8_t)sym;
                     continue;
@@ -541,6 +550,7 @@ typedef struct lzms_rc_s {
 typedef struct lzms_bits_s {
     const uint8_t *in;
     size_t next; /* words not yet loaded, counted from the start */
+    size_t pad;  /* zero words supplied after the start was reached */
     uint64_t buf;
     unsigned count;
 } lzms_bits;
@@ -618,6 +628,8 @@ static void lzms_refill(lzms_bits *b) {
         if (b->next != 0U) {
             --b->next;
             word = wc_le16(b->in + b->next * 2U);
+        } else {
+            ++b->pad;
         }
         b->buf |= (uint64_t)word << (48U - b->count);
         b->count += 16U;
@@ -824,6 +836,7 @@ static bool lzms_decode(lzms_state *s, const uint8_t *in, size_t in_size,
     if (rc.code >= rc.range) return false;
     bits.in = in;
     bits.next = in_size / 2U;
+    bits.pad = 0U;
     bits.buf = 0U;
     bits.count = 0U;
     for (i = 0U; i < 4U; ++i) {
@@ -847,6 +860,12 @@ static bool lzms_decode(lzms_state *s, const uint8_t *in, size_t in_size,
         !lzms_code_init(s, &s->delta_power, LZMS_POWER_SYMS, 512U))
         return false;
     while (pos < out_size) {
+        /* The range coder reads words forwards and the bit stream reads
+         * them backwards; together they may overrun the chunk only by the
+         * look-ahead slack. */
+        if (rc.next + (rc.words - bits.next) + bits.pad >
+            rc.words + WC_SLACK_BYTES / 2U)
+            return false;
         if (lzms_bit(&rc, s->main_probs, &main_state, 16U) == 0U) {
             int lit = lzms_symbol(s, &s->literal, &bits);
             if (lit < 0) return false;

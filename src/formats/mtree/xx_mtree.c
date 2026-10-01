@@ -7,6 +7,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/mtree/xx_mtree.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -23,7 +24,6 @@
 #define XX_MTREE_MAX_ENTRIES 100000U
 #define XX_MTREE_MAX_LINES 1000000U
 #define XX_MTREE_MAX_NAME_SIZE 32768U
-#define XX_MTREE_READ_CHUNK_SIZE 4096U
 
 typedef enum mtree_key_e {
     MTREE_KEY_CHECKFS = 0,
@@ -132,6 +132,7 @@ static bool mtree_add_i64(int64_t value, int64_t increment,
 
 static bool mtree_read_relative(Abstractformat *format, int64_t relative,
                                 void *buffer, size_t size) {
+    const size_t io_capacity = xx_get_file_buffer_size();
     int64_t absolute;
     size_t done = 0U;
     if (!format || !format->device || (!buffer && size != 0U) ||
@@ -141,9 +142,11 @@ static bool mtree_read_relative(Abstractformat *format, int64_t relative,
         return false;
     }
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(format->device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -181,11 +184,11 @@ static bool mtree_append(char **buffer, size_t *length, size_t *capacity,
     return true;
 }
 
-static bool mtree_read_physical_line(Abstractformat *format,
+static bool mtree_read_physical_line_buffered(Abstractformat *format,
                                      int64_t relative_offset, char **line,
                                      size_t *line_length,
                                      int64_t *next_offset,
-                                     bool *had_newline, xx_pd_struct *pd) {
+                                     bool *had_newline, xx_pd_struct *pd, uint8_t *buffer, size_t buffer_capacity) {
     char *result = NULL;
     size_t result_length = 0U;
     size_t result_capacity = 0U;
@@ -206,22 +209,21 @@ static bool mtree_read_physical_line(Abstractformat *format,
     if (relative_offset >= archive_size) return false;
     current = relative_offset;
     while (current < archive_size && result_length < XX_MTREE_MAX_LINE_SIZE) {
-        uint8_t chunk[XX_MTREE_READ_CHUNK_SIZE];
         int64_t remaining = archive_size - current;
-        size_t chunk_size = remaining > (int64_t)sizeof(chunk)
-                                ? sizeof(chunk)
+        size_t chunk_size = (uint64_t)remaining > (uint64_t)buffer_capacity
+                                ? buffer_capacity
                                 : (size_t)remaining;
         size_t index;
         if ((pd && xx_pd_is_stopped(pd)) ||
-            !mtree_read_relative(format, current, chunk, chunk_size)) {
+            !mtree_read_relative(format, current, buffer, chunk_size)) {
             xx_mem_free(result);
             return false;
         }
         for (index = 0U; index < chunk_size; ++index) {
-            if (chunk[index] == '\n') break;
+            if (buffer[index] == '\n') break;
         }
         if (!mtree_append(&result, &result_length, &result_capacity,
-                          (const char *)chunk, index)) {
+                          (const char *)buffer, index)) {
             xx_mem_free(result);
             return false;
         }
@@ -253,6 +255,20 @@ static bool mtree_read_physical_line(Abstractformat *format,
     *line_length = result_length;
     *next_offset = archive_size;
     return true;
+}
+
+static bool mtree_read_physical_line(Abstractformat *format,
+                                     int64_t relative_offset, char **line,
+                                     size_t *line_length,
+                                     int64_t *next_offset,
+                                     bool *had_newline, xx_pd_struct *pd) {
+    size_t buffer_capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
+    bool result;
+    if (!buffer) return false;
+    result = mtree_read_physical_line_buffered(format, relative_offset, line, line_length, next_offset, had_newline, pd, buffer, buffer_capacity);
+    xx_mem_free(buffer);
+    return result;
 }
 
 static bool mtree_read_logical_line(Abstractformat *format,

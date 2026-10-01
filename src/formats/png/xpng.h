@@ -22,7 +22,7 @@
 #ifndef CDIE_XPNG_H
 #define CDIE_XPNG_H
 
-#include "../../die_engine/die_engine_bin.h"
+#include "../../die_engine/xx_die_engine_bin.h"
 
 #ifdef __cplusplus
 extern "C" {

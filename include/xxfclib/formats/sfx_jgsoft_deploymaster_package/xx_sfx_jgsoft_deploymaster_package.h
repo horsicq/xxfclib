@@ -22,9 +22,10 @@ extern "C" {
  * behind the last section's raw data) holds, back to back:
  *
  *   bzip2 stream          the setup engine the stub unpacks to a temporary
- *                         file and runs ("Deploy.exe" in 2.0, "dpy.exe" in
- *                         2.7); it has no length field and ends at the
- *                         byte that closes the stream's end-of-stream
+ *                         file and runs (the package does not store its
+ *                         name; the reader always publishes it as
+ *                         "Deploy.exe"); it has no length field and ends at
+ *                         the byte that closes the stream's end-of-stream
  *                         marker and CRC
  *   u32 0xFFFFFFFF, u32 n, zlib[n]   the user-interface string table
  *                                    (CRLF-separated lines)
@@ -53,10 +54,14 @@ extern "C" {
  *   u32 n, zlib[n]        one record per installed file, where the table
  *                         points
  *
- * An Authenticode certificate may follow the last record.  The format size
- * runs to the end of the last file record, or of such a certificate right
- * behind it (to the end of the device when no file record is present or a
- * record is cut off).
+ * An Authenticode certificate (named by the PE security directory) may
+ * follow the last record.  The format size runs to the end of the last file
+ * record, or to the end of such a certificate right behind it, even when
+ * other data follows the certificate (to the end of the device when no file
+ * record is present or a record is cut off).
+ *
+ * File records never share bytes: a table entry whose record overlaps
+ * another entry's record is counted as damaged and fails to unpack.
  *
  * Members: the setup engine as "Deploy.exe", then every table entry that
  * has data in this file, named from the project strings (specials) and the
@@ -82,6 +87,16 @@ typedef struct xx_sfx_jgsoft_deploymaster_package {
                                     unreadable: listed, fail to unpack. */
     uint64_t number_of_records;
     bool walked;               /**< False: the fallback two-member view. */
+    /* Internal: the result of the overlay search (which scans the bzip2
+     * engine for its end), kept so that check_is_valid, handle_base_info
+     * and create_archive_records_reading search only once. */
+    int32_t locate_state;      /* 0 not searched, 1 found, -1 rejected */
+    int64_t locate_total;      /* device size the result belongs to */
+    int64_t locate_overlay;
+    int64_t locate_bz_end;
+    int64_t locate_end;
+    int64_t locate_cert_offset;
+    int64_t locate_cert_end;
 } xx_sfx_jgsoft_deploymaster_package;
 
 typedef xx_sfx_jgsoft_deploymaster_package

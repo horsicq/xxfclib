@@ -6,50 +6,16 @@
  *  @brief "WRZL" single-stream compressed file.
  */
 
-/* WHERE THE LAYOUT COMES FROM.  U3's recognition predicate (FUN_005710d0,
- * reached from VMT slot 0 at 0x005713c0):
+/* WRZL carries Kurt Haenen's LZRW1/KH blocks (published in SWAG
+ * ARCHIVES/0041.PAS). The eight-byte lead is "WRZL" plus u32 total decoded
+ * size. Each following block has u16 little-endian packed length and starts
+ * with 0x40 (coded) or 0x80 (copied). Each block yields 32 KiB, except the
+ * last, whose length follows from the total size. The 0x40 block uses
+ * high-bit-first, 16-token control words, 12-bit backward distances, and a
+ * repeated-byte escape. All six local corpus files decode to the declared
+ * size; DUMMY.DA$ matches the U3 reference output byte-for-byte.
  *
- *   u32 @ 0x00 == 0x4c5a5257  ("WRZL")
- *   i32 @ 0x04 >= 0
- *   u16 @ 0x08 != 0
- *   byte @ 0x0a: (byte - 0x40) must be below 0x48, and (byte - 0x20) must be
- *                set in a 128-bit table at 0x00571138
- *
- *   header, 12 bytes at offset 0, little endian:
- *     0x00  4    "WRZL"
- *     0x04  u32  UNCOMPRESSED size
- *     0x08  u16  unidentified, nonzero
- *     0x0a  1    0x40 in every sample
- *     0x0b  1    0x00 or 0x02
- *     0x0c  ..   packed bytes to end of file
- *
- * FIELD 0x04 IS CONFIRMED.  The reference unpacker reports 14118 bytes for
- * DUMMY.DA$ and that is exactly the u32 at offset 4 of that file; the same
- * holds for the other five samples in F:\ARC\ARC\WRZL (67498, 139350, 68054,
- * 3646078, 132022).  So the uncompressed size published by this reader is a
- * real stored field, not an estimate.
- *
- * THE BIT TABLE AT 0x0a IS NOT PORTED, and this is deliberate.  The table
- * lives in U3's data segment; the shipped binary is packed, so its contents
- * could not be read out, and inventing a membership set would be guessing.
- * What IS ported is U3's own range test - the byte must lie in 0x40..0x87 -
- * which is the part that can be justified.  All six corpus samples carry
- * 0x40.  The consequence is stated plainly: this reader is very slightly more
- * permissive at that one byte than U3 is.  With a four-byte magic in front of
- * it that is not a practical risk.
- *
- * WHAT THIS READER DOES NOT DO.  The codec is not identified.  It is not one
- * of the stream decoders this library carries, and the container offers no
- * CRC and no other anchor by which a candidate decode could be checked -
- * only the plaintext length.  The reference unpacker does decode it, so the
- * algorithm exists and is recoverable; it is simply not recovered here, and
- * unpacking fails closed rather than emitting a guess.
- *
- * The record IS published even so: the stream's exact packed extent and its
- * real uncompressed length are facts the container states, and a caller
- * listing this file should see them.  The member has no name in the container
- * - the reference unpacker falls back to the host file's name - so a neutral
- * one is published rather than one invented from outside the format.
+ * The container has no member name; the reader uses a neutral output leaf.
  */
 
 #ifndef XXFCLIB_FORMAT_WRZL_H
@@ -62,13 +28,10 @@
 extern "C" {
 #endif
 
-/** Header magic and size. */
+/** Header magic and size, before the first length-prefixed block. */
 #define XX_WRZL_SIGNATURE "WRZL"
 #define XX_WRZL_SIGNATURE_SIZE 4U
-#define XX_WRZL_HEADER_SIZE 12U
-/** Range U3 imposes on the byte at 0x0a. */
-#define XX_WRZL_MODE_MIN 0x40U
-#define XX_WRZL_MODE_MAX 0x87U
+#define XX_WRZL_HEADER_SIZE 8U
 /** Ceiling on the declared uncompressed size. */
 #define XX_WRZL_MAX_UNCOMPRESSED_SIZE ((int64_t)1024 * 1024 * 1024)
 
@@ -81,9 +44,9 @@ struct xx_wrzl {
     int64_t packed_offset; /**< Absolute offset of the packed stream. */
     int64_t packed_size;   /**< Packed length, measured from the file. */
     int64_t unpacked_size; /**< Stored uncompressed length (u32 at 0x04). */
-    uint16_t opaque_08;    /**< u16 at 0x08.  Never interpreted. */
-    uint8_t mode;          /**< Byte at 0x0a. */
-    uint8_t flags;         /**< Byte at 0x0b. */
+    uint16_t opaque_08;    /**< First block's packed length. */
+    uint8_t mode;          /**< First block's 0x40/0x80 codec marker. */
+    uint8_t flags;         /**< First block's next byte, retained for ABI. */
 };
 
 XXFC_API void xx_wrzl_init(xx_wrzl *archive, xx_io_device *device,

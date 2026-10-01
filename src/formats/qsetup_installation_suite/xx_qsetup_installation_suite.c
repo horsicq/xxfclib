@@ -392,7 +392,11 @@ static bool qs_is_device(const uint8_t *name, size_t length) {
             if (qs_upper((char)name[k]) != n[k]) break;
         if (k == stem && n[k] == 0) return true;
     }
-    if (stem == 4U && name[3] >= '0' && name[3] <= '9') {
+    /* COM0-9 / LPT0-9, and the superscript digits (cp1252 0xB9, 0xB2,
+     * 0xB3) that Windows also reserves. */
+    if (stem == 4U && ((name[3] >= '0' && name[3] <= '9') ||
+                       name[3] == 0xB9U || name[3] == 0xB2U ||
+                       name[3] == 0xB3U)) {
         char a = qs_upper((char)name[0]), b = qs_upper((char)name[1]),
              c = qs_upper((char)name[2]);
         if ((a == 'C' && b == 'O' && c == 'M') ||
@@ -505,42 +509,124 @@ static uint32_t qs_fold_next(const char **s) {
     }
 }
 
-/* An open-addressing set keeps the duplicate check linear. */
-static uint32_t qs_hash(const char *s) {
-    uint32_t h = 2166136261U, cp;
-    while ((cp = qs_fold_next(&s)) != 0U) {
-        h ^= cp;
-        h *= 16777619U;
+/* Folded three-way compare: <0, 0 or >0.  Identical ASCII bytes fold
+ * alike, so a shared prefix is skipped without folding. */
+static int qs_compare(const char *a, const char *b) {
+    for (;;) {
+        uint32_t x, y;
+        while (*a && *a == *b && (uint8_t)*a < 0x80U) {
+            ++a;
+            ++b;
+        }
+        x = qs_fold_next(&a);
+        y = qs_fold_next(&b);
+        if (x != y) return x < y ? -1 : 1;
+        if (x == 0U) return 0;
     }
-    return h;
 }
 
-static bool qs_same(const char *a, const char *b) {
-    for (;;) {
-        uint32_t x = qs_fold_next(&a), y = qs_fold_next(&b);
-        if (x != y) return false;
-        if (x == 0U) return true;
-    }
-}
+/* The taken names live in an AVL tree ordered by the folded compare, so a
+ * lookup or insert costs O(log n) compares whatever names the file chooses
+ * (an unkeyed hash set let a crafted file pile every name into one probe
+ * cluster).  Nodes come from one array sized for every name that is ever
+ * inserted; the height stays below 1.45 * log2(n + 2), about 25 for the
+ * member cap, which bounds the recursion. */
+typedef struct qs_node_s {
+    const char *key;
+    uint32_t left;  /**< Node index + 1; 0 is none. */
+    uint32_t right;
+    int32_t height;
+} qs_node;
 
 typedef struct qs_names_s {
-    const char **slots;
-    size_t mask;
+    qs_node *nodes;
+    uint32_t count;
+    uint32_t capacity;
+    uint32_t root; /**< Node index + 1; 0 is empty. */
 } qs_names;
 
+#define QS_NODE(set, i) (&(set)->nodes[(i) - 1U])
+
+static int32_t qs_height(const qs_names *set, uint32_t n) {
+    return n ? QS_NODE(set, n)->height : 0;
+}
+
+static void qs_fix_height(qs_names *set, uint32_t n) {
+    int32_t l = qs_height(set, QS_NODE(set, n)->left),
+            r = qs_height(set, QS_NODE(set, n)->right);
+    QS_NODE(set, n)->height = (l > r ? l : r) + 1;
+}
+
+static uint32_t qs_rotate_right(qs_names *set, uint32_t n) {
+    uint32_t l = QS_NODE(set, n)->left;
+    QS_NODE(set, n)->left = QS_NODE(set, l)->right;
+    QS_NODE(set, l)->right = n;
+    qs_fix_height(set, n);
+    qs_fix_height(set, l);
+    return l;
+}
+
+static uint32_t qs_rotate_left(qs_names *set, uint32_t n) {
+    uint32_t r = QS_NODE(set, n)->right;
+    QS_NODE(set, n)->right = QS_NODE(set, r)->left;
+    QS_NODE(set, r)->left = n;
+    qs_fix_height(set, n);
+    qs_fix_height(set, r);
+    return r;
+}
+
+static uint32_t qs_balance(qs_names *set, uint32_t n) {
+    int32_t d;
+    qs_fix_height(set, n);
+    d = qs_height(set, QS_NODE(set, n)->left) -
+        qs_height(set, QS_NODE(set, n)->right);
+    if (d > 1) {
+        uint32_t l = QS_NODE(set, n)->left;
+        if (qs_height(set, QS_NODE(set, l)->left) <
+            qs_height(set, QS_NODE(set, l)->right))
+            QS_NODE(set, n)->left = qs_rotate_left(set, l);
+        return qs_rotate_right(set, n);
+    }
+    if (d < -1) {
+        uint32_t r = QS_NODE(set, n)->right;
+        if (qs_height(set, QS_NODE(set, r)->right) <
+            qs_height(set, QS_NODE(set, r)->left))
+            QS_NODE(set, n)->right = qs_rotate_right(set, r);
+        return qs_rotate_left(set, n);
+    }
+    return n;
+}
+
+/* The caller has checked that the key is absent and a node is free. */
+static uint32_t qs_insert_at(qs_names *set, uint32_t n, uint32_t fresh) {
+    if (!n) return fresh;
+    if (qs_compare(QS_NODE(set, fresh)->key, QS_NODE(set, n)->key) < 0)
+        QS_NODE(set, n)->left = qs_insert_at(set, QS_NODE(set, n)->left, fresh);
+    else
+        QS_NODE(set, n)->right =
+            qs_insert_at(set, QS_NODE(set, n)->right, fresh);
+    return qs_balance(set, n);
+}
+
 static bool qs_names_has(const qs_names *set, const char *name) {
-    size_t at = qs_hash(name) & set->mask;
-    while (set->slots[at]) {
-        if (qs_same(set->slots[at], name)) return true;
-        at = (at + 1U) & set->mask;
+    uint32_t n = set->root;
+    while (n) {
+        int c = qs_compare(name, QS_NODE(set, n)->key);
+        if (c == 0) return true;
+        n = c < 0 ? QS_NODE(set, n)->left : QS_NODE(set, n)->right;
     }
     return false;
 }
 
-static void qs_names_insert(qs_names *set, const char *name) {
-    size_t at = qs_hash(name) & set->mask;
-    while (set->slots[at]) at = (at + 1U) & set->mask;
-    set->slots[at] = name;
+static bool qs_names_insert(qs_names *set, const char *name) {
+    qs_node *node;
+    if (set->count >= set->capacity) return false;
+    node = &set->nodes[set->count++];
+    node->key = name;
+    node->left = node->right = 0U;
+    node->height = 1;
+    set->root = qs_insert_at(set, set->root, set->count);
+    return true;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -623,20 +709,57 @@ static bool qs_read_header(Abstractformat *format, int64_t offset,
     return true;
 }
 
+/* "stem_k.ext" from a safe code-page name (k inserted before the last
+ * dot, or appended), or NULL when that is not a safe name or memory runs
+ * out; *failed tells the two apart. */
+static char *qs_suffixed_name(const uint8_t *raw, size_t length, uint32_t k,
+                              bool *failed) {
+    uint8_t buffer[QS_MAX_NAME + 1U];
+    char digits[16];
+    size_t dot = length, d, n, o = 0U;
+    *failed = false;
+    while (dot > 0U && raw[dot - 1U] != '.') --dot;
+    dot = dot ? dot - 1U : length;
+    if (dot == 0U) dot = length; /* ".profile": suffix the whole name */
+    n = (size_t)xx_rt_snprintf(digits, sizeof(digits), "_%lu",
+                               (unsigned long)k);
+    if (n == 0U || n >= sizeof(digits) || length + n > QS_MAX_NAME)
+        return NULL;
+    xx_rt_memcpy(buffer, raw, dot);
+    o = dot;
+    for (d = 0U; d < n; ++d) buffer[o++] = (uint8_t)digits[d];
+    if (length > dot) {
+        xx_rt_memcpy(buffer + o, raw + dot, length - dot);
+        o += length - dot;
+    }
+    if (!qs_name_safe(buffer, o)) return NULL;
+    {
+        char *name = qs_make_name(buffer, o);
+        if (!name) *failed = true;
+        return name;
+    }
+}
+
 /* Output names: the installed name (index key dropped), then the keyed name,
- * then "file_NNNN", then "file_NNNN_k", whichever no earlier member took. */
-static bool qs_assign_names(qs_list *list) {
+ * then "name_1.ext" .. "name_16.ext", then "file_NNNN", then "file_NNNN_k",
+ * whichever no earlier member took. */
+static bool qs_assign_names(qs_list *list, xx_pd_struct *pd) {
     qs_names set;
-    size_t slots = 64U, index;
+    size_t index;
     bool ok = true;
-    while (slots < list->count * 2U) slots *= 2U;
-    set.slots = (const char **)xx_mem_calloc(slots, sizeof(char *));
-    if (!set.slots) return false;
-    set.mask = slots - 1U;
+    xx_mem_zero(&set, sizeof(set));
+    if (list->count > QS_MAX_MEMBERS) return false;
+    set.capacity = (uint32_t)(list->count ? list->count : 1U);
+    set.nodes = (qs_node *)xx_mem_calloc(set.capacity, sizeof(qs_node));
+    if (!set.nodes) return false;
     for (index = 0U; index < list->count && ok; ++index) {
         qs_member *m = &list->items[index];
         char *candidate = NULL;
         uint32_t suffix;
+        if ((index & 255U) == 0U && qs_stopped(pd)) {
+            ok = false;
+            break;
+        }
         if (m->header_ok && qs_name_safe(m->raw, m->raw_length)) {
             const uint8_t *plain = m->raw;
             size_t plain_length = m->raw_length, k;
@@ -660,6 +783,19 @@ static bool qs_assign_names(qs_list *list) {
                     break;
                 }
             }
+            for (suffix = 1U;
+                 candidate && qs_names_has(&set, candidate) && suffix <= 16U;
+                 ++suffix) {
+                bool failed;
+                xx_mem_free(candidate);
+                candidate = qs_suffixed_name(plain, plain_length, suffix,
+                                             &failed);
+                if (failed) {
+                    ok = false;
+                    break;
+                }
+            }
+            if (!ok) break;
         }
         /* At most count + 1 generated names are ever tried, and the set
          * holds at most count names. */
@@ -676,9 +812,12 @@ static bool qs_assign_names(qs_list *list) {
             break;
         }
         m->name = candidate;
-        qs_names_insert(&set, m->name);
+        if (!qs_names_insert(&set, m->name)) {
+            ok = false;
+            break;
+        }
     }
-    xx_mem_free((void *)set.slots);
+    xx_mem_free(set.nodes);
     return ok;
 }
 
@@ -756,7 +895,7 @@ static bool qs_walk(Abstractformat *format, qs_list **result, bool members,
     }
     if (list->count == 0U) goto done;
     list->end = position;
-    if (members && !qs_assign_names(list)) goto done;
+    if (members && !qs_assign_names(list, pd)) goto done;
     ok = true;
 done:
     if (buffer) xx_mem_free(buffer);

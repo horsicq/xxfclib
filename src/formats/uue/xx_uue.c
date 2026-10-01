@@ -12,13 +12,14 @@
  * line grammar, the per-block alphabet choice, the detection window and the
  * multi-block walk below are this reader's own code.
  *
- * Everything is read through a fixed 8 KiB line reader; no pass allocates
+ * Everything is read through a captured global-size line reader; no pass allocates
  * more than that, except the name table of a listing (8 bytes per member,
  * at most 65,536 members).  check_is_valid parses no more than the first
  * block's first 64 KiB, twice at worst (once per alphabet).
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/uue/xx_uue.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -53,7 +54,6 @@
 #define UUE_MAX_BLOCKS 65536U
 #define UUE_MAX_MODE_DIGITS 6U
 #define UUE_NAME_MAX 240U
-#define UUE_CHUNK 8192U
 #define UUE_PAYLOAD_NAME "payload"
 
 static const char uue_xx_alphabet[] =
@@ -69,7 +69,8 @@ typedef struct uue_reader_s {
     int64_t buffer_offset; /**< Offset of buffer[0], relative to the base. */
     size_t buffer_fill;
     bool failed;           /**< Read error or stop request. */
-    uint8_t buffer[UUE_CHUNK];
+    uint8_t *buffer;
+    size_t capacity;
 } uue_reader;
 
 typedef struct uue_line_s {
@@ -86,16 +87,33 @@ typedef struct uue_line_s {
 static bool uue_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     size_t done = 0U;
+    const size_t transfer_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        size_t request = size - done;
+        if (request > transfer_capacity) request = transfer_capacity;
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
+}
+
+static uue_reader *uue_reader_create(size_t lines) {
+    uue_reader *reader = (uue_reader *)xx_mem_calloc(1U, sizeof(uue_reader) + lines * sizeof(uue_line));
+    if (!reader) return NULL;
+    reader->capacity = xx_get_file_buffer_size();
+    reader->buffer = (uint8_t *)xx_mem_alloc(reader->capacity);
+    if (!reader->buffer) { xx_mem_free(reader); return NULL; }
+    return reader;
+}
+
+static void uue_reader_free(uue_reader *reader) {
+    if (!reader) return;
+    xx_mem_free(reader->buffer);
+    xx_mem_free(reader);
 }
 
 static void uue_reader_init(uue_reader *reader, Abstractformat *format,
@@ -114,7 +132,7 @@ static int uue_byte(uue_reader *reader, int64_t offset) {
     if (offset < reader->buffer_offset ||
         offset >= reader->buffer_offset + (int64_t)reader->buffer_fill) {
         int64_t left = reader->size - offset;
-        size_t want = left < (int64_t)UUE_CHUNK ? (size_t)left : UUE_CHUNK;
+        size_t want = (uint64_t)left < reader->capacity ? (size_t)left : reader->capacity;
         if ((reader->pd && xx_pd_is_stopped(reader->pd)) ||
             !uue_read_at(reader->format->device,
                          reader->format->base_address + offset,
@@ -556,7 +574,7 @@ static bool uue_walk(Abstractformat *format, bool whole, uue_summary *out,
     int result;
     bool ok = false;
     if (!out || !uue_size(format, &size)) return false;
-    reader = (uue_reader *)xx_mem_alloc(sizeof(*reader) + 2U * sizeof(uue_line));
+    reader = uue_reader_create(2U);
     if (!reader) return false;
     line = (uue_line *)(void *)(reader + 1);
     scratch = line + 1;
@@ -581,7 +599,7 @@ static bool uue_walk(Abstractformat *format, bool whole, uue_summary *out,
     *out = summary;
     ok = true;
 done:
-    xx_mem_free(reader);
+    uue_reader_free(reader);
     return ok;
 }
 
@@ -591,9 +609,12 @@ done:
 static bool uue_write_all(xx_io_device *destination, const uint8_t *data,
                           size_t size) {
     size_t done = 0U;
+    const size_t transfer_capacity = xx_get_file_buffer_size();
     while (done < size) {
-        ssize_t amount = xx_io_write(destination, data + done, size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        size_t request = size - done;
+        if (request > transfer_capacity) request = transfer_capacity;
+        ssize_t amount = xx_io_write(destination, data + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -606,15 +627,19 @@ static bool uue_decode(Abstractformat *format, const uue_block *block,
                        xx_io_device *destination, xx_pd_struct *pd) {
     uue_reader *reader;
     uue_line *line;
-    uint8_t output[UUE_CHUNK];
+    uint8_t *output = NULL;
+    size_t output_capacity;
     size_t used = 0U;
     uint64_t written = 0U;
     int64_t position, size;
     bool ok = false;
     if (!block || !uue_size(format, &size)) return false;
-    reader = (uue_reader *)xx_mem_alloc(sizeof(*reader) + sizeof(uue_line));
+    reader = uue_reader_create(1U);
     if (!reader) return false;
     line = (uue_line *)(void *)(reader + 1);
+    output_capacity = reader->capacity;
+    output = (uint8_t *)xx_mem_alloc(output_capacity);
+    if (!output) { uue_reader_free(reader); return false; }
     uue_reader_init(reader, format, size, pd);
     position = block->data_offset;
     while (position < block->data_end) {
@@ -637,14 +662,14 @@ static bool uue_decode(Abstractformat *format, const uue_block *block,
                 if (symbol < 0) goto done;
                 value = (value << 6U) | (uint32_t)symbol;
             }
-            for (index = 0U; index < take; ++index)
+            for (index = 0U; index < take; ++index) {
                 output[used++] = (uint8_t)(value >> (16U - 8U * index));
-        }
-        if (used > sizeof(output) - 64U) {
-            if (destination && !uue_write_all(destination, output, used))
-                goto done;
-            written += used;
-            used = 0U;
+                if (used == output_capacity) {
+                    if (destination && !uue_write_all(destination, output, used)) goto done;
+                    written += used;
+                    used = 0U;
+                }
+            }
         }
         position = line->next;
     }
@@ -655,7 +680,8 @@ static bool uue_decode(Abstractformat *format, const uue_block *block,
     }
     ok = written == block->unpacked_size;
 done:
-    xx_mem_free(reader);
+    xx_mem_free(output);
+    uue_reader_free(reader);
     return ok;
 }
 
@@ -677,7 +703,7 @@ typedef struct uue_stream_s {
 static void uue_stream_free(void *opaque) {
     uue_stream *stream = (uue_stream *)opaque;
     if (!stream) return;
-    if (stream->reader) xx_mem_free(stream->reader);
+    if (stream->reader) uue_reader_free(stream->reader);
     if (stream->seen) xx_mem_free(stream->seen);
     xx_mem_free(stream);
 }
@@ -888,7 +914,7 @@ xx_archive_record_state *xx_uue_create_archive_records_reading(
     stream->seen = (uint64_t *)xx_mem_calloc(slots, sizeof(uint64_t));
     stream->seen_mask = slots - 1U;
     stream->reader =
-        (uue_reader *)xx_mem_alloc(sizeof(uue_reader) + 2U * sizeof(uue_line));
+        uue_reader_create(2U);
     if (!stream->seen || !stream->reader || stream->count == 0U) {
         uue_stream_free(stream);
         return NULL;

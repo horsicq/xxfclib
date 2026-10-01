@@ -56,14 +56,17 @@
  * is the disk's; every other chunk is an "extra" chunk.
  *
  * Record 0 is disk.adf, the image from the lowest to the highest real track
- * present (a track missing inside that span reads back as zeros).  Then
+ * present.  Every track of the range must be there (Deark's rule): when the
+ * chain is truncated or broken, or a track is simply absent, disk.adf is
+ * listed but not extracted, and the tracks that are present still are.  Then
  * one record per chunk, in file order:
  *   track_NNNNN              a real track
  *   extra_III_track_NNNNN    any other chunk, III being its position in the
  *                            file, so repeated numbers never collide
  * Every chunk is checked against its packed CRC and its unpacked checksum;
  * one that fails is not extracted, and disk.adf is only extracted when all
- * real tracks pass.
+ * real tracks pass.  The heavy modes' last-byte repair only rebuilds a byte
+ * the decoder did not produce; it never rewrites a complete track.
  *
  * Obfuscated ("password protected") archives are recognised and listed but
  * not decoded: recovering the key means brute-forcing a 17-bit space with a

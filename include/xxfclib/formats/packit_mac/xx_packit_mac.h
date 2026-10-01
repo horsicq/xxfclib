@@ -13,6 +13,10 @@
 extern "C" {
 #endif
 
+/** Maximum readable members published from one chain. A further recognized
+ *  member sets has_incomplete_members instead of being treated as overlay. */
+#define XX_PACKIT_MAC_MAX_MEMBERS 16384U
+
 /**
  * @brief A Macintosh PackIt archive (Harry Chesley's PackIt I/II/III, the
  * predecessor of StuffIt).  Not the DOS "PACKIT by MJP" bundle, which is
@@ -62,6 +66,8 @@ typedef struct xx_packit_mac {
     int64_t archive_size;   /**< Bytes from the base address to the end. */
     bool has_end_marker;    /**< The walk stopped at a "PEnd" marker. */
     bool has_encrypted;     /**< The walk stopped at an encrypted member. */
+    bool has_incomplete_members; /**< A recognizable member was damaged,
+                                      truncated or beyond the member cap. */
 } xx_packit_mac;
 
 typedef xx_packit_mac xx_packit_mac_t;

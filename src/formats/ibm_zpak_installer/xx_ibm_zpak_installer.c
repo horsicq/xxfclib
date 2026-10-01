@@ -247,8 +247,33 @@ static char *zpi_normalise(const uint8_t *name, size_t length) {
         while (begin < end && name[begin] == ' ') ++begin;
         while (end > begin && name[end - 1U] == ' ') --end;
         if (begin == end) continue;
+        /* Windows drops trailing dots and blanks from every component, so
+         * "A", "A." and "A .." name the same file. Strip them here so the
+         * duplicate pass sees what the file system will. A component made
+         * only of dots and blanks is kept as-is for zpi_component_safe to
+         * refuse ("..", "..."). */
+        {
+            size_t trimmed = end;
+            while (trimmed > begin && (name[trimmed - 1U] == '.' ||
+                                       name[trimmed - 1U] == ' ')) {
+                --trimmed;
+            }
+            if (trimmed > begin) end = trimmed;
+        }
         if (at != 0U) out[at++] = '/';
-        while (begin < end) out[at++] = (char)name[begin++];
+        /* "~<digit>" is the shape of an NTFS 8.3 short name ("LONGFI~1"):
+         * on a volume with short names enabled it opens the file an earlier
+         * long-named member created, which the duplicate pass cannot see.
+         * Rewrite the '~' to '_' so the alias never reaches the file
+         * system. */
+        while (begin < end) {
+            char c = (char)name[begin++];
+            if (c == '~' && begin < end && name[begin] >= '0' &&
+                name[begin] <= '9') {
+                c = '_';
+            }
+            out[at++] = c;
+        }
     }
     out[at] = '\0';
     if (at == 0U) {

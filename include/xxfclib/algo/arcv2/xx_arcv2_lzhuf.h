@@ -19,6 +19,15 @@ XXFC_API bool xx_arcv2_lzhuf_decode_memory(const uint8_t *input,
                                            size_t output_size, bool wide,
                                            size_t *written);
 
+/* ARCV 1.00 uses the original -lh1- symbol set: 256 literals followed by
+ * lengths 3..60, with no stop symbol.  The caller supplies the exact output
+ * size and verifies the archive's plaintext checksum. */
+XXFC_API bool xx_arcv2_lzhuf_decode_memory_lh1(const uint8_t *input,
+                                               size_t input_size,
+                                               uint8_t *output,
+                                               size_t output_size,
+                                               size_t *written);
+
 /* ARCV v2 writers optionally apply this prefix-XOR filter to every packed
  * member.  The operation is safe in place. */
 XXFC_API bool xx_arcv2_xor_delta_decode(uint8_t *data, size_t size,

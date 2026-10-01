@@ -27,7 +27,14 @@ extern "C" {
  * carries one or two bytes and is normally padded to four with '='.  CR and
  * LF between symbols are ignored when decoding.  There is no stored size and
  * no checksum.  The decoded data is one member, named after the envelope's
- * <name> when that is a safe plain file name, else "payload".
+ * <name> when that is a safe plain file name of at most 128 characters,
+ * else "payload" (also used when the joined output path would exceed 259
+ * characters).
+ *
+ * The rules accept any text that is also valid encoder output, so a lone
+ * mixed-case alphanumeric token with a digit (16+ characters, a multiple of
+ * 4) or a list of equal-width random [A-Za-z0-9] IDs is taken for Base64;
+ * that is a limit of magic-less detection, not a parsing error.
  *
  * Bare Base64 has no signature, so a bare text is accepted only when the
  * first 64 KiB of it (the detection window) looks like encoder output:

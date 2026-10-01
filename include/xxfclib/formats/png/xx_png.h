@@ -27,12 +27,9 @@
  * overlay.  An APNG is an ordinary PNG with extra acTL / fcTL / fdAT chunks
  * and is walked the same way.
  *
- * Not an archive: binwalk carves the image itself (image.png) and nothing
- * else, so this reader validates and reports the format size.
- *
- * This is not the Detect-It-Easy metadata helper in src/formats/png/xpng.h
- * (type XPNG); the two share a directory and nothing else.  The user-facing
- * alias here is therefore XPngImage. */
+ * The component archive API publishes each encoded chunk payload separately
+ * and verifies its CRC during extraction. It does not decode the image.
+ */
 
 #ifndef XXFCLIB_FORMAT_PNG_H
 #define XXFCLIB_FORMAT_PNG_H

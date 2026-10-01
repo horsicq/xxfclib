@@ -23,11 +23,11 @@
 
 #include "xxfclib/algo/implode/xx_implode.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/global/xx_global.h"
 
 #include <limits.h>
 #include <stdint.h>
 
-#define XX_IMPLODE_IO_BUFFER       4096u
 #define XX_IMPLODE_HISTORY_SIZE    8192u
 #define XX_IMPLODE_MAX_BITS        16u
 #define XX_IMPLODE_MAX_SYMBOLS     256u
@@ -56,13 +56,14 @@ typedef struct xx_implode_context_s {
     int64_t expected_size;
     int64_t produced;
 
-    uint8_t input[XX_IMPLODE_IO_BUFFER];
+    uint8_t *input;
+    size_t io_capacity;
     size_t input_pos;
     size_t input_size;
     uint64_t bit_buffer;
     unsigned bit_count;
 
-    uint8_t output[XX_IMPLODE_IO_BUFFER];
+    uint8_t *output;
     size_t output_size;
     uint8_t history[XX_IMPLODE_HISTORY_SIZE];
 
@@ -110,7 +111,7 @@ static bool xx_implode_emit(xx_implode_context *ctx, uint8_t value) {
     ctx->history[(size_t)ctx->produced & (XX_IMPLODE_HISTORY_SIZE - 1u)] = value;
     ctx->output[ctx->output_size++] = value;
     ++ctx->produced;
-    if (ctx->output_size == sizeof(ctx->output)) {
+    if (ctx->output_size == ctx->io_capacity) {
         return xx_implode_flush(ctx) && !xx_implode_cancelled(ctx);
     }
     return true;
@@ -125,8 +126,8 @@ static bool xx_implode_read_byte(xx_implode_context *ctx, uint8_t *value) {
             xx_implode_set_error(ctx, 4, "Truncated Implode stream");
             return false;
         }
-        request = (ctx->input_left > (int64_t)sizeof(ctx->input))
-                      ? sizeof(ctx->input)
+        request = ((uint64_t)ctx->input_left > ctx->io_capacity)
+                      ? ctx->io_capacity
                       : (size_t)ctx->input_left;
         count = xx_io_read(ctx->src, ctx->input, request);
         if (count <= 0 || (size_t)count != request) {
@@ -423,6 +424,8 @@ bool xx_implode_unpack_device(xx_io_device *src_dev, int64_t src_offset,
                               bool use_literal_tree, xx_pd_struct *pd) {
     xx_implode_context *ctx;
     bool result;
+    size_t capacity = xx_get_file_buffer_size();
+    if (capacity > (SIZE_MAX >> 1)) capacity = SIZE_MAX >> 1;
 
     if (!src_dev || !dst_dev || comp_size < 0 || expected_size < 0 ||
         src_offset < -1) {
@@ -441,6 +444,16 @@ bool xx_implode_unpack_device(xx_io_device *src_dev, int64_t src_offset,
         return false;
     }
     xx_mem_zero(ctx, sizeof(*ctx));
+    ctx->io_capacity = capacity;
+    ctx->input = (uint8_t *)xx_mem_alloc(capacity);
+    ctx->output = (uint8_t *)xx_mem_alloc(capacity);
+    if (!ctx->input || !ctx->output) {
+        xx_mem_free(ctx->input);
+        xx_mem_free(ctx->output);
+        xx_mem_free(ctx);
+        if (pd) xx_pd_set_error(pd, 6, "Cannot allocate Implode I/O buffers");
+        return false;
+    }
     ctx->src = src_dev;
     ctx->dst = dst_dev;
     ctx->pd = pd;
@@ -461,6 +474,8 @@ bool xx_implode_unpack_device(xx_io_device *src_dev, int64_t src_offset,
     if (pd && ctx->pd_level >= 0) {
         xx_pd_leave_level(pd, ctx->pd_level);
     }
+    xx_mem_free(ctx->input);
+    xx_mem_free(ctx->output);
     xx_mem_free(ctx);
     return result;
 }

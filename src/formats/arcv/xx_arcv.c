@@ -1,16 +1,15 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  *
- * Eschalon Setup ARCV 1.10 reader.  The layout is ported from XArchive's
+ * Eschalon Setup ARCV 1.00/1.10 reader.  The layout is ported from XArchive's
  * core/xlegacystorearchive.cpp (the FT_ARCV branch): a fixed archive header
  * carrying the single member's name and sizes, immediately followed by one
  * "CHNK" segment whose body is the packed stream.
  *
- * Two LZHUF sub-variants share the container.  The header JAMCRC identifies
- * them: when it matches the packed bytes the member uses the compact F=32
- * bitstream, otherwise the stock F=60 bitstream is trial decoded and both the
- * output length and its JAMCRC must match the header before the archive is
- * accepted.  A file that satisfies neither reading is rejected outright.
+ * ARCV 1.00 uses standard -lh1- LZHUF and checksums the plaintext.  ARCV
+ * 1.10 has a stop-symbol LZHUF variant; a header JAMCRC matching the packed
+ * bytes identifies its compact F=32 variant, otherwise its wide F=60 output
+ * must decode to the declared length and plaintext JAMCRC.
  */
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/arcv/xx_arcv.h"
@@ -31,7 +30,8 @@
 #define XX_ARCV_FILE_TYPE XX_FILE_TYPE_UNKNOWN
 #endif
 
-#define ARCV_VERSION 0x0110U
+#define ARCV_VERSION_100 0x0100U
+#define ARCV_VERSION_110 0x0110U
 #define ARCV_FIELDS_SIZE 34U    /* descriptor tail following the member name */
 #define ARCV_CHUNK_HEADER_MIN 16U
 #define ARCV_CHUNK_HEADER_MAX 4096U
@@ -48,6 +48,7 @@ typedef struct arcv_stream_s {
     uint32_t packed_size;
     uint32_t jam_crc;
     bool wide;
+    bool lh1;
     bool consumed;
 } arcv_stream;
 
@@ -147,14 +148,18 @@ static bool arcv_decode(Abstractformat *format, const arcv_stream *stream,
         !arcv_read_at(format->device, stream->data_offset, packed,
                       stream->packed_size))
         goto done;
-    if (!xx_arcv2_lzhuf_decode_memory(packed, stream->packed_size, output,
-                                      stream->raw_size, stream->wide,
-                                      &written) ||
+    if (!(stream->lh1
+              ? xx_arcv2_lzhuf_decode_memory_lh1(
+                    packed, stream->packed_size, output, stream->raw_size,
+                    &written)
+              : xx_arcv2_lzhuf_decode_memory(
+                    packed, stream->packed_size, output, stream->raw_size,
+                    stream->wide, &written)) ||
         written != stream->raw_size)
         goto done;
-    /* The stock variant checksums the plaintext; the compact one checksums
-     * the packed bytes and was already verified while parsing. */
-    if (stream->wide &&
+    /* Both wide variants checksum the plaintext; the 1.10 compact variant
+     * checksums packed bytes and was already verified while parsing. */
+    if ((stream->wide || stream->lh1) &&
         xx_crc32(XX_CRC_TYPE_CRC32_JAMCRC, output, written) != stream->jam_crc)
         goto done;
     if (plain && plain_size) {
@@ -187,6 +192,7 @@ static bool arcv_parse(Abstractformat *format, arcv_stream **result,
     uint32_t packed_size;
     uint32_t chunk_data_size;
     uint32_t jam_crc;
+    uint16_t version;
     if (!format || !format->device || !result || format->base_address < 0)
         return false;
     total = xx_io_total_size(format->device);
@@ -194,8 +200,10 @@ static bool arcv_parse(Abstractformat *format, arcv_stream **result,
     size = total - format->base_address;
     if (size < 64) return false;
     if (!arcv_read_at(format->device, format->base_address, head, 13U) ||
-        xx_rt_memcmp(head, "ARCV", 4U) != 0 ||
-        arcv_le16(head + 4U) != ARCV_VERSION)
+        xx_rt_memcmp(head, "ARCV", 4U) != 0)
+        return false;
+    version = arcv_le16(head + 4U);
+    if (version != ARCV_VERSION_100 && version != ARCV_VERSION_110)
         return false;
     archive_header_size = (int64_t)arcv_le16(head + 6U);
     name_size = head[12U];
@@ -239,17 +247,19 @@ static bool arcv_parse(Abstractformat *format, arcv_stream **result,
     stream->raw_size = raw_size;
     stream->packed_size = packed_size;
     stream->jam_crc = jam_crc;
+    stream->lh1 = version == ARCV_VERSION_100;
     if (!stream->name || (pd && xx_pd_is_stopped(pd))) goto fail;
     packed = (uint8_t *)xx_mem_alloc(packed_size);
     if (!packed || !arcv_read_at(format->device, stream->data_offset, packed,
                                  packed_size))
         goto fail;
-    /* Compact F=32 sub-variant: the header JAMCRC covers the packed member. */
-    stream->wide =
+    /* Only 1.10 selects compact F=32 by the packed-byte checksum.  Version
+     * 1.00 always uses the original -lh1- symbol set and plaintext checksum. */
+    stream->wide = stream->lh1 ||
         xx_crc32(XX_CRC_TYPE_CRC32_JAMCRC, packed, packed_size) != jam_crc;
     xx_mem_free(packed);
     packed = NULL;
-    /* Stock F=60 sub-variant: only a trial decode proves the reading. */
+    /* A successful trial decode and checksum proves either wide reading. */
     if (stream->wide && !arcv_decode(format, stream, NULL, NULL)) goto fail;
     *result = stream;
     return true;
@@ -303,6 +313,7 @@ static bool arcv_set_record(xx_archive_record *record,
            xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
                                           stream->raw_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
+                                          stream->lh1 ? 3U :
                                           stream->wide ? 2U : 1U) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
                                           stream->jam_crc) &&

@@ -63,7 +63,10 @@ typedef struct binder_member_s {
     int64_t data_offset;   /* first sector/mini sector position, -1 if empty */
     uint64_t size;
     uint32_t start_sector;
+    uint32_t directory_index;
     bool mini;
+    bool virtual_document;
+    uint8_t *virtual_bytes;
 } binder_member;
 
 typedef struct binder_stream_s {
@@ -82,6 +85,8 @@ typedef struct binder_stream_s {
     size_t minifat_count;
     uint8_t *mini_stream;
     size_t mini_stream_size;
+    uint8_t *directory;
+    size_t entry_count;
     int64_t archive_size;
 } binder_stream;
 
@@ -113,12 +118,16 @@ static void binder_stream_free(void *opaque) {
     binder_stream *stream = (binder_stream *)opaque;
     size_t index;
     if (!stream) return;
-    for (index = 0U; index < stream->count; ++index)
+    for (index = 0U; index < stream->count; ++index) {
         if (stream->items[index].name) xx_str_free(stream->items[index].name);
+        if (stream->items[index].virtual_bytes)
+            xx_mem_free(stream->items[index].virtual_bytes);
+    }
     if (stream->items) xx_mem_free(stream->items);
     if (stream->fat) xx_mem_free(stream->fat);
     if (stream->minifat) xx_mem_free(stream->minifat);
     if (stream->mini_stream) xx_mem_free(stream->mini_stream);
+    if (stream->directory) xx_mem_free(stream->directory);
     xx_mem_free(stream);
 }
 
@@ -396,6 +405,7 @@ static bool binder_walk_tree(binder_walk *walk, uint32_t index,
         xx_mem_zero(&member, sizeof(member));
         member.size = size;
         member.start_sector = start;
+        member.directory_index = index;
         member.mini = mini;
         member.header_offset = header_offset;
         member.data_offset = -1;
@@ -534,6 +544,8 @@ static bool binder_load_minifat(binder_stream *stream, uint32_t start,
     xx_mem_free(sector);
     return steps == sector_count;
 }
+
+#include "xx_binder_docs.inc"
 
 static bool binder_parse(Abstractformat *format, binder_stream **result) {
     uint8_t header[BINDER_HEADER_SIZE];
@@ -681,8 +693,12 @@ static bool binder_parse(Abstractformat *format, binder_stream **result) {
      * "Binder" stream.  Without it this is some other compound document. */
     if (!walk.has_binder_stream || stream->count == 0U) goto fail;
 
+    stream->directory = directory;
+    stream->entry_count = entry_count;
+    directory = NULL;
     xx_mem_free(dir_sectors);
-    xx_mem_free(directory);
+    dir_sectors = NULL;
+    if (!binder_add_virtual_documents(stream)) goto fail;
     xx_mem_free(path);
     xx_mem_free(visited);
     *result = stream;
@@ -753,6 +769,14 @@ static bool binder_extract(const binder_stream *stream,
     if (!stream || !member || !plain || !plain_size ||
         member->size > (uint64_t)SIZE_MAX)
         return false;
+    if (member->virtual_document) {
+        output = (uint8_t *)xx_mem_alloc((size_t)member->size);
+        if (!output) return false;
+        xx_mem_copy(output, member->virtual_bytes, (size_t)member->size);
+        *plain = output;
+        *plain_size = (size_t)member->size;
+        return true;
+    }
     if (member->size == 0U) {
         *plain = NULL;
         *plain_size = 0U;

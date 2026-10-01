@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-/** @file xx_ciso.h @brief CISO / CSO compressed ISO disk image. */
+/** @file xx_ciso.h @brief CISO v1/v2, ZISO and DAX compressed ISO images. */
 
 #ifndef XXFCLIB_FORMAT_CISO_H
 #define XXFCLIB_FORMAT_CISO_H
@@ -13,12 +13,13 @@
 extern "C" {
 #endif
 
-/* A CISO image: a block index over an ISO, each block either stored or
- * raw Deflate.  Presented as the single ISO the index rebuilds. */
+/* A CISO/ZISO image: a block index over an ISO. v1 has stored/Deflate
+ * blocks; v2 has stored/Deflate/LZ4; ZISO has stored/LZ4. */
 typedef struct xx_ciso {
     Abstractformat format;
     uint64_t number_of_records;
     int64_t archive_end;
+    void *nested_iso;
 } xx_ciso;
 
 typedef struct xx_ciso xx_ciso_t;

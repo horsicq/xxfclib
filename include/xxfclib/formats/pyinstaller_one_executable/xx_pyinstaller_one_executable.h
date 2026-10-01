@@ -69,6 +69,17 @@ typedef struct xx_pyinstaller_one_executable {
 
 typedef xx_pyinstaller_one_executable xx_pyinstaller_one_executable_t;
 
+/**
+ * @brief Check the final 4 KiB for a structurally valid CArchive cookie.
+ *
+ * A cheap detector guard for ELF, Mach-O and standalone CArchive packages.
+ * The device cursor is preserved; the complete reader still validates the
+ * TOC and member bounds. Signed PE files also need the normal MZ probe,
+ * because their cookie can precede a large certificate table.
+ */
+XXFC_API bool xx_pyinstaller_one_executable_has_tail_cookie(
+    xx_io_device *device);
+
 XXFC_API void xx_pyinstaller_one_executable_init(
     xx_pyinstaller_one_executable *archive, xx_io_device *device,
     int64_t base_address);

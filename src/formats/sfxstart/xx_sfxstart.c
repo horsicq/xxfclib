@@ -35,6 +35,7 @@
 /* Registration placeholder: xxfc_defs.h is shared and not edited from here,
  * so the alias macro that sits next to the enumerator is tested instead. */
 #ifdef SFXSTART
+
 #define XX_SFXSTART_FILE_TYPE XX_FILE_TYPE_SFXSTART
 #else
 #define XX_SFXSTART_FILE_TYPE XX_FILE_TYPE_UNKNOWN
@@ -65,14 +66,61 @@
 
 /* Work limits.  The members are copied, never held in memory whole. */
 #define SFS_COPY_CHUNK 0x10000
-#define SFS_MAX_NAME_BYTES (16U * 1024U * 1024U)
 #define SFS_MAX_RENAMES 16U
+/* Longest rename suffix: ".NNNNN" plus SFS_MAX_RENAMES times "_NN". */
+#define SFS_MAX_SUFFIX (6U + SFS_MAX_RENAMES * 3U)
+/* Name and key bytes of the whole table.  Set to what SFS_MAX_RECORDS
+ * members with the longest names can need, so a kit check_is_valid accepts is
+ * never refused for its names.  A cleaned name has at most 5/4 of the raw
+ * bytes (a '_' in front of a 3-byte device component), the listed UTF-8 name
+ * up to 3 bytes per cleaned byte and the key one: 6 per raw byte bounds it.
+ * The bound is a guard, not an allocation; what is allocated follows the
+ * name bytes the payload actually holds (255-byte ASCII names: ~33 MB). */
+#define SFS_MAX_NAME_BYTES                                                   \
+    ((size_t)SFS_MAX_RECORDS *                                               \
+     ((size_t)SFS_MAX_NAME * 6U + 2U * (size_t)SFS_MAX_SUFFIX))
 
 static const uint8_t sfs_tag[XX_SFXSTART_TAG_SIZE] = {'S', 'F', 'X', 'S',
                                                       'T', 'A', 'R', 'T'};
 
 /* ---------------------------------------------------------------------- */
 /* Byte helpers                                                            */
+
+#include "xxfclib/global/xx_global.h"
+static size_t gb_sfxstart_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_sfxstart_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_sfxstart_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+
 
 static uint32_t sfs_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
@@ -84,13 +132,14 @@ static uint32_t sfs_le32(const uint8_t *bytes) {
 
 static bool sfs_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
+    const size_t file_io_capacity = gb_sfxstart_capacity();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = gb_sfxstart_read(device, (uint8_t *)buffer + done,
+                                    size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -585,11 +634,17 @@ static bool sfs_build_name(const uint8_t *raw, size_t length, char **name_out,
                                         ? (uint8_t)'_'
                                         : c;
         }
-        /* Windows drops trailing dots and spaces, so "a.txt." is "A.TXT". */
+        /* Windows drops trailing dots and spaces, so "a.txt." is "A.TXT".
+         * The listed name drops them too, so that the name and its key stay
+         * one file: a rename suffix appended to both later must still name
+         * the same file on disk ("a." + ".0001" would otherwise be written
+         * as "a..0001" while its key says "a.0001").  A component made only
+         * of dots and spaces is all '_' by now and keeps its length. */
         trimmed = clean_length;
         while (trimmed > component_start &&
                (clean[trimmed - 1U] == '.' || clean[trimmed - 1U] == ' '))
             --trimmed;
+        clean_length = trimmed;
         for (position = component_start; position < trimmed; ++position)
             key_bytes[key_length++] = sfs_fold(clean[position]);
         start = index + 1U;
@@ -713,6 +768,7 @@ static bool sfs_build_table(Abstractformat *format, sfs_table **out,
 /* Copy one stored member to @p destination (NULL only reads it through). */
 static bool sfs_copy_member(Abstractformat *format, const sfs_member *member,
                             xx_io_device *destination, xx_pd_struct *pd) {
+    const size_t file_io_capacity = gb_sfxstart_capacity();
     uint8_t *buffer;
     int64_t left = member->size;
     int64_t position = format->base_address + member->data_offset;
@@ -720,8 +776,8 @@ static bool sfs_copy_member(Abstractformat *format, const sfs_member *member,
     bool result = false;
 
     if (member->size < 0 || member->data_offset < 0) return false;
-    chunk = left < SFS_COPY_CHUNK ? (size_t)(left ? left : 1)
-                                  : (size_t)SFS_COPY_CHUNK;
+    chunk = left < (int64_t)file_io_capacity ? (size_t)(left ? left : 1)
+                                  : (size_t)file_io_capacity;
     buffer = (uint8_t *)xx_mem_alloc(chunk);
     if (!buffer) return false;
     while (left > 0) {
@@ -732,8 +788,8 @@ static bool sfs_copy_member(Abstractformat *format, const sfs_member *member,
             goto done;
         if (destination) {
             while (done < amount) {
-                ssize_t sent = xx_io_write(destination, buffer + done,
-                                           amount - done);
+                ssize_t sent = gb_sfxstart_write(destination, buffer + done,
+                                           amount - done, file_io_capacity);
                 if (sent <= 0 || (size_t)sent > amount - done) goto done;
                 done += (size_t)sent;
             }

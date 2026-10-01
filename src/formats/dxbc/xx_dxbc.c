@@ -28,16 +28,21 @@
  * The container checksum is recomputed in handle_base_info and reported, never
  * enforced: binwalk ignores it, and unsigned DXIL stores sixteen zero bytes.
  *
- * Not an archive: binwalk's extractor carves the container itself.
+ * The component archive API publishes each declared FourCC chunk payload
+ * separately. It does not execute shaders or decode the shader instruction set.
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/dxbc/xx_dxbc.h"
 
 #include "xxfclib/algo/hash/xx_hash.h"
 #include "xxfclib/data/xx_data.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
+
+#include "../bmp/xx_component_archive_impl.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the file-type constant resolves to UNKNOWN until the enumerator
@@ -72,6 +77,7 @@ static void xx_dxbc_vtable_destroy(Abstractformat *self);
  * archive can sit past 2 GiB, and long is 32-bit on Win64. */
 static bool xx_dxbc_read_at(xx_io_device *device, int64_t offset, void *data,
                             size_t size) {
+    size_t transfer_capacity = xx_get_file_buffer_size();
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
 
@@ -80,8 +86,11 @@ static bool xx_dxbc_read_at(xx_io_device *device, int64_t offset, void *data,
         return false;
     }
     while (done < size) {
-        ssize_t got = xx_io_read(device, out + done, size - done);
-        if (got <= 0 || (size_t)got > size - done) return false;
+        size_t request = size - done;
+        ssize_t got;
+        if (request > transfer_capacity) request = transfer_capacity;
+        got = xx_io_read(device, out + done, request);
+        if (got <= 0 || (size_t)got > request) return false;
         done += (size_t)got;
     }
     return true;
@@ -233,12 +242,11 @@ fail:
  * padding pass.  Checked against every fxc and dxc sample in the test set,
  * for tail lengths both above and below 56.
  */
-static xx_dxbc_checksum_state_t xx_dxbc_compute_checksum_state(
+static xx_dxbc_checksum_state_t xx_dxbc_compute_checksum_state_buffered(
     xx_io_device *device, int64_t base_address, const xx_dxbc_parsed *parsed,
-    xx_pd_struct *pd) {
+    xx_pd_struct *pd, uint8_t *buffer, size_t buffer_capacity) {
     static const uint8_t zero[XX_DXBC_CHECKSUM_SIZE] = {0};
     xx_hash_context context;
-    uint8_t buffer[4096];
     uint8_t block[2U * XX_DXBC_MD5_BLOCK];
     uint8_t digest[XX_DXBC_CHECKSUM_SIZE];
     uint32_t payload;
@@ -273,14 +281,14 @@ static xx_dxbc_checksum_state_t xx_dxbc_compute_checksum_state(
         return XX_DXBC_CHECKSUM_NOT_CHECKED;
     }
     for (done = 0U; done < full;) {
-        uint32_t step = full - done;
-        if (step > (uint32_t)sizeof(buffer)) step = (uint32_t)sizeof(buffer);
+        size_t step = full - done;
+        if (step > buffer_capacity) step = buffer_capacity;
         if ((pd && xx_pd_is_stopped(pd)) ||
             !xx_dxbc_read_at(device, start + (int64_t)done, buffer, step)) {
             return XX_DXBC_CHECKSUM_NOT_CHECKED;
         }
         xx_hash_update(&context, buffer, step);
-        done += step;
+        done += (uint32_t)step;
     }
 
     xx_mem_zero(block, sizeof(block));
@@ -317,6 +325,18 @@ static xx_dxbc_checksum_state_t xx_dxbc_compute_checksum_state(
                : XX_DXBC_CHECKSUM_MISMATCH;
 }
 
+static xx_dxbc_checksum_state_t xx_dxbc_compute_checksum_state(
+    xx_io_device *device, int64_t base_address, const xx_dxbc_parsed *parsed,
+    xx_pd_struct *pd) {
+    size_t buffer_capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
+    xx_dxbc_checksum_state_t buffer_result;
+    if (!buffer) return XX_DXBC_CHECKSUM_NOT_CHECKED;
+    buffer_result = xx_dxbc_compute_checksum_state_buffered(device, base_address, parsed, pd, buffer, buffer_capacity);
+    xx_mem_free(buffer);
+    return buffer_result;
+}
+
 /* ----------------------------------------------------------- lifecycle -- */
 
 void xx_dxbc_init(xx_dxbc *dxbc, xx_io_device *dev, int64_t base_address) {
@@ -337,6 +357,7 @@ void xx_dxbc_init(xx_dxbc *dxbc, xx_io_device *dev, int64_t base_address) {
     dxbc->format.get_format_size = xx_dxbc_get_format_size;
     dxbc->format.destroy = xx_dxbc_vtable_destroy;
     dxbc->checksum_state = XX_DXBC_CHECKSUM_NOT_CHECKED;
+    xx_components_install(&dxbc->format);
 }
 
 xx_dxbc *xx_dxbc_create(xx_io_device *dev, int64_t base_address) {
@@ -419,6 +440,7 @@ bool xx_dxbc_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     self->is_archive = false;
     self->is_executable = false;
     self->is_crypted = false;
+    if (!xx_components_finish(self, pd)) return false;
     self->is_valid = true;
     self->base_info_handled = true;
     return true;
@@ -499,4 +521,18 @@ uint32_t xx_dxbc_get_shader_model_major(const xx_dxbc *dxbc) {
 
 uint32_t xx_dxbc_get_shader_model_minor(const xx_dxbc *dxbc) {
     return dxbc ? dxbc->program_version & 0x0FU : 0U;
+}
+
+/* Encoded/structural component members; this does not decode media. */
+static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd) {
+
+    xx_dxbc *d = (xx_dxbc *)f;
+    uint32_t i;
+    for(i=0;i<d->chunk_count;++i) {
+        char kind[5]; uint32_t id=d->chunk_ids[i]; unsigned j;
+        if(xx_pd_is_stopped(pd)) return false;
+        for(j=0;j<4;++j) kind[j]=(char)(id>>(j*8)); kind[4]=0;
+        if(!xx_component_add(f,s,d->chunk_offsets[i]+8,d->chunk_sizes[i],kind)) return false;
+    }
+    return true;
 }

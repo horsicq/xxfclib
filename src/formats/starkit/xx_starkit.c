@@ -496,7 +496,28 @@ static xx_starkit_stream *xx_starkit_parse(Abstractformat *self,
     /* The magic plus the file's own declared length. */
     if (xx_rt_memcmp(head, "JL\x1a\x00", 4U) != 0 ||
         (int64_t)xx_starkit_be32(head + 4) != span) {
-        return NULL;
+        /* Starpacks append an unchanged Metakit filesystem to an executable.
+         * Its self-pointing final commit gives the exact container origin. */
+        int64_t container_size, container_base;
+        Abstractformat nested;
+        if (head[0] != 'M' || head[1] != 'Z' ||
+            !xx_starkit_read_at(self, total - XX_STARKIT_FOOTER_SIZE,
+                               footer, sizeof(footer)) ||
+            xx_starkit_be32(footer) != 0x80000000U) return NULL;
+        container_size = (int64_t)xx_starkit_be32(footer + 4) + XX_STARKIT_FOOTER_SIZE;
+        if (container_size < XX_STARKIT_HEADER_SIZE + XX_STARKIT_FOOTER_SIZE ||
+            container_size >= span) return NULL;
+        container_base = total - container_size;
+        if (!xx_starkit_read_at(self, container_base, head, sizeof(head)) ||
+            xx_rt_memcmp(head, "JL\x1a\x00", 4U) != 0 ||
+            (int64_t)xx_starkit_be32(head + 4) != container_size) return NULL;
+        /* Borrow the device and metadata without mutating the caller's base.
+         * The normal parser validates both commit pairs, schema, and columns. */
+        nested = *self;
+        nested.base_address = container_base;
+        stream = xx_starkit_parse(&nested, pd);
+        if (stream) stream->archive_size = span;
+        return stream;
     }
     if (!xx_starkit_read_at(self, self->base_address + span -
                                       XX_STARKIT_FOOTER_SIZE,

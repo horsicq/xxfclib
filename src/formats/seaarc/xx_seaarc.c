@@ -71,6 +71,7 @@
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/seaarc/xx_seaarc.h"
 
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
@@ -266,9 +267,9 @@ static int64_t xx_seaarc_header_size(uint8_t method) {
 }
 
 /* The 13 byte field holds a bare DOS 8.3 name -- the container has no notion
- * of directories, so a separator in it means this is not an ARC header. */
-static char *xx_seaarc_make_name(const uint8_t *field) {
-    char *name;
+ * of directories, so a separator in it means this is not an ARC header.
+ * Returns the name's length, or -1 when the field is not a name. */
+static int xx_seaarc_name_length(const uint8_t *field) {
     size_t length = 0U;
     size_t index;
 
@@ -276,22 +277,30 @@ static char *xx_seaarc_make_name(const uint8_t *field) {
      * pair in unrelated data most often produces; requiring a printable
      * non-blank first byte is one of the few per-record gates this format
      * offers, so it is stricter than the 0x20..0x7E rule used below. */
-    if (field[0] < 0x21U || field[0] > 0x7EU) return NULL;
+    if (field[0] < 0x21U || field[0] > 0x7EU) return -1;
     while (length < (size_t)XX_SEAARC_NAME_SIZE && field[length] != 0U) {
         ++length;
     }
     for (index = 0U; index < length; ++index) {
         /* ARC is a DOS-only format and stores no high-bit or control bytes
          * in this field. */
-        if (field[index] < 0x20U || field[index] > 0x7EU) return NULL;
+        if (field[index] < 0x20U || field[index] > 0x7EU) return -1;
         if (field[index] == (uint8_t)'/' || field[index] == (uint8_t)'\\' ||
             field[index] == (uint8_t)':') {
-            return NULL;
+            return -1;
         }
     }
     /* A name may fill all 13 bytes with no terminator: PKPAK wrote the field
      * that way, so an unterminated name is accepted, not rejected. */
-    name = (char *)xx_mem_alloc(length + 1U);
+    return (int)length;
+}
+
+/* Copies a field that xx_seaarc_name_length() accepted; NULL only when the
+ * allocation fails. */
+static char *xx_seaarc_make_name(const uint8_t *field, size_t length) {
+    char *name = (char *)xx_mem_alloc(length + 1U);
+    size_t index;
+
     if (!name) return NULL;
     for (index = 0U; index < length; ++index) name[index] = (char)field[index];
     name[length] = '\0';
@@ -377,26 +386,46 @@ static char *xx_seaarc_suffixed_name(const char *name, uint32_t number) {
 }
 
 /* An open-addressing set of names under the comparison above. It holds
- * pointers to member names and never owns them. */
+ * pointers to member names and never owns them.
+ *
+ * The names come from the archive, so an unkeyed hash would let a crafted
+ * archive put every name in one probe cluster and make each insert walk all
+ * of them (65535 names: about a minute). The hash is therefore keyed with a
+ * per-call seed taken from heap and stack addresses (randomised by ASLR) and
+ * finished with a full 64-bit mix, so the slot of a name cannot be predicted
+ * from the name alone. */
 typedef struct xx_seaarc_name_set_s {
     const char **slots;
     size_t mask;
+    uint64_t seed;
 } xx_seaarc_name_set;
 
-static size_t xx_seaarc_name_hash(const char *name) {
+static uint64_t xx_seaarc_mix64(uint64_t value) {
+    value ^= value >> 33;
+    value *= 0xFF51AFD7ED558CCDULL;
+    value ^= value >> 33;
+    value *= 0xC4CEB9FE1A85EC53ULL;
+    value ^= value >> 33;
+    return value;
+}
+
+static size_t xx_seaarc_name_hash(const xx_seaarc_name_set *set,
+                                  const char *name) {
     size_t length = xx_seaarc_key_length(name);
     size_t index;
-    uint32_t hash = 2166136261U;
+    uint64_t hash = set->seed ^ 0xCBF29CE484222325ULL;
 
     for (index = 0U; index < length; ++index) {
-        hash ^= (uint32_t)(unsigned char)xx_seaarc_upper(name[index]);
-        hash *= 16777619U;
+        hash ^= (uint64_t)(unsigned char)xx_seaarc_upper(name[index]);
+        hash *= 0x100000001B3ULL;
     }
-    return (size_t)hash;
+    hash = xx_seaarc_mix64(hash ^ set->seed ^ (uint64_t)length);
+    return (size_t)(hash ^ (hash >> 32));
 }
 
 static bool xx_seaarc_name_set_init(xx_seaarc_name_set *set, size_t items) {
     size_t capacity = 16U;
+    uint64_t local = 0U;
 
     /* At most two names per member go in (its own and one replacement), so
      * four slots per member keep the table at most half full. */
@@ -405,6 +434,9 @@ static bool xx_seaarc_name_set_init(xx_seaarc_name_set *set, size_t items) {
     if (!set->slots) return false;
     xx_mem_zero((void *)set->slots, capacity * sizeof(*set->slots));
     set->mask = capacity - 1U;
+    set->seed = xx_seaarc_mix64((uint64_t)(uintptr_t)set->slots ^
+                                xx_seaarc_mix64((uint64_t)(uintptr_t)&local) ^
+                                (uint64_t)items);
     return true;
 }
 
@@ -412,7 +444,7 @@ static bool xx_seaarc_name_set_init(xx_seaarc_name_set *set, size_t items) {
  * @p name when @p insert is set. */
 static bool xx_seaarc_name_set_probe(xx_seaarc_name_set *set,
                                      const char *name, bool insert) {
-    size_t slot = xx_seaarc_name_hash(name) & set->mask;
+    size_t slot = xx_seaarc_name_hash(set, name) & set->mask;
 
     while (set->slots[slot]) {
         if (xx_seaarc_names_equal(set->slots[slot], name)) return true;
@@ -450,7 +482,8 @@ static bool xx_seaarc_is_short_name(const char *name) {
  * A rejected candidate always equals one of those at most 2 * count names,
  * and each of them can reject only one (group, n) pair, so the search is
  * linear overall; the bound below only guards that argument. */
-static bool xx_seaarc_rename_duplicates(xx_seaarc_stream *stream) {
+static bool xx_seaarc_rename_duplicates(xx_seaarc_stream *stream,
+                                        xx_pd_struct *pd) {
     xx_seaarc_name_key *keys;
     xx_seaarc_name_set set;
     size_t index;
@@ -475,11 +508,13 @@ static bool xx_seaarc_rename_duplicates(xx_seaarc_stream *stream) {
     /* In sorted order the first member of each group is the one inserted, so
      * the set never points at a name that is about to be replaced. */
     for (index = 0U; index < stream->count; ++index) {
+        if ((index & 0xFFFU) == 0U && pd && xx_pd_is_stopped(pd)) goto done;
         (void)xx_seaarc_name_set_probe(&set, keys[index].name, true);
     }
     for (index = 1U; index < stream->count; ++index) {
         xx_seaarc_member *member;
         char *replacement = NULL;
+        if ((index & 0xFFFU) == 0U && pd && xx_pd_is_stopped(pd)) goto done;
         if (!xx_seaarc_names_equal(keys[index].name, keys[group].name)) {
             group = index;
             number = 1U;
@@ -514,12 +549,13 @@ done:
  * long (non-8.3) one, a '~' elsewhere could spell its Windows alias, so every
  * '~' becomes '_' and the renaming runs once more; its new names have no '~'
  * and the archive already has a long name, so nothing further can arise. */
-static bool xx_seaarc_make_names_unique(xx_seaarc_stream *stream) {
+static bool xx_seaarc_make_names_unique(xx_seaarc_stream *stream,
+                                        xx_pd_struct *pd) {
     bool has_long = false;
     bool has_tilde = false;
     size_t index;
 
-    if (!xx_seaarc_rename_duplicates(stream)) return false;
+    if (!xx_seaarc_rename_duplicates(stream, pd)) return false;
     for (index = 0U; index < stream->count; ++index) {
         const char *name = stream->items[index].name;
         if (!xx_seaarc_is_short_name(name)) has_long = true;
@@ -534,20 +570,327 @@ static bool xx_seaarc_make_names_unique(xx_seaarc_stream *stream) {
             if (*name == '~') *name = '_';
         }
     }
-    return xx_seaarc_rename_duplicates(stream);
+    return xx_seaarc_rename_duplicates(stream, pd);
 }
 
 /* --------------------------------------------------------------- parse -- */
+
+/* One record of the chain, checked exactly as the parser checks it. */
+typedef enum xx_seaarc_step_e {
+    XX_SEAARC_STEP_MEMBER, /* a valid member record; *next is the record after */
+    XX_SEAARC_STEP_END,    /* the 1A 00 end record; *next is the offset after */
+    XX_SEAARC_STEP_REFUSED, /* not a record: a property of the bytes alone */
+    XX_SEAARC_STEP_ERROR   /* the device failed to deliver bytes it holds */
+} xx_seaarc_step;
+
+static xx_seaarc_step xx_seaarc_read_record(Abstractformat *self, int64_t span,
+                                            int64_t offset, uint8_t *header,
+                                            int64_t *next) {
+    uint8_t method;
+    int64_t header_size;
+    int64_t data_offset;
+    int64_t compressed_size;
+    int64_t uncompressed_size;
+
+    if (!xx_seaarc_range_within(span, offset, XX_SEAARC_END_SIZE)) {
+        return XX_SEAARC_STEP_REFUSED;
+    }
+    if (!xx_seaarc_read_at(self, self->base_address + offset, header,
+                           (size_t)XX_SEAARC_END_SIZE)) {
+        return XX_SEAARC_STEP_ERROR;
+    }
+    /* Every record, the end record included, starts with the marker. A
+     * chain that drifts off the record boundaries fails here rather than
+     * silently resynchronising on the next 0x1A. */
+    if (header[0] != XX_SEAARC_MARKER) return XX_SEAARC_STEP_REFUSED;
+    method = header[1];
+    if (method == XX_SEAARC_METHOD_END) {
+        *next = offset + XX_SEAARC_END_SIZE;
+        return XX_SEAARC_STEP_END;
+    }
+    if (!xx_seaarc_method_valid(method)) return XX_SEAARC_STEP_REFUSED;
+
+    header_size = xx_seaarc_header_size(method);
+    if (!xx_seaarc_range_within(span, offset, header_size)) {
+        return XX_SEAARC_STEP_REFUSED;
+    }
+    if (!xx_seaarc_read_at(self, self->base_address + offset, header,
+                           (size_t)header_size)) {
+        return XX_SEAARC_STEP_ERROR;
+    }
+
+    compressed_size = (int64_t)xx_seaarc_le32(header + 15);
+    if (method == XX_SEAARC_METHOD_STORE_OLD) {
+        /* The old header has no original-size field at all; for a stored
+         * member the two lengths are the same by definition. */
+        uncompressed_size = compressed_size;
+    } else {
+        uncompressed_size = (int64_t)xx_seaarc_le32(header + 25);
+    }
+
+    data_offset = offset + header_size;
+    /* A member whose payload runs past EOF is a rejection, not a
+     * truncated-but-listable member. Without this the chain walk would
+     * read the end marker out of unrelated trailing bytes. */
+    if (!xx_seaarc_range_within(span, data_offset, compressed_size)) {
+        return XX_SEAARC_STEP_REFUSED;
+    }
+    /* The stored methods are the only ones whose two lengths must agree,
+     * and making them agree here means decode can copy without having to
+     * decide which length to trust. */
+    if ((method == XX_SEAARC_METHOD_STORE_OLD ||
+         method == XX_SEAARC_METHOD_STORE) &&
+        compressed_size != uncompressed_size) {
+        return XX_SEAARC_STEP_REFUSED;
+    }
+    if (xx_seaarc_name_length(header + XX_SEAARC_NAME_OFFSET) < 0) {
+        return XX_SEAARC_STEP_REFUSED;
+    }
+    *next = data_offset + compressed_size;
+    return XX_SEAARC_STEP_MEMBER;
+}
+
+/* ------------------------------------------------ search memo (dead set) --
+ *
+ * The raw-data search (xx_format_extractor.c) opens this reader on a view
+ * that starts at every 1A 01..1A 0B / 1A 7F pair, in increasing order. Every
+ * member record of a chain is such a pair, so a chain of n members that
+ * does not end on a 1A 00 record costs n candidates, and each candidate
+ * walks the rest of the chain before failing: O(n^2) header reads (a
+ * 65535-member unterminated chain, 1.9 MB, took over an hour).
+ *
+ * Whether the chain starting at an offset is accepted depends only on the
+ * bytes from there to the end of the view, and every view of one search ends
+ * at the end of the same device. So once a walk has failed for a reason
+ * that is a property of the bytes (a bad record, a payload past the end, or
+ * the member cap), every member offset it went through fails too, and so
+ * does any later chain that runs into one of them. Those offsets are kept
+ * here, one bit per byte of the underlying device, and a candidate on one of
+ * them is refused without a walk; a walk that reaches one stops there. Each
+ * device offset is then walked about once per search, which is linear.
+ *
+ * The member cap needs care: a chain of T members is accepted from its i-th
+ * member when T - i < XX_SEAARC_MAX_MEMBERS, so a walk that hits the cap
+ * follows the chain on (without keeping members) to learn T, and marks only
+ * the members that the cap refuses whatever comes after them.
+ *
+ * The memo is used only on a single-range multi-volume view (what the search
+ * opens) and is per thread. It is dropped when a view of another device, or
+ * of the same device's offset 0 or of an earlier offset, arrives: a search
+ * starts at offset 0 and then moves forward, so this also drops it when a
+ * new device happens to reuse an old one's address. Short walks are not
+ * recorded (they are cheap to repeat), and its size is capped. */
+
+#if defined(_MSC_VER)
+#define XX_SEAARC_THREAD_LOCAL __declspec(thread)
+#elif defined(__GNUC__) || defined(__clang__)
+#define XX_SEAARC_THREAD_LOCAL __thread
+#endif
+
+/* Offsets per bitmap page, and its size in bytes. */
+#define XX_SEAARC_MEMO_PAGE_SHIFT 16
+#define XX_SEAARC_MEMO_PAGE_BYTES ((size_t)1U << (XX_SEAARC_MEMO_PAGE_SHIFT - 3))
+/* Directory entries (so offsets up to 4 GiB are covered) and pages (8 MiB of
+ * bitmap, covering 64 MiB of member records). */
+#define XX_SEAARC_MEMO_MAX_DIRECTORY ((size_t)65536U)
+#define XX_SEAARC_MEMO_MAX_PAGES ((size_t)1024U)
+/* A failed walk shorter than this is not recorded. */
+#define XX_SEAARC_MEMO_MIN_WALK ((size_t)16U)
+
+typedef struct xx_seaarc_memo_s {
+    xx_io_device *device; /* the device under the views; never dereferenced */
+    int64_t end;          /* where the views end on it */
+    int64_t last;         /* the latest view start seen */
+    uint8_t **pages;
+    size_t directory;
+    size_t pages_used;
+} xx_seaarc_memo;
+
+/* Where one parse sits on the memo's device. */
+typedef struct xx_seaarc_memo_view_s {
+    xx_seaarc_memo *memo; /* NULL: no memo for this parse */
+    int64_t origin;       /* device offset of chain offset 0 */
+} xx_seaarc_memo_view;
+
+#ifdef XX_SEAARC_THREAD_LOCAL
+static XX_SEAARC_THREAD_LOCAL xx_seaarc_memo xx_seaarc_search_memo;
+#endif
+
+static void xx_seaarc_memo_clear(xx_seaarc_memo *memo) {
+    size_t index;
+
+    if (memo->pages) {
+        for (index = 0U; index < memo->directory; ++index) {
+            xx_mem_free(memo->pages[index]);
+        }
+        xx_mem_free(memo->pages);
+    }
+    xx_mem_zero(memo, sizeof(*memo));
+}
+
+static void xx_seaarc_memo_attach(Abstractformat *self,
+                                  xx_seaarc_memo_view *view) {
+#ifdef XX_SEAARC_THREAD_LOCAL
+    xx_seaarc_memo *memo = &xx_seaarc_search_memo;
+    xx_io_volume volume;
+    int64_t logical = -1;
+    int64_t start;
+    int64_t end;
+
+    view->memo = NULL;
+    view->origin = 0;
+    if (xx_io_multivolume_count(self->device) != 1U ||
+        !xx_io_multivolume_get_volume(self->device, 0U, &volume, &logical) ||
+        logical != 0 || !volume.device || volume.offset < 0 ||
+        volume.size < 0 || volume.offset > INT64_MAX - volume.size ||
+        self->base_address > INT64_MAX - volume.offset) {
+        /* Not a search view. Whatever an earlier search left is released
+         * here rather than kept for the life of the thread. */
+        if (memo->device) xx_seaarc_memo_clear(memo);
+        return;
+    }
+    start = volume.offset + self->base_address;
+    end = volume.offset + volume.size;
+    if (memo->device != volume.device || memo->end != end || start == 0 ||
+        start < memo->last) {
+        xx_seaarc_memo_clear(memo);
+        memo->device = volume.device;
+        memo->end = end;
+    }
+    memo->last = start;
+    view->memo = memo;
+    view->origin = start;
+#else
+    (void)self;
+    view->memo = NULL;
+    view->origin = 0;
+#endif
+}
+
+static bool xx_seaarc_memo_is_dead(const xx_seaarc_memo_view *view,
+                                   int64_t offset) {
+    const xx_seaarc_memo *memo = view->memo;
+    uint64_t at;
+    size_t page;
+
+    if (!memo || !memo->pages || offset < 0 ||
+        offset > INT64_MAX - view->origin) {
+        return false;
+    }
+    at = (uint64_t)(view->origin + offset);
+    page = (size_t)(at >> XX_SEAARC_MEMO_PAGE_SHIFT);
+    if (at >> XX_SEAARC_MEMO_PAGE_SHIFT >= (uint64_t)memo->directory ||
+        !memo->pages[page]) {
+        return false;
+    }
+    at &= ((uint64_t)1U << XX_SEAARC_MEMO_PAGE_SHIFT) - 1U;
+    return (memo->pages[page][at >> 3] & (uint8_t)(1U << (at & 7U))) != 0U;
+}
+
+/* Best effort: a mark that does not fit is simply not kept. */
+static void xx_seaarc_memo_mark(const xx_seaarc_memo_view *view,
+                                int64_t offset) {
+    xx_seaarc_memo *memo = view->memo;
+    uint64_t at;
+    size_t page;
+
+    if (!memo || offset < 0 || offset > INT64_MAX - view->origin) return;
+    at = (uint64_t)(view->origin + offset);
+    if (!memo->pages) {
+        uint64_t wanted = ((uint64_t)memo->end >> XX_SEAARC_MEMO_PAGE_SHIFT) + 1U;
+        size_t directory = wanted > (uint64_t)XX_SEAARC_MEMO_MAX_DIRECTORY
+                               ? XX_SEAARC_MEMO_MAX_DIRECTORY
+                               : (size_t)wanted;
+        memo->pages = (uint8_t **)xx_mem_alloc(directory * sizeof(*memo->pages));
+        if (!memo->pages) return;
+        xx_mem_zero(memo->pages, directory * sizeof(*memo->pages));
+        memo->directory = directory;
+    }
+    if (at >> XX_SEAARC_MEMO_PAGE_SHIFT >= (uint64_t)memo->directory) return;
+    page = (size_t)(at >> XX_SEAARC_MEMO_PAGE_SHIFT);
+    if (!memo->pages[page]) {
+        if (memo->pages_used >= XX_SEAARC_MEMO_MAX_PAGES) return;
+        memo->pages[page] = (uint8_t *)xx_mem_alloc(XX_SEAARC_MEMO_PAGE_BYTES);
+        if (!memo->pages[page]) return;
+        xx_mem_zero(memo->pages[page], XX_SEAARC_MEMO_PAGE_BYTES);
+        ++memo->pages_used;
+    }
+    at &= ((uint64_t)1U << XX_SEAARC_MEMO_PAGE_SHIFT) - 1U;
+    memo->pages[page][at >> 3] |= (uint8_t)(1U << (at & 7U));
+}
+
+/* Marks the first @p count member offsets of the chain at @p offset (all of
+ * them when @p count is 0), walking it again. */
+static void xx_seaarc_memo_mark_chain(Abstractformat *self,
+                                      const xx_seaarc_memo_view *view,
+                                      int64_t span, int64_t offset,
+                                      uint64_t count, xx_pd_struct *pd) {
+    uint8_t header[XX_SEAARC_HEADER_SIZE];
+    uint64_t marked = 0U;
+    int64_t next = 0;
+
+    while (count == 0U || marked < count) {
+        if ((marked & 0xFFFU) == 0U && pd && xx_pd_is_stopped(pd)) return;
+        if (xx_seaarc_memo_is_dead(view, offset)) return;
+        if (xx_seaarc_read_record(self, span, offset, header, &next) !=
+            XX_SEAARC_STEP_MEMBER) {
+            return;
+        }
+        xx_seaarc_memo_mark(view, offset);
+        ++marked;
+        offset = next;
+    }
+}
+
+/* The walk from chain offset 0 read XX_SEAARC_MAX_MEMBERS members and
+ * stopped at @p offset. Follow the rest (members are only counted, every
+ * step moves forward by at least a header, so this ends within the view)
+ * and mark what the cap refuses for good. */
+static void xx_seaarc_memo_after_cap(Abstractformat *self,
+                                     const xx_seaarc_memo_view *view,
+                                     int64_t span, int64_t offset,
+                                     xx_pd_struct *pd) {
+    uint8_t header[XX_SEAARC_HEADER_SIZE];
+    uint64_t extra = 0U;
+    int64_t next = 0;
+
+    for (;;) {
+        xx_seaarc_step step;
+        if ((extra & 0xFFFU) == 0U && pd && xx_pd_is_stopped(pd)) return;
+        if (xx_seaarc_memo_is_dead(view, offset)) {
+            step = XX_SEAARC_STEP_REFUSED;
+        } else {
+            step = xx_seaarc_read_record(self, span, offset, header, &next);
+        }
+        if (step == XX_SEAARC_STEP_ERROR) return;
+        if (step == XX_SEAARC_STEP_REFUSED) {
+            /* No start in this chain can succeed. */
+            xx_seaarc_memo_mark_chain(self, view, span, 0, 0U, pd);
+            return;
+        }
+        if (step == XX_SEAARC_STEP_END) {
+            /* T = MAX + extra members. The start at member i is refused by
+             * the cap exactly when T - i >= MAX, i.e. i <= extra. */
+            xx_seaarc_memo_mark_chain(self, view, span, 0, extra + 1U, pd);
+            return;
+        }
+        ++extra;
+        offset = next;
+    }
+}
 
 static xx_seaarc_stream *xx_seaarc_parse(Abstractformat *self,
                                          xx_pd_struct *pd,
                                          bool unique_names) {
     xx_seaarc_stream *stream;
+    xx_seaarc_memo_view view;
     uint8_t header[XX_SEAARC_HEADER_SIZE];
     int64_t total;
     int64_t span;
     int64_t offset = 0;
     bool terminated = false;
+    bool refused = false;
+    bool capped = false;
 
     if (!self || !self->device || self->base_address < 0) return NULL;
     total = xx_io_total_size(self->device);
@@ -557,81 +900,58 @@ static xx_seaarc_stream *xx_seaarc_parse(Abstractformat *self,
      * payload plus the end record. */
     if (span < XX_SEAARC_HEADER_SIZE_OLD + XX_SEAARC_END_SIZE) return NULL;
 
+    xx_seaarc_memo_attach(self, &view);
+    /* An earlier walk of this search already went through this offset and
+     * failed for good. */
+    if (xx_seaarc_memo_is_dead(&view, 0)) return NULL;
+
     stream = (xx_seaarc_stream *)xx_mem_alloc(sizeof(*stream));
     if (!stream) return NULL;
     xx_mem_zero(stream, sizeof(*stream));
 
     while (!terminated) {
         xx_seaarc_member member;
+        xx_seaarc_step step;
         char *name;
-        uint8_t method;
-        int64_t header_size;
-        int64_t data_offset;
-        int64_t compressed_size;
-        int64_t uncompressed_size;
+        int64_t next = 0;
+        int name_length;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        if (stream->count >= (size_t)XX_SEAARC_MAX_MEMBERS) goto fail;
-        if (!xx_seaarc_range_within(span, offset, XX_SEAARC_END_SIZE) ||
-            !xx_seaarc_read_at(self, self->base_address + offset, header,
-                               (size_t)XX_SEAARC_END_SIZE)) {
+        if (stream->count >= (size_t)XX_SEAARC_MAX_MEMBERS) {
+            capped = true;
             goto fail;
         }
-        /* Every record, the end record included, starts with the marker. A
-         * chain that drifts off the record boundaries fails here rather than
-         * silently resynchronising on the next 0x1A. */
-        if (header[0] != XX_SEAARC_MARKER) goto fail;
-        method = header[1];
-        if (method == XX_SEAARC_METHOD_END) {
-            offset += XX_SEAARC_END_SIZE;
+        if (offset != 0 && xx_seaarc_memo_is_dead(&view, offset)) {
+            refused = true;
+            goto fail;
+        }
+        step = xx_seaarc_read_record(self, span, offset, header, &next);
+        if (step == XX_SEAARC_STEP_END) {
+            offset = next;
             terminated = true;
             break;
         }
-        if (!xx_seaarc_method_valid(method)) goto fail;
-
-        header_size = xx_seaarc_header_size(method);
-        if (!xx_seaarc_range_within(span, offset, header_size) ||
-            !xx_seaarc_read_at(self, self->base_address + offset, header,
-                               (size_t)header_size)) {
+        if (step != XX_SEAARC_STEP_MEMBER) {
+            refused = step == XX_SEAARC_STEP_REFUSED;
             goto fail;
         }
 
-        compressed_size = (int64_t)xx_seaarc_le32(header + 15);
-        if (method == XX_SEAARC_METHOD_STORE_OLD) {
-            /* The old header has no original-size field at all; for a stored
-             * member the two lengths are the same by definition. */
-            uncompressed_size = compressed_size;
-        } else {
-            uncompressed_size = (int64_t)xx_seaarc_le32(header + 25);
-        }
-
-        data_offset = offset + header_size;
-        /* A member whose payload runs past EOF is a rejection, not a
-         * truncated-but-listable member. Without this the chain walk would
-         * read the end marker out of unrelated trailing bytes. */
-        if (!xx_seaarc_range_within(span, data_offset, compressed_size)) {
-            goto fail;
-        }
-        /* The stored methods are the only ones whose two lengths must agree,
-         * and making them agree here means decode can copy without having to
-         * decide which length to trust. */
-        if ((method == XX_SEAARC_METHOD_STORE_OLD ||
-             method == XX_SEAARC_METHOD_STORE) &&
-            compressed_size != uncompressed_size) {
-            goto fail;
-        }
-
-        name = xx_seaarc_make_name(header + XX_SEAARC_NAME_OFFSET);
+        name_length = xx_seaarc_name_length(header + XX_SEAARC_NAME_OFFSET);
+        name = xx_seaarc_make_name(header + XX_SEAARC_NAME_OFFSET,
+                                   (size_t)name_length);
         if (!name) goto fail;
 
         xx_mem_zero(&member, sizeof(member));
         member.name = name;
         member.header_offset = self->base_address + offset;
-        member.header_size = header_size;
-        member.data_offset = self->base_address + data_offset;
-        member.compressed_size = compressed_size;
-        member.uncompressed_size = uncompressed_size;
-        member.method = (uint32_t)method;
+        member.header_size = xx_seaarc_header_size(header[1]);
+        member.data_offset = member.header_offset + member.header_size;
+        member.compressed_size = (int64_t)xx_seaarc_le32(header + 15);
+        member.uncompressed_size =
+            header[1] == XX_SEAARC_METHOD_STORE_OLD
+                ? member.compressed_size
+                : (int64_t)xx_seaarc_le32(header + 25);
+        member.method = (uint32_t)header[1];
         member.crc = xx_seaarc_le16(header + 23);
         /* Date at +0x13, time at +0x15, published as the usual packed dword. */
         member.timestamp = ((uint64_t)xx_seaarc_le16(header + 19) << 16) |
@@ -642,7 +962,7 @@ static xx_seaarc_stream *xx_seaarc_parse(Abstractformat *self,
             goto fail;
         }
 
-        offset = data_offset + compressed_size;
+        offset = next;
     }
 
     /* Two rules that together are this format's ONLY defence against a false
@@ -652,11 +972,22 @@ static xx_seaarc_stream *xx_seaarc_parse(Abstractformat *self,
      * chain that merely happens to run out of file, is not an archive. */
     if (!terminated) goto fail;
     if (stream->count == 0U) goto fail;
-    if (unique_names && !xx_seaarc_make_names_unique(stream)) goto fail;
+    if (unique_names && !xx_seaarc_make_names_unique(stream, pd)) goto fail;
     stream->archive_size = offset;
     return stream;
 
 fail:
+    if (view.memo && !(pd && xx_pd_is_stopped(pd))) {
+        if (refused && stream->count >= XX_SEAARC_MEMO_MIN_WALK) {
+            size_t index;
+            for (index = 0U; index < stream->count; ++index) {
+                xx_seaarc_memo_mark(&view, stream->items[index].header_offset -
+                                               self->base_address);
+            }
+        } else if (capped) {
+            xx_seaarc_memo_after_cap(self, &view, span, offset, pd);
+        }
+    }
     xx_seaarc_stream_free(stream);
     return NULL;
 }
@@ -1706,24 +2037,7 @@ done:
 /* ----------------------------------------------------------- dispatch -- */
 
 static uint16_t xx_seaarc_crc16(const uint8_t *data, size_t size) {
-    uint16_t table[256];
-    uint32_t index;
-    uint16_t crc = 0U;
-    size_t position;
-
-    for (index = 0U; index < 256U; ++index) {
-        uint16_t value = (uint16_t)index;
-        uint32_t bit;
-        for (bit = 0U; bit < 8U; ++bit) {
-            value = (uint16_t)((value & 1U) ? ((value >> 1) ^ 0xA001U)
-                                            : (value >> 1));
-        }
-        table[index] = value;
-    }
-    for (position = 0U; position < size; ++position) {
-        crc = (uint16_t)((crc >> 8) ^ table[(crc ^ data[position]) & 0xFFU]);
-    }
-    return crc;
+    return xx_crc16_arc_calc(0U, data, size);
 }
 
 /* Read a member's payload into a fresh buffer. */
@@ -2135,9 +2449,9 @@ bool xx_seaarc_unpack_current_archive_record(Abstractformat *self,
     }
     {
         xx_io_device *output = xx_io_file_open(target_path, "wb");
-        created = output != NULL;
         size_t completed = 0U;
 
+        created = output != NULL;
         result = output != NULL;
         while (result && completed < plain_size) {
             ssize_t sent = xx_io_write(output, plain + completed,

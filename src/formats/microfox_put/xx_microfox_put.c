@@ -62,6 +62,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/formats/microfox_put/xx_microfox_put.h"
 
 #include "xxfclib/algo/lzh/xx_lzh.h"
@@ -75,6 +76,7 @@
 /* Registration placeholder: xxfc_defs.h is shared and not edited from here,
  * so the alias macro that sits next to the enumerator is tested instead. */
 #ifdef MICROFOX_PUT
+
 #define XX_MICROFOX_PUT_FILE_TYPE XX_FILE_TYPE_MICROFOX_PUT
 #else
 #define XX_MICROFOX_PUT_FILE_TYPE XX_FILE_TYPE_UNKNOWN
@@ -134,6 +136,42 @@ static void put_vtable_destroy(Abstractformat *self);
 
 /* -------------------------------------------------------------- helpers -- */
 
+#include "xxfclib/global/xx_global.h"
+static size_t gb_microfox_put_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_microfox_put_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_microfox_put_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+
+
 static uint16_t put_le16(const uint8_t *data) {
     return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
 }
@@ -145,6 +183,7 @@ static uint32_t put_le32(const uint8_t *data) {
 
 static bool put_read_at(xx_io_device *device, int64_t offset, uint8_t *buffer,
                         size_t size) {
+    const size_t file_io_capacity = gb_microfox_put_capacity();
     size_t done = 0U;
 
     if (!device || offset < 0 || (!buffer && size != 0U) ||
@@ -152,29 +191,15 @@ static bool put_read_at(xx_io_device *device, int64_t offset, uint8_t *buffer,
         return false;
     }
     while (done < size) {
-        ssize_t got = xx_io_read(device, buffer + done, size - done);
+        ssize_t got = gb_microfox_put_read(device, buffer + done, size - done, file_io_capacity);
         if (got <= 0 || (size_t)got > size - done) return false;
         done += (size_t)got;
     }
     return true;
 }
 
-/* CRC-16/ARC (reflected 0x8005), four bits at a time. */
-static const uint16_t put_crc_nibble[16] = {
-    0x0000U, 0xCC01U, 0xD801U, 0x1400U, 0xF001U, 0x3C00U, 0x2800U, 0xE401U,
-    0xA001U, 0x6C00U, 0x7800U, 0xB401U, 0x5000U, 0x9C01U, 0x8801U, 0x4400U};
-
-static uint16_t put_crc16_update(uint16_t crc, const uint8_t *data,
-                                 size_t size) {
-    size_t index;
-
-    for (index = 0U; index < size; ++index) {
-        uint8_t byte = data[index];
-        crc = (uint16_t)((crc >> 4) ^ put_crc_nibble[(crc ^ byte) & 0x0FU]);
-        crc = (uint16_t)((crc >> 4) ^
-                         put_crc_nibble[(crc ^ (byte >> 4)) & 0x0FU]);
-    }
-    return crc;
+static uint16_t put_crc16_update(uint16_t crc, const uint8_t *data, size_t size) {
+    return xx_crc16_arc_calc(crc, data, size);
 }
 
 /* The header CRC of extended type 0 counts its own two bytes as zero. */
@@ -774,12 +799,13 @@ typedef struct put_sink_s {
 } put_sink;
 
 static bool put_sink_write(put_sink *sink, const uint8_t *data, size_t size) {
+    const size_t file_io_capacity = gb_microfox_put_capacity();
     size_t done = 0U;
 
     sink->crc = put_crc16_update(sink->crc, data, size);
     if (!sink->device) return true;
     while (done < size) {
-        ssize_t sent = xx_io_write(sink->device, data + done, size - done);
+        ssize_t sent = gb_microfox_put_write(sink->device, data + done, size - done, file_io_capacity);
         if (sent <= 0 || (size_t)sent > size - done) return false;
         done += (size_t)sent;
     }
@@ -790,6 +816,7 @@ static bool put_sink_write(put_sink *sink, const uint8_t *data, size_t size) {
  * in memory, with the CRC checked BEFORE anything is written. */
 static bool put_extract(Abstractformat *self, const put_member *member,
                         xx_io_device *destination, xx_pd_struct *pd) {
+    const size_t file_io_capacity = gb_microfox_put_capacity();
     put_sink sink;
     uint8_t *packed = NULL;
     uint8_t *plain = NULL;
@@ -806,11 +833,11 @@ static bool put_extract(Abstractformat *self, const put_member *member,
         uint8_t *chunk;
 
         if (member->packed_size != member->unpacked_size) return false;
-        chunk = (uint8_t *)xx_mem_alloc((size_t)PUT_COPY_CHUNK);
+        chunk = (uint8_t *)xx_mem_alloc((size_t)file_io_capacity);
         if (!chunk) return false;
         ok = true;
         while (ok && left > 0) {
-            size_t piece = left > (int64_t)PUT_COPY_CHUNK ? (size_t)PUT_COPY_CHUNK
+            size_t piece = left > (int64_t)file_io_capacity ? (size_t)file_io_capacity
                                                           : (size_t)left;
             if ((pd && xx_pd_is_stopped(pd)) ||
                 !put_read_at(self->device, position, chunk, piece) ||

@@ -155,6 +155,24 @@ void* xx_io_platform_file_open(const char *path, const char *mode) {
     }
 
     if (hFile == INVALID_HANDLE_VALUE) {
+        /* Retry converting path using CP_ACP in case path was passed in local ANSI code page */
+        path_wlen = MultiByteToWideChar(CP_ACP, 0, path, -1, NULL, 0);
+        if (path_wlen > 0) {
+            wpath = stack_wpath;
+            if ((size_t)path_wlen > (sizeof(stack_wpath) / sizeof(stack_wpath[0]))) {
+                wpath = (wchar_t*)HeapAlloc(hHeap, 0, (SIZE_T)path_wlen * sizeof(wchar_t));
+            }
+            if (wpath && MultiByteToWideChar(CP_ACP, 0, path, -1, wpath, path_wlen) > 0) {
+                hFile = CreateFileW(wpath, dwDesiredAccess, dwShareMode, NULL,
+                    dwCreationDisposition, FILE_ATTRIBUTE_NORMAL, NULL);
+            }
+            if (wpath && wpath != stack_wpath) {
+                HeapFree(hHeap, 0, wpath);
+            }
+        }
+    }
+
+    if (hFile == INVALID_HANDLE_VALUE) {
         return NULL;
     }
 

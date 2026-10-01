@@ -6,7 +6,7 @@
  * surface.  It scans the container once to learn the exact extent, stored file
  * name and expanded size of every concatenated stream, then decodes one stream
  * at a time with its own block loop.  That loop applies the same header and
- * block rules as the src/algo/lzop codec, but it reads through a 64 KiB
+ * block rules as the src/algo/lzop codec, but it reads through a global-size
  * read-ahead window, reuses its two block buffers, and batches output writes.
  * A container of millions of 1-byte blocks therefore costs a memory parse,
  * not three device reads, two allocations and one write per block.
@@ -27,6 +27,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/lzop/xx_lzop.h"
 
 #include "xxfclib/algo/crc/xx_crc.h"
@@ -92,6 +93,7 @@ typedef struct xx_lzopfmt_stream_s {
     uint64_t mtime;           /**< Seconds; high word only for >= 0x0940. */
     uint32_t mode;
     uint32_t flags;
+    uint32_t filter;
     uint16_t version;
     uint16_t library_version;
     uint8_t method;
@@ -113,15 +115,15 @@ typedef struct xx_lzopfmt_scan_s {
 /* Read-ahead window of the scan cursor.  Block headers are 8..20 bytes, so
  * without it a container of tiny blocks costs several device calls per block;
  * with it the walk is a memory parse plus one read per 64 KiB. */
-#define XX_LZOPFMT_READAHEAD 65536U
 
 /** Bounded, buffered forward cursor over the device. */
 typedef struct xx_lzopfmt_cursor_s {
     xx_io_device *device;
     int64_t position;
     int64_t end;
-    uint8_t *buffer;          /**< XX_LZOPFMT_READAHEAD bytes, owned. */
+    uint8_t *buffer;          /**< buffer_capacity bytes, owned. */
     int64_t buffer_start;     /**< Device offset of buffer[0]. */
+    size_t buffer_capacity;
     size_t buffer_length;     /**< Valid bytes in buffer. */
 } xx_lzopfmt_cursor;
 
@@ -133,13 +135,13 @@ typedef struct xx_lzopfmt_sums_s {
 
 /* Output batching.  Blocks are verified before they are appended, so the
  * batch only ever holds bytes whose checksums passed. */
-#define XX_LZOPFMT_OUTPUT_BUFFER 65536U
 
 /** Block decoder state, shared by every stream one call decodes. */
 typedef struct xx_lzopfmt_decoder_s {
     xx_lzopfmt_cursor cursor;
     xx_io_device *target;     /**< NULL: decode and verify only. */
-    uint8_t *out;             /**< XX_LZOPFMT_OUTPUT_BUFFER bytes with a target. */
+    uint8_t *out;             /**< out_capacity bytes with a target. */
+    size_t out_capacity;
     size_t out_length;
     uint64_t produced;        /**< Expanded bytes of every stream decoded. */
     uint8_t *packed;          /**< Reused payload buffer. */
@@ -174,7 +176,8 @@ static bool xx_lzopfmt_cursor_open(xx_lzopfmt_cursor *cursor,
                                    int64_t end) {
     xx_mem_zero(cursor, sizeof(*cursor));
     if (!device || start < 0 || end < start) return false;
-    cursor->buffer = (uint8_t *)xx_mem_alloc(XX_LZOPFMT_READAHEAD);
+    cursor->buffer_capacity = xx_get_file_buffer_size();
+    cursor->buffer = (uint8_t *)xx_mem_alloc(cursor->buffer_capacity);
     if (!cursor->buffer) return false;
     cursor->device = device;
     cursor->position = start;
@@ -212,8 +215,11 @@ static bool xx_lzopfmt_direct(xx_lzopfmt_cursor *cursor, uint8_t *data,
         return false;
     }
     while (done < size) {
-        ssize_t amount = xx_io_read(cursor->device, data + done, size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        size_t request = size - done;
+        ssize_t amount;
+        if (request > cursor->buffer_capacity) request = cursor->buffer_capacity;
+        amount = xx_io_read(cursor->device, data + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     cursor->position += (int64_t)size;
@@ -224,8 +230,8 @@ static bool xx_lzopfmt_direct(xx_lzopfmt_cursor *cursor, uint8_t *data,
 /* Load the window starting at the current position. */
 static bool xx_lzopfmt_fill(xx_lzopfmt_cursor *cursor) {
     int64_t available = cursor->end - cursor->position;
-    size_t want = available > (int64_t)XX_LZOPFMT_READAHEAD
-                      ? XX_LZOPFMT_READAHEAD
+    size_t want = (uint64_t)available > (uint64_t)cursor->buffer_capacity
+                      ? cursor->buffer_capacity
                       : (size_t)available;
     size_t done = 0U;
     cursor->buffer_start = cursor->position;
@@ -259,7 +265,7 @@ static bool xx_lzopfmt_read(xx_lzopfmt_cursor *cursor, void *data,
             cursor->position - cursor->buffer_start >=
                 (int64_t)cursor->buffer_length) {
             /* A large payload goes straight to the caller: no double copy. */
-            if (size >= XX_LZOPFMT_READAHEAD) {
+            if (size >= cursor->buffer_capacity) {
                 return xx_lzopfmt_direct(cursor, out, size);
             }
             if (!xx_lzopfmt_fill(cursor)) return false;
@@ -1083,11 +1089,10 @@ static void xx_lzopfmt_scan_cleanup(xx_lzopfmt_scan *scan) {
 /* The optional extra field is length-prefixed and checksummed exactly like
  * the header (the checksum also covers the length); it is skipped but still
  * validated so a corrupt one is refused here instead of inside the codec. */
-static bool xx_lzopfmt_scan_extra(xx_lzopfmt_cursor *cursor, bool use_crc) {
+static bool xx_lzopfmt_scan_extra_buffered(xx_lzopfmt_cursor *cursor, bool use_crc, uint8_t *buffer, size_t buffer_capacity) {
     uint32_t length;
     uint32_t expected;
     xx_lzopfmt_sums sums;
-    uint8_t buffer[4096];
     uint8_t length_bytes[4];
     if (!xx_lzopfmt_read_u32_plain(cursor, &length) ||
         length > XX_LZOPFMT_MAX_EXTRA_SIZE ||
@@ -1101,12 +1106,22 @@ static bool xx_lzopfmt_scan_extra(xx_lzopfmt_cursor *cursor, bool use_crc) {
     length_bytes[3] = (uint8_t)length;
     xx_lzopfmt_sums_update(&sums, length_bytes, sizeof(length_bytes));
     while (length != 0U) {
-        size_t count = length > sizeof(buffer) ? sizeof(buffer) : length;
+        size_t count = length > buffer_capacity ? buffer_capacity : length;
         if (!xx_lzopfmt_read_sum(cursor, buffer, count, &sums)) return false;
         length -= (uint32_t)count;
     }
     return xx_lzopfmt_read_u32_plain(cursor, &expected) &&
            expected == (use_crc ? sums.crc32 : sums.adler32);
+}
+
+static bool xx_lzopfmt_scan_extra(xx_lzopfmt_cursor *cursor, bool use_crc) {
+    size_t buffer_capacity = cursor->buffer_capacity;
+    uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
+    bool buffer_result;
+    if (!buffer) return false;
+    buffer_result = xx_lzopfmt_scan_extra_buffered(cursor, use_crc, buffer, buffer_capacity);
+    xx_mem_free(buffer);
+    return buffer_result;
 }
 
 /* Parse one stream header, the magic having been consumed already.  The field
@@ -1143,13 +1158,11 @@ static bool xx_lzopfmt_scan_header(xx_lzopfmt_cursor *cursor,
         !xx_lzopfmt_read_sum(cursor, &stream->level, 1U, &sums)) {
         return false;
     }
-    /* The filter and multipart flags describe payloads the codec refuses to
-     * decode, so they are refused here too rather than listed and then failed
-     * at extraction time. */
     if (!xx_lzopfmt_read_u32(cursor, &stream->flags, &sums) ||
         (stream->flags & ~XX_LZOPFMT_ALLOWED_FLAGS) != 0U ||
-        (stream->flags &
-         (XX_LZOPFMT_FLAG_FILTER | XX_LZOPFMT_FLAG_MULTIPART)) != 0U ||
+        ((stream->flags & XX_LZOPFMT_FLAG_FILTER) != 0U &&
+         (!xx_lzopfmt_read_u32(cursor, &stream->filter, &sums) ||
+          stream->filter == 0U || stream->filter > 16U)) ||
         !xx_lzopfmt_read_u32(cursor, &stream->mode, &sums) ||
         !xx_lzopfmt_read_u32(cursor, &mtime_low, &sums) ||
         (stream->version >= XX_LZOPFMT_VERSION_LONG_HEADER &&
@@ -1278,20 +1291,20 @@ static bool xx_lzopfmt_scan_run(Abstractformat *self, xx_lzopfmt_scan *scan,
         if (scan->count >= XX_LZOPFMT_MAX_STREAMS) goto fail;
         xx_mem_zero(&stream, sizeof(stream));
         if (!xx_lzopfmt_read(&cursor, magic, sizeof(magic)) ||
-            !xx_lzop_has_header(magic, sizeof(magic)) ||
-            !xx_lzopfmt_scan_header(&cursor, &stream, name, &name_length)) {
+            !xx_lzop_has_header(magic, sizeof(magic))) {
             if (first) goto fail;
-            /* Trailing bytes that are not a further stream become overlay. */
+            /* Bytes without another lzop magic are unrelated overlay. */
             cursor.position = before;
             break;
         }
+        /* A later member with lzop magic is part of this container.  A bad
+         * header or truncated block must invalidate it, not make an apparently
+         * successful archive containing only the earlier members. */
+        if (!xx_lzopfmt_scan_header(&cursor, &stream, name, &name_length))
+            goto fail;
         stream.offset = before;
         stream.header_size = cursor.position - before;
-        if (!xx_lzopfmt_scan_blocks(&cursor, &stream, scan, pd)) {
-            if (first || (pd && xx_pd_is_stopped(pd))) goto fail;
-            cursor.position = before;
-            break;
-        }
+        if (!xx_lzopfmt_scan_blocks(&cursor, &stream, scan, pd)) goto fail;
         stream.size = cursor.position - before;
         if (collect) {
             stream.name = xx_lzopfmt_make_name(name, name_length);
@@ -1326,11 +1339,14 @@ fail:
 /* ------------------------------------------------------------------ */
 
 static bool xx_lzopfmt_write_all(xx_io_device *target, const uint8_t *data,
-                                 size_t size) {
+                                 size_t size, size_t capacity) {
     size_t done = 0U;
     while (done < size) {
-        ssize_t amount = xx_io_write(target, data + done, size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        size_t request = size - done;
+        ssize_t amount;
+        if (request > capacity) request = capacity;
+        amount = xx_io_write(target, data + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -1340,7 +1356,7 @@ static bool xx_lzopfmt_flush(xx_lzopfmt_decoder *decoder) {
     bool result = true;
     if (decoder->target && decoder->out_length != 0U) {
         result = xx_lzopfmt_write_all(decoder->target, decoder->out,
-                                      decoder->out_length);
+                                      decoder->out_length, decoder->out_capacity);
     }
     decoder->out_length = 0U;
     return result;
@@ -1351,10 +1367,10 @@ static bool xx_lzopfmt_flush(xx_lzopfmt_decoder *decoder) {
 static bool xx_lzopfmt_emit(xx_lzopfmt_decoder *decoder, const uint8_t *data,
                             size_t size) {
     if (!decoder->target || size == 0U) return true;
-    if (size > XX_LZOPFMT_OUTPUT_BUFFER - decoder->out_length) {
+    if (size > decoder->out_capacity - decoder->out_length) {
         if (!xx_lzopfmt_flush(decoder)) return false;
-        if (size >= XX_LZOPFMT_OUTPUT_BUFFER) {
-            return xx_lzopfmt_write_all(decoder->target, data, size);
+        if (size >= decoder->out_capacity) {
+            return xx_lzopfmt_write_all(decoder->target, data, size, decoder->out_capacity);
         }
     }
     xx_rt_memcpy(decoder->out + decoder->out_length, data, size);
@@ -1364,14 +1380,18 @@ static bool xx_lzopfmt_emit(xx_lzopfmt_decoder *decoder, const uint8_t *data,
 
 /* Grow a reused block buffer to hold need bytes.  need is at most
  * XX_LZOPFMT_MAX_BLOCK_SIZE (checked by the caller), and the capacity is a
- * power of two from 64 KiB up to that same ceiling, so a run of growing blocks
+ * grown from the captured global capacity up to that same ceiling, so a run of growing blocks
  * reallocates at most eleven times. */
 static bool xx_lzopfmt_reserve(uint8_t **buffer, size_t *capacity,
-                               size_t need) {
-    size_t size = 65536U;
+                               size_t need, size_t initial_capacity) {
+    size_t size = initial_capacity;
+    if (size > XX_LZOPFMT_MAX_BLOCK_SIZE) size = XX_LZOPFMT_MAX_BLOCK_SIZE;
     if (need <= *capacity) return true;
     if (need > XX_LZOPFMT_MAX_BLOCK_SIZE) return false;
-    while (size < need) size <<= 1U;
+    while (size < need) {
+        if (size > XX_LZOPFMT_MAX_BLOCK_SIZE / 2U) size = XX_LZOPFMT_MAX_BLOCK_SIZE;
+        else size *= 2U;
+    }
     if (*buffer) xx_mem_free(*buffer);
     *capacity = 0U;
     *buffer = (uint8_t *)xx_mem_alloc(size);
@@ -1387,8 +1407,9 @@ static bool xx_lzopfmt_decoder_init(xx_lzopfmt_decoder *decoder,
     if (!xx_lzopfmt_cursor_open(&decoder->cursor, source, 0, 0)) return false;
     decoder->target = target;
     if (target) {
-        decoder->out = (uint8_t *)xx_mem_alloc(XX_LZOPFMT_OUTPUT_BUFFER);
-        if (!decoder->out) return false;
+        decoder->out_capacity = decoder->cursor.buffer_capacity;
+        decoder->out = (uint8_t *)xx_mem_alloc(decoder->out_capacity);
+        if (!decoder->out) { xx_lzopfmt_cursor_close(&decoder->cursor); return false; }
     }
     return true;
 }
@@ -1399,6 +1420,25 @@ static void xx_lzopfmt_decoder_cleanup(xx_lzopfmt_decoder *decoder) {
     if (decoder->packed) xx_mem_free(decoder->packed);
     if (decoder->expanded) xx_mem_free(decoder->expanded);
     xx_mem_zero(decoder, sizeof(*decoder));
+}
+
+/* lzop filters 1..16 are independent byte-delta lanes within each block.
+ * The producer resets its lane history for every block, including stored
+ * blocks.  Undo the transform before checking the original-data checksum. */
+static bool xx_lzopfmt_unfilter(uint8_t *data, size_t size,
+                                uint32_t filter) {
+    uint8_t previous[16] = {0};
+    size_t index;
+    if (filter == 0U) return true;
+    if (!data || filter > 16U) return false;
+    if (filter > 1U && size <= filter) return true;
+    for (index = 0U; index < size; ++index) {
+        size_t lane = index % filter;
+        uint8_t value = (uint8_t)(data[index] + previous[lane]);
+        previous[lane] = value;
+        data[index] = value;
+    }
+    return true;
 }
 
 /* Decode one stream over the exact extent the scan measured.  The header goes
@@ -1428,6 +1468,7 @@ static bool xx_lzopfmt_decode_one(xx_lzopfmt_decoder *decoder,
         !xx_lzop_has_header(magic, sizeof(magic)) ||
         !xx_lzopfmt_scan_header(cursor, &header, name, &name_length) ||
         header.flags != stream->flags ||
+        header.filter != stream->filter ||
         cursor->position - stream->offset != stream->header_size) {
         return false;
     }
@@ -1439,7 +1480,7 @@ static bool xx_lzopfmt_decode_one(xx_lzopfmt_decoder *decoder,
         uint32_t crc_data = 0U;
         uint32_t adler_packed = 0U;
         uint32_t crc_packed = 0U;
-        const uint8_t *data;
+        uint8_t *data;
         if (pd && xx_pd_is_stopped(pd)) return false;
         if (!xx_lzopfmt_read_u32_plain(cursor, &expanded)) return false;
         if (expanded == 0U) break;
@@ -1464,7 +1505,7 @@ static bool xx_lzopfmt_decode_one(xx_lzopfmt_decoder *decoder,
         /* The payload must exist before a buffer is sized from it. */
         if ((uint64_t)packed > (uint64_t)(cursor->end - cursor->position) ||
             !xx_lzopfmt_reserve(&decoder->packed, &decoder->packed_capacity,
-                                packed) ||
+                                packed, cursor->buffer_capacity) ||
             !xx_lzopfmt_read(cursor, decoder->packed, packed)) {
             return false;
         }
@@ -1476,7 +1517,7 @@ static bool xx_lzopfmt_decode_one(xx_lzopfmt_decoder *decoder,
                 ((flags & XX_LZOPFMT_FLAG_CRC_COMPRESSED) != 0U &&
                  xx_crc32_calc(0U, decoder->packed, packed) != crc_packed) ||
                 !xx_lzopfmt_reserve(&decoder->expanded,
-                                    &decoder->expanded_capacity, expanded) ||
+                                    &decoder->expanded_capacity, expanded, cursor->buffer_capacity) ||
                 !xx_lzo1x_decompress(decoder->packed, packed,
                                      decoder->expanded, expanded, &written) ||
                 written != (size_t)expanded) {
@@ -1486,7 +1527,8 @@ static bool xx_lzopfmt_decode_one(xx_lzopfmt_decoder *decoder,
         } else {
             data = decoder->packed; /* stored block */
         }
-        if (((flags & XX_LZOPFMT_FLAG_ADLER_DATA) != 0U &&
+        if (!xx_lzopfmt_unfilter(data, expanded, header.filter) ||
+            ((flags & XX_LZOPFMT_FLAG_ADLER_DATA) != 0U &&
              xx_lzopfmt_adler32(1U, data, expanded) != adler_data) ||
             ((flags & XX_LZOPFMT_FLAG_CRC_DATA) != 0U &&
              xx_crc32_calc(0U, data, expanded) != crc_data) ||

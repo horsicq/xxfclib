@@ -36,6 +36,16 @@ XXFC_API bool xx_dcl_scan_memory(const uint8_t *input, size_t input_size,
                                  size_t max_output, size_t *consumed,
                                  size_t *produced);
 
+/* Some historical raw DCL decoders begin with a zero-filled dictionary and
+ * permit a match before enough plaintext has been emitted. Keep this
+ * compatibility path explicit so container decoders retain strict semantics. */
+XXFC_API bool xx_dcl_decode_memory_zero_history(
+    const uint8_t *input, size_t input_size, uint8_t *output,
+    size_t output_size, size_t *written);
+XXFC_API bool xx_dcl_scan_memory_zero_history(
+    const uint8_t *input, size_t input_size, size_t max_output,
+    size_t *consumed, size_t *produced);
+
 #ifdef __cplusplus
 }
 #endif

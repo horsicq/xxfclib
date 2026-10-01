@@ -1311,24 +1311,93 @@ static JSVal fn_string_tolower(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pAr
     return string_case(pCtx, thisVal, 0);
 }
 
+/* QtScript's trim removes whitespace, not every control byte below SPACE.
+ * Preserve its whitespace set, including U+200B but excluding U+180E and
+ * U+FEFF. Strings can contain Latin-1 bytes or UTF-8 passed through by the
+ * interpreter, so recognize NBSP in both forms and the other UTF-8 spaces. */
+static size_t string_trim_space_size(const char *pData, size_t nSize)
+{
+    const unsigned char *pBytes = (const unsigned char *)pData;
+
+    if (nSize == 0) {
+        return 0;
+    }
+
+    if ((pBytes[0] == 0x20) || ((pBytes[0] >= 0x09) && (pBytes[0] <= 0x0D)) || (pBytes[0] == 0xA0)) {
+        return 1;
+    }
+
+    if ((nSize >= 2) && (pBytes[0] == 0xC2) && (pBytes[1] == 0xA0)) {
+        return 2;
+    }
+
+    if (nSize >= 3) {
+        if (((pBytes[0] == 0xE1) && (pBytes[1] == 0x9A) && (pBytes[2] == 0x80)) ||
+            ((pBytes[0] == 0xE2) && (pBytes[1] == 0x80) &&
+             (((pBytes[2] >= 0x80) && (pBytes[2] <= 0x8B)) || (pBytes[2] == 0xA8) || (pBytes[2] == 0xA9) || (pBytes[2] == 0xAF))) ||
+            ((pBytes[0] == 0xE2) && (pBytes[1] == 0x81) && (pBytes[2] == 0x9F)) ||
+            ((pBytes[0] == 0xE3) && (pBytes[1] == 0x80) && (pBytes[2] == 0x80))) {
+            return 3;
+        }
+    }
+
+    return 0;
+}
+
+static size_t string_trim_last_size(const char *pData, size_t nStart, size_t nEnd)
+{
+    const unsigned char *pBytes = (const unsigned char *)pData;
+    size_t nPos = nEnd - 1;
+    size_t nSize = 0;
+
+    while ((nPos > nStart) && ((nEnd - nPos) < 4) && ((pBytes[nPos] & 0xC0) == 0x80)) {
+        nPos--;
+    }
+
+    nSize = nEnd - nPos;
+
+    /* Do not treat a valid non-whitespace UTF-8 sequence's final 0xA0 as
+     * a standalone Latin-1 NBSP; that would leave a truncated code point. */
+    if (((nSize == 2) && (pBytes[nPos] >= 0xC2) && (pBytes[nPos] <= 0xDF)) ||
+        ((nSize == 3) && (pBytes[nPos] >= 0xE0) && (pBytes[nPos] <= 0xEF) &&
+         ((pBytes[nPos] != 0xE0) || (pBytes[nPos + 1] >= 0xA0)) &&
+         ((pBytes[nPos] != 0xED) || (pBytes[nPos + 1] < 0xA0))) ||
+        ((nSize == 4) && (pBytes[nPos] >= 0xF0) && (pBytes[nPos] <= 0xF4) &&
+         ((pBytes[nPos] != 0xF0) || (pBytes[nPos + 1] >= 0x90)) &&
+         ((pBytes[nPos] != 0xF4) || (pBytes[nPos + 1] < 0x90)))) {
+        return nSize;
+    }
+
+    return 1;
+}
+
 static JSVal fn_string_trim(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, void *pUser)
 {
     JSVal text = this_string(pCtx, thisVal);
     const char *pData = js_str_data(text);
     size_t nStart = 0;
     size_t nEnd = js_str_len(text);
+    size_t nSpaceSize = 0;
     JSVal result;
 
     (void)nArgc;
     (void)pArgv;
     (void)pUser;
 
-    while ((nStart < nEnd) && ((unsigned char)pData[nStart] <= ' ')) {
-        nStart++;
+    while ((nStart < nEnd) && ((nSpaceSize = string_trim_space_size(pData + nStart, nEnd - nStart)) != 0)) {
+        nStart += nSpaceSize;
     }
 
-    while ((nEnd > nStart) && ((unsigned char)pData[nEnd - 1] <= ' ')) {
-        nEnd--;
+    while (nEnd > nStart) {
+        size_t nCharSize = string_trim_last_size(pData, nStart, nEnd);
+
+        nSpaceSize = string_trim_space_size(pData + nEnd - nCharSize, nCharSize);
+
+        if (nSpaceSize != nCharSize) {
+            break;
+        }
+
+        nEnd -= nCharSize;
     }
 
     result = js_strn(pCtx, pData + nStart, nEnd - nStart);

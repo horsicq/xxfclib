@@ -24,7 +24,7 @@
 #ifndef XFT_H
 #define XFT_H
 
-#include "../die_engine/die_engine_bin.h"
+#include "../die_engine/xx_die_engine_bin.h"
 
 typedef struct {
     int bTypes[XFT_COUNT];

@@ -4,13 +4,15 @@
  * The "DC"/"DL" single-member compressed-file container U3 labels LIF.  The
  * header test is U3's own recognition predicate (FUN_00555840), tightened
  * with the two structural identities that hold in the whole corpus.  The
- * payload codec (method 6) is NOT implemented: see xx_lif.h for what is and
- * is not known, and why the record is still published.
+ * Method 6 is Zoo LZD with an explicit EOF code.  Its decoded size is
+ * measured by scanning the code stream before the record is published.
  */
 
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/lif/xx_lif.h"
 
+#include "xxfclib/algo/store/xx_store.h"
+#include "xxfclib/algo/zoo/xx_zoo.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
@@ -28,11 +30,86 @@ typedef struct lif_stream_s {
     char name[XX_LIF_NAME_SIZE + 1];
     int64_t packed_offset;
     int64_t packed_size;
+    size_t stream_size;
+    size_t unpacked_size;
     int64_t total_size;
     uint16_t dos_date;
     uint16_t dos_time;
     bool consumed;
 } lif_stream;
+
+#define LIF_MAX_PACKED (64U * 1024U * 1024U)
+#define LIF_MAX_PLAIN (256U * 1024U * 1024U)
+#define LIF_LZD_TABLE_SIZE 8192U
+
+/* Zoo LZD's low-bit-first codes make the EOF byte position and decoded size
+ * recoverable without constructing the output.  The ordinary ZOO decoder
+ * still validates the full expansion during unpacking. */
+static bool lif_scan_lzd(const uint8_t *data, size_t size,
+                         size_t *stream_size, size_t *unpacked_size) {
+    uint32_t lengths[LIF_LZD_TABLE_SIZE] = {0};
+    size_t bit = 0U, output = 0U;
+    uint32_t next_code = 258U, width_limit = 512U;
+    int32_t previous = -1;
+    unsigned width = 9U;
+    bool initial_clear = false;
+    uint32_t i;
+    if (!data || !stream_size || !unpacked_size || size < 3U ||
+        size > LIF_MAX_PACKED)
+        return false;
+    for (i = 0U; i < 256U; ++i) lengths[i] = 1U;
+    for (;;) {
+        uint32_t code = 0U, length;
+        unsigned j;
+        if (bit > size * 8U || width > size * 8U - bit) return false;
+        for (j = 0U; j < width; ++j) {
+            size_t position = bit + j;
+            code |= (uint32_t)((data[position >> 3U] >> (position & 7U)) &
+                               1U)
+                    << j;
+        }
+        bit += width;
+        if (!initial_clear) {
+            if (code != 256U) return false;
+            initial_clear = true;
+        }
+        if (code == 257U) break;
+        if (code == 256U) {
+            width = 9U;
+            width_limit = 512U;
+            next_code = 258U;
+            previous = -1;
+            continue;
+        }
+        if (previous < 0 && code >= 256U) return false;
+        if (next_code >= LIF_LZD_TABLE_SIZE) return false;
+        if (code < next_code && lengths[code] != 0U)
+            length = lengths[code];
+        else if (previous >= 0 && code == next_code)
+            length = lengths[previous] + 1U;
+        else
+            return false;
+        if (length > LIF_MAX_PLAIN - output) return false;
+        output += length;
+        if (previous >= 0) {
+            lengths[next_code++] = lengths[previous] + 1U;
+            if (next_code >= width_limit && width < 13U) {
+                ++width;
+                width_limit <<= 1U;
+            }
+        }
+        previous = (int32_t)code;
+    }
+    if (output == 0U) return false;
+    *stream_size = (bit + 7U) / 8U;
+    if (size - *stream_size > 1U ||
+        (size > *stream_size && data[*stream_size] != 0U) ||
+        ((bit & 7U) != 0U &&
+         (data[*stream_size - 1U] >> (bit & 7U)) != 0U))
+        return false;
+    *unpacked_size = output;
+    return true;
+}
 
 static uint16_t lif_le16(const uint8_t *bytes) {
     return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
@@ -89,6 +166,8 @@ static bool lif_parse(Abstractformat *format, lif_stream **result,
                       xx_pd_struct *pd) {
     uint8_t header[XX_LIF_HEADER_SIZE];
     lif_stream *stream;
+    uint8_t *packed = NULL;
+    size_t stream_size, unpacked_size;
     int64_t total, span;
     uint32_t declared_total, method, packed_size;
     uint16_t magic;
@@ -115,7 +194,9 @@ static bool lif_parse(Abstractformat *format, lif_stream **result,
     if (declared_total == 0U || (declared_total & 0x80000000U) != 0U)
         return false;
     if (method != XX_LIF_METHOD) return false;
-    if ((packed_size & 0x80000000U) != 0U) return false;
+    if ((packed_size & 0x80000000U) != 0U ||
+        packed_size > LIF_MAX_PACKED)
+        return false;
     if (lif_le32(header + 0x21) != 0U) return false;
 
     /* The two structural identities.  A two-byte magic is far too weak on its
@@ -126,6 +207,16 @@ static bool lif_parse(Abstractformat *format, lif_stream **result,
     if ((int64_t)packed_size != span - (int64_t)XX_LIF_HEADER_SIZE)
         return false;
 
+    packed = (uint8_t *)xx_mem_alloc(packed_size != 0U ? packed_size : 1U);
+    if (!packed || !lif_read_at(format->device,
+                                format->base_address + XX_LIF_HEADER_SIZE,
+                                packed, packed_size) ||
+        !lif_scan_lzd(packed, packed_size, &stream_size, &unpacked_size)) {
+        if (packed) xx_mem_free(packed);
+        return false;
+    }
+    xx_mem_free(packed);
+
     stream = (lif_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;
     if (!lif_copy_name(header + 6, stream->name)) {
@@ -134,6 +225,8 @@ static bool lif_parse(Abstractformat *format, lif_stream **result,
     }
     stream->packed_offset = format->base_address + (int64_t)XX_LIF_HEADER_SIZE;
     stream->packed_size = (int64_t)packed_size;
+    stream->stream_size = stream_size;
+    stream->unpacked_size = unpacked_size;
     stream->total_size = (int64_t)declared_total;
     stream->dos_date = lif_le16(header + 0x25);
     stream->dos_time = lif_le16(header + 0x27);
@@ -170,13 +263,12 @@ static bool lif_set_record(xx_archive_record *record,
     record->header_offset = format->base_address;
     record->header_size = XX_LIF_HEADER_SIZE;
     record->data_offset = stream->packed_offset;
-    record->compressed_size = stream->packed_size;
+    record->compressed_size = (int64_t)stream->stream_size;
     return xx_archive_record_set_original_name(record, stream->name) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                          (uint64_t)stream->packed_size) &&
-           /* The container stores no uncompressed size, and method 6 is not
-            * decoded here, so none is published: reporting the packed size
-            * would be a fabricated number. */
+                                          (uint64_t)stream->stream_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
+                                          (uint64_t)stream->unpacked_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
                                           XX_LIF_METHOD) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE,
@@ -338,16 +430,102 @@ bool xx_lif_archive_record_move_to_next(Abstractformat *format,
     return false;
 }
 
+static const xx_var *lif_option(const xx_list_s *options, uint32_t id) {
+    size_t index;
+    if (!options) return NULL;
+    for (index = 0U; index < options->count; ++index) {
+        const xx_meta *meta =
+            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        if (meta && meta->meta_id == id) return &meta->var;
+    }
+    return NULL;
+}
+
+static bool lif_decode(Abstractformat *format, const lif_stream *stream,
+                       uint8_t **result) {
+    uint8_t *packed = NULL, *plain = NULL;
+    size_t written = 0U;
+    if (!format || !stream || !result || stream->stream_size == 0U ||
+        stream->unpacked_size == 0U)
+        return false;
+    packed = (uint8_t *)xx_mem_alloc(stream->stream_size);
+    plain = (uint8_t *)xx_mem_alloc(stream->unpacked_size);
+    if (!packed || !plain ||
+        !lif_read_at(format->device, stream->packed_offset, packed,
+                     stream->stream_size) ||
+        !xx_zoo_lzd_decode_memory(packed, stream->stream_size, plain,
+                                  stream->unpacked_size, &written) ||
+        written != stream->unpacked_size) {
+        if (packed) xx_mem_free(packed);
+        if (plain) xx_mem_free(plain);
+        return false;
+    }
+    xx_mem_free(packed);
+    *result = plain;
+    return true;
+}
+
 bool xx_lif_unpack_current_archive_record(Abstractformat *format,
                                           xx_archive_record_state *state,
                                           xx_pd_struct *pd) {
-    (void)format;
-    (void)state;
-    (void)pd;
-    /* Method 6 is not identified.  A reader that refuses is worth more than
-     * one that emits garbage, so this fails closed; the member's name, extent
-     * and timestamp are still published by the record. */
-    return false;
+    lif_stream *stream;
+    const xx_var *option;
+    const char *base = NULL;
+    char *owned_base = NULL, *path = NULL;
+    uint8_t *plain = NULL;
+    xx_io_device *destination = NULL;
+    size_t written = 0U;
+    bool ok = false, created = false;
+    if (!format || !state || state->format != format || !state->has_record ||
+        !(stream = (lif_stream *)state->internal_state) || stream->consumed ||
+        (pd && xx_pd_is_stopped(pd)) || !lif_decode(format, stream, &plain))
+        return false;
+    option = lif_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
+    if (!option) {
+        ok = true; /* A missing destination requests decode verification. */
+        goto done;
+    }
+    if (option->type == XX_VAR_TYPE_STRING ||
+        option->type == XX_VAR_TYPE_STRING_VIEW)
+        base = xx_var_get_str(option);
+    else if (option->type == XX_VAR_TYPE_WSTRING ||
+             option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+        owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
+        base = owned_base;
+    }
+    if (!base) goto done;
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
+            base[xx_str_len(base) - 1U] != '\\')
+               ? xx_str_concat3(base, "/", stream->name)
+               : xx_str_concat(base, stream->name);
+    if (!path || !xx_store_create_dirs_a(path, false)) goto done;
+    destination = xx_io_file_open(path, "wb");
+    created = destination != NULL;
+    if (!destination) goto done;
+    ok = true;
+    while (written < stream->unpacked_size) {
+        size_t chunk = stream->unpacked_size - written;
+        ssize_t amount;
+        if (chunk > 1024U * 1024U) chunk = 1024U * 1024U;
+        if (pd && xx_pd_is_stopped(pd)) {
+            ok = false;
+            break;
+        }
+        amount = xx_io_write(destination, plain + written, chunk);
+        if (amount <= 0 || (size_t)amount > chunk) {
+            ok = false;
+            break;
+        }
+        written += (size_t)amount;
+    }
+    if (xx_io_close(destination) != 0) ok = false;
+    destination = NULL;
+    if (!ok && created) xx_rt_remove(path);
+done:
+    if (plain) xx_mem_free(plain);
+    if (path) xx_str_free(path);
+    if (owned_base) xx_str_free(owned_base);
+    return ok;
 }
 
 void xx_lif_free_archive_records_reading(Abstractformat *format,

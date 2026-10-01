@@ -242,9 +242,8 @@ static bool xx_ti99arc_entry_name(const uint8_t *entry, char **out_name) {
     for (index = 0U; index < end; ++index) {
         uint8_t character = entry[index];
         if (character < 0x20U || character > 0x7EU) return false;
-        /* The format has no directories, so a separator would turn one
-         * member into a path. */
-        if (character == '/' || character == '\\') return false;
+        /* TI names are flat, and '/' is a legal character (for example
+         * DISK1OFF/S). Portable output naming is handled at extraction. */
         buffer[index] = (char)character;
     }
     buffer[end] = '\0';
@@ -884,6 +883,8 @@ bool xx_ti99arc_unpack_current_archive_record(Abstractformat *self,
     const xx_var *path_option;
     const char *base_path = NULL;
     char *converted_path = NULL;
+    char portable_name[64];
+    const char *output_name;
     char *target_path = NULL;
     uint8_t *plain = NULL;
     size_t plain_size = 0U;
@@ -898,6 +899,17 @@ bool xx_ti99arc_unpack_current_archive_record(Abstractformat *self,
     if (!stream || stream->index >= stream->count) return false;
     member = &stream->items[stream->index];
     if (!xx_ti99arc_path_safe(member->name)) return false;
+    output_name = member->name;
+    if (xx_rt_strchr(member->name, '/') || xx_rt_strchr(member->name, '\\')) {
+        size_t i;
+        /* Prefix exceeds the format's ten-byte name limit, so this output
+         * cannot collide with any ordinary archive member. */
+        xx_rt_snprintf(portable_name, sizeof(portable_name), "ti99-member-%u-%s",
+                       (unsigned)stream->index, member->name);
+        for (i = 0; portable_name[i]; ++i)
+            if (portable_name[i] == '/' || portable_name[i] == '\\') portable_name[i] = '_';
+        output_name = portable_name;
+    }
 
     path_option = xx_ti99arc_get_option(&state->options,
                                        XX_META_ID_OPT_UNPACK_PATH);
@@ -924,9 +936,9 @@ bool xx_ti99arc_unpack_current_archive_record(Abstractformat *self,
     if (base_path[0] != '\0' &&
         base_path[xx_str_len(base_path) - 1U] != '/' &&
         base_path[xx_str_len(base_path) - 1U] != '\\') {
-        target_path = xx_str_concat3(base_path, "/", member->name);
+        target_path = xx_str_concat3(base_path, "/", output_name);
     } else {
-        target_path = xx_str_concat(base_path, member->name);
+        target_path = xx_str_concat(base_path, output_name);
     }
     xx_str_free(converted_path);
     if (!target_path) return false;

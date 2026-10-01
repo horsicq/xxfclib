@@ -6,6 +6,7 @@
  * order, which is neither ordinary little-endian nor big-endian.
  */
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/pdp11ar/xx_pdp11ar.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -20,9 +21,16 @@
 #define PDP11AR_HEADER_SIZE 26U
 #define PDP11AR_NAME_SIZE 14U
 #define PDP11AR_MAX_MEMBERS 100000U
-#define PDP11AR_ZERO_SCAN_CHUNK 65536U
 #define PDP11AR_MODE_IFMT 0xf000U
 #define PDP11AR_MODE_IFREG 0x8000U
+
+/* Older PDP-11 ar writers store just permission bits in the mode field;
+ * the file type is implicit in an archive member. Later writers may include
+ * the regular-file type bits. Refuse explicit non-regular kinds. */
+static bool pdp11ar_regular_mode(uint16_t mode) {
+    uint16_t kind = mode & PDP11AR_MODE_IFMT;
+    return kind == 0U || kind == PDP11AR_MODE_IFREG;
+}
 
 typedef struct pdp11ar_member_s {
     char *name;
@@ -53,25 +61,27 @@ static uint32_t pdp11ar_middle32(const uint8_t *bytes) {
 
 static bool pdp11ar_read_at(xx_io_device *device, int64_t offset, void *buffer,
                             size_t size) {
+    size_t transfer_capacity = xx_get_file_buffer_size();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        size_t request = size - done;
+        ssize_t amount;
+        if (request > transfer_capacity) request = transfer_capacity;
+        amount = xx_io_read(device, (uint8_t *)buffer + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static bool pdp11ar_zero_tail(Abstractformat *format, int64_t offset,
-                              int64_t size, xx_pd_struct *pd) {
-    uint8_t buffer[PDP11AR_ZERO_SCAN_CHUNK];
+static bool pdp11ar_zero_tail_buffered(Abstractformat *format, int64_t offset,
+                              int64_t size, xx_pd_struct *pd, uint8_t *buffer, size_t buffer_capacity) {
     if (!format || offset < 0 || size < 0) return false;
     while (size != 0) {
-        size_t portion = size > (int64_t)sizeof(buffer) ? sizeof(buffer) :
+        size_t portion = (uint64_t)size > (uint64_t)buffer_capacity ? buffer_capacity :
                                                           (size_t)size;
         size_t index;
         if (pd && xx_pd_is_stopped(pd) ||
@@ -84,6 +94,17 @@ static bool pdp11ar_zero_tail(Abstractformat *format, int64_t offset,
         size -= (int64_t)portion;
     }
     return true;
+}
+
+static bool pdp11ar_zero_tail(Abstractformat *format, int64_t offset,
+                              int64_t size, xx_pd_struct *pd) {
+    size_t buffer_capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
+    bool buffer_result;
+    if (!buffer) return false;
+    buffer_result = pdp11ar_zero_tail_buffered(format, offset, size, pd, buffer, buffer_capacity);
+    xx_mem_free(buffer);
+    return buffer_result;
 }
 
 static char *pdp11ar_name(const uint8_t *bytes) {
@@ -102,9 +123,8 @@ static char *pdp11ar_name(const uint8_t *bytes) {
             bytes[index] == '/' || bytes[index] == '\\')
             return NULL;
     }
-    for (index = length; index < PDP11AR_NAME_SIZE; ++index) {
-        if (bytes[index] != 0U) return NULL;
-    }
+    /* The first NUL ends the name; real archives can leave stale bytes in
+       the unused portion of the fixed-width field. */
     result = (char *)xx_mem_alloc(length + 1U);
     if (!result) return NULL;
     xx_rt_memcpy(result, bytes, length);
@@ -193,11 +213,7 @@ static bool pdp11ar_parse(Abstractformat *format, pdp11ar_stream **result,
         xx_rt_memset(&member, 0, sizeof(member));
         member.name = pdp11ar_name(header);
         member.mode = pdp11ar_le16(header + 20U);
-        if (!member.name ||
-            (stream->count == 0U &&
-             (member.mode & PDP11AR_MODE_IFMT) != PDP11AR_MODE_IFREG) ||
-            (stream->count != 0U && member.mode != 0U &&
-             (member.mode & PDP11AR_MODE_IFMT) != PDP11AR_MODE_IFREG)) {
+        if (!member.name || !pdp11ar_regular_mode(member.mode)) {
             if (member.name) xx_mem_free(member.name);
             goto done;
         }
@@ -295,17 +311,16 @@ static bool pdp11ar_set_record(xx_archive_record *record,
                                            false);
 }
 
-static bool pdp11ar_verify_member(Abstractformat *format,
+static bool pdp11ar_verify_member_buffered(Abstractformat *format,
                                   const pdp11ar_member *member,
-                                  xx_pd_struct *pd) {
-    uint8_t buffer[32768];
+                                  xx_pd_struct *pd, uint8_t *buffer, size_t buffer_capacity) {
     int64_t offset;
     uint32_t remaining;
     if (!format || !member) return false;
     offset = member->data_offset;
     remaining = member->size;
     while (remaining != 0U) {
-        size_t portion = remaining > sizeof(buffer) ? sizeof(buffer) : remaining;
+        size_t portion = remaining > buffer_capacity ? buffer_capacity : remaining;
         if (pd && xx_pd_is_stopped(pd) ||
             !pdp11ar_read_at(format->device, offset, buffer, portion))
             return false;
@@ -313,6 +328,18 @@ static bool pdp11ar_verify_member(Abstractformat *format,
         remaining -= (uint32_t)portion;
     }
     return true;
+}
+
+static bool pdp11ar_verify_member(Abstractformat *format,
+                                  const pdp11ar_member *member,
+                                  xx_pd_struct *pd) {
+    size_t buffer_capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
+    bool buffer_result;
+    if (!buffer) return false;
+    buffer_result = pdp11ar_verify_member_buffered(format, member, pd, buffer, buffer_capacity);
+    xx_mem_free(buffer);
+    return buffer_result;
 }
 
 void xx_pdp11ar_init(xx_pdp11ar *archive, xx_io_device *device,

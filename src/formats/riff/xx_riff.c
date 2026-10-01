@@ -13,7 +13,8 @@
  * whole top-level chunk list have to be what the RIFF specification says
  * (see xx_riff.h for the list and the one tolerated writer deviation).
  *
- * Not an archive: binwalk's extractor carves the RIFF itself.
+ * The component archive API publishes each top-level chunk payload separately.
+ * Nested LIST bodies remain encoded; audio and video are not decoded.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -21,6 +22,9 @@
 
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
+
+#include "../bmp/xx_component_archive_impl.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -229,6 +233,7 @@ void xx_riff_init(xx_riff *riff, xx_io_device *dev, int64_t base_address) {
     riff->format.handle_base_info = xx_riff_handle_base_info;
     riff->format.get_format_size = xx_riff_get_format_size;
     riff->format.destroy = xx_riff_vtable_destroy;
+    xx_components_install(&riff->format);
 }
 
 xx_riff *xx_riff_create(xx_io_device *dev, int64_t base_address) {
@@ -297,6 +302,7 @@ bool xx_riff_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     self->is_archive = false;
     self->is_executable = false;
     self->is_crypted = false;
+    if (!xx_components_finish(self, pd)) return false;
     self->is_valid = true;
     self->base_info_handled = true;
     return true;
@@ -326,4 +332,18 @@ const char *xx_riff_get_first_chunk_id(const xx_riff *riff) {
 
 uint32_t xx_riff_get_number_of_chunks(const xx_riff *riff) {
     return riff ? riff->number_of_chunks : 0U;
+}
+
+/* Encoded/structural component members; this does not decode media. */
+static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd) {
+
+    int64_t pos=12;
+    while(pos<f->format_size) {
+        uint8_t h[8]; uint32_t n; char kind[5];
+        if(xx_pd_is_stopped(pd) || !xx_component_read(f,pos,h,8)) return false;
+        n=xx_data_get_u32(h,8,4,false); xx_rt_memcpy(kind,h,4); kind[4]=0;
+        if(!xx_component_add(f,s,pos+8,n,kind)) return false;
+        pos+=8+(int64_t)n+(n&1);
+    }
+    return pos==f->format_size || (pos==f->format_size+1 && ((xx_riff *)f)->pad_outside);
 }

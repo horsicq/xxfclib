@@ -47,6 +47,10 @@
 #ifndef XXFCLIB_FORMAT_GIF_H
 #define XXFCLIB_FORMAT_GIF_H
 
+/* The component archive API publishes the logical screen, colour table,
+ * extension blocks and image descriptor/LZW blocks separately. It does not
+ * decode the LZW pixel stream. */
+
 #include "xxfclib/xxfc_defs.h"
 #include "xxfclib/formats/xx_format.h"
 

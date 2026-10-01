@@ -32,9 +32,10 @@
  *      runs its regex over.
  */
 
+#include "../xio.h"
 #include "../../formats/apk/xapk.h"
-#include "../../die_engine/inflate.h"
-#include "../../die_engine/die_engine_compat.h"
+#include "../../die_engine/xx_die_engine_inflate.h"
+#include "../../die_engine/xx_die_engine_compat.h"
 
 /* -------------------------------------------------------------------- ZIP */
 
@@ -48,7 +49,6 @@
 static int zip_read_manifest(DieFile *pFile, CDBuf *pOut)
 {
     cd_i64 nSize = pFile->nSize;
-    const unsigned char *pData = pFile->pData;
     cd_i64 nEocd = -1;
     cd_i64 i = 0;
     cd_i64 nCentralOffset = 0;
@@ -67,7 +67,7 @@ static int zip_read_manifest(DieFile *pFile, CDBuf *pOut)
             break;
         }
 
-        if ((pData[i] == 0x50) && (pData[i + 1] == 0x4B) && (pData[i + 2] == 0x05) && (pData[i + 3] == 0x06)) {
+        if (xio_match(pFile, i, "\x50\x4B\x05\x06", 4)) {
             nEocd = i;
 
             break;
@@ -96,7 +96,7 @@ static int zip_read_manifest(DieFile *pFile, CDBuf *pOut)
             return 0;
         }
 
-        if (!((pData[nCentralOffset] == 0x50) && (pData[nCentralOffset + 1] == 0x4B) && (pData[nCentralOffset + 2] == 0x01) && (pData[nCentralOffset + 3] == 0x02))) {
+        if (!xio_match(pFile, nCentralOffset, "\x50\x4B\x01\x02", 4)) {
             return 0;
         }
 
@@ -113,7 +113,7 @@ static int zip_read_manifest(DieFile *pFile, CDBuf *pOut)
             return 0;
         }
 
-        if ((nNameLen == 19) && (x_memcmp(pData + nNameOffset, "AndroidManifest.xml", 19) == 0)) {
+        if ((nNameLen == 19) && (xio_match(pFile, nNameOffset, "AndroidManifest.xml", 19))) {
             /* Local header: skip its own (possibly different) name and extra
              * field lengths to reach the compressed data.                   */
             cd_u16 nLocalNameLen = 0;
@@ -130,7 +130,7 @@ static int zip_read_manifest(DieFile *pFile, CDBuf *pOut)
                 return 0;
             }
 
-            if (!((pData[nLocalOffset] == 0x50) && (pData[nLocalOffset + 1] == 0x4B) && (pData[nLocalOffset + 2] == 0x03) && (pData[nLocalOffset + 3] == 0x04))) {
+            if (!xio_match(pFile, nLocalOffset, "\x50\x4B\x03\x04", 4)) {
                 return 0;
             }
 
@@ -152,17 +152,16 @@ static int zip_read_manifest(DieFile *pFile, CDBuf *pOut)
                     return 0;
                 }
 
-                cdbuf_append(pOut, pData + nDataOffset, nCompSize);
-
-                return 1;
+                return xio_append(pFile, nDataOffset, nCompSize, pOut);
             }
 
             if (nMethod == 8) {
-                if (!inflate_raw(pData + nDataOffset, nCompSize, nUncompSize, XAPK_MANIFEST_LIMIT + 1, pOut)) {
-                    return 0;
-                }
-
-                return (pOut->nSize == (size_t)nUncompSize) ? 1 : 0;
+                unsigned char *pOwned = NULL;
+                const unsigned char *pCompressed = pFile->pData ? pFile->pData + nDataOffset :
+                    (pOwned = xio_read_owned(pFile, nDataOffset, nCompSize));
+                int bResult = pCompressed ? inflate_raw(pCompressed, nCompSize, nUncompSize, XAPK_MANIFEST_LIMIT + 1, pOut) : 0;
+                cd_free(pOwned);
+                return bResult && pOut->nSize == (size_t)nUncompSize;
             }
 
             return 0;

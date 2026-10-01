@@ -18,6 +18,7 @@ extern "C" {
 typedef struct xx_bigaf {
     Abstractformat format;
     uint64_t number_of_records;
+    bool is_complete;
 } xx_bigaf;
 
 typedef xx_bigaf xx_bigaf_t;

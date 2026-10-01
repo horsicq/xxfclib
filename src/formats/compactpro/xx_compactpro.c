@@ -53,9 +53,15 @@
  *   Names are converted from Mac OS Roman to UTF-8. Characters a file system
  *   would read as structure or refuse ('/', '\\', ':', '*', '?', '"', '<',
  *   '>', '|', control codes) become '_', trailing dots and spaces are
- *   dropped, Windows device names get a '_' prefix, and two members that
- *   would land on the same output path (compared without case) are kept
- *   apart with a numeric suffix.
+ *   dropped, Windows device names get a '_' prefix, a name shaped like an
+ *   8.3 short alias ("LONGFI~1.TXT") has its '~' before a digit made '_',
+ *   and two members that would land on the same output path (compared
+ *   without case) are kept apart with a numeric suffix. The de-duplication
+ *   table is keyed per listing and runs under a work budget.
+ *
+ *   Every file's packed forks must lie after the header and must not overlap
+ *   another file's, as a writer lays them out; otherwise one compressed blob
+ *   could be decoded once per record.
  *
  * Because the catalogue sits at an offset the header points at, and the
  * header itself is a single byte 1, the format's real recognition is the
@@ -308,6 +314,45 @@ static bool xx_compactpro_is_device(const char *name, size_t length) {
     return false;
 }
 
+/* On a volume that keeps 8.3 short names, "LONGFI~1.TXT" opens whatever
+ * file "longfilename.txt" got as its alias, so a member with that name would
+ * overwrite another member. Only a name of 8.3 shape (a stem of at most
+ * eight characters holding '~' and a digit, at most one dot, an extension of
+ * at most three characters) can be such an alias; its '~' before a digit
+ * becomes '_'. */
+static void xx_compactpro_defuse_short_alias(char *name, size_t length) {
+    size_t dot = length;
+    size_t stem_chars = 0U;
+    size_t extension_chars = 0U;
+    size_t index;
+    bool tilde = false;
+
+    for (index = 0U; index < length; ++index) {
+        bool lead = ((uint8_t)name[index] & 0xC0U) != 0x80U;
+        if (name[index] == '.') {
+            if (dot != length) return;
+            dot = index;
+        } else if (lead) {
+            if (dot == length) {
+                ++stem_chars;
+            } else {
+                ++extension_chars;
+            }
+        }
+        if (dot == length && name[index] == '~' && index + 1U < length &&
+            name[index + 1U] >= '0' && name[index + 1U] <= '9') {
+            tilde = true;
+        }
+    }
+    if (!tilde || stem_chars > 8U || extension_chars > 3U) return;
+    for (index = 0U; index + 1U < dot; ++index) {
+        if (name[index] == '~' && name[index + 1U] >= '0' &&
+            name[index + 1U] <= '9') {
+            name[index] = '_';
+        }
+    }
+}
+
 /* One stored Mac OS Roman name made into one safe UTF-8 path component.
  * Returns its length; @p out must hold XX_COMPACTPRO_COMPONENT_BUFFER. */
 static size_t xx_compactpro_component(const uint8_t *bytes, size_t size,
@@ -334,6 +379,7 @@ static size_t xx_compactpro_component(const uint8_t *bytes, size_t size,
         --output;
     }
     if (output == 0U) out[output++] = '_';
+    xx_compactpro_defuse_short_alias(out, output);
     if (xx_compactpro_is_device(out, output)) {
         xx_rt_memmove(out + 1, out, output);
         out[0] = '_';
@@ -346,12 +392,32 @@ static size_t xx_compactpro_component(const uint8_t *bytes, size_t size,
 /* Output paths already handed out, compared the way a case-insensitive file
  * system would (ASCII plus the Latin letters Mac OS Roman carries in both
  * cases). Each slot also remembers the next numeric suffix to try for that
- * path, so a run of duplicates stays linear. */
+ * path, so a run of duplicates stays linear.
+ *
+ * The names come from the archive, so the table must not let a crafted set
+ * of names pile into one probe cluster: the hash is SipHash-1-3 under a key
+ * drawn per listing, and every probe step, compared character and built
+ * candidate byte is charged to one budget for the whole listing, which fails
+ * the listing when it runs out whatever the hash does. */
+#define XX_COMPACTPRO_WORK_LIMIT ((uint64_t)0x10000000)
+
 typedef struct xx_compactpro_names_s {
     const char **slots;
     uint32_t *hints;
     size_t mask;
+    uint64_t key0;
+    uint64_t key1;
+    uint64_t work;       /* charged against XX_COMPACTPRO_WORK_LIMIT */
 } xx_compactpro_names;
+
+static bool xx_compactpro_charge(xx_compactpro_names *names, uint64_t units) {
+    if (units > XX_COMPACTPRO_WORK_LIMIT - names->work) {
+        names->work = XX_COMPACTPRO_WORK_LIMIT;
+        return false;
+    }
+    names->work += units;
+    return true;
+}
 
 static uint32_t xx_compactpro_fold_next(const char **cursor) {
     const uint8_t *s = (const uint8_t *)*cursor;
@@ -379,24 +445,108 @@ static uint32_t xx_compactpro_fold_next(const char **cursor) {
     return code;
 }
 
-static uint32_t xx_compactpro_hash(const char *name) {
-    uint32_t hash = 2166136261U;
-    uint32_t code;
+#define XX_COMPACTPRO_ROTL(x, b) (((x) << (b)) | ((x) >> (64 - (b))))
 
-    while ((code = xx_compactpro_fold_next(&name)) != 0U) {
-        hash ^= code;
-        hash *= 16777619U;
-    }
-    return hash;
+static void xx_compactpro_sip_round(uint64_t *v) {
+    v[0] += v[1];
+    v[1] = XX_COMPACTPRO_ROTL(v[1], 13);
+    v[1] ^= v[0];
+    v[0] = XX_COMPACTPRO_ROTL(v[0], 32);
+    v[2] += v[3];
+    v[3] = XX_COMPACTPRO_ROTL(v[3], 16);
+    v[3] ^= v[2];
+    v[0] += v[3];
+    v[3] = XX_COMPACTPRO_ROTL(v[3], 21);
+    v[3] ^= v[0];
+    v[2] += v[1];
+    v[1] = XX_COMPACTPRO_ROTL(v[1], 17);
+    v[1] ^= v[2];
+    v[2] = XX_COMPACTPRO_ROTL(v[2], 32);
 }
 
-static bool xx_compactpro_same(const char *left, const char *right) {
+static void xx_compactpro_sip_word(uint64_t *v, uint64_t word) {
+    v[3] ^= word;
+    xx_compactpro_sip_round(v);
+    v[0] ^= word;
+}
+
+/* SipHash-1-3 (Aumasson and Bernstein, public domain reference design) over
+ * the folded name, two bytes per character (folded codes stay below
+ * 0x10000). The whole name is charged to the listing's budget. */
+static uint32_t xx_compactpro_hash(xx_compactpro_names *names,
+                                   const char *name, bool *ok) {
+    uint64_t v[4];
+    uint64_t word = 0U;
+    uint64_t bytes = 0U;
+    uint32_t code;
+
+    v[0] = names->key0 ^ 0x736f6d6570736575ULL;
+    v[1] = names->key1 ^ 0x646f72616e646f6dULL;
+    v[2] = names->key0 ^ 0x6c7967656e657261ULL;
+    v[3] = names->key1 ^ 0x7465646279746573ULL;
+    while ((code = xx_compactpro_fold_next(&name)) != 0U) {
+        word |= (uint64_t)(code & 0xFFFFU) << (8U * (bytes & 7U));
+        bytes += 2U;
+        if ((bytes & 7U) == 0U) {
+            xx_compactpro_sip_word(v, word);
+            word = 0U;
+        }
+    }
+    *ok = xx_compactpro_charge(names, bytes / 2U + 1U);
+    xx_compactpro_sip_word(v, word | (bytes << 56));
+    v[2] ^= 0xffU;
+    xx_compactpro_sip_round(v);
+    xx_compactpro_sip_round(v);
+    xx_compactpro_sip_round(v);
+    word = v[0] ^ v[1] ^ v[2] ^ v[3];
+    return (uint32_t)(word ^ (word >> 32));
+}
+
+/* Fold-compare, each character charged to the budget. */
+static bool xx_compactpro_same(xx_compactpro_names *names, const char *left,
+                               const char *right, bool *ok) {
+    uint64_t steps = 1U;
+    bool equal;
+
     for (;;) {
         uint32_t a = xx_compactpro_fold_next(&left);
         uint32_t b = xx_compactpro_fold_next(&right);
-        if (a != b) return false;
-        if (a == 0U) return true;
+        if (a != b) {
+            equal = false;
+            break;
+        }
+        if (a == 0U) {
+            equal = true;
+            break;
+        }
+        ++steps;
     }
+    *ok = xx_compactpro_charge(names, steps);
+    return equal;
+}
+
+/* A per-listing key. It needs to be unknown to whoever wrote the archive,
+ * not cryptographically strong: the work budget is the hard bound, the key
+ * only keeps honest archives far away from it. Heap and stack addresses
+ * (randomised by the loader), the clock and the C runtime's generator are
+ * mixed through SipHash rounds. */
+static void xx_compactpro_names_key(xx_compactpro_names *names) {
+    static uint64_t counter = 0U;
+    uint64_t v[4];
+    int local = 0;
+
+    v[0] = (uint64_t)(uintptr_t)names->slots ^ 0x243f6a8885a308d3ULL;
+    v[1] = (uint64_t)(uintptr_t)&local ^ 0x13198a2e03707344ULL;
+    v[2] = (uint64_t)xx_rt_clock_ms() ^ 0xa4093822299f31d0ULL;
+    v[3] = (uint64_t)(uintptr_t)names->hints ^
+           ((uint64_t)(uint32_t)xx_rt_rand() << 32) ^ ++counter;
+    xx_compactpro_sip_word(v, (uint64_t)(uintptr_t)&counter);
+    xx_compactpro_sip_round(v);
+    xx_compactpro_sip_round(v);
+    names->key0 = v[0] ^ v[1];
+    xx_compactpro_sip_round(v);
+    xx_compactpro_sip_round(v);
+    names->key1 = v[2] ^ v[3];
 }
 
 static bool xx_compactpro_names_init(xx_compactpro_names *names,
@@ -408,7 +558,9 @@ static bool xx_compactpro_names_init(xx_compactpro_names *names,
     names->slots = (const char **)xx_mem_calloc(size, sizeof(*names->slots));
     names->hints = (uint32_t *)xx_mem_calloc(size, sizeof(*names->hints));
     names->mask = size - 1U;
-    return names->slots && names->hints;
+    if (!names->slots || !names->hints) return false;
+    xx_compactpro_names_key(names);
+    return true;
 }
 
 static void xx_compactpro_names_cleanup(xx_compactpro_names *names) {
@@ -417,14 +569,19 @@ static void xx_compactpro_names_cleanup(xx_compactpro_names *names) {
     xx_mem_zero(names, sizeof(*names));
 }
 
-/* The slot holding @p name, or the empty slot where it belongs. The table is
- * sized to stay at most half full, so the probe always ends. */
-static size_t xx_compactpro_names_find(const xx_compactpro_names *names,
+/* The slot holding @p name, or the empty slot where it belongs; NONE once
+ * the listing's work budget is spent. The table is sized to stay at most
+ * half full, so the probe always ends. */
+static size_t xx_compactpro_names_find(xx_compactpro_names *names,
                                        const char *name) {
-    size_t slot = (size_t)xx_compactpro_hash(name) & names->mask;
+    bool ok = true;
+    size_t slot = (size_t)xx_compactpro_hash(names, name, &ok) & names->mask;
 
-    while (names->slots[slot] &&
-           !xx_compactpro_same(names->slots[slot], name)) {
+    if (!ok) return XX_COMPACTPRO_NONE;
+    while (names->slots[slot]) {
+        bool equal = xx_compactpro_same(names, names->slots[slot], name, &ok);
+        if (!ok) return XX_COMPACTPRO_NONE;
+        if (equal) break;
         slot = (slot + 1U) & names->mask;
     }
     return slot;
@@ -471,6 +628,69 @@ static bool xx_compactpro_push_entry(xx_compactpro_scan *scan,
     }
     scan->entries[scan->entry_count++] = *entry;
     return true;
+}
+
+typedef struct xx_compactpro_range_s {
+    int64_t start;
+    int64_t end;
+} xx_compactpro_range;
+
+static int xx_compactpro_range_compare(const void *left, const void *right) {
+    const xx_compactpro_range *a = (const xx_compactpro_range *)left;
+    const xx_compactpro_range *b = (const xx_compactpro_range *)right;
+
+    if (a->start != b->start) return a->start < b->start ? -1 : 1;
+    if (a->end != b->end) return a->end < b->end ? -1 : 1;
+    return 0;
+}
+
+/* A writer lays the files' packed forks out one after another between the
+ * header and the catalogue. Two records pointing at the same bytes would let
+ * one small compressed blob be decoded once per record (a 64 MiB RLE run
+ * referenced 65,535 times), so output would no longer be bounded by the
+ * archive's own size. Every file's non-empty packed range must start after
+ * the header and must not overlap any other file's. */
+static bool xx_compactpro_forks_disjoint(xx_compactpro_scan *scan) {
+    xx_compactpro_range *ranges;
+    size_t count = 0U;
+    size_t index;
+    bool result = true;
+
+    if (scan->entry_count == 0U) return true;
+    ranges = (xx_compactpro_range *)xx_mem_calloc(scan->entry_count,
+                                                  sizeof(*ranges));
+    if (!ranges) return false;
+    for (index = 0U; index < scan->entry_count; ++index) {
+        const xx_compactpro_entry *entry = &scan->entries[index];
+        const uint8_t *meta;
+        int64_t offset;
+        int64_t packed;
+        if (entry->folder) continue;
+        meta = scan->catalog + entry->record + 1U + entry->name_length;
+        offset = (int64_t)xx_compactpro_be32(meta + 1);
+        packed = (int64_t)xx_compactpro_be32(meta + 37) +
+                 (int64_t)xx_compactpro_be32(meta + 41);
+        if (packed == 0) continue;
+        if (offset < (int64_t)XX_COMPACTPRO_HEADER_SIZE) {
+            result = false;
+            break;
+        }
+        ranges[count].start = offset;
+        ranges[count].end = offset + packed;
+        ++count;
+    }
+    if (result && count > 1U) {
+        xx_rt_qsort(ranges, count, sizeof(*ranges),
+                    xx_compactpro_range_compare);
+        for (index = 1U; index < count; ++index) {
+            if (ranges[index].start < ranges[index - 1U].end) {
+                result = false;
+                break;
+            }
+        }
+    }
+    xx_mem_free(ranges);
+    return result;
 }
 
 /* The structural pass: header, record walk and catalogue CRC. Everything a
@@ -617,6 +837,7 @@ static bool xx_compactpro_scan_run(Abstractformat *self, xx_pd_struct *pd,
         stored_crc) {
         return false;
     }
+    if (!xx_compactpro_forks_disjoint(scan)) return false;
     return !(pd && xx_pd_is_stopped(pd));
 }
 
@@ -667,6 +888,9 @@ static char *xx_compactpro_candidate(xx_compactpro_build *build,
     total = parent_length + (parent_length ? 1U : 0U) + component_length +
             digit_count + (resource ? 5U : 0U);
     if (total > (size_t)XX_COMPACTPRO_MAX_PATH) return NULL;
+    if (!xx_compactpro_charge(&build->names, (uint64_t)total + 1U)) {
+        return NULL;
+    }
     result = xx_compactpro_budget_alloc(build, total + 1U);
     if (!result) return NULL;
     cursor = result;
@@ -700,10 +924,18 @@ static void xx_compactpro_release(xx_compactpro_build *build, char *name) {
 /* Pick the first free "<stem>[_<n>]" under @p parent. The plain path is
  * always reserved (a directory, a data fork, or just the stem a resource
  * fork hangs off), the ".rsrc" path too when @p want_rsrc. The plain path is
- * returned in @p plain, the resource path in @p rsrc. */
+ * returned in @p plain, the resource path in @p rsrc.
+ *
+ * The first clash picks the taken slot that blocked the unsuffixed name -
+ * the plain path, or the ".rsrc" path when only that one was taken - and
+ * the search resumes from the suffix that slot remembers, and leaves the
+ * next one there. Any hint is only a starting point (every candidate is
+ * still looked up), so sharing one between names costs nothing but a higher
+ * number. */
 static bool xx_compactpro_claim(xx_compactpro_build *build, const char *parent,
                                 const char *component, size_t length,
-                                bool want_rsrc, char **plain, char **rsrc) {
+                                bool want_rsrc, char **plain, char **rsrc,
+                                xx_pd_struct *pd) {
     size_t base_slot = XX_COMPACTPRO_NONE;
     uint32_t suffix = 0U;
     uint32_t attempts;
@@ -711,17 +943,26 @@ static bool xx_compactpro_claim(xx_compactpro_build *build, const char *parent,
     *plain = NULL;
     *rsrc = NULL;
     for (attempts = 0U; attempts < 0x40000U; ++attempts) {
-        char *candidate = xx_compactpro_candidate(build, parent, component,
-                                                  length, suffix, false);
+        char *candidate;
         char *resource = NULL;
         size_t slot;
         size_t rsrc_slot = XX_COMPACTPRO_NONE;
-        bool free_name;
+        size_t taken = XX_COMPACTPRO_NONE;
 
+        if ((attempts & 0xFFU) == 0xFFU && pd && xx_pd_is_stopped(pd)) {
+            return false;
+        }
+        candidate = xx_compactpro_candidate(build, parent, component, length,
+                                            suffix, false);
         if (!candidate) return false;
         slot = xx_compactpro_names_find(&build->names, candidate);
-        free_name = build->names.slots[slot] == NULL;
-        if (free_name && want_rsrc) {
+        if (slot == XX_COMPACTPRO_NONE) {
+            xx_compactpro_release(build, candidate);
+            return false;
+        }
+        if (build->names.slots[slot]) {
+            taken = slot;
+        } else if (want_rsrc) {
             resource = xx_compactpro_candidate(build, parent, component,
                                                length, suffix, true);
             if (!resource) {
@@ -729,14 +970,27 @@ static bool xx_compactpro_claim(xx_compactpro_build *build, const char *parent,
                 return false;
             }
             rsrc_slot = xx_compactpro_names_find(&build->names, resource);
-            free_name = build->names.slots[rsrc_slot] == NULL;
+            if (rsrc_slot == XX_COMPACTPRO_NONE) {
+                xx_compactpro_release(build, resource);
+                xx_compactpro_release(build, candidate);
+                return false;
+            }
+            if (build->names.slots[rsrc_slot]) taken = rsrc_slot;
         }
-        if (free_name) {
+        if (taken == XX_COMPACTPRO_NONE) {
             build->names.slots[slot] = candidate;
             build->names.hints[slot] = 1U;
             if (resource) {
                 /* Re-found: the plain name may have taken its slot. */
                 rsrc_slot = xx_compactpro_names_find(&build->names, resource);
+                if (rsrc_slot == XX_COMPACTPRO_NONE) {
+                    /* Budget gone: the listing fails; take the plain name
+                     * back out (nothing was inserted after it). */
+                    build->names.slots[slot] = NULL;
+                    xx_compactpro_release(build, resource);
+                    xx_compactpro_release(build, candidate);
+                    return false;
+                }
                 build->names.slots[rsrc_slot] = resource;
                 build->names.hints[rsrc_slot] = 1U;
             }
@@ -749,12 +1003,9 @@ static bool xx_compactpro_claim(xx_compactpro_build *build, const char *parent,
         }
         if (suffix == 0U) {
             /* Continue from where the last clash on this name stopped. */
-            base_slot = xx_compactpro_names_find(&build->names, candidate);
-            suffix = build->names.slots[base_slot]
-                         ? build->names.hints[base_slot]
-                         : 1U;
+            base_slot = taken;
+            suffix = build->names.hints[base_slot];
             if (suffix == 0U) suffix = 1U;
-            if (!build->names.slots[base_slot]) base_slot = XX_COMPACTPRO_NONE;
         } else {
             ++suffix;
         }
@@ -777,7 +1028,7 @@ static void xx_compactpro_set_member_common(xx_compactpro_member *member,
 /* Turn the walked records into the member list: two forks per file at most,
  * one record per empty directory, every name made safe and unique. */
 static xx_compactpro_stream *xx_compactpro_build_stream(
-    xx_compactpro_scan *scan) {
+    xx_compactpro_scan *scan, xx_pd_struct *pd) {
     xx_compactpro_build build;
     xx_compactpro_stream *stream = NULL;
     const char *parents[XX_COMPACTPRO_MAX_DEPTH + 1];
@@ -811,12 +1062,13 @@ static xx_compactpro_stream *xx_compactpro_build_stream(
         char *resource = NULL;
 
         if (entry->depth && !parent) goto done;
+        if ((index & 0x3FU) == 0U && pd && xx_pd_is_stopped(pd)) goto done;
         length = xx_compactpro_component(
             scan->catalog + entry->record + 1U, entry->name_length, component);
 
         if (entry->folder) {
             if (!xx_compactpro_claim(&build, parent, component, length, false,
-                                     &plain, &resource)) {
+                                     &plain, &resource, pd)) {
                 goto done;
             }
             build.owned[build.owned_count++] = plain;
@@ -858,7 +1110,7 @@ static xx_compactpro_stream *xx_compactpro_build_stream(
 
             if (stream->count + forks > scan->member_count) goto done;
             if (!xx_compactpro_claim(&build, parent, component, length,
-                                     want_rsrc, &plain, &resource)) {
+                                     want_rsrc, &plain, &resource, pd)) {
                 goto done;
             }
             for (fork = 0U; fork < forks; ++fork) {
@@ -1285,7 +1537,7 @@ xx_archive_record_state *xx_compactpro_create_archive_records_reading(
         xx_compactpro_scan_cleanup(&scan);
         return NULL;
     }
-    stream = xx_compactpro_build_stream(&scan);
+    stream = xx_compactpro_build_stream(&scan, pd);
     xx_compactpro_scan_cleanup(&scan);
     if (!stream) return NULL;
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));

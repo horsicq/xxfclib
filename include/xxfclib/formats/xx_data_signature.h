@@ -29,6 +29,7 @@
 
 #include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/xx_memory_map.h"
+#include "xxfclib/io/xx_io.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -261,6 +262,19 @@ XXFC_API bool xx_data_signature_match_text(const void *data, size_t data_size,
 XXFC_API int64_t xx_data_signature_find_text(
     const void *data, size_t data_size, int64_t offset, int64_t length,
     const char *text, const xx_data_sig_context *context);
+
+/** Match a device using bounded reads and the same record semantics.
+ * Restore its position when tell is supported. Actual read errors fail the
+ * match; out-of-range pointers still follow read_past_end_as_zero. */
+XXFC_API bool xx_io_signature_match(
+    xx_io_device *device, int64_t offset, const xx_data_signature *signature,
+    const xx_data_sig_context *context, int64_t *end_offset);
+
+/** Parse and search a device without copying its complete contents or
+ * allocating a needle-sized overlap buffer. Restores a supported position. */
+XXFC_API int64_t xx_io_signature_find_text(
+    xx_io_device *device, int64_t offset, int64_t length, const char *text,
+    const xx_data_sig_context *context);
 
 #ifdef __cplusplus
 }

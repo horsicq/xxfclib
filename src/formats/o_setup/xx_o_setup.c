@@ -13,13 +13,12 @@
  * names the first record, and the record chain - which has to end exactly at
  * the trailer - is the validator.  The probe reads the last 14 bytes of an
  * MZ file and stops there unless they are an O'Setup trailer.  SZDD members
- * are expanded with the shared Microsoft LZSS decoder.
+ * are expanded by a streaming Microsoft LZSS decoder (os_extract_szdd).
  */
 
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/o_setup/xx_o_setup.h"
 
-#include "xxfclib/algo/mscompress/xx_mscompress.h"
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
@@ -31,6 +30,7 @@
  * here, so the alias macro defined next to the enumerator is tested instead;
  * this picks up the real file type as soon as the reader is registered. */
 #ifdef O_SETUP
+
 #define XX_O_SETUP_FILE_TYPE XX_FILE_TYPE_O_SETUP
 #else
 #define XX_O_SETUP_FILE_TYPE XX_FILE_TYPE_UNKNOWN
@@ -54,10 +54,6 @@
  * 9 times over, plus one group.  A larger claimed size cannot decode. */
 #define OS_SZDD_RATIO 9U
 #define OS_SZDD_SLACK 144U
-/* A member is decoded in memory; these caps only refuse fields that are
- * plainly not from a 1990s installer. */
-#define OS_SZDD_MAX_INPUT (UINT64_C(128) * 1024U * 1024U)
-#define OS_SZDD_MAX_OUTPUT (UINT64_C(512) * 1024U * 1024U)
 
 /* A converted name: "%XX" per raw byte (at most 12 before the NUL), then
  * "%_", up to five digits of record index and the terminator. */
@@ -99,6 +95,42 @@ typedef struct os_sink_s {
     uint64_t written;
 } os_sink;
 
+#include "xxfclib/global/xx_global.h"
+static size_t gb_o_setup_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_o_setup_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_o_setup_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+
+
 static uint32_t os_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
@@ -110,13 +142,14 @@ static uint32_t os_le32(const uint8_t *bytes) {
 
 static bool os_read_at(xx_io_device *device, int64_t offset, void *buffer,
                        size_t size) {
+    const size_t file_io_capacity = gb_o_setup_capacity();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = gb_o_setup_read(device, (uint8_t *)buffer + done,
+                                    size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -127,13 +160,14 @@ static bool os_read_at(xx_io_device *device, int64_t offset, void *buffer,
 
 static ssize_t os_sink_write(xx_io_device *self, const void *buffer,
                              size_t n) {
+    const size_t file_io_capacity = gb_o_setup_capacity();
     os_sink *sink = self ? (os_sink *)self->priv : NULL;
     size_t done = 0U;
     if (!sink || (!buffer && n != 0U)) return -1;
     if ((uint64_t)n > sink->limit - sink->written) return -1;
     while (sink->target && done < n) {
-        ssize_t amount = xx_io_write(sink->target,
-                                     (const uint8_t *)buffer + done, n - done);
+        ssize_t amount = gb_o_setup_write(sink->target,
+                                     (const uint8_t *)buffer + done, n - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > n - done) return -1;
         done += (size_t)amount;
     }
@@ -153,16 +187,17 @@ static void os_sink_init(os_sink *sink, xx_io_device *target,
 /* Stream `size` stored bytes at `offset` into the sink in fixed chunks. */
 static bool os_copy_range(xx_io_device *source, int64_t offset, int64_t size,
                           os_sink *sink, xx_pd_struct *pd) {
+    const size_t file_io_capacity = gb_o_setup_capacity();
     uint8_t *buffer;
     int64_t done = 0;
     bool ok = true;
     if (!source || offset < 0 || size < 0) return false;
     if (size == 0) return true;
-    buffer = (uint8_t *)xx_mem_alloc(OS_COPY_CHUNK);
+    buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (ok && done < size) {
-        size_t chunk = size - done > (int64_t)OS_COPY_CHUNK
-                           ? (size_t)OS_COPY_CHUNK
+        size_t chunk = size - done > (int64_t)file_io_capacity
+                           ? (size_t)file_io_capacity
                            : (size_t)(size - done);
         if ((pd && xx_pd_is_stopped(pd)) ||
             !os_read_at(source, offset + done, buffer, chunk) ||
@@ -499,38 +534,104 @@ static bool os_set_record(xx_archive_record *record, const os_item *item) {
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-/* Expand one SZDD member in memory.  The claimed size is checked against
- * what the stored bytes could possibly decode to before anything is
- * allocated, so the output buffer is bounded by the file. */
+/* Buffered reader over one member's LZSS bytes. */
+typedef struct os_input_s {
+    xx_io_device *device;
+    int64_t offset; /**< Next absolute offset to fetch. */
+    uint64_t left;  /**< Member bytes not fetched yet. */
+    uint8_t *buffer;
+    size_t capacity;
+    size_t at;
+    size_t length;
+} os_input;
+
+static bool os_input_byte(os_input *in, uint8_t *value) {
+    if (in->at == in->length) {
+        size_t take;
+        if (in->left == 0U) return false;
+        take = in->left > (uint64_t)in->capacity ? in->capacity
+                                                 : (size_t)in->left;
+        if (!os_read_at(in->device, in->offset, in->buffer, take)) return false;
+        in->offset += (int64_t)take;
+        in->left -= (uint64_t)take;
+        in->at = 0U;
+        in->length = take;
+    }
+    *value = in->buffer[in->at++];
+    return true;
+}
+
+/* Expand one SZDD member as a stream: input in OS_COPY_CHUNK pieces, output
+ * through the 4 KiB history window straight into the sink, so memory stays
+ * flat whatever the member claims.  The grammar is the Microsoft Compress
+ * LZSS one (see algo/mscompress): LSB-first flag groups of eight, a set bit
+ * is a literal, a clear bit a 12-bit position (+16) / 4-bit length (+3)
+ * match; the window starts filled with spaces.  The claimed size must be
+ * reachable from the stored bytes, the stream must produce exactly that many
+ * bytes, and no input may be left over. */
+#define OS_WINDOW 4096U
 static bool os_extract_szdd(xx_io_device *device, const os_item *item,
                             os_sink *sink, xx_pd_struct *pd) {
+    uint8_t window[OS_WINDOW];
+    os_input in;
     uint64_t input_size = (uint64_t)item->size - OS_SZDD_HEADER;
     uint64_t output_size = item->unpacked;
-    uint8_t *input = NULL;
-    uint8_t *output = NULL;
-    size_t consumed = 0U;
+    uint64_t produced = 0U;
+    size_t position = 0U; /* Next window slot; slots before it are unsent. */
+    unsigned flag_bit = 0U;
+    uint8_t flags = 0U;
     bool ok = false;
-    if (item->size < OS_SZDD_HEADER || input_size > OS_SZDD_MAX_INPUT ||
-        output_size > OS_SZDD_MAX_OUTPUT ||
+    if (item->size < OS_SZDD_HEADER ||
         output_size > input_size * OS_SZDD_RATIO + OS_SZDD_SLACK ||
         (pd && xx_pd_is_stopped(pd)))
         return false;
-    input = (uint8_t *)xx_mem_alloc(input_size == 0U ? 1U : (size_t)input_size);
-    output = (uint8_t *)xx_mem_alloc(output_size == 0U ? 1U
-                                                       : (size_t)output_size);
-    if (input && output &&
-        os_read_at(device,
-                   item->header + OS_RECORD_HEADER + (int64_t)OS_SZDD_HEADER,
-                   input, (size_t)input_size) &&
-        xx_mscompress_lzss_decode(input, (size_t)input_size, output,
-                                  (size_t)output_size, OS_SZDD_BIAS,
-                                  &consumed) &&
-        (pd == NULL || !xx_pd_is_stopped(pd)) &&
-        os_sink_write(&sink->device, output, (size_t)output_size) ==
-            (ssize_t)output_size)
-        ok = true;
-    if (output) xx_mem_free(output);
-    if (input) xx_mem_free(input);
+    xx_mem_zero(&in, sizeof(in));
+    in.device = device;
+    in.offset = item->header + OS_RECORD_HEADER + (int64_t)OS_SZDD_HEADER;
+    in.left = input_size;
+    in.capacity = OS_COPY_CHUNK;
+    in.buffer = (uint8_t *)xx_mem_alloc(in.capacity);
+    if (!in.buffer) return false;
+    xx_rt_memset(window, 0x20, sizeof(window));
+    while (produced < output_size) {
+        size_t length = 1U, match = 0U, index;
+        bool literal;
+        if (flag_bit == 0U && !os_input_byte(&in, &flags)) goto done;
+        literal = (flags & (uint8_t)(1U << flag_bit)) != 0U;
+        flag_bit = (flag_bit + 1U) & 7U;
+        if (literal) {
+            if (!os_input_byte(&in, &window[position])) goto done;
+        } else {
+            uint8_t low, high;
+            if (!os_input_byte(&in, &low) || !os_input_byte(&in, &high))
+                goto done;
+            match = ((size_t)low | ((size_t)(high & 0xF0U) << 4U)) +
+                    OS_SZDD_BIAS;
+            length = (size_t)(high & 0x0FU) + 3U;
+            if ((uint64_t)length > output_size - produced) goto done;
+        }
+        for (index = 0U; index < length; ++index) {
+            if (!literal)
+                window[position] = window[(match + index) & (OS_WINDOW - 1U)];
+            if (++position == OS_WINDOW) {
+                if ((pd && xx_pd_is_stopped(pd)) ||
+                    os_sink_write(&sink->device, window, OS_WINDOW) !=
+                        (ssize_t)OS_WINDOW)
+                    goto done;
+                position = 0U;
+            }
+        }
+        produced += (uint64_t)length;
+    }
+    /* Everything stored must have been used: a header that claims fewer
+     * bytes than the stream holds is not accepted. */
+    if (in.at != in.length || in.left != 0U) goto done;
+    if (position != 0U &&
+        os_sink_write(&sink->device, window, position) != (ssize_t)position)
+        goto done;
+    ok = true;
+done:
+    xx_mem_free(in.buffer);
     return ok;
 }
 

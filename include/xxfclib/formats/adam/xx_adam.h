@@ -88,6 +88,8 @@ XXFC_API xx_adam *xx_adam_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_adam_destroy(xx_adam *archive);
 XXFC_API void xx_adam_free(xx_adam *archive);
 
+/** Narrow structural volume probe; always restores the device cursor. */
+XXFC_API bool xx_adam_detection_hint(xx_io_device *device);
 XXFC_API bool xx_adam_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_adam_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_adam_get_format_size(Abstractformat *self,

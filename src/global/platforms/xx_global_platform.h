@@ -4,7 +4,7 @@
 
 /**
  * @file xx_global_platform.h
- * @brief Internal platform interface for CPU feature detection.
+ * @brief Internal platform interface for CPU and terminal feature detection.
  *
  * The axis here is instruction set and compiler, not operating system: MSVC
  * and GCC disagree about how to spell CPUID even when both target Windows on
@@ -16,7 +16,7 @@
 #ifndef XX_GLOBAL_PLATFORM_H
 #define XX_GLOBAL_PLATFORM_H
 
-#include <stdbool.h>
+#include "xxfclib/global/xx_global.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,6 +27,9 @@ bool xx_global_platform_has_sse2(void);
 
 /** @brief True when the running processor supports AVX2. */
 bool xx_global_platform_has_avx2(void);
+
+/** @brief Detect stdout or stderr capability without leaving its mode changed. */
+xx_terminal_type_t xx_global_platform_detect_terminal_type(bool standard_error);
 
 #ifdef __cplusplus
 }

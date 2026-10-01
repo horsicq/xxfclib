@@ -4,7 +4,7 @@
 
 /**
  * @file xx_lzma.h
- * @brief LZMA-alone (.lzma) reader: one "payload" record.
+ * @brief LZMA-alone (.lzma) reader and writer: one "payload" record.
  *
  * Accepts known-size streams with or without an end marker (LZMA SDK
  * `lzma e`), unknown-size streams ended by the marker (xz --format=lzma,
@@ -52,6 +52,20 @@ XXFC_API uint64_t xx_lzma_get_number_of_archive_records(
 XXFC_API bool xx_lzma_unpack_to_device(xx_lzma *archive,
                                        xx_io_device *destination,
                                        xx_pd_struct *pd);
+
+/** Write one standard .lzma stream (13-byte header, raw LZMA, end marker).
+ *  The header marks the uncompressed size as unknown; the end marker signals
+ *  completion, for compatibility with older liblzma decoders. The source must be
+ *  seekable; destination writes start at its current position and need not
+ *  be seekable. Source and destination must be different devices. Levels
+ *  are clamped to 1..9. The encoder buffers the source extent,
+ *  which is limited to UINT32_MAX - 1 bytes. Device failures leave partial
+ *  output; the caller owns both devices and must check destination close. */
+XXFC_API bool xx_lzma_pack_to_device(xx_io_device *source,
+                                     int64_t source_offset,
+                                     int64_t uncompressed_size,
+                                     xx_io_device *destination, int level,
+                                     xx_pd_struct *pd);
 
 XXFC_API xx_archive_record_state *xx_lzma_create_archive_records_reading(
     Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);

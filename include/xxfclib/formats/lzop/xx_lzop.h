@@ -18,6 +18,7 @@
  *     ... version <  0x0940: the method byte follows lib_version directly and
  *          there is no level byte.
  *          u32      flags
+ *          u32      filter ID (only when F_H_FILTER is set; values 1..16)
  *          u32      mode
  *          u32      mtime (low); version >= 0x0940 adds a second u32 (high)
  *          u8       file name length, then that many name bytes (optional)
@@ -38,6 +39,9 @@
  * scanner refuses an oversized uncompressed length at PARSE time rather than
  * discovering it while extracting: see XX_LZOPFMT_MAX_BLOCK_SIZE and
  * XX_LZOPFMT_MAX_TOTAL_OUTPUT in the implementation.
+ * Filters 1..16 are reversed per block before verifying the uncompressed
+ * checksum. Multipart streams use the same record model as concatenated
+ * streams; their F_MULTIPART flag is preserved in the archive flags.
  *
  * The reader publishes one archive record per stream, named after the file
  * name that stream's header stores.  A path (as `lzop -P` stores it) is kept

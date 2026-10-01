@@ -20,6 +20,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/lbr/xx_lbr.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -43,7 +44,6 @@
 #define LBR_ENTRIES_PER_SECTOR 4U
 /* The directory is read 4 KiB at a time, never whole: its sector count is a
  * u16, so a hostile header could otherwise ask for 8 MiB up front. */
-#define LBR_CHUNK_ENTRIES 128U
 #define LBR_STATUS_ACTIVE 0x00U
 #define LBR_STATUS_DELETED 0xFEU
 #define LBR_STATUS_UNUSED 0xFFU
@@ -55,7 +55,6 @@
 /* "NAME.EXT" (12) + " (" + up to 6 digits + ")" for a renamed duplicate
  * (9), plus the terminator. */
 #define LBR_NAME_BUFFER 24U
-#define LBR_COPY_CHUNK 65536U
 /* LBR dates count days from 1977-12-31 (day 1 is 1978-01-01); that day is
  * 2921 days after the Unix epoch. */
 #define LBR_EPOCH_DAYS INT64_C(2921)
@@ -95,7 +94,9 @@ typedef struct lbr_dir_reader_s {
     uint32_t entries;
     uint32_t first;
     uint32_t loaded;
-    uint8_t buffer[LBR_CHUNK_ENTRIES * XX_LBR_ENTRY_SIZE];
+    uint8_t *buffer;
+    uint32_t batch_entries;
+    size_t io_capacity;
 } lbr_dir_reader;
 
 typedef struct lbr_extent_s {
@@ -112,19 +113,26 @@ static uint32_t lbr_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static bool lbr_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool lbr_read_at_sized(xx_io_device *device, int64_t offset, void *buffer,
+                        size_t size, size_t transfer_capacity) {
     size_t done = 0U;
+
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        size_t request = size - done;
+        if (request > transfer_capacity) request = transfer_capacity;
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
+}
+
+static bool lbr_read_at(xx_io_device *device, int64_t offset, void *buffer,
+                        size_t size) {
+    return lbr_read_at_sized(device, offset, buffer, size, xx_get_file_buffer_size());
 }
 
 /* Stream `size` bytes at `offset` into `destination` (or just read them
@@ -132,15 +140,16 @@ static bool lbr_read_at(xx_io_device *device, int64_t offset, void *buffer,
 static bool lbr_copy_range(xx_io_device *source, int64_t offset, int64_t size,
                            xx_io_device *destination, xx_pd_struct *pd) {
     uint8_t *buffer;
+    size_t capacity = xx_get_file_buffer_size();
     int64_t remaining = size;
     bool ok = true;
     if (!source || offset < 0 || size < 0) return false;
     if (size == 0) return true;
-    buffer = (uint8_t *)xx_mem_alloc(LBR_COPY_CHUNK);
+    buffer = (uint8_t *)xx_mem_alloc(capacity);
     if (!buffer) return false;
     while (ok && remaining > 0) {
-        size_t chunk = remaining > (int64_t)LBR_COPY_CHUNK
-                           ? (size_t)LBR_COPY_CHUNK
+        size_t chunk = (uint64_t)remaining > (uint64_t)capacity
+                           ? capacity
                            : (size_t)remaining;
         size_t written = 0U;
         if ((pd && xx_pd_is_stopped(pd)) ||
@@ -168,13 +177,13 @@ static const uint8_t *lbr_dir_entry(lbr_dir_reader *reader, uint32_t index) {
     if (index >= reader->entries) return NULL;
     if (reader->loaded == 0U || index < reader->first ||
         index - reader->first >= reader->loaded) {
-        uint32_t first = index - index % LBR_CHUNK_ENTRIES;
+        uint32_t first = index - index % reader->batch_entries;
         uint32_t count = reader->entries - first;
-        if (count > LBR_CHUNK_ENTRIES) count = LBR_CHUNK_ENTRIES;
+        if (count > reader->batch_entries) count = reader->batch_entries;
         reader->loaded = 0U;
-        if (!lbr_read_at(reader->device,
+        if (!lbr_read_at_sized(reader->device,
                          reader->base + (int64_t)first * LBR_ENTRY,
-                         reader->buffer, (size_t)count * XX_LBR_ENTRY_SIZE))
+                         reader->buffer, (size_t)count * XX_LBR_ENTRY_SIZE, reader->io_capacity))
             return NULL;
         reader->first = first;
         reader->loaded = count;
@@ -185,8 +194,8 @@ static const uint8_t *lbr_dir_entry(lbr_dir_reader *reader, uint32_t index) {
 
 /* One space-padded 8.3 component.  Bit 7 is a CP/M attribute flag and is
  * dropped.  Characters are printable ASCII, spaces only as trailing padding;
- * the characters Windows reserves become '_'.  So a decoded name never holds
- * a separator, a drive colon, a control byte or a space. */
+ * the characters Windows reserves and '~' become '_'.  So a decoded name
+ * never holds a separator, a drive colon, a control byte, a space or a '~'. */
 static bool lbr_decode_field(const uint8_t *field, size_t width, char *out,
                              size_t *length) {
     size_t index, used = 0U;
@@ -198,8 +207,12 @@ static bool lbr_decode_field(const uint8_t *field, size_t width, char *out,
             continue;
         }
         if (ended || c < 0x21U || c > 0x7EU) return false;
+        /* '~' too: every short alias Windows generates for a long name
+         * (such as "SAME~1.TXT" for a renamed "SAME.TXT (2)") holds one, so
+         * a stored name could otherwise open an earlier member through its
+         * alias and overwrite it. */
         if (c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' ||
-            c == '"' || c == '|' || c == '?' || c == '*')
+            c == '"' || c == '|' || c == '?' || c == '*' || c == '~')
             c = '_';
         out[used++] = (char)c;
     }
@@ -232,15 +245,24 @@ static lbr_entry_kind lbr_decode_entry(const uint8_t *entry,
     uint32_t pad;
     uint32_t date, time;
     if (entry[0] == LBR_STATUS_UNUSED) return LBR_ENTRY_END;
-    if (entry[0] == LBR_STATUS_DELETED) return LBR_ENTRY_DELETED;
-    if (entry[0] != LBR_STATUS_ACTIVE) return LBR_ENTRY_BAD;
+    /* Any status other than active (FE, or E5 as CP/M marks erased slots)
+     * counts as deleted, as in Deark and XArchive. */
+    if (entry[0] != LBR_STATUS_ACTIVE) return LBR_ENTRY_DELETED;
     xx_mem_zero(member, sizeof(*member));
     if (!lbr_decode_field(entry + 1U, LBR_NAME_FIELD, member->name,
                           &name_length) ||
-        name_length == 0U ||
         !lbr_decode_field(entry + 1U + LBR_NAME_FIELD, LBR_EXT_FIELD,
                           member->name + name_length + 1U, &ext_length))
         return LBR_ENTRY_BAD;
+    if (name_length == 0U) {
+        /* A blank name is extracted as "_" (Deark does the same); the
+         * extension, if any, moves up behind it. */
+        size_t at;
+        member->name[0] = '_';
+        for (at = ext_length; at > 0U; --at)
+            member->name[1U + at] = member->name[at];
+        name_length = 1U;
+    }
     if (ext_length > 0U) {
         member->name[name_length] = '.';
         member->name[name_length + 1U + ext_length] = 0;
@@ -408,15 +430,30 @@ static bool lbr_parse(Abstractformat *format, lbr_stream **result) {
     if (directory_sectors == 0U || directory_size > size) return false;
     entries = directory_sectors * LBR_ENTRIES_PER_SECTOR;
 
-    reader = (lbr_dir_reader *)xx_mem_alloc(sizeof(*reader));
-    if (!reader) return false;
+    {
+        size_t io_capacity = xx_get_file_buffer_size();
+        size_t batch = io_capacity / XX_LBR_ENTRY_SIZE;
+        /* A complete directory entry is a protocol frame when capacity < entry. */
+        if (!batch) batch = 1U;
+        if (batch > entries) batch = entries;
+        reader = (lbr_dir_reader *)xx_mem_alloc(sizeof(*reader) + batch * XX_LBR_ENTRY_SIZE);
+        if (!reader) return false;
+        reader->batch_entries = (uint32_t)batch;
+        reader->io_capacity = io_capacity;
+    }
 
     /* Pass 0 validates and counts, so garbage falls out before anything
      * sized by the directory is allocated; pass 1 fills the member table. */
     for (pass = 0U; pass < 2U; ++pass) {
         bool present = false;
-        bool ended = false;
-        xx_mem_zero(reader, sizeof(*reader));
+        {
+            uint32_t batch = reader->batch_entries;
+            size_t io_capacity = reader->io_capacity;
+            xx_mem_zero(reader, sizeof(*reader));
+            reader->batch_entries = batch;
+            reader->io_capacity = io_capacity;
+            reader->buffer = (uint8_t *)(void *)(reader + 1);
+        }
         reader->device = format->device;
         reader->base = format->base_address;
         reader->entries = entries;
@@ -424,23 +461,11 @@ static bool lbr_parse(Abstractformat *format, lbr_stream **result) {
             const uint8_t *entry = lbr_dir_entry(reader, index);
             lbr_entry_kind kind;
             if (!entry) goto fail;
-            if (ended) {
-                /* LU fills the directory in order, so everything after the
-                 * first unused entry is unused (or deleted) too.  An active
-                 * entry or a stray status byte there is not a library. */
-                if (entry[0] != LBR_STATUS_UNUSED &&
-                    entry[0] != LBR_STATUS_DELETED)
-                    goto fail;
-                continue;
-            }
             kind = lbr_decode_entry(entry, directory_sectors, size, &member,
                                     &present);
-            if (kind == LBR_ENTRY_END) {
-                /* Pass 1 only lists; pass 0 already checked the rest. */
-                if (pass != 0U) break;
-                ended = true;
-                continue;
-            }
+            /* The first unused entry ends the directory; whatever follows
+             * it is ignored, as Deark and XArchive do. */
+            if (kind == LBR_ENTRY_END) break;
             if (kind == LBR_ENTRY_DELETED) continue;
             if (kind == LBR_ENTRY_BAD) goto fail;
             if (pass == 0U) {

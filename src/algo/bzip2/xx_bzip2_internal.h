@@ -36,7 +36,7 @@ extern "C" {
 /* -------------------------------------------------------------------------
  * Bzip2 format constants
  * ------------------------------------------------------------------------- */
-#define BZ2_MAX_BLOCK_SIZE   900000   /* max uncompressed block payload */
+#define BZ2_MAX_BLOCK_SIZE   900000   /* max block bytes after initial RLE */
 #define BZ2_N_GROUPS         6        /* max Huffman tables per block */
 #define BZ2_N_ITERS          4        /* Huffman refinement iterations */
 #define BZ2_MAX_ALPHA_SIZE   258      /* 256 symbols + RUNA + RUNB */
@@ -47,8 +47,6 @@ extern "C" {
 #define BZ2_NUM_OVERSHOOT    2
 #define BZ2_BWT_RADIX_BITS   16       /* BWT suffix-sort radix window */
 
-extern const uint32_t bz2_crc32_table[256];
-
 /* -------------------------------------------------------------------------
  * Bit-stream reader
  * ------------------------------------------------------------------------- */
@@ -57,7 +55,8 @@ typedef struct {
     const uint8_t  *mem;
     size_t          mem_size;
     size_t          mem_pos;
-    uint8_t         ibuf[65536];
+    uint8_t        *ibuf;
+    size_t          ibuf_capacity;
     size_t          ibuf_pos;
     size_t          ibuf_len;
     int64_t         remaining;
@@ -75,7 +74,8 @@ typedef struct {
     uint8_t        *mem;
     size_t          mem_cap;
     size_t          mem_pos;
-    uint8_t         obuf[65536];
+    uint8_t        *obuf;
+    size_t          obuf_capacity;
     size_t          obuf_pos;
     int64_t         total_written;
     uint64_t        bits;
@@ -86,6 +86,18 @@ typedef struct {
 /* -------------------------------------------------------------------------
  * Internal engine entry points
  * ------------------------------------------------------------------------- */
+/* Circular BWT with ascending source indices for identical rotations.
+ * Buffers must not overlap. The declared block capacity is checked before
+ * allocation; invalid arguments or allocation failure leave outputs intact.
+ * Scratch storage is 16 * length bytes, at most 14,400,000 bytes. */
+bool xx_bzip2_bwt_transform(const uint8_t *src, int length,
+                             uint8_t *bwt, int *orig_ptr);
+
+/* Valid 1..20-bit prefix-code lengths for 1..258 symbols. Zero frequencies
+ * receive weight 1. Invalid arguments leave the output unchanged. */
+bool xx_bzip2_huffman_lengths(const uint32_t *freq, int symbol_count,
+                               uint8_t *lengths);
+
 bool xx_bzip2_decompress_stream(bz2_bit_reader *br,
                                 xx_io_device *dst_dev,
                                 uint8_t *mem_dst, size_t mem_cap, size_t *out_written,

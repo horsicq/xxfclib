@@ -33,6 +33,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/pc_install_setup/xx_pc_install_setup.h"
 
 #include "xxfclib/algo/dcl/xx_dcl.h"
@@ -74,13 +75,13 @@
  * the file they are looked for.  The stubs of the corpus end below 256 KiB. */
 #define PCIS_MAX_CANDIDATES 64U
 #define PCIS_SCAN_LIMIT (INT64_C(16) * 1024 * 1024)
-#define PCIS_SCAN_CHUNK 65536U
 /* This is a floppy/CD setup builder; the caps only keep a hostile field
  * from driving an allocation. */
 #define PCIS_MAX_PACKED (INT64_C(64) * 1024 * 1024)
 #define PCIS_MAX_RAW ((size_t)256U * 1024U * 1024U)
-#define PCIS_COPY_CHUNK 65536U
 #define PCIS_NAME_TRIES 16U
+#define PCIS_RAW_DIR "__raw_pcinstall__"
+#define PCIS_RAW_PREFIX PCIS_RAW_DIR "/"
 
 static const uint8_t pcis_tag[PCIS_TAG_SIZE] = {'[', '2', '0', '/',
                                                 '2', '0', ']', 0U};
@@ -97,6 +98,7 @@ typedef struct pcis_member_s {
     uint16_t dos_date;
     uint16_t dos_time;
     bool stored;
+    bool raw_group;
     bool safe;
 } pcis_member;
 
@@ -126,13 +128,16 @@ static uint32_t pcis_le32(const uint8_t *bytes) {
 static bool pcis_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -329,13 +334,19 @@ static bool pcis_walk(Abstractformat *format, int64_t trailer, int64_t start,
                                         PCIS_RECORD_NAME_SIZE);
         if (length == 0U) goto fail;
         ++chunks;
-        if (!pcis_parse_group(device, base + payload, stored, stream)) {
+        {
+            bool grouped = pcis_parse_group(device, base + payload, stored,
+                                            stream);
             pcis_member *member;
-            if (stream->exhausted) goto fail;
+            char *name;
+            if (!grouped && stream->exhausted) goto fail;
             member = pcis_push(stream);
             if (!member) goto fail;
-            member->name = pcis_copy_name(record + PCIS_RECORD_NAME_OFFSET,
-                                          length);
+            name = pcis_copy_name(record + PCIS_RECORD_NAME_OFFSET, length);
+            if (!name) goto fail;
+            member->name = grouped ? xx_str_concat(PCIS_RAW_PREFIX, name)
+                                   : name;
+            if (grouped) xx_mem_free(name);
             if (!member->name) goto fail;
             member->header_offset = base + cursor;
             member->header_size = PCIS_RECORD_SIZE;
@@ -347,6 +358,7 @@ static bool pcis_walk(Abstractformat *format, int64_t trailer, int64_t start,
             member->dos_time = pcis_le16(record + 0x08U);
             member->dos_date = pcis_le16(record + 0x0cU);
             member->stored = true;
+            member->raw_group = grouped;
         }
         if (next == 0) {
             /* The last record ends where the trailer begins, and the
@@ -374,38 +386,45 @@ static bool pcis_relocate(Abstractformat *format, int64_t trailer,
                           uint32_t stored_first, uint32_t stored_last,
                           pcis_stream *stream, xx_pd_struct *pd) {
     uint8_t *buffer;
+    const size_t io_capacity = xx_get_file_buffer_size();
     int64_t position = PCIS_MIN_STUB;
     int64_t last_tag = trailer - PCIS_RECORD_SIZE - PCIS_TAG_SIZE;
     size_t candidates = 0U;
     bool found = false;
     if (last_tag > PCIS_SCAN_LIMIT) last_tag = PCIS_SCAN_LIMIT;
     if (last_tag < position) return false;
-    buffer = (uint8_t *)xx_mem_alloc(PCIS_SCAN_CHUNK);
+    buffer = (uint8_t *)xx_mem_alloc(io_capacity);
     if (!buffer) return false;
     while (!found && !stream->exhausted && candidates < PCIS_MAX_CANDIDATES &&
            !pcis_stopped(pd)) {
-        int64_t window = last_tag - position + PCIS_TAG_SIZE;
-        size_t amount = window > (int64_t)PCIS_SCAN_CHUNK ? PCIS_SCAN_CHUNK
+        int64_t window = last_tag - position + 1;
+        size_t amount = window > (int64_t)io_capacity ? io_capacity
                                                           : (size_t)window;
         size_t at;
         if (!pcis_read_at(format->device, format->base_address + position,
                           buffer, amount))
             break;
-        for (at = 0U; at + PCIS_TAG_SIZE <= amount && !found &&
+        for (at = 0U; at < amount && !found &&
                       !stream->exhausted && candidates < PCIS_MAX_CANDIDATES;
              ++at) {
             int64_t start;
-            if (buffer[at] != pcis_tag[0] ||
-                xx_rt_memcmp(buffer + at, pcis_tag, PCIS_TAG_SIZE) != 0)
-                continue;
+            uint8_t frame[PCIS_TAG_SIZE];
+            const uint8_t *bytes = buffer + at;
+            if (buffer[at] != pcis_tag[0]) continue;
+            if (amount - at < PCIS_TAG_SIZE) {
+                if (!pcis_read_at(format->device, format->base_address + position + (int64_t)at,
+                                  frame, sizeof(frame))) continue;
+                bytes = frame;
+            }
+            if (xx_rt_memcmp(bytes, pcis_tag, PCIS_TAG_SIZE) != 0) continue;
             start = position + (int64_t)at + PCIS_TAG_SIZE;
             if (start == (int64_t)stored_first) continue; /* already tried */
             ++candidates;
             found = pcis_walk(format, trailer, start, stored_first,
                               stored_last, stream, pd);
         }
-        if (amount < PCIS_SCAN_CHUNK) break;
-        position += (int64_t)(amount - (PCIS_TAG_SIZE - 1U));
+        position += (int64_t)amount;
+        if (position > last_tag) break;
     }
     xx_mem_free(buffer);
     return found;
@@ -531,6 +550,43 @@ static bool pcis_name_safe(const char *name) {
 static bool pcis_finish_names(pcis_stream *stream) {
     pcis_name_set set;
     size_t capacity = 16U, index;
+    char raw_directory[sizeof(PCIS_RAW_DIR) + 24U];
+    size_t raw_prefix_length = 0U, attempt;
+    /* Group payloads live in a virtual directory.  A decoded file may itself
+     * have that basename, so choose a directory absent from the flat decoded
+     * names before any files are exposed for extraction. */
+    for (attempt = 0U; attempt <= stream->count; ++attempt) {
+        size_t length = sizeof(PCIS_RAW_DIR) - 1U;
+        bool occupied = false;
+        xx_rt_memcpy(raw_directory, PCIS_RAW_DIR, length);
+        if (attempt != 0U)
+            length += pcis_put_decimal(raw_directory + length, attempt);
+        raw_directory[length] = 0;
+        for (index = 0U; index < stream->count; ++index) {
+            if (!stream->items[index].raw_group &&
+                pcis_same_name(stream->items[index].name, raw_directory)) {
+                occupied = true;
+                break;
+            }
+        }
+        if (!occupied) {
+            raw_prefix_length = length + 1U;
+            break;
+        }
+    }
+    if (raw_prefix_length == 0U) return false;
+    if (attempt != 0U) {
+        for (index = 0U; index < stream->count; ++index) {
+            pcis_member *member = &stream->items[index];
+            char *name;
+            if (!member->raw_group) continue;
+            name = xx_str_concat3(raw_directory, "/",
+                                  member->name + sizeof(PCIS_RAW_PREFIX) - 1U);
+            if (!name) return false;
+            xx_mem_free(member->name);
+            member->name = name;
+        }
+    }
     while (capacity < stream->count * 2U + 1U) capacity *= 2U;
     set.slots = (const char **)xx_mem_calloc(capacity, sizeof(*set.slots));
     if (!set.slots) return false;
@@ -557,7 +613,10 @@ static bool pcis_finish_names(pcis_stream *stream) {
             }
         }
         if (unique) *slot = member->name;
-        member->safe = unique && pcis_name_safe(member->name);
+        member->safe = unique &&
+            pcis_name_safe(member->raw_group
+                ? member->name + raw_prefix_length
+                : member->name);
     }
     xx_mem_free((void *)set.slots);
     return true;
@@ -692,14 +751,15 @@ static bool pcis_copy_stored(Abstractformat *format,
                              const pcis_member *member,
                              xx_io_device *destination, xx_pd_struct *pd) {
     uint8_t *buffer;
+    const size_t io_capacity = xx_get_file_buffer_size();
     int64_t done = 0;
     bool result = true;
     if (member->packed_size == 0) return true;
-    buffer = (uint8_t *)xx_mem_alloc(PCIS_COPY_CHUNK);
+    buffer = (uint8_t *)xx_mem_alloc(io_capacity);
     if (!buffer) return false;
     while (done < member->packed_size) {
         int64_t left = member->packed_size - done;
-        size_t amount = left > (int64_t)PCIS_COPY_CHUNK ? PCIS_COPY_CHUNK
+        size_t amount = left > (int64_t)io_capacity ? io_capacity
                                                         : (size_t)left;
         if (pcis_stopped(pd) ||
             !pcis_read_at(format->device, member->data_offset + done, buffer,

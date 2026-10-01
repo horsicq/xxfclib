@@ -31,14 +31,17 @@
  * is the same number binwalk produces; for the whole dump it is not, because
  * the following partitions are not this reader's to recognise.
  *
- * WHAT THIS READER DOES NOT DO.  It publishes no archive records (binwalk
- * extracts nothing from CFE either), and it does not guess the CPU or the
- * byte order: CFE exists for big- and little-endian MIPS and for ARM, and
- * the seal is the same ASCII string in all of them.
+ * The component archive API publishes the reset/API vectors and firmware
+ * bytes after the seal separately. No instruction is executed. The firmware
+ * body extends to the end of the handed device because CFE declares no size.
  */
 
 #ifndef XXFCLIB_FORMAT_CFE_H
 #define XXFCLIB_FORMAT_CFE_H
+
+/* The component archive API publishes the reset/API vectors and firmware
+ * bytes after the seal separately. No instruction is executed. The firmware
+ * body extends to the end of the handed device because CFE declares no size. */
 
 #include "xxfclib/xxfc_defs.h"
 #include "xxfclib/formats/xx_format.h"

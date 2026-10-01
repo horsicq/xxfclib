@@ -33,14 +33,17 @@
  * exact 1.44 MB floppy - and names it after the host file, because nothing
  * inside the container supplies a name.
  *
- * WHY THIS READER PUBLISHES NO ARCHIVE RECORDS.  It has nothing truthful to
- * put in one.  The container states no member name, no uncompressed length
- * and no packed extent; the payload boundary inside the header is not
- * established, and the codec is not identified.  A record would therefore
- * have to carry an invented name over a guessed extent, which is worse than
- * publishing none.  This is a DETECTION-ONLY reader: it says "this is an EMT
- * compressed diskette image made by <banner>", and that is the whole of its
- * contract.
+ * TRACK AND CODEC. The compressed LOADDSKF derivative contains one RLE
+ * record per physical track. F1 escapes [value][count]; literal bytes pass
+ * through. Each non-final record expands to a 126-byte descriptor, 9,216
+ * bytes of disk data and two following CRC bytes; the final record omits the
+ * CRC bytes. Cylinder/head fields in the descriptor identify each track.
+ * The boot sector's BPB supplies sector size and total sector count, which
+ * bound the image and determine the number of tracks. The reader exports one
+ * synthetic disk.img member; the container itself has no member filename.
+ * The selected TSENG_D1.EMT decodes byte-for-byte to the 1,474,560-byte
+ * reference floppy image. The track scheme also appears in XArchive's
+ * xlegacystorearchive.cpp and xdecompress.cpp under the same MIT license.
  *
  * DISPATCH NOTE.  Two of U3's four tests live at offsets 0x58 and 0x5c, past
  * the end of a 64-byte magic window, so a prefilter can only use the first

@@ -35,6 +35,7 @@
 #define XX_DIE_ENGINE_H
 
 #include "xxfclib/xxfc_defs.h"
+#include "xxfclib/io/xx_io.h"
 
 #include <stdint.h>
 
@@ -128,6 +129,14 @@ typedef struct {
 
 XXFC_API int db_load(DBase *pDb, const char *pPath, DBKind kind);
 XXFC_API int db_load_tar(DBase *pDb, const char *pTarPath, DBKind kind);
+/** Load the bundled Detect It Easy db/Binary/audio* rules and their helpers.
+ * This provides named audio/tracker identification without a separate DIE DB.
+ * Like db_load(), call db_free() when finished. */
+XXFC_API int db_load_builtin_audio(DBase *pDb, DBKind kind);
+/** Load only the framework/helper scripts and Binary/audio.1.sg tracker and
+ * chiptune rules from the bundled audio database. This avoids executing the
+ * separate voice/container rules when identifying music families. */
+XXFC_API int db_load_builtin_music(DBase *pDb, DBKind kind);
 XXFC_API int db_create_tar(const char *pDbPath, const char *pTarPath);
 XXFC_API int db_create_tar_precompiled(const char *pDbPath, const char *pTarPath);
 XXFC_API void db_sort(DBase *pDb);
@@ -178,6 +187,9 @@ typedef struct {
     int bIsHeuristic;
     int bIsAHeuristic;
     int bIsUnknown;
+    /* Stable //fmt[...] identifier for bundled Binary/audio.1.sg results.
+     * NULL for other scripts and untagged results. Owned by ScanResult. */
+    char *pFormatId;
 } ScanRecord;
 
 typedef struct {
@@ -197,6 +209,26 @@ XXFC_API void scan_result_free(ScanResult *pResult);
 /* ---------------------------------------------------------------- scan  */
 
 XXFC_API int die_engine_scan_file(const char *pFileName, DBase *pDb, ScanOptions *pOptions, ScanResult *pResult);
+
+/* Reinterprets a file as one explicit type. XFT_UNKNOWN retains automatic
+ * detection, including its COM/binary fallback passes. An explicit type runs
+ * exactly that type's pass and reports that type in the result. Invalid types
+ * fail with an empty result. */
+XXFC_API int die_engine_scan_file_type(const char *pFileName, DBase *pDb,
+    ScanOptions *pOptions, XFileType fileType, ScanResult *pResult);
+
+/* Enumerates detected types without scanning signature databases. The preferred
+ * type is first, followed by the other detected types in descending type order.
+ * Names can be obtained with xft_to_string(). No callback runs when opening or
+ * reading the file fails. The callback receives no borrowed file state. */
+typedef void (*die_engine_file_type_fn)(XFileType fileType, void *pUserData);
+XXFC_API int die_engine_detect_file_types(const char *pFileName,
+    die_engine_file_type_fn pTypeFn, void *pUserData);
+
+/* Scan an entire seekable device without taking ownership. The caller's
+ * position is restored before return, even when the scan fails. Use a bounded
+ * xx_io_multivolume_open() view to scan a region of another device. */
+XXFC_API int die_engine_scan_device(xx_io_device *pDevice, DBase *pDb, ScanOptions *pOptions, ScanResult *pResult);
 
 /* Scans an in-memory buffer (a private copy is taken). Backs DIE_ScanMemory. */
 XXFC_API int die_engine_scan_memory(const void *pData, int64_t nSize, DBase *pDb, ScanOptions *pOptions, ScanResult *pResult);

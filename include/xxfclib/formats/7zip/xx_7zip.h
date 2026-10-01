@@ -52,8 +52,8 @@ typedef enum xx_7zip_data_struct_id_e {
  * records and extracts Copy, LZMA, LZMA2, BZip2, PPMd7, Brotli, LZ4, LZ5,
  * Lizard, Zstandard, and the BCJ/x86, BCJ2, PPC, IA64, ARM, ARMT, SPARC,
  * ARM64, and RISC-V branch filters. A native 7z AES-256-CBC stage is supported for
- * simple AES-to-codec chains. Other coder graphs remain enumerable and fail
- * extraction.
+ * simple AES-to-codec chains and for four independently encrypted BCJ2 branches.
+ * Other coder graphs remain enumerable and fail extraction.
  */
 struct xx_7zip {
     Abstractformat format;             /**< Base format (must be first). */

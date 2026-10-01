@@ -61,6 +61,7 @@
 #include "xxfclib/algo/bzip2/xx_bzip2.h"
 #include "xxfclib/algo/lzma/xx_lzma.h"
 #include "xxfclib/algo/lzma_alone/xx_lzma_alone.h"
+#include "xxfclib/formats/xz/xx_xz.h"
 
 #include <stdio.h>
 
@@ -839,7 +840,8 @@ static bool xx_xar_decode(Abstractformat *self, const xx_xar_member *member,
 
     /* A directory, or a <file> carrying no <data>, has nothing in the heap:
      * an empty result is correct, not a short read. */
-    if (packed_size == 0U && plain_size == 0U) {
+    if (packed_size == 0U && plain_size == 0U &&
+        member->method == XX_XAR_METHOD_STORE) {
         output = (uint8_t *)xx_mem_alloc(1U);
         if (!output) return false;
         *out = output;
@@ -898,12 +900,24 @@ static bool xx_xar_decode(Abstractformat *self, const xx_xar_member *member,
                 plain_size, &written)) {
             goto decode_fail;
         }
+    } else if (member->method == XX_XAR_METHOD_XZ) {
+        xx_io_device *source = xx_io_mem_open_ro(input, packed_size);
+        xx_io_device *destination = xx_io_mem_open(output, plain_size);
+        bool decoded = false;
+        if (source && destination) {
+            xx_xz xz;
+            xx_xz_init(&xz, source, 0);
+            decoded = xx_xz_unpack_to_device(&xz, destination, pd) &&
+                      xz.format.format_size == (int64_t)packed_size &&
+                      xz.uncompressed_size == (uint64_t)plain_size &&
+                      xx_io_tell(destination) == (int64_t)plain_size;
+            xx_xz_destroy(&xz);
+        }
+        if (source) xx_io_close(source);
+        if (destination) xx_io_close(destination);
+        if (!decoded) goto decode_fail;
+        written = plain_size;
     } else {
-        /* XX_XAR_METHOD_XZ lands here. The library exposes XZ only as a
-         * whole-file format reader over an xx_io_device (xx_xz_*), with no
-         * in-memory block decode, so an XZ member cannot be expanded here.
-         * Listing it is still worth doing: the member, its extent and its
-         * method are all correct, only extraction is refused. */
         goto decode_fail;
     }
 

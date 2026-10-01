@@ -285,6 +285,27 @@ static char *is5_table_name(const uint8_t *table, uint32_t table_size,
     return is5_normalize_name(table + offset, (size_t)(end - offset));
 }
 
+/* File descriptors store only the leaf name. The directory index refers to
+ * the first offset array in the table, whose strings are full relative paths.
+ * Keep a malformed directory entry from changing the existing leaf behavior;
+ * the normalized leaf remains independently safe to extract. */
+static char *is5_member_path(const uint8_t *table, uint32_t table_size,
+                             uint32_t directory_count, uint32_t index,
+                             char *leaf) {
+    uint32_t offset;
+    char *directory, *path;
+    if (!leaf || index >= directory_count) return leaf;
+    offset = is5_le32(table + (size_t)index * 4U);
+    if (offset >= table_size || table[offset] == 0U) return leaf;
+    directory = is5_table_name(table, table_size, offset);
+    if (!directory) return leaf;
+    path = xx_str_concat3(directory, "/", leaf);
+    xx_str_free(directory);
+    if (!path) { xx_str_free(leaf); return NULL; }
+    xx_str_free(leaf);
+    return path;
+}
+
 static bool is5_parse(Abstractformat *format, is5_stream **result) {
     uint8_t common[IS5_COMMON_HEADER_SIZE];
     uint8_t descriptor[IS5_DESCRIPTOR_READ_SIZE];
@@ -352,6 +373,7 @@ static bool is5_parse(Abstractformat *format, is5_stream **result) {
     if (file_count == 0U || file_count > IS5_MAX_MEMBERS ||
         directory_count > IS5_MAX_MEMBERS || table_size == 0U ||
         table_size > IS5_MAX_FILE_TABLE ||
+        (uint64_t)directory_count * 4U > table_size ||
         (int64_t)descriptor_offset + (int64_t)table_offset > size ||
         (int64_t)table_size >
             size - ((int64_t)descriptor_offset + (int64_t)table_offset))
@@ -420,7 +442,10 @@ static bool is5_parse(Abstractformat *format, is5_stream **result) {
          * placeholder the writer left behind.  Its name offset is garbage as
          * well, so it is dropped instead of being given an invented name. */
         if ((member.flags & IS5_FLAG_INVALID) != 0U || packed == 0U) continue;
-        member.name = is5_table_name(table, table_size, name_offset);
+        member.name = is5_member_path(table, table_size, directory_count,
+                                      member.directory_index,
+                                      is5_table_name(table, table_size,
+                                                     name_offset));
         /* See the volume note at the top of this file: geometry alone is not
          * enough, because a descriptor belonging to another volume can name
          * an offset that happens to be inside this one.  The member is

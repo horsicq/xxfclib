@@ -22,6 +22,8 @@
  * IBM MFM (A1 A1 A1 FE / FB) and Amiga MFM (4489 4489, odd/even longs)
  * sectors, each checked against its CRC or checksum.
  */
+#include "xxfclib/global/xx_global.h"
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/kryoflux_stream/xx_kryoflux_stream.h"
 
@@ -48,7 +50,6 @@
 #define KF_EOF_SIZE 0x0D0DU
 
 #define KF_MAX_STREAM (64 * 1024 * 1024)  /* bytes of stream scanned at most */
-#define KF_CHUNK 65536U
 #define KF_MAX_PADDING 512                /* 0x0D filler kept after EOF */
 #define KF_MIN_SIZE 12                    /* StreamEnd + EOF */
 #define KF_HIST 2048U                     /* interval histogram, in ticks */
@@ -73,14 +74,17 @@ static uint32_t kf_le32(const uint8_t *b) {
 
 static bool kf_read_at(xx_io_device *device, int64_t offset, void *buffer,
                        size_t size) {
+    const size_t io_capacity = xx_get_file_buffer_size();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -93,6 +97,7 @@ typedef struct kf_input_s {
     int64_t next;   /* absolute offset of the next chunk */
     int64_t stop;   /* absolute end of what may be read */
     uint8_t *buffer;
+    size_t io_capacity;
     size_t fill;
     size_t at;
 } kf_input;
@@ -102,7 +107,7 @@ static bool kf_input_byte(kf_input *in, uint8_t *value) {
         const int64_t left = in->stop - in->next;
         size_t want;
         if (left <= 0) return false;
-        want = left > (int64_t)KF_CHUNK ? (size_t)KF_CHUNK : (size_t)left;
+        want = (uint64_t)left > (uint64_t)in->io_capacity ? in->io_capacity : (size_t)left;
         if (!kf_read_at(in->device, in->next, in->buffer, want)) return false;
         in->next += (int64_t)want;
         in->fill = want;
@@ -156,7 +161,8 @@ static bool kf_scan(xx_io_device *device, int64_t base, int64_t available,
     in.next = base;
     in.stop = base + (available > KF_MAX_STREAM ? (int64_t)KF_MAX_STREAM
                                                 : available);
-    in.buffer = (uint8_t *)xx_mem_alloc(KF_CHUNK);
+    in.io_capacity = xx_get_file_buffer_size();
+    in.buffer = (uint8_t *)xx_mem_alloc(in.io_capacity);
     if (!in.buffer) return false;
     for (;;) {
         uint64_t value;
@@ -415,15 +421,7 @@ static void kf_track_free(kf_track *track) {
 }
 
 static uint16_t kf_crc16(const uint8_t *data, size_t size, uint16_t crc) {
-    size_t index;
-    uint32_t bit;
-    for (index = 0U; index < size; ++index) {
-        crc ^= (uint16_t)((uint16_t)data[index] << 8U);
-        for (bit = 0U; bit < 8U; ++bit)
-            crc = (uint16_t)((crc & 0x8000U) ? ((crc << 1U) ^ 0x1021U)
-                                             : (crc << 1U));
-    }
-    return crc;
+    return xx_crc16_ccitt_calc(crc, data, size);
 }
 
 /* In an MFM cell pair the clock comes first and the data bit second. */

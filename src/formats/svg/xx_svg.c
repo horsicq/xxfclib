@@ -8,24 +8,19 @@
  * Before the root only an XML prolog is allowed.  The rules, and the two
  * places where this reader is stricter than binwalk, are in xx_svg.h.
  *
- * NOT an archive.  binwalk's extractor carves the image itself and declines
- * even that at offset 0, so there is nothing inside to publish as a record.
- *
- * Every read goes through a cursor that refuses bytes at or past a limit
- * (the device end, or base + XX_SVG_MAX_SIZE), and every loop advances by
- * at least one byte towards that limit, so a scan is linear in the image
- * size.  The tag walk needs two independent monotonic cursors: one looking
- * for the next "<" and one running ahead to the ">" that ends the current
- * tag, validating UTF-8 and looking for the head magic on the way.  Tags
- * nested inside one another's span reuse that one pass instead of
- * rescanning it, so "<svg <svg <svg ... >" costs one pass, not a square.
+ * The component archive API publishes prolog bytes, root attributes and inner
+ * markup separately. It does not render XML or execute scripts or entities.
  */
 
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/svg/xx_svg.h"
 
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
+
+#include "../bmp/xx_component_archive_impl.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the file-type constant resolves to UNKNOWN until the enumerator
@@ -38,7 +33,6 @@
 
 /* Read granularity of each cursor.  Every peek is at most
  * XX_SVG_MAX_PEEK bytes, far below this. */
-#define XX_SVG_WINDOW_SIZE 65536U
 #define XX_SVG_MAX_PEEK 64U
 /* How often (in scanned bytes) the stop flag is polled. */
 #define XX_SVG_STOP_POLL_MASK 0xFFFFU
@@ -48,7 +42,9 @@ typedef struct xx_svg_cursor_s {
     int64_t limit;        /* nothing at or past this is ever read */
     int64_t window_start; /* absolute offset of window[0] */
     size_t window_size;   /* valid bytes in window, 0 = empty */
-    uint8_t *window;      /* XX_SVG_WINDOW_SIZE bytes */
+    uint8_t *window;      /* captured global capacity */
+    size_t io_capacity;
+    uint8_t peek[XX_SVG_MAX_PEEK];
 } xx_svg_cursor;
 
 typedef struct xx_svg_parsed_s {
@@ -79,8 +75,8 @@ static void xx_svg_vtable_destroy(Abstractformat *self);
 /* ------------------------------------------------------------- helpers -- */
 
 /* All positioning goes through seek64: long is 32-bit on Win64. */
-static bool xx_svg_read_at(xx_io_device *device, int64_t offset, void *data,
-                           size_t size) {
+static bool xx_svg_read_at_sized(xx_io_device *device, int64_t offset, void *data,
+                           size_t size, size_t io_capacity) {
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
 
@@ -89,11 +85,18 @@ static bool xx_svg_read_at(xx_io_device *device, int64_t offset, void *data,
         return false;
     }
     while (done < size) {
-        ssize_t got = xx_io_read(device, out + done, size - done);
-        if (got <= 0 || (size_t)got > size - done) return false;
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
+        ssize_t got = xx_io_read(device, out + done, request);
+        if (got <= 0 || (size_t)got > request) return false;
         done += (size_t)got;
     }
     return true;
+}
+
+static bool xx_svg_read_at(xx_io_device *device, int64_t offset, void *data,
+                           size_t size) {
+    return xx_svg_read_at_sized(device, offset, data, size, xx_get_file_buffer_size());
 }
 
 static bool xx_svg_cursor_open(xx_svg_cursor *cursor, xx_io_device *device,
@@ -102,7 +105,8 @@ static bool xx_svg_cursor_open(xx_svg_cursor *cursor, xx_io_device *device,
     cursor->device = device;
     cursor->limit = limit;
     cursor->window_start = -1;
-    cursor->window = (uint8_t *)xx_mem_alloc(XX_SVG_WINDOW_SIZE);
+    cursor->io_capacity = xx_get_file_buffer_size();
+    cursor->window = (uint8_t *)xx_mem_alloc(cursor->io_capacity);
     return cursor->window != NULL;
 }
 
@@ -122,15 +126,21 @@ static const uint8_t *xx_svg_peek(xx_svg_cursor *cursor, int64_t offset,
         (int64_t)size > cursor->limit - offset) {
         return NULL;
     }
+    /* Grammar lookahead is fixed semantic state, assembled by bounded reads. */
+    if (size > cursor->io_capacity) {
+        if (!xx_svg_read_at_sized(cursor->device, offset, cursor->peek, size, cursor->io_capacity)) return NULL;
+        if (run) *run = size;
+        return cursor->peek;
+    }
     if (cursor->window_size == 0U || offset < cursor->window_start ||
         offset - cursor->window_start >
             (int64_t)cursor->window_size - (int64_t)size) {
         int64_t remaining = cursor->limit - offset;
-        size_t want = remaining < (int64_t)XX_SVG_WINDOW_SIZE
+        size_t want = (uint64_t)remaining < (uint64_t)cursor->io_capacity
                           ? (size_t)remaining
-                          : (size_t)XX_SVG_WINDOW_SIZE;
+                          : (size_t)cursor->io_capacity;
         cursor->window_size = 0U;
-        if (!xx_svg_read_at(cursor->device, offset, cursor->window, want)) {
+        if (!xx_svg_read_at_sized(cursor->device, offset, cursor->window, want, cursor->io_capacity)) {
             return NULL;
         }
         cursor->window_start = offset;
@@ -548,6 +558,7 @@ void xx_svg_init(xx_svg *svg, xx_io_device *dev, int64_t base_address) {
     svg->root_offset = -1;
     svg->head_offset = -1;
     svg->end_offset = -1;
+    xx_components_install(&svg->format);
 }
 
 xx_svg *xx_svg_create(xx_io_device *dev, int64_t base_address) {
@@ -643,6 +654,7 @@ bool xx_svg_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
         self->overlay_size = 0;
     }
     self->number_of_archive_records = 0U;
+    if (!xx_components_finish(self, pd)) return false;
     self->is_valid = true;
     self->base_info_handled = true;
     return true;
@@ -684,4 +696,24 @@ bool xx_svg_has_xml_declaration(const xx_svg *svg) {
 
 bool xx_svg_has_doctype(const xx_svg *svg) {
     return svg ? svg->has_doctype : false;
+}
+
+/* Encoded/structural component members; this does not decode media. */
+static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd) {
+
+    xx_svg *v=(xx_svg *)f;
+    int64_t root=v->root_offset-f->base_address, close=v->end_offset-f->base_address-6, pos=root+5;
+    uint8_t quote=0,c;
+    if(root && !xx_component_add(f,s,0,root,"xml-prolog")) return false;
+    while(pos<close) {
+        if(xx_pd_is_stopped(pd) || !xx_component_read(f,pos,&c,1)) return false;
+        if(quote) { if(c==quote) quote=0; }
+        else if(c=='\'' || c=='"') quote=c;
+        else if(c=='>') break;
+        ++pos;
+    }
+    /* The legacy size reader accepts a close tag ending the root's opening
+     * tag. Preserve that acceptance, but never include it in attributes. */
+    if(!xx_component_add(f,s,root+5,pos-root-5,"svg-root-attributes")) return false;
+    return pos>=close || xx_component_add(f,s,pos+1,close-pos-1,"svg-inner-markup");
 }

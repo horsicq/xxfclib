@@ -27,8 +27,8 @@ extern "C" {
  *                   blocks, the last entry being the end of the data
  *
  * Every block decodes to exactly one block size of image, so the image is
- * n * block size bytes. It is published as one member, "disk.iso" when the
- * preamble mounts it as ISO 9660 and "disk.img" otherwise.
+ * n * block size bytes. Recognized ISO contents are exposed as files; other
+ * images retain one "disk.iso" or "disk.img" member.
  */
 typedef struct xx_cloop {
     Abstractformat format;
@@ -47,6 +47,11 @@ XXFC_API xx_cloop *xx_cloop_create(xx_io_device *device,
                                    int64_t base_address);
 XXFC_API void xx_cloop_destroy(xx_cloop *archive);
 XXFC_API void xx_cloop_free(xx_cloop *archive);
+/** Open a bounded, read-only, seekable view of the decoded disk. The caller
+ * closes the returned device with xx_io_close(); source/archive are borrowed.
+ * Images with more than 1M blocks retain the normal raw-member extraction. */
+XXFC_API xx_io_device *xx_cloop_open_disk_device(xx_cloop *archive,
+                                                 xx_pd_struct *pd);
 
 XXFC_API bool xx_cloop_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_cloop_handle_base_info(Abstractformat *self,

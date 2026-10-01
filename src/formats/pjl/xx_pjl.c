@@ -10,8 +10,8 @@
  * NOT an archive.  binwalk registers no extractor for PJL, so there is
  * nothing inside to publish as a record.
  *
- * The scan is one forward pass from base + 9 through a fixed buffer, in
- * XX_PJL_CHUNK_SIZE reads, each of which is clamped to the device end.  It
+ * The scan is one forward pass from base + 9 through a captured global-size buffer, in
+ * captured-capacity reads, each of which is clamped to the device end.  It
  * stops at the first NUL, at the end of the input, or at the first byte
  * that makes the UTF-8 invalid.  Every chunk read either advances the
  * position by at least one byte or fails the parse, so the loop is bounded
@@ -19,10 +19,14 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/pjl/xx_pjl.h"
 
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
+
+#include "../bmp/xx_component_archive_impl.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the file-type constant resolves to UNKNOWN until the enumerator
@@ -34,7 +38,6 @@
 #endif
 
 /* Read granularity of the scan. */
-#define XX_PJL_CHUNK_SIZE 65536U
 
 typedef struct xx_pjl_parsed_s {
     int64_t input_size;
@@ -74,6 +77,7 @@ static void xx_pjl_vtable_destroy(Abstractformat *self);
 /* All positioning goes through seek64: long is 32-bit on Win64. */
 static bool xx_pjl_read_at(xx_io_device *device, int64_t offset, void *data,
                            size_t size) {
+    const size_t io_capacity = xx_get_file_buffer_size();
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
 
@@ -82,8 +86,10 @@ static bool xx_pjl_read_at(xx_io_device *device, int64_t offset, void *data,
         return false;
     }
     while (done < size) {
-        ssize_t got = xx_io_read(device, out + done, size - done);
-        if (got <= 0 || (size_t)got > size - done) return false;
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
+        ssize_t got = xx_io_read(device, out + done, request);
+        if (got <= 0 || (size_t)got > request) return false;
         done += (size_t)got;
     }
     return true;
@@ -165,6 +171,7 @@ static bool xx_pjl_parse(Abstractformat *self, xx_pjl_parsed *parsed,
     uint8_t magic[XX_PJL_MAGIC_SIZE];
     xx_pjl_scan scan;
     uint8_t *buffer = NULL;
+    const size_t io_capacity = xx_get_file_buffer_size();
     int64_t position;
     bool ok = false;
     bool done = false;
@@ -188,7 +195,7 @@ static bool xx_pjl_parse(Abstractformat *self, xx_pjl_parsed *parsed,
         return false;
     }
 
-    buffer = (uint8_t *)xx_mem_alloc(XX_PJL_CHUNK_SIZE);
+    buffer = (uint8_t *)xx_mem_alloc(io_capacity);
     if (!buffer) return false;
     xx_mem_zero(&scan, sizeof(scan));
     scan.cmd_state = 0; /* the text starts right after the base UEL */
@@ -203,9 +210,9 @@ static bool xx_pjl_parse(Abstractformat *self, xx_pjl_parsed *parsed,
 
         if (pd && xx_pd_is_stopped(pd)) goto cleanup;
         if (remaining <= 0) break; /* end of input: no terminator */
-        want = remaining < (int64_t)XX_PJL_CHUNK_SIZE
+        want = (uint64_t)remaining < (uint64_t)io_capacity
                    ? (size_t)remaining
-                   : (size_t)XX_PJL_CHUNK_SIZE;
+                   : (size_t)io_capacity;
         if (!xx_pjl_read_at(self->device, position, buffer, want)) {
             goto cleanup;
         }
@@ -260,6 +267,7 @@ void xx_pjl_init(xx_pjl *pjl, xx_io_device *dev, int64_t base_address) {
     pjl->text_offset = -1;
     pjl->text_size = -1;
     pjl->text_end = -1;
+    xx_components_install(&pjl->format);
 }
 
 xx_pjl *xx_pjl_create(xx_io_device *dev, int64_t base_address) {
@@ -316,11 +324,10 @@ bool xx_pjl_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     pjl->number_of_uels = parsed.uels;
     pjl->has_terminator = parsed.terminator;
     pjl->is_ascii = parsed.ascii;
-    /* binwalk result.size is the string length, counted from the signature
-     * offset; see xx_pjl.h.  text_size <= input - base - 9, so format_end
-     * is always inside the input. */
-    self->format_size = parsed.text_size;
-    format_end = self->base_address + parsed.text_size;
+    /* The opening UEL belongs to the format extent; the component member
+     * itself starts at +9. text_size <= input - base - 9 proves containment. */
+    self->format_size = (int64_t)XX_PJL_COMMANDS_OFFSET + parsed.text_size;
+    format_end = self->base_address + self->format_size;
     if (parsed.input_size > format_end) {
         self->overlay_offset = format_end;
         self->overlay_size = parsed.input_size - format_end;
@@ -329,6 +336,7 @@ bool xx_pjl_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
         self->overlay_size = 0;
     }
     self->number_of_archive_records = 0U;
+    if (!xx_components_finish(self, pd)) return false;
     self->is_valid = true;
     self->base_info_handled = true;
     return true;
@@ -374,4 +382,12 @@ bool xx_pjl_has_terminator(const xx_pjl *pjl) {
 
 bool xx_pjl_is_ascii(const xx_pjl *pjl) {
     return pjl ? pjl->is_ascii : false;
+}
+
+/* Encoded/structural component members; this does not decode media. */
+static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd) {
+
+    xx_pjl *p=(xx_pjl *)f;
+    (void)pd;
+    return xx_component_add(f,s,p->text_offset-f->base_address,p->text_size,"printer-commands");
 }

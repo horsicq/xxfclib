@@ -59,6 +59,25 @@ typedef struct xx_pd_struct {
     void *user_data;        /**< Optional user context pointer */
 } xx_pd_struct;
 
+/* A worker can publish coherent snapshots and poll a synchronized stop request
+ * without exposing its mutable progress object to another thread. The callback
+ * runs synchronously on the thread using the xx_pd helpers; true requests stop.
+ * It is called after updates and during xx_pd_is_stopped(). Recursive observer
+ * calls are suppressed. Do not destroy the observed object in the callback. */
+typedef bool (*xx_pd_observer_fn)(const xx_pd_struct *pd, void *user_data);
+typedef struct xx_pd_observer {
+    const xx_pd_struct *progress;
+    xx_pd_observer_fn callback;
+    void *user_data;
+} xx_pd_observer;
+
+/* One binding per calling thread, matching this exact progress pointer. Returns
+ * the previous binding for restoration. NULL pd/callback clears it. Register on
+ * the worker thread and restore before the object/context goes out of scope.
+ * The xx_pd_struct layout is unchanged; this is not a cross-thread setter. */
+XXFC_API xx_pd_observer xx_pd_set_observer(const xx_pd_struct *pd,
+    xx_pd_observer_fn callback, void *user_data);
+
 /**
  * @brief Initialize an xx_pd_struct to all zeros / clean state.
  * @return Cleanly initialized xx_pd_struct.

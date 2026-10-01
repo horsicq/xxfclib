@@ -61,11 +61,30 @@ bool xx_zlib_stream_decode_memory(const uint8_t *input, size_t input_size,
 uint32_t xx_zlib_stream_adler32(const uint8_t *data, size_t size) {
     uint32_t a = 1U;
     uint32_t b = 0U;
-    size_t i;
-
-    for (i = 0U; i < size; ++i) {
-        a = (a + data[i]) % 65521U;
-        b = (b + a) % 65521U;
+    /* With reduced initial sums, 5552 worst-case bytes fit in uint32_t.
+     * Reduce once per bounded chunk instead of twice for every byte. */
+    while (size != 0U) {
+        size_t chunk = size < 5552U ? size : 5552U;
+        size -= chunk;
+        while (chunk >= 8U) {
+            a += data[0]; b += a;
+            a += data[1]; b += a;
+            a += data[2]; b += a;
+            a += data[3]; b += a;
+            a += data[4]; b += a;
+            a += data[5]; b += a;
+            a += data[6]; b += a;
+            a += data[7]; b += a;
+            data += 8U;
+            chunk -= 8U;
+        }
+        while (chunk != 0U) {
+            a += *data++;
+            b += a;
+            --chunk;
+        }
+        a %= 65521U;
+        b %= 65521U;
     }
     return (b << 16) | a;
 }

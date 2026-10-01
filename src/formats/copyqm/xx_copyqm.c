@@ -4,6 +4,13 @@
  * Native reader for the Sydex CopyQM floppy image.  The container is a
  * fixed 0x85-byte header, a comment whose length the header gives, and a
  * run-length stream.  Nothing stores the decoded length, so it is measured.
+ *
+ * CopyQM stores only the cylinders that were in use when the disk was read
+ * (header byte 0x5A); the rest, up to the total cylinder count (0x5B), were
+ * blank and are left out.  When the stream decodes to exactly the used
+ * cylinders, the image is padded back to the full geometry with the DOS format
+ * filler 0xF6, so the result is the whole disk (as libdsk's dsktrans writes it)
+ * and a filesystem inside is not cut short.
  */
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/copyqm/xx_copyqm.h"
@@ -32,6 +39,7 @@ typedef struct copyqm_member_s {
     int64_t data_offset;
     int64_t packed_size;
     uint64_t unpacked_size;
+    uint64_t decoded_size;  /* bytes the RLE stream yields; the rest is fill */
     uint32_t method;      /* 0 = stored, non-zero = format codec */
     bool decode;
 } copyqm_member;
@@ -133,6 +141,25 @@ static bool copyqm_add_member(copyqm_stream *stream, const copyqm_member *member
 
 #define COPYQM_HEADER_SIZE 0x85
 #define COPYQM_COMMENT_LENGTH_OFFSET 0x6f
+#define COPYQM_SECTOR_SIZE_OFFSET 0x03
+#define COPYQM_SECTORS_PER_TRACK_OFFSET 0x10
+#define COPYQM_HEADS_OFFSET 0x12
+#define COPYQM_USED_CYLINDERS_OFFSET 0x5a
+#define COPYQM_TOTAL_CYLINDERS_OFFSET 0x5b
+#define COPYQM_BLANK_FILL 0xF6U
+
+/* Full-disk size from the header geometry, or 0 when the geometry is not
+ * usable (then the image keeps its natural decoded length).  Every factor is
+ * bounded, so the product cannot overflow 64 bits. */
+static uint64_t copyqm_geometry_bytes(const uint8_t *header, uint32_t cylinders) {
+    uint32_t sector_size = copyqm_le16(header + COPYQM_SECTOR_SIZE_OFFSET);
+    uint32_t sectors = copyqm_le16(header + COPYQM_SECTORS_PER_TRACK_OFFSET);
+    uint32_t heads = copyqm_le16(header + COPYQM_HEADS_OFFSET);
+    if (sector_size < 128U || sector_size > 16384U || sectors == 0U ||
+        sectors > 255U || heads == 0U || heads > 255U || cylinders == 0U)
+        return 0U;
+    return (uint64_t)cylinders * heads * sectors * sector_size;
+}
 
 /* Walk the RLE stream once.  A 16-bit signed token: zero ends the image, a
  * negative one repeats the single byte that follows -token times, a positive
@@ -199,7 +226,7 @@ static bool copyqm_parse(Abstractformat *format, copyqm_stream **result) {
         header[0] != 'C' || header[1] != 'Q' || header[2] != 0x14)
         return false;
     data_offset = (int64_t)COPYQM_HEADER_SIZE +
-                  (int64_t)header[COPYQM_COMMENT_LENGTH_OFFSET];
+                  (int64_t)copyqm_le16(header + COPYQM_COMMENT_LENGTH_OFFSET);
     if (data_offset >= size) return false;
     packed_size = size - data_offset;
     if ((uint64_t)packed_size > COPYQM_MAX_OUTPUT) return false;
@@ -221,7 +248,26 @@ static bool copyqm_parse(Abstractformat *format, copyqm_stream **result) {
     member.header_size = data_offset;
     member.data_offset = format->base_address + data_offset;
     member.packed_size = packed_size;
+    member.decoded_size = (uint64_t)measured;
     member.unpacked_size = (uint64_t)measured;
+    {
+        /* The geometry is trusted for padding only when the header checksum
+         * (all 0x85 bytes sum to zero) holds; otherwise keep the natural
+         * length, as the reader always did. */
+        uint32_t used_cyl = header[COPYQM_USED_CYLINDERS_OFFSET];
+        uint32_t total_cyl = header[COPYQM_TOTAL_CYLINDERS_OFFSET];
+        uint64_t used_bytes = copyqm_geometry_bytes(header, used_cyl);
+        uint64_t full_bytes = copyqm_geometry_bytes(header, total_cyl);
+        uint8_t checksum = 0U;
+        size_t index;
+        for (index = 0U; index < sizeof(header); ++index)
+            checksum = (uint8_t)(checksum + header[index]);
+        if (checksum == 0U && used_bytes != 0U &&
+            used_bytes == (uint64_t)measured &&
+            total_cyl > used_cyl && full_bytes > used_bytes &&
+            full_bytes <= COPYQM_MAX_OUTPUT)
+            member.unpacked_size = full_bytes;
+    }
     member.method = 1U;
     member.decode = true;
     if (!member.name || !copyqm_add_member(stream, &member)) {
@@ -242,7 +288,9 @@ static bool copyqm_decode(Abstractformat *format, const copyqm_member *member,
     if (member->packed_size < 0 ||
         (uint64_t)member->packed_size > COPYQM_MAX_OUTPUT ||
         member->unpacked_size == 0U ||
-        member->unpacked_size > COPYQM_MAX_OUTPUT)
+        member->unpacked_size > COPYQM_MAX_OUTPUT ||
+        member->decoded_size == 0U ||
+        member->decoded_size > member->unpacked_size)
         return false;
     packed = (uint8_t *)xx_mem_alloc((size_t)member->packed_size);
     output = (uint8_t *)xx_mem_alloc((size_t)member->unpacked_size);
@@ -250,15 +298,18 @@ static bool copyqm_decode(Abstractformat *format, const copyqm_member *member,
         !copyqm_read_at(format->device, member->data_offset, packed,
                         (size_t)member->packed_size) ||
         !copyqm_run(packed, (size_t)member->packed_size, output,
-                    (size_t)member->unpacked_size, &produced) ||
-        produced != (size_t)member->unpacked_size) {
+                    (size_t)member->decoded_size, &produced) ||
+        produced != (size_t)member->decoded_size) {
         if (packed) xx_mem_free(packed);
         if (output) xx_mem_free(output);
         return false;
     }
     xx_mem_free(packed);
+    if ((size_t)member->unpacked_size > produced)
+        xx_rt_memset(output + produced, (int)COPYQM_BLANK_FILL,
+                     (size_t)member->unpacked_size - produced);
     *plain = output;
-    *plain_size = produced;
+    *plain_size = (size_t)member->unpacked_size;
     return true;
 }
 

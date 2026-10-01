@@ -33,15 +33,24 @@
 /* --- Internal Helpers                                                  --- */
 /* ========================================================================= */
 
-static bool xx_io_read_exact(xx_io_device *dev, void *buf, size_t n) {
+static size_t xx_io_captured_capacity(void) {
+    size_t capacity = xx_get_file_buffer_size();
+    if (!capacity) capacity = XX_DEFAULT_FILE_BUFFER_SIZE;
+    if (capacity > (SIZE_MAX >> 1)) capacity = SIZE_MAX >> 1;
+    return capacity;
+}
+
+static bool xx_io_read_exact_capped(xx_io_device *dev, void *buf, size_t n, size_t capacity) {
     if (!dev || !buf || n == 0) {
         return false;
     }
     uint8_t *p = (uint8_t*)buf;
     size_t total = 0;
     while (total < n) {
-        ssize_t r = xx_io_read(dev, p + total, n - total);
-        if (r <= 0) {
+        size_t request = n - total;
+        if (request > capacity) request = capacity;
+        ssize_t r = xx_io_read(dev, p + total, request);
+        if (r <= 0 || (size_t)r > request) {
             return false;
         }
         total += (size_t)r;
@@ -49,15 +58,22 @@ static bool xx_io_read_exact(xx_io_device *dev, void *buf, size_t n) {
     return true;
 }
 
+static bool xx_io_read_exact(xx_io_device *dev, void *buf, size_t n) {
+    return xx_io_read_exact_capped(dev, buf, n, xx_io_captured_capacity());
+}
+
 static bool xx_io_write_exact(xx_io_device *dev, const void *buf, size_t n) {
     if (!dev || !buf || n == 0) {
         return false;
     }
     const uint8_t *p = (const uint8_t*)buf;
+    size_t capacity = xx_io_captured_capacity();
     size_t total = 0;
     while (total < n) {
-        ssize_t w = xx_io_write(dev, p + total, n - total);
-        if (w <= 0) {
+        size_t request = n - total;
+        if (request > capacity) request = capacity;
+        ssize_t w = xx_io_write(dev, p + total, request);
+        if (w <= 0 || (size_t)w > request) {
             return false;
         }
         total += (size_t)w;
@@ -214,6 +230,7 @@ char* xx_io_get_ansi_string(xx_io_device *dev, int64_t offset, size_t max_len) {
 }
 
 wchar_t* xx_io_get_unicode_string(xx_io_device *dev, int64_t offset, size_t max_len, bool big_endian) {
+    size_t transfer_capacity = xx_io_captured_capacity();
     if (!dev || xx_io_seek64(dev, offset, SEEK_SET) != 0) {
         return NULL;
     }
@@ -230,7 +247,7 @@ wchar_t* xx_io_get_unicode_string(xx_io_device *dev, int64_t offset, size_t max_
     size_t units = 0;
     while (max_len == 0 || units < max_len) {
         uint8_t buf[2];
-        if (xx_io_read(dev, buf, 2) != 2) {
+        if (!xx_io_read_exact_capped(dev, buf, 2, transfer_capacity)) {
             break;
         }
         uint16_t ch = xx_data_get_u16(buf, 2, 0, big_endian);
@@ -540,98 +557,97 @@ bool xx_io_set_unicode_string(xx_io_device *dev, int64_t offset, const wchar_t *
 /* --- Finding Types in xx_io_device                                     --- */
 /* ========================================================================= */
 
-int64_t xx_io_find_bytes(xx_io_device *dev, int64_t start_offset, int64_t max_search_len, const void *pattern, size_t pattern_size, xx_pd_struct *pd) {
-    if (!dev || !pattern || pattern_size == 0) {
-        return -1;
-    }
-    if (xx_pd_is_stopped(pd)) {
-        return -1;
-    }
-    if (start_offset < 0) {
-        start_offset = 0;
-    }
-    if (xx_io_seek64(dev, start_offset, SEEK_SET) != 0) {
-        return -1;
-    }
+/* File scratch remains bounded by the captured global setting.  The KMP
+ * prefix table describes the pattern, rather than staging input bytes. */
+static int64_t xx_io_find_bytes_capped(xx_io_device *dev, int64_t start_offset,
+                                     int64_t max_search_len, const void *pattern,
+                                     size_t pattern_size, size_t buffer_size,
+                                     xx_pd_struct *pd, const char *label) {
+    const uint8_t *needle = (const uint8_t *)pattern;
+    size_t capacity = xx_get_file_buffer_size();
+    uint8_t *chunk;
+    size_t *prefix = NULL;
+    size_t matched = 0, retained = 0;
+    int64_t consumed = 0, found = -1;
+    int level;
 
-    size_t chunk_capacity = xx_get_file_buffer_size();
-    if (chunk_capacity == 0) {
-        chunk_capacity = XX_DEFAULT_FILE_BUFFER_SIZE;
-    }
-    if (pattern_size > chunk_capacity / 2) {
-        chunk_capacity = pattern_size * 2;
-    }
-    uint8_t *chunk = (uint8_t*)xx_mem_alloc(chunk_capacity);
-    if (!chunk) {
-        return -1;
-    }
+    if (!dev || !needle || !pattern_size || pattern_size > (size_t)INT64_MAX || xx_pd_is_stopped(pd)) return -1;
+    if (!capacity) capacity = XX_DEFAULT_FILE_BUFFER_SIZE;
+    if (buffer_size && buffer_size < capacity) capacity = buffer_size;
+    if (capacity > (SIZE_MAX >> 1)) capacity = SIZE_MAX >> 1;
+    if (start_offset < 0) start_offset = 0;
+    if (xx_io_seek64(dev, start_offset, SEEK_SET) != 0) return -1;
+    chunk = (uint8_t *)xx_mem_alloc(capacity);
+    if (!chunk) return -1;
 
-    uint64_t total_expected = (max_search_len > 0) ? (uint64_t)max_search_len : 0;
-    int level = xx_pd_enter_level(pd, total_expected, "Device Find Bytes");
-
-    size_t overlap = pattern_size - 1;
-    int64_t current_file_offset = start_offset;
-    int64_t total_searched = 0;
-    int64_t found_offset = -1;
-    size_t bytes_in_buf = 0;
-
-    while (1) {
-        if (xx_pd_is_stopped(pd)) {
-            break;
+    if (pattern_size >= capacity) {
+        size_t i, j = 0;
+        if (pattern_size > SIZE_MAX / sizeof(*prefix)) goto cleanup;
+        prefix = (size_t *)xx_mem_alloc(pattern_size * sizeof(*prefix));
+        if (!prefix) goto cleanup;
+        prefix[0] = 0;
+        for (i = 1; i < pattern_size; ++i) {
+            if (!(i & 255) && xx_pd_is_stopped(pd)) goto cleanup;
+            while (j && needle[i] != needle[j]) j = prefix[j - 1];
+            if (needle[i] == needle[j]) ++j;
+            prefix[i] = j;
         }
+    }
 
-        size_t to_read = chunk_capacity - bytes_in_buf;
+    level = xx_pd_enter_level(pd, max_search_len > 0 ? (uint64_t)max_search_len : 0, label);
+    while (!xx_pd_is_stopped(pd)) {
+        size_t request = capacity - retained;
+        ssize_t n;
         if (max_search_len > 0) {
-            int64_t remaining = max_search_len - total_searched;
-            if (remaining <= 0) {
-                break;
+            int64_t remaining = max_search_len - consumed;
+            if (remaining <= 0) break;
+            if ((uint64_t)remaining < (uint64_t)request) request = (size_t)remaining;
+        }
+        if ((uint64_t)(INT64_MAX - start_offset - consumed) < (uint64_t)request)
+            request = (size_t)(INT64_MAX - start_offset - consumed);
+        if (!request) break;
+        n = xx_io_read(dev, chunk + retained, request);
+        if (n <= 0 || (size_t)n > request) break;
+
+        if (prefix) {
+            size_t i;
+            for (i = 0; i < (size_t)n; ++i) {
+                if (!(i & 255) && xx_pd_is_stopped(pd)) break;
+                while (matched && chunk[i] != needle[matched]) matched = prefix[matched - 1];
+                if (chunk[i] == needle[matched]) ++matched;
+                if (matched == pattern_size) {
+                    found = start_offset + consumed + (int64_t)i + 1 - (int64_t)pattern_size;
+                    break;
+                }
             }
-            if ((size_t)remaining < to_read) {
-                to_read = (size_t)remaining;
-            }
-        }
-
-        if (to_read == 0) {
-            break;
-        }
-
-        ssize_t bytes_read = xx_io_read(dev, chunk + bytes_in_buf, to_read);
-        if (bytes_read <= 0) {
-            break;
-        }
-
-        bytes_in_buf += (size_t)bytes_read;
-
-        if (bytes_in_buf >= pattern_size) {
-            int64_t idx = xx_data_find_bytes_buffer_optimize(chunk, bytes_in_buf, 0, pattern, pattern_size, pd);
-            if (idx >= 0) {
-                found_offset = current_file_offset + idx;
-                break;
-            }
-        }
-
-        if (xx_pd_is_stopped(pd)) {
-            break;
-        }
-
-        if (bytes_in_buf > overlap) {
-            size_t advanced = bytes_in_buf - overlap;
-            current_file_offset += advanced;
-            total_searched += advanced;
-            xx_pd_set_current(pd, level, (uint64_t)total_searched);
-            xx_mem_copy(chunk, chunk + advanced, overlap);
-            bytes_in_buf = overlap;
+            consumed += (int64_t)n;
+            if (found >= 0 || xx_pd_is_stopped(pd)) break;
         } else {
-            break;
+            size_t available = retained + (size_t)n;
+            int64_t index = -1;
+            if (available >= pattern_size)
+                index = xx_data_find_bytes_buffer_optimize(chunk, available, 0, needle, pattern_size, pd);
+            if (index >= 0) {
+                found = start_offset + consumed - (int64_t)retained + index;
+                break;
+            }
+            consumed += (int64_t)n;
+            if (xx_pd_is_stopped(pd)) break;
+            retained = available < pattern_size - 1 ? available : pattern_size - 1;
+            xx_mem_move(chunk, chunk + available - retained, retained);
         }
+        xx_pd_set_current(pd, level, (uint64_t)consumed);
     }
-
-    xx_mem_free(chunk);
-    if (found_offset >= 0) {
-        xx_pd_set_current(pd, level, (uint64_t)(found_offset - start_offset));
-    }
+    if (found >= 0) xx_pd_set_current(pd, level, (uint64_t)(found - start_offset));
     xx_pd_leave_level(pd, level);
-    return found_offset;
+cleanup:
+    xx_mem_free(prefix);
+    xx_mem_free(chunk);
+    return found;
+}
+
+int64_t xx_io_find_bytes(xx_io_device *dev, int64_t start_offset, int64_t max_search_len, const void *pattern, size_t pattern_size, xx_pd_struct *pd) {
+    return xx_io_find_bytes_capped(dev, start_offset, max_search_len, pattern, pattern_size, 0, pd, "Device Find Bytes");
 }
 
 int64_t xx_io_find_u8(xx_io_device *dev, int64_t start_offset, int64_t max_search_len, uint8_t val, xx_pd_struct *pd) {
@@ -709,100 +725,8 @@ int64_t xx_io_find_unicode_string(xx_io_device *dev, int64_t start_offset, int64
 /* --- Optimized Finding Types in xx_io_device (Large Buffer + Fast Scan)--- */
 /* ========================================================================= */
 
-#define XX_FIND_BUFFER_OPTIMIZE_DEFAULT_SIZE (64 * 1024)
-
 int64_t xx_io_find_bytes_buffer_optimize_ex(xx_io_device *dev, int64_t start_offset, int64_t max_search_len, const void *pattern, size_t pattern_size, size_t buffer_size, xx_pd_struct *pd) {
-    if (!dev || !pattern || pattern_size == 0) {
-        return -1;
-    }
-    if (xx_pd_is_stopped(pd)) {
-        return -1;
-    }
-    if (start_offset < 0) {
-        start_offset = 0;
-    }
-    if (xx_io_seek64(dev, start_offset, SEEK_SET) != 0) {
-        return -1;
-    }
-
-    size_t chunk_capacity = (buffer_size > 0) ? buffer_size : xx_get_file_buffer_size();
-    if (chunk_capacity == 0) {
-        chunk_capacity = XX_DEFAULT_FILE_BUFFER_SIZE;
-    }
-    if (pattern_size > chunk_capacity / 2) {
-        chunk_capacity = pattern_size * 2;
-    }
-    uint8_t *chunk = (uint8_t*)xx_mem_alloc(chunk_capacity);
-    if (!chunk) {
-        return -1;
-    }
-
-    uint64_t total_expected = (max_search_len > 0) ? (uint64_t)max_search_len : 0;
-    int level = xx_pd_enter_level(pd, total_expected, "Device Find Bytes Optimized");
-
-    size_t overlap = pattern_size - 1;
-    int64_t current_file_offset = start_offset;
-    int64_t total_searched = 0;
-    int64_t found_offset = -1;
-    size_t bytes_in_buf = 0;
-
-    while (1) {
-        if (xx_pd_is_stopped(pd)) {
-            break;
-        }
-
-        size_t to_read = chunk_capacity - bytes_in_buf;
-        if (max_search_len > 0) {
-            int64_t remaining = max_search_len - total_searched;
-            if (remaining <= 0) {
-                break;
-            }
-            if ((size_t)remaining < to_read) {
-                to_read = (size_t)remaining;
-            }
-        }
-
-        if (to_read == 0) {
-            break;
-        }
-
-        ssize_t bytes_read = xx_io_read(dev, chunk + bytes_in_buf, to_read);
-        if (bytes_read <= 0) {
-            break;
-        }
-
-        bytes_in_buf += (size_t)bytes_read;
-
-        if (bytes_in_buf >= pattern_size) {
-            int64_t idx = xx_data_find_bytes_buffer_optimize(chunk, bytes_in_buf, 0, pattern, pattern_size, pd);
-            if (idx >= 0) {
-                found_offset = current_file_offset + idx;
-                break;
-            }
-        }
-
-        if (xx_pd_is_stopped(pd)) {
-            break;
-        }
-
-        if (bytes_in_buf > overlap) {
-            size_t advanced = bytes_in_buf - overlap;
-            current_file_offset += advanced;
-            total_searched += advanced;
-            xx_pd_set_current(pd, level, (uint64_t)total_searched);
-            xx_mem_copy(chunk, chunk + advanced, overlap);
-            bytes_in_buf = overlap;
-        } else {
-            break;
-        }
-    }
-
-    xx_mem_free(chunk);
-    if (found_offset >= 0) {
-        xx_pd_set_current(pd, level, (uint64_t)(found_offset - start_offset));
-    }
-    xx_pd_leave_level(pd, level);
-    return found_offset;
+    return xx_io_find_bytes_capped(dev, start_offset, max_search_len, pattern, pattern_size, buffer_size, pd, "Device Find Bytes Optimized");
 }
 
 int64_t xx_io_find_bytes_buffer_optimize(xx_io_device *dev, int64_t start_offset, int64_t max_search_len, const void *pattern, size_t pattern_size, xx_pd_struct *pd) {

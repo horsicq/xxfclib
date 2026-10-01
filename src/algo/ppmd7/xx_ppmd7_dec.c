@@ -34,7 +34,7 @@ static bool ppmd7_rd_refill(ppmd7_range_dec *rd)
 {
     if (rd->error) return false;
     if (rd->ibuf_pos < rd->ibuf_len) return true;
-    size_t want = sizeof(rd->ibuf);
+    size_t want = rd->ibuf_capacity;
     if (rd->remaining >= 0) {
         if (rd->remaining == 0) return false;
         if ((int64_t)want > rd->remaining) want = (size_t)rd->remaining;
@@ -50,7 +50,7 @@ static bool ppmd7_rd_refill(ppmd7_range_dec *rd)
             rd->mem_pos += (size_t)got;
         }
     }
-    if (got <= 0) return false;
+    if (got <= 0 || (size_t)got > want) return false;
     if (rd->remaining >= 0) rd->remaining -= got;
     rd->ibuf_pos = 0;
     rd->ibuf_len = (size_t)got;
@@ -68,6 +68,10 @@ bool ppmd7_rd_init(ppmd7_range_dec *rd, xx_io_device *dev,
 {
     xx_rt_memset(rd, 0, sizeof(*rd));
     rd->dev = dev;
+    rd->io_capacity = xx_get_file_buffer_size();
+    if (rd->io_capacity > ((size_t)-1 >> 1)) rd->io_capacity = (size_t)-1 >> 1;
+    rd->ibuf = &rd->input_byte;
+    rd->ibuf_capacity = 1U;
     rd->mem = mem;
     rd->mem_size = mem_size;
     rd->remaining = remaining;
@@ -250,7 +254,19 @@ bool xx_ppmd7_decompress_stream(ppmd7_range_dec *rd,
     Ppmd7_Init(&ppmd, (unsigned)order);
 
     size_t opos = 0, tot = 0;
-    uint8_t outbuf[65536];
+    size_t io_capacity = rd->io_capacity;
+    uint8_t *staging = io_capacity <= (size_t)-1 / 2U
+        ? (uint8_t *)xx_mem_alloc(io_capacity * 2U) : NULL;
+    uint8_t *outbuf;
+    if (!staging) {
+        Ppmd7_Free(&ppmd);
+        if (pd && pd_level >= 0) xx_pd_leave_level(pd, pd_level);
+        return false;
+    }
+    rd->ibuf = staging;
+    rd->ibuf_capacity = io_capacity;
+    rd->ibuf_pos = rd->ibuf_len = 0U;
+    outbuf = staging + io_capacity;
     bool ok = true;
 
     while (ok) {
@@ -267,7 +283,7 @@ bool xx_ppmd7_decompress_stream(ppmd7_range_dec *rd,
         }
 
         outbuf[opos++] = (uint8_t)sym;
-        if (opos >= sizeof(outbuf)) {
+        if (opos >= io_capacity) {
             if (dst_dev) {
                 ssize_t w = xx_io_write(dst_dev, outbuf, opos);
                 if (w < 0 || (size_t)w != opos) { ok = false; break; }
@@ -301,6 +317,10 @@ bool xx_ppmd7_decompress_stream(ppmd7_range_dec *rd,
 
     if (out_written) *out_written = tot;
     Ppmd7_Free(&ppmd);
+    xx_mem_free(staging);
+    rd->ibuf = &rd->input_byte;
+    rd->ibuf_capacity = 1U;
+    rd->ibuf_pos = rd->ibuf_len = 0U;
 
     if (pd && pd_level >= 0) {
         xx_pd_leave_level(pd, pd_level);

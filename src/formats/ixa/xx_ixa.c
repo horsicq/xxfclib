@@ -37,12 +37,8 @@
  * sniffed from the DECOMPRESSED bytes; this reader cannot sniff what it
  * cannot decode, so it files each slot under a zero-padded index and ".bin".
  *
- * COMPRESSION IS NOT IMPLEMENTED.  Every payload in the corpus is compressed
- * (no slot has packed == plain), and the scheme is IXALANCE's own -- it is
- * not any of the ~75 decoders already in this library, and U3's decoder was
- * not recovered far enough to port here.  Listing, offsets and both sizes are
- * exact; unpack fails closed rather than emitting a plausible-looking wrong
- * result.
+ * Payloads use iXalance's 32-bit-word MSB-first LZSS stream followed by RLE.
+ * The two stages are bounded by the table's declared final size.
  *
  * All 4 corpus samples in F:\ARC\ARC\IXA parse, for 18 live members, which
  * matches U3's own listing member for member.
@@ -57,6 +53,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include <string.h>
 
 #ifdef IXA
 #define XX_IXA_FILE_TYPE XX_FILE_TYPE_IXA
@@ -367,30 +364,119 @@ fail:
     return NULL;
 }
 
-/* IXALANCE's own compressor is not implemented, so unpack fails closed.  No
- * corpus member is stored (none has packed == plain), so in practice this
- * always refuses; that is deliberate -- a reader that refuses is worth more
- * than one that emits garbage.  The stored case is still handled so that a
- * future archive that uses it works without a code change. */
+typedef struct xx_ixa_bits_s {
+    const uint8_t *bytes;
+    size_t size;
+    size_t position;
+} xx_ixa_bits;
+
+static bool xx_ixa_bits_read(xx_ixa_bits *bits, unsigned count, uint32_t *value) {
+    uint32_t result = 0U;
+    unsigned j;
+    if (!bits || !value || count > 16U || bits->position > bits->size * 8U ||
+        count > bits->size * 8U - bits->position) return false;
+    for (j = 0U; j < count; ++j) {
+        size_t p = bits->position++;
+        size_t word = (p / 32U) * 4U;
+        uint32_t v = 0U;
+        unsigned k;
+        for (k = 0U; k < 4U && word + k < bits->size; ++k)
+            v |= (uint32_t)bits->bytes[word + k] << (8U * k);
+        result = (result << 1U) | ((v >> (31U - (unsigned)(p % 32U))) & 1U);
+    }
+    *value = result;
+    return true;
+}
+
+static bool xx_ixa_expand(const uint8_t *packed, size_t packed_size,
+                          uint8_t *plain, size_t plain_size, xx_pd_struct *pd) {
+    xx_ixa_bits bits;
+    uint8_t history[1024] = {0};
+    uint8_t *middle;
+    size_t middle_limit, m = 0U, write = 1U, p = 4U, o = 0U;
+    uint32_t bit, value, position, length, declared;
+    bool ended = false, ok = false;
+    if (!packed || !plain || plain_size > (SIZE_MAX - 4U) / 2U) return false;
+    middle_limit = plain_size * 2U + 4U;
+    middle = (uint8_t *)xx_mem_alloc(middle_limit ? middle_limit : 1U);
+    if (!middle) return false;
+    bits.bytes = packed;
+    bits.size = packed_size;
+    bits.position = 0U;
+    while (bits.position < packed_size * 8U) {
+        unsigned j;
+        if (pd && xx_pd_is_stopped(pd)) goto finish;
+        if (!xx_ixa_bits_read(&bits, 1U, &bit)) goto finish;
+        if (bit) {
+            if (!xx_ixa_bits_read(&bits, 8U, &value) || m >= middle_limit)
+                goto finish;
+            middle[m++] = (uint8_t)value;
+            history[write] = (uint8_t)value;
+            write = (write + 1U) & 1023U;
+        } else {
+            if (!xx_ixa_bits_read(&bits, 10U, &position)) goto finish;
+            if (position == 0U) { ended = true; break; }
+            if (!xx_ixa_bits_read(&bits, 4U, &length) || length + 2U > middle_limit - m)
+                goto finish;
+            for (j = 0U; j < length + 2U; ++j) {
+                uint8_t c = history[(position + j) & 1023U];
+                middle[m++] = c;
+                history[write] = c;
+                write = (write + 1U) & 1023U;
+            }
+        }
+    }
+    if (!ended || m < 4U) goto finish;
+    declared = xx_ixa_le32(middle);
+    if (declared != m) goto finish;
+    while (p < m) {
+        uint8_t control = middle[p++];
+        size_t n = control > 127U ? (size_t)(control - 127U)
+                                  : (size_t)control + 1U;
+        if (n > plain_size - o) goto finish;
+        if (control > 127U) {
+            if (p >= m) goto finish;
+            memset(plain + o, middle[p++], n);
+        } else {
+            if (n > m - p) goto finish;
+            xx_mem_copy(plain + o, middle + p, n);
+            p += n;
+        }
+        o += n;
+    }
+    ok = o == plain_size;
+finish:
+    xx_mem_free(middle);
+    return ok;
+}
+
 static bool xx_ixa_decode(Abstractformat *self, const xx_ixa_member *member,
                           uint8_t **out, size_t *out_size, xx_pd_struct *pd) {
-    uint8_t *output;
+    uint8_t *output, *packed;
+    size_t psize, usize;
 
     *out = NULL;
     *out_size = 0U;
     if (!self || !member || member->packed_size <= 0) return false;
     if (pd && xx_pd_is_stopped(pd)) return false;
-    if ((uint64_t)member->packed_size != member->unpacked_size) return false;
-    if ((uint64_t)member->packed_size > (uint64_t)SIZE_MAX) return false;
-    output = (uint8_t *)xx_mem_alloc((size_t)member->packed_size);
-    if (!output) return false;
-    if (!xx_ixa_read_at(self, member->data_offset, output,
-                        (size_t)member->packed_size)) {
-        xx_mem_free(output);
+    if ((uint64_t)member->packed_size > (uint64_t)SIZE_MAX ||
+        member->unpacked_size > (uint64_t)SIZE_MAX ||
+        member->unpacked_size > 256U * 1024U * 1024U ||
+        member->packed_size > 256 * 1024 * 1024) return false;
+    psize = (size_t)member->packed_size;
+    usize = (size_t)member->unpacked_size;
+    packed = (uint8_t *)xx_mem_alloc(psize);
+    output = (uint8_t *)xx_mem_alloc(usize ? usize : 1U);
+    if (!packed || !output ||
+        !xx_ixa_read_at(self, member->data_offset, packed, psize) ||
+        !xx_ixa_expand(packed, psize, output, usize, pd)) {
+        if (packed) xx_mem_free(packed);
+        if (output) xx_mem_free(output);
         return false;
     }
+    xx_mem_free(packed);
     *out = output;
-    *out_size = (size_t)member->packed_size;
+    *out_size = usize;
     return true;
 }
 

@@ -49,7 +49,16 @@ extern "C" {
  * Any other tag is not understood and the file is refused.  The inflated
  * size of a member is recorded nowhere.  The trailer alone is not a
  * signature: the author stamps it on his ordinary programs too, so a file
- * is accepted only when the whole chain walks back to the sentinel.
+ * is accepted only when the sentinel sits where the LX image ends and the
+ * chain walks back to it cleanly (its last 128 blocks for validity; the
+ * records need the whole chain).
+ *
+ * The sentinel sits exactly at the end of the LX image: the largest
+ * "data pages offset + (page offset << shift) + page size" over the object
+ * page table.  The reader checks that word before it walks, so a candidate
+ * whose own LX header does not lead to the sentinel costs a few small reads,
+ * and validity and base info walk at most the last 128 blocks, so no
+ * candidate costs more than that.
  */
 typedef struct xx_ardi_installer {
     Abstractformat format;
@@ -59,6 +68,11 @@ typedef struct xx_ardi_installer {
     char year[5];           /**< The trailer's year digits. */
     char title[256];        /**< Product title (UTF-8), "" if none. */
     char install_path[512]; /**< Default destination (UTF-8), "" if none. */
+    /** number_of_records, block_count, title and install_path are set.
+     *  Base info walks only the last 128 blocks of the chain; a longer chain
+     *  is walked in full by get_number_of_archive_records (or when the
+     *  records are read). */
+    bool chain_walked;
 } xx_ardi_installer;
 
 typedef xx_ardi_installer xx_ardi_installer_t;

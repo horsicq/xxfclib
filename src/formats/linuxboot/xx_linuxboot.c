@@ -2,12 +2,18 @@
  * SPDX-License-Identifier: MIT
  */
 
+/* The component archive API publishes the boot sector, real-mode setup and
+ * protected-mode system separately. It does not decompress or execute the kernel. */
+
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/linuxboot/xx_linuxboot.h"
 
 #include "xxfclib/data/xx_data.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
+
+#include "../bmp/xx_component_archive_impl.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the file-type constant resolves to UNKNOWN until the enumerator
@@ -396,6 +402,7 @@ void xx_linuxboot_init(xx_linuxboot *image, xx_io_device *dev,
     image->setup_offset = -1;
     image->system_offset = -1;
     image->payload_offset = -1;
+    xx_components_install(&image->format);
 }
 
 xx_linuxboot *xx_linuxboot_create(xx_io_device *dev, int64_t base_address) {
@@ -496,6 +503,7 @@ bool xx_linuxboot_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
         self->overlay_size = 0;
     }
     self->number_of_archive_records = 0U;
+    if (!xx_components_finish(self, pd)) return false;
     self->is_valid = true;
     self->base_info_handled = true;
     return true;
@@ -536,4 +544,14 @@ int64_t xx_linuxboot_get_payload_offset(const xx_linuxboot *image) {
 
 bool xx_linuxboot_is_bzimage(const xx_linuxboot *image) {
     return image ? image->is_bzimage : false;
+}
+
+/* Encoded/structural component members; this does not decode media. */
+static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd) {
+
+    xx_linuxboot *b=(xx_linuxboot *)f;
+    (void)pd;
+    return xx_component_add(f,s,0,512,"boot-sector") &&
+        xx_component_add(f,s,b->setup_offset-f->base_address,b->setup_size,"real-mode-setup") &&
+        xx_component_add(f,s,b->system_offset-f->base_address,b->system_size,"protected-mode-system");
 }

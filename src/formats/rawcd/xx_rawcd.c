@@ -113,15 +113,51 @@ typedef struct rawcd_stream_s {
     size_t index;
 } rawcd_stream;
 
+#include "xxfclib/global/xx_global.h"
+static size_t gb_rawcd_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_rawcd_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_rawcd_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+
 static bool rawcd_read_at(xx_io_device *device, int64_t offset, void *buffer,
                           size_t size) {
+    const size_t file_io_capacity = gb_rawcd_capacity();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = gb_rawcd_read(device, (uint8_t *)buffer + done,
+                                    size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -130,11 +166,12 @@ static bool rawcd_read_at(xx_io_device *device, int64_t offset, void *buffer,
 
 static bool rawcd_write_all(xx_io_device *device, const void *data,
                             size_t size) {
+    const size_t file_io_capacity = gb_rawcd_capacity();
     size_t done = 0U;
     if (!device) return true; /* verify-only pass */
     while (done < size) {
-        ssize_t amount = xx_io_write(device, (const uint8_t *)data + done,
-                                     size - done);
+        ssize_t amount = gb_rawcd_write(device, (const uint8_t *)data + done,
+                                     size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -436,7 +473,11 @@ static bool rawcd_write_member(Abstractformat *format,
                                xx_io_device *destination, xx_pd_struct *pd) {
     int64_t stride = (int64_t)geometry->sector_size;
     size_t frame = member->audio ? XX_RAWCD_AUDIO_FRAME : XX_RAWCD_USER_DATA;
-    uint8_t *input, *output;
+    const size_t capacity = gb_rawcd_capacity();
+    size_t sectors = capacity / RAWCD_MAX_SECTOR;
+    uint8_t single_input[RAWCD_MAX_SECTOR], single_output[XX_RAWCD_AUDIO_FRAME];
+    uint8_t *input = single_input, *output = single_output;
+    bool allocated = false;
     int64_t done = 0;
     bool result = true;
 
@@ -446,21 +487,23 @@ static bool rawcd_write_member(Abstractformat *format,
                               stride)
         return false;
     if (member->audio && stride < (int64_t)XX_RAWCD_AUDIO_FRAME) return false;
-    input = (uint8_t *)xx_mem_alloc(RAWCD_CHUNK_SECTORS * RAWCD_MAX_SECTOR);
-    output = (uint8_t *)xx_mem_alloc(RAWCD_CHUNK_SECTORS * XX_RAWCD_AUDIO_FRAME);
-    if (!input || !output) {
-        result = false;
-        goto done;
-    }
+    if (sectors > (size_t)member->sectors && member->sectors > 0)
+        sectors = (size_t)member->sectors;
+    if (sectors) {
+        input = (uint8_t *)xx_mem_alloc(sectors * (size_t)stride);
+        output = (uint8_t *)xx_mem_alloc(sectors * frame);
+        allocated = true;
+        if (!input || !output) { result = false; goto done; }
+    } else sectors = 1; /* one complete sector is fixed protocol state */
     while (done < member->sectors) {
         int64_t left = member->sectors - done;
-        size_t count = left > (int64_t)RAWCD_CHUNK_SECTORS
-                           ? RAWCD_CHUNK_SECTORS
+        size_t count = left > (int64_t)sectors
+                           ? sectors
                            : (size_t)left;
         size_t index;
         if ((pd && xx_pd_is_stopped(pd)) ||
-            !rawcd_read_at(format->device, member->offset + done * stride,
-                           input, count * (size_t)stride)) {
+            (xx_io_seek64(format->device, member->offset + done * stride, SEEK_SET) != 0 ||
+             gb_rawcd_read(format->device, input, count * (size_t)stride, capacity) != (ssize_t)(count * (size_t)stride))) {
             result = false;
             break;
         }
@@ -485,15 +528,14 @@ static bool rawcd_write_member(Abstractformat *format,
             }
             xx_rt_memcpy(target, sector + offset, XX_RAWCD_USER_DATA);
         }
-        if (!rawcd_write_all(destination, output, count * frame)) {
+        if ((destination && gb_rawcd_write(destination, output, count * frame, capacity) != (ssize_t)(count * frame))) {
             result = false;
             break;
         }
         done += (int64_t)count;
     }
 done:
-    if (input) xx_mem_free(input);
-    if (output) xx_mem_free(output);
+    if (allocated) { xx_mem_free(input); xx_mem_free(output); }
     return result;
 }
 

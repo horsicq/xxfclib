@@ -31,6 +31,7 @@
  * here, so the alias macro defined next to the enumerator is tested instead;
  * this picks up the real file type as soon as the reader is registered. */
 #ifdef INSTALLSHIELD_SKIN
+
 #define XX_INSTALLSHIELD_SKIN_FILE_TYPE XX_FILE_TYPE_INSTALLSHIELD_SKIN
 #else
 #define XX_INSTALLSHIELD_SKIN_FILE_TYPE XX_FILE_TYPE_UNKNOWN
@@ -74,6 +75,42 @@ typedef struct iss_stream_s {
     size_t index;
 } iss_stream;
 
+#include "xxfclib/global/xx_global.h"
+static size_t gb_installshield_skin_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_installshield_skin_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_installshield_skin_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+
+
 void xx_installshield_skin_transform(uint8_t *data, size_t size,
                                      uint64_t position, bool encode) {
     size_t index;
@@ -93,13 +130,14 @@ void xx_installshield_skin_transform(uint8_t *data, size_t size,
 
 static bool iss_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
+    const size_t file_io_capacity = gb_installshield_skin_capacity();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = gb_installshield_skin_read(device, (uint8_t *)buffer + done,
+                                    size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -409,9 +447,10 @@ static bool iss_set_record(xx_archive_record *record,
 
 static bool iss_write_all(xx_io_device *destination, const uint8_t *data,
                           size_t size) {
+    const size_t file_io_capacity = gb_installshield_skin_capacity();
     size_t done = 0U;
     while (done < size) {
-        ssize_t amount = xx_io_write(destination, data + done, size - done);
+        ssize_t amount = gb_installshield_skin_write(destination, data + done, size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -421,16 +460,17 @@ static bool iss_write_all(xx_io_device *destination, const uint8_t *data,
 /* Decode one member into @p destination (NULL only reads it through). */
 static bool iss_copy_member(Abstractformat *format, const iss_member *member,
                             xx_io_device *destination, xx_pd_struct *pd) {
+    const size_t file_io_capacity = gb_installshield_skin_capacity();
     uint8_t *buffer;
     int64_t done = 0;
     bool result = false;
     if (!format || !member || member->size < 0) return false;
-    buffer = (uint8_t *)xx_mem_alloc(ISS_COPY_BUFFER);
+    buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (done < member->size) {
         int64_t left = member->size - done;
-        size_t chunk = left < (int64_t)ISS_COPY_BUFFER ? (size_t)left
-                                                        : ISS_COPY_BUFFER;
+        size_t chunk = left < (int64_t)file_io_capacity ? (size_t)left
+                                                        : file_io_capacity;
         int64_t position = member->data_offset + done;
         if (pd && xx_pd_is_stopped(pd)) goto done;
         if (!iss_read_at(format->device, format->base_address + position,

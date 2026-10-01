@@ -16,9 +16,11 @@
  * The stub executable is parsed only as far as its section table, optional
  * header security directory and overlay; nothing in it is executed.
  */
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/installer_vise_windows/xx_installer_vise_windows.h"
 
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
@@ -46,7 +48,8 @@
 #define VISE_FOOTER_SIZE 8
 #define VISE_WRAPPER_SIZE 8
 #define VISE_TAIL_PROBE 64
-#define VISE_SEARCH_CHUNK 65536U
+/* How far past the header the forward footer search may look. */
+#define VISE_FOOTER_SEARCH (INT64_C(256) << 20)
 #define VISE_MAX_TABLE 1024U
 #define VISE_MAX_STRING16 4096U
 #define VISE_MAX_LANGUAGES 4096U
@@ -62,9 +65,8 @@
 #define VISE_BUDGET_FACTOR 16U
 #define VISE_METHOD_DEFLATE 8U
 
-#define VISE_IN_BUFFER 65536U
 /* The first read of a stream is small, so a candidate that fails in its
- * first block costs little; later reads double up to VISE_IN_BUFFER. */
+ * first block costs little; later reads grow to the captured capacity. */
 #define VISE_FIRST_CHUNK 1024U
 #define VISE_WINDOW 32768U
 #define VISE_WINDOW_MASK (VISE_WINDOW - 1U)
@@ -91,13 +93,16 @@ static uint32_t vise_le32(const uint8_t *bytes) {
 static bool vise_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -125,7 +130,11 @@ typedef struct vise_inflate_s {
     int64_t next_offset;        /* device offset of the next chunk */
     uint64_t packed;            /* stream length */
     uint64_t unfetched;         /* stream bytes not yet buffered */
-    size_t chunk_size;          /* size of the next read (even) */
+    size_t chunk_size;          /* next bounded raw input read */
+    size_t io_capacity;
+    /* Encoded 16-bit word state; spans arbitrary I/O chunk boundaries. */
+    uint8_t word[2];
+    unsigned word_pos, word_len;
     size_t buf_pos;
     size_t buf_len;
     uint64_t bitbuf;
@@ -139,13 +148,15 @@ typedef struct vise_inflate_s {
     uint64_t limit;             /* never produce more than this */
     size_t wpos;
     bool sink_failed;
+    bool track_crc;             /* keep a CRC-32 of the output */
+    uint32_t crc;
     xx_pd_struct *pd;
 
     vise_huff lit;
     vise_huff dist;
     uint8_t lengths[320];
     uint8_t window[VISE_WINDOW];
-    uint8_t buffer[VISE_IN_BUFFER];
+    uint8_t *buffer;
 } vise_inflate;
 
 static const uint16_t vise_len_base[29] = {
@@ -167,7 +178,7 @@ static const uint8_t vise_clen_order[19] = {
 /* The writer emits 16-bit words high byte first; swapping each pair turns
  * the stream back into an ordinary LSB-first Deflate bit stream. */
 static bool vise_fetch(vise_inflate *z) {
-    size_t chunk, index;
+    size_t chunk;
     if (z->unfetched == 0U) return false;
     chunk = z->unfetched > z->chunk_size ? z->chunk_size
                                          : (size_t)z->unfetched;
@@ -178,34 +189,57 @@ static bool vise_fetch(vise_inflate *z) {
         z->unfetched = 0U;
         return false;
     }
-    for (index = 0U; index + 1U < chunk; index += 2U) {
-        uint8_t value = z->buffer[index];
-        z->buffer[index] = z->buffer[index + 1U];
-        z->buffer[index + 1U] = value;
-    }
     z->next_offset += (int64_t)chunk;
     z->unfetched -= chunk;
     z->buf_pos = 0U;
     z->buf_len = chunk;
-    if (z->chunk_size < VISE_IN_BUFFER) z->chunk_size <<= 1U;
+    if (z->chunk_size < z->io_capacity) {
+        size_t room = z->io_capacity - z->chunk_size;
+        z->chunk_size += z->chunk_size < room ? z->chunk_size : room;
+    }
     return true;
 }
 
 /* The window and the input buffer need no clearing. */
 static vise_inflate *vise_inflate_new(uint64_t packed) {
-    vise_inflate *z = (vise_inflate *)xx_mem_alloc(sizeof(*z));
+    size_t capacity = xx_get_file_buffer_size();
+    vise_inflate *z;
+    if (packed != 0U && packed < capacity) capacity = (size_t)packed;
+    if (capacity > (size_t)-1 - sizeof(*z)) return NULL;
+    z = (vise_inflate *)xx_mem_alloc(sizeof(*z) + capacity);
     if (!z) return NULL;
     xx_mem_zero(z, offsetof(vise_inflate, window));
     z->packed = packed;
     z->unfetched = packed;
-    z->chunk_size = VISE_FIRST_CHUNK;
+    z->io_capacity = capacity;
+    z->buffer = (uint8_t *)(z + 1);
+    z->chunk_size = capacity < VISE_FIRST_CHUNK ? capacity : VISE_FIRST_CHUNK;
     return z;
+}
+
+static int vise_raw_byte(vise_inflate *z) {
+    if (z->buf_pos >= z->buf_len && !vise_fetch(z)) return -1;
+    return z->buffer[z->buf_pos++];
+}
+
+static int vise_word_byte(vise_inflate *z) {
+    if (z->word_pos >= z->word_len) {
+        int first = vise_raw_byte(z), second;
+        if (first < 0) return -1;
+        second = vise_raw_byte(z);
+        z->word_pos = 0U;
+        z->word_len = second < 0 ? 1U : 2U;
+        z->word[0] = (uint8_t)(second < 0 ? first : second);
+        z->word[1] = (uint8_t)first;
+    }
+    return z->word[z->word_pos++];
 }
 
 static void vise_refill(vise_inflate *z) {
     while (z->bitcnt <= 56U) {
-        if (z->buf_pos >= z->buf_len && !vise_fetch(z)) break;
-        z->bitbuf |= (uint64_t)z->buffer[z->buf_pos++] << z->bitcnt;
+        int byte = vise_word_byte(z);
+        if (byte < 0) break;
+        z->bitbuf |= (uint64_t)(uint8_t)byte << z->bitcnt;
         z->bitcnt += 8U;
     }
 }
@@ -233,6 +267,7 @@ static bool vise_align_word(vise_inflate *z) {
 
 static bool vise_flush(vise_inflate *z, size_t size) {
     if (size == 0U) return true;
+    if (z->track_crc) z->crc = xx_crc32_calc(z->crc, z->window, size);
     if (z->out_memory) {
         uint64_t start = z->produced - size;
         if (start > z->out_capacity || size > z->out_capacity - start)
@@ -241,10 +276,13 @@ static bool vise_flush(vise_inflate *z, size_t size) {
     }
     if (z->sink) {
         size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
         while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
             ssize_t amount = xx_io_write(z->sink, z->window + done,
-                                         size - done);
-            if (amount <= 0 || (size_t)amount > size - done) {
+                                         request);
+            if (amount <= 0 || (size_t)amount > request) {
                 z->sink_failed = true;
                 return false;
             }
@@ -498,7 +536,8 @@ static bool vise_inflate_run(vise_inflate *z) {
 static bool vise_decode_device(xx_io_device *device, int64_t offset,
                                uint64_t packed, int64_t expected, uint64_t cap,
                                xx_io_device *sink, uint64_t *produced,
-                               uint64_t *fetched, xx_pd_struct *pd) {
+                               uint64_t *fetched, uint32_t *crc,
+                               xx_pd_struct *pd) {
     vise_inflate *z;
     bool ok;
     if (!device || offset < 0 || packed < 2U || (packed & 1U) != 0U ||
@@ -511,8 +550,10 @@ static bool vise_decode_device(xx_io_device *device, int64_t offset,
     z->sink = sink;
     z->limit = expected >= 0 ? (uint64_t)expected : cap;
     z->pd = pd;
+    z->track_crc = crc != NULL;
     ok = vise_inflate_run(z);
     if (ok && expected >= 0 && z->produced != (uint64_t)expected) ok = false;
+    if (crc) *crc = z->crc;
     if (produced) *produced = z->produced;
     if (fetched) *fetched = z->packed - z->unfetched;
     xx_mem_free(z);
@@ -568,6 +609,9 @@ typedef struct vise_member_s {
     uint16_t dos_date;
     uint16_t dos_time;
     uint8_t kind;
+    bool has_crc;           /* crc is the stored CRC-32 of the output */
+    uint32_t crc;
+    uint32_t decoded_crc;   /* CRC-32 seen while validating */
 } vise_member;
 
 typedef struct vise_parsed_s {
@@ -580,7 +624,7 @@ typedef struct vise_parsed_s {
     uint64_t budget;        /* validation output still allowed */
 } vise_parsed;
 
-/* --- PE stub and container location -------------------------------------- */
+/* --- executable stub and container location ------------------------------ */
 
 static bool vise_is_tag(const uint8_t *bytes, const char *tag) {
     return bytes[0] == (uint8_t)tag[0] && bytes[1] == (uint8_t)tag[1] &&
@@ -643,8 +687,31 @@ static bool vise_locate(Abstractformat *format, vise_layout *layout) {
     lfanew = (int64_t)vise_le32(dos + 0x3c);
     if (lfanew < 4 || lfanew > VISE_MAX_LFANEW ||
         !vise_range(total, lfanew, (int64_t)sizeof(nt)) ||
-        !vise_read_at(device, base + lfanew, nt, sizeof(nt)) ||
-        nt[0] != 'P' || nt[1] != 'E' || nt[2] != 0U || nt[3] != 0U)
+        !vise_read_at(device, base + lfanew, nt, sizeof(nt)))
+        return false;
+    /* Older 16-bit NE launchers have no PE section table. Their terminal
+     * ESIV footer points directly at the package header, which is enough to
+     * locate and validate the same VISE payload without interpreting NE code. */
+    if (nt[0] == 'N' && nt[1] == 'E') {
+        uint8_t footer[VISE_FOOTER_SIZE];
+        int64_t at = total - VISE_FOOTER_SIZE;
+        if (!vise_range(total, at, VISE_FOOTER_SIZE) ||
+            !vise_read_at(device, base + at, footer, sizeof(footer)) ||
+            !vise_is_tag(footer, "ESIV"))
+            return false;
+        layout->header = vise_follow_pointer(device, base, total,
+            (int64_t)vise_le32(footer + 4U), at,
+            &layout->wrapper, &layout->wrapper_size);
+        if (layout->header < 0 ||
+            !vise_read_at(device, base + layout->header, head, sizeof(head)) ||
+            !vise_is_tag(head, "ESIV") || vise_le32(head + 8U) != 1U)
+            return false;
+        layout->image_end = layout->header;
+        layout->footer = at;
+        layout->end = at;
+        return true;
+    }
+    if (nt[0] != 'P' || nt[1] != 'E' || nt[2] != 0U || nt[3] != 0U)
         return false;
     count = vise_le16(nt + 6);
     optional_size = vise_le16(nt + 20);
@@ -716,30 +783,56 @@ static bool vise_locate(Abstractformat *format, vise_layout *layout) {
     }
     /* 3. A footer at the end of the file (or in front of the signature). */
     if (layout->header < 0) {
-        uint8_t tail[VISE_TAIL_PROBE];
+        uint8_t *tail;
+        uint8_t footer[VISE_FOOTER_SIZE]; /* complete protocol frame */
         int64_t tail_end = layout->cert_offset >= 0 &&
                                    layout->cert_offset >= overlay
                                ? layout->cert_offset : total;
         int64_t tail_start = tail_end > VISE_TAIL_PROBE
                                  ? tail_end - VISE_TAIL_PROBE : 0;
         size_t size = (size_t)(tail_end - tail_start);
-        if (size >= VISE_FOOTER_SIZE &&
-            vise_read_at(device, base + tail_start, tail, size)) {
-            size_t at = size - VISE_FOOTER_SIZE + 1U;
-            while (at-- != 0U) {
-                int64_t header;
-                if (!vise_is_tag(tail + at, "ESIV")) continue;
-                header = vise_follow_pointer(
-                    device, base, total, (int64_t)vise_le32(tail + at + 4U),
-                    tail_start + (int64_t)at, &layout->wrapper,
-                    &layout->wrapper_size);
-                if (header >= 0) {
-                    layout->header = header;
-                    layout->footer = tail_start + (int64_t)at;
-                    break;
+        size_t capacity = xx_get_file_buffer_size(), checked = 0U;
+        bool readable = true;
+        if (capacity > size) capacity = size;
+        tail = capacity ? (uint8_t *)xx_mem_alloc(capacity) : NULL;
+        if (size >= VISE_FOOTER_SIZE && tail) {
+            /* Retain the former exact-read failure semantics for the whole
+             * probe range, while staging only the captured capacity. */
+            while (checked < size) {
+                size_t chunk = size - checked;
+                if (chunk > capacity) chunk = capacity;
+                if (!vise_read_at(device, base + tail_start + (int64_t)checked,
+                                  tail, chunk)) { readable = false; break; }
+                checked += chunk;
+            }
+            if (readable) {
+                size_t starts = size - VISE_FOOTER_SIZE + 1U;
+                while (starts != 0U && layout->header < 0) {
+                    size_t chunk = starts < capacity ? starts : capacity;
+                    size_t first = starts - chunk, at = chunk;
+                    if (!vise_read_at(device, base + tail_start + (int64_t)first,
+                                      tail, chunk)) break;
+                    while (at-- != 0U) {
+                        int64_t header, position = tail_start + (int64_t)(first + at);
+                        if (tail[at] != 'E') continue;
+                        if (!vise_read_at(device, base + position, footer,
+                                          sizeof(footer))) { readable = false; break; }
+                        if (!vise_is_tag(footer, "ESIV")) continue;
+                        header = vise_follow_pointer(
+                            device, base, total, (int64_t)vise_le32(footer + 4U),
+                            position, &layout->wrapper, &layout->wrapper_size);
+                        if (header >= 0) {
+                            layout->header = header;
+                            layout->footer = position;
+                            break;
+                        }
+                    }
+                    if (!readable) break;
+                    starts = first;
                 }
             }
         }
+        if (tail) xx_mem_free(tail);
     }
     xx_mem_free(sections);
     sections = NULL;
@@ -778,7 +871,8 @@ static void vise_find_footer(Abstractformat *format, vise_layout *layout,
     int64_t anchor = layout->wrapper >= 0 ? layout->wrapper : layout->header;
     uint32_t pointer = (uint32_t)anchor;
     uint8_t *buffer;
-    int64_t cursor;
+    size_t io_capacity = xx_get_file_buffer_size();
+    int64_t cursor, stop;
     if (layout->footer >= 0) {
         layout->end = layout->footer;
         return;
@@ -798,12 +892,12 @@ static void vise_find_footer(Abstractformat *format, vise_layout *layout,
         ends[0] = total;
         ends[1] = layout->cert_offset >= 0 ? layout->cert_offset : -1;
         for (k = 0U; k < 2U; ++k) {
-            int64_t at, stop;
+            int64_t at, low;
             if (ends[k] < layout->header + VISE_HEADER_SIZE + VISE_FOOTER_SIZE)
                 continue;
-            stop = ends[k] - VISE_TAIL_PROBE;
+            low = ends[k] - VISE_TAIL_PROBE;
             for (at = ends[k] - VISE_FOOTER_SIZE;
-                 at >= stop && at >= layout->header + VISE_HEADER_SIZE; --at) {
+                 at >= low && at >= layout->header + VISE_HEADER_SIZE; --at) {
                 if (vise_footer_at(device, base, total, at, pointer)) {
                     layout->footer = at;
                     layout->end = at;
@@ -813,17 +907,25 @@ static void vise_find_footer(Abstractformat *format, vise_layout *layout,
             }
         }
     }
-    buffer = (uint8_t *)xx_mem_alloc(VISE_SEARCH_CHUNK);
+    /* The footer is matched inside the buffered chunk (all 8 bytes: the tag
+     * and the exact pointer); consecutive chunks overlap by 7 bytes so a
+     * footer across a chunk boundary is still seen.  The search covers at
+     * most VISE_FOOTER_SEARCH bytes past the header. */
+    if (io_capacity < 4096U) io_capacity = 4096U;
+    buffer = (uint8_t *)xx_mem_alloc(io_capacity);
     if (!buffer) return;
     cursor = layout->header + VISE_HEADER_SIZE;
-    while (cursor + VISE_FOOTER_SIZE <= total) {
-        int64_t remaining = total - cursor;
-        size_t chunk = remaining > (int64_t)VISE_SEARCH_CHUNK
-                           ? VISE_SEARCH_CHUNK : (size_t)remaining;
-        size_t i;
+    stop = total;
+    if (stop - cursor > VISE_FOOTER_SEARCH) stop = cursor + VISE_FOOTER_SEARCH;
+    while (cursor <= stop && VISE_FOOTER_SIZE <= stop - cursor) {
+        int64_t remaining = stop - cursor;
+        size_t chunk = (uint64_t)remaining > io_capacity
+                           ? io_capacity : (size_t)remaining;
+        size_t i, last;
         if (pd && xx_pd_is_stopped(pd)) break;
         if (!vise_read_at(device, base + cursor, buffer, chunk)) break;
-        for (i = 0U; i + VISE_FOOTER_SIZE <= chunk; ++i) {
+        last = chunk - VISE_FOOTER_SIZE;
+        for (i = 0U; i <= last; ++i) {
             if (buffer[i] == 'E' && vise_is_tag(buffer + i, "ESIV") &&
                 vise_le32(buffer + i + 4U) == pointer) {
                 layout->footer = cursor + (int64_t)i;
@@ -832,8 +934,7 @@ static void vise_find_footer(Abstractformat *format, vise_layout *layout,
                 return;
             }
         }
-        if (chunk < VISE_FOOTER_SIZE) break;
-        cursor += (int64_t)(chunk - VISE_FOOTER_SIZE + 1U);
+        cursor += (int64_t)(last + 1U);
     }
     xx_mem_free(buffer);
 }
@@ -914,13 +1015,17 @@ static bool vise_is_device_stem(const char *name, size_t stem) {
     static const char *const devices[] = {"CON", "PRN", "AUX", "NUL",
                                           "CONIN$", "CONOUT$", "CLOCK$"};
     size_t k, i;
+    /* Windows drops trailing spaces from the part before the extension when
+     * it resolves DOS devices, so "CON .txt" still opens the console. */
+    while (stem != 0U && name[stem - 1U] == ' ') --stem;
     for (k = 0U; k < sizeof(devices) / sizeof(devices[0]); ++k) {
         const char *word = devices[k];
         for (i = 0U; i < stem && word[i]; ++i)
             if (vise_upper(name[i]) != word[i]) break;
         if (i == stem && word[i] == 0) return true;
     }
-    if (stem == 4U && name[3] >= '1' && name[3] <= '9' &&
+    /* COM0-COM9 and LPT0-LPT9, as the naming rules list them. */
+    if (stem == 4U && name[3] >= '0' && name[3] <= '9' &&
         ((vise_upper(name[0]) == 'C' && vise_upper(name[1]) == 'O' &&
           vise_upper(name[2]) == 'M') ||
          (vise_upper(name[0]) == 'L' && vise_upper(name[1]) == 'P' &&
@@ -1093,24 +1198,38 @@ static size_t vise_name_slot(const vise_parsed *parsed, const size_t *table,
     return slot;
 }
 
+/* Each name that was taken remembers the next suffix to try for it
+ * (@p next, indexed like the items), so the k-th copy of a name does not
+ * retry "_2" .. "_k".  A suffix candidate "<base>_<n>" can only be blocked
+ * by a name that is itself exactly that string, and such a name blocks one
+ * (base, n) pair only, so the retries over the whole list stay below the
+ * member count: the total work is linear. */
 static bool vise_unique_names(vise_parsed *parsed) {
     size_t slots = 16U, index;
-    size_t *table;
+    size_t *table, *next;
     if (parsed->count == 0U) return true;
     while (slots < parsed->count * 2U) slots <<= 1U;
     table = (size_t *)xx_mem_alloc(slots * sizeof(*table));
-    if (!table) return false;
+    next = (size_t *)xx_mem_alloc(parsed->count * sizeof(*next));
+    if (!table || !next) {
+        if (table) xx_mem_free(table);
+        if (next) xx_mem_free(next);
+        return false;
+    }
     for (index = 0U; index < slots; ++index) table[index] = SIZE_MAX;
     for (index = 0U; index < parsed->count; ++index) {
         bool found;
         size_t slot = vise_name_slot(parsed, table, slots,
                                      parsed->items[index].name, &found);
+        next[index] = 2U;
         if (found) {
-            /* Every candidate derives from the stored name; the table holds
-             * at most count names, so one of count + 1 suffixes is free. */
+            /* The table holds at most count names, so one of count + 1
+             * suffixes derived from this base is free. */
+            size_t owner = table[slot];
             size_t number;
             char *renamed = NULL;
-            for (number = 2U; number <= parsed->count + 1U; ++number) {
+            for (number = next[owner]; number <= parsed->count + 1U;
+                 ++number) {
                 renamed = vise_with_suffix(parsed->items[index].name, number);
                 if (!renamed) break;
                 slot = vise_name_slot(parsed, table, slots, renamed, &found);
@@ -1119,14 +1238,17 @@ static bool vise_unique_names(vise_parsed *parsed) {
                 renamed = NULL;
             }
             if (!renamed) {
+                xx_mem_free(next);
                 xx_mem_free(table);
                 return false;
             }
+            next[owner] = number + 1U;
             xx_mem_free(parsed->items[index].name);
             parsed->items[index].name = renamed;
         }
         table[slot] = index;
     }
+    xx_mem_free(next);
     xx_mem_free(table);
     return true;
 }
@@ -1174,7 +1296,7 @@ static bool vise_add_named(vise_parsed *parsed, vise_member *member,
  * candidates cannot make the listing unbounded. */
 static bool vise_validate(Abstractformat *format, vise_parsed *parsed,
                           int64_t offset, int64_t packed, int64_t expected,
-                          uint64_t *raw, xx_pd_struct *pd) {
+                          uint64_t *raw, uint32_t *crc, xx_pd_struct *pd) {
     uint64_t produced = 0U, fetched = 0U, cap, cost;
     bool ok;
     if (parsed->budget == 0U) return false;
@@ -1183,7 +1305,7 @@ static bool vise_validate(Abstractformat *format, vise_parsed *parsed,
                                               : VISE_SETUP_MAX_RAW;
     ok = vise_decode_device(format->device, format->base_address + offset,
                             (uint64_t)packed, expected, cap, NULL, &produced,
-                            &fetched, pd);
+                            &fetched, crc, pd);
     cost = produced + fetched;
     parsed->budget -= cost < parsed->budget ? cost : parsed->budget;
     if (ok && raw) *raw = produced;
@@ -1228,7 +1350,7 @@ static bool vise_setup_table(Abstractformat *format, const vise_layout *layout,
             /* The table itself is intact (every size is explicit), so a
              * stream that does not decode is left out rather than failing
              * the whole package. */
-            if (!vise_validate(format, parsed, data, packed, -1, &raw, pd)) {
+            if (!vise_validate(format, parsed, data, packed, -1, &raw, NULL, pd)) {
                 if (pd && xx_pd_is_stopped(pd)) return false;
                 continue;
             }
@@ -1289,7 +1411,7 @@ static int64_t vise_settings(Abstractformat *format, const vise_layout *layout,
     if (!c.ok || packed < 2 || (packed & 1) != 0 ||
         !vise_range(layout->end, data, packed))
         return start;
-    if (!vise_validate(format, parsed, data, packed, -1, &raw, pd))
+    if (!vise_validate(format, parsed, data, packed, -1, &raw, NULL, pd))
         return start;
     xx_mem_zero(&member, sizeof(member));
     member.kind = VISE_KIND_SETTINGS;
@@ -1351,19 +1473,39 @@ static bool vise_support_name(const uint8_t *window, size_t size, size_t at,
            vise_next_dot(window, size, at + 1U, dot) < at + length - 1U;
 }
 
+/* The install-file object goes on after its DOS date and time with 5
+ * bytes, the u16-counted target folder (e.g. "%TargetDir%\Sub") and 14
+ * more bytes, then the CRC-32 of the installed file.  @p at is the offset
+ * right after the date and time. */
+static bool vise_object_crc(const uint8_t *window, size_t size, size_t at,
+                            uint32_t *crc) {
+    size_t length, index;
+    if (at > size || size - at < 7U) return false;
+    length = vise_le16(window + at + 5U);
+    if (length > VISE_MAX_STRING16 || size - at - 7U < length + 18U)
+        return false;
+    for (index = 0U; index < length; ++index)
+        if (!vise_name_byte(window[at + 7U + index])) return false;
+    *crc = vise_le32(window + at + 7U + length + 14U);
+    return true;
+}
+
 /* Walks the installer script from @p start for second-table setup files and
  * install-file objects.  The data area follows the script, so the first
  * accepted object's data offset ends the walk. */
 static bool vise_scan(Abstractformat *format, const vise_layout *layout,
                       vise_parsed *parsed, int64_t start, xx_pd_struct *pd) {
     uint8_t *window;
-    size_t size, q = 0U;
+    size_t size, capacity, q = 0U;
     int64_t limit = layout->end;
     unsigned tick = 0U;
     vise_run object_bad = {0U, 0U}, support_bad = {0U, 0U}, support_dot = {0U, 0U};
     if (start < 0 || start >= layout->end) return true;
     size = (layout->end - start) > (int64_t)VISE_SCAN_WINDOW
                ? VISE_SCAN_WINDOW : (size_t)(layout->end - start);
+    /* Materialized script grammar, retaining variable-length record/name
+     * validation semantics. Physical reads are capped by vise_read_at. */
+    capacity = size;
     window = (uint8_t *)xx_mem_alloc(size);
     if (!window) return false;
     if (!vise_read_at(format->device, format->base_address + start, window,
@@ -1389,6 +1531,7 @@ static bool vise_scan(Abstractformat *format, const vise_layout *layout,
                     uint32_t raw, packed, flags, relative;
                     int64_t data;
                     uint64_t produced = 0U;
+                    uint32_t decoded = 0U;
                     vise_member member;
                     if (fields + 16U > size) continue;
                     raw = vise_le32(window + fields);
@@ -1403,7 +1546,8 @@ static bool vise_scan(Abstractformat *format, const vise_layout *layout,
                         !vise_range(layout->end, data, (int64_t)packed))
                         continue;
                     if (!vise_validate(format, parsed, data, (int64_t)packed,
-                                       (int64_t)raw, &produced, pd))
+                                       (int64_t)raw, &produced, &decoded,
+                                       pd))
                         continue;
                     xx_mem_zero(&member, sizeof(member));
                     member.kind = VISE_KIND_FILE;
@@ -1417,6 +1561,10 @@ static bool vise_scan(Abstractformat *format, const vise_layout *layout,
                         member.dos_date = vise_le16(window + fields + 44U);
                         member.dos_time = vise_le16(window + fields + 46U);
                     }
+                    member.decoded_crc = decoded;
+                    member.has_crc = vise_object_crc(window, size,
+                                                     fields + 16U + 32U,
+                                                     &member.crc);
                     if (!vise_add_named(parsed, &member, window + q + 2U,
                                         length)) {
                         xx_mem_free(window);
@@ -1444,7 +1592,7 @@ static bool vise_scan(Abstractformat *format, const vise_layout *layout,
                 uint64_t raw = 0U;
                 if (packed >= 2 && (packed & 1) == 0 &&
                     vise_range(limit, data, packed) &&
-                    vise_validate(format, parsed, data, packed, -1, &raw, pd)) {
+                    vise_validate(format, parsed, data, packed, -1, &raw, NULL, pd)) {
                     vise_member member;
                     xx_mem_zero(&member, sizeof(member));
                     member.kind = VISE_KIND_SUPPORT;
@@ -1460,7 +1608,28 @@ static bool vise_scan(Abstractformat *format, const vise_layout *layout,
                         xx_mem_free(window);
                         return false;
                     }
-                    if (data + packed - start >= (int64_t)size) break;
+                    if (data + packed - start >= (int64_t)size) {
+                        /* The support file runs past the window: the script
+                         * goes on after it, so move the window there.  The
+                         * windows never overlap, so all of them together
+                         * read the container at most once. */
+                        int64_t next = data + packed;
+                        size_t grown;
+                        if (next >= limit) break;
+                        grown = (limit - next) > (int64_t)capacity
+                                    ? capacity : (size_t)(limit - next);
+                        if (!vise_read_at(format->device,
+                                          format->base_address + next, window,
+                                          grown))
+                            break;
+                        start = next;
+                        size = grown;
+                        q = 0U;
+                        object_bad.from = object_bad.stop = 0U;
+                        support_bad.from = support_bad.stop = 0U;
+                        support_dot.from = support_dot.stop = 0U;
+                        continue;
+                    }
                     q = (size_t)(data + packed - start);
                     continue;
                 }
@@ -1482,6 +1651,23 @@ static int64_t vise_format_size(const vise_layout *layout) {
     return size;
 }
 
+/* The CRC field sits after a variable-length string, so it is trusted only
+ * when the package confirms the layout: at least one install file whose
+ * stored CRC equals the CRC of its decoded data.  Otherwise no CRC is used
+ * (another script version could keep other bytes there). */
+static void vise_confirm_crcs(vise_parsed *parsed) {
+    size_t index;
+    bool confirmed = false;
+    for (index = 0U; index < parsed->count && !confirmed; ++index) {
+        const vise_member *member = &parsed->items[index];
+        if (member->has_crc && member->crc == member->decoded_crc)
+            confirmed = true;
+    }
+    if (confirmed) return;
+    for (index = 0U; index < parsed->count; ++index)
+        parsed->items[index].has_crc = false;
+}
+
 static bool vise_parse(Abstractformat *format, vise_parsed **result,
                        xx_pd_struct *pd) {
     vise_parsed *parsed;
@@ -1498,6 +1684,7 @@ static bool vise_parse(Abstractformat *format, vise_parsed **result,
     scan_start = vise_settings(format, &parsed->layout, parsed, table_end, pd);
     if (scan_start < 0) goto fail;
     if (!vise_scan(format, &parsed->layout, parsed, scan_start, pd)) goto fail;
+    vise_confirm_crcs(parsed);
     if (pd && xx_pd_is_stopped(pd)) goto fail;
     if (!vise_unique_names(parsed)) goto fail;
     parsed->format_size = vise_format_size(&parsed->layout);
@@ -1593,7 +1780,10 @@ static bool vise_set_record(Abstractformat *format, xx_archive_record *record,
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
                                            false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false);
+                                           false) &&
+           (!member->has_crc ||
+            xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
+                                           member->crc));
 }
 
 /* --- lifecycle ------------------------------------------------------------ */
@@ -1763,6 +1953,7 @@ bool xx_installer_vise_windows_unpack_current_archive_record(
     char *path = NULL;
     bool result = false;
     bool created = false;
+    uint32_t crc = 0U;
     if (!format || !state || state->format != format || !state->has_record ||
         !(parsed = (vise_parsed *)state->internal_state) ||
         parsed->index >= parsed->count || (pd && xx_pd_is_stopped(pd)))
@@ -1775,7 +1966,8 @@ bool xx_installer_vise_windows_unpack_current_archive_record(
                                   format->base_address + member->data_offset,
                                   (uint64_t)member->packed_size,
                                   (int64_t)member->unpacked_size, 0U, NULL,
-                                  NULL, NULL, pd);
+                                  NULL, NULL, &crc, pd) &&
+               (!member->has_crc || crc == member->crc);
     if (!vise_safe_output_name(member->name)) return false;
     if (path_option->type == XX_VAR_TYPE_STRING ||
         path_option->type == XX_VAR_TYPE_STRING_VIEW) {
@@ -1799,8 +1991,11 @@ bool xx_installer_vise_windows_unpack_current_archive_record(
                                     format->base_address + member->data_offset,
                                     (uint64_t)member->packed_size,
                                     (int64_t)member->unpacked_size, 0U,
-                                    destination, NULL, NULL, pd);
+                                    destination, NULL, NULL, &crc, pd);
         if (xx_io_close(destination) != 0) result = false;
+        /* A stream that decodes to the right size can still carry damaged
+         * literals; the stored CRC-32 catches that. */
+        if (result && member->has_crc && crc != member->crc) result = false;
     }
 done:
     if (!result && path && created) xx_rt_remove(path);

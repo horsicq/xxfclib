@@ -20,6 +20,7 @@
  */
 
 #include "xxfclib/algo/zipcrypto/xx_zipcrypto.h"
+#include "xxfclib/algo/crc/xx_crc.h"
 
 typedef struct xx_zipcrypto_state {
     uint32_t key0;
@@ -37,13 +38,9 @@ static void xx_zipcrypto_secure_clear(void *data, size_t size) {
 
 /* One raw reflected CRC-32 update. No initial/final complement is applied. */
 static uint32_t xx_zipcrypto_crc32_byte(uint32_t crc, uint8_t value) {
-    unsigned int bit;
-    crc ^= (uint32_t)value;
-    for (bit = 0U; bit < 8U; ++bit) {
-        uint32_t mask = (uint32_t)0U - (crc & 1U);
-        crc = (crc >> 1U) ^ (0xEDB88320U & mask);
-    }
-    return crc;
+    /* ZipCrypto keeps the raw register. The common API accepts and returns
+     * complemented CRC-32 values, so complement on both sides of the call. */
+    return ~xx_crc32_calc(~crc, &value, 1U);
 }
 
 static void xx_zipcrypto_update_keys(xx_zipcrypto_state *state, uint8_t plain_byte) {

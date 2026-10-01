@@ -2,7 +2,11 @@
  * SPDX-License-Identifier: MIT
  */
 
-/** @file xx_tar_lzop.h @brief LZOP-compressed TAR reader. */
+/** @file xx_tar_lzop.h @brief LZOP-compressed TAR reader.
+ *
+ * The records include the decoded TAR's entries and one virtual
+ * __raw_lzop__/payload.tar member containing the validated TAR byte stream.
+ */
 
 #ifndef XXFCLIB_FORMAT_TAR_LZOP_H
 #define XXFCLIB_FORMAT_TAR_LZOP_H

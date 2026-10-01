@@ -675,7 +675,12 @@ bool xx_binhex_unpack_current_archive_record(Abstractformat *format,
         return false;
     member = &stream->items[stream->index];
     /* A member whose fork CRC did not verify is never emitted. */
-    if (!member->verified || !hqx_safe_output_name(member->name)) return false;
+    if (!member->verified) {
+        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
+                        "BinHex transfer is incomplete or fork CRC-16 mismatches");
+        return false;
+    }
+    if (!hqx_safe_output_name(member->name)) return false;
     path_option = hqx_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) return true;
     if (path_option->type == XX_VAR_TYPE_STRING ||

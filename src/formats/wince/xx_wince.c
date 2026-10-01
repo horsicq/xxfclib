@@ -3,6 +3,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/wince/xx_wince.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -24,7 +25,6 @@
 #define XX_WINCE_IMAGE_HEADER_SIZE 15
 #define XX_WINCE_RECORD_HEADER_SIZE 12
 #define XX_WINCE_MAX_RECORDS 65536U
-#define XX_WINCE_CHECKSUM_CHUNK 65536U
 
 static const uint8_t xx_wince_magic[XX_WINCE_MAGIC_SIZE] = {
     0x42U, 0x30U, 0x30U, 0x30U, 0x46U, 0x46U, 0x0AU /* "B000FF\n" */
@@ -60,6 +60,7 @@ static void xx_wince_vtable_destroy(Abstractformat *self);
  * `long` is 32-bit on Win64, which would silently cap at 2 GiB. */
 static bool xx_wince_read_at(xx_io_device *device, int64_t offset, void *data,
                              size_t size) {
+    size_t transfer_capacity = xx_get_file_buffer_size();
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
     if (!device || (!data && size != 0U) || offset < 0 ||
@@ -67,8 +68,11 @@ static bool xx_wince_read_at(xx_io_device *device, int64_t offset, void *data,
         return false;
     }
     while (done < size) {
-        ssize_t got = xx_io_read(device, out + done, size - done);
-        if (got <= 0 || (size_t)got > size - done) return false;
+        size_t request = size - done;
+        ssize_t got;
+        if (request > transfer_capacity) request = transfer_capacity;
+        got = xx_io_read(device, out + done, request);
+        if (got <= 0 || (size_t)got > request) return false;
         done += (size_t)got;
     }
     return true;
@@ -151,17 +155,16 @@ static bool xx_wince_append_entry(xx_wince_private *parsed,
 }
 
 /* The record checksum is the plain 32-bit wrapping sum of the payload bytes.
- * The payload is streamed through a fixed stack buffer so a record declaring
+ * The payload is streamed through the captured global-size buffer so a record declaring
  * a gigabyte does not become a gigabyte allocation. */
-static bool xx_wince_checksum_matches(xx_io_device *device, int64_t offset,
+static bool xx_wince_checksum_matches_buffered(xx_io_device *device, int64_t offset,
                                       uint32_t length, uint32_t expected,
-                                      xx_pd_struct *pd) {
-    uint8_t buffer[1024];
+                                      xx_pd_struct *pd, uint8_t *buffer, size_t buffer_capacity) {
     uint32_t sum = 0U;
     uint32_t remaining = length;
     if (xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (remaining != 0U) {
-        size_t want = remaining > sizeof(buffer) ? sizeof(buffer)
+        size_t want = remaining > buffer_capacity ? buffer_capacity
                                                  : (size_t)remaining;
         ssize_t got;
         size_t index;
@@ -172,6 +175,18 @@ static bool xx_wince_checksum_matches(xx_io_device *device, int64_t offset,
         remaining -= (uint32_t)got;
     }
     return sum == expected;
+}
+
+static bool xx_wince_checksum_matches(xx_io_device *device, int64_t offset,
+                                      uint32_t length, uint32_t expected,
+                                      xx_pd_struct *pd) {
+    size_t buffer_capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
+    bool buffer_result;
+    if (!buffer) return false;
+    buffer_result = xx_wince_checksum_matches_buffered(device, offset, length, expected, pd, buffer, buffer_capacity);
+    xx_mem_free(buffer);
+    return buffer_result;
 }
 
 static bool xx_wince_parse(Abstractformat *self, xx_wince_private *parsed,

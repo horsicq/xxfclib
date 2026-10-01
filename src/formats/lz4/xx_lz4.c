@@ -99,14 +99,13 @@ static bool xx_lz4_take(const uint8_t **cursor, const uint8_t *end,
     return true;
 }
 
-/* Walk LZ4 frames without decompressing their blocks.  The native decoder is
- * bounded and takes an exact output size, so standard frames which omit the
- * content-size field are intentionally not exposed until streaming decode is
- * available. */
+/* Walk LZ4 frames without decompressing their blocks. A block-count ceiling
+ * bounds decoding when a frame omits the optional content-size field. */
 static bool xx_lz4_scan_frames(const uint8_t *source, size_t size,
                                uint64_t *uncompressed_size,
                                uint64_t *frame_count,
-                               uint64_t *upper_bound) {
+                               uint64_t *upper_bound,
+                               bool *all_content_sizes_present) {
     const uint8_t *cursor = source;
     const uint8_t *end;
     uint64_t total = 0U;
@@ -116,6 +115,7 @@ static bool xx_lz4_scan_frames(const uint8_t *source, size_t size,
      * caller needs when no content size is present, and it beats guessing a
      * capacity and growing: the bound comes from the data, not from a ratio. */
     uint64_t ceiling = 0U;
+    bool all_sized = true;
 
     if (!source || !uncompressed_size || !frame_count || size < 4U) {
         return false;
@@ -166,6 +166,8 @@ static bool xx_lz4_scan_frames(const uint8_t *source, size_t size,
             if ((size_t)(end - cursor) < 8U) return false;
             content_size = xx_lz4_read_u64le(cursor);
             cursor += 8U;
+        } else {
+            all_sized = false;
         }
         if (cursor == end ||
             *cursor != (uint8_t)(xx_lz4_xxh32(
@@ -209,6 +211,7 @@ static bool xx_lz4_scan_frames(const uint8_t *source, size_t size,
     *uncompressed_size = total;
     *frame_count = frames;
     if (upper_bound) *upper_bound = ceiling;
+    if (all_content_sizes_present) *all_content_sizes_present = all_sized;
     return true;
 }
 
@@ -241,7 +244,7 @@ static bool xx_lz4_scan_device(Abstractformat *self,
         goto cleanup;
     }
     result = xx_lz4_scan_frames(input, (size_t)input_size,
-                                uncompressed_size, frame_count, NULL);
+                                uncompressed_size, frame_count, NULL, NULL);
     if (result) *stream_size = input_size;
 
 cleanup:
@@ -278,6 +281,7 @@ static bool xx_lz4_decode_stream(Abstractformat *self,
     uint64_t ceiling = 0U;
     uint64_t frames;
     size_t written = 0U;
+    bool all_sized = false;
     bool result = false;
 
     if (!self || !self->device || self->base_address < 0 ||
@@ -297,11 +301,11 @@ static bool xx_lz4_decode_stream(Abstractformat *self,
     if (!input || !xx_lz4_read_exact_at(self->device, self->base_address,
                                         input, (size_t)input_size) ||
         !xx_lz4_scan_frames(input, (size_t)input_size, &declared_size,
-                            &frames, &ceiling) ||
+                            &frames, &ceiling, &all_sized) ||
         declared_size > (uint64_t)SIZE_MAX) {
         goto cleanup;
     }
-    if (declared_size != 0U) {
+    if (all_sized && declared_size != 0U) {
         output = (uint8_t *)xx_mem_alloc((size_t)declared_size);
         if (!output || !xx_lz4_decompress_memory(input, (size_t)input_size,
                                                  output, (size_t)declared_size,
@@ -310,9 +314,9 @@ static bool xx_lz4_decode_stream(Abstractformat *self,
             goto cleanup;
         }
     } else {
-        /* No frame carried a content size -- the norm, since the lz4 CLI omits
-         * it -- so decode into the ceiling the scan computed and take the
-         * reported length as the truth. */
+        /* One or more frames omit content size. Decode into the block ceiling
+         * and take the reported length; this also handles mixed declared and
+         * undeclared sizes in concatenated streams. */
         /* A frame with no blocks is a legitimately empty stream, and its
          * ceiling is zero; allocate a byte so the pointer is valid and let the
          * decoder report the zero length. */

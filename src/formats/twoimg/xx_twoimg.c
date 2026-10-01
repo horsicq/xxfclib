@@ -1,12 +1,13 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  *
- * Native reader for the Apple II 2IMG disk image.  Everything in it is
- * stored, so the members are the image and, when present, the comment and
- * the creator-private block.
+ * Native reader for the Apple II 2IMG disk image.  ProDOS contents are
+ * delegated through a bounded view of the image extent. Other images expose
+ * the stored image, comment and creator-private block as members.
  */
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/twoimg/xx_twoimg.h"
+#include "xxfclib/formats/prodos/xx_prodos.h"
 
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/io/xx_io.h"
@@ -15,6 +16,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include <string.h>
 
 #ifdef TWOIMG
 #define XX_TWOIMG_FILE_TYPE XX_FILE_TYPE_TWOIMG
@@ -41,6 +43,13 @@ typedef struct twoimg_stream_s {
     size_t count;
     size_t index;
     int64_t archive_size;
+    int64_t image_offset;
+    int64_t image_size;
+    uint32_t image_format;
+    uint64_t prodos_count;
+    xx_io_device *prodos_device;
+    xx_prodos *prodos;
+    xx_archive_record_state *prodos_state;
 } twoimg_stream;
 
 static uint16_t twoimg_le16(const uint8_t *b) {
@@ -112,6 +121,11 @@ static void twoimg_stream_free(void *opaque) {
     twoimg_stream *stream = (twoimg_stream *)opaque;
     size_t index;
     if (!stream) return;
+    if (stream->prodos_state)
+        xx_prodos_free_archive_records_reading(&stream->prodos->format,
+                                                stream->prodos_state);
+    if (stream->prodos) xx_prodos_free(stream->prodos);
+    if (stream->prodos_device) (void)xx_io_close(stream->prodos_device);
     for (index = 0U; index < stream->count; ++index)
         if (stream->items[index].name) xx_mem_free(stream->items[index].name);
     if (stream->items) xx_mem_free(stream->items);
@@ -202,6 +216,9 @@ static bool twoimg_parse(Abstractformat *format, twoimg_stream **result) {
     member.data_offset = format->base_address + data_offset;
     member.packed_size = data_size;
     member.unpacked_size = (uint64_t)data_size;
+    stream->image_offset=member.data_offset;
+    stream->image_size=data_size;
+    stream->image_format=image_format;
     if (!member.name || !twoimg_add_member(stream, &member)) goto fail;
     if (comment_size != 0) {
         xx_mem_zero(&member, sizeof(member));
@@ -268,6 +285,121 @@ static const xx_var *twoimg_option(const xx_list_s *options, uint32_t id) {
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
+}
+static bool twoimg_forward_parameters(Abstractformat *outer,
+                                      const xx_list_s *options,
+                                      xx_prodos *inner) {
+    const xx_list_s *sources[2]={&outer->list_extra_parameters,options};
+    const xx_var *path_option;
+    const char *base=NULL;
+    char *owned=NULL,*prefixed=NULL;
+    xx_var target;
+    size_t source,index;
+    bool result=true;
+    for (source=0U;source<2U;++source) {
+        const xx_list_s *list=sources[source];
+        if (!list) continue;
+        for (index=0U;index<list->count;++index) {
+            const xx_meta *meta=(const xx_meta *)xx_list_at(list,index);
+            if (meta && !xx_format_set_extra_parameter(&inner->format,
+                                                        meta->meta_id,&meta->var))
+                return false;
+        }
+    }
+    path_option=xx_format_resolve_extra_parameter(
+        outer,options,XX_META_ID_OPT_UNPACK_PATH);
+    if (!path_option) return true;
+    if (path_option->type==XX_VAR_TYPE_STRING ||
+        path_option->type==XX_VAR_TYPE_STRING_VIEW)
+        base=xx_var_get_str(path_option);
+    else if (path_option->type==XX_VAR_TYPE_WSTRING ||
+             path_option->type==XX_VAR_TYPE_WSTRING_VIEW) {
+        owned=xx_str_unicode_to_utf8(xx_var_get_wstr(path_option)); base=owned;
+    }
+    if (!base) { xx_str_free(owned); return false; }
+    prefixed=*base && base[strlen(base)-1U]!='/' &&
+             base[strlen(base)-1U]!='\\' ?
+        xx_str_concat3(base,"/","ProDOS") : xx_str_concat(base,"ProDOS");
+    xx_var_init(&target);
+    if (!prefixed || !xx_var_set_str(&target,prefixed) ||
+        !xx_format_set_extra_parameter(&inner->format,
+                                       XX_META_ID_OPT_UNPACK_PATH,&target))
+        result=false;
+    xx_var_cleanup(&target);
+    xx_str_free(prefixed); xx_str_free(owned);
+    return result;
+}
+static bool twoimg_try_prodos(Abstractformat *format,twoimg_stream *stream,
+                              const xx_list_s *options,bool need_state) {
+    xx_prodos *nested;
+    xx_io_device *window;
+    xx_io_volume range;
+    if (!format || !stream || stream->image_format>1U) return false;
+    range.device=format->device;
+    range.offset=stream->image_offset;
+    range.size=stream->image_size;
+    window=xx_io_multivolume_open(&range,1U,false);
+    if (!window) return false;
+    nested=xx_prodos_create(window,0);
+    if (!nested) { (void)xx_io_close(window); return false; }
+    if (!xx_prodos_check_is_valid(&nested->format,NULL) ||
+        !xx_prodos_handle_base_info(&nested->format,NULL) ||
+        nested->truncated ||
+        (uint64_t)nested->total_blocks*512U>(uint64_t)stream->image_size ||
+        nested->number_of_records==0U ||
+        (need_state && !twoimg_forward_parameters(format,options,nested))) {
+        xx_prodos_free(nested); (void)xx_io_close(window); return false;
+    }
+    stream->prodos_count=nested->number_of_records;
+    if (need_state) {
+        stream->prodos_state=xx_prodos_create_archive_records_reading(
+            &nested->format,&nested->format.list_extra_parameters,NULL);
+        if (!stream->prodos_state || !stream->prodos_state->has_record) {
+            if (stream->prodos_state)
+                xx_prodos_free_archive_records_reading(&nested->format,
+                                                        stream->prodos_state);
+            stream->prodos_state=NULL;
+            stream->prodos_count=0U;
+            xx_prodos_free(nested); (void)xx_io_close(window); return false;
+        }
+        stream->prodos_device=window;
+        stream->prodos=nested;
+    } else { xx_prodos_free(nested); (void)xx_io_close(window); }
+    return true;
+}
+static bool twoimg_prodos_record(xx_archive_record *record,
+                                 twoimg_stream *stream) {
+    const xx_archive_record *original=xx_prodos_get_current_archive_record(
+        &stream->prodos->format,stream->prodos_state);
+    const char *name;
+    char *prefixed;
+    size_t index;
+    if (!original || !(name=xx_archive_record_get_original_name(original)))
+        return false;
+    if (original->header_offset<0 || original->header_size<0 ||
+        original->header_offset>stream->image_size-original->header_size ||
+        (original->data_offset>=0 &&
+         original->data_offset>=stream->image_size))
+        return false;
+    prefixed=xx_str_concat3("ProDOS","/",name);
+    if (!prefixed) return false;
+    xx_archive_record_cleanup(record); xx_archive_record_init(record);
+    record->header_offset=original->header_offset<0 ? -1 :
+        original->header_offset+stream->image_offset;
+    record->header_size=original->header_size;
+    record->data_offset=original->data_offset<0 ? -1 :
+        original->data_offset+stream->image_offset;
+    record->compressed_size=original->compressed_size;
+    for (index=0U;index<original->list_meta.count;++index) {
+        const xx_meta *meta=(const xx_meta *)xx_list_at(&original->list_meta,index);
+        if (meta && !xx_archive_record_set_meta(record,meta->meta_id,&meta->var)) {
+            xx_str_free(prefixed); return false;
+        }
+    }
+    {
+        bool ok=xx_archive_record_set_original_name(record,prefixed);
+        xx_str_free(prefixed); return ok;
+    }
 }
 
 static bool twoimg_set_record(xx_archive_record *record,
@@ -371,9 +503,11 @@ bool xx_twoimg_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     (void)pd;
     if (!format || !twoimg_parse(format, &stream)) return false;
     archive = (xx_twoimg *)format;
-    archive->number_of_records = stream->count;
+    (void)twoimg_try_prodos(format,stream,NULL,false);
+    archive->number_of_records = stream->prodos_count ?
+        stream->prodos_count : stream->count;
     archive->archive_end = format->base_address + stream->archive_size;
-    format->number_of_archive_records = stream->count;
+    format->number_of_archive_records = archive->number_of_records;
     format->format_size = stream->archive_size;
     format->is_valid = true;
     format->base_info_handled = true;
@@ -400,6 +534,7 @@ xx_archive_record_state *xx_twoimg_create_archive_records_reading(
     xx_archive_record_state *state;
     (void)pd;
     if (!twoimg_parse(format, &stream)) return NULL;
+    (void)twoimg_try_prodos(format,stream,options,true);
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
     if (!state) {
         twoimg_stream_free(stream);
@@ -408,9 +543,12 @@ xx_archive_record_state *xx_twoimg_create_archive_records_reading(
     xx_archive_record_state_init(state, format);
     state->internal_state = stream;
     state->free_internal = twoimg_stream_free;
-    state->total_records = (int64_t)stream->count;
+    state->total_records = (int64_t)(stream->prodos ? stream->prodos_count :
+                                    stream->count);
     if (!twoimg_copy_options(&state->options, options) ||
-        !twoimg_set_record(&state->current_record, &stream->items[0])) {
+        !(stream->prodos ?
+          twoimg_prodos_record(&state->current_record,stream) :
+          twoimg_set_record(&state->current_record,&stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -429,6 +567,16 @@ bool xx_twoimg_archive_record_move_to_next(Abstractformat *format,
                                         xx_pd_struct *pd) {
     twoimg_stream *stream;
     (void)pd;
+    if (format && state && state->format==format &&
+        (stream=(twoimg_stream *)state->internal_state) && stream->prodos) {
+        if (!xx_prodos_archive_record_move_to_next(&stream->prodos->format,
+                                                    stream->prodos_state,pd)) {
+            state->has_record=false; return false;
+        }
+        ++state->current_index;
+        state->has_record=twoimg_prodos_record(&state->current_record,stream);
+        return state->has_record;
+    }
     if (!format || !state || state->format != format ||
         !(stream = (twoimg_stream *)state->internal_state) ||
         ++stream->index >= stream->count) {
@@ -456,8 +604,12 @@ bool xx_twoimg_unpack_current_archive_record(Abstractformat *format,
     bool created = false;
     if (!format || !state || state->format != format || !state->has_record ||
         !(stream = (twoimg_stream *)state->internal_state) ||
-        stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
+        (pd && xx_pd_is_stopped(pd)))
         return false;
+    if (stream->prodos)
+        return xx_prodos_unpack_current_archive_record(&stream->prodos->format,
+                                                        stream->prodos_state,pd);
+    if (stream->index >= stream->count) return false;
     member = &stream->items[stream->index];
     if (!twoimg_extract(format, member, &plain, &plain_size)) goto done;
     path_option = twoimg_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);

@@ -62,10 +62,9 @@
  *     0x80000008  LZMA
  *     0xFFFFFFFF  terminator; must be the last descriptor
  *
- * Zero fill, ignore, raw, zlib, bzip2 and LZFSE runs are expanded.  ADC and
- * LZMA runs are refused: a run the decoder cannot read must never be written
- * out as fabricated zeros, because the result would look like a successful
- * extraction of the wrong image.
+ * Zero fill, ignore, raw, ADC, zlib, bzip2, LZFSE and XZ-framed ULMO/LZMA
+ * runs are expanded. A malformed or unsupported codec stream fails without
+ * fabricating replacement sectors.
  *
  * The reader publishes one member per blkx table - one partition image each -
  * because that is the only separable unit a UDIF image has.

@@ -41,6 +41,10 @@
 #ifndef XXFCLIB_FORMAT_LINUXZIMAGE_H
 #define XXFCLIB_FORMAT_LINUXZIMAGE_H
 
+/* The component archive API publishes bootstrap instructions, load-address
+ * parameters and the encoded kernel body separately. It does not decompress
+ * or execute the kernel. */
+
 #include "xxfclib/xxfc_defs.h"
 #include "xxfclib/formats/xx_format.h"
 

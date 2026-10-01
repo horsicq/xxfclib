@@ -7,6 +7,7 @@
  */
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/pmdiskcopy/xx_pmdiskcopy.h"
+#include "xxfclib/formats/fat/xx_fat.h"
 
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/io/xx_io.h"
@@ -335,12 +336,21 @@ bool xx_pmdiskcopy_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
 bool xx_pmdiskcopy_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     pmdiskcopy_stream *stream;
     xx_pmdiskcopy *archive;
-    (void)pd;
+    xx_fat fat;
     if (!format || !pmdiskcopy_parse(format, &stream)) return false;
     archive = (xx_pmdiskcopy *)format;
     archive->number_of_records = stream->count;
+    /* The stored sectors are a FAT volume.  Expose its files directly when
+     * its own structural validation succeeds; retain the raw image for other
+     * PM Diskcopy variants. */
+    xx_fat_init(&fat, format->device, format->base_address +
+                           PMDISKCOPY_HEADER_SIZE);
+    if (xx_fat_handle_base_info(&fat.format, pd))
+        archive->number_of_records =
+            xx_fat_get_number_of_archive_records(&fat.format, pd);
+    xx_fat_destroy(&fat);
     archive->archive_end = format->base_address + stream->archive_size;
-    format->number_of_archive_records = stream->count;
+    format->number_of_archive_records = archive->number_of_records;
     format->format_size = stream->archive_size;
     format->is_valid = true;
     format->base_info_handled = true;
@@ -365,8 +375,19 @@ xx_archive_record_state *xx_pmdiskcopy_create_archive_records_reading(
     Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
     pmdiskcopy_stream *stream;
     xx_archive_record_state *state;
-    (void)pd;
+    xx_fat *fat;
     if (!pmdiskcopy_parse(format, &stream)) return NULL;
+    fat = xx_fat_create(format->device, format->base_address +
+                                       PMDISKCOPY_HEADER_SIZE);
+    if (fat) {
+        state = xx_fat_create_archive_records_reading(&fat->format, options,
+                                                       pd);
+        if (state) {
+            pmdiskcopy_stream_free(stream);
+            return state;
+        }
+        xx_fat_free(fat);
+    }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
     if (!state) {
         pmdiskcopy_stream_free(stream);
@@ -387,6 +408,8 @@ xx_archive_record_state *xx_pmdiskcopy_create_archive_records_reading(
 
 const xx_archive_record *xx_pmdiskcopy_get_current_archive_record(
     Abstractformat *format, xx_archive_record_state *state) {
+    if (format && state && state->format != format)
+        return xx_fat_get_current_archive_record(state->format, state);
     return format && state && state->format == format && state->has_record
                ? &state->current_record : NULL;
 }
@@ -395,6 +418,8 @@ bool xx_pmdiskcopy_archive_record_move_to_next(Abstractformat *format,
                                         xx_archive_record_state *state,
                                         xx_pd_struct *pd) {
     pmdiskcopy_stream *stream;
+    if (format && state && state->format != format)
+        return xx_fat_archive_record_move_to_next(state->format, state, pd);
     (void)pd;
     if (!format || !state || state->format != format ||
         !(stream = (pmdiskcopy_stream *)state->internal_state) ||
@@ -421,6 +446,8 @@ bool xx_pmdiskcopy_unpack_current_archive_record(Abstractformat *format,
     size_t plain_size = 0U, written = 0U;
     bool result = false;
     bool created = false;
+    if (format && state && state->format != format)
+        return xx_fat_unpack_current_archive_record(state->format, state, pd);
     if (!format || !state || state->format != format || !state->has_record ||
         !(stream = (pmdiskcopy_stream *)state->internal_state) ||
         stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
@@ -472,6 +499,11 @@ done:
 
 void xx_pmdiskcopy_free_archive_records_reading(Abstractformat *format,
                                          xx_archive_record_state *state) {
-    (void)format;
+    if (format && state && state->format != format) {
+        xx_fat *fat = (xx_fat *)state->format;
+        xx_fat_free_archive_records_reading(&fat->format, state);
+        xx_fat_free(fat);
+        return;
+    }
     xx_archive_record_state_free(state);
 }

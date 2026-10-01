@@ -29,6 +29,7 @@
 
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/io/xx_io.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 
@@ -70,8 +71,6 @@
 #define CI_WINDOW 0x8000U
 #define CI_WINDOW_MASK (CI_WINDOW - 1U)
 #define CI_WEIGHT_LIMIT 2000U
-#define CI_INPUT_BUFFER 0x10000U
-#define CI_STAGE 0x10000U
 
 /* Container. */
 #define CI_RECORD_HEADER 17
@@ -127,13 +126,16 @@ static uint64_t ci_le64(const uint8_t *bytes) {
 static bool ci_read_at(xx_io_device *device, int64_t offset, void *buffer,
                        size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -264,7 +266,8 @@ typedef struct ci_input_s {
     size_t position;
     uint32_t bits;
     uint32_t count;
-    uint8_t buffer[CI_INPUT_BUFFER];
+    uint8_t *buffer;
+    size_t io_capacity;
 } ci_input;
 
 static void ci_input_open(ci_input *in, xx_io_device *device,
@@ -285,9 +288,9 @@ static int32_t ci_byte(ci_input *in) {
     if (in->position == in->length) {
         size_t amount;
         if (in->remaining == 0U) return -1;
-        amount = in->remaining < (uint64_t)CI_INPUT_BUFFER
+        amount = in->remaining < (uint64_t)in->io_capacity
                      ? (size_t)in->remaining
-                     : (size_t)CI_INPUT_BUFFER;
+                     : (size_t)in->io_capacity;
         if (in->memory) {
             xx_rt_memcpy(in->buffer, in->memory, amount);
             in->memory += amount;
@@ -346,11 +349,20 @@ typedef struct ci_codec_s {
     uint64_t sink_capacity;
     uint64_t written;
     size_t staged;
-    uint8_t stage[CI_STAGE];
+    uint8_t *stage;
+    size_t io_capacity;
 } ci_codec;
 
 static ci_codec *ci_codec_create(void) {
-    return (ci_codec *)xx_mem_calloc(1U, sizeof(ci_codec));
+    const size_t capacity = xx_get_file_buffer_size();
+    ci_codec *codec;
+    if (capacity > (SIZE_MAX - sizeof(*codec)) / 2U) return NULL;
+    codec = (ci_codec *)xx_mem_calloc(1U, sizeof(*codec) + 2U * capacity);
+    if (!codec) return NULL;
+    codec->io_capacity = codec->in.io_capacity = capacity;
+    codec->in.buffer = (uint8_t *)(codec + 1);
+    codec->stage = codec->in.buffer + capacity;
+    return codec;
 }
 
 static void ci_sink_none(ci_codec *codec) {
@@ -393,7 +405,7 @@ static void ci_emit(ci_codec *codec, uint32_t *position, uint8_t value) {
     *position = (*position + 1U) & CI_WINDOW_MASK;
     if (codec->emit) {
         codec->stage[codec->staged++] = value;
-        if (codec->staged == CI_STAGE) ci_flush(codec);
+        if (codec->staged == codec->io_capacity) ci_flush(codec);
     }
 }
 
@@ -616,7 +628,8 @@ static bool ci_record_plausible(Abstractformat *format, int64_t available,
 
 static bool ci_parse_head(Abstractformat *format, ci_codec *codec,
                           ci_head *head, xx_pd_struct *pd) {
-    uint8_t scan[CI_SCAN_LIMIT + 4];
+    uint8_t frame[4];
+    size_t have = 0U;
     uint64_t produced = 0U, consumed = 0U;
     int64_t start, fallback = -1, prelude = -1, first, second;
     size_t scan_size, index;
@@ -642,24 +655,30 @@ static bool ci_parse_head(Abstractformat *format, ci_codec *codec,
      *    the first dword whose top byte is zero is the fallback. */
     start = head->container + head->runtime_packed;
     if (start > head->available - CI_PRELUDE_HEAD) return false;
-    scan_size = (size_t)(head->available - start < (int64_t)sizeof(scan)
+    scan_size = (size_t)(head->available - start < CI_SCAN_LIMIT + 4
                              ? head->available - start
-                             : (int64_t)sizeof(scan));
-    if (!ci_read_at(format->device, format->base_address + start, scan,
-                    scan_size))
-        return false;
-    carrier_size = head->available > (int64_t)UINT32_MAX
-                       ? 0U
-                       : (uint32_t)head->available;
-    for (index = 0U; index <= CI_SCAN_LIMIT && index + 4U <= scan_size;
-         ++index) {
-        uint32_t value = ci_le32(scan + index);
-        if (carrier_size != 0U && value == carrier_size) {
-            prelude = start + (int64_t)index;
-            break;
+                             : CI_SCAN_LIMIT + 4);
+    carrier_size = head->available > (int64_t)UINT32_MAX ? 0U : (uint32_t)head->available;
+    for (index = 0U; index < scan_size;) {
+        size_t amount = scan_size - index, at;
+        if (amount > codec->io_capacity) amount = codec->io_capacity;
+        if (!ci_read_at(format->device, format->base_address + start + (int64_t)index,
+                        codec->stage, amount)) return false;
+        for (at = 0U; at < amount; ++at) {
+            uint32_t value;
+            if (have == sizeof(frame)) {
+                xx_rt_memmove(frame, frame + 1U, sizeof(frame) - 1U);
+                --have;
+            }
+            frame[have++] = codec->stage[at];
+            if (have < sizeof(frame) || prelude >= 0) continue;
+            value = ci_le32(frame);
+            if (carrier_size != 0U && value == carrier_size)
+                prelude = start + (int64_t)(index + at + 1U - sizeof(frame));
+            else if (fallback < 0 && (value >> 24U) == 0U)
+                fallback = start + (int64_t)(index + at + 1U - sizeof(frame));
         }
-        if (fallback < 0 && (value >> 24U) == 0U)
-            fallback = start + (int64_t)index;
+        index += amount;
     }
     if (prelude < 0) prelude = fallback;
     if (prelude < 0 || prelude > head->available - CI_PRELUDE_HEAD)
@@ -897,7 +916,7 @@ static uint8_t ci_upper_ascii(uint8_t value) {
     return (value >= 'a' && value <= 'z') ? (uint8_t)(value - 0x20U) : value;
 }
 
-/* CON, PRN, AUX, NUL, COM1-9, LPT1-9, CONIN$, CONOUT$ and CLOCK$, with or
+/* CON, PRN, AUX, NUL, COM0-9, LPT0-9, CONIN$, CONOUT$ and CLOCK$, with or
  * without an extension, in any case. */
 static bool ci_is_device(const uint8_t *text, size_t length) {
     static const char *const names[] = {"CON",    "PRN",     "AUX",
@@ -913,7 +932,11 @@ static bool ci_is_device(const uint8_t *text, size_t length) {
                 break;
         if (position == stem && name[position] == 0) return true;
     }
-    if (stem == 4U && text[3] >= '1' && text[3] <= '9') {
+    /* COM0-9 and LPT0-9, plus the superscript digits 1-3 (CP1252 0xB9,
+     * 0xB2, 0xB3) that older Windows versions map to COM1-3 and LPT1-3. */
+    if (stem == 4U && ((text[3] >= '0' && text[3] <= '9') ||
+                       text[3] == 0xB9U || text[3] == 0xB2U ||
+                       text[3] == 0xB3U)) {
         uint8_t a = ci_upper_ascii(text[0]), b = ci_upper_ascii(text[1]),
                 c = ci_upper_ascii(text[2]);
         if ((a == 'C' && b == 'O' && c == 'M') ||
@@ -948,8 +971,12 @@ static bool ci_reserved_char(uint8_t c) {
  * harmless: reserved characters become '_', a component of nothing but dots
  * and spaces (".." among them) becomes underscores and a device name gets a
  * leading '_'.  An unsafe member is still never written; this only keeps a
- * caller that writes names itself out of trouble.  The key drops trailing
- * dots and spaces, as Windows does, so "a.txt." and "A.TXT" collide. */
+ * caller that writes names itself out of trouble.  The five unassigned
+ * CP1252 bytes become '_' and trailing dots and spaces are dropped (Windows
+ * drops them on create) BEFORE both strings are built, so the key is always
+ * the fold of exactly the name that is written: "a.txt." and "A.TXT" collide,
+ * as do "a.txt" and "a_.txt", and a collision suffix appended to both
+ * keeps them in step. */
 static bool ci_component_strings(const uint8_t *text, size_t length,
                                  char **utf8_out, char **key_out) {
     uint8_t *clean = (uint8_t *)xx_mem_alloc(length + 2U);
@@ -968,12 +995,17 @@ static bool ci_component_strings(const uint8_t *text, size_t length,
     if (meaningful && ci_is_device(text, length)) clean[clean_length++] = '_';
     for (index = 0U; index < length; ++index) {
         uint8_t c = text[index];
-        clean[clean_length++] =
-            (!meaningful || ci_reserved_char(c)) ? (uint8_t)'_' : c;
+        if (!meaningful || ci_reserved_char(c) || ci_cp1252(c) == 0U)
+            c = (uint8_t)'_';
+        clean[clean_length++] = c;
     }
+    /* A meaningful component keeps at least one byte that is neither a dot
+     * nor a space, so this never empties it. */
+    while (clean_length > 0U && (clean[clean_length - 1U] == '.' ||
+                                 clean[clean_length - 1U] == ' '))
+        --clean_length;
     for (index = 0U; index < clean_length; ++index) {
         uint32_t code = ci_cp1252(clean[index]);
-        if (code == 0U) code = '_';
         if (code < 0x80U) {
             utf8[out++] = (char)code;
         } else if (code < 0x800U) {
@@ -987,9 +1019,6 @@ static bool ci_component_strings(const uint8_t *text, size_t length,
     }
     utf8[out] = 0;
     key_length = clean_length;
-    while (key_length > 0U && (clean[key_length - 1U] == '.' ||
-                               clean[key_length - 1U] == ' '))
-        --key_length;
     for (index = 0U; index < key_length; ++index)
         key[index] = (char)ci_fold(clean[index]);
     key[key_length] = 0;
@@ -1304,28 +1333,32 @@ static bool ci_unpack_member(Abstractformat *format, const ci_member *member,
     bool result = false;
     if (member->unpacked_size == 0) return true;
     if (member->method == 1U) {
-        uint8_t buffer[0x4000];
+        const size_t capacity = xx_get_file_buffer_size();
+        uint8_t *buffer = (uint8_t *)xx_mem_alloc(capacity);
         int64_t done = 0;
-        while (done < member->unpacked_size) {
-            size_t amount = member->unpacked_size - done < (int64_t)sizeof(buffer)
+        bool ok = buffer != NULL;
+        while (ok && done < member->unpacked_size) {
+            size_t amount = member->unpacked_size - done < (int64_t)capacity
                                 ? (size_t)(member->unpacked_size - done)
-                                : sizeof(buffer);
+                                : capacity;
             size_t written = 0U;
-            if (pd && xx_pd_is_stopped(pd)) return false;
+            if (pd && xx_pd_is_stopped(pd)) { ok = false; break; }
             if (!ci_read_at(format->device,
                             format->base_address + member->data_offset + done,
-                            buffer, amount))
-                return false;
+                            buffer, amount)) { ok = false; break; }
             while (destination && written < amount) {
                 ssize_t wrote = xx_io_write(destination, buffer + written,
                                             amount - written);
-                if (wrote <= 0 || (size_t)wrote > amount - written)
-                    return false;
+                if (wrote <= 0 || (size_t)wrote > amount - written) {
+                    ok = false;
+                    break;
+                }
                 written += (size_t)wrote;
             }
             done += (int64_t)amount;
         }
-        return true;
+        if (buffer) xx_mem_free(buffer);
+        return ok;
     }
     codec = ci_codec_create();
     if (!codec) return false;

@@ -22,11 +22,8 @@
  * Those four together are a far stronger test than any 4-byte signature, and
  * they are what this reader uses as its prefilter substitute.
  *
- * Members are stored, not compressed.  What the reference implementation adds
- * on top is a *conversion* pass -- palette-expanding bitmaps into BMP and
- * wrapping music into XMI.  This reader deliberately stops at the container:
- * it extracts each slot's bytes verbatim under an index-derived name, which is
- * lossless and is what the archive actually holds.
+ * Members are stored.  Bitmap and sprite records are converted to BMP using
+ * the archive palette; other records retain their stored bytes.
  *
  * All 5 corpus samples in F:\ARC\ARC\SETTLERS_FT parse.
  */
@@ -48,6 +45,7 @@
 #endif
 
 #define XX_SETTLERSFT_METHOD_STORE 0U
+#define XX_SETTLERSFT_METHOD_IMAGE 1U
 #define XX_SETTLERSFT_HEADER_SIZE 8
 #define XX_SETTLERSFT_ENTRY_SIZE 8
 #define XX_SETTLERSFT_PALETTE_SIZE 768
@@ -55,6 +53,13 @@
  * that the table must fit in the file, which caps the count at size/8. */
 #define XX_SETTLERSFT_MAX_ENTRIES 0x100000U
 #define XX_SETTLERSFT_MAX_ENTRY_SIZE 0x1000000
+#define XX_SETTLERSFT_KIND_BIN 0U
+#define XX_SETTLERSFT_KIND_BITMAP 1U
+#define XX_SETTLERSFT_KIND_MASK 2U
+#define XX_SETTLERSFT_KIND_PALETTE 3U
+#define XX_SETTLERSFT_KIND_XMI 4U
+#define XX_SETTLERSFT_BMP_HEADER_SIZE 54U
+#define XX_SETTLERSFT_BMP_PALETTE_SIZE 1024U
 
 typedef struct xx_settlersft_member_s {
     char *name;
@@ -65,6 +70,8 @@ typedef struct xx_settlersft_member_s {
     uint64_t unpacked_size;
     uint32_t crc32;
     uint32_t method;
+    uint32_t kind;
+    uint32_t slot_index;
     bool has_crc;
     bool is_folder;
 } xx_settlersft_member;
@@ -75,6 +82,7 @@ typedef struct xx_settlersft_stream_s {
     size_t capacity;
     size_t index;
     int64_t archive_size;
+    uint8_t palette[XX_SETTLERSFT_PALETTE_SIZE];
 } xx_settlersft_stream;
 
 static void xx_settlersft_vtable_destroy(Abstractformat *self);
@@ -207,25 +215,125 @@ static bool xx_settlersft_add(xx_settlersft_stream *stream,
     return true;
 }
 
-/* Slots are anonymous; the reference implementation names them by their
- * one-based index, and so does this reader. */
-static char *xx_settlersft_slot_name(uint32_t index) {
-    char text[24];
-    size_t length = 0U;
-    uint32_t scale = 1000U;
+/* Slots are anonymous; the one-based slot index is their stable identity. */
+static char *xx_settlersft_slot_name(uint32_t index, uint32_t kind) {
+    char text[48];
+    const char *dir = "";
+    const char *ext = ".bin";
+    int length;
+    if (kind == XX_SETTLERSFT_KIND_BITMAP) { dir = "Bitmaps/"; ext = ".bmp"; }
+    else if (kind == XX_SETTLERSFT_KIND_MASK) { dir = "Masks/"; ext = ".bmp"; }
+    else if (kind == XX_SETTLERSFT_KIND_PALETTE) { dir = "Palettes/"; ext = ".pal"; }
+    else if (kind == XX_SETTLERSFT_KIND_XMI) { dir = "XMIDI/"; ext = ".xmi"; }
+    length = snprintf(text, sizeof(text), "%s%04u%s", dir, index, ext);
+    return length > 0 && (size_t)length < sizeof(text) ? xx_str_dup(text) : NULL;
+}
 
-    /* Pad to four digits, but never truncate a larger index: the slot count
-     * ceiling is 0x100000, which needs seven. */
-    while (index / scale >= 10U && scale <= 100000000U) scale *= 10U;
-    for (; scale != 0U; scale /= 10U) {
-        text[length++] = (char)('0' + ((index / scale) % 10U));
+static void xx_settlersft_put16(uint8_t *p, uint16_t value) {
+    p[0] = (uint8_t)value;
+    p[1] = (uint8_t)(value >> 8);
+}
+
+static void xx_settlersft_put32(uint8_t *p, uint32_t value) {
+    xx_settlersft_put16(p, (uint16_t)value);
+    xx_settlersft_put16(p + 2, (uint16_t)(value >> 16));
+}
+
+/* The same bounded row walk classifies and converts a sprite.  A row ends
+ * only on a zero run and must fill exactly its declared width. */
+static bool xx_settlersft_rle(const uint8_t *source, size_t size, int type,
+                              uint32_t width, uint32_t height,
+                              const uint8_t *palette, uint8_t *pixels,
+                              xx_pd_struct *pd) {
+    size_t pos = 0U;
+    uint32_t y;
+    if (!source || width == 0U || width > 1024U || height == 0U) return false;
+    for (y = 0U; y < height; ++y) {
+        uint32_t x = 0U;
+        uint8_t *row = pixels ? pixels + (size_t)y * width * 4U : NULL;
+        if (pd && xx_pd_is_stopped(pd)) return false;
+        if (row) xx_mem_zero(row, (size_t)width * 4U);
+        for (;;) {
+            uint32_t run, skip;
+            if (size - pos < 2U) return false;
+            skip = source[pos++];
+            run = source[pos++];
+            if (skip > width - x) return false;
+            x += skip;
+            if (run == 0U) break;
+            if (run > width - x) return false;
+            if (type == 2) {
+                if (row) xx_rt_memset(row + (size_t)x * 4U, 0xff, run * 4U);
+                x += run;
+            } else {
+                uint32_t i;
+                if (run > size - pos) return false;
+                for (i = 0U; i < run; ++i) {
+                    uint8_t colour = source[pos++];
+                    if (row && palette) {
+                        row[(size_t)x * 4U] = palette[(size_t)colour * 3U + 2U];
+                        row[(size_t)x * 4U + 1U] = palette[(size_t)colour * 3U + 1U];
+                        row[(size_t)x * 4U + 2U] = palette[(size_t)colour * 3U];
+                        row[(size_t)x * 4U + 3U] = 0xff;
+                    }
+                    ++x;
+                }
+            }
+        }
+        if (x != width) return false;
     }
-    text[length++] = '.';
-    text[length++] = 'b';
-    text[length++] = 'i';
-    text[length++] = 'n';
-    text[length] = 0;
-    return xx_str_dup(text);
+    return pos == size;
+}
+
+static uint32_t xx_settlersft_classify(const uint8_t *p, size_t size,
+                                       uint64_t *output_size,
+                                       xx_pd_struct *pd) {
+    uint32_t width, height;
+    *output_size = size;
+    if (size >= 11U) {
+        width = xx_settlersft_le16(p + 2);
+        height = xx_settlersft_le16(p + 4);
+        if ((int16_t)width > 0 && (int16_t)height > 0 &&
+            xx_settlersft_rle(p + 10, size - 10U,
+                              (int16_t)xx_settlersft_le16(p), width, height,
+                              NULL, NULL, pd)) {
+            *output_size = XX_SETTLERSFT_BMP_HEADER_SIZE +
+                           (uint64_t)width * height * 4U;
+            return XX_SETTLERSFT_KIND_MASK;
+        }
+        if (xx_settlersft_le16(p) == 1U && (int16_t)width > 0 &&
+            (int16_t)height > 0 && xx_settlersft_le16(p + 6) == 0U &&
+            xx_settlersft_le16(p + 8) == 0U &&
+            (uint64_t)width * height + 10U == size) {
+            *output_size = XX_SETTLERSFT_BMP_HEADER_SIZE +
+                           XX_SETTLERSFT_BMP_PALETTE_SIZE + size - 10U;
+            return XX_SETTLERSFT_KIND_BITMAP;
+        }
+    }
+    if (size >= 5U && xx_rt_memcmp(p, "FORM", 4U) == 0)
+        return XX_SETTLERSFT_KIND_XMI;
+    if (size == XX_SETTLERSFT_PALETTE_SIZE)
+        return XX_SETTLERSFT_KIND_PALETTE;
+    return XX_SETTLERSFT_KIND_BIN;
+}
+
+static void xx_settlersft_bmp_header(uint8_t *out, uint32_t width,
+                                     uint32_t height, uint32_t bits,
+                                     uint32_t data_size, uint32_t offset) {
+    xx_mem_zero(out, XX_SETTLERSFT_BMP_HEADER_SIZE);
+    out[0] = 'B'; out[1] = 'M';
+    xx_settlersft_put32(out + 2, offset + data_size);
+    xx_settlersft_put32(out + 10, offset);
+    xx_settlersft_put32(out + 14, 40U);
+    xx_settlersft_put32(out + 18, width);
+    xx_settlersft_put32(out + 22, (uint32_t)(-(int32_t)height));
+    xx_settlersft_put16(out + 26, 1U);
+    xx_settlersft_put16(out + 28, (uint16_t)bits);
+    xx_settlersft_put32(out + 34, data_size);
+    if (bits == 8U) {
+        xx_settlersft_put32(out + 46, 256U);
+        xx_settlersft_put32(out + 50, 256U);
+    }
 }
 
 
@@ -241,7 +349,7 @@ static xx_settlersft_stream *xx_settlersft_parse(Abstractformat *self,
     int64_t table_size;
     uint64_t count;
     uint64_t index;
-    bool palette_seen = false;
+    int64_t palette_offset = -1;
 
     if (!self || !self->device || self->base_address < 0) return NULL;
     if (pd && xx_pd_is_stopped(pd)) return NULL;
@@ -302,7 +410,8 @@ static xx_settlersft_stream *xx_settlersft_parse(Abstractformat *self,
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         /* The palette is located the way the reference implementation does
          * it: the first slot whose size is exactly 768, in use or not. */
-        if (size == XX_SETTLERSFT_PALETTE_SIZE) palette_seen = true;
+        if (size == XX_SETTLERSFT_PALETTE_SIZE && palette_offset < 0)
+            palette_offset = offset;
         if (offset == 0) continue; /* unused slot */
         /* Every extent is bounded against the real file before it is
          * recorded, so a corrupt table cannot drive a read past the end. */
@@ -312,8 +421,7 @@ static xx_settlersft_stream *xx_settlersft_parse(Abstractformat *self,
         }
 
         xx_mem_zero(&member, sizeof(member));
-        member.name = xx_settlersft_slot_name((uint32_t)(index + 1U));
-        if (!member.name) goto fail;
+        member.slot_index = (uint32_t)(index + 1U);
         member.header_offset = self->base_address +
                                XX_SETTLERSFT_HEADER_SIZE +
                                (int64_t)(index * XX_SETTLERSFT_ENTRY_SIZE);
@@ -322,16 +430,39 @@ static xx_settlersft_stream *xx_settlersft_parse(Abstractformat *self,
         member.packed_size = size;
         member.unpacked_size = (uint64_t)size;
         member.method = XX_SETTLERSFT_METHOD_STORE;
-        if (!xx_settlersft_add(stream, &member)) {
-            xx_str_free(member.name);
-            goto fail;
-        }
+        if (!xx_settlersft_add(stream, &member)) goto fail;
     }
 
     /* Every archive of this family carries its palette; without it the image
      * members could not be produced and the reference decoder gives up too,
      * so its absence is treated as "not this format". */
-    if (stream->count == 0U || !palette_seen) goto fail;
+    if (stream->count == 0U || palette_offset < 0 ||
+        palette_offset > span - XX_SETTLERSFT_PALETTE_SIZE ||
+        !xx_settlersft_read_at(self, self->base_address + palette_offset,
+                               stream->palette, sizeof(stream->palette))) goto fail;
+
+    for (index = 0U; index < stream->count; ++index) {
+        xx_settlersft_member *member = &stream->items[index];
+        uint8_t *packed = NULL;
+        if (pd && xx_pd_is_stopped(pd)) goto fail;
+        if (member->packed_size != 0) {
+            packed = (uint8_t *)xx_mem_alloc((size_t)member->packed_size);
+            if (!packed || !xx_settlersft_read_at(self, member->data_offset,
+                                packed, (size_t)member->packed_size)) {
+                xx_mem_free(packed);
+                goto fail;
+            }
+        }
+        member->kind = xx_settlersft_classify(packed,
+                          (size_t)member->packed_size, &member->unpacked_size, pd);
+        xx_mem_free(packed);
+        if (pd && xx_pd_is_stopped(pd)) goto fail;
+        member->method = (member->kind == XX_SETTLERSFT_KIND_MASK ||
+                          member->kind == XX_SETTLERSFT_KIND_BITMAP) ?
+                         XX_SETTLERSFT_METHOD_IMAGE : XX_SETTLERSFT_METHOD_STORE;
+        member->name = xx_settlersft_slot_name(member->slot_index, member->kind);
+        if (!member->name) goto fail;
+    }
 
     xx_mem_free(table);
     stream->archive_size = span;
@@ -343,12 +474,17 @@ fail:
     return NULL;
 }
 
-/* Members are stored verbatim, so "decoding" is a bounded read; the length
- * comes from offsets parse already proved lie inside the file. */
+/* Read the bounded slot and convert image records to the same BMP layout as
+ * the reference implementation. */
 static bool xx_settlersft_decode(Abstractformat *self,
-                             const xx_settlersft_member *member, uint8_t **out,
-                             size_t *out_size, xx_pd_struct *pd) {{
+                             const xx_settlersft_member *member,
+                             const uint8_t *palette, uint8_t **out,
+                             size_t *out_size, xx_pd_struct *pd) {
+    uint8_t *packed;
     uint8_t *output;
+    size_t size;
+    uint32_t width, height;
+    uint32_t image_size;
 
     *out = NULL;
     *out_size = 0U;
@@ -356,17 +492,62 @@ static bool xx_settlersft_decode(Abstractformat *self,
     if (pd && xx_pd_is_stopped(pd)) return false;
     if (member->packed_size == 0) return true;
     if ((uint64_t)member->packed_size > (uint64_t)SIZE_MAX) return false;
-    output = (uint8_t *)xx_mem_alloc((size_t)member->packed_size);
-    if (!output) return false;
-    if (!xx_settlersft_read_at(self, member->data_offset, output,
-                           (size_t)member->packed_size)) {{
-        xx_mem_free(output);
+    size = (size_t)member->packed_size;
+    packed = (uint8_t *)xx_mem_alloc(size);
+    if (!packed) return false;
+    if (!xx_settlersft_read_at(self, member->data_offset, packed, size)) {
+        xx_mem_free(packed);
         return false;
-    }}
+    }
+    if (member->kind != XX_SETTLERSFT_KIND_MASK &&
+        member->kind != XX_SETTLERSFT_KIND_BITMAP) {
+        *out = packed;
+        *out_size = size;
+        return true;
+    }
+    if (size < 11U || !palette || member->unpacked_size > SIZE_MAX ||
+        member->unpacked_size > UINT32_MAX) {
+        xx_mem_free(packed);
+        return false;
+    }
+    width = xx_settlersft_le16(packed + 2);
+    height = xx_settlersft_le16(packed + 4);
+    output = (uint8_t *)xx_mem_alloc((size_t)member->unpacked_size);
+    if (!output) { xx_mem_free(packed); return false; }
+    if (member->kind == XX_SETTLERSFT_KIND_MASK) {
+        image_size = width * height * 4U;
+        xx_settlersft_bmp_header(output, width, height, 32U, image_size,
+                                 XX_SETTLERSFT_BMP_HEADER_SIZE);
+        if (!xx_settlersft_rle(packed + 10, size - 10U,
+                               (int16_t)xx_settlersft_le16(packed),
+                               width, height, palette,
+                               output + XX_SETTLERSFT_BMP_HEADER_SIZE, pd)) {
+            xx_mem_free(output);
+            xx_mem_free(packed);
+            return false;
+        }
+    } else {
+        uint32_t i;
+        uint32_t offset = XX_SETTLERSFT_BMP_HEADER_SIZE +
+                          XX_SETTLERSFT_BMP_PALETTE_SIZE;
+        /* The original header reports aligned stride while pixel rows are
+         * copied as stored.  Preserve that byte-level behaviour. */
+        image_size = ((width + 3U) & ~3U) * height;
+        xx_settlersft_bmp_header(output, width, height, 8U, image_size, offset);
+        for (i = 0U; i < 256U; ++i) {
+            uint8_t *colour = output + XX_SETTLERSFT_BMP_HEADER_SIZE + i * 4U;
+            colour[0] = palette[i * 3U + 2U];
+            colour[1] = palette[i * 3U + 1U];
+            colour[2] = palette[i * 3U];
+            colour[3] = 0U;
+        }
+        xx_rt_memcpy(output + offset, packed + 10, size - 10U);
+    }
+    xx_mem_free(packed);
     *out = output;
-    *out_size = (size_t)member->packed_size;
+    *out_size = (size_t)member->unpacked_size;
     return true;
-}}
+}
 
 
 /* ---------------------------------------------------------- lifecycle --- */
@@ -627,7 +808,8 @@ bool xx_settlersft_unpack_current_archive_record(Abstractformat *self,
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
         if (member->is_folder) return true;
-        result = xx_settlersft_decode(self, member, &plain, &plain_size, pd);
+        result = xx_settlersft_decode(self, member, stream->palette,
+                                      &plain, &plain_size, pd);
         xx_mem_free(plain);
         return result;
     }
@@ -658,7 +840,8 @@ bool xx_settlersft_unpack_current_archive_record(Abstractformat *self,
         return result;
     }
     if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_settlersft_decode(self, member, &plain, &plain_size, pd)) {
+        !xx_settlersft_decode(self, member, stream->palette,
+                              &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }

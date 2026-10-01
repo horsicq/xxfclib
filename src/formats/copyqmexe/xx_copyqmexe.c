@@ -211,9 +211,12 @@ static bool copyqmexe_open(Abstractformat *format, copyqmexe_layout *layout) {
     body_size = copyqmexe_le32(overlay + 6U);
     if (node_count < 3U || (node_count & 1U) == 0U || node_count > 255U ||
         screen_count == 0U || screen_count > COPYQMEXE_MAX_SCREENS ||
-        (int64_t)body_size != overlay_size - 10 ||
+        (int64_t)body_size > overlay_size - 10 ||
         copyqmexe_le16(overlay + 10U) != node_count)
         goto fail;
+    /* The TX length covers the help screens only.  Several original Sydex
+     * executables append an independent DOS text tail after that body. */
+    overlay_size = (int64_t)body_size + 10;
     node_table = 12;
     directory = node_table + (int64_t)node_count * 2;
     /* Two directory layouts exist: the newer one prepends a word to each
@@ -396,7 +399,7 @@ static bool copyqmexe_parse(Abstractformat *format, copyqmexe_stream **result) {
                           : layout.data_size;
         if (!copyqmexe_screen(&layout, screen, NULL, 0U, &produced)) goto fail;
         xx_mem_zero(&member, sizeof(member));
-        member.name = copyqmexe_make_name("screen", (int)(screen + 1U), -1,
+        member.name = copyqmexe_make_name("", (int)(screen + 1U), -1,
                                           ".txt");
         member.header_offset = format->base_address + layout.image_end;
         member.header_size = 12;

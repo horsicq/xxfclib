@@ -27,6 +27,7 @@
  * (a pack carved out of the executable it was exported into).
  */
 
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/godot_engine_pck/xx_godot_engine_pck.h"
 
@@ -61,7 +62,6 @@
 /* Smallest entry: u32 length, one path byte and the fixed tail. */
 #define GDPCK_MIN_ENTRY_V1 (4 + 1 + 32)
 #define GDPCK_MIN_ENTRY_V2 (4 + 1 + 36)
-#define GDPCK_WINDOW 65536U
 /* Flags each pack version may carry.  The sparse-bundle and delta flags came
  * with the later Godot 4 packs; this reader takes them from version 3 on. */
 #define GDPCK_PACK_FLAGS_V2 \
@@ -106,6 +106,7 @@ typedef struct gdpck_layout_s {
 typedef struct gdpck_input_s {
     xx_io_device *device;
     uint8_t *window;
+    size_t io_capacity;
     int64_t window_offset;
     size_t window_size;
     int64_t position;
@@ -165,14 +166,17 @@ static uint16_t gdpck_le16(const uint8_t *bytes) {
 
 static bool gdpck_read_at(xx_io_device *device, int64_t offset, void *buffer,
                           size_t size) {
+    const size_t io_capacity = xx_get_file_buffer_size();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -182,6 +186,32 @@ static bool gdpck_is_magic(xx_io_device *device, int64_t offset) {
     uint8_t magic[4];
     return gdpck_read_at(device, offset, magic, sizeof(magic)) &&
            xx_rt_memcmp(magic, GDPCK_MAGIC, 4U) == 0;
+}
+
+bool xx_godot_engine_pck_probe_device(xx_io_device *device) {
+    uint8_t head[4], trailer[GDPCK_TRAILER];
+    int64_t total = device ? xx_io_total_size(device) : -1;
+    int64_t saved = device ? xx_io_tell(device) : -1;
+    uint64_t size;
+    bool result = false;
+    if (total < GDPCK_MIN_PACK ||
+        !gdpck_read_at(device, 0, head, sizeof(head))) goto done;
+    if (xx_rt_memcmp(head, GDPCK_MAGIC, sizeof(head)) == 0 ||
+        (head[0] == 'M' && head[1] == 'Z')) {
+        result = true;
+        goto done;
+    }
+    if (total < GDPCK_MIN_PACK + GDPCK_TRAILER ||
+        !gdpck_read_at(device, total - GDPCK_TRAILER, trailer,
+                       sizeof(trailer)) ||
+        xx_rt_memcmp(trailer + 8U, GDPCK_MAGIC, 4U) != 0) goto done;
+    size = gdpck_le64(trailer);
+    result = size >= GDPCK_MIN_PACK &&
+             size <= (uint64_t)(total - GDPCK_TRAILER) &&
+             gdpck_is_magic(device, total - GDPCK_TRAILER - (int64_t)size);
+done:
+    if (saved >= 0) (void)xx_io_seek64(device, saved, SEEK_SET);
+    return result;
 }
 
 /* Sequential reads that never pass @c limit. */
@@ -202,7 +232,7 @@ static bool gdpck_input_read(gdpck_input *in, void *out, size_t size) {
             in->position += (int64_t)take;
         } else {
             int64_t want = in->limit - in->position;
-            if (want > (int64_t)GDPCK_WINDOW) want = (int64_t)GDPCK_WINDOW;
+            if ((uint64_t)want > (uint64_t)in->io_capacity) want = (int64_t)in->io_capacity;
             in->window_size = 0U;
             if (want <= 0 ||
                 !gdpck_read_at(in->device, in->position, in->window,
@@ -532,15 +562,19 @@ static bool gdpck_next_entry(gdpck_input *in, const gdpck_layout *layout,
 static uint8_t *gdpck_input_open(gdpck_input *in, xx_io_device *device,
                                  const gdpck_layout *layout,
                                  uint8_t **path) {
-    uint8_t *memory = (uint8_t *)xx_mem_alloc(
-        GDPCK_WINDOW + XX_GODOT_ENGINE_PCK_MAX_PATH + 1U);
+    size_t capacity = xx_get_file_buffer_size();
+    uint8_t *memory;
+    if (capacity > SIZE_MAX - XX_GODOT_ENGINE_PCK_MAX_PATH - 1U) return NULL;
+    memory = (uint8_t *)xx_mem_alloc(
+        capacity + XX_GODOT_ENGINE_PCK_MAX_PATH + 1U);
     xx_mem_zero(in, sizeof(*in));
     if (!memory) return NULL;
     in->device = device;
     in->window = memory;
+    in->io_capacity = capacity;
     in->position = layout->dir_start + 4;
     in->limit = layout->region_end;
-    *path = memory + GDPCK_WINDOW;
+    *path = memory + capacity;
     return memory;
 }
 
@@ -1160,6 +1194,7 @@ static bool gdpck_copy_member(xx_io_device *device, const gdpck_entry *entry,
     static const uint8_t zero[16] = {0};
     xx_hash_context md5;
     uint8_t digest[16];
+    const size_t io_capacity = xx_get_file_buffer_size();
     uint8_t *buffer;
     int64_t offset = entry->data_offset;
     uint64_t remaining = entry->size;
@@ -1167,10 +1202,10 @@ static bool gdpck_copy_member(xx_io_device *device, const gdpck_entry *entry,
     bool result = false;
 
     if (check && !xx_hash_init(&md5, XX_HASH_MD5)) return false;
-    buffer = (uint8_t *)xx_mem_alloc(GDPCK_WINDOW);
+    buffer = (uint8_t *)xx_mem_alloc(io_capacity);
     if (!buffer) return false;
     while (remaining != 0U) {
-        size_t chunk = remaining > GDPCK_WINDOW ? GDPCK_WINDOW
+        size_t chunk = remaining > io_capacity ? io_capacity
                                                 : (size_t)remaining;
         size_t written = 0U;
         if ((pd && xx_pd_is_stopped(pd)) ||

@@ -24,7 +24,7 @@
 #ifndef XPE_H
 #define XPE_H
 
-#include "../../die_engine/die_engine_bin.h"
+#include "../../die_engine/xx_die_engine_bin.h"
 #include "xxfclib/formats/xx_memory_map.h"
 
 #define XPE_DIR_EXPORT 0

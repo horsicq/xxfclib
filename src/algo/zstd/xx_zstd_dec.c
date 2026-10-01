@@ -248,11 +248,16 @@ static bool xx_zstd_fse_state_advance(xx_reverse_bits *bits,
 static bool xx_zstd_copy_match(uint8_t *output, size_t destination_size,
                                size_t frame_start, size_t *output_position,
                                size_t distance, size_t length,
-                               size_t window_size, size_t block_limit) {
+                               size_t window_size, size_t block_limit,
+                               bool *needs_more_output) {
     size_t position = *output_position;
     size_t frame_output = position - frame_start;
     if (distance == 0U || distance > frame_output || distance > window_size ||
-        length > destination_size - position || length > block_limit) {
+        length > block_limit) {
+        return false;
+    }
+    if (length > destination_size - position) {
+        if (needs_more_output) *needs_more_output = true;
         return false;
     }
     for (size_t index = 0; index < length; ++index) {
@@ -272,7 +277,8 @@ static bool xx_zstd_decode_sequences(xx_zstd_context *context,
                                      size_t frame_start,
                                      size_t *output_position,
                                      size_t window_size,
-                                     size_t block_output_limit) {
+                                     size_t block_output_limit,
+                                     bool *needs_more_output) {
     xx_reverse_bits bits;
     unsigned ll_state;
     unsigned of_state;
@@ -281,8 +287,11 @@ static bool xx_zstd_decode_sequences(xx_zstd_context *context,
     size_t block_start = *output_position;
 
     if (sequence_count == 0U) {
-        if (literal_count > destination_size - *output_position ||
-            literal_count > block_output_limit) return false;
+        if (literal_count > block_output_limit) return false;
+        if (literal_count > destination_size - *output_position) {
+            if (needs_more_output) *needs_more_output = true;
+            return false;
+        }
         for (size_t index = 0; index < literal_count; ++index) {
             output[(*output_position)++] = literals[index];
         }
@@ -371,8 +380,11 @@ static bool xx_zstd_decode_sequences(xx_zstd_context *context,
             size_t block_output = *output_position - block_start;
         if (block_output > block_output_limit ||
             literal_length > literal_count - literal_position ||
-            literal_length > destination_size - *output_position ||
             literal_length > block_output_limit - block_output) {
+            return false;
+        }
+        if (literal_length > destination_size - *output_position) {
+            if (needs_more_output) *needs_more_output = true;
             return false;
         }
         }
@@ -380,10 +392,13 @@ static bool xx_zstd_decode_sequences(xx_zstd_context *context,
             output[(*output_position)++] = literals[literal_position++];
         }
         if (*output_position - block_start > block_output_limit ||
-            match_length > block_output_limit - (*output_position - block_start) ||
-            !xx_zstd_copy_match(output, destination_size, frame_start,
+            match_length > block_output_limit - (*output_position - block_start)) {
+            return false;
+        }
+        if (!xx_zstd_copy_match(output, destination_size, frame_start,
                                 output_position, distance, match_length,
-                                window_size, block_output_limit)) {
+                                window_size, block_output_limit,
+                                needs_more_output)) {
             return false;
         }
         if (sequence + 1U < sequence_count &&
@@ -399,9 +414,12 @@ static bool xx_zstd_decode_sequences(xx_zstd_context *context,
 
     if (*output_position - block_start > block_output_limit ||
         bits.bit_position != 0U ||
-        literal_count - literal_position > destination_size - *output_position ||
         literal_count - literal_position >
             block_output_limit - (*output_position - block_start)) {
+        return false;
+    }
+    if (literal_count - literal_position > destination_size - *output_position) {
+        if (needs_more_output) *needs_more_output = true;
         return false;
     }
     while (literal_position < literal_count) {
@@ -418,7 +436,8 @@ static bool xx_zstd_decode_compressed_block(xx_zstd_context *context,
                                             size_t frame_start,
                                             size_t *output_position,
                                             size_t window_size,
-                                            size_t block_output_limit) {
+                                            size_t block_output_limit,
+                                            bool *needs_more_output) {
     const uint8_t *input = source;
     const uint8_t *end = source + source_size;
     const uint8_t *literal_stream;
@@ -522,7 +541,8 @@ static bool xx_zstd_decode_compressed_block(xx_zstd_context *context,
         return xx_zstd_decode_sequences(context, NULL, 0U, 0U, literals,
                                         literal_size, output, destination_size,
                                         frame_start, output_position,
-                                        window_size, block_output_limit);
+                                        window_size, block_output_limit,
+                                        needs_more_output);
     }
     if (input == end) return false;
     {
@@ -547,7 +567,7 @@ static bool xx_zstd_decode_compressed_block(xx_zstd_context *context,
                                     sequence_count, literals, literal_size,
                                     output, destination_size, frame_start,
                                     output_position, window_size,
-                                    block_output_limit);
+                                    block_output_limit, needs_more_output);
 }
 
 static bool xx_zstd_read_variable(const uint8_t **input, const uint8_t *end,
@@ -562,9 +582,12 @@ static bool xx_zstd_read_variable(const uint8_t **input, const uint8_t *end,
     return true;
 }
 
-bool xx_zstd_decode_frames(const void *source, size_t source_size,
-                           void *destination, size_t destination_size,
-                           size_t *out_written) {
+/* The exact API keeps its existing length contract; container readers may
+ * instead supply a bounded output buffer for frames with shorter content. */
+static bool xx_zstd_decode_frames_internal(const void *source, size_t source_size,
+                                           void *destination, size_t destination_size,
+                                           size_t *out_written, bool require_exact,
+                                           bool *needs_more_output) {
     const uint8_t *input = (const uint8_t *)source;
     const uint8_t *end;
     uint8_t *output = (uint8_t *)destination;
@@ -574,6 +597,7 @@ bool xx_zstd_decode_frames(const void *source, size_t source_size,
     xx_zstd_context context;
 
     if (out_written) *out_written = 0U;
+    if (needs_more_output) *needs_more_output = false;
     if ((!input && source_size != 0U) || (!output && destination_size != 0U)) {
         return false;
     }
@@ -673,15 +697,21 @@ bool xx_zstd_decode_frames(const void *source, size_t source_size,
             if (block_type == 3U || block_size > XX_ZSTD_BLOCK_MAX) goto error;
             if (block_type == 0U) {
                 if (block_size > (size_t)(end - input) ||
-                    block_size > destination_size - output_position ||
                     block_size > block_limit) goto error;
+                if (block_size > destination_size - output_position) {
+                    if (needs_more_output) *needs_more_output = true;
+                    goto error;
+                }
                 for (size_t index = 0; index < block_size; ++index) {
                     output[output_position++] = input[index];
                 }
                 input += block_size;
             } else if (block_type == 1U) {
-                if (input == end || block_size > destination_size - output_position ||
-                    block_size > block_limit) goto error;
+                if (input == end || block_size > block_limit) goto error;
+                if (block_size > destination_size - output_position) {
+                    if (needs_more_output) *needs_more_output = true;
+                    goto error;
+                }
                 for (size_t index = 0; index < block_size; ++index) {
                     output[output_position++] = *input;
                 }
@@ -691,7 +721,7 @@ bool xx_zstd_decode_frames(const void *source, size_t source_size,
                     !xx_zstd_decode_compressed_block(
                         &context, input, block_size, output, destination_size,
                         frame_start, &output_position, window_size,
-                        block_limit)) goto error;
+                        block_limit, needs_more_output)) goto error;
                 input += block_size;
             }
             if (output_position - block_start > block_limit) goto error;
@@ -709,11 +739,38 @@ bool xx_zstd_decode_frames(const void *source, size_t source_size,
         saw_frame = true;
     }
     xx_mem_free(context.literals);
-    if (!saw_frame || output_position != destination_size) return false;
+    if (!saw_frame || (require_exact && output_position != destination_size)) return false;
     if (out_written) *out_written = output_position;
     return true;
 
 error:
     xx_mem_free(context.literals);
     return false;
+}
+
+bool xx_zstd_decode_frames(const void *source, size_t source_size,
+                           void *destination, size_t destination_size,
+                           size_t *out_written) {
+    return xx_zstd_decode_frames_internal(source, source_size, destination,
+                                          destination_size, out_written, true,
+                                          NULL);
+}
+
+bool xx_zstd_decode_frames_bounded(const void *source, size_t source_size,
+                                   void *destination, size_t destination_capacity,
+                                   size_t *out_written) {
+    return xx_zstd_decode_frames_internal(source, source_size, destination,
+                                          destination_capacity, out_written,
+                                          false, NULL);
+}
+
+bool xx_zstd_decode_frames_bounded_retry(const void *source,
+                                         size_t source_size,
+                                         void *destination,
+                                         size_t destination_capacity,
+                                         size_t *out_written,
+                                         bool *needs_more_output) {
+    return xx_zstd_decode_frames_internal(source, source_size, destination,
+                                          destination_capacity, out_written,
+                                          false, needs_more_output);
 }

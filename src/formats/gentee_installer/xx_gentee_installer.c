@@ -52,7 +52,11 @@
  * Compressed member blocks share ONE decoder state of their own, so member k
  * can only be decoded after the compressed members before it.  Listing walks
  * the whole chain; extraction replays only the member data blocks, whose
- * offsets the listing recorded.
+ * offsets the listing recorded.  A chain cut off inside a member's data (a
+ * truncated carrier) lists that member as a record whose extraction fails.
+ * Once the payload signature is found, the walk always reports the extent
+ * it read, even when the chain yields nothing, so a format search skips the
+ * decoded bytes instead of decoding them again from every stub before them.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -61,6 +65,7 @@
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/data/xx_pd.h"
 #include "xxfclib/io/xx_io.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 
@@ -78,7 +83,10 @@
 #define GI_MAX_LFANEW 0x10000U
 #define GI_MAX_SECTIONS 96U
 #define GI_MAX_RUNTIME 0x100000U
-#define GI_MAX_SKIPPED_BLOCK 0x1000000U
+/* The two blocks after the header hold language strings and a table; the
+ * corpus has them at 38..18,194 bytes, so 4 MiB leaves a wide margin while
+ * keeping a walk that fails there cheap. */
+#define GI_MAX_SKIPPED_BLOCK 0x400000U
 #define GI_ARCHIVE_HEADER 20U
 #define GI_ARCHIVE_HEADER_FLAG 14U
 #define GI_SKIPPED_BLOCKS 2U
@@ -99,6 +107,12 @@
  * so without these a crafted chain could make the name table gigabytes. */
 #define GI_MAX_NAME 1024U
 #define GI_MAX_NAME_BYTES 0x800000U
+/* Blocks store no packed length, so listing decodes every command.  The
+ * corpus has at most 3,367 bytes of non-file commands per installer (largest
+ * 613), so these caps are far above real setups but keep a crafted chain of
+ * 64 KiB commands from costing minutes of CPU per walk. */
+#define GI_MAX_OTHER_CMD_BYTES 0x400000UL
+#define GI_MAX_ALL_CMD_BYTES 0x4000000UL
 
 #define GI_WINDOW 0x8000U
 #define GI_MAIN_SYMBOLS 0x112
@@ -111,8 +125,6 @@
 #define GI_LENGTH_ESCAPE 0x11
 #define GI_MIN_LENGTH 3
 
-#define GI_IN_BUFFER 0x10000U
-#define GI_OUT_BUFFER 0x10000U
 #define GI_PD_MASK 0xFFFFUL
 
 static const uint8_t g_gi_signature[8] = {0xAB, 0x67, 0xA7, 0x36,
@@ -141,13 +153,16 @@ static uint64_t gi_le64(const uint8_t *b) {
 static bool gi_read_at(xx_io_device *device, int64_t offset, void *buffer,
                        size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount =
-            xx_io_read(device, (uint8_t *)buffer + done, size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+            xx_io_read(device, (uint8_t *)buffer + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -258,8 +273,20 @@ typedef struct gi_input_s {
     size_t position;
     uint32_t count;  /**< Bits left in current. */
     uint8_t current;
-    uint8_t buffer[GI_IN_BUFFER];
+    uint8_t *buffer;
+    size_t io_capacity;
 } gi_input;
+
+static gi_input *gi_input_create(void) {
+    const size_t capacity = xx_get_file_buffer_size();
+    gi_input *in;
+    if (capacity > SIZE_MAX - sizeof(*in)) return NULL;
+    in = (gi_input *)xx_mem_calloc(1U, sizeof(*in) + capacity);
+    if (!in) return NULL;
+    in->buffer = (uint8_t *)(in + 1);
+    in->io_capacity = capacity;
+    return in;
+}
 
 static void gi_in_seek(gi_input *in, int64_t offset) {
     in->next = offset;
@@ -277,7 +304,7 @@ static bool gi_in_byte(gi_input *in, uint8_t *value) {
         int64_t left = in->end - in->next;
         size_t want;
         if (left <= 0) return false;
-        want = left < (int64_t)GI_IN_BUFFER ? (size_t)left : GI_IN_BUFFER;
+        want = left < (int64_t)in->io_capacity ? (size_t)left : in->io_capacity;
         if (!gi_read_at(in->device, in->next, in->buffer, want)) return false;
         in->next += (int64_t)want;
         in->length = want;
@@ -466,7 +493,8 @@ typedef struct gi_sink_s {
     size_t capacity;
     size_t length;
     xx_io_device *device; /**< Device target, or NULL. */
-    uint8_t *buffer;      /**< GI_OUT_BUFFER bytes staging for device. */
+    uint8_t *buffer;      /**< Captured-capacity staging for device. */
+    size_t io_capacity;
     size_t staged;
     bool failed;
 } gi_sink;
@@ -498,7 +526,7 @@ static void gi_sink_put(gi_sink *s, uint8_t value) {
     }
     if (s->device) {
         s->buffer[s->staged++] = value;
-        if (s->staged == GI_OUT_BUFFER) (void)gi_sink_flush(s);
+        if (s->staged == s->io_capacity) (void)gi_sink_flush(s);
     }
 }
 
@@ -587,6 +615,7 @@ typedef struct gi_member_s {
     char *name;           /**< UTF-8, '/' separated, unique among safe names. */
     bool safe;
     bool stored;
+    bool broken;          /**< Its data is cut off or does not decode. */
     uint32_t size;
     uint32_t attributes;
     uint64_t filetime;
@@ -601,6 +630,7 @@ typedef struct gi_replay_s {
     gi_codec *codec;
     uint8_t *out_buffer;
     size_t next; /**< Member whose data the codec would decode next. */
+    size_t io_capacity;
 } gi_replay;
 
 typedef struct gi_list_s {
@@ -653,6 +683,17 @@ static char gi_upper(char c) {
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
+/* Case fold of one byte of a UTF-8 name made by gi_make_name, given the
+ * byte before it.  Besides ASCII, the Latin-1 small letters U+00E0..U+00FE
+ * (C3 A0..C3 BE, except the division sign C3 B7) fold onto their capitals
+ * C3 80..C3 9E, as NTFS does.  0xC3 is never a continuation byte, so prev
+ * is always a lead byte when it is 0xC3. */
+static uint8_t gi_fold(uint8_t prev, uint8_t c) {
+    if (prev == 0xC3U && c >= 0xA0U && c <= 0xBEU && c != 0xB7U)
+        return (uint8_t)(c - 0x20U);
+    return (uint8_t)gi_upper((char)c);
+}
+
 /* True when the component's stem (before its first dot, trailing spaces
  * ignored) is a Windows device name. */
 static bool gi_is_device(const uint8_t *comp, size_t length) {
@@ -667,7 +708,11 @@ static bool gi_is_device(const uint8_t *comp, size_t length) {
             if (gi_upper((char)comp[k]) != n[k]) break;
         if (k == stem && n[k] == 0) return true;
     }
-    if (stem == 4U && comp[3] >= '0' && comp[3] <= '9') {
+    /* Windows also takes the Latin-1 superscripts 1, 2 and 3 as the digit
+     * of COM#/LPT#. */
+    if (stem == 4U && ((comp[3] >= '0' && comp[3] <= '9') ||
+                       comp[3] == 0xB9U || comp[3] == 0xB2U ||
+                       comp[3] == 0xB3U)) {
         char a = gi_upper((char)comp[0]), b = gi_upper((char)comp[1]),
              c = gi_upper((char)comp[2]);
         if ((a == 'C' && b == 'O' && c == 'M') ||
@@ -708,13 +753,42 @@ static bool gi_name_safe(const uint8_t *raw, size_t length) {
     return true;
 }
 
+/* True when the component has the form of an 8.3 short alias: a stem of 1..8
+ * bytes without '.', ending in '~' and one or more digits, and an optional
+ * extension of at most 3 bytes.  On a volume that makes short names, such a
+ * member would open the file an earlier long-named member was written to. */
+static bool gi_short_alias(const uint8_t *comp, size_t length) {
+    size_t dot = length, index, tilde = 0U;
+    bool found = false;
+    for (index = length; index > 0U; --index)
+        if (comp[index - 1U] == '.') {
+            dot = index - 1U;
+            break;
+        }
+    if (dot == 0U || dot > 8U || (dot < length && length - dot - 1U > 3U))
+        return false;
+    for (index = 0U; index < dot; ++index) {
+        if (comp[index] == '.') return false;
+        if (comp[index] == '~') {
+            tilde = index;
+            found = true;
+        }
+    }
+    if (!found || tilde + 1U >= dot) return false;
+    for (index = tilde + 1U; index < dot; ++index)
+        if (comp[index] < '0' || comp[index] > '9') return false;
+    return true;
+}
+
 /* '\' becomes '/', bytes 0x80..0xFF are taken as Latin-1 and written as
- * UTF-8, control bytes and '%' as %XX.  suffix > 0 appends "_<suffix>"
- * before the last component's extension. */
+ * UTF-8, control bytes and '%' as %XX, and '~' as '_' in a component of
+ * 8.3 short-alias form.  suffix > 0 appends "_<suffix>" before the last
+ * component's extension. */
 static char *gi_make_name(const uint8_t *raw, size_t length, uint32_t suffix) {
     static const char hex[] = "0123456789ABCDEF";
     char digits[12];
     size_t ndigits = 0U, out_length = 0U, index, insert = length, o = 0U;
+    bool alias = false;
     char *name;
     if (suffix) {
         uint32_t v = suffix;
@@ -755,8 +829,15 @@ static char *gi_make_name(const uint8_t *raw, size_t length, uint32_t suffix) {
         }
         if (index == length) break;
         c = raw[index];
+        if (index == 0U || raw[index - 1U] == '\\' || raw[index - 1U] == '/') {
+            size_t end = index;
+            while (end < length && raw[end] != '\\' && raw[end] != '/') ++end;
+            alias = gi_short_alias(raw + index, end - index);
+        }
         if (c == '\\' || c == '/') {
             name[o++] = '/';
+        } else if (c == '~' && alias) {
+            name[o++] = '_';
         } else if (c >= 0x80U) {
             name[o++] = (char)(0xC0U | (c >> 6U));
             name[o++] = (char)(0x80U | (c & 0x3FU));
@@ -776,15 +857,25 @@ static char *gi_make_name(const uint8_t *raw, size_t length, uint32_t suffix) {
  * systems); a small open-addressing set keeps duplicates linear. */
 static uint32_t gi_hash(const char *s) {
     uint32_t h = 2166136261U;
+    uint8_t prev = 0U;
     while (*s) {
-        h ^= (uint8_t)gi_upper(*s++);
+        uint8_t c = (uint8_t)*s++;
+        h ^= gi_fold(prev, c);
         h *= 16777619U;
+        prev = c;
     }
     return h;
 }
 
+/* Folded bytes match only where the bytes before them matched too, so both
+ * sides always fold with the same lead byte. */
 static bool gi_same(const char *a, const char *b) {
-    while (*a && *b && gi_upper(*a) == gi_upper(*b)) ++a, ++b;
+    uint8_t prev = 0U;
+    while (*a && *b &&
+           gi_fold(prev, (uint8_t)*a) == gi_fold(prev, (uint8_t)*b)) {
+        prev = (uint8_t)*a;
+        ++a, ++b;
+    }
     return *a == 0 && *b == 0;
 }
 
@@ -860,6 +951,7 @@ static bool gi_walk(Abstractformat *format, gi_list **result, bool names,
     gi_raw_names raw;
     int64_t base, last_good;
     unsigned long commands = 0UL;
+    uint64_t cmd_bytes = 0U, other_cmd_bytes = 0U;
     size_t name_bytes = 0U;
     uint32_t decoded;
     bool ok = false;
@@ -870,7 +962,7 @@ static bool gi_walk(Abstractformat *format, gi_list **result, bool names,
     if (!list) return false;
     if (!gi_locate(format, &list->location)) goto done;
     base = format->base_address;
-    in = (gi_input *)xx_mem_calloc(1U, sizeof(*in));
+    in = gi_input_create();
     cmd = (gi_codec *)xx_mem_alloc(sizeof(*cmd));
     data = (gi_codec *)xx_mem_alloc(sizeof(*data));
     buffer = (uint8_t *)xx_mem_alloc(GI_MAX_CMD);
@@ -880,23 +972,29 @@ static bool gi_walk(Abstractformat *format, gi_list **result, bool names,
     in->device = format->device;
     in->end = base + list->location.total;
     gi_in_seek(in, base + list->location.payload);
+    last_good = base + list->location.payload;
+
+    /* From here on the payload signature is known.  Wherever the chain stops,
+     * the walk still reports the extent it read (see stop below), so a
+     * format search moves past every byte this walk decoded instead of
+     * decoding them again for the next candidate that points here. */
 
     /* The runtime image; its state is dropped afterwards. */
     if (!gi_block(cmd, in, GI_MAX_RUNTIME - 1U, &decoded, NULL, pd) ||
         decoded == 0U || !gi_codec_reset(cmd))
-        goto done;
+        goto stop;
     {
         uint8_t header[GI_ARCHIVE_HEADER];
         size_t index;
         for (index = 0U; index < sizeof(header); ++index)
-            if (!gi_in_byte(in, &header[index])) goto done;
-        if (gi_le16(header + GI_ARCHIVE_HEADER_FLAG) != 0U) goto done;
+            if (!gi_in_byte(in, &header[index])) goto stop;
+        if (gi_le16(header + GI_ARCHIVE_HEADER_FLAG) != 0U) goto stop;
     }
     {
         uint32_t index;
         for (index = 0U; index < GI_SKIPPED_BLOCKS; ++index)
             if (!gi_block(cmd, in, GI_MAX_SKIPPED_BLOCK, NULL, NULL, pd))
-                goto done;
+                goto stop;
     }
     last_good = gi_in_tell(in);
 
@@ -909,6 +1007,8 @@ static bool gi_walk(Abstractformat *format, gi_list **result, bool names,
         gi_member member;
         if (++commands > GI_MAX_COMMANDS || gi_stopped(pd)) break;
         if (!gi_in_u32(in, &size) || size <= 2U || size > GI_MAX_CMD) break;
+        cmd_bytes += size;
+        if (cmd_bytes > GI_MAX_ALL_CMD_BYTES) break;
         xx_mem_zero(&sink, sizeof(sink));
         sink.memory = buffer;
         sink.capacity = GI_MAX_CMD;
@@ -922,6 +1022,8 @@ static bool gi_walk(Abstractformat *format, gi_list **result, bool names,
             break;
         }
         if (tag != GI_TAG_FILE) {
+            other_cmd_bytes += size;
+            if (other_cmd_bytes > GI_MAX_OTHER_CMD_BYTES) break;
             last_good = gi_in_tell(in);
             continue;
         }
@@ -942,20 +1044,33 @@ static bool gi_walk(Abstractformat *format, gi_list **result, bool names,
         member.command_offset = command_offset;
         member.command_size = gi_in_tell(in) - command_offset;
         member.data_offset = gi_in_tell(in);
+        /* A member whose command decoded but whose data is cut off (a
+         * truncated carrier) or does not decode is still listed, marked
+         * broken: extracting it fails, and it ends the chain. */
         if (member.stored) {
-            if ((int64_t)member.size > in->end - member.data_offset) break;
-            gi_in_seek(in, member.data_offset + (int64_t)member.size);
+            if ((int64_t)member.size > in->end - member.data_offset) {
+                member.broken = true;
+                gi_in_seek(in, in->end);
+            } else {
+                gi_in_seek(in, member.data_offset + (int64_t)member.size);
+            }
         } else {
             uint32_t block_size;
             int64_t probe = member.data_offset;
             uint8_t word[4];
             if (probe + 4 > in->end ||
-                !gi_read_at(in->device, probe, word, sizeof(word)))
-                break;
-            block_size = gi_le32(word);
-            if (block_size != member.size ||
-                !gi_block(data, in, 0U, NULL, NULL, pd))
-                break;
+                !gi_read_at(in->device, probe, word, sizeof(word))) {
+                member.broken = true;
+                gi_in_seek(in, in->end);
+            } else {
+                block_size = gi_le32(word);
+                if (block_size != member.size) {
+                    member.broken = true;
+                } else if (!gi_block(data, in, 0U, NULL, NULL, pd)) {
+                    if (gi_stopped(pd)) break;
+                    member.broken = true;
+                }
+            }
         }
         member.data_size = gi_in_tell(in) - member.data_offset;
         /* The same caps with and without names, so counting and listing
@@ -997,13 +1112,24 @@ static bool gi_walk(Abstractformat *format, gi_list **result, bool names,
         } else {
             ++list->count;
         }
+        if (member.broken) break;
         last_good = gi_in_tell(in);
     }
 
-    /* A chain that stops early is a truncated carrier: keep what decoded
-     * whole.  Nothing at all is not an installer this reader understands. */
-    if (!list->complete && list->count == 0U) goto done;
-    list->end = last_good - base;
+stop:
+    if (gi_stopped(pd)) goto done;
+    /* A chain that stops early (a truncated or damaged carrier) keeps the
+     * members that were listed, and its extent is everything the walk read,
+     * so that no later search candidate decodes these bytes again.  Even a
+     * chain that yields nothing still reports that extent; the detector
+     * names such a file from the payload signature alone anyway. */
+    if (list->complete) {
+        list->end = last_good - base;
+    } else {
+        int64_t reach = gi_in_tell(in);
+        if (reach < last_good) reach = last_good;
+        list->end = reach - base;
+    }
 
     if (names && list->count) {
         gi_names set;
@@ -1057,12 +1183,22 @@ static bool gi_replay_member(Abstractformat *format, gi_list *list,
     gi_sink sink;
     const gi_member *m;
     size_t k;
-    if (target >= list->count) return false;
+    if (target >= list->count || list->items[target].broken) return false;
     if (!r->input) {
-        r->input = (gi_input *)xx_mem_calloc(1U, sizeof(*r->input));
+        r->input = gi_input_create();
+        if (!r->input) return false;
+        r->io_capacity = r->input->io_capacity;
         r->codec = (gi_codec *)xx_mem_alloc(sizeof(*r->codec));
-        r->out_buffer = (uint8_t *)xx_mem_alloc(GI_OUT_BUFFER);
-        if (!r->input || !r->codec || !r->out_buffer) return false;
+        r->out_buffer = (uint8_t *)xx_mem_alloc(r->io_capacity);
+        if (!r->codec || !r->out_buffer) {
+            xx_mem_free(r->input);
+            if (r->codec) xx_mem_free(r->codec);
+            if (r->out_buffer) xx_mem_free(r->out_buffer);
+            r->input = NULL;
+            r->codec = NULL;
+            r->out_buffer = NULL;
+            return false;
+        }
         r->next = SIZE_MAX;
     }
     r->input->device = format->device;
@@ -1086,6 +1222,7 @@ static bool gi_replay_member(Abstractformat *format, gi_list *list,
     xx_mem_zero(&sink, sizeof(sink));
     sink.device = destination;
     sink.buffer = r->out_buffer;
+    sink.io_capacity = r->io_capacity;
     r->next = SIZE_MAX;
     if (m->stored) {
         int64_t done = 0;
@@ -1335,6 +1472,8 @@ bool xx_gentee_installer_unpack_current_archive_record(
         list->index >= list->count || gi_stopped(pd))
         return false;
     member = &list->items[list->index];
+    /* Cut off or undecodable: fail before any output file is created. */
+    if (member->broken) return false;
     path_option = gi_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option)
         return gi_replay_member(format, list, list->index, NULL, pd);

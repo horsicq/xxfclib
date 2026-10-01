@@ -214,7 +214,16 @@ bool xx_lzh1_decode_memory(const uint8_t *input, size_t input_size,
         }
     }
     if (written) *written = output_pos;
-    return !state.error && output_pos == output_size &&
-           state.bit_pos <= input_size * 8U &&
-           input_size * 8U - state.bit_pos < 8U;
+    if (state.error || output_pos != output_size ||
+        state.bit_pos > input_size * 8U) return false;
+    {
+        size_t unused_bits = input_size * 8U - state.bit_pos;
+
+        /* Some LHArc SFX writers count one final zero byte in the member's
+         * packed size when the Huffman stream ends exactly on a byte boundary.
+         * The declared output size still terminates decoding; accept only
+         * that single zero byte, never arbitrary trailing payload. */
+        return unused_bits < 8U ||
+               (unused_bits == 8U && input[input_size - 1U] == 0U);
+    }
 }

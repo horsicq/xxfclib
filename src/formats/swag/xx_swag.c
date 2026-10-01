@@ -65,6 +65,7 @@ typedef struct xx_swag_member_s {
     int64_t data_offset;
     int64_t compressed_size;
     int64_t uncompressed_size;
+    int64_t extracted_size;
     uint32_t method;
     uint64_t timestamp;
     bool is_folder;
@@ -325,6 +326,7 @@ static xx_swag_stream *xx_swag_parse(Abstractformat *self, xx_pd_struct *pd) {
             member.method = XX_SWAG_METHOD_LZH1_P;
             member.uncompressed_size = uncompressed_size;
         }
+        member.extracted_size = -1;
         /* Raw MS-DOS time and date, packed time | (date << 16). */
         member.timestamp = (uint64_t)xx_swag_le16(header + 0x0F) |
                            ((uint64_t)xx_swag_le16(header + 0x11) << 16);
@@ -357,6 +359,56 @@ fail:
 /* The container states one method tag, "-sw1-", for every member. What it
  * varies is the uncompressed size: zero means the stream was kept verbatim.
  * parse turns that pair into these two values. */
+
+/* SWAG's Pascal snippets retain the DOS text EOF/padding in their decoded
+ * LZHUF stream and CRC. The reader used by U3 writes only the source text:
+ * either the first Ctrl-Z before a space-padded final Ctrl-Z, or the text
+ * before terminal blank CRLF lines and a single Ctrl-Z. Keep the full decode
+ * for header-size validation and change only the bytes written to disk. */
+static bool xx_swag_pascal_name(const char *name) {
+    size_t name_size;
+    if (!name) return false;
+    name_size = xx_str_len(name);
+    return name_size >= 4U && name[name_size - 4U] == '.' &&
+           ((uint8_t)name[name_size - 3U] | 0x20U) == 'p' &&
+           ((uint8_t)name[name_size - 2U] | 0x20U) == 'a' &&
+           ((uint8_t)name[name_size - 1U] | 0x20U) == 's';
+}
+
+static size_t xx_swag_pascal_text_size(const char *name,
+                                       const uint8_t *plain, size_t size) {
+    size_t index;
+    size_t first_eof = size;
+    if (!plain || size == 0U || plain[size - 1U] != 0x1aU ||
+        !xx_swag_pascal_name(name))
+        return size;
+    for (index = 0U; index < size; ++index) {
+        if (plain[index] == 0x1aU) {
+            first_eof = index;
+            break;
+        }
+    }
+    if (first_eof + 1U < size) {
+        for (index = first_eof + 1U; index + 1U < size; ++index)
+            if (plain[index] != (uint8_t)' ') return size;
+        return first_eof;
+    }
+    /* With only a terminal EOF marker, the SWAG text writer drops the
+     * trailing run of spaces and blank CRLF lines in either order. The
+     * earlier-EOF branch above preserves its intentional space padding. */
+    index = size - 1U;
+    while (index > 0U) {
+        if (plain[index - 1U] == (uint8_t)' ') {
+            --index;
+        } else if (index >= 2U && plain[index - 2U] == '\r' &&
+                   plain[index - 1U] == '\n') {
+            index -= 2U;
+        } else {
+            break;
+        }
+    }
+    return index;
+}
 
 static bool xx_swag_decode(Abstractformat *self, const xx_swag_member *member,
                            uint8_t **out, size_t *out_size,
@@ -431,7 +483,7 @@ static bool xx_swag_decode(Abstractformat *self, const xx_swag_member *member,
         return false;
     }
     *out = plain;
-    *out_size = written;
+    *out_size = xx_swag_pascal_text_size(member->name, plain, written);
     return true;
 }
 
@@ -545,8 +597,19 @@ uint64_t xx_swag_get_number_of_archive_records(Abstractformat *self,
 
 /* ------------------------------------------------------------- records -- */
 
-static bool xx_swag_set_record(xx_archive_record *record,
-                                 const xx_swag_member *member) {
+static bool xx_swag_set_record(Abstractformat *self,
+                                 xx_archive_record *record,
+                                 xx_swag_member *member, xx_pd_struct *pd) {
+    if (member->extracted_size < 0) {
+        member->extracted_size = member->uncompressed_size;
+        if (xx_swag_pascal_name(member->name)) {
+            uint8_t *plain = NULL;
+            size_t plain_size = 0U;
+            if (xx_swag_decode(self, member, &plain, &plain_size, pd))
+                member->extracted_size = (int64_t)plain_size;
+            xx_mem_free(plain);
+        }
+    }
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
@@ -558,7 +621,7 @@ static bool xx_swag_set_record(xx_archive_record *record,
                                           (uint64_t)member->compressed_size) &&
            xx_archive_record_set_meta_u64(
                record, XX_META_ID_UNCOMPRESSED_SIZE,
-               (uint64_t)member->uncompressed_size) &&
+               (uint64_t)member->extracted_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
                                           member->method) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
@@ -621,7 +684,8 @@ xx_archive_record_state *xx_swag_create_archive_records_reading(
     state->total_records = (int64_t)stream->count;
     if (!xx_swag_copy_options(&state->options, options) ||
         (stream->count != 0U &&
-         !xx_swag_set_record(&state->current_record, &stream->items[0]))) {
+         !xx_swag_set_record(self, &state->current_record,
+                             &stream->items[0], pd))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -655,8 +719,8 @@ bool xx_swag_archive_record_move_to_next(Abstractformat *self,
     }
     ++stream->index;
     ++state->current_index;
-    state->has_record = xx_swag_set_record(&state->current_record,
-                                             &stream->items[stream->index]);
+    state->has_record = xx_swag_set_record(self, &state->current_record,
+                                             &stream->items[stream->index], pd);
     return state->has_record;
 }
 

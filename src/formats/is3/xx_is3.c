@@ -570,6 +570,15 @@ static bool is3_decode_member(Abstractformat *format, const is3_member *member,
         if (output_size != 0U) xx_mem_copy(output, packed, output_size);
         written = output_size;
         decoded = true;
+    } else if (output_size == 0U) {
+        size_t consumed = 0U;
+        size_t produced = 0U;
+        /* The exact-size DCL API rejects a zero-sized output buffer.  A
+         * compressed empty file still has a real end marker; validate that
+         * marker and the entire packed extent before publishing the file. */
+        decoded = xx_dcl_scan_memory(packed, (size_t)member->packed_size,
+                                     1U, &consumed, &produced) &&
+                  consumed == (size_t)member->packed_size && produced == 0U;
     } else {
         decoded = xx_dcl_decode_memory(packed, (size_t)member->packed_size,
                                        output, output_size, &written);

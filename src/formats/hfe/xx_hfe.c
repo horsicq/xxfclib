@@ -2,10 +2,11 @@
  * SPDX-License-Identifier: MIT
  *
  * Native reader for the HxC Floppy Emulator (HFE v1) image.  The container
- * stores raw bit cells, so the member is produced by decoding MFM: address
- * marks, sector headers and data fields, each checked against its CRC.
+ * stores raw bit cells, so the member is produced by decoding IBM MFM or FM:
+ * address marks, sector headers and data fields, each checked against its CRC.
  */
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/formats/hfe/xx_hfe.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -54,16 +55,26 @@ static uint32_t hfe_le32(const uint8_t *b) {
 static bool hfe_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
+    int64_t original;
+    bool ok = true;
+    if (!device || (!buffer && size != 0U) || offset < 0)
         return false;
+    original = xx_io_tell(device);
+    if (original < 0) return false;
+    if (xx_io_seek64(device, offset, SEEK_SET) != 0) {
+        (void)xx_io_seek64(device, original, SEEK_SET);
+        return false;
+    }
     while (done < size) {
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
                                     size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        if (amount <= 0 || (size_t)amount > size - done) {
+            ok = false;
+            break;
+        }
         done += (size_t)amount;
     }
-    return true;
+    return xx_io_seek64(device, original, SEEK_SET) == 0 && ok;
 }
 
 /* Reader-owned names are built here, never taken from the container, so they
@@ -144,8 +155,11 @@ typedef struct hfe_geometry_s {
     int32_t sides;
     int32_t sectors_per_track;
     int32_t sector_size;
+    int32_t first_sector;
     int64_t lut_offset;
     uint64_t image_size;
+    bool fm;
+    bool variable;
 } hfe_geometry;
 
 /* "HXCPICFE", a zero revision byte, the track and side counts, then a lookup
@@ -162,6 +176,11 @@ static bool hfe_header(const uint8_t *file, size_t size, hfe_geometry *out) {
         return false;
     out->tracks = (int32_t)file[9];
     out->sides = (int32_t)file[10];
+    out->sectors_per_track = 0;
+    out->sector_size = 0;
+    out->first_sector = 0;
+    out->fm = file[11] == 2U; /* ISO/IBM FM, doubled in HFE bitcells. */
+    out->variable = false;
     out->lut_offset = (int64_t)hfe_le16(file + 0x12) * HFE_BLOCK;
     if (out->tracks > HFE_MAX_TRACKS || out->lut_offset < HFE_HEADER_SIZE ||
         out->lut_offset > (int64_t)size)
@@ -179,28 +198,32 @@ static bool hfe_track_bits(const uint8_t *file, size_t size,
     const int64_t entry = geometry->lut_offset + (int64_t)track * 4;
     const int64_t offset = (int64_t)hfe_le16(file + entry) * HFE_BLOCK;
     const int64_t length = (int64_t)hfe_le16(file + entry + 2);
-    int64_t chunk;
+    const int64_t side_bytes = length / 2;
     size_t used[2];
+    int32_t side;
     used[0] = 0U;
     used[1] = 0U;
-    if (length <= 0 || offset < HFE_HEADER_SIZE ||
-        length > (int64_t)size - offset)
+    if (length <= 0 || (length & 1) != 0 ||
+        offset < HFE_HEADER_SIZE || offset > (int64_t)size ||
+        side_bytes > (int64_t)(capacity / 8U))
         return false;
-    for (chunk = 0; chunk < length; chunk += HFE_BLOCK) {
-        int32_t side;
-        for (side = 0; side < 2; ++side) {
-            uint8_t *target = side ? side1 : side0;
-            int64_t start = chunk + (int64_t)side * HFE_CHUNK;
-            int64_t stop = start + HFE_CHUNK;
-            int64_t at;
-            if (stop > length) stop = length;
-            for (at = start; at < stop; ++at) {
-                const uint8_t value = file[offset + at];
-                int32_t bit;
-                for (bit = 0; bit < 8; ++bit) {
-                    if (used[side] >= capacity) return false;
-                    target[used[side]++] = (uint8_t)((value >> bit) & 1U);
-                }
+    /* The LUT length is for both sides together, while on disk each
+     * 512-byte block holds up to 256 bytes of each side.  The last block is
+     * padded independently for each side; do not give its padding to side 0
+     * or truncate side 1 when the per-side length is not 256-aligned. */
+    for (side = 0; side < 2; ++side) {
+        int64_t byte_index;
+        uint8_t *target = side ? side1 : side0;
+        for (byte_index = 0; byte_index < side_bytes; ++byte_index) {
+            int64_t at = offset + (byte_index / HFE_CHUNK) * HFE_BLOCK +
+                         (int64_t)side * HFE_CHUNK +
+                         byte_index % HFE_CHUNK;
+            uint8_t value;
+            int32_t bit;
+            if (at < 0 || at >= (int64_t)size) return false;
+            value = file[at];
+            for (bit = 0; bit < 8; ++bit) {
+                target[used[side]++] = (uint8_t)((value >> bit) & 1U);
             }
         }
     }
@@ -210,15 +233,7 @@ static bool hfe_track_bits(const uint8_t *file, size_t size,
 }
 
 static uint16_t hfe_crc16(const uint8_t *data, size_t size, uint16_t crc) {
-    size_t index;
-    unsigned bit;
-    for (index = 0U; index < size; ++index) {
-        crc ^= (uint16_t)((uint16_t)data[index] << 8U);
-        for (bit = 0U; bit < 8U; ++bit)
-            crc = (uint16_t)((crc & 0x8000U) ? ((crc << 1U) ^ 0x1021U)
-                                             : (crc << 1U));
-    }
-    return crc;
+    return xx_crc16_ccitt_calc(crc, data, size);
 }
 
 /* One MFM byte is sixteen cells; the data bits are the odd-indexed ones. */
@@ -242,6 +257,79 @@ static bool hfe_mfm_bytes(const uint8_t *bits, size_t cells, size_t position,
     return true;
 }
 
+/* Variable IBM layouts have different sector counts, IDs, sizes or encodings
+ * on individual tracks.  Keep decoded sectors by physical side and logical
+ * sector ID, then concatenate them in IMG order (cylinder, side, ID). */
+typedef struct hfe_captured_sector_s {
+    uint32_t offset;
+    uint16_t size;
+    bool present;
+} hfe_captured_sector;
+
+typedef struct hfe_captured_side_s {
+    hfe_captured_sector sectors[HFE_MAX_SECTORS];
+    uint32_t count;
+    uint32_t first;
+    uint32_t last;
+    bool saw_id;
+    bool fm;
+} hfe_captured_side;
+
+typedef struct hfe_capture_s {
+    hfe_captured_side *sides;
+    uint8_t *bytes;
+    size_t used;
+    size_t capacity;
+    uint64_t image_size;
+    bool variable;
+    bool size_or_encoding_variable;
+} hfe_capture;
+
+static void hfe_capture_free(hfe_capture *capture) {
+    if (!capture) return;
+    if (capture->sides) xx_mem_free(capture->sides);
+    if (capture->bytes) xx_mem_free(capture->bytes);
+    xx_mem_zero(capture, sizeof(*capture));
+}
+
+static bool hfe_capture_sector(hfe_capture *capture, hfe_captured_side *side,
+                               uint32_t id, const uint8_t *data,
+                               uint32_t size) {
+    hfe_captured_sector *sector;
+    size_t needed, capacity;
+    uint8_t *grown;
+    if (!capture || !side || !data || id >= HFE_MAX_SECTORS ||
+        size == 0U || size > 16384U || side->sectors[id].present ||
+        capture->used > HFE_MAX_OUTPUT - size)
+        return false;
+    needed = capture->used + size;
+    if (needed > capture->capacity) {
+        capacity = capture->capacity ? capture->capacity : 65536U;
+        while (capacity < needed) {
+            if (capacity >= HFE_MAX_OUTPUT / 2U) {
+                capacity = HFE_MAX_OUTPUT;
+                break;
+            }
+            capacity *= 2U;
+        }
+        if (capacity < needed) return false;
+        grown = (uint8_t *)xx_mem_realloc(capture->bytes, capacity);
+        if (!grown) return false;
+        capture->bytes = grown;
+        capture->capacity = capacity;
+    }
+    sector = &side->sectors[id];
+    sector->offset = (uint32_t)capture->used;
+    sector->size = (uint16_t)size;
+    sector->present = true;
+    xx_mem_copy(capture->bytes + capture->used, data, size);
+    capture->used = needed;
+    ++side->count;
+    if (id < side->first) side->first = id;
+    if (id > side->last) side->last = id;
+    return true;
+}
+
 typedef struct hfe_sink_s {
     uint8_t *image;          /* NULL while probing */
     uint64_t image_size;
@@ -249,15 +337,19 @@ typedef struct hfe_sink_s {
     int32_t sides;
     int32_t sectors_per_track;
     int32_t sector_size;
+    int32_t first_sector;
+    int32_t min_sector;      /* probe output */
     int32_t max_sector;      /* probe output */
     bool mixed;
+    hfe_capture *capture;
+    hfe_captured_side *capture_side;
 } hfe_sink;
 
-/* Decode one side of one cylinder.  While probing, the sink only records the
- * largest sector number and the sector size; once the geometry is fixed the
- * same walk writes each good sector straight into the flat image. */
+/* Decode one physical side of one cylinder.  CHRN head IDs can differ from
+ * physical sides (for example, Commodore 1581 reverses them in HFE). */
 static bool hfe_decode_side(const uint8_t *bits, size_t cells,
-                            uint32_t *syncs, hfe_sink *sink) {
+                            uint32_t *syncs, hfe_sink *sink,
+                            int32_t track, int32_t side) {
     uint32_t sync_count = 0U;
     uint32_t shift = 0U;
     size_t i;
@@ -287,6 +379,7 @@ static bool hfe_decode_side(const uint8_t *bits, size_t cells,
             if (hfe_mfm_bytes(bits, cells, mark + 16U, 6U, field)) {
                 uint8_t preamble[4];
                 uint16_t crc;
+                if (sink->capture && have_id && id_valid) return false;
                 preamble[0] = 0xa1U;
                 preamble[1] = 0xa1U;
                 preamble[2] = 0xa1U;
@@ -299,6 +392,8 @@ static bool hfe_decode_side(const uint8_t *bits, size_t cells,
                 id_size = field[3] & 7;
                 id_valid = crc == (uint16_t)(((uint16_t)field[4] << 8U) |
                                              field[5]);
+                if (sink->capture && id_valid)
+                    sink->capture_side->saw_id = true;
                 have_id = true;
             }
         } else if ((mark_value == 0xfbU || mark_value == 0xf8U) && have_id) {
@@ -317,23 +412,38 @@ static bool hfe_decode_side(const uint8_t *bits, size_t cells,
                 valid = id_valid &&
                         crc == (uint16_t)(((uint16_t)field[sector_size] << 8U) |
                                           field[sector_size + 1]);
-                if (id_sector > 0 && id_sector <= HFE_MAX_SECTORS) {
-                    if (!sink->image) {
+                if (sink->capture) {
+                    if (id_valid &&
+                        (!valid || id_cylinder != track ||
+                         id_head < 0 || id_head > 1 ||
+                         !hfe_capture_sector(sink->capture,
+                                             sink->capture_side,
+                                             (uint32_t)id_sector, field,
+                                             (uint32_t)sector_size)))
+                        return false;
+                } else if (id_sector >= 0 && id_sector < HFE_MAX_SECTORS) {
+                    if (!sink->image && valid &&
+                        id_cylinder >= 0 && id_cylinder < sink->tracks &&
+                        id_head >= 0 && id_head < sink->sides) {
                         if (sink->sector_size == 0)
                             sink->sector_size = sector_size;
                         else if (sink->sector_size != sector_size)
                             sink->mixed = true;
+                        if (id_sector < sink->min_sector)
+                            sink->min_sector = id_sector;
                         if (id_sector > sink->max_sector)
                             sink->max_sector = id_sector;
                     } else if (valid && sector_size == sink->sector_size &&
                                id_cylinder >= 0 && id_cylinder < sink->tracks &&
                                id_head >= 0 && id_head < sink->sides &&
-                               id_sector <= sink->sectors_per_track) {
+                               id_sector >= sink->first_sector &&
+                               id_sector - sink->first_sector <
+                                   sink->sectors_per_track) {
                         const uint64_t position =
-                            ((((uint64_t)id_cylinder * (uint64_t)sink->sides) +
-                              (uint64_t)id_head) *
+                            ((((uint64_t)track * (uint64_t)sink->sides) +
+                              (uint64_t)side) *
                                  (uint64_t)sink->sectors_per_track +
-                             (uint64_t)(id_sector - 1)) *
+                             (uint64_t)(id_sector - sink->first_sector)) *
                             (uint64_t)sink->sector_size;
                         if (position + (uint64_t)sink->sector_size <=
                             sink->image_size)
@@ -346,7 +456,7 @@ static bool hfe_decode_side(const uint8_t *bits, size_t cells,
         }
         s += 3U;
     }
-    return true;
+    return !sink->capture || !have_id || !id_valid;
 }
 
 static bool hfe_walk(const uint8_t *file, size_t size,
@@ -368,8 +478,12 @@ static bool hfe_walk(const uint8_t *file, size_t size,
             break;
         }
         for (side = 0; side < geometry->sides; ++side)
-            hfe_decode_side(side ? side1 : side0, side ? cells1 : cells0, syncs,
-                            sink);
+            if (!hfe_decode_side(side ? side1 : side0,
+                                 side ? cells1 : cells0, syncs,
+                                 sink, track, side)) {
+                ok = false;
+                break;
+            }
     }
     if (side0) xx_mem_free(side0);
     if (side1) xx_mem_free(side1);
@@ -377,14 +491,386 @@ static bool hfe_walk(const uint8_t *file, size_t size,
     return ok;
 }
 
+/* Greaseweazle and HxC double IBM FM bitcells in HFE v1: one physical FM
+ * clock/data pair is stored as 0,clock,0,data.  The address marks retain
+ * their missing-clock C7 pattern, so their doubled 32-bit patterns uniquely
+ * identify ID and data fields even when the sector bytes contain FE/FB. */
+static uint32_t hfe_fm_mark_pattern(uint8_t mark) {
+    uint32_t value = 0U;
+    uint32_t index;
+    for (index = 0U; index < 8U; ++index) {
+        value = (value << 2U) | ((0xc7U >> (7U - index)) & 1U);
+        value = (value << 2U) | ((mark >> (7U - index)) & 1U);
+    }
+    return value;
+}
+
+static bool hfe_fm_byte(const uint8_t *bits, size_t cells, size_t start,
+                        uint8_t *value) {
+    uint32_t index, result = 0U;
+    if (start > cells || cells - start < 32U) return false;
+    for (index = 0U; index < 8U; ++index)
+        result = (result << 1U) | bits[start + index * 4U + 3U];
+    *value = (uint8_t)result;
+    return true;
+}
+
+static bool hfe_capture_fm_side(const uint8_t *bits, size_t cells,
+                                hfe_capture *capture,
+                                hfe_captured_side *side,
+                                uint32_t track) {
+    const uint32_t id_pattern = hfe_fm_mark_pattern(0xfeU);
+    const uint32_t dam_pattern = hfe_fm_mark_pattern(0xfbU);
+    const uint32_t ddam_pattern = hfe_fm_mark_pattern(0xf8U);
+    uint8_t id[6], field[16386];
+    uint32_t shift = 0U, sector_id = 0U, sector_size = 0U;
+    size_t id_end = 0U, index;
+    bool pending = false;
+    for (index = 0U; index < cells; ++index) {
+        uint32_t j;
+        shift = (shift << 1U) | bits[index];
+        if (index < 31U) continue;
+        if (shift == id_pattern) {
+            uint8_t mark = 0xfeU;
+            uint16_t crc;
+            size_t start = index + 1U;
+            if (pending) return false;
+            for (j = 0U; j < 6U; ++j)
+                if (!hfe_fm_byte(bits, cells, start + (size_t)j * 32U,
+                                 id + j))
+                    return !side->saw_id;
+            crc = hfe_crc16(&mark, 1U, 0xffffU);
+            crc = hfe_crc16(id, 4U, crc);
+            pending = crc == (uint16_t)(((uint16_t)id[4] << 8U) | id[5]) &&
+                      id[3] <= 7U;
+            if (pending) {
+                side->saw_id = true;
+                if (id[0] != track || id[1] > 1U) return false;
+                sector_id = id[2];
+                sector_size = 128U << id[3];
+                id_end = start + 6U * 32U;
+            }
+        } else if ((shift == dam_pattern || shift == ddam_pattern) && pending) {
+            uint8_t mark = shift == dam_pattern ? 0xfbU : 0xf8U;
+            uint16_t crc;
+            size_t start = index + 1U;
+            if (start < id_end || start - id_end > 4000U) continue;
+            if (sector_size > sizeof(field) - 2U) return false;
+            for (j = 0U; j < sector_size + 2U; ++j)
+                if (!hfe_fm_byte(bits, cells, start + (size_t)j * 32U,
+                                 field + j))
+                    return false;
+            crc = hfe_crc16(&mark, 1U, 0xffffU);
+            crc = hfe_crc16(field, sector_size, crc);
+            if (crc != (uint16_t)(((uint16_t)field[sector_size] << 8U) |
+                                  field[sector_size + 1U]) ||
+                !hfe_capture_sector(capture, side, sector_id, field,
+                                    sector_size))
+                return false;
+            pending = false;
+        }
+    }
+    return !pending;
+}
+
+static bool hfe_fm_side(const uint8_t *bits, size_t cells,
+                        hfe_geometry *geometry, uint32_t track, uint32_t side,
+                        bool geometry_only, uint8_t *image) {
+    const uint32_t id_pattern = hfe_fm_mark_pattern(0xfeU);
+    const uint32_t dam_pattern = hfe_fm_mark_pattern(0xfbU);
+    const uint32_t ddam_pattern = hfe_fm_mark_pattern(0xf8U);
+    uint8_t field[16386];
+    uint8_t id[6];
+    uint8_t seen[256];
+    uint32_t shift = 0U, count = 0U, min_sector = 256U, max_sector = 0U;
+    uint32_t id_track = 0U, id_side = 0U, id_sector = 0U, id_n = 0U;
+    size_t id_end = 0U, index;
+    bool pending = false;
+    xx_mem_zero(seen, sizeof(seen));
+    for (index = 0U; index < cells; ++index) {
+        uint32_t j;
+        shift = (shift << 1U) | bits[index];
+        if (index < 31U) continue;
+        if (shift == id_pattern) {
+            uint8_t mark = 0xfeU;
+            uint16_t crc;
+            size_t start = index + 1U;
+            for (j = 0U; j < 6U; ++j)
+                if (!hfe_fm_byte(bits, cells, start + (size_t)j * 32U,
+                                 id + j))
+                    return false;
+            crc = hfe_crc16(&mark, 1U, 0xffffU);
+            crc = hfe_crc16(id, 4U, crc);
+            pending = crc == (uint16_t)(((uint16_t)id[4] << 8U) | id[5]) &&
+                      id[3] <= 7U;
+            id_track = id[0];
+            id_side = id[1];
+            id_sector = id[2];
+            id_n = id[3];
+            id_end = start + 6U * 32U;
+        } else if (shift == dam_pattern || shift == ddam_pattern) {
+            uint8_t mark = shift == dam_pattern ? 0xfbU : 0xf8U;
+            uint32_t length;
+            uint16_t crc;
+            size_t start = index + 1U;
+            if (!pending || start < id_end || start - id_end > 4000U)
+                continue;
+            length = 128U << id_n;
+            if (length > sizeof(field) - 2U) return false;
+            for (j = 0U; j < length + 2U; ++j)
+                if (!hfe_fm_byte(bits, cells, start + (size_t)j * 32U,
+                                 field + j))
+                    return false;
+            crc = hfe_crc16(&mark, 1U, 0xffffU);
+            crc = hfe_crc16(field, length, crc);
+            if (crc != (uint16_t)(((uint16_t)field[length] << 8U) |
+                                  field[length + 1U]) ||
+                id_track != track ||
+                (id_side != side && id_side != 0U) || seen[id_sector])
+                return false;
+            seen[id_sector] = 1U;
+            ++count;
+            if (id_sector < min_sector) min_sector = id_sector;
+            if (id_sector > max_sector) max_sector = id_sector;
+            if (geometry_only) {
+                if (geometry->sector_size == 0)
+                    geometry->sector_size = (int32_t)length;
+                else if (geometry->sector_size != (int32_t)length)
+                    return false;
+            } else {
+                uint64_t slot, offset;
+                if (length != (uint32_t)geometry->sector_size ||
+                    id_sector < (uint32_t)geometry->first_sector ||
+                    id_sector - (uint32_t)geometry->first_sector >=
+                        (uint32_t)geometry->sectors_per_track)
+                    return false;
+                slot = ((uint64_t)track * (uint64_t)geometry->sides + side) *
+                           (uint64_t)geometry->sectors_per_track +
+                       id_sector - (uint32_t)geometry->first_sector;
+                offset = slot * (uint64_t)geometry->sector_size;
+                if (offset > geometry->image_size ||
+                    geometry->image_size - offset < length)
+                    return false;
+                if (image) xx_mem_copy(image + (size_t)offset, field, length);
+            }
+            pending = false;
+        }
+    }
+    if (count == 0U || max_sector - min_sector + 1U != count) return false;
+    if (geometry_only) {
+        geometry->sectors_per_track = (int32_t)count;
+        geometry->first_sector = (int32_t)min_sector;
+    } else if (count != (uint32_t)geometry->sectors_per_track ||
+               min_sector != (uint32_t)geometry->first_sector ||
+               max_sector != (uint32_t)(geometry->first_sector +
+                                         geometry->sectors_per_track - 1))
+        return false;
+    return true;
+}
+
+static bool hfe_fm_walk(const uint8_t *file, size_t size,
+                        hfe_geometry *geometry, bool geometry_only,
+                        uint8_t *image) {
+    const size_t capacity = 0x40000U;
+    uint8_t *side0 = (uint8_t *)xx_mem_alloc(capacity);
+    uint8_t *side1 = (uint8_t *)xx_mem_alloc(capacity);
+    uint32_t limit = geometry_only ? 1U : (uint32_t)geometry->tracks;
+    uint32_t track;
+    bool ok = side0 != NULL && side1 != NULL;
+    for (track = 0U; ok && track < limit; ++track) {
+        size_t cells0 = 0U, cells1 = 0U;
+        size_t entry = (size_t)geometry->lut_offset + (size_t)track * 4U;
+        uint32_t side;
+        /* A v1 entry gives the same byte count to each side.  Odd entries
+         * cannot describe whole bytes on both sides. */
+        if (entry > size || size - entry < 4U ||
+            (hfe_le16(file + entry + 2U) & 1U) != 0U ||
+            !hfe_track_bits(file, size, geometry, (int32_t)track,
+                            side0, side1, capacity, &cells0, &cells1)) {
+            ok = false;
+            break;
+        }
+        for (side = 0U; side < (uint32_t)geometry->sides; ++side) {
+            if (geometry_only && side != 0U) continue;
+            if (!hfe_fm_side(side ? side1 : side0,
+                             side ? cells1 : cells0, geometry, track, side,
+                             geometry_only, image)) {
+                ok = false;
+                break;
+            }
+        }
+    }
+    if (side0) xx_mem_free(side0);
+    if (side1) xx_mem_free(side1);
+    return ok;
+}
+
+static bool hfe_capture_one_side(const uint8_t *bits, size_t cells,
+                                 uint32_t *syncs, hfe_capture *capture,
+                                 hfe_captured_side *side,
+                                 uint32_t track, uint32_t physical_side,
+                                 bool prefer_fm) {
+    size_t checkpoint = capture->used;
+    unsigned attempt;
+    for (attempt = 0U; attempt < 2U; ++attempt) {
+        bool fm = attempt == 0U ? prefer_fm : !prefer_fm;
+        bool ok;
+        xx_mem_zero(side, sizeof(*side));
+        side->first = HFE_MAX_SECTORS;
+        capture->used = checkpoint;
+        if (fm) {
+            ok = hfe_capture_fm_side(bits, cells, capture, side, track);
+        } else {
+            hfe_sink sink;
+            xx_mem_zero(&sink, sizeof(sink));
+            sink.capture = capture;
+            sink.capture_side = side;
+            ok = hfe_decode_side(bits, cells, syncs, &sink,
+                                 (int32_t)track, (int32_t)physical_side);
+        }
+        if (ok && side->count != 0U) {
+            side->fm = fm;
+            return true;
+        }
+        if (side->saw_id) return false;
+    }
+    return false;
+}
+
+static bool hfe_capture_all(const uint8_t *file, size_t size,
+                            const hfe_geometry *geometry,
+                            hfe_capture *capture) {
+    const size_t capacity = 0x40000U;
+    uint8_t *side0 = NULL, *side1 = NULL;
+    uint32_t *syncs = NULL;
+    size_t side_count;
+    uint32_t track, physical_side;
+    bool ok = false;
+    xx_mem_zero(capture, sizeof(*capture));
+    side_count = (size_t)geometry->tracks * (size_t)geometry->sides;
+    capture->sides = (hfe_captured_side *)xx_mem_calloc(
+        side_count, sizeof(*capture->sides));
+    side0 = (uint8_t *)xx_mem_alloc(capacity);
+    side1 = (uint8_t *)xx_mem_alloc(capacity);
+    syncs = (uint32_t *)xx_mem_alloc(HFE_MAX_SYNCS * sizeof(*syncs));
+    if (!capture->sides || !side0 || !side1 || !syncs) goto done;
+    for (track = 0U; track < (uint32_t)geometry->tracks; ++track) {
+        size_t cells0 = 0U, cells1 = 0U;
+        if (!hfe_track_bits(file, size, geometry, (int32_t)track,
+                            side0, side1, capacity, &cells0, &cells1))
+            goto done;
+        for (physical_side = 0U;
+             physical_side < (uint32_t)geometry->sides; ++physical_side) {
+            hfe_captured_side *side =
+                &capture->sides[(size_t)track * geometry->sides +
+                                physical_side];
+            if (!hfe_capture_one_side(physical_side ? side1 : side0,
+                                      physical_side ? cells1 : cells0,
+                                      syncs, capture, side, track,
+                                      physical_side, geometry->fm))
+                goto done;
+        }
+    }
+    for (track = 0U; track < side_count; ++track) {
+        const hfe_captured_side *side = &capture->sides[track];
+        const hfe_captured_side *first = &capture->sides[0];
+        uint32_t id;
+        uint16_t first_size;
+        if (side->count == 0U || side->first >= HFE_MAX_SECTORS ||
+            side->last - side->first + 1U != side->count)
+            goto done;
+        first_size = side->sectors[side->first].size;
+        if (side->count != first->count || side->first != first->first ||
+            side->fm != first->fm)
+            capture->variable = true;
+        if (side->fm != first->fm)
+            capture->size_or_encoding_variable = true;
+        for (id = side->first; id <= side->last; ++id) {
+            const hfe_captured_sector *sector = &side->sectors[id];
+            if (!sector->present || sector->size == 0U ||
+                sector->offset > capture->used ||
+                sector->size > capture->used - sector->offset ||
+                capture->image_size > HFE_MAX_OUTPUT - sector->size)
+                goto done;
+            capture->image_size += sector->size;
+            if (sector->size != first_size ||
+                !first->sectors[id].present ||
+                sector->size != first->sectors[id].size)
+                capture->variable = true;
+            if (sector->size != first_size ||
+                (first->sectors[id].present &&
+                 sector->size != first->sectors[id].size))
+                capture->size_or_encoding_variable = true;
+        }
+    }
+    ok = capture->image_size == capture->used &&
+         capture->image_size != 0U;
+done:
+    if (side0) xx_mem_free(side0);
+    if (side1) xx_mem_free(side1);
+    if (syncs) xx_mem_free(syncs);
+    if (!ok) hfe_capture_free(capture);
+    return ok;
+}
+
+static bool hfe_capture_render(const hfe_capture *capture,
+                               const hfe_geometry *geometry,
+                               uint8_t *output) {
+    size_t index, cursor = 0U;
+    size_t count = (size_t)geometry->tracks * geometry->sides;
+    for (index = 0U; index < count; ++index) {
+        const hfe_captured_side *side = &capture->sides[index];
+        uint32_t id;
+        for (id = side->first; id <= side->last; ++id) {
+            const hfe_captured_sector *sector = &side->sectors[id];
+            if (!sector->present ||
+                cursor > capture->image_size ||
+                sector->size > capture->image_size - cursor)
+                return false;
+            xx_mem_copy(output + cursor,
+                        capture->bytes + sector->offset, sector->size);
+            cursor += sector->size;
+        }
+    }
+    return cursor == capture->image_size;
+}
+
 static bool hfe_probe(const uint8_t *file, size_t size, hfe_geometry *out) {
     hfe_sink sink;
+    hfe_capture capture;
     if (!hfe_header(file, size, out)) return false;
+    if (hfe_capture_all(file, size, out, &capture)) {
+        /* In FM, a lone missing address mark can otherwise masquerade as a
+         * shorter final sector range.  The legacy FM path already handles
+         * uniform layouts strictly; accept variable FM only when a decoded
+         * sector size or encoding also changes. */
+        if (capture.variable &&
+            (!out->fm || capture.size_or_encoding_variable)) {
+            out->image_size = capture.image_size;
+            out->variable = true;
+            hfe_capture_free(&capture);
+            return true;
+        }
+        hfe_capture_free(&capture);
+    }
+    if (out->fm) {
+        if (!hfe_fm_walk(file, size, out, true, NULL)) return false;
+        out->image_size = (uint64_t)out->tracks * (uint64_t)out->sides *
+                          (uint64_t)out->sectors_per_track *
+                          (uint64_t)out->sector_size;
+        return out->image_size != 0U &&
+               out->image_size <= HFE_MAX_OUTPUT &&
+               hfe_fm_walk(file, size, out, false, NULL);
+    }
     xx_mem_zero(&sink, sizeof(sink));
+    sink.tracks = out->tracks;
+    sink.sides = out->sides;
+    sink.min_sector = HFE_MAX_SECTORS;
     if (!hfe_walk(file, size, out, true, &sink) || sink.mixed ||
-        sink.max_sector <= 0 || sink.sector_size <= 0)
+        sink.min_sector > sink.max_sector || sink.sector_size <= 0)
         return false;
-    out->sectors_per_track = sink.max_sector;
+    out->first_sector = sink.min_sector;
+    out->sectors_per_track = sink.max_sector - sink.min_sector + 1;
     out->sector_size = sink.sector_size;
     out->image_size = (uint64_t)out->tracks * (uint64_t)out->sides *
                       (uint64_t)out->sectors_per_track *
@@ -465,6 +951,24 @@ static bool hfe_decode(Abstractformat *format, const hfe_member *member,
         xx_mem_free(file);
         return false;
     }
+    if (geometry.variable) {
+        hfe_capture capture;
+        bool ok = hfe_capture_all(file, (size_t)member->packed_size,
+                                  &geometry, &capture);
+        if (ok)
+            ok = capture.variable &&
+                 capture.image_size == member->unpacked_size &&
+                 hfe_capture_render(&capture, &geometry, output);
+        hfe_capture_free(&capture);
+        xx_mem_free(file);
+        if (!ok) {
+            xx_mem_free(output);
+            return false;
+        }
+        *plain = output;
+        *plain_size = (size_t)member->unpacked_size;
+        return true;
+    }
     /* A sector that is missing or fails its CRC stays zero so the image keeps
      * its geometry. */
     xx_mem_zero(output, (size_t)member->unpacked_size);
@@ -475,7 +979,12 @@ static bool hfe_decode(Abstractformat *format, const hfe_member *member,
     sink.sides = geometry.sides;
     sink.sectors_per_track = geometry.sectors_per_track;
     sink.sector_size = geometry.sector_size;
-    if (!hfe_walk(file, (size_t)member->packed_size, &geometry, false, &sink)) {
+    sink.first_sector = geometry.first_sector;
+    if (geometry.fm ?
+            !hfe_fm_walk(file, (size_t)member->packed_size, &geometry,
+                         false, output) :
+            !hfe_walk(file, (size_t)member->packed_size, &geometry,
+                      false, &sink)) {
         xx_mem_free(file);
         xx_mem_free(output);
         return false;

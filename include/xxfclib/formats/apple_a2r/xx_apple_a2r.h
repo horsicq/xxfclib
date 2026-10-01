@@ -1,4 +1,7 @@
-/* SPDX-License-Identifier: MIT. Bounded original-component reader. */
+/* SPDX-License-Identifier: MIT. Bounded A2R2 STRM and A2R3 RWCP capture reader.
+ * Lists/extracts raw capture descriptors, index timestamps and flux/bit bytes;
+ * does not decode a sector disk or support A2R3 SLVD solved-track chunks.
+ */
 #ifndef XX_APPLE_A2R_H
 #define XX_APPLE_A2R_H
 #include "xxfclib/formats/xx_format.h"

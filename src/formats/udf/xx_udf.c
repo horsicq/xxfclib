@@ -16,6 +16,7 @@
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/udf/xx_udf.h"
 
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
@@ -174,20 +175,7 @@ static uint8_t xx_udf_tag_checksum(const uint8_t *tag_bytes) {
 /* ECMA-167 Annex A: CRC-ITU-T, polynomial 0x1021, initial value 0, no
  * reflection and no final xor. */
 static uint16_t xx_udf_descriptor_crc(const uint8_t *data, size_t size) {
-    uint16_t crc = 0U;
-    size_t index;
-    unsigned bit;
-    for (index = 0U; index < size; ++index) {
-        crc = (uint16_t)(crc ^ (uint16_t)((uint16_t)data[index] << 8));
-        for (bit = 0U; bit < 8U; ++bit) {
-            if ((crc & 0x8000U) != 0U) {
-                crc = (uint16_t)((uint16_t)(crc << 1) ^ 0x1021U);
-            } else {
-                crc = (uint16_t)(crc << 1);
-            }
-        }
-    }
-    return crc;
+    return xx_crc16_xmodem_calc(0U, data, size);
 }
 
 /* Read and verify a descriptor tag.  The identifier, the descriptor version,

@@ -72,6 +72,8 @@ XXFC_API xx_prodos *xx_prodos_create(xx_io_device *device,
 XXFC_API void xx_prodos_destroy(xx_prodos *volume);
 XXFC_API void xx_prodos_free(xx_prodos *volume);
 
+/** Narrow structural volume probe; always restores the device cursor. */
+XXFC_API bool xx_prodos_detection_hint(xx_io_device *device);
 XXFC_API bool xx_prodos_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_prodos_handle_base_info(Abstractformat *self,
                                          xx_pd_struct *pd);

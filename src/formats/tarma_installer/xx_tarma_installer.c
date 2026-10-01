@@ -21,6 +21,7 @@
  * so a small section never allocates the full dictionary.
  */
 
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/tarma_installer/xx_tarma_installer.h"
 
@@ -70,9 +71,10 @@
 #define TZ_RATIO INT64_C(8192)
 #define TZ_RATIO_SLACK (INT64_C(64) << 20)
 
-#define TZ_IN_BUFFER 65536U
-#define TZ_COPY_BUFFER 65536U
 #define TZ_NAME_MAX 24U
+/* A block of at most this size is kept after its first unpack, so a caller
+ * that unpacks the same record again does not restart the solid section. */
+#define TZ_REPEAT_CACHE (1024U * 1024U)
 
 /* ---- helpers ----------------------------------------------------------- */
 
@@ -92,13 +94,16 @@ static uint64_t tz_le64(const uint8_t *p) {
 static bool tz_read_at(xx_io_device *device, int64_t offset, void *buffer,
                        size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount =
-            xx_io_read(device, (uint8_t *)buffer + done, size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+            xx_io_read(device, (uint8_t *)buffer + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -107,9 +112,12 @@ static bool tz_read_at(xx_io_device *device, int64_t offset, void *buffer,
 static bool tz_write_all(xx_io_device *device, const uint8_t *data,
                          size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     while (done < size) {
-        ssize_t amount = xx_io_write(device, data + done, size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
+        ssize_t amount = xx_io_write(device, data + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -134,6 +142,7 @@ typedef struct tz_lzma_s {
     int64_t in_pos; /* next device byte to buffer */
     int64_t in_end; /* end of this stream on the device */
     uint8_t *in_buf;
+    size_t in_capacity;
     size_t in_len;
     size_t in_idx;
     uint32_t range;
@@ -191,7 +200,7 @@ static uint8_t tz_in_byte(tz_lzma *z) {
             z->bad = true;
             return 0U;
         }
-        want = left < (int64_t)TZ_IN_BUFFER ? (size_t)left : TZ_IN_BUFFER;
+        want = left < (int64_t)z->in_capacity ? (size_t)left : z->in_capacity;
         if (xx_io_seek64(z->device, z->in_pos, SEEK_SET) != 0) {
             z->bad = true;
             return 0U;
@@ -338,7 +347,9 @@ static tz_lzma *tz_lzma_open(xx_io_device *device, int64_t offset,
     literals = (size_t)0x300U << (z->lc + z->lp);
     z->literal = (uint16_t *)xx_mem_alloc(literals * sizeof(uint16_t));
     z->dict = (uint8_t *)xx_mem_alloc(z->dict_cap);
-    z->in_buf = (uint8_t *)xx_mem_alloc(TZ_IN_BUFFER);
+    z->in_capacity = xx_get_file_buffer_size();
+    if ((uint64_t)size < z->in_capacity) z->in_capacity = (size_t)size;
+    z->in_buf = (uint8_t *)xx_mem_alloc(z->in_capacity);
     if (!z->literal || !z->dict || !z->in_buf) {
         tz_lzma_free(z);
         return NULL;
@@ -667,12 +678,15 @@ typedef struct tz_cursor_s {
     uint32_t section; /* index of the open (or next) section */
     tz_lzma *z;
     uint8_t *scratch;
+    size_t scratch_capacity;
     bool have_block;
     bool error;
     uint64_t listed;    /* block headers delivered */
     uint64_t completed; /* blocks whose data decoded completely */
     uint64_t data_start;
     uint64_t data_size;
+    uint8_t *cache; /* bytes of the block @c cached_block, if valid */
+    uint64_t cached_block; /* value of @c listed when cached, 0 = none */
     uint8_t header[TZ_BLOCK];
 } tz_cursor;
 
@@ -681,6 +695,7 @@ static void tz_cursor_free(tz_cursor *c) {
     tz_lzma_free(c->z);
     if (c->sections) xx_mem_free(c->sections);
     if (c->scratch) xx_mem_free(c->scratch);
+    if (c->cache) xx_mem_free(c->cache);
     xx_mem_free(c);
 }
 
@@ -691,7 +706,8 @@ static tz_cursor *tz_cursor_create(Abstractformat *format) {
     c->format = format;
     c->sections =
         (tz_section *)xx_mem_calloc(TZ_MAX_SECTIONS, sizeof(tz_section));
-    c->scratch = (uint8_t *)xx_mem_alloc(TZ_COPY_BUFFER);
+    c->scratch_capacity = xx_get_file_buffer_size();
+    c->scratch = (uint8_t *)xx_mem_alloc(c->scratch_capacity);
     if (!c->sections || !c->scratch || !tz_locate(format, &layout, c->sections)) {
         tz_cursor_free(c);
         return NULL;
@@ -721,7 +737,7 @@ static bool tz_cursor_skip_to(tz_cursor *c, uint64_t target,
                               xx_pd_struct *pd) {
     while (c->z && c->z->total < target) {
         uint64_t left = target - c->z->total;
-        size_t want = left < TZ_COPY_BUFFER ? (size_t)left : TZ_COPY_BUFFER;
+        size_t want = left < c->scratch_capacity ? (size_t)left : c->scratch_capacity;
         size_t got;
         if (pd && xx_pd_is_stopped(pd)) return false;
         if (!tz_lzma_read(c->z, c->scratch, want, &got) || got != want)
@@ -782,26 +798,43 @@ static bool tz_cursor_next(tz_cursor *c, xx_pd_struct *pd) {
 }
 
 /* Deliver the current block's data to @p destination (NULL only decodes).
- * A block already passed is re-reached by restarting its section. */
+ * A block already passed is served from the repeat cache when it fits
+ * there; a larger one is re-reached by restarting its section. */
 static bool tz_cursor_unpack(tz_cursor *c, xx_io_device *destination,
                              xx_pd_struct *pd) {
     uint64_t end;
+    size_t cached = 0U;
+    bool keep;
     if (!c->have_block || c->error) return false;
+    if (c->cached_block == c->listed) {
+        return !destination || c->data_size == 0U ||
+               tz_write_all(destination, c->cache, (size_t)c->data_size);
+    }
     if (!c->z || c->z->total > c->data_start) {
         if (!tz_cursor_open(c, c->section)) return false;
     }
     if (!tz_cursor_skip_to(c, c->data_start, pd)) return false;
+    keep = c->data_size <= TZ_REPEAT_CACHE;
+    if (keep && c->data_size != 0U && !c->cache) {
+        c->cache = (uint8_t *)xx_mem_alloc(TZ_REPEAT_CACHE);
+        if (!c->cache) keep = false;
+    }
     end = c->data_start + c->data_size;
     while (c->z->total < end) {
         uint64_t left = end - c->z->total;
-        size_t want = left < TZ_COPY_BUFFER ? (size_t)left : TZ_COPY_BUFFER;
+        size_t want = left < c->scratch_capacity ? (size_t)left : c->scratch_capacity;
         size_t got;
         if (pd && xx_pd_is_stopped(pd)) return false;
         if (!tz_lzma_read(c->z, c->scratch, want, &got) || got != want)
             return false;
         if (destination && !tz_write_all(destination, c->scratch, want))
             return false;
+        if (keep) {
+            xx_rt_memcpy(c->cache + cached, c->scratch, want);
+            cached += want;
+        }
     }
+    if (keep) c->cached_block = c->listed;
     return true;
 }
 

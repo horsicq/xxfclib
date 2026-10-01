@@ -66,6 +66,8 @@ typedef struct xx_spis_stream_s {
     size_t count;
     size_t index;
     int64_t archive_size;
+    uint32_t key;
+    bool key_ready;
 } xx_spis_stream;
 
 static void xx_spis_vtable_destroy(Abstractformat *self);
@@ -155,6 +157,8 @@ static bool xx_spis_add(xx_spis_stream *stream,
 #define XX_SPIS_FLAG_MAX 2U
 #define XX_SPIS_FLAG_OBFUSCATED 2U
 #define XX_SPIS_FLAG_KEY 0x01f4410bU
+#define XX_SPIS_KEY_PROBE_MAX_RAW 256U
+#define XX_SPIS_KEY_PROBE_MAX_PACKED (64U * 1024U)
 #define XX_SPIS_RLE_ESCAPE 0x94U
 
 /* Forward declarations: the parse and the decode
@@ -166,9 +170,10 @@ static xx_spis_stream *xx_spis_parse(Abstractformat *self, xx_pd_struct *pd);
 static uint16_t xx_spis_le16(const uint8_t *data);
 static uint32_t xx_spis_le32(const uint8_t *data);
 static bool xx_spis_rle_decode(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written, bool partial);
-static bool xx_spis_checksum_matches(uint32_t method, uint32_t flags, uint32_t stored, uint32_t sum);
+static bool xx_spis_checksum_matches(uint32_t method, uint32_t flags, uint32_t stored, uint32_t sum, uint32_t key);
 static bool xx_spis_member_guard(Abstractformat *self, const xx_spis_member *member, uint32_t *flags, uint32_t *checksum);
-static bool xx_spis_decode(Abstractformat *self, const xx_spis_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
+static bool xx_spis_prepare_key(Abstractformat *self, xx_spis_stream *stream, xx_pd_struct *pd);
+static bool xx_spis_decode(Abstractformat *self, const xx_spis_member *member, uint32_t key, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
 
 /* No member count is stored, so this is a runaway guard rather than a format
@@ -406,6 +411,7 @@ static xx_spis_stream *xx_spis_parse(Abstractformat *self, xx_pd_struct *pd) {
     stream = (xx_spis_stream *)xx_mem_alloc(sizeof(*stream));
     if (!stream) return NULL;
     xx_mem_zero(stream, sizeof(*stream));
+    stream->key = XX_SPIS_FLAG_KEY;
 
     if (archive_type == 0U) {
         if (!xx_spis_parse_single(self, span, method, total_raw, checksum,
@@ -664,12 +670,13 @@ static bool xx_spis_rle_decode(const uint8_t *input, size_t input_size,
  * flags bias the sum by the key.
  */
 static bool xx_spis_checksum_matches(uint32_t method, uint32_t flags,
-                                     uint32_t stored, uint32_t sum) {
+                                     uint32_t stored, uint32_t sum,
+                                     uint32_t key) {
     if (method == XX_SPIS_METHOD_NON && stored == 0U) return true;
     if (sum == stored) return true;
     if (flags == 0U) return false;
     if (method == XX_SPIS_METHOD_NON) sum = 0U;
-    return (uint32_t)(sum + XX_SPIS_FLAG_KEY) == stored;
+    return (uint32_t)(sum + key) == stored;
 }
 
 /*
@@ -705,8 +712,134 @@ static bool xx_spis_member_guard(Abstractformat *self,
     return true;
 }
 
+typedef struct xx_spis_key_probe_s {
+    uint8_t *packed;
+    uint8_t *unmasked;
+    uint8_t *plain;
+    size_t packed_size;
+    size_t plain_size;
+    uint32_t checksum;
+} xx_spis_key_probe;
+
+static void xx_spis_key_probe_free(xx_spis_key_probe *probe) {
+    if (!probe) return;
+    xx_mem_free(probe->packed);
+    xx_mem_free(probe->unmasked);
+    xx_mem_free(probe->plain);
+    xx_mem_zero(probe, sizeof(*probe));
+}
+
+static bool xx_spis_key_probe_load(Abstractformat *self,
+                                   const xx_spis_member *member,
+                                   xx_spis_key_probe *probe) {
+    uint32_t flags;
+    if (!self || !member || !probe ||
+        !xx_spis_member_guard(self, member, &flags, &probe->checksum) ||
+        flags != XX_SPIS_FLAG_OBFUSCATED)
+        return false;
+    probe->packed_size = (size_t)member->compressed_size;
+    probe->plain_size = (size_t)member->uncompressed_size;
+    probe->packed = (uint8_t *)xx_mem_alloc(probe->packed_size);
+    probe->unmasked = (uint8_t *)xx_mem_alloc(probe->packed_size);
+    probe->plain = (uint8_t *)xx_mem_alloc(probe->plain_size);
+    return probe->packed && probe->unmasked && probe->plain &&
+           xx_spis_read_at(self, member->data_offset, probe->packed,
+                            probe->packed_size);
+}
+
+static bool xx_spis_key_probe_matches(xx_spis_key_probe *probe,
+                                       uint32_t key) {
+    size_t index;
+    size_t written = 0U;
+    uint32_t sum = 0U;
+    if (!probe || !probe->packed || !probe->unmasked || !probe->plain)
+        return false;
+    for (index = 0U; index < probe->packed_size; ++index) {
+        probe->unmasked[index] = (uint8_t)(probe->packed[index] ^
+            (uint8_t)((key >> (8U * (index & 3U))) & 0xffU));
+    }
+    if (!xx_lzh1_decode_memory(probe->unmasked, probe->packed_size,
+                                probe->plain, probe->plain_size, &written) ||
+        written != probe->plain_size)
+        return false;
+    for (index = 0U; index < written; ++index) sum += probe->plain[index];
+    return (uint32_t)(sum + key) == probe->checksum;
+}
+
+/* TCompress uses a caller-selected key for flag-2 archives.  The checksum is
+ * the decoded byte sum plus that same key, so a small member bounds the key
+ * search to at most 255 times its raw size.  Two independent LZH members must
+ * both decode and satisfy their checksums before selecting a recovered key.
+ * The conservative size caps bound work on untrusted archives. */
+static bool xx_spis_prepare_key(Abstractformat *self, xx_spis_stream *stream,
+                                 xx_pd_struct *pd) {
+    xx_spis_key_probe probes[2];
+    size_t selected[2] = {SIZE_MAX, SIZE_MAX};
+    size_t index;
+    uint32_t delta;
+    uint32_t bound;
+    bool result = false;
+    if (!self || !stream) return false;
+    if (stream->key_ready) return true;
+    for (index = 0U; index < stream->count; ++index) {
+        const xx_spis_member *member = &stream->items[index];
+        uint32_t flags;
+        uint32_t checksum;
+        if (member->method != XX_SPIS_METHOD_LZH ||
+            member->uncompressed_size <= 0 ||
+            member->uncompressed_size > XX_SPIS_KEY_PROBE_MAX_RAW ||
+            member->compressed_size <= 0 ||
+            member->compressed_size > XX_SPIS_KEY_PROBE_MAX_PACKED)
+            continue;
+        if (!xx_spis_member_guard(self, member, &flags, &checksum)) return false;
+        if (flags != XX_SPIS_FLAG_OBFUSCATED) continue;
+        if (selected[0] == SIZE_MAX ||
+            member->uncompressed_size < stream->items[selected[0]].uncompressed_size) {
+            selected[1] = selected[0];
+            selected[0] = index;
+        } else if (selected[1] == SIZE_MAX ||
+                   member->uncompressed_size <
+                       stream->items[selected[1]].uncompressed_size) {
+            selected[1] = index;
+        }
+    }
+    if (selected[1] == SIZE_MAX) {
+        stream->key_ready = true;
+        return true;
+    }
+    xx_mem_zero(probes, sizeof(probes));
+    if (!xx_spis_key_probe_load(self, &stream->items[selected[0]], &probes[0]) ||
+        !xx_spis_key_probe_load(self, &stream->items[selected[1]], &probes[1]))
+        goto done;
+    if (xx_spis_key_probe_matches(&probes[0], stream->key) &&
+        xx_spis_key_probe_matches(&probes[1], stream->key)) {
+        result = true;
+        goto done;
+    }
+    bound = (uint32_t)(probes[0].plain_size * 255U);
+    for (delta = 0U; delta <= bound; ++delta) {
+        uint32_t candidate = probes[0].checksum - delta;
+        if ((delta & 255U) == 0U && pd && xx_pd_is_stopped(pd)) goto done;
+        if (candidate == stream->key) continue;
+        if (xx_spis_key_probe_matches(&probes[0], candidate) &&
+            xx_spis_key_probe_matches(&probes[1], candidate)) {
+            stream->key = candidate;
+            result = true;
+            break;
+        }
+    }
+    /* No recovered key leaves the historical default available for a later
+     * member. Its normal checksum gate still prevents bad bytes escaping. */
+    if (!result) result = true;
+done:
+    xx_spis_key_probe_free(&probes[0]);
+    xx_spis_key_probe_free(&probes[1]);
+    if (result) stream->key_ready = true;
+    return result;
+}
+
 static bool xx_spis_decode(Abstractformat *self, const xx_spis_member *member,
-                           uint8_t **out, size_t *out_size,
+                           uint32_t key, uint8_t **out, size_t *out_size,
                            xx_pd_struct *pd) {
     uint8_t *input = NULL;
     uint8_t *output = NULL;
@@ -767,7 +900,7 @@ static bool xx_spis_decode(Abstractformat *self, const xx_spis_member *member,
         member->method != XX_SPIS_METHOD_NON) {
         for (index = 0U; index < (size_t)member->compressed_size; ++index) {
             input[index] = (uint8_t)(input[index] ^
-                (uint8_t)((XX_SPIS_FLAG_KEY >> (8U * (index & 3U))) & 0xFFU));
+                (uint8_t)((key >> (8U * (index & 3U))) & 0xFFU));
         }
     }
 
@@ -815,7 +948,7 @@ static bool xx_spis_decode(Abstractformat *self, const xx_spis_member *member,
     for (index = 0U; index < (size_t)member->uncompressed_size; ++index) {
         sum += (uint32_t)output[index];
     }
-    if (!xx_spis_checksum_matches(member->method, flags, stored, sum)) {
+    if (!xx_spis_checksum_matches(member->method, flags, stored, sum, key)) {
         goto fail;
     }
 
@@ -1077,6 +1210,7 @@ bool xx_spis_unpack_current_archive_record(Abstractformat *self,
     if (!stream || stream->index >= stream->count) return false;
     member = &stream->items[stream->index];
     if (!xx_spis_path_safe(member->name)) return false;
+    if (!xx_spis_prepare_key(self, stream, pd)) return false;
 
     path_option = xx_spis_get_option(&state->options,
                                        XX_META_ID_OPT_UNPACK_PATH);
@@ -1084,7 +1218,8 @@ bool xx_spis_unpack_current_archive_record(Abstractformat *self,
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
         if (member->is_folder) return true;
-        result = xx_spis_decode(self, member, &plain, &plain_size, pd);
+        result = xx_spis_decode(self, member, stream->key, &plain,
+                                 &plain_size, pd);
         xx_mem_free(plain);
         return result;
     }
@@ -1116,7 +1251,8 @@ bool xx_spis_unpack_current_archive_record(Abstractformat *self,
         return result;
     }
     if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_spis_decode(self, member, &plain, &plain_size, pd)) {
+        !xx_spis_decode(self, member, stream->key, &plain,
+                         &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }

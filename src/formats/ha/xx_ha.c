@@ -47,6 +47,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/algo/ha/xx_ha.h"
+#include "xxfclib/algo/crc/xx_crc.h"
 
 #include <stdio.h>
 
@@ -60,6 +61,7 @@ typedef struct xx_ha_member_s {
     int64_t compressed_size;
     int64_t uncompressed_size;
     uint32_t method;
+    uint32_t crc32;
     uint64_t timestamp;
     bool is_folder;
 } xx_ha_member;
@@ -361,6 +363,7 @@ static xx_ha_stream *xx_ha_parse(Abstractformat *self, xx_pd_struct *pd) {
             member.compressed_size = packed;
             member.uncompressed_size = original;
             member.method = (uint32_t)method;
+            member.crc32 = xx_ha_le32(entry + 9U);
             member.timestamp = (uint64_t)xx_ha_le32(entry + 13);
             member.is_folder = (method == XX_HA_METHOD_DIR1) ||
                                (method == XX_HA_METHOD_DIR2);
@@ -477,6 +480,15 @@ static bool xx_ha_decode(Abstractformat *self, const xx_ha_member *member,
      * model comes from the method nibble and never from a retry. */
     if (!ok || written != plain_size) {
         xx_mem_free(plain);
+        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "HA arithmetic stream is invalid or has wrong decoded length");
+        return false;
+    }
+    /* HA's author verifies this for every CPY/ASC/HSC member, including a
+     * legitimate zero CRC. Primary: HA c/ha.c test/extract, c/haio.c getcrc.
+     * Check before a destination file is opened; damaged bytes never escape. */
+    if (xx_crc32_calc(0U, plain, plain_size) != member->crc32) {
+        xx_mem_free(plain);
+        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "HA member CRC-32 mismatch");
         return false;
     }
     *out = plain;
@@ -610,6 +622,8 @@ static bool xx_ha_set_record(xx_archive_record *record,
                (uint64_t)member->uncompressed_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
                                           member->method) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32,
+                                          member->crc32) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
                                           member->timestamp) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,

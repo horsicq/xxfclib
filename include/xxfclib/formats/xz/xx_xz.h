@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-/** @file xx_xz.h @brief Read-only standalone XZ stream reader. */
+/** @file xx_xz.h @brief Standalone XZ stream reader and writer. */
 
 #ifndef XXFCLIB_FORMAT_XZ_H
 #define XXFCLIB_FORMAT_XZ_H
@@ -58,6 +58,17 @@ XXFC_API uint64_t xx_xz_get_number_of_archive_records(
 /** Decode all concatenated XZ streams to a caller-provided device. */
 XXFC_API bool xx_xz_unpack_to_device(xx_xz *xz, xx_io_device *destination,
                                      xx_pd_struct *pd);
+
+/** Write one XZ stream with one LZMA2 block and a CRC64 integrity check.
+ *  The source must expose its size and support seeking; destination writes
+ *  start at its current position and do not require seeking. Source and
+ *  destination must be distinct. Levels are clamped to 1..9 (default 5).
+ *  Compression and CRC64 use one input pass with bounded codec buffers.
+ *  Failure leaves partial output. The caller owns and closes both devices. */
+XXFC_API bool xx_xz_pack_to_device(xx_io_device *source, int64_t source_offset,
+                                   int64_t uncompressed_size,
+                                   xx_io_device *destination, int level,
+                                   xx_pd_struct *pd);
 
 XXFC_API xx_archive_record_state *xx_xz_create_archive_records_reading(
     Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);

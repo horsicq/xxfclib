@@ -212,7 +212,9 @@ static bool bvrp_parse(Abstractformat *format, bvrp_stream **result) {
     /* The banner is not a flat space pad -- a CR/LF pair sits at 0x20 -- so
      * only the literal prefix and the vendor substring may be compared. */
     if (xx_rt_memcmp(header, "PAC - ", 6U) != 0 ||
-        xx_rt_memcmp(header + 10U, "BVRP Software", 13U) != 0 ||
+        !(xx_rt_memcmp(header + 6U, "(c) BVRP Software", 17U) == 0 ||
+          (header[6] == 0xa9U && header[7] == ' ' &&
+           xx_rt_memcmp(header + 8U, "BVRP Software", 13U) == 0)) ||
         xx_rt_memcmp(header + 0x4cU, "\x00\x0d\x0a\x1a", 4U) != 0 ||
         bvrp_le16(header + 0x50U) != BVRP_SIGNATURE)
         return false;
@@ -226,8 +228,10 @@ static bool bvrp_parse(Abstractformat *format, bvrp_stream **result) {
     cursor = (int64_t)first;
     for (index = 0U; index < count; ++index) {
         uint8_t entry[BVRP_ENTRY_SIZE];
+        uint8_t name_tail[BVRP_NAME_SIZE + 1U];
         bvrp_member member;
-        uint32_t next;
+        uint32_t next, crc_field, tail_size;
+        size_t name_size = 0U;
         if (cursor < 0 || cursor > size - (int64_t)BVRP_ENTRY_SIZE ||
             !bvrp_read_at(format->device, format->base_address + cursor, entry,
                           sizeof(entry)))
@@ -241,16 +245,34 @@ static bool bvrp_parse(Abstractformat *format, bvrp_stream **result) {
         if ((int64_t)next < cursor + (int64_t)BVRP_ENTRY_SIZE ||
             (int64_t)next > size)
             goto fail;
+        crc_field = bvrp_le32(entry + 0x1bU);
+        tail_size = crc_field >> 16U;
+        while (name_size < BVRP_NAME_SIZE && entry[name_size] != 0U)
+            ++name_size;
+        /* Some PAC writers append the NUL-terminated member name to each
+         * compressed payload and store that trailer length in the high word
+         * of the CRC field.  Verify it before removing it from the slice. */
+        if (tail_size != 0U) {
+            if (tail_size != name_size + 1U ||
+                (int64_t)tail_size > next - cursor - BVRP_ENTRY_SIZE ||
+                !bvrp_read_at(format->device,
+                              format->base_address + next - tail_size,
+                              name_tail, tail_size) ||
+                xx_rt_memcmp(name_tail, entry, name_size) != 0 ||
+                name_tail[name_size] != 0U)
+                goto fail;
+        }
         xx_mem_zero(&member, sizeof(member));
         member.name = bvrp_normalize_name(entry, BVRP_NAME_SIZE);
         if (!member.name) goto fail;
         member.header_offset = format->base_address + cursor;
         member.header_size = (int64_t)BVRP_ENTRY_SIZE;
         member.data_offset = member.header_offset + (int64_t)BVRP_ENTRY_SIZE;
-        member.packed_size = (int64_t)next - cursor - (int64_t)BVRP_ENTRY_SIZE;
+        member.packed_size = (int64_t)next - cursor -
+                             (int64_t)BVRP_ENTRY_SIZE - tail_size;
         member.unpacked_size = bvrp_le32(entry + 0x17U);
         member.method = entry[0x12U];
-        member.crc = bvrp_le32(entry + 0x1bU) & 0xffffU;
+        member.crc = crc_field & 0xffffU;
         member.dos_time = ((uint32_t)bvrp_le16(entry + 0x0eU) << 16U) |
                           bvrp_le16(entry + 0x10U);
         if (!bvrp_add_member(stream, &member)) {

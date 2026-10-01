@@ -34,6 +34,7 @@
  * tags lifted back out.
  */
 
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/izpack/xx_izpack.h"
 
@@ -74,7 +75,6 @@
 #define IZ_MAX_FIELDS 4096
 #define IZ_MAX_MEMBER_SIZE INT64_C(0x40000000) /* 1 GiB */
 #define IZ_MAX_NAME 4096
-#define IZ_BUFFER_SIZE 0x10000
 
 /* serialVersionUID (as stored) plus the declared field count is the only
  * version marker in the stream.  The pairing matters: v5, v6 and v7 share one
@@ -129,19 +129,23 @@ typedef struct iz_cursor_s {
     int64_t window_offset;
     int64_t window_size;
     uint8_t *window;
+    size_t io_capacity;
     bool failed;
 } iz_cursor;
 
 static bool iz_read_at(xx_io_device *device, int64_t offset, void *buffer,
                        size_t size) {
+    const size_t io_capacity = xx_get_file_buffer_size();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -154,7 +158,7 @@ static bool iz_cursor_fill(iz_cursor *cursor, int64_t offset) {
         return true;
     portion = cursor->size - offset;
     if (portion <= 0) return false;
-    if (portion > IZ_BUFFER_SIZE) portion = IZ_BUFFER_SIZE;
+    if ((uint64_t)portion > (uint64_t)cursor->io_capacity) portion = (int64_t)cursor->io_capacity;
     if (!iz_read_at(cursor->device, cursor->base + offset, cursor->window,
                     (size_t)portion)) {
         cursor->window_offset = -1;
@@ -707,7 +711,8 @@ static bool iz_parse(Abstractformat *format, iz_stream **result) {
     cursor.size = available;
     cursor.position = IZ_HEADER_SIZE;
     cursor.window_offset = -1;
-    cursor.window = (uint8_t *)xx_mem_alloc(IZ_BUFFER_SIZE);
+    cursor.io_capacity = xx_get_file_buffer_size();
+    cursor.window = (uint8_t *)xx_mem_alloc(cursor.io_capacity);
     if (!cursor.window) goto fail;
     xx_mem_zero(&parser, sizeof(parser));
     parser.cursor = &cursor;

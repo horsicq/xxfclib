@@ -11,11 +11,18 @@
  * the loader ends and an NVRAM block or the next flash partition begins.
  */
 
+/* The component archive API publishes the reset/API vectors and firmware
+ * bytes after the seal separately. No instruction is executed. The firmware
+ * body extends to the end of the handed device because CFE declares no size. */
+
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/cfe/xx_cfe.h"
 
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
+
+#include "../bmp/xx_component_archive_impl.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -119,6 +126,7 @@ void xx_cfe_init(xx_cfe *cfe, xx_io_device *dev, int64_t base_address) {
     cfe->format.destroy = xx_cfe_vtable_destroy;
     cfe->seal_offset = -1;
     cfe->image_size = -1;
+    xx_components_install(&cfe->format);
 }
 
 xx_cfe *xx_cfe_create(xx_io_device *dev, int64_t base_address) {
@@ -173,6 +181,7 @@ bool xx_cfe_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     self->overlay_offset = -1;
     self->overlay_size = 0;
     self->number_of_archive_records = 0U;
+    if (!xx_components_finish(self, pd)) return false;
     self->is_valid = true;
     self->base_info_handled = true;
     return true;
@@ -194,4 +203,12 @@ int64_t xx_cfe_get_seal_offset(const xx_cfe *cfe) {
 
 int64_t xx_cfe_get_image_size(const xx_cfe *cfe) {
     return cfe ? cfe->image_size : -1;
+}
+
+/* Encoded/structural component members; this does not decode media. */
+static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd) {
+
+    (void)pd;
+    return xx_component_add(f,s,0,28,"reset-and-api-vectors") &&
+        (f->format_size == 36 || xx_component_add(f,s,36,f->format_size-36,"firmware-body"));
 }

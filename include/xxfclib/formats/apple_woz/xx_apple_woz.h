@@ -1,6 +1,8 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
- * Independent bounded primary-layout reader. Payloads are never executed.
+ * Bounded WOZ1 5.25-inch and WOZ2 5.25-/3.5-inch reader, including INFO v3
+ * FLUX mappings. Members are the exact stored bitstreams or flux-timing
+ * bytes and metadata tables; protected tracks are not sector-decoded.
  */
 #ifndef XX_APPLE_WOZ_H
 #define XX_APPLE_WOZ_H

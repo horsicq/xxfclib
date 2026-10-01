@@ -22,6 +22,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/installshield_3/xx_installshield_3.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -46,7 +47,6 @@
 /* The descriptor sits inside the stub image; the known stubs are under
  * 0x19000 bytes.  Only this much of a PE image is ever scanned. */
 #define IS3_SCAN_LIMIT (4 * 1024 * 1024)
-#define IS3_SCAN_CHUNK 0x10000U
 /* Descriptor candidates tried per file, PE scan hits or NE resources. */
 #define IS3_MAX_CANDIDATES 32U
 #define IS3_PE_MAX_SECTIONS 96U
@@ -54,15 +54,10 @@
 #define IS3_MAX_RENAME_PASSES 4U
 /* Longest path component written, in UTF-8 bytes. */
 #define IS3_MAX_COMPONENT 200U
-/* Read-ahead window of the record walk; holds a whole record head. */
-#define IS3_WINDOW 2048U
 /* Candidates that pass every descriptor check get a full walk of the record
  * chain; a real file has exactly one.  Capping the walks bounds what a file
  * stuffed with copies of a descriptor can cost. */
 #define IS3_MAX_WALKS 3U
-
-typedef char is3_window_holds_a_record_head
-    [(IS3_WINDOW >= 4U + IS3_MAX_PATH + 8U) ? 1 : -1];
 
 static const uint8_t g_is3_magic[8] = {0x94, 0x01, 0x00, 0x00,
                                        0x06, 0x00, 0x00, 0x00};
@@ -115,13 +110,16 @@ static uint32_t is3_le32(const uint8_t *bytes) {
 static bool is3_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount =
-            xx_io_read(device, (uint8_t *)buffer + done, size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+            xx_io_read(device, (uint8_t *)buffer + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -508,7 +506,9 @@ typedef struct is3_window_s {
     int64_t base;
     int64_t start; /* relative offset of buffer[0]; -1 when empty */
     size_t length;
-    uint8_t buffer[IS3_WINDOW];
+    uint8_t *buffer;
+    size_t io_capacity;
+    uint8_t frame[IS3_MAX_PATH + 8U]; /* Complete encoded record head. */
 } is3_window;
 
 /* @p size bytes at relative @p offset, which the caller has checked to lie
@@ -517,12 +517,17 @@ typedef struct is3_window_s {
 static const uint8_t *is3_window_get(is3_window *window, int64_t limit,
                                      int64_t offset, size_t size) {
     int64_t want;
-    if (size > IS3_WINDOW || offset < 0) return NULL;
+    if (size > sizeof(window->frame) || offset < 0) return NULL;
+    if (size > window->io_capacity) {
+        if (limit - offset < (int64_t)size ||
+            !is3_read_at(window->device, window->base + offset, window->frame, size)) return NULL;
+        return window->frame;
+    }
     if (window->start >= 0 && offset >= window->start &&
         (uint64_t)(offset - window->start) + size <= window->length)
         return window->buffer + (size_t)(offset - window->start);
     want = limit - offset;
-    if (want > (int64_t)IS3_WINDOW) want = (int64_t)IS3_WINDOW;
+    if ((uint64_t)want > window->io_capacity) want = (int64_t)window->io_capacity;
     if (want < (int64_t)size) return NULL;
     window->start = -1;
     if (!is3_read_at(window->device, window->base + offset, window->buffer,
@@ -544,42 +549,46 @@ static bool is3_walk(xx_io_device *device, int64_t base,
     int64_t end = layout->archive_size;
     uint64_t name_bytes = 0U;
     uint32_t index;
+    bool result = false;
     window.device = device;
     window.base = base;
     window.start = -1;
     window.length = 0U;
+    window.io_capacity = xx_get_file_buffer_size();
+    window.buffer = (uint8_t *)xx_mem_alloc(window.io_capacity);
+    if (!window.buffer) return false;
     if (stream) {
         stream->items = (is3_member *)xx_mem_calloc(layout->count,
                                                     sizeof(is3_member));
-        if (!stream->items) return false;
+        if (!stream->items) goto done;
     }
     for (index = 0U; index < layout->count; ++index) {
         uint32_t length, size;
         size_t k;
         int64_t data;
-        if (pd && xx_pd_is_stopped(pd)) return false;
+        if (pd && xx_pd_is_stopped(pd)) goto done;
         if (!is3_range_within(end, position, IS3_MIN_RECORD) ||
             !(view = is3_window_get(&window, end, position, 4U)))
-            return false;
+            goto done;
         length = is3_le32(view);
         if (length == 0U || length > IS3_MAX_PATH ||
             !is3_range_within(end, position + 4, (int64_t)length + 8) ||
             !(view = is3_window_get(&window, end, position + 4,
                                     (size_t)length + 8U)))
-            return false;
+            goto done;
         xx_rt_memcpy(buffer, view, (size_t)length + 8U);
         name_bytes += length;
-        if (name_bytes > IS3_MAX_NAME_BYTES) return false;
+        if (name_bytes > IS3_MAX_NAME_BYTES) goto done;
         xx_installshield_3_decode(buffer, length);
         for (k = 0U; k < length; ++k)
-            if (!is3_char_ok(buffer[k])) return false;
+            if (!is3_char_ok(buffer[k])) goto done;
         size = is3_le32(buffer + length + 4U);
         data = position + 4 + (int64_t)length + 8;
-        if (!is3_range_within(end, data, (int64_t)size)) return false;
+        if (!is3_range_within(end, data, (int64_t)size)) goto done;
         if (stream) {
             is3_member *member = &stream->items[stream->count];
             member->name = is3_make_name(layout, buffer, length, index);
-            if (!member->name) return false;
+            if (!member->name) goto done;
             member->header_offset = base + position;
             member->header_size = data - position;
             member->data_offset = base + data;
@@ -591,7 +600,10 @@ static bool is3_walk(xx_io_device *device, int64_t base,
         }
         position = data + (int64_t)size;
     }
-    return position == end;
+    result = position == end;
+done:
+    xx_mem_free(window.buffer);
+    return result;
 }
 
 /* Validate a descriptor candidate at @p offset.  The records must start at
@@ -667,6 +679,7 @@ static bool is3_first_record_ok(xx_io_device *device, int64_t base,
 static bool is3_locate_pe(xx_io_device *device, int64_t base,
                           int64_t available, int64_t header,
                           is3_layout *layout, xx_pd_struct *pd) {
+    const size_t io_capacity = xx_get_file_buffer_size();
     uint8_t coff[24];
     uint8_t optional[64];
     uint8_t sections[IS3_PE_MAX_SECTIONS * 40U];
@@ -710,32 +723,29 @@ static bool is3_locate_pe(xx_io_device *device, int64_t base,
         return false;
 
     scan_end = image_end < IS3_SCAN_LIMIT ? image_end : IS3_SCAN_LIMIT;
-    chunk = (uint8_t *)xx_mem_alloc(IS3_SCAN_CHUNK + 8U);
+    chunk = (uint8_t *)xx_mem_alloc(io_capacity);
     if (!chunk) return false;
-    /* Chunks overlap by 7 bytes so a magic across a boundary is seen. */
-    for (position = 0; position + 8 <= scan_end && !found;
-         position += IS3_SCAN_CHUNK) {
-        int64_t want = scan_end - position;
-        size_t amount, at;
-        if (want > (int64_t)IS3_SCAN_CHUNK + 7) want = IS3_SCAN_CHUNK + 7;
-        amount = (size_t)want;
+    for (position = 0; scan_end - position >= 8 && !found;) {
+        uint64_t left = (uint64_t)(scan_end - position - 7);
+        size_t amount = left < io_capacity ? (size_t)left : io_capacity, at;
         if (pd && xx_pd_is_stopped(pd)) break;
         if (!is3_read_at(device, base + position, chunk, amount)) break;
-        for (at = 0U; at + 8U <= amount && !found; ++at) {
-            if (chunk[at] != 0x94U ||
-                xx_rt_memcmp(chunk + at, g_is3_magic, 8U) != 0)
-                continue;
-            if (++tried > IS3_MAX_CANDIDATES) {
-                position = scan_end;
-                break;
+        for (at = 0U; at < amount && !found; ++at) {
+            uint8_t frame[8];
+            const uint8_t *bytes = chunk + at;
+            if (chunk[at] != 0x94U) continue;
+            if (amount - at < sizeof(frame)) {
+                if (!is3_read_at(device, base + position + (int64_t)at, frame, sizeof(frame))) continue;
+                bytes = frame;
             }
+            if (xx_rt_memcmp(bytes, g_is3_magic, 8U) != 0) continue;
+            if (++tried > IS3_MAX_CANDIDATES) { position = scan_end; break; }
             found = is3_check_descriptor(device, base, available,
                                          position + (int64_t)at,
-                                         (int64_t)at + position +
-                                             IS3_DESC_SIZE,
-                                         image_end, false, layout, &walks,
-                                         pd);
+                                         position + (int64_t)at + IS3_DESC_SIZE,
+                                         image_end, false, layout, &walks, pd);
         }
+        if (position < scan_end) position += (int64_t)amount;
     }
     xx_mem_free(chunk);
     return found;

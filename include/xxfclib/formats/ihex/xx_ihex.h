@@ -88,6 +88,9 @@ struct xx_ihex {
     uint8_t entry_type;              /**< 3 or 5; 0 when absent. */
     bool has_entry_point;
     bool has_eof_record;
+    bool has_incomplete_records;    /**< A recognizable malformed record or
+                                         record-allocation cap stopped the
+                                         accepted prefix past 64 KiB. */
     bool has_segment_records;        /**< At least one type 02 record. */
     bool has_linear_records;         /**< At least one type 04 record. */
     int64_t stream_end;              /**< base_address + format_size, or -1. */

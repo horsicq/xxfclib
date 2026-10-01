@@ -23,8 +23,11 @@
  *   3. on carriers that ship a product, a complete ARCV 4.00 container
  *      ("ARCV" 00 04), read through the existing ARCV4 reader.
  *
- * Members: SETUPMN.DLL, SETUP_SCRIPT.DFM (when the script decodes), then
- * every ARCV4 member under the name the ARCV4 reader gives it.
+ * Members: SETUPMN.DLL, SETUP_SCRIPT.DFM (whenever the script region is not
+ * empty), then every ARCV4 member under the name the ARCV4 reader gives it.
+ * A script region that does not decode, and a product container that is
+ * present but damaged (listed as PRODUCT_ARCHIVE.ARCV), are members whose
+ * extraction always fails, so the loss is visible.
  */
 
 #ifndef XXFCLIB_FORMAT_ESCHALON_SETUP_EPSF_H
@@ -49,6 +52,11 @@ typedef struct xx_eschalon_setup_epsf {
     int64_t archive_offset;       /**< ARCV 4.00 container, absolute; -1 if none. */
     int64_t archive_size;         /**< Size of that container; 0 if none. */
     uint64_t archive_records;     /**< Members of that container. */
+    /** An ARCV 4.00 container whose header, first FILE and first DATA chunk
+     *  are well formed but whose record chain does not parse (truncated or
+     *  damaged), absolute; -1 if none.  It is listed as the member
+     *  PRODUCT_ARCHIVE.ARCV, which cannot be extracted. */
+    int64_t damaged_archive_offset;
 } xx_eschalon_setup_epsf;
 
 typedef xx_eschalon_setup_epsf xx_eschalon_setup_epsf_t;

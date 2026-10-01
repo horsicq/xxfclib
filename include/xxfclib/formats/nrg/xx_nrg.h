@@ -73,6 +73,10 @@ XXFC_API xx_nrg *xx_nrg_create(xx_io_device *device, int64_t base_address);
 XXFC_API void xx_nrg_destroy(xx_nrg *archive);
 XXFC_API void xx_nrg_free(xx_nrg *archive);
 
+/** Cheap detector gate: a bounded read of the EOF NERO/NER5 footer and its
+ *  chunk-list offset. This does not validate the referenced track table. */
+XXFC_API bool xx_nrg_probe_device(xx_io_device *device);
+
 XXFC_API bool xx_nrg_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_nrg_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_nrg_get_format_size(Abstractformat *self,

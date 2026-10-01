@@ -17,6 +17,7 @@
  * licence, Copyright (C) 2016-2026 Jason Summers).
  */
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/formats/arcfs/xx_arcfs.h"
 
 #include "xxfclib/algo/arcfs/xx_arcfs_lzw.h"
@@ -28,6 +29,7 @@
 #include <limits.h>
 #include <stdio.h>
 
+
 #define ARCFS_HEADER_SIZE 96U
 #define ARCFS_ENTRY_SIZE 36U
 #define ARCFS_NAME_FIELD 11U
@@ -35,7 +37,7 @@
 #define ARCFS_MAX_DEPTH 64U
 #define ARCFS_TABLE_BATCH 64U
 /* Longest component: eleven three-byte UTF-8 sequences, a one-byte guard
- * prefix for device names, "~" plus ten serial digits, and the NUL. */
+ * prefix for device names, "_" plus ten serial digits, and the NUL. */
 #define ARCFS_COMPONENT_MAX (ARCFS_NAME_FIELD * 3U + 1U + 11U + 1U)
 /* RISC OS machines of the ArcFS era could not hold members anywhere near
  * this size; it bounds all buffers one compressed member may need, which
@@ -69,6 +71,7 @@ typedef struct arcfs_member_s {
     uint8_t max_bits;
     bool folder;
     bool truncated;
+    bool shared_data;         /* data reuses bytes earlier members spent */
 } arcfs_member;
 
 typedef struct arcfs_stream_s {
@@ -79,9 +82,22 @@ typedef struct arcfs_stream_s {
     int64_t archive_size;
 } arcfs_stream;
 
+/* Member paths seen so far, as an AVL tree ordered by the case-folded
+ * comparison.  A tree rather than a hash table: hostile names cannot be
+ * chosen to collide, so every lookup costs O(log n) comparisons.  Node 0
+ * is the empty link; nodes are numbered from 1. */
+typedef struct arcfs_name_node_s {
+    const char *name;
+    uint32_t left;
+    uint32_t right;
+    uint32_t height;
+} arcfs_name_node;
+
 typedef struct arcfs_name_set_s {
-    const char **slots;
-    size_t mask;
+    arcfs_name_node *nodes;
+    uint32_t root;
+    uint32_t count;
+    uint32_t capacity;
 } arcfs_name_set;
 
 /* RISC OS Latin-1 0x80..0x9F; 0 marks an unassigned code. */
@@ -92,20 +108,44 @@ static const uint16_t arcfs_riscos_high[32] = {
     0x2014, 0x2212, 0x0152, 0x0153, 0x2020, 0x2021, 0xfb01, 0xfb02
 };
 
-/* CRC-16/ARC (reflected 0x8005, init 0), one nibble at a time. */
-static const uint16_t arcfs_crc_nibble[16] = {
-    0x0000, 0xcc01, 0xd801, 0x1400, 0xf001, 0x3c00, 0x2800, 0xe401,
-    0xa001, 0x6c00, 0x7800, 0xb401, 0x5000, 0x9c01, 0x8801, 0x4400
-};
+#include "xxfclib/global/xx_global.h"
+static size_t gb_arcfs_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_arcfs_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_arcfs_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+
 
 static uint16_t arcfs_crc16(uint16_t crc, const uint8_t *data, size_t size) {
-    size_t index;
-    for (index = 0U; index < size; ++index) {
-        crc = (uint16_t)((crc >> 4U) ^ arcfs_crc_nibble[(crc ^ data[index]) & 0x0fU]);
-        crc = (uint16_t)((crc >> 4U) ^
-                         arcfs_crc_nibble[(crc ^ (data[index] >> 4U)) & 0x0fU]);
-    }
-    return crc;
+    return xx_crc16_arc_calc(crc, data, size);
 }
 
 static uint32_t arcfs_le32(const uint8_t *bytes) {
@@ -115,13 +155,14 @@ static uint32_t arcfs_le32(const uint8_t *bytes) {
 
 static bool arcfs_read_at(xx_io_device *device, int64_t offset, void *buffer,
                           size_t size) {
+    const size_t file_io_capacity = gb_arcfs_capacity();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = gb_arcfs_read(device, (uint8_t *)buffer + done,
+                                    size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -130,9 +171,10 @@ static bool arcfs_read_at(xx_io_device *device, int64_t offset, void *buffer,
 
 static bool arcfs_write_all(xx_io_device *device, const uint8_t *data,
                             size_t size) {
+    const size_t file_io_capacity = gb_arcfs_capacity();
     size_t done = 0U;
     while (done < size) {
-        ssize_t amount = xx_io_write(device, data + done, size - done);
+        ssize_t amount = gb_arcfs_write(device, data + done, size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -205,7 +247,10 @@ static bool arcfs_is_device_name(const char *name, size_t length) {
  * @p out (ARCFS_COMPONENT_MAX bytes).  RISC OS spells "name.ext" as
  * "name/ext", so '/' becomes '.'; characters Windows refuses become '_';
  * trailing dots and spaces are dropped and device names gain a '_' prefix.
- * Returns the length, or 0 for an empty field. */
+ * A '~' followed by a digit becomes '_': that is the shape of an NTFS 8.3
+ * short name ("ABCDEF~1"), which would open the file an earlier long-named
+ * member created instead of a new one.  Returns the length, or 0 for an
+ * empty field. */
 static size_t arcfs_component(const uint8_t *raw, char *out) {
     size_t index, length = 0U, raw_length = 0U;
     while (raw_length < ARCFS_NAME_FIELD && raw[raw_length] != 0U) ++raw_length;
@@ -227,6 +272,10 @@ static size_t arcfs_component(const uint8_t *raw, char *out) {
     while (length != 0U && (out[length - 1U] == ' ' || out[length - 1U] == '.'))
         --length;
     if (length == 0U) out[length++] = '_';
+    for (index = 0U; index + 1U < length; ++index) {
+        if (out[index] == '~' && out[index + 1U] >= '0' && out[index + 1U] <= '9')
+            out[index] = '_';
+    }
     if (arcfs_is_device_name(out, length)) {
         for (index = length; index != 0U; --index) out[index] = out[index - 1U];
         out[0] = '_';
@@ -264,57 +313,112 @@ static uint32_t arcfs_fold_next(const char *text, size_t *at) {
     return code;
 }
 
-static size_t arcfs_name_hash(const char *name) {
-    uint64_t hash = UINT64_C(1469598103934665603);
-    size_t at = 0U;
-    while (name[at]) {
-        hash ^= arcfs_fold_next(name, &at);
-        hash *= UINT64_C(1099511628211);
-    }
-    return (size_t)(hash ^ (hash >> 29U));
-}
-
-static bool arcfs_name_equal(const char *left, const char *right) {
+/* Orders two names the way Windows compares them (see arcfs_fold_next). */
+static int arcfs_name_compare(const char *left, const char *right) {
     size_t a = 0U, b = 0U;
     while (left[a] && right[b]) {
-        if (arcfs_fold_next(left, &a) != arcfs_fold_next(right, &b))
-            return false;
+        uint32_t x = arcfs_fold_next(left, &a);
+        uint32_t y = arcfs_fold_next(right, &b);
+        if (x != y) return x < y ? -1 : 1;
     }
-    return left[a] == 0 && right[b] == 0;
+    if (left[a] == 0 && right[b] == 0) return 0;
+    return left[a] == 0 ? -1 : 1;
 }
 
 static bool arcfs_name_set_init(arcfs_name_set *set, size_t members) {
-    size_t capacity = 16U;
-    while (capacity < members * 2U) capacity <<= 1U;
-    set->slots = (const char **)xx_mem_calloc(capacity, sizeof(*set->slots));
-    set->mask = capacity - 1U;
-    return set->slots != NULL;
+    set->root = 0U;
+    set->count = 0U;
+    set->capacity = (uint32_t)members;
+    set->nodes = (arcfs_name_node *)xx_mem_calloc(members + 1U,
+                                                  sizeof(*set->nodes));
+    return set->nodes != NULL;
 }
 
 static bool arcfs_name_set_contains(const arcfs_name_set *set,
                                     const char *name) {
-    size_t slot = arcfs_name_hash(name) & set->mask;
-    size_t probes;
-    for (probes = 0U; probes <= set->mask; ++probes) {
-        const char *entry = set->slots[slot];
-        if (!entry) return false;
-        if (arcfs_name_equal(entry, name)) return true;
-        slot = (slot + 1U) & set->mask;
+    uint32_t node = set->root;
+    /* An AVL tree of at most ARCFS_MAX_MEMBERS nodes is under 26 deep; the
+     * cap only guards against a damaged tree. */
+    size_t steps;
+    for (steps = 0U; node != 0U && steps < 64U; ++steps) {
+        int order = arcfs_name_compare(name, set->nodes[node].name);
+        if (order == 0) return true;
+        node = order < 0 ? set->nodes[node].left : set->nodes[node].right;
     }
     return false;
 }
 
-/* The set is sized for twice the table's entry count, so it never fills. */
-static void arcfs_name_set_insert(arcfs_name_set *set, const char *name) {
-    size_t slot = arcfs_name_hash(name) & set->mask;
-    size_t probes;
-    for (probes = 0U; probes <= set->mask; ++probes) {
-        if (!set->slots[slot]) {
-            set->slots[slot] = name;
-            return;
-        }
-        slot = (slot + 1U) & set->mask;
+static uint32_t arcfs_node_height(const arcfs_name_set *set, uint32_t node) {
+    return node != 0U ? set->nodes[node].height : 0U;
+}
+
+static void arcfs_node_update(arcfs_name_set *set, uint32_t node) {
+    uint32_t left = arcfs_node_height(set, set->nodes[node].left);
+    uint32_t right = arcfs_node_height(set, set->nodes[node].right);
+    set->nodes[node].height = (left > right ? left : right) + 1U;
+}
+
+static uint32_t arcfs_node_rotate_right(arcfs_name_set *set, uint32_t node) {
+    uint32_t pivot = set->nodes[node].left;
+    set->nodes[node].left = set->nodes[pivot].right;
+    set->nodes[pivot].right = node;
+    arcfs_node_update(set, node);
+    arcfs_node_update(set, pivot);
+    return pivot;
+}
+
+static uint32_t arcfs_node_rotate_left(arcfs_name_set *set, uint32_t node) {
+    uint32_t pivot = set->nodes[node].right;
+    set->nodes[node].right = set->nodes[pivot].left;
+    set->nodes[pivot].left = node;
+    arcfs_node_update(set, node);
+    arcfs_node_update(set, pivot);
+    return pivot;
+}
+
+/* Inserts node @p added below @p node and returns the new subtree root.
+ * The recursion follows one root-to-leaf path, so it is as deep as the
+ * tree (under 26 levels). */
+static uint32_t arcfs_node_insert(arcfs_name_set *set, uint32_t node,
+                                  uint32_t added) {
+    uint32_t left, right;
+    if (node == 0U) return added;
+    if (arcfs_name_compare(set->nodes[added].name, set->nodes[node].name) < 0)
+        set->nodes[node].left = arcfs_node_insert(set, set->nodes[node].left,
+                                                  added);
+    else
+        set->nodes[node].right = arcfs_node_insert(set, set->nodes[node].right,
+                                                   added);
+    arcfs_node_update(set, node);
+    left = arcfs_node_height(set, set->nodes[node].left);
+    right = arcfs_node_height(set, set->nodes[node].right);
+    if (left > right + 1U) {
+        uint32_t child = set->nodes[node].left;
+        if (arcfs_node_height(set, set->nodes[child].right) >
+            arcfs_node_height(set, set->nodes[child].left))
+            set->nodes[node].left = arcfs_node_rotate_left(set, child);
+        return arcfs_node_rotate_right(set, node);
     }
+    if (right > left + 1U) {
+        uint32_t child = set->nodes[node].right;
+        if (arcfs_node_height(set, set->nodes[child].left) >
+            arcfs_node_height(set, set->nodes[child].right))
+            set->nodes[node].right = arcfs_node_rotate_right(set, child);
+        return arcfs_node_rotate_left(set, node);
+    }
+    return node;
+}
+
+/* The set is sized for the table's entry count, so it never fills. */
+static void arcfs_name_set_insert(arcfs_name_set *set, const char *name) {
+    uint32_t added;
+    if (set->count >= set->capacity) return;
+    added = ++set->count;
+    set->nodes[added].name = name;
+    set->nodes[added].left = 0U;
+    set->nodes[added].right = 0U;
+    set->nodes[added].height = 1U;
+    set->root = arcfs_node_insert(set, set->root, added);
 }
 
 static char *arcfs_join_path(char *const *directories, size_t depth,
@@ -346,16 +450,23 @@ static char *arcfs_join_path(char *const *directories, size_t depth,
 
 /* Builds the member path and, when an earlier member already owns it (the
  * archive repeats a name, or two names became equal after sanitising or
- * case folding), appends "~<serial>" to the component until it is unique.
- * Every failed attempt matches a distinct earlier path, so the loop is
- * bounded by the member count. */
+ * case folding), inserts "_<serial>" before the component's extension
+ * ("name_1.txt", "name_2") until it is unique.  The suffix never takes the
+ * "~<digit>" shape of an 8.3 short name.  Every failed attempt matches a
+ * distinct earlier path, so the loop is bounded by the member count. */
 static char *arcfs_unique_path(const arcfs_name_set *set,
                                char *const *directories, size_t depth,
                                char *component, uint32_t *serial) {
-    size_t base = xx_str_len(component);
+    char extension[ARCFS_COMPONENT_MAX];
+    size_t base = xx_str_len(component), dot = 0U, index;
+    for (index = 1U; index < base; ++index) {
+        if (component[index] == '.') dot = index;
+    }
+    if (dot == 0U) dot = base;
+    xx_rt_memcpy(extension, component + dot, base - dot + 1U);
     for (;;) {
         char digits[10];
-        size_t count = 0U, index;
+        size_t count = 0U, at;
         uint32_t value;
         char *path = arcfs_join_path(directories, depth, component);
         if (!path || !arcfs_name_set_contains(set, path)) return path;
@@ -366,10 +477,11 @@ static char *arcfs_unique_path(const arcfs_name_set *set,
             digits[count++] = (char)('0' + value % 10U);
             value /= 10U;
         } while (value != 0U);
-        component[base] = '~';
+        at = dot;
+        component[at++] = '_';
         for (index = 0U; index < count; ++index)
-            component[base + 1U + index] = digits[count - 1U - index];
-        component[base + 1U + count] = 0;
+            component[at++] = digits[count - 1U - index];
+        xx_rt_memcpy(component + at, extension, base - dot + 1U);
     }
 }
 
@@ -403,15 +515,22 @@ static void arcfs_stream_free(void *opaque) {
     arcfs_stream *stream = (arcfs_stream *)opaque;
     size_t index;
     if (!stream) return;
-    for (index = 0U; index < stream->count; ++index) {
+    for (index = 0U; stream->items && index < stream->count; ++index) {
         if (stream->items[index].name) xx_mem_free(stream->items[index].name);
     }
     if (stream->items) xx_mem_free(stream->items);
     xx_mem_free(stream);
 }
 
-static bool arcfs_add_member(arcfs_stream *stream, const arcfs_member *member) {
+/* Appends @p member, or with @p store false only counts it: the validity
+ * probe and base info need the counts and extent, not the members. */
+static bool arcfs_add_member(arcfs_stream *stream, const arcfs_member *member,
+                             bool store) {
     if (!stream || !member || stream->count >= ARCFS_MAX_MEMBERS) return false;
+    if (!store) {
+        ++stream->count;
+        return true;
+    }
     if (stream->count == stream->capacity) {
         /* Geometric growth: a 100000-entry table must not cost 100000
          * reallocations.  ARCFS_MAX_MEMBERS keeps the product small. */
@@ -428,17 +547,24 @@ static bool arcfs_add_member(arcfs_stream *stream, const arcfs_member *member) {
     return true;
 }
 
-static bool arcfs_parse(Abstractformat *format, arcfs_stream **result) {
+/* Walks the table.  With @p list false (validity probe, base info) only the
+ * counts and the archive extent are produced: no member paths are built and
+ * no duplicate index is kept, so detection costs one pass over the table.
+ * Validity does not depend on @p list: the path budget uses the names as
+ * the table spells them, before any duplicate suffix. */
+static bool arcfs_parse(Abstractformat *format, arcfs_stream **result,
+                        bool list) {
     uint8_t header[ARCFS_HEADER_SIZE];
     uint8_t table[ARCFS_TABLE_BATCH * ARCFS_ENTRY_SIZE];
     char component[ARCFS_COMPONENT_MAX];
     char *directories[ARCFS_MAX_DEPTH] = { NULL };
+    size_t directory_lengths[ARCFS_MAX_DEPTH];
     arcfs_stream *stream = NULL;
-    arcfs_name_set names = { NULL, 0U };
+    arcfs_name_set names = { NULL, 0U, 0U, 0U };
     int64_t total, size, directory_size, data_base, archive_size;
     uint32_t entry_count, entry_index, batch_first = 0U, batch_count = 0U;
     uint32_t serial = 0U;
-    uint64_t name_bytes = 0U;
+    uint64_t name_bytes = 0U, prefix_bytes = 0U, data_spent = 0U, data_budget;
     size_t depth = 0U, sound = 0U;
     bool valid = false;
 
@@ -461,8 +587,10 @@ static bool arcfs_parse(Abstractformat *format, arcfs_stream **result) {
     if (directory_size / ARCFS_ENTRY_SIZE > ARCFS_MAX_MEMBERS) return false;
     entry_count = (uint32_t)(directory_size / ARCFS_ENTRY_SIZE);
     stream = (arcfs_stream *)xx_mem_calloc(1U, sizeof(*stream));
-    if (!stream || !arcfs_name_set_init(&names, entry_count)) goto done;
+    if (!stream || (list && !arcfs_name_set_init(&names, entry_count)))
+        goto done;
     archive_size = data_base;
+    data_budget = (uint64_t)(size - data_base) * 2U;
     if ((int64_t)ARCFS_HEADER_SIZE + directory_size > archive_size)
         archive_size = (int64_t)ARCFS_HEADER_SIZE + directory_size;
 
@@ -470,6 +598,7 @@ static bool arcfs_parse(Abstractformat *format, arcfs_stream **result) {
         const uint8_t *entry;
         uint8_t status;
         uint32_t raw_offset;
+        size_t component_length;
         arcfs_member member;
         int64_t entry_offset = (int64_t)ARCFS_HEADER_SIZE +
                                (int64_t)entry_index * ARCFS_ENTRY_SIZE;
@@ -488,19 +617,21 @@ static bool arcfs_parse(Abstractformat *format, arcfs_stream **result) {
         if (status == ARCFS_STATUS_END) {
             /* The root's own end marker; later slots are unused. */
             if (depth == 0U) break;
-            xx_mem_free(directories[--depth]);
+            --depth;
+            prefix_bytes -= (uint64_t)directory_lengths[depth] + 1U;
+            if (directories[depth]) xx_mem_free(directories[depth]);
             directories[depth] = NULL;
             continue;
         }
-        if (arcfs_component(entry + 1U, component) == 0U) goto done;
+        component_length = arcfs_component(entry + 1U, component);
+        if (component_length == 0U) goto done;
+        name_bytes += prefix_bytes + (uint64_t)component_length + 1U;
+        if (name_bytes > ARCFS_MAX_NAME_BYTES) goto done;
         xx_rt_memset(&member, 0, sizeof(member));
-        member.name = arcfs_unique_path(&names, directories, depth, component,
-                                        &serial);
-        if (!member.name) goto done;
-        name_bytes += (uint64_t)xx_str_len(member.name) + 1U;
-        if (name_bytes > ARCFS_MAX_NAME_BYTES) {
-            xx_mem_free(member.name);
-            goto done;
+        if (list) {
+            member.name = arcfs_unique_path(&names, directories, depth,
+                                            component, &serial);
+            if (!member.name) goto done;
         }
         member.header_offset = format->base_address + entry_offset;
         member.method = status;
@@ -513,23 +644,33 @@ static bool arcfs_parse(Abstractformat *format, arcfs_stream **result) {
         member.declared_packed = arcfs_le32(entry + 28U);
         raw_offset = arcfs_le32(entry + 32U);
         if (raw_offset & UINT32_C(0x80000000)) {
-            size_t length = xx_str_len(component);
-            char *copy;
+            char *copy = NULL;
             member.folder = true;
             member.data_offset = -1;
-            if (depth >= ARCFS_MAX_DEPTH ||
-                !(copy = (char *)xx_mem_alloc(length + 1U))) {
-                xx_mem_free(member.name);
+            if (depth >= ARCFS_MAX_DEPTH) {
+                if (member.name) xx_mem_free(member.name);
                 goto done;
             }
-            xx_rt_memcpy(copy, component, length + 1U);
-            if (!arcfs_add_member(stream, &member)) {
-                xx_mem_free(copy);
-                xx_mem_free(member.name);
+            if (list) {
+                /* The renamed component, so children follow their folder. */
+                size_t length = xx_str_len(component);
+                copy = (char *)xx_mem_alloc(length + 1U);
+                if (!copy) {
+                    xx_mem_free(member.name);
+                    goto done;
+                }
+                xx_rt_memcpy(copy, component, length + 1U);
+            }
+            if (!arcfs_add_member(stream, &member, list)) {
+                if (copy) xx_mem_free(copy);
+                if (member.name) xx_mem_free(member.name);
                 goto done;
             }
-            arcfs_name_set_insert(&names, member.name);
-            directories[depth++] = copy;
+            if (list) arcfs_name_set_insert(&names, member.name);
+            directories[depth] = copy;
+            directory_lengths[depth] = component_length;
+            prefix_bytes += (uint64_t)component_length + 1U;
+            ++depth;
             ++sound;
             continue;
         }
@@ -538,20 +679,38 @@ static bool arcfs_parse(Abstractformat *format, arcfs_stream **result) {
                                 (uint64_t)(raw_offset & UINT32_C(0x7fffffff));
             uint64_t start = relative < (uint64_t)size ? relative : (uint64_t)size;
             uint64_t available = (uint64_t)size - start;
-            member.truncated = (uint64_t)member.declared_packed > available;
+            /* A member that starts past the end is cut short even when it
+             * declares no data. */
+            member.truncated = relative > (uint64_t)size ||
+                               (uint64_t)member.declared_packed > available;
             member.packed_size = member.truncated
                                      ? (int64_t)available
                                      : (int64_t)member.declared_packed;
             member.data_offset = format->base_address + (int64_t)relative;
             if ((int64_t)start + member.packed_size > archive_size)
                 archive_size = (int64_t)start + member.packed_size;
-            if (!member.truncated) ++sound;
+            if (!member.truncated) {
+                /* Entries may point at the same bytes.  Complete members
+                 * together may spend each byte of the data area at most
+                 * twice (real archives spend it once; the slack keeps one
+                 * corrupt oversized entry from blocking the members after
+                 * it).  A member that would go over reuses earlier
+                 * members' data and is listed but not unpacked, so a small
+                 * table cannot multiply one stored blob into a huge
+                 * output. */
+                if ((uint64_t)member.packed_size >
+                    data_budget - data_spent)
+                    member.shared_data = true;
+                else
+                    data_spent += (uint64_t)member.packed_size;
+                ++sound;
+            }
         }
-        if (!arcfs_add_member(stream, &member)) {
-            xx_mem_free(member.name);
+        if (!arcfs_add_member(stream, &member, list)) {
+            if (member.name) xx_mem_free(member.name);
             goto done;
         }
-        arcfs_name_set_insert(&names, member.name);
+        if (list) arcfs_name_set_insert(&names, member.name);
     }
     /* At least one directory or complete file: a table whose every data
      * pointer lies past the end of the file is not an archive we can use. */
@@ -560,10 +719,11 @@ static bool arcfs_parse(Abstractformat *format, arcfs_stream **result) {
     valid = true;
 done:
     while (depth != 0U) {
-        xx_mem_free(directories[--depth]);
+        --depth;
+        if (directories[depth]) xx_mem_free(directories[depth]);
         directories[depth] = NULL;
     }
-    if (names.slots) xx_mem_free((void *)names.slots);
+    if (names.nodes) xx_mem_free(names.nodes);
     if (!valid) {
         arcfs_stream_free(stream);
         return false;
@@ -680,16 +840,17 @@ static bool arcfs_set_record(xx_archive_record *record,
 /* Copies a stored member in chunks, so its size never becomes one buffer. */
 static bool arcfs_copy_stored(Abstractformat *format, const arcfs_member *member,
                               xx_io_device *destination, xx_pd_struct *pd) {
+    const size_t file_io_capacity = gb_arcfs_capacity();
     uint8_t *chunk;
     int64_t done = 0;
     uint16_t crc = 0U;
     bool result = false;
     if ((uint64_t)member->packed_size != member->original_size) return false;
-    chunk = (uint8_t *)xx_mem_alloc(ARCFS_COPY_CHUNK);
+    chunk = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!chunk) return false;
     while (done < member->packed_size) {
-        size_t amount = member->packed_size - done > (int64_t)ARCFS_COPY_CHUNK
-                            ? ARCFS_COPY_CHUNK
+        size_t amount = member->packed_size - done > (int64_t)file_io_capacity
+                            ? file_io_capacity
                             : (size_t)(member->packed_size - done);
         if ((pd && xx_pd_is_stopped(pd)) ||
             !arcfs_read_at(format->device, member->data_offset + done, chunk,
@@ -757,7 +918,7 @@ static bool arcfs_decode_member(Abstractformat *format,
     size_t written = 0U, middle_written = 0U;
     bool decoded = false;
     if (!format || !member || !plain || !plain_size || member->folder ||
-        member->truncated || member->packed_size < 0 ||
+        member->truncated || member->shared_data || member->packed_size < 0 ||
         !arcfs_known_method(member->method) ||
         member->method == ARCFS_METHOD_STORED ||
         member->original_size > arcfs_expansion_bound(member))
@@ -864,7 +1025,7 @@ void xx_arcfs_free(xx_arcfs *archive) {
 bool xx_arcfs_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     arcfs_stream *stream;
     (void)pd;
-    if (!arcfs_parse(format, &stream)) return false;
+    if (!arcfs_parse(format, &stream, false)) return false;
     arcfs_stream_free(stream);
     return true;
 }
@@ -874,7 +1035,7 @@ bool xx_arcfs_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     xx_arcfs *archive;
     int64_t total;
     (void)pd;
-    if (!format || !arcfs_parse(format, &stream)) return false;
+    if (!format || !arcfs_parse(format, &stream, false)) return false;
     archive = (xx_arcfs *)format;
     total = xx_io_total_size(format->device);
     archive->number_of_records = stream->count;
@@ -908,7 +1069,7 @@ xx_archive_record_state *xx_arcfs_create_archive_records_reading(
     arcfs_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
-    if (!arcfs_parse(format, &stream)) return NULL;
+    if (!arcfs_parse(format, &stream, true)) return NULL;
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
     if (!state) {
         arcfs_stream_free(stream);
@@ -952,7 +1113,8 @@ bool xx_arcfs_archive_record_move_to_next(Abstractformat *format,
 
 /* Unpacks the current member below XX_META_ID_OPT_UNPACK_PATH, or only
  * decodes and checks it when that option is absent.  Members cut off by
- * the end of the file, unknown methods, CRC mismatches and sizes above
+ * the end of the file, members whose data reuses bytes earlier members
+ * already spent, unknown methods, CRC mismatches and sizes above
  * XX_META_ID_OPT_MAX_MEMBER_SIZE fail without leaving a partial file
  * behind.  Compressed members are decoded in memory, so they also obey
  * XX_META_ID_OPT_MEMORY_LIMIT and the built-in 256 MiB cap; stored ones
@@ -1005,7 +1167,8 @@ bool xx_arcfs_unpack_current_archive_record(Abstractformat *format,
         result = !path || xx_store_create_dirs_a(path, true);
         goto done;
     }
-    if (member->truncated || !arcfs_known_method(member->method) ||
+    if (member->truncated || member->shared_data ||
+        !arcfs_known_method(member->method) ||
         member->original_size > member_limit)
         goto done;
     if (member->method != ARCFS_METHOD_STORED &&

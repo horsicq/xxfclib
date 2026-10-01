@@ -9,6 +9,7 @@
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/teledisk/xx_teledisk.h"
 
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
@@ -142,16 +143,9 @@ static bool teledisk_add_member(teledisk_stream *stream, const teledisk_member *
  * a file that merely starts with the right two letters. */
 static uint16_t teledisk_crc16(const uint8_t *data, size_t size,
                                uint16_t seed) {
-    uint16_t value = seed;
-    size_t index;
-    unsigned bit;
-    for (index = 0U; index < size; ++index) {
-        value ^= (uint16_t)((uint16_t)data[index] << 8U);
-        for (bit = 0U; bit < 8U; ++bit)
-            value = (uint16_t)((value & 0x8000U) ? ((value << 1U) ^ 0xa097U)
-                                                 : (value << 1U));
-    }
-    return value;
+    xx_crc_model model = {16U, UINT64_C(0xa097), seed,
+                          false, false, 0U, "TeleDisk"};
+    return (uint16_t)xx_crc_calculate(&model, data, size);
 }
 
 typedef struct teledisk_buffer_s {

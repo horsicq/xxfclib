@@ -52,6 +52,7 @@
 #include <stdio.h>
 
 #ifdef GOB
+
 #define XX_GOB_FILE_TYPE XX_FILE_TYPE_GOB
 #else
 #define XX_GOB_FILE_TYPE XX_FILE_TYPE_UNKNOWN
@@ -94,8 +95,45 @@ static void xx_gob_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
+#include "xxfclib/global/xx_global.h"
+static size_t gb_gob_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_gob_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_gob_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+
+
 static bool xx_gob_read_at(Abstractformat *self, int64_t offset,
                            uint8_t *buffer, size_t size) {
+    const size_t file_io_capacity = gb_gob_capacity();
     size_t completed = 0U;
 
     if (!self || !self->device || offset < 0 ||
@@ -104,7 +142,7 @@ static bool xx_gob_read_at(Abstractformat *self, int64_t offset,
     }
     while (completed < size) {
         ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
+            gb_gob_read(self->device, buffer + completed, size - completed, file_io_capacity);
         if (received <= 0 || (size_t)received > size - completed) {
             return false;
         }
@@ -553,15 +591,16 @@ bool xx_gob_archive_record_move_to_next(Abstractformat *self,
 static bool xx_gob_copy_member(Abstractformat *self,
                                const xx_gob_member *member,
                                xx_io_device *output, xx_pd_struct *pd) {
+    const size_t file_io_capacity = gb_gob_capacity();
     uint8_t *buffer;
     int64_t remaining = member->uncompressed_size;
     int64_t at = member->data_offset;
     bool result = true;
 
-    buffer = (uint8_t *)xx_mem_alloc(XX_GOB_COPY_CHUNK);
+    buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (result && remaining > 0) {
-        size_t piece = remaining > XX_GOB_COPY_CHUNK ? (size_t)XX_GOB_COPY_CHUNK
+        size_t piece = remaining > (int64_t)file_io_capacity ? (size_t)file_io_capacity
                                                      : (size_t)remaining;
         size_t completed = 0U;
         if (pd && xx_pd_is_stopped(pd)) {
@@ -574,7 +613,7 @@ static bool xx_gob_copy_member(Abstractformat *self,
         }
         while (completed < piece) {
             ssize_t sent =
-                xx_io_write(output, buffer + completed, piece - completed);
+                gb_gob_write(output, buffer + completed, piece - completed, file_io_capacity);
             if (sent <= 0 || (size_t)sent > piece - completed) {
                 result = false;
                 break;
@@ -593,16 +632,17 @@ static bool xx_gob_copy_member(Abstractformat *self,
 static bool xx_gob_verify_member(Abstractformat *self,
                                  const xx_gob_member *member,
                                  xx_pd_struct *pd) {
+    const size_t file_io_capacity = gb_gob_capacity();
     uint8_t *buffer;
     int64_t remaining = member->uncompressed_size;
     int64_t at = member->data_offset;
     bool result = true;
 
     if (remaining == 0) return true;
-    buffer = (uint8_t *)xx_mem_alloc(XX_GOB_COPY_CHUNK);
+    buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (remaining > 0) {
-        size_t piece = remaining > XX_GOB_COPY_CHUNK ? (size_t)XX_GOB_COPY_CHUNK
+        size_t piece = remaining > (int64_t)file_io_capacity ? (size_t)file_io_capacity
                                                      : (size_t)remaining;
         if ((pd && xx_pd_is_stopped(pd)) ||
             !xx_gob_read_at(self, at, buffer, piece)) {

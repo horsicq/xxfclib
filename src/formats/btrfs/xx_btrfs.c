@@ -15,6 +15,9 @@
 #include "xxfclib/formats/btrfs/xx_btrfs.h"
 
 #include "xxfclib/algo/store/xx_store.h"
+#include "xxfclib/algo/deflate/xx_deflate.h"
+#include "xxfclib/algo/lzo/xx_lzo.h"
+#include "xxfclib/algo/zstd/xx_zstd.h"
 #include "xxfclib/data/xx_data.h"
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/io/xx_io.h"
@@ -56,10 +59,14 @@
 #define XX_BTRFS_KEY_DIR_ITEM 84U
 #define XX_BTRFS_KEY_EXTENT_DATA 108U
 #define XX_BTRFS_KEY_ROOT_ITEM 132U
+#define XX_BTRFS_KEY_EXTENT_CSUM 128U
 #define XX_BTRFS_KEY_CHUNK_ITEM 228U
 
 #define XX_BTRFS_FS_TREE_OBJECTID UINT64_C(5)
+#define XX_BTRFS_CSUM_TREE_OBJECTID UINT64_C(7)
+#define XX_BTRFS_EXTENT_CSUM_OBJECTID (UINT64_MAX - UINT64_C(9))
 #define XX_BTRFS_FIRST_CHUNK_TREE_OBJECTID UINT64_C(256)
+#define XX_BTRFS_FIRST_FREE_OBJECTID UINT64_C(256)
 
 /* btrfs_dir_item.type, the POSIX file types. */
 #define XX_BTRFS_FT_REG_FILE 1U
@@ -103,6 +110,9 @@
 #define XX_BTRFS_MIN_NODE_SIZE 4096U
 #define XX_BTRFS_MAX_NODE_SIZE 65536U
 #define XX_BTRFS_COPY_CHUNK (64 * 1024)
+#define XX_BTRFS_MAX_DECODED_EXTENT (128U * 1024U)
+#define XX_BTRFS_MAX_STORED_EXTENT (256U * 1024U)
+#define XX_BTRFS_MAX_CSUM_SECTORS 1048576U
 
 typedef struct xx_btrfs_stripe_s {
     uint64_t devid;
@@ -149,7 +159,10 @@ typedef struct xx_btrfs_inode_s {
     uint32_t extent_count;
     uint8_t extent_type;
     uint8_t compression;
+    uint8_t encryption;
+    uint16_t other_encoding;
     uint64_t disk_bytenr;
+    uint64_t disk_num_bytes;
     uint64_t disk_offset;
     uint64_t num_bytes;
     uint64_t ram_bytes;
@@ -173,9 +186,17 @@ typedef struct xx_btrfs_entry_s {
     uint64_t size;
     int64_t data_offset;
     int64_t data_size;
+    uint64_t decoded_size;
+    uint64_t decoded_offset;
+    uint64_t stored_logical;
     uint32_t method;
     bool extractable;
 } xx_btrfs_entry;
+
+typedef struct xx_btrfs_csum_s {
+    uint64_t logical;
+    uint32_t crc;
+} xx_btrfs_csum;
 
 /* Open-addressed uint64 -> 1-based index map. Key 0 means "empty", which is
  * safe because objectid 0 is never a real btrfs object. */
@@ -208,6 +229,12 @@ typedef struct xx_btrfs_private_s {
     xx_btrfs_entry *entries;
     size_t entry_count;
     size_t entry_capacity;
+
+    xx_btrfs_csum *csums;
+    size_t csum_count;
+    size_t csum_capacity;
+    bool csum_ready;
+    bool csum_overflow;
 
     xx_btrfs_map visited;      /**< Tree blocks already read, by logical addr. */
     size_t nodes;
@@ -724,8 +751,10 @@ static bool xx_btrfs_chunk_item_cb(xx_btrfs_private *parsed, void *ctx,
 
 typedef struct xx_btrfs_root_ctx_s {
     uint64_t bytenr;
+    uint64_t csum_bytenr;
     uint8_t level;
     bool found;
+    bool csum_found;
 } xx_btrfs_root_ctx;
 
 static bool xx_btrfs_root_item_cb(xx_btrfs_private *parsed, void *ctx,
@@ -736,8 +765,17 @@ static bool xx_btrfs_root_item_cb(xx_btrfs_private *parsed, void *ctx,
     (void)parsed;
     (void)data_phys;
     if (type != XX_BTRFS_KEY_ROOT_ITEM ||
-        objectid != XX_BTRFS_FS_TREE_OBJECTID) return true;
+        (objectid != XX_BTRFS_FS_TREE_OBJECTID &&
+         objectid != XX_BTRFS_CSUM_TREE_OBJECTID)) return true;
     if (size < XX_BTRFS_ROOT_ITEM_MIN_SIZE) return true;
+    if (objectid == XX_BTRFS_CSUM_TREE_OBJECTID) {
+        if (offset == 0U || !out->csum_found) {
+            out->csum_bytenr = xx_data_get_u64(data, size,
+                    XX_BTRFS_INODE_ITEM_SIZE + 16U, false);
+            out->csum_found = true;
+        }
+        return true;
+    }
     /* The live FS_TREE root item has key offset 0; a non-zero offset names a
      * snapshot of it, which this reader does not follow. */
     if (offset != 0U && out->found) return true;
@@ -745,7 +783,87 @@ static bool xx_btrfs_root_item_cb(xx_btrfs_private *parsed, void *ctx,
                                   false);
     out->level = data[238];
     out->found = true;
-    return offset != 0U;
+    return true;
+}
+
+/* The checksum tree stores one little-endian CRC-32C per physical data
+ * sector. Compressed regular extents have checksums over their stored bytes,
+ * including the final physical-sector padding. */
+static bool xx_btrfs_csum_item_cb(xx_btrfs_private *parsed, void *ctx,
+                                  uint64_t objectid, uint8_t type,
+                                  uint64_t offset, const uint8_t *data,
+                                  uint32_t size, int64_t data_phys) {
+    size_t count, index;
+    (void)ctx;
+    (void)data_phys;
+    if (objectid != XX_BTRFS_EXTENT_CSUM_OBJECTID ||
+        type != XX_BTRFS_KEY_EXTENT_CSUM) return true;
+    if (parsed->csum_overflow || size == 0U || (size & 3U) != 0U ||
+        offset % parsed->super.sector_size != 0U) {
+        parsed->csum_overflow = true;
+        return false;
+    }
+    count = size / 4U;
+    if (count > XX_BTRFS_MAX_CSUM_SECTORS - parsed->csum_count ||
+        count > (UINT64_MAX - offset) / parsed->super.sector_size + 1U) {
+        parsed->csum_overflow = true;
+        return false;
+    }
+    if (parsed->csum_capacity - parsed->csum_count < count) {
+        size_t capacity = parsed->csum_capacity ? parsed->csum_capacity : 64U;
+        xx_btrfs_csum *grown;
+        while (capacity - parsed->csum_count < count) {
+            if (capacity > XX_BTRFS_MAX_CSUM_SECTORS / 2U) {
+                capacity = XX_BTRFS_MAX_CSUM_SECTORS;
+                break;
+            }
+            capacity *= 2U;
+        }
+        if (capacity - parsed->csum_count < count ||
+            capacity > SIZE_MAX / sizeof(*grown)) {
+            parsed->csum_overflow = true;
+            return false;
+        }
+        grown = (xx_btrfs_csum *)xx_mem_realloc(parsed->csums,
+                                                 capacity * sizeof(*grown));
+        if (!grown) {
+            parsed->csum_overflow = true;
+            return false;
+        }
+        parsed->csums = grown;
+        parsed->csum_capacity = capacity;
+    }
+    for (index = 0U; index < count; ++index) {
+        uint64_t logical = offset + (uint64_t)index *
+                                      parsed->super.sector_size;
+        xx_btrfs_csum *sum;
+        if (parsed->csum_count != 0U &&
+            logical <= parsed->csums[parsed->csum_count - 1U].logical) {
+            parsed->csum_overflow = true;
+            return false;
+        }
+        sum = &parsed->csums[parsed->csum_count++];
+        sum->logical = logical;
+        sum->crc = xx_data_get_u32(data, size, index * 4U, false);
+    }
+    return true;
+}
+
+static bool xx_btrfs_lookup_csum(const xx_btrfs_private *parsed,
+                                 uint64_t logical, uint32_t *out) {
+    size_t lo = 0U, hi;
+    if (!parsed || !parsed->csum_ready || !out) return false;
+    hi = parsed->csum_count;
+    while (lo < hi) {
+        size_t mid = lo + (hi - lo) / 2U;
+        if (parsed->csums[mid].logical == logical) {
+            *out = parsed->csums[mid].crc;
+            return true;
+        }
+        if (parsed->csums[mid].logical < logical) lo = mid + 1U;
+        else hi = mid;
+    }
+    return false;
 }
 
 static xx_btrfs_inode *xx_btrfs_inode_for(xx_btrfs_private *parsed,
@@ -883,6 +1001,8 @@ static bool xx_btrfs_fs_item_cb(xx_btrfs_private *parsed, void *ctx,
         extent_type = data[20];
         inode->extent_type = extent_type;
         inode->compression = data[16];
+        inode->encryption = data[17];
+        inode->other_encoding = xx_data_get_u16(data, size, 18U, false);
         inode->logical_offset = offset;
         inode->ram_bytes = xx_data_get_u64(data, size, 8U, false);
         if (extent_type == XX_BTRFS_EXTENT_INLINE) {
@@ -890,6 +1010,7 @@ static bool xx_btrfs_fs_item_cb(xx_btrfs_private *parsed, void *ctx,
             inode->inline_size = size - XX_BTRFS_EXTENT_INLINE_HEAD;
         } else if (size >= XX_BTRFS_EXTENT_REG_SIZE) {
             inode->disk_bytenr = xx_data_get_u64(data, size, 21U, false);
+            inode->disk_num_bytes = xx_data_get_u64(data, size, 29U, false);
             inode->disk_offset = xx_data_get_u64(data, size, 37U, false);
             inode->num_bytes = xx_data_get_u64(data, size, 45U, false);
         } else {
@@ -946,9 +1067,9 @@ static bool xx_btrfs_entry_append(xx_btrfs_private *parsed,
     return true;
 }
 
-/* Decide whether a file's single extent can be handed to the generic byte
- * copier, and if so where its bytes live. Anything compressed, preallocated,
- * split across extents or not starting at logical offset 0 is refused. */
+/* Resolve one inline or regular extent. Compressed regular extents must be
+ * checksummed and start at uncompressed offset zero; multiple extents,
+ * preallocation and holes remain unsupported. */
 static void xx_btrfs_resolve_data(xx_btrfs_private *parsed,
                                   const xx_btrfs_inode *inode,
                                   xx_btrfs_entry *entry) {
@@ -963,9 +1084,59 @@ static void xx_btrfs_resolve_data(xx_btrfs_private *parsed,
         entry->extractable = inode->extent_count == 0U;
         return;
     }
-    if (inode->extent_count != 1U) return;
-    if (inode->compression != XX_BTRFS_COMPRESS_NONE) return;
-    if (inode->logical_offset != 0U) return;
+    if (inode->extent_count != 1U || inode->logical_offset != 0U ||
+        inode->encryption != 0U || inode->other_encoding != 0U) return;
+    if (inode->compression != XX_BTRFS_COMPRESS_NONE) {
+        uint64_t logical;
+        int64_t physical = 0;
+        uint64_t run = 0U;
+        if (inode->compression > XX_BTRFS_COMPRESS_ZSTD ||
+            inode->ram_bytes == 0U ||
+            inode->ram_bytes > XX_BTRFS_MAX_DECODED_EXTENT) return;
+        if (inode->extent_type == XX_BTRFS_EXTENT_INLINE) {
+            if (inode->inline_phys < 0 || inode->inline_size == 0U ||
+                inode->inline_size > XX_BTRFS_MAX_STORED_EXTENT ||
+                inode->ram_bytes != inode->size ||
+                !xx_btrfs_range_within(parsed->input_size, inode->inline_phys,
+                                       (int64_t)inode->inline_size)) return;
+            entry->data_offset = inode->inline_phys;
+            entry->data_size = (int64_t)inode->inline_size;
+            entry->decoded_size = inode->ram_bytes;
+            entry->extractable = true;
+            return;
+        }
+        if (inode->extent_type != XX_BTRFS_EXTENT_REG ||
+            inode->disk_bytenr == 0U || inode->disk_num_bytes == 0U ||
+            inode->disk_num_bytes > XX_BTRFS_MAX_STORED_EXTENT ||
+            inode->num_bytes < inode->size || !parsed->csum_ready ||
+            inode->disk_num_bytes % parsed->super.sector_size != 0U ||
+            inode->disk_offset != 0U ||
+            inode->size > inode->ram_bytes) return;
+        logical = inode->disk_bytenr;
+        if (!xx_btrfs_logical_to_physical(parsed, logical, &physical, &run) ||
+            run < inode->disk_num_bytes ||
+            !xx_btrfs_range_within(parsed->input_size, physical,
+                                   (int64_t)inode->disk_num_bytes)) return;
+        {
+            uint64_t sector;
+            for (sector = 0U; sector < inode->disk_num_bytes;
+                 sector += parsed->super.sector_size) {
+                uint32_t ignored;
+                if (logical > UINT64_MAX - sector ||
+                    !xx_btrfs_lookup_csum(parsed, logical + sector, &ignored))
+                    return;
+            }
+        }
+        entry->data_offset = physical;
+        entry->data_size = (int64_t)inode->disk_num_bytes;
+        /* mkfs.btrfs rounds ram_bytes/num_bytes up to a sector, while the
+         * compressed stream expands only to the true EOF. */
+        entry->decoded_size = inode->size;
+        entry->decoded_offset = 0U;
+        entry->stored_logical = inode->disk_bytenr;
+        entry->extractable = true;
+        return;
+    }
     if (inode->extent_type == XX_BTRFS_EXTENT_INLINE) {
         if (inode->inline_phys < 0 || inode->inline_size < inode->size) return;
         if (!xx_btrfs_range_within(parsed->input_size, inode->inline_phys,
@@ -1010,12 +1181,11 @@ static void xx_btrfs_build_listing(xx_btrfs_private *parsed) {
     size_t tail = 0U;
     size_t capacity = 64U;
     xx_btrfs_map seen;
-    uint64_t root = parsed->super.root_dir_objectid;
+    uint64_t root = XX_BTRFS_FIRST_FREE_OBJECTID;
 
     xx_mem_zero(&seen, sizeof(seen));
     queue = (queue_item *)xx_mem_calloc(capacity, sizeof(*queue));
     if (!queue) return;
-    if (root == 0U) root = XX_BTRFS_FIRST_CHUNK_TREE_OBJECTID;
     queue[tail].objectid = root;
     queue[tail].path = NULL;
     queue[tail].depth = 0U;
@@ -1106,6 +1276,7 @@ static void xx_btrfs_private_cleanup(xx_btrfs_private *parsed) {
     if (parsed->inodes) xx_mem_free(parsed->inodes);
     if (parsed->dirents) xx_mem_free(parsed->dirents);
     if (parsed->entries) xx_mem_free(parsed->entries);
+    if (parsed->csums) xx_mem_free(parsed->csums);
     xx_btrfs_map_cleanup(&parsed->inode_map);
     xx_btrfs_map_cleanup(&parsed->dirent_head);
     xx_btrfs_map_cleanup(&parsed->visited);
@@ -1168,6 +1339,14 @@ static bool xx_btrfs_parse(Abstractformat *self, xx_btrfs_private *parsed,
     xx_mem_zero(&root_ctx, sizeof(root_ctx));
     xx_btrfs_walk_tree(parsed, parsed->super.root, 0U, xx_btrfs_root_item_cb,
                        &root_ctx);
+    if (root_ctx.csum_found && root_ctx.csum_bytenr != 0U) {
+        size_t bad_before = parsed->bad_nodes;
+        xx_btrfs_walk_tree(parsed, root_ctx.csum_bytenr, 0U,
+                           xx_btrfs_csum_item_cb, NULL);
+        parsed->csum_ready = !parsed->csum_overflow &&
+                             !xx_btrfs_stopped(parsed) &&
+                             parsed->bad_nodes == bad_before;
+    }
     if (!root_ctx.found || root_ctx.bytenr == 0U) return true;
     parsed->fs_tree_root = root_ctx.bytenr;
     parsed->fs_tree_level = root_ctx.level;
@@ -1492,6 +1671,169 @@ bool xx_btrfs_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
+static bool xx_btrfs_zero_padding(const uint8_t *data, size_t at,
+                                  size_t length) {
+    while (at < length) {
+        if (data[at++] != 0U) return false;
+    }
+    return true;
+}
+
+/* Btrfs rounds regular compressed extents to a sector. A Zstandard frame has
+ * self-describing block lengths, so locate its end without asking the decoder
+ * to accept arbitrary bytes from the physical padding. */
+static bool xx_btrfs_zstd_frame_size(const uint8_t *data, size_t size,
+                                      size_t *out_size) {
+    size_t at, fcs_size, dict_size;
+    uint8_t descriptor;
+    bool last = false;
+    if (size < 5U || xx_data_get_u32(data, size, 0U, false) !=
+                         UINT32_C(0xFD2FB528)) return false;
+    descriptor = data[4];
+    if ((descriptor & UINT8_C(0x18)) != 0U) return false;
+    at = 5U;
+    if ((descriptor & UINT8_C(0x20)) == 0U) {
+        if (at == size) return false;
+        ++at;
+    }
+    dict_size = (descriptor & 3U) == 0U ? 0U :
+                (descriptor & 3U) == 1U ? 1U :
+                (descriptor & 3U) == 2U ? 2U : 4U;
+    fcs_size = (descriptor >> 6) == 0U ?
+               ((descriptor & UINT8_C(0x20)) ? 1U : 0U) :
+               (descriptor >> 6) == 1U ? 2U :
+               (descriptor >> 6) == 2U ? 4U : 8U;
+    if (dict_size + fcs_size > size - at) return false;
+    at += dict_size + fcs_size;
+    while (!last) {
+        uint32_t header;
+        uint32_t block_size;
+        unsigned type;
+        if (size - at < 3U) return false;
+        header = (uint32_t)data[at] | ((uint32_t)data[at + 1U] << 8) |
+                 ((uint32_t)data[at + 2U] << 16);
+        at += 3U;
+        last = (header & 1U) != 0U;
+        type = (header >> 1) & 3U;
+        if (type == 3U) return false;
+        block_size = type == 1U ? 1U : header >> 3;
+        if ((size_t)block_size > size - at) return false;
+        at += block_size;
+    }
+    if (descriptor & UINT8_C(0x04)) {
+        if (size - at < 4U) return false;
+        at += 4U;
+    }
+    if (!xx_btrfs_zero_padding(data, at, size)) return false;
+    *out_size = at;
+    return true;
+}
+
+static bool xx_btrfs_decode_lzo(const uint8_t *stored, size_t stored_size,
+                                 uint8_t *plain, size_t plain_size,
+                                 uint32_t sector_size) {
+    size_t total, at = 4U, produced = 0U;
+    if (stored_size < 8U || sector_size < 512U) return false;
+    total = (size_t)xx_data_get_u32(stored, stored_size, 0U, false);
+    if (total < 8U || total > stored_size ||
+        !xx_btrfs_zero_padding(stored, total, stored_size)) return false;
+    while (at < total && produced < plain_size) {
+        size_t segment_size, segment_out = 0U;
+        size_t available = plain_size - produced;
+        size_t sector_left;
+        if (total - at < 4U) return false;
+        segment_size = (size_t)xx_data_get_u32(stored, stored_size, at, false);
+        at += 4U;
+        if (segment_size == 0U || segment_size > total - at ||
+            segment_size > sector_size + sector_size / 16U + 128U) return false;
+        if (available > sector_size) available = sector_size;
+        if (!xx_lzo1x_decompress(stored + at, segment_size, plain + produced,
+                                 available, &segment_out) ||
+            segment_out == 0U || segment_out > available) return false;
+        at += segment_size;
+        produced += segment_out;
+        if (at == total) break;
+        sector_left = sector_size - (at % sector_size);
+        if (sector_left < 4U) {
+            if (sector_left > total - at ||
+                !xx_btrfs_zero_padding(stored, at, at + sector_left)) return false;
+            at += sector_left;
+        }
+    }
+    return at == total && produced == plain_size;
+}
+
+static uint8_t *xx_btrfs_decode_entry(const xx_btrfs_private *parsed,
+                                       xx_io_device *device,
+                                       const xx_btrfs_entry *entry,
+                                       uint32_t sector_size,
+                                       xx_pd_struct *pd) {
+    uint8_t *stored = NULL, *plain = NULL;
+    size_t stored_size, plain_size, written = 0U;
+    bool ok = false;
+    if (!parsed || !device || !entry || entry->data_offset < 0 ||
+        entry->data_size <= 0 ||
+        entry->data_size > XX_BTRFS_MAX_STORED_EXTENT ||
+        entry->decoded_size == 0U ||
+        entry->decoded_size > XX_BTRFS_MAX_DECODED_EXTENT ||
+        entry->decoded_offset > entry->decoded_size ||
+        entry->size > entry->decoded_size - entry->decoded_offset ||
+        (pd && xx_pd_is_stopped(pd))) return NULL;
+    stored_size = (size_t)entry->data_size;
+    plain_size = (size_t)entry->decoded_size;
+    stored = (uint8_t *)xx_mem_alloc(stored_size);
+    plain = (uint8_t *)xx_mem_alloc(plain_size);
+    if (!stored || !plain ||
+        !xx_btrfs_read_at(device, entry->data_offset, stored, stored_size))
+        goto done;
+    if (entry->stored_logical != 0U) {
+        size_t at;
+        if (sector_size == 0U || stored_size % sector_size != 0U)
+            goto done;
+        for (at = 0U; at < stored_size; at += sector_size) {
+            uint32_t checksum;
+            if (entry->stored_logical > UINT64_MAX - at ||
+                !xx_btrfs_lookup_csum(parsed,
+                    entry->stored_logical + (uint64_t)at, &checksum) ||
+                checksum != xx_crc32c_calc(0U, stored + at, sector_size))
+                goto done;
+        }
+    }
+    if (entry->method == XX_BTRFS_COMPRESS_ZLIB) {
+        size_t last, candidate;
+        if (!xx_zlib_stream_decode_memory(stored, stored_size, plain,
+                                           plain_size, &written) ||
+            written != plain_size) goto done;
+        last = stored_size;
+        while (last > 0U && stored[last - 1U] == 0U) --last;
+        for (candidate = last; candidate <= stored_size &&
+                              candidate <= last + 4U; ++candidate) {
+            if (xx_zlib_stream_trailer_matches(stored, candidate, plain,
+                                                plain_size) &&
+                xx_btrfs_zero_padding(stored, candidate, stored_size)) {
+                ok = true;
+                break;
+            }
+        }
+    } else if (entry->method == XX_BTRFS_COMPRESS_ZSTD) {
+        size_t frame_size = 0U;
+        ok = xx_btrfs_zstd_frame_size(stored, stored_size, &frame_size) &&
+             xx_zstd_decompress_memory(stored, frame_size, plain,
+                                        plain_size, &written) &&
+             written == plain_size;
+    } else if (entry->method == XX_BTRFS_COMPRESS_LZO) {
+        ok = xx_btrfs_decode_lzo(stored, stored_size, plain, plain_size,
+                                  sector_size);
+    }
+done:
+    if (stored) xx_mem_free(stored);
+    if (!ok) {
+        if (plain) xx_mem_free(plain);
+        return NULL;
+    }
+    return plain;
+}
+
 bool xx_btrfs_unpack_current_archive_record(Abstractformat *self,
                                             xx_archive_record_state *state,
                                             xx_pd_struct *pd) {
@@ -1513,9 +1855,8 @@ bool xx_btrfs_unpack_current_archive_record(Abstractformat *self,
     record = &state->current_record;
     name = xx_archive_record_get_original_name(record);
     if (!xx_btrfs_safe_name(name)) return false;
-    /* A file this reader cannot reconstruct byte for byte - compressed,
-     * multi-extent, preallocated or a hole - is refused outright rather than
-     * written out truncated or filled with the wrong bytes. */
+    /* A file this reader cannot reconstruct byte for byte - such as a
+     * multi-extent, preallocated or sparse file - is refused outright. */
     if (!entry->is_folder && !entry->extractable) return false;
 
     option = xx_btrfs_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
@@ -1551,9 +1892,30 @@ bool xx_btrfs_unpack_current_archive_record(Abstractformat *self,
     if (entry->is_folder) {
         result = xx_store_create_dirs_a(destination, true);
     } else if (xx_store_create_dirs_a(destination, false)) {
-        result = xx_store_unpack_device_to_file(self->device, entry->data_offset,
-                                                entry->data_size, destination,
-                                                pd);
+        if (entry->method == XX_BTRFS_COMPRESS_NONE) {
+            result = xx_store_unpack_device_to_file(self->device,
+                                                     entry->data_offset,
+                                                     entry->data_size,
+                                                     destination, pd);
+        } else {
+            uint8_t *plain = xx_btrfs_decode_entry(stream->parsed,
+                                                     self->device, entry,
+                                                     stream->parsed->super.sector_size,
+                                                     pd);
+            xx_io_device *decoded = NULL;
+            result = false;
+            if (plain) {
+                decoded = xx_io_mem_open_ro(plain + (size_t)entry->decoded_offset,
+                                             (size_t)entry->size);
+                if (decoded) {
+                    result = xx_store_unpack_device_to_file(decoded, 0,
+                                                             (int64_t)entry->size,
+                                                             destination, pd);
+                    xx_io_close(decoded);
+                }
+                xx_mem_free(plain);
+            }
+        }
     } else {
         result = false;
     }

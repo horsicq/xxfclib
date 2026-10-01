@@ -62,7 +62,7 @@
 #define RSRC_REF_ENTRY_SIZE 12U
 #define RSRC_MAX_MAP_SIZE UINT32_C(0x04000000)
 #define RSRC_MAX_MEMBERS 1048576U
-#define RSRC_NAME_CAPACITY 288U
+#define RSRC_NAME_CAPACITY 800U
 
 typedef struct rsrc_member_s {
     char *name;
@@ -108,9 +108,8 @@ static bool rsrc_read_at(xx_io_device *device, int64_t offset, void *buffer,
     return true;
 }
 
-/* Map one Mac OS Roman byte onto a byte that is safe in a path component.
- * Non-ASCII and shell/Windows-hostile bytes collapse to '_'; the caller's code
- * page is not consulted because resource names carry no encoding tag. */
+/* Keep printable ASCII safe in a path component; resource names with high
+ * Mac Roman bytes are converted to UTF-8 separately below. */
 static char rsrc_safe_char(uint8_t c) {
     if (c < 0x20U || c > 0x7EU) return '_';
     if (c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' ||
@@ -119,50 +118,133 @@ static char rsrc_safe_char(uint8_t c) {
     return (char)c;
 }
 
-static size_t rsrc_append_int(char *buffer, size_t output, int32_t value) {
-    char digits[12];
-    size_t count = 0U;
-    uint32_t magnitude;
-    if (value < 0) {
-        buffer[output++] = '-';
-        magnitude = (uint32_t)(-(int64_t)value);
-    } else {
-        magnitude = (uint32_t)value;
+/* Resource names are Mac Roman, as in classic HFS. Keep their Unicode names
+ * instead of collapsing all high bytes to '_', which can also create false
+ * filename collisions. */
+static const uint16_t rsrc_mac_roman[128] = {
+    0x00C4, 0x00C5, 0x00C7, 0x00C9, 0x00D1, 0x00D6, 0x00DC, 0x00E1,
+    0x00E0, 0x00E2, 0x00E4, 0x00E3, 0x00E5, 0x00E7, 0x00E9, 0x00E8,
+    0x00EA, 0x00EB, 0x00ED, 0x00EC, 0x00EE, 0x00EF, 0x00F1, 0x00F3,
+    0x00F2, 0x00F4, 0x00F6, 0x00F5, 0x00FA, 0x00F9, 0x00FB, 0x00FC,
+    0x2020, 0x00B0, 0x00A2, 0x00A3, 0x00A7, 0x2022, 0x00B6, 0x00DF,
+    0x00AE, 0x00A9, 0x2122, 0x00B4, 0x00A8, 0x2260, 0x00C6, 0x00D8,
+    0x221E, 0x00B1, 0x2264, 0x2265, 0x00A5, 0x00B5, 0x2202, 0x2211,
+    0x220F, 0x03C0, 0x222B, 0x00AA, 0x00BA, 0x03A9, 0x00E6, 0x00F8,
+    0x00BF, 0x00A1, 0x00AC, 0x221A, 0x0192, 0x2248, 0x2206, 0x00AB,
+    0x00BB, 0x2026, 0x00A0, 0x00C0, 0x00C3, 0x00D5, 0x0152, 0x0153,
+    0x2013, 0x2014, 0x201C, 0x201D, 0x2018, 0x2019, 0x00F7, 0x25CA,
+    0x00FF, 0x0178, 0x2044, 0x20AC, 0x2039, 0x203A, 0xFB01, 0xFB02,
+    0x2021, 0x00B7, 0x201A, 0x201E, 0x2030, 0x00C2, 0x00CA, 0x00C1,
+    0x00CB, 0x00C8, 0x00CD, 0x00CE, 0x00CF, 0x00CC, 0x00D3, 0x00D4,
+    0xFFFD, 0x00D2, 0x00DA, 0x00DB, 0x00D9, 0x0131, 0x02C6, 0x02DC,
+    0x00AF, 0x02D8, 0x02D9, 0x02DA, 0x00B8, 0x02DD, 0x02DB, 0x02C7
+};
+
+/* U3 displays the four raw type bytes through Windows-1252, while it decodes
+ * Pascal resource names as Mac Roman. The hexadecimal prefix still preserves
+ * the exact bytes when a display character is unavailable. */
+static const uint16_t rsrc_cp1252_controls[32] = {
+    0x20AC, 0,      0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021,
+    0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0,      0x017D, 0,
+    0,      0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
+    0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0,      0x017E, 0x0178
+};
+
+/* The reference extractor renders most nonzero control bytes in resource
+ * names as DOS graphical characters. Whitespace controls are handled below. */
+static const uint16_t rsrc_control_glyphs[32] = {
+    0,      0x263A, 0x263B, 0x2665, 0x2666, 0x2663, 0x2660, 0x2219,
+    0x25D8, 0x25CB, 0x25D9, 0x2642, 0x2640, 0x266A, 0x266B, 0x263C,
+    0x25BA, 0x25C4, 0x2195, 0x203C, 0x00B6, 0x00A7, 0x25AC, 0x21A8,
+    0x2191, 0x2193, 0x2192, 0x2190, 0x221F, 0x2194, 0x25B2, 0x25BC
+};
+
+static size_t rsrc_put_utf8(char *output, uint32_t codepoint) {
+    if (codepoint < 0x800U) {
+        output[0] = (char)(0xC0U | (codepoint >> 6U));
+        output[1] = (char)(0x80U | (codepoint & 0x3FU));
+        return 2U;
     }
-    do {
-        digits[count++] = (char)('0' + (magnitude % 10U));
-        magnitude /= 10U;
-    } while (magnitude != 0U);
-    while (count != 0U) buffer[output++] = digits[--count];
-    return output;
+    output[0] = (char)(0xE0U | (codepoint >> 12U));
+    output[1] = (char)(0x80U | ((codepoint >> 6U) & 0x3FU));
+    output[2] = (char)(0x80U | (codepoint & 0x3FU));
+    return 3U;
 }
 
-/* Build "<TYPE>/<id> <name>".  The type becomes a directory component so a
- * fork unpacks into one folder per resource type. */
+static size_t rsrc_put_type_char(char *output, uint8_t raw) {
+    uint32_t codepoint;
+    if (raw < 0x80U) {
+        output[0] = rsrc_safe_char(raw);
+        return 1U;
+    }
+    codepoint = raw < 0xA0U ? rsrc_cp1252_controls[raw - 0x80U] : raw;
+    if (codepoint == 0U) {
+        output[0] = '_';
+        return 1U;
+    }
+    return rsrc_put_utf8(output, codepoint);
+}
+
+static char rsrc_hex_digit(uint32_t value) {
+    return "0123456789ABCDEF"[value & 15U];
+}
+
+/* Prefix the printable type with its exact four-byte hexadecimal value.
+ * Resource types are case-sensitive on Mac OS, but Windows directory names
+ * are not: DLGX/132 and dlgx/132 otherwise overwrite one another. */
 static char *rsrc_build_name(uint32_t type, int32_t id, const uint8_t *raw,
                              size_t raw_size) {
     char buffer[RSRC_NAME_CAPACITY];
     char *name;
-    size_t output = 0U, start, index, length;
+    size_t output = 0U, id_end, index, length, display_size;
     if (raw_size > 255U) return NULL;
+    for (index = 0U; index < 8U; ++index)
+        buffer[output++] = rsrc_hex_digit(type >> (28U - (uint32_t)index * 4U));
+    buffer[output++] = ' ';
     for (index = 0U; index < 4U; ++index)
-        buffer[output++] = rsrc_safe_char((uint8_t)(type >> (24U - index * 8U)));
-    while (output != 0U && (buffer[output - 1U] == ' ' ||
-                            buffer[output - 1U] == '.'))
+        output += rsrc_put_type_char(buffer + output,
+                                     (uint8_t)(type >>
+                                               (24U - (uint32_t)index * 8U)));
+    while (output > 9U && (buffer[output - 1U] == ' ' ||
+                          buffer[output - 1U] == '.'))
         --output;
-    if (output == 0U) buffer[output++] = '_';
+    if (output == 9U) buffer[output++] = '_';
     buffer[output++] = '/';
-    start = output;
-    output = rsrc_append_int(buffer, output, id);
-    if (raw_size != 0U) {
+    for (index = 0U; index < 4U; ++index)
+        buffer[output++] = rsrc_hex_digit((uint16_t)id >>
+                                          (12U - (uint32_t)index * 4U));
+    id_end = output;
+    display_size = raw_size;
+    while (display_size != 0U &&
+           (raw[display_size - 1U] == '\r' || raw[display_size - 1U] == '\n'))
+        --display_size;
+    if (display_size != 0U) {
         buffer[output++] = ' ';
-        for (index = 0U; index < raw_size; ++index)
-            buffer[output++] = rsrc_safe_char(raw[index]);
+        for (index = 0U; index < display_size; ++index) {
+            uint8_t c = raw[index];
+            if (c >= 0x80U)
+                output += rsrc_put_utf8(buffer + output,
+                                        rsrc_mac_roman[c - 0x80U]);
+            else if (c == '\t' || c == '\f')
+                buffer[output++] = ' ';
+            else if (c == '\n' || c == '\r')
+                buffer[output++] = '_';
+            else if (c > 0U && c < 0x20U)
+                output += rsrc_put_utf8(buffer + output,
+                                        rsrc_control_glyphs[c]);
+            else if (c == 0x7FU)
+                output += rsrc_put_utf8(buffer + output, 0x2302U);
+            else
+                buffer[output++] = rsrc_safe_char(c);
+        }
     }
-    while (output > start && (buffer[output - 1U] == ' ' ||
-                              buffer[output - 1U] == '.'))
+    while (output > id_end && (buffer[output - 1U] == ' ' ||
+                               buffer[output - 1U] == '.'))
         --output;
-    if (output == start) buffer[output++] = '_';
+    if (display_size != 0U && output == id_end) {
+        buffer[output++] = ' ';
+        buffer[output++] = '_';
+    }
     length = output;
     name = (char *)xx_mem_alloc(length + 1U);
     if (!name) return NULL;

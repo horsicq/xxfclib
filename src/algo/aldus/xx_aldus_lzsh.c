@@ -3,6 +3,7 @@
  */
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/algo/aldus/xx_aldus_lzsh.h"
+#include "xxfclib/algo/crc/xx_crc.h"
 
 #include <string.h>
 
@@ -230,19 +231,6 @@ static bool lh5_decode(const uint8_t *input, size_t input_size,
     return true;
 }
 
-static uint16_t crc16_arc(const uint8_t *data, size_t size) {
-    uint16_t crc = 0U;
-    size_t index;
-    for (index = 0U; index < size; ++index) {
-        unsigned bit;
-        crc ^= data[index];
-        for (bit = 0U; bit < 8U; ++bit)
-            crc = (crc & 1U) ? (uint16_t)((crc >> 1U) ^ 0xa001U)
-                              : (uint16_t)(crc >> 1U);
-    }
-    return crc;
-}
-
 bool xx_aldus_lzsh_decode_block(const uint8_t *input, size_t input_size,
                                  uint8_t *output, size_t output_size,
                                  size_t *written) {
@@ -260,7 +248,7 @@ bool xx_aldus_lzsh_decode_block(const uint8_t *input, size_t input_size,
     } else {
         return false;
     }
-    if (!decoded || crc16_arc(output, output_size) != expected_crc) return false;
+    if (!decoded || xx_crc16_arc_calc(0U, output, output_size) != expected_crc) return false;
     if (written) *written = output_size;
     return true;
 }

@@ -29,6 +29,7 @@
  * here, so the alias macro defined next to the enumerator is tested instead;
  * the real file type is picked up as soon as the format is registered. */
 #ifdef CHM
+
 #define XX_CHM_FILE_TYPE XX_FILE_TYPE_CHM
 #else
 #define XX_CHM_FILE_TYPE XX_FILE_TYPE_UNKNOWN
@@ -52,7 +53,6 @@
 #define CHM_MAX_FRAMES 0x100000U
 /* Reset table header, entries behind it. */
 #define CHM_RT_HEADER 40U
-#define CHM_MAX_RT (CHM_RT_HEADER + 8U * (CHM_MAX_FRAMES + 2U))
 #define CHM_MAX_META 0x10000U
 /* One decoded reset group (or its needed prefix) and its packed bytes; the
  * packed cap leaves room for the 16-byte header of every stored LZX frame. */
@@ -122,6 +122,9 @@ typedef struct chm_context_s {
     chm_section sections[CHM_MAX_SECTIONS];
     uint32_t section_count;
     uint32_t lzx_sections;
+    /* Reset-table entries held by all sections together: sections may all
+     * point at the same table, so the cap is shared, not per section. */
+    uint64_t reset_entries;
     chm_record *records;
     size_t record_count;
     uint64_t folders;
@@ -131,17 +134,29 @@ typedef struct chm_context_s {
     size_t mask;
 } chm_context;
 
+#ifndef CHM_CACHE_SLOTS
+#define CHM_CACHE_SLOTS 2U
+#endif
+
+typedef struct chm_cache_slot_s {
+    uint8_t *data;
+    size_t capacity;
+    uint32_t section;
+    uint64_t group;
+    uint64_t frames;
+    uint64_t used;          /* cache_clock at the last use */
+    bool valid;
+} chm_cache_slot;
+
 typedef struct chm_stream_s {
     chm_context context;
     size_t index;
     uint64_t max_member;
-    /* The last decoded reset group (or its first cache_frames frames). */
-    uint8_t *cache;
-    size_t cache_capacity;
-    uint32_t cache_section;
-    uint64_t cache_group;
-    uint64_t cache_frames;
-    bool cache_valid;
+    /* The two most recently used decoded reset groups (or their first
+     * frames): a member straddling a group boundary needs two groups, and
+     * the next member usually needs the same two. */
+    chm_cache_slot cache[CHM_CACHE_SLOTS];
+    uint64_t cache_clock;
 } chm_stream;
 
 typedef struct chm_sink_s {
@@ -152,6 +167,42 @@ typedef struct chm_sink_s {
 
 /* ---------------------------------------------------------------------- */
 /* Helpers                                                                 */
+
+#include "xxfclib/global/xx_global.h"
+static size_t gb_chm_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_chm_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_chm_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+
 
 static uint32_t chm_le16(const uint8_t *p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8U);
@@ -168,13 +219,14 @@ static uint64_t chm_le64(const uint8_t *p) {
 
 static bool chm_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
+    const size_t file_io_capacity = gb_chm_capacity();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = gb_chm_read(device, (uint8_t *)buffer + done,
+                                    size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -491,7 +543,12 @@ static void chm_load_lzx(Abstractformat *format, chm_context *context,
     if (reset_bits < 0 || reset_bits > 16 || window_bits < 0 ||
         window_bits > (int)(CHM_WINDOW_MAX - CHM_WINDOW_MIN))
         return;
-    data = chm_read_stored(format, context, table, CHM_MAX_RT, &size);
+    /* Read no more reset table than the shared budget can still take. */
+    data = chm_read_stored(
+        format, context, table,
+        CHM_RT_HEADER + 8U * ((uint64_t)(CHM_MAX_FRAMES + 2U) -
+                              context->reset_entries),
+        &size);
     if (!data) return;
     if (size == 0U) {
         /* An empty reset table (.chw files): nothing to decode. */
@@ -510,7 +567,8 @@ static void chm_load_lzx(Abstractformat *format, chm_context *context,
         frames = span / CHM_FRAME + (span % CHM_FRAME ? 1U : 0U);
         if ((uint64_t)size != CHM_RT_HEADER + 8U * count || count < frames ||
             count > frames + 2U || frames > CHM_MAX_FRAMES ||
-            packed > content->size) {
+            packed > content->size ||
+            count > (uint64_t)(CHM_MAX_FRAMES + 2U) - context->reset_entries) {
             xx_mem_free(data);
             return;
         }
@@ -535,6 +593,7 @@ static void chm_load_lzx(Abstractformat *format, chm_context *context,
     }
     xx_mem_free(data);
     section->reset_count = count;
+    context->reset_entries += count;
     section->span = span;
     section->packed = packed;
     section->frames = frames;
@@ -729,39 +788,263 @@ static char *chm_decode_name(const uint8_t *raw, size_t length, bool *safe) {
         }
     }
     out[used] = 0;
+    /* "~" plus a digit is how NTFS spells 8.3 short-name aliases
+     * ("LONGFI~1.TXT"); such a member could open the file an earlier
+     * member created under its long name, so the tilde becomes '_'. */
+    for (index = 0U; index + 1U < used; ++index)
+        if (out[index] == '~' && out[index + 1U] >= '0' &&
+            out[index + 1U] <= '9')
+            out[index] = '_';
     *safe = clean && chm_safe_path(out);
     return out;
 }
 
-/* Windows compares file names case-insensitively: fold the letters of the
- * scripts help files use (ASCII, Latin-1, Latin Extended-A, Greek,
- * Cyrillic, Armenian, full-width Latin) to upper case.  Folding too much
- * only renames a member; folding too little could let one overwrite
- * another, so doubtful pairs are merged. */
+/* Windows compares file names case-insensitively through the volume's
+ * $UpCase table.  Fold every code point to the smallest member of its case
+ * class, where the classes join the Unicode simple upper- and lower-case
+ * mappings (all planes) with the Windows NLS upper-case table: a superset
+ * of the pairs an NTFS volume merges.  Folding too much only renames a member;
+ * folding too little could let one overwrite another.  Each row maps
+ * lo..hi, every step-th code point, to code point + delta; rows are sorted
+ * and disjoint; they were derived from Unicode 15.1 and the Windows 11
+ * RtlUpcaseUnicodeChar table. */
+typedef struct chm_fold_range_s {
+    uint32_t lo;
+    uint32_t hi;
+    int32_t step;
+    int32_t delta;
+} chm_fold_range;
+
+static const chm_fold_range chm_fold_ranges[] = {
+    {0x00061U, 0x0007AU, 1, -32},
+    {0x000E0U, 0x000F6U, 1, -32},
+    {0x000F8U, 0x000FEU, 1, -32},
+    {0x00101U, 0x0012FU, 2, -1},
+    {0x00131U, 0x00131U, 1, -232},
+    {0x00133U, 0x00137U, 2, -1},
+    {0x0013AU, 0x00148U, 2, -1},
+    {0x0014BU, 0x00177U, 2, -1},
+    {0x00178U, 0x00178U, 1, -121},
+    {0x0017AU, 0x0017EU, 2, -1},
+    {0x0017FU, 0x0017FU, 1, -300},
+    {0x00183U, 0x00185U, 2, -1},
+    {0x00188U, 0x00188U, 1, -1},
+    {0x0018CU, 0x0018CU, 1, -1},
+    {0x00192U, 0x00192U, 1, -1},
+    {0x00199U, 0x00199U, 1, -1},
+    {0x001A1U, 0x001A5U, 2, -1},
+    {0x001A8U, 0x001A8U, 1, -1},
+    {0x001ADU, 0x001ADU, 1, -1},
+    {0x001B0U, 0x001B0U, 1, -1},
+    {0x001B4U, 0x001B6U, 2, -1},
+    {0x001B9U, 0x001B9U, 1, -1},
+    {0x001BDU, 0x001BDU, 1, -1},
+    {0x001C5U, 0x001C5U, 1, -1},
+    {0x001C6U, 0x001C6U, 1, -2},
+    {0x001C8U, 0x001C8U, 1, -1},
+    {0x001C9U, 0x001C9U, 1, -2},
+    {0x001CBU, 0x001CBU, 1, -1},
+    {0x001CCU, 0x001CCU, 1, -2},
+    {0x001CEU, 0x001DCU, 2, -1},
+    {0x001DDU, 0x001DDU, 1, -79},
+    {0x001DFU, 0x001EFU, 2, -1},
+    {0x001F2U, 0x001F2U, 1, -1},
+    {0x001F3U, 0x001F3U, 1, -2},
+    {0x001F5U, 0x001F5U, 1, -1},
+    {0x001F6U, 0x001F6U, 1, -97},
+    {0x001F7U, 0x001F7U, 1, -56},
+    {0x001F9U, 0x0021FU, 2, -1},
+    {0x00220U, 0x00220U, 1, -130},
+    {0x00223U, 0x00233U, 2, -1},
+    {0x0023CU, 0x0023CU, 1, -1},
+    {0x0023DU, 0x0023DU, 1, -163},
+    {0x00242U, 0x00242U, 1, -1},
+    {0x00243U, 0x00243U, 1, -195},
+    {0x00247U, 0x0024FU, 2, -1},
+    {0x00253U, 0x00253U, 1, -210},
+    {0x00254U, 0x00254U, 1, -206},
+    {0x00256U, 0x00257U, 1, -205},
+    {0x00259U, 0x00259U, 1, -202},
+    {0x0025BU, 0x0025BU, 1, -203},
+    {0x00260U, 0x00260U, 1, -205},
+    {0x00263U, 0x00263U, 1, -207},
+    {0x00268U, 0x00268U, 1, -209},
+    {0x00269U, 0x00269U, 1, -211},
+    {0x0026FU, 0x0026FU, 1, -211},
+    {0x00272U, 0x00272U, 1, -213},
+    {0x00275U, 0x00275U, 1, -214},
+    {0x00280U, 0x00280U, 1, -218},
+    {0x00283U, 0x00283U, 1, -218},
+    {0x00288U, 0x00288U, 1, -218},
+    {0x00289U, 0x00289U, 1, -69},
+    {0x0028AU, 0x0028BU, 1, -217},
+    {0x0028CU, 0x0028CU, 1, -71},
+    {0x00292U, 0x00292U, 1, -219},
+    {0x00371U, 0x00373U, 2, -1},
+    {0x00377U, 0x00377U, 1, -1},
+    {0x00399U, 0x00399U, 1, -84},
+    {0x0039CU, 0x0039CU, 1, -743},
+    {0x003ACU, 0x003ACU, 1, -38},
+    {0x003ADU, 0x003AFU, 1, -37},
+    {0x003B1U, 0x003B8U, 1, -32},
+    {0x003B9U, 0x003B9U, 1, -116},
+    {0x003BAU, 0x003BBU, 1, -32},
+    {0x003BCU, 0x003BCU, 1, -775},
+    {0x003BDU, 0x003C1U, 1, -32},
+    {0x003C2U, 0x003C2U, 1, -31},
+    {0x003C3U, 0x003CBU, 1, -32},
+    {0x003CCU, 0x003CCU, 1, -64},
+    {0x003CDU, 0x003CEU, 1, -63},
+    {0x003D0U, 0x003D0U, 1, -62},
+    {0x003D1U, 0x003D1U, 1, -57},
+    {0x003D5U, 0x003D5U, 1, -47},
+    {0x003D6U, 0x003D6U, 1, -54},
+    {0x003D7U, 0x003D7U, 1, -8},
+    {0x003D9U, 0x003EFU, 2, -1},
+    {0x003F0U, 0x003F0U, 1, -86},
+    {0x003F1U, 0x003F1U, 1, -80},
+    {0x003F3U, 0x003F3U, 1, -116},
+    {0x003F4U, 0x003F4U, 1, -92},
+    {0x003F5U, 0x003F5U, 1, -96},
+    {0x003F8U, 0x003F8U, 1, -1},
+    {0x003F9U, 0x003F9U, 1, -7},
+    {0x003FBU, 0x003FBU, 1, -1},
+    {0x003FDU, 0x003FFU, 1, -130},
+    {0x00430U, 0x0044FU, 1, -32},
+    {0x00450U, 0x0045FU, 1, -80},
+    {0x00461U, 0x00481U, 2, -1},
+    {0x0048BU, 0x004BFU, 2, -1},
+    {0x004C2U, 0x004CEU, 2, -1},
+    {0x004CFU, 0x004CFU, 1, -15},
+    {0x004D1U, 0x0052FU, 2, -1},
+    {0x00561U, 0x00586U, 1, -48},
+    {0x013F8U, 0x013FDU, 1, -8},
+    {0x01C80U, 0x01C80U, 1, -6254},
+    {0x01C81U, 0x01C81U, 1, -6253},
+    {0x01C82U, 0x01C82U, 1, -6244},
+    {0x01C83U, 0x01C84U, 1, -6242},
+    {0x01C85U, 0x01C85U, 1, -6243},
+    {0x01C86U, 0x01C86U, 1, -6236},
+    {0x01C87U, 0x01C87U, 1, -6181},
+    {0x01C90U, 0x01CBAU, 1, -3008},
+    {0x01CBDU, 0x01CBFU, 1, -3008},
+    {0x01E01U, 0x01E95U, 2, -1},
+    {0x01E9BU, 0x01E9BU, 1, -59},
+    {0x01E9EU, 0x01E9EU, 1, -7615},
+    {0x01EA1U, 0x01EFFU, 2, -1},
+    {0x01F08U, 0x01F0FU, 1, -8},
+    {0x01F18U, 0x01F1DU, 1, -8},
+    {0x01F28U, 0x01F2FU, 1, -8},
+    {0x01F38U, 0x01F3FU, 1, -8},
+    {0x01F48U, 0x01F4DU, 1, -8},
+    {0x01F59U, 0x01F5FU, 2, -8},
+    {0x01F68U, 0x01F6FU, 1, -8},
+    {0x01F88U, 0x01F8FU, 1, -8},
+    {0x01F98U, 0x01F9FU, 1, -8},
+    {0x01FA8U, 0x01FAFU, 1, -8},
+    {0x01FB8U, 0x01FB9U, 1, -8},
+    {0x01FBAU, 0x01FBBU, 1, -74},
+    {0x01FBCU, 0x01FBCU, 1, -9},
+    {0x01FBEU, 0x01FBEU, 1, -7289},
+    {0x01FC8U, 0x01FCBU, 1, -86},
+    {0x01FCCU, 0x01FCCU, 1, -9},
+    {0x01FD8U, 0x01FD9U, 1, -8},
+    {0x01FDAU, 0x01FDBU, 1, -100},
+    {0x01FE8U, 0x01FE9U, 1, -8},
+    {0x01FEAU, 0x01FEBU, 1, -112},
+    {0x01FECU, 0x01FECU, 1, -7},
+    {0x01FF8U, 0x01FF9U, 1, -128},
+    {0x01FFAU, 0x01FFBU, 1, -126},
+    {0x01FFCU, 0x01FFCU, 1, -9},
+    {0x02126U, 0x02126U, 1, -7549},
+    {0x0212AU, 0x0212AU, 1, -8415},
+    {0x0212BU, 0x0212BU, 1, -8294},
+    {0x0214EU, 0x0214EU, 1, -28},
+    {0x02170U, 0x0217FU, 1, -16},
+    {0x02184U, 0x02184U, 1, -1},
+    {0x024D0U, 0x024E9U, 1, -26},
+    {0x02C30U, 0x02C5FU, 1, -48},
+    {0x02C61U, 0x02C61U, 1, -1},
+    {0x02C62U, 0x02C62U, 1, -10743},
+    {0x02C63U, 0x02C63U, 1, -3814},
+    {0x02C64U, 0x02C64U, 1, -10727},
+    {0x02C65U, 0x02C65U, 1, -10795},
+    {0x02C66U, 0x02C66U, 1, -10792},
+    {0x02C68U, 0x02C6CU, 2, -1},
+    {0x02C6DU, 0x02C6DU, 1, -10780},
+    {0x02C6EU, 0x02C6EU, 1, -10749},
+    {0x02C6FU, 0x02C6FU, 1, -10783},
+    {0x02C70U, 0x02C70U, 1, -10782},
+    {0x02C73U, 0x02C73U, 1, -1},
+    {0x02C76U, 0x02C76U, 1, -1},
+    {0x02C7EU, 0x02C7FU, 1, -10815},
+    {0x02C81U, 0x02CE3U, 2, -1},
+    {0x02CECU, 0x02CEEU, 2, -1},
+    {0x02CF3U, 0x02CF3U, 1, -1},
+    {0x02D00U, 0x02D25U, 1, -7264},
+    {0x02D27U, 0x02D27U, 1, -7264},
+    {0x02D2DU, 0x02D2DU, 1, -7264},
+    {0x0A641U, 0x0A649U, 2, -1},
+    {0x0A64AU, 0x0A64AU, 1, -35266},
+    {0x0A64BU, 0x0A64BU, 1, -35267},
+    {0x0A64DU, 0x0A66DU, 2, -1},
+    {0x0A681U, 0x0A69BU, 2, -1},
+    {0x0A723U, 0x0A72FU, 2, -1},
+    {0x0A733U, 0x0A76FU, 2, -1},
+    {0x0A77AU, 0x0A77CU, 2, -1},
+    {0x0A77DU, 0x0A77DU, 1, -35332},
+    {0x0A77FU, 0x0A787U, 2, -1},
+    {0x0A78CU, 0x0A78CU, 1, -1},
+    {0x0A78DU, 0x0A78DU, 1, -42280},
+    {0x0A791U, 0x0A793U, 2, -1},
+    {0x0A797U, 0x0A7A9U, 2, -1},
+    {0x0A7AAU, 0x0A7AAU, 1, -42308},
+    {0x0A7ABU, 0x0A7ABU, 1, -42319},
+    {0x0A7ACU, 0x0A7ACU, 1, -42315},
+    {0x0A7ADU, 0x0A7ADU, 1, -42305},
+    {0x0A7AEU, 0x0A7AEU, 1, -42308},
+    {0x0A7B0U, 0x0A7B0U, 1, -42258},
+    {0x0A7B1U, 0x0A7B1U, 1, -42282},
+    {0x0A7B2U, 0x0A7B2U, 1, -42261},
+    {0x0A7B5U, 0x0A7C3U, 2, -1},
+    {0x0A7C4U, 0x0A7C4U, 1, -48},
+    {0x0A7C5U, 0x0A7C5U, 1, -42307},
+    {0x0A7C6U, 0x0A7C6U, 1, -35384},
+    {0x0A7C8U, 0x0A7CAU, 2, -1},
+    {0x0A7D1U, 0x0A7D1U, 1, -1},
+    {0x0A7D7U, 0x0A7D9U, 2, -1},
+    {0x0A7F6U, 0x0A7F6U, 1, -1},
+    {0x0AB53U, 0x0AB53U, 1, -928},
+    {0x0AB70U, 0x0ABBFU, 1, -38864},
+    {0x0FF41U, 0x0FF5AU, 1, -32},
+    {0x10428U, 0x1044FU, 1, -40},
+    {0x104D8U, 0x104FBU, 1, -40},
+    {0x10597U, 0x105A1U, 1, -39},
+    {0x105A3U, 0x105B1U, 1, -39},
+    {0x105B3U, 0x105B9U, 1, -39},
+    {0x105BBU, 0x105BCU, 1, -39},
+    {0x10CC0U, 0x10CF2U, 1, -64},
+    {0x118C0U, 0x118DFU, 1, -32},
+    {0x16E60U, 0x16E7FU, 1, -32},
+    {0x1E922U, 0x1E943U, 1, -34},
+};
+
 static uint32_t chm_fold(uint32_t c) {
-    if (c >= 'a' && c <= 'z') return c - 0x20U;
-    if (c >= 0xE0U && c <= 0xFEU && c != 0xF7U) return c - 0x20U;
-    if (c == 0xFFU) return 0x178U;
-    if (c == 0x131U) return 'I';
-    if ((c >= 0x100U && c <= 0x137U) || (c >= 0x14AU && c <= 0x177U))
-        return c & ~1U;
-    if ((c >= 0x139U && c <= 0x148U) || (c >= 0x179U && c <= 0x17EU))
-        return (c & 1U) ? c : c - 1U;
-    if (c == 0x3C2U) return 0x3A3U;
-    if (c >= 0x3B1U && c <= 0x3CBU) return c - 0x20U;
-    if (c == 0x3ACU) return 0x386U;
-    if (c >= 0x3ADU && c <= 0x3AFU) return c - 0x25U;
-    if (c == 0x3CCU) return 0x38CU;
-    if (c == 0x3CDU || c == 0x3CEU) return c - 0x3FU;
-    if (c >= 0x430U && c <= 0x44FU) return c - 0x20U;
-    if (c >= 0x450U && c <= 0x45FU) return c - 0x50U;
-    if ((c >= 0x460U && c <= 0x481U) || (c >= 0x48AU && c <= 0x4BFU) ||
-        (c >= 0x4D0U && c <= 0x52FU))
-        return c & ~1U;
-    if (c >= 0x4C1U && c <= 0x4CEU) return (c & 1U) ? c : c - 1U;
-    if (c == 0x4CFU) return 0x4C0U;
-    if (c >= 0x561U && c <= 0x586U) return c - 0x30U;
-    if (c >= 0xFF41U && c <= 0xFF5AU) return c - 0x20U;
+    size_t low = 0U,
+           high = sizeof(chm_fold_ranges) / sizeof(chm_fold_ranges[0]);
+    if (c < 0x80U) return (c >= 'a' && c <= 'z') ? c - 0x20U : c;
+    while (low < high) {
+        size_t middle = low + (high - low) / 2U;
+        const chm_fold_range *range = &chm_fold_ranges[middle];
+        if (c < range->lo) {
+            high = middle;
+        } else if (c > range->hi) {
+            low = middle + 1U;
+        } else {
+            if ((c - range->lo) % (uint32_t)range->step != 0U) return c;
+            return (uint32_t)((int64_t)c + range->delta);
+        }
+    }
     return c;
 }
 
@@ -999,13 +1282,14 @@ fail:
 /* Extraction                                                              */
 
 static bool chm_sink_write(chm_sink *sink, const uint8_t *data, size_t size) {
+    const size_t file_io_capacity = gb_chm_capacity();
     size_t done = 0U;
     if ((uint64_t)size > sink->limit - sink->written) return false;
     while (sink->target && done < size) {
         size_t chunk = size - done;
         ssize_t wrote;
         if (chunk > CHM_SSIZE_LIMIT) chunk = CHM_SSIZE_LIMIT;
-        wrote = xx_io_write(sink->target, data + done, chunk);
+        wrote = gb_chm_write(sink->target, data + done, chunk, file_io_capacity);
         if (wrote <= 0 || (size_t)wrote > chunk) return false;
         done += (size_t)wrote;
     }
@@ -1015,13 +1299,14 @@ static bool chm_sink_write(chm_sink *sink, const uint8_t *data, size_t size) {
 
 static bool chm_copy(xx_io_device *source, int64_t offset, uint64_t size,
                      chm_sink *sink, xx_pd_struct *pd) {
+    const size_t file_io_capacity = gb_chm_capacity();
     uint8_t *buffer;
     bool result = true;
     if (size > sink->limit) return false;
-    buffer = (uint8_t *)xx_mem_alloc(CHM_COPY_BUFFER);
+    buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (size > 0U) {
-        size_t chunk = size < CHM_COPY_BUFFER ? (size_t)size : CHM_COPY_BUFFER;
+        size_t chunk = size < file_io_capacity ? (size_t)size : file_io_capacity;
         if ((pd && xx_pd_is_stopped(pd)) ||
             !chm_read_at(source, offset, buffer, chunk) ||
             !chm_sink_write(sink, buffer, chunk)) {
@@ -1041,26 +1326,47 @@ static uint64_t chm_frame_end(const chm_section *section, uint64_t frame) {
                                              : section->packed;
 }
 
-/* Make the cache hold at least the first @p need frames of reset group
- * @p group of section @p index: the whole group when it fits the cap, else
- * a prefix that at least doubles the one already cached, so members walking
- * through an oversized group cost O(cap) decoding in total, not O(cap) each. */
+/* Make a cache slot hold at least the first @p need frames of reset group
+ * @p group of section @p index and return its bytes in @p *out: the whole
+ * group when it fits the cap, else a prefix that at least doubles the one
+ * already cached, so members walking through an oversized group cost O(cap)
+ * decoding in total, not O(cap) each.  A group not cached replaces the
+ * least recently used slot. */
 static bool chm_cache_group(Abstractformat *format, chm_stream *stream,
                             const chm_section *section, uint32_t index,
-                            uint64_t group, uint64_t need) {
+                            uint64_t group, uint64_t need,
+                            const uint8_t **out) {
     const uint64_t cap = CHM_MAX_GROUP / CHM_FRAME;
     uint64_t first = group * section->reset_frames, count, frame, start, stop;
     uint64_t cached = 0U;
     const uint8_t **blocks = NULL;
     size_t *block_sizes = NULL, *plain_sizes = NULL, written = 0U, output_size;
+    size_t slot_index, victim = 0U;
+    chm_cache_slot *slot = NULL;
     uint8_t *packed = NULL;
     bool result = false;
-    if (stream->cache_valid && stream->cache_section == index &&
-        stream->cache_group == group) {
-        if (stream->cache_frames >= need) return true;
-        cached = stream->cache_frames;
+    for (slot_index = 0U; slot_index < CHM_CACHE_SLOTS; ++slot_index) {
+        chm_cache_slot *candidate = &stream->cache[slot_index];
+        if (candidate->valid && candidate->section == index &&
+            candidate->group == group) {
+            slot = candidate;
+            break;
+        }
+        if (!candidate->valid || (stream->cache[victim].valid &&
+                                  candidate->used < stream->cache[victim].used))
+            victim = slot_index;
     }
-    stream->cache_valid = false;
+    if (slot) {
+        slot->used = ++stream->cache_clock;
+        if (slot->frames >= need) {
+            *out = slot->data;
+            return true;
+        }
+        cached = slot->frames;
+    } else {
+        slot = &stream->cache[victim];
+    }
+    slot->valid = false;
     count = section->frames - first;
     if (count > section->reset_frames) count = section->reset_frames;
     if (count > cap) {
@@ -1082,12 +1388,12 @@ static bool chm_cache_group(Abstractformat *format, chm_stream *stream,
         stop > (uint64_t)(stream->context.total - section->data_offset))
         return false;
     output_size = (size_t)count * CHM_FRAME;
-    if (stream->cache_capacity < output_size) {
+    if (slot->capacity < output_size) {
         uint8_t *grown = (uint8_t *)xx_mem_alloc(output_size);
         if (!grown) return false;
-        if (stream->cache) xx_mem_free(stream->cache);
-        stream->cache = grown;
-        stream->cache_capacity = output_size;
+        if (slot->data) xx_mem_free(slot->data);
+        slot->data = grown;
+        slot->capacity = output_size;
     }
     packed = (uint8_t *)xx_mem_alloc((size_t)(stop - start));
     blocks = (const uint8_t **)xx_mem_alloc((size_t)count * sizeof(*blocks));
@@ -1108,7 +1414,7 @@ static bool chm_cache_group(Abstractformat *format, chm_stream *stream,
         plain_sizes[frame] = CHM_FRAME;
     }
     if (!xx_lzx_cab_decode(blocks, block_sizes, plain_sizes, (size_t)count,
-                           section->window_bits, stream->cache, output_size,
+                           section->window_bits, slot->data, output_size,
                            &written) ||
         written != output_size) {
         /* HTML Help Workshop and chmcmd pad the section's last frame to a
@@ -1119,15 +1425,17 @@ static bool chm_cache_group(Abstractformat *format, chm_stream *stream,
         plain_sizes[count - 1U] = (size_t)tail;
         output_size -= CHM_FRAME - (size_t)tail;
         if (!xx_lzx_cab_decode(blocks, block_sizes, plain_sizes, (size_t)count,
-                               section->window_bits, stream->cache,
+                               section->window_bits, slot->data,
                                output_size, &written) ||
             written != output_size)
             goto done;
     }
-    stream->cache_valid = true;
-    stream->cache_section = index;
-    stream->cache_group = group;
-    stream->cache_frames = count;
+    slot->valid = true;
+    slot->section = index;
+    slot->group = group;
+    slot->frames = count;
+    slot->used = ++stream->cache_clock;
+    *out = slot->data;
     result = true;
 done:
     if (packed) xx_mem_free(packed);
@@ -1155,17 +1463,19 @@ static bool chm_unpack_lzx(Abstractformat *format, chm_stream *stream,
          ++group) {
         uint64_t base = group * section->reset_frames * (uint64_t)CHM_FRAME;
         uint64_t need, from, to;
+        const uint8_t *data = NULL;
         if (pd && xx_pd_is_stopped(pd)) return false;
         need = (group == last_group ? last_frame + 1U
                                     : (group + 1U) * section->reset_frames) -
                group * section->reset_frames;
-        if (!chm_cache_group(format, stream, section, index, group, need))
+        if (!chm_cache_group(format, stream, section, index, group, need,
+                             &data))
             return false;
         from = entry->offset > base ? entry->offset : base;
         to = base + need * CHM_FRAME;
         if (to > end) to = end;
         if (to <= from ||
-            !chm_sink_write(sink, stream->cache + (size_t)(from - base),
+            !chm_sink_write(sink, data + (size_t)(from - base),
                             (size_t)(to - from)))
             return false;
     }
@@ -1268,9 +1578,11 @@ static bool chm_set_record(xx_archive_record *out, const chm_context *context,
 
 static void chm_stream_free(void *opaque) {
     chm_stream *stream = (chm_stream *)opaque;
+    size_t slot;
     if (!stream) return;
     chm_context_free(&stream->context);
-    if (stream->cache) xx_mem_free(stream->cache);
+    for (slot = 0U; slot < CHM_CACHE_SLOTS; ++slot)
+        if (stream->cache[slot].data) xx_mem_free(stream->cache[slot].data);
     xx_mem_free(stream);
 }
 

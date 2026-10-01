@@ -10,6 +10,7 @@
 
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/io/xx_io.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 
@@ -18,7 +19,6 @@
 
 #define WARC_MAX_HEADER_SIZE (1024U * 1024U)
 #define WARC_MAX_RECORDS 100000U
-#define WARC_COPY_BUFFER_SIZE 65536U
 
 typedef struct warc_member_s {
     char *name;
@@ -39,13 +39,14 @@ typedef struct warc_stream_s {
 static bool warc_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
     size_t done = 0U;
+    size_t capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        size_t request = size - done < capacity ? size - done : capacity;
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -664,7 +665,8 @@ bool xx_warc_unpack_current_archive_record(Abstractformat *format,
     const char *base = NULL;
     char *owned_base = NULL;
     char *path = NULL;
-    uint8_t buffer[WARC_COPY_BUFFER_SIZE];
+    size_t capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = NULL;
     uint64_t copied = 0U;
     bool result = false;
     bool created = false;
@@ -690,14 +692,16 @@ bool xx_warc_unpack_current_archive_record(Abstractformat *format,
                ? xx_str_concat3(base, "/", member->name)
                : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
+    buffer = (uint8_t *)xx_mem_alloc(capacity);
+    if (!buffer) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
         created = destination != NULL;
         if (!destination) goto done;
         result = true;
         while (copied < member->data_size) {
-            size_t amount = member->data_size - copied > sizeof(buffer)
-                                ? sizeof(buffer)
+            size_t amount = member->data_size - copied > capacity
+                                ? capacity
                                 : (size_t)(member->data_size - copied);
             size_t done = 0U;
             if ((pd && xx_pd_is_stopped(pd)) ||
@@ -722,6 +726,7 @@ bool xx_warc_unpack_current_archive_record(Abstractformat *format,
         if (xx_io_close(destination) != 0) result = false;
     }
 done:
+    if (buffer) xx_mem_free(buffer);
     if (!result && path && created) xx_rt_remove(path);
     if (path) xx_str_free(path);
     if (owned_base) xx_str_free(owned_base);

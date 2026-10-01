@@ -14,6 +14,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/parallels_hdd/xx_parallels_hdd.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -51,8 +52,6 @@
 #define PHDD_MAX_VIRTUAL_SIZE ((uint64_t)1 << 44)
 
 /* BAT entries fetched per read, and the copy / zero-fill granule. */
-#define PHDD_BAT_WINDOW 1024U
-#define PHDD_IO_CHUNK 65536U
 
 /* The member name. The data file carries no name of its own. */
 #define PHDD_MEMBER_NAME "disk.img"
@@ -83,7 +82,10 @@ typedef struct phdd_context_s {
 } phdd_context;
 
 typedef struct phdd_bat_s {
-    uint8_t raw[PHDD_BAT_WINDOW * 4U];
+    uint8_t *raw;
+    size_t entries;
+    size_t io_capacity;
+    uint8_t single_entry[4];
     uint64_t first;          /**< Index of raw[0]. */
     uint32_t count;          /**< Entries held; 0 = empty. */
 } phdd_bat;
@@ -93,12 +95,33 @@ typedef struct phdd_stream_s {
     bool consumed;
 } phdd_stream;
 
+static phdd_bat *phdd_bat_create(size_t capacity) {
+    phdd_bat *bat = (phdd_bat *)xx_mem_calloc(1U, sizeof(*bat));
+    if (!bat) return NULL;
+    bat->io_capacity = capacity;
+    bat->entries = capacity / 4U;
+    if (!bat->entries) {
+        bat->entries = 1U;
+        bat->raw = bat->single_entry;
+    } else {
+        bat->raw = (uint8_t *)xx_mem_alloc(capacity);
+        if (!bat->raw) { xx_mem_free(bat); return NULL; }
+    }
+    return bat;
+}
+static void phdd_bat_free(phdd_bat *bat) {
+    if (!bat) return;
+    if (bat->raw != bat->single_entry) xx_mem_free(bat->raw);
+    xx_mem_free(bat);
+}
+
 /* ------------------------------------------------------------- helpers -- */
 
 /* Every read goes through xx_io_seek64: a disk image routinely exceeds 2 GB
  * and long is 32 bits on Win64. */
-static bool phdd_read_at(xx_io_device *device, int64_t offset, void *data,
-                         size_t size) {
+static bool phdd_read_at_sized(xx_io_device *device, int64_t offset, void *data,
+                         size_t size, size_t io_capacity) {
+
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
 
@@ -107,20 +130,30 @@ static bool phdd_read_at(xx_io_device *device, int64_t offset, void *data,
         return false;
     }
     while (done < size) {
-        ssize_t got = xx_io_read(device, out + done, size - done);
-        if (got <= 0 || (size_t)got > size - done) return false;
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
+        ssize_t got = xx_io_read(device, out + done, request);
+        if (got <= 0 || (size_t)got > request) return false;
         done += (size_t)got;
     }
     return true;
 }
 
+static bool phdd_read_at(xx_io_device *device, int64_t offset, void *data,
+                         size_t size) {
+    return phdd_read_at_sized(device, offset, data, size, xx_get_file_buffer_size());
+}
+
 static bool phdd_write_all(xx_io_device *output, const uint8_t *data,
                            size_t size) {
+    const size_t io_capacity = xx_get_file_buffer_size();
     size_t done = 0U;
 
     while (done < size) {
-        ssize_t sent = xx_io_write(output, data + done, size - done);
-        if (sent <= 0 || (size_t)sent > size - done) return false;
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
+        ssize_t sent = xx_io_write(output, data + done, request);
+        if (sent <= 0 || (size_t)sent > request) return false;
         done += (size_t)sent;
     }
     return true;
@@ -237,13 +270,13 @@ static bool phdd_bat_get(xx_io_device *device, const phdd_context *ctx,
     if (bat->count == 0U || index < bat->first ||
         index - bat->first >= (uint64_t)bat->count) {
         uint64_t left = (uint64_t)ctx->bat_entries - index;
-        uint32_t count = left < PHDD_BAT_WINDOW ? (uint32_t)left
-                                                 : PHDD_BAT_WINDOW;
+        uint32_t count = left < (uint64_t)bat->entries ? (uint32_t)left
+                                                 : (uint32_t)bat->entries;
         bat->count = 0U;
-        if (!phdd_read_at(device,
+        if (!phdd_read_at_sized(device,
                           ctx->base + (int64_t)PHDD_HEADER +
                               (int64_t)(index * 4U),
-                          bat->raw, (size_t)count * 4U)) {
+                          bat->raw, (size_t)count * 4U, bat->io_capacity)) {
             return false;
         }
         bat->first = index;
@@ -290,7 +323,7 @@ static bool phdd_measure(xx_io_device *device, phdd_context *ctx,
         (ctx->ext_off + ctx->tracks) * PHDD_SECTOR > end) {
         end = (ctx->ext_off + ctx->tracks) * PHDD_SECTOR;
     }
-    bat = (phdd_bat *)xx_mem_alloc(sizeof(*bat));
+    bat = phdd_bat_create(xx_get_file_buffer_size());
     if (!bat) return false;
     bat->count = 0U;
     bat->first = 0U;
@@ -298,11 +331,11 @@ static bool phdd_measure(xx_io_device *device, phdd_context *ctx,
     ctx->truncated = false;
     for (index = 0U; index < (uint64_t)ctx->bat_entries; ++index) {
         if ((index & 0xFFFFU) == 0U && pd && xx_pd_is_stopped(pd)) {
-            xx_mem_free(bat);
+            phdd_bat_free(bat);
             return false;
         }
         if (!phdd_bat_get(device, ctx, bat, index, &entry)) {
-            xx_mem_free(bat);
+            phdd_bat_free(bat);
             return false;
         }
         if (!phdd_map_cluster(ctx, entry, &sector)) continue;
@@ -311,7 +344,7 @@ static bool phdd_measure(xx_io_device *device, phdd_context *ctx,
             end = (sector + ctx->tracks) * PHDD_SECTOR;
         }
     }
-    xx_mem_free(bat);
+    phdd_bat_free(bat);
     if (end > (uint64_t)ctx->input_size) {
         ctx->truncated = ctx->allocated != 0U;
         end = (uint64_t)ctx->input_size;
@@ -328,15 +361,16 @@ static bool phdd_measure(xx_io_device *device, phdd_context *ctx,
 static bool phdd_write_image(xx_io_device *device, const phdd_context *ctx,
                              xx_io_device *output, xx_pd_struct *pd) {
     phdd_bat *bat;
+    const size_t io_capacity = xx_get_file_buffer_size();
     uint8_t *buffer = NULL;
     uint64_t remaining = ctx->virtual_size;
     uint64_t cluster = 0U;
     bool result = true;
 
-    bat = (phdd_bat *)xx_mem_alloc(sizeof(*bat));
-    if (output) buffer = (uint8_t *)xx_mem_alloc(PHDD_IO_CHUNK);
+    bat = phdd_bat_create(io_capacity);
+    if (output) buffer = (uint8_t *)xx_mem_alloc(io_capacity);
     if (!bat || (output && !buffer)) {
-        if (bat) xx_mem_free(bat);
+        if (bat) phdd_bat_free(bat);
         if (buffer) xx_mem_free(buffer);
         return false;
     }
@@ -361,8 +395,8 @@ static bool phdd_write_image(xx_io_device *device, const phdd_context *ctx,
         }
         mapped = phdd_map_cluster(ctx, entry, &sector);
         while (output && done < length) {
-            size_t piece = (length - done) < (uint64_t)PHDD_IO_CHUNK
-                               ? (size_t)(length - done) : PHDD_IO_CHUNK;
+            size_t piece = (length - done) < (uint64_t)io_capacity
+                               ? (size_t)(length - done) : io_capacity;
             size_t have = 0U;
 
             if (mapped) {
@@ -390,7 +424,7 @@ static bool phdd_write_image(xx_io_device *device, const phdd_context *ctx,
         remaining -= length;
         ++cluster;
     }
-    xx_mem_free(bat);
+    phdd_bat_free(bat);
     if (buffer) xx_mem_free(buffer);
     return result;
 }

@@ -30,6 +30,86 @@
 #include "xxfclib/global/xx_global.h"
 
 #include "platforms/xx_data_platform.h"
+#if !defined(XXFC_FORMATS_ONLY)
+#include "xx_data_search_internal.h"
+
+bool xx_data_can_fuse_literal_prefix(const uint8_t *pat, size_t pattern_size) {
+    return pat && pattern_size >= 2 && xx_is_avx2_enabled() &&
+           xx_data_can_fuse_literal_prefix_avx2(pat, pattern_size);
+}
+
+size_t xx_data_collect_prefixes_buffer(const uint8_t *data, size_t size,
+                                      size_t start, const uint8_t prefix[2],
+                                      size_t *positions, size_t capacity,
+                                      size_t *next) {
+    if (next) *next = size;
+    if (!data || !prefix || !positions || !next || !capacity ||
+        size < 2 || start > size - 2) return 0;
+    if (xx_is_avx2_enabled())
+        return xx_data_collect_prefixes_avx2(data, size, start, prefix,
+                                            positions, capacity, next);
+    if (xx_is_sse2_enabled())
+        return xx_data_collect_prefixes_sse2(data, size, start, prefix,
+                                            positions, capacity, next);
+
+    while (start < size - 1) {
+        size_t remaining = size - 1 - start;
+        size_t width = remaining < 128 ? remaining : 128;
+        size_t count = 0;
+        for (size_t i = 0; i < width; ++i) {
+            size_t offset = start + i;
+            if (data[offset] == prefix[0] && data[offset + 1] == prefix[1]) {
+                positions[count++] = offset;
+                if (count == capacity) {
+                    *next = offset + 1;
+                    return count;
+                }
+            }
+        }
+        start += width;
+        if (count) {
+            *next = start;
+            return count;
+        }
+    }
+    *next = size - 1;
+    return 0;
+}
+
+bool xx_data_collect_literal_dual_buffer(const uint8_t *data, size_t size,
+                                         size_t start, const uint8_t prefix[2],
+                                         XXDataLiteralDualBatch *batch) {
+    if (!batch) return false;
+    batch->adjacent_count = batch->skip_count = 0;
+    batch->next = size;
+    if (!data || !prefix || size < 2 || start > size - 2) return false;
+    if (xx_is_avx2_enabled())
+        return xx_data_collect_literal_dual_avx2(data, size, start, prefix, batch);
+    if (xx_is_sse2_enabled())
+        return xx_data_collect_literal_dual_sse2(data, size, start, prefix, batch);
+
+    while (start < size - 1) {
+        size_t remaining = size - 1 - start;
+        size_t width = remaining < 128 ? remaining : 128;
+        for (size_t i = 0; i < width; ++i) {
+            size_t offset = start + i;
+            if (data[offset] == prefix[0]) {
+                if (data[offset + 1] == prefix[1])
+                    batch->adjacent[batch->adjacent_count++] = offset;
+                if (size - offset >= 3 && data[offset + 2] == prefix[1])
+                    batch->skip[batch->skip_count++] = offset;
+            }
+        }
+        start += width;
+        if (batch->adjacent_count || batch->skip_count) {
+            batch->next = start;
+            return true;
+        }
+    }
+    batch->next = size - 1;
+    return false;
+}
+#endif
 
 /* ========================================================================= */
 /* --- Reading from Raw Memory Buffer                                    --- */

@@ -25,6 +25,7 @@
  */
 
 #include "xx_data_platform.h"
+#include "../xx_data_search_internal.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/data/xx_pd.h"
 
@@ -37,6 +38,154 @@
 #    include <emmintrin.h>
 #  endif
 #endif
+
+#if (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || \
+    ((defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__)))
+static inline size_t xx_prefix_emit_sse2(const uint32_t *masks, size_t mask_count,
+                                       size_t base, size_t *positions,
+                                       size_t capacity, size_t *next) {
+    size_t count = 0;
+    for (size_t block = 0; block < mask_count; ++block) {
+        uint32_t mask = masks[block];
+        while (mask) {
+            unsigned long bit;
+#if defined(_MSC_VER)
+            _BitScanForward(&bit, (unsigned long)mask);
+#else
+            bit = (unsigned long)__builtin_ctz(mask);
+#endif
+            size_t offset = base + block * 16 + bit;
+            positions[count++] = offset;
+            if (count == capacity) {
+                *next = offset + 1;
+                return count;
+            }
+            mask &= mask - 1;
+        }
+    }
+    *next = base + mask_count * 16;
+    return count;
+}
+#endif
+
+#if defined(__GNUC__) || defined(__clang__)
+#  if defined(__i386__) && !defined(__SSE2__)
+__attribute__((target("sse2")))
+#  endif
+#endif
+size_t xx_data_collect_prefixes_sse2(const uint8_t *data, size_t size,
+                                   size_t start, const uint8_t prefix[2],
+                                   size_t *positions, size_t capacity, size_t *next) {
+    if (next) *next = size;
+    if (!data || !prefix || !positions || !next || !capacity ||
+        size < 2 || start > size - 2) return 0;
+#if (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || \
+    ((defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__)))
+    __m128i first = _mm_set1_epi8((char)prefix[0]);
+    __m128i second = _mm_set1_epi8((char)prefix[1]);
+    while (size - start >= 129) {
+        uint32_t masks[8];
+        uint32_t any = 0;
+        for (size_t block = 0; block < 8; ++block) {
+            const uint8_t *p = data + start + block * 16;
+            __m128i matches = _mm_and_si128(
+                _mm_cmpeq_epi8(_mm_loadu_si128((const __m128i *)p), first),
+                _mm_cmpeq_epi8(_mm_loadu_si128((const __m128i *)(p + 1)), second));
+            masks[block] = (uint32_t)_mm_movemask_epi8(matches);
+            any |= masks[block];
+        }
+        if (any) return xx_prefix_emit_sse2(masks, 8, start, positions, capacity, next);
+        start += 128;
+    }
+    while (size - start >= 17) {
+        __m128i matches = _mm_and_si128(
+            _mm_cmpeq_epi8(_mm_loadu_si128((const __m128i *)(data + start)), first),
+            _mm_cmpeq_epi8(_mm_loadu_si128((const __m128i *)(data + start + 1)), second));
+        uint32_t mask = (uint32_t)_mm_movemask_epi8(matches);
+        if (mask) return xx_prefix_emit_sse2(&mask, 1, start, positions, capacity, next);
+        start += 16;
+    }
+    size_t count = 0;
+    while (start < size - 1) {
+        if (data[start] == prefix[0] && data[start + 1] == prefix[1]) {
+            positions[count++] = start;
+            if (count == capacity) {
+                *next = start + 1;
+                return count;
+            }
+        }
+        ++start;
+    }
+    *next = start;
+    return count;
+#else
+    return 0;
+#endif
+}
+
+/* Emit complete batches for two independent raw anchor streams. */
+#if (defined(__GNUC__) || defined(__clang__)) && defined(__i386__) && !defined(__SSE2__)
+__attribute__((target("sse2")))
+#endif
+bool xx_data_collect_literal_dual_sse2(const uint8_t *data, size_t size,
+                                       size_t start, const uint8_t prefix[2],
+                                       XXDataLiteralDualBatch *batch) {
+    if (!batch) return false;
+    batch->adjacent_count = batch->skip_count = 0;
+    batch->next = size;
+    if (!data || !prefix || size < 2 || start > size - 2) return false;
+#if (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || \
+    ((defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__)))
+    __m128i first = _mm_set1_epi8((char)prefix[0]);
+    __m128i second = _mm_set1_epi8((char)prefix[1]);
+    while (size - start >= 130) {
+        uint32_t adjacent[8], skip[8], any = 0;
+        for (size_t block = 0; block < 8; ++block) {
+            const uint8_t *p = data + start + block * 16;
+            __m128i f = _mm_cmpeq_epi8(_mm_loadu_si128((const __m128i *)p), first);
+            adjacent[block] = (uint32_t)_mm_movemask_epi8(_mm_and_si128(f,
+                _mm_cmpeq_epi8(_mm_loadu_si128((const __m128i *)(p + 1)), second)));
+            skip[block] = (uint32_t)_mm_movemask_epi8(_mm_and_si128(f,
+                _mm_cmpeq_epi8(_mm_loadu_si128((const __m128i *)(p + 2)), second)));
+            any |= adjacent[block] | skip[block];
+        }
+        if (any) {
+            size_t ignored;
+            batch->adjacent_count = xx_prefix_emit_sse2(adjacent, 8, start, batch->adjacent, 128, &ignored);
+            batch->skip_count = xx_prefix_emit_sse2(skip, 8, start, batch->skip, 128, &ignored);
+            batch->next = start + 128;
+            return true;
+        }
+        start += 128;
+    }
+    while (size - start >= 18) {
+        __m128i f = _mm_cmpeq_epi8(_mm_loadu_si128((const __m128i *)(data + start)), first);
+        uint32_t adjacent = (uint32_t)_mm_movemask_epi8(_mm_and_si128(f,
+            _mm_cmpeq_epi8(_mm_loadu_si128((const __m128i *)(data + start + 1)), second)));
+        uint32_t skip = (uint32_t)_mm_movemask_epi8(_mm_and_si128(f,
+            _mm_cmpeq_epi8(_mm_loadu_si128((const __m128i *)(data + start + 2)), second)));
+        if (adjacent || skip) {
+            size_t ignored;
+            batch->adjacent_count = xx_prefix_emit_sse2(&adjacent, 1, start, batch->adjacent, 128, &ignored);
+            batch->skip_count = xx_prefix_emit_sse2(&skip, 1, start, batch->skip, 128, &ignored);
+            batch->next = start + 16;
+            return true;
+        }
+        start += 16;
+    }
+    while (start < size - 1) {
+        if (data[start] == prefix[0]) {
+            if (data[start + 1] == prefix[1]) batch->adjacent[batch->adjacent_count++] = start;
+            if (size - start >= 3 && data[start + 2] == prefix[1]) batch->skip[batch->skip_count++] = start;
+        }
+        ++start;
+    }
+    batch->next = start;
+    return batch->adjacent_count || batch->skip_count;
+#else
+    return false;
+#endif
+}
 
 /* Callers dispatch here only when xx_is_sse2_enabled(); 32-bit GCC/Clang
  * builds do not enable SSE2 globally, so enable it for this function. */

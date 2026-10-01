@@ -27,6 +27,7 @@
  * refused: they hold no chunk table.
  */
 
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/isz/xx_isz.h"
 
@@ -63,7 +64,6 @@
 #define ISZ_SEGMENT_RECORD 24U
 /* Pointers fetched per table read; a multiple of 4 keeps the XOR key phase
  * of every window at zero. */
-#define ISZ_TABLE_WINDOW 4096U
 #define ISZ_ECB_SLICE 4096U
 
 #define ISZ_TYPE_ZERO 0U
@@ -123,6 +123,9 @@ typedef struct isz_table_s {
     uint32_t first;              /**< Index of the pointer in window[0]. */
     uint32_t filled;             /**< Pointers held in the window. */
     uint8_t *window;
+    uint32_t window_entries;
+    size_t io_capacity;
+    uint8_t single_entry[4];
 } isz_table;
 
 static uint16_t isz_le16(const uint8_t *b) {
@@ -138,19 +141,26 @@ static uint64_t isz_le64(const uint8_t *b) {
     return (uint64_t)isz_le32(b) | ((uint64_t)isz_le32(b + 4U) << 32U);
 }
 
-static bool isz_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool isz_read_at_sized(xx_io_device *device, int64_t offset, void *buffer,
+                        size_t size, size_t io_capacity) {
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
+}
+
+static bool isz_read_at(xx_io_device *device, int64_t offset, void *buffer,
+                        size_t size) {
+    return isz_read_at_sized(device, offset, buffer, size, xx_get_file_buffer_size());
 }
 
 static void isz_deobfuscate(uint8_t *data, size_t size, uint64_t phase) {
@@ -179,13 +189,20 @@ static bool isz_table_open(isz_table *table, xx_io_device *device,
     table->device = device;
     table->context = context;
     if (context->pointer_offset == 0U) return true;
-    table->window = (uint8_t *)xx_mem_alloc((size_t)ISZ_TABLE_WINDOW *
-                                            context->pointer_size);
+    {
+        size_t capacity = xx_get_file_buffer_size();
+        table->io_capacity = capacity;
+        size_t entries = capacity / context->pointer_size;
+        if (entries > context->chunk_count) entries = context->chunk_count;
+        table->window_entries = entries ? (uint32_t)entries : 1U;
+        table->window = entries ? (uint8_t *)xx_mem_alloc(capacity)
+                                : table->single_entry;
+    }
     return table->window != NULL;
 }
 
 static void isz_table_close(isz_table *table) {
-    if (table->window) xx_mem_free(table->window);
+    if (table->window && table->window != table->single_entry) xx_mem_free(table->window);
     table->window = NULL;
 }
 
@@ -206,17 +223,17 @@ static bool isz_table_get(isz_table *table, uint32_t index, uint32_t *type,
     }
     if (!table->window || index < table->first ||
         index - table->first >= table->filled) {
-        uint32_t first = index - index % ISZ_TABLE_WINDOW;
+        uint32_t first = index - index % table->window_entries;
         uint32_t count = context->chunk_count - first;
         uint64_t position = (uint64_t)first * context->pointer_size;
-        if (count > ISZ_TABLE_WINDOW) count = ISZ_TABLE_WINDOW;
+        if (count > table->window_entries) count = table->window_entries;
         table->filled = 0U;
         if (!table->window ||
-            !isz_read_at(table->device,
+            !isz_read_at_sized(table->device,
                          context->base + (int64_t)context->pointer_offset +
                              (int64_t)position,
                          table->window,
-                         (size_t)count * context->pointer_size))
+                         (size_t)count * context->pointer_size, table->io_capacity))
             return false;
         isz_deobfuscate(table->window, (size_t)count * context->pointer_size,
                         position);

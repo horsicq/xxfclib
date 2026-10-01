@@ -59,12 +59,27 @@ extern "C" {
  * Adobe Ascii85 ("<~" ... "~>"): no header, length or checksum.  White
  * space (NUL, TAB, LF, FF, CR, SP) is ignored, a final group of k (2..4)
  * digits is padded with 'u' and yields k-1 bytes, and "~>" ends the data.
- * It is accepted only when every byte up to "~>" belongs to the grammar and
- * at least one byte decodes.  The stream ends at "~>"; one record.
+ * It is accepted only when every byte up to "~>" belongs to the grammar, at
+ * least one byte decodes, and the stream is the whole file: after "~>" at
+ * most 4096 bytes may follow, all white space, NUL or 0x1A.  The format
+ * ends at "~>"; one record.  With no checksum, the format search does not
+ * look for "<~" inside other data; only "xbtoa" headers are searched for.
  *
  * Member names: "payload" for the old format and Adobe, the 5.x header's
  * leaf name when it is a safe file name (else "payload"); a name an earlier
  * record already uses (ignoring case) gets "_<record number>".
+ * A '~' before a digit becomes '_' so that no name can be an 8.3
+ * short-name alias ("LONGFI~1.BIN") of another record's file.
+ *
+ * Non-data bytes (line breaks, blank lines, white space) in one body may
+ * exceed its data characters by at most 64 KiB, so a header followed by
+ * megabytes of padding is refused without reading it all.
+ * A '~' before a digit becomes '_' so that no name can be an 8.3
+ * short-name alias ("LONGFI~1.BIN") of another record's file.
+ *
+ * Non-data bytes (line breaks, blank lines, white space) in one body may
+ * exceed its data characters by at most 64 KiB, so a header followed by
+ * megabytes of padding is refused without reading it all.
  */
 typedef struct xx_btoa {
     Abstractformat format;

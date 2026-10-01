@@ -21,6 +21,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/qemu_enhanced_disk/xx_qemu_enhanced_disk.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -73,11 +74,9 @@
 
 /* L2 entries are read this many at a time. Every table has at least 512
  * entries (one 4 KB cluster), so an aligned window never crosses a table. */
-#define XX_QED_L2_WINDOW 512U
 
 /* Cluster data is copied through a buffer of this size, whatever the cluster
  * size is, so a 64 MB cluster never becomes a 64 MB allocation. */
-#define XX_QED_COPY_CHUNK 0x10000U
 
 /* How many guest clusters the no-destination walk maps. See
  * xx_qed_write_image(). */
@@ -117,7 +116,11 @@ typedef struct xx_qed_private_s {
 typedef struct xx_qed_l2_cache_s {
     uint64_t table;              /**< Host offset of the cached table, 0 none. */
     uint64_t first;              /**< Index of raw[0] within that table. */
-    uint8_t raw[XX_QED_L2_WINDOW * 8U];
+    uint8_t *raw;
+    size_t entries;
+    size_t bytes;
+    uint8_t single_entry[8];
+    size_t io_capacity;
 } xx_qed_l2_cache;
 
 static void xx_qemu_enhanced_disk_vtable_destroy(Abstractformat *self);
@@ -126,8 +129,9 @@ static void xx_qemu_enhanced_disk_vtable_destroy(Abstractformat *self);
 
 /* Every read goes through xx_io_seek64: a disk image routinely exceeds 2 GB
  * and long is 32 bits on Win64, so xx_io_seek() would truncate the offset. */
-static bool xx_qed_read_at(xx_io_device *device, int64_t offset, void *data,
-                           size_t size) {
+static bool xx_qed_read_at_sized(xx_io_device *device, int64_t offset, void *data,
+                           size_t size, size_t io_capacity) {
+
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
 
@@ -136,20 +140,30 @@ static bool xx_qed_read_at(xx_io_device *device, int64_t offset, void *data,
         return false;
     }
     while (done < size) {
-        ssize_t got = xx_io_read(device, out + done, size - done);
-        if (got <= 0 || (size_t)got > size - done) return false;
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
+        ssize_t got = xx_io_read(device, out + done, request);
+        if (got <= 0 || (size_t)got > request) return false;
         done += (size_t)got;
     }
     return true;
 }
 
+static bool xx_qed_read_at(xx_io_device *device, int64_t offset, void *data,
+                           size_t size) {
+    return xx_qed_read_at_sized(device, offset, data, size, xx_get_file_buffer_size());
+}
+
 static bool xx_qed_write_all(xx_io_device *output, const uint8_t *data,
                              size_t size) {
+    const size_t io_capacity = xx_get_file_buffer_size();
     size_t done = 0U;
 
     while (done < size) {
-        ssize_t sent = xx_io_write(output, data + done, size - done);
-        if (sent <= 0 || (size_t)sent > size - done) return false;
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
+        ssize_t sent = xx_io_write(output, data + done, request);
+        if (sent <= 0 || (size_t)sent > request) return false;
         done += (size_t)sent;
     }
     return true;
@@ -397,7 +411,7 @@ static int xx_qed_map_cluster(Abstractformat *self,
     uint64_t l1_index = cluster >> parsed->entries_bits;
     uint64_t l2_index =
         cluster & (((uint64_t)1 << parsed->entries_bits) - 1U);
-    uint64_t first = l2_index & ~(uint64_t)(XX_QED_L2_WINDOW - 1U);
+    uint64_t first = l2_index - l2_index % (uint64_t)cache->entries;
     uint64_t table;
     uint64_t entry;
 
@@ -408,16 +422,20 @@ static int xx_qed_map_cluster(Abstractformat *self,
         /* table was validated in parse: the whole table, and so this window
          * of it, lies inside the file. */
         cache->table = 0U;
-        if (!xx_qed_read_at(self->device,
+        {
+            uint64_t left = (parsed->table_bytes / 8U) - first;
+            cache->bytes = (left < (uint64_t)cache->entries ? (size_t)left : cache->entries) * 8U;
+        }
+        if (!xx_qed_read_at_sized(self->device,
                             parsed->base_address + (int64_t)table +
                                 (int64_t)(first * 8U),
-                            cache->raw, sizeof(cache->raw))) {
+                            cache->raw, cache->bytes, cache->io_capacity)) {
             return -1;
         }
         cache->table = table;
         cache->first = first;
     }
-    entry = xx_data_get_u64(cache->raw, sizeof(cache->raw),
+    entry = xx_data_get_u64(cache->raw, cache->bytes,
                             (size_t)(l2_index - first) * 8U, false);
     if (entry == XX_QED_CLUSTER_UNALLOCATED || entry == XX_QED_CLUSTER_ZERO) {
         return 0;
@@ -438,6 +456,7 @@ static bool xx_qed_write_image(Abstractformat *self,
                                const xx_qed_private *parsed,
                                xx_io_device *output, xx_pd_struct *pd) {
     xx_qed_l2_cache *cache;
+    const size_t io_capacity = xx_get_file_buffer_size();
     uint8_t *buffer;
     uint64_t remaining = parsed->image_size;
     uint64_t cluster = 0U;
@@ -446,12 +465,17 @@ static bool xx_qed_write_image(Abstractformat *self,
     bool result = true;
 
     cache = (xx_qed_l2_cache *)xx_mem_alloc(sizeof(*cache));
-    buffer = (uint8_t *)xx_mem_alloc(XX_QED_COPY_CHUNK);
+    buffer = (uint8_t *)xx_mem_alloc(io_capacity);
     if (!cache || !buffer) {
         if (cache) xx_mem_free(cache);
         if (buffer) xx_mem_free(buffer);
         return false;
     }
+    cache->io_capacity = io_capacity;
+    cache->entries = io_capacity / 8U;
+    cache->raw = cache->entries ? (uint8_t *)xx_mem_alloc(io_capacity) : cache->single_entry;
+    if (!cache->entries) cache->entries = 1U;
+    if (!cache->raw) { xx_mem_free(cache); xx_mem_free(buffer); return false; }
     cache->table = 0U;
     cache->first = 0U;
     while (remaining != 0U && budget != 0U) {
@@ -472,12 +496,12 @@ static bool xx_qed_write_image(Abstractformat *self,
             break;
         }
         while (output && done < chunk) {
-            size_t piece = chunk - done < (uint64_t)XX_QED_COPY_CHUNK
+            size_t piece = chunk - done < (uint64_t)io_capacity
                                ? (size_t)(chunk - done)
-                               : (size_t)XX_QED_COPY_CHUNK;
+                               : (size_t)io_capacity;
             if (kind == 0) {
                 if (!buffer_is_zero) {
-                    xx_mem_zero(buffer, XX_QED_COPY_CHUNK);
+                    xx_mem_zero(buffer, io_capacity);
                     buffer_is_zero = true;
                 }
             } else {
@@ -502,6 +526,7 @@ static bool xx_qed_write_image(Abstractformat *self,
         ++cluster;
         if (budget != UINT64_MAX) --budget;
     }
+    if (cache->raw != cache->single_entry) xx_mem_free(cache->raw);
     xx_mem_free(cache);
     xx_mem_free(buffer);
     return result;

@@ -47,6 +47,7 @@
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/pma/xx_pma.h"
 
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
@@ -117,17 +118,7 @@ static uint32_t xx_pma_le32(const uint8_t *data) {
 
 /* CRC-16/ARC, the check PMarc stores for the uncompressed payload. */
 static uint16_t xx_pma_crc16(const uint8_t *data, size_t size) {
-    uint16_t crc = 0U;
-    size_t index;
-
-    for (index = 0U; index < size; ++index) {
-        int bit;
-        crc = (uint16_t)(crc ^ data[index]);
-        for (bit = 0; bit < 8; ++bit) {
-            crc = (uint16_t)((crc >> 1) ^ ((crc & 1U) ? 0xA001U : 0U));
-        }
-    }
-    return crc;
+    return xx_crc16_arc_calc(0U, data, size);
 }
 
 /* The additive header checksum: the low byte of the sum of every base-header

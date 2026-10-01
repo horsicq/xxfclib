@@ -17,6 +17,7 @@
  * records, the zlib trailer) was measured on the corpus.
  */
 
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/clickteam_install_creator/xx_clickteam_install_creator.h"
 
@@ -50,7 +51,6 @@
 #define CIC_MAX_NAME 1024U
 #define CIC_MAX_COMPONENTS 64U
 #define CIC_MAX_SECTIONS 96U
-#define CIC_IO_BUFFER 65536U
 #define CIC_WINDOW 32768U
 #define CIC_WINDOW_MASK (CIC_WINDOW - 1U)
 #define CIC_LIST1_HEADER 0x1AU
@@ -165,6 +165,7 @@ typedef struct cic_inflate {
     uint8_t *owned_buffer;
     size_t buffer_size;
     size_t buffer_pos;
+    size_t io_capacity;
     uint64_t consumed;
     uint32_t bits;
     uint32_t bit_count;
@@ -202,7 +203,7 @@ static int cic_next_byte(cic_inflate *z) {
     if (z->buffer_pos >= z->buffer_size) {
         size_t want;
         if (!z->device || z->left == 0U || !z->owned_buffer) return -1;
-        want = z->left < CIC_IO_BUFFER ? (size_t)z->left : CIC_IO_BUFFER;
+        want = z->left < z->io_capacity ? (size_t)z->left : z->io_capacity;
         if (!cic_read_at(z->device, z->position, z->owned_buffer, want))
             return -1;
         z->position += (int64_t)want;
@@ -415,7 +416,9 @@ static bool cic_ctdeflate(xx_io_device *device, int64_t offset,
         z->buffer = memory;
         z->buffer_size = (size_t)size;
     } else {
-        z->owned_buffer = (uint8_t *)xx_mem_alloc(CIC_IO_BUFFER);
+        z->io_capacity = xx_get_file_buffer_size();
+        if (size < z->io_capacity) z->io_capacity = (size_t)size;
+        z->owned_buffer = (uint8_t *)xx_mem_alloc(z->io_capacity);
         if (!z->owned_buffer) {
             xx_mem_free(z);
             return false;
@@ -689,6 +692,7 @@ typedef struct cic_entry {
     uint32_t unpacked;
     char *name;        /* UTF-8, '/' separated */
     bool safe;
+    bool shared;       /* 2.x: its record overlaps another member's */
 } cic_entry;
 
 typedef struct cic_list {
@@ -844,85 +848,174 @@ static uint32_t cic_fold_next(const char **cursor) {
     return c;
 }
 
-static uint32_t cic_name_hash(const char *s) {
-    uint32_t h = 2166136261U;
+/* Case-folded copy of a name built by cic_name_utf8.  Folding keeps every
+ * code point's UTF-8 length, so the copy is exactly as long as the name. */
+static void cic_fold_copy(const char *name, char *out) {
+    const char *s = name;
     while (*s) {
         uint32_t c = cic_fold_next(&s);
-        h ^= c & 0xFFU;
-        h *= 16777619U;
-        h ^= c >> 8;
-        h *= 16777619U;
+        if (c < 0x80U) {
+            *out++ = (char)c;
+        } else if (c < 0x800U) {
+            *out++ = (char)(0xC0U | (c >> 6));
+            *out++ = (char)(0x80U | (c & 0x3FU));
+        } else {
+            *out++ = (char)(0xE0U | (c >> 12));
+            *out++ = (char)(0x80U | ((c >> 6) & 0x3FU));
+            *out++ = (char)(0x80U | (c & 0x3FU));
+        }
     }
-    return h;
+    *out = 0;
 }
 
-static bool cic_name_equal(const char *a, const char *b) {
-    while (*a && *b)
-        if (cic_fold_next(&a) != cic_fold_next(&b)) return false;
-    return *a == *b;
+/* Orders entry indices by folded name, then by index. */
+static int cic_key_cmp(const void *context, uint32_t x, uint32_t y) {
+    char *const *keys = (char *const *)context;
+    const uint8_t *a = (const uint8_t *)keys[x], *b = (const uint8_t *)keys[y];
+    while (*a && *a == *b) {
+        ++a;
+        ++b;
+    }
+    if (*a != *b) return *a < *b ? -1 : 1;
+    return x < y ? -1 : (x > y ? 1 : 0);
+}
+
+/* Bottom-up merge sort of indices: O(n log n) comparisons whatever the
+ * input is.  n <= CIC_MAX_FILES. */
+static void cic_sort(uint32_t *index, uint32_t *tmp, uint32_t n,
+                     int (*cmp)(const void *, uint32_t, uint32_t),
+                     const void *context) {
+    uint32_t width, lo;
+    uint32_t *src = index, *dst = tmp, *swap;
+    for (width = 1U; width < n; width *= 2U) {
+        for (lo = 0U; lo < n; lo += 2U * width) {
+            uint32_t mid = n - lo > width ? lo + width : n;
+            uint32_t hi = n - mid > width ? mid + width : n;
+            uint32_t i = lo, j = mid, k = lo;
+            while (i < mid && j < hi)
+                dst[k++] = cmp(context, src[i], src[j]) <= 0 ? src[i++]
+                                                                  : src[j++];
+            while (i < mid) dst[k++] = src[i++];
+            while (j < hi) dst[k++] = src[j++];
+        }
+        swap = src;
+        src = dst;
+        dst = swap;
+    }
+    if (src != index) xx_rt_memcpy(index, src, (size_t)n * sizeof(uint32_t));
+}
+
+/* True for a component in the form of an NTFS 8.3 short-name alias
+ * ("LONGFI~1.TXT"): stem of at most 8 bytes ending in '~' and digits,
+ * extension of at most 3 bytes.  Such a name can open another member's
+ * file through its short name. */
+static bool cic_is_alias83(const char *c, size_t n) {
+    size_t dot = n, i, stem;
+    for (i = 0U; i < n; ++i)
+        if (c[i] == '.') {
+            if (dot != n) return false;
+            dot = i;
+        }
+    stem = dot;
+    if (stem < 3U || stem > 8U || (dot < n && n - dot - 1U > 3U)) return false;
+    i = stem;
+    while (i > 0U && c[i - 1U] >= '0' && c[i - 1U] <= '9') --i;
+    return i < stem && i >= 2U && c[i - 1U] == '~';
+}
+
+/* Appends "_<index>" (first rename) or "_<index>_<attempt>". */
+static bool cic_rename(cic_entry *e, uint32_t index, uint32_t attempt) {
+    char suffix[32];
+    char *renamed, *copy;
+    size_t len;
+    if (attempt <= 1U)
+        (void)xx_rt_snprintf(suffix, sizeof(suffix), "_%u", index);
+    else
+        (void)xx_rt_snprintf(suffix, sizeof(suffix), "_%u_%u", index, attempt);
+    renamed = xx_str_concat(e->name, suffix);
+    if (!renamed) return false;
+    len = xx_str_len(renamed);
+    copy = (char *)xx_mem_alloc(len + 1U);
+    if (copy) xx_rt_memcpy(copy, renamed, len + 1U);
+    xx_str_free(renamed);
+    if (!copy) return false;
+    xx_mem_free(e->name);
+    e->name = copy;
+    return true;
 }
 
 /* Gives every entry a name no other entry has (ignoring case the way
  * Windows does), so no member overwrites another on extraction.  A clash
- * gets "_<index>". */
+ * gets "_<index>"; the entry with the lowest index keeps its name.  A last
+ * component in 8.3-alias form is renamed the same way, and an entry with
+ * such a directory component is not written.  Sorting keeps this
+ * O(n log n) for any set of names (a hash table can be forced into long
+ * probe chains with chosen names). */
 static bool cic_dedupe(cic_list *list) {
-    uint32_t cap = 16U, i;
-    uint32_t *slots;
-    bool ok = true;
-    while (cap < list->count * 2U) cap <<= 1;
-    slots = (uint32_t *)xx_mem_calloc(cap, sizeof(uint32_t));
-    if (!slots) return false;
-    for (i = 0U; i < list->count && ok; ++i) {
+    uint32_t n = list->count, i, round;
+    uint32_t *index = NULL, *tmp = NULL;
+    uint8_t *attempts = NULL;
+    char **keys = NULL;
+    char *arena = NULL;
+    bool ok = false;
+    if (n == 0U) return true;
+    index = (uint32_t *)xx_mem_alloc((size_t)n * sizeof(uint32_t));
+    tmp = (uint32_t *)xx_mem_alloc((size_t)n * sizeof(uint32_t));
+    attempts = (uint8_t *)xx_mem_calloc(n, 1U);
+    keys = (char **)xx_mem_alloc((size_t)n * sizeof(char *));
+    if (!index || !tmp || !attempts || !keys) goto done;
+    for (i = 0U; i < n; ++i) {
         cic_entry *e = &list->entries[i];
-        uint32_t attempt;
-        bool placed = false;
-        for (attempt = 0U; attempt < 8U && !placed; ++attempt) {
-            uint32_t h, slot;
-            bool clash = false;
-            if (attempt > 0U) {
-                char suffix[32];
-                char *renamed;
-                if (attempt == 1U)
-                    (void)xx_rt_snprintf(suffix, sizeof(suffix), "_%u", i);
-                else
-                    (void)xx_rt_snprintf(suffix, sizeof(suffix), "_%u_%u", i,
-                                         attempt);
-                renamed = xx_str_concat(e->name, suffix);
-                if (!renamed) {
-                    ok = false;
-                    break;
-                }
-                {
-                    size_t len = xx_str_len(renamed);
-                    char *copy = (char *)xx_mem_alloc(len + 1U);
-                    if (!copy) {
-                        xx_str_free(renamed);
-                        ok = false;
-                        break;
-                    }
-                    xx_rt_memcpy(copy, renamed, len + 1U);
-                    xx_str_free(renamed);
-                    xx_mem_free(e->name);
-                    e->name = copy;
+        const char *name = e->name;
+        size_t len = xx_str_len(name), start = 0U, k;
+        for (k = 0U; k <= len; ++k) {
+            if (k < len && name[k] != '/') continue;
+            if (cic_is_alias83(name + start, k - start)) {
+                if (k < len) {
+                    e->safe = false;
+                } else {
+                    if (!cic_rename(e, i, 1U)) goto done;
+                    attempts[i] = 1U;
                 }
             }
-            h = cic_name_hash(e->name);
-            for (slot = h & (cap - 1U); slots[slot];
-                 slot = (slot + 1U) & (cap - 1U)) {
-                if (cic_name_equal(list->entries[slots[slot] - 1U].name,
-                                   e->name)) {
-                    clash = true;
-                    break;
-                }
-            }
-            if (!clash) {
-                slots[slot] = i + 1U;
-                placed = true;
-            }
+            start = k + 1U;
         }
-        if (!placed) ok = false;
     }
-    xx_mem_free(slots);
+    for (round = 0U; round < 8U; ++round) {
+        size_t total = 0U, at = 0U;
+        bool clash = false;
+        for (i = 0U; i < n; ++i) total += xx_str_len(list->entries[i].name) + 1U;
+        arena = (char *)xx_mem_alloc(total);
+        if (!arena) goto done;
+        for (i = 0U; i < n; ++i) {
+            keys[i] = arena + at;
+            cic_fold_copy(list->entries[i].name, keys[i]);
+            at += xx_str_len(keys[i]) + 1U;
+            index[i] = i;
+        }
+        cic_sort(index, tmp, n, cic_key_cmp, keys);
+        for (i = 1U; i < n; ++i) {
+            uint32_t cur = index[i];
+            if (xx_str_cmp(keys[index[i - 1U]], keys[cur]) != 0) continue;
+            /* same folded name as its predecessor, which has a lower index */
+            clash = true;
+            if (attempts[cur] >= 8U || !cic_rename(&list->entries[cur], cur,
+                                                   ++attempts[cur]))
+                goto done;
+        }
+        xx_mem_free(arena);
+        arena = NULL;
+        if (!clash) {
+            ok = true;
+            break;
+        }
+    }
+done:
+    if (arena) xx_mem_free(arena);
+    if (keys) xx_mem_free(keys);
+    if (attempts) xx_mem_free(attempts);
+    if (tmp) xx_mem_free(tmp);
+    if (index) xx_mem_free(index);
     return ok;
 }
 
@@ -1153,6 +1246,43 @@ static bool cic_walk_list2(const cic_layout2 *l, const uint8_t *b, size_t n,
     return !exact || pos == n;
 }
 
+static int cic_offset_cmp(const void *context, uint32_t x, uint32_t y) {
+    const cic_entry *e = (const cic_entry *)context;
+    if (e[x].offset != e[y].offset) return e[x].offset < e[y].offset ? -1 : 1;
+    return x < y ? -1 : (x > y ? 1 : 0);
+}
+
+/* 2.x nodes point at records by offset, so several nodes could share one
+ * record and expand it once each.  In offset order, a record that starts
+ * before the end of the last claimed one is refused (never extracted). */
+static bool cic_mark_overlaps(cic_list *list) {
+    uint32_t n = list->count, i;
+    uint32_t *index, *tmp;
+    uint64_t claimed_end = 0U;
+    if (n < 2U) return true;
+    index = (uint32_t *)xx_mem_alloc((size_t)n * sizeof(uint32_t));
+    tmp = (uint32_t *)xx_mem_alloc((size_t)n * sizeof(uint32_t));
+    if (!index || !tmp) {
+        if (index) xx_mem_free(index);
+        if (tmp) xx_mem_free(tmp);
+        return false;
+    }
+    for (i = 0U; i < n; ++i) index[i] = i;
+    cic_sort(index, tmp, n, cic_offset_cmp, list->entries);
+    for (i = 0U; i < n; ++i) {
+        cic_entry *e = &list->entries[index[i]];
+        if (e->packed == 0U) continue;
+        if (e->offset < claimed_end) {
+            e->shared = true;
+            continue;
+        }
+        claimed_end = e->offset + e->packed;
+    }
+    xx_mem_free(tmp);
+    xx_mem_free(index);
+    return true;
+}
+
 static bool cic_parse_list2(const uint8_t *b, size_t n, xx_io_device *device,
                             const cic_scan *scan, cic_list *list) {
     uint32_t count, pass, k;
@@ -1177,6 +1307,10 @@ static bool cic_parse_list2(const uint8_t *b, size_t n, xx_io_device *device,
                 return false;
             }
             list->version = l->version;
+            if (!cic_mark_overlaps(list)) {
+                cic_list_free(list);
+                return false;
+            }
             return true;
         }
     }
@@ -1207,6 +1341,9 @@ static bool cic_read_list(xx_io_device *device, const cic_scan *scan,
                                        list)
                      : cic_parse_list2(body, size, device, scan, list);
             xx_mem_free(body);
+            /* 2.x has one list chunk; trying every chunk that carries the
+             * id would multiply the node walk (each node reads the device). */
+            if (!ok && scan->generation == 2U) return false;
             if (ok) {
                 if (!cic_dedupe(list)) {
                     cic_list_free(list);
@@ -1240,6 +1377,7 @@ static bool cic_unpack_entry(xx_io_device *device, const cic_scan *scan,
     uint8_t method = 0U;
     cic_sink_init(&sink, destination, NULL, e->unpacked);
     if (e->packed == 0U) return e->unpacked == 0U;
+    if (e->shared) return false;
     if (e->offset + e->packed > (uint64_t)scan->region_size) return false;
     if (scan->generation == 1U) {
         uint64_t used = 0U;
@@ -1252,11 +1390,13 @@ static bool cic_unpack_entry(xx_io_device *device, const cic_scan *scan,
         uint8_t *buffer;
         uint64_t left = (uint64_t)e->packed - 1U, pos = (uint64_t)at + 1U;
         bool ok = true;
+        size_t io_capacity = xx_get_file_buffer_size();
+        if (left && left < io_capacity) io_capacity = (size_t)left;
         if (left != e->unpacked) return false;
-        buffer = (uint8_t *)xx_mem_alloc(CIC_IO_BUFFER);
+        buffer = (uint8_t *)xx_mem_alloc(io_capacity);
         if (!buffer) return false;
         while (left > 0U && ok) {
-            size_t k = left < CIC_IO_BUFFER ? (size_t)left : CIC_IO_BUFFER;
+            size_t k = left < io_capacity ? (size_t)left : io_capacity;
             ok = !cic_stopped(pd) &&
                  cic_read_at(device, (int64_t)pos, buffer, k) &&
                  cic_sink_write(&sink.device, buffer, k) == (ssize_t)k;
@@ -1550,7 +1690,7 @@ bool xx_clickteam_install_creator_unpack_current_archive_record(
     path_option = cic_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option)
         return cic_unpack_entry(format->device, &stream->scan, e, NULL, pd);
-    if (!e->safe) return false;
+    if (!e->safe || e->shared) return false;
     if (path_option->type == XX_VAR_TYPE_STRING ||
         path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);

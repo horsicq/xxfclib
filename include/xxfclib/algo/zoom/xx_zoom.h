@@ -78,6 +78,24 @@ XXFC_API bool xx_zoom_decode_memory(const uint8_t *input, size_t input_size,
                                     size_t *written);
 
 /**
+ * @brief Recover whole decoded chunk records from a damaged Zoom image.
+ *
+ * The returned prefix ends at the last fully decoded record, before any
+ * failing record.  Callers must keep a partial image visibly marked as a
+ * failed extraction; it is not a complete ADF.  The normal strict decode
+ * entry point above continues to reject damaged images.
+ *
+ * @param output_size Capacity for the FULL image implied by the header.
+ * @param written     Complete-record prefix bytes, or zero when none.
+ * @param complete    True only if the entire image decoded successfully.
+ * @return true when a full image or a nonempty complete-record prefix exists.
+ */
+XXFC_API bool xx_zoom_decode_prefix_memory(const uint8_t *input,
+                                           size_t input_size, uint8_t *output,
+                                           size_t output_size, size_t *written,
+                                           bool *complete);
+
+/**
  * @brief Measure a Zoom container.
  *
  * The image size follows from the header's cylinder range, but this runs the

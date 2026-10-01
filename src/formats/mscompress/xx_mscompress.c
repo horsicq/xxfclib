@@ -107,6 +107,7 @@ static bool xx_mscompress_decode_stream(Abstractformat *self,
     uint8_t *output = NULL;
     xx_mscompress_header parsed;
     size_t consumed = 0U;
+    size_t written = 0U;
     bool result = false;
     if (!self || !self->device || self->base_address < 0 || !header ||
         !stream_size || (pd && xx_pd_is_stopped(pd))) {
@@ -130,16 +131,31 @@ static bool xx_mscompress_decode_stream(Abstractformat *self,
     output = (uint8_t *)xx_mem_alloc(parsed.uncompressed_size == 0U ? 1U :
                                      (size_t)parsed.uncompressed_size);
     if (!output ||
-        !xx_mscompress_lzss_decode(input + parsed.data_offset,
-                                   (size_t)input_size - parsed.data_offset,
-                                   output, (size_t)parsed.uncompressed_size,
-                                   parsed.position_bias, &consumed) ||
+        (parsed.variant == XX_MSCOMPRESS_VARIANT_SZ
+             ? !xx_mscompress_lzss_decode_prefix(
+                   input + parsed.data_offset,
+                   (size_t)input_size - parsed.data_offset,
+                   output, (size_t)parsed.uncompressed_size,
+                   parsed.position_bias, &written, &consumed)
+             : !xx_mscompress_lzss_decode(
+                   input + parsed.data_offset,
+                   (size_t)input_size - parsed.data_offset,
+                   output, (size_t)parsed.uncompressed_size,
+                   parsed.position_bias, &consumed)) ||
+        (parsed.variant == XX_MSCOMPRESS_VARIANT_SZ &&
+         (written == 0U && parsed.uncompressed_size != 0U)) ||
+        (parsed.variant == XX_MSCOMPRESS_VARIANT_SZ &&
+         written < parsed.uncompressed_size &&
+         consumed != (size_t)input_size - parsed.data_offset) ||
         (destination && !xx_mscompress_write_all(destination, output,
-                                                  (size_t)parsed.uncompressed_size,
+                                                  parsed.variant == XX_MSCOMPRESS_VARIANT_SZ
+                                                      ? written
+                                                      : (size_t)parsed.uncompressed_size,
                                                   pd))) {
         goto cleanup;
     }
-    (void)consumed;
+    if (parsed.variant == XX_MSCOMPRESS_VARIANT_SZ)
+        parsed.uncompressed_size = written;
     *header = parsed;
     *stream_size = input_size;
     result = true;

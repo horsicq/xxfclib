@@ -59,6 +59,7 @@
 
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/algo/sclsectors/xx_sclsectors.h"
 
@@ -200,8 +201,8 @@ static bool xx_clp_metafile_extent(Abstractformat *self, int64_t offset, int64_t
 static bool xx_clp_decode(Abstractformat *self, const xx_clp_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
 
-/* Text members are scanned for their terminator rather than loaded whole.
- * The chunk length is even so a UTF-16 code unit never straddles two reads. */
+/* Text members use a captured global-sized window; a UTF-16 code unit
+ * is retained across refills when the capacity is odd or one byte. */
 
 static uint16_t xx_clp_le16(const uint8_t *data) {
     return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
@@ -216,42 +217,25 @@ static uint32_t xx_clp_le32(const uint8_t *data) {
  * single-byte ids, up to the first aligned NUL pair for CF_UNICODETEXT. The
  * block is padded with whatever the producing application had in its buffer,
  * so publishing the whole extent would append that slack to every .txt. */
-static bool xx_clp_text_length(Abstractformat *self, int64_t offset,
-                               int64_t size, bool wide, xx_pd_struct *pd,
-                               int64_t *out_length) {
-    uint8_t chunk[XX_CLP_SCAN_CHUNK];
-    int64_t position = 0;
-
-    *out_length = size;
-    while (position < size) {
-        int64_t remaining = size - position;
-        size_t portion = (size_t)(remaining < (int64_t)sizeof(chunk)
-                                      ? remaining
-                                      : (int64_t)sizeof(chunk));
-        size_t index;
-
-        if (pd && xx_pd_is_stopped(pd)) return false;
-        if (!xx_clp_read_at(self, offset + position, chunk, portion)) {
-            return false;
+static bool xx_clp_text_length(Abstractformat *self,int64_t offset,int64_t size,bool wide,xx_pd_struct *pd,int64_t *out_length) {
+    size_t capacity=xx_get_file_buffer_size(); uint8_t *chunk,first=0;
+    int64_t position=0; bool have_first=false,result=true;
+    *out_length=size; if(size<=0) return true;
+    if((uint64_t)capacity>(uint64_t)size) capacity=(size_t)size;
+    chunk=(uint8_t *)xx_mem_alloc(capacity);if(!chunk) return false;
+    while(position<size) {
+        size_t portion=(uint64_t)(size-position)>capacity ? capacity:(size_t)(size-position),index;
+        if((pd && xx_pd_is_stopped(pd)) || !xx_clp_read_at(self,offset+position,chunk,portion)) { result=false;break; }
+        for(index=0;index<portion;++index) {
+            if(wide) {
+                if(!have_first) { first=chunk[index];have_first=true; }
+                else { have_first=false;if(!first && !chunk[index]) { *out_length=position+(int64_t)index-1;goto done; } }
+            } else if(!chunk[index]) { *out_length=position+(int64_t)index;goto done; }
         }
-        if (wide) {
-            for (index = 0U; index + 1U < portion; index += 2U) {
-                if (chunk[index] == 0U && chunk[index + 1U] == 0U) {
-                    *out_length = position + (int64_t)index;
-                    return true;
-                }
-            }
-        } else {
-            for (index = 0U; index < portion; ++index) {
-                if (chunk[index] == 0U) {
-                    *out_length = position + (int64_t)index;
-                    return true;
-                }
-            }
-        }
-        position += (int64_t)portion;
+        position+=(int64_t)portion;
     }
-    return true;
+done:
+    xx_mem_free(chunk);return result;
 }
 
 /* A CF_METAFILEPICT block is a Win16 METAFILEPICT followed by the metafile

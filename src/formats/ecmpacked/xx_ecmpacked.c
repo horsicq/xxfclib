@@ -29,6 +29,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/ecmpacked/xx_ecmpacked.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -66,15 +67,18 @@ static void xx_ecmpacked_vtable_destroy(Abstractformat *self);
 static bool xx_ecmpacked_read_at(Abstractformat *self, int64_t offset,
                               uint8_t *buffer, size_t size) {
     size_t completed = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
 
     if (!self || !self->device || offset < 0 ||
         xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
+        size_t request = size - completed;
+        if (request > io_capacity) request = io_capacity;
         ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
-        if (received <= 0 || (size_t)received > size - completed) {
+            xx_io_read(self->device, buffer + completed, request);
+        if (received <= 0 || (size_t)received > request) {
             return false;
         }
         completed += (size_t)received;
@@ -129,20 +133,20 @@ static bool xx_ecmpacked_add(xx_ecmpacked_stream *stream,
 }
 
 
-#define XX_ECMPACKED_SCAN_CHUNK 0x10000
 #define XX_ECMPACKED_MEMBER_NAME "ecm_data"
 #define XX_ECMPACKED_HEADER_SIZE 38
 #define XX_ECMPACKED_RESERVED_OFFSET 0x10
 #define XX_ECMPACKED_RESERVED_END 0x24
 #define XX_ECMPACKED_MAX_MEMBERS 1
 #define XX_ECMPACKED_METHOD_LZSS 0U
-#define XX_ECMPACKED_MAX_DECODED ((int64_t)0x10000000)
+#define XX_ECMPACKED_MAX_DECODED ((int64_t)0x20000000)
 
 typedef struct xx_ecmpacked_scan_s {
     Abstractformat *self;
     int64_t base;      /* absolute offset of payload byte 0 */
     int64_t size;      /* payload length */
     uint8_t *buffer;
+    size_t io_capacity;
     int64_t chunk_offset;
     int64_t chunk_size;
 } xx_ecmpacked_scan;
@@ -173,8 +177,8 @@ static bool xx_ecmpacked_scan_byte(xx_ecmpacked_scan *scan, int64_t position,
     if (position < scan->chunk_offset ||
         position >= scan->chunk_offset + scan->chunk_size) {
         wanted = scan->size - position;
-        if (wanted > XX_ECMPACKED_SCAN_CHUNK) {
-            wanted = XX_ECMPACKED_SCAN_CHUNK;
+        if ((uint64_t)wanted > scan->io_capacity) {
+            wanted = (int64_t)scan->io_capacity;
         }
         if (!xx_ecmpacked_read_at(scan->self, scan->base + position,
                                   scan->buffer, (size_t)wanted)) {
@@ -209,7 +213,8 @@ static bool xx_ecmpacked_measure(Abstractformat *self, int64_t base,
     scan.size = size;
     scan.chunk_offset = 0;
     scan.chunk_size = 0;
-    scan.buffer = (uint8_t *)xx_mem_alloc((size_t)XX_ECMPACKED_SCAN_CHUNK);
+    scan.io_capacity = xx_get_file_buffer_size();
+    scan.buffer = (uint8_t *)xx_mem_alloc(scan.io_capacity);
     if (!scan.buffer) return false;
 
     while (position < size) {
@@ -224,8 +229,9 @@ static bool xx_ecmpacked_measure(Abstractformat *self, int64_t base,
         }
 
         if (flags & 1U) {
-            /* A literal: one input byte, one output byte. Its value does not
-             * affect the count, so it is not read here. */
+            /* Its value does not affect the count, but reading it preserves
+             * errors when the backing device cannot supply consumed bytes. */
+            if (!xx_ecmpacked_scan_byte(&scan, position, &second)) goto done;
             ++position;
             ++unpacked;
         } else {
@@ -234,7 +240,8 @@ static bool xx_ecmpacked_measure(Abstractformat *self, int64_t base,
              * between tokens. Anything else is not this format, and this is
              * the check that keeps a stray "ECM\0" from measuring. */
             if (size - position < 2) goto done;
-            if (!xx_ecmpacked_scan_byte(&scan, position + 1, &second)) {
+            if (!xx_ecmpacked_scan_byte(&scan, position, &second) ||
+                !xx_ecmpacked_scan_byte(&scan, position + 1, &second)) {
                 goto done;
             }
             /* Length is stored three less than the true run length. */

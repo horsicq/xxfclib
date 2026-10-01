@@ -108,15 +108,15 @@ void* xx_mem_zero(void *ptr, size_t size) {
     return ptr;
 }
 
+void xx_memory_copy_scalar(uint8_t *destination, const uint8_t *source, size_t size) {
+    for (size_t at = 0; at < size; ++at) destination[at] = source[at];
+}
+
 void* xx_mem_copy(void *dst, const void *src, size_t size) {
     if (!dst || !src || size == 0 || dst == src) {
         return dst;
     }
-    uint8_t *d = (uint8_t*)dst;
-    const uint8_t *s = (const uint8_t*)src;
-    for (size_t i = 0; i < size; ++i) {
-        d[i] = s[i];
-    }
+    xx_memory_copy_scalar((uint8_t *)dst, (const uint8_t *)src, size);
     return dst;
 }
 

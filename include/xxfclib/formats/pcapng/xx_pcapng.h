@@ -34,8 +34,9 @@
  * extractors/pcap.rs (pcapng_carver) for the validation and the carve
  * length, which this reader reproduces.  See xx_pcapng.c for the rules.
  *
- * Not an archive: binwalk carves the capture as one file, and so does this
- * reader - it validates and measures, and reports what follows as overlay.
+ * The component archive API publishes captured packet bytes for well-framed
+ * packet blocks and typed block bodies for other blocks. It does not decode
+ * network protocols. The existing first-section byte-order carve rules remain.
  */
 
 #ifndef XXFCLIB_FORMAT_PCAPNG_H

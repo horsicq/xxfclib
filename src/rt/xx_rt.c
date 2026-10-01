@@ -25,7 +25,7 @@
  * I/O, WriteFile to the standard handles for output, ExitProcess and
  * GetEnvironmentVariableA. The remaining runtime primitives (sorting, numeric
  * conversion and integer formatting) are implemented here rather than taken
- * from the CRT. Runtime memory primitives live in src/io/xx_io.c,
+ * from the CRT. Runtime memory primitives live in src/memory/xx_memory_rt.c,
  * narrow/wide string primitives live in src/strings/xx_string.c, and the
  * Win32 UTF conversion boundary lives in
  * src/strings/platforms/xx_string_windows.c.

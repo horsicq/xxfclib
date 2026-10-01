@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/lzfsestream/xx_lzfsestream.h"
 
@@ -35,7 +36,6 @@
 #define XX_LZFSESTREAM_MAX_BLOCKS (UINT32_C(1) << 22)
 /* The block walk reads the device through a window of this size, so a run of
  * tiny blocks costs memory copies rather than one device read each. */
-#define XX_LZFSESTREAM_WINDOW_SIZE 65536U
 
 /* The decoder writes into a buffer sized from the blocks' declared
  * n_raw_bytes, which a hostile header can inflate without supplying the data
@@ -109,6 +109,7 @@ typedef struct xx_lzfsestream_window_s {
     uint64_t limit;
     uint64_t start;
     size_t size;
+    size_t io_capacity;
     uint8_t *buffer;
 } xx_lzfsestream_window;
 
@@ -118,32 +119,42 @@ static void xx_lzfsestream_vtable_destroy(Abstractformat *self);
 /* Device helpers                                                            */
 /* ------------------------------------------------------------------------ */
 
-static bool xx_lzfsestream_read_at(xx_io_device *device, int64_t offset,
-                                   void *data, size_t size) {
+static bool xx_lzfsestream_read_at_sized(xx_io_device *device, int64_t offset,
+                                   void *data, size_t size, size_t io_capacity) {
     size_t done = 0U;
     if (!device || (!data && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)data + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
+static bool xx_lzfsestream_read_at(xx_io_device *device, int64_t offset,
+                                   void *data, size_t size) {
+    return xx_lzfsestream_read_at_sized(device, offset, data, size, xx_get_file_buffer_size());
+}
+
 static bool xx_lzfsestream_write_all(xx_io_device *device, const void *data,
                                      size_t size, xx_pd_struct *pd) {
+    const size_t io_capacity = xx_get_file_buffer_size();
     size_t done = 0U;
     if (!device || (!data && size != 0U)) return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount;
         if (pd && xx_pd_is_stopped(pd)) return false;
         amount = xx_io_write(device, (const uint8_t *)data + done,
-                             size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                             request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -158,19 +169,24 @@ static bool xx_lzfsestream_window_get(xx_lzfsestream_window *window,
     size_t index;
     uint64_t skip;
     if (!window || !window->buffer || !out || size == 0U ||
-        size > XX_LZFSESTREAM_WINDOW_SIZE || size > window->limit ||
+        size > window->limit ||
         offset > window->limit - size) {
         return false;
+    }
+    /* Complete header fields can be larger than the read-ahead buffer. */
+    if (size > window->io_capacity) {
+        return xx_lzfsestream_read_at_sized(window->device, window->base + (int64_t)offset,
+                                     out, size, window->io_capacity);
     }
     if (offset < window->start || offset - window->start > window->size ||
         size > window->size - (size_t)(offset - window->start)) {
         uint64_t want = window->limit - offset;
-        if (want > XX_LZFSESTREAM_WINDOW_SIZE) want = XX_LZFSESTREAM_WINDOW_SIZE;
+        if (want > window->io_capacity) want = window->io_capacity;
         window->start = offset;
         window->size = 0U;
-        if (!xx_lzfsestream_read_at(window->device,
+        if (!xx_lzfsestream_read_at_sized(window->device,
                                     window->base + (int64_t)offset,
-                                    window->buffer, (size_t)want)) {
+                                    window->buffer, (size_t)want, window->io_capacity)) {
             return false;
         }
         window->size = (size_t)want;
@@ -385,7 +401,8 @@ static bool xx_lzfsestream_walk(Abstractformat *self, xx_lzfsestream_scan *scan,
     if (window.limit > XX_LZFSESTREAM_MAX_INPUT) {
         window.limit = XX_LZFSESTREAM_MAX_INPUT;
     }
-    window.buffer = (uint8_t *)xx_mem_alloc(XX_LZFSESTREAM_WINDOW_SIZE);
+    window.io_capacity = xx_get_file_buffer_size();
+    window.buffer = (uint8_t *)xx_mem_alloc(window.io_capacity);
     if (!window.buffer) return false;
     result = xx_lzfsestream_walk_window(&window, scan, pd);
     xx_mem_free(window.buffer);

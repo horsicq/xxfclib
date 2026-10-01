@@ -60,8 +60,10 @@ extern "C" {
 /** Compression of one published record, reported as XX_META_ID_COMPRESSION_METHOD. */
 #define XX_UEFI_FV_METHOD_STORE 0U     /**< Bytes lie on the device as-is. */
 #define XX_UEFI_FV_METHOD_LZMA 1U      /**< LZMA_CUSTOM_DECOMPRESS payload. */
-#define XX_UEFI_FV_METHOD_TIANO 2U     /**< EFI/Tiano compression, no codec. */
+#define XX_UEFI_FV_METHOD_TIANO 2U     /**< EFI standard or Tiano-guided compression. */
 #define XX_UEFI_FV_METHOD_UNKNOWN 3U   /**< Unrecognised GUID-defined codec. */
+#define XX_UEFI_FV_METHOD_LZMAF86 4U   /**< LZMAF86 guided section. */
+#define XX_UEFI_FV_METHOD_BROTLI 5U    /**< Brotli guided section. */
 
 typedef struct xx_uefi_fv xx_uefi_fv;
 typedef struct xx_uefi_fv xx_uefi_fv_t;

@@ -38,6 +38,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xx_rarx_internal.h"
 #include "../ppmd7/xx_ppmd7_internal.h"
 #include "xxfclib/memory/xx_memory.h"
@@ -677,18 +678,6 @@ static xx_rarx_status_t xx_rar29_ppm_decode_symbol(
     }
 }
 
-static uint32_t xx_rar29_crc32(const uint8_t *data, size_t size) {
-    uint32_t crc = UINT32_MAX;
-    size_t i;
-    for (i = 0; i < size; ++i) {
-        unsigned bit;
-        crc ^= data[i];
-        for (bit = 0; bit < 8u; ++bit)
-            crc = (crc >> 1) ^ (0xedb88320u & (0u - (crc & 1u)));
-    }
-    return ~crc;
-}
-
 static bool xx_rar29_vm_number(xx_rar29_bits *bits, uint32_t *number) {
     uint32_t prefix;
     uint32_t value;
@@ -726,7 +715,7 @@ static bool xx_rar29_identify_filter(const uint8_t *code, size_t size,
     if (!code || !type || size == 0) return false;
     for (i = 0; i < size; ++i) checksum ^= code[i];
     if (checksum != 0) return false;
-    crc = xx_rar29_crc32(code, size);
+    crc = xx_crc32_calc(0U, code, size);
     if (size == 53u && crc == 0xad576887u) *type = XX_RAR29_FILTER_E8;
     else if (size == 57u && crc == 0x3cd7e57eu) *type = XX_RAR29_FILTER_E8E9;
     else if (size == 120u && crc == 0x3769893fu) *type = XX_RAR29_FILTER_ITANIUM;

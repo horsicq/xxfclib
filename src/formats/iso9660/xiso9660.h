@@ -22,8 +22,8 @@
 #ifndef CDIE_XISO9660_H
 #define CDIE_XISO9660_H
 
-#include "../../die_engine/die_engine_bin.h"
-#include "../../die_engine/die_engine_compat.h"
+#include "../../die_engine/xx_die_engine_bin.h"
+#include "../../die_engine/xx_die_engine_compat.h"
 
 #ifdef __cplusplus
 extern "C" {

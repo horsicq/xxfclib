@@ -21,6 +21,7 @@
  * removed again).
  */
 
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/packit_mac/xx_packit_mac.h"
 
@@ -61,7 +62,7 @@
 
 /* Archives of the PackIt era hold a handful of members; this only stops a
  * crafted chain of tiny members from growing the tables without bound. */
-#define PIT_MAX_MEMBERS 16384U
+#define PIT_MAX_MEMBERS XX_PACKIT_MAC_MAX_MEMBERS
 #define PIT_MAX_FORK UINT32_C(0x7FFFFFFF)
 
 /* A code tree has at most 256 leaves, so at most 255 internal nodes, and no
@@ -69,8 +70,6 @@
 #define PIT_MAX_INTERNAL 255U
 #define PIT_LEAF 0x8000U
 
-#define PIT_INPUT_BUFFER 4096U
-#define PIT_CHUNK 4096U
 
 /* 63 Mac Roman bytes are at most 189 UTF-8 bytes; room for "_<n>" and
  * ".rsrc" on top. */
@@ -111,6 +110,7 @@ typedef struct pit_stream_s {
     int64_t archive_size;
     bool end_marker;
     bool encrypted;
+    bool incomplete_members;
 } pit_stream;
 
 typedef struct pit_reader_s {
@@ -125,14 +125,29 @@ typedef struct pit_reader_s {
     uint32_t bit_count;
     bool huffman;
     uint16_t tree[PIT_MAX_INTERNAL][2];
-    uint8_t buffer[PIT_INPUT_BUFFER];
-    uint8_t chunk[PIT_CHUNK];
+    uint8_t *buffer;
+    uint8_t *chunk;
+    size_t io_capacity;
 } pit_reader;
+
+static pit_reader *pit_reader_create(void) {
+    size_t capacity = xx_get_file_buffer_size();
+    pit_reader *state;
+    if (capacity > ((size_t)-1 - sizeof(*state)) / 2U) return NULL;
+    state = (pit_reader *)xx_mem_calloc(1U, sizeof(*state) + capacity * 2U);
+    if (!state) return NULL;
+    state->io_capacity = capacity;
+    state->buffer = (uint8_t *)(state + 1);
+    state->chunk = (uint8_t *)(state + 1) + capacity * 1U;
+    return state;
+}
+
 
 typedef enum pit_step_e {
     PIT_STEP_MEMBER,
     PIT_STEP_END,
     PIT_STEP_ENCRYPTED,
+    PIT_STEP_DAMAGED,
     PIT_STEP_STOP
 } pit_step;
 
@@ -168,13 +183,16 @@ static uint16_t pit_be16(const uint8_t *bytes) {
 static bool pit_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -205,8 +223,8 @@ static bool pit_fetch(pit_reader *r, uint8_t *byte) {
         if (!r->device) return false;
         left = r->limit - r->next;
         if (left <= 0) return false;
-        amount = left < (int64_t)sizeof(r->buffer) ? (size_t)left
-                                                   : sizeof(r->buffer);
+        amount = left < (int64_t)r->io_capacity ? (size_t)left
+                                                   : r->io_capacity;
         if (!pit_read_at(r->device, r->next, r->buffer, amount)) return false;
         r->data = r->buffer;
         r->next += (int64_t)amount;
@@ -361,22 +379,22 @@ static pit_step pit_parse_member(xx_io_device *device, int64_t at,
     if ((r->huffman && !pit_read_tree(r)) ||
         !pit_read_body(r, header, sizeof(header)) ||
         !pit_body_header_valid(header))
-        return PIT_STEP_STOP;
+        return PIT_STEP_DAMAGED;
     pit_member_from_header(m, header);
 
     if (m->kind == PIT_KIND_STORED) {
         int64_t size = (int64_t)PIT_STORED_OVERHEAD +
                        (int64_t)m->data_length + (int64_t)m->rsrc_length;
-        if (size > end - at) return PIT_STEP_STOP;
+        if (size > end - at) return PIT_STEP_DAMAGED;
         m->size = size;
     } else {
         uint64_t need = (uint64_t)m->data_length +
                         (uint64_t)m->rsrc_length + PIT_TRAILER;
         uint64_t index;
         uint8_t byte;
-        if (need > pit_bits_left(r)) return PIT_STEP_STOP;
+        if (need > pit_bits_left(r)) return PIT_STEP_DAMAGED;
         for (index = 0U; index < need; ++index)
-            if (!pit_symbol(r, &byte)) return PIT_STEP_STOP;
+            if (!pit_symbol(r, &byte)) return PIT_STEP_DAMAGED;
         m->size = PIT_MARKER_SIZE + (int64_t)r->fetched;
     }
     return PIT_STEP_MEMBER;
@@ -414,7 +432,9 @@ static bool pit_add_member(pit_stream *stream, const pit_member *member) {
  * readable stored or Huffman member; after that the walk ends at "PEnd", at
  * an encrypted member (published as a placeholder covering the rest of the
  * input), or at the first thing that is not a member, which is left out as
- * trailing data.  With @p out NULL only the first member is checked. */
+ * trailing data. A recognized stored/Huffman member that cannot be parsed
+ * is reported as incomplete, as is a further member beyond the member cap.
+ * With @p out NULL only the first member is checked. */
 static bool pit_parse(Abstractformat *format, pit_stream **out) {
     pit_reader *reader;
     pit_stream *stream = NULL;
@@ -428,7 +448,7 @@ static bool pit_parse(Abstractformat *format, pit_stream **out) {
     if (total < 0 || format->base_address > total ||
         total - format->base_address < (int64_t)PIT_MARKER_SIZE + 12)
         return false;
-    reader = (pit_reader *)xx_mem_calloc(1U, sizeof(*reader));
+    reader = pit_reader_create();
     if (!reader) return false;
     if (out) {
         stream = (pit_stream *)xx_mem_calloc(1U, sizeof(*stream));
@@ -439,7 +459,24 @@ static bool pit_parse(Abstractformat *format, pit_stream **out) {
     for (;;) {
         pit_member member;
         pit_step step;
-        if (members >= PIT_MAX_MEMBERS) break;
+        if (members >= PIT_MAX_MEMBERS) {
+            uint8_t marker[PIT_MARKER_SIZE];
+            /* Inspect only the marker at the chain boundary. An ordinary
+             * overlay or EOF does not imply an unreadable declared member.
+             */
+            if (stream && end - at >= PIT_MARKER_SIZE &&
+                pit_read_at(format->device, at, marker, sizeof(marker))) {
+                if (xx_rt_memcmp(marker, "PEnd", 4U) == 0) {
+                    stream->end_marker = true;
+                    at += PIT_MARKER_SIZE;
+                } else if (xx_rt_memcmp(marker, "PMa", 3U) == 0 &&
+                           (marker[3] == 'g' || marker[3] == '4' ||
+                            marker[3] == '5' || marker[3] == '6')) {
+                    stream->incomplete_members = true;
+                }
+            }
+            break;
+        }
         step = pit_parse_member(format->device, at, end, reader, &member);
         if (step == PIT_STEP_MEMBER) {
             ++members;
@@ -456,6 +493,8 @@ static bool pit_parse(Abstractformat *format, pit_stream **out) {
             if (!pit_add_member(stream, &member)) goto done;
             stream->encrypted = true;
             at = end;
+        } else if (step == PIT_STEP_DAMAGED) {
+            stream->incomplete_members = true;
         }
         break;
     }
@@ -757,9 +796,12 @@ done:
 static bool pit_write_all(xx_io_device *sink, const uint8_t *data,
                           size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     while (done < size) {
-        ssize_t amount = xx_io_write(sink, data + done, size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
+        ssize_t amount = xx_io_write(sink, data + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -780,7 +822,7 @@ static bool pit_extract(Abstractformat *format, const pit_member *m,
     bool result = false;
     if (!format || !m || m->kind == PIT_KIND_ENCRYPTED || m->size <= 0)
         return false;
-    r = (pit_reader *)xx_mem_calloc(1U, sizeof(*r));
+    r = pit_reader_create();
     if (!r) return false;
     pit_reader_start(r, format->device, NULL, m->offset + PIT_MARKER_SIZE,
                      m->offset + m->size, m->kind == PIT_KIND_HUFFMAN);
@@ -797,7 +839,7 @@ static bool pit_extract(Abstractformat *format, const pit_member *m,
         uint64_t left = fork == 0U ? m->data_length : m->rsrc_length;
         bool wanted = sink && (fork == 1U) == resource;
         while (left != 0U) {
-            size_t amount = left < PIT_CHUNK ? (size_t)left : PIT_CHUNK;
+            size_t amount = left < r->io_capacity ? (size_t)left : r->io_capacity;
             if (pd && xx_pd_is_stopped(pd)) goto done;
             if (!pit_read_body(r, r->chunk, amount)) goto done;
             crc = xx_crc16_xmodem_calc(crc, r->chunk, amount);
@@ -826,7 +868,7 @@ bool xx_packit_mac_huffman_decode_memory(const uint8_t *stream,
     if (!stream || (!output && output_size != 0U) ||
         stream_size > (size_t)INT64_MAX)
         return false;
-    r = (pit_reader *)xx_mem_calloc(1U, sizeof(*r));
+    r = pit_reader_create();
     if (!r) return false;
     pit_reader_start(r, NULL, stream, 0, (int64_t)stream_size, true);
     if (!pit_read_tree(r) ||
@@ -974,6 +1016,7 @@ bool xx_packit_mac_handle_base_info(Abstractformat *format,
     archive->archive_size = stream->archive_size;
     archive->has_end_marker = stream->end_marker;
     archive->has_encrypted = stream->encrypted;
+    archive->has_incomplete_members = stream->incomplete_members;
     format->number_of_archive_records = stream->count;
     format->format_size = stream->archive_size;
     format->is_valid = true;

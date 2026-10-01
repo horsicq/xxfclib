@@ -44,6 +44,7 @@
  * sharing one slot and per-block extra data the way VirtualBox itself lays
  * them out.  Version 0 headers (pre-2008 innotek images) are not accepted.
  */
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/vdi/xx_vdi.h"
 
@@ -51,7 +52,9 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "../xx_nested_mbr_fat.h"
 
+#include <limits.h>
 #include <stdio.h>
 
 #ifdef VDI
@@ -75,8 +78,6 @@
 #define VDI_MAX_BLOCKS (UINT32_C(1) << 24)
 /* Guest disks larger than 16 TiB are refused, as in the qcow reader. */
 #define VDI_MAX_DISK ((uint64_t)1 << 44)
-#define VDI_MAP_CHUNK 4096U
-#define VDI_IO_BUFFER (256U * 1024U)
 #define VDI_MEMBER_NAME "disk.img"
 
 typedef struct vdi_info_s {
@@ -100,6 +101,7 @@ typedef struct vdi_info_s {
 typedef struct vdi_stream_s {
     vdi_info info;
     size_t index;
+    xx_nested_fat *nested;
 } vdi_stream;
 
 static uint32_t vdi_le32(const uint8_t *b) {
@@ -114,13 +116,16 @@ static uint64_t vdi_le64(const uint8_t *b) {
 static bool vdi_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -129,12 +134,15 @@ static bool vdi_read_at(xx_io_device *device, int64_t offset, void *buffer,
 static bool vdi_write_all(xx_io_device *device, const uint8_t *data,
                           size_t size, xx_pd_struct *pd) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device) return true; /* verify-only pass */
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount;
         if (pd && xx_pd_is_stopped(pd)) return false;
-        amount = xx_io_write(device, data + done, size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        amount = xx_io_write(device, data + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -221,13 +229,18 @@ static bool vdi_emit(Abstractformat *format, const vdi_info *info,
     uint64_t index, produced = 0U;
     uint64_t chunk_first = 0U, chunk_count = 0U;
     bool result = false;
+    size_t io_capacity = xx_get_file_buffer_size(), map_capacity;
 
     if (!format || !format->device || !info) return false;
-    map = (uint8_t *)xx_mem_alloc(VDI_MAP_CHUNK * 4U);
+    if (info->block_size < io_capacity) io_capacity = info->block_size;
+    map_capacity = io_capacity / 4U;
+    if (!map_capacity) map_capacity = 1U;
+    if (info->needed < map_capacity) map_capacity = (size_t)info->needed;
+    map = (uint8_t *)xx_mem_alloc(map_capacity * 4U);
     if (!map) goto done;
     if (destination) {
-        data = (uint8_t *)xx_mem_alloc(VDI_IO_BUFFER);
-        zeros = (uint8_t *)xx_mem_calloc(1U, VDI_IO_BUFFER);
+        data = (uint8_t *)xx_mem_alloc(io_capacity);
+        zeros = (uint8_t *)xx_mem_calloc(1U, io_capacity);
         if (!data || !zeros) goto done;
     }
     for (index = 0U; index < info->needed; ++index) {
@@ -237,7 +250,7 @@ static bool vdi_emit(Abstractformat *format, const vdi_info *info,
         if (pd && xx_pd_is_stopped(pd)) goto done;
         if (index >= chunk_first + chunk_count) {
             uint64_t want = info->needed - index;
-            if (want > VDI_MAP_CHUNK) want = VDI_MAP_CHUNK;
+            if (want > map_capacity) want = map_capacity;
             if (!vdi_read_at(format->device,
                              info->base + (int64_t)(info->off_blocks + index * 4U),
                              map, (size_t)want * 4U))
@@ -249,7 +262,7 @@ static bool vdi_emit(Abstractformat *format, const vdi_info *info,
         if (entry == VDI_BLOCK_FREE || entry == VDI_BLOCK_ZERO) {
             uint64_t rest = output;
             while (rest != 0U && destination) {
-                size_t step = rest < VDI_IO_BUFFER ? (size_t)rest : VDI_IO_BUFFER;
+                size_t step = rest < io_capacity ? (size_t)rest : io_capacity;
                 if (!vdi_write_all(destination, zeros, step, pd)) goto done;
                 rest -= step;
             }
@@ -260,7 +273,7 @@ static bool vdi_emit(Abstractformat *format, const vdi_info *info,
             offset = info->off_data + (uint64_t)entry * info->stride +
                      info->block_extra;
             while (rest != 0U && destination) {
-                size_t step = rest < VDI_IO_BUFFER ? (size_t)rest : VDI_IO_BUFFER;
+                size_t step = rest < io_capacity ? (size_t)rest : io_capacity;
                 if (!vdi_read_at(format->device, info->base + (int64_t)offset,
                                  data, step) ||
                     !vdi_write_all(destination, data, step, pd))
@@ -279,8 +292,127 @@ done:
     return result;
 }
 
+/* Read the reconstructed guest disk on demand.  Only the block map is kept
+ * in memory; the 2 GiB Windows fixture needs about 8 KiB here. */
+typedef struct vdi_guest_s {
+    xx_io_device device;
+    Abstractformat *owner;
+    vdi_info info;
+    uint8_t *map;
+    int64_t position;
+} vdi_guest;
+
+static ssize_t vdi_guest_read(xx_io_device *device, void *buffer, size_t size) {
+    vdi_guest *guest = (vdi_guest *)device->priv;
+    size_t done = 0U, wanted;
+    if (!guest || (!buffer && size)) return -1;
+    if (guest->position < 0 ||
+        (uint64_t)guest->position >= guest->info.disk_size) return 0;
+    wanted = (uint64_t)size > guest->info.disk_size - (uint64_t)guest->position
+                 ? (size_t)(guest->info.disk_size - (uint64_t)guest->position)
+                 : size;
+    while (done < wanted) {
+        uint64_t at = (uint64_t)guest->position + done;
+        uint64_t block = at / guest->info.block_size;
+        uint64_t within = at % guest->info.block_size;
+        uint32_t entry = vdi_le32(guest->map + (size_t)block * 4U);
+        size_t amount = wanted - done;
+        if ((uint64_t)amount > guest->info.block_size - within)
+            amount = (size_t)(guest->info.block_size - within);
+        if (entry == VDI_BLOCK_FREE || entry == VDI_BLOCK_ZERO) {
+            xx_rt_memset((uint8_t *)buffer + done, 0, amount);
+        } else {
+            uint64_t physical = (uint64_t)guest->info.base +
+                guest->info.off_data + (uint64_t)entry * guest->info.stride +
+                guest->info.block_extra + within;
+            if (entry >= guest->info.allocated || physical > INT64_MAX ||
+                !vdi_read_at(guest->owner->device, (int64_t)physical,
+                             (uint8_t *)buffer + done, amount))
+                break;
+        }
+        done += amount;
+    }
+    guest->position += (int64_t)done;
+    return done ? (ssize_t)done : (wanted ? -1 : 0);
+}
+
+static int vdi_guest_seek64(xx_io_device *device, int64_t offset, int whence) {
+    vdi_guest *guest = (vdi_guest *)device->priv;
+    int64_t base, target;
+    if (!guest) return -1;
+    base = whence == SEEK_SET ? 0 :
+           whence == SEEK_CUR ? guest->position :
+           whence == SEEK_END ? (int64_t)guest->info.disk_size : -1;
+    if (base < 0 || (offset > 0 && base > INT64_MAX - offset) ||
+        (offset < 0 && base < INT64_MIN - offset))
+        return -1;
+    target = base + offset;
+    if (target < 0 || (uint64_t)target > guest->info.disk_size) return -1;
+    guest->position = target;
+    return 0;
+}
+
+static int vdi_guest_seek(xx_io_device *device, long offset, int whence) {
+    return vdi_guest_seek64(device, (int64_t)offset, whence);
+}
+
+static int64_t vdi_guest_tell(xx_io_device *device) {
+    vdi_guest *guest = (vdi_guest *)device->priv;
+    return guest ? guest->position : -1;
+}
+
+static int64_t vdi_guest_size(xx_io_device *device) {
+    vdi_guest *guest = (vdi_guest *)device->priv;
+    return guest ? (int64_t)guest->info.disk_size : -1;
+}
+
+static int vdi_guest_close(xx_io_device *device) {
+    vdi_guest *guest = (vdi_guest *)device->priv;
+    if (guest) {
+        xx_mem_free(guest->map);
+        xx_mem_free(guest);
+    }
+    return 0;
+}
+
+static xx_io_device *vdi_guest_open(Abstractformat *format,
+                                    const vdi_info *info,
+                                    xx_pd_struct *pd) {
+    vdi_guest *guest;
+    size_t map_bytes;
+    /* Without a parent image, undo/differencing blocks are incomplete. */
+    if (!format || !info || info->type >= 3U ||
+        info->needed > SIZE_MAX / 4U || !vdi_emit(format, info, NULL, pd))
+        return NULL;
+    guest = (vdi_guest *)xx_mem_calloc(1U, sizeof(*guest));
+    if (!guest) return NULL;
+    guest->owner = format;
+    guest->info = *info;
+    map_bytes = (size_t)info->needed * 4U;
+    guest->map = (uint8_t *)xx_mem_alloc(map_bytes);
+    if (!guest->map ||
+        !vdi_read_at(format->device,
+                     info->base + (int64_t)info->off_blocks,
+                     guest->map, map_bytes)) {
+        xx_mem_free(guest->map);
+        xx_mem_free(guest);
+        return NULL;
+    }
+    guest->device.read = vdi_guest_read;
+    guest->device.seek = vdi_guest_seek;
+    guest->device.seek64 = vdi_guest_seek64;
+    guest->device.tell = vdi_guest_tell;
+    guest->device.total_size = vdi_guest_size;
+    guest->device.close = vdi_guest_close;
+    guest->device.priv = guest;
+    return &guest->device;
+}
+
 static void vdi_stream_free(void *opaque) {
-    if (opaque) xx_mem_free(opaque);
+    vdi_stream *stream = (vdi_stream *)opaque;
+    if (!stream) return;
+    xx_nested_fat_free(stream->nested);
+    xx_mem_free(stream);
 }
 
 static bool vdi_copy_options(xx_list_s *destination, const xx_list_s *source) {
@@ -448,7 +580,6 @@ bool xx_vdi_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
 bool xx_vdi_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     vdi_info info;
     xx_vdi *archive;
-    (void)pd;
     if (!format || !vdi_parse(format, &info)) {
         if (format) {
             format->format_size = -1;
@@ -460,6 +591,14 @@ bool xx_vdi_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     }
     archive = (xx_vdi *)format;
     archive->number_of_records = 1U;
+    {
+        xx_nested_fat *nested = xx_nested_fat_open(
+            vdi_guest_open(format, &info, pd), NULL, pd);
+        if (nested) {
+            archive->number_of_records = nested->total_records;
+            xx_nested_fat_free(nested);
+        }
+    }
     archive->archive_end = format->base_address + info.format_size;
     archive->disk_size = info.disk_size;
     archive->image_type = info.type;
@@ -467,7 +606,7 @@ bool xx_vdi_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     archive->blocks = info.blocks;
     archive->blocks_allocated = info.allocated;
     archive->version = info.version;
-    format->number_of_archive_records = 1U;
+    format->number_of_archive_records = archive->number_of_records;
     format->format_size = info.format_size;
     format->file_type = XX_VDI_FILE_TYPE;
     format->format_type = XX_TYPE_ARCHIVE;
@@ -515,9 +654,15 @@ xx_archive_record_state *xx_vdi_create_archive_records_reading(
     xx_archive_record_state_init(state, format);
     state->internal_state = stream;
     state->free_internal = vdi_stream_free;
-    state->total_records = 1U;
+    stream->nested = xx_nested_fat_open(
+        vdi_guest_open(format, &stream->info, pd), options, pd);
+    state->total_records = stream->nested
+                               ? (int64_t)stream->nested->total_records : 1;
     if (!vdi_copy_options(&state->options, options) ||
-        !vdi_set_record(&state->current_record, &stream->info)) {
+        !(stream->nested
+              ? xx_nested_fat_set_record(&state->current_record,
+                                         stream->nested)
+              : vdi_set_record(&state->current_record, &stream->info))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -536,11 +681,16 @@ bool xx_vdi_archive_record_move_to_next(Abstractformat *format,
                                         xx_archive_record_state *state,
                                         xx_pd_struct *pd) {
     vdi_stream *stream;
-    (void)pd;
     if (!format || !state || state->format != format ||
         !(stream = (vdi_stream *)state->internal_state))
         return false;
-    /* There is exactly one member, so the first step is always the last. */
+    if (stream->nested && xx_nested_fat_advance(stream->nested, pd)) {
+        ++state->current_index;
+        state->has_record = xx_nested_fat_set_record(
+            &state->current_record, stream->nested);
+        return state->has_record;
+    }
+    /* A raw fallback has one member; a nested stream ended. */
     stream->index = 1U;
     xx_archive_record_cleanup(&state->current_record);
     xx_archive_record_init(&state->current_record);
@@ -561,8 +711,15 @@ bool xx_vdi_unpack_current_archive_record(Abstractformat *format,
     bool created = false;
     if (!format || !state || state->format != format || !state->has_record ||
         !(stream = (vdi_stream *)state->internal_state) ||
-        stream->index != 0U || (pd && xx_pd_is_stopped(pd)))
+        (pd && xx_pd_is_stopped(pd)))
         return false;
+    if (stream->nested) {
+        uint64_t size = xx_archive_record_get_meta_u64(
+            &state->current_record, XX_META_ID_UNCOMPRESSED_SIZE, 0U);
+        return vdi_size_allowed(format, &state->options, size) &&
+               xx_nested_fat_unpack(stream->nested, pd);
+    }
+    if (stream->index != 0U) return false;
     if (!vdi_size_allowed(format, &state->options, stream->info.disk_size))
         return false;
     path_option = vdi_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);

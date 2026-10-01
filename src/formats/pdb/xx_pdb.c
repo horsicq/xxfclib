@@ -26,6 +26,7 @@
  * here, so the alias macro defined next to the enumerator is tested instead;
  * this picks up the real file type as soon as PDB is registered there. */
 #ifdef PDB
+
 #define XX_PDB_FILE_TYPE XX_FILE_TYPE_PDB
 #else
 #define XX_PDB_FILE_TYPE XX_FILE_TYPE_UNKNOWN
@@ -75,6 +76,42 @@ typedef struct pdb_stream_s {
     bool is_resource_database;
 } pdb_stream;
 
+#include "xxfclib/global/xx_global.h"
+static size_t gb_pdb_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_pdb_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_pdb_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+
+
 static uint16_t pdb_be16(const uint8_t *bytes) {
     return (uint16_t)(((uint16_t)bytes[0] << 8U) | (uint16_t)bytes[1]);
 }
@@ -86,13 +123,14 @@ static uint32_t pdb_be32(const uint8_t *bytes) {
 
 static bool pdb_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
+    const size_t file_io_capacity = gb_pdb_capacity();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = gb_pdb_read(device, (uint8_t *)buffer + done,
+                                    size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -105,16 +143,17 @@ static bool pdb_read_at(xx_io_device *device, int64_t offset, void *buffer,
  * one crafted database demand an allocation of the file's size. */
 static bool pdb_copy_range(xx_io_device *source, int64_t offset, int64_t size,
                            xx_io_device *destination, xx_pd_struct *pd) {
+    const size_t file_io_capacity = gb_pdb_capacity();
     uint8_t *buffer;
     int64_t remaining = size;
     bool ok = true;
     if (!source || offset < 0 || size < 0) return false;
     if (size == 0) return true;
-    buffer = (uint8_t *)xx_mem_alloc(PDB_COPY_CHUNK);
+    buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (ok && remaining > 0) {
-        size_t chunk = remaining > (int64_t)PDB_COPY_CHUNK
-                           ? (size_t)PDB_COPY_CHUNK
+        size_t chunk = remaining > (int64_t)file_io_capacity
+                           ? (size_t)file_io_capacity
                            : (size_t)remaining;
         size_t written = 0U;
         if ((pd && xx_pd_is_stopped(pd)) ||
@@ -123,8 +162,8 @@ static bool pdb_copy_range(xx_io_device *source, int64_t offset, int64_t size,
             break;
         }
         while (destination && written < chunk) {
-            ssize_t amount = xx_io_write(destination, buffer + written,
-                                         chunk - written);
+            ssize_t amount = gb_pdb_write(destination, buffer + written,
+                                         chunk - written, file_io_capacity);
             if (amount <= 0 || (size_t)amount > chunk - written) {
                 ok = false;
                 break;

@@ -18,9 +18,11 @@
 #include "xxfclib/formats/lzma/xx_lzma.h"
 
 static const uint8_t k_anchor0[] = { 0x5D, 0x00, 0x00 };
+static const uint8_t k_anchor1[] = { 0x6D, 0x00, 0x00 };
 
 static const xx_format_search_anchor k_anchors[] = {
     { k_anchor0, sizeof(k_anchor0), 0U },
+    { k_anchor1, sizeof(k_anchor1), 0U },
 };
 
 static const xx_file_type_t k_types[] = { XX_FILE_TYPE_LZMA };

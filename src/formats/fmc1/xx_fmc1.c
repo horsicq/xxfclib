@@ -30,6 +30,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/fmc1/xx_fmc1.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -67,15 +68,18 @@ static void xx_fmc1_vtable_destroy(Abstractformat *self);
 static bool xx_fmc1_read_at(Abstractformat *self, int64_t offset,
                               uint8_t *buffer, size_t size) {
     size_t completed = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
 
     if (!self || !self->device || offset < 0 ||
         xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
+        size_t request = size - completed;
+        if (request > io_capacity) request = io_capacity;
         ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
-        if (received <= 0 || (size_t)received > size - completed) {
+            xx_io_read(self->device, buffer + completed, request);
+        if (received <= 0 || (size_t)received > request) {
             return false;
         }
         completed += (size_t)received;
@@ -131,7 +135,6 @@ static bool xx_fmc1_add(xx_fmc1_stream *stream,
 
 
 #define XX_FMC1_MAX_MEMBERS 100000
-#define XX_FMC1_SCAN_CHUNK 0x10000
 #define XX_FMC1_NAME_BUFFER (XX_FMC1_NAME_SIZE * 3 + 1)
 #define XX_FMC1_MAGIC_SIZE 4
 #define XX_FMC1_RECORD_SIZE 24
@@ -144,7 +147,8 @@ typedef struct xx_fmc1_scan_s {
     Abstractformat *self;
     int64_t base;      /* absolute offset of payload byte 0 */
     int64_t size;      /* payload length */
-    uint8_t *buffer;   /* XX_FMC1_SCAN_CHUNK bytes, owned by parse */
+    uint8_t *buffer;   /* Captured-capacity staging, owned by parse. */
+    size_t io_capacity;
     int64_t chunk_offset;
     int64_t chunk_size;
 } xx_fmc1_scan;
@@ -156,7 +160,7 @@ static uint32_t xx_fmc1_le32(const uint8_t *data);
 static bool xx_fmc1_scan_byte(xx_fmc1_scan *scan, int64_t position, uint8_t *out);
 static bool xx_fmc1_name_length(const uint8_t *field, size_t *out_length);
 static bool xx_fmc1_name_string(const uint8_t *field, size_t length, size_t member_index, char **out_name);
-static bool xx_fmc1_measure(Abstractformat *self, int64_t base, int64_t size, uint8_t *buffer, int64_t *out_size, xx_pd_struct *pd);
+static bool xx_fmc1_measure(Abstractformat *self, int64_t base, int64_t size, uint8_t *buffer, size_t io_capacity, int64_t *out_size, xx_pd_struct *pd);
 static xx_fmc1_stream *xx_fmc1_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_fmc1_decode(Abstractformat *self, const xx_fmc1_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
@@ -189,7 +193,7 @@ static bool xx_fmc1_scan_byte(xx_fmc1_scan *scan, int64_t position,
     if (position < scan->chunk_offset ||
         position >= scan->chunk_offset + scan->chunk_size) {
         wanted = scan->size - position;
-        if (wanted > XX_FMC1_SCAN_CHUNK) wanted = XX_FMC1_SCAN_CHUNK;
+        if ((uint64_t)wanted > scan->io_capacity) wanted = (int64_t)scan->io_capacity;
         if (!xx_fmc1_read_at(scan->self, scan->base + position, scan->buffer,
                              (size_t)wanted)) {
             return false;
@@ -277,7 +281,7 @@ static bool xx_fmc1_name_string(const uint8_t *field, size_t length,
  * stream ends when the payload is spent, a truncated token simply stops the
  * walk, and nothing is counted past that point. */
 static bool xx_fmc1_measure(Abstractformat *self, int64_t base, int64_t size,
-                            uint8_t *buffer, int64_t *out_size,
+                            uint8_t *buffer, size_t io_capacity, int64_t *out_size,
                             xx_pd_struct *pd) {
     xx_fmc1_scan scan;
     int64_t position = 0;
@@ -292,6 +296,7 @@ static bool xx_fmc1_measure(Abstractformat *self, int64_t base, int64_t size,
     scan.base = base;
     scan.size = size;
     scan.buffer = buffer;
+    scan.io_capacity = io_capacity;
     scan.chunk_offset = 0;
     scan.chunk_size = 0;
 
@@ -308,7 +313,9 @@ static bool xx_fmc1_measure(Abstractformat *self, int64_t base, int64_t size,
              * flag byte with nothing behind it ends the stream. */
             if (remaining == 0) break;
             flags = (uint32_t)byte | 0xff00U;
-            /* Skip the first token byte: its value never affects the count. */
+            /* Its value does not affect the count; still validate the byte
+             * through the cache so consumed input errors cannot be skipped. */
+            if (!xx_fmc1_scan_byte(&scan, position, &byte)) return false;
             ++position;
             --remaining;
         }
@@ -339,6 +346,7 @@ static xx_fmc1_stream *xx_fmc1_parse(Abstractformat *self, xx_pd_struct *pd) {
     uint8_t header[XX_FMC1_MAGIC_SIZE];
     uint8_t record[XX_FMC1_RECORD_SIZE];
     uint8_t *scratch = NULL;
+    const size_t io_capacity = xx_get_file_buffer_size();
     int64_t total;
     int64_t span;
     int64_t offset;
@@ -359,7 +367,7 @@ static xx_fmc1_stream *xx_fmc1_parse(Abstractformat *self, xx_pd_struct *pd) {
      * "FMC1" out is the record chain and the token walk below. */
     if (xx_rt_memcmp(header, magic, sizeof(magic)) != 0) return NULL;
 
-    scratch = (uint8_t *)xx_mem_alloc((size_t)XX_FMC1_SCAN_CHUNK);
+    scratch = (uint8_t *)xx_mem_alloc(io_capacity);
     if (!scratch) return NULL;
     stream = (xx_fmc1_stream *)xx_mem_alloc(sizeof(*stream));
     if (!stream) {
@@ -409,7 +417,7 @@ static xx_fmc1_stream *xx_fmc1_parse(Abstractformat *self, xx_pd_struct *pd) {
          * tokens is the only way to obtain it, and a payload that does not
          * walk is not a member. */
         if (!xx_fmc1_measure(self, self->base_address + data_offset,
-                             compressed_size, scratch, &uncompressed_size,
+                             compressed_size, scratch, io_capacity, &uncompressed_size,
                              pd)) {
             goto fail;
         }

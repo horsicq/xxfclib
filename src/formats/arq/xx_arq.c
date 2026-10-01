@@ -40,6 +40,7 @@
  * the extracted plaintext would reject every crushed member.
  */
 
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/arq/xx_arq.h"
 
@@ -64,7 +65,6 @@
 #define XX_ARQ_SIGNATURE_LOW_B 0x31U
 #define XX_ARQ_METHOD_STORED 0x01U
 #define XX_ARQ_METHOD_CRUSHED 0x02U
-#define XX_ARQ_CRC_CHUNK (64 * 1024)
 
 typedef struct xx_arq_member_s {
     int64_t header_offset;
@@ -94,6 +94,7 @@ static void xx_arq_vtable_destroy(Abstractformat *self);
 
 static bool xx_arq_read_at(Abstractformat *self, int64_t offset,
                            uint8_t *buffer, size_t size) {
+    const size_t io_capacity = xx_get_file_buffer_size();
     size_t completed = 0U;
 
     if (!self || !self->device || offset < 0 ||
@@ -101,9 +102,11 @@ static bool xx_arq_read_at(Abstractformat *self, int64_t offset,
         return false;
     }
     while (completed < size) {
+        size_t request = size - completed;
+        if (request > io_capacity) request = io_capacity;
         ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
-        if (received <= 0 || (size_t)received > size - completed) {
+            xx_io_read(self->device, buffer + completed, request);
+        if (received <= 0 || (size_t)received > request) {
             return false;
         }
         completed += (size_t)received;
@@ -220,15 +223,16 @@ static char *xx_arq_make_extract_name(const char *name) {
 
 static uint32_t xx_arq_crc_range(Abstractformat *self, int64_t offset,
                                  uint32_t size, bool *ok, xx_pd_struct *pd) {
-    uint8_t *buffer = (uint8_t *)xx_mem_alloc(XX_ARQ_CRC_CHUNK);
+    const size_t io_capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = (uint8_t *)xx_mem_alloc(io_capacity);
     uint32_t crc = 0U;
     uint32_t remaining = size;
 
     *ok = false;
     if (!buffer) return 0U;
     while (remaining != 0U) {
-        size_t take = remaining < XX_ARQ_CRC_CHUNK ? remaining
-                                                   : XX_ARQ_CRC_CHUNK;
+        size_t take = remaining < io_capacity ? remaining
+                                                   : io_capacity;
         if ((pd && xx_pd_is_stopped(pd)) ||
             !xx_arq_read_at(self, offset, buffer, take)) {
             xx_mem_free(buffer);

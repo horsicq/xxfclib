@@ -27,6 +27,7 @@
  * trustworthy.
  */
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/rnca/xx_rnca.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -55,7 +56,6 @@
 #define XX_RNCA_PACKED_HEADER 18U
 /* A stored member is copied through a bounded buffer rather than in one
  * allocation the size of the declared length. */
-#define XX_RNCA_COPY_CHUNK 65536U
 
 typedef struct rnca_member_s {
     char *name;
@@ -86,14 +86,17 @@ static uint32_t rnca_be32(const uint8_t *bytes) {
 
 static bool rnca_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
+    const size_t io_capacity = xx_get_file_buffer_size();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -376,14 +379,13 @@ static bool rnca_set_record(xx_archive_record *record,
 
 /* Copy a stored member through a fixed buffer: the declared length is a file
  * controlled 32-bit field and must never size an allocation. */
-static bool rnca_copy_stored(xx_io_device *source, const rnca_member *member,
-                             xx_io_device *destination, xx_pd_struct *pd) {
-    uint8_t buffer[XX_RNCA_COPY_CHUNK];
+static bool rnca_copy_stored_buffered(xx_io_device *source, const rnca_member *member,
+                             xx_io_device *destination, xx_pd_struct *pd, uint8_t *buffer, size_t buffer_capacity) {
     uint64_t remaining = member->packed_size;
     int64_t at = member->data_offset;
     while (remaining != 0U) {
-        size_t chunk = remaining > (uint64_t)sizeof(buffer)
-                           ? sizeof(buffer) : (size_t)remaining;
+        size_t chunk = remaining > (uint64_t)buffer_capacity
+                           ? buffer_capacity : (size_t)remaining;
         size_t written = 0U;
         if ((pd && xx_pd_is_stopped(pd)) ||
             !rnca_read_at(source, at, buffer, chunk))
@@ -398,6 +400,17 @@ static bool rnca_copy_stored(xx_io_device *source, const rnca_member *member,
         at += (int64_t)chunk;
     }
     return true;
+}
+
+static bool rnca_copy_stored(xx_io_device *source, const rnca_member *member,
+                             xx_io_device *destination, xx_pd_struct *pd) {
+    size_t buffer_capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
+    bool result;
+    if (!buffer) return false;
+    result = rnca_copy_stored_buffered(source, member, destination, pd, buffer, buffer_capacity);
+    xx_mem_free(buffer);
+    return result;
 }
 
 /* Decode one member into an already opened destination device. */

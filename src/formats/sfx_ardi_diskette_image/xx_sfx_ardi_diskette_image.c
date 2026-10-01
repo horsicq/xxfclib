@@ -15,6 +15,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/sfx_ardi_diskette_image/xx_sfx_ardi_diskette_image.h"
 
 #include "xxfclib/algo/crc/xx_crc.h"
@@ -64,10 +65,11 @@
 #define ARDI_NE_RELOCATIONS 0x0100U
 
 /* The needle scan.  The record sits 89,902 bytes in on every known
- * carrier; the window is far above that and keeps a hostile file that
- * happens to end in the trailer from turning the probe into a full read. */
-#define ARDI_SCAN_CHUNK 0x10000U
-#define ARDI_MAX_SCAN (INT64_C(16) * 1024 * 1024)
+ * carrier; a 1 MiB window is still ten times that and keeps a hostile file
+ * that happens to end in the trailer from turning the probe into a long
+ * read.  The format search tries offset 0 only, so a file costs this
+ * window once, not once per "MZ" in it. */
+#define ARDI_MAX_SCAN (INT64_C(1) * 1024 * 1024)
 #define ARDI_MAX_CANDIDATES 64
 
 /* The prologue is 4,563 or 4,570 bytes on every known carrier. */
@@ -97,13 +99,16 @@ static uint32_t ardi_le32(const uint8_t *bytes) {
 static bool ardi_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount =
-            xx_io_read(device, (uint8_t *)buffer + done, size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+            xx_io_read(device, (uint8_t *)buffer + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -113,12 +118,15 @@ static bool ardi_read_at(xx_io_device *device, int64_t offset, void *buffer,
 static size_t ardi_read_some(xx_io_device *device, int64_t offset,
                              uint8_t *buffer, size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || !buffer || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return 0U;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, buffer + done, size - done);
-        if (amount <= 0 || (size_t)amount > size - done) break;
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
+        ssize_t amount = xx_io_read(device, buffer + done, request);
+        if (amount <= 0 || (size_t)amount > request) break;
         done += (size_t)amount;
     }
     return done;
@@ -245,6 +253,7 @@ static int64_t ardi_ne_end(Abstractformat *format, const ardi_context *context) 
 static bool ardi_scan(Abstractformat *format, ardi_context *context,
                       xx_pd_struct *pd) {
     uint8_t *buffer;
+    const size_t io_capacity = xx_get_file_buffer_size();
     int64_t first = ARDI_MZ_HEADER + ARDI_OFF_CONSTANT;
     int64_t last = context->trailer - (int64_t)ARDI_RECORD_SIZE - 1 +
                    ARDI_OFF_CONSTANT; /* last needle start */
@@ -253,24 +262,31 @@ static bool ardi_scan(Abstractformat *format, ardi_context *context,
     bool found = false;
     if (last > ARDI_MAX_SCAN) last = ARDI_MAX_SCAN;
     if (last < first) return false;
-    buffer = (uint8_t *)xx_mem_alloc(ARDI_SCAN_CHUNK + 4U);
+    buffer = (uint8_t *)xx_mem_alloc(io_capacity);
     if (!buffer) return false;
-    for (position = first; position <= last && !found;
-         position += ARDI_SCAN_CHUNK) {
-        size_t want = ARDI_SCAN_CHUNK + 4U, got, index, limit;
+    for (position = first; position <= last && !found;) {
+        size_t want = (uint64_t)(last - position + 1) < io_capacity ?
+                          (size_t)(last - position + 1) : io_capacity;
+        size_t got, index, limit;
         if (pd && xx_pd_is_stopped(pd)) break;
         if ((int64_t)want > context->trailer - position)
             want = (size_t)(context->trailer - position);
         got = ardi_read_some(format->device, format->base_address + position,
                              buffer, want);
-        if (got < 5U) break;
-        limit = got - 4U;
+        if (!got) break;
+        limit = got;
         if ((int64_t)limit > last - position + 1)
             limit = (size_t)(last - position + 1);
         for (index = 0U; index < limit; ++index) {
-            if (buffer[index] != 0x85U || buffer[index + 1U] != 0x04U ||
-                buffer[index + 2U] != 0U || buffer[index + 3U] != 0U ||
-                buffer[index + 4U] != 0U)
+            uint8_t frame[5];
+            const uint8_t *bytes = buffer + index;
+            if (buffer[index] != 0x85U) continue;
+            if (got - index < sizeof(frame)) {
+                if (ardi_read_some(format->device, format->base_address + position + (int64_t)index,
+                                   frame, sizeof(frame)) != sizeof(frame)) continue;
+                bytes = frame;
+            }
+            if (bytes[1] != 0x04U || bytes[2] != 0U || bytes[3] != 0U || bytes[4] != 0U)
                 continue;
             if (ardi_accept(format, context,
                             position + (int64_t)index - ARDI_OFF_CONSTANT)) {
@@ -280,6 +296,7 @@ static bool ardi_scan(Abstractformat *format, ardi_context *context,
             if (++candidates >= ARDI_MAX_CANDIDATES) break;
         }
         if (candidates >= ARDI_MAX_CANDIDATES) break;
+        position += (int64_t)limit;
     }
     xx_mem_free(buffer);
     return found;

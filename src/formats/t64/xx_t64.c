@@ -38,6 +38,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/t64/xx_t64.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -60,7 +61,6 @@
 #define T64_ENTRY ((int64_t)XX_T64_ENTRY_SIZE)
 /* The directory is read 4 KiB at a time, never whole: the slot count is a
  * u16, so a hostile header could otherwise ask for 2 MiB up front. */
-#define T64_CHUNK_ENTRIES 128U
 #define T64_TYPE_FREE 0U
 #define T64_TYPE_MAX 5U
 #define T64_NAME_FIELD 16U
@@ -69,7 +69,6 @@
 #define T64_NAME_BUFFER 32U
 #define T64_LOAD_ADDRESS_SIZE 2
 #define T64_ADDRESS_SPACE INT64_C(0x10000)
-#define T64_COPY_CHUNK 65536U
 
 typedef struct t64_member_s {
     char name[T64_NAME_BUFFER];
@@ -106,7 +105,9 @@ typedef struct t64_dir_reader_s {
     uint32_t entries;
     uint32_t first;
     uint32_t loaded;
-    uint8_t buffer[T64_CHUNK_ENTRIES * XX_T64_ENTRY_SIZE];
+    uint8_t *buffer;
+    uint32_t batch_entries;
+    size_t io_capacity;
 } t64_dir_reader;
 
 typedef struct t64_order_s {
@@ -128,28 +129,37 @@ static uint32_t t64_le32(const uint8_t *bytes) {
            ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
 }
 
-static bool t64_read_at(xx_io_device *device, int64_t offset, void *buffer,
-                        size_t size) {
+static bool t64_read_at_sized(xx_io_device *device, int64_t offset, void *buffer,
+                        size_t size, size_t transfer_capacity) {
     size_t done = 0U;
+
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        size_t request = size - done;
+        if (request > transfer_capacity) request = transfer_capacity;
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
+static bool t64_read_at(xx_io_device *device, int64_t offset, void *buffer,
+                        size_t size) {
+    return t64_read_at_sized(device, offset, buffer, size, xx_get_file_buffer_size());
+}
+
 static bool t64_write_all(xx_io_device *destination, const uint8_t *data,
                           size_t size) {
     size_t written = 0U;
+    size_t capacity = xx_get_file_buffer_size();
     while (written < size) {
-        ssize_t amount = xx_io_write(destination, data + written,
-                                     size - written);
-        if (amount <= 0 || (size_t)amount > size - written) return false;
+        size_t request = size - written;
+        if (request > capacity) request = capacity;
+        ssize_t amount = xx_io_write(destination, data + written, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         written += (size_t)amount;
     }
     return true;
@@ -160,15 +170,16 @@ static bool t64_write_all(xx_io_device *destination, const uint8_t *data,
 static bool t64_copy_range(xx_io_device *source, int64_t offset, int64_t size,
                            xx_io_device *destination, xx_pd_struct *pd) {
     uint8_t *buffer;
+    size_t capacity = xx_get_file_buffer_size();
     int64_t remaining = size;
     bool ok = true;
     if (!source || offset < 0 || size < 0) return false;
     if (size == 0) return true;
-    buffer = (uint8_t *)xx_mem_alloc(T64_COPY_CHUNK);
+    buffer = (uint8_t *)xx_mem_alloc(capacity);
     if (!buffer) return false;
     while (remaining > 0) {
-        size_t chunk = remaining > (int64_t)T64_COPY_CHUNK
-                           ? (size_t)T64_COPY_CHUNK
+        size_t chunk = (uint64_t)remaining > (uint64_t)capacity
+                           ? capacity
                            : (size_t)remaining;
         if ((pd && xx_pd_is_stopped(pd)) ||
             !t64_read_at(source, offset + (size - remaining), buffer, chunk) ||
@@ -187,13 +198,13 @@ static const uint8_t *t64_dir_entry(t64_dir_reader *reader, uint32_t index) {
     if (index >= reader->entries) return NULL;
     if (reader->loaded == 0U || index < reader->first ||
         index - reader->first >= reader->loaded) {
-        uint32_t first = index - index % T64_CHUNK_ENTRIES;
+        uint32_t first = index - index % reader->batch_entries;
         uint32_t count = reader->entries - first;
-        if (count > T64_CHUNK_ENTRIES) count = T64_CHUNK_ENTRIES;
+        if (count > reader->batch_entries) count = reader->batch_entries;
         reader->loaded = 0U;
-        if (!t64_read_at(reader->device,
+        if (!t64_read_at_sized(reader->device,
                          reader->base + T64_HEADER + (int64_t)first * T64_ENTRY,
-                         reader->buffer, (size_t)count * XX_T64_ENTRY_SIZE))
+                         reader->buffer, (size_t)count * XX_T64_ENTRY_SIZE, reader->io_capacity))
             return NULL;
         reader->first = first;
         reader->loaded = count;
@@ -442,8 +453,17 @@ static bool t64_parse(Abstractformat *format, t64_stream **result) {
                               ? (size - T64_HEADER) / T64_ENTRY
                               : (int64_t)slots);
 
-    reader = (t64_dir_reader *)xx_mem_alloc(sizeof(*reader));
-    if (!reader) return false;
+    {
+        size_t io_capacity = xx_get_file_buffer_size();
+        size_t batch = io_capacity / XX_T64_ENTRY_SIZE;
+        /* A complete directory entry is a protocol frame when capacity < entry. */
+        if (!batch) batch = 1U;
+        if (batch > readable) batch = readable;
+        reader = (t64_dir_reader *)xx_mem_alloc(sizeof(*reader) + batch * XX_T64_ENTRY_SIZE);
+        if (!reader) return false;
+        reader->batch_entries = (uint32_t)batch;
+        reader->io_capacity = io_capacity;
+    }
 
     /* Pass 0 validates and counts, so garbage falls out before anything
      * sized by the directory is allocated; pass 1 fills the member table.
@@ -451,7 +471,14 @@ static bool t64_parse(Abstractformat *format, t64_stream **result) {
      * already read. */
     for (pass = 0U; pass < 2U; ++pass) {
         int64_t lowest = size; /* Lowest data offset seen, relative. */
-        xx_mem_zero(reader, sizeof(*reader));
+        {
+            uint32_t batch = reader->batch_entries;
+            size_t io_capacity = reader->io_capacity;
+            xx_mem_zero(reader, sizeof(*reader));
+            reader->batch_entries = batch;
+            reader->io_capacity = io_capacity;
+            reader->buffer = (uint8_t *)(void *)(reader + 1);
+        }
         reader->device = format->device;
         reader->base = format->base_address;
         reader->entries = readable;

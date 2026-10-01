@@ -14,6 +14,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/silmarilsft/xx_silmarilsft.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -51,7 +52,6 @@
  * same bytes), and it tolerates at most this many unread trailing bytes.
  * Anything further out is treated as a corrupt stream. */
 #define SIL_BITSTREAM_SLACK 4U
-#define SIL_CHUNK_SIZE 4096U
 
 /* The 0xa1 parameter block never varies.  It is the only thing that makes
  * that method's header strong enough to detect on.  Entry v of the table is
@@ -85,25 +85,29 @@ typedef struct sil_source_s {
     size_t chunk_pos;
     size_t chunk_size;
     uint64_t consumed;  /* stream bytes handed out */
-    uint8_t chunk[SIL_CHUNK_SIZE];
+    uint8_t *chunk;
+    size_t io_capacity;
 } sil_source;
 
 static bool sil_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
+    const size_t io_capacity = xx_get_file_buffer_size();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
-static void sil_source_init(sil_source *source, xx_io_device *device,
+static bool sil_source_init(sil_source *source, xx_io_device *device,
                             int64_t offset, int64_t size) {
     source->device = device;
     source->offset = offset;
@@ -111,6 +115,9 @@ static void sil_source_init(sil_source *source, xx_io_device *device,
     source->chunk_pos = 0U;
     source->chunk_size = 0U;
     source->consumed = 0U;
+    source->io_capacity = xx_get_file_buffer_size();
+    source->chunk = (uint8_t *)xx_mem_alloc(source->io_capacity);
+    return source->chunk != NULL;
 }
 
 /* 1 = byte delivered, 0 = clean end of stream, -1 = I/O failure. */
@@ -118,8 +125,8 @@ static int sil_source_byte(sil_source *source, uint8_t *value) {
     if (source->chunk_pos >= source->chunk_size) {
         size_t amount;
         if (source->remaining <= 0) return 0;
-        amount = source->remaining < (int64_t)SIL_CHUNK_SIZE
-                     ? (size_t)source->remaining : (size_t)SIL_CHUNK_SIZE;
+        amount = (uint64_t)source->remaining < (uint64_t)source->io_capacity
+                     ? (size_t)source->remaining : (size_t)source->io_capacity;
         if (!sil_read_at(source->device, source->offset, source->chunk,
                          amount)) return -1;
         source->offset += (int64_t)amount;
@@ -386,11 +393,15 @@ static bool sil_parse(Abstractformat *format, sil_context *out) {
          * to produce exactly the declared plaintext length and land exactly
          * on the last input byte.  That is what keeps this reader from
          * stealing files and, equally, from being stolen from. */
-        sil_source_init(&source, format->device,
+        if (!sil_source_init(&source, format->device,
                         format->base_address + context.stream_offset,
-                        context.stream_size);
-        if (!sil_byterun(&source, context.stream_size, context.unpacked_size,
-                         NULL)) return false;
+                        context.stream_size)) return false;
+        {
+            bool decoded = sil_byterun(&source, context.stream_size,
+                                       context.unpacked_size, NULL);
+            xx_mem_free(source.chunk);
+            if (!decoded) return false;
+        }
     }
     context.stream_offset += format->base_address;
     *out = context;
@@ -608,11 +619,12 @@ bool xx_silmarilsft_unpack_current_archive_record(
         (uint64_t)stream->context.unpacked_size > (uint64_t)SIZE_MAX ||
         stream->context.stream_size <= 0)
         return false;
+    xx_mem_zero(&source, sizeof(source));
     plain_size = (size_t)stream->context.unpacked_size;
     plain = (uint8_t *)xx_mem_alloc(plain_size);
     if (!plain) goto done;
-    sil_source_init(&source, format->device, stream->context.stream_offset,
-                    stream->context.stream_size);
+    if (!sil_source_init(&source, format->device, stream->context.stream_offset,
+                         stream->context.stream_size)) goto done;
     if (stream->context.method == SIL_METHOD_BITSTREAM) {
         uint8_t table[SIL_TABLE_SIZE];
         /* Re-read rather than trust the constant: the device is the input. */
@@ -652,9 +664,11 @@ bool xx_silmarilsft_unpack_current_archive_record(
         created = true;
         result = true;
         while (written < plain_size) {
-            ssize_t amount = xx_io_write(destination, plain + written,
-                                         plain_size - written);
-            if (amount <= 0 || (size_t)amount > plain_size - written) {
+            size_t request = plain_size - written;
+            ssize_t amount;
+            if (request > source.io_capacity) request = source.io_capacity;
+            amount = xx_io_write(destination, plain + written, request);
+            if (amount <= 0 || (size_t)amount > request) {
                 result = false;
                 break;
             }
@@ -664,6 +678,7 @@ bool xx_silmarilsft_unpack_current_archive_record(
     }
 done:
     if (!result && created) xx_rt_remove(path);
+    if (source.chunk) xx_mem_free(source.chunk);
     if (plain) xx_mem_free(plain);
     if (path) xx_str_free(path);
     if (owned_base) xx_str_free(owned_base);

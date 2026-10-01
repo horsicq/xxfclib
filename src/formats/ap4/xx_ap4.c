@@ -36,6 +36,7 @@
 
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>  /* SEEK_SET only: formatting goes through xx_rt */
@@ -56,8 +57,6 @@
  * confirmation never runs off the end of the probe. */
 #define XX_AP4_PROBE_SIZE (64 * 1024)
 #define XX_AP4_MPEG_HEADER_SIZE 4
-#define XX_AP4_SCAN_CHUNK_SIZE (64 * 1024)
-#define XX_AP4_COPY_BUFFER_SIZE (64 * 1024)
 #define XX_AP4_MPEG_SYNC_BYTE 0xFFU
 
 typedef struct xx_ap4_member_s {
@@ -101,15 +100,17 @@ static void xx_ap4_vtable_destroy(Abstractformat *self);
 static bool xx_ap4_read_at(Abstractformat *self, int64_t offset,
                            uint8_t *buffer, size_t size) {
     size_t completed = 0U;
+    size_t capacity = xx_get_file_buffer_size();
 
     if (!self || !self->device || offset < 0 ||
         xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (completed < size) {
+        size_t request = size - completed < capacity ? size - completed : capacity;
         ssize_t received =
-            xx_io_read(self->device, buffer + completed, size - completed);
-        if (received <= 0 || (size_t)received > size - completed) {
+            xx_io_read(self->device, buffer + completed, request);
+        if (received <= 0 || (size_t)received > request) {
             return false;
         }
         completed += (size_t)received;
@@ -233,10 +234,12 @@ static bool xx_ap4_headers_agree(const xx_ap4_mpeg_header *first,
  * The MPEG start test under one XOR hypothesis; key 0 is the plain case.
  */
 static bool xx_ap4_is_mp3_start(const uint8_t *data, size_t probe_size,
-                                int64_t member_size, uint8_t key) {
+                                int64_t member_size, uint8_t key,
+                                Abstractformat *self, int64_t member_offset) {
     xx_ap4_mpeg_header first;
     xx_ap4_mpeg_header second;
     int64_t frame_length;
+    uint8_t second_header[XX_AP4_MPEG_HEADER_SIZE];
 
     if (!data || probe_size < (size_t)XX_AP4_MPEG_HEADER_SIZE) return false;
     if (!xx_ap4_parse_mpeg_header(data, key, &first)) return false;
@@ -255,7 +258,9 @@ static bool xx_ap4_is_mp3_start(const uint8_t *data, size_t probe_size,
     if (probe_size < (size_t)(frame_length + XX_AP4_MPEG_HEADER_SIZE)) {
         return false;
     }
-    if (!xx_ap4_parse_mpeg_header(data + frame_length, key, &second)) {
+    if (!xx_ap4_read_at(self, member_offset + frame_length, second_header,
+                       sizeof(second_header)) ||
+        !xx_ap4_parse_mpeg_header(second_header, key, &second)) {
         return false;
     }
     return xx_ap4_headers_agree(&first, &second);
@@ -268,7 +273,8 @@ static bool xx_ap4_is_mp3_start(const uint8_t *data, size_t probe_size,
  */
 static void xx_ap4_classify_member(const uint8_t *probe, size_t probe_size,
                                    int64_t member_size, bool *is_mp3,
-                                   uint8_t *key_out) {
+                                   uint8_t *key_out, Abstractformat *self,
+                                   int64_t member_offset) {
     uint8_t key;
 
     *is_mp3 = false;
@@ -281,7 +287,7 @@ static void xx_ap4_classify_member(const uint8_t *probe, size_t probe_size,
     }
     if (probe_size < (size_t)XX_AP4_MPEG_HEADER_SIZE) return;
 
-    if (xx_ap4_is_mp3_start(probe, probe_size, member_size, 0U)) {
+    if (xx_ap4_is_mp3_start(probe, probe_size, member_size, 0U, self, member_offset)) {
         *is_mp3 = true;
         return;
     }
@@ -290,7 +296,7 @@ static void xx_ap4_classify_member(const uint8_t *probe, size_t probe_size,
      * 0, which is not a hypothesis at all. */
     key = (uint8_t)(probe[0] ^ XX_AP4_MPEG_SYNC_BYTE);
     if (key == 0U) return;
-    if (xx_ap4_is_mp3_start(probe, probe_size, member_size, key)) {
+    if (xx_ap4_is_mp3_start(probe, probe_size, member_size, key, self, member_offset)) {
         *is_mp3 = true;
         *key_out = key;
     }
@@ -315,7 +321,7 @@ static void xx_ap4_stream_free(void *pointer) {
 static int64_t xx_ap4_find_toc(Abstractformat *self, int64_t from, int64_t end,
                                int64_t input_size, uint8_t *record_count,
                                uint8_t *cache, int64_t *cache_offset,
-                               size_t *cache_size, xx_pd_struct *pd) {
+                               size_t *cache_size, size_t cache_capacity, xx_pd_struct *pd) {
     int64_t position = from;
 
     if (from < 0 || end > input_size) return -1;
@@ -328,9 +334,9 @@ static int64_t xx_ap4_find_toc(Abstractformat *self, int64_t from, int64_t end,
         if (*cache_offset < 0 || position < *cache_offset ||
             position + XX_AP4_TOC_HEADER_SIZE > cached_end) {
             int64_t available = input_size - position;
-            size_t chunk = (size_t)(available < XX_AP4_SCAN_CHUNK_SIZE
+            size_t chunk = (size_t)((uint64_t)available < cache_capacity
                                         ? available
-                                        : XX_AP4_SCAN_CHUNK_SIZE);
+                                        : cache_capacity);
             if (chunk < (size_t)XX_AP4_TOC_HEADER_SIZE) return -1;
             if (!xx_ap4_read_at(self, position, cache, chunk)) return -1;
             *cache_offset = position;
@@ -362,7 +368,11 @@ static xx_ap4_stream *xx_ap4_parse(Abstractformat *self, bool gate_only,
     xx_ap4_toc *tocs = NULL;
     xx_ap4_member *members = NULL;
     uint8_t *cache = NULL;
-    uint8_t *probe = NULL;
+    /* MPEG/ID3 headers are semantic frames, independent of the I/O cache. */
+    uint8_t probe[XX_AP4_MPEG_HEADER_SIZE];
+    size_t capacity = xx_get_file_buffer_size();
+    size_t cache_capacity = capacity < XX_AP4_TOC_HEADER_SIZE
+        ? XX_AP4_TOC_HEADER_SIZE : capacity;
     size_t toc_count = 0U;
     size_t member_count = 0U;
     size_t index;
@@ -387,7 +397,7 @@ static xx_ap4_stream *xx_ap4_parse(Abstractformat *self, bool gate_only,
     input_size = xx_io_total_size(self->device);
     if (input_size < XX_AP4_MIN_INPUT_SIZE) return NULL;
 
-    cache = (uint8_t *)xx_mem_alloc(XX_AP4_SCAN_CHUNK_SIZE);
+    cache = (uint8_t *)xx_mem_alloc(cache_capacity);
     tocs = (xx_ap4_toc *)xx_mem_alloc(sizeof(*tocs) * XX_AP4_MAX_TOCS);
     if (!cache || !tocs) goto fail;
 
@@ -416,7 +426,7 @@ static xx_ap4_stream *xx_ap4_parse(Abstractformat *self, bool gate_only,
 
         found = xx_ap4_find_toc(self, scan_position, search_end, input_size,
                                 &record_count, cache, &cache_offset,
-                                &cache_size, pd);
+                                &cache_size, cache_capacity, pd);
         if (found < 0) {
             if (is_first) goto fail;
             break;
@@ -523,8 +533,6 @@ static xx_ap4_stream *xx_ap4_parse(Abstractformat *self, bool gate_only,
     /* Classification. The first member whose probe is not all zero must be an
      * MP3, and that rule is evaluated on the same probe in both modes so the
      * gate and the listing can never disagree about a file. */
-    probe = (uint8_t *)xx_mem_alloc(XX_AP4_PROBE_SIZE);
-    if (!probe) goto fail;
 
     for (index = 0U; index < member_count; ++index) {
         xx_ap4_member *member = &members[index];
@@ -535,8 +543,19 @@ static xx_ap4_stream *xx_ap4_parse(Abstractformat *self, bool gate_only,
         bool all_null;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        if (!xx_ap4_read_at(self, member->offset, probe, probe_size)) goto fail;
-        probe_null = xx_ap4_is_all_zero(probe, probe_size);
+        {
+            size_t done = 0;
+            probe_null = true;
+            while (done < probe_size) {
+                size_t take = probe_size - done < capacity ? probe_size - done : capacity;
+                if ((pd && xx_pd_is_stopped(pd)) ||
+                    !xx_ap4_read_at(self, member->offset + (int64_t)done, cache, take)) goto fail;
+                if (!xx_ap4_is_all_zero(cache, take)) probe_null = false;
+                done += take;
+            }
+            if (!probe_null && !xx_ap4_read_at(self, member->offset, probe,
+                    probe_size < sizeof(probe) ? probe_size : sizeof(probe))) goto fail;
+        }
         all_null = probe_null;
 
         if (!gate_only && probe_null && member->size > (int64_t)probe_size) {
@@ -544,12 +563,12 @@ static xx_ap4_stream *xx_ap4_parse(Abstractformat *self, bool gate_only,
              * is bounded by the zero prefix rather than by the member. */
             int64_t position = member->offset + (int64_t)probe_size;
             int64_t end = member->offset + member->size;
-            uint8_t *chunk = (uint8_t *)xx_mem_alloc(XX_AP4_COPY_BUFFER_SIZE);
+            uint8_t *chunk = (uint8_t *)xx_mem_alloc(capacity);
             if (!chunk) goto fail;
             while (position < end) {
-                size_t take = (size_t)(end - position < XX_AP4_COPY_BUFFER_SIZE
+                size_t take = (size_t)((uint64_t)(end - position) < capacity
                                            ? end - position
-                                           : XX_AP4_COPY_BUFFER_SIZE);
+                                           : capacity);
                 if (pd && xx_pd_is_stopped(pd)) {
                     xx_mem_free(chunk);
                     goto fail;
@@ -570,7 +589,7 @@ static xx_ap4_stream *xx_ap4_parse(Abstractformat *self, bool gate_only,
 
         if (!probe_null) {
             xx_ap4_classify_member(probe, probe_size, member->size,
-                                   &member->is_mp3, &member->xor_key);
+                                   &member->is_mp3, &member->xor_key, self, member->offset);
             if (!first_probed_seen) {
                 first_probed_seen = true;
                 /* The decision: a container whose first real member is not
@@ -619,7 +638,6 @@ static xx_ap4_stream *xx_ap4_parse(Abstractformat *self, bool gate_only,
     stream->header_size = header_size;
     stream->toc_count = (uint32_t)toc_count;
 
-    xx_mem_free(probe);
     xx_mem_free(tocs);
     xx_mem_free(cache);
     return stream;
@@ -631,7 +649,6 @@ fail:
         }
         xx_mem_free(members);
     }
-    xx_mem_free(probe);
     xx_mem_free(tocs);
     xx_mem_free(cache);
     return NULL;
@@ -869,16 +886,17 @@ static bool xx_ap4_write_member(Abstractformat *self,
                                 const xx_ap4_member *member,
                                 xx_io_device *destination, xx_pd_struct *pd) {
     uint8_t *buffer;
+    size_t capacity = xx_get_file_buffer_size();
     int64_t position = member->offset;
     int64_t end = member->offset + member->size;
     bool result = true;
 
-    buffer = (uint8_t *)xx_mem_alloc(XX_AP4_COPY_BUFFER_SIZE);
+    buffer = (uint8_t *)xx_mem_alloc(capacity);
     if (!buffer) return false;
     while (position < end) {
-        size_t take = (size_t)(end - position < XX_AP4_COPY_BUFFER_SIZE
+        size_t take = (size_t)((uint64_t)(end - position) < capacity
                                    ? end - position
-                                   : XX_AP4_COPY_BUFFER_SIZE);
+                                   : capacity);
         size_t written = 0U;
 
         if ((pd && xx_pd_is_stopped(pd)) ||
@@ -933,14 +951,15 @@ bool xx_ap4_unpack_current_archive_record(Abstractformat *self,
     if (!path_option) {
         /* No destination: verify the member is readable end to end, which is
          * what a caller iterating records without extracting is asking. */
-        uint8_t *buffer = (uint8_t *)xx_mem_alloc(XX_AP4_COPY_BUFFER_SIZE);
+        size_t capacity = xx_get_file_buffer_size();
+        uint8_t *buffer = (uint8_t *)xx_mem_alloc(capacity);
         int64_t position = member->offset;
         int64_t end = member->offset + member->size;
         result = buffer != NULL;
         while (result && position < end) {
-            size_t take = (size_t)(end - position < XX_AP4_COPY_BUFFER_SIZE
+            size_t take = (size_t)((uint64_t)(end - position) < capacity
                                        ? end - position
-                                       : XX_AP4_COPY_BUFFER_SIZE);
+                                       : capacity);
             result = !(pd && xx_pd_is_stopped(pd)) &&
                      xx_ap4_read_at(self, position, buffer, take);
             position += (int64_t)take;

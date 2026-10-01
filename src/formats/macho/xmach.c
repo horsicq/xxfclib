@@ -27,8 +27,9 @@
  * (Mach-O FAT) and are not handled here.
  */
 
+#include "../xio.h"
 #include "../../formats/macho/xmach.h"
-#include "../../die_engine/die_engine_compat.h"
+#include "../../die_engine/xx_die_engine_compat.h"
 
 #define MACH_MAGIC 0xFEEDFACEu
 #define MACH_MAGIC_64 0xFEEDFACFu
@@ -300,17 +301,7 @@ static void mach_compute_os(XMACH *pMach, int bBuildVer, cd_u32 nPlatform, cd_u3
 
 static char *mach_read_asciiz(DieFile *pFile, cd_i64 nOffset)
 {
-    cd_i64 nEnd = nOffset;
-
-    if ((nOffset < 0) || (nOffset >= pFile->nSize)) {
-        return cd_strdup("");
-    }
-
-    while ((nEnd < pFile->nSize) && (pFile->pData[nEnd] != 0)) {
-        nEnd++;
-    }
-
-    return cd_strndup((const char *)pFile->pData + nOffset, (size_t)(nEnd - nOffset));
+    return xio_raw_string(pFile, nOffset, -1);
 }
 
 /* basename after the last '/'. */
@@ -429,7 +420,7 @@ int xmach_parse(DieFile *pFile, XMACH *pMach)
                 }
 
                 pSection = (XMachSection *)cd_calloc(1, sizeof(XMachSection));
-                x_memcpy(pSection->sName, pFile->pData + nSectOffset, 16);
+                die_file_read_at(pFile, nSectOffset, pSection->sName, 16);
                 pSection->sName[16] = 0;
 
                 if (bSeg64) {

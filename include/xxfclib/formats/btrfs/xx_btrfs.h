@@ -18,7 +18,7 @@
  *     +88   u64  chunk_root,  logical address of the chunk tree
  *     +112  u64  total_bytes
  *     +120  u64  bytes_used
- *     +128  u64  root_dir_objectid, normally 256
+ *     +128  u64  root_dir_objectid, normally 6 (root-tree directory)
  *     +136  u64  num_devices
  *     +144  u32  sectorsize
  *     +148  u32  nodesize
@@ -57,10 +57,11 @@
  *      chunk tree;
  *   3. a directory listing, built from the FS_TREE's INODE_ITEM and DIR_ITEM
  *      records;
- *   4. extraction, but only for a file stored either inline or as one
- *      uncompressed regular extent. Compressed extents (zlib, LZO, zstd),
- *      multi-extent files, RAID0/10/5/6 chunk profiles and multi-device
- *      volumes are listed and marked unsupported rather than guessed at.
+ *   4. extraction for inline files and one regular extent, uncompressed or
+ *      compressed with zlib, Btrfs-framed LZO, or Zstandard. Regular compressed
+ *      extents require a valid per-sector CRC32C in the checksum tree.
+ *      Multi-extent files, compressed reflink subregions, RAID0/10/5/6 chunk
+ *      profiles and multi-device volumes remain unsupported.
  * Only csum_type 0 (CRC32C) is verified; a volume using XXHASH64, SHA256 or
  * BLAKE2B is identified from the superblock but its trees are not walked,
  * because an unverified tree block is attacker-controlled data.
@@ -135,7 +136,7 @@ struct xx_btrfs {
     uint64_t number_of_chunks;
     /** Logical address of the FS_TREE root, or 0 when it was not found. */
     uint64_t fs_tree_root;
-    /** Records listed but not extractable (compressed / multi-extent / ...). */
+    /** Records listed but not extractable (multi-extent / unsupported / ...). */
     uint64_t number_of_unsupported;
 
     void *internal;

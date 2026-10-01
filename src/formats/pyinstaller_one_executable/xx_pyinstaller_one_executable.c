@@ -33,6 +33,7 @@
  * here, so the alias macro defined next to the enumerator is tested instead;
  * this picks up the real file type as soon as the reader is registered. */
 #ifdef PYINSTALLER_ONE_EXECUTABLE
+
 #define XX_PYINSTALLER_ONE_EXECUTABLE_FILE_TYPE \
     XX_FILE_TYPE_PYINSTALLER_ONE_EXECUTABLE
 #else
@@ -120,6 +121,42 @@ static void pyi_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
+#include "xxfclib/global/xx_global.h"
+static size_t gb_pyinstaller_one_executable_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_pyinstaller_one_executable_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_pyinstaller_one_executable_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+
+
 static uint32_t pyi_be32(const uint8_t *bytes) {
     return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
            ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3];
@@ -136,13 +173,14 @@ static uint16_t pyi_le16(const uint8_t *bytes) {
 
 static bool pyi_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
+    const size_t file_io_capacity = gb_pyinstaller_one_executable_capacity();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
         ssize_t amount =
-            xx_io_read(device, (uint8_t *)buffer + done, size - done);
+            gb_pyinstaller_one_executable_read(device, (uint8_t *)buffer + done, size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -151,9 +189,10 @@ static bool pyi_read_at(xx_io_device *device, int64_t offset, void *buffer,
 
 static bool pyi_write_all(xx_io_device *device, const uint8_t *data,
                           size_t size) {
+    const size_t file_io_capacity = gb_pyinstaller_one_executable_capacity();
     size_t done = 0U;
     while (done < size) {
-        ssize_t amount = xx_io_write(device, data + done, size - done);
+        ssize_t amount = gb_pyinstaller_one_executable_write(device, data + done, size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -226,32 +265,52 @@ static bool pyi_try_cookie(const uint8_t *cookie, size_t available,
 /* Search [end - window, end) backwards for a cookie that ends inside it. */
 static bool pyi_search(xx_io_device *device, int64_t base, int64_t end,
                        size_t window, pyi_layout *out) {
+    const size_t capacity = gb_pyinstaller_one_executable_capacity();
     uint8_t *buffer;
-    int64_t start;
-    size_t length, position;
-    unsigned tries = 0U;
+    uint8_t cookie[PYI_COOKIE_V21];
+    int64_t start, cursor;
+    unsigned tries = 0;
     bool found = false;
     if (end < PYI_COOKIE_V20) return false;
-    length = end < (int64_t)window ? (size_t)end : window;
-    start = end - (int64_t)length;
-    buffer = (uint8_t *)xx_mem_alloc(length);
+    start = end > (int64_t)window ? end - (int64_t)window : 0;
+    cursor = end - PYI_COOKIE_V20 + 1;
+    buffer = (uint8_t *)xx_mem_alloc(capacity);
     if (!buffer) return false;
-    if (pyi_read_at(device, base + start, buffer, length)) {
-        position = length - PYI_COOKIE_V20 + 1U;
-        while (position-- > 0U && tries < PYI_MAX_CANDIDATES) {
-            if (buffer[position] != 'M' ||
-                xx_rt_memcmp(buffer + position, pyi_magic, PYI_MAGIC_SIZE) !=
-                    0)
-                continue;
+    while (cursor > start && tries < PYI_MAX_CANDIDATES) {
+        size_t take = cursor - start > (int64_t)capacity ? capacity : (size_t)(cursor - start);
+        size_t index = take;
+        int64_t block = cursor - (int64_t)take;
+        if (xx_io_seek64(device, base + block, SEEK_SET) != 0 ||
+            gb_pyinstaller_one_executable_read(device, buffer, take, capacity) != (ssize_t)take) break;
+        while (index-- && tries < PYI_MAX_CANDIDATES) {
+            int64_t at = block + (int64_t)index;
+            size_t available;
+            if (buffer[index] != 'M') continue;
+            available = end - at > PYI_COOKIE_V21 ? PYI_COOKIE_V21 : (size_t)(end - at);
+            if (xx_io_seek64(device, base + at, SEEK_SET) != 0 ||
+                gb_pyinstaller_one_executable_read(device, cookie, available, capacity) != (ssize_t)available) goto done;
+            if (xx_rt_memcmp(cookie, pyi_magic, PYI_MAGIC_SIZE)) continue;
             ++tries;
-            if (pyi_try_cookie(buffer + position, length - position,
-                               start + (int64_t)position, out)) {
-                found = true;
-                break;
-            }
+            if (pyi_try_cookie(cookie, available, at, out)) { found = true; goto done; }
         }
+        cursor = block;
     }
+done:
     xx_mem_free(buffer);
+    return found;
+}
+
+bool xx_pyinstaller_one_executable_has_tail_cookie(xx_io_device *device) {
+    int64_t original, size;
+    pyi_layout layout;
+    bool found;
+    if (!device) return false;
+    original = xx_io_tell(device);
+    if (original < 0) return false;
+    size = xx_io_total_size(device);
+    found = size >= PYI_COOKIE_V20 + PYI_ENTRY_FIXED &&
+            pyi_search(device, 0, size, PYI_TAIL_WINDOW, &layout);
+    if (xx_io_seek64(device, original, SEEK_SET) != 0) return false;
     return found;
 }
 
@@ -536,19 +595,186 @@ static char *pyi_convert_name(const uint8_t *raw, size_t length,
     return name;
 }
 
-static uint64_t pyi_hash(const char *name) {
-    uint64_t hash = UINT64_C(0xcbf29ce484222325);
-    for (; *name; ++name) {
-        hash ^= (uint8_t)pyi_upper(*name);
-        hash *= UINT64_C(0x100000001b3);
+/* Case folding for the duplicate check.  A case-insensitive file system
+ * (NTFS compares names through its 64 K-entry upcase table, BMP only) must
+ * never see two members as one file, so this maps every BMP letter onto a
+ * key shared with all its simple case partners.  It may merge more than a
+ * file system does - that only renames a member - but never less:
+ *  - ASCII, Latin-1, Latin Extended-A, Latin Extended Additional, Greek
+ *    (basic and the bit-3 half of Greek Extended), Cyrillic (incl. the
+ *    supplement, Extended-B and Extended-C), Armenian, Georgian, Cherokee,
+ *    Glagolitic, Coptic, letterlike symbols, Roman numerals, circled
+ *    letters and fullwidth Latin are folded pair by pair;
+ *  - the irregular blocks whose case pairs cross block boundaries (Latin
+ *    Extended-B, IPA, phonetic extensions, Latin Extended-C/D/E; the
+ *    irregular part of Greek Extended) each collapse into one bucket key.
+ * Code points past U+FFFF are left alone, like NTFS does. */
+#define PYI_FOLD_LATIN_X 0x110000U
+#define PYI_FOLD_GREEK_X 0x110001U
+
+static uint32_t pyi_fold_pair_even(uint32_t cp) { return cp & ~1U; }
+
+static uint32_t pyi_fold(uint32_t cp) {
+    if (cp < 0x80U) return (cp >= 'a' && cp <= 'z') ? cp - 0x20U : cp;
+    if (cp < 0x100U) {
+        if (cp == 0xb5U) return 0x39cU;                 /* micro -> Mu */
+        if (cp == 0xffU) return 0x178U;                 /* y diaeresis */
+        if (cp >= 0xe0U && cp <= 0xfeU && cp != 0xf7U) return cp - 0x20U;
+        return cp;
     }
-    return hash;
+    if (cp < 0x180U) {
+        if (cp == 0x130U || cp == 0x131U) return 'I';   /* dotted / dotless */
+        if (cp == 0x17fU) return 'S';                   /* long s */
+        if (cp == 0x178U || cp == 0x138U || cp == 0x149U) return cp;
+        if ((cp >= 0x139U && cp <= 0x148U) || (cp >= 0x179U && cp <= 0x17eU))
+            return (cp & 1U) ? cp : cp - 1U;            /* odd upper */
+        return pyi_fold_pair_even(cp);
+    }
+    if (cp < 0x2b0U) return PYI_FOLD_LATIN_X;
+    if (cp == 0x345U) return 0x399U;                    /* ypogegrammeni */
+    if (cp >= 0x370U && cp < 0x400U) {
+        if (cp >= 0x3b1U && cp <= 0x3cbU)
+            return cp == 0x3c2U ? 0x3a3U : cp - 0x20U;
+        if (cp == 0x3acU) return 0x386U;
+        if (cp >= 0x3adU && cp <= 0x3afU) return cp - 0x25U;
+        if (cp == 0x3ccU) return 0x38cU;
+        if (cp == 0x3cdU || cp == 0x3ceU) return cp - 0x3fU;
+        switch (cp) {
+        case 0x3d0U: return 0x392U;
+        case 0x3d1U: case 0x3f4U: return 0x398U;
+        case 0x3d5U: return 0x3a6U;
+        case 0x3d6U: return 0x3a0U;
+        case 0x3f0U: return 0x39aU;
+        case 0x3f1U: return 0x3a1U;
+        case 0x3f5U: return 0x395U;
+        case 0x3d7U: return 0x3cfU;
+        case 0x3f3U: return 0x37fU;
+        case 0x3f2U: return 0x3f9U;
+        case 0x3f8U: return 0x3f7U;
+        default: break;
+        }
+        if (cp >= 0x37bU && cp <= 0x37dU) return cp + 0x82U;
+        if (cp <= 0x373U || cp == 0x376U || cp == 0x377U ||
+            (cp >= 0x3d8U && cp <= 0x3efU) || cp == 0x3faU || cp == 0x3fbU)
+            return pyi_fold_pair_even(cp);
+        return cp;
+    }
+    if (cp >= 0x400U && cp < 0x530U) {
+        if (cp >= 0x430U && cp <= 0x44fU) return cp - 0x20U;
+        if (cp >= 0x450U && cp <= 0x45fU) return cp - 0x50U;
+        if (cp == 0x4cfU) return 0x4c0U;
+        if (cp >= 0x4c1U && cp <= 0x4ceU) return (cp & 1U) ? cp : cp - 1U;
+        if ((cp >= 0x460U && cp <= 0x481U) || (cp >= 0x48aU && cp <= 0x4bfU) ||
+            cp >= 0x4d0U)
+            return pyi_fold_pair_even(cp);
+        return cp;
+    }
+    if (cp >= 0x561U && cp <= 0x586U) return cp - 0x30U;     /* Armenian */
+    if (cp >= 0x1c80U && cp <= 0x1c88U) {
+        static const uint16_t cyrillic_c[9] = {0x412U, 0x414U, 0x41eU,
+                                               0x421U, 0x422U, 0x422U,
+                                               0x42aU, 0x462U, 0xa64aU};
+        return cyrillic_c[cp - 0x1c80U];
+    }
+    if (cp >= 0x1c90U && cp <= 0x1cbfU) return cp - 0xbc0U;  /* Mtavruli */
+    if (cp >= 0x2d00U && cp <= 0x2d2dU) return cp - 0x1c60U; /* Nuskhuri */
+    if (cp >= 0x13f8U && cp <= 0x13fdU) return cp - 8U;      /* Cherokee */
+    if (cp >= 0xab70U && cp <= 0xabbfU) return cp - 0x97d0U;
+    if ((cp >= 0x1d00U && cp <= 0x1dbfU) ||
+        (cp >= 0x2c60U && cp <= 0x2c7fU) ||
+        (cp >= 0xa720U && cp <= 0xa7ffU) || (cp >= 0xab30U && cp <= 0xab6fU))
+        return PYI_FOLD_LATIN_X;
+    if (cp >= 0x1e00U && cp <= 0x1effU) {
+        if (cp == 0x1e9bU) return 0x1e60U;
+        if (cp == 0x1e9eU) return 0xdfU;                         /* sharp s */
+        if (cp >= 0x1e96U && cp <= 0x1e9fU) return cp;
+        return pyi_fold_pair_even(cp);
+    }
+    if (cp >= 0x1f00U && cp <= 0x1fffU) {
+        if (cp == 0x1fbeU) return 0x399U;
+        if ((cp >= 0x1f70U && cp <= 0x1f7fU) || cp >= 0x1fb0U)
+            return PYI_FOLD_GREEK_X;
+        return cp | 8U;
+    }
+    if (cp >= 0x2c30U && cp <= 0x2c5fU) return cp - 0x30U;   /* Glagolitic */
+    if (cp >= 0x2c80U && cp <= 0x2cffU) {                    /* Coptic */
+        if (cp <= 0x2ce3U || cp == 0x2cf2U || cp == 0x2cf3U)
+            return pyi_fold_pair_even(cp);
+        if (cp >= 0x2cebU && cp <= 0x2ceeU) return (cp & 1U) ? cp : cp - 1U;
+        return cp;
+    }
+    if (cp >= 0xa640U && cp <= 0xa69bU) {                    /* Cyrillic B */
+        if (cp <= 0xa66dU || cp >= 0xa680U) return pyi_fold_pair_even(cp);
+        return cp;
+    }
+    switch (cp) {
+    case 0x2126U: return 0x3a9U;                             /* Ohm */
+    case 0x212aU: return 'K';                                /* Kelvin */
+    case 0x212bU: return 0xc5U;                              /* Angstrom */
+    case 0x214eU: return 0x2132U;
+    case 0x2184U: return 0x2183U;
+    default: break;
+    }
+    if (cp >= 0x2170U && cp <= 0x217fU) return cp - 0x10U;   /* Roman */
+    if (cp >= 0x24d0U && cp <= 0x24e9U) return cp - 0x1aU;   /* circled */
+    if (cp >= 0xff41U && cp <= 0xff5aU) return cp - 0x20U;   /* fullwidth */
+    return cp;
+}
+
+/* Next code point of a name that pyi_convert_name produced (well-formed
+ * UTF-8); a stray byte stands for itself. */
+static uint32_t pyi_next_cp(const char **cursor) {
+    const uint8_t *p = (const uint8_t *)*cursor;
+    uint32_t cp = p[0];
+    size_t extra = 0U, k;
+    if (cp >= 0xf0U) {
+        extra = 3U;
+        cp &= 0x07U;
+    } else if (cp >= 0xe0U) {
+        extra = 2U;
+        cp &= 0x0fU;
+    } else if (cp >= 0xc0U) {
+        extra = 1U;
+        cp &= 0x1fU;
+    }
+    for (k = 1U; k <= extra; ++k) {
+        if ((p[k] & 0xc0U) != 0x80U) {
+            *cursor = (const char *)p + 1;
+            return p[0];
+        }
+        cp = (cp << 6U) | (p[k] & 0x3fU);
+    }
+    *cursor = (const char *)p + extra + 1U;
+    return cp;
+}
+
+/* Keyed FNV-1a over the folded code points with a final avalanche.  The key
+ * is derived from the whole TOC, so names cannot be chosen in advance to
+ * pile into one probe cluster: changing any name changes every slot. */
+static uint64_t pyi_mix(uint64_t x) {
+    x ^= x >> 30U;
+    x *= UINT64_C(0xbf58476d1ce4e5b9);
+    x ^= x >> 27U;
+    x *= UINT64_C(0x94d049bb133111eb);
+    x ^= x >> 31U;
+    return x;
+}
+
+static uint64_t pyi_hash(const char *name, uint64_t key) {
+    uint64_t hash = UINT64_C(0xcbf29ce484222325) ^ key;
+    while (*name) {
+        uint32_t cp = pyi_fold(pyi_next_cp(&name));
+        hash ^= cp;
+        hash *= UINT64_C(0x100000001b3);
+        hash ^= hash >> 29U;
+    }
+    return pyi_mix(hash ^ key);
 }
 
 static bool pyi_same(const char *left, const char *right) {
-    while (*left && pyi_upper(*left) == pyi_upper(*right)) {
-        ++left;
-        ++right;
+    while (*left && *right) {
+        if (pyi_fold(pyi_next_cp(&left)) != pyi_fold(pyi_next_cp(&right)))
+            return false;
     }
     return *left == 0 && *right == 0;
 }
@@ -556,10 +782,11 @@ static bool pyi_same(const char *left, const char *right) {
 typedef struct pyi_names_s {
     const char **slots;
     size_t mask;
+    uint64_t key;
 } pyi_names;
 
 static bool pyi_names_contains(const pyi_names *table, const char *name) {
-    size_t slot = (size_t)pyi_hash(name) & table->mask;
+    size_t slot = (size_t)pyi_hash(name, table->key) & table->mask;
     while (table->slots[slot]) {
         if (pyi_same(table->slots[slot], name)) return true;
         slot = (slot + 1U) & table->mask;
@@ -568,7 +795,7 @@ static bool pyi_names_contains(const pyi_names *table, const char *name) {
 }
 
 static void pyi_names_add(pyi_names *table, const char *name) {
-    size_t slot = (size_t)pyi_hash(name) & table->mask;
+    size_t slot = (size_t)pyi_hash(name, table->key) & table->mask;
     while (table->slots[slot]) slot = (slot + 1U) & table->mask;
     table->slots[slot] = name;
 }
@@ -602,20 +829,35 @@ static char *pyi_suffixed(const char *name, uint32_t index, unsigned round) {
     return result;
 }
 
-/* Give every member its final name.  The first holder of a name (ASCII
- * case folded, as on Windows) keeps it; each later one gets its entry index
- * inserted, so no two members can ever write the same file. */
+/* Give every member its final name.  The first holder of a name (case
+ * folded by pyi_fold, at least as widely as NTFS folds) keeps it; each later
+ * one gets its entry index inserted, so no two members can ever write the
+ * same file. */
 static bool pyi_assign_names(Abstractformat *format, pyi_stream *stream,
-                             const uint8_t *toc) {
+                             const uint8_t *toc, xx_pd_struct *pd) {
     pyi_names table;
     size_t capacity = 16U, index;
+    uint64_t key = UINT64_C(0x9e3779b97f4a7c15);
     bool ok = true;
     while (capacity < stream->count * 2U + 2U) capacity <<= 1U;
     table.slots = (const char **)xx_mem_calloc(capacity, sizeof(char *));
     if (!table.slots) return false;
     table.mask = capacity - 1U;
+    /* Key the table with the TOC's own bytes (8 at a time, avalanched). */
+    for (index = 0U; index < (size_t)stream->layout.toc_size; index += 8U) {
+        uint64_t word = 0U;
+        size_t k;
+        for (k = 0U; k < 8U && index + k < (size_t)stream->layout.toc_size; ++k)
+            word |= (uint64_t)toc[index + k] << (8U * k);
+        key = pyi_mix(key ^ word) + index;
+    }
+    table.key = key;
     for (index = 0U; index < stream->count && ok; ++index) {
         pyi_member *member = &stream->items[index];
+        if ((index & PYI_POLL_MASK) == 0U && pd && xx_pd_is_stopped(pd)) {
+            ok = false;
+            break;
+        }
         const uint8_t *raw = toc + (member->entry_offset -
                                     format->base_address - stream->layout.toc) +
                              PYI_ENTRY_FIXED;
@@ -654,11 +896,67 @@ static bool pyi_assign_names(Abstractformat *format, pyi_stream *stream,
         /* A name still clashing is listed but never written, so nothing is
          * ever overwritten. */
         member->name = name;
-        member->unsafe = clash || !pyi_path_safe(name);
+        member->unsafe = member->unsafe || clash || !pyi_path_safe(name);
         if (!clash) pyi_names_add(&table, name);
     }
     xx_mem_free((void *)table.slots);
     return ok;
+}
+
+/* PyInstaller writes every member's data once, one after another.  A TOC
+ * that points several entries at the same (or an overlapping) range turns
+ * one small zlib stream into unbounded output, so every member whose data
+ * overlaps a range an earlier-placed member already owns is listed but never
+ * written.  Heap sort keeps this O(n log n) on any input. */
+static bool pyi_before(const pyi_member *items, uint32_t left,
+                       uint32_t right) {
+    if (items[left].data_offset != items[right].data_offset)
+        return items[left].data_offset < items[right].data_offset;
+    return items[left].entry_index < items[right].entry_index;
+}
+
+static void pyi_sift(const pyi_member *items, uint32_t *order, size_t root,
+                     size_t count) {
+    for (;;) {
+        size_t child = root * 2U + 1U;
+        uint32_t swap;
+        if (child >= count) return;
+        if (child + 1U < count &&
+            pyi_before(items, order[child], order[child + 1U]))
+            ++child;
+        if (!pyi_before(items, order[root], order[child])) return;
+        swap = order[root];
+        order[root] = order[child];
+        order[child] = swap;
+        root = child;
+    }
+}
+
+static bool pyi_mark_overlaps(pyi_stream *stream) {
+    uint32_t *order;
+    size_t index, count = stream->count;
+    int64_t reach = -1;
+    if (count < 2U) return true;
+    order = (uint32_t *)xx_mem_alloc(count * sizeof(uint32_t));
+    if (!order) return false;
+    for (index = 0U; index < count; ++index) order[index] = (uint32_t)index;
+    for (index = count / 2U; index-- > 0U;)
+        pyi_sift(stream->items, order, index, count);
+    for (index = count - 1U; index > 0U; --index) {
+        uint32_t swap = order[0];
+        order[0] = order[index];
+        order[index] = swap;
+        pyi_sift(stream->items, order, 0U, index);
+    }
+    for (index = 0U; index < count; ++index) {
+        pyi_member *member = &stream->items[order[index]];
+        int64_t end = member->data_offset + member->packed_size;
+        if (member->packed_size == 0) continue;
+        if (member->data_offset < reach) member->unsafe = true;
+        if (end > reach) reach = end;
+    }
+    xx_mem_free(order);
+    return true;
 }
 
 /* ------------------------------------------------------------ parsing --- */
@@ -697,7 +995,9 @@ static bool pyi_parse(Abstractformat *format, pyi_layout *layout,
             if (!pyi_walk(format, layout, toc, stream->items, NULL, NULL, pd))
                 goto done;
             stream->count = file_count;
-            if (!pyi_assign_names(format, stream, toc)) goto done;
+            if (!pyi_mark_overlaps(stream) ||
+                !pyi_assign_names(format, stream, toc, pd))
+                goto done;
         }
         *result = stream;
         stream = NULL;
@@ -733,15 +1033,16 @@ static ssize_t pyi_sink_write(xx_io_device *self, const void *buffer,
 
 static bool pyi_copy(xx_io_device *source, int64_t offset, int64_t size,
                      xx_io_device *destination, xx_pd_struct *pd) {
+    const size_t file_io_capacity = gb_pyinstaller_one_executable_capacity();
     uint8_t *buffer;
     int64_t done = 0;
     bool ok = true;
     if (size == 0) return true;
-    buffer = (uint8_t *)xx_mem_alloc(PYI_COPY_CHUNK);
+    buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (done < size) {
-        size_t chunk = size - done > (int64_t)PYI_COPY_CHUNK
-                           ? (size_t)PYI_COPY_CHUNK
+        size_t chunk = size - done > (int64_t)file_io_capacity
+                           ? (size_t)file_io_capacity
                            : (size_t)(size - done);
         if ((pd && xx_pd_is_stopped(pd)) ||
             !pyi_read_at(source, offset + done, buffer, chunk) ||

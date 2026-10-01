@@ -58,6 +58,20 @@ XXFC_API bool xx_zstd_decompress_memory(const void *source, size_t source_size,
                                         void *destination, size_t destination_size,
                                         size_t *out_written);
 
+/** Decompresses complete frames into at most destination_capacity bytes. */
+XXFC_API bool xx_zstd_decompress_memory_bounded(const void *source, size_t source_size,
+                                                void *destination, size_t destination_capacity,
+                                                size_t *out_written);
+
+/** Like the bounded decoder, but reports when decoding first stops for lack
+ * of output capacity. Bytes after that point may still be malformed. */
+XXFC_API bool xx_zstd_decompress_memory_bounded_ex(const void *source,
+                                                   size_t source_size,
+                                                   void *destination,
+                                                   size_t destination_capacity,
+                                                   size_t *out_written,
+                                                   bool *needs_more_output);
+
 /** Compresses a fixed-size device range into one standard Zstandard frame. */
 XXFC_API bool xx_zstd_pack_device(xx_io_device *source, int64_t source_offset,
                                   int64_t uncompressed_size, xx_io_device *destination,

@@ -51,10 +51,16 @@ extern "C" {
  *
  * The first package's data offset must be the end of the package table;
  * later packages must start at or after the end of the previous one.  A
- * package embedded in a larger file (the self-installing form: an OS/2 stub,
- * then the package) may give its data offsets from the start of that file
- * instead; the first package's offset tells which, and every later offset
- * is read the same way.
+ * package's members fill exactly (member count * 0x11D + packed total)
+ * bytes, and their sizes add up to the entry's two totals; validation sizes
+ * packages from the table alone (reading only each first member header), and
+ * listing checks every member against it.  A package embedded in a larger
+ * file (the self-installing form: an OS/2 stub, then the package) may give
+ * its data offsets from the start of that file instead; the first package's
+ * offset tells which, and every later offset is read the same way.  When the
+ * view starts at the package (base 0, as the format search opens it), a
+ * first offset at least 64 bytes (a DOS header) past the end of the table is
+ * read as file-relative and the enclosing file's start is inferred from it.
  *
  * Records: the install script first, as "install.wis" (its packed and
  * unpacked sizes are the header's), then every member in file order.  A

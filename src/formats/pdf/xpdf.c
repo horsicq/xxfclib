@@ -34,14 +34,29 @@
  * identical output, not a better PDF reader.
  */
 
+#include "../xio.h"
 #include "../../formats/pdf/xpdf.h"
-#include "../../die_engine/inflate.h"
+#include "../../die_engine/xx_die_engine_inflate.h"
 
-/* The whole file is already in memory; work over it directly. */
+/* Token offsets remain file-relative; no complete-file snapshot is needed. */
 typedef struct {
-    const unsigned char *pData;
+    DieFile *pFile;
     cd_i64 nSize;
 } PdfIO;
+
+static unsigned char pdf_byte(const PdfIO *pIO, cd_i64 nOffset)
+{
+    unsigned char nByte = 0;
+    if (nOffset < 0 || nOffset >= pIO->nSize) return 0;
+    if (pIO->pFile->pData) return pIO->pFile->pData[nOffset];
+    die_file_read_at(pIO->pFile, nOffset, &nByte, 1);
+    return nByte;
+}
+
+static int pdf_match(const PdfIO *pIO, cd_i64 nOffset, const void *pBytes, size_t nSize)
+{
+    return xio_match(pIO->pFile, nOffset, pBytes, nSize);
+}
 
 /* A token read from the stream: the text plus how many raw bytes it spanned. */
 typedef struct {
@@ -89,14 +104,14 @@ static cd_i64 pdf_skip_ending(const PdfIO *pIO, cd_i64 nOffset)
     cd_i64 nStart = nOffset;
 
     while (nOffset < pIO->nSize) {
-        int c = pIO->pData[nOffset];
+        int c = pdf_byte(pIO, nOffset);
 
         if (c == 10) {
             nOffset++;
         } else if (c == 13) {
             nOffset++;
 
-            if ((nOffset < pIO->nSize) && (pIO->pData[nOffset] == 10)) {
+            if ((nOffset < pIO->nSize) && (pdf_byte(pIO, nOffset) == 10)) {
                 nOffset++;
             }
         } else {
@@ -111,7 +126,7 @@ static cd_i64 pdf_skip_space(const PdfIO *pIO, cd_i64 nOffset)
 {
     cd_i64 nStart = nOffset;
 
-    while ((nOffset < pIO->nSize) && (pIO->pData[nOffset] == ' ')) {
+    while ((nOffset < pIO->nSize) && (pdf_byte(pIO, nOffset) == ' ')) {
         nOffset++;
     }
 
@@ -142,7 +157,7 @@ static char *pdf_dup_range(const PdfIO *pIO, cd_i64 nOffset, cd_i64 nLen)
     cdbuf_init(&buf);
 
     for (i = 0; i < nLen; i++) {
-        pdf_append_latin1(&buf, pIO->pData[nOffset + i]);
+        pdf_append_latin1(&buf, pdf_byte(pIO, nOffset + i));
     }
 
     return cdbuf_detach(&buf, NULL);
@@ -168,7 +183,7 @@ static PdfTok pdf_read_string(const PdfIO *pIO, cd_i64 nOffset, cd_i64 nMax)
         nMax = pIO->nSize - nOffset;
     }
 
-    while ((nPos < nMax) && (!pdf_is_string_terminator(pIO->pData[nOffset + nPos]))) {
+    while ((nPos < nMax) && (!pdf_is_string_terminator(pdf_byte(pIO, nOffset + nPos)))) {
         nPos++;
     }
 
@@ -199,7 +214,7 @@ static PdfTok pdf_read_title(const PdfIO *pIO, cd_i64 nOffset, cd_i64 nMax)
         nMax = pIO->nSize - nOffset;
     }
 
-    while ((nPos < nMax) && (!pdf_is_title_terminator(pIO->pData[nOffset + nPos]))) {
+    while ((nPos < nMax) && (!pdf_is_title_terminator(pdf_byte(pIO, nOffset + nPos)))) {
         nPos++;
     }
 
@@ -238,7 +253,7 @@ static PdfTok pdf_read_str(const PdfIO *pIO, cd_i64 nOffset)
         }
 
         if (!bUnicode) {
-            int c = pIO->pData[nPos];
+            int c = pdf_byte(pIO, nPos);
 
             /* A "(...)" literal may legally contain NUL/CR/LF bytes, so only a
              * terminator BEFORE the opening '(' ends the read; inside, only the
@@ -251,7 +266,7 @@ static PdfTok pdf_read_str(const PdfIO *pIO, cd_i64 nOffset)
                 if (c == '(') {
                     bStart = 1;
 
-                    if ((nPos + 2 < pIO->nSize) && (pIO->pData[nPos + 1] == 0xFE) && (pIO->pData[nPos + 2] == 0xFF)) {
+                    if ((nPos + 2 < pIO->nSize) && (pdf_byte(pIO, nPos + 1) == 0xFE) && (pdf_byte(pIO, nPos + 2) == 0xFF)) {
                         bUnicode = 1;
                         tok.nSize += 2;
                         nPos += 2;
@@ -289,7 +304,7 @@ static PdfTok pdf_read_str(const PdfIO *pIO, cd_i64 nOffset)
                 break;
             }
 
-            nWord = ((cd_u32)pIO->pData[nPos] << 8) | pIO->pData[nPos + 1];
+            nWord = ((cd_u32)pdf_byte(pIO, nPos) << 8) | pdf_byte(pIO, nPos + 1);
 
             if (((nWord >> 8) == '(') && (!bBackslash)) {
                 nDepth++;
@@ -362,7 +377,7 @@ static PdfTok pdf_read_hex(const PdfIO *pIO, cd_i64 nOffset)
     tok.nSize = 0;
 
     while ((nOffset + nPos) < pIO->nSize) {
-        int c = pIO->pData[nOffset + nPos];
+        int c = pdf_byte(pIO, nOffset + nPos);
 
         nPos++;
 
@@ -396,14 +411,14 @@ static PdfTok pdf_read_part(const PdfIO *pIO, cd_i64 nOffset)
         return tok;
     }
 
-    nChar = pIO->pData[nOffset];
+    nChar = pdf_byte(pIO, nOffset);
 
     if (nChar == '/') {
         cd_i64 nPos = 0;
         int bFirst = 1;
 
         while ((nOffset + nPos) < pIO->nSize) {
-            int c = pIO->pData[nOffset + nPos];
+            int c = pdf_byte(pIO, nOffset + nPos);
 
             if (pdf_is_name_terminator(c)) {
                 break;
@@ -424,7 +439,7 @@ static PdfTok pdf_read_part(const PdfIO *pIO, cd_i64 nOffset)
         tok = pdf_read_str(pIO, nOffset);
         bFallback = 1;
     } else if (nChar == '<') {
-        if ((nOffset + 1 < pIO->nSize) && (pIO->pData[nOffset + 1] == '<')) {
+        if ((nOffset + 1 < pIO->nSize) && (pdf_byte(pIO, nOffset + 1) == '<')) {
             tok.pStr = cd_strdup("<<");
             tok.nStrLen = 2;
             nTokenEnd = 2;
@@ -433,7 +448,7 @@ static PdfTok pdf_read_part(const PdfIO *pIO, cd_i64 nOffset)
             bFallback = 1;
         }
     } else if (nChar == '>') {
-        if ((nOffset + 1 < pIO->nSize) && (pIO->pData[nOffset + 1] == '>')) {
+        if ((nOffset + 1 < pIO->nSize) && (pdf_byte(pIO, nOffset + 1) == '>')) {
             tok.pStr = cd_strdup(">>");
             tok.nStrLen = 2;
             nTokenEnd = 2;
@@ -455,7 +470,7 @@ static PdfTok pdf_read_part(const PdfIO *pIO, cd_i64 nOffset)
         int bSpace = 0;
 
         while ((nOffset + nPos) < pIO->nSize) {
-            int c = pIO->pData[nOffset + nPos];
+            int c = pdf_byte(pIO, nOffset + nPos);
 
             if (pdf_is_value_terminator(c)) {
                 break;
@@ -481,7 +496,7 @@ static PdfTok pdf_read_part(const PdfIO *pIO, cd_i64 nOffset)
 
         /* Glue an indirect "N 0 R" reference into one token. */
         if (bSpace) {
-            if ((nOffset + nPos + 2 < pIO->nSize) && (pIO->pData[nOffset + nPos] == '0') && (pIO->pData[nOffset + nPos + 1] == ' ') && (pIO->pData[nOffset + nPos + 2] == 'R')) {
+            if ((nOffset + nPos + 2 < pIO->nSize) && (pdf_byte(pIO, nOffset + nPos) == '0') && (pdf_byte(pIO, nOffset + nPos + 1) == ' ') && (pdf_byte(pIO, nOffset + nPos + 2) == 'R')) {
                 cd_free(tok.pStr);
                 tok.pStr = pdf_dup_range(pIO, nOffset, nPos + 3);
                 tok.nStrLen = nPos + 3;
@@ -513,7 +528,7 @@ static PdfTok pdf_read_part(const PdfIO *pIO, cd_i64 nOffset)
         }
 
         while (nPos < nEnd) {
-            int c = pIO->pData[nPos];
+            int c = pdf_byte(pIO, nPos);
 
             if ((c == ' ') || (c == 9) || (c == 12) || (c == 10) || (c == 13) || (c == 0)) {
                 nPos++;
@@ -817,7 +832,7 @@ static void pdf_find_objects(const PdfIO *pIO, cd_i64 nOffset, cd_i64 nSize, int
                 cd_i64 nStop = nEnd - 6;
 
                 for (; i <= nStop; i++) {
-                    if (x_memcmp(pIO->pData + i, "endobj", 6) == 0) {
+                    if (pdf_match(pIO, i, "endobj", 6)) {
                         nEndObj = i;
 
                         break;
@@ -865,7 +880,7 @@ static void pdf_find_objects(const PdfIO *pIO, cd_i64 nOffset, cd_i64 nSize, int
                 cd_i64 nFound = -1;
 
                 for (; i <= nStop; i++) {
-                    if (x_memcmp(pIO->pData + i, " obj", 4) == 0) {
+                    if (pdf_match(pIO, i, " obj", 4)) {
                         nFound = i;
 
                         break;
@@ -877,7 +892,7 @@ static void pdf_find_objects(const PdfIO *pIO, cd_i64 nOffset, cd_i64 nSize, int
 
                     /* Back up over the "N M " that precedes " obj". */
                     while ((nBack > 0)) {
-                        int nPrev = pIO->pData[nBack - 1];
+                        int nPrev = pdf_byte(pIO, nBack - 1);
 
                         if (!(((nPrev >= '0') && (nPrev <= '9')) || (nPrev == ' '))) {
                             break;
@@ -1019,18 +1034,7 @@ static void pdf_find_startxrefs(const PdfIO *pIO, CDVec *pStarts)
         int bIsXref = 0;
         int bIsObject = 0;
 
-        {
-            cd_i64 i = nOffset;
-            cd_i64 nStop = pIO->nSize - 9;
-
-            for (; i <= nStop; i++) {
-                if (x_memcmp(pIO->pData + i, "startxref", 9) == 0) {
-                    nStartXref = i;
-
-                    break;
-                }
-            }
-        }
+        nStartXref = die_find_ansi_string(pIO->pFile, nOffset, -1, "startxref");
 
         if (nStartXref == -1) {
             break;
@@ -1067,11 +1071,11 @@ static void pdf_find_startxrefs(const PdfIO *pIO, CDVec *pStarts)
 
                 nCurrent += 5;
 
-                if ((nCurrent < pIO->nSize) && (pIO->pData[nCurrent] == 13)) {
+                if ((nCurrent < pIO->nSize) && (pdf_byte(pIO, nCurrent) == 13)) {
                     nCurrent++;
                 }
 
-                if ((nCurrent < pIO->nSize) && (pIO->pData[nCurrent] == 10)) {
+                if ((nCurrent < pIO->nSize) && (pdf_byte(pIO, nCurrent) == 10)) {
                     nCurrent++;
                 }
 
@@ -1156,7 +1160,7 @@ int xpdf_parse(DieFile *pFile, XPDF *pPdf)
     cdvec_init(&pPdf->vecObjects);
     cdvec_init(&pPdf->vecRefs);
 
-    io.pData = pFile->pData;
+    io.pFile = pFile;
     io.nSize = pFile->nSize;
 
     cdvec_init(&refs);
@@ -1208,7 +1212,7 @@ char *xpdf_version(XPDF *pPdf)
     PdfTok tok;
     char *pResult = NULL;
 
-    io.pData = pPdf->pFile->pData;
+    io.pFile = pPdf->pFile;
     io.nSize = pPdf->pFile->nSize;
 
     tok = pdf_read_string(&io, 5, 3);
@@ -1804,27 +1808,10 @@ static void pdf_info_linearized(XPDF *pPdf, CDVec *pLines)
  * [nOffset, nOffset + nSize), or -1. */
 static cd_i64 pdf_find_ansi(const PdfIO *pIO, cd_i64 nOffset, cd_i64 nSize, const char *pNeedle)
 {
-    cd_i64 nLen = (cd_i64)x_strlen(pNeedle);
-    cd_i64 nEnd = 0;
-    cd_i64 i = 0;
-
     if ((nOffset < 0) || (nOffset >= pIO->nSize) || (nSize <= 0)) {
         return -1;
     }
-
-    if (nSize > (pIO->nSize - nOffset)) {
-        nSize = pIO->nSize - nOffset;
-    }
-
-    nEnd = nOffset + nSize - nLen;
-
-    for (i = nOffset; i <= nEnd; i++) {
-        if (x_memcmp(pIO->pData + i, pNeedle, (size_t)nLen) == 0) {
-            return i;
-        }
-    }
-
-    return -1;
+    return die_find_ansi_string(pIO->pFile, nOffset, nSize, pNeedle);
 }
 
 /* _isIndirectRef: "N G R" fused into a single token. */
@@ -2065,11 +2052,11 @@ static int pdf_object_stream(const PdfIO *pIO, cd_i64 nObjOffset, const CDVec *p
                 if (nEndStream != -1) {
                     cd_i64 nBodyEnd = nEndStream;
 
-                    if ((nBodyEnd > nStreamOffset) && (pIO->pData[nBodyEnd - 1] == 10)) {
+                    if ((nBodyEnd > nStreamOffset) && (pdf_byte(pIO, nBodyEnd - 1) == 10)) {
                         nBodyEnd--;
                     }
 
-                    if ((nBodyEnd > nStreamOffset) && (pIO->pData[nBodyEnd - 1] == 13)) {
+                    if ((nBodyEnd > nStreamOffset) && (pdf_byte(pIO, nBodyEnd - 1) == 13)) {
                         nBodyEnd--;
                     }
 
@@ -2253,7 +2240,7 @@ static void pdf_info_suspicious(XPDF *pPdf, CDVec *pLines)
         cd_i64 nBudget = PDF_OBJSTM_TOTAL_LIMIT;
         cd_i64 nScanBudget = PDF_OBJSTM_SCAN_LIMIT;
 
-        io.pData = pPdf->pFile->pData;
+        io.pFile = pPdf->pFile;
         io.nSize = pPdf->pFile->nSize;
 
         for (i = 0; (i < pPdf->vecObjects.nSize) && (nFound < nCount) && (nBudget > 0); i++) {
@@ -2261,6 +2248,8 @@ static void pdf_info_suspicious(XPDF *pPdf, CDVec *pLines)
             const PdfObjRef *pRef = (const PdfObjRef *)pPdf->vecRefs.ppData[i];
             CDVec filters;
             CDBuf decoded;
+            unsigned char *pRaw = NULL;
+            const unsigned char *pInput = NULL;
             const unsigned char *pBody = NULL;
             cd_i64 nBodySize = 0;
             cd_i64 nStreamOffset = 0;
@@ -2298,13 +2287,17 @@ static void pdf_info_suspicious(XPDF *pPdf, CDVec *pLines)
 
             cdbuf_init(&decoded);
 
-            if (nMethod == 0) {
-                pBody = io.pData + nStreamOffset;
+            if (nMethod == 0 || nMethod == 1) {
+                pInput = io.pFile->pData ? io.pFile->pData + nStreamOffset :
+                    (pRaw = xio_read_owned(io.pFile, nStreamOffset, (size_t)nStreamSize));
+            }
+            if (nMethod == 0 && pInput) {
+                pBody = pInput;
                 nBodySize = nStreamSize;
-            } else if (nMethod == 1) {
+            } else if (nMethod == 1 && pInput) {
                 cd_i64 nMax = (nBudget < PDF_OBJSTM_DECODE_LIMIT) ? nBudget : PDF_OBJSTM_DECODE_LIMIT;
 
-                pdf_inflate_zlib(io.pData + nStreamOffset, nStreamSize, nMax, &decoded);
+                pdf_inflate_zlib(pInput, nStreamSize, nMax, &decoded);
                 pBody = (const unsigned char *)decoded.pData;
                 nBodySize = (cd_i64)decoded.nSize;
                 nBudget -= nBodySize;
@@ -2317,6 +2310,7 @@ static void pdf_info_suspicious(XPDF *pPdf, CDVec *pLines)
                 }
             }
 
+            cd_free(pRaw);
             cdbuf_free(&decoded);
         }
     }
@@ -2446,7 +2440,7 @@ char *xpdf_header_comment_hex(XPDF *pPdf)
     cd_i64 nOffset = 0;
     CDBuf out;
 
-    io.pData = pPdf->pFile->pData;
+    io.pFile = pPdf->pFile;
     io.nSize = pPdf->pFile->nSize;
 
     cdbuf_init(&out);
@@ -2455,7 +2449,7 @@ char *xpdf_header_comment_hex(XPDF *pPdf)
     nOffset = os.nSize;
     cd_free(os.pStr);
 
-    if ((nOffset < io.nSize) && (io.pData[nOffset] == '%')) {
+    if ((nOffset < io.nSize) && (pdf_byte(&io, nOffset) == '%')) {
         cd_i64 nMaxRead = 40;
         cd_i64 nLen = 0;
 
@@ -2466,7 +2460,7 @@ char *xpdf_header_comment_hex(XPDF *pPdf)
         }
 
         while (nLen < nMaxRead) {
-            if (pdf_is_string_terminator(io.pData[nOffset + nLen])) {
+            if (pdf_is_string_terminator(pdf_byte(&io, nOffset + nLen))) {
                 break;
             }
 
@@ -2477,7 +2471,7 @@ char *xpdf_header_comment_hex(XPDF *pPdf)
             cd_i64 i = 0;
 
             for (i = 0; i < nLen; i++) {
-                cdbuf_appendf(&out, "%02x", io.pData[nOffset + i]);
+                cdbuf_appendf(&out, "%02x", pdf_byte(&io, nOffset + i));
             }
         }
     }

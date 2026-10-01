@@ -20,12 +20,17 @@
  *       +0x60  u32  feature_incompat
  *       +0x64  u32  feature_ro_compat
  *       +0xFE  u16  desc_size, the group descriptor size when 64BIT is set
+ *       +0x104 u32  first_meta_bg, first relocated descriptor-block index
+ *       +0x24C u32[2] backup superblock groups when SPARSE_SUPER2 is set
  *
  *   block group descriptor table
- *     Starts in the block after the superblock's block. Each descriptor is
- *     32 bytes, or desc_size (typically 64) when INCOMPAT_64BIT is set, and
- *     the only field this reader needs is the inode table block at +0x08,
- *     extended by the high half at +0x28 in the 64-byte form.
+ *     Normally starts in the block after the superblock's block. With
+ *     INCOMPAT_META_BG, descriptor block i is instead in the first group of
+ *     meta group i when i >= first_meta_bg, after that group's backup
+ *     superblock if present. Sparse and sparse_super2 backup placement are
+ *     supported. Each descriptor is 32 bytes, or desc_size (typically 64)
+ *     when INCOMPAT_64BIT is set. The only field this reader needs is the
+ *     inode table block at +0x08, extended by +0x28 in the 64-byte form.
  *
  *   inode
  *     Found by number: group = (ino - 1) / inodes_per_group, and the inode
@@ -46,6 +51,13 @@
  *     by 12-byte records. At depth 0 those are extents (logical block,
  *     length, 48-bit physical start); above it they are index entries
  *     pointing at a block holding the next level down.
+ *     With EXT4_INLINE_DATA_FL, the first 60 bytes are file payload rather
+ *     than block addresses. Any continuation is the inode-body system.data
+ *     xattr (name index 7); its value offset is relative to the first xattr
+ *     entry. Inline directories store their parent inode in the first four
+ *     bytes and directory records in the remaining 56-byte region, then a
+ *     separate xattr region when present. This reader supports both inline
+ *     regions but does not extract arbitrary extended attributes.
  *
  *   directory
  *     A directory's data blocks hold a linear chain of records:
@@ -54,6 +66,9 @@
  *       +0x06  u8   name_len - a u16 when INCOMPAT_FILETYPE is absent
  *       +0x07  u8   file_type
  *       +0x08  the name, not NUL terminated
+ *     With 64 KiB filesystem blocks, a directory record consuming the full
+ *     block encodes rec_len 65536 as 0xffff or zero in the 16-bit field.
+ *     Both encodings are decoded only for 64 KiB directory blocks.
  *     A hashed directory (EXT4_INDEX_FL) stores its tree in records whose
  *     inode field is zero, so reading the same blocks linearly and ignoring
  *     zero-inode records yields exactly the directory's contents.

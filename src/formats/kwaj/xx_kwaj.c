@@ -25,6 +25,7 @@
  * so their format size is then the whole input.
  */
 
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/kwaj/xx_kwaj.h"
 
@@ -65,8 +66,6 @@
  * the sizes are taken from the header alone. */
 #define KWAJ_MAX_SIZE_PASS ((int64_t)64 * 1024 * 1024)
 
-#define KWAJ_IN_BUFFER 65536U
-#define KWAJ_OUT_BUFFER 65536U
 #define KWAJ_WINDOW 4096U
 #define KWAJ_LZSS_START (KWAJ_WINDOW - 18U)
 
@@ -129,13 +128,16 @@ static uint32_t kwaj_le32(const uint8_t *bytes) {
 static bool kwaj_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -314,16 +316,29 @@ typedef struct kwaj_input_s {
     size_t length;
     size_t index;
     bool failed;
-    uint8_t buffer[KWAJ_IN_BUFFER];
+    uint8_t *buffer;
+    size_t io_capacity;
 } kwaj_input;
+
+static kwaj_input *kwaj_input_create(void) {
+    size_t capacity = xx_get_file_buffer_size();
+    kwaj_input *state;
+    if (capacity > ((size_t)-1 - sizeof(*state)) / 1U) return NULL;
+    state = (kwaj_input *)xx_mem_calloc(1U, sizeof(*state) + capacity * 1U);
+    if (!state) return NULL;
+    state->io_capacity = capacity;
+    state->buffer = (uint8_t *)(state + 1);
+    return state;
+}
+
 
 static int kwaj_input_byte(kwaj_input *in) {
     if (in->index >= in->length) {
         int64_t left = in->end - in->next;
         size_t want;
         if (in->failed || left <= 0) return -1;
-        want = left < (int64_t)KWAJ_IN_BUFFER ? (size_t)left
-                                              : (size_t)KWAJ_IN_BUFFER;
+        want = left < (int64_t)in->io_capacity ? (size_t)left
+                                              : in->io_capacity;
         if (!kwaj_read_at(in->device, in->next, in->buffer, want)) {
             in->failed = true;
             return -1;
@@ -347,8 +362,21 @@ typedef struct kwaj_output_s {
     uint64_t limit; /**< Declared length, or one past the ceiling. */
     bool failed;
     size_t used;
-    uint8_t buffer[KWAJ_OUT_BUFFER];
+    uint8_t *buffer;
+    size_t io_capacity;
 } kwaj_output;
+
+static kwaj_output *kwaj_output_create(void) {
+    size_t capacity = xx_get_file_buffer_size();
+    kwaj_output *state;
+    if (capacity > ((size_t)-1 - sizeof(*state)) / 1U) return NULL;
+    state = (kwaj_output *)xx_mem_calloc(1U, sizeof(*state) + capacity * 1U);
+    if (!state) return NULL;
+    state->io_capacity = capacity;
+    state->buffer = (uint8_t *)(state + 1);
+    return state;
+}
+
 
 static bool kwaj_output_flush(kwaj_output *out) {
     size_t done = 0U;
@@ -375,7 +403,7 @@ static bool kwaj_output_byte(kwaj_output *out, uint8_t value) {
     if (kwaj_output_full(out)) return false;
     out->buffer[out->used++] = value;
     ++out->total;
-    if (out->used == KWAJ_OUT_BUFFER && !kwaj_output_flush(out)) return false;
+    if (out->used == out->io_capacity && !kwaj_output_flush(out)) return false;
     return out->total < out->limit;
 }
 
@@ -712,9 +740,8 @@ static bool kwaj_run(xx_io_device *device, int64_t base, int64_t input_size,
     int64_t end = base + input_size;
     int64_t stream_end = end;
     bool result = false;
-    out = (kwaj_output *)xx_mem_alloc(sizeof(*out));
+    out = kwaj_output_create();
     if (!out) return false;
-    xx_mem_zero(out, sizeof(*out));
     out->device = destination;
     out->pd = pd;
     out->limit = header->has_length ? (uint64_t)header->length
@@ -725,10 +752,9 @@ static bool kwaj_run(xx_io_device *device, int64_t base, int64_t input_size,
         result = kwaj_decode_mszip(device, start, end, out, work, &stream_end);
         xx_mem_free(work);
     } else {
-        kwaj_input *in = (kwaj_input *)xx_mem_alloc(sizeof(*in));
+        kwaj_input *in = kwaj_input_create();
         kwaj_lzh *lzh = NULL;
         if (!in) goto done;
-        xx_mem_zero(in, sizeof(*in));
         in->device = device;
         in->next = start;
         in->end = end;

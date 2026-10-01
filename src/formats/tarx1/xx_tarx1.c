@@ -195,8 +195,17 @@ bool xx_tarx1_unpack_current_archive_record(
     xx_tar_common *common = self
                                 ? (xx_tar_common *)((xx_tarx1 *)self)->internal
                                 : NULL;
-    return common && xx_tar_common_unpack_current_archive_record(common, state,
-                                                                  pd);
+    const xx_archive_record *record = xx_tar_common_get_current_archive_record(
+        common, state);
+    const char *name = record ? xx_archive_record_get_original_name(record) : NULL;
+    /* QNX install packages store paths rooted at /qnx4. Publish the stored
+     * name in the listing, but extract beneath the requested destination.
+     * UNC paths, drives, and traversal still fail the TAR safety check. */
+    if (name && name[0] == '/' && name[1] != '/' && common && common->tar) {
+        return xx_tar_unpack_current_archive_record_as(
+            &common->tar->format, state, pd, name + 1);
+    }
+    return xx_tar_common_unpack_current_archive_record(common, state, pd);
 }
 
 bool xx_tarx1_archive_record_move_to_next(

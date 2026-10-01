@@ -24,6 +24,7 @@
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/sfx_sydex_diskette_image/xx_sfx_sydex_diskette_image.h"
 
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
@@ -84,16 +85,7 @@ static bool sxd_read_at(xx_io_device *device, int64_t offset, void *buffer,
 
 uint16_t xx_sfx_sydex_diskette_image_crc16(const uint8_t *data,
                                            size_t size) {
-    uint32_t crc = 0U;
-    size_t index;
-    unsigned bit;
-    if (!data) return 0U;
-    for (index = 0U; index < size; ++index) {
-        crc ^= data[index];
-        for (bit = 0U; bit < 8U; ++bit)
-            crc = (crc & 1U) ? ((crc >> 1U) ^ 0xA001U) : (crc >> 1U);
-    }
-    return (uint16_t)crc;
+    return xx_crc16_arc_calc(0U, data, size);
 }
 
 /* ---------------------------------------------------------------------- */

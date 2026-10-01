@@ -10,6 +10,7 @@
  * published MOOF chunk layout and the Sony GCR sector format.
  */
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/formats/moof/xx_moof.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -53,6 +54,9 @@
 #define MOOF_GCR_BYTES 524U     /* 12 tag bytes + 512 data bytes */
 #define MOOF_GCR_TAGS 12U
 #define MOOF_GCR_MARK_GAP 48U   /* nibbles from address field to data mark */
+/* Data fields decoded per track scan; a real track has at most 12 sectors
+ * per revolution, so this bounds the work on a hostile track. */
+#define MOOF_GCR_MAX_ATTEMPTS 512U
 
 #define MOOF_MFM_SYNC 0x4489U
 #define MOOF_MFM_MAX_CODE 6U    /* 8192-byte sectors */
@@ -259,13 +263,13 @@ typedef struct moof_decoder_s {
     xx_pd_struct *pd;
     uint8_t *raw;
     size_t raw_capacity;
+    size_t raw_size;
     uint8_t *cells;
     size_t cell_capacity;
     size_t cell_count;
     uint8_t *nibbles;
     size_t nibble_capacity;
     int16_t gcr_value[256];
-    uint16_t crc_table[256];
     uint8_t values[MOOF_GCR_NIBBLES];
     uint8_t sector[MOOF_MFM_MAX_SECTOR + 2U];
     /* analysis */
@@ -306,17 +310,11 @@ static const uint8_t moof_gcr_code[64] = {
     0xF7, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF};
 
 static void moof_decoder_init(moof_decoder *d) {
-    uint32_t index, bit;
+    uint32_t index;
     for (index = 0U; index < 256U; ++index) d->gcr_value[index] = -1;
     for (index = 0U; index < 64U; ++index)
         d->gcr_value[moof_gcr_code[index]] = (int16_t)index;
-    for (index = 0U; index < 256U; ++index) {
-        uint16_t crc = (uint16_t)(index << 8U);
-        for (bit = 0U; bit < 8U; ++bit)
-            crc = (uint16_t)((crc & 0x8000U) ? ((crc << 1U) ^ 0x1021U)
-                                             : (crc << 1U));
-        d->crc_table[index] = crc;
-    }
+
     for (index = 0U; index <= MOOF_MFM_MAX_CODE; ++index)
         d->mfm_rmin[index] = 0xFFFFFFFFU;
 }
@@ -344,8 +342,8 @@ static bool moof_reserve(uint8_t **buffer, size_t *capacity, size_t needed) {
  * +-12.5% of the nominal cell; an interval shorter than half a cell merges
  * into the next one, and a long gap yields at most MOOF_MAX_RUN cells. */
 static size_t moof_flux_cells(const uint8_t *raw, size_t bytes,
-                              uint32_t nominal, uint8_t *cells, size_t cap) {
-    const uint64_t base = (uint64_t)nominal * 256U;
+                              uint32_t period256, uint8_t *cells, size_t cap) {
+    const uint64_t base = period256;
     const uint64_t low = base - base / 8U, high = base + base / 8U;
     uint64_t period = base, ticks = 0U;
     size_t index, used = 0U;
@@ -371,8 +369,62 @@ static size_t moof_flux_cells(const uint8_t *raw, size_t bytes,
     return used;
 }
 
+/* Candidate cell lengths for a flux track, in 1/256 ticks.  The INFO bit
+ * time comes first.  Writers do not always time flux the way INFO says
+ * (MAME stores a PC disk rescaled to the Macintosh spindle speed), so the
+ * shortest well-populated interval cluster is offered too: as one cell (GCR
+ * runs start at "1") and as two cells (MFM runs start at "10"). */
+static uint32_t moof_flux_periods(const uint8_t *raw, size_t bytes,
+                                  uint32_t nominal, uint32_t out[3]) {
+    uint32_t histogram[255];
+    uint32_t count = 0U, total = 0U, value, found = 0U, n = 0U, k;
+    uint64_t sum = 0U, weight = 0U, period;
+    size_t index;
+    out[n++] = nominal * 256U;
+    xx_mem_zero(histogram, sizeof(histogram));
+    for (index = 0U; index < bytes; ++index)
+        if (raw[index] != 0xFFU) {
+            ++histogram[raw[index]];
+            ++total;
+        }
+    if (total < 64U) return n;
+    for (value = 4U; value + 1U < 255U; ++value) {
+        count = histogram[value - 1U] + histogram[value] + histogram[value + 1U];
+        if (count >= total / 20U) {
+            found = value;
+            break;
+        }
+    }
+    if (found == 0U) return n;
+    for (value = found - 1U; value <= found + 1U; ++value) {
+        sum += (uint64_t)histogram[value] * value;
+        weight += histogram[value];
+    }
+    if (weight == 0U) return n;
+    period = sum * 256U / weight;
+    for (k = 0U; k < 2U; ++k) {
+        const uint64_t candidate = k == 0U ? period : period / 2U;
+        const uint64_t base = (uint64_t)nominal * 256U;
+        if (candidate < 256U) continue;
+        if (candidate > base - base / 8U && candidate < base + base / 8U)
+            continue;
+        out[n++] = (uint32_t)candidate;
+    }
+    return n;
+}
+
+static bool moof_finish_cells(moof_decoder *d, size_t used) {
+    size_t wrap;
+    if (used == 0U) return false;
+    wrap = used < MOOF_WRAP_CELLS ? used : MOOF_WRAP_CELLS;
+    xx_mem_copy(d->cells + used, d->cells, wrap);
+    d->cell_count = used + wrap;
+    return moof_reserve(&d->nibbles, &d->nibble_capacity,
+                        d->cell_count / 8U + 1U);
+}
+
 static bool moof_load_cells(moof_decoder *d, const moof_source *source) {
-    size_t used = 0U, wrap, index;
+    size_t used = 0U, index;
     if (!source->flux) {
         const uint32_t bits = source->count > MOOF_MAX_CELLS ? MOOF_MAX_CELLS
                                                               : source->count;
@@ -387,11 +439,11 @@ static bool moof_load_cells(moof_decoder *d, const moof_source *source) {
         for (index = 0U; index < bits; ++index)
             d->cells[used++] =
                 (uint8_t)((d->raw[index >> 3U] >> (7U - (index & 7U))) & 1U);
-    } else {
-        uint32_t nominal = d->layout->bit_time;
+        return moof_finish_cells(d, used);
+    }
+    {
         const size_t bytes = source->bytes > MOOF_MAX_FLUX
                                  ? MOOF_MAX_FLUX : (size_t)source->bytes;
-        if (nominal == 0U) nominal = d->layout->disk_type == 3U ? 8U : 16U;
         if (!moof_reserve(&d->raw, &d->raw_capacity, bytes) ||
             !moof_reserve(&d->cells, &d->cell_capacity,
                           (size_t)MOOF_MAX_CELLS + MOOF_WRAP_CELLS) ||
@@ -399,15 +451,14 @@ static bool moof_load_cells(moof_decoder *d, const moof_source *source) {
                           d->format->base_address + source->offset, d->raw,
                           bytes))
             return false;
-        used = moof_flux_cells(d->raw, bytes, nominal, d->cells,
-                               MOOF_MAX_CELLS);
+        d->raw_size = bytes;
+        return true;
     }
-    if (used == 0U) return false;
-    wrap = used < MOOF_WRAP_CELLS ? used : MOOF_WRAP_CELLS;
-    xx_mem_copy(d->cells + used, d->cells, wrap);
-    d->cell_count = used + wrap;
-    return moof_reserve(&d->nibbles, &d->nibble_capacity,
-                        d->cell_count / 8U + 1U);
+}
+
+static bool moof_flux_to_cells(moof_decoder *d, uint32_t period) {
+    return moof_finish_cells(d, moof_flux_cells(d->raw, d->raw_size, period,
+                                                d->cells, MOOF_MAX_CELLS));
 }
 
 /* ---- Macintosh GCR ---- */
@@ -500,7 +551,7 @@ static void moof_gcr_scan(moof_decoder *d, uint32_t cylinder, uint32_t head) {
     const uint8_t *cells = d->cells;
     uint8_t *nib = d->nibbles;
     size_t count = 0U, index, at;
-    uint32_t shift = 0U;
+    uint32_t shift = 0U, attempts = 0U;
     /* The disk controller's latch: skip zeros, then take eight cells. */
     for (index = 0U; index < d->cell_count && count < d->nibble_capacity;
          ++index) {
@@ -544,7 +595,9 @@ static void moof_gcr_scan(moof_decoder *d, uint32_t cylinder, uint32_t head) {
         /* The nibble after the mark repeats the sector number; writers do
          * not agree on it, so it is not checked. */
         start = mark + 4U;
-        if (start > count || count - start < MOOF_GCR_NIBBLES) break;
+        if (start > count || count - start < MOOF_GCR_NIBBLES ||
+            ++attempts > MOOF_GCR_MAX_ATTEMPTS)
+            break;
         for (k = 0U; k < MOOF_GCR_NIBBLES && valid; ++k) {
             const int16_t value = d->gcr_value[nib[start + k]];
             if (value < 0) valid = false;
@@ -580,17 +633,11 @@ static void moof_mfm_bytes(const uint8_t *cells, size_t position,
     }
 }
 
-static uint16_t moof_crc16(const moof_decoder *d, uint8_t mark,
-                           const uint8_t *data, size_t size) {
-    uint16_t crc = 0xFFFFU;
-    size_t index;
-    static const uint8_t sync[3] = {0xA1U, 0xA1U, 0xA1U};
-    for (index = 0U; index < 3U; ++index)
-        crc = (uint16_t)((crc << 8U) ^ d->crc_table[(crc >> 8U) ^ sync[index]]);
-    crc = (uint16_t)((crc << 8U) ^ d->crc_table[(crc >> 8U) ^ mark]);
-    for (index = 0U; index < size; ++index)
-        crc = (uint16_t)((crc << 8U) ^ d->crc_table[(crc >> 8U) ^ data[index]]);
-    return crc;
+static uint16_t moof_crc16(uint8_t mark,const uint8_t *data,size_t size) {
+    static const uint8_t sync[3]={0xA1U,0xA1U,0xA1U};
+    uint16_t crc=xx_crc16_ccitt_calc(UINT16_MAX,sync,sizeof(sync));
+    crc=xx_crc16_ccitt_calc(crc,&mark,1U);
+    return xx_crc16_ccitt_calc(crc,data,size);
 }
 
 static void moof_mfm_deliver(moof_decoder *d, uint32_t cylinder,
@@ -639,7 +686,7 @@ static void moof_mfm_scan(moof_decoder *d, uint32_t cylinder, uint32_t head) {
         body = sync + 64U;
         if (mark == 0xFEU) {
             moof_mfm_bytes(cells, body, 6U, id);
-            have_id = moof_crc16(d, mark, id, 4U) ==
+            have_id = moof_crc16(mark, id, 4U) ==
                       (uint16_t)(((uint16_t)id[4] << 8U) | id[5]);
             id_at = sync;
             index = body + 6U * 16U - 1U;
@@ -652,7 +699,7 @@ static void moof_mfm_scan(moof_decoder *d, uint32_t cylinder, uint32_t head) {
                 const size_t size = (size_t)128U << code;
                 if ((count - body) / 16U >= size + 2U) {
                     moof_mfm_bytes(cells, body, size + 2U, d->sector);
-                    if (moof_crc16(d, mark, d->sector, size) ==
+                    if (moof_crc16(mark, d->sector, size) ==
                         (uint16_t)(((uint16_t)d->sector[size] << 8U) |
                                    d->sector[size + 1U]))
                         moof_mfm_deliver(d, cylinder, head, id, d->sector);
@@ -662,6 +709,14 @@ static void moof_mfm_scan(moof_decoder *d, uint32_t cylinder, uint32_t head) {
             }
         }
     }
+}
+
+/* Sectors accepted so far, to tell whether a flux timing guess worked. */
+static uint32_t moof_progress(const moof_decoder *d) {
+    uint32_t total = d->gcr_good[0] + d->gcr_good[1] + d->written, code;
+    for (code = 0U; code <= MOOF_MFM_MAX_CODE; ++code)
+        total += d->mfm_count[code];
+    return total;
 }
 
 /* Visit every track, the bitstream first and then the flux capture, so a
@@ -678,13 +733,26 @@ static bool moof_walk(moof_decoder *d) {
                                               : MOOF_NO_TRACK)
                                        : d->layout->tmap[index];
             moof_source source;
+            uint32_t periods[3], count = 1U, k;
             if (!moof_track_source(d->layout, entry, flux, &source) ||
                 !moof_load_cells(d, &source))
                 continue;
-            if (d->mode != XX_MOOF_ENCODING_MFM)
-                moof_gcr_scan(d, cylinder, head);
-            if (d->mode != XX_MOOF_ENCODING_GCR)
-                moof_mfm_scan(d, cylinder, head);
+            if (flux) {
+                uint32_t nominal = d->layout->bit_time;
+                if (nominal == 0U)
+                    nominal = d->layout->disk_type == 3U ? 8U : 16U;
+                count = moof_flux_periods(d->raw, d->raw_size, nominal,
+                                          periods);
+            }
+            for (k = 0U; k < count; ++k) {
+                const uint32_t before = moof_progress(d);
+                if (flux && !moof_flux_to_cells(d, periods[k])) continue;
+                if (d->mode != XX_MOOF_ENCODING_MFM)
+                    moof_gcr_scan(d, cylinder, head);
+                if (d->mode != XX_MOOF_ENCODING_GCR)
+                    moof_mfm_scan(d, cylinder, head);
+                if (moof_progress(d) != before) break;
+            }
         }
     }
     return true;

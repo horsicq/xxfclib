@@ -31,6 +31,7 @@
 
 #include "xxfclib/rt/xx_rt.h"
 #include "xx_bzip2_internal.h"
+#include "xx_bzip2_random.h"
 #include "xxfclib/algo/crc/xx_crc.h"
 #include <string.h>
 
@@ -43,7 +44,7 @@ static bool bz2_br_refill(bz2_bit_reader *br)
     if (br->error || br->eof) return false;
     if (br->ibuf_pos < br->ibuf_len) return true;
 
-    size_t want = sizeof(br->ibuf);
+    size_t want = br->ibuf_capacity;
     if (br->remaining >= 0) {
         if (br->remaining == 0) { br->eof = true; return false; }
         if ((int64_t)want > br->remaining) want = (size_t)br->remaining;
@@ -76,12 +77,16 @@ bool bz2_br_init(bz2_bit_reader *br, xx_io_device *dev,
     br->mem       = mem;
     br->mem_size  = mem_size;
     br->remaining = remaining;
-    return true;
+    br->ibuf_capacity = xx_get_file_buffer_size();
+    if (br->ibuf_capacity > (SIZE_MAX >> 1)) br->ibuf_capacity = SIZE_MAX >> 1;
+    br->ibuf = (uint8_t *)xx_mem_alloc(br->ibuf_capacity);
+    br->error = br->ibuf == NULL;
+    return !br->error;
 }
 
 void bz2_br_free(bz2_bit_reader *br)
 {
-    (void)br;
+    if (br) { xx_mem_free(br->ibuf); br->ibuf = NULL; }
 }
 
 static uint32_t bz2_read_bits(bz2_bit_reader *br, int n)
@@ -111,7 +116,11 @@ bool bz2_bw_init(bz2_bit_writer *bw, xx_io_device *dev, uint8_t *mem, size_t mem
     bw->dev     = dev;
     bw->mem     = mem;
     bw->mem_cap = mem_cap;
-    return true;
+    bw->obuf_capacity = xx_get_file_buffer_size();
+    if (bw->obuf_capacity > (SIZE_MAX >> 1)) bw->obuf_capacity = SIZE_MAX >> 1;
+    bw->obuf = (uint8_t *)xx_mem_alloc(bw->obuf_capacity);
+    bw->error = bw->obuf == NULL;
+    return !bw->error;
 }
 
 static bool bz2_bw_flush_buffer(bz2_bit_writer *bw)
@@ -133,7 +142,8 @@ static bool bz2_bw_flush_buffer(bz2_bit_writer *bw)
 
 static bool bz2_bw_write_byte(bz2_bit_writer *bw, uint8_t b)
 {
-    if (bw->obuf_pos >= sizeof(bw->obuf)) {
+    if (bw->error) return false;
+    if (bw->obuf_pos >= bw->obuf_capacity) {
         if (!bz2_bw_flush_buffer(bw)) return false;
     }
     bw->obuf[bw->obuf_pos++] = b;
@@ -167,7 +177,7 @@ bool bz2_bw_flush(bz2_bit_writer *bw)
 
 void bz2_bw_free(bz2_bit_writer *bw)
 {
-    (void)bw;
+    if (bw) { xx_mem_free(bw->obuf); bw->obuf = NULL; }
 }
 
 /* =========================================================================
@@ -179,8 +189,11 @@ typedef struct {
     uint8_t      *mem;
     size_t        mem_cap;
     size_t        mem_written;
-    uint8_t       obuf[65536];
+    uint8_t      *obuf;
+    size_t        obuf_capacity;
     size_t        obuf_pos;
+    xx_crc_context block_crc;
+    bool          block_crc_active;
     bool          error;
     bool          overflow;
 } bz2_out;
@@ -200,13 +213,15 @@ static bool bz2_out_flush(bz2_out *o)
         xx_rt_memcpy(o->mem + o->mem_written, o->obuf, o->obuf_pos);
         o->mem_written += o->obuf_pos;
     }
+    if (o->block_crc_active)
+        xx_crc_context_update(&o->block_crc, o->obuf, o->obuf_pos);
     o->obuf_pos = 0;
     return true;
 }
 
 static bool bz2_out_write(bz2_out *o, uint8_t b)
 {
-    if (o->obuf_pos >= sizeof(o->obuf)) {
+    if (o->obuf_pos >= o->obuf_capacity) {
         if (!bz2_out_flush(o)) return false;
     }
     o->obuf[o->obuf_pos++] = b;
@@ -306,12 +321,14 @@ static int bz2_huff_decode(bz2_bit_reader *br, const bz2_huffman *ht)
  * ========================================================================= */
 
 static bool bz2_decompress_block(bz2_bit_reader *br, bz2_out *out,
+                                 int block_bytes,
                                  uint32_t *calculated_crc,
                                  xx_pd_struct *pd)
 {
     (void)pd;
 
-    if (!br || !out || !calculated_crc) return false;
+    if (!br || !out || !calculated_crc || block_bytes < 100000 ||
+        block_bytes > BZ2_MAX_BLOCK_SIZE) return false;
 
     /* Block header: 6-byte magic already consumed by caller */
     uint32_t block_crc = bz2_read_bits(br, 32);
@@ -386,10 +403,10 @@ static bool bz2_decompress_block(bz2_bit_reader *br, bz2_out *out,
     }
 
     /* Decode MTF + RLE (first pass) → bwt_bytes[] array */
-    uint8_t *bwt_bytes = (uint8_t *)xx_mem_alloc(BZ2_MAX_BLOCK_SIZE);
+    uint8_t *bwt_bytes = (uint8_t *)xx_mem_alloc((size_t)block_bytes);
     if (!bwt_bytes) return false;
 
-    uint32_t *tt = (uint32_t *)xx_mem_alloc(BZ2_MAX_BLOCK_SIZE * sizeof(uint32_t));
+    uint32_t *tt = (uint32_t *)xx_mem_alloc((size_t)block_bytes * sizeof(uint32_t));
     if (!tt) { xx_mem_free(bwt_bytes); return false; }
 
     uint8_t mtf_vals[256];
@@ -419,21 +436,22 @@ static bool bz2_decompress_block(bz2_bit_reader *br, bz2_out *out,
         if (sym == BZ2_RUNA || sym == BZ2_RUNB) {
             /* bijective base-2: RUNA contributes weight*1, RUNB contributes weight*2 */
             uint32_t multiplier = (uint32_t)(sym + 1);
+            uint32_t available = (uint32_t)(block_bytes - tt_count);
             uint32_t contribution;
-            if (run_weight > BZ2_MAX_BLOCK_SIZE / multiplier) {
+            if (run_weight > available / multiplier) {
                 xx_mem_free(bwt_bytes);
                 xx_mem_free(tt);
                 return false;
             }
             contribution = run_weight * multiplier;
-            if (run_count > BZ2_MAX_BLOCK_SIZE - contribution) {
+            if (run_count > available - contribution) {
                 xx_mem_free(bwt_bytes);
                 xx_mem_free(tt);
                 return false;
             }
             run_count += contribution;
-            run_weight = run_weight > BZ2_MAX_BLOCK_SIZE / 2U
-                             ? BZ2_MAX_BLOCK_SIZE + 1U
+            run_weight = run_weight > (uint32_t)block_bytes / 2U
+                             ? (uint32_t)block_bytes + 1U
                              : run_weight << 1;
             in_run = true;
             continue;
@@ -443,7 +461,7 @@ static bool bz2_decompress_block(bz2_bit_reader *br, bz2_out *out,
         if (in_run) {
             uint8_t run_byte = (uint8_t)sym_to_byte[mtf_vals[0]];
             for (uint32_t k = 0; k < run_count; k++) {
-                if (tt_count >= BZ2_MAX_BLOCK_SIZE) { xx_mem_free(bwt_bytes); xx_mem_free(tt); return false; }
+                if (tt_count >= block_bytes) { xx_mem_free(bwt_bytes); xx_mem_free(tt); return false; }
                 bwt_bytes[tt_count++] = run_byte;
             }
             in_run = false;
@@ -461,7 +479,7 @@ static bool bz2_decompress_block(bz2_bit_reader *br, bz2_out *out,
         mtf_vals[0] = val;
         uint8_t out_byte = (uint8_t)sym_to_byte[val];
 
-        if (tt_count >= BZ2_MAX_BLOCK_SIZE) { xx_mem_free(bwt_bytes); xx_mem_free(tt); return false; }
+        if (tt_count >= block_bytes) { xx_mem_free(bwt_bytes); xx_mem_free(tt); return false; }
         bwt_bytes[tt_count++] = out_byte;
     }
 
@@ -469,7 +487,7 @@ static bool bz2_decompress_block(bz2_bit_reader *br, bz2_out *out,
     if (in_run) {
         uint8_t run_byte = (uint8_t)sym_to_byte[mtf_vals[0]];
         for (uint32_t k = 0; k < run_count; k++) {
-            if (tt_count >= BZ2_MAX_BLOCK_SIZE) { xx_mem_free(bwt_bytes); xx_mem_free(tt); return false; }
+            if (tt_count >= block_bytes) { xx_mem_free(bwt_bytes); xx_mem_free(tt); return false; }
             bwt_bytes[tt_count++] = run_byte;
         }
     }
@@ -494,19 +512,35 @@ static bool bz2_decompress_block(bz2_bit_reader *br, bz2_out *out,
         xx_mem_free(tt);
         return false;
     }
-    uint32_t out_crc = 0xFFFFFFFFUL;
+    if (!xx_crc_context_init_type(&out->block_crc, XX_CRC_TYPE_CRC32_BZIP2)) {
+        xx_mem_free(bwt_bytes); xx_mem_free(tt); return false;
+    }
+    out->block_crc_active = true;
     uint32_t t = tt[orig_ptr];
     unsigned prev_byte = 0x100;
     int rle_count = 0;
+    unsigned random_left = 0U;
+    unsigned random_index = 0U;
 
     for (int i = 0; i < tt_count; i++) {
         uint8_t ob = (uint8_t)(t & 0xFF);
         t = tt[t >> 8];
 
+        /* Undo legacy block randomization before expanding the first-stage
+         * RLE bytes, including repetition-count bytes. State is per block.
+         */
+        if (rand_flag) {
+            if (random_left == 0U) {
+                random_left = bz2_random_numbers[random_index];
+                random_index = (random_index + 1U) & 511U;
+            }
+            --random_left;
+            if (random_left == 1U) ob ^= 1U;
+        }
+
         if (rle_count == 4) {
             /* ob is repetition count (0..255) for prev_byte */
             for (uint32_t k = 0; k < (uint32_t)ob; k++) {
-                out_crc = (out_crc << 8) ^ bz2_crc32_table[(out_crc >> 24) ^ (uint8_t)prev_byte];
                 if (!bz2_out_write(out, (uint8_t)prev_byte)) {
                     xx_mem_free(bwt_bytes); xx_mem_free(tt); return false;
                 }
@@ -520,21 +554,19 @@ static bool bz2_decompress_block(bz2_bit_reader *br, bz2_out *out,
                 prev_byte = (unsigned)ob;
                 rle_count = 1;
             }
-            out_crc = (out_crc << 8) ^ bz2_crc32_table[(out_crc >> 24) ^ ob];
             if (!bz2_out_write(out, ob)) {
                 xx_mem_free(bwt_bytes); xx_mem_free(tt); return false;
             }
         }
     }
-    out_crc = ~out_crc;
+    if (!bz2_out_flush(out)) {
+        xx_mem_free(bwt_bytes); xx_mem_free(tt); return false;
+    }
+    uint32_t out_crc = (uint32_t)xx_crc_context_final(&out->block_crc);
+    out->block_crc_active = false;
 
     xx_mem_free(bwt_bytes);
     xx_mem_free(tt);
-
-    if (rand_flag) {
-        /* randomised block — rarely used; treat as unsupported for now */
-        return false;
-    }
 
     if (block_crc != out_crc || out->error) return false;
     *calculated_crc = out_crc;
@@ -555,6 +587,7 @@ bool xx_bzip2_decompress_stream(bz2_bit_reader *br,
     out.dev     = dst_dev;
     out.mem     = mem_dst;
     out.mem_cap = mem_cap;
+    if (!br || br->error) return false;
 
     /* Stream header: "BZh" + digit (block-size) */
     uint8_t magic[4];
@@ -566,6 +599,13 @@ bool xx_bzip2_decompress_stream(bz2_bit_reader *br,
         magic[3] < '1' || magic[3] > '9') {
         return false;
     }
+    /* The header limits the block after the first RLE stage, not the number
+     * of bytes ultimately emitted. Reject oversized blocks before BWT inversion. */
+    int block_bytes = (int)(magic[3] - '0') * 100000;
+    /* Use the reader's captured size for both directions of this operation. */
+    out.obuf_capacity = br->ibuf_capacity;
+    out.obuf = (uint8_t *)xx_mem_alloc(out.obuf_capacity);
+    if (!out.obuf) return false;
 
     bool ok = true;
     bool saw_eos = false;
@@ -579,7 +619,7 @@ bool xx_bzip2_decompress_stream(bz2_bit_reader *br,
         if (hi == 0x31415926UL && lo == 0x5359U) {
             /* data block */
             uint32_t block_crc = 0U;
-            ok = bz2_decompress_block(br, &out, &block_crc, pd);
+            ok = bz2_decompress_block(br, &out, block_bytes, &block_crc, pd);
             if (ok) {
                 combined_crc = (combined_crc << 1) |
                                (combined_crc >> 31);
@@ -598,21 +638,9 @@ bool xx_bzip2_decompress_stream(bz2_bit_reader *br,
         }
     }
 
-    /* Flush remaining output */
-    if (ok && out.obuf_pos > 0) {
-        if (out.dev) {
-            ssize_t w = xx_io_write(out.dev, out.obuf, out.obuf_pos);
-            if (w < 0 || (size_t)w != out.obuf_pos) ok = false;
-        } else if (out.mem) {
-            if (out.mem_written + out.obuf_pos <= out.mem_cap) {
-                xx_rt_memcpy(out.mem + out.mem_written, out.obuf, out.obuf_pos);
-                out.mem_written += out.obuf_pos;
-            } else {
-                ok = false;
-            }
-        }
-    }
+    if (ok && !bz2_out_flush(&out)) ok = false;
 
     if (out_written) *out_written = out.mem_written;
+    xx_mem_free(out.obuf);
     return ok && saw_eos && !br->error && !out.error;
 }

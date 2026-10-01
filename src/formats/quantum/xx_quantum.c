@@ -29,31 +29,9 @@
  * member can only be produced by replaying the members in front of it.  That
  * is why every record publishes the whole body as its stream.
  *
- * ---------------------------------------------------------------------------
- * WHAT THIS READER CAN EXTRACT, AND WHY IT IS NOT EVERYTHING
- *
- * The only Quantum decoder in this library is xx_quantum_cab_decode(), which
- * is the CAB dialect: it takes a list of blocks, RE-PRIMES the arithmetic
- * coder at the start of each one and never reads anything between blocks.
- *
- * The standalone archive is not laid out that way.  Its new shape (version >=
- * 0x17) primes the coder ONCE and then, after each member, consumes a 16-bit
- * raw checksum word off the bit buffer.  Handing the whole body to the CAB
- * entry point as a single block with the summed plaintext length would
- * therefore desynchronise at the first member boundary - the trailer would be
- * decoded as coded data.  The old shape (version < 0x17) is a different codec
- * again: five reversed selector symbols, a 29-slot length table, weighted
- * model seeding, narrowed position models and "extra" bits that ride the
- * arithmetic coder instead of coming off the bit buffer raw.  None of that
- * exists in the CAB decoder.
- *
- * So extraction is supported for exactly one case - a NEW-variant archive with
- * a SINGLE member - where the solid stream is one block, there is no
- * inter-member trailer to skip and the CAB entry point is a byte-for-byte
- * match for the stream shape.  Everything else is enumerated in full (names,
- * sizes, timestamps, CRCs, stream geometry) and refuses to extract rather than
- * writing bytes this library cannot vouch for.  Writing the missing decoder
- * belongs in algo/quantum, not here.
+ * New-shape archives (version >= 0x17) use one continuous coder and a raw
+ * 16-bit checksum after every member.  The old shape (version < 0x17) uses
+ * reversed selectors, weighted models and a checksum in each directory entry.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -103,6 +81,9 @@ typedef struct xx_quantum_stream_s {
     uint32_t version;
     uint32_t level;
     bool old_variant;
+    uint8_t *decoded;
+    size_t decoded_size;
+    bool decoded_attempted;
 } xx_quantum_stream;
 
 static void xx_quantum_vtable_destroy(Abstractformat *self);
@@ -215,6 +196,7 @@ static void xx_quantum_stream_free(void *pointer) {
         xx_str_free(stream->items[index].name);
     }
     xx_mem_free(stream->items);
+    xx_mem_free(stream->decoded);
     xx_mem_free(stream);
 }
 
@@ -353,63 +335,82 @@ fail:
 
 /* -------------------------------------------------------------- decode -- */
 
-/*
- * Only the one case the CAB entry point genuinely covers; see the header
- * comment.  Refusing is the honest answer for the rest - a wrong stream shape
- * does not error out, it produces plausible-looking garbage.
- */
 static bool xx_quantum_can_decode(const xx_quantum_stream *stream) {
-    return stream && stream->count == 1U && !stream->old_variant;
+    return stream && stream->count > 0U;
 }
 
 static bool xx_quantum_decode(Abstractformat *self,
-                              const xx_quantum_stream *stream, uint8_t **out,
-                              size_t *out_size, xx_pd_struct *pd) {
-    const uint8_t *blocks[1];
-    size_t block_sizes[1];
-    size_t plain_sizes[1];
+                              xx_quantum_stream *stream, xx_pd_struct *pd) {
     uint8_t *input = NULL;
     uint8_t *output = NULL;
+    size_t *member_sizes = NULL;
+    uint16_t *checksums = NULL;
     size_t input_size;
-    size_t output_size;
+    size_t output_size = 0U;
     size_t written = 0U;
+    size_t index;
 
-    if (out) *out = NULL;
-    if (out_size) *out_size = 0U;
-    if (!self || !out || !out_size || !xx_quantum_can_decode(stream)) {
-        return false;
-    }
+    if (!self || !xx_quantum_can_decode(stream)) return false;
+    if (stream->decoded_attempted) return stream->decoded != NULL;
+    stream->decoded_attempted = true;
     if (stream->stream_size <= 0 || stream->stream_size > XX_QUANTUM_MAX_STREAM ||
-        stream->items[0].uncompressed_size <= 0 ||
-        stream->items[0].uncompressed_size > XX_QUANTUM_MAX_MEMBER ||
         (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
+    if (stream->count > SIZE_MAX / sizeof(*member_sizes)) return false;
+    member_sizes = (size_t *)xx_mem_alloc(stream->count * sizeof(*member_sizes));
+    if (stream->old_variant)
+        checksums = (uint16_t *)xx_mem_alloc(stream->count * sizeof(*checksums));
+    if (!member_sizes || (stream->old_variant && !checksums)) {
+        xx_mem_free(member_sizes);
+        xx_mem_free(checksums);
+        return false;
+    }
+    for (index = 0U; index < stream->count; ++index) {
+        int64_t size = stream->items[index].uncompressed_size;
+        if (size < 0 || size > XX_QUANTUM_MAX_MEMBER ||
+            (size_t)size > (size_t)XX_QUANTUM_MAX_MEMBER - output_size) {
+            xx_mem_free(member_sizes);
+            xx_mem_free(checksums);
+            return false;
+        }
+        member_sizes[index] = (size_t)size;
+        if (stream->old_variant) checksums[index] = stream->items[index].crc;
+        output_size += (size_t)size;
+    }
     input_size = (size_t)stream->stream_size;
-    output_size = (size_t)stream->items[0].uncompressed_size;
     input = (uint8_t *)xx_mem_alloc(input_size);
-    output = (uint8_t *)xx_mem_alloc(output_size);
+    output = (uint8_t *)xx_mem_alloc(output_size ? output_size : 1U);
     if (!input || !output ||
         !xx_quantum_read_at(self, stream->stream_offset, input, input_size) ||
         (pd && xx_pd_is_stopped(pd))) {
         xx_mem_free(input);
         xx_mem_free(output);
+        xx_mem_free(member_sizes);
+        xx_mem_free(checksums);
         return false;
     }
-    blocks[0] = input;
-    block_sizes[0] = input_size;
-    plain_sizes[0] = output_size;
-    if (!xx_quantum_cab_decode(blocks, block_sizes, plain_sizes, 1U,
-                               (unsigned)stream->window_bits, output,
-                               output_size, &written) ||
+    if (!(stream->old_variant
+              ? xx_quantum_archive_decode_old(
+                    input, input_size, member_sizes, checksums,
+                    stream->count, (unsigned)stream->window_bits, output,
+                    output_size, &written)
+              : xx_quantum_archive_decode(
+                    input, input_size, member_sizes, stream->count,
+                    (unsigned)stream->window_bits, output, output_size,
+                    &written)) ||
         written != output_size) {
         xx_mem_free(input);
         xx_mem_free(output);
+        xx_mem_free(member_sizes);
+        xx_mem_free(checksums);
         return false;
     }
     xx_mem_free(input);
-    *out = output;
-    *out_size = output_size;
+    xx_mem_free(member_sizes);
+    xx_mem_free(checksums);
+    stream->decoded = output;
+    stream->decoded_size = output_size;
     return true;
 }
 
@@ -687,8 +688,10 @@ bool xx_quantum_unpack_current_archive_record(Abstractformat *self,
     const char *base_path = NULL;
     char *converted_path = NULL;
     char *target_path = NULL;
-    uint8_t *plain = NULL;
-    size_t plain_size = 0U;
+    const uint8_t *plain;
+    size_t plain_size;
+    size_t plain_offset = 0U;
+    size_t index;
     bool result = false;
     bool created = false;
 
@@ -698,20 +701,22 @@ bool xx_quantum_unpack_current_archive_record(Abstractformat *self,
     }
     stream = (xx_quantum_stream *)state->internal_state;
     if (!stream || stream->index >= stream->count) return false;
-    /* The stream shapes this library has no decoder for are refused here, not
-     * decoded into something that merely looks like data. */
     if (!xx_quantum_can_decode(stream)) return false;
     member = &stream->items[stream->index];
     if (!xx_quantum_path_safe(member->name)) return false;
+    if (!xx_quantum_decode(self, stream, pd)) return false;
+    for (index = 0U; index < stream->index; ++index)
+        plain_offset += (size_t)stream->items[index].uncompressed_size;
+    plain_size = (size_t)member->uncompressed_size;
+    if (plain_offset > stream->decoded_size ||
+        plain_size > stream->decoded_size - plain_offset) return false;
+    plain = stream->decoded + plain_offset;
 
     path_option =
         xx_quantum_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
-        /* No destination: decode and discard, which verifies the member
-         * without writing anything. */
-        result = xx_quantum_decode(self, stream, &plain, &plain_size, pd);
-        xx_mem_free(plain);
-        return result;
+        /* The cached solid stream was already decoded and verified. */
+        return true;
     }
     if (path_option->type == XX_VAR_TYPE_STRING ||
         path_option->type == XX_VAR_TYPE_STRING_VIEW) {
@@ -734,8 +739,7 @@ bool xx_quantum_unpack_current_archive_record(Abstractformat *self,
     xx_str_free(converted_path);
     if (!target_path) return false;
 
-    if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_quantum_decode(self, stream, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false)) {
         xx_str_free(target_path);
         return false;
     }
@@ -755,7 +759,6 @@ bool xx_quantum_unpack_current_archive_record(Abstractformat *self,
         }
         if (output && xx_io_close(output) != 0) result = false;
     }
-    xx_mem_free(plain);
     if (!result && created) xx_rt_remove(target_path);
     xx_str_free(target_path);
     return result;

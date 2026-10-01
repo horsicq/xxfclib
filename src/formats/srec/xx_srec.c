@@ -13,6 +13,7 @@
 
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/io/xx_io.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 
@@ -83,7 +84,8 @@ typedef struct xx_srecfmt_lines_s {
     xx_io_device *device;
     int64_t position;      /**< Device offset just past the buffered bytes. */
     int64_t end;
-    uint8_t buffer[4096];
+    uint8_t *buffer;
+    size_t capacity;
     size_t fill;           /**< Valid bytes in buffer. */
     size_t cursor;         /**< Next unread byte in buffer. */
     bool exhausted;
@@ -147,13 +149,16 @@ static void xx_srecfmt_vtable_destroy(Abstractformat *self);
 /* Line reading                                                        */
 /* ------------------------------------------------------------------ */
 
-static void xx_srecfmt_lines_init(xx_srecfmt_lines *lines,
+static bool xx_srecfmt_lines_init(xx_srecfmt_lines *lines,
                                   xx_io_device *device, int64_t offset,
                                   int64_t end) {
     xx_mem_zero(lines, sizeof(*lines));
     lines->device = device;
     lines->position = offset;
     lines->end = end;
+    lines->capacity = xx_get_file_buffer_size();
+    lines->buffer = (uint8_t *)xx_mem_alloc(lines->capacity);
+    return lines->buffer != NULL;
 }
 
 static bool xx_srecfmt_lines_fill(xx_srecfmt_lines *lines) {
@@ -161,8 +166,8 @@ static bool xx_srecfmt_lines_fill(xx_srecfmt_lines *lines) {
     size_t want;
     if (lines->cursor < lines->fill) return true;
     if (lines->exhausted || lines->position >= lines->end) return false;
-    want = (uint64_t)(lines->end - lines->position) > sizeof(lines->buffer)
-               ? sizeof(lines->buffer)
+    want = (uint64_t)(lines->end - lines->position) > lines->capacity
+               ? lines->capacity
                : (size_t)(lines->end - lines->position);
     amount = xx_io_read(lines->device, lines->buffer, want);
     if (amount <= 0 || (size_t)amount > want) {
@@ -499,7 +504,7 @@ static bool xx_srecfmt_tally_acceptable(const xx_srecfmt_tally *tally,
  * this walk accepts too, and anything after the chosen end is overlay. */
 static bool xx_srecfmt_scan_run(Abstractformat *self, xx_srecfmt_scan *scan,
                                 xx_pd_struct *pd, bool detect) {
-    xx_srecfmt_lines lines;
+    xx_srecfmt_lines lines = {0};
     char line[XX_SREC_MAX_LINE_LENGTH];
     int64_t total_size;
     int64_t stream_end;
@@ -526,8 +531,8 @@ static bool xx_srecfmt_scan_run(Abstractformat *self, xx_srecfmt_scan *scan,
         goto fail;
     }
     stream_end = total_size;
-    xx_srecfmt_lines_init(&lines, self->device, self->base_address,
-                          total_size);
+    if (!xx_srecfmt_lines_init(&lines, self->device, self->base_address,
+                               total_size)) goto fail;
     for (;;) {
         size_t length = 0U;
         int64_t start = -1;
@@ -662,8 +667,10 @@ walked:
     if (scan->image_size > XX_SRECFMT_MAX_IMAGE_SIZE) goto fail;
     if (stream_end < self->base_address) goto fail;
     scan->stream_size = stream_end - self->base_address;
+    xx_mem_free(lines.buffer);
     return true;
 fail:
+    xx_mem_free(lines.buffer);
     xx_srecfmt_scan_cleanup(scan);
     return false;
 }
@@ -674,7 +681,7 @@ fail:
 static bool xx_srecfmt_build(Abstractformat *self,
                              const xx_srecfmt_scan *scan, uint8_t **out_image,
                              size_t *out_size, xx_pd_struct *pd) {
-    xx_srecfmt_lines lines;
+    xx_srecfmt_lines lines = {0};
     char line[XX_SREC_MAX_LINE_LENGTH];
     uint8_t *image;
     if (out_image) *out_image = NULL;
@@ -689,8 +696,8 @@ static bool xx_srecfmt_build(Abstractformat *self,
     image = (uint8_t *)xx_mem_alloc((size_t)scan->image_size);
     if (!image) return false;
     xx_rt_memset(image, XX_SRECFMT_FILL_BYTE, (size_t)scan->image_size);
-    xx_srecfmt_lines_init(&lines, self->device, self->base_address,
-                          self->base_address + scan->stream_size);
+    if (!xx_srecfmt_lines_init(&lines, self->device, self->base_address,
+                               self->base_address + scan->stream_size)) goto fail;
     for (;;) {
         size_t length = 0U;
         int64_t start = -1;
@@ -722,8 +729,10 @@ static bool xx_srecfmt_build(Abstractformat *self,
     }
     *out_image = image;
     *out_size = (size_t)scan->image_size;
+    xx_mem_free(lines.buffer);
     return true;
 fail:
+    xx_mem_free(lines.buffer);
     xx_mem_free(image);
     return false;
 }
@@ -733,7 +742,7 @@ fail:
 /* ------------------------------------------------------------------ */
 
 bool xx_srec_probe_device(xx_io_device *dev, int64_t base_address) {
-    xx_srecfmt_lines lines;
+    xx_srecfmt_lines lines = {0};
     char line[XX_SREC_MAX_LINE_LENGTH];
     int64_t total_size;
     int64_t window;
@@ -747,20 +756,28 @@ bool xx_srec_probe_device(xx_io_device *dev, int64_t base_address) {
     /* A bounded window: enough for a few blank lines plus one record. */
     window = (int64_t)XX_SREC_MAX_LINE_LENGTH * 4;
     if (window > total_size - base_address) window = total_size - base_address;
-    xx_srecfmt_lines_init(&lines, dev, base_address, base_address + window);
+    if (!xx_srecfmt_lines_init(&lines, dev, base_address, base_address + window)) return false;
     for (;;) {
         size_t length = 0U;
         int64_t start = -1;
         xx_srecfmt_record record;
         if (xx_srecfmt_lines_next(&lines, line, sizeof(line), &length,
                                   &start) != XX_SRECFMT_LINE_OK) {
+            xx_mem_free(lines.buffer);
             return false;
         }
         if (xx_srecfmt_line_is_blank(line, length)) {
-            if (++blanks > XX_SRECFMT_PROBE_BLANK_LINES) return false;
+            if (++blanks > XX_SRECFMT_PROBE_BLANK_LINES) {
+                xx_mem_free(lines.buffer);
+                return false;
+            }
             continue;
         }
-        return xx_srecfmt_decode_line(line, length, &record);
+        {
+            bool result = xx_srecfmt_decode_line(line, length, &record);
+            xx_mem_free(lines.buffer);
+            return result;
+        }
     }
 }
 

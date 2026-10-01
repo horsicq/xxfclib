@@ -701,8 +701,10 @@ bool xx_twrx_unpack_current_archive_record(Abstractformat *format,
                       packed_size))
         goto done;
     /* A zero check dword means the producer stored none. */
-    if (member->check != 0U && twrx_crc(packed, packed_size) != member->check)
+    if (member->check != 0U && twrx_crc(packed, packed_size) != member->check) {
+        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "TWRX packed-data CRC-32 mismatch");
         goto done;
+    }
     if (member->method == TWRX_METHOD_STORED) {
         if (plain_size != packed_size) goto done;
         plain = packed;
@@ -720,8 +722,12 @@ bool xx_twrx_unpack_current_archive_record(Abstractformat *format,
     } else {
         /* Deflate is verified into no buffer at all; the bytes are produced
          * again, straight into the file, once it is known to be sound. */
-        if (!twrx_inflate(packed, packed_size, NULL, plain_size, pd))
+        if (!twrx_inflate(packed, packed_size, NULL, plain_size, pd)) {
+            if (!(pd && xx_pd_is_stopped(pd)))
+                xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
+                                "TWRX Deflate stream is invalid or has wrong decoded length");
             goto done;
+        }
     }
     path_option = twrx_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {

@@ -36,6 +36,7 @@
  * 564 extracted files are byte-identical to U3's own output.
  */
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/bcw/xx_bcw.h"
 
 
@@ -84,14 +85,17 @@ static uint32_t bcw_le32(const uint8_t *bytes) {
 
 static bool bcw_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
+    size_t transfer_capacity = xx_get_file_buffer_size();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        size_t request = size - done;
+        ssize_t amount;
+        if (request > transfer_capacity) request = transfer_capacity;
+        amount = xx_io_read(device, (uint8_t *)buffer + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -244,15 +248,19 @@ typedef struct bcw_reader_s {
     size_t at;
     size_t filled;
     bool failed;
-    uint8_t buffer[4096];
+    uint8_t *buffer;
+    size_t capacity;
 } bcw_reader;
 
 static void bcw_reader_init(bcw_reader *reader, xx_io_device *device,
-                            int64_t position, int64_t limit) {
+                            int64_t position, int64_t limit,
+                            uint8_t *buffer, size_t capacity) {
     xx_mem_zero(reader, sizeof(*reader));
     reader->device = device;
     reader->position = position;
     reader->limit = limit;
+    reader->buffer = buffer;
+    reader->capacity = capacity;
 }
 
 /* Returns the next byte, or -1 at the end of the archive or on an I/O
@@ -261,9 +269,9 @@ static int bcw_reader_next(bcw_reader *reader) {
     if (reader->failed || reader->position >= reader->limit) return -1;
     if (reader->at >= reader->filled) {
         int64_t remaining = reader->limit - reader->position;
-        size_t want = (remaining < (int64_t)sizeof(reader->buffer))
+        size_t want = ((uint64_t)remaining < (uint64_t)reader->capacity)
                           ? (size_t)remaining
-                          : sizeof(reader->buffer);
+                          : reader->capacity;
         if (!bcw_read_at(reader->device, reader->position, reader->buffer,
                          want)) {
             reader->failed = true;
@@ -393,7 +401,7 @@ static bool bcw_lzw_run(bcw_lzw *lzw, bcw_reader *reader, uint8_t *output,
 /* Walks the record chain, measuring every member's stream on the way so the
  * next record's offset is known.  Nothing here trusts a declared size,
  * because the container declares none. */
-static bool bcw_parse(Abstractformat *format, bcw_stream **result) {
+static bool bcw_parse_buffered(Abstractformat *format, bcw_stream **result, uint8_t *buffer, size_t buffer_capacity) {
     uint8_t header[4];
     bcw_stream *stream = NULL;
     bcw_reader reader;
@@ -417,7 +425,7 @@ static bool bcw_parse(Abstractformat *format, bcw_stream **result) {
     lzw = (bcw_lzw *)xx_mem_alloc(sizeof(*lzw));
     if (!stream || !lzw) goto fail;
     bcw_reader_init(&reader, format->device,
-                    format->base_address + (int64_t)sizeof(header), total);
+                    format->base_address + (int64_t)sizeof(header), total, buffer, buffer_capacity);
     path[0] = 0;
     for (;;) {
         uint8_t raw[BCW_MAX_NAME_SIZE];
@@ -518,6 +526,16 @@ fail:
     return false;
 }
 
+static bool bcw_parse(Abstractformat *format, bcw_stream **result) {
+    size_t buffer_capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
+    bool buffer_result;
+    if (!buffer) return false;
+    buffer_result = bcw_parse_buffered(format, result, buffer, buffer_capacity);
+    xx_mem_free(buffer);
+    return buffer_result;
+}
+
 static bool bcw_copy_options(xx_list_s *destination, const xx_list_s *source) {
     size_t index;
     if (!source) return true;
@@ -573,8 +591,8 @@ static bool bcw_set_record(xx_archive_record *record,
 /* Replays the member's stream, this time into a buffer sized by what the
  * parse measured; the two passes must agree exactly or the member is
  * refused. */
-static bool bcw_decode_member(Abstractformat *format, const bcw_member *member,
-                              uint8_t **plain, size_t *plain_size) {
+static bool bcw_decode_member_buffered(Abstractformat *format, const bcw_member *member,
+                              uint8_t **plain, size_t *plain_size, uint8_t *buffer, size_t buffer_capacity) {
     bcw_reader reader;
     bcw_lzw *lzw;
     uint8_t *output;
@@ -594,7 +612,7 @@ static bool bcw_decode_member(Abstractformat *format, const bcw_member *member,
         return false;
     }
     bcw_reader_init(&reader, format->device, member->data_offset,
-                    member->data_offset + member->packed_size);
+                    member->data_offset + member->packed_size, buffer, buffer_capacity);
     if (!bcw_lzw_run(lzw, &reader, output, member->unpacked_size, &produced) ||
         produced != member->unpacked_size) {
         xx_mem_free(lzw);
@@ -605,6 +623,17 @@ static bool bcw_decode_member(Abstractformat *format, const bcw_member *member,
     *plain = output;
     *plain_size = (size_t)member->unpacked_size;
     return true;
+}
+
+static bool bcw_decode_member(Abstractformat *format, const bcw_member *member,
+                              uint8_t **plain, size_t *plain_size) {
+    size_t buffer_capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
+    bool buffer_result;
+    if (!buffer) return false;
+    buffer_result = bcw_decode_member_buffered(format, member, plain, plain_size, buffer, buffer_capacity);
+    xx_mem_free(buffer);
+    return buffer_result;
 }
 
 void xx_bcw_init(xx_bcw *archive, xx_io_device *device, int64_t base_address) {

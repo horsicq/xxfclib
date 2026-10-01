@@ -14,9 +14,14 @@
 #define XX_MSCOMPRESS_WINDOW_SIZE 4096U
 #define XX_MSCOMPRESS_MATCH_MINIMUM 3U
 
-bool xx_mscompress_lzss_decode(const uint8_t *input, size_t input_size,
-                               uint8_t *output, size_t output_size,
-                               unsigned position_bias, size_t *consumed) {
+static bool xx_mscompress_lzss_decode_impl(const uint8_t *input,
+                                           size_t input_size,
+                                           uint8_t *output,
+                                           size_t output_size,
+                                           unsigned position_bias,
+                                           bool allow_prefix,
+                                           size_t *written,
+                                           size_t *consumed) {
     uint8_t window[XX_MSCOMPRESS_WINDOW_SIZE];
     size_t input_position = 0U;
     size_t output_position = 0U;
@@ -24,6 +29,7 @@ bool xx_mscompress_lzss_decode(const uint8_t *input, size_t input_size,
     uint8_t flags = 0U;
     size_t window_position = 0U;
     if (consumed) *consumed = 0U;
+    if (written) *written = 0U;
     if ((!input && input_size != 0U) || (!output && output_size != 0U) ||
         (position_bias != 16U && position_bias != 18U)) {
         return false;
@@ -31,12 +37,18 @@ bool xx_mscompress_lzss_decode(const uint8_t *input, size_t input_size,
     xx_rt_memset(window, 0x20, sizeof(window));
     while (output_position < output_size) {
         if (flag_bit == 0U) {
-            if (input_position == input_size) return false;
+            if (input_position == input_size) {
+                if (!allow_prefix) return false;
+                break;
+            }
             flags = input[input_position++];
         }
         if ((flags & (uint8_t)(UINT8_C(1) << flag_bit)) != 0U) {
             uint8_t value;
-            if (input_position == input_size) return false;
+            if (input_position == input_size) {
+                if (!allow_prefix) return false;
+                break;
+            }
             value = input[input_position++];
             output[output_position++] = value;
             window[window_position] = value;
@@ -48,7 +60,11 @@ bool xx_mscompress_lzss_decode(const uint8_t *input, size_t input_size,
             size_t match_position;
             size_t match_length;
             size_t index;
-            if (input_size - input_position < 2U) return false;
+            if (input_size - input_position < 2U) {
+                if (!allow_prefix || input_position != input_size)
+                    return false;
+                break;
+            }
             low = input[input_position++];
             high = input[input_position++];
             match_position = ((size_t)low |
@@ -69,6 +85,28 @@ bool xx_mscompress_lzss_decode(const uint8_t *input, size_t input_size,
         }
         flag_bit = (flag_bit + 1U) & 7U;
     }
+    if (written) *written = output_position;
     if (consumed) *consumed = input_position;
     return true;
+}
+
+bool xx_mscompress_lzss_decode(const uint8_t *input, size_t input_size,
+                               uint8_t *output, size_t output_size,
+                               unsigned position_bias, size_t *consumed) {
+    return xx_mscompress_lzss_decode_impl(input, input_size, output,
+                                         output_size, position_bias, false,
+                                         NULL, consumed);
+}
+
+bool xx_mscompress_lzss_decode_prefix(const uint8_t *input,
+                                      size_t input_size,
+                                      uint8_t *output,
+                                      size_t output_capacity,
+                                      unsigned position_bias,
+                                      size_t *written,
+                                      size_t *consumed) {
+    if (!written) return false;
+    return xx_mscompress_lzss_decode_impl(input, input_size, output,
+                                         output_capacity, position_bias, true,
+                                         written, consumed);
 }

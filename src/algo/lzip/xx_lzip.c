@@ -6,6 +6,7 @@
  * decoding, end-marker validation, output bounds, and trailer CRC checks.
  */
 
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/algo/lzip/xx_lzip.h"
 
@@ -29,6 +30,7 @@ typedef struct xx_lzip_member_s {
 
 typedef struct xx_lzip_counter_s {
     xx_io_device *destination;
+    size_t io_capacity;
     uint64_t expected_size;
     uint64_t written;
     uint32_t crc32;
@@ -50,16 +52,18 @@ static uint64_t xx_lzip_read_u64le(const uint8_t *data) {
 }
 
 static bool xx_lzip_read_exact_at(xx_io_device *device, int64_t offset,
-                                  void *buffer, size_t size) {
+                                  void *buffer, size_t size, size_t io_capacity) {
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -93,7 +97,7 @@ bool xx_lzip_has_header(const uint8_t *data, size_t size) {
  * stream.  Lzip's self-sized footer deliberately permits reliable reverse
  * discovery of concatenated members. */
 static bool xx_lzip_member_before(xx_io_device *source, int64_t stream_start,
-                                  int64_t end, xx_lzip_member *member) {
+                                  int64_t end, xx_lzip_member *member, size_t io_capacity) {
     uint8_t trailer[XX_LZIP_TRAILER_SIZE];
     uint8_t header[XX_LZIP_HEADER_SIZE];
     uint64_t member_size64;
@@ -105,7 +109,7 @@ static bool xx_lzip_member_before(xx_io_device *source, int64_t stream_start,
     if (!source || !member || stream_start < 0 || end < stream_start ||
         end - stream_start < (int64_t)XX_LZIP_MIN_MEMBER_SIZE ||
         !xx_lzip_read_exact_at(source, end - (int64_t)sizeof(trailer),
-                               trailer, sizeof(trailer))) {
+                               trailer, sizeof(trailer), io_capacity)) {
         return false;
     }
     member_size64 = xx_lzip_read_u64le(trailer + 12U);
@@ -118,7 +122,7 @@ static bool xx_lzip_member_before(xx_io_device *source, int64_t stream_start,
     }
     member_size = (int64_t)member_size64;
     offset = end - member_size;
-    if (!xx_lzip_read_exact_at(source, offset, header, sizeof(header)) ||
+    if (!xx_lzip_read_exact_at(source, offset, header, sizeof(header), io_capacity) ||
         !xx_lzip_has_header(header, sizeof(header)) ||
         !xx_lzip_dictionary_size(header[5], &dictionary_size)) {
         return false;
@@ -138,7 +142,7 @@ static bool xx_lzip_collect_members(xx_io_device *source,
                                     int64_t source_size,
                                     xx_lzip_member **members_out,
                                     size_t *count_out,
-                                    int64_t *output_size) {
+                                    int64_t *output_size, size_t io_capacity) {
     int64_t end;
     int64_t cursor;
     size_t count = 0U;
@@ -156,7 +160,7 @@ static bool xx_lzip_collect_members(xx_io_device *source,
     while (cursor > source_offset) {
         if (count >= XX_LZIP_MAX_MEMBERS ||
             !xx_lzip_member_before(source, source_offset, cursor,
-                                   &temporary) ||
+                                   &temporary, io_capacity) ||
             (uint64_t)temporary.uncompressed_size >
                 (uint64_t)INT64_MAX - total_output) {
             return false;
@@ -174,7 +178,7 @@ static bool xx_lzip_collect_members(xx_io_device *source,
     cursor = end;
     for (index = count; index != 0U; --index) {
         if (!xx_lzip_member_before(source, source_offset, cursor,
-                                   &members[index - 1U])) {
+                                   &members[index - 1U], io_capacity)) {
             xx_mem_free(members);
             return false;
         }
@@ -197,10 +201,13 @@ static ssize_t xx_lzip_counter_write(xx_io_device *device, const void *data,
         return -1;
     }
     while (done < size && counter->destination) {
-        ssize_t amount = xx_io_write(counter->destination,
+        size_t request = size - done;
+        ssize_t amount;
+        if (request > counter->io_capacity) request = counter->io_capacity;
+        amount = xx_io_write(counter->destination,
                                      (const uint8_t *)data + done,
-                                     size - done);
-        if (amount <= 0 || (size_t)amount > size - done) {
+                                     request);
+        if (amount <= 0 || (size_t)amount > request) {
             counter->failed = true;
             return -1;
         }
@@ -215,6 +222,7 @@ bool xx_lzip_decode_device(xx_io_device *source, int64_t source_offset,
                            int64_t source_size, xx_io_device *destination,
                            int64_t *output_size, size_t *member_count,
                            xx_pd_struct *pd) {
+    const size_t io_capacity = xx_get_file_buffer_size();
     int64_t total_size;
     int64_t expected_size;
     xx_lzip_member *members = NULL;
@@ -231,7 +239,7 @@ bool xx_lzip_decode_device(xx_io_device *source, int64_t source_offset,
     total_size = xx_io_total_size(source);
     if (total_size < source_offset || source_size > total_size - source_offset ||
         !xx_lzip_collect_members(source, source_offset, source_size, &members,
-                                 &count, &expected_size)) {
+                                 &count, &expected_size, io_capacity)) {
         return false;
     }
 
@@ -251,6 +259,7 @@ bool xx_lzip_decode_device(xx_io_device *source, int64_t source_offset,
         properties[4] = (uint8_t)(member->dictionary_size >> 24U);
         xx_rt_memset(&counter, 0, sizeof(counter));
         counter.destination = destination;
+        counter.io_capacity = io_capacity;
         counter.expected_size = (uint64_t)member->uncompressed_size;
         xx_rt_memset(&sink, 0, sizeof(sink));
         sink.write = xx_lzip_counter_write;

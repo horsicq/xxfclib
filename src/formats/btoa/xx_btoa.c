@@ -23,6 +23,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/btoa/xx_btoa.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -45,8 +46,6 @@
 /* Longest text line accepted, line terminator excluded.  btoa writes 78
  * characters (atob's own buffer holds 98); Deark gives up at 1023. */
 #define BTOA_LINE_MAX 4096U
-#define BTOA_READ_CHUNK 16384U
-#define BTOA_WRITE_CHUNK 16384U
 /* Begin..End segments listed per file. */
 #define BTOA_MAX_SEGMENTS 1024U
 /* Blank lines tolerated between two segments. */
@@ -67,6 +66,16 @@
 #define BTOA_MAX_TOTAL ((uint64_t)1024U * 1024U * 1024U)
 #define BTOA_W_RUN 256U
 #define BTOA_PAYLOAD_NAME "payload"
+/* Bytes allowed after an Adobe stream's "~>" (white space only). */
+#define BTOA_ADOBE_TAIL_MAX 4096U
+/* Open-addressed table of assigned names: a power of two, at least twice
+ * BTOA_MAX_SEGMENTS, so a probe always ends at an empty slot. */
+#define BTOA_NAME_TABLE 4096U
+/* Bytes that carry no data (line breaks, blank lines, white space) allowed
+ * in one body beyond one per data character.  Real encoders emit one line
+ * break per 60-78 characters, so this only stops a header followed by
+ * megabytes of padding from being read to its end at detection time. */
+#define BTOA_IDLE_BASE ((uint64_t)64U * 1024U)
 
 typedef struct btoa_sums_s {
     uint64_t eor;
@@ -107,6 +116,8 @@ typedef struct btoa_work_s {
     uint64_t produced;
     btoa_sums sums[2]; /**< Old format: [0] 'y' = 0x20, [1] 'y' = 0xFF. */
     bool y_seen;       /**< sums[1] is only kept apart once a 'y' came. */
+    uint64_t chars;    /**< Data characters consumed. */
+    uint64_t idle;     /**< Non-data bytes consumed (see BTOA_IDLE_BASE). */
     /* Output. */
     xx_io_device *sink;
     uint64_t limit;
@@ -115,14 +126,37 @@ typedef struct btoa_work_s {
     bool out_failed;
     size_t line_length;
     uint8_t line[BTOA_LINE_MAX + 1U];
-    uint8_t window[BTOA_READ_CHUNK];
-    uint8_t out[BTOA_WRITE_CHUNK];
+    uint8_t *window;
+    uint8_t *out;
+    size_t io_capacity;
 } btoa_work;
 
 typedef struct btoa_stream_s {
     btoa_list list;
     size_t index;
 } btoa_stream;
+
+static btoa_work *btoa_work_create(void) {
+    btoa_work *w = (btoa_work *)xx_mem_calloc(1U, sizeof(*w));
+    if (!w) return NULL;
+    w->io_capacity = xx_get_file_buffer_size();
+    w->window = (uint8_t *)xx_mem_alloc(w->io_capacity);
+    w->out = (uint8_t *)xx_mem_alloc(w->io_capacity);
+    if (!w->window || !w->out) {
+        if (w->window) xx_mem_free(w->window);
+        if (w->out) xx_mem_free(w->out);
+        xx_mem_free(w);
+        return NULL;
+    }
+    return w;
+}
+
+static void btoa_work_free(btoa_work *w) {
+    if (!w) return;
+    xx_mem_free(w->window);
+    xx_mem_free(w->out);
+    xx_mem_free(w);
+}
 
 /* ---------------------------------------------------------------------- */
 /* Input                                                                   */
@@ -134,8 +168,8 @@ static int btoa_getc(btoa_work *w) {
     if (w->window_length == 0U || offset < 0 ||
         (uint64_t)offset >= (uint64_t)w->window_length) {
         int64_t available = w->end - w->position;
-        size_t want = available < (int64_t)BTOA_READ_CHUNK
-                          ? (size_t)available : (size_t)BTOA_READ_CHUNK;
+        size_t want = (uint64_t)available < (uint64_t)w->io_capacity
+                          ? (size_t)available : (size_t)w->io_capacity;
         size_t done = 0U;
         w->window_length = 0U;
         if (xx_io_seek64(w->device, w->position, SEEK_SET) != 0) {
@@ -229,7 +263,7 @@ static void btoa_put(btoa_work *w, uint8_t byte) {
     if (!w->sink || w->out_failed || w->written >= w->limit) return;
     w->out[w->out_length++] = byte;
     ++w->written;
-    if (w->out_length == BTOA_WRITE_CHUNK) (void)btoa_flush(w);
+    if (w->out_length == w->io_capacity) (void)btoa_flush(w);
 }
 
 static bool btoa_count(btoa_work *w, uint64_t amount) {
@@ -297,6 +331,7 @@ static bool btoa_w(btoa_work *w) {
 
 /* One data character: a digit or a shorthand of the current variant. */
 static bool btoa_data(btoa_work *w, uint8_t c) {
+    ++w->chars;
     if (c >= '!' && c <= 'u') {
         w->group = w->group * 85U + (uint64_t)(c - '!');
         if (++w->digits == 5U) {
@@ -314,6 +349,12 @@ static bool btoa_data(btoa_work *w, uint8_t c) {
     return false;
 }
 
+/* Count `amount` non-data bytes; false once they outweigh the data. */
+static bool btoa_idle(btoa_work *w, uint64_t amount) {
+    w->idle += amount;
+    return w->idle <= BTOA_IDLE_BASE + w->chars;
+}
+
 static void btoa_decoder_reset(btoa_work *w, uint32_t variant, uint8_t y_byte,
                                xx_io_device *sink, uint64_t limit) {
     w->io_failed = false;
@@ -324,6 +365,8 @@ static void btoa_decoder_reset(btoa_work *w, uint32_t variant, uint8_t y_byte,
     w->produced = 0U;
     xx_mem_zero(w->sums, sizeof(w->sums));
     w->y_seen = false;
+    w->chars = 0U;
+    w->idle = 0U;
     w->sink = sink;
     w->limit = limit;
     w->written = 0U;
@@ -464,10 +507,14 @@ static bool btoa_run_btoa(btoa_work *w, btoa_segment *found,
             trailer = line_start;
             break;
         }
+        if (!btoa_idle(w, 1U)) return false; /* the line break */
         if (variant == XX_BTOA_VARIANT_OLD) {
             for (index = 0U; index < w->line_length; ++index) {
                 uint8_t c = w->line[index];
-                if (c == ' ' || c == '\t' || c == '\r') continue;
+                if (c == ' ' || c == '\t' || c == '\r') {
+                    if (!btoa_idle(w, 1U)) return false;
+                    continue;
+                }
                 if (!btoa_data(w, c)) return false;
             }
             continue;
@@ -529,7 +576,10 @@ static bool btoa_run_adobe(btoa_work *w, btoa_segment *found,
             break;
         }
         if (c == 0 || c == '\t' || c == '\n' || c == '\f' || c == '\r' ||
-            c == ' ') continue;
+            c == ' ') {
+            if (!btoa_idle(w, 1U)) return false;
+            continue;
+        }
         if (!btoa_data(w, (uint8_t)c)) return false;
     }
     if (w->digits == 1U) return false;
@@ -554,6 +604,21 @@ static bool btoa_run_adobe(btoa_work *w, btoa_segment *found,
     found->end = w->position;
     found->size = w->produced;
     return true;
+}
+
+/* An Adobe stream has no checksum, so it is only taken as the whole file:
+ * after "~>" at most BTOA_ADOBE_TAIL_MAX bytes may follow, all of them
+ * white space, NUL or a DOS end-of-file mark.  "<~hi~> and more text" and a
+ * "<~...~>" fragment at the top of a PostScript or PDF file are refused. */
+static bool btoa_adobe_tail_ok(btoa_work *w, int64_t end) {
+    int c;
+    if (w->end - end > (int64_t)BTOA_ADOBE_TAIL_MAX) return false;
+    w->io_failed = false;
+    w->position = end;
+    while ((c = btoa_getc(w)) >= 0)
+        if (!(c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\f' ||
+              c == 0 || c == 0x1A)) return false;
+    return !w->io_failed;
 }
 
 static bool btoa_run(btoa_work *w, btoa_segment *found, xx_io_device *sink,
@@ -691,26 +756,58 @@ static bool btoa_safe_name(const char *name) {
     return true;
 }
 
-static bool btoa_name_taken(const btoa_list *list, size_t before,
-                            const char *name) {
-    size_t earlier;
-    for (earlier = 0U; earlier < before; ++earlier)
-        if (btoa_same_name(list->items[earlier].name, name)) return true;
-    return false;
+/* Case-insensitive FNV-1a, to index the table of names already assigned. */
+static uint32_t btoa_name_hash(const char *name) {
+    uint32_t hash = 2166136261U;
+    for (; *name; ++name)
+        hash = (hash ^ (uint32_t)(unsigned char)btoa_upper(*name)) *
+               16777619U;
+    return hash;
+}
+
+/* `table` holds record index + 1 per slot, 0 when empty.  Returns the slot
+ * that holds `name`, or the empty slot where it would go. */
+static size_t btoa_name_slot(const btoa_list *list, const uint16_t *table,
+                             const char *name, bool *taken) {
+    size_t slot = (size_t)(btoa_name_hash(name) & (BTOA_NAME_TABLE - 1U));
+    *taken = false;
+    while (table[slot] != 0U) {
+        if (btoa_same_name(list->items[table[slot] - 1U].name, name)) {
+            *taken = true;
+            return slot;
+        }
+        slot = (slot + 1U) & (BTOA_NAME_TABLE - 1U);
+    }
+    return slot;
+}
+
+/* "~<digit>" is how Windows spells an 8.3 short-name alias: on a volume
+ * with short names, creating "LONGFI~1.BIN" opens the file an earlier
+ * record wrote as "longfilename.bin".  Every such '~' becomes '_', so no
+ * assigned name can alias another record's file. */
+static void btoa_defuse_short_name(char *name) {
+    for (; name[0]; ++name)
+        if (name[0] == '~' && name[1] >= '0' && name[1] <= '9') name[0] = '_';
 }
 
 /* The header name's last path component when it is a safe file name
  * ("-" is btoa's standard input), else the default.  A name already used
  * (ignoring case) by an earlier record gets "_<record number>"; only when a
- * header literally named that too does the suffix count further up. */
-static void btoa_assign_names(btoa_list *list) {
+ * header literally named that too does the suffix count further up.  Each
+ * try is one hash lookup, so even crafted collisions stay cheap. */
+static bool btoa_assign_names(btoa_list *list) {
     size_t index;
+    uint16_t *table;
+    if (list->count > BTOA_MAX_SEGMENTS) return false;
+    table = (uint16_t *)xx_mem_calloc(BTOA_NAME_TABLE, sizeof(*table));
+    if (!table) return false;
     for (index = 0U; index < list->count; ++index) {
         btoa_segment *segment = &list->items[index];
         char base[BTOA_NAME_BUFFER];
         const char *leaf = segment->name, *scan;
-        size_t length;
+        size_t length, slot;
         unsigned suffix;
+        bool taken;
         for (scan = segment->name; *scan; ++scan)
             if (*scan == '/' || *scan == '\\' || *scan == ':') leaf = scan + 1;
         if (!leaf[0] || (leaf[0] == '-' && !leaf[1]) || !btoa_safe_name(leaf))
@@ -719,16 +816,25 @@ static void btoa_assign_names(btoa_list *list) {
         if (length > BTOA_NAME_MAX) length = BTOA_NAME_MAX;
         xx_rt_memcpy(base, leaf, length);
         base[length] = 0;
+        btoa_defuse_short_name(base);
         xx_rt_memcpy(segment->name, base, length + 1U);
-        /* Record numbers are unique, so the first suffix tried almost
-         * always settles it; the walk is bounded by the record count. */
+        /* At most `index` names are taken and index + 1 suffixes are tried
+         * after the plain name, so a free name is always found. */
+        slot = btoa_name_slot(list, table, segment->name, &taken);
         for (suffix = (unsigned)index + 1U;
-             btoa_name_taken(list, index, segment->name) &&
-             suffix <= (unsigned)(index + 1U + list->count);
-             ++suffix)
+             taken && suffix <= (unsigned)(2U * index + 1U); ++suffix) {
             (void)xx_rt_snprintf(segment->name, sizeof(segment->name),
                                  "%s_%u", base, suffix);
+            slot = btoa_name_slot(list, table, segment->name, &taken);
+        }
+        if (taken) {
+            xx_mem_free(table);
+            return false;
+        }
+        table[slot] = (uint16_t)(index + 1U);
     }
+    xx_mem_free(table);
+    return true;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -746,13 +852,16 @@ static bool btoa_collect(Abstractformat *format, btoa_list *list,
         return false;
     total = xx_io_total_size(format->device);
     if (total <= format->base_address) return false;
-    w = (btoa_work *)xx_mem_calloc(1U, sizeof(*w));
+    w = btoa_work_create();
     if (!w) return false;
     w->device = format->device;
     w->end = total;
     xx_mem_zero(&segment, sizeof(segment));
     segment.offset = format->base_address;
-    if (!btoa_validate(w, &segment, pd) || !btoa_list_append(list, &segment))
+    if (!btoa_validate(w, &segment, pd) ||
+        (segment.variant == XX_BTOA_VARIANT_ADOBE &&
+         !btoa_adobe_tail_ok(w, segment.end)) ||
+        !btoa_list_append(list, &segment))
         goto done;
     if (!first_only && segment.variant != XX_BTOA_VARIANT_ADOBE) {
         uint64_t total_decoded = segment.size;
@@ -771,13 +880,13 @@ static bool btoa_collect(Abstractformat *format, btoa_list *list,
             total_decoded += segment.size;
         }
         if (pd && xx_pd_is_stopped(pd)) goto done;
-        btoa_assign_names(list);
+        if (!btoa_assign_names(list)) goto done;
     } else if (!first_only) {
-        btoa_assign_names(list);
+        if (!btoa_assign_names(list)) goto done;
     }
     result = true;
 done:
-    xx_mem_free(w);
+    btoa_work_free(w);
     if (!result) btoa_list_free(list);
     return result;
 }
@@ -991,12 +1100,12 @@ static bool btoa_decode_segment(Abstractformat *format,
     bool result;
     int64_t total = xx_io_total_size(format->device);
     if (total < segment->end) return false;
-    w = (btoa_work *)xx_mem_calloc(1U, sizeof(*w));
+    w = btoa_work_create();
     if (!w) return false;
     w->device = format->device;
     w->end = total;
     result = btoa_extract(w, segment, destination, pd);
-    xx_mem_free(w);
+    btoa_work_free(w);
     return result;
 }
 

@@ -38,6 +38,7 @@ typedef struct tar_nextstep_member_s {
     int64_t data_size;
     uint64_t mtime;
     uint32_t mode;
+    bool directory;
 } tar_nextstep_member;
 
 typedef struct tar_nextstep_private_s {
@@ -223,6 +224,7 @@ static bool tar_nextstep_parse(Abstractformat *format,
         int64_t padded_size;
         char type;
         bool regular;
+        bool directory;
 
         if ((pd && xx_pd_is_stopped(pd)) ||
             !tar_nextstep_add_i64(format->base_address, relative_offset,
@@ -276,7 +278,18 @@ static bool tar_nextstep_parse(Abstractformat *format,
         }
 
         regular = type == '\0' || type == '0';
-        if (regular && header[0] != 0U) {
+        directory = type == '5';
+        if (header[0] != 0U) {
+            size_t name_length = 0U;
+            while (name_length < XX_TAR_NEXTSTEP_NAME_SIZE &&
+                   header[name_length] != 0U) ++name_length;
+            /* Some NextStep writers encode folders as zero-length regular
+             * entries whose names end in a separator. */
+            if (regular && data_size == 0 && name_length > 0U &&
+                (header[name_length - 1U] == '/' ||
+                 header[name_length - 1U] == '\\')) directory = true;
+        }
+        if ((regular || directory) && header[0] != 0U) {
             tar_nextstep_member member;
             xx_mem_zero(&member, sizeof(member));
             member.name = tar_nextstep_copy_name(header, XX_TAR_NEXTSTEP_NAME_SIZE);
@@ -291,6 +304,7 @@ static bool tar_nextstep_parse(Abstractformat *format,
             member.mtime = mtime_u64;
             member.mode = mode_u64 > UINT32_MAX ? UINT32_MAX :
                                                   (uint32_t)mode_u64;
+            member.directory = directory;
             if (!tar_nextstep_add_member(private_state, &member)) {
                 xx_mem_free(member.name);
                 goto fail;
@@ -346,7 +360,8 @@ static const xx_var *tar_nextstep_find_option(const xx_list_s *options,
 
 /* Convert harmless leading ./ components to a relative path and reject names
  * that have ambiguous or unsafe Windows/POSIX filesystem meanings. */
-static char *tar_nextstep_safe_output_name(const char *source) {
+static char *tar_nextstep_safe_output_name(const char *source,
+                                           bool directory) {
     const char *name = source;
     size_t length;
     size_t index;
@@ -355,6 +370,13 @@ static char *tar_nextstep_safe_output_name(const char *source) {
     if (!source) return NULL;
     while (name[0] == '.' && (name[1] == '/' || name[1] == '\\')) name += 2;
     length = xx_str_len(name);
+    if (directory) {
+        while (length > 0U && (name[length - 1U] == '/' ||
+                              name[length - 1U] == '\\')) --length;
+        /* Only an actual sequence of leading ./ components denotes the
+         * archive root; an absolute slash-only path must stay invalid. */
+        if (length == 0U) return name[0] == '\0' ? xx_str_dup(".") : NULL;
+    }
     if (length == 0U || name[0] == '/' || name[0] == '\\' ||
         (length >= 2U && name[1] == ':')) {
         return NULL;
@@ -407,7 +429,7 @@ static bool tar_nextstep_set_record(xx_archive_record *record,
            xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
                                           member->mode) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
-                                           false) &&
+                                           member->directory) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
                                            false);
 }
@@ -618,15 +640,17 @@ bool xx_tar_nextstep_unpack_current_archive_record(
     private_state = (tar_nextstep_private *)archive->internal;
     if (!private_state || stream->index >= private_state->count) return false;
     member = &private_state->members[stream->index];
-    safe_name = tar_nextstep_safe_output_name(member->name);
+    safe_name = tar_nextstep_safe_output_name(member->name,
+                                               member->directory);
     if (!safe_name) goto cleanup;
     path_option = tar_nextstep_find_option(&state->options,
                                            XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
-        result = member->data_offset >= 0 && member->data_size >= 0 &&
+        result = member->directory ||
+                 (member->data_offset >= 0 && member->data_size >= 0 &&
                  member->data_offset <= xx_io_total_size(self->device) &&
                  member->data_size <=
-                     xx_io_total_size(self->device) - member->data_offset;
+                     xx_io_total_size(self->device) - member->data_offset);
         goto cleanup;
     }
     if (path_option->type == XX_VAR_TYPE_STRING ||
@@ -638,12 +662,16 @@ bool xx_tar_nextstep_unpack_current_archive_record(
         base = owned_base;
     }
     if (!base) goto cleanup;
-    destination = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-                   base[xx_str_len(base) - 1U] != '\\')
-                      ? xx_str_concat3(base, "/", safe_name)
-                      : xx_str_concat(base, safe_name);
+    destination = member->directory && xx_str_cmp(safe_name, ".") == 0
+                      ? xx_str_dup(base)
+                      : ((base[0] && base[xx_str_len(base) - 1U] != '/' &&
+                          base[xx_str_len(base) - 1U] != '\\')
+                             ? xx_str_concat3(base, "/", safe_name)
+                             : xx_str_concat(base, safe_name));
     if (!destination) goto cleanup;
-    if (xx_store_create_dirs_a(destination, false)) {
+    if (member->directory) {
+        result = xx_store_create_dirs_a(destination, true);
+    } else if (xx_store_create_dirs_a(destination, false)) {
         result = xx_store_unpack_device_to_file(self->device,
                                                  member->data_offset,
                                                  member->data_size,

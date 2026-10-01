@@ -29,6 +29,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/frontpagetheme/xx_frontpagetheme.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -186,7 +187,8 @@ typedef struct xx_frontpagetheme_reader_s {
     int64_t offset; /* next byte to pull from the device, relative to base */
     size_t fill;
     size_t position;
-    uint8_t data[XX_FRONTPAGETHEME_CHUNK];
+    uint8_t *data;
+    size_t capacity;
 } xx_frontpagetheme_reader;
 
 /* Bytes handed out so far: what is left in the window has been read from the
@@ -203,7 +205,8 @@ static bool xx_frontpagetheme_next(xx_frontpagetheme_reader *reader,
         size_t want;
 
         if (remaining <= 0) return false;
-        want = (size_t)XX_FRONTPAGETHEME_CHUNK;
+        if (!reader->data) { reader->data=(uint8_t *)xx_mem_alloc(reader->capacity); if(!reader->data) return false; }
+        want = reader->capacity;
         if ((int64_t)want > remaining) want = (size_t)remaining;
         if (!xx_frontpagetheme_read_at(reader->self,
                                        reader->self->base_address +
@@ -317,7 +320,8 @@ static bool xx_frontpagetheme_decimal(const char *text, size_t length,
 static xx_frontpagetheme_stream *xx_frontpagetheme_parse(Abstractformat *self,
                                                          xx_pd_struct *pd) {
     xx_frontpagetheme_stream *stream = NULL;
-    xx_frontpagetheme_reader reader;
+    xx_frontpagetheme_reader reader = {0};
+    const size_t io_capacity = xx_get_file_buffer_size();
     char line[XX_FRONTPAGETHEME_MAX_LINE + 1];
     uint8_t marker[XX_FRONTPAGETHEME_MARKER_SIZE];
     int64_t total;
@@ -329,20 +333,21 @@ static xx_frontpagetheme_stream *xx_frontpagetheme_parse(Abstractformat *self,
     int64_t offset;
     size_t length = 0U;
 
-    if (!self || !self->device || self->base_address < 0) return NULL;
+    if (!self || !self->device || self->base_address < 0) { xx_mem_free(reader.data); return NULL; }
     total = xx_io_total_size(self->device);
-    if (total < self->base_address) return NULL;
+    if (total < self->base_address) { xx_mem_free(reader.data); return NULL; }
     span = total - self->base_address;
-    if (span < XX_FRONTPAGETHEME_MIN_SIZE) return NULL;
+    if (span < XX_FRONTPAGETHEME_MIN_SIZE) { xx_mem_free(reader.data); return NULL; }
 
     xx_mem_zero(&reader, sizeof(reader));
     reader.self = self;
     reader.span = span;
+    reader.capacity = (uint64_t)span<io_capacity ? (size_t)span:io_capacity;
 
     if (!xx_frontpagetheme_read_line(&reader, line,
                                      XX_FRONTPAGETHEME_MAX_VERSION, &length) ||
         !xx_frontpagetheme_is_version(line, length)) {
-        return NULL;
+        { xx_mem_free(reader.data); return NULL; }
     }
     if (!xx_frontpagetheme_read_line(&reader, line,
                                      XX_FRONTPAGETHEME_MAX_COUNT_DIGITS,
@@ -351,18 +356,18 @@ static xx_frontpagetheme_stream *xx_frontpagetheme_parse(Abstractformat *self,
                                    XX_FRONTPAGETHEME_MAX_COUNT_DIGITS,
                                    XX_FRONTPAGETHEME_MAX_MEMBERS, &count) ||
         count < 1) {
-        return NULL;
+        { xx_mem_free(reader.data); return NULL; }
     }
 
     offset = xx_frontpagetheme_consumed(&reader);
     /* Every member costs at least a directory line and a marker, so a count
      * the file cannot possibly hold is thrown out here, before the walk. */
     if (count > (span - offset) / XX_FRONTPAGETHEME_MIN_MEMBER_COST) {
-        return NULL;
+        { xx_mem_free(reader.data); return NULL; }
     }
 
     stream = (xx_frontpagetheme_stream *)xx_mem_alloc(sizeof(*stream));
-    if (!stream) return NULL;
+    if (!stream) { xx_mem_free(reader.data); return NULL; }
     xx_mem_zero(stream, sizeof(*stream));
 
     /* Pass 1: the directory. Names and sizes only -- a payload offset
@@ -450,11 +455,11 @@ static xx_frontpagetheme_stream *xx_frontpagetheme_parse(Abstractformat *self,
      * good deal else -- look like a valid archive. */
     if (offset != span) goto fail;
     stream->archive_size = span;
-    return stream;
+    { xx_mem_free(reader.data); return stream; }
 
 fail:
     xx_frontpagetheme_stream_free(stream);
-    return NULL;
+    { xx_mem_free(reader.data); return NULL; }
 }
 
 

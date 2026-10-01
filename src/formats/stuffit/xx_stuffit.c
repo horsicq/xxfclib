@@ -77,6 +77,12 @@
 #define SIT_MAX_DEPTH 32U
 /* A fork is decoded in memory; refuse to allocate more than this for one. */
 #define SIT_MAX_DECODE UINT64_C(0x10000000)
+/* Decoded bytes a single archive may spend on forks that then fail (bad
+ * data or CRC).  A tiny fork may legitimately claim 256 MiB, so hostile
+ * input can make each fork cost a full decode that is thrown away; once
+ * this much work has been wasted, further compressed forks are refused
+ * without decoding.  Intact archives never touch it. */
+#define SIT_MAX_WASTED_DECODE UINT64_C(0x40000000)
 
 #define SIT_METHOD_NONE 0U
 #define SIT_METHOD_RLE 1U
@@ -549,7 +555,6 @@ static bool sit13_decode(const uint8_t *input, size_t input_size,
             size_t distance;
             uint32_t offset_bits = 0U;
             uint32_t extra = 0U;
-            size_t index;
             if (symbol <= 0x13dU) {
                 length = (size_t)(symbol - 0x100U) + 3U;
             } else if (symbol == 0x13eU) {
@@ -585,9 +590,22 @@ static bool sit13_decode(const uint8_t *input, size_t input_size,
                 rc = 3;
                 goto done;
             }
-            for (index = 0U; index < length; ++index) {
-                output[output_pos] = output[output_pos - distance];
-                output_pos++;
+            if (distance >= length) {
+                xx_mem_copy(output + output_pos, output + output_pos - distance,
+                            length);
+                output_pos += length;
+            } else {
+                /* Overlapping match: copy the repeating period in chunks
+                 * that grow as the already-copied part lengthens. */
+                size_t done = 0U;
+                while (done < length) {
+                    size_t chunk = distance + done;
+                    if (chunk > length - done) chunk = length - done;
+                    xx_mem_copy(output + output_pos + done,
+                                output + output_pos - distance, chunk);
+                    done += chunk;
+                }
+                output_pos += length;
             }
             use_first = false;
         }
@@ -1088,7 +1106,9 @@ typedef struct sit_member_s {
 typedef struct sit_stream_s {
     sit_member *items;
     size_t count;
+    size_t capacity;
     size_t index;
+    uint64_t wasted_decode;
     int64_t archive_size;
     uint32_t declared_members;
     uint8_t version;
@@ -1263,14 +1283,19 @@ static void sit_stream_free(void *opaque) {
 
 static bool sit_add_member(sit_stream *stream, const sit_member *member) {
     sit_member *grown;
-    if (!stream || !member || stream->count >= SIT_MAX_MEMBERS ||
-        stream->count > SIZE_MAX / sizeof(*grown) - 1U)
-        return false;
-    grown = (sit_member *)xx_mem_realloc(stream->items,
-                                         (stream->count + 1U) *
-                                             sizeof(*grown));
-    if (!grown) return false;
-    stream->items = grown;
+    if (!stream || !member || stream->count >= SIT_MAX_MEMBERS) return false;
+    /* Geometric growth: one realloc per member made a header-only archive
+     * at the member cap quadratic (tens of seconds in the probe). */
+    if (stream->count == stream->capacity) {
+        size_t capacity = stream->capacity != 0U ? stream->capacity * 2U : 64U;
+        if (capacity > SIT_MAX_MEMBERS) capacity = SIT_MAX_MEMBERS;
+        if (capacity > SIZE_MAX / sizeof(*grown)) return false;
+        grown = (sit_member *)xx_mem_realloc(stream->items,
+                                             capacity * sizeof(*grown));
+        if (!grown) return false;
+        stream->items = grown;
+        stream->capacity = capacity;
+    }
     stream->items[stream->count++] = *member;
     return true;
 }
@@ -1658,13 +1683,15 @@ static uint64_t sit_max_expansion(uint8_t method) {
     }
 }
 
-static bool sit_decode_member(Abstractformat *format, const sit_member *member,
-                              uint8_t **plain, size_t *plain_size) {
+static bool sit_decode_member(Abstractformat *format, sit_stream *stream,
+                              const sit_member *member, uint8_t **plain,
+                              size_t *plain_size) {
     uint8_t *packed = NULL;
     uint8_t *output = NULL;
     size_t output_size;
     bool decoded = false;
-    if (!format || !member || !plain || !plain_size || member->encrypted ||
+    if (!format || !stream || !member || !plain || !plain_size ||
+        member->encrypted ||
         member->packed_size < 0 || member->unpacked_size > SIZE_MAX)
         return false;
     if (member->folder) {
@@ -1692,7 +1719,10 @@ static bool sit_decode_member(Abstractformat *format, const sit_member *member,
         (uint64_t)member->packed_size * sit_max_expansion(member->method) +
             4096U)
         return false;
-    packed =(uint8_t *)xx_mem_alloc(
+    if (member->method != SIT_METHOD_NONE &&
+        stream->wasted_decode >= SIT_MAX_WASTED_DECODE)
+        return false;
+    packed = (uint8_t *)xx_mem_alloc(
         member->packed_size != 0 ? (size_t)member->packed_size : 1U);
     output = (uint8_t *)xx_mem_alloc(output_size != 0U ? output_size : 1U);
     if (!packed || !output ||
@@ -1732,7 +1762,10 @@ static bool sit_decode_member(Abstractformat *format, const sit_member *member,
     return true;
 fail:
     if (packed) xx_mem_free(packed);
-    if (output) xx_mem_free(output);
+    if (output) {
+        stream->wasted_decode += (uint64_t)output_size;
+        xx_mem_free(output);
+    }
     return false;
 }
 
@@ -1898,7 +1931,7 @@ bool xx_stuffit_unpack_current_archive_record(Abstractformat *format,
         return false;
     member = &stream->items[stream->index];
     if (!sit_safe_output_name(member->name) ||
-        !sit_decode_member(format, member, &plain, &plain_size))
+        !sit_decode_member(format, stream, member, &plain, &plain_size))
         goto done;
     path_option = sit_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {

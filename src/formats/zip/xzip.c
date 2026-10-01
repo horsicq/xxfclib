@@ -19,9 +19,10 @@
  * SOFTWARE.
  */
 
+#include "../xio.h"
 #include "../../formats/zip/xzip.h"
-#include "../../die_engine/inflate.h"
-#include "../../die_engine/die_engine_compat.h"
+#include "../../die_engine/xx_die_engine_inflate.h"
+#include "../../die_engine/xx_die_engine_compat.h"
 
 #include "xxfclib/json/xx_json.h"
 #include "xxfclib/strings/xx_string.h"
@@ -40,7 +41,6 @@
 static int zip_read_member(DieFile *pFile, cd_u16 nMethod, cd_u32 nCompSize, cd_u32 nUncompSize, cd_u32 nLocalOffset, size_t nMaxSize, CDBuf *pOut)
 {
     cd_i64 nSize = pFile->nSize;
-    const unsigned char *pData = pFile->pData;
     cd_u16 nLocalNameLen = 0;
     cd_u16 nLocalExtraLen = 0;
     cd_i64 nDataOffset = 0;
@@ -49,7 +49,7 @@ static int zip_read_member(DieFile *pFile, cd_u16 nMethod, cd_u32 nCompSize, cd_
         return 0;
     }
 
-    if (!((pData[nLocalOffset] == 0x50) && (pData[nLocalOffset + 1] == 0x4B) && (pData[nLocalOffset + 2] == 0x03) && (pData[nLocalOffset + 3] == 0x04))) {
+    if (!xio_match(pFile, nLocalOffset, "\x50\x4B\x03\x04", 4)) {
         return 0;
     }
 
@@ -68,13 +68,16 @@ static int zip_read_member(DieFile *pFile, cd_u16 nMethod, cd_u32 nCompSize, cd_
             nCopy = nMaxSize;
         }
 
-        cdbuf_append(pOut, pData + nDataOffset, nCopy);
-
-        return 1;
+        return xio_append(pFile, nDataOffset, nCopy, pOut);
     }
 
     if (nMethod == 8) {
-        return inflate_raw(pData + nDataOffset, nCompSize, nUncompSize, nMaxSize, pOut);
+        unsigned char *pOwned = NULL;
+        const unsigned char *pCompressed = pFile->pData ? pFile->pData + nDataOffset :
+            (pOwned = xio_read_owned(pFile, nDataOffset, nCompSize));
+        int bResult = pCompressed ? inflate_raw(pCompressed, nCompSize, nUncompSize, nMaxSize, pOut) : 0;
+        cd_free(pOwned);
+        return bResult;
     }
 
     return 0;
@@ -168,7 +171,6 @@ static int name_ext_is_class(const char *pName)
 int xzip_parse(DieFile *pFile, XZip *pZip)
 {
     cd_i64 nSize = 0;
-    const unsigned char *pData = NULL;
     cd_i64 nEocd = -1;
     cd_i64 i = 0;
     cd_i64 nCentralOffset = 0;
@@ -183,7 +185,6 @@ int xzip_parse(DieFile *pFile, XZip *pZip)
     }
 
     nSize = pFile->nSize;
-    pData = pFile->pData;
 
     if (nSize < 22) {
         return 0;
@@ -195,7 +196,7 @@ int xzip_parse(DieFile *pFile, XZip *pZip)
             break;
         }
 
-        if ((pData[i] == 0x50) && (pData[i + 1] == 0x4B) && (pData[i + 2] == 0x05) && (pData[i + 3] == 0x06)) {
+        if (xio_match(pFile, i, "\x50\x4B\x05\x06", 4)) {
             nEocd = i;
 
             break;
@@ -224,7 +225,7 @@ int xzip_parse(DieFile *pFile, XZip *pZip)
             break;
         }
 
-        if (!((pData[nCentralOffset] == 0x50) && (pData[nCentralOffset + 1] == 0x4B) && (pData[nCentralOffset + 2] == 0x01) && (pData[nCentralOffset + 3] == 0x02))) {
+        if (!xio_match(pFile, nCentralOffset, "\x50\x4B\x01\x02", 4)) {
             break;
         }
 
@@ -241,10 +242,15 @@ int xzip_parse(DieFile *pFile, XZip *pZip)
             break;
         }
 
-        pName = cd_strndup((const char *)(pData + nNameOffset), nNameLen);
+        {
+            CDBuf sName;
+            cdbuf_init(&sName);
+            xio_append(pFile, nNameOffset, nNameLen, &sName);
+            pName = cdbuf_detach(&sName, NULL);
+        }
         cdvec_push(&pZip->vecNames, pName);
 
-        if ((pZip->pManifestText == NULL) && (nNameLen == 20) && (x_memcmp(pData + nNameOffset, "META-INF/MANIFEST.MF", 20) == 0)) {
+        if ((pZip->pManifestText == NULL) && (nNameLen == 20) && (xio_match(pFile, nNameOffset, "META-INF/MANIFEST.MF", 20))) {
             CDBuf manifest;
 
             cdbuf_init(&manifest);
@@ -256,7 +262,7 @@ int xzip_parse(DieFile *pFile, XZip *pZip)
             }
         }
 
-        if ((pZip->pPackageJson == NULL) && (nNameLen == 20) && (x_memcmp(pData + nNameOffset, "package/package.json", 20) == 0)) {
+        if ((pZip->pPackageJson == NULL) && (nNameLen == 20) && (xio_match(pFile, nNameOffset, "package/package.json", 20))) {
             CDBuf json;
 
             cdbuf_init(&json);

@@ -41,5 +41,56 @@ static int ace_symbol(ace_state *s,bool blocked){unsigned code,length_code,base=
 static bool ace_init(ace_state *s,const void *source,size_t source_size,void *destination,size_t destination_size,unsigned dictionary_bits){if((!source&&source_size)||!destination||source_size==0U||(source_size&3U)||dictionary_bits<ACE_DICT_MIN||dictionary_bits>ACE_DICT_MAX)return false;xx_rt_memset(s,0,sizeof(*s));s->bits.data=(const uint8_t *)source;s->bits.size=source_size;s->output=(uint8_t *)destination;s->output_size=destination_size;s->dict_size=(size_t)1U<<dictionary_bits;s->dict=(uint8_t *)xx_mem_calloc(s->dict_size,1U);return s->dict!=NULL;}
 static bool ace_filter_delta(uint8_t *out,size_t start,size_t end,unsigned dist,uint32_t expected,uint8_t *last){uint8_t *tmp;size_t n=end-start,i,plane,pos;if(!dist||!expected||n!=expected||n%dist)return false;for(i=start;i<end;i++){out[i]=(uint8_t)(out[i]+*last);*last=out[i];}tmp=(uint8_t *)xx_mem_alloc(n);if(!tmp)return false;plane=n/dist;pos=0;for(i=0;i<plane;i++){size_t j;for(j=i;j<n;j+=plane)tmp[pos++]=out[start+j];}xx_rt_memcpy(out+start,tmp,n);xx_mem_free(tmp);return true;}
 static void ace_filter_exe(uint8_t *out,size_t start,size_t end,unsigned mode){size_t i;for(i=start;i<end;i++){uint32_t v,pos=(uint32_t)i;if(out[i]==0xe8U&&i+2U<end){if(mode==0U){v=(uint32_t)out[i+1]|((uint32_t)out[i+2]<<8);v=(v-pos)&0xffffU;out[i+1]=(uint8_t)v;out[i+2]=(uint8_t)(v>>8);i+=2U;}else if(i+4U<end){v=(uint32_t)out[i+1]|((uint32_t)out[i+2]<<8)|((uint32_t)out[i+3]<<16)|((uint32_t)out[i+4]<<24);v-=pos;out[i+1]=(uint8_t)v;out[i+2]=(uint8_t)(v>>8);out[i+3]=(uint8_t)(v>>16);out[i+4]=(uint8_t)(v>>24);i+=4U;}}else if(out[i]==0xe9U&&i+2U<end){v=(uint32_t)out[i+1]|((uint32_t)out[i+2]<<8);v=(v-pos)&0xffffU;out[i+1]=(uint8_t)v;out[i+2]=(uint8_t)(v>>8);i+=2U;}}}
-bool xx_ace_decode_lzh(const void *source,size_t source_size,void *destination,size_t destination_size,unsigned dictionary_bits){ace_state s;bool ok;if(!ace_init(&s,source,source_size,destination,destination_size,dictionary_bits))return false;while(s.output_pos<destination_size&&!s.bits.bad)if(ace_symbol(&s,false)!=0){s.bits.bad=true;break;}ok=!s.bits.bad&&s.output_pos==destination_size&&s.bits.position<=source_size*8U&&source_size*8U-s.bits.position<32U;xx_mem_free(s.dict);return ok;}
-bool xx_ace_decode_blocked(const void *source,size_t source_size,void *destination,size_t destination_size,unsigned dictionary_bits){ace_state s;size_t begin=0;uint8_t mode=0,last_delta=0,delta_dist=0,exe_mode=0;uint32_t delta_len=0;bool ok=false;if(!ace_init(&s,source,source_size,destination,destination_size,dictionary_bits))return false;while(s.output_pos<destination_size&&!s.bits.bad){int got=ace_symbol(&s,true);if(got<0)break;if(got==1){if(mode==1U&&!ace_filter_delta(s.output,begin,s.output_pos,delta_dist,delta_len,&last_delta))break;if(mode==2U)ace_filter_exe(s.output,begin,s.output_pos,exe_mode);if(s.next_mode>2U){s.bits.bad=true;break;}mode=s.next_mode;delta_dist=s.delta_dist;delta_len=s.delta_len;exe_mode=s.exe_mode;begin=s.output_pos;}}if(!s.bits.bad){if(mode==1U)ok=ace_filter_delta(s.output,begin,s.output_pos,delta_dist,delta_len,&last_delta);else{if(mode==2U)ace_filter_exe(s.output,begin,s.output_pos,exe_mode);ok=true;}}ok=ok&&s.output_pos==destination_size&&s.bits.position<=source_size*8U&&source_size*8U-s.bits.position<32U;xx_mem_free(s.dict);return ok;}
+void xx_ace_history_clear(xx_ace_history *history) {
+    if (!history) return;
+    xx_mem_free(history->dictionary);
+    xx_rt_memset(history, 0, sizeof(*history));
+}
+bool xx_ace_history_append(xx_ace_history *history, const void *bytes,
+                           size_t count, unsigned dictionary_bits) {
+    const uint8_t *source = (const uint8_t *)bytes;
+    size_t size, i;
+    if (!history || (!source && count) || dictionary_bits < ACE_DICT_MIN ||
+        dictionary_bits > ACE_DICT_MAX) return false;
+    size = (size_t)1U << dictionary_bits;
+    if (history->dictionary_size != size) xx_ace_history_clear(history);
+    if (!history->dictionary) {
+        history->dictionary = (uint8_t *)xx_mem_calloc(size, 1U);
+        if (!history->dictionary) return false;
+        history->dictionary_size = size;
+    }
+    for (i = 0; i < count; ++i) {
+        history->dictionary[history->position] = source[i];
+        history->position = (history->position + 1U) & (size - 1U);
+        if (history->filled < size) ++history->filled;
+    }
+    return true;
+}
+static void ace_reuse_history(ace_state *s, xx_ace_history *history) {
+    if (!history || !history->dictionary) return;
+    if (history->dictionary_size != s->dict_size || history->position >= s->dict_size ||
+        history->filled > s->dict_size) {
+        xx_ace_history_clear(history);
+        return;
+    }
+    xx_mem_free(s->dict);
+    s->dict = history->dictionary;
+    s->dict_pos = history->position;
+    s->history = history->filled;
+    xx_rt_memset(history, 0, sizeof(*history));
+}
+static void ace_finish_history(ace_state *s, xx_ace_history *history, bool ok) {
+    if (history && ok) {
+        history->dictionary = s->dict;
+        history->dictionary_size = s->dict_size;
+        history->position = s->dict_pos;
+        history->filled = s->history;
+    } else {
+        xx_mem_free(s->dict);
+        if (history) xx_ace_history_clear(history);
+    }
+}
+bool xx_ace_decode_lzh_solid(const void *source,size_t source_size,void *destination,size_t destination_size,unsigned dictionary_bits,xx_ace_history *history){ace_state s;bool ok;if(!ace_init(&s,source,source_size,destination,destination_size,dictionary_bits))return false;ace_reuse_history(&s,history);while(s.output_pos<destination_size&&!s.bits.bad)if(ace_symbol(&s,false)!=0){s.bits.bad=true;break;}ok=!s.bits.bad&&s.output_pos==destination_size&&s.bits.position<=source_size*8U&&source_size*8U-s.bits.position<32U;ace_finish_history(&s,history,ok);return ok;}
+bool xx_ace_decode_lzh(const void *source,size_t source_size,void *destination,size_t destination_size,unsigned dictionary_bits){return xx_ace_decode_lzh_solid(source,source_size,destination,destination_size,dictionary_bits,NULL);}
+bool xx_ace_decode_blocked_solid(const void *source,size_t source_size,void *destination,size_t destination_size,unsigned dictionary_bits,xx_ace_history *history){ace_state s;size_t begin=0;uint8_t mode=0,last_delta=0,delta_dist=0,exe_mode=0;uint32_t delta_len=0;bool ok=false;if(!ace_init(&s,source,source_size,destination,destination_size,dictionary_bits))return false;ace_reuse_history(&s,history);while(s.output_pos<destination_size&&!s.bits.bad){int got=ace_symbol(&s,true);if(got<0)break;if(got==1){if(mode==1U&&!ace_filter_delta(s.output,begin,s.output_pos,delta_dist,delta_len,&last_delta))break;if(mode==2U)ace_filter_exe(s.output,begin,s.output_pos,exe_mode);if(s.next_mode>2U){s.bits.bad=true;break;}mode=s.next_mode;delta_dist=s.delta_dist;delta_len=s.delta_len;exe_mode=s.exe_mode;begin=s.output_pos;}}if(!s.bits.bad){if(mode==1U)ok=ace_filter_delta(s.output,begin,s.output_pos,delta_dist,delta_len,&last_delta);else{if(mode==2U)ace_filter_exe(s.output,begin,s.output_pos,exe_mode);ok=true;}}ok=ok&&s.output_pos==destination_size&&s.bits.position<=source_size*8U&&source_size*8U-s.bits.position<32U;ace_finish_history(&s,history,ok);return ok;}
+bool xx_ace_decode_blocked(const void *source,size_t source_size,void *destination,size_t destination_size,unsigned dictionary_bits){return xx_ace_decode_blocked_solid(source,source_size,destination,destination_size,dictionary_bits,NULL);}

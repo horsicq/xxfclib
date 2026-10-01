@@ -216,7 +216,7 @@ static int xx_lzh5_read_pt_length(xx_lzh5_bits *bits) {
 /* Read a table of code lengths that is itself coded with the prefix code. */
 static bool xx_lzh5_read_pt(xx_lzh5_bits *bits, xx_lzh5_huff *table,
                             int size, int count_bits, bool is_position) {
-    uint8_t lengths[XX_LZH5_PT_SIZE > 32 ? XX_LZH5_PT_SIZE : 32];
+    uint8_t lengths[63]; /* LHARK may declare up to 63 position lengths. */
     int available = (int)xx_lzh5_read_bits(bits, count_bits);
     int index = 0;
 
@@ -309,11 +309,13 @@ bool xx_lzh5_decode_memory(const uint8_t *input, size_t input_size,
         case 5: window_bits = 13; break;
         case 6: window_bits = 15; break;
         case 7: window_bits = 16; break;
+        case 8: window_bits = 20; break;
+        case 9: window_bits = 16; break;
         default: return false;
     }
-    position_size = window_bits + 1;
+    position_size = method == 9 ? 63 : window_bits + 1;
     /* The wider windows need a five-bit count for the position table. */
-    position_count_bits = (window_bits >= 15) ? 5 : 4;
+    position_count_bits = method == 9 ? 6 : ((window_bits >= 15) ? 5 : 4);
 
     if (output_size == 0U) return true;
     xx_lzh5_bits_init(&bits, input, input_size);
@@ -341,6 +343,20 @@ bool xx_lzh5_decode_memory(const uint8_t *input, size_t input_size,
             }
             {
                 int length = symbol - 256 + XX_LZH5_MIN_MATCH;
+                if (method == 9) {
+                    if (symbol > 288) return false;
+                    if (symbol >= 264) {
+                        if (symbol < 288) {
+                            int nbits = (symbol - 260) / 4;
+                            length = ((4 + (symbol % 4)) << nbits) +
+                                     (int)xx_lzh5_read_bits(&bits, nbits) + 3;
+                        } else {
+                            length = 514;
+                        }
+                    }
+                    if (bits.overrun || (size_t)length > output_size - produced)
+                        return false;
+                }
                 int code = xx_lzh5_decode_symbol(&bits, &position);
                 size_t distance;
                 size_t index;
@@ -348,8 +364,13 @@ bool xx_lzh5_decode_memory(const uint8_t *input, size_t input_size,
                 if (code < 0 || code >= position_size || bits.overrun) {
                     return false;
                 }
+                if (method == 9 && code > 31) return false;
                 if (code <= 1) {
                     distance = (size_t)code + 1U;
+                } else if (method == 9) {
+                    int nbits = (code - 2) / 2;
+                    distance = (size_t)((2 + (code % 2)) << nbits) +
+                               (size_t)xx_lzh5_read_bits(&bits, nbits) + 1U;
                 } else {
                     distance = ((size_t)1U << (code - 1)) +
                                (size_t)xx_lzh5_read_bits(&bits, code - 1) + 1U;

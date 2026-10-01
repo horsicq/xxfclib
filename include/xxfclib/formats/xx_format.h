@@ -33,6 +33,7 @@
 #include "xxfclib/data/xx_pd.h"
 #include "xxfclib/list/xx_list.h"
 #include "xxfclib/var/xx_var.h"
+#include "xxfclib/strings/xx_string.h"
 #include "xxfclib/xxfc_defs.h"
 #include <stdbool.h>
 #include <stddef.h>
@@ -59,6 +60,12 @@ typedef struct Abstractformat xx_abstract_format;
 typedef struct Abstractformat AbstractFormat;
 
 /* Forward declaration and types for archive record & metadata */
+/** Display label paired with a typed value. Ownership is defined by the consumer. */
+typedef struct xx_meta_string {
+  xx_str_w_s *meta_string;
+  xx_var var;
+} xx_meta_string;
+
 typedef struct xx_meta xx_meta;
 typedef struct xx_meta xx_meta_t;
 typedef struct xx_archive_record xx_archive_record;
@@ -665,6 +672,19 @@ XXFC_API void xx_format_set_type(Abstractformat *f, xx_format_type_t type);
 XXFC_API xx_file_type_t xx_format_get_file_type(Abstractformat *f);
 XXFC_API xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev);
 
+/** Return a provisional type from a case-insensitive filename suffix alone.
+ * Compound suffixes are tried first. Unknown/shared suffixes return UNKNOWN.
+ * This performs no I/O, allocations, reader construction or validation. */
+XXFC_API xx_file_type_t xx_format_get_file_type_extension(const char *source_path);
+
+/** Extension-first detection. A known suffix returns immediately without
+ * touching the device. Otherwise calls the existing content detector.
+ * NULL source_path uses the file-backed device's path, when available.
+ * Extension results are hints: validate with the selected reader before use.
+ * The legacy xx_format_get_file_type_device() remains content-only. */
+XXFC_API xx_file_type_t xx_format_get_file_type_device_fast(
+    xx_io_device *dev, const char *source_path);
+
 /**
  * @brief Longest chain xx_format_get_file_type_chain() can produce.
  */
@@ -713,6 +733,20 @@ XXFC_API size_t xx_format_get_file_type_chain(xx_file_type_t type,
  *         xx_list_destroy().
  */
 XXFC_API xx_list_t *xx_format_get_file_types_device(xx_io_device *dev);
+
+/**
+ * @brief List every file type supported by the formats library.
+ *
+ * Returns the complete format catalog (including BINARY, excluding UNKNOWN),
+ * in ascending xx_file_type_t order. Detection/inspection support does not
+ * imply that an application can extract or write every listed format.
+ * Use xx_format_file_type_to_string() for the display name.
+ *
+ * @return A caller-owned list of xx_file_type_t, or NULL on allocation failure.
+ *         Release it with xx_list_destroy(). Each call returns an independent
+ *         list; callers may modify it without changing the library catalog.
+ */
+XXFC_API xx_list_t *xx_format_get_supported_file_types(void);
 
 /**
  * @brief Short display name for a file type, for example "PE64" or "TAR.GZ".

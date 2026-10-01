@@ -61,6 +61,7 @@ typedef struct xx_str_w_s {
 
 /* Type aliases */
 typedef xx_str_a_t xx_string_a;
+typedef xx_str_w_t xx_str_w_s;
 typedef xx_str_w_t xx_string_w;
 typedef xx_str_a_t str_a;
 typedef xx_str_w_t str_w;

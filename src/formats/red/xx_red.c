@@ -38,6 +38,7 @@
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/red/xx_red.h"
 
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/algo/lzh/xx_lzh.h"
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/io/xx_io.h"
@@ -94,16 +95,7 @@ static uint32_t red_le32(const uint8_t *bytes) {
 
 /* CRC-16/IBM-3740: poly 0x1021, init 0xFFFF, no reflection, no final xor. */
 static uint16_t red_crc16(const uint8_t *data, size_t size) {
-    uint16_t crc = 0xFFFFU;
-    size_t index;
-    for (index = 0U; index < size; ++index) {
-        unsigned bit;
-        crc ^= (uint16_t)((uint16_t)data[index] << 8U);
-        for (bit = 0U; bit < 8U; ++bit)
-            crc = (crc & 0x8000U) ? (uint16_t)((crc << 1U) ^ 0x1021U)
-                                  : (uint16_t)(crc << 1U);
-    }
-    return crc;
+    return xx_crc16_ccitt_calc(0xFFFFU, data, size);
 }
 
 static bool red_read_at(xx_io_device *device, int64_t offset, void *buffer,

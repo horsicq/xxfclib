@@ -33,6 +33,7 @@
  * here, so the alias macro defined next to the enumerator is tested instead;
  * this picks up the real file type as soon as NRG is registered there. */
 #ifdef NRG
+
 #define XX_NRG_FILE_TYPE XX_FILE_TYPE_NRG
 #else
 #define XX_NRG_FILE_TYPE XX_FILE_TYPE_UNKNOWN
@@ -93,6 +94,42 @@ typedef struct nrg_stream_s {
     size_t index;
 } nrg_stream;
 
+#include "xxfclib/global/xx_global.h"
+static size_t gb_nrg_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_nrg_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_nrg_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+
+
 static uint32_t nrg_be16(const uint8_t *b) {
     return ((uint32_t)b[0] << 8U) | (uint32_t)b[1];
 }
@@ -108,13 +145,14 @@ static uint64_t nrg_be64(const uint8_t *b) {
 
 static bool nrg_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
+    const size_t file_io_capacity = gb_nrg_capacity();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = gb_nrg_read(device, (uint8_t *)buffer + done,
+                                    size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -342,6 +380,33 @@ static bool nrg_build_members(nrg_image *image, int64_t base) {
     return image->member_count != 0U;
 }
 
+bool xx_nrg_probe_device(xx_io_device *device) {
+    uint8_t footer[NRG_FOOTER_V2];
+    int64_t total = device ? xx_io_total_size(device) : -1;
+    int64_t saved = device ? xx_io_tell(device) : -1;
+    int64_t footer_offset;
+    uint64_t list;
+    bool result = false;
+    if (total < NRG_MIN_SECTOR + NRG_CHUNK_HEADER + NRG_ETNF_ENTRY +
+                    NRG_CHUNK_HEADER + NRG_FOOTER_V1 ||
+        !nrg_read_at(device, total - NRG_FOOTER_V2, footer, sizeof(footer)))
+        goto done;
+    if (nrg_tag_is(footer, "NER5")) {
+        list = nrg_be64(footer + 4U);
+        footer_offset = total - NRG_FOOTER_V2;
+    } else if (nrg_tag_is(footer + 4U, "NERO")) {
+        list = nrg_be32(footer + 8U);
+        footer_offset = total - NRG_FOOTER_V1;
+    } else {
+        goto done;
+    }
+    result = list >= NRG_MIN_SECTOR &&
+             list <= (uint64_t)(footer_offset - NRG_CHUNK_HEADER);
+done:
+    if (saved >= 0) (void)xx_io_seek64(device, saved, SEEK_SET);
+    return result;
+}
+
 static bool nrg_parse(Abstractformat *format, nrg_image **result) {
     uint8_t footer[NRG_FOOTER_V2];
     uint8_t header[NRG_CHUNK_HEADER];
@@ -520,17 +585,18 @@ static bool nrg_set_record(xx_archive_record *record,
  * no destination the bytes are only read, which proves they are there. */
 static bool nrg_copy_member(Abstractformat *format, const nrg_member *member,
                             xx_io_device *destination, xx_pd_struct *pd) {
+    const size_t file_io_capacity = gb_nrg_capacity();
     uint8_t *buffer;
     int64_t done = 0;
     bool result = true;
     if (!format || !member || member->size < 0 || member->data_offset < 0 ||
         member->size > xx_io_total_size(format->device) - member->data_offset)
         return false;
-    buffer = (uint8_t *)xx_mem_alloc(NRG_COPY_CHUNK);
+    buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (done < member->size) {
-        size_t amount = member->size - done > (int64_t)NRG_COPY_CHUNK
-                            ? NRG_COPY_CHUNK
+        size_t amount = member->size - done > (int64_t)file_io_capacity
+                            ? file_io_capacity
                             : (size_t)(member->size - done);
         size_t written = 0U;
         if ((pd && xx_pd_is_stopped(pd)) ||
@@ -540,8 +606,8 @@ static bool nrg_copy_member(Abstractformat *format, const nrg_member *member,
             break;
         }
         while (destination && written < amount) {
-            ssize_t step = xx_io_write(destination, buffer + written,
-                                       amount - written);
+            ssize_t step = gb_nrg_write(destination, buffer + written,
+                                       amount - written, file_io_capacity);
             if (step <= 0 || (size_t)step > amount - written) break;
             written += (size_t)step;
         }

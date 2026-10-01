@@ -2,12 +2,19 @@
  * SPDX-License-Identifier: MIT
  */
 
+/* The component archive API publishes bootstrap instructions, load-address
+ * parameters and the encoded kernel body separately. It does not decompress
+ * or execute the kernel. */
+
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/linuxzimage/xx_linuxzimage.h"
 
 #include "xxfclib/data/xx_data.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
+
+#include "../bmp/xx_component_archive_impl.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the file-type constant resolves to UNKNOWN until the enumerator
@@ -178,6 +185,7 @@ void xx_linuxzimage_init(xx_linuxzimage *image, xx_io_device *dev,
     image->format.handle_base_info = xx_linuxzimage_handle_base_info;
     image->format.get_format_size = xx_linuxzimage_get_format_size;
     image->format.destroy = xx_linuxzimage_vtable_destroy;
+    xx_components_install(&image->format);
 }
 
 xx_linuxzimage *xx_linuxzimage_create(xx_io_device *dev, int64_t base_address) {
@@ -243,6 +251,7 @@ bool xx_linuxzimage_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
         self->overlay_size = 0;
     }
     self->number_of_archive_records = 0U;
+    if (!xx_components_finish(self, pd)) return false;
     self->is_valid = true;
     self->base_info_handled = true;
     return true;
@@ -277,4 +286,13 @@ bool xx_linuxzimage_is_kernel_big_endian(const xx_linuxzimage *image) {
 }
 bool xx_linuxzimage_has_endian_flag(const xx_linuxzimage *image) {
     return image ? image->has_endian_flag : false;
+}
+
+/* Encoded/structural component members; this does not decode media. */
+static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd) {
+
+    (void)pd;
+    return xx_component_add(f,s,0,36,"bootstrap-instructions") &&
+        xx_component_add(f,s,40,8,"kernel-load-addresses") &&
+        (f->format_size==48 || xx_component_add(f,s,48,f->format_size-48,"self-decompressing-kernel-body"));
 }

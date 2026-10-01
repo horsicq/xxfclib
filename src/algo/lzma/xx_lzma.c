@@ -21,11 +21,36 @@
 
 #include "xxfclib/rt/xx_rt.h"
 #include "xx_lzma_internal.h"
+#include "platforms/xx_lzma_platform.h"
+#include "../../memory/platforms/xx_memory_platform.h"
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/memory/xx_memory.h"
 #include <limits.h>
 #include <string.h>
+
+void xx_lzma_fill_probs_scalar(uint16_t *probabilities, size_t count) {
+    for (size_t at = 0; at < count; ++at) probabilities[at] = 1024;
+}
+
+size_t xx_lzma_match_length_scalar(const uint8_t *first, const uint8_t *second,
+                                  size_t maximum) {
+    size_t at = 0;
+    while (at < maximum && first[at] == second[at]) ++at;
+    return at;
+}
+
+const xx_lzma_platform *xx_lzma_platform_select(void) {
+    static const xx_lzma_platform scalar = {"scalar", xx_memory_copy_scalar,
+        xx_lzma_fill_probs_scalar, xx_lzma_match_length_scalar};
+    static const xx_lzma_platform sse2 = {"sse2", xx_memory_copy_sse2,
+        xx_lzma_fill_probs_sse2, xx_lzma_match_length_sse2};
+    static const xx_lzma_platform avx2 = {"avx2", xx_memory_copy_avx2,
+        xx_lzma_fill_probs_avx2, xx_lzma_match_length_avx2};
+    if (xx_is_avx2_enabled()) return &avx2;
+    if (xx_is_sse2_enabled()) return &sse2;
+    return &scalar;
+}
 
 /* =========================================================================
  * LZMA Decompression APIs
@@ -36,8 +61,7 @@ bool xx_lzma_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t co
                            xx_io_device *dst_dev, xx_pd_struct *pd)
 {
     if (!src_dev || !dst_dev || !props) return false;
-    if (comp_size < 0 || src_offset < 0) return false;
-    if (comp_size == 0) return true;
+    if (comp_size <= 0 || src_offset < 0) return false;
     if (src_offset >= 0)
         if (xx_io_seek64(src_dev, src_offset, SEEK_SET) != 0) return false;
 
@@ -60,7 +84,7 @@ bool xx_lzma_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, in
     if (!out) return false;
     bool ok = xx_lzma_unpack_device(src_dev, src_offset, comp_size, props, props_size,
                                     uncomp_size, out, pd);
-    xx_io_close(out);
+    if (xx_io_close(out) != 0) ok = false;
     if (!ok) xx_io_file_remove_a(dst_file_path);
     return ok;
 }
@@ -85,8 +109,7 @@ bool xx_lzma_unpack_device_to_memory(xx_io_device *src_dev, int64_t src_offset, 
 {
     if (!src_dev || (!dst_buf && dst_buf_size > 0) || !props) return false;
     if (out_written) *out_written = 0;
-    if (comp_size < 0 || src_offset < 0) return false;
-    if (comp_size == 0) return true;
+    if (comp_size <= 0 || src_offset < 0) return false;
     if (src_offset >= 0)
         if (xx_io_seek64(src_dev, src_offset, SEEK_SET) != 0) return false;
     lzma_props p;
@@ -104,7 +127,7 @@ bool xx_lzma_unpack_memory_to_device(const void *src_buf, size_t comp_size,
                                      xx_io_device *dst_dev, xx_pd_struct *pd)
 {
     if (!src_buf || !dst_dev || !props) return false;
-    if (comp_size == 0) return true;
+    if (comp_size == 0) return false;
     lzma_props p;
     if (!lzma_parse_props(props, props_size, &p)) return false;
     lzma_range_dec rd;
@@ -121,7 +144,7 @@ bool xx_lzma_decompress_memory(const void *src_buf, size_t src_size,
 {
     if (!src_buf || (!dst_buf && dst_buf_size > 0) || !props) return false;
     if (out_written) *out_written = 0;
-    if (src_size == 0) return true;
+    if (src_size == 0) return false;
     lzma_props p;
     if (!lzma_parse_props(props, props_size, &p)) return false;
     lzma_range_dec rd;
@@ -161,7 +184,7 @@ bool xx_lzma2_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, i
     xx_io_device *out = xx_io_file_open(dst_file_path, "wb");
     if (!out) return false;
     bool ok = xx_lzma2_unpack_device(src_dev, src_offset, comp_size, props2_byte, out, pd);
-    xx_io_close(out);
+    if (xx_io_close(out) != 0) ok = false;
     if (!ok) xx_io_file_remove_a(dst_file_path);
     return ok;
 }
@@ -192,6 +215,7 @@ bool xx_lzma2_decompress_memory(const void *src_buf, size_t src_size,
     rd.range = 0xFFFFFFFFu;
     bool ok = xx_lzma2_decompress_stream(&rd, props2_byte, NULL, (uint8_t *)dst_buf,
                                          dst_buf_size, out_written, NULL);
+    lzma_rd_free(&rd);
     return ok;
 }
 
@@ -208,6 +232,69 @@ bool xx_lzma2_pack_device(xx_io_device *src_dev, int64_t src_offset, int64_t unc
     return xx_lzma2_compress_stream(src_dev, NULL, 0, src_offset, uncomp_size,
                                     dst_dev, NULL, 0, NULL, level,
                                     out_props2_byte, pd);
+}
+
+typedef struct lzma2_crc64_source_s {
+    xx_io_device *source;
+    uint64_t read_size;
+    uint64_t crc64;
+} lzma2_crc64_source;
+
+static ssize_t lzma2_crc64_read(xx_io_device *device, void *data, size_t size)
+{
+    lzma2_crc64_source *state = (lzma2_crc64_source *)device->priv;
+    ssize_t amount = xx_io_read(state->source, data, size);
+    if (amount <= 0) return amount;
+    if ((size_t)amount > size || (uint64_t)amount > UINT64_MAX - state->read_size)
+        return -1;
+    state->crc64 = xx_crc64_xz_calc(state->crc64, data, (size_t)amount);
+    state->read_size += (uint64_t)amount;
+    return amount;
+}
+
+static int lzma2_crc64_seek(xx_io_device *device, int64_t offset, int whence)
+{
+    lzma2_crc64_source *state = (lzma2_crc64_source *)device->priv;
+    if (xx_io_seek64(state->source, offset, whence) != 0) return -1;
+    state->read_size = 0;
+    state->crc64 = 0;
+    return 0;
+}
+
+bool xx_lzma2_pack_device_with_crc64(
+    xx_io_device *src_dev, int64_t src_offset, int64_t uncomp_size,
+    xx_io_device *dst_dev, int level, uint8_t *out_props2_byte,
+    int64_t *out_comp_size, uint64_t *out_crc64, xx_pd_struct *pd)
+{
+    xx_io_device proxy;
+    lzma2_crc64_source state;
+    size_t written = 0;
+    int64_t source_size;
+    uint8_t props2 = 0;
+
+    if (out_props2_byte) *out_props2_byte = 0;
+    if (out_comp_size) *out_comp_size = 0;
+    if (out_crc64) *out_crc64 = 0;
+    if (!src_dev || !dst_dev || src_dev == dst_dev || src_offset < 0 ||
+        uncomp_size < 0 || (uint64_t)uncomp_size > (uint64_t)SIZE_MAX ||
+        (pd && xx_pd_is_stopped(pd))) return false;
+    source_size = xx_io_total_size(src_dev);
+    if (source_size < src_offset || uncomp_size > source_size - src_offset)
+        return false;
+    xx_rt_memset(&proxy, 0, sizeof(proxy));
+    xx_rt_memset(&state, 0, sizeof(state));
+    state.source = src_dev;
+    proxy.priv = &state;
+    proxy.read = lzma2_crc64_read;
+    proxy.seek64 = lzma2_crc64_seek;
+    if (!xx_lzma2_compress_stream(&proxy, NULL, 0, src_offset, uncomp_size,
+                                  dst_dev, NULL, 0, &written, level, &props2, pd) ||
+        (uint64_t)written > (uint64_t)INT64_MAX ||
+        state.read_size != (uint64_t)uncomp_size) return false;
+    if (out_props2_byte) *out_props2_byte = props2;
+    if (out_comp_size) *out_comp_size = (int64_t)written;
+    if (out_crc64) *out_crc64 = state.crc64;
+    return true;
 }
 
 bool xx_lzma2_pack_source(xx_io_device *src_dev, const char *src_file_path,
@@ -305,10 +392,6 @@ bool xx_lzma_pack_device(xx_io_device *src_dev, int64_t src_offset, int64_t unco
                          xx_pd_struct *pd)
 {
     if (!src_dev || !dst_dev || uncomp_size < 0) return false;
-    if (uncomp_size == 0) {
-        if (out_props_size) *out_props_size = 0;
-        return true;
-    }
     return xx_lzma_compress_stream(src_dev, NULL, 0, src_offset, uncomp_size,
                                    dst_dev, NULL, 0, NULL, level, out_props, out_props_size, pd, true);
 }
@@ -334,8 +417,6 @@ bool xx_lzma_pack_source(xx_io_device *src_dev, const char *src_file_path,
     int64_t total = xx_io_size(target);
     if (total < 0) { if (owned) xx_io_close(owned); return false; }
     *out_uncomp_size = total;
-    if (total == 0) { if (owned) xx_io_close(owned); return true; }
-
     if (xx_io_seek(target, 0, SEEK_SET) != 0) { if (owned) xx_io_close(owned); return false; }
 
     /* CRC pass */
@@ -380,14 +461,15 @@ bool xx_lzma_compress_memory(const void *src_buf, size_t src_size,
                              int level,
                              uint8_t *out_props, size_t *out_props_size)
 {
-    if (!src_buf || (!dst_buf && dst_buf_size > 0)) return false;
-    if (src_size == 0) { if (out_written) *out_written = 0; return true; }
+    if (out_written) *out_written = 0;
+    if ((!src_buf && src_size != 0) || !dst_buf ||
+        (uint64_t)src_size > (uint64_t)INT64_MAX) return false;
 
     size_t props_sz = out_props_size ? *out_props_size : 0;
     bool ok = xx_lzma_compress_stream(NULL, (const uint8_t *)src_buf, src_size,
                                       0, (int64_t)src_size,
                                       NULL, (uint8_t *)dst_buf, dst_buf_size, out_written,
-                                      level, out_props, &props_sz, NULL, true);
+                                      level, out_props, out_props_size ? &props_sz : NULL, NULL, true);
     if (out_props_size) *out_props_size = props_sz;
     return ok;
 }

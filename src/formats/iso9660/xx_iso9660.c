@@ -4,6 +4,7 @@
 
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/iso9660/xx_iso9660.h"
+#include "xx_iso_zisofs_native.h"
 
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/io/xx_io.h"
@@ -27,6 +28,8 @@ typedef struct xx_iso9660_entry_s {
     int64_t data_offset;
     uint32_t data_size;
     uint8_t flags;
+    bool is_zisofs;
+    xx_iso_zisofs_info zisofs;
 } xx_iso9660_entry;
 
 typedef struct xx_iso9660_visited_s {
@@ -188,14 +191,14 @@ static bool xx_iso9660_safe_name(const char *name) {
 }
 
 static char *xx_iso9660_name_from_identifier(const uint8_t *identifier,
-                                              size_t size) {
+                                              size_t size, bool strip_version) {
     char *name;
     size_t length = size;
     size_t index;
     if (!identifier || size == 0U || size > 255U || identifier[0] == 0U ||
         identifier[0] == 1U) return NULL;
     for (index = 0U; index < size; ++index) {
-        if (identifier[index] == ';') {
+        if (strip_version && identifier[index] == ';') {
             length = index;
             break;
         }
@@ -205,13 +208,53 @@ static char *xx_iso9660_name_from_identifier(const uint8_t *identifier,
     if (length == 0U) return NULL;
     name = (char *)xx_mem_alloc(length + 1U);
     if (!name) return NULL;
-    xx_mem_copy(name, identifier, length);
+    for (index = 0U; index < length; ++index) {
+        uint8_t c = identifier[index];
+        /* Keep a valid ISO entry listable on Windows when its recorded name
+         * contains a character that cannot be used in a local path. */
+        name[index] = c == ':' || c == '<' || c == '>' || c == '"' ||
+                      c == '|' || c == '?' || c == '*'
+                          ? '_' : (char)c;
+    }
     name[length] = '\0';
     if (!xx_iso9660_safe_name(name)) {
         xx_str_free(name);
         return NULL;
     }
     return name;
+}
+
+/* Rock Ridge NM carries the original name when the ISO identifier was
+ * shortened. Read only complete in-record SUSP entries; an absent or
+ * malformed NM simply falls back to the ISO identifier. */
+static char *xx_iso9660_name_from_rock_ridge(const uint8_t *record,
+                                              size_t record_size,
+                                              size_t identifier_size) {
+    uint8_t name[XX_ISO9660_MAX_NAME_SIZE];
+    size_t offset = 33U + identifier_size + (identifier_size % 2U == 0U);
+    size_t length = 0U;
+    bool found = false;
+    bool continued = false;
+    if (!record || offset > record_size) return NULL;
+    while (offset + 4U <= record_size) {
+        size_t entry_size = record[offset + 2U];
+        if (entry_size < 4U || entry_size > record_size - offset) break;
+        if (record[offset] == 'N' && record[offset + 1U] == 'M' &&
+            record[offset + 3U] == 1U && entry_size >= 5U) {
+            uint8_t flags = record[offset + 4U];
+            size_t piece = entry_size - 5U;
+            if ((flags & 0x0eU) != 0U || piece == 0U ||
+                piece > sizeof(name) - length) return NULL;
+            xx_mem_copy(name + length, record + offset + 5U, piece);
+            length += piece;
+            found = true;
+            continued = (flags & 1U) != 0U;
+        }
+        offset += entry_size;
+    }
+    return found && !continued
+               ? xx_iso9660_name_from_identifier(name, length, false)
+               : NULL;
 }
 
 static char *xx_iso9660_join_name(const char *prefix, const char *name) {
@@ -271,6 +314,8 @@ static bool xx_iso9660_parse_directory(Abstractformat *self,
         char *component = NULL;
         char *full_name = NULL;
         xx_iso9660_entry entry;
+        xx_iso_zisofs_info zisofs = {0};
+        bool is_zisofs = false;
 
         if (pd && xx_pd_is_stopped(pd) ||
             position > (uint64_t)INT64_MAX ||
@@ -299,15 +344,32 @@ static bool xx_iso9660_parse_directory(Abstractformat *self,
         data_extent_be = xx_iso9660_read32be(record + 6U);
         data_size = xx_iso9660_read32le(record + 10U);
         data_size_be = xx_iso9660_read32be(record + 14U);
-        if (data_extent != data_extent_be || data_size != data_size_be ||
-            !xx_iso9660_extent_offset(self, data_extent, parsed->block_size,
-                                      &data_offset) ||
-            data_offset > total_size ||
-            data_size > (uint64_t)(total_size - data_offset)) {
+        if (data_extent != data_extent_be || data_size != data_size_be) {
             return false;
         }
-        component = xx_iso9660_name_from_identifier(record + 33U,
-                                                     identifier_length);
+        /* Some ISO writers leave an out-of-range extent in an empty regular
+         * file. No sector is read for that entry; give it a bounded offset
+         * while retaining the strict extent check for nonempty files and
+         * directories. */
+        if (data_size == 0U && (record[25] & UINT8_C(0x02)) == 0U) {
+            data_offset = self->base_address;
+        } else if (!xx_iso9660_extent_offset(self, data_extent,
+                                             parsed->block_size, &data_offset) ||
+                   data_offset > total_size ||
+                   data_size > (uint64_t)(total_size - data_offset)) {
+            return false;
+        }
+        if ((record[25] & UINT8_C(0x02)) == 0U &&
+            !xx_iso_zisofs_parse_record(record, record_length,
+                                        &zisofs, &is_zisofs)) return false;
+        component = NULL;
+        if (identifier_length != 1U ||
+            (record[33] != 0U && record[33] != 1U))
+            component = xx_iso9660_name_from_rock_ridge(
+                record, record_length, identifier_length);
+        if (!component)
+            component = xx_iso9660_name_from_identifier(record + 33U,
+                                                        identifier_length, true);
         if (component) {
             xx_mem_zero(&entry, sizeof(entry));
             full_name = xx_iso9660_join_name(prefix, component);
@@ -318,6 +380,8 @@ static bool xx_iso9660_parse_directory(Abstractformat *self,
             entry.data_offset = data_offset;
             entry.data_size = data_size;
             entry.flags = record[25];
+            entry.is_zisofs = is_zisofs;
+            entry.zisofs = zisofs;
             if (!xx_iso9660_append_entry(parsed, &entry)) {
                 xx_str_free(full_name);
                 return false;
@@ -465,12 +529,16 @@ static bool xx_iso9660_populate_record(xx_archive_record *record,
     return xx_archive_record_set_original_name(record, entry->name) &&
            xx_archive_record_set_meta_u64(record,
                                           XX_META_ID_UNCOMPRESSED_SIZE,
-                                          entry->data_size) &&
+                                          entry->is_zisofs
+                                              ? entry->zisofs.uncompressed_size
+                                              : entry->data_size) &&
            xx_archive_record_set_meta_u64(record,
                                           XX_META_ID_COMPRESSED_SIZE,
                                           entry->data_size) &&
            xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_COMPRESSION_METHOD, 0U) &&
+                                          XX_META_ID_COMPRESSION_METHOD,
+                                          entry->is_zisofs
+                                              ? entry->zisofs.version : 0U) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
                                            folder);
 }
@@ -658,18 +726,50 @@ bool xx_iso9660_archive_record_move_to_next(
     return true;
 }
 
+static xx_io_device *xx_iso9660_open_stage_file(const char *destination,
+                                                char **stage_path) {
+    unsigned int attempt;
+    if (!destination || !stage_path) return NULL;
+    *stage_path = NULL;
+    for (attempt = 0U; attempt < 10000U; ++attempt) {
+        char suffix[48];
+        char *candidate;
+        xx_io_device *device;
+        int length = xx_rt_snprintf(suffix, sizeof(suffix),
+                                    ".xxfclib.tmp.%u", attempt);
+        if (length <= 0 || (size_t)length >= sizeof(suffix)) return NULL;
+        candidate = xx_str_concat(destination, suffix);
+        if (!candidate) return NULL;
+        device = xx_io_file_open(candidate, "wbx");
+        if (device) {
+            *stage_path = candidate;
+            return device;
+        }
+        xx_str_free(candidate);
+    }
+    return NULL;
+}
+
 bool xx_iso9660_unpack_current_archive_record(
     Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
     const xx_archive_record *record;
+    xx_iso9660_archive_stream *stream;
+    const xx_iso9660_entry *entry;
     const xx_var *option;
+    const xx_var *overwrite_option;
     const char *name;
     const char *base = NULL;
     char *owned_base = NULL;
     char *destination = NULL;
     bool folder;
+    bool overwrite;
     bool result;
     if (!self || !self->device || !state || state->format != self ||
-        !state->has_record || (pd && xx_pd_is_stopped(pd))) return false;
+        !state->has_record || !state->internal_state ||
+        (pd && xx_pd_is_stopped(pd))) return false;
+    stream = (xx_iso9660_archive_stream *)state->internal_state;
+    if (stream->index >= stream->parsed.count) return false;
+    entry = &stream->parsed.entries[stream->index];
     record = &state->current_record;
     name = xx_archive_record_get_original_name(record);
     if (!xx_iso9660_safe_name(name)) return false;
@@ -703,12 +803,40 @@ bool xx_iso9660_unpack_current_archive_record(
     }
     if (!destination) goto cleanup;
     folder = xx_archive_record_get_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+    overwrite_option = xx_format_resolve_extra_parameter(
+        self, &state->options, XX_META_ID_OPT_OVERWRITE);
+    overwrite = overwrite_option && xx_var_get_bool(overwrite_option);
     if (folder) {
         result = xx_store_create_dirs_a(destination, true);
     } else if (xx_store_create_dirs_a(destination, false)) {
-        result = xx_store_unpack_device_to_file(self->device, record->data_offset,
-                                                 record->compressed_size,
-                                                 destination, pd);
+        if (entry->is_zisofs) {
+            char *stage_path = NULL;
+            xx_io_device *output = NULL;
+            result = false;
+            if (overwrite || !xx_io_file_exists_a(destination))
+                output = xx_iso9660_open_stage_file(destination, &stage_path);
+            if (output) {
+                result = xx_iso_zisofs_extract(self->device,
+                                                entry->data_offset,
+                                                entry->data_size,
+                                                &entry->zisofs, output, pd);
+                if (xx_io_close(output) != 0) result = false;
+                if (pd && xx_pd_is_stopped(pd)) result = false;
+                if (result)
+                    result = xx_io_file_replace_a(stage_path, destination,
+                                                  overwrite);
+            }
+            if (stage_path) {
+                if (xx_io_file_exists_a(stage_path))
+                    (void)xx_io_file_remove_a(stage_path);
+                xx_str_free(stage_path);
+            }
+        } else {
+            result = xx_store_unpack_device_to_file(self->device,
+                                                     record->data_offset,
+                                                     record->compressed_size,
+                                                     destination, pd);
+        }
     } else {
         result = false;
     }

@@ -16,6 +16,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xx_uimage_lz4_native.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the file-type constant resolves to UNKNOWN until the enumerator
@@ -432,11 +433,9 @@ const char *xx_uimage_compression_to_string(uint8_t compression) {
 /*
  * Write one member's bytes to destination, decoding ih_comp on the way.
  *
- * LZ4 is a deliberate gap.  The only public framed-LZ4 entry point in this
- * library, xx_lz4_decompress_memory(), wants an EXACT output size, and a
- * uImage header does not publish the decompressed length.  An IH_COMP_LZ4
- * payload is therefore emitted as stored bytes rather than guessed at; the
- * caller still gets the frame and can hand it to the lz4 reader.
+ * An LZ4 frame need not carry its decoded length, and the uImage header does
+ * not provide one.  The LZ4 helper stages a complete bounded decode before
+ * writing destination bytes.
  */
 static bool xx_uimage_emit_member(Abstractformat *self,
                                   const xx_uimage_member *member,
@@ -478,10 +477,12 @@ static bool xx_uimage_emit_member(Abstractformat *self,
                 self->device, member->data_offset, member->data_size,
                 destination, 0U, pd);
         case XX_UIMAGE_COMP_LZ4:
+            return xx_uimage_lz4_decode_device(
+                self->device, member->data_offset, member->data_size,
+                destination, 256U * 1024U * 1024U, pd);
         case XX_UIMAGE_COMP_NONE:
         default:
-            /* Stored, plus the LZ4 gap described above and any ih_comp this
-             * reader does not know: the bytes go out untouched. */
+            /* Stored and unknown compression ids are emitted untouched. */
             return xx_store_unpack_device(self->device, member->data_offset,
                                           member->data_size, destination, pd);
     }
@@ -756,6 +757,30 @@ bool xx_uimage_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
+static xx_io_device *xx_uimage_open_stage_file(const char *destination,
+                                               char **stage_path) {
+    unsigned int attempt;
+    if (!destination || !stage_path) return NULL;
+    *stage_path = NULL;
+    for (attempt = 0U; attempt < 10000U; ++attempt) {
+        char suffix[48];
+        char *candidate;
+        xx_io_device *device;
+        int length = xx_rt_snprintf(suffix, sizeof(suffix),
+                                    ".xxfclib.tmp.%u", attempt);
+        if (length <= 0 || (size_t)length >= sizeof(suffix)) return NULL;
+        candidate = xx_str_concat(destination, suffix);
+        if (!candidate) return NULL;
+        device = xx_io_file_open(candidate, "wbx");
+        if (device) {
+            *stage_path = candidate;
+            return device;
+        }
+        xx_str_free(candidate);
+    }
+    return NULL;
+}
+
 bool xx_uimage_unpack_current_archive_record(Abstractformat *self,
                                              xx_archive_record_state *state,
                                              xx_pd_struct *pd) {
@@ -803,6 +828,30 @@ bool xx_uimage_unpack_current_archive_record(Abstractformat *self,
     }
     if (!destination_path) goto cleanup;
     if (!xx_store_create_dirs_a(destination_path, false)) goto cleanup;
+    if (member->compression == XX_UIMAGE_COMP_LZ4) {
+        const xx_var *overwrite_option = xx_format_resolve_extra_parameter(
+            self, &state->options, XX_META_ID_OPT_OVERWRITE);
+        bool overwrite = overwrite_option && xx_var_get_bool(overwrite_option);
+        char *stage_path = NULL;
+        if (overwrite || !xx_io_file_exists_a(destination_path))
+            destination = xx_uimage_open_stage_file(destination_path,
+                                                    &stage_path);
+        if (destination) {
+            result = xx_uimage_emit_member(self, member, destination, pd);
+            if (xx_io_close(destination) != 0) result = false;
+            destination = NULL;
+            if (pd && xx_pd_is_stopped(pd)) result = false;
+            if (result)
+                result = xx_io_file_replace_a(stage_path, destination_path,
+                                              overwrite);
+        }
+        if (stage_path) {
+            if (xx_io_file_exists_a(stage_path))
+                (void)xx_io_file_remove_a(stage_path);
+            xx_str_free(stage_path);
+        }
+        goto cleanup;
+    }
     destination = xx_io_file_open(destination_path, "wb");
     created = destination != NULL;
     if (!destination) goto cleanup;

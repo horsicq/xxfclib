@@ -3,11 +3,16 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/xz/xx_xz.h"
 #include "xx_xz_defs.h"
 
 #include "xxfclib/algo/crc/xx_crc.h"
-#include "xxfclib/algo/lzma/xx_lzma.h"
+#include "../../algo/lzma/xx_lzma_stream_internal.h"
+#include "../../algo/lzma/xx_lzma2_filters_internal.h"
+#include "../7zip/xx_7zip_branch.h"
+#include "../7zip/xx_7zip_defs.h"
+#include "xx_xz_riscv_native.h"
 #include "xxfclib/data/xx_data.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
@@ -32,8 +37,37 @@ typedef struct xx_xz_block_s {
     uint8_t filter_count;
     uint8_t lzma2_property;
     uint16_t delta_distance;
+    uint64_t bcj_method;
+    uint8_t bcj_properties[4];
+    uint8_t bcj_properties_size;
+    bool delta_after_bcj;
+    /* Reversible filters before LZMA2 in a multi-filter Block. */
+    uint8_t chain_kind[3]; /* 1 = BCJ, 2 = Delta */
+    uint16_t chain_distance[3];
+    uint64_t chain_method[3];
+    uint8_t chain_properties[3][4];
+    uint8_t chain_property_size[3];
     bool extractable;
 } xx_xz_block;
+
+/* Filter chains are decoded as a whole block so branch filters see one
+ * continuous address space. Keep the two temporary buffers bounded. */
+#define XX_XZ_FILTER_CHAIN_MAX_BLOCK_BYTES (64U * 1024U * 1024U)
+
+static uint64_t xx_xz_bcj_method(uint64_t id, uint32_t *alignment) {
+    if (!alignment) return 0U;
+    switch (id) {
+        case 0x04U: *alignment = 1U; return XX_7ZIP_METHOD_BCJ;
+        case 0x05U: *alignment = 4U; return XX_7ZIP_METHOD_PPC;
+        case 0x06U: *alignment = 16U; return XX_7ZIP_METHOD_IA64;
+        case 0x07U: *alignment = 4U; return XX_7ZIP_METHOD_ARM;
+        case 0x08U: *alignment = 2U; return XX_7ZIP_METHOD_ARMT;
+        case 0x09U: *alignment = 4U; return XX_7ZIP_METHOD_SPARC;
+        case 0x0AU: *alignment = 4U; return XX_7ZIP_METHOD_ARM64;
+        case 0x0BU: *alignment = 2U; return XX_7ZIP_METHOD_RISCV;
+        default: return 0U;
+    }
+}
 
 typedef struct xx_xz_stream_s {
     int64_t header_offset;
@@ -75,156 +109,7 @@ typedef struct xx_xz_record_stream_s {
     size_t count;
 } xx_xz_record_stream;
 
-typedef struct xx_xz_sha256_s {
-    uint32_t state[8];
-    uint64_t bit_count;
-    uint8_t buffer[64];
-    size_t used;
-} xx_xz_sha256;
-
-typedef struct xx_xz_sink_s {
-    xx_io_device device;
-    xx_io_device *target;
-    uint64_t expected;
-    uint64_t written;
-    uint32_t crc32;
-    uint64_t crc64;
-    xx_xz_sha256 sha256;
-    uint8_t delta_history[256];
-    uint64_t delta_position;
-    uint16_t delta_distance;
-    bool failed;
-} xx_xz_sink;
-
 static void xx_xz_vtable_destroy(Abstractformat *self);
-
-static uint32_t xx_xz_rotr32(uint32_t value, unsigned int shift) {
-    return (value >> shift) | (value << (32U - shift));
-}
-
-static void xx_xz_sha256_transform(xx_xz_sha256 *ctx,
-                                   const uint8_t block[64]) {
-    static const uint32_t constants[64] = {
-        0x428a2f98U, 0x71374491U, 0xb5c0fbcfU, 0xe9b5dba5U,
-        0x3956c25bU, 0x59f111f1U, 0x923f82a4U, 0xab1c5ed5U,
-        0xd807aa98U, 0x12835b01U, 0x243185beU, 0x550c7dc3U,
-        0x72be5d74U, 0x80deb1feU, 0x9bdc06a7U, 0xc19bf174U,
-        0xe49b69c1U, 0xefbe4786U, 0x0fc19dc6U, 0x240ca1ccU,
-        0x2de92c6fU, 0x4a7484aaU, 0x5cb0a9dcU, 0x76f988daU,
-        0x983e5152U, 0xa831c66dU, 0xb00327c8U, 0xbf597fc7U,
-        0xc6e00bf3U, 0xd5a79147U, 0x06ca6351U, 0x14292967U,
-        0x27b70a85U, 0x2e1b2138U, 0x4d2c6dfcU, 0x53380d13U,
-        0x650a7354U, 0x766a0abbU, 0x81c2c92eU, 0x92722c85U,
-        0xa2bfe8a1U, 0xa81a664bU, 0xc24b8b70U, 0xc76c51a3U,
-        0xd192e819U, 0xd6990624U, 0xf40e3585U, 0x106aa070U,
-        0x19a4c116U, 0x1e376c08U, 0x2748774cU, 0x34b0bcb5U,
-        0x391c0cb3U, 0x4ed8aa4aU, 0x5b9cca4fU, 0x682e6ff3U,
-        0x748f82eeU, 0x78a5636fU, 0x84c87814U, 0x8cc70208U,
-        0x90befffaU, 0xa4506cebU, 0xbef9a3f7U, 0xc67178f2U
-    };
-    uint32_t words[64];
-    uint32_t a, b, c, d, e, f, g, h;
-    size_t i;
-    for (i = 0U; i < 16U; ++i) {
-        size_t p = i * 4U;
-        words[i] = ((uint32_t)block[p] << 24U) |
-                   ((uint32_t)block[p + 1U] << 16U) |
-                   ((uint32_t)block[p + 2U] << 8U) |
-                   (uint32_t)block[p + 3U];
-    }
-    for (i = 16U; i < 64U; ++i) {
-        uint32_t s0 = xx_xz_rotr32(words[i - 15U], 7U) ^
-                      xx_xz_rotr32(words[i - 15U], 18U) ^
-                      (words[i - 15U] >> 3U);
-        uint32_t s1 = xx_xz_rotr32(words[i - 2U], 17U) ^
-                      xx_xz_rotr32(words[i - 2U], 19U) ^
-                      (words[i - 2U] >> 10U);
-        words[i] = words[i - 16U] + s0 + words[i - 7U] + s1;
-    }
-    a = ctx->state[0]; b = ctx->state[1]; c = ctx->state[2];
-    d = ctx->state[3]; e = ctx->state[4]; f = ctx->state[5];
-    g = ctx->state[6]; h = ctx->state[7];
-    for (i = 0U; i < 64U; ++i) {
-        uint32_t sum1 = xx_xz_rotr32(e, 6U) ^ xx_xz_rotr32(e, 11U) ^
-                        xx_xz_rotr32(e, 25U);
-        uint32_t choose = (e & f) ^ ((~e) & g);
-        uint32_t temp1 = h + sum1 + choose + constants[i] + words[i];
-        uint32_t sum0 = xx_xz_rotr32(a, 2U) ^ xx_xz_rotr32(a, 13U) ^
-                        xx_xz_rotr32(a, 22U);
-        uint32_t majority = (a & b) ^ (a & c) ^ (b & c);
-        uint32_t temp2 = sum0 + majority;
-        h = g; g = f; f = e; e = d + temp1;
-        d = c; c = b; b = a; a = temp1 + temp2;
-    }
-    ctx->state[0] += a; ctx->state[1] += b; ctx->state[2] += c;
-    ctx->state[3] += d; ctx->state[4] += e; ctx->state[5] += f;
-    ctx->state[6] += g; ctx->state[7] += h;
-}
-
-static void xx_xz_sha256_init(xx_xz_sha256 *ctx) {
-    static const uint32_t initial[8] = {
-        0x6a09e667U, 0xbb67ae85U, 0x3c6ef372U, 0xa54ff53aU,
-        0x510e527fU, 0x9b05688cU, 0x1f83d9abU, 0x5be0cd19U
-    };
-    xx_mem_zero(ctx, sizeof(*ctx));
-    xx_rt_memcpy(ctx->state, initial, sizeof(initial));
-}
-
-static void xx_xz_sha256_update(xx_xz_sha256 *ctx, const uint8_t *data,
-                                size_t size) {
-    if (!ctx || (!data && size != 0U)) return;
-    ctx->bit_count += (uint64_t)size * 8U;
-    while (size != 0U) {
-        size_t take = 64U - ctx->used;
-        if (take > size) take = size;
-        xx_rt_memcpy(ctx->buffer + ctx->used, data, take);
-        ctx->used += take;
-        data += take;
-        size -= take;
-        if (ctx->used == 64U) {
-            xx_xz_sha256_transform(ctx, ctx->buffer);
-            ctx->used = 0U;
-        }
-    }
-}
-
-static void xx_xz_sha256_final(xx_xz_sha256 *ctx, uint8_t digest[32]) {
-    uint64_t bits = ctx->bit_count;
-    size_t i;
-    ctx->buffer[ctx->used++] = 0x80U;
-    if (ctx->used > 56U) {
-        xx_rt_memset(ctx->buffer + ctx->used, 0, 64U - ctx->used);
-        xx_xz_sha256_transform(ctx, ctx->buffer);
-        ctx->used = 0U;
-    }
-    xx_rt_memset(ctx->buffer + ctx->used, 0, 56U - ctx->used);
-    for (i = 0U; i < 8U; ++i) {
-        ctx->buffer[63U - i] = (uint8_t)(bits >> (i * 8U));
-    }
-    xx_xz_sha256_transform(ctx, ctx->buffer);
-    for (i = 0U; i < 8U; ++i) {
-        digest[i * 4U] = (uint8_t)(ctx->state[i] >> 24U);
-        digest[i * 4U + 1U] = (uint8_t)(ctx->state[i] >> 16U);
-        digest[i * 4U + 2U] = (uint8_t)(ctx->state[i] >> 8U);
-        digest[i * 4U + 3U] = (uint8_t)ctx->state[i];
-    }
-}
-
-static bool xx_xz_read_exact_at(xx_io_device *device, int64_t offset,
-                                void *buffer, size_t size) {
-    uint8_t *bytes = (uint8_t *)buffer;
-    size_t done = 0U;
-    if (!device || (!buffer && size != 0U) || offset < 0 || offset > LONG_MAX ||
-        xx_io_seek(device, (long)offset, SEEK_SET) != 0) {
-        return false;
-    }
-    while (done < size) {
-        ssize_t got = xx_io_read(device, bytes + done, size - done);
-        if (got <= 0) return false;
-        done += (size_t)got;
-    }
-    return true;
-}
 
 static bool xx_xz_vli(const uint8_t *data, size_t limit, size_t *cursor,
                       uint64_t *value) {
@@ -252,23 +137,32 @@ static size_t xx_xz_check_size(uint8_t check_type) {
     return (size_t)4U << ((check_type - 1U) / 3U);
 }
 
-static bool xx_xz_lzma2_property_supported(uint8_t property) {
-    uint64_t dictionary;
-    if (property > 40U) return false;
-    dictionary = property == 40U
-                     ? UINT32_MAX
-                     : ((uint64_t)2U | (property & 1U))
-                           << (property / 2U + 11U);
-    return dictionary <= XX_LZMA_MAX_DICT_SIZE;
+static bool xx_xz_crc32_cancellable(const uint8_t *data, size_t size,
+                                    xx_pd_struct *pd, uint32_t *result) {
+    const size_t capacity = xx_get_file_buffer_size();
+    size_t position = 0U;
+    uint32_t crc = 0U;
+    if ((!data && size != 0U) || !result || capacity == 0U) return false;
+    while (position < size) {
+        size_t amount = size - position;
+        if (pd && xx_pd_is_stopped(pd)) return false;
+        if (amount > capacity) amount = capacity;
+        crc = xx_crc32_calc(crc, data + position, amount);
+        position += amount;
+    }
+    *result = crc;
+    return true;
 }
 
 static bool xx_xz_validate_stream_header(xx_io_device *device,
                                          int64_t offset,
-                                         uint8_t *check_type) {
+                                         uint8_t *check_type,
+                                         xx_pd_struct *pd) {
     uint8_t header[XX_XZ_STREAM_HEADER_SIZE];
     uint32_t expected;
     if (!device || !check_type ||
-        !xx_xz_read_exact_at(device, offset, header, sizeof(header)) ||
+        !xx_lzma_stream_read_exact_at(device, offset, header, sizeof(header),
+                                      pd) ||
         xx_rt_memcmp(header, XX_XZ_MAGIC, XX_XZ_MAGIC_SIZE) != 0 ||
         header[6] != 0U || (header[7] & 0xf0U) != 0U) {
         return false;
@@ -330,9 +224,19 @@ static bool xx_xz_parse_block_header(const uint8_t *header,
     }
     block->extractable = false;
     block->delta_distance = 0U;
+    block->bcj_method = 0U;
+    block->bcj_properties_size = 0U;
+    block->delta_after_bcj = false;
+    xx_mem_zero(block->chain_kind, sizeof(block->chain_kind));
+    xx_mem_zero(block->chain_distance, sizeof(block->chain_distance));
+    xx_mem_zero(block->chain_method, sizeof(block->chain_method));
+    xx_mem_zero(block->chain_properties,
+                sizeof(block->chain_properties));
+    xx_mem_zero(block->chain_property_size,
+                sizeof(block->chain_property_size));
     if (ids[count - 1U] == XX_XZ_FILTER_LZMA2 &&
         prop_sizes[count - 1U] == 1U &&
-        xx_xz_lzma2_property_supported(props[count - 1U][0])) {
+        xx_lzma2_parse_property(props[count - 1U][0], NULL)) {
         block->lzma2_property = props[count - 1U][0];
         if (count == 1U) {
             block->extractable = true;
@@ -340,6 +244,115 @@ static bool xx_xz_parse_block_header(const uint8_t *header,
                    prop_sizes[0] == 1U) {
             block->delta_distance = (uint16_t)props[0][0] + 1U;
             block->extractable = true;
+        } else if (count == 2U || count == 3U) {
+            size_t bcj_index = SIZE_MAX;
+            uint16_t distance = 0U;
+            bool delta_after = false;
+            uint32_t alignment = 0U;
+            uint64_t method;
+            uint32_t start = 0U;
+            if (count == 2U) {
+                bcj_index = 0U;
+            } else if (ids[0] == XX_XZ_FILTER_DELTA) {
+                if (prop_sizes[0] != 1U) return false;
+                bcj_index = 1U;
+                distance = (uint16_t)props[0][0] + 1U;
+                delta_after = true;
+            } else if (ids[1] == XX_XZ_FILTER_DELTA) {
+                if (prop_sizes[1] != 1U) return false;
+                bcj_index = 0U;
+                distance = (uint16_t)props[1][0] + 1U;
+            }
+            if (bcj_index != SIZE_MAX) {
+                method = xx_xz_bcj_method(ids[bcj_index], &alignment);
+                if (method != 0U) {
+                    if (!xx_7zip_branch_method_supported(method,
+                            (size_t)prop_sizes[bcj_index])) return false;
+                    if (prop_sizes[bcj_index] == 4U) {
+                        start = xx_data_get_u32(props[bcj_index], 4U,
+                                                0U, false);
+                        if (start % alignment != 0U) return false;
+                        xx_mem_copy(block->bcj_properties,
+                                    props[bcj_index], 4U);
+                    }
+                    block->bcj_method = method;
+                    block->bcj_properties_size =
+                        (uint8_t)prop_sizes[bcj_index];
+                    block->delta_distance = distance;
+                    block->delta_after_bcj = delta_after;
+                    block->extractable = true;
+                }
+            }
+            if (count == 3U && !block->extractable) {
+                /* Two branch or Delta filters are a valid liblzma chain. */
+                for (i = 0U; i < 2U; ++i) {
+                    uint32_t chain_alignment = 0U;
+                    uint64_t chain_method =
+                        xx_xz_bcj_method(ids[i], &chain_alignment);
+                    if (ids[i] == XX_XZ_FILTER_DELTA) {
+                        if (prop_sizes[i] != 1U) return false;
+                        block->chain_kind[i] = 2U;
+                        block->chain_distance[i] =
+                            (uint16_t)props[i][0] + 1U;
+                        continue;
+                    }
+                    if (chain_method == 0U) break;
+                    if (!xx_7zip_branch_method_supported(chain_method,
+                            (size_t)prop_sizes[i])) return false;
+                    if (prop_sizes[i] == 4U) {
+                        uint32_t chain_start = xx_data_get_u32(props[i], 4U,
+                                                                 0U, false);
+                        if (chain_start % chain_alignment != 0U)
+                            return false;
+                        xx_mem_copy(block->chain_properties[i],
+                                    props[i], 4U);
+                    }
+                    block->chain_kind[i] = 1U;
+                    block->chain_method[i] = chain_method;
+                    block->chain_property_size[i] =
+                        (uint8_t)prop_sizes[i];
+                }
+                if (i == 2U) {
+                    block->bcj_method = block->chain_method[0] != 0U ?
+                        block->chain_method[0] : block->chain_method[1];
+                    block->extractable = true;
+                }
+            }
+        } else if (count == 4U) {
+            size_t bcj_count = 0U;
+            size_t delta_count = 0U;
+            for (i = 0U; i < 3U; ++i) {
+                uint32_t alignment = 0U;
+                uint64_t method;
+                if (ids[i] == XX_XZ_FILTER_DELTA) {
+                    if (prop_sizes[i] != 1U) return false;
+                    block->chain_kind[i] = 2U;
+                    block->chain_distance[i] =
+                        (uint16_t)props[i][0] + 1U;
+                    ++delta_count;
+                    continue;
+                }
+                method = xx_xz_bcj_method(ids[i], &alignment);
+                if (method == 0U) break;
+                if (!xx_7zip_branch_method_supported(method,
+                        (size_t)prop_sizes[i])) return false;
+                if (prop_sizes[i] == 4U) {
+                    uint32_t start = xx_data_get_u32(props[i], 4U,
+                                                       0U, false);
+                    if (start % alignment != 0U) return false;
+                    xx_mem_copy(block->bcj_properties, props[i], 4U);
+                    xx_mem_copy(block->chain_properties[i], props[i], 4U);
+                }
+                block->chain_kind[i] = 1U;
+                block->bcj_method = method;
+                block->bcj_properties_size = (uint8_t)prop_sizes[i];
+                block->chain_method[i] = method;
+                block->chain_property_size[i] =
+                    (uint8_t)prop_sizes[i];
+                ++bcj_count;
+            }
+            block->extractable = i == 3U &&
+                                 bcj_count + delta_count == 3U;
         }
     }
     return true;
@@ -361,6 +374,7 @@ static bool xx_xz_try_footer(Abstractformat *self, int64_t stream_start,
     uint8_t *index = NULL;
     uint64_t *unpadded = NULL;
     uint64_t *uncompressed = NULL;
+    uint32_t index_crc;
     uint32_t backward;
     uint64_t index_size_u64;
     int64_t index_offset;
@@ -373,8 +387,9 @@ static bool xx_xz_try_footer(Abstractformat *self, int64_t stream_start,
     int64_t block_offset;
     bool ok = false;
     if (!self || !candidate || footer_offset < stream_start + 12 ||
-        !xx_xz_read_exact_at(self->device, footer_offset, footer,
-                             sizeof(footer)) ||
+        (pd && xx_pd_is_stopped(pd)) ||
+        !xx_lzma_stream_read_exact_at(self->device, footer_offset, footer,
+                                      sizeof(footer), pd) ||
         footer[10] != 0x59U || footer[11] != 0x5aU || footer[8] != 0U ||
         footer[9] != check_type ||
         xx_data_get_u32(footer, sizeof(footer), 0U, false) !=
@@ -394,18 +409,21 @@ static bool xx_xz_try_footer(Abstractformat *self, int64_t stream_start,
        the candidate Index.  Charge the remaining candidates for every byte
        checksummed so overlapping fake Index ranges cannot make the scan
        quadratic in the input size. */
-    if (!xx_xz_read_exact_at(self->device, index_offset, &index_indicator,
-                             sizeof(index_indicator)) ||
+    if (!xx_lzma_stream_read_exact_at(self->device, index_offset,
+                                      &index_indicator,
+                                      sizeof(index_indicator), pd) ||
         index_indicator != 0U || !index_work_remaining ||
         index_size_u64 > *index_work_remaining) {
         return false;
     }
     *index_work_remaining -= index_size_u64;
     index = (uint8_t *)xx_mem_alloc(index_size);
-    if (!index || !xx_xz_read_exact_at(self->device, index_offset, index,
-                                        index_size) || index[0] != 0U ||
+    if (!index || !xx_lzma_stream_read_exact_at(self->device, index_offset,
+                                                index, index_size, pd) ||
+        index[0] != 0U ||
+        !xx_xz_crc32_cancellable(index, index_size - 4U, pd, &index_crc) ||
         xx_data_get_u32(index, index_size, index_size - 4U, false) !=
-            xx_crc32_calc(0U, index, index_size - 4U)) {
+            index_crc) {
         goto cleanup;
     }
     cursor = 1U;
@@ -426,13 +444,15 @@ static bool xx_xz_try_footer(Abstractformat *self, int64_t stream_start,
         if (!unpadded || !uncompressed || !candidate->blocks) goto cleanup;
     }
     for (size_t i = 0U; i < record_count; ++i) {
-        if (!xx_xz_vli(index, index_size - 4U, &cursor, &unpadded[i]) ||
+        if ((pd && xx_pd_is_stopped(pd)) ||
+            !xx_xz_vli(index, index_size - 4U, &cursor, &unpadded[i]) ||
             !xx_xz_vli(index, index_size - 4U, &cursor, &uncompressed[i]) ||
             unpadded[i] == 0U) goto cleanup;
     }
     expected_padding = (4U - (cursor & 3U)) & 3U;
     if (cursor + expected_padding != index_size - 4U) goto cleanup;
     while (cursor < index_size - 4U) {
+        if (pd && xx_pd_is_stopped(pd)) goto cleanup;
         if (index[cursor++] != 0U) goto cleanup;
     }
 
@@ -449,13 +469,15 @@ static bool xx_xz_try_footer(Abstractformat *self, int64_t stream_start,
         uint64_t aligned;
         xx_xz_block *block = &candidate->blocks[i];
         if (pd && xx_pd_is_stopped(pd)) goto cleanup;
-        if (!xx_xz_read_exact_at(self->device, block_offset, &first, 1U) ||
+        if (!xx_lzma_stream_read_exact_at(self->device, block_offset, &first,
+                                          1U, pd) ||
             first == 0U) goto cleanup;
         header_size = ((size_t)first + 1U) * 4U;
         if (block_offset > index_offset - (int64_t)header_size) goto cleanup;
         header = (uint8_t *)xx_mem_alloc(header_size);
-        if (!header || !xx_xz_read_exact_at(self->device, block_offset,
-                                             header, header_size) ||
+        if (!header ||
+            !xx_lzma_stream_read_exact_at(self->device, block_offset, header,
+                                          header_size, pd) ||
             !xx_xz_parse_block_header(header, header_size, block,
                                       &has_compressed,
                                       &declared_compressed,
@@ -488,15 +510,17 @@ static bool xx_xz_try_footer(Abstractformat *self, int64_t stream_start,
         block->unpadded_size = unpadded[i];
         if (block->padding_size != 0) {
             uint8_t padding[3];
-            if (!xx_xz_read_exact_at(self->device, block->padding_offset,
-                                     padding, (size_t)block->padding_size))
+            if (!xx_lzma_stream_read_exact_at(
+                    self->device, block->padding_offset, padding,
+                    (size_t)block->padding_size, pd))
                 goto cleanup;
             for (int64_t p = 0; p < block->padding_size; ++p)
                 if (padding[p] != 0U) goto cleanup;
         }
         block_offset += (int64_t)aligned;
     }
-    if (block_offset != index_offset) goto cleanup;
+    if (block_offset != index_offset || (pd && xx_pd_is_stopped(pd)))
+        goto cleanup;
 
     candidate->stream.header_offset = stream_start;
     candidate->stream.index_offset = index_offset;
@@ -519,28 +543,33 @@ cleanup:
     return ok;
 }
 
-static bool xx_xz_find_stream(Abstractformat *self, int64_t stream_start,
-                              int64_t total_size, xx_xz_candidate *candidate,
-                              xx_pd_struct *pd) {
+static bool xx_xz_find_stream_buffered(
+    Abstractformat *self, int64_t stream_start, int64_t total_size,
+    xx_xz_candidate *candidate, xx_pd_struct *pd, uint8_t *buffer,
+    size_t buffer_capacity) {
     uint8_t check_type;
-    uint8_t buffer[65536];
     int64_t offset;
     uint64_t index_work_remaining;
     uint8_t previous = 0U;
     bool have_previous = false;
-    if (!self || !candidate || stream_start < 0 || total_size < stream_start ||
+    if (!self || !candidate || !buffer || buffer_capacity == 0U ||
+        (pd && xx_pd_is_stopped(pd)) ||
+        stream_start < 0 || total_size < stream_start ||
         total_size - stream_start < 32 ||
         !xx_xz_validate_stream_header(self->device, stream_start,
-                                      &check_type)) {
+                                      &check_type, pd)) {
         return false;
     }
     index_work_remaining = 0U;
     offset = stream_start + XX_XZ_STREAM_HEADER_SIZE;
     while (offset < total_size) {
-        size_t amount = (size_t)(total_size - offset);
+        size_t amount = (uint64_t)(total_size - offset) >
+                                (uint64_t)buffer_capacity
+                            ? buffer_capacity
+                            : (size_t)(total_size - offset);
         uint64_t work_credit;
-        if (amount > sizeof(buffer)) amount = sizeof(buffer);
-        if (!xx_xz_read_exact_at(self->device, offset, buffer, amount))
+        if (!xx_lzma_stream_read_exact_at(self->device, offset, buffer, amount,
+                                          pd))
             return false;
         /* Each scanned byte supplies a fixed amount of validation credit.
            This token bucket permits a real Index as large as the preceding
@@ -562,7 +591,8 @@ static bool xx_xz_find_stream(Abstractformat *self, int64_t stream_start,
                     xx_mem_zero(candidate, sizeof(*candidate));
                     if (xx_xz_try_footer(self, stream_start, check_type,
                                          footer_offset, candidate,
-                                         &index_work_remaining, pd)) {
+                                         &index_work_remaining, pd) &&
+                        !(pd && xx_pd_is_stopped(pd))) {
                         return true;
                     }
                 }
@@ -574,6 +604,20 @@ static bool xx_xz_find_stream(Abstractformat *self, int64_t stream_start,
         if (pd && xx_pd_is_stopped(pd)) return false;
     }
     return false;
+}
+
+static bool xx_xz_find_stream(Abstractformat *self, int64_t stream_start,
+                              int64_t total_size, xx_xz_candidate *candidate,
+                              xx_pd_struct *pd) {
+    const size_t buffer_capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
+    bool result;
+    if (!buffer) return false;
+    result = xx_xz_find_stream_buffered(self, stream_start, total_size,
+                                        candidate, pd, buffer,
+                                        buffer_capacity);
+    xx_mem_free(buffer);
+    return result;
 }
 
 static void xx_xz_private_free(xx_xz_private *priv) {
@@ -620,10 +664,11 @@ static bool xx_xz_append_candidate(xx_xz_private *priv,
 }
 
 static bool xx_xz_is_magic_at(xx_io_device *device, int64_t total_size,
-                              int64_t offset) {
+                              int64_t offset, xx_pd_struct *pd) {
     uint8_t magic[XX_XZ_MAGIC_SIZE];
     return offset >= 0 && total_size - offset >= XX_XZ_MAGIC_SIZE &&
-           xx_xz_read_exact_at(device, offset, magic, sizeof(magic)) &&
+           xx_lzma_stream_read_exact_at(device, offset, magic, sizeof(magic),
+                                        pd) &&
            xx_rt_memcmp(magic, XX_XZ_MAGIC, sizeof(magic)) == 0;
 }
 
@@ -677,8 +722,8 @@ static xx_xz_private *xx_xz_parse(Abstractformat *self, xx_pd_struct *pd) {
         cursor = priv->streams[priv->stream_count - 1U].stream_end;
         while (total_size - cursor >= 4) {
             uint8_t padding[4];
-            if (!xx_xz_read_exact_at(self->device, cursor, padding,
-                                     sizeof(padding))) {
+            if (!xx_lzma_stream_read_exact_at(self->device, cursor, padding,
+                                              sizeof(padding), pd)) {
                 xx_xz_private_free(priv);
                 return NULL;
             }
@@ -689,90 +734,208 @@ static xx_xz_private *xx_xz_parse(Abstractformat *self, xx_pd_struct *pd) {
         priv->streams[priv->stream_count - 1U].padding_size =
             cursor - priv->streams[priv->stream_count - 1U].stream_end;
         priv->format_end = cursor;
-        if (!xx_xz_is_magic_at(self->device, total_size, cursor)) break;
+        if (!xx_xz_is_magic_at(self->device, total_size, cursor, pd)) break;
         stream_start = cursor;
     }
     return priv;
 }
 
-static ssize_t xx_xz_sink_write(xx_io_device *device, const void *data,
-                                size_t size) {
-    xx_xz_sink *sink = device ? (xx_xz_sink *)device->priv : NULL;
-    const uint8_t *source = (const uint8_t *)data;
-    uint8_t transformed[4096];
-    size_t original_size = size;
-    if (!sink || (!data && size != 0U) || sink->written > sink->expected ||
-        (uint64_t)size > sink->expected - sink->written) {
-        if (sink) sink->failed = true;
-        return -1;
+static uint64_t xx_xz_limit(Abstractformat *self, const xx_list_s *options,
+                             uint32_t id, uint64_t fallback) {
+    const xx_var *value = xx_format_resolve_extra_parameter(self, options, id);
+    if (!value) return fallback;
+    switch (value->type) {
+        case XX_VAR_TYPE_UINT8:
+        case XX_VAR_TYPE_UINT16:
+        case XX_VAR_TYPE_UINT32:
+        case XX_VAR_TYPE_UINT64:
+            return xx_var_get_u64(value);
+        case XX_VAR_TYPE_INT8:
+        case XX_VAR_TYPE_INT16:
+        case XX_VAR_TYPE_INT32:
+        case XX_VAR_TYPE_INT64: {
+            int64_t signed_value = xx_var_get_i64(value);
+            return signed_value < 0 ? fallback : (uint64_t)signed_value;
+        }
+        default:
+            return fallback;
     }
-    while (size != 0U) {
-        size_t amount = size > sizeof(transformed) ? sizeof(transformed) : size;
-        const uint8_t *output = source;
-        if (sink->delta_distance != 0U) {
-            for (size_t i = 0U; i < amount; ++i) {
-                size_t prior = (size_t)((sink->delta_position -
-                    sink->delta_distance) & 0xffU);
-                uint8_t value = (uint8_t)(source[i] +
-                                           sink->delta_history[prior]);
-                transformed[i] = value;
-                sink->delta_history[sink->delta_position & 0xffU] = value;
-                ++sink->delta_position;
+}
+
+static bool xx_xz_delta_decode(uint8_t *data, size_t size,
+                               uint16_t distance, xx_pd_struct *pd) {
+    uint8_t history[256] = {0};
+    size_t position;
+    if ((!data && size != 0U) || distance == 0U || distance > 256U)
+        return false;
+    for (position = 0U; position < size; ++position) {
+        size_t slot;
+        uint8_t value;
+        if ((position & 65535U) == 0U && pd && xx_pd_is_stopped(pd))
+            return false;
+        slot = position % distance;
+        value = (uint8_t)(data[position] + history[slot]);
+        data[position] = value;
+        history[slot] = value;
+    }
+    return !pd || !xx_pd_is_stopped(pd);
+}
+
+static bool xx_xz_verify_filter_chain_block(Abstractformat *self,
+                                   const xx_xz_stream *stream,
+                                   const xx_xz_block *block,
+                                   const xx_list_s *options,
+                                   xx_io_device *target, xx_pd_struct *pd) {
+    uint8_t *filtered = NULL;
+    uint8_t *plain = NULL;
+    uint8_t *result = NULL;
+    xx_io_device *buffer = NULL;
+    xx_lzma2_decoded_info decoded;
+    uint8_t expected[XX_SHA256_DIGEST_SIZE];
+    uint8_t digest[XX_SHA256_DIGEST_SIZE];
+    size_t size;
+    bool converted;
+    bool valid = false;
+    if (!self || !stream || !block ||
+        (block->bcj_method == 0U && block->chain_kind[0] == 0U) ||
+        block->uncompressed_size > XX_XZ_FILTER_CHAIN_MAX_BLOCK_BYTES ||
+        block->uncompressed_size > SIZE_MAX ||
+        (pd && xx_pd_is_stopped(pd))) return false;
+    size = (size_t)block->uncompressed_size;
+    if (2U * (uint64_t)(size ? size : 1U) + 4096U >
+        xx_xz_limit(self, options, XX_META_ID_OPT_MEMORY_LIMIT, UINT64_MAX))
+        return false;
+    filtered = (uint8_t *)xx_mem_alloc(size ? size : 1U);
+    plain = (uint8_t *)xx_mem_alloc(size ? size : 1U);
+    if (!filtered || !plain || !(buffer = xx_io_mem_open(filtered, size)))
+        goto cleanup;
+    if (!xx_lzma2_unpack_filtered_checked_device(
+            self->device, block->data_offset, block->compressed_size,
+            block->lzma2_property,
+            block->delta_after_bcj ? 0U : block->delta_distance,
+            block->uncompressed_size,
+            buffer, 0U, &decoded, pd) || decoded.written != size ||
+        (pd && xx_pd_is_stopped(pd))) goto cleanup;
+    if (xx_io_close(buffer) != 0) { buffer = NULL; goto cleanup; }
+    buffer = NULL;
+    if (block->chain_kind[0] != 0U) {
+        uint8_t *current = filtered;
+        uint8_t *scratch = plain;
+        size_t index = (size_t)block->filter_count - 1U;
+        converted = true;
+        while (index-- > 0U) {
+            if (block->chain_kind[index] == 2U) {
+                converted = xx_xz_delta_decode(current, size,
+                                                block->chain_distance[index],
+                                                pd);
+            } else if (block->chain_kind[index] == 1U &&
+                       block->chain_method[index] ==
+                           XX_7ZIP_METHOD_RISCV) {
+                converted = xx_xz_riscv_decode(current, size,
+                    block->chain_properties[index],
+                    block->chain_property_size[index]);
+            } else if (block->chain_kind[index] == 1U) {
+                uint8_t *next;
+                converted = xx_7zip_branch_decode(block->chain_method[index],
+                    block->chain_properties[index],
+                    block->chain_property_size[index],
+                    current, size, scratch, size);
+                next = current;
+                current = scratch;
+                scratch = next;
+            } else {
+                converted = false;
             }
-            output = transformed;
+            if (!converted || (pd && xx_pd_is_stopped(pd))) goto cleanup;
         }
-        if (sink->target &&
-            xx_io_write(sink->target, output, amount) != (ssize_t)amount) {
-            sink->failed = true;
-            return -1;
-        }
-        sink->crc32 = xx_crc32_calc(sink->crc32, output, amount);
-        sink->crc64 = xx_crc64_xz_calc(sink->crc64, output, amount);
-        xx_xz_sha256_update(&sink->sha256, output, amount);
-        sink->written += amount;
-        source += amount;
-        size -= amount;
+        result = current;
+    } else if (block->bcj_method == XX_7ZIP_METHOD_RISCV) {
+        if (size) xx_mem_copy(plain, filtered, size);
+        converted = xx_xz_riscv_decode(plain, size, block->bcj_properties,
+                                       block->bcj_properties_size);
+        result = plain;
+    } else {
+        converted = xx_7zip_branch_decode(block->bcj_method,
+            block->bcj_properties, block->bcj_properties_size,
+            filtered, size, plain, size);
+        result = plain;
     }
-    return (ssize_t)original_size;
-}
-
-static int64_t xx_xz_sink_size(xx_io_device *device) {
-    xx_xz_sink *sink = device ? (xx_xz_sink *)device->priv : NULL;
-    return sink && sink->written <= (uint64_t)INT64_MAX
-               ? (int64_t)sink->written : -1;
-}
-
-static void xx_xz_sink_init(xx_xz_sink *sink, xx_io_device *target,
-                            const xx_xz_block *block) {
-    xx_mem_zero(sink, sizeof(*sink));
-    sink->target = target;
-    sink->expected = block->uncompressed_size;
-    sink->delta_distance = block->delta_distance;
-    sink->device.write = xx_xz_sink_write;
-    sink->device.total_size = xx_xz_sink_size;
-    sink->device.get_total_size = xx_xz_sink_size;
-    sink->device.size = xx_xz_sink_size;
-    sink->device.priv = sink;
-    xx_xz_sha256_init(&sink->sha256);
+    if (!converted ||
+        (block->chain_kind[0] == 0U && block->delta_after_bcj &&
+         !xx_xz_delta_decode(result, size, block->delta_distance, pd)) ||
+        !xx_lzma_stream_read_exact_at(self->device, block->check_offset,
+                                      expected, (size_t)block->check_size,
+                                      pd) || (pd && xx_pd_is_stopped(pd)))
+        goto cleanup;
+    switch (stream->check_type) {
+        case XX_XZ_CHECK_NONE:
+            valid = true;
+            break;
+        case XX_XZ_CHECK_CRC32:
+            valid = xx_data_get_u32(expected, sizeof(expected), 0U, false) ==
+                    xx_crc32_calc(0U, result, size);
+            break;
+        case XX_XZ_CHECK_CRC64:
+            valid = xx_data_get_u64(expected, sizeof(expected), 0U, false) ==
+                    xx_crc64_xz_calc(0U, result, size);
+            break;
+        case XX_XZ_CHECK_SHA256:
+            valid = xx_sha256_memory(result, size, digest) &&
+                    xx_hash_equal(expected, digest, sizeof(digest));
+            break;
+        default:
+            valid = false;
+            break;
+    }
+    if (valid && target) {
+        size_t offset = 0U;
+        while (offset < size) {
+            size_t length = size - offset;
+            ssize_t written;
+            if (pd && xx_pd_is_stopped(pd)) { valid = false; break; }
+            if (length > 65536U) length = 65536U;
+            written = xx_io_write(target, result + offset, length);
+            if (written <= 0 || (size_t)written > length) {
+                valid = false;
+                break;
+            }
+            offset += (size_t)written;
+        }
+    }
+cleanup:
+    if (buffer) xx_io_close(buffer);
+    if (plain) xx_mem_free(plain);
+    if (filtered) xx_mem_free(filtered);
+    return valid;
 }
 
 static bool xx_xz_verify_block(Abstractformat *self,
                                const xx_xz_stream *stream,
                                const xx_xz_block *block,
+                               const xx_list_s *options,
                                xx_io_device *target, xx_pd_struct *pd) {
-    xx_xz_sink sink;
-    uint8_t expected[32];
-    uint8_t digest[32];
+    xx_lzma2_decoded_info decoded;
+    uint8_t expected[XX_SHA256_DIGEST_SIZE];
+    unsigned check_mask;
     bool valid = false;
     if (!self || !stream || !block || !block->extractable) return false;
-    xx_xz_sink_init(&sink, target, block);
-    if (!xx_lzma2_unpack_device(self->device, block->data_offset,
-                                block->compressed_size,
-                                block->lzma2_property,
-                                &sink.device, pd) || sink.failed ||
-        sink.written != block->uncompressed_size ||
-        !xx_xz_read_exact_at(self->device, block->check_offset, expected,
-                             (size_t)block->check_size)) {
+    if (block->bcj_method != 0U || block->chain_kind[0] != 0U)
+        return xx_xz_verify_filter_chain_block(self, stream, block, options,
+                                               target, pd);
+    switch (stream->check_type) {
+        case XX_XZ_CHECK_NONE: check_mask = 0U; break;
+        case XX_XZ_CHECK_CRC32: check_mask = XX_LZMA2_CALC_CRC32; break;
+        case XX_XZ_CHECK_CRC64: check_mask = XX_LZMA2_CALC_CRC64; break;
+        case XX_XZ_CHECK_SHA256: check_mask = XX_LZMA2_CALC_SHA256; break;
+        default: return false;
+    }
+    if (!xx_lzma2_unpack_filtered_checked_device(
+            self->device, block->data_offset, block->compressed_size,
+            block->lzma2_property, block->delta_distance,
+            block->uncompressed_size, target, check_mask, &decoded, pd) ||
+        !xx_lzma_stream_read_exact_at(self->device, block->check_offset,
+                                      expected, (size_t)block->check_size,
+                                      pd)) {
         return false;
     }
     switch (stream->check_type) {
@@ -781,15 +944,15 @@ static bool xx_xz_verify_block(Abstractformat *self,
             break;
         case XX_XZ_CHECK_CRC32:
             valid = xx_data_get_u32(expected, sizeof(expected), 0U, false) ==
-                    sink.crc32;
+                    decoded.crc32;
             break;
         case XX_XZ_CHECK_CRC64:
             valid = xx_data_get_u64(expected, sizeof(expected), 0U, false) ==
-                    sink.crc64;
+                    decoded.crc64;
             break;
         case XX_XZ_CHECK_SHA256:
-            xx_xz_sha256_final(&sink.sha256, digest);
-            valid = xx_rt_memcmp(expected, digest, sizeof(digest)) == 0;
+            valid = xx_hash_equal(expected, decoded.sha256,
+                                    sizeof(decoded.sha256));
             break;
         default:
             valid = false;
@@ -798,17 +961,20 @@ static bool xx_xz_verify_block(Abstractformat *self,
     return valid;
 }
 
-static bool xx_xz_extract_all(Abstractformat *self, xx_io_device *target,
-                              xx_pd_struct *pd) {
+static bool xx_xz_extract_all(Abstractformat *self, const xx_list_s *options,
+                              xx_io_device *target, xx_pd_struct *pd) {
     xx_xz_private *priv;
     if (!self || !(priv = (xx_xz_private *)((xx_xz *)self)->internal) ||
-        !priv->can_extract) return false;
+        !priv->can_extract || (pd && xx_pd_is_stopped(pd))) return false;
+    if (priv->uncompressed_size > xx_xz_limit(self, options,
+            XX_META_ID_OPT_MAX_MEMBER_SIZE, UINT64_MAX)) return false;
     for (size_t s = 0U; s < priv->stream_count; ++s) {
         const xx_xz_stream *stream = &priv->streams[s];
         for (size_t b = 0U; b < stream->block_count; ++b) {
             const xx_xz_block *block =
                 &priv->blocks[stream->first_block + b];
-            if (!xx_xz_verify_block(self, stream, block, target, pd))
+            if (!xx_xz_verify_block(self, stream, block, options,
+                                     target, pd))
                 return false;
         }
     }
@@ -833,14 +999,52 @@ static bool xx_xz_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_xz_find_option(const xx_list_s *options,
-                                       uint32_t meta_id) {
-    if (!options) return NULL;
-    for (size_t i = 0U; i < options->count; ++i) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, i);
-        if (item && item->meta_id == meta_id) return &item->var;
+static bool xx_xz_same_host_path(const char *left, const char *right) {
+    if (!left || !right) return false;
+    while (*left && *right) {
+        unsigned char a = (unsigned char)*left++;
+        unsigned char b = (unsigned char)*right++;
+        if (a >= 'A' && a <= 'Z') a += 'a' - 'A';
+        if (b >= 'A' && b <= 'Z') b += 'a' - 'A';
+        if (a != b) return false;
     }
+    return *left == '\0' && *right == '\0';
+}
+
+static xx_io_device *xx_xz_open_stage(const char *destination,
+                                      char **stage_path) {
+    char *directory;
+    size_t parent = 0U;
+    size_t i;
+    unsigned attempt;
+    if (!destination || !stage_path) return NULL;
+    *stage_path = NULL;
+    directory = xx_str_dup(destination);
+    if (!directory) return NULL;
+    for (i = 0U; directory[i]; ++i) {
+        if (directory[i] == '/' || directory[i] == '\\') parent = i + 1U;
+    }
+    directory[parent] = '\0';
+    for (attempt = 0U; attempt < 128U; ++attempt) {
+        char suffix[48];
+        char *candidate;
+        xx_io_device *file;
+        xx_rt_snprintf(suffix, sizeof(suffix), ".xx_xz.tmp.%u", attempt);
+        candidate = xx_str_concat(directory, suffix);
+        if (!candidate) break;
+        if (xx_xz_same_host_path(candidate, destination)) {
+            xx_str_free(candidate);
+            continue;
+        }
+        file = xx_io_file_open(candidate, "wbx");
+        if (file) {
+            *stage_path = candidate;
+            xx_str_free(directory);
+            return file;
+        }
+        xx_str_free(candidate);
+    }
+    xx_str_free(directory);
     return NULL;
 }
 
@@ -952,7 +1156,7 @@ bool xx_xz_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return total_size >= self->base_address &&
            total_size - self->base_address >= 32 &&
            xx_xz_validate_stream_header(self->device, self->base_address,
-                                        &check_type);
+                                        &check_type, pd);
 }
 
 bool xx_xz_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
@@ -1015,13 +1219,13 @@ uint64_t xx_xz_get_number_of_archive_records(Abstractformat *self,
 
 bool xx_xz_unpack_to_device(xx_xz *xz, xx_io_device *destination,
                             xx_pd_struct *pd) {
-    if (!xz || !destination ||
+    if (!xz || !destination || destination == xz->format.device ||
         (!xz->format.base_info_handled &&
          !xx_format_handle_base_info(&xz->format, pd)) ||
         !xz->format.is_valid || !xz->can_extract) {
         return false;
     }
-    return xx_xz_extract_all(&xz->format, destination, pd);
+    return xx_xz_extract_all(&xz->format, NULL, destination, pd);
 }
 
 xx_archive_record_state *xx_xz_create_archive_records_reading(
@@ -1056,16 +1260,20 @@ bool xx_xz_unpack_current_archive_record(Abstractformat *self,
                                          xx_archive_record_state *state,
                                          xx_pd_struct *pd) {
     const xx_var *path_value;
+    const xx_var *overwrite_value;
     const char *base = NULL;
     char *owned_base = NULL;
     char *destination = NULL;
+    char *stage_path = NULL;
     xx_io_device *target = NULL;
-    bool result;
+    bool overwrite;
+    bool result = false;
     if (!self || !state || state->format != self || !state->has_record ||
         (pd && xx_pd_is_stopped(pd))) return false;
-    path_value = xx_xz_find_option(&state->options,
-                                   XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_value) return xx_xz_extract_all(self, NULL, pd);
+    path_value = xx_format_resolve_extra_parameter(self, &state->options,
+                                                   XX_META_ID_OPT_UNPACK_PATH);
+    if (!path_value) return xx_xz_extract_all(self, &state->options,
+                                                NULL, pd);
     if (path_value->type == XX_VAR_TYPE_STRING ||
         path_value->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_value);
@@ -1075,27 +1283,32 @@ bool xx_xz_unpack_current_archive_record(Abstractformat *self,
         base = owned_base;
     }
     if (!base) goto cleanup;
+    overwrite_value = xx_format_resolve_extra_parameter(self,
+        &state->options, XX_META_ID_OPT_OVERWRITE);
+    overwrite = overwrite_value && xx_var_get_bool(overwrite_value);
     if (base[0] != '\0' && base[xx_str_len(base) - 1U] != '/' &&
         base[xx_str_len(base) - 1U] != '\\') {
         destination = xx_str_concat3(base, "/", XX_XZ_PAYLOAD_NAME);
     } else {
         destination = xx_str_concat(base, XX_XZ_PAYLOAD_NAME);
     }
-    if (!destination || !xx_io_create_dirs_a(destination, false) ||
-        !(target = xx_io_file_open(destination, "wb"))) goto cleanup;
-    result = xx_xz_extract_all(self, target, pd);
-    xx_io_close(target);
+    if (!destination || (!overwrite && xx_io_file_exists_a(destination)) ||
+        !xx_io_create_dirs_a(destination, false) ||
+        !(target = xx_xz_open_stage(destination, &stage_path))) goto cleanup;
+    result = xx_xz_extract_all(self, &state->options, target, pd);
+    if (xx_io_close(target) != 0) result = false;
     target = NULL;
-    if (!result) xx_rt_remove(destination);
-    if (owned_base) xx_str_free(owned_base);
-    if (destination) xx_str_free(destination);
-    return result;
+    if (pd && xx_pd_is_stopped(pd)) result = false;
+    if (result) result = xx_io_file_replace_a(stage_path, destination,
+                                              overwrite);
 
 cleanup:
     if (target) xx_io_close(target);
+    if (!result && stage_path) xx_io_file_remove_a(stage_path);
+    if (stage_path) xx_str_free(stage_path);
     if (owned_base) xx_str_free(owned_base);
     if (destination) xx_str_free(destination);
-    return false;
+    return result;
 }
 
 bool xx_xz_archive_record_move_to_next(Abstractformat *self,

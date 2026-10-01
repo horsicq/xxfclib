@@ -23,6 +23,7 @@
  *
  * Layout ported from XArchive packages/xsolarispackage.cpp.
  */
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/solarispkg/xx_solarispkg.h"
 
@@ -52,7 +53,6 @@
 #define SOLPKG_MAX_MEMBERS 500000U
 #define SOLPKG_MAX_PARTS 8192
 #define SOLPKG_MAX_RECORDS_PER_PART 500000
-#define SOLPKG_COPY_BUFFER 65536U
 #define SOLPKG_S_IFMT 0170000U
 #define SOLPKG_S_IFDIR 0040000U
 
@@ -103,13 +103,16 @@ typedef struct solpkg_raw_s {
 static bool solpkg_read_at(xx_io_device *device, int64_t offset, void *buffer,
                            size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount =
-            xx_io_read(device, (uint8_t *)buffer + done, size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+            xx_io_read(device, (uint8_t *)buffer + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -666,6 +669,7 @@ bool xx_solarispkg_unpack_current_archive_record(
     uint8_t *buffer = NULL;
     int64_t remaining;
     bool result = false;
+    size_t io_capacity = xx_get_file_buffer_size();
     bool created = false;
     xx_io_device *destination = NULL;
     if (!format || !state || state->format != format || !state->has_record ||
@@ -690,7 +694,7 @@ bool xx_solarispkg_unpack_current_archive_record(
                ? xx_str_concat3(base, "/", member->name)
                : xx_str_concat(base, member->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
-    buffer = (uint8_t *)xx_mem_alloc(SOLPKG_COPY_BUFFER);
+    buffer = (uint8_t *)xx_mem_alloc(io_capacity);
     destination = xx_io_file_open(path, "wb");
     created = destination != NULL;
     if (!buffer || !destination) goto done;
@@ -699,8 +703,8 @@ bool xx_solarispkg_unpack_current_archive_record(
     {
         int64_t cursor = member->data_offset;
         while (remaining > 0) {
-            size_t chunk = remaining > (int64_t)SOLPKG_COPY_BUFFER
-                               ? SOLPKG_COPY_BUFFER
+            size_t chunk = remaining > (int64_t)io_capacity
+                               ? io_capacity
                                : (size_t)remaining;
             size_t written = 0U;
             if (pd && xx_pd_is_stopped(pd)) {

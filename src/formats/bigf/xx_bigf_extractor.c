@@ -2,10 +2,10 @@
  * SPDX-License-Identifier: MIT
  */
 
-/* xx_bigf_extractor.c - search raw data for BIGF.
+/* xx_bigf_extractor.c - search raw data for BIGF and BIG4.
  *
  * Scans for:
- *   42 49 47 46 at +0  ("BIGF")
+ *   42 49 47 46 or 42 49 47 34 at +0  ("BIGF" or "BIG4")
  * Offset 0 is always tried as well.
  * Each candidate must be accepted by the bigf reader, which also measures it,
  * and named by the detector, both on a view that starts at the candidate.
@@ -16,9 +16,11 @@
 #include "xxfclib/formats/bigf/xx_bigf.h"
 
 static const uint8_t k_anchor0[] = { 0x42, 0x49, 0x47, 0x46 };
+static const uint8_t k_anchor1[] = { 0x42, 0x49, 0x47, 0x34 };
 
 static const xx_format_search_anchor k_anchors[] = {
     { k_anchor0, sizeof(k_anchor0), 0U },
+    { k_anchor1, sizeof(k_anchor1), 0U },
 };
 
 static const xx_file_type_t k_types[] = { XX_FILE_TYPE_BIGF };

@@ -32,6 +32,7 @@
  * here, so the alias macro defined next to the enumerator is tested instead;
  * this picks up the real file type as soon as CUE is registered there. */
 #ifdef CUE
+
 #define XX_CUE_FILE_TYPE XX_FILE_TYPE_CUE
 #else
 #define XX_CUE_FILE_TYPE XX_FILE_TYPE_UNKNOWN
@@ -61,7 +62,8 @@ enum cue_file_type_e {
     CUE_FT_BINARY = 0,
     CUE_FT_MOTOROLA,
     CUE_FT_WAVE,
-    CUE_FT_OTHER /* AIFF, MP3, FLAC, ...: listed, never decoded */
+    CUE_FT_AIFF,
+    CUE_FT_OTHER /* MP3, FLAC, ...: listed, never decoded */
 };
 
 enum cue_kind_e {
@@ -158,15 +160,52 @@ typedef struct cue_sheet_s {
 /* ---------------------------------------------------------------------- */
 /* Helpers                                                                 */
 
+#include "xxfclib/global/xx_global.h"
+static size_t gb_cue_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_cue_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_cue_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+
+
 static bool cue_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
+    const size_t file_io_capacity = gb_cue_capacity();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = gb_cue_read(device, (uint8_t *)buffer + done,
+                                    size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -180,6 +219,19 @@ static uint32_t cue_le32(const uint8_t *b) {
 
 static uint32_t cue_le16(const uint8_t *b) {
     return (uint32_t)b[0] | ((uint32_t)b[1] << 8U);
+}
+
+static uint64_t cue_le64(const uint8_t *b) {
+    return (uint64_t)cue_le32(b) | ((uint64_t)cue_le32(b + 4U) << 32U);
+}
+
+static uint32_t cue_be32(const uint8_t *b) {
+    return ((uint32_t)b[0] << 24U) | ((uint32_t)b[1] << 16U) |
+           ((uint32_t)b[2] << 8U) | (uint32_t)b[3];
+}
+
+static uint32_t cue_be16(const uint8_t *b) {
+    return ((uint32_t)b[0] << 8U) | (uint32_t)b[1];
 }
 
 static uint8_t cue_upper(uint8_t c) {
@@ -335,6 +387,8 @@ static bool cue_parse_file(cue_sheet *sheet, cue_line *line) {
     if (cue_word_is(type, type_size, "BINARY")) file->type = CUE_FT_BINARY;
     else if (cue_word_is(type, type_size, "MOTOROLA")) file->type = CUE_FT_MOTOROLA;
     else if (cue_word_is(type, type_size, "WAVE")) file->type = CUE_FT_WAVE;
+    else if (cue_word_is(type, type_size, "AIFF") ||
+             cue_word_is(type, type_size, "AIFC")) file->type = CUE_FT_AIFF;
     else file->type = CUE_FT_OTHER;
     file->first_point = sheet->point_count;
     ++sheet->file_count;
@@ -487,6 +541,7 @@ static uint32_t cue_frame_size(const cue_sheet *sheet, uint32_t file,
                                uint32_t track) {
     /* WAVE and the other audio containers count frames of their PCM. */
     if (sheet->files[file].type == CUE_FT_WAVE ||
+        sheet->files[file].type == CUE_FT_AIFF ||
         sheet->files[file].type == CUE_FT_OTHER)
         return CUE_AUDIO_FRAME;
     return cue_modes[sheet->tracks[track].mode].sector_size;
@@ -632,25 +687,41 @@ static cue_sheet *cue_load(Abstractformat *format) {
     return sheet;
 }
 
-/* WAVE data file: RIFF, a CD-audio "fmt " chunk (PCM, 2 channels, 44.1 kHz,
- * 16 bits), then the "data" chunk whose PCM the frames count.  A data size
- * past the end of the file (streamed writers leave 0xFFFFFFFF) is clamped. */
+/* WAVE data file: RIFF or RF64, a CD-audio "fmt " chunk (PCM, 2 channels,
+ * 44.1 kHz, 16 bits), then the "data" chunk whose PCM the frames count. */
 static bool cue_wave_locate(xx_io_device *device, int64_t total, int64_t *base,
                             int64_t *size) {
-    uint8_t head[12], chunk[8], format_chunk[40];
+    uint8_t head[12], chunk[8], format_chunk[40], ds64[28];
     int64_t position = 12;
     uint32_t count;
-    bool have_format = false;
+    uint64_t riff_size64 = 0U, data_size64 = 0U;
+    bool have_format = false, have_ds64 = false, rf64;
     if (total < 12 || !cue_read_at(device, 0, head, sizeof(head)) ||
-        xx_rt_memcmp(head, "RIFF", 4U) != 0 ||
         xx_rt_memcmp(head + 8, "WAVE", 4U) != 0)
         return false;
+    rf64 = xx_rt_memcmp(head, "RF64", 4U) == 0;
+    if (!rf64 && xx_rt_memcmp(head, "RIFF", 4U) != 0) return false;
+    if (rf64 && cue_le32(head + 4U) != UINT32_MAX) return false;
     for (count = 0U; count < CUE_WAVE_MAX_CHUNKS && position <= total - 8;
          ++count) {
         int64_t body = position + 8, length;
         if (!cue_read_at(device, position, chunk, sizeof(chunk))) return false;
         length = (int64_t)cue_le32(chunk + 4);
-        if (xx_rt_memcmp(chunk, "fmt ", 4U) == 0) {
+        if (rf64 && count == 0U) {
+            if (xx_rt_memcmp(chunk, "ds64", 4U) != 0 ||
+                length < 28 || length > total - body ||
+                !cue_read_at(device, body, ds64, sizeof(ds64))) return false;
+            riff_size64 = cue_le64(ds64);
+            data_size64 = cue_le64(ds64 + 8U);
+            if (riff_size64 > (uint64_t)INT64_MAX - 8U ||
+                riff_size64 + 8U != (uint64_t)total ||
+                data_size64 > (uint64_t)INT64_MAX ||
+                (data_size64 & 3U) != 0U ||
+                cue_le64(ds64 + 16U) != data_size64 / 4U ||
+                cue_le32(ds64 + 24U) > ((uint32_t)length - 28U) / 12U)
+                return false;
+            have_ds64 = true;
+        } else if (xx_rt_memcmp(chunk, "fmt ", 4U) == 0) {
             uint32_t tag;
             size_t want = length >= 40 ? 40U : 16U;
             if (length < 16 || length > total - body ||
@@ -670,13 +741,74 @@ static bool cue_wave_locate(xx_io_device *device, int64_t total, int64_t *base,
         } else if (xx_rt_memcmp(chunk, "data", 4U) == 0) {
             if (!have_format) return false;
             *base = body;
-            *size = length < total - body ? length : total - body;
+            if (rf64) {
+                if (!have_ds64 || length != (int64_t)UINT32_MAX ||
+                    data_size64 > (uint64_t)(total - body)) return false;
+                *size = (int64_t)data_size64;
+            } else {
+                *size = length < total - body ? length : total - body;
+            }
             return true;
         }
+        if (rf64 && length == (int64_t)UINT32_MAX) return false;
         if (length > total - body) return false;
         position = body + length + (length & 1);
     }
     return false;
+}
+
+/* AIFF 1.3 and uncompressed AIFF-C: the 80-bit sample-rate field is the
+ * exact extended-precision representation of 44100 Hz. Audio bytes are
+ * exposed as stored in SSND, like WAVE's stored PCM; no byte swap is done. */
+static bool cue_aiff_locate(xx_io_device *device, int64_t total, int64_t *base,
+                            int64_t *size) {
+    static const uint8_t rate_44100[10] = {
+        0x40U, 0x0eU, 0xacU, 0x44U, 0, 0, 0, 0, 0, 0
+    };
+    uint8_t head[12], chunk[8], common[22], sound[8];
+    int64_t position = 12, end, sound_base = -1, sound_size = -1;
+    uint32_t count, frames = 0U;
+    bool aifc, have_common = false;
+    if (total < 12 || !cue_read_at(device, 0, head, sizeof(head)) ||
+        xx_rt_memcmp(head, "FORM", 4U) != 0) return false;
+    aifc = xx_rt_memcmp(head + 8, "AIFC", 4U) == 0;
+    if (!aifc && xx_rt_memcmp(head + 8, "AIFF", 4U) != 0) return false;
+    end = 8 + (int64_t)cue_be32(head + 4);
+    if (end < 12 || end > total) return false;
+    for (count = 0U; count < CUE_WAVE_MAX_CHUNKS && position <= end - 8;
+         ++count) {
+        int64_t body = position + 8, length;
+        if (!cue_read_at(device, position, chunk, sizeof(chunk))) return false;
+        length = (int64_t)cue_be32(chunk + 4);
+        if (length > end - body) return false;
+        if (xx_rt_memcmp(chunk, "COMM", 4U) == 0) {
+            if (have_common || length < (aifc ? 22 : 18) ||
+                !cue_read_at(device, body, common, aifc ? 22U : 18U) ||
+                cue_be16(common) != 2U || cue_be16(common + 6) != 16U ||
+                xx_rt_memcmp(common + 8, rate_44100, 10U) != 0 ||
+                (aifc && xx_rt_memcmp(common + 18, "NONE", 4U) != 0 &&
+                 xx_rt_memcmp(common + 18, "sowt", 4U) != 0)) return false;
+            frames = cue_be32(common + 2);
+            if (!frames) return false;
+            have_common = true;
+        } else if (xx_rt_memcmp(chunk, "SSND", 4U) == 0) {
+            uint32_t offset;
+            if (sound_base >= 0 || length < 8 ||
+                !cue_read_at(device, body, sound, sizeof(sound)))
+                return false;
+            offset = cue_be32(sound);
+            if (cue_be32(sound + 4) != 0U || offset > (uint64_t)length - 8U)
+                return false;
+            sound_base = body + 8 + offset;
+            sound_size = length - 8 - offset;
+        }
+        position = body + length + (length & 1);
+    }
+    if (!have_common || sound_base < 0 || sound_size < (int64_t)frames * 4)
+        return false;
+    *base = sound_base;
+    *size = (int64_t)frames * 4;
+    return true;
 }
 
 /* Bytes a segment covers once its file is measured: the stated length, or
@@ -711,6 +843,9 @@ static void cue_resolve(cue_sheet *sheet) {
             entry->usable = true;
         } else if (entry->type == CUE_FT_WAVE) {
             entry->usable = cue_wave_locate(device, total, &entry->base,
+                                            &entry->size);
+        } else if (entry->type == CUE_FT_AIFF) {
+            entry->usable = cue_aiff_locate(device, total, &entry->base,
                                             &entry->size);
         }
     }
@@ -797,12 +932,13 @@ static bool cue_set_record(xx_archive_record *record, const cue_sheet *sheet,
 /* Copy one member's segments to @p destination (NULL only reads them). */
 static bool cue_copy_member(const cue_sheet *sheet, const cue_member *member,
                             xx_io_device *destination, xx_pd_struct *pd) {
+    const size_t file_io_capacity = gb_cue_capacity();
     const xx_cue *owner = sheet->owner;
     uint8_t *buffer;
     uint32_t index;
     bool result = true;
     if (!owner || member->size < 0) return false;
-    buffer = (uint8_t *)xx_mem_alloc(CUE_COPY_CHUNK);
+    buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     for (index = 0U; index < member->segment_count && result; ++index) {
         const cue_segment *segment =
@@ -815,8 +951,8 @@ static bool cue_copy_member(const cue_sheet *sheet, const cue_member *member,
             break;
         }
         while (done < length) {
-            size_t amount = (length - done) > (int64_t)CUE_COPY_CHUNK
-                                ? CUE_COPY_CHUNK
+            size_t amount = (length - done) > (int64_t)file_io_capacity
+                                ? file_io_capacity
                                 : (size_t)(length - done);
             size_t written = 0U;
             if ((pd && xx_pd_is_stopped(pd)) ||
@@ -826,8 +962,8 @@ static bool cue_copy_member(const cue_sheet *sheet, const cue_member *member,
                 break;
             }
             while (destination && written < amount) {
-                ssize_t step = xx_io_write(destination, buffer + written,
-                                           amount - written);
+                ssize_t step = gb_cue_write(destination, buffer + written,
+                                           amount - written, file_io_capacity);
                 if (step <= 0 || (size_t)step > amount - written) {
                     result = false;
                     break;

@@ -3,6 +3,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/unixcompress/xx_unixcompress.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -26,8 +27,6 @@
 #define XX_UNIXCOMPRESS_MAX_BITS 16U
 #define XX_UNIXCOMPRESS_CLEAR 256U
 #define XX_UNIXCOMPRESS_TABLE_SIZE (UINT32_C(1) << XX_UNIXCOMPRESS_MAX_BITS)
-#define XX_UNIXCOMPRESS_IN_CHUNK 16384U
-#define XX_UNIXCOMPRESS_OUT_CHUNK 16384U
 #define XX_UNIXCOMPRESS_STOP_CHECK 0x0fffU
 
 /* How a stream whose header says maxbits == 9 is read once its table is
@@ -73,20 +72,24 @@ typedef struct xx_unixcompress_lzw_s {
     uint16_t prefix[XX_UNIXCOMPRESS_TABLE_SIZE];
     uint8_t suffix[XX_UNIXCOMPRESS_TABLE_SIZE];
     uint8_t stack[XX_UNIXCOMPRESS_TABLE_SIZE + 1U];
-    uint8_t in[XX_UNIXCOMPRESS_IN_CHUNK];
-    uint8_t out[XX_UNIXCOMPRESS_OUT_CHUNK];
+    uint8_t *in;
+    uint8_t *out;
+    size_t io_capacity;
 } xx_unixcompress_lzw;
 
 static void xx_unixcompress_vtable_destroy(Abstractformat *self);
 
 static bool xx_unixcompress_read_exact(xx_io_device *device, void *buffer,
                                        size_t size) {
+    const size_t io_capacity = xx_get_file_buffer_size();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U)) return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -125,8 +128,8 @@ static int xx_unixcompress_get_bits(xx_unixcompress_lzw *z, unsigned width,
         if (z->in_position == z->in_used) {
             size_t wanted;
             if (z->source_remaining <= 0) return -1;
-            wanted = z->source_remaining > (int64_t)XX_UNIXCOMPRESS_IN_CHUNK
-                         ? XX_UNIXCOMPRESS_IN_CHUNK
+            wanted = (uint64_t)z->source_remaining > (uint64_t)z->io_capacity
+                         ? z->io_capacity
                          : (size_t)z->source_remaining;
             if (!xx_unixcompress_read_exact(z->source, z->in, wanted)) {
                 return -1;
@@ -191,13 +194,13 @@ static bool xx_unixcompress_emit_stack(xx_unixcompress_lzw *z, size_t count) {
     if ((uint64_t)count > z->output_limit - z->output_total) return false;
     z->output_total += (uint64_t)count;
     while (count != 0U) {
-        size_t room = XX_UNIXCOMPRESS_OUT_CHUNK - z->out_used;
+        size_t room = z->io_capacity - z->out_used;
         size_t take = count < room ? count : room;
         size_t index;
         for (index = 0U; index < take; ++index) {
             z->out[z->out_used++] = z->stack[--count];
         }
-        if (z->out_used == XX_UNIXCOMPRESS_OUT_CHUNK &&
+        if (z->out_used == z->io_capacity &&
             !xx_unixcompress_flush(z)) {
             return false;
         }
@@ -374,6 +377,15 @@ static bool xx_unixcompress_decode_stream(Abstractformat *self,
     z = (xx_unixcompress_lzw *)xx_mem_alloc(sizeof(*z));
     if (!z) return false;
     xx_mem_zero(z, sizeof(*z));
+    z->io_capacity = xx_get_file_buffer_size();
+    z->in = (uint8_t *)xx_mem_alloc(z->io_capacity);
+    z->out = (uint8_t *)xx_mem_alloc(z->io_capacity);
+    if (!z->in || !z->out) {
+        if (z->in) xx_mem_free(z->in);
+        if (z->out) xx_mem_free(z->out);
+        xx_mem_free(z);
+        return false;
+    }
     status = xx_unixcompress_decode_once(
         z, self, input_size, destination, maximum_bits, block_mode,
         chosen == XX_UNIXCOMPRESS_VARIANT_WIDEN9, &widened, pd);
@@ -392,6 +404,8 @@ static bool xx_unixcompress_decode_stream(Abstractformat *self,
         *stream_size = input_size;
         if (used) *used = chosen;
     }
+    xx_mem_free(z->in);
+    xx_mem_free(z->out);
     xx_mem_free(z);
     return status == XX_UNIXCOMPRESS_OK;
 }

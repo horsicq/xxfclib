@@ -28,6 +28,38 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 
+#if defined(_MSC_VER)
+#define XX_PD_THREAD_LOCAL __declspec(thread)
+#else
+#define XX_PD_THREAD_LOCAL _Thread_local
+#endif
+
+static XX_PD_THREAD_LOCAL xx_pd_observer pd_observer;
+static XX_PD_THREAD_LOCAL bool pd_observer_active;
+
+xx_pd_observer xx_pd_set_observer(const xx_pd_struct *pd,
+                                xx_pd_observer_fn callback, void *user_data) {
+    xx_pd_observer previous = pd_observer;
+    pd_observer.progress = pd && callback ? pd : NULL;
+    pd_observer.callback = pd && callback ? callback : NULL;
+    pd_observer.user_data = pd && callback ? user_data : NULL;
+    return previous;
+}
+
+static bool poll_observer(const xx_pd_struct *pd) {
+    bool stopped;
+    if (!pd || pd != pd_observer.progress || !pd_observer.callback || pd_observer_active)
+        return false;
+    pd_observer_active = true;
+    stopped = pd_observer.callback(pd, pd_observer.user_data);
+    pd_observer_active = false;
+    return stopped;
+}
+
+static void notify_observer(xx_pd_struct *pd) {
+    if (poll_observer(pd)) pd->is_stop = true;
+}
+
 xx_pd_struct xx_pd_init(void) {
     xx_pd_struct pd;
     xx_mem_zero(&pd, sizeof(pd));
@@ -57,6 +89,7 @@ int xx_pd_enter_level(xx_pd_struct *pd, uint64_t total, const char *status) {
                 }
                 pd->records[i].status[len] = '\0';
             }
+            notify_observer(pd);
             return i;
         }
     }
@@ -69,6 +102,7 @@ void xx_pd_set_current(xx_pd_struct *pd, int level, uint64_t current) {
         return;
     }
     pd->records[level].current = current;
+    notify_observer(pd);
 }
 
 void xx_pd_increment_current(xx_pd_struct *pd, int level, uint64_t delta) {
@@ -76,6 +110,7 @@ void xx_pd_increment_current(xx_pd_struct *pd, int level, uint64_t delta) {
         return;
     }
     pd->records[level].current += delta;
+    notify_observer(pd);
 }
 
 void xx_pd_leave_level(xx_pd_struct *pd, int level) {
@@ -86,16 +121,18 @@ void xx_pd_leave_level(xx_pd_struct *pd, int level) {
     pd->records[level].current = 0;
     pd->records[level].total = 0;
     pd->records[level].status[0] = '\0';
+    notify_observer(pd);
 }
 
 void xx_pd_stop(xx_pd_struct *pd) {
     if (pd) {
         pd->is_stop = true;
+        notify_observer(pd);
     }
 }
 
 bool xx_pd_is_stopped(const xx_pd_struct *pd) {
-    return pd ? pd->is_stop : false;
+    return pd ? pd->is_stop || poll_observer(pd) : false;
 }
 
 void xx_pd_set_error(xx_pd_struct *pd, int error_code, const char *error_str) {
@@ -116,6 +153,7 @@ void xx_pd_set_error(xx_pd_struct *pd, int error_code, const char *error_str) {
         }
         pd->error_string[len] = '\0';
     }
+    notify_observer(pd);
 }
 
 void xx_pd_clear_error(xx_pd_struct *pd) {
@@ -124,4 +162,5 @@ void xx_pd_clear_error(xx_pd_struct *pd) {
     }
     pd->last_error = 0;
     pd->error_string[0] = '\0';
+    notify_observer(pd);
 }

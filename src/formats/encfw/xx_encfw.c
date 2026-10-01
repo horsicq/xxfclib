@@ -20,6 +20,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/encfw/xx_encfw.h"
 
 #include "xxfclib/formats/zip/xx_zip.h"
@@ -122,22 +123,22 @@ static const char *xx_encfw_lookup(const uint8_t *magic) {
  * buffer is small and fixed; the read is bounded by the sample size. */
 static bool xx_encfw_looks_like_ciphertext(xx_io_device *device,
                                            int64_t offset) {
-    uint8_t buffer[512];
+    size_t capacity=xx_get_file_buffer_size(); uint8_t *buffer=NULL; bool buffer_result=false;
     uint16_t counts[256];
     size_t done = 0U;
     size_t index;
     unsigned distinct = 0U;
 
     xx_rt_memset(counts, 0, sizeof(counts));
-    while (done < (size_t)XX_ENCFW_SAMPLE_SIZE) {
+    while (done < (size_t)XX_ENCFW_SAMPLE_SIZE) {if(!buffer) { buffer=(uint8_t *)xx_mem_alloc(capacity); if(!buffer) { buffer_result=false; goto buffer_done; } } 
         size_t chunk = (size_t)XX_ENCFW_SAMPLE_SIZE - done;
-        if (chunk > sizeof(buffer)) chunk = sizeof(buffer);
+        if (chunk > capacity) chunk = capacity;
         if (!xx_encfw_read_at(device, offset + (int64_t)done, buffer, chunk)) {
-            return false;
+            { buffer_result = (false); goto buffer_done; }
         }
         for (index = 0U; index < chunk; ++index) {
             if (++counts[buffer[index]] > XX_ENCFW_MAX_BYTE_COUNT) {
-                return false;
+                { buffer_result = (false); goto buffer_done; }
             }
         }
         done += chunk;
@@ -145,7 +146,11 @@ static bool xx_encfw_looks_like_ciphertext(xx_io_device *device,
     for (index = 0U; index < 256U; ++index) {
         if (counts[index] != 0U) ++distinct;
     }
-    return distinct >= XX_ENCFW_MIN_DISTINCT;
+    { buffer_result = (distinct >= XX_ENCFW_MIN_DISTINCT); goto buffer_done; }
+
+buffer_done:
+    xx_mem_free(buffer);
+    return buffer_result;
 }
 
 /* Bounded append: never writes past capacity, always leaves a terminator. */

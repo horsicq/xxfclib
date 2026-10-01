@@ -18,7 +18,8 @@
  *               (0 hard link, 1 directory, 2 regular file, 3 symlink,
  *               4 block device, 5 character device, 6 socket, 7 fifo) in
  *               bits 0..2 and the executable flag in bit 3
- *     +4   u32  spec info - for a directory, the offset of its first entry
+ *     +4   u32  spec info - for a directory, the offset of its first entry;
+ *               for a hard link, the offset of its target file header
  *     +8   u32  size
  *     +12  u32  checksum
  *     +16  the name, NUL terminated and padded to 16 bytes; data follows
@@ -28,6 +29,10 @@
  * The next-header chain and the first-entry pointers are unconstrained
  * offsets, so a hostile image can describe a cycle; the walker keeps a
  * visited set of header offsets and a hard node cap to bound it.
+ * User-visible hard links to regular files or symlinks are resolved through
+ * at most 64 distinct target headers, then exposed with their own names and
+ * the target's byte stream. Directory hard-link aliases other than "." and
+ * ".." are rejected rather than listed without their descendants.
  */
 
 #ifndef XXFCLIB_FORMAT_ROMFS_H

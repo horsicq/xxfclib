@@ -1,8 +1,8 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  *
- * CISO ("compressed ISO", .cso), the block-compressed ISO container used by
- * PSP and PS2 loaders.
+ * CISO v1/v2 and ZISO, block-compressed ISO containers used by PSP and PS2
+ * loaders. v2 can mix raw Deflate and LZ4 blocks; ZISO uses LZ4 blocks.
  *
  * Header (24 bytes, little endian)
  *   +0x00  "CISO"
@@ -27,8 +27,11 @@
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/algo/deflate/xx_deflate.h"
+#include "xxfclib/algo/lz4/xx_lz4.h"
+#include "xxfclib/formats/iso9660/xx_iso9660.h"
 
 #include <limits.h>
 #include <stdio.h>
@@ -41,6 +44,7 @@
 #endif
 
 #define CISO_MAX_MEMBERS 16U
+#define CISO_MAX_NESTED_ISO (256U * 1024U * 1024U)
 
 /* One enumerated member.  The aux slots carry whatever the format needs to
  * rebuild the member later without re-parsing the container. */
@@ -73,6 +77,35 @@ typedef struct ciso_stream_s {
     uint64_t aux1;
     uint64_t aux2;
 } ciso_stream;
+
+typedef struct ciso_nested_iso_s {
+    uint8_t *image;
+    xx_io_device *device;
+    xx_iso9660 iso;
+} ciso_nested_iso;
+
+static void ciso_nested_iso_free(ciso_nested_iso *nested) {
+    if (!nested) return;
+    if (nested->device) xx_iso9660_destroy(&nested->iso);
+    if (nested->device) xx_io_close(nested->device);
+    xx_mem_free(nested->image);
+    xx_mem_free(nested);
+}
+
+static bool ciso_prefix_iso_record(xx_archive_record_state *state) {
+    const char *name;
+    char *prefixed;
+    bool result;
+    if (!state || !state->has_record) return true;
+    name = xx_archive_record_get_original_name(&state->current_record);
+    if (!name || !name[0]) return false;
+    prefixed = xx_str_concat("ISO/", name);
+    if (!prefixed) return false;
+    result = xx_archive_record_set_original_name(&state->current_record,
+                                                  prefixed);
+    xx_str_free(prefixed);
+    return result;
+}
 
 static uint16_t ciso_le16(const uint8_t *b) {
     return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
@@ -129,39 +162,56 @@ static bool ciso_write_all(xx_io_device *device, const void *data, size_t size,
 /* Copy a run of source bytes straight through to the destination. */
 static bool ciso_copy_range(xx_io_device *source, int64_t offset, uint64_t size,
                            xx_io_device *destination, xx_pd_struct *pd) {
-    uint8_t buffer[0x8000];
+    size_t capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = NULL;
+    bool buffer_result = false;
     uint64_t left = size;
-    if (!source || offset < 0) return false;
-    if (!destination) return true;
-    if (xx_io_seek64(source, offset, SEEK_SET) != 0) return false;
+    if (!source || offset < 0) { buffer_result = (false); goto buffer_done; }
+    if (!destination) { buffer_result = (true); goto buffer_done; }
+    if (xx_io_seek64(source, offset, SEEK_SET) != 0) { buffer_result = (false); goto buffer_done; }
+    if (capacity > (SIZE_MAX >> 1U)) capacity = SIZE_MAX >> 1U;
+    if (left) { if(capacity>left) capacity=(size_t)left; buffer = (uint8_t *)xx_mem_alloc(capacity); if (!buffer) { buffer_result = false; goto buffer_done; } }
     while (left != 0U) {
-        size_t want = left < sizeof(buffer) ? (size_t)left : sizeof(buffer);
+        size_t want = left < capacity ? (size_t)left : capacity;
         size_t done = 0U;
-        if (pd && xx_pd_is_stopped(pd)) return false;
+        if (pd && xx_pd_is_stopped(pd)) { buffer_result = (false); goto buffer_done; }
         while (done < want) {
             ssize_t amount = xx_io_read(source, buffer + done, want - done);
-            if (amount <= 0 || (size_t)amount > want - done) return false;
+            if (amount <= 0 || (size_t)amount > want - done) { buffer_result = (false); goto buffer_done; }
             done += (size_t)amount;
         }
-        if (!ciso_write_all(destination, buffer, want, pd)) return false;
+        if (!ciso_write_all(destination, buffer, want, pd)) { buffer_result = (false); goto buffer_done; }
         left -= want;
     }
-    return true;
+    { buffer_result = (true); goto buffer_done; }
+
+buffer_done:
+    xx_mem_free(buffer);
+    return buffer_result;
 }
 
 /* Emit `size` zero bytes: the filler every sparse disk image needs. */
 static bool ciso_write_zeros(xx_io_device *destination, uint64_t size,
                             xx_pd_struct *pd) {
-    uint8_t buffer[0x8000];
+    size_t capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = NULL;
+    bool buffer_result = false;
     uint64_t left = size;
-    if (!destination) return true;
-    xx_mem_zero(buffer, sizeof(buffer));
+    if (!destination) { buffer_result = (true); goto buffer_done; }
+    if (capacity > (SIZE_MAX >> 1U)) capacity = SIZE_MAX >> 1U;
+    if (left) { if(capacity>left) capacity=(size_t)left; buffer = (uint8_t *)xx_mem_alloc(capacity); if (!buffer) { buffer_result = false; goto buffer_done; } }
+    if (!left) { buffer_result = true; goto buffer_done; }
+    xx_mem_zero(buffer, capacity);
     while (left != 0U) {
-        size_t want = left < sizeof(buffer) ? (size_t)left : sizeof(buffer);
-        if (!ciso_write_all(destination, buffer, want, pd)) return false;
+        size_t want = left < capacity ? (size_t)left : capacity;
+        if (!ciso_write_all(destination, buffer, want, pd)) { buffer_result = (false); goto buffer_done; }
         left -= want;
     }
-    return true;
+    { buffer_result = (true); goto buffer_done; }
+
+buffer_done:
+    xx_mem_free(buffer);
+    return buffer_result;
 }
 
 /* Reader-owned names are built here, never taken from the container, so they
@@ -298,10 +348,58 @@ static bool ciso_add_member(ciso_stream *stream, const ciso_member *member) {
 #define CISO_MAX_BLOCKS 4000000U
 #define CISO_MAX_BLOCK_SIZE (4U * 1024U * 1024U)
 
-/* CISO ("compressed ISO"): a 24-byte header followed by blocks + 1 little
- * endian index words.  An index word's top bit means the block is stored, the
- * rest is the block's start shifted left by the header's align field; the
- * NEXT word ends it, which is why the index always has one extra entry. */
+/* DAX stores 8 KiB zlib frames, with separate 32-bit offsets and 16-bit
+ * lengths. Version 1 may mark ranges of frames as uncompressed. */
+static bool ciso_parse_dax(Abstractformat *format, ciso_stream **result) {
+    uint8_t header[32];
+    uint32_t plain_size, version, areas;
+    uint64_t frames, table_bytes;
+    int64_t total, size;
+    ciso_stream *stream;
+    ciso_member member;
+    if (!format || !format->device || !result || format->base_address < 0 ||
+        (total = xx_io_total_size(format->device)) < format->base_address)
+        return false;
+    size = total - format->base_address;
+    if (size < (int64_t)sizeof(header) ||
+        !ciso_read_at(format->device, format->base_address, header, sizeof(header)) ||
+        xx_rt_memcmp(header, "DAX\0", 4U) != 0) return false;
+    plain_size = ciso_le32(header + 4U);
+    version = ciso_le32(header + 8U);
+    areas = ciso_le32(header + 12U);
+    if (!plain_size || (plain_size & 2047U) != 0U || version > 1U ||
+        (version == 0U && areas) ||
+        (frames = ((uint64_t)plain_size + 8191U) / 8192U) > CISO_MAX_BLOCKS ||
+        areas > frames) return false;
+    table_bytes = frames * 6U + (uint64_t)areas * 8U;
+    if (table_bytes > (uint64_t)size - sizeof(header)) return false;
+    stream = (ciso_stream *)xx_mem_calloc(1U, sizeof(*stream));
+    if (!stream) return false;
+    stream->aux0 = areas;
+    stream->aux1 = 8192U;
+    stream->aux2 = frames;
+    xx_mem_zero(&member, sizeof(member));
+    member.name = ciso_make_name("image", -1, ".iso");
+    if (!member.name) { ciso_stream_free(stream); return false; }
+    member.header_offset = format->base_address;
+    member.header_size = sizeof(header);
+    member.data_offset = format->base_address;
+    member.packed_size = size;
+    member.unpacked_size = plain_size;
+    member.method = 4U;
+    member.attributes = 8192U;
+    if (!ciso_add_member(stream, &member)) {
+        xx_mem_free(member.name);
+        ciso_stream_free(stream);
+        return false;
+    }
+    stream->archive_size = size;
+    *result = stream;
+    return true;
+}
+
+/* CISO/ZISO: a 24-byte header followed by blocks + 1 little-endian index
+ * words. The meaning of the high bit depends on the container version. */
 static bool ciso_parse(Abstractformat *format, ciso_stream **result) {
     uint8_t header[CISO_HEADER_SIZE];
     ciso_stream *stream = NULL;
@@ -309,18 +407,35 @@ static bool ciso_parse(Abstractformat *format, ciso_stream **result) {
     int64_t total, size;
     uint64_t uncompressed, blocks;
     uint32_t block_size;
-    uint8_t align;
+    uint8_t align, variant;
 
     if (!format || !format->device || !result || format->base_address < 0)
         return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
+    if (size >= 32 &&
+        ciso_read_at(format->device, format->base_address, header, 4U) &&
+        xx_rt_memcmp(header, "DAX\0", 4U) == 0)
+        return ciso_parse_dax(format, result);
     if (size <= CISO_HEADER_SIZE ||
         !ciso_read_at(format->device, format->base_address, header,
                       sizeof(header)) ||
-        xx_rt_memcmp(header, "CISO", 4U) != 0)
+        (xx_rt_memcmp(header, "CISO", 4U) != 0 &&
+         xx_rt_memcmp(header, "ZISO", 4U) != 0))
         return false;
+
+    if (xx_rt_memcmp(header, "ZISO", 4U) == 0) {
+        if (header[20] != 1U || ciso_le32(header + 4U) != CISO_HEADER_SIZE ||
+            header[22] != 0U || header[23] != 0U) return false;
+        variant = 3U;
+    } else if (header[20] == 2U) {
+        if (ciso_le32(header + 4U) != CISO_HEADER_SIZE ||
+            header[22] != 0U || header[23] != 0U) return false;
+        variant = 2U;
+    } else if (header[20] <= 1U) {
+        variant = 1U;
+    } else return false;
 
     uncompressed = ciso_le64(header + 8U);
     block_size = ciso_le32(header + 16U);
@@ -348,7 +463,7 @@ static bool ciso_parse(Abstractformat *format, ciso_stream **result) {
     member.data_offset = format->base_address;
     member.packed_size = size;
     member.unpacked_size = uncompressed;
-    member.method = 1U; /* CISO blocks: raw Deflate or stored */
+    member.method = variant;
     member.attributes = block_size;
     if (!ciso_add_member(stream, &member)) {
         xx_mem_free(member.name);
@@ -360,6 +475,69 @@ static bool ciso_parse(Abstractformat *format, ciso_stream **result) {
 fail:
     ciso_stream_free(stream);
     return false;
+}
+
+static bool ciso_write_dax_member(Abstractformat *format, ciso_stream *stream,
+                                  const ciso_member *member,
+                                  xx_io_device *destination, xx_pd_struct *pd) {
+    uint8_t *table = NULL, *packed = NULL, *plain = NULL, *raw = NULL;
+    uint64_t frames = stream->aux2, areas = stream->aux0;
+    uint64_t table_bytes = frames * 6U + areas * 8U;
+    uint64_t first_data = 32U + table_bytes;
+    uint64_t prior_end = first_data, frame;
+    bool result = false;
+    if (table_bytes > SIZE_MAX || frames > SIZE_MAX ||
+        member->packed_size < 0 || first_data > (uint64_t)member->packed_size)
+        return false;
+    table = (uint8_t *)xx_mem_alloc((size_t)table_bytes);
+    packed = (uint8_t *)xx_mem_alloc(65536U);
+    plain = (uint8_t *)xx_mem_alloc(8192U);
+    raw = (uint8_t *)xx_mem_calloc((size_t)frames, 1U);
+    if (!table || !packed || !plain || !raw ||
+        !ciso_read_at(format->device, member->header_offset + 32,
+                      table, (size_t)table_bytes)) goto done;
+    for (frame = 0U; frame < areas; ++frame) {
+        const uint8_t *area = table + frames * 6U + frame * 8U;
+        uint32_t start = ciso_le32(area), count = ciso_le32(area + 4U);
+        uint64_t j;
+        if (!count || start >= frames || count > frames - start) goto done;
+        for (j = start; j < (uint64_t)start + count; ++j) {
+            if (raw[j]) goto done;
+            raw[j] = 1U;
+        }
+    }
+    for (frame = 0U; frame < frames; ++frame) {
+        uint32_t start = ciso_le32(table + frame * 4U);
+        uint32_t length = ciso_le16(table + frames * 4U + frame * 2U);
+        uint64_t remaining = member->unpacked_size - frame * 8192U;
+        size_t wanted = (size_t)(remaining < 8192U ? remaining : 8192U);
+        size_t written = 0U;
+        if ((pd && xx_pd_is_stopped(pd)) || !length || start < prior_end ||
+            (uint64_t)start + length > (uint64_t)member->packed_size)
+            goto done;
+        prior_end = (uint64_t)start + length;
+        if (raw[frame]) {
+            if (length != wanted ||
+                !ciso_copy_range(format->device,
+                                 member->header_offset + start,
+                                 wanted, destination, pd)) goto done;
+        } else {
+            if (!ciso_read_at(format->device, member->header_offset + start,
+                              packed, length) ||
+                !xx_zlib_stream_decode_memory(packed, length, plain,
+                                              wanted, &written) ||
+                written != wanted ||
+                !xx_zlib_stream_trailer_matches(packed, length, plain, wanted) ||
+                !ciso_write_all(destination, plain, wanted, pd)) goto done;
+        }
+    }
+    result = true;
+done:
+    if (table) xx_mem_free(table);
+    if (packed) xx_mem_free(packed);
+    if (plain) xx_mem_free(plain);
+    if (raw) xx_mem_free(raw);
+    return result;
 }
 
 static bool ciso_write_member(Abstractformat *format, ciso_stream *stream,
@@ -374,6 +552,8 @@ static bool ciso_write_member(Abstractformat *format, ciso_stream *stream,
     bool result = false;
 
     if (!format || !stream || !member) return false;
+    if (member->method == 4U)
+        return ciso_write_dax_member(format, stream, member, destination, pd);
     align = (unsigned)stream->aux0;
     block_size = stream->aux1;
     blocks = stream->aux2;
@@ -400,7 +580,8 @@ static bool ciso_write_member(Abstractformat *format, ciso_stream *stream,
         if (pd && xx_pd_is_stopped(pd)) goto done;
         if (end < start || end > (uint64_t)size) goto done;
         extent = end - start;
-        if ((this_word & 0x80000000U) != 0U) {
+        if ((member->method == 2U && extent >= block_size) ||
+            (member->method != 2U && (this_word & 0x80000000U) != 0U)) {
             uint64_t run = extent < block_size ? extent : block_size;
             if (run != block_size) goto done;
             if (!ciso_copy_range(format->device,
@@ -414,12 +595,15 @@ static bool ciso_write_member(Abstractformat *format, ciso_stream *stream,
                           member->header_offset + (int64_t)start, packed,
                           (size_t)extent))
             goto done;
-        /* CISO blocks are raw Deflate, with no zlib wrapper. */
-        if (!xx_deflate_decompress_memory(packed, (size_t)extent, plain,
-                                          (size_t)block_size, &written,
-                                          false) ||
-            written != (size_t)block_size)
-            goto done;
+        if (member->method == 3U ||
+            (member->method == 2U && (this_word & 0x80000000U) != 0U)) {
+            if (!xx_lz4_decompress_block(packed, (size_t)extent, plain,
+                                         (size_t)block_size, &written) ||
+                written != (size_t)block_size) goto done;
+        } else if (!xx_deflate_decompress_memory(packed, (size_t)extent, plain,
+                                                (size_t)block_size, &written,
+                                                false) ||
+                   written != (size_t)block_size) goto done;
         if (!ciso_write_all(destination, plain, written, pd)) goto done;
     }
     result = true;
@@ -523,7 +707,10 @@ xx_ciso *xx_ciso_create(xx_io_device *device, int64_t base_address) {
 }
 
 void xx_ciso_destroy(xx_ciso *archive) {
-    if (archive) xx_format_cleanup_extra_parameters(&archive->format);
+    if (!archive) return;
+    ciso_nested_iso_free((ciso_nested_iso *)archive->nested_iso);
+    archive->nested_iso = NULL;
+    xx_format_cleanup_extra_parameters(&archive->format);
 }
 
 void xx_ciso_free(xx_ciso *archive) {
@@ -544,6 +731,12 @@ bool xx_ciso_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     ciso_stream *stream;
     xx_ciso *archive;
     (void)pd;
+    if (format) {
+        archive = (xx_ciso *)format;
+        ciso_nested_iso_free((ciso_nested_iso *)archive->nested_iso);
+        archive->nested_iso = NULL;
+        archive->number_of_records = 0U;
+    }
     if (!format || !ciso_parse(format, &stream)) {
         if (format) {
             format->format_size = -1;
@@ -558,13 +751,57 @@ bool xx_ciso_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     archive->archive_end = format->base_address + stream->archive_size;
     format->number_of_archive_records = stream->count;
     format->format_size = stream->archive_size;
-    format->file_type = XX_CISO_FILE_TYPE;
+    format->file_type = stream->items[0].method == 4U ? XX_FILE_TYPE_DAX :
+                        stream->items[0].method == 3U ? XX_FILE_TYPE_ZISO :
+                        stream->items[0].method == 2U ? XX_FILE_TYPE_CISO2 :
+                        XX_CISO_FILE_TYPE;
+    if (stream->items[0].method == 3U)
+        xx_format_set_extension(format, "zso");
+    else if (stream->items[0].method == 4U)
+        xx_format_set_extension(format, "dax");
     format->format_type = XX_TYPE_ARCHIVE;
     format->is_archive = true;
     format->overlay_offset = -1;
     format->overlay_size = 0;
     format->is_valid = true;
     format->base_info_handled = true;
+    if (stream->count == 1U && stream->items[0].unpacked_size != 0U &&
+        stream->items[0].unpacked_size <= CISO_MAX_NESTED_ISO) {
+        ciso_nested_iso *nested =
+            (ciso_nested_iso *)xx_mem_calloc(1U, sizeof(*nested));
+        if (nested) {
+            size_t image_size = (size_t)stream->items[0].unpacked_size;
+            nested->image = (uint8_t *)xx_mem_alloc(image_size);
+            if (nested->image) {
+                xx_io_device *writer = xx_io_mem_open(nested->image,
+                                                      image_size);
+                if (writer) {
+                    bool decoded = ciso_write_member(format, stream,
+                                                     &stream->items[0], writer,
+                                                     pd) &&
+                                   xx_io_tell(writer) == (int64_t)image_size;
+                    xx_io_close(writer);
+                    if (decoded) {
+                        nested->device = xx_io_mem_open_ro(nested->image,
+                                                            image_size);
+                        if (nested->device) {
+                            xx_iso9660_init(&nested->iso, nested->device, 0);
+                            if (xx_iso9660_handle_base_info(
+                                    &nested->iso.format, pd)) {
+                                archive->nested_iso = nested;
+                                archive->number_of_records =
+                                    nested->iso.number_of_records;
+                                format->number_of_archive_records =
+                                    nested->iso.number_of_records;
+                                nested = NULL;
+                            }
+                        }
+                    }
+                }
+            }
+            ciso_nested_iso_free(nested);
+        }
+    }
     ciso_stream_free(stream);
     return true;
 }
@@ -586,9 +823,20 @@ uint64_t xx_ciso_get_number_of_archive_records(Abstractformat *format,
 
 xx_archive_record_state *xx_ciso_create_archive_records_reading(
     Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
+    ciso_nested_iso *nested =
+        format ? (ciso_nested_iso *)((xx_ciso *)format)->nested_iso : NULL;
     ciso_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
+    if (nested) {
+        state = xx_iso9660_create_archive_records_reading(
+            &nested->iso.format, options, pd);
+        if (state && !ciso_prefix_iso_record(state)) {
+            xx_iso9660_free_archive_records_reading(&nested->iso.format, state);
+            return NULL;
+        }
+        return state;
+    }
     if (!ciso_parse(format, &stream)) return NULL;
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
     if (!state) {
@@ -610,6 +858,10 @@ xx_archive_record_state *xx_ciso_create_archive_records_reading(
 
 const xx_archive_record *xx_ciso_get_current_archive_record(
     Abstractformat *format, xx_archive_record_state *state) {
+    ciso_nested_iso *nested =
+        format ? (ciso_nested_iso *)((xx_ciso *)format)->nested_iso : NULL;
+    if (nested) return xx_iso9660_get_current_archive_record(
+        &nested->iso.format, state);
     return format && state && state->format == format && state->has_record
                ? &state->current_record
                : NULL;
@@ -618,7 +870,14 @@ const xx_archive_record *xx_ciso_get_current_archive_record(
 bool xx_ciso_archive_record_move_to_next(Abstractformat *format,
                                         xx_archive_record_state *state,
                                         xx_pd_struct *pd) {
+    ciso_nested_iso *nested =
+        format ? (ciso_nested_iso *)((xx_ciso *)format)->nested_iso : NULL;
     ciso_stream *stream;
+    if (nested) {
+        return xx_iso9660_archive_record_move_to_next(
+                   &nested->iso.format, state, pd) &&
+               ciso_prefix_iso_record(state);
+    }
     (void)pd;
     if (!format || !state || state->format != format ||
         !(stream = (ciso_stream *)state->internal_state) ||
@@ -635,6 +894,8 @@ bool xx_ciso_archive_record_move_to_next(Abstractformat *format,
 bool xx_ciso_unpack_current_archive_record(Abstractformat *format,
                                           xx_archive_record_state *state,
                                           xx_pd_struct *pd) {
+    ciso_nested_iso *nested =
+        format ? (ciso_nested_iso *)((xx_ciso *)format)->nested_iso : NULL;
     ciso_stream *stream;
     ciso_member *member;
     const xx_var *path_option;
@@ -644,6 +905,8 @@ bool xx_ciso_unpack_current_archive_record(Abstractformat *format,
     xx_io_device *destination = NULL;
     bool result = false;
     bool created = false;
+    if (nested) return xx_iso9660_unpack_current_archive_record(
+        &nested->iso.format, state, pd);
     if (!format || !state || state->format != format || !state->has_record ||
         !(stream = (ciso_stream *)state->internal_state) ||
         stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
@@ -687,6 +950,12 @@ done:
 
 void xx_ciso_free_archive_records_reading(Abstractformat *format,
                                          xx_archive_record_state *state) {
+    ciso_nested_iso *nested =
+        format ? (ciso_nested_iso *)((xx_ciso *)format)->nested_iso : NULL;
+    if (nested) {
+        xx_iso9660_free_archive_records_reading(&nested->iso.format, state);
+        return;
+    }
     (void)format;
     xx_archive_record_state_free(state);
 }

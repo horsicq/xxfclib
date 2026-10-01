@@ -34,6 +34,7 @@
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/rnc/xx_rnc.h"
 
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
@@ -121,17 +122,7 @@ static bool xx_rnc_write_all(xx_io_device *device, const void *data,
 }
 
 static uint16_t xx_rnc_crc16(const uint8_t *data, size_t size) {
-    uint16_t crc = 0U;
-    size_t index;
-    for (index = 0U; index < size; ++index) {
-        unsigned bit;
-        crc ^= data[index];
-        for (bit = 0U; bit < 8U; ++bit) {
-            crc = (crc & 1U) ? (uint16_t)((crc >> 1) ^ 0xA001U)
-                             : (uint16_t)(crc >> 1);
-        }
-    }
-    return crc;
+    return xx_crc16_arc_calc(0U, data, size);
 }
 
 static uint32_t xx_rnc_be32(const uint8_t *bytes) {

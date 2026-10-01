@@ -19,8 +19,9 @@
  * SOFTWARE.
  */
 
+#include "../xio.h"
 #include "../../formats/pyc/xpyc.h"
-#include "../../die_engine/die_engine_compat.h"
+#include "../../die_engine/xx_die_engine_compat.h"
 
 typedef struct {
     cd_u16 nMagic;
@@ -187,7 +188,7 @@ static char *marshal_read_string(DieFile *pFile, cd_i64 *pnOffset)
 
     if ((nActual == PYC_T_UNICODE) || (nActual == PYC_T_STRING)) {
         /* Already UTF-8 bytes (QString::fromUtf8). */
-        cdbuf_append(&buf, pFile->pData + nOffset, (size_t)nLength);
+        xio_append(pFile, nOffset, (size_t)nLength, &buf);
     } else {
         /* Latin-1 fixed length -> UTF-8 (read_ansiString). */
         for (i = 0; i < nLength; i++) {

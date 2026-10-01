@@ -54,6 +54,7 @@
  * Written from RFC 1951; no third-party code.
  */
 
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/raw_deflate_compressed_data/xx_raw_deflate_compressed_data.h"
 
@@ -93,7 +94,6 @@
 #define RDF_MAX_OPEN_OUTPUT ((uint64_t)16 * 1024 * 1024 * 1024)
 /* Read buffer; the first read is only RDF_FIRST_READ bytes, which is where
  * almost every non-Deflate file is refused. */
-#define RDF_WINDOW ((size_t)64U * 1024U)
 #define RDF_FIRST_READ ((size_t)4096U)
 /* Stop checks between progress polls. */
 #define RDF_POLL_MASK 0xffffU
@@ -116,6 +116,7 @@ typedef struct rdf_scanner_s {
     int64_t base;          /* device offset of the stream's first byte */
     int64_t size;          /* bytes available from base to end of file */
     uint8_t *window;
+    size_t io_capacity;
     size_t window_fill;
     size_t window_pos;
     size_t next_read;      /* size of the next window read */
@@ -170,14 +171,17 @@ static const uint8_t rdf_clen_order[RDF_CLEN_CODES] = {
 
 static bool rdf_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
+    const size_t io_capacity = xx_get_file_buffer_size();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -246,8 +250,9 @@ static bool rdf_scanner_open(rdf_scanner *scanner, xx_io_device *device,
     scanner->base = base;
     scanner->size = size;
     scanner->output_limit = output_limit;
-    scanner->next_read = RDF_FIRST_READ;
-    scanner->window = (uint8_t *)xx_mem_alloc(RDF_WINDOW);
+    scanner->io_capacity = xx_get_file_buffer_size();
+    scanner->next_read = scanner->io_capacity < RDF_FIRST_READ ? scanner->io_capacity : RDF_FIRST_READ;
+    scanner->window = (uint8_t *)xx_mem_alloc(scanner->io_capacity);
     if (!scanner->window) return false;
     rdf_build_fixed(scanner);
     return true;
@@ -278,8 +283,8 @@ static bool rdf_fill(rdf_scanner *scanner) {
                      scanner->window, want))
         return false;
     scanner->window_fill = want;
-    if (scanner->next_read < RDF_WINDOW) scanner->next_read *= 4U;
-    if (scanner->next_read > RDF_WINDOW) scanner->next_read = RDF_WINDOW;
+    if (scanner->next_read > scanner->io_capacity / 4U) scanner->next_read = scanner->io_capacity;
+    else scanner->next_read *= 4U;
     return true;
 }
 

@@ -16,9 +16,13 @@
 #include "xxfclib/formats/diskdoubler/xx_diskdoubler.h"
 
 static const uint8_t k_anchor0[] = { 0xAB, 0xCD, 0x00, 0x54 };
+static const uint8_t k_anchor1[] = { 0x44, 0x44, 0x41, 0x32, 0x00, 0x3E };
+static const uint8_t k_anchor2[] = { 0x44, 0x44, 0x41, 0x52 };
 
 static const xx_format_search_anchor k_anchors[] = {
     { k_anchor0, sizeof(k_anchor0), 0U },
+    { k_anchor1, sizeof(k_anchor1), 0U },
+    { k_anchor2, sizeof(k_anchor2), 0U },
 };
 
 static const xx_file_type_t k_types[] = { XX_FILE_TYPE_DISKDOUBLER };

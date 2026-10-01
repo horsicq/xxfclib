@@ -16,12 +16,15 @@
  *
  * check_is_valid looks at no more than the first 64 KiB plus a 1 KiB tail,
  * so the late probe is cheap: binary input fails on its first byte and prose
- * on its first space or punctuation mark.  handle_base_info applies the same
- * rules and then walks the rest of the text only to find where it ends; no
- * pass allocates more than a fixed read buffer.
+ * on its first space or punctuation mark.  The first 512 bytes are read into
+ * a stack buffer; only a text still valid past them gets one heap buffer of
+ * xx_get_file_buffer_size() bytes per scan call, freed before it returns.
+ * handle_base_info applies the same rules and then walks the rest of the
+ * text only to find where it ends, with the same buffers.
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/base64/xx_base64.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -65,8 +68,15 @@
 #define BASE64_PREFIX "begin-base64 "
 #define BASE64_PREFIX_SIZE 13U
 #define BASE64_NAME_MAX 255U
-#define BASE64_CHUNK 8192U
+/* Longest header name used as the member name; a longer one would leave
+ * too little of a 260-character Windows path for the output directory. */
+#define BASE64_NAME_USE_MAX 128U
+/* A joined output path longer than this is retried with the default name. */
+#define BASE64_PATH_MAX 259U
 #define BASE64_PAYLOAD_NAME "payload"
+/* First chunk of a scan, read into a stack buffer so that the late probe
+ * rejects most input with one small read and no allocation. */
+#define BASE64_FIRST_CHUNK 512U
 
 /* Scanner phases. */
 enum {
@@ -135,13 +145,15 @@ static int base64_value(uint8_t c) {
 static bool base64_read_at(xx_io_device *device, int64_t offset,
                            void *buffer, size_t size) {
     size_t done = 0U;
+    const size_t transfer_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        size_t request = size - done;
+        if (request > transfer_capacity) request = transfer_capacity;
+        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -333,13 +345,12 @@ static bool base64_feed(base64_scan *scan, uint8_t c, int64_t here) {
 
 /* Feed the bytes of [scan->position, limit) until the text ends.  False
  * only on a read error or a stop request. */
-static bool base64_scan_run(Abstractformat *format, base64_scan *scan,
-                            int64_t limit, xx_pd_struct *pd) {
-    uint8_t buffer[BASE64_CHUNK];
+static bool base64_scan_run_buffered(Abstractformat *format, base64_scan *scan,
+                            int64_t limit, xx_pd_struct *pd, uint8_t *buffer, size_t buffer_capacity) {
     while (!scan->finished && scan->position < limit) {
         int64_t left = limit - scan->position;
-        size_t want = left < (int64_t)sizeof(buffer) ? (size_t)left
-                                                      : sizeof(buffer);
+        size_t want = (uint64_t)left < (uint64_t)buffer_capacity ? (size_t)left
+                                                      : buffer_capacity;
         size_t index;
         if (pd && xx_pd_is_stopped(pd)) return false;
         if (!base64_read_at(format->device,
@@ -354,6 +365,30 @@ static bool base64_scan_run(Abstractformat *format, base64_scan *scan,
         scan->position += (int64_t)index;
     }
     return true;
+}
+
+/* The first BASE64_FIRST_CHUNK bytes go through a stack buffer; only a text
+ * that survives them gets a heap buffer of the global transfer size. */
+static bool base64_scan_run(Abstractformat *format, base64_scan *scan,
+                            int64_t limit, xx_pd_struct *pd) {
+    size_t buffer_capacity;
+    uint8_t *buffer;
+    bool result;
+    if (scan->position < (int64_t)BASE64_FIRST_CHUNK) {
+        uint8_t first[BASE64_FIRST_CHUNK];
+        int64_t first_limit = (int64_t)BASE64_FIRST_CHUNK < limit
+                                  ? (int64_t)BASE64_FIRST_CHUNK : limit;
+        if (!base64_scan_run_buffered(format, scan, first_limit, pd, first,
+                                      sizeof(first)))
+            return false;
+        if (scan->finished || scan->position >= limit) return true;
+    }
+    buffer_capacity = xx_get_file_buffer_size();
+    buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
+    if (!buffer) return false;
+    result = base64_scan_run_buffered(format, scan, limit, pd, buffer, buffer_capacity);
+    xx_mem_free(buffer);
+    return result;
 }
 
 /* The input ended at scan->position.  False when a window rule fails. */
@@ -439,7 +474,7 @@ static void base64_set_name(base64_context *context, const uint8_t *name,
             start = index + 1U;
     name += start;
     length -= start;
-    if (length == 0U || length > BASE64_NAME_MAX ||
+    if (length == 0U || length > BASE64_NAME_USE_MAX ||
         (length == 1U && name[0] == '-') ||
         !base64_safe_name((const char *)name, length)) {
         name = (const uint8_t *)BASE64_PAYLOAD_NAME;
@@ -588,11 +623,14 @@ static bool base64_parse(Abstractformat *format, base64_context *out,
 }
 
 static bool base64_write_all(xx_io_device *destination, const uint8_t *data,
-                             size_t size) {
+                             size_t size, size_t transfer_capacity) {
     size_t done = 0U;
+
     while (done < size) {
-        ssize_t amount = xx_io_write(destination, data + done, size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        size_t request = size - done;
+        if (request > transfer_capacity) request = transfer_capacity;
+        ssize_t amount = xx_io_write(destination, data + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -601,11 +639,9 @@ static bool base64_write_all(xx_io_device *destination, const uint8_t *data,
 /* Decode the measured text to `destination` (or only count it when that is
  * NULL).  Every byte of the text was classified by the measuring pass, so a
  * foreign byte or a count mismatch means the input changed underneath. */
-static bool base64_decode(Abstractformat *format,
+static bool base64_decode_buffered(Abstractformat *format,
                           const base64_context *context,
-                          xx_io_device *destination, xx_pd_struct *pd) {
-    uint8_t input[BASE64_CHUNK];
-    uint8_t output[BASE64_CHUNK];
+                          xx_io_device *destination, xx_pd_struct *pd, uint8_t *input, uint8_t *output, size_t buffer_capacity) {
     int64_t position = 0;
     uint64_t written = 0U;
     uint32_t group = 0U;
@@ -614,8 +650,8 @@ static bool base64_decode(Abstractformat *format,
     if (!format || !context || context->data_size < 0) return false;
     while (!padded && position < context->data_size) {
         int64_t left = context->data_size - position;
-        size_t want = left < (int64_t)sizeof(input) ? (size_t)left
-                                                     : sizeof(input);
+        size_t want = (uint64_t)left < (uint64_t)buffer_capacity ? (size_t)left
+                                                     : buffer_capacity;
         size_t index, produced = 0U;
         if (pd && xx_pd_is_stopped(pd)) return false;
         if (!base64_read_at(format->device,
@@ -636,18 +672,27 @@ static bool base64_decode(Abstractformat *format,
             }
             group = (group << 6U) | (uint32_t)value;
             if (++count == 4U) {
-                output[produced++] = (uint8_t)(group >> 16U);
-                output[produced++] = (uint8_t)(group >> 8U);
-                output[produced++] = (uint8_t)group;
+                /* A complete quartet yields a semantic three-byte group.
+                 * Append it bytewise so even capacity 1/2 stays bounded. */
+                for (unsigned byte = 0U; byte < 3U; ++byte) {
+                    output[produced++] = (uint8_t)(group >> (16U - 8U * byte));
+                    if (produced == buffer_capacity) {
+                        if ((uint64_t)produced > context->unpacked_size - written ||
+                            (destination && !base64_write_all(destination, output, produced, buffer_capacity)))
+                            return false;
+                        written += produced;
+                        produced = 0U;
+                    }
+                }
                 group = 0U;
                 count = 0U;
             }
         }
-        /* One chunk of input yields at most 3/4 of its size. */
+        /* Flush the bounded output left after complete quartet groups. */
         if (produced != 0U) {
             if ((uint64_t)produced > context->unpacked_size - written ||
                 (destination &&
-                 !base64_write_all(destination, output, produced)))
+                 !base64_write_all(destination, output, produced, buffer_capacity)))
                 return false;
             written += (uint64_t)produced;
         }
@@ -660,11 +705,24 @@ static bool base64_decode(Abstractformat *format,
         tail[0] = (uint8_t)(group >> 16U);
         tail[1] = (uint8_t)(group >> 8U);
         if ((uint64_t)produced > context->unpacked_size - written ||
-            (destination && !base64_write_all(destination, tail, produced)))
+            (destination && !base64_write_all(destination, tail, produced, buffer_capacity)))
             return false;
         written += (uint64_t)produced;
     }
     return written == context->unpacked_size;
+}
+
+static bool base64_decode(Abstractformat *format,
+                          const base64_context *context,
+                          xx_io_device *destination, xx_pd_struct *pd) {
+    size_t buffer_capacity = xx_get_file_buffer_size();
+    uint8_t *input = (uint8_t *)xx_mem_alloc(buffer_capacity);
+    uint8_t *output = (uint8_t *)xx_mem_alloc(buffer_capacity);
+    bool ok = input && output && base64_decode_buffered(format, context, destination, pd,
+                                               input, output, buffer_capacity);
+    xx_mem_free(output);
+    xx_mem_free(input);
+    return ok;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -912,10 +970,17 @@ bool xx_base64_unpack_current_archive_record(Abstractformat *format,
         base = owned_base;
     }
     if (!base) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
-            base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", stream->context.name)
-               : xx_str_concat(base, stream->context.name);
+    {
+        const char *name = stream->context.name;
+        bool separator = base[0] && base[xx_str_len(base) - 1U] != '/' &&
+                         base[xx_str_len(base) - 1U] != '\\';
+        /* A header name that would push the path past the Windows limit
+         * gives way to the default name. */
+        if (xx_str_len(base) + 1U + xx_str_len(name) > BASE64_PATH_MAX)
+            name = BASE64_PAYLOAD_NAME;
+        path = separator ? xx_str_concat3(base, "/", name)
+                         : xx_str_concat(base, name);
+    }
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");

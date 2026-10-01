@@ -26,8 +26,10 @@
  * type-descriptor lists the ProGuard/obfuscator signatures scan.
  */
 
+#include "../xio.h"
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "../../formats/dex/xdex.h"
-#include "../../die_engine/die_engine_compat.h"
+#include "../../die_engine/xx_die_engine_compat.h"
 
 typedef struct {
     cd_u16 nType;
@@ -69,7 +71,6 @@ static char *dex_read_string_data(DieFile *pFile, cd_i64 nDataOffset)
 {
     cd_i64 nOffset = nDataOffset;
     cd_i64 nStart = 0;
-    cd_i64 nEnd = 0;
     cd_i64 nAvail = 0;
     cd_i64 nMax = 0;
     cd_u32 nUnits = 0;
@@ -94,51 +95,22 @@ static char *dex_read_string_data(DieFile *pFile, cd_i64 nDataOffset)
         nMax = nAvail;
     }
 
-    nEnd = nStart;
-
-    while (((nEnd - nStart) < nMax) && (pFile->pData[nEnd] != 0)) {
-        nEnd++;
-    }
-
-    return cd_strndup((const char *)pFile->pData + nStart, (size_t)(nEnd - nStart));
+    return xio_raw_string(pFile, nStart, nMax);
 }
 
 /* CRC-32 (poly 0xEDB88320, init 0xFFFFFFFF, final xor) over the little-endian
  * u16 type of each map item, in order — XDEX::getMapItemsHash. */
 static cd_u32 dex_map_hash(const DexMapItem *pItems, size_t nCount)
 {
-    /* The table was a lazily-filled file static in cdie. That is safe enough in
-     * a console process but not in a library: a second thread can observe the
-     * "initialised" flag before the table writes are visible to it and read
-     * zeros. It is 1 KiB built once per DEX file, so it simply lives on the
-     * stack now. The values are fixed, so the hash is unchanged. */
-    cd_u32 pTable[256];
-    cd_u32 nCrc = 0xFFFFFFFFu;
-    size_t i = 0;
-
-    {
-        int j = 0;
-
-        for (i = 0; i < 256; i++) {
-            cd_u32 nValue = (cd_u32)i;
-
-            for (j = 0; j < 8; j++) {
-                nValue = (nValue & 1) ? ((nValue >> 1) ^ 0xEDB88320u) : (nValue >> 1);
-            }
-
-            pTable[i] = nValue;
-        }
+    cd_u32 crc = 0U;
+    size_t i;
+    for (i = 0; i < nCount; ++i) {
+        cd_u8 type[2];
+        type[0] = (cd_u8)(pItems[i].nType & 0xFFU);
+        type[1] = (cd_u8)((pItems[i].nType >> 8) & 0xFFU);
+        crc = xx_crc32_calc(crc, type, sizeof(type));
     }
-
-    for (i = 0; i < nCount; i++) {
-        cd_u8 nLo = (cd_u8)(pItems[i].nType & 0xFF);
-        cd_u8 nHi = (cd_u8)((pItems[i].nType >> 8) & 0xFF);
-
-        nCrc = (nCrc >> 8) ^ pTable[(nCrc ^ nLo) & 0xFF];
-        nCrc = (nCrc >> 8) ^ pTable[(nCrc ^ nHi) & 0xFF];
-    }
-
-    return nCrc ^ 0xFFFFFFFFu;
+    return crc;
 }
 
 int xdex_parse(DieFile *pFile, XDEX *pDex)

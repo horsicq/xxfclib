@@ -98,8 +98,16 @@ void xx_bw_free(xx_bit_writer *bw);
 bool xx_deflate_decompress_stream(xx_bit_reader *reader, xx_io_device *dst_dev,
                                   uint8_t *mem_dst, size_t mem_cap, size_t *out_written,
                                   bool is_deflate64, xx_pd_struct *pd);
+bool xx_deflate_decompress_stream_with_dictionary(
+    xx_bit_reader *reader, xx_io_device *dst_dev, uint8_t *mem_dst,
+    size_t mem_cap, size_t *out_written, bool is_deflate64,
+    xx_pd_struct *pd, const uint8_t *dictionary, size_t dictionary_size);
 
 /* Compressor engine internal entry point */
+/* Internal Huffman service: at most 286 symbols, a 1..15 bit limit, and
+ * sufficient code space for the number of nonzero frequencies. */
+void xx_deflate_build_code_lengths(const uint32_t *freqs, int num_symbols,
+                                   uint8_t *out_lens, int max_bits);
 bool xx_deflate_compress_stream(xx_io_device *src_dev, const uint8_t *mem_src, size_t mem_src_size,
                                 int64_t src_offset, int64_t uncomp_size,
                                 xx_bit_writer *writer, int level, bool is_deflate64,

@@ -44,6 +44,7 @@
  * Ported from XArchive packages/xvmsdatabasearchive.cpp and
  * Algos/xvmsdatabasedecoder.cpp.
  */
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/vmsdb/xx_vmsdb.h"
 
@@ -70,7 +71,6 @@
 #define VMSDB_MAX_NAME_SIZE 4096
 #define VMSDB_MAX_DEPTH 64
 #define VMSDB_MAX_INPUT ((int64_t)512 * 1024 * 1024)
-#define VMSDB_COPY_BUFFER 65536U
 
 #define VMSDB_TAG_EOC 0x00U
 #define VMSDB_TAG_OCTETSTRING 0x04U
@@ -269,13 +269,16 @@ static bool vmsdb_add_member(vmsdb_stream *stream, const vmsdb_member *member) {
 static bool vmsdb_read_at(xx_io_device *device, int64_t offset, void *buffer,
                           size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount =
-            xx_io_read(device, (uint8_t *)buffer + done, size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+            xx_io_read(device, (uint8_t *)buffer + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;

@@ -41,6 +41,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/algo/lofi/xx_lofi.h"
+#include "xxfclib/formats/iso9660/xx_iso9660.h"
 #include <stdio.h>
 
 #define XX_LOFI_COPY_CHUNK (64 * 1024)
@@ -63,6 +64,12 @@ typedef struct xx_lofi_stream_s {
     size_t index;
     int64_t archive_size;
 } xx_lofi_stream;
+
+typedef struct xx_lofi_nested_iso_s {
+    uint8_t *image;
+    xx_io_device *device;
+    xx_iso9660 iso;
+} xx_lofi_nested_iso;
 
 static void xx_lofi_vtable_destroy(Abstractformat *self);
 
@@ -152,6 +159,8 @@ static uint32_t xx_lofi_be32(const uint8_t *data);
 static uint64_t xx_lofi_be64(const uint8_t *data);
 static xx_lofi_stream *xx_lofi_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_lofi_decode(Abstractformat *self, const xx_lofi_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
+static void xx_lofi_nested_iso_free(xx_lofi_nested_iso *nested);
+static bool xx_lofi_prefix_iso_record(xx_archive_record_state *state);
 
 
 /* Each segment carries a framing byte and an LZMA "alone" header ahead of its
@@ -386,6 +395,29 @@ static bool xx_lofi_decode(Abstractformat *self, const xx_lofi_member *member,
     return true;
 }
 
+static void xx_lofi_nested_iso_free(xx_lofi_nested_iso *nested) {
+    if (!nested) return;
+    if (nested->device) xx_iso9660_destroy(&nested->iso);
+    if (nested->device) xx_io_close(nested->device);
+    xx_mem_free(nested->image);
+    xx_mem_free(nested);
+}
+
+static bool xx_lofi_prefix_iso_record(xx_archive_record_state *state) {
+    const char *name;
+    char *prefixed;
+    bool result;
+    if (!state || !state->has_record) return true;
+    name = xx_archive_record_get_original_name(&state->current_record);
+    if (!name || !name[0]) return false;
+    prefixed = xx_str_concat("ISO/", name);
+    if (!prefixed) return false;
+    result = xx_archive_record_set_original_name(&state->current_record,
+                                                  prefixed);
+    xx_str_free(prefixed);
+    return result;
+}
+
 /* ---------------------------------------------------------- lifecycle --- */
 
 void xx_lofi_init(xx_lofi *archive, xx_io_device *device,
@@ -427,6 +459,8 @@ xx_lofi *xx_lofi_create(xx_io_device *device, int64_t base_address) {
 
 void xx_lofi_destroy(xx_lofi *archive) {
     if (!archive) return;
+    xx_lofi_nested_iso_free((xx_lofi_nested_iso *)archive->nested_iso);
+    archive->nested_iso = NULL;
     /* Not xx_format_destroy: it dispatches through format.destroy, which is
      * the wrapper below, and the two would recurse. */
     if (archive->format.close) archive->format.close(&archive->format);
@@ -462,6 +496,10 @@ bool xx_lofi_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
 
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
 
+    xx_lofi_nested_iso_free((xx_lofi_nested_iso *)archive->nested_iso);
+    archive->nested_iso = NULL;
+    archive->number_of_records = 0U;
+    self->number_of_archive_records = 0U;
     self->base_info_handled = true;
     stream = xx_lofi_parse(self, pd);
     if (!stream) {
@@ -473,6 +511,32 @@ bool xx_lofi_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     self->format_size = stream->archive_size;
     self->number_of_archive_records = stream->count;
     archive->number_of_records = stream->count;
+    if (stream->count == 1U) {
+        uint8_t *image = NULL;
+        size_t image_size = 0U;
+        if (xx_lofi_decode(self, &stream->items[0], &image, &image_size, pd)) {
+            xx_lofi_nested_iso *nested =
+                (xx_lofi_nested_iso *)xx_mem_calloc(1U, sizeof(*nested));
+            if (nested) {
+                nested->image = image;
+                nested->device = xx_io_mem_open_ro(image, image_size);
+                if (nested->device) {
+                    xx_iso9660_init(&nested->iso, nested->device, 0);
+                    if (xx_iso9660_handle_base_info(&nested->iso.format, pd)) {
+                        archive->nested_iso = nested;
+                        archive->number_of_records =
+                            nested->iso.number_of_records;
+                        self->number_of_archive_records =
+                            nested->iso.number_of_records;
+                        nested = NULL;
+                    }
+                }
+                xx_lofi_nested_iso_free(nested);
+            } else {
+                xx_mem_free(image);
+            }
+        }
+    }
     xx_lofi_stream_free(stream);
     return true;
 }
@@ -555,10 +619,21 @@ static const xx_var *xx_lofi_get_option(const xx_list_s *options,
 
 xx_archive_record_state *xx_lofi_create_archive_records_reading(
     Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+    xx_lofi_nested_iso *nested =
+        self ? (xx_lofi_nested_iso *)((xx_lofi *)self)->nested_iso : NULL;
     xx_lofi_stream *stream;
     xx_archive_record_state *state;
 
     if (!self || !self->device) return NULL;
+    if (nested) {
+        state = xx_iso9660_create_archive_records_reading(
+            &nested->iso.format, options, pd);
+        if (state && !xx_lofi_prefix_iso_record(state)) {
+            xx_iso9660_free_archive_records_reading(&nested->iso.format, state);
+            return NULL;
+        }
+        return state;
+    }
     stream = xx_lofi_parse(self, pd);
     if (!stream) return NULL;
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
@@ -583,6 +658,10 @@ xx_archive_record_state *xx_lofi_create_archive_records_reading(
 
 const xx_archive_record *xx_lofi_get_current_archive_record(
     Abstractformat *self, xx_archive_record_state *state) {
+    xx_lofi_nested_iso *nested =
+        self ? (xx_lofi_nested_iso *)((xx_lofi *)self)->nested_iso : NULL;
+    if (nested) return xx_iso9660_get_current_archive_record(
+        &nested->iso.format, state);
     return self && state && state->format == self && state->has_record
                ? &state->current_record
                : NULL;
@@ -591,7 +670,15 @@ const xx_archive_record *xx_lofi_get_current_archive_record(
 bool xx_lofi_archive_record_move_to_next(Abstractformat *self,
                                            xx_archive_record_state *state,
                                            xx_pd_struct *pd) {
+    xx_lofi_nested_iso *nested =
+        self ? (xx_lofi_nested_iso *)((xx_lofi *)self)->nested_iso : NULL;
     xx_lofi_stream *stream;
+
+    if (nested) {
+        return xx_iso9660_archive_record_move_to_next(
+                   &nested->iso.format, state, pd) &&
+               xx_lofi_prefix_iso_record(state);
+    }
 
     if (!self || !state || state->format != self || !state->has_record ||
         (pd && xx_pd_is_stopped(pd))) {
@@ -614,6 +701,8 @@ bool xx_lofi_archive_record_move_to_next(Abstractformat *self,
 bool xx_lofi_unpack_current_archive_record(Abstractformat *self,
                                              xx_archive_record_state *state,
                                              xx_pd_struct *pd) {
+    xx_lofi_nested_iso *nested =
+        self ? (xx_lofi_nested_iso *)((xx_lofi *)self)->nested_iso : NULL;
     xx_lofi_stream *stream;
     const xx_lofi_member *member;
     const xx_var *path_option;
@@ -624,6 +713,9 @@ bool xx_lofi_unpack_current_archive_record(Abstractformat *self,
     size_t plain_size = 0U;
     bool result = false;
     bool created = false;
+
+    if (nested) return xx_iso9660_unpack_current_archive_record(
+        &nested->iso.format, state, pd);
 
     if (!self || !state || state->format != self || !state->has_record ||
         (pd && xx_pd_is_stopped(pd))) {
@@ -701,6 +793,12 @@ bool xx_lofi_unpack_current_archive_record(Abstractformat *self,
 
 void xx_lofi_free_archive_records_reading(Abstractformat *self,
                                             xx_archive_record_state *state) {
+    xx_lofi_nested_iso *nested =
+        self ? (xx_lofi_nested_iso *)((xx_lofi *)self)->nested_iso : NULL;
+    if (nested) {
+        xx_iso9660_free_archive_records_reading(&nested->iso.format, state);
+        return;
+    }
     (void)self;
     xx_archive_record_state_free(state);
 }

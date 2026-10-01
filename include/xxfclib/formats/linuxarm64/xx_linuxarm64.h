@@ -33,6 +33,10 @@
 #ifndef XXFCLIB_FORMAT_LINUXARM64_H
 #define XXFCLIB_FORMAT_LINUXARM64_H
 
+/* The component archive API publishes the first eight instruction bytes and
+ * remaining boot-header parameters separately. It does not infer a kernel
+ * payload extent from the memory-footprint image_size or consume the overlay. */
+
 #include "xxfclib/xxfc_defs.h"
 #include "xxfclib/formats/xx_format.h"
 

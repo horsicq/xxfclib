@@ -21,6 +21,8 @@
 
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "xx_crc_internal.h"
+#include "platforms/xx_crc_small_simd.h"
+#include "xxfclib/global/xx_global.h"
 
 /* Precomputed table for CRC-16 / ARC / LHA (poly 0x8005, reflected 0xA001) */
 static const uint16_t _TABLE_CRC16_ARC[256] = {
@@ -94,11 +96,30 @@ static const uint16_t _TABLE_CRC16_CCITT[256] = {
     0x6E17, 0x7E36, 0x4E55, 0x5E74, 0x2E93, 0x3EB2, 0x0ED1, 0x1EF0,
 };
 
+/* G(x) = x^16 + polynomial. Constants are x^n mod G for n =
+ * 128, 192, 512, 576, 16, and 80 respectively. */
+#ifdef XX_CRC64_X86
+static const xx_crc_small_params _CRC16_ARC_SIMD = {
+    0x8005, 16, true, 0x0106, 0x1666, 0x8107, 0x1446, 0x8005, 0x8663
+};
+static const xx_crc_small_params _CRC16_CCITT_SIMD = {
+    0x1021, 16, false, 0xAEFC, 0x650B, 0x13FC, 0x8832, 0x1021, 0xEB23
+};
+#endif
+
 uint16_t xx_crc16_arc_calc(uint16_t crc, const void *data, size_t size) {
     if (!data || size == 0) {
         return crc;
     }
     const uint8_t *p = (const uint8_t *)data;
+#ifdef XX_CRC64_X86
+    if (size >= 256 && xx_crc64_has_pclmul() && xx_is_sse2_enabled()) {
+        size_t consumed = size & ~(size_t)15;
+        crc = (uint16_t)xx_crc_small_pclmul(crc, p, consumed, &_CRC16_ARC_SIMD);
+        p += consumed;
+        size -= consumed;
+    }
+#endif
     for (size_t i = 0; i < size; ++i) {
         crc = (uint16_t)((crc >> 8) ^ _TABLE_CRC16_ARC[(crc ^ p[i]) & 0xFF]);
     }
@@ -110,6 +131,14 @@ uint16_t xx_crc16_ccitt_calc(uint16_t crc, const void *data, size_t size) {
         return crc;
     }
     const uint8_t *p = (const uint8_t *)data;
+#ifdef XX_CRC64_X86
+    if (size >= 256 && xx_crc64_has_pclmul() && xx_is_sse2_enabled()) {
+        size_t consumed = size & ~(size_t)15;
+        crc = (uint16_t)xx_crc_small_pclmul(crc, p, consumed, &_CRC16_CCITT_SIMD);
+        p += consumed;
+        size -= consumed;
+    }
+#endif
     for (size_t i = 0; i < size; ++i) {
         crc = (uint16_t)((crc << 8) ^ _TABLE_CRC16_CCITT[((crc >> 8) ^ p[i]) & 0xFF]);
     }

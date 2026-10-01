@@ -13,6 +13,11 @@
 extern "C" {
 #endif
 
+/* Internal entry point for carriers with rooted installation paths. The
+ * supplied relative name is checked by TAR's normal path-safety rules. */
+bool xx_tar_unpack_current_archive_record_as(Abstractformat *,
+    xx_archive_record_state *, xx_pd_struct *, const char *relative_name);
+
 /**
  * Decode the compressed stream represented by @p outer into @p destination.
  * On success, @p compressed_size receives the exact number of source bytes

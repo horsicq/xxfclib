@@ -33,12 +33,10 @@
  * declared extent is bounded against the real file size before the cursor
  * advances.
  *
- * COMPRESSION IS NOT IMPLEMENTED.  BSA's compressed members use a solid LZ
- * scheme whose dictionary is carried across member boundaries, so decoding
- * member k requires replaying members 0..k-1.  Listing is complete and exact;
- * stored members (attribute bit 0x08000000) and directories extract, and a
- * compressed member fails closed rather than emitting a plausible-looking
- * wrong result.
+ * Compressed members use an LH6-style Huffman/LZ stream. The byte-aligned
+ * entropy state restarts per member while the 32 KiB plaintext dictionary
+ * carries across members. Extraction replays earlier members as necessary
+ * and verifies each plaintext CRC before updating the history.
  *
  * All 3 corpus samples in F:\ARC\ARC\BSN parse.
  */
@@ -95,6 +93,8 @@ typedef struct xx_bsn_stream_s {
     size_t capacity;
     size_t index;
     int64_t archive_size;
+    uint8_t history[32768];size_t history_size,decoded_until;
+    uint8_t *cached;size_t cached_size,cached_index;
 } xx_bsn_stream;
 
 static void xx_bsn_vtable_destroy(Abstractformat *self);
@@ -203,6 +203,7 @@ static void xx_bsn_stream_free(void *pointer) {
     for (index = 0U; index < stream->count; ++index) {
         xx_str_free(stream->items[index].name);
     }
+    xx_mem_free(stream->cached);
     xx_mem_free(stream->items);
     xx_mem_free(stream);
 }
@@ -377,44 +378,56 @@ fail:
     return NULL;
 }
 
-/* Stored members and directories extract; a compressed member fails closed.
- * BSA's compressed stream is solid -- its LZ dictionary carries across member
- * boundaries -- so decoding member k would require replaying every member
- * before it.  That decoder is not implemented here, and refusing is worth
- * more than emitting a plausible-looking wrong result. */
-static bool xx_bsn_decode(Abstractformat *self, const xx_bsn_member *member,
-                          uint8_t **out, size_t *out_size, xx_pd_struct *pd) {
-    uint8_t *output;
+bool xx_bsn_lz_decode(const uint8_t *,size_t,const uint8_t *,size_t,uint8_t *,size_t,xx_pd_struct *);
 
-    *out = NULL;
-    *out_size = 0U;
-    if (!self || !member || member->packed_size < 0) return false;
-    if (pd && xx_pd_is_stopped(pd)) return false;
-    if (member->is_folder) return true;
-    if (member->method != XX_BSN_METHOD_STORE) return false;
-    if ((uint64_t)member->packed_size != member->unpacked_size) return false;
-    if (member->packed_size == 0) return true;
-    if ((uint64_t)member->packed_size > (uint64_t)SIZE_MAX) return false;
-    output = (uint8_t *)xx_mem_alloc((size_t)member->packed_size);
-    if (!output) return false;
-    if (!xx_bsn_read_at(self, member->data_offset, output,
-                        (size_t)member->packed_size)) {
-        xx_mem_free(output);
-        return false;
+/* Keep only the dictionary tail and the current member, not the entire archive. */
+static bool xx_bsn_decode(Abstractformat *self, xx_bsn_stream *stream,
+                         const xx_bsn_member *member, uint8_t **out,
+                         size_t *out_size, xx_pd_struct *pd) {
+    size_t wanted = (size_t)(member-stream->items);
+    *out=NULL;*out_size=0;
+    if(!self || wanted>=stream->count || (pd && xx_pd_is_stopped(pd)))return false;
+    if(member->is_folder)return true;
+    while(stream->decoded_until<=wanted) {
+        xx_bsn_member *m=&stream->items[stream->decoded_until];
+        uint8_t *packed=NULL,*plain=NULL;size_t size;
+        bool valid;
+        if(pd && xx_pd_is_stopped(pd))return false;
+        if(m->is_folder){++stream->decoded_until;continue;}
+        if(m->packed_size<0 || m->packed_size>268435456 || m->unpacked_size>268435456)return false;
+        size=(size_t)m->unpacked_size;
+        plain=(uint8_t *)xx_mem_alloc(size?size:1);if(!plain)return false;
+        if(m->method==XX_BSN_METHOD_STORE) {
+            valid=(uint64_t)m->packed_size==m->unpacked_size &&
+                  xx_bsn_read_at(self,m->data_offset,plain,size);
+        } else {
+            packed=(uint8_t *)xx_mem_alloc(m->packed_size?(size_t)m->packed_size:1);
+            valid=packed && xx_bsn_read_at(self,m->data_offset,packed,(size_t)m->packed_size) &&
+                xx_bsn_lz_decode(packed,(size_t)m->packed_size,stream->history,
+                    stream->history_size,plain,size,pd);
+        }
+        xx_mem_free(packed);
+        if(!valid || (m->has_crc && xx_crc32_calc(0U,plain,size)!=m->crc32)) {
+            xx_mem_free(plain);return false;
+        }
+        if(size>=sizeof(stream->history)) {
+            xx_rt_memcpy(stream->history,plain+size-sizeof(stream->history),sizeof(stream->history));
+            stream->history_size=sizeof(stream->history);
+        } else {
+            size_t keep=stream->history_size;
+            if(keep>sizeof(stream->history)-size) {
+                keep=sizeof(stream->history)-size;
+                xx_rt_memmove(stream->history,stream->history+stream->history_size-keep,keep);
+            }
+            xx_rt_memcpy(stream->history+keep,plain,size);stream->history_size=keep+size;
+        }
+        xx_mem_free(stream->cached);stream->cached=plain;stream->cached_size=size;
+        stream->cached_index=stream->decoded_until++;
     }
-    /* The header records the plaintext CRC32; a stored member can be checked
-     * against it outright. */
-    if (member->has_crc &&
-        xx_crc32_calc(0U, output, (size_t)member->packed_size) !=
-            member->crc32) {
-        xx_mem_free(output);
-        return false;
-    }
-    *out = output;
-    *out_size = (size_t)member->packed_size;
-    return true;
+    if(stream->cached_index!=wanted || !stream->cached)return false;
+    *out=(uint8_t *)xx_mem_alloc(stream->cached_size?stream->cached_size:1);if(!*out)return false;
+    xx_rt_memcpy(*out,stream->cached,stream->cached_size);*out_size=stream->cached_size;return true;
 }
-
 
 /* ---------------------------------------------------------- lifecycle --- */
 
@@ -674,7 +687,7 @@ bool xx_bsn_unpack_current_archive_record(Abstractformat *self,
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
         if (member->is_folder) return true;
-        result = xx_bsn_decode(self, member, &plain, &plain_size, pd);
+        result = xx_bsn_decode(self, stream, member, &plain, &plain_size, pd);
         xx_mem_free(plain);
         return result;
     }
@@ -705,7 +718,7 @@ bool xx_bsn_unpack_current_archive_record(Abstractformat *self,
         return result;
     }
     if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_bsn_decode(self, member, &plain, &plain_size, pd)) {
+        !xx_bsn_decode(self, stream, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }

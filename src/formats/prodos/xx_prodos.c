@@ -877,6 +877,18 @@ void xx_prodos_free(xx_prodos *volume) {
 
 /* The probe: one 512-byte read (two for a 140 KiB image that is not in
  * ProDOS order), no allocation. */
+bool xx_prodos_detection_hint(xx_io_device *device) {
+    Abstractformat format;
+    int64_t position;
+    bool valid;
+    if (!device || (position = xx_io_tell(device)) < 0) return false;
+    xx_mem_zero(&format, sizeof(format));
+    format.device = device;
+    valid = xx_prodos_check_is_valid(&format, NULL);
+    if (xx_io_seek64(device, position, SEEK_SET) != 0) return false;
+    return valid;
+}
+
 bool xx_prodos_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     pd_volume volume;
     uint8_t key_block[PD_BLOCK];

@@ -29,6 +29,7 @@
 /* Registration placeholder: picks up the real file type as soon as ADF is
  * registered in xxfc_defs.h. */
 #ifdef ADF
+
 #define XX_ADF_FILE_TYPE XX_FILE_TYPE_ADF
 #else
 #define XX_ADF_FILE_TYPE XX_FILE_TYPE_UNKNOWN
@@ -99,8 +100,17 @@
 #define ADF_MAX_COLLISIONS 1024U
 /* Suffixed candidates tried over a whole volume; past it a name that
  * collides is dropped instead of probed, so crafted runs of equal names cost
- * a bounded amount of work. */
+ * a bounded amount of work.  Each probe handles one path component (at most
+ * a few hundred bytes), never a whole path. */
 #define ADF_MAX_EXTRA_PROBES UINT32_C(0x100000)
+/* Bytes of member text (names, comments, link targets) and bookkeeping one
+ * volume may hold; the listing ends there, as it does at ADF_MAX_MEMBERS. */
+#define ADF_MAX_TEXT_BYTES (UINT64_C(48) * 1024U * 1024U)
+/* Bytes one records session may copy out: hard links (and FFS headers that
+ * share data blocks) could otherwise emit the volume many times over. */
+#define ADF_EMIT_SLACK (INT64_C(32) * 1024 * 1024)
+#define ADF_EMIT_FACTOR 4
+#define ADF_NO_PARENT UINT32_MAX
 #define ADF_COPY_BUFFER 0x8000U
 
 /* 1978-01-01 in Unix seconds. */
@@ -126,21 +136,28 @@ typedef struct adf_volume_s {
     char volume_name[96];
 } adf_volume;
 
+/* A member keeps only its own path component and its parent's index; the
+ * full path is built when a record or an output file needs it, so memory
+ * grows with the number of entries, not with their depth. */
 typedef struct adf_member_s {
-    char *name;         /**< Unique, host-safe UTF-8 path. */
+    char *leaf;         /**< Unique (within the parent), host-safe UTF-8. */
     char *comment;      /**< UTF-8 or NULL. */
     char *link_target;  /**< Soft links only. */
     uint32_t header;    /**< The entry's own header block. */
     uint32_t data;      /**< File header that supplies the bytes. */
     uint32_t first;     /**< First data block of a file, 0 if none. */
     uint32_t protect;
+    uint32_t parent;    /**< Index of the parent member, or ADF_NO_PARENT. */
+    uint32_t next_suffix; /**< Next ~N to try for a name equal to this one. */
     uint64_t size;
     int64_t timestamp;  /**< Unix seconds, or -1. */
     adf_kind kind;
 } adf_member;
 
+/* Open-addressed set of (parent, folded leaf); a slot holds index + 1 of the
+ * member that owns the name, 0 when empty. */
 typedef struct adf_names_s {
-    const char **slots;
+    uint32_t *slots;
     uint32_t *hashes;
     size_t capacity; /**< Power of two, or 0. */
     size_t used;
@@ -153,11 +170,14 @@ typedef struct adf_stream_s {
     size_t count;
     size_t capacity;
     size_t index;
+    uint64_t text_bytes; /**< Held by members; capped by ADF_MAX_TEXT_BYTES. */
+    int64_t emitted;     /**< File bytes copied so far in this session. */
+    int64_t emit_budget;
 } adf_stream;
 
 typedef struct adf_frame_s {
     uint32_t block;       /**< Directory (or root) header block. */
-    const char *path;     /**< Its unique path; "" for the root. */
+    uint32_t member;      /**< Its member index; ADF_NO_PARENT for the root. */
     uint32_t table[ADF_HT_SIZE];
     uint32_t slot;        /**< Next hash slot to start. */
     uint32_t next;        /**< Next entry on the current chain, 0 if none. */
@@ -166,6 +186,42 @@ typedef struct adf_frame_s {
 /* ---------------------------------------------------------------------- */
 /* Block access                                                            */
 
+#include "xxfclib/global/xx_global.h"
+static size_t gb_adf_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_adf_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_adf_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+
+
 static uint32_t adf_be32(const uint8_t *bytes) {
     return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
            ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3];
@@ -173,13 +229,14 @@ static uint32_t adf_be32(const uint8_t *bytes) {
 
 static bool adf_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
+    const size_t file_io_capacity = gb_adf_capacity();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = gb_adf_read(device, (uint8_t *)buffer + done,
+                                    size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -368,8 +425,13 @@ static unsigned adf_next_codepoint(const char **cursor) {
     return at[0];
 }
 
-static uint32_t adf_name_hash(const char *name) {
+static uint32_t adf_name_hash(uint32_t parent, const char *name) {
     uint32_t hash = 2166136261U;
+    unsigned shift;
+    for (shift = 0U; shift < 32U; shift += 8U) {
+        hash ^= (parent >> shift) & 0xFFU;
+        hash *= 16777619U;
+    }
     while (*name) {
         hash ^= adf_fold(adf_next_codepoint(&name));
         hash *= 16777619U;
@@ -388,58 +450,64 @@ static bool adf_name_equal(const char *first, const char *second) {
 
 static void adf_names_cleanup(adf_names *names) {
     if (!names) return;
-    if (names->slots) xx_mem_free((void *)names->slots);
+    if (names->slots) xx_mem_free(names->slots);
     if (names->hashes) xx_mem_free(names->hashes);
     xx_mem_zero(names, sizeof(*names));
 }
 
-static bool adf_names_contains(const adf_names *names, const char *name,
-                               uint32_t hash) {
+/* Index of the member already called @p name under @p parent, or
+ * ADF_NO_PARENT when the name is free. */
+static uint32_t adf_names_find(const adf_names *names,
+                               const adf_member *items, uint32_t parent,
+                               const char *name, uint32_t hash) {
     size_t mask, at;
-    if (names->capacity == 0U) return false;
+    if (names->capacity == 0U) return ADF_NO_PARENT;
     mask = names->capacity - 1U;
-    for (at = hash & mask; names->slots[at]; at = (at + 1U) & mask)
-        if (names->hashes[at] == hash && adf_name_equal(names->slots[at], name))
-            return true;
-    return false;
+    for (at = hash & mask; names->slots[at]; at = (at + 1U) & mask) {
+        const adf_member *other = &items[names->slots[at] - 1U];
+        if (names->hashes[at] == hash && other->parent == parent &&
+            adf_name_equal(other->leaf, name))
+            return names->slots[at] - 1U;
+    }
+    return ADF_NO_PARENT;
 }
 
-static void adf_names_place(const char **slots, uint32_t *hashes,
-                            size_t capacity, const char *name, uint32_t hash) {
+static void adf_names_place(uint32_t *slots, uint32_t *hashes,
+                            size_t capacity, uint32_t slot, uint32_t hash) {
     size_t mask = capacity - 1U, at;
     for (at = hash & mask; slots[at]; at = (at + 1U) & mask) {
     }
-    slots[at] = name;
+    slots[at] = slot;
     hashes[at] = hash;
 }
 
-/* @p name must outlive the set (it is owned by a member). */
-static bool adf_names_add(adf_names *names, const char *name, uint32_t hash) {
+/* Record that member @p index owns its (parent, leaf). */
+static bool adf_names_add(adf_names *names, uint32_t index, uint32_t hash) {
     if ((names->used + 1U) * 2U > names->capacity) {
-        size_t capacity = names->capacity ? names->capacity * 2U : 256U, index;
-        const char **slots;
-        uint32_t *hashes;
+        size_t capacity = names->capacity ? names->capacity * 2U : 256U, at;
+        uint32_t *slots, *hashes;
         if (capacity > SIZE_MAX / sizeof(*slots) ||
             capacity < names->capacity)
             return false;
-        slots = (const char **)xx_mem_calloc(capacity, sizeof(*slots));
+        slots = (uint32_t *)xx_mem_calloc(capacity, sizeof(*slots));
         hashes = (uint32_t *)xx_mem_calloc(capacity, sizeof(*hashes));
         if (!slots || !hashes) {
-            if (slots) xx_mem_free((void *)slots);
+            if (slots) xx_mem_free(slots);
             if (hashes) xx_mem_free(hashes);
             return false;
         }
-        for (index = 0U; index < names->capacity; ++index)
-            if (names->slots[index])
-                adf_names_place(slots, hashes, capacity, names->slots[index],
-                                names->hashes[index]);
-        if (names->slots) xx_mem_free((void *)names->slots);
+        for (at = 0U; at < names->capacity; ++at)
+            if (names->slots[at])
+                adf_names_place(slots, hashes, capacity, names->slots[at],
+                                names->hashes[at]);
+        if (names->slots) xx_mem_free(names->slots);
         if (names->hashes) xx_mem_free(names->hashes);
         names->slots = slots;
         names->hashes = hashes;
         names->capacity = capacity;
     }
-    adf_names_place(names->slots, names->hashes, names->capacity, name, hash);
+    adf_names_place(names->slots, names->hashes, names->capacity, index + 1U,
+                    hash);
     ++names->used;
     return true;
 }
@@ -512,12 +580,37 @@ static char *adf_component(const uint8_t *raw, size_t size) {
     return result;
 }
 
-static char *adf_join(const char *parent, const char *leaf, unsigned suffix) {
+/* True when @p name has the shape of a Windows 8.3 alias ("LONGFI~1.TXT"):
+ * at most one dot, a stem of 1..8 characters holding '~' and a digit after
+ * it, an extension of at most 3.  On a volume that makes short names, opening
+ * such a name can open an earlier member through its alias. */
+static bool adf_alias_shaped(const char *name) {
+    size_t stem = 0U, ext = 0U, dots = 0U;
+    bool tilde_digit = false;
+    const char *at;
+    for (at = name; *at; ++at) {
+        if ((*at & 0xC0) == 0x80) continue; /* UTF-8 continuation byte */
+        if (*at == '.') {
+            ++dots;
+            continue;
+        }
+        if (dots == 0U) {
+            ++stem;
+            if (*at == '~' && at[1] >= '0' && at[1] <= '9') tilde_digit = true;
+        } else {
+            ++ext;
+        }
+    }
+    return tilde_digit && dots <= 1U && stem >= 1U && stem <= 8U && ext <= 3U;
+}
+
+/* @p leaf with "~N" before its extension (N = 0: unchanged); '~' becomes
+ * '_' throughout when the result would look like an 8.3 alias. */
+static char *adf_join(const char *leaf, unsigned suffix) {
     char suffix_text[16];
     const char *dot;
-    size_t parent_size, leaf_size, suffix_size = 0U, before, total, at = 0U;
+    size_t leaf_size, suffix_size = 0U, before, total, at = 0U;
     char *result;
-    parent_size = xx_str_len(parent);
     leaf_size = xx_str_len(leaf);
     if (suffix != 0U) {
         if (xx_rt_snprintf(suffix_text, sizeof(suffix_text), "~%u", suffix) < 0)
@@ -528,17 +621,10 @@ static char *adf_join(const char *parent, const char *leaf, unsigned suffix) {
     before = (dot && dot != leaf && leaf_size - (size_t)(dot - leaf) <= 32U)
                  ? (size_t)(dot - leaf)
                  : leaf_size;
-    if (leaf_size > SIZE_MAX / 2U || parent_size > SIZE_MAX / 2U - leaf_size -
-                                                       suffix_size - 2U)
-        return NULL;
-    total = parent_size + 1U + leaf_size + suffix_size + 1U;
+    if (leaf_size > SIZE_MAX / 2U) return NULL;
+    total = leaf_size + suffix_size + 1U;
     result = (char *)xx_mem_alloc(total);
     if (!result) return NULL;
-    if (parent_size != 0U) {
-        xx_rt_memcpy(result, parent, parent_size);
-        at = parent_size;
-        result[at++] = '/';
-    }
     xx_rt_memcpy(result + at, leaf, before);
     at += before;
     if (suffix_size != 0U) {
@@ -548,33 +634,72 @@ static char *adf_join(const char *parent, const char *leaf, unsigned suffix) {
     xx_rt_memcpy(result + at, leaf + before, leaf_size - before);
     at += leaf_size - before;
     result[at] = 0;
+    if (adf_alias_shaped(result))
+        for (at = 0U; result[at]; ++at)
+            if (result[at] == '~') result[at] = '_';
     return result;
 }
 
-/* A unique path for @p leaf under @p parent: the first free one of "leaf",
- * "leaf~1", "leaf~2", ... compared without case, as both AmigaDOS and
- * Windows do. */
-static char *adf_claim(adf_names *names, const char *parent,
-                       const char *leaf) {
+/* A unique component for @p leaf under member @p parent: the first free one
+ * of "leaf", "leaf~1", "leaf~2", ... compared without case, as both AmigaDOS
+ * and Windows do.  Suffixes restart where the last collision with the same
+ * name stopped, so a run of equal names costs linear work.  On success the
+ * caller adds the member and then registers it with @p hash_out. */
+static char *adf_claim(adf_names *names, adf_member *items, uint32_t parent,
+                       const char *leaf, uint32_t *hash_out) {
     unsigned suffix;
-    for (suffix = 0U; suffix <= ADF_MAX_COLLISIONS; ++suffix) {
-        char *candidate;
-        uint32_t hash;
-        if (suffix != 0U && ++names->extra_probes > ADF_MAX_EXTRA_PROBES)
-            return NULL;
-        candidate = adf_join(parent, leaf, suffix);
+    uint32_t owner, hash;
+    char *candidate = adf_join(leaf, 0U);
+    if (!candidate) return NULL;
+    hash = adf_name_hash(parent, candidate);
+    owner = adf_names_find(names, items, parent, candidate, hash);
+    if (owner == ADF_NO_PARENT) {
+        *hash_out = hash;
+        return candidate;
+    }
+    xx_mem_free(candidate);
+    suffix = items[owner].next_suffix ? items[owner].next_suffix : 1U;
+    for (; suffix <= ADF_MAX_COLLISIONS; ++suffix) {
+        if (++names->extra_probes > ADF_MAX_EXTRA_PROBES) return NULL;
+        candidate = adf_join(leaf, suffix);
         if (!candidate) return NULL;
-        hash = adf_name_hash(candidate);
-        if (!adf_names_contains(names, candidate, hash)) {
-            if (!adf_names_add(names, candidate, hash)) {
-                xx_mem_free(candidate);
-                return NULL;
-            }
+        hash = adf_name_hash(parent, candidate);
+        if (adf_names_find(names, items, parent, candidate, hash) ==
+            ADF_NO_PARENT) {
+            items[owner].next_suffix = suffix + 1U;
+            *hash_out = hash;
             return candidate;
         }
         xx_mem_free(candidate);
     }
+    items[owner].next_suffix = suffix;
     return NULL;
+}
+
+/* "a/b/c" for member @p index: its leaf behind those of its parents.  The
+ * parent chain only points backwards and is at most ADF_MAX_DEPTH long. */
+static char *adf_member_path(const adf_member *items, size_t count,
+                             uint32_t index) {
+    size_t total = 0U, at, depth = 0U;
+    uint32_t walk;
+    char *result;
+    for (walk = index; walk != ADF_NO_PARENT && walk < count;
+         walk = items[walk].parent) {
+        if (++depth > ADF_MAX_DEPTH + 1U) return NULL;
+        total += xx_str_len(items[walk].leaf) + 1U;
+    }
+    if (walk != ADF_NO_PARENT || total == 0U) return NULL;
+    result = (char *)xx_mem_alloc(total);
+    if (!result) return NULL;
+    at = total - 1U;
+    result[at] = 0;
+    for (walk = index; walk != ADF_NO_PARENT; walk = items[walk].parent) {
+        size_t size = xx_str_len(items[walk].leaf);
+        at -= size;
+        xx_rt_memcpy(result + at, items[walk].leaf, size);
+        if (at != 0U) result[--at] = '/';
+    }
+    return result;
 }
 
 static char *adf_utf8_copy(const uint8_t *raw, size_t size) {
@@ -587,7 +712,7 @@ static char *adf_utf8_copy(const uint8_t *raw, size_t size) {
 /* Directory walk                                                          */
 
 static void adf_member_cleanup(adf_member *member) {
-    if (member->name) xx_mem_free(member->name);
+    if (member->leaf) xx_mem_free(member->leaf);
     if (member->comment) xx_mem_free(member->comment);
     if (member->link_target) xx_mem_free(member->link_target);
     xx_mem_zero(member, sizeof(*member));
@@ -603,8 +728,20 @@ static void adf_stream_free(void *opaque) {
     xx_mem_free(stream);
 }
 
+static size_t adf_text_size(const char *text) {
+    return text ? xx_str_len(text) + 1U : 0U;
+}
+
+/* Append @p member; false when a limit (members or text bytes) is reached,
+ * which ends the listing, or when memory runs out. */
 static bool adf_add_member(adf_stream *stream, adf_member *member) {
-    if (stream->count >= ADF_MAX_MEMBERS) return false;
+    uint64_t text = (uint64_t)sizeof(*member) + 2U * sizeof(uint32_t) * 2U +
+                    adf_text_size(member->leaf) +
+                    adf_text_size(member->comment) +
+                    adf_text_size(member->link_target);
+    if (stream->count >= ADF_MAX_MEMBERS ||
+        text > ADF_MAX_TEXT_BYTES - stream->text_bytes)
+        return false;
     if (stream->count == stream->capacity) {
         size_t capacity = stream->capacity ? stream->capacity * 2U : 64U;
         adf_member *grown;
@@ -616,7 +753,14 @@ static bool adf_add_member(adf_stream *stream, adf_member *member) {
         stream->capacity = capacity;
     }
     stream->items[stream->count++] = *member;
+    stream->text_bytes += text;
     return true;
+}
+
+static bool adf_listing_full(const adf_stream *stream) {
+    return stream->count >= ADF_MAX_MEMBERS ||
+           stream->text_bytes + (uint64_t)sizeof(adf_member) + 1024U >
+               ADF_MAX_TEXT_BYTES;
 }
 
 static int64_t adf_timestamp(const uint8_t *field) {
@@ -761,13 +905,13 @@ static bool adf_parse(Abstractformat *format, adf_stream **result,
     adf_visit(visited, 1U);
     adf_visit(visited, stream->volume.root);
     frames[0].block = stream->volume.root;
-    frames[0].path = "";
+    frames[0].member = ADF_NO_PARENT;
     adf_load_table(&frames[0], root);
     depth = 1U;
     while (depth != 0U) {
         adf_frame *frame = &frames[depth - 1U];
         adf_member member;
-        uint32_t number, secondary;
+        uint32_t number, secondary, hash = 0U;
         char *leaf = NULL;
         if ((++steps & 0xFFUL) == 0UL && pd && xx_pd_is_stopped(pd)) goto done;
         if (frame->next == 0U) {
@@ -790,6 +934,7 @@ static bool adf_parse(Abstractformat *format, adf_stream **result,
         frame->next = adf_be32(block + ADF_OFF_HASH_CHAIN);
         xx_mem_zero(&member, sizeof(member));
         member.header = number;
+        member.parent = frame->member;
         member.protect = adf_be32(block + ADF_OFF_PROTECT);
         if (!adf_entry_text(&stream->volume, block, number, &leaf,
                             &member.comment, &member.timestamp))
@@ -828,25 +973,32 @@ static bool adf_parse(Abstractformat *format, adf_stream **result,
                 goto done;
             }
         }
-        member.name = adf_claim(&names, frame->path, leaf);
+        member.leaf = adf_claim(&names, stream->items, frame->member, leaf,
+                                &hash);
         xx_mem_free(leaf);
-        if (!member.name) {
+        if (!member.leaf) {
             adf_member_cleanup(&member);
             continue;
         }
         if (!adf_add_member(stream, &member)) {
             adf_member_cleanup(&member);
-            if (stream->count >= ADF_MAX_MEMBERS) break;
+            if (adf_listing_full(stream) ||
+                stream->count >= ADF_MAX_MEMBERS)
+                break;
             goto done;
         }
+        if (!adf_names_add(&names, (uint32_t)(stream->count - 1U), hash))
+            goto done;
         if (secondary == ADF_ST_USERDIR && depth < ADF_MAX_DEPTH) {
             adf_frame *child = &frames[depth];
             child->block = number;
-            child->path = stream->items[stream->count - 1U].name;
+            child->member = (uint32_t)(stream->count - 1U);
             adf_load_table(child, block);
             ++depth;
         }
     }
+    stream->emit_budget =
+        stream->volume.format_size * ADF_EMIT_FACTOR + ADF_EMIT_SLACK;
     ok = true;
 done:
     adf_names_cleanup(&names);
@@ -867,17 +1019,19 @@ typedef struct adf_sink_s {
     xx_io_device *device; /**< NULL only verifies. */
     uint8_t *buffer;
     size_t used;
+    size_t capacity;
 } adf_sink;
 
 static bool adf_sink_flush(adf_sink *sink) {
+    const size_t file_io_capacity = sink->capacity;
     size_t done = 0U;
     if (!sink->device) {
         sink->used = 0U;
         return true;
     }
     while (done < sink->used) {
-        ssize_t wrote = xx_io_write(sink->device, sink->buffer + done,
-                                    sink->used - done);
+        ssize_t wrote = gb_adf_write(sink->device, sink->buffer + done,
+                                    sink->used - done, file_io_capacity);
         if (wrote <= 0 || (size_t)wrote > sink->used - done) return false;
         done += (size_t)wrote;
     }
@@ -887,10 +1041,18 @@ static bool adf_sink_flush(adf_sink *sink) {
 
 static bool adf_sink_put(adf_sink *sink, const uint8_t *data, size_t size) {
     if (!sink->device) return true;
-    if (sink->used + size > ADF_COPY_BUFFER && !adf_sink_flush(sink))
-        return false;
-    xx_rt_memcpy(sink->buffer + sink->used, data, size);
-    sink->used += size;
+    while (size) {
+        size_t take = sink->capacity - sink->used;
+        if (!take) {
+            if (!adf_sink_flush(sink)) return false;
+            take = sink->capacity;
+        }
+        if (take > size) take = size;
+        xx_rt_memcpy(sink->buffer + sink->used, data, take);
+        sink->used += take;
+        data += take;
+        size -= take;
+    }
     return true;
 }
 
@@ -963,14 +1125,24 @@ static bool adf_copy_file(const adf_volume *volume, uint32_t header,
     return adf_sink_flush(sink);
 }
 
-static bool adf_emit_file(const adf_volume *volume, const adf_member *member,
+/* Copy (or, with no @p destination, verify) one file.  The bytes count
+ * against the session's budget, so shared data cannot be emitted without
+ * bound. */
+static bool adf_emit_file(adf_stream *stream, const adf_member *member,
                           xx_io_device *destination, xx_pd_struct *pd) {
+    const adf_volume *volume = &stream->volume;
     adf_sink sink;
     bool result;
+    if (member->size > (uint64_t)INT64_MAX ||
+        stream->emitted > stream->emit_budget ||
+        (int64_t)member->size > stream->emit_budget - stream->emitted)
+        return false;
+    stream->emitted += (int64_t)member->size;
     xx_mem_zero(&sink, sizeof(sink));
     sink.device = destination;
+    sink.capacity = gb_adf_capacity();
     if (destination) {
-        sink.buffer = (uint8_t *)xx_mem_alloc(ADF_COPY_BUFFER);
+        sink.buffer = (uint8_t *)xx_mem_alloc(sink.capacity);
         if (!sink.buffer) return false;
     }
     result = adf_copy_file(volume, member->data, member->size, &sink, pd);
@@ -1015,6 +1187,8 @@ static bool adf_set_record(xx_archive_record *record,
                            const adf_member *member) {
     bool folder = member->kind == ADF_KIND_FOLDER;
     uint64_t size = member->kind == ADF_KIND_FILE ? member->size : 0U;
+    char *name;
+    bool named;
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset =
@@ -1026,7 +1200,12 @@ static bool adf_set_record(xx_archive_record *record,
             ? stream->volume.base + (int64_t)member->first * (int64_t)ADF_BSIZE
             : record->header_offset;
     record->compressed_size = (int64_t)size;
-    if (!xx_archive_record_set_original_name(record, member->name) ||
+    name = adf_member_path(stream->items, stream->count,
+                           (uint32_t)(member - stream->items));
+    if (!name) return false;
+    named = xx_archive_record_set_original_name(record, name);
+    xx_mem_free(name);
+    if (!named ||
         !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
                                         size) ||
         !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
@@ -1200,6 +1379,7 @@ bool xx_adf_unpack_current_archive_record(Abstractformat *format,
     const xx_var *path_option;
     const char *base = NULL;
     char *owned_base = NULL;
+    char *name = NULL;
     char *path = NULL;
     bool result = false;
     bool created = false;
@@ -1213,7 +1393,7 @@ bool xx_adf_unpack_current_archive_record(Abstractformat *format,
     path_option = adf_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option)
         return member->kind == ADF_KIND_FOLDER ||
-               adf_emit_file(&stream->volume, member, NULL, pd);
+               adf_emit_file(stream, member, NULL, pd);
     if (path_option->type == XX_VAR_TYPE_STRING ||
         path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
@@ -1223,10 +1403,13 @@ bool xx_adf_unpack_current_archive_record(Abstractformat *format,
         base = owned_base;
     }
     if (!base) goto done;
+    name = adf_member_path(stream->items, stream->count,
+                           (uint32_t)stream->index);
+    if (!name) goto done;
     path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
             base[xx_str_len(base) - 1U] != '\\')
-               ? xx_str_concat3(base, "/", member->name)
-               : xx_str_concat(base, member->name);
+               ? xx_str_concat3(base, "/", name)
+               : xx_str_concat(base, name);
     if (!path) goto done;
     if (member->kind == ADF_KIND_FOLDER) {
         result = xx_store_create_dirs_a(path, true);
@@ -1237,12 +1420,13 @@ bool xx_adf_unpack_current_archive_record(Abstractformat *format,
         xx_io_device *destination = xx_io_file_open(path, "wb");
         created = destination != NULL;
         if (!destination) goto done;
-        result = adf_emit_file(&stream->volume, member, destination, pd);
+        result = adf_emit_file(stream, member, destination, pd);
         if (xx_io_close(destination) != 0) result = false;
     }
 done:
     if (!result && path && member->kind == ADF_KIND_FILE && created) xx_rt_remove(path);
     if (path) xx_str_free(path);
+    if (name) xx_mem_free(name);
     if (owned_base) xx_str_free(owned_base);
     return result;
 }

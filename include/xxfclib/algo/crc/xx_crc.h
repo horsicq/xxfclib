@@ -279,6 +279,14 @@ XXFC_API void xx_crc_context_reset(xx_crc_context *ctx);
 XXFC_API uint32_t xx_crc32_calc(uint32_t crc, const void *data, size_t size);
 
 /**
+ * @brief Calculate the ZX Spectrum UDI signed-shift CRC-32 variant.
+ * @param crc Running CRC (pass 0xFFFFFFFF for the first chunk).
+ * @note This historical recurrence is not a standard CRC model: each bit
+ *       update preserves the register's high bit before the polynomial XOR.
+ */
+XXFC_API uint32_t xx_crc32_udi_calc(uint32_t crc, const void *data, size_t size);
+
+/**
  * @brief Calculate Castagnoli CRC-32C.
  * @param crc Running CRC (pass 0 for first chunk).
  */
@@ -287,12 +295,14 @@ XXFC_API uint32_t xx_crc32c_calc(uint32_t crc, const void *data, size_t size);
 /**
  * @brief Calculate CRC-16 / ARC (LHA/ARC).
  * @param crc Running CRC (pass 0 for first chunk).
+ * @note Large buffers use SSE2 + PCLMULQDQ when available and enabled.
  */
 XXFC_API uint16_t xx_crc16_arc_calc(uint16_t crc, const void *data, size_t size);
 
 /**
  * @brief Calculate CRC-16 / CCITT-FALSE.
  * @param crc Running CRC (pass 0xFFFF for first chunk).
+ * @note Uses the same bounded SIMD dispatch as CRC-16 / ARC.
  */
 XXFC_API uint16_t xx_crc16_ccitt_calc(uint16_t crc, const void *data, size_t size);
 
@@ -311,24 +321,29 @@ XXFC_API uint16_t xx_crc16_xmodem_calc(uint16_t crc, const void *data, size_t si
 /**
  * @brief Calculate CRC-8 (SMBus standard).
  * @param crc Running CRC (pass 0 for first chunk).
+ * @note Large buffers use SSE2 + PCLMULQDQ when available and enabled.
  */
 XXFC_API uint8_t xx_crc8_calc(uint8_t crc, const void *data, size_t size);
 
 /**
  * @brief Calculate CRC-8 / MAXIM (Dallas 1-Wire).
  * @param crc Running CRC (pass 0 for first chunk).
+ * @note Uses the same bounded SIMD dispatch as CRC-8 / SMBus.
  */
 XXFC_API uint8_t xx_crc8_maxim_calc(uint8_t crc, const void *data, size_t size);
 
 /**
  * @brief Calculate CRC-64 / XZ.
  * @param crc Running CRC (pass 0 for first chunk).
+ * @note Large buffers use runtime-selected SSE2/AVX2 + PCLMULQDQ when available.
+ *       The shared SIMD switches are honored; other CPUs use the scalar path.
  */
 XXFC_API uint64_t xx_crc64_xz_calc(uint64_t crc, const void *data, size_t size);
 
 /**
  * @brief Calculate CRC-64 / ECMA-182.
  * @param crc Running CRC (pass 0 for first chunk).
+ * @note Uses the same bounded SIMD dispatch as CRC-64 / XZ.
  */
 XXFC_API uint64_t xx_crc64_ecma_calc(uint64_t crc, const void *data, size_t size);
 

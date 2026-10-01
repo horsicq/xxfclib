@@ -20,6 +20,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/gz/xx_gz.h"
 #include "xx_gz_defs.h"
 #include "xxfclib/algo/crc/xx_crc.h"
@@ -90,6 +91,7 @@ static void xx_gz_vtable_destroy(Abstractformat *self);
 
 static bool xx_gz_read_exact_at(xx_io_device *device, int64_t offset,
                                 void *buffer, size_t size) {
+    size_t transfer_capacity = xx_get_file_buffer_size();
     uint8_t *bytes = (uint8_t *)buffer;
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 || offset > LONG_MAX ||
@@ -97,7 +99,10 @@ static bool xx_gz_read_exact_at(xx_io_device *device, int64_t offset,
         return false;
     }
     while (done < size) {
-        ssize_t got = xx_io_read(device, bytes + done, size - done);
+        size_t request = size - done;
+        ssize_t got;
+        if (request > transfer_capacity) request = transfer_capacity;
+        got = xx_io_read(device, bytes + done, request);
         if (got <= 0) {
             return false;
         }
@@ -221,14 +226,13 @@ static bool xx_gz_inflate_member(xx_io_device *source, int64_t offset,
     return result;
 }
 
-static bool xx_gz_crc_region(xx_io_device *device, int64_t offset,
-                             size_t size, uint32_t *crc) {
-    uint8_t buffer[4096];
+static bool xx_gz_crc_region_buffered(xx_io_device *device, int64_t offset,
+                             size_t size, uint32_t *crc, uint8_t *buffer, size_t buffer_capacity) {
     size_t done = 0U;
     if (!device || !crc) return false;
     while (done < size) {
         size_t chunk = size - done;
-        if (chunk > sizeof(buffer)) chunk = sizeof(buffer);
+        if (chunk > buffer_capacity) chunk = buffer_capacity;
         if (offset > INT64_MAX - (int64_t)done ||
             !xx_gz_read_exact_at(device, offset + (int64_t)done,
                                  buffer, chunk)) {
@@ -238,6 +242,17 @@ static bool xx_gz_crc_region(xx_io_device *device, int64_t offset,
         done += chunk;
     }
     return true;
+}
+
+static bool xx_gz_crc_region(xx_io_device *device, int64_t offset,
+                             size_t size, uint32_t *crc) {
+    size_t buffer_capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
+    bool buffer_result;
+    if (!buffer) return false;
+    buffer_result = xx_gz_crc_region_buffered(device, offset, size, crc, buffer, buffer_capacity);
+    xx_mem_free(buffer);
+    return buffer_result;
 }
 
 static bool xx_gz_read_optional_string(xx_io_device *device,
@@ -434,6 +449,29 @@ static bool xx_gz_has_magic_at(xx_io_device *device, int64_t total_size,
            magic[0] == XX_GZ_ID1 && magic[1] == XX_GZ_ID2;
 }
 
+/* Python's gzip reader accepts zero-filled gaps between members.  Read them in
+ * chunks rather than issuing one seek/read per byte: real streams may align
+ * members to sector or tape-record boundaries.  The caller accepts padding
+ * only when another member follows or it runs through the end of the file. */
+static bool xx_gz_skip_zero_padding(xx_io_device *device, int64_t total_size,
+                                    int64_t offset, int64_t *after) {
+    uint8_t buffer[4096];
+    int64_t cursor = offset;
+    if (!device || !after || offset < 0 || offset > total_size) return false;
+    while (cursor < total_size) {
+        int64_t remaining = total_size - cursor;
+        size_t count = remaining < (int64_t)sizeof(buffer)
+                           ? (size_t)remaining : sizeof(buffer);
+        size_t index = 0U;
+        if (!xx_gz_read_exact_at(device, cursor, buffer, count)) return false;
+        while (index < count && buffer[index] == 0U) ++index;
+        cursor += (int64_t)index;
+        if (index < count) break;
+    }
+    *after = cursor;
+    return true;
+}
+
 static xx_gz_private *xx_gz_parse(Abstractformat *self, xx_pd_struct *pd) {
     xx_gz_private *priv;
     int64_t total_size;
@@ -448,8 +486,9 @@ static xx_gz_private *xx_gz_parse(Abstractformat *self, xx_pd_struct *pd) {
     priv = (xx_gz_private *)xx_mem_calloc(1U, sizeof(*priv));
     if (!priv) return NULL;
     offset = self->base_address;
-    do {
+    for (;;) {
         xx_gz_member member;
+        int64_t after_padding;
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         if (!xx_gz_parse_one(self, total_size, offset, priv->count,
                              &member, pd) ||
@@ -458,7 +497,15 @@ static xx_gz_private *xx_gz_parse(Abstractformat *self, xx_pd_struct *pd) {
             goto fail;
         }
         offset = priv->members[priv->count - 1U].member_end;
-    } while (xx_gz_has_magic_at(self->device, total_size, offset));
+        if (!xx_gz_skip_zero_padding(self->device, total_size, offset,
+                                     &after_padding)) goto fail;
+        if (xx_gz_has_magic_at(self->device, total_size, after_padding)) {
+            offset = after_padding;
+            continue;
+        }
+        if (after_padding == total_size) offset = after_padding;
+        break;
+    }
     priv->stream_end = offset;
     return priv;
 

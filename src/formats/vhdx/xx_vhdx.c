@@ -62,6 +62,7 @@
  * equal header sequence numbers) and extended with differencing images and
  * log replay.
  */
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/vhdx/xx_vhdx.h"
 
@@ -102,7 +103,6 @@
  * write 1 MiB logs. */
 #define VHDX_LOG_MAX (32U * 0x100000U)
 #define VHDX_LOG_MAX_OPS 65536U
-#define VHDX_IO_BUFFER (256U * 1024U)
 #define VHDX_MEMBER_NAME "disk.img"
 
 #define VHDX_SIG_HEAD UINT32_C(0x64616568) /* "head" */
@@ -228,13 +228,16 @@ static bool vhdx_is_zero(const uint8_t *b, size_t size) {
 static bool vhdx_dev_read(xx_io_device *device, int64_t offset, void *buffer,
                           size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -243,12 +246,15 @@ static bool vhdx_dev_read(xx_io_device *device, int64_t offset, void *buffer,
 static bool vhdx_write_all(xx_io_device *device, const uint8_t *data,
                            size_t size, xx_pd_struct *pd) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device) return true; /* verify-only pass */
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount;
         if (pd && xx_pd_is_stopped(pd)) return false;
-        amount = xx_io_write(device, data + done, size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        amount = xx_io_write(device, data + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -915,9 +921,9 @@ done:
 /* ---- BAT walk ---------------------------------------------------------- */
 
 static bool vhdx_write_zeros(xx_io_device *destination, const uint8_t *zeros,
-                             uint64_t size, xx_pd_struct *pd) {
+                             uint64_t size, size_t io_capacity, xx_pd_struct *pd) {
     while (size != 0U) {
-        size_t step = size < VHDX_IO_BUFFER ? (size_t)size : VHDX_IO_BUFFER;
+        size_t step = size < io_capacity ? (size_t)size : io_capacity;
         if (!vhdx_write_all(destination, zeros, step, pd)) return false;
         size -= step;
     }
@@ -926,9 +932,9 @@ static bool vhdx_write_zeros(xx_io_device *destination, const uint8_t *zeros,
 
 static bool vhdx_copy(Abstractformat *format, const vhdx_info *info,
                       uint64_t offset, uint64_t size, uint8_t *data,
-                      xx_io_device *destination, xx_pd_struct *pd) {
+                      xx_io_device *destination, size_t io_capacity, xx_pd_struct *pd) {
     while (size != 0U) {
-        size_t step = size < VHDX_IO_BUFFER ? (size_t)size : VHDX_IO_BUFFER;
+        size_t step = size < io_capacity ? (size_t)size : io_capacity;
         if (!vhdx_read(format, info, offset, data, step) ||
             !vhdx_write_all(destination, data, step, pd))
             return false;
@@ -945,7 +951,7 @@ static bool vhdx_emit_partial(Abstractformat *format, const vhdx_info *info,
                               uint64_t offset, uint64_t output,
                               const uint8_t *bitmap, uint8_t *data,
                               const uint8_t *zeros, xx_io_device *destination,
-                              xx_pd_struct *pd) {
+                              size_t io_capacity, xx_pd_struct *pd) {
     uint64_t sectors = output / info->logical, sector = 0U;
     while (sector < sectors) {
         uint64_t run = sector + 1U;
@@ -956,10 +962,10 @@ static bool vhdx_emit_partial(Abstractformat *format, const vhdx_info *info,
         if (present) {
             if (!vhdx_copy(format, info, offset + sector * info->logical,
                            (run - sector) * info->logical, data, destination,
-                           pd))
+                           io_capacity, pd))
                 return false;
         } else if (!vhdx_write_zeros(destination, zeros,
-                                     (run - sector) * info->logical, pd)) {
+                                     (run - sector) * info->logical, io_capacity, pd)) {
             return false;
         }
         sector = run;
@@ -978,9 +984,11 @@ static bool vhdx_walk(Abstractformat *format, vhdx_info *info,
     uint64_t chunk, produced = 0U, end = info->struct_end;
     uint64_t present = 0U, first_data = 0U;
     size_t bitmap_bytes = info->block_size / info->logical / 8U;
+    size_t io_capacity = xx_get_file_buffer_size();
     uint8_t *bat = NULL, *data = NULL, *zeros = NULL, *bitmap = NULL;
     bool result = false;
 
+    if (io_capacity > info->block_size) io_capacity = info->block_size;
     if (info->bat_offset + info->bat_length > end)
         end = info->bat_offset + info->bat_length;
     if (info->meta_offset + info->meta_length > end)
@@ -988,8 +996,8 @@ static bool vhdx_walk(Abstractformat *format, vhdx_info *info,
     bat = (uint8_t *)xx_mem_alloc((size_t)(ratio + 1U) * 8U);
     if (!bat) goto done;
     if (destination) {
-        data = (uint8_t *)xx_mem_alloc(VHDX_IO_BUFFER);
-        zeros = (uint8_t *)xx_mem_calloc(1U, VHDX_IO_BUFFER);
+        data = (uint8_t *)xx_mem_alloc(io_capacity);
+        zeros = (uint8_t *)xx_mem_calloc(1U, io_capacity);
         bitmap = (uint8_t *)xx_mem_alloc(bitmap_bytes);
         if (!data || !zeros || !bitmap) goto done;
     }
@@ -1057,11 +1065,11 @@ static bool vhdx_walk(Abstractformat *format, vhdx_info *info,
             if (block >= info->blocks) continue;
             if (destination) {
                 if (!stored) {
-                    if (!vhdx_write_zeros(destination, zeros, output, pd))
+                    if (!vhdx_write_zeros(destination, zeros, output, io_capacity, pd))
                         goto done;
                 } else if (state == VHDX_STATE_FULLY_PRESENT) {
                     if (!vhdx_copy(format, info, offset, output, data,
-                                   destination, pd))
+                                   destination, io_capacity, pd))
                         goto done;
                 } else {
                     if (!vhdx_read(format, info,
@@ -1069,7 +1077,7 @@ static bool vhdx_walk(Abstractformat *format, vhdx_info *info,
                                    bitmap_bytes) ||
                         !vhdx_emit_partial(format, info, offset, output,
                                            bitmap, data, zeros, destination,
-                                           pd))
+                                           io_capacity, pd))
                         goto done;
                 }
             }

@@ -34,8 +34,9 @@
 
 static inline void ppmd8_re_byte(ppmd8_range_enc *re, uint8_t b)
 {
+    if (re->error) return;
     re->obuf[re->obuf_pos++] = b;
-    if (re->obuf_pos >= sizeof(re->obuf)) {
+    if (re->obuf_pos >= re->obuf_capacity) {
         ppmd8_re_flush_buffer(re);
     }
 }
@@ -67,6 +68,10 @@ void ppmd8_re_init(CPpmd8 *p, ppmd8_range_enc *re, xx_io_device *dev,
 {
     xx_rt_memset(re, 0, sizeof(*re));
     re->dev = dev;
+    re->io_capacity = xx_get_file_buffer_size();
+    if (re->io_capacity > ((size_t)-1 >> 1)) re->io_capacity = (size_t)-1 >> 1;
+    re->obuf = &re->output_byte;
+    re->obuf_capacity = 1U;
     re->mem = mem;
     re->mem_cap = mem_cap;
     if (p) {
@@ -208,6 +213,14 @@ void Ppmd8_EncodeSymbol(CPpmd8 *p, ppmd8_range_enc *re, int symbol)
     }
 }
 
+static void ppmd8_release_staging(ppmd8_range_enc *re, uint8_t *staging)
+{
+    xx_mem_free(staging);
+    re->obuf = &re->output_byte;
+    re->obuf_capacity = 1U;
+    re->obuf_pos = 0U;
+}
+
 bool xx_ppmd8_pack_stream(ppmd8_range_enc *re,
                           xx_io_device *src_dev,
                           const uint8_t *src_mem, size_t src_size,
@@ -221,6 +234,13 @@ bool xx_ppmd8_pack_stream(ppmd8_range_enc *re,
     if (mem_mb < XX_PPMD8_MIN_MEM_MB) mem_mb = XX_PPMD8_MIN_MEM_MB;
     if (mem_mb > XX_PPMD8_MAX_MEM_MB) mem_mb = XX_PPMD8_MAX_MEM_MB;
 
+    size_t io_capacity = re->io_capacity;
+    uint8_t *staging = io_capacity <= (size_t)-1 / 2U
+        ? (uint8_t *)xx_mem_alloc(io_capacity * 2U) : NULL;
+    uint8_t *inbuf = staging;
+    if (!staging) return false;
+    re->obuf = staging + io_capacity;
+    re->obuf_capacity = io_capacity;
     int pd_level = -1;
     if (pd) {
         pd_level = xx_pd_enter_level(pd, uncomp_size > 0 ? (uint64_t)uncomp_size : 0, "Compressing PPMd8");
@@ -231,6 +251,7 @@ bool xx_ppmd8_pack_stream(ppmd8_range_enc *re,
         ppmd8_re_byte(re, (uint8_t)(hdr & 0xFF));
         ppmd8_re_byte(re, (uint8_t)(hdr >> 8));
         if (re->error) {
+            ppmd8_release_staging(re, staging);
             if (pd && pd_level >= 0) xx_pd_leave_level(pd, pd_level);
             return false;
         }
@@ -239,6 +260,7 @@ bool xx_ppmd8_pack_stream(ppmd8_range_enc *re,
     CPpmd8 ppmd;
     Ppmd8_Construct(&ppmd);
     if (!Ppmd8_Alloc(&ppmd, mem_mb << 20)) {
+        ppmd8_release_staging(re, staging);
         if (pd && pd_level >= 0) xx_pd_leave_level(pd, pd_level);
         return false;
     }
@@ -247,7 +269,6 @@ bool xx_ppmd8_pack_stream(ppmd8_range_enc *re,
     ppmd.Range = 0xFFFFFFFFu;
     Ppmd8_Init(&ppmd, (unsigned)order, (unsigned)restore_method);
 
-    uint8_t inbuf[65536];
     int64_t in_processed = 0;
     size_t  mem_read_pos = 0;
     bool    ok = true;
@@ -255,7 +276,7 @@ bool xx_ppmd8_pack_stream(ppmd8_range_enc *re,
     for (;;) {
         if (pd && xx_pd_is_stopped(pd)) { ok = false; break; }
 
-        size_t to_read = sizeof(inbuf);
+        size_t to_read = io_capacity;
         if (uncomp_size >= 0) {
             int64_t rem = uncomp_size - in_processed;
             if (rem <= 0) break;
@@ -265,7 +286,7 @@ bool xx_ppmd8_pack_stream(ppmd8_range_enc *re,
         size_t nread = 0;
         if (src_dev) {
             ssize_t r = xx_io_read(src_dev, inbuf, to_read);
-            if (r < 0) { ok = false; break; }
+            if (r < 0 || (size_t)r > to_read) { ok = false; break; }
             nread = (size_t)r;
         } else if (src_mem) {
             size_t rem = src_size > mem_read_pos ? (src_size - mem_read_pos) : 0;
@@ -296,6 +317,7 @@ bool xx_ppmd8_pack_stream(ppmd8_range_enc *re,
     }
 
     Ppmd8_Free(&ppmd);
+    ppmd8_release_staging(re, staging);
 
     if (pd && pd_level >= 0) {
         xx_pd_leave_level(pd, pd_level);

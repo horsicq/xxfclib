@@ -41,6 +41,7 @@
 
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/cloop/xx_cloop.h"
+#include "xxfclib/formats/iso9660/xx_iso9660.h"
 
 #include "xxfclib/algo/deflate/xx_deflate.h"
 #include "xxfclib/algo/store/xx_store.h"
@@ -78,6 +79,9 @@
 #define CLOOP_MAX_TABLE (UINT32_C(1) << 22)
 /* Table of contents entries per window read: 32 KiB. */
 #define CLOOP_TOC_WINDOW 4096U
+/* Directories in an inner ISO need random access. Limit that optional index
+ * to 1M blocks (about 28 MiB of mappings); larger images keep disk.img. */
+#define CLOOP_NESTED_MAX_BLOCKS (UINT32_C(1) << 20)
 
 #define CLOOP_METHOD_ZLIB 1U
 #define CLOOP_METHOD_XZ 2U
@@ -550,6 +554,192 @@ done:
     return result;
 }
 
+typedef struct cloop_block_s {
+    uint64_t offset;
+    uint32_t length; /* Zero means a sparse zero block. */
+} cloop_block;
+
+typedef struct cloop_disk_s {
+    xx_io_device device;
+    Abstractformat *source;
+    cloop_info info;
+    cloop_block *blocks;
+    uint64_t *stored_offsets;
+    uint32_t *stored_indices;
+    uint32_t stored_count;
+    uint8_t *packed, *plain;
+    uint64_t position;
+    uint32_t cached_block;
+    bool cache_valid;
+} cloop_disk;
+
+static bool cloop_disk_index_visit(void *context, uint32_t index, int kind,
+                                    uint64_t offset, uint64_t length) {
+    cloop_disk *disk = (cloop_disk *)context;
+    if (kind == CLOOP_KIND_ZERO) return true;
+    if (kind == CLOOP_KIND_DATA) {
+        if (length > UINT32_MAX || disk->stored_count >= disk->info.block_count)
+            return false;
+        disk->blocks[index].offset = offset;
+        disk->blocks[index].length = (uint32_t)length;
+        disk->stored_offsets[disk->stored_count] = offset;
+        disk->stored_indices[disk->stored_count++] = index;
+        return true;
+    }
+    if (kind == CLOOP_KIND_BACKREF) {
+        uint32_t lo = 0U, hi = disk->stored_count;
+        while (lo < hi) {
+            uint32_t mid = lo + (hi - lo) / 2U;
+            uint64_t value = disk->stored_offsets[mid];
+            if (value == offset) {
+                disk->blocks[index] = disk->blocks[disk->stored_indices[mid]];
+                return true;
+            }
+            if (value < offset) lo = mid + 1U;
+            else hi = mid;
+        }
+    }
+    return false;
+}
+
+static int cloop_disk_close_cb(xx_io_device *device) {
+    cloop_disk *disk = (cloop_disk *)device;
+    if (!disk) return -1;
+    xx_mem_free(disk->blocks);
+    xx_mem_free(disk->stored_offsets);
+    xx_mem_free(disk->stored_indices);
+    xx_mem_free(disk->packed);
+    xx_mem_free(disk->plain);
+    xx_mem_free(disk);
+    return 0;
+}
+
+static int64_t cloop_disk_size_cb(xx_io_device *device) {
+    return device ? (int64_t)((cloop_disk *)device)->info.unpacked_size : -1;
+}
+
+static int64_t cloop_disk_tell_cb(xx_io_device *device) {
+    return device ? (int64_t)((cloop_disk *)device)->position : -1;
+}
+
+static int cloop_disk_seek64_cb(xx_io_device *device, int64_t offset,
+                                 int whence) {
+    cloop_disk *disk = (cloop_disk *)device;
+    int64_t base;
+    if (!disk) return -1;
+    if (whence == SEEK_SET) base = 0;
+    else if (whence == SEEK_CUR) base = (int64_t)disk->position;
+    else if (whence == SEEK_END) base = (int64_t)disk->info.unpacked_size;
+    else return -1;
+    if (offset < -base || offset > (int64_t)disk->info.unpacked_size - base)
+        return -1;
+    disk->position = (uint64_t)(base + offset);
+    return 0;
+}
+
+static int cloop_disk_seek_cb(xx_io_device *device, long offset, int whence) {
+    return cloop_disk_seek64_cb(device, (int64_t)offset, whence);
+}
+
+static ssize_t cloop_disk_read_cb(xx_io_device *device, void *buffer,
+                                   size_t size) {
+    cloop_disk *disk = (cloop_disk *)device;
+    cloop_decoder decoder;
+    int64_t source_cursor;
+    uint64_t position;
+    size_t done = 0U;
+    bool good = true;
+    if (!disk || (!buffer && size)) return -1;
+    if (size > 65536U) size = 65536U;
+    if (size > disk->info.unpacked_size - disk->position)
+        size = (size_t)(disk->info.unpacked_size - disk->position);
+    if (!size) return 0;
+    source_cursor = xx_io_tell(disk->source->device);
+    if (source_cursor < 0) return -1;
+    xx_mem_zero(&decoder, sizeof(decoder));
+    decoder.format = disk->source;
+    decoder.info = &disk->info;
+    decoder.packed = disk->packed;
+    decoder.plain = disk->plain;
+    position = disk->position;
+    while (done < size) {
+        uint32_t block = (uint32_t)(position / disk->info.block_size);
+        size_t within = (size_t)(position % disk->info.block_size);
+        size_t part = size - done;
+        if (part > disk->info.block_size - within)
+            part = disk->info.block_size - within;
+        if (block >= disk->info.block_count) { good = false; break; }
+        if (!disk->blocks[block].length) {
+            xx_mem_zero((uint8_t *)buffer + done, part);
+        } else {
+            if (!disk->cache_valid || disk->cached_block != block) {
+                disk->cache_valid = false;
+                if (!cloop_decode_block(&decoder, disk->blocks[block].offset,
+                                        disk->blocks[block].length)) {
+                    good = false;
+                    break;
+                }
+                disk->cached_block = block;
+                disk->cache_valid = true;
+            }
+            xx_mem_copy((uint8_t *)buffer + done,
+                        disk->plain + within, part);
+        }
+        position += part;
+        done += part;
+    }
+    if (xx_io_seek64(disk->source->device, source_cursor, SEEK_SET))
+        good = false;
+    if (!good) return -1;
+    disk->position = position;
+    return (ssize_t)done;
+}
+
+static xx_io_device *cloop_disk_open(Abstractformat *source,
+                                      const cloop_info *info,
+                                      xx_pd_struct *pd) {
+    cloop_disk *disk;
+    int64_t cursor;
+    if (!source || !info || !info->block_count ||
+        info->block_count > CLOOP_NESTED_MAX_BLOCKS) return NULL;
+    disk = (cloop_disk *)xx_mem_calloc(1U, sizeof(*disk));
+    if (!disk) return NULL;
+    disk->source = source;
+    disk->info = *info;
+    disk->blocks = (cloop_block *)xx_mem_calloc(info->block_count,
+                                                sizeof(*disk->blocks));
+    disk->stored_offsets = (uint64_t *)xx_mem_alloc(
+        (size_t)info->block_count * sizeof(uint64_t));
+    disk->stored_indices = (uint32_t *)xx_mem_alloc(
+        (size_t)info->block_count * sizeof(uint32_t));
+    disk->packed = (uint8_t *)xx_mem_alloc(info->max_packed);
+    disk->plain = (uint8_t *)xx_mem_alloc(info->block_size);
+    cursor = xx_io_tell(source->device);
+    if (!disk->blocks || !disk->stored_offsets || !disk->stored_indices ||
+        !disk->packed || !disk->plain || cursor < 0 ||
+        !cloop_walk(source, &disk->info, cloop_disk_index_visit, disk, pd) ||
+        xx_io_seek64(source->device, cursor, SEEK_SET)) {
+        if (cursor >= 0) (void)xx_io_seek64(source->device, cursor, SEEK_SET);
+        cloop_disk_close_cb(&disk->device);
+        return NULL;
+    }
+    disk->device.read = cloop_disk_read_cb;
+    disk->device.seek = cloop_disk_seek_cb;
+    disk->device.seek64 = cloop_disk_seek64_cb;
+    disk->device.tell = cloop_disk_tell_cb;
+    disk->device.total_size = cloop_disk_size_cb;
+    disk->device.close = cloop_disk_close_cb;
+    disk->device.priv = disk;
+    return &disk->device;
+}
+
+xx_io_device *xx_cloop_open_disk_device(xx_cloop *archive,
+                                         xx_pd_struct *pd) {
+    cloop_info info;
+    return archive && cloop_parse(&archive->format, &info, pd)
+               ? cloop_disk_open(&archive->format, &info, pd) : NULL;
+}
+
 /* ------------------------------------------------------------- records -- */
 
 static void cloop_stream_free(void *opaque) {
@@ -588,6 +778,64 @@ static const xx_var *cloop_option(const xx_list_s *options, uint32_t id) {
         if (meta && meta->meta_id == id) return &meta->var;
     }
     return NULL;
+}
+
+static xx_iso9660 *cloop_iso_open(Abstractformat *source,
+                                   const cloop_info *info,
+                                   xx_io_device **disk_out,
+                                   xx_pd_struct *pd) {
+    xx_io_device *disk = cloop_disk_open(source, info, pd);
+    xx_iso9660 *iso;
+    if (!disk) return NULL;
+    iso = xx_iso9660_create(disk, 0);
+    if (!iso || !xx_iso9660_handle_base_info(&iso->format, pd) ||
+        !xx_iso9660_get_number_of_archive_records(&iso->format, pd)) {
+        if (iso) xx_iso9660_free(iso);
+        xx_io_close(disk);
+        return NULL;
+    }
+    *disk_out = disk;
+    return iso;
+}
+
+static bool cloop_iso_prefix_record(xx_archive_record_state *state) {
+    const char *name = xx_archive_record_get_original_name(&state->current_record);
+    char *prefixed;
+    bool result;
+    if (!name) return false;
+    prefixed = xx_str_concat("ISO/", name);
+    if (!prefixed) return false;
+    result = xx_archive_record_set_original_name(&state->current_record,
+                                                  prefixed);
+    xx_str_free(prefixed);
+    return result;
+}
+
+static bool cloop_iso_prefix_output(xx_archive_record_state *state) {
+    size_t i;
+    for (i = 0U; i < state->options.count; ++i) {
+        xx_meta *meta = (xx_meta *)xx_list_at(&state->options, i);
+        const char *base = NULL;
+        char *wide_base = NULL, *subdir;
+        bool result;
+        if (!meta || meta->meta_id != XX_META_ID_OPT_UNPACK_PATH)
+            continue;
+        if (meta->var.type == XX_VAR_TYPE_STRING ||
+            meta->var.type == XX_VAR_TYPE_STRING_VIEW)
+            base = xx_var_get_str(&meta->var);
+        else if (meta->var.type == XX_VAR_TYPE_WSTRING ||
+                 meta->var.type == XX_VAR_TYPE_WSTRING_VIEW)
+            base = wide_base = xx_str_unicode_to_utf8(xx_var_get_wstr(&meta->var));
+        if (!base) { xx_str_free(wide_base); return false; }
+        subdir = base[0] ? xx_str_concat3(base, "/", "ISO") :
+                           xx_str_dup("ISO");
+        xx_str_free(wide_base);
+        if (!subdir) return false;
+        result = xx_var_set_str(&meta->var, subdir);
+        xx_str_free(subdir);
+        return result;
+    }
+    return true;
 }
 
 static bool cloop_set_record(Abstractformat *format,
@@ -672,6 +920,8 @@ bool xx_cloop_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
 bool xx_cloop_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     cloop_info info;
     xx_cloop *archive;
+    xx_io_device *disk = NULL;
+    xx_iso9660 *iso;
     if (!format) return false;
     if (!cloop_parse(format, &info, pd)) {
         format->format_size = -1;
@@ -681,18 +931,21 @@ bool xx_cloop_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
         return false;
     }
     archive = (xx_cloop *)format;
-    archive->number_of_records = 1U;
+    iso = cloop_iso_open(format, &info, &disk, pd);
+    archive->number_of_records = iso ?
+        xx_iso9660_get_number_of_archive_records(&iso->format, pd) : 1U;
     archive->unpacked_size = info.unpacked_size;
     archive->block_size = info.block_size;
     archive->block_count = info.block_count;
     archive->method = info.method;
-    format->number_of_archive_records = 1U;
+    format->number_of_archive_records = archive->number_of_records;
     format->format_size = info.data_end;
     format->file_type = XX_CLOOP_FILE_TYPE;
     format->format_type = XX_TYPE_ARCHIVE;
     format->is_archive = true;
     format->is_valid = true;
     format->base_info_handled = true;
+    if (iso) { xx_iso9660_free(iso); xx_io_close(disk); }
     return true;
 }
 
@@ -716,7 +969,23 @@ xx_archive_record_state *xx_cloop_create_archive_records_reading(
     cloop_stream *stream;
     xx_archive_record_state *state;
     cloop_info info;
+    xx_io_device *disk = NULL;
+    xx_iso9660 *iso;
     if (!cloop_parse(format, &info, pd)) return NULL;
+    iso = cloop_iso_open(format, &info, &disk, pd);
+    if (iso) {
+        state = xx_iso9660_create_archive_records_reading(&iso->format,
+                                                            options, pd);
+        if (!state || !cloop_iso_prefix_output(state) ||
+            (state->has_record && !cloop_iso_prefix_record(state))) {
+            if (state) xx_iso9660_free_archive_records_reading(&iso->format,
+                                                                 state);
+            xx_iso9660_free(iso);
+            xx_io_close(disk);
+            return NULL;
+        }
+        return state;
+    }
     stream = (cloop_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return NULL;
     stream->info = info;
@@ -741,6 +1010,8 @@ xx_archive_record_state *xx_cloop_create_archive_records_reading(
 
 const xx_archive_record *xx_cloop_get_current_archive_record(
     Abstractformat *format, xx_archive_record_state *state) {
+    if (format && state && state->format != format)
+        return xx_iso9660_get_current_archive_record(state->format, state);
     return format && state && state->format == format && state->has_record
                ? &state->current_record
                : NULL;
@@ -750,6 +1021,15 @@ bool xx_cloop_archive_record_move_to_next(Abstractformat *format,
                                           xx_archive_record_state *state,
                                           xx_pd_struct *pd) {
     cloop_stream *stream;
+    if (format && state && state->format != format) {
+        if (!xx_iso9660_archive_record_move_to_next(state->format, state, pd))
+            return false;
+        if (!cloop_iso_prefix_record(state)) {
+            state->has_record = false;
+            return false;
+        }
+        return true;
+    }
     (void)pd;
     if (!format || !state || state->format != format ||
         !(stream = (cloop_stream *)state->internal_state) ||
@@ -771,6 +1051,9 @@ bool xx_cloop_unpack_current_archive_record(Abstractformat *format,
     char *path = NULL;
     bool result = false;
     bool created = false;
+    if (format && state && state->format != format)
+        return xx_iso9660_unpack_current_archive_record(state->format,
+                                                         state, pd);
     if (!format || !state || state->format != format || !state->has_record ||
         !(stream = (cloop_stream *)state->internal_state) ||
         stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
@@ -811,6 +1094,14 @@ done:
 
 void xx_cloop_free_archive_records_reading(Abstractformat *format,
                                            xx_archive_record_state *state) {
+    if (format && state && state->format != format) {
+        xx_iso9660 *iso = (xx_iso9660 *)state->format;
+        xx_io_device *disk = iso->format.device;
+        xx_iso9660_free_archive_records_reading(&iso->format, state);
+        xx_iso9660_free(iso);
+        xx_io_close(disk);
+        return;
+    }
     (void)format;
     xx_archive_record_state_free(state);
 }

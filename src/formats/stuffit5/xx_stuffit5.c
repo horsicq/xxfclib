@@ -41,6 +41,7 @@
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/io/xx_io.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 
@@ -66,7 +67,6 @@
 #define SIT5_MAX_DEPTH 32U
 #define SIT5_MAX_NAME 1024U
 #define SIT5_MAX_SUFFIX 100000U
-#define SIT5_IO_CHUNK 0x10000U
 #define SIT5_SECOND_MAX (14U + 22U + 14U)
 
 #define SIT5_FLAG_ENCRYPTED 0x20U
@@ -90,13 +90,16 @@ static uint32_t sit5_be32(const uint8_t *bytes) {
 static bool sit5_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -115,14 +118,15 @@ typedef struct sit5_input_s {
     size_t length;
     uint32_t overrun; /* zero bytes handed to Arsenic past the fork's end */
     bool failed;
-    uint8_t buffer[SIT5_IO_CHUNK];
+    uint8_t *buffer;
+    size_t io_capacity;
 } sit5_input;
 
 static bool sit5_input_fill(sit5_input *in) {
     size_t want;
     if (in->failed || in->remaining == 0U) return false;
-    want = in->remaining < (uint64_t)SIT5_IO_CHUNK ? (size_t)in->remaining
-                                                   : (size_t)SIT5_IO_CHUNK;
+    want = in->remaining < (uint64_t)in->io_capacity ? (size_t)in->remaining
+                                                   : (size_t)in->io_capacity;
     if (!sit5_read_at(in->device, in->offset, in->buffer, want)) {
         in->failed = true;
         return false;
@@ -150,7 +154,8 @@ typedef struct sit5_sink_s {
     uint16_t crc16;
     size_t fill;
     bool failed;
-    uint8_t buffer[SIT5_IO_CHUNK];
+    uint8_t *buffer;
+    size_t io_capacity;
 } sit5_sink;
 
 static bool sit5_sink_flush(sit5_sink *s) {
@@ -179,7 +184,7 @@ static bool sit5_sink_byte(sit5_sink *s, uint8_t value) {
     }
     s->buffer[s->fill++] = value;
     s->produced++;
-    return s->fill < SIT5_IO_CHUNK || sit5_sink_flush(s);
+    return s->fill < s->io_capacity || sit5_sink_flush(s);
 }
 
 static bool sit5_sink_bytes(sit5_sink *s, const uint8_t *data, size_t size) {
@@ -188,14 +193,14 @@ static bool sit5_sink_bytes(sit5_sink *s, const uint8_t *data, size_t size) {
         return false;
     }
     while (size != 0U) {
-        size_t amount = SIT5_IO_CHUNK - s->fill;
+        size_t amount = s->io_capacity - s->fill;
         if (amount > size) amount = size;
         xx_rt_memcpy(s->buffer + s->fill, data, amount);
         s->fill += amount;
         s->produced += amount;
         data += amount;
         size -= amount;
-        if (s->fill == SIT5_IO_CHUNK && !sit5_sink_flush(s)) return false;
+        if (s->fill == s->io_capacity && !sit5_sink_flush(s)) return false;
     }
     return true;
 }
@@ -206,13 +211,13 @@ static bool sit5_sink_repeat(sit5_sink *s, uint8_t value, size_t count) {
         return false;
     }
     while (count != 0U) {
-        size_t amount = SIT5_IO_CHUNK - s->fill;
+        size_t amount = s->io_capacity - s->fill;
         if (amount > count) amount = count;
         xx_rt_memset(s->buffer + s->fill, value, amount);
         s->fill += amount;
         s->produced += amount;
         count -= amount;
-        if (s->fill == SIT5_IO_CHUNK && !sit5_sink_flush(s)) return false;
+        if (s->fill == s->io_capacity && !sit5_sink_flush(s)) return false;
     }
     return true;
 }
@@ -1764,14 +1769,20 @@ static bool sit5_decode_member(Abstractformat *format,
     sit5_input *in;
     sit5_sink *out;
     bool ok = false;
+    const size_t io_capacity = xx_get_file_buffer_size();
+    if (io_capacity > SIZE_MAX - sizeof(*in) || io_capacity > SIZE_MAX - sizeof(*out))
+        return false;
     if (!format || !member || member->folder || member->encrypted)
         return member && member->folder;
     if (member->method == SIT5_METHOD_STORE &&
         member->packed_size != member->unpacked_size)
         return false;
-    in = (sit5_input *)xx_mem_calloc(1U, sizeof(*in));
-    out = (sit5_sink *)xx_mem_calloc(1U, sizeof(*out));
+    in = (sit5_input *)xx_mem_calloc(1U, sizeof(*in) + io_capacity);
+    out = (sit5_sink *)xx_mem_calloc(1U, sizeof(*out) + io_capacity);
     if (in && out) {
+        in->buffer = (uint8_t *)(in + 1);
+        out->buffer = (uint8_t *)(out + 1);
+        in->io_capacity = out->io_capacity = io_capacity;
         in->device = format->device;
         in->offset = member->data_offset;
         in->remaining = member->packed_size;

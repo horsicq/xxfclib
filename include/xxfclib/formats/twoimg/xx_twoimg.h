@@ -6,7 +6,9 @@
 
 #include "xxfclib/formats/xx_format.h"
 
-/* Apple II 2IMG disk image: a 64-byte header with image, comment and creator extents. */
+/* Apple II 2IMG disk image: a 64-byte header with image, comment and creator
+ * extents. A ProDOS volume in the bounded image extent is listed and extracted
+ * directly; other images retain the raw extents as members. */
 typedef struct xx_twoimg {
     Abstractformat format;
     uint64_t number_of_records;

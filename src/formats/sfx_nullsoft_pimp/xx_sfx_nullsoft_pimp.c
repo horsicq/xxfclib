@@ -61,7 +61,17 @@
 #define PIMP_DEFLATE_RATIO UINT64_C(1032)
 #define PIMP_DEFLATE_SLACK UINT64_C(258)
 #define PIMP_METHOD_DEFLATE 8U
-#define PIMP_RENAME_LIMIT 100000U
+/* Renaming duplicates: every base name remembers the next suffix to try, so
+ * a run of equal names costs one probe each.  Probes that still land on a
+ * taken name are charged to a budget for the whole archive; a duplicate that
+ * finds no free name within it is left out instead of probing on. */
+#define PIMP_RENAME_BUDGET_PER_MEMBER 4U
+#define PIMP_RENAME_BUDGET_BASE 1024U
+/* Layout 1 stores no unpacked size.  Its members are capped at 64 MiB each
+ * and 256 MiB together (PiMP packaged Winamp plug-ins; the known members
+ * are all far below 1 MiB), on top of the Deflate ratio bound. */
+#define PIMP_UNSIZED_MEMBER_CAP UINT64_C(0x4000000)
+#define PIMP_UNSIZED_TOTAL_CAP UINT64_C(0x10000000)
 
 /* --- small helpers --------------------------------------------------------- */
 
@@ -148,9 +158,16 @@ static void pimp_text(const uint8_t *field, size_t size, char *out) {
 /* A stored member name to UTF-8 with '/' separators.  The caller has
  * checked that it holds no byte below 0x20. */
 static char *pimp_name(const uint8_t *bytes, size_t length) {
-    char *out = (char *)xx_mem_alloc(length * 3U + 1U);
+    char *out;
     size_t index, used = 0U;
+    /* The exact UTF-8 size first, so a name costs what it holds. */
+    for (index = 0U; index < length; ++index) {
+        uint32_t code = pimp_cp1252(bytes[index]);
+        used += code < 0x80U ? 1U : (code < 0x800U ? 2U : 3U);
+    }
+    out = (char *)xx_mem_alloc(used + 1U);
     if (!out) return NULL;
+    used = 0U;
     for (index = 0U; index < length; ++index) {
         uint8_t c = bytes[index];
         if (c == '\\' || c == '/')
@@ -179,7 +196,13 @@ static bool pimp_is_device_stem(const char *name, size_t stem) {
             if (pimp_upper(name[i]) != word[i]) break;
         if (i == stem && word[i] == 0) return true;
     }
-    if (stem == 4U && name[3] >= '0' && name[3] <= '9' &&
+    /* COM0-9 / LPT0-9, and the superscript digits that Windows also
+     * reserves (U+00B9, U+00B2, U+00B3; two bytes in UTF-8). */
+    if (((stem == 4U && name[3] >= '0' && name[3] <= '9') ||
+         (stem == 5U && (unsigned char)name[3] == 0xC2U &&
+          ((unsigned char)name[4] == 0xB9U ||
+           (unsigned char)name[4] == 0xB2U ||
+           (unsigned char)name[4] == 0xB3U))) &&
         ((pimp_upper(name[0]) == 'C' && pimp_upper(name[1]) == 'O' &&
           pimp_upper(name[2]) == 'M') ||
          (pimp_upper(name[0]) == 'L' && pimp_upper(name[1]) == 'P' &&
@@ -223,45 +246,77 @@ static bool pimp_safe_output_name(const char *name) {
 
 /* Case folding as NTFS does it for the characters a Windows-1252 name can
  * produce: ASCII, Latin-1 and the four Windows-1252 letter pairs.  Every
- * mapping keeps the UTF-8 length, so names fold in place. */
+ * mapping keeps the UTF-8 length.  Folds the character at in[0] (not NUL)
+ * into out[0..n-1] and returns n, 1 or 2. */
+static size_t pimp_fold_step(const unsigned char *in, unsigned char *out) {
+    unsigned char c = in[0], d = in[1];
+    if (c == 0xC3U && d != 0U) {
+        out[0] = c;
+        out[1] = d;
+        if (d >= 0xA0U && d <= 0xBEU && d != 0xB7U) {
+            out[1] = (unsigned char)(d - 0x20U);
+        } else if (d == 0xBFU) { /* y-diaeresis to U+0178 */
+            out[0] = 0xC5U;
+            out[1] = 0xB8U;
+        }
+        return 2U;
+    }
+    if (c == 0xC5U && d != 0U) {
+        out[0] = c;
+        out[1] = (d == 0xA1U || d == 0x93U || d == 0xBEU)
+                     ? (unsigned char)(d - 1U) : d;
+        return 2U;
+    }
+    out[0] = (c >= 'a' && c <= 'z') ? (unsigned char)(c - 0x20U) : c;
+    return 1U;
+}
+
+/* Folds @p name into @p out, which holds xx_str_len(name) + 1 bytes. */
 static void pimp_fold(const char *name, char *out) {
     const unsigned char *in = (const unsigned char *)name;
     unsigned char *folded = (unsigned char *)out;
     size_t index = 0U;
-    while (in[index]) {
-        unsigned char c = in[index];
-        unsigned char d = in[index + 1U];
-        if (c == 0xC3U && d != 0U) {
-            folded[index] = c;
-            folded[index + 1U] = d;
-            if (d >= 0xA0U && d <= 0xBEU && d != 0xB7U) {
-                folded[index + 1U] = (unsigned char)(d - 0x20U);
-            } else if (d == 0xBFU) { /* y-diaeresis to U+0178 */
-                folded[index] = 0xC5U;
-                folded[index + 1U] = 0xB8U;
-            }
-            index += 2U;
-        } else if (c == 0xC5U && d != 0U) {
-            folded[index] = c;
-            folded[index + 1U] = (d == 0xA1U || d == 0x93U || d == 0xBEU)
-                                     ? (unsigned char)(d - 1U) : d;
-            index += 2U;
-        } else {
-            folded[index] = (c >= 'a' && c <= 'z') ? (unsigned char)(c - 0x20U)
-                                                   : c;
-            ++index;
-        }
-    }
+    while (in[index]) index += pimp_fold_step(in + index, folded + index);
     folded[index] = 0U;
 }
 
-static uint32_t pimp_hash(const char *folded) {
-    uint32_t hash = 2166136261U;
+/* Compares the folded @p key with @p name folded on the fly, stopping at
+ * the first difference; <0, 0 or >0 as key sorts before, equal or after. */
+static int pimp_fold_cmp(const char *key, const char *name) {
+    const unsigned char *k = (const unsigned char *)key;
+    const unsigned char *in = (const unsigned char *)name;
+    size_t index = 0U;
+    for (;;) {
+        unsigned char f[2];
+        size_t n, j;
+        if (in[index] == 0U) return k[index] != 0U ? 1 : 0;
+        n = pimp_fold_step(in + index, f);
+        for (j = 0U; j < n; ++j) {
+            if (k[index + j] != f[j]) return k[index + j] < f[j] ? -1 : 1;
+        }
+        index += n;
+    }
+}
+
+/* 64-bit FNV-1a over the folded name, started from a per-archive seed and
+ * finished with the splitmix64 mixer.  The seed is not derived from the
+ * archive, so names cannot be chosen offline to share a hash; the tree
+ * stays O(log n) even if they did, only the comparisons get longer. */
+static uint64_t pimp_mix64(uint64_t value) {
+    value ^= value >> 30U;
+    value *= UINT64_C(0xBF58476D1CE4E5B9);
+    value ^= value >> 27U;
+    value *= UINT64_C(0x94D049BB133111EB);
+    return value ^ (value >> 31U);
+}
+
+static uint64_t pimp_hash(const char *folded, uint64_t seed) {
+    uint64_t hash = UINT64_C(0xCBF29CE484222325) ^ seed;
     for (; *folded; ++folded) {
         hash ^= (uint8_t)*folded;
-        hash *= 16777619U;
+        hash *= UINT64_C(0x100000001B3);
     }
-    return hash;
+    return pimp_mix64(hash);
 }
 
 /* "<name>_<number>", the number going in front of the last component's
@@ -303,7 +358,8 @@ typedef struct pimp_member_s {
     bool has_raw_size;
     bool safe;             /**< The name may be used as an output path. */
     char *name;            /**< UTF-8, '/' separators, unique if safe. */
-    char *folded;          /**< Case-folded name, only while deduplicating. */
+    uint64_t hash;         /**< Hash of the folded name, while deduplicating. */
+    size_t next_suffix;    /**< Next suffix for duplicates of this name. */
 } pimp_member;
 
 typedef struct pimp_info_s {
@@ -323,6 +379,7 @@ typedef struct pimp_stream_s {
     pimp_member *items;
     size_t count;
     size_t index;
+    uint64_t unsized_output; /**< Bytes inflated from members without size. */
 } pimp_stream;
 
 static void pimp_members_free(pimp_member *items, size_t count) {
@@ -330,7 +387,6 @@ static void pimp_members_free(pimp_member *items, size_t count) {
     if (!items) return;
     for (index = 0U; index < count; ++index) {
         if (items[index].name) xx_mem_free(items[index].name);
-        if (items[index].folded) xx_mem_free(items[index].folded);
     }
     xx_mem_free(items);
 }
@@ -517,52 +573,157 @@ static bool pimp_scan(Abstractformat *format, pimp_info *info,
     return false;
 }
 
-/* Folds @p member's current name and looks it up; *slot receives the slot
- * holding the same name, or the free slot where it would go. */
-static bool pimp_name_taken(pimp_member *items, const size_t *table,
-                            size_t slots, pimp_member *member, size_t *slot,
-                            bool *taken) {
-    member->folded = (char *)xx_mem_alloc(xx_str_len(member->name) + 1U);
-    if (!member->folded) return false;
-    pimp_fold(member->name, member->folded);
-    *taken = false;
-    *slot = pimp_hash(member->folded) & (slots - 1U);
-    while (table[*slot] != SIZE_MAX) {
-        if (xx_str_cmp(items[table[*slot]].folded, member->folded) == 0) {
-            *taken = true;
-            break;
-        }
-        *slot = (*slot + 1U) & (slots - 1U);
-    }
+/* The set of names already given out is an AA tree (a balanced binary tree)
+ * over member indices, ordered by a seeded 64-bit hash of the folded name and
+ * then by the folded name itself.  Every lookup and insert costs O(log n)
+ * comparisons whatever names an archive carries, so names chosen to share
+ * a hash or a long prefix cannot make deduplication quadratic.  Folded names
+ * are not kept: the key is folded once into a buffer, and a tree node's name
+ * is folded on the fly, up to the first difference, only when the hashes
+ * are equal. */
+#define PIMP_NIL UINT32_MAX
+/* The longest name: 0x3FF bytes of three-byte UTF-8, plus "_<number>". */
+#define PIMP_FOLD_MAX (PIMP_MAX_NAME * 3U + 32U)
+
+typedef struct pimp_names_s {
+    pimp_member *items;
+    uint32_t *left;
+    uint32_t *right;
+    uint8_t *level;
+    uint32_t root;
+    uint64_t seed;
+    uint64_t key_hash;
+    char key[PIMP_FOLD_MAX + 1U];
+} pimp_names;
+
+/* Folds @p name into @p out and hashes it; false if it is too long. */
+static bool pimp_fold_key(const char *name, char *out, uint64_t seed,
+                          uint64_t *hash) {
+    if (xx_str_len(name) > PIMP_FOLD_MAX) return false;
+    pimp_fold(name, out);
+    *hash = pimp_hash(out, seed);
     return true;
+}
+
+/* Orders the current key against member @p node. */
+static int pimp_names_cmp(pimp_names *names, uint32_t node) {
+    const pimp_member *member = &names->items[node];
+    if (names->key_hash != member->hash)
+        return names->key_hash < member->hash ? -1 : 1;
+    return pimp_fold_cmp(names->key, member->name);
+}
+
+static uint32_t pimp_names_find(pimp_names *names) {
+    uint32_t node = names->root;
+    while (node != PIMP_NIL) {
+        int order = pimp_names_cmp(names, node);
+        if (order == 0) return node;
+        node = order < 0 ? names->left[node] : names->right[node];
+    }
+    return PIMP_NIL;
+}
+
+static uint32_t pimp_names_skew(pimp_names *names, uint32_t node) {
+    uint32_t left = names->left[node];
+    if (left != PIMP_NIL && names->level[left] == names->level[node]) {
+        names->left[node] = names->right[left];
+        names->right[left] = node;
+        return left;
+    }
+    return node;
+}
+
+static uint32_t pimp_names_split(pimp_names *names, uint32_t node) {
+    uint32_t right = names->right[node];
+    if (right != PIMP_NIL && names->right[right] != PIMP_NIL &&
+        names->level[names->right[right]] == names->level[node]) {
+        names->right[node] = names->left[right];
+        names->left[right] = node;
+        ++names->level[right];
+        return right;
+    }
+    return node;
+}
+
+/* Inserts member @p item, whose name is the current key and absent.  The
+ * recursion depth is the tree height, at most 2*log2(0xFFFE) + 2. */
+static uint32_t pimp_names_insert(pimp_names *names, uint32_t node,
+                                  uint32_t item) {
+    if (node == PIMP_NIL) {
+        names->left[item] = PIMP_NIL;
+        names->right[item] = PIMP_NIL;
+        names->level[item] = 1U;
+        return item;
+    }
+    if (pimp_names_cmp(names, node) < 0)
+        names->left[node] = pimp_names_insert(names, names->left[node], item);
+    else
+        names->right[node] = pimp_names_insert(names, names->right[node], item);
+    node = pimp_names_skew(names, node);
+    return pimp_names_split(names, node);
 }
 
 /* Later duplicates (compared as Windows compares names) get "_2", "_3", ...
  * in front of their extension, so no member overwrites another.  Only
- * names that can be extracted take part. */
-static bool pimp_unique_names(pimp_member *items, size_t count) {
-    size_t slots = 16U, index;
-    size_t *table;
+ * names that can be extracted take part.
+ *
+ * The member that holds a name keeps the next suffix to try for it, so the
+ * k-th copy of a name does not walk _2 .. _k again: a run of n equal names
+ * costs n lookups, not n*n/2.  A suffixed name can still be taken by a
+ * member that carried it literally; such probes are charged to a budget for
+ * the whole archive (each taken name can be charged once per base, so the
+ * budget is only a backstop), and a duplicate that exhausts it is marked
+ * unsafe and skipped instead of probing on. */
+static bool pimp_unique_names(pimp_member *items, size_t count,
+                              xx_pd_struct *pd) {
+    pimp_names *names;
+    size_t index, budget;
     bool result = false;
-    while (slots < count * 2U) slots <<= 1U;
-    table = (size_t *)xx_mem_alloc(slots * sizeof(*table));
-    if (!table) return false;
-    for (index = 0U; index < slots; ++index) table[index] = SIZE_MAX;
+    if (count > PIMP_MAX_COUNT) return false;
+    names = (pimp_names *)xx_mem_calloc(1U, sizeof(*names));
+    if (!names) return false;
+    names->items = items;
+    names->root = PIMP_NIL;
+    /* Run-time entropy only: the clock, heap and stack addresses (ASLR)
+     * and the runtime's generator.  Output does not depend on the seed. */
+    names->seed = pimp_mix64((uint64_t)xx_rt_clock_ms() ^
+                             ((uint64_t)(uintptr_t)names << 16U) ^
+                             (uint64_t)(uintptr_t)&budget ^
+                             ((uint64_t)(uint32_t)xx_rt_rand() << 40U));
+    names->left = (uint32_t *)xx_mem_alloc((count + 1U) * sizeof(uint32_t));
+    names->right = (uint32_t *)xx_mem_alloc((count + 1U) * sizeof(uint32_t));
+    names->level = (uint8_t *)xx_mem_alloc(count + 1U);
+    if (!names->left || !names->right || !names->level) goto done;
+    budget = count * PIMP_RENAME_BUDGET_PER_MEMBER + PIMP_RENAME_BUDGET_BASE;
     for (index = 0U; index < count; ++index) {
         pimp_member *member = &items[index];
+        pimp_member *holder = NULL;
         char *stored = NULL;
-        size_t slot = 0U, number = 1U;
-        bool taken = false;
+        uint32_t found = PIMP_NIL;
+        size_t number = 1U;
+        bool failed = false, exhausted = false;
+        if ((index & 0xFFU) == 0U && pimp_stopped(pd)) goto done;
         if (!member->safe) continue;
         for (;;) {
-            if (!pimp_name_taken(items, table, slots, member, &slot, &taken))
+            if (!pimp_fold_key(member->name, names->key, names->seed,
+                               &names->key_hash)) {
+                exhausted = true; /* cannot happen: names are bounded */
                 break;
-            if (!taken) break;
-            xx_mem_free(member->folded);
-            member->folded = NULL;
-            /* At most count names are taken, so one of the next count
-             * suffixes is free; the limit only guards the arithmetic. */
-            if (++number > count + 1U || number > PIMP_RENAME_LIMIT) break;
+            }
+            found = pimp_names_find(names);
+            if (found == PIMP_NIL) break;
+            if (!holder) {
+                /* The member holding the original name. */
+                holder = &items[found];
+                number = holder->next_suffix < 2U ? 2U : holder->next_suffix;
+            } else {
+                if (budget == 0U) {
+                    exhausted = true;
+                    break;
+                }
+                --budget;
+                ++number;
+            }
             /* Every suffix derives from the stored name. */
             if (!stored) {
                 stored = member->name;
@@ -573,22 +734,34 @@ static bool pimp_unique_names(pimp_member *items, size_t count) {
             if (!member->name) {
                 member->name = stored;
                 stored = NULL;
+                failed = true;
                 break;
             }
         }
+        if (failed) {
+            if (stored) xx_mem_free(stored);
+            goto done;
+        }
+        if (exhausted) {
+            /* Keep the original name for listing, but never write it. */
+            if (stored) {
+                xx_mem_free(member->name);
+                member->name = stored;
+            }
+            member->safe = false;
+            continue;
+        }
         if (stored) xx_mem_free(stored);
-        if (!member->folded || taken) goto done;
-        table[slot] = index;
+        if (holder) holder->next_suffix = number + 1U;
+        member->hash = names->key_hash;
+        names->root = pimp_names_insert(names, names->root, (uint32_t)index);
     }
     result = true;
 done:
-    for (index = 0U; index < count; ++index) {
-        if (items[index].folded) {
-            xx_mem_free(items[index].folded);
-            items[index].folded = NULL;
-        }
-    }
-    xx_mem_free(table);
+    if (names->left) xx_mem_free(names->left);
+    if (names->right) xx_mem_free(names->right);
+    if (names->level) xx_mem_free(names->level);
+    xx_mem_free(names);
     return result;
 }
 
@@ -639,12 +812,18 @@ static ssize_t pimp_sink_write(xx_io_device *self, const void *buffer,
     return (ssize_t)size;
 }
 
+/* Inflates @p member into @p target (NULL only verifies).  A member
+ * without a stored size may produce at most @p unsized_left bytes;
+ * *@p produced receives what the inflater wrote either way. */
 static bool pimp_decode(Abstractformat *format, const pimp_member *member,
-                        xx_io_device *target, xx_pd_struct *pd) {
+                        xx_io_device *target, uint64_t unsized_left,
+                        uint64_t *produced, xx_pd_struct *pd) {
     uint8_t header[2], trailer[4];
     pimp_sink sink;
     int64_t data = format->base_address + member->data_offset;
     uint32_t expected;
+    bool inflated;
+    if (produced) *produced = 0U;
     if (member->packed_size < PIMP_MIN_PACKED ||
         !pimp_read_at(format->device, data, header, sizeof(header)) ||
         !pimp_zlib_header_ok(header) ||
@@ -657,15 +836,21 @@ static bool pimp_decode(Abstractformat *format, const pimp_member *member,
     xx_mem_zero(&sink, sizeof(sink));
     sink.device.write = pimp_sink_write;
     sink.target = target;
-    sink.limit = member->has_raw_size
-                     ? (uint64_t)member->raw_size
-                     : (uint64_t)member->packed_size * PIMP_DEFLATE_RATIO +
-                           PIMP_DEFLATE_SLACK;
+    if (member->has_raw_size) {
+        sink.limit = (uint64_t)member->raw_size;
+    } else {
+        sink.limit = (uint64_t)member->packed_size * PIMP_DEFLATE_RATIO +
+                     PIMP_DEFLATE_SLACK;
+        if (sink.limit > PIMP_UNSIZED_MEMBER_CAP)
+            sink.limit = PIMP_UNSIZED_MEMBER_CAP;
+        if (sink.limit > unsized_left) sink.limit = unsized_left;
+    }
     sink.adler_a = 1U;
-    if (!xx_deflate_unpack_device(format->device, data + 2,
-                                  (int64_t)member->packed_size - 6,
-                                  &sink.device, false, pd))
-        return false;
+    inflated = xx_deflate_unpack_device(format->device, data + 2,
+                                        (int64_t)member->packed_size - 6,
+                                        &sink.device, false, pd);
+    if (produced) *produced = sink.written;
+    if (!inflated) return false;
     if (sink.failed) return false;
     if (member->has_raw_size && sink.written != (uint64_t)member->raw_size)
         return false;
@@ -843,7 +1028,7 @@ xx_archive_record_state *xx_sfx_nullsoft_pimp_create_archive_records_reading(
                    info.members_at, info.count, info.layout == 2U,
                    stream->items, &command_at, pd) ||
         command_at != info.command_at ||
-        !pimp_unique_names(stream->items, stream->count)) {
+        !pimp_unique_names(stream->items, stream->count, pd)) {
         pimp_stream_free(stream);
         return NULL;
     }
@@ -902,13 +1087,24 @@ bool xx_sfx_nullsoft_pimp_unpack_current_archive_record(
     char *path = NULL;
     bool result = false;
     bool created = false;
+    uint64_t unsized_left, produced = 0U;
     if (!format || !state || state->format != format || !state->has_record ||
         !(stream = (pimp_stream *)state->internal_state) ||
         stream->index >= stream->count || pimp_stopped(pd))
         return false;
     member = &stream->items[stream->index];
+    /* Output of members without a stored size counts against one budget
+     * for the whole archive, whether it is written or only verified. */
+    unsized_left = stream->unsized_output < PIMP_UNSIZED_TOTAL_CAP
+                       ? PIMP_UNSIZED_TOTAL_CAP - stream->unsized_output
+                       : 0U;
     path_option = pimp_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option) return pimp_decode(format, member, NULL, pd);
+    if (!path_option) {
+        result = pimp_decode(format, member, NULL, unsized_left, &produced,
+                             pd);
+        if (!member->has_raw_size) stream->unsized_output += produced;
+        return result;
+    }
     if (!member->safe || !pimp_safe_output_name(member->name)) return false;
     if (path_option->type == XX_VAR_TYPE_STRING ||
         path_option->type == XX_VAR_TYPE_STRING_VIEW) {
@@ -928,7 +1124,9 @@ bool xx_sfx_nullsoft_pimp_unpack_current_archive_record(
         xx_io_device *destination = xx_io_file_open(path, "wb");
         created = destination != NULL;
         if (!destination) goto done;
-        result = pimp_decode(format, member, destination, pd);
+        result = pimp_decode(format, member, destination, unsized_left,
+                             &produced, pd);
+        if (!member->has_raw_size) stream->unsized_output += produced;
         if (xx_io_close(destination) != 0) result = false;
     }
 done:

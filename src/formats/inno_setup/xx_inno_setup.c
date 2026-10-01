@@ -19,6 +19,12 @@
  * INNO_BLOCK_CAP.  Solid LZMA / LZMA2 chunks are read by a resumable decoder
  * that continues from one member to the next; solid zlib / bzip2 chunks are
  * cached in memory up to INNO_CACHE_MAX and otherwise re-decoded per member.
+ * Members are read in location order, out-of-order location runs are
+ * refused, and each reading session has a decode budget (inno_set_budget)
+ * built only from the runs members use, each capped by what its compressed
+ * bytes can expand to, so the decode work and the output stay within a
+ * constant times what an honest file of the same size can produce.  Only
+ * one chunk's decoder state (solid LZMA window or chunk cache) is kept.
  *
  * The 6.4 .. 7.x layouts were checked against the record declarations in
  * Inno Setup's Projects/Src/Shared.Struct.pas and Compression.Base.pas
@@ -36,6 +42,7 @@
 #include "xxfclib/algo/lzma/xx_lzma.h"
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/io/xx_io.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 
@@ -66,10 +73,11 @@
 /* A solid chunk shared by several members is decoded once into memory when
  * the part the members need is at most this large. */
 #define INNO_CACHE_MAX ((uint64_t)64U << 20)
-#define INNO_PIECE 65536U
 /* The 1.09 loader keeps its table in a small DATA section. */
 #define INNO_DATA_SCAN_MAX ((uint32_t)256U << 10)
 #define INNO_MAX_SECTIONS 96U
+/* Output bytes one LZMA input byte can produce, with a 2x margin. */
+#define INNO_LZMA_MAX_RATIO 16384U
 #define INNO_MAX_RES_ENTRIES 4096U
 
 enum {
@@ -133,6 +141,7 @@ typedef struct inno_loc_s {
     uint64_t filetime;
     uint64_t extent;  /* bytes of its chunk that the run of locations needs */
     uint32_t users;   /* locations in that run */
+    bool bad_order;   /* its run is out of order: refused at unpack */
     uint8_t checksum[32];
     uint8_t hash_kind;
     uint8_t compression;
@@ -143,6 +152,7 @@ typedef struct inno_loc_s {
 typedef struct inno_member_s {
     char *name;
     uint32_t loc;
+    uint32_t pass; /* earlier [Files] entries with the same location */
     bool safe;
 } inno_member;
 
@@ -165,6 +175,9 @@ typedef struct inno_ctx_s {
      * fail at once instead of decoding the damaged prefix again. */
     int64_t bad_chunk;
     uint64_t bad_at;
+    /* Bytes the decoders may still produce in this reading session
+     * (skipped prefixes, cache fills and output); see inno_set_budget. */
+    uint64_t work_left;
 } inno_ctx;
 
 static void ilz_free(struct ilz_s *z);
@@ -190,12 +203,15 @@ static bool inno_stopped(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); 
 static bool inno_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t got = xx_io_read(device, (uint8_t *)buffer + done, size - done);
-        if (got <= 0 || (size_t)got > size - done) return false;
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
+        ssize_t got = xx_io_read(device, (uint8_t *)buffer + done, request);
+        if (got <= 0 || (size_t)got > request) return false;
         done += (size_t)got;
     }
     return true;
@@ -226,7 +242,8 @@ typedef struct inno_out_s {
     uint32_t crc;
     xx_io_device *dest;
     bool failed;
-    uint8_t work[INNO_PIECE + 8U];
+    uint8_t *work;
+    size_t io_capacity;
 } inno_out;
 
 typedef struct inno_sink_s {
@@ -254,8 +271,10 @@ static void inno_emit(inno_out *out, const uint8_t *data, size_t size) {
     }
     if (!out->dest) return;
     while (done < size) {
-        ssize_t wrote = xx_io_write(out->dest, data + done, size - done);
-        if (wrote <= 0 || (size_t)wrote > size - done) {
+        size_t request = size - done;
+        if (request > out->io_capacity) request = out->io_capacity;
+        ssize_t wrote = xx_io_write(out->dest, data + done, request);
+        if (wrote <= 0 || (size_t)wrote > request) {
             out->failed = true;
             return;
         }
@@ -318,7 +337,7 @@ static size_t inno_filter_5200(inno_filter *f, uint8_t *data, size_t size) {
 
 static void inno_out_feed(inno_out *out, const uint8_t *data, size_t size) {
     while (size && !out->failed) {
-        size_t piece = size < INNO_PIECE ? size : INNO_PIECE;
+        size_t piece = size < out->io_capacity ? size : out->io_capacity;
         if (out->filter.kind == INNO_F_NONE) {
             inno_emit(out, data, piece);
         } else if (out->filter.kind == INNO_F_4108) {
@@ -345,8 +364,12 @@ static void inno_out_feed(inno_out *out, const uint8_t *data, size_t size) {
     }
 }
 
-static bool inno_out_init(inno_out *out, const inno_loc *loc, xx_io_device *dest) {
+static bool inno_out_init(inno_out *out, const inno_loc *loc, xx_io_device *dest,
+                           size_t capacity) {
     xx_mem_zero(out, sizeof(*out));
+    out->io_capacity = capacity;
+    /* Four held instruction bytes are semantic lookahead, independent of I/O. */
+    out->work = (uint8_t *)(out + 1);
     out->dest = dest;
     out->filter.kind = loc->filter;
     out->filter.total = (uint64_t)loc->size;
@@ -686,7 +709,13 @@ static bool inno_table_legacy(const uint8_t *t, int64_t table_offset, int64_t si
              exe_usize = ile32(t + 24), off0 = ile32(t + 32), off1 = ile32(t + 36);
     uint64_t exe_end = exe + exe_csize;
     bool layout;
-    if (total != (uint64_t)size || exe == 0U || exe_csize == 0U || exe_usize == 0U ||
+    /* 1.11 finds its table in the last 40 bytes, so the installer must end
+     * there.  1.09 finds it in its DATA section and reads its data up to
+     * TotalSize, so bytes appended after that (a signature, a download
+     * wrapper) are allowed and become part of the enclosing file. */
+    if (kind == INNO_T_EOF40 ? total != (uint64_t)size : total > (uint64_t)size) return false;
+    size = (int64_t)total;
+    if (exe == 0U || exe_csize == 0U || exe_usize == 0U ||
         exe_end != off0 || size < 12 || off0 > (uint64_t)(size - 8) ||
         off1 > (uint64_t)(size - 12))
         return false;
@@ -2010,11 +2039,140 @@ static bool inno_is_device(const char *comp, size_t length) {
             if (inno_upper(comp[k]) != n[k]) break;
         if (k == stem && n[k] == 0) return true;
     }
-    if (stem == 4U && comp[3] >= '0' && comp[3] <= '9') {
+    /* COM0-9 / LPT0-9, and COM / LPT followed by superscript 1, 2 or 3
+     * (UTF-8 C2 B9, C2 B2, C2 B3), which Windows also reserves. */
+    if ((stem == 4U && comp[3] >= '0' && comp[3] <= '9') ||
+        (stem == 5U && (uint8_t)comp[3] == 0xC2U &&
+         ((uint8_t)comp[4] == 0xB9U || (uint8_t)comp[4] == 0xB2U || (uint8_t)comp[4] == 0xB3U))) {
         char a = inno_upper(comp[0]), b = inno_upper(comp[1]), c = inno_upper(comp[2]);
         if ((a == 'C' && b == 'O' && c == 'M') || (a == 'L' && b == 'P' && c == 'T')) return true;
     }
     return false;
+}
+
+/* Case-fold key used for duplicate detection.  NTFS compares names through
+ * its $UpCase table.  Two code points get the same key when Unicode 15.1's
+ * single-code-point upper, lower, title or case-fold mappings, or Windows'
+ * RtlUpcaseUnicodeChar, link them (the key is the smallest code point of
+ * that class; ASCII letters, dotless and dotted I, long s and the Kelvin
+ * sign fold to the ASCII capital).  This folds at least as much as NTFS:
+ * creating every BMP code point as a file name on an NTFS volume of this
+ * Windows 11 machine gave 947 colliding pairs, and every one of them has
+ * equal keys here.  Folding more only adds a "_N" suffix; folding less
+ * would let members overwrite each other. */
+/* Case-fold key table: code point c in [start, start + (count - 1) * step]
+ * with (c - start) % step == 0 has key c + delta; every other code point is
+ * its own key. */
+typedef struct inno_fold_run_s {
+    uint32_t start;
+    uint16_t count;
+    uint8_t step;
+    int32_t delta;
+} inno_fold_run;
+
+static const inno_fold_run g_inno_fold[211] = {
+    {0xE0, 23, 1, -32}, {0xF8, 7, 1, -32}, {0x101, 24, 2, -1}, {0x130, 1, 1, -231},
+    {0x131, 1, 1, -232}, {0x133, 3, 2, -1}, {0x13A, 8, 2, -1}, {0x14B, 23, 2, -1},
+    {0x178, 1, 1, -121}, {0x17A, 3, 2, -1}, {0x17F, 1, 1, -300}, {0x183, 2, 2, -1},
+    {0x188, 1, 1, -1}, {0x18C, 1, 1, -1}, {0x192, 1, 1, -1}, {0x199, 1, 1, -1},
+    {0x1A1, 3, 2, -1}, {0x1A8, 1, 1, -1}, {0x1AD, 1, 1, -1}, {0x1B0, 1, 1, -1},
+    {0x1B4, 2, 2, -1}, {0x1B9, 1, 1, -1}, {0x1BD, 1, 1, -1}, {0x1C5, 1, 1, -1},
+    {0x1C6, 1, 1, -2}, {0x1C8, 1, 1, -1}, {0x1C9, 1, 1, -2}, {0x1CB, 1, 1, -1},
+    {0x1CC, 1, 1, -2}, {0x1CE, 8, 2, -1}, {0x1DD, 1, 1, -79}, {0x1DF, 9, 2, -1},
+    {0x1F2, 1, 1, -1}, {0x1F3, 1, 1, -2}, {0x1F5, 1, 1, -1}, {0x1F6, 1, 1, -97},
+    {0x1F7, 1, 1, -56}, {0x1F9, 20, 2, -1}, {0x220, 1, 1, -130}, {0x223, 9, 2, -1},
+    {0x23C, 1, 1, -1}, {0x23D, 1, 1, -163}, {0x242, 1, 1, -1}, {0x243, 1, 1, -195},
+    {0x247, 5, 2, -1}, {0x253, 1, 1, -210}, {0x254, 1, 1, -206}, {0x256, 2, 1, -205},
+    {0x259, 1, 1, -202}, {0x25B, 1, 1, -203}, {0x260, 1, 1, -205}, {0x263, 1, 1, -207},
+    {0x268, 1, 1, -209}, {0x269, 1, 1, -211}, {0x26F, 1, 1, -211}, {0x272, 1, 1, -213},
+    {0x275, 1, 1, -214}, {0x280, 1, 1, -218}, {0x283, 1, 1, -218}, {0x288, 1, 1, -218},
+    {0x289, 1, 1, -69}, {0x28A, 2, 1, -217}, {0x28C, 1, 1, -71}, {0x292, 1, 1, -219},
+    {0x371, 2, 2, -1}, {0x377, 1, 1, -1}, {0x399, 1, 1, -84}, {0x39C, 1, 1, -743},
+    {0x3AC, 1, 1, -38}, {0x3AD, 3, 1, -37}, {0x3B1, 8, 1, -32}, {0x3B9, 1, 1, -116},
+    {0x3BA, 2, 1, -32}, {0x3BC, 1, 1, -775}, {0x3BD, 5, 1, -32}, {0x3C2, 1, 1, -31},
+    {0x3C3, 9, 1, -32}, {0x3CC, 1, 1, -64}, {0x3CD, 2, 1, -63}, {0x3D0, 1, 1, -62},
+    {0x3D1, 1, 1, -57}, {0x3D5, 1, 1, -47}, {0x3D6, 1, 1, -54}, {0x3D7, 1, 1, -8},
+    {0x3D9, 12, 2, -1}, {0x3F0, 1, 1, -86}, {0x3F1, 1, 1, -80}, {0x3F3, 1, 1, -116},
+    {0x3F4, 1, 1, -92}, {0x3F5, 1, 1, -96}, {0x3F8, 1, 1, -1}, {0x3F9, 1, 1, -7},
+    {0x3FB, 1, 1, -1}, {0x3FD, 3, 1, -130}, {0x430, 32, 1, -32}, {0x450, 16, 1, -80},
+    {0x461, 17, 2, -1}, {0x48B, 27, 2, -1}, {0x4C2, 7, 2, -1}, {0x4CF, 1, 1, -15},
+    {0x4D1, 48, 2, -1}, {0x561, 38, 1, -48}, {0x13F8, 6, 1, -8}, {0x1C80, 1, 1, -6254},
+    {0x1C81, 1, 1, -6253}, {0x1C82, 1, 1, -6244}, {0x1C83, 2, 1, -6242}, {0x1C85, 1, 1, -6243},
+    {0x1C86, 1, 1, -6236}, {0x1C87, 1, 1, -6181}, {0x1C90, 43, 1, -3008}, {0x1CBD, 3, 1, -3008},
+    {0x1E01, 75, 2, -1}, {0x1E9B, 1, 1, -59}, {0x1E9E, 1, 1, -7615}, {0x1EA1, 48, 2, -1},
+    {0x1F08, 8, 1, -8}, {0x1F18, 6, 1, -8}, {0x1F28, 8, 1, -8}, {0x1F38, 8, 1, -8},
+    {0x1F48, 6, 1, -8}, {0x1F59, 4, 2, -8}, {0x1F68, 8, 1, -8}, {0x1F88, 8, 1, -8},
+    {0x1F98, 8, 1, -8}, {0x1FA8, 8, 1, -8}, {0x1FB8, 2, 1, -8}, {0x1FBA, 2, 1, -74},
+    {0x1FBC, 1, 1, -9}, {0x1FBE, 1, 1, -7289}, {0x1FC8, 4, 1, -86}, {0x1FCC, 1, 1, -9},
+    {0x1FD8, 2, 1, -8}, {0x1FDA, 2, 1, -100}, {0x1FE8, 2, 1, -8}, {0x1FEA, 2, 1, -112},
+    {0x1FEC, 1, 1, -7}, {0x1FF8, 2, 1, -128}, {0x1FFA, 2, 1, -126}, {0x1FFC, 1, 1, -9},
+    {0x2126, 1, 1, -7549}, {0x212A, 1, 1, -8415}, {0x212B, 1, 1, -8294}, {0x214E, 1, 1, -28},
+    {0x2170, 16, 1, -16}, {0x2184, 1, 1, -1}, {0x24D0, 26, 1, -26}, {0x2C30, 48, 1, -48},
+    {0x2C61, 1, 1, -1}, {0x2C62, 1, 1, -10743}, {0x2C63, 1, 1, -3814}, {0x2C64, 1, 1, -10727},
+    {0x2C65, 1, 1, -10795}, {0x2C66, 1, 1, -10792}, {0x2C68, 3, 2, -1}, {0x2C6D, 1, 1, -10780},
+    {0x2C6E, 1, 1, -10749}, {0x2C6F, 1, 1, -10783}, {0x2C70, 1, 1, -10782}, {0x2C73, 1, 1, -1},
+    {0x2C76, 1, 1, -1}, {0x2C7E, 2, 1, -10815}, {0x2C81, 50, 2, -1}, {0x2CEC, 2, 2, -1},
+    {0x2CF3, 1, 1, -1}, {0x2D00, 38, 1, -7264}, {0x2D27, 1, 1, -7264}, {0x2D2D, 1, 1, -7264},
+    {0xA641, 5, 2, -1}, {0xA64A, 1, 1, -35266}, {0xA64B, 1, 1, -35267}, {0xA64D, 17, 2, -1},
+    {0xA681, 14, 2, -1}, {0xA723, 7, 2, -1}, {0xA733, 31, 2, -1}, {0xA77A, 2, 2, -1},
+    {0xA77D, 1, 1, -35332}, {0xA77F, 5, 2, -1}, {0xA78C, 1, 1, -1}, {0xA78D, 1, 1, -42280},
+    {0xA791, 2, 2, -1}, {0xA797, 10, 2, -1}, {0xA7AA, 1, 1, -42308}, {0xA7AB, 1, 1, -42319},
+    {0xA7AC, 1, 1, -42315}, {0xA7AD, 1, 1, -42305}, {0xA7AE, 1, 1, -42308},
+    {0xA7B0, 1, 1, -42258}, {0xA7B1, 1, 1, -42282}, {0xA7B2, 1, 1, -42261}, {0xA7B5, 8, 2, -1},
+    {0xA7C4, 1, 1, -48}, {0xA7C5, 1, 1, -42307}, {0xA7C6, 1, 1, -35384}, {0xA7C8, 2, 2, -1},
+    {0xA7D1, 1, 1, -1}, {0xA7D7, 2, 2, -1}, {0xA7F6, 1, 1, -1}, {0xAB53, 1, 1, -928},
+    {0xAB70, 80, 1, -38864}, {0xFF41, 26, 1, -32}, {0x10428, 40, 1, -40}, {0x104D8, 36, 1, -40},
+    {0x10597, 11, 1, -39}, {0x105A3, 15, 1, -39}, {0x105B3, 7, 1, -39}, {0x105BB, 2, 1, -39},
+    {0x10CC0, 51, 1, -64}, {0x118C0, 32, 1, -32}, {0x16E60, 32, 1, -32}, {0x1E922, 34, 1, -34},
+};
+
+static uint32_t inno_fold(uint32_t c) {
+    size_t lo = 0U, hi = sizeof(g_inno_fold) / sizeof(g_inno_fold[0]);
+    if (c < 0x80U) return (c >= 'a' && c <= 'z') ? c - 0x20U : c;
+    while (lo < hi) {
+        size_t mid = lo + (hi - lo) / 2U;
+        const inno_fold_run *r = &g_inno_fold[mid];
+        if (c < r->start) {
+            hi = mid;
+        } else if (c > r->start + (uint32_t)(r->count - 1U) * r->step) {
+            lo = mid + 1U;
+        } else {
+            if ((c - r->start) % r->step != 0U) return c;
+            return (uint32_t)((int64_t)c + r->delta);
+        }
+    }
+    return c;
+}
+
+/* Next code point of a name this reader produced (UTF-8); a stray byte is
+ * returned as itself. */
+static uint32_t inno_utf8_next(const char **ps) {
+    const uint8_t *s = (const uint8_t *)*ps;
+    uint32_t c = s[0];
+    size_t n = 1U, k;
+    if (c >= 0xF0U && c < 0xF8U) {
+        n = 4U;
+        c &= 0x07U;
+    } else if (c >= 0xE0U) {
+        n = c < 0xF0U ? 3U : 1U;
+        c &= 0x0FU;
+    } else if (c >= 0xC0U) {
+        n = 2U;
+        c &= 0x1FU;
+    }
+    if (n == 1U) {
+        *ps += 1;
+        return s[0];
+    }
+    for (k = 1U; k < n; ++k) {
+        if ((s[k] & 0xC0U) != 0x80U) {
+            *ps += 1;
+            return s[0];
+        }
+        c = (c << 6U) | (s[k] & 0x3FU);
+    }
+    *ps += n;
+    return c;
 }
 
 /* UTF-8 output name with '/' separators.  Reserved punctuation becomes
@@ -2044,12 +2202,20 @@ static char *inno_make_name(const inno_raw *r, bool *safe) {
         o += inno_put_utf8(name + o, cp);
     }
     while (rd <= o) {
-        size_t end = rd;
+        size_t end = rd, keep;
         while (end < o && name[end] != '/') ++end;
+        /* Windows drops trailing dots and spaces from every component, so
+         * "a.txt. ." and "dir.\x" name "a.txt" and "dir\x": strip them here
+         * so the duplicate check sees the name Windows will use.  A
+         * component made only of dots and spaces is kept as it is and
+         * refused below. */
+        keep = end;
+        while (keep > rd && (name[keep - 1U] == '.' || name[keep - 1U] == ' ')) --keep;
+        if (keep == rd) keep = end;
         if (end != rd && !(end - rd == 1U && name[rd] == '.')) {
             if (wr) name[wr++] = '/';
-            xx_rt_memmove(name + wr, name + rd, end - rd);
-            wr += end - rd;
+            xx_rt_memmove(name + wr, name + rd, keep - rd);
+            wr += keep - rd;
         }
         rd = end + 1U;
     }
@@ -2074,14 +2240,15 @@ static char *inno_make_name(const inno_raw *r, bool *safe) {
 static uint32_t inno_hash_name(const char *s) {
     uint32_t h = 2166136261U;
     while (*s) {
-        h ^= (uint8_t)inno_upper(*s++);
+        h ^= inno_fold(inno_utf8_next(&s));
         h *= 16777619U;
     }
     return h;
 }
 
 static bool inno_same_name(const char *a, const char *b) {
-    while (*a && *b && inno_upper(*a) == inno_upper(*b)) ++a, ++b;
+    while (*a && *b)
+        if (inno_fold(inno_utf8_next(&a)) != inno_fold(inno_utf8_next(&b))) return false;
     return *a == 0 && *b == 0;
 }
 
@@ -2222,23 +2389,215 @@ static bool inno_build_members(inno_ctx *ctx, const inno_rawlist *names) {
 
 /* Solid chunks: the compiler writes the locations of one chunk as a run,
  * so a linear pass finds how many share it and how far they reach. */
+/*
+ * The compiler also writes the runs in data order, and the members of a run
+ * back to back in ascending order.  A run whose members overlap or go
+ * backwards, or a chunk that comes back after another chunk (so that the
+ * resumable decoder would have to restart), is marked bad_order and refused
+ * at unpack: reading it would decode the chunk again from its start for
+ * each member.
+ *
+ * inno_set_budget then sets the decode budget of a reading session.
+ */
 static void inno_group_locs(inno_ctx *ctx) {
     uint32_t i = 0U, j, k;
+    bool have_prev = false;
+    uint32_t prev_slice = 0U;
+    int64_t prev_chunk = 0;
     while (i < ctx->loc_count) {
-        uint64_t extent = 0U;
+        uint64_t extent = 0U, end = 0U;
+        bool bad = have_prev && (ctx->locs[i].first_slice < prev_slice ||
+                                 (ctx->locs[i].first_slice == prev_slice &&
+                                  ctx->locs[i].chunk_offset <= prev_chunk));
         j = i;
         while (j < ctx->loc_count && ctx->locs[j].chunk_offset == ctx->locs[i].chunk_offset &&
                ctx->locs[j].first_slice == ctx->locs[i].first_slice) {
-            uint64_t e = (uint64_t)(ctx->locs[j].sub_offset + ctx->locs[j].size);
+            const inno_loc *l = &ctx->locs[j];
+            uint64_t e = (uint64_t)(l->sub_offset + l->size);
             if (e > extent) extent = e;
+            if (l->size) {
+                if ((uint64_t)l->sub_offset < end) bad = true;
+                end = e;
+            }
             ++j;
         }
         for (k = i; k < j; ++k) {
             ctx->locs[k].users = j - i;
             ctx->locs[k].extent = extent;
+            ctx->locs[k].bad_order = bad;
         }
+        have_prev = true;
+        prev_slice = ctx->locs[i].first_slice;
+        prev_chunk = ctx->locs[i].chunk_offset;
         i = j;
     }
+}
+
+/*
+ * Decode budget of a reading session: four times the bytes the runs need,
+ * plus 1 GB.  In-order data needs one pass over each run; the budget covers
+ * that, legitimate sharing of a location by several [Files] entries, and
+ * solid zlib / bzip2 chunks too large for the cache (those are decoded from
+ * the chunk start per member).
+ *
+ * The declared sizes are not trusted.  Only runs that some member uses and
+ * that are not refused count, and a run counts for at most what its own
+ * compressed bytes can expand to: the bytes from its chunk start up to the
+ * next run's chunk start (so overlapping chunks share their bytes once)
+ * times the codec's largest expansion.  The budget is therefore at most
+ * INNO_WORK_FACTOR * (largest expansion) * (file size) + INNO_WORK_FLOOR,
+ * which an honest file of the same size also reaches with one bomb: dummy
+ * locations with huge declared sizes, many entries sharing one bomb, or
+ * overlapping chunks cannot make the work grow faster than the file.
+ */
+#define INNO_WORK_FLOOR ((uint64_t)1U << 30)
+#define INNO_WORK_FACTOR 4U
+/* Largest output per input byte: deflate 1032 (zlib measured 1029 on 1 GB
+ * of zeros), bzip2 about 1.4 million (900,000 for a 50-byte one-block
+ * stream, 1,385,000 for 1 GB of zeros). */
+#define INNO_ZLIB_MAX_RATIO 1040U
+#define INNO_BZIP2_MAX_RATIO ((uint64_t)1U << 21)
+
+static uint64_t inno_max_expansion(uint8_t compression, uint64_t input) {
+    uint64_t ratio;
+    switch (compression) {
+    case INNO_C_STORE: ratio = 1U; break;
+    case INNO_C_ZLIB: ratio = INNO_ZLIB_MAX_RATIO; break;
+    case INNO_C_BZIP2: ratio = INNO_BZIP2_MAX_RATIO; break;
+    case INNO_C_LZMA1:
+    case INNO_C_LZMA2: ratio = INNO_LZMA_MAX_RATIO; break;
+    default: return 0U; /* refused at unpack */
+    }
+    return input > UINT64_MAX / ratio ? UINT64_MAX : input * ratio;
+}
+
+static bool inno_head_before(const inno_ctx *ctx, uint32_t x, uint32_t y) {
+    return ctx->locs[x].chunk_offset < ctx->locs[y].chunk_offset;
+}
+
+static void inno_set_budget(inno_ctx *ctx, int64_t device_size) {
+    uint32_t i, j, n = 0U, width;
+    uint8_t *used = NULL;
+    uint32_t *heads = NULL, *tmp = NULL, *a, *b;
+    uint64_t need = 0U, area = 0U;
+    ctx->work_left = INNO_WORK_FLOOR;
+    if (!ctx->loc_count || ctx->data_base < 0 || device_size <= ctx->data_base) return;
+    area = (uint64_t)(device_size - ctx->data_base);
+    used = (uint8_t *)xx_mem_calloc(ctx->loc_count, 1U);
+    heads = (uint32_t *)xx_mem_alloc((size_t)ctx->loc_count * sizeof(*heads));
+    tmp = (uint32_t *)xx_mem_alloc((size_t)ctx->loc_count * sizeof(*tmp));
+    if (!used || !heads || !tmp) goto done;
+    for (i = 0U; i < ctx->member_count; ++i)
+        if (ctx->members[i].loc < ctx->loc_count) used[ctx->members[i].loc] = 1U;
+    /* One head per used, in-order run of slice 0 (others are refused). */
+    for (i = 0U; i < ctx->loc_count; i = j) {
+        bool any = false;
+        for (j = i; j < ctx->loc_count && ctx->locs[j].chunk_offset == ctx->locs[i].chunk_offset &&
+                    ctx->locs[j].first_slice == ctx->locs[i].first_slice;
+             ++j)
+            if (used[j]) any = true;
+        if (any && !ctx->locs[i].bad_order && ctx->locs[i].first_slice == 0U &&
+            ctx->locs[i].chunk_offset >= 0)
+            heads[n++] = i;
+    }
+    /* Stable merge sort of the heads by chunk start. */
+    a = heads;
+    b = tmp;
+    for (width = 1U; width < n; width = width > n / 2U ? n : width * 2U) {
+        uint32_t lo;
+        for (lo = 0U; lo < n; lo = n - lo <= 2U * width ? n : lo + 2U * width) {
+            uint32_t mid = n - lo < width ? n : lo + width;
+            uint32_t hi = n - mid < width ? n : mid + width, p = lo, q = mid, o = lo;
+            while (p < mid && q < hi) b[o++] = inno_head_before(ctx, a[q], a[p]) ? a[q++] : a[p++];
+            while (p < mid) b[o++] = a[p++];
+            while (q < hi) b[o++] = a[q++];
+        }
+        {
+            uint32_t *t = a;
+            a = b;
+            b = t;
+        }
+    }
+    for (i = 0U; i < n; ++i) {
+        const inno_loc *l = &ctx->locs[a[i]];
+        uint64_t start = (uint64_t)l->chunk_offset, span, end, cap;
+        if (start >= area) continue;
+        /* "zlb\x1a" + chunk bytes, clipped to the file */
+        span = l->chunk_size >= 0 && (uint64_t)l->chunk_size < area ? (uint64_t)l->chunk_size + 4U
+                                                                    : area;
+        if (span > area - start) span = area - start;
+        end = start + span;
+        if (i + 1U < n && (uint64_t)ctx->locs[a[i + 1U]].chunk_offset < end)
+            end = (uint64_t)ctx->locs[a[i + 1U]].chunk_offset;
+        cap = inno_max_expansion(l->compression, end - start);
+        cap = cap < l->extent ? cap : l->extent;
+        need = need + cap < need ? UINT64_MAX : need + cap;
+    }
+    ctx->work_left = need > (UINT64_MAX - INNO_WORK_FLOOR) / INNO_WORK_FACTOR
+                         ? UINT64_MAX
+                         : need * INNO_WORK_FACTOR + INNO_WORK_FLOOR;
+done:
+    if (used) xx_mem_free(used);
+    if (heads) xx_mem_free(heads);
+    if (tmp) xx_mem_free(tmp);
+}
+
+/* Take n bytes of decode work from the session budget.  Work is charged
+ * before it is done, so a refused charge only fails that member: one
+ * location declaring more than the budget does not fail the others. */
+static bool inno_charge(inno_ctx *ctx, uint64_t n) {
+    if (n > ctx->work_left) return false;
+    ctx->work_left -= n;
+    return true;
+}
+
+static bool inno_member_before(const inno_member *x, const inno_member *y) {
+    return x->pass != y->pass ? x->pass < y->pass : x->loc < y->loc;
+}
+
+/* Members in location order, so that the members of a solid chunk are read
+ * front to back even when the [Files] entries list them in another order.
+ * A location that several entries share is read once per pass: the first
+ * reference of every location in the first pass, the second in the next,
+ * and so on, so a chunk is decoded (number of references of its most shared
+ * location) times, not once per shared entry.  Stable merge sort through a
+ * temporary array: O(n log n). */
+static bool inno_sort_members(inno_ctx *ctx) {
+    uint32_t n = ctx->member_count, width, i;
+    inno_member *a = ctx->members, *b, *tmp;
+    uint32_t *seen;
+    bool sorted = true;
+    if (n < 2U) return true;
+    seen = (uint32_t *)xx_mem_calloc(ctx->loc_count ? ctx->loc_count : 1U, sizeof(*seen));
+    if (!seen) return false;
+    for (i = 0U; i < n; ++i)
+        a[i].pass = a[i].loc < ctx->loc_count ? seen[a[i].loc]++ : 0U;
+    xx_mem_free(seen);
+    for (i = 1U; i < n; ++i)
+        if (inno_member_before(&a[i], &a[i - 1U])) sorted = false;
+    if (sorted) return true;
+    b = (inno_member *)xx_mem_alloc((size_t)n * sizeof(*b));
+    if (!b) return false;
+    for (width = 1U; width < n; width = width > n / 2U ? n : width * 2U) {
+        uint32_t lo;
+        for (lo = 0U; lo < n; lo = lo + 2U * width > n || lo + 2U * width < lo ? n : lo + 2U * width) {
+            uint32_t mid = n - lo < width ? n : lo + width;
+            uint32_t hi = n - mid < width ? n : mid + width, p = lo, q = mid, o = lo;
+            while (p < mid && q < hi) b[o++] = inno_member_before(&a[q], &a[p]) ? a[q++] : a[p++];
+            while (p < mid) b[o++] = a[p++];
+            while (q < hi) b[o++] = a[q++];
+        }
+        tmp = a;
+        a = b;
+        b = tmp;
+    }
+    if (a != ctx->members) {
+        xx_rt_memcpy(ctx->members, a, (size_t)n * sizeof(*a));
+        xx_mem_free(a);
+    } else {
+        xx_mem_free(b);
+    }
+    return true;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -2304,7 +2663,7 @@ static bool inno_parse_legacy(Abstractformat *f, inno_ctx *ctx, int64_t size,
     if (!inno_read_at(f->device, f->base_address + t->data_offset, idsk, 12U) ||
         xx_rt_memcmp(idsk, "idska32\x1a", 8U) != 0)
         return false;
-    data_end = b109 ? size : t->exe_offset;
+    data_end = b109 ? (int64_t)t->total_size : t->exe_offset;
     if (data_end <= t->data_offset + 12 || data_end > size ||
         (b109 ? (uint64_t)ile32(idsk + 8) != (uint64_t)(data_end - t->data_offset)
               : ile32(idsk + 8) != 0U))
@@ -2394,7 +2753,8 @@ static bool inno_parse_legacy(Abstractformat *f, inno_ctx *ctx, int64_t size,
             if (flens[i] && !inno_raw_add(&names, fnames[i], flens[i], false, i)) goto files_fail;
         ctx->data_base = f->base_address + t->data_offset;
         inno_group_locs(ctx);
-        ok = inno_build_members(ctx, &names);
+        ok = inno_build_members(ctx, &names) && inno_sort_members(ctx);
+        if (ok) inno_set_budget(ctx, xx_io_total_size(f->device));
     files_fail:
         for (i = 0U; fnames && i < counts[1]; ++i)
             if (fnames[i]) xx_mem_free(fnames[i]);
@@ -2528,7 +2888,8 @@ static bool inno_parse(Abstractformat *f, inno_ctx *ctx, xx_pd_struct *pd) {
     best_locs = NULL;
     ctx->data_base = ctx->table.data_offset > 0 ? f->base_address + ctx->table.data_offset : -1;
     inno_group_locs(ctx);
-    ok = inno_build_members(ctx, chosen >= 0 ? &best_names : NULL);
+    ok = inno_build_members(ctx, chosen >= 0 ? &best_names : NULL) && inno_sort_members(ctx);
+    if (ok) inno_set_budget(ctx, xx_io_total_size(f->device));
 done:
     ibuf_free(&b1);
     ibuf_free(&b2);
@@ -2556,7 +2917,6 @@ done:
 #define ILZ_LIT_MAX (0x300U << 4) /* lc + lp <= 4 */
 #define ILZ_DICT_MAX ((uint64_t)512U << 20)
 #define ILZ_DICT_START ((uint64_t)1U << 20)
-#define ILZ_INBUF 65536U
 
 typedef struct ilz_model_s {
     uint16_t is_match[12][16];
@@ -2604,7 +2964,8 @@ typedef struct ilz_s {
     uint32_t pending;   /* match bytes still to copy */
     ilz_model m;
     uint16_t lit[ILZ_LIT_MAX];
-    uint8_t buf[ILZ_INBUF];
+    uint8_t *buf;
+    size_t io_capacity;
 } ilz;
 
 static void ilz_free(ilz *z) {
@@ -2622,7 +2983,7 @@ static uint8_t ilz_byte(ilz *z) {
     at = z->in_pos - z->buf_base;
     if (at < 0 || at >= (int64_t)z->buf_len) {
         int64_t left = z->in_end - z->in_pos;
-        size_t want = left < (int64_t)ILZ_INBUF ? (size_t)left : ILZ_INBUF;
+        size_t want = left < (int64_t)z->io_capacity ? (size_t)left : z->io_capacity;
         if (!want || !inno_read_at(z->dev, z->in_pos, z->buf, want)) {
             z->error = true;
             return 0U;
@@ -2966,13 +3327,17 @@ static ilz *ilz_open(xx_io_device *d, int64_t data_base, const inno_loc *l) {
     uint8_t magic[4];
     uint64_t window, alloc = 4096U;
     ilz *z;
+    const size_t capacity = xx_get_file_buffer_size();
+    if (capacity > SIZE_MAX - sizeof(*z)) return NULL;
     if (data_base < 0 || l->chunk_offset > INT64_MAX - data_base) return NULL;
     at = data_base + l->chunk_offset;
     if (total < 0 || at > total - 4 || l->chunk_size > total - at - 4 ||
         !inno_read_at(d, at, magic, 4U) || xx_rt_memcmp(magic, "zlb\x1a", 4U) != 0)
         return NULL;
-    z = (ilz *)xx_mem_calloc(1U, sizeof(*z));
+    z = (ilz *)xx_mem_calloc(1U, sizeof(*z) + capacity);
     if (!z) return NULL;
+    z->buf = (uint8_t *)(z + 1);
+    z->io_capacity = capacity;
     z->dev = d;
     z->in_pos = at + 4;
     z->in_end = at + 4 + l->chunk_size;
@@ -3036,17 +3401,18 @@ static bool inno_extract_solid_lzma(Abstractformat *f, inno_ctx *ctx, const inno
             return false;
         }
     }
-    piece = (uint8_t *)xx_mem_alloc(INNO_PIECE);
-    if (!piece) return false;
     skip = (uint64_t)l->sub_offset - ctx->lz->total;
+    if (!inno_charge(ctx, skip + (uint64_t)l->size)) return false;
+    piece = (uint8_t *)xx_mem_alloc(out->io_capacity);
+    if (!piece) return false;
     while (skip && ok) {
-        size_t n = skip < INNO_PIECE ? (size_t)skip : INNO_PIECE;
+        size_t n = skip < out->io_capacity ? (size_t)skip : out->io_capacity;
         ok = !inno_stopped(pd) && ilz_read(ctx->lz, piece, n) == n;
         skip -= n;
     }
     left = (uint64_t)l->size;
     while (left && ok) {
-        size_t n = left < INNO_PIECE ? (size_t)left : INNO_PIECE;
+        size_t n = left < out->io_capacity ? (size_t)left : out->io_capacity;
         ok = !inno_stopped(pd) && ilz_read(ctx->lz, piece, n) == n;
         if (ok) inno_out_feed(out, piece, n);
         ok = ok && !out->failed;
@@ -3073,16 +3439,24 @@ static bool inno_extract_solid_lzma(Abstractformat *f, inno_ctx *ctx, const inno
 static bool inno_decode_chunk(Abstractformat *f, int64_t data_base, const inno_loc *l,
                               inno_sink *sink, xx_pd_struct *pd) {
     xx_io_device *d = f->device;
+    const size_t io_capacity = sink->out ? sink->out->io_capacity : xx_get_file_buffer_size();
     int64_t total = xx_io_total_size(d), at, payload = l->chunk_size;
     uint8_t magic[4];
     xx_io_device dev;
-    uint64_t need = sink->skip + sink->want;
+    uint64_t need = sink->skip + sink->want, window = need;
     if (data_base < 0 || l->chunk_offset > INT64_MAX - data_base) return false;
     at = data_base + l->chunk_offset;
     if (at > total - 4 || payload > total - at - 4 ||
         !inno_read_at(d, at, magic, 4U) || xx_rt_memcmp(magic, "zlb\x1a", 4U) != 0)
         return false;
     at += 4;
+    /* The declared sizes are not trusted for the dictionary: LZMA cannot
+     * expand one input byte to more than about 7,600 output bytes (a
+     * 273-byte rep match costs at least 13 near-certain bits), so a window
+     * above payload * INNO_LZMA_MAX_RATIO is never needed. */
+    if (payload >= 0 && (uint64_t)payload < UINT64_MAX / INNO_LZMA_MAX_RATIO &&
+        window > (uint64_t)payload * INNO_LZMA_MAX_RATIO)
+        window = (uint64_t)payload * INNO_LZMA_MAX_RATIO;
     inno_sink_device(&dev, sink);
     switch (l->compression) {
     case INNO_C_STORE: {
@@ -3090,11 +3464,11 @@ static bool inno_decode_chunk(Abstractformat *f, int64_t data_base, const inno_l
         uint64_t pos = sink->skip, left = sink->want;
         bool ok = true;
         if (need > (uint64_t)payload) return false;
-        buf = (uint8_t *)xx_mem_alloc(INNO_PIECE);
+        buf = (uint8_t *)xx_mem_alloc(io_capacity);
         if (!buf) return false;
         sink->seen = sink->skip;
         while (left && ok) {
-            size_t piece = left < INNO_PIECE ? (size_t)left : INNO_PIECE;
+            size_t piece = left < io_capacity ? (size_t)left : io_capacity;
             ok = !inno_stopped(pd) && inno_read_at(d, at + (int64_t)pos, buf, piece) &&
                  inno_sink_write(&dev, buf, piece) == (ssize_t)piece;
             pos += piece;
@@ -3120,7 +3494,7 @@ static bool inno_decode_chunk(Abstractformat *f, int64_t data_base, const inno_l
         if (payload < 5 + 5 || !inno_read_at(d, at, props, 5U) || props[0] >= 9U * 5U * 5U)
             return false;
         dict = ile32(props + 1);
-        while ((uint64_t)cap < need && cap < 0x80000000U) cap <<= 1U;
+        while ((uint64_t)cap < window && cap < 0x80000000U) cap <<= 1U;
         if (dict > cap) {
             props[1] = (uint8_t)cap;
             props[2] = (uint8_t)(cap >> 8U);
@@ -3136,7 +3510,7 @@ static bool inno_decode_chunk(Abstractformat *f, int64_t data_base, const inno_l
         while (p > 0U) {
             uint8_t q = (uint8_t)(p - 1U);
             uint64_t dsz = (uint64_t)(2U | (q & 1U)) << (q / 2U + 11U);
-            if (dsz < need) break;
+            if (dsz < window) break;
             p = q;
         }
         (void)xx_lzma2_unpack_device(d, at + 1, payload - 1, p, &dev, pd);
@@ -3153,19 +3527,35 @@ static bool inno_extract_loc(Abstractformat *f, inno_ctx *ctx, uint32_t index,
     inno_out *out;
     bool ok = false;
     uint64_t extent;
+    const size_t io_capacity = xx_get_file_buffer_size();
+    if (io_capacity > SIZE_MAX - sizeof(*out) - 8U) return false;
     if (index >= ctx->loc_count || ctx->data_base < 0) return false;
     l = &ctx->locs[index];
-    if (l->encrypted || l->first_slice != 0U || l->last_slice != 0U ||
+    if (l->encrypted || l->bad_order || l->first_slice != 0U || l->last_slice != 0U ||
         l->compression > INNO_C_LZMA2)
         return false;
-    out = (inno_out *)xx_mem_alloc(sizeof(*out));
+    out = (inno_out *)xx_mem_alloc(sizeof(*out) + io_capacity + 8U);
     if (!out) return false;
-    if (!inno_out_init(out, l, dest)) goto done;
+    if (!inno_out_init(out, l, dest, io_capacity)) goto done;
     if (l->size == 0) {
         ok = inno_out_finish(out, l);
         goto done;
     }
     extent = l->extent;
+    /* Only one chunk's decoder state is kept: the solid LZMA window (up to
+     * ILZ_DICT_MAX) and the cache (up to INNO_CACHE_MAX) of another chunk
+     * are dropped before this one is decoded, so they never stack with each
+     * other or with the dictionary a non-solid LZMA decode allocates. */
+    if (ctx->lz && ctx->lz_chunk != l->chunk_offset) {
+        ilz_free(ctx->lz);
+        ctx->lz = NULL;
+    }
+    if (ctx->cache && ctx->cache_chunk != l->chunk_offset) {
+        xx_mem_free(ctx->cache);
+        ctx->cache = NULL;
+        ctx->cache_chunk = -1;
+        ctx->cache_size = 0U;
+    }
     if (l->users > 1U &&
         (l->compression == INNO_C_LZMA1 || l->compression == INNO_C_LZMA2)) {
         ok = inno_extract_solid_lzma(f, ctx, l, out, pd) && inno_out_finish(out, l);
@@ -3180,6 +3570,7 @@ static bool inno_extract_loc(Abstractformat *f, inno_ctx *ctx, uint32_t index,
             ctx->cache = NULL;
             ctx->cache_chunk = -1;
             ctx->cache_size = 0U;
+            if (!inno_charge(ctx, extent)) goto done;
             xx_mem_zero(&sink, sizeof(sink));
             sink.want = extent;
             sink.mem_limit = (size_t)extent;
@@ -3196,11 +3587,14 @@ static bool inno_extract_loc(Abstractformat *f, inno_ctx *ctx, uint32_t index,
                 ctx->bad_at = sink.kept;
             }
         }
-        if ((uint64_t)l->sub_offset + (uint64_t)l->size > ctx->cache_size) goto done;
+        if ((uint64_t)l->sub_offset + (uint64_t)l->size > ctx->cache_size ||
+            !inno_charge(ctx, (uint64_t)l->size))
+            goto done;
         inno_out_feed(out, ctx->cache + l->sub_offset, (size_t)l->size);
         ok = inno_out_finish(out, l);
     } else {
         inno_sink sink;
+        if (!inno_charge(ctx, (uint64_t)l->sub_offset + (uint64_t)l->size)) goto done;
         xx_mem_zero(&sink, sizeof(sink));
         sink.skip = (uint64_t)l->sub_offset;
         sink.want = (uint64_t)l->size;
@@ -3425,6 +3819,11 @@ bool xx_inno_setup_unpack_current_archive_record(Abstractformat *format,
     path_option = inno_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) return inno_extract_loc(format, ctx, member->loc, NULL, pd);
     if (!member->safe || !member->name) return false;
+    /* Locations that are refused anyway get no output file. */
+    if (member->loc >= ctx->loc_count || ctx->data_base < 0 || ctx->locs[member->loc].encrypted ||
+        ctx->locs[member->loc].bad_order || ctx->locs[member->loc].first_slice != 0U ||
+        ctx->locs[member->loc].last_slice != 0U)
+        return false;
     if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
     } else if (path_option->type == XX_VAR_TYPE_WSTRING ||

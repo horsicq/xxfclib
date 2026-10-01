@@ -277,8 +277,8 @@ static bool xx_squashfs_decompress_with(uint32_t compressor,
             return xx_squashfs_lzma_block(input, input_size, output, output_cap,
                                           written);
         case XX_SQUASHFS_COMPRESSOR_LZO:
-            /* xx_lzo1x_decompress wants an exactly sized buffer, so a block
-             * whose real output is shorter than output_cap is rejected. */
+            /* The native LZO1X decoder bounds writes by output_cap and
+             * reports the actual length, including short metadata blocks. */
             if (!xx_lzo1x_decompress(input, input_size, output, output_cap,
                                      &produced)) {
                 return false;
@@ -288,16 +288,15 @@ static bool xx_squashfs_decompress_with(uint32_t compressor,
             return xx_squashfs_xz_block(input, input_size, output, output_cap,
                                         written);
         case XX_SQUASHFS_COMPRESSOR_LZ4:
-            /* Only framed LZ4 decodes here; see the note in the header of
-             * xx_squashfs_decompress(). */
-            if (!xx_lz4_decompress_memory(input, input_size, output, output_cap,
-                                          &produced)) {
+            /* SquashFS stores independent raw LZ4 sequences, not frames. */
+            if (!xx_lz4_decompress_block(input, input_size, output, output_cap,
+                                         &produced)) {
                 return false;
             }
             break;
         case XX_SQUASHFS_COMPRESSOR_ZSTD:
-            if (!xx_zstd_decompress_memory(input, input_size, output,
-                                           output_cap, &produced)) {
+            if (!xx_zstd_decompress_memory_bounded(input, input_size, output,
+                                                   output_cap, &produced)) {
                 return false;
             }
             break;
@@ -313,10 +312,8 @@ static bool xx_squashfs_decompress_with(uint32_t compressor,
  * word; v1..v3 have no such field, so the opening bytes are sniffed and the
  * usual suspects are then tried in turn.
  *
- * LZ4 is a known gap: squashfs-tools emits raw LZ4 blocks (LZ4_compress_default
- * output with no frame header) and the only public LZ4 entry point in this
- * library, xx_lz4_decompress_memory(), decodes LZ4 *frames*.  Those blocks
- * therefore fail cleanly rather than being mis-decoded.
+ * squashfs-tools LZ4 blocks are raw sequences without a frame header; the
+ * declared compressor id selects the raw-block decoder above.
  */
 static bool xx_squashfs_decompress(const xx_squashfs_superblock *super,
                                    const uint8_t *input, size_t input_size,
@@ -1539,18 +1536,6 @@ static bool xx_squashfs_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_squashfs_find_option(const xx_list_s *options,
-                                             uint32_t meta_id) {
-    size_t index;
-    if (!options) return NULL;
-    for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
-        if (item && item->meta_id == meta_id) return &item->var;
-    }
-    return NULL;
-}
-
 static bool xx_squashfs_populate_record(xx_archive_record *record,
                                         const xx_squashfs_member *member,
                                         uint32_t compressor) {
@@ -1784,18 +1769,56 @@ bool xx_squashfs_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
+static xx_io_device *xx_squashfs_stage(const char *destination,
+                                        char **stage_path) {
+    unsigned attempt;
+    size_t index, parent = 0U;
+    char *directory = xx_str_dup(destination);
+    *stage_path = NULL;
+    if (!directory) return NULL;
+    for (index = 0U; directory[index]; ++index) {
+        if (directory[index] == '/' || directory[index] == '\\') {
+            parent = index + 1U;
+        }
+    }
+    directory[parent] = 0;
+    for (attempt = 0U; attempt < 128U; ++attempt) {
+        char suffix[48];
+        char *candidate;
+        xx_io_device *output;
+        xx_rt_snprintf(suffix, sizeof(suffix), ".xx_squashfs.tmp.%u", attempt);
+        candidate = xx_str_concat(directory, suffix);
+        if (!candidate) break;
+        if (xx_str_iequals(candidate, destination)) {
+            xx_str_free(candidate);
+            continue;
+        }
+        output = xx_io_file_open(candidate, "wbx");
+        if (output) {
+            *stage_path = candidate;
+            xx_str_free(directory);
+            return output;
+        }
+        xx_str_free(candidate);
+    }
+    xx_str_free(directory);
+    return NULL;
+}
+
 bool xx_squashfs_unpack_current_archive_record(Abstractformat *self,
                                                xx_archive_record_state *state,
                                                xx_pd_struct *pd) {
     xx_squashfs_archive_stream *stream;
     const xx_squashfs_member *member;
     const xx_var *option;
+    const xx_var *overwrite_option;
     const char *base = NULL;
     char *owned_base = NULL;
     char *destination_path = NULL;
+    char *stage_path = NULL;
     xx_io_device *destination = NULL;
     bool result = false;
-    bool created = false;
+    bool overwrite;
 
     if (!self || !self->device || !state || state->format != self ||
         !state->has_record || !state->internal_state ||
@@ -1807,8 +1830,11 @@ bool xx_squashfs_unpack_current_archive_record(Abstractformat *self,
     member = &stream->parsed.members[stream->index];
     if (!xx_squashfs_safe_name(member->name)) return false;
 
-    option =
-        xx_squashfs_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
+    option = xx_format_resolve_extra_parameter(self, &state->options,
+                                               XX_META_ID_OPT_UNPACK_PATH);
+    overwrite_option = xx_format_resolve_extra_parameter(
+        self, &state->options, XX_META_ID_OPT_OVERWRITE);
+    overwrite = overwrite_option && xx_var_get_bool(overwrite_option);
     if (!option) {
         /* No destination: report whether the member's span is addressable. */
         return member->span_offset >= 0 && member->span_size >= 0 &&
@@ -1832,18 +1858,23 @@ bool xx_squashfs_unpack_current_archive_record(Abstractformat *self,
         destination_path = xx_str_concat(base, member->name);
     }
     if (!destination_path) goto cleanup;
+    if (!overwrite && xx_io_file_exists_a(destination_path)) goto cleanup;
     if (!xx_store_create_dirs_a(destination_path, false)) goto cleanup;
-    destination = xx_io_file_open(destination_path, "wb");
-    created = destination != NULL;
+    destination = xx_squashfs_stage(destination_path, &stage_path);
     if (!destination) goto cleanup;
     result = xx_squashfs_extract_member(self, &stream->parsed, member,
                                         destination, pd);
-    xx_io_close(destination);
+    if (xx_io_close(destination)) result = false;
     destination = NULL;
-    if (!result && created) xx_rt_remove(destination_path);
+    if (pd && xx_pd_is_stopped(pd)) result = false;
+    if (result) {
+        result = xx_io_file_replace_a(stage_path, destination_path, overwrite);
+    }
 
 cleanup:
     if (destination) xx_io_close(destination);
+    if (!result && stage_path) xx_io_file_remove_a(stage_path);
+    if (stage_path) xx_str_free(stage_path);
     if (owned_base) xx_str_free(owned_base);
     if (destination_path) xx_str_free(destination_path);
     return result;

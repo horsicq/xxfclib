@@ -13,7 +13,8 @@
 extern "C" {
 #endif
 
-/* A Microsoft VHD, presented as one flat disk stream ("disk.img"):
+/* A Microsoft VHD, presented as FAT filesystem members when a bounded
+ * guest-disk MBR/FAT chain validates, otherwise as one flat "disk.img":
  *  - fixed: the raw disk followed by a "conectix" footer;
  *  - dynamic: footer copy, "cxsparse" dynamic-disk header, block
  *    allocation table and per-block sector bitmaps, then the footer;

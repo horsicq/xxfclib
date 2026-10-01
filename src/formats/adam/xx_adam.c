@@ -626,6 +626,18 @@ void xx_adam_free(xx_adam *archive) {
     xx_mem_free(archive);
 }
 
+bool xx_adam_detection_hint(xx_io_device *device) {
+    Abstractformat format;
+    int64_t position;
+    bool valid;
+    if (!device || (position = xx_io_tell(device)) < 0) return false;
+    xx_mem_zero(&format, sizeof(format));
+    format.device = device;
+    valid = xx_adam_check_is_valid(&format, NULL);
+    if (xx_io_seek64(device, position, SEEK_SET) != 0) return false;
+    return valid;
+}
+
 bool xx_adam_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     adam_volume volume;
     (void)pd;

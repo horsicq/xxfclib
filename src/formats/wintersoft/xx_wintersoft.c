@@ -66,20 +66,26 @@ static void xx_wintersoft_vtable_destroy(Abstractformat *self);
 static bool xx_wintersoft_read_at(Abstractformat *self, int64_t offset,
                               uint8_t *buffer, size_t size) {
     size_t completed = 0U;
+    int64_t cursor;
+    bool result = false;
 
-    if (!self || !self->device || offset < 0 ||
-        xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
+    if (!self || !self->device || offset < 0) {
         return false;
     }
+    cursor = xx_io_tell(self->device);
+    if (cursor < 0 || xx_io_seek64(self->device, offset, SEEK_SET) != 0) return false;
     while (completed < size) {
         ssize_t received =
             xx_io_read(self->device, buffer + completed, size - completed);
         if (received <= 0 || (size_t)received > size - completed) {
-            return false;
+            goto done;
         }
         completed += (size_t)received;
     }
-    return true;
+    result = true;
+done:
+    if (xx_io_seek64(self->device, cursor, SEEK_SET) != 0) result = false;
+    return result;
 }
 
 static bool xx_wintersoft_range_within(int64_t total, int64_t offset,
@@ -289,32 +295,10 @@ fail:
 }
 
 
-/* Decode one member with the archive-wide codec the header named.
- *
- * On the "LZW " path this calls the standalone LZW15V module rather than a
- * copy inside the wintersoft module, exactly as the wintersoft header asks.
- * That header warns that the container relies on two tolerances, and neither
- * of them is present in xx_lzw15v_decode_memory as it stands:
- *
- *  * RUNNING OUT OF INPUT IS A FAILURE THERE, NOT AN END OF STREAM. The bit
- *    reader returns false the moment it needs a bit past the last byte, and
- *    that propagates straight out as a failed decode. A member whose encoder
- *    omitted the explicit 0x100 END and simply stopped will therefore be
- *    rejected here rather than accepted at its natural end.
- *  * THERE IS NO AUTO-BUMP. The width moves only on an explicit 0x101, so
- *    the reference's "widen before reading whenever the bump threshold has
- *    fallen below the next assignable code" never fires. Against a
- *    Nelson-compatible encoder that path is always exactly one code short of
- *    firing, so this one is expected to cost nothing on real members.
- *
- * The first divergence is the one that can actually reject a valid member,
- * and it is left as a rejection on purpose: a false is visible to the caller,
- * whereas quietly treating a truncated stream as complete would hand back a
- * short buffer dressed as a whole member - the one failure mode the decode
- * contract says a caller cannot detect. If a real "LZW " archive turns up
- * that fails here, the fix belongs in xx_lzw15v_decode_memory (accept input
- * exhaustion as an end of stream when the output is exactly full), not in a
- * fallback here. */
+/* Decode one sized member. Wintersoft LZW writers can drop the final partial
+ * byte containing low zero bits of END=0x100. The bounded zero-tail retry below
+ * repairs only that final bit-buffer convention while preserving explicit END
+ * and the exact declared decoded size. AHUFF remains unchanged. */
 static bool xx_wintersoft_decode(Abstractformat *self,
                                  const xx_wintersoft_member *member,
                                  uint8_t **out, size_t *out_size,
@@ -350,7 +334,7 @@ static bool xx_wintersoft_decode(Abstractformat *self,
     }
     if (member->compressed_size == 0) return false;
 
-    input = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
+    input = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size + 2U);
     if (!input) return false;
     if (!xx_wintersoft_read_at(self, member->data_offset, input,
                                (size_t)member->compressed_size)) {
@@ -378,6 +362,27 @@ static bool xx_wintersoft_decode(Abstractformat *self,
                                           output,
                                           (size_t)member->uncompressed_size,
                                           &written);
+        /* Some Wintersoft writers flush only the complete bytes of the final
+         * END=0x100 code. Two zero bytes complete that code's missing low bits.
+         * The retry first applies the headerless codec's strict dictionary
+         * grammar, exact output count, and an END that crosses physical EOF.
+         * Its non-strict container decoder is used only after those checks.
+         * The shared headerless decoder retains its original strict ending. */
+        if (!decoded && !(pd && xx_pd_is_stopped(pd))) {
+            size_t consumed = 0U, scanned = 0U;
+            input[(size_t)member->compressed_size] = 0U;
+            input[(size_t)member->compressed_size + 1U] = 0U;
+            if (xx_lzw15v_scan_memory(input,
+                    (size_t)member->compressed_size + 2U,
+                    (size_t)member->uncompressed_size, &consumed, &scanned) &&
+                scanned == (size_t)member->uncompressed_size &&
+                consumed > (size_t)member->compressed_size &&
+                !(pd && xx_pd_is_stopped(pd))) {
+                decoded = xx_lzw15v_decode_memory(input,
+                    (size_t)member->compressed_size + 2U, output,
+                    (size_t)member->uncompressed_size, &written);
+            }
+        }
     }
 
     /* Both codecs already demand an exact fill; the second half of this test

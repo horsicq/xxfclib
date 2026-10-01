@@ -13,13 +13,14 @@
  *    the same core routine (dcl_run) over the same bytes with the same limit,
  *    so the measure and the decode cannot disagree - that is exactly the
  *    property the scan entry point exists to provide.
- * 2. The reference computes the trailer CRC with XBinary::_getCRC32, which is
- *    a table lookup; the identical reflected EDB88320 CRC is computed here from
- *    a table built on the stack (no module-level mutable state).
+ * 2. The reference computes the trailer CRC with XBinary::_getCRC32. Its
+ *    unfinalised reflected EDB88320 value is obtained from the common CRC-32
+ *    implementation by undoing that API's final complement.
  */
 
 #include "xxfclib/algo/genius/xx_genius.h"
 
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/algo/dcl/xx_dcl.h"
 
 /* uint32 plaintext length + uint32 CRC-32 behind the last block. */
@@ -44,25 +45,7 @@ static uint32_t xx_genius_read_le32(const uint8_t *p)
  * primitive, so there is no final "^ 0xFFFFFFFF" here.  Do not "fix" it. */
 static uint32_t xx_genius_crc32_unfinalised(const uint8_t *data, size_t size)
 {
-    uint32_t table[256];
-    uint32_t crc = 0xFFFFFFFFU;
-    uint32_t i;
-    size_t at;
-
-    for (i = 0U; i < 256U; ++i) {
-        uint32_t value = i;
-        unsigned bit;
-        for (bit = 0U; bit < 8U; ++bit) {
-            value = (value & 1U) ? (0xEDB88320U ^ (value >> 1)) : (value >> 1);
-        }
-        table[i] = value;
-    }
-
-    for (at = 0U; at < size; ++at) {
-        crc = table[(crc ^ data[at]) & 0xFFU] ^ (crc >> 8);
-    }
-
-    return crc;
+    return ~xx_crc32_calc(0U, data, size);
 }
 
 bool xx_genius_decode_memory(const uint8_t *input, size_t input_size,

@@ -2,11 +2,12 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/gpt/xx_gpt.h"
 
 #include "xxfclib/algo/store/xx_store.h"
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/data/xx_data.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
@@ -105,6 +106,7 @@ static void xx_gpt_vtable_destroy(Abstractformat *self);
  * the legacy seek could never reach. */
 static bool xx_gpt_read_at(xx_io_device *device, int64_t offset, void *data,
                            size_t size) {
+    size_t transfer_capacity = xx_get_file_buffer_size();
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
     if (!device || (!data && size != 0U) || offset < 0 ||
@@ -112,8 +114,11 @@ static bool xx_gpt_read_at(xx_io_device *device, int64_t offset, void *data,
         return false;
     }
     while (done < size) {
-        ssize_t got = xx_io_read(device, out + done, size - done);
-        if (got <= 0 || (size_t)got > size - done) return false;
+        size_t request = size - done;
+        ssize_t got;
+        if (request > transfer_capacity) request = transfer_capacity;
+        got = xx_io_read(device, out + done, request);
+        if (got <= 0 || (size_t)got > request) return false;
         done += (size_t)got;
     }
     return true;
@@ -410,17 +415,16 @@ static bool xx_gpt_array_geometry_ok(const xx_gpt_header *header,
 
 /* Verify the entry array CRC by streaming. The array is never held in
  * memory, so its size never becomes an allocation. */
-static bool xx_gpt_array_crc_ok(xx_io_device *device, int64_t array_offset,
+static bool xx_gpt_array_crc_ok_buffered(xx_io_device *device, int64_t array_offset,
                                 int64_t array_size, uint32_t expected,
-                                xx_pd_struct *pd) {
-    uint8_t buffer[8192];
+                                xx_pd_struct *pd, uint8_t *buffer, size_t buffer_capacity) {
     int64_t done = 0;
     uint32_t crc = 0U;
     if (xx_io_seek64(device, array_offset, SEEK_SET) != 0) return false;
     while (done < array_size) {
         int64_t remaining = array_size - done;
-        size_t want = remaining < (int64_t)sizeof(buffer)
-                          ? (size_t)remaining : sizeof(buffer);
+        size_t want = (uint64_t)remaining < (uint64_t)buffer_capacity
+                          ? (size_t)remaining : buffer_capacity;
         ssize_t got;
         if (pd && xx_pd_is_stopped(pd)) return false;
         got = xx_io_read(device, buffer, want);
@@ -429,6 +433,18 @@ static bool xx_gpt_array_crc_ok(xx_io_device *device, int64_t array_offset,
         done += got;
     }
     return crc == expected;
+}
+
+static bool xx_gpt_array_crc_ok(xx_io_device *device, int64_t array_offset,
+                                int64_t array_size, uint32_t expected,
+                                xx_pd_struct *pd) {
+    size_t buffer_capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
+    bool buffer_result;
+    if (!buffer) return false;
+    buffer_result = xx_gpt_array_crc_ok_buffered(device, array_offset, array_size, expected, pd, buffer, buffer_capacity);
+    xx_mem_free(buffer);
+    return buffer_result;
 }
 
 /* Decode the array and publish every used slot. The declared range is

@@ -10,18 +10,16 @@
  *
  * A package is a PATCH, not an archive, and most of its records are delta
  * programs that copy from a checksum-matched source file. Those are not
- * members in any sense this reader can honour, so it publishes only the two
+ * members in any sense this reader can honour, so it publishes only the
  * things a package carries that stand on their own:
  *
  *   - whole-file records, whose stream is the complete destination file;
- *   - the banner block, a counted-string table rendered as Comments.txt.
+ *   - the banner block, a counted-string table rendered as Comments.txt;
+ *   - delta programs proved to fill the whole destination from their own
+ *     literal payload, without reading a source file.
  *
- * Delta records are deliberately NOT published. The reference reader does
- * publish the one delta shape whose opcode program happens to carry its
- * whole destination, and proves that shape by decoding and inspecting the
- * program; this reader refuses every delta instead, because a patch whose
- * source file is absent has no defensible file form and reporting one is
- * worse than reporting none.
+ * All other delta records are deliberately not published: their output
+ * depends on a separate checksum-matched source file.
  *
  * The record layout is generation dependent and the records are not chained,
  * so they are found by scanning for the seven bytes every RTPatch stream
@@ -171,6 +169,10 @@ static bool xx_rtpatch_add(xx_rtpatch_stream *stream,
 #define XX_RTPATCH_STREAM_MIN_SIZE 8
 #define XX_RTPATCH_METHOD_STREAM 1U
 #define XX_RTPATCH_METHOD_TEXT 2U
+#define XX_RTPATCH_METHOD_DELTA_FILL 3U
+#define XX_RTPATCH_DELTA_OVERHEAD 4U
+#define XX_RTPATCH_DELTA_PAYLOAD_OFFSET 3U
+#define XX_RTPATCH_MAX_SOURCES 8U
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
@@ -183,6 +185,9 @@ static bool xx_rtpatch_safe_name(const uint8_t *data, size_t size, bool fixed_fi
 static bool xx_rtpatch_descriptor(const uint8_t *data, int64_t size, int64_t offset, char *out_name, int64_t *out_size, uint64_t *out_timestamp);
 static bool xx_rtpatch_stream_at(const uint8_t *data, int64_t size, int64_t offset);
 static bool xx_rtpatch_whole_file(const uint8_t *data, int64_t size, int64_t descriptor_offset, int64_t stream_offset, int64_t uncompressed_size, int64_t *out_compressed);
+static bool xx_rtpatch_delta_fill(const uint8_t *data, int64_t size, int64_t descriptor_offset, int64_t stream_offset, int64_t uncompressed_size, int64_t *out_header, int64_t *out_compressed, xx_pd_struct *pd);
+static bool xx_rtpatch_inline_whole(const uint8_t *data, int64_t size, int64_t stream_offset, char *out_name, int64_t *out_header, int64_t *out_uncompressed, int64_t *out_compressed, xx_pd_struct *pd);
+static bool xx_rtpatch_v400_delta_fill(const uint8_t *data, int64_t size, int64_t descriptor_offset, int64_t stream_offset, const char *destination_name, int64_t destination_size, int64_t *out_header, int64_t *out_compressed, xx_pd_struct *pd);
 static bool xx_rtpatch_string_list(const uint8_t *data, int64_t size, int64_t offset, int64_t *out_end, int64_t *out_decoded, bool *out_directory);
 static bool xx_rtpatch_unique(xx_rtpatch_stream *stream, const char *name, char *out_name, size_t out_size);
 static xx_rtpatch_stream *xx_rtpatch_parse(Abstractformat *self, xx_pd_struct *pd);
@@ -351,6 +356,267 @@ static bool xx_rtpatch_whole_file(const uint8_t *data, int64_t size,
     return true;
 }
 
+static bool xx_rtpatch_delta_program_is_fill(const uint8_t *program,
+                                             size_t destination_size) {
+    uint8_t fill;
+    uint8_t end_a;
+    uint8_t end_b;
+    uint8_t end;
+    if (!program || destination_size == 0U) return false;
+    fill = program[0] == 0x15U ? 0x12U : 5U;
+    end_a = program[0] == 0x15U ? 0x16U : 1U;
+    end_b = program[0] == 0x15U ? 0x15U : 2U;
+    end = program[destination_size + XX_RTPATCH_DELTA_PAYLOAD_OFFSET];
+    return (program[0] == 2U || program[0] == 0x15U) &&
+           program[1] == 0U && program[2] == fill &&
+           (end == end_a || end == end_b);
+}
+
+static bool xx_rtpatch_delta_payload_proved(const uint8_t *data,
+                                             int64_t size,
+                                             int64_t stream_offset,
+                                             int64_t destination_size,
+                                             int64_t compressed_size,
+                                             xx_pd_struct *pd) {
+    uint8_t *program;
+    size_t written = 0U;
+    size_t program_size;
+    bool valid;
+    if (destination_size <= 0 ||
+        destination_size > XX_RTPATCH_MAX_SCAN - XX_RTPATCH_DELTA_OVERHEAD ||
+        compressed_size < XX_RTPATCH_STREAM_MIN_SIZE ||
+        stream_offset < 0 || stream_offset > size ||
+        compressed_size > size - stream_offset ||
+        (pd && xx_pd_is_stopped(pd))) return false;
+    program_size = (size_t)destination_size + XX_RTPATCH_DELTA_OVERHEAD;
+    program = (uint8_t *)xx_mem_alloc(program_size);
+    if (!program) return false;
+    valid = xx_rtpatch_decode_memory(data + stream_offset,
+                                      (size_t)compressed_size,
+                                      program, program_size, &written) &&
+            written == program_size &&
+            xx_rtpatch_delta_program_is_fill(program,
+                                               (size_t)destination_size);
+    xx_mem_free(program);
+    return valid;
+}
+
+/* Reference type 0x4000 normally needs a checksum-matched source file.  The
+ * special four-byte opcode envelope [mode, destination 0, fill, end] carries
+ * the whole destination inside the compressed stream.  Prove both the record
+ * header and the decoded opcode shape before publishing it. */
+static bool xx_rtpatch_delta_fill(const uint8_t *data, int64_t size,
+                                   int64_t descriptor_offset,
+                                   int64_t stream_offset,
+                                   int64_t uncompressed_size,
+                                   int64_t *out_header,
+                                   int64_t *out_compressed,
+                                   xx_pd_struct *pd) {
+    int64_t header = -1;
+    int64_t program_size;
+    uint32_t sources;
+
+    *out_header = -1;
+    *out_compressed = 0;
+    if (descriptor_offset < 9 ||
+        stream_offset != descriptor_offset + XX_RTPATCH_DESCRIPTOR_SIZE ||
+        uncompressed_size <= 0 ||
+        uncompressed_size > XX_RTPATCH_MAX_SCAN - XX_RTPATCH_DELTA_OVERHEAD ||
+        !xx_rtpatch_stream_at(data, size, stream_offset)) return false;
+    program_size = uncompressed_size + XX_RTPATCH_DELTA_OVERHEAD;
+
+    /* The two-count form names one or more source descriptors; the shorter
+     * one-count form occurs on later alternatives of the same record. */
+    for (sources = 1U; sources <= XX_RTPATCH_MAX_SOURCES; ++sources) {
+        int64_t block = descriptor_offset -
+                        (int64_t)XX_RTPATCH_DESCRIPTOR_SIZE * sources;
+        uint32_t i;
+        bool source_block = true;
+        if (block < 10) continue;
+        for (i = 0U; i < sources; ++i) {
+            char source_name[XX_RTPATCH_MAX_NAME];
+            int64_t source_size;
+            uint64_t source_time;
+            if (!xx_rtpatch_descriptor(data, size,
+                    block + (int64_t)XX_RTPATCH_DESCRIPTOR_SIZE * i,
+                    source_name, &source_size, &source_time)) {
+                source_block = false;
+                break;
+            }
+        }
+        if (source_block && data[block - 10] == sources &&
+            data[block - 9] == 1U) {
+            header = block - 8;
+            break;
+        }
+    }
+    if (header < 0 && data[descriptor_offset - 9] == 1U)
+        header = descriptor_offset - 8;
+    if (header < 0 || header > size - 8 ||
+        (int64_t)xx_rtpatch_le32(data + header) != program_size) return false;
+
+    *out_compressed = (int64_t)xx_rtpatch_le32(data + header + 4);
+    if (!xx_rtpatch_delta_payload_proved(data, size, stream_offset,
+                                          uncompressed_size,
+                                          *out_compressed, pd)) return false;
+    *out_header = header;
+    return true;
+}
+
+/* Some 4.00 packages put a flat whole-file record before the descriptor
+ * chain.  Its short and long counted names flank a duplicate size field;
+ * there is no 34-byte descriptor.  The 0x6440 record tag, ten reserved zero
+ * bytes, one destination, two matching names, exact size fields and a full
+ * codec decode together prove the member without scanning arbitrary bytes. */
+static bool xx_rtpatch_inline_whole(const uint8_t *data, int64_t size,
+                                     int64_t stream_offset, char *out_name,
+                                     int64_t *out_header,
+                                     int64_t *out_uncompressed,
+                                     int64_t *out_compressed,
+                                     xx_pd_struct *pd) {
+    int64_t name_offset, lowest;
+    if (!xx_rtpatch_stream_at(data, size, stream_offset)) return false;
+    lowest = stream_offset - XX_RTPATCH_NAME_WINDOW;
+    if (lowest < 34) lowest = 34;
+    for (name_offset = stream_offset - 2; name_offset >= lowest;
+         --name_offset) {
+        int64_t length = data[name_offset];
+        char long_name[XX_RTPATCH_MAX_NAME];
+        int64_t short_offset;
+        if (length < 2 || name_offset + 1 + length != stream_offset ||
+            data[stream_offset - 1] != 0U ||
+            !xx_rtpatch_safe_name(data + name_offset + 1,
+                                  (size_t)length - 1U, false, long_name))
+            continue;
+        for (short_offset = name_offset - 11; short_offset >= lowest;
+             --short_offset) {
+            int64_t short_length = data[short_offset];
+            int64_t end, header, unpacked, packed, gap;
+            char short_name[XX_RTPATCH_MAX_NAME];
+            uint8_t *plain;
+            size_t written = 0U;
+            bool valid;
+            if (short_length < 2 || short_length > 14 ||
+                short_offset < 21 ||
+                short_offset + 1 + short_length > name_offset ||
+                !xx_rtpatch_safe_name(data + short_offset + 1,
+                                      (size_t)short_length, false,
+                                      short_name) ||
+                data[short_offset + short_length] != 0U ||
+                xx_str_icmp(short_name, long_name)) continue;
+            end = short_offset + 1 + short_length;
+            gap = name_offset - end;
+            if (gap != 9 && gap != 11) continue;
+            header = short_offset - 8;
+            if (data[short_offset - 21] != 0x40U ||
+                data[short_offset - 20] != 0x64U ||
+                data[short_offset - 9] != 1U) continue;
+            {
+                int64_t i;
+                bool zeros = true;
+                for (i = short_offset - 19; i < short_offset - 9; ++i)
+                    if (data[i] != 0U) zeros = false;
+                if (!zeros) continue;
+            }
+            unpacked = (int64_t)xx_rtpatch_le32(data + header);
+            packed = (int64_t)xx_rtpatch_le32(data + header + 4);
+            if (unpacked <= 0 || unpacked > XX_RTPATCH_MAX_SCAN ||
+                packed < XX_RTPATCH_STREAM_MIN_SIZE ||
+                packed > size - stream_offset) continue;
+            if (gap == 9) {
+                int64_t i;
+                if (xx_rtpatch_le32(data + end) != (uint32_t)unpacked)
+                    continue;
+                for (i = end + 4; i < name_offset; ++i)
+                    if (data[i] != 0U) break;
+                if (i != name_offset) continue;
+            } else {
+                int64_t i;
+                if (data[end] != 0x60U ||
+                    xx_rtpatch_le32(data + end + 1) != (uint32_t)unpacked)
+                    continue;
+                for (i = end + 5; i < name_offset; ++i)
+                    if (data[i] != 0U) break;
+                if (i != name_offset) continue;
+            }
+            if (pd && xx_pd_is_stopped(pd)) return false;
+            plain = (uint8_t *)xx_mem_alloc((size_t)unpacked);
+            if (!plain) return false;
+            valid = xx_rtpatch_decode_memory(data + stream_offset,
+                                              (size_t)packed, plain,
+                                              (size_t)unpacked, &written) &&
+                    written == (size_t)unpacked;
+            xx_mem_free(plain);
+            if (!valid) continue;
+            if (xx_rt_snprintf(out_name, XX_RTPATCH_MAX_NAME,
+                               "%s", long_name) < 0) return false;
+            *out_header = header;
+            *out_uncompressed = unpacked;
+            *out_compressed = packed;
+            return true;
+        }
+    }
+    return false;
+}
+
+/* A 4.00 source-free delta has a source descriptor with its counted long
+ * name immediately before the destination descriptor.  The preceding two
+ * count bytes are both one; the stream header states destination size + 4,
+ * and decoding must prove the same literal-fill opcode envelope as 2.x. */
+static bool xx_rtpatch_v400_delta_fill(const uint8_t *data, int64_t size,
+                                       int64_t descriptor_offset,
+                                       int64_t stream_offset,
+                                       const char *destination_name,
+                                       int64_t destination_size,
+                                       int64_t *out_header,
+                                       int64_t *out_compressed,
+                                       xx_pd_struct *pd) {
+    int64_t name_offset, lowest;
+    if (descriptor_offset < XX_RTPATCH_AUGMENTED_PREFIX_SIZE ||
+        stream_offset < descriptor_offset + XX_RTPATCH_DESCRIPTOR_SIZE ||
+        destination_size <= 0 ||
+        destination_size > XX_RTPATCH_MAX_SCAN - XX_RTPATCH_DELTA_OVERHEAD)
+        return false;
+    lowest = descriptor_offset - XX_RTPATCH_NAME_WINDOW;
+    if (lowest < XX_RTPATCH_AUGMENTED_PREFIX_SIZE)
+        lowest = XX_RTPATCH_AUGMENTED_PREFIX_SIZE;
+    for (name_offset = descriptor_offset - 2; name_offset >= lowest;
+         --name_offset) {
+        int64_t length = data[name_offset];
+        int64_t source_descriptor, header, source_size;
+        uint64_t source_time;
+        int64_t packed;
+        char source_short[XX_RTPATCH_MAX_NAME];
+        char source_long[XX_RTPATCH_MAX_NAME];
+        if (length < 2 || name_offset + 1 + length != descriptor_offset ||
+            data[descriptor_offset - 1] != 0U) continue;
+        source_descriptor = name_offset - XX_RTPATCH_AUGMENTED_PREFIX_SIZE;
+        header = source_descriptor - 8;
+        if (header < 2 ||
+            !xx_rtpatch_descriptor(data, size, source_descriptor,
+                                   source_short, &source_size,
+                                   &source_time) ||
+            !xx_rtpatch_safe_name(data + name_offset + 1,
+                                  (size_t)length - 1U, false,
+                                  source_long) ||
+            source_size != destination_size ||
+            xx_str_icmp(source_short, source_long) ||
+            xx_str_icmp(source_long, destination_name) ||
+            data[header - 2] != 1U || data[header - 1] != 1U ||
+            xx_rtpatch_le32(data + header) !=
+                (uint32_t)(destination_size + XX_RTPATCH_DELTA_OVERHEAD))
+            continue;
+        packed = (int64_t)xx_rtpatch_le32(data + header + 4);
+        if (!xx_rtpatch_delta_payload_proved(data, size, stream_offset,
+                                              destination_size, packed, pd))
+            continue;
+        *out_header = header;
+        *out_compressed = packed;
+        return true;
+    }
+    return false;
+}
+
 /* One counted-string list: a u16 count and that many length-prefixed,
  * NUL-terminated strings. Both the directory table and the banner use it. */
 static bool xx_rtpatch_string_list(const uint8_t *data, int64_t size,
@@ -512,13 +778,21 @@ static xx_rtpatch_stream *xx_rtpatch_parse(Abstractformat *self,
         int64_t descriptor_offset = -1;
         int64_t uncompressed_size = 0;
         int64_t compressed_size = 0;
+        int64_t delta_header = -1;
+        int64_t inline_header = -1;
+        int64_t long_name_offset = -1;
         uint64_t timestamp = 0U;
         bool found = false;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         if (!xx_rtpatch_stream_at(data, span, offset)) continue;
 
-        if (fixed) {
+        if (version == 400U && xx_rtpatch_inline_whole(
+                data, span, offset, name, &inline_header,
+                &uncompressed_size, &compressed_size, pd)) {
+            descriptor_offset = inline_header + 8;
+            found = true;
+        } else if (fixed) {
             descriptor_offset = offset - XX_RTPATCH_DESCRIPTOR_SIZE;
             found = xx_rtpatch_descriptor(data, span, descriptor_offset, name,
                                           &uncompressed_size, &timestamp);
@@ -565,6 +839,7 @@ static xx_rtpatch_stream *xx_rtpatch_parse(Abstractformat *self,
                     continue;
                 }
                 found = true;
+                long_name_offset = name_offset;
                 break;
             }
         }
@@ -576,13 +851,26 @@ static xx_rtpatch_stream *xx_rtpatch_parse(Abstractformat *self,
          * separate questions: a patch made only of deltas is still an
          * RTPatch package. */
         record_seen = true;
+        if (first_record < 0 || descriptor_offset < first_record) {
+            first_record = descriptor_offset;
+        }
 
-        /* Only the whole-file shape is published. A delta record reaches
-         * here with a source descriptor where the size pair should be, fails
-         * this, and is dropped - which is the intended outcome. */
-        if (!xx_rtpatch_whole_file(data, span, descriptor_offset, offset,
+        if (inline_header < 0 &&
+            !xx_rtpatch_whole_file(data, span, descriptor_offset, offset,
                                    uncompressed_size, &compressed_size)) {
-            continue;
+            /* The two bounded delta layouts must both prove the decoded
+             * literal-fill program before exposing a source-free member. */
+            if (fixed) {
+                if (!xx_rtpatch_delta_fill(data, span, descriptor_offset,
+                                           offset, uncompressed_size,
+                                           &delta_header, &compressed_size,
+                                           pd)) continue;
+            } else if (version == 400U && long_name_offset >= 0) {
+                if (!xx_rtpatch_v400_delta_fill(data, span,
+                        descriptor_offset, offset, name,
+                        uncompressed_size, &delta_header,
+                        &compressed_size, pd)) continue;
+            } else continue;
         }
         if (stream->count >= (size_t)XX_RTPATCH_MAX_MEMBERS) goto fail;
         if (!xx_rtpatch_unique(stream, name, unique, sizeof(unique))) {
@@ -590,12 +878,17 @@ static xx_rtpatch_stream *xx_rtpatch_parse(Abstractformat *self,
         }
 
         xx_mem_zero(&member, sizeof(member));
-        member.header_offset = self->base_address + descriptor_offset - 8;
-        member.header_size = offset - (descriptor_offset - 8);
+        member.header_offset = self->base_address +
+                               (delta_header >= 0 ? delta_header :
+                                inline_header >= 0 ? inline_header :
+                                                     descriptor_offset - 8);
+        member.header_size = self->base_address + offset -
+                             member.header_offset;
         member.data_offset = self->base_address + offset;
         member.compressed_size = compressed_size;
         member.uncompressed_size = uncompressed_size;
-        member.method = XX_RTPATCH_METHOD_STREAM;
+        member.method = delta_header >= 0 ? XX_RTPATCH_METHOD_DELTA_FILL
+                                          : XX_RTPATCH_METHOD_STREAM;
         member.timestamp = timestamp;
         member.is_folder = false;
         member.name = xx_str_dup(unique);
@@ -605,7 +898,6 @@ static xx_rtpatch_stream *xx_rtpatch_parse(Abstractformat *self,
             xx_str_free(member.name);
             goto fail;
         }
-        if (first_record < 0) first_record = descriptor_offset;
     }
 
     /* The banner is the counted-string list in the record area that is not
@@ -657,6 +949,50 @@ static xx_rtpatch_stream *xx_rtpatch_parse(Abstractformat *self,
         break;
     }
 
+    if (version == 400U && first_record > XX_RTPATCH_HEADER_SIZE) {
+        int64_t candidate;
+        int64_t banner_at = -1, banner_end = -1, banner_size = 0;
+        int64_t scan_end = first_record < 4096 ? first_record : 4096;
+        /* In a 4.00 package the final counted prose list may sit behind
+         * other metadata.  It must end exactly at a record flag with the
+         * destination-path bit set; directory lists are never banners. */
+        for (candidate = XX_RTPATCH_HEADER_SIZE;
+             candidate < scan_end; ++candidate) {
+            int64_t end = 0, decoded = 0;
+            bool directory = false;
+            uint16_t flag;
+            if (pd && xx_pd_is_stopped(pd)) goto fail;
+            if (!xx_rtpatch_string_list(data, span, candidate, &end,
+                                        &decoded, &directory) ||
+                directory || decoded <= 0 || decoded > 65536 ||
+                end > first_record || end > span - 2) continue;
+            flag = xx_rtpatch_le16(data + end);
+            if ((flag & 0x0004U) == 0U ||
+                (flag & 0xf000U) == 0x1000U) continue;
+            banner_at = candidate;
+            banner_end = end;
+            banner_size = decoded;
+        }
+        if (banner_at >= 0) {
+            xx_rtpatch_member member;
+            xx_mem_zero(&member, sizeof(member));
+            if (!xx_rtpatch_unique(stream, "Comments.txt", unique,
+                                   sizeof(unique))) goto fail;
+            member.name = xx_str_dup(unique);
+            if (!member.name) goto fail;
+            member.header_offset = self->base_address + banner_at;
+            member.header_size = 2;
+            member.data_offset = self->base_address + banner_at;
+            member.compressed_size = banner_end - banner_at;
+            member.uncompressed_size = banner_size;
+            member.method = XX_RTPATCH_METHOD_TEXT;
+            if (!xx_rtpatch_add(stream, &member)) {
+                xx_str_free(member.name);
+                goto fail;
+            }
+        }
+    }
+
     /* A package whose records are all deltas publishes nothing, and nothing
      * is the honest answer about its MEMBERS: there is no file in it this
      * reader can produce. It is still an RTPatch package, though, so it stays
@@ -690,6 +1026,7 @@ static bool xx_rtpatch_decode(Abstractformat *self,
                               size_t *out_size, xx_pd_struct *pd) {
     uint8_t *input;
     uint8_t *output;
+    size_t decoded_size;
     size_t written = 0U;
 
     *out = NULL;
@@ -703,13 +1040,16 @@ static bool xx_rtpatch_decode(Abstractformat *self,
         member->uncompressed_size > XX_RTPATCH_MAX_DECODED) {
         return false;
     }
-    /* Only the two self-contained forms are published, so anything else
-     * here means the parse and the decode disagree. Delta records are
-     * refused at parse time: a patch program without its source file has no
-     * file form, and producing one anyway yields bytes that look like data. */
     if (member->method != XX_RTPATCH_METHOD_STREAM &&
-        member->method != XX_RTPATCH_METHOD_TEXT) {
+        member->method != XX_RTPATCH_METHOD_TEXT &&
+        member->method != XX_RTPATCH_METHOD_DELTA_FILL) {
         return false;
+    }
+    decoded_size = (size_t)member->uncompressed_size;
+    if (member->method == XX_RTPATCH_METHOD_DELTA_FILL) {
+        if (decoded_size > (size_t)XX_RTPATCH_MAX_DECODED -
+                           XX_RTPATCH_DELTA_OVERHEAD) return false;
+        decoded_size += XX_RTPATCH_DELTA_OVERHEAD;
     }
 
     input = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
@@ -724,7 +1064,7 @@ static bool xx_rtpatch_decode(Abstractformat *self,
         return false;
     }
 
-    output = (uint8_t *)xx_mem_alloc((size_t)member->uncompressed_size);
+    output = (uint8_t *)xx_mem_alloc(decoded_size);
     if (!output) {
         xx_mem_free(input);
         return false;
@@ -745,9 +1085,7 @@ static bool xx_rtpatch_decode(Abstractformat *self,
         }
     } else if (!xx_rtpatch_decode_memory(input,
                                          (size_t)member->compressed_size,
-                                         output,
-                                         (size_t)member->uncompressed_size,
-                                         &written)) {
+                                         output, decoded_size, &written)) {
         xx_mem_free(output);
         xx_mem_free(input);
         return false;
@@ -757,9 +1095,18 @@ static bool xx_rtpatch_decode(Abstractformat *self,
     /* The codec has no measuring entry point because the container always
      * stores the decoded length. A short decode reported as success is the
      * one failure the caller cannot detect. */
-    if (written != (size_t)member->uncompressed_size) {
+    if (written != decoded_size ||
+        (member->method == XX_RTPATCH_METHOD_DELTA_FILL &&
+         !xx_rtpatch_delta_program_is_fill(
+             output, (size_t)member->uncompressed_size))) {
         xx_mem_free(output);
         return false;
+    }
+    if (member->method == XX_RTPATCH_METHOD_DELTA_FILL) {
+        xx_rt_memmove(output,
+                      output + XX_RTPATCH_DELTA_PAYLOAD_OFFSET,
+                      (size_t)member->uncompressed_size);
+        written = (size_t)member->uncompressed_size;
     }
     *out = output;
     *out_size = written;

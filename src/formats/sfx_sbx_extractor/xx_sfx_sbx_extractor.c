@@ -18,13 +18,17 @@
  * executed or emulated.
  *
  * Costs.  For a PE, check_is_valid() reads the DOS header, the PE headers,
- * the section table and four bytes at the overlay; only when those are the
- * tag does it walk the record headers.  For an NE it searches the first MiB
- * for the tag and walks a bounded number of candidates.  No member is decoded
- * until it is unpacked.
+ * the section table and four bytes at the overlay; when those are the tag it
+ * walks the record headers, otherwise it searches the first 64 KiB of the
+ * overlay for the tag.  For an NE it searches the first MiB for the tag.
+ * Both searches walk a bounded number of candidates.  The chain must close on
+ * the end of the file, or on a PE's Authenticode certificate table that
+ * closes it, after at most 4 KiB of zero padding.  No member is decoded until
+ * it is unpacked.
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/sfx_sbx_extractor/xx_sfx_sbx_extractor.h"
 
 #include "xxfclib/algo/lzhuf/xx_lzhuf.h"
@@ -56,6 +60,7 @@
 #define SBX_PE_HEADER 24
 #define SBX_OPTIONAL_MIN 64 /* up to and including SizeOfHeaders at 60 */
 #define SBX_OPTIONAL_MAX 0x1000
+#define SBX_OPTIONAL_READ 152 /* through PE32+ data directory 4 */
 #define SBX_MAX_SECTIONS 96
 #define SBX_SECTION_SIZE 40
 #define SBX_NE_HEADER 0x40
@@ -65,8 +70,13 @@
  * NE file end to end.  A stray tag in the stub is normal (all four NE
  * samples have one), a file engineered to hold thousands of them is not. */
 #define SBX_NE_SCAN_LIMIT INT64_C(0x100000)
-#define SBX_SCAN_CHUNK 0x10000
 #define SBX_MAX_CANDIDATES 256U
+/* PE: when the chain does not open the computed overlay (a section table
+ * that does not account for the whole image, alignment padding), the tag is
+ * searched for in this much of the overlay only. */
+#define SBX_PE_SCAN_WINDOW INT64_C(0x10000)
+/* Zero padding tolerated after the last record. */
+#define SBX_MAX_TAIL 4096
 
 /* Ceilings.  These are small desktop installers (the largest member of the
  * reference corpus is 380,416 bytes); the limits only stop a corrupt chain
@@ -81,6 +91,7 @@
 #define SBX_MAX_RATIO 48
 #define SBX_RATIO_SLACK 64
 #define SBX_MAX_NAME_BYTES (16U * 1024U * 1024U)
+#define SBX_MAX_INPUT_PER_BYTE 4
 
 static const uint8_t sbx_tag[XX_SFX_SBX_EXTRACTOR_TAG_SIZE] = {'S', 'B', '1',
                                                               0x00};
@@ -99,13 +110,16 @@ static uint32_t sbx_le32(const uint8_t *bytes) {
 static bool sbx_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -177,30 +191,48 @@ static bool sbx_read_record(xx_io_device *device, int64_t base,
 struct sbx_table_s;
 static bool sbx_publish(struct sbx_table_s *table, const sbx_record *record);
 
+/* True when [@p offset, @p limit) is at most SBX_MAX_TAIL zero bytes: the
+ * padding a signing tool or a copy to an aligned medium leaves behind. */
+static bool sbx_zero_tail(xx_io_device *device, int64_t base, int64_t offset,
+                          int64_t limit) {
+    uint8_t tail[SBX_MAX_TAIL];
+    size_t index, length;
+    if (offset > limit || limit - offset > SBX_MAX_TAIL) return false;
+    length = (size_t)(limit - offset);
+    if (length == 0U) return true;
+    if (!sbx_read_at(device, base + offset, tail, length)) return false;
+    for (index = 0U; index < length; ++index)
+        if (tail[index] != 0U) return false;
+    return true;
+}
+
 /* Walk the chain from @p start.  There is no count and no terminator: the
- * chain is only valid when its last record ends exactly on the last byte.
+ * chain is only valid when its last record ends on @p limit (the end of the
+ * file, or the start of a PE's Authenticode certificate table that closes the
+ * file), optionally followed by up to SBX_MAX_TAIL zero bytes of padding.
  * @p budget is shared by every walk of one locate, so a file full of tags
  * cannot turn the search quadratic. */
 static bool sbx_walk(xx_io_device *device, int64_t base, int64_t available,
-                     int64_t start, uint32_t *budget,
+                     int64_t limit, int64_t start, uint32_t *budget,
                      struct sbx_table_s *table, xx_pd_struct *pd) {
     int64_t offset = start;
     uint32_t count = 0U;
     sbx_record record;
 
-    if (start < 0 || start >= available) return false;
-    while (offset < available) {
+    if (limit > available || start < 0 || start >= limit) return false;
+    while (offset < limit) {
         if ((pd && xx_pd_is_stopped(pd)) || *budget == 0U ||
             count >= SBX_MAX_MEMBERS)
             return false;
         --*budget;
-        if (!sbx_read_record(device, base, available, offset, &record))
-            return false;
+        if (!sbx_read_record(device, base, limit, offset, &record))
+            return count != 0U &&
+                   sbx_zero_tail(device, base, offset, limit);
         if (table && !sbx_publish(table, &record)) return false;
         ++count;
         offset += record.size;
     }
-    return offset == available && count != 0U;
+    return offset == limit && count != 0U;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -208,20 +240,28 @@ static bool sbx_walk(xx_io_device *device, int64_t base, int64_t available,
 
 typedef struct sbx_location_s {
     int64_t available;
+    int64_t limit; /**< Where the chain (plus zero padding) must end. */
     int64_t start;
     uint32_t carrier;
 } sbx_location;
 
 /* End of the PE image as the loader maps it from the file: SizeOfHeaders and
- * the end of every section's raw data.  0 when the headers are not a PE. */
+ * the end of every section's raw data.  0 when the headers are not a PE.
+ * @p limit_out receives the start of the Authenticode certificate table when
+ * one lies after the image and ends exactly on the last byte, otherwise
+ * @p available. */
 static int64_t sbx_pe_image_end(xx_io_device *device, int64_t base,
-                                int64_t available, uint32_t lfanew) {
+                                int64_t available, uint32_t lfanew,
+                                int64_t *limit_out) {
     uint8_t pe[SBX_PE_HEADER];
-    uint8_t optional[SBX_OPTIONAL_MIN];
+    uint8_t optional[SBX_OPTIONAL_READ];
     uint8_t sections[SBX_MAX_SECTIONS * SBX_SECTION_SIZE];
-    uint32_t count, optional_size, index, magic;
+    uint32_t count, optional_size, index, magic, directories;
     uint64_t end;
     int64_t table;
+    size_t optional_read;
+
+    *limit_out = available;
 
     if ((int64_t)lfanew > available - SBX_PE_HEADER - SBX_OPTIONAL_MIN ||
         !sbx_read_at(device, base + lfanew, pe, sizeof(pe)) || pe[0] != 'P' ||
@@ -233,9 +273,11 @@ static int64_t sbx_pe_image_end(xx_io_device *device, int64_t base,
         optional_size < SBX_OPTIONAL_MIN || optional_size > SBX_OPTIONAL_MAX)
         return 0;
     table = (int64_t)lfanew + SBX_PE_HEADER + optional_size;
+    optional_read = optional_size < SBX_OPTIONAL_READ ? (size_t)optional_size
+                                                      : SBX_OPTIONAL_READ;
     if (table > available - (int64_t)count * SBX_SECTION_SIZE ||
         !sbx_read_at(device, base + lfanew + SBX_PE_HEADER, optional,
-                     sizeof(optional)))
+                     optional_read))
         return 0;
     magic = sbx_le16(optional);
     if (magic != 0x010bU && magic != 0x020bU) return 0;
@@ -250,48 +292,64 @@ static int64_t sbx_pe_image_end(xx_io_device *device, int64_t base,
         if (raw_size != 0U && raw_pointer + raw_size > end)
             end = raw_pointer + raw_size;
     }
-    return end < (uint64_t)available ? (int64_t)end : 0;
+    if (end >= (uint64_t)available) return 0;
+    /* Data directory 4 (security) holds a file offset, not an RVA. */
+    directories = magic == 0x010bU ? 96U : 112U;
+    if (optional_read >= directories + 40U &&
+        sbx_le32(optional + directories - 4U) > 4U) {
+        uint64_t certificate = sbx_le32(optional + directories + 32U);
+        uint64_t certificate_size = sbx_le32(optional + directories + 36U);
+        if (certificate > end && certificate_size != 0U &&
+            certificate + certificate_size == (uint64_t)available)
+            *limit_out = (int64_t)certificate;
+    }
+    return (int64_t)end;
 }
 
-/* Search an NE carrier's first MiB for the tag and keep the first candidate
- * whose chain closes on the end of the file. */
-static bool sbx_ne_search(xx_io_device *device, int64_t base,
-                          int64_t available, int64_t from, uint32_t *budget,
-                          int64_t *start_out, xx_pd_struct *pd) {
-    /* One chunk plus the three bytes a tag can reach into the next one. */
-    const size_t window = SBX_SCAN_CHUNK + sizeof(sbx_tag) - 1U;
+/* Search [@p from, @p scan_end) for the tag and keep the first of at most
+ * @p max_candidates candidates whose chain closes on @p chain_limit.  NE
+ * carriers search their first MiB and skip the stub's stray tags; a PE
+ * searches a window of its overlay when the chain does not open it, and only
+ * the first tag there counts. */
+static bool sbx_tag_search(xx_io_device *device, int64_t base,
+                           int64_t available, int64_t chain_limit,
+                           int64_t from, int64_t scan_end,
+                           uint32_t max_candidates, uint32_t *budget,
+                           int64_t *start_out, xx_pd_struct *pd) {
+    const size_t window = xx_get_file_buffer_size();
     uint8_t *chunk;
     int64_t limit, position;
     uint32_t candidates = 0U;
     bool found = false, stop = false;
 
-    limit = available < SBX_NE_SCAN_LIMIT ? available : SBX_NE_SCAN_LIMIT;
+    limit = chain_limit < scan_end ? chain_limit : scan_end;
     if (from < 0 || from > limit - (int64_t)sizeof(sbx_tag)) return false;
     chunk = (uint8_t *)xx_mem_alloc(window);
     if (!chunk) return false;
     for (position = from;
          !found && !stop && position <= limit - (int64_t)sizeof(sbx_tag);
-         position += SBX_SCAN_CHUNK) {
-        int64_t left = limit - position;
+         ) {
+        int64_t left = limit - position - (int64_t)sizeof(sbx_tag) + 1;
         size_t length = left > (int64_t)window ? window : (size_t)left;
         size_t index;
         if ((pd && xx_pd_is_stopped(pd)) ||
             !sbx_read_at(device, base + position, chunk, length))
             break;
-        /* Each position is tried once: a tag starting in the overlap belongs
-         * to the next chunk. */
-        for (index = 0U; index < SBX_SCAN_CHUNK &&
-                         index + sizeof(sbx_tag) <= length;
-             ++index) {
-            if (chunk[index] != 'S' ||
-                xx_rt_memcmp(chunk + index, sbx_tag, sizeof(sbx_tag)) != 0)
-                continue;
-            if (++candidates > SBX_MAX_CANDIDATES) {
+        for (index = 0U; index < length; ++index) {
+            uint8_t frame[sizeof(sbx_tag)];
+            const uint8_t *bytes = chunk + index;
+            if (chunk[index] != 'S') continue;
+            if (length - index < sizeof(sbx_tag)) {
+                if (!sbx_read_at(device, base + position + (int64_t)index, frame, sizeof(frame))) continue;
+                bytes = frame;
+            }
+            if (xx_rt_memcmp(bytes, sbx_tag, sizeof(sbx_tag)) != 0) continue;
+            if (++candidates > max_candidates) {
                 stop = true;
                 break;
             }
-            if (sbx_walk(device, base, available, position + (int64_t)index,
-                         budget, NULL, pd)) {
+            if (sbx_walk(device, base, available, chain_limit,
+                         position + (int64_t)index, budget, NULL, pd)) {
                 *start_out = position + (int64_t)index;
                 found = true;
                 break;
@@ -301,6 +359,7 @@ static bool sbx_ne_search(xx_io_device *device, int64_t base,
                 break;
             }
         }
+        position += (int64_t)length;
     }
     xx_mem_free(chunk);
     return found;
@@ -310,7 +369,7 @@ static bool sbx_locate(Abstractformat *format, sbx_location *location,
                        xx_pd_struct *pd) {
     uint8_t dos[SBX_DOS_HEADER];
     uint8_t signature[2];
-    int64_t total, available, base, start = 0;
+    int64_t total, available, base, start = 0, limit = 0;
     uint32_t lfanew, budget = SBX_STEP_BUDGET;
 
     if (!format || !format->device || format->base_address < 0) return false;
@@ -330,28 +389,41 @@ static bool sbx_locate(Abstractformat *format, sbx_location *location,
         return false;
 
     if (signature[0] == 'P' && signature[1] == 'E') {
-        /* The chain opens the overlay, exactly; no search. */
+        /* The chain normally opens the overlay exactly, and then it must
+         * close.  When the overlay does not start with the tag (padding, or a
+         * section table that does not cover the whole image), the first tag
+         * within SBX_PE_SCAN_WINDOW bytes is taken, and only that one: a
+         * later tag would be a record in the middle of a broken chain. */
         uint8_t head[XX_SFX_SBX_EXTRACTOR_TAG_SIZE];
         int64_t end = sbx_pe_image_end(format->device, base, available,
-                                       lfanew);
-        if (end <= 0 || end > available - SBX_MIN_RECORD ||
-            !sbx_read_at(format->device, base + end, head, sizeof(head)) ||
-            xx_rt_memcmp(head, sbx_tag, sizeof(head)) != 0 ||
-            !sbx_walk(format->device, base, available, end, &budget, NULL,
-                      pd))
+                                       lfanew, &limit);
+        if (end <= 0 || end > limit - SBX_MIN_RECORD ||
+            !sbx_read_at(format->device, base + end, head, sizeof(head)))
             return false;
+        if (xx_rt_memcmp(head, sbx_tag, sizeof(head)) == 0) {
+            if (!sbx_walk(format->device, base, available, limit, end,
+                          &budget, NULL, pd))
+                return false;
+            start = end;
+        } else if (!sbx_tag_search(format->device, base, available, limit,
+                                   end + 1, end + SBX_PE_SCAN_WINDOW, 1U,
+                                   &budget, &start, pd)) {
+            return false;
+        }
         location->carrier = XX_SFX_SBX_EXTRACTOR_CARRIER_PE;
-        start = end;
     } else if (signature[0] == 'N' && signature[1] == 'E') {
-        if (!sbx_ne_search(format->device, base, available,
-                           (int64_t)lfanew + SBX_NE_HEADER, &budget, &start,
-                           pd))
+        limit = available;
+        if (!sbx_tag_search(format->device, base, available, available,
+                            (int64_t)lfanew + SBX_NE_HEADER,
+                            SBX_NE_SCAN_LIMIT, SBX_MAX_CANDIDATES, &budget,
+                            &start, pd))
             return false;
         location->carrier = XX_SFX_SBX_EXTRACTOR_CARRIER_NE;
     } else {
         return false;
     }
     location->available = available;
+    location->limit = limit;
     location->start = start;
     return true;
 }
@@ -495,15 +567,77 @@ static uint8_t sbx_upper_ascii(uint8_t value) {
     return (value >= 'a' && value <= 'z') ? (uint8_t)(value - 0x20U) : value;
 }
 
-/* Lower-case fold of a Windows-1252 byte, as the file system would see it. */
-static uint8_t sbx_fold(uint8_t value) {
-    if (value >= 'A' && value <= 'Z') return (uint8_t)(value + 0x20U);
-    if (value >= 0xC0U && value <= 0xDEU && value != 0xD7U)
-        return (uint8_t)(value + 0x20U);
-    if (value == 0x8AU || value == 0x8CU || value == 0x8EU)
-        return (uint8_t)(value + 0x10U);
-    if (value == 0x9FU) return 0xFFU;
-    return value;
+/* Lower-case fold of a code point of a listed name (every one of them comes
+ * from Windows-1252, or is ASCII), as the file system would see it. */
+static uint32_t sbx_fold(uint32_t code) {
+    if (code >= 'A' && code <= 'Z') return code + 0x20U;
+    if (code >= 0xC0U && code <= 0xDEU && code != 0xD7U) return code + 0x20U;
+    if (code == 0x0160U || code == 0x0152U || code == 0x017DU)
+        return code + 1U; /* S and Z with caron, the OE ligature */
+    if (code == 0x0178U) return 0xFFU; /* Y with diaeresis */
+    return code;
+}
+
+static size_t sbx_utf8_put(char *out, uint32_t code) {
+    if (code < 0x80U) {
+        out[0] = (char)code;
+        return 1U;
+    }
+    if (code < 0x800U) {
+        out[0] = (char)(0xC0U | (code >> 6U));
+        out[1] = (char)(0x80U | (code & 0x3FU));
+        return 2U;
+    }
+    out[0] = (char)(0xE0U | (code >> 12U));
+    out[1] = (char)(0x80U | ((code >> 6U) & 0x3FU));
+    out[2] = (char)(0x80U | (code & 0x3FU));
+    return 3U;
+}
+
+/* The fold key of a listed (output) name: every component folded to lower
+ * case and stripped of the trailing dots and spaces Windows drops.  It is
+ * always derived from the exact name that would be written, so two members
+ * that would land on the same file share a key.  Listed names are
+ * well-formed UTF-8 of at most three bytes per code point (sbx_build_name
+ * and the ASCII suffixes make them), and folding keeps the width of each. */
+static char *sbx_make_key(const char *name) {
+    size_t length = xx_str_len(name), in = 0U, out = 0U, component = 0U;
+    char *key = (char *)xx_mem_alloc(length * 3U + 1U);
+    if (!key) return NULL;
+    for (;;) {
+        uint8_t lead = (uint8_t)name[in];
+        uint32_t code;
+        if (lead == 0U || lead == '/') {
+            while (out > component &&
+                   (key[out - 1U] == '.' || key[out - 1U] == ' '))
+                --out;
+            if (lead == 0U) break;
+            key[out++] = '/';
+            component = out;
+            ++in;
+            continue;
+        }
+        if ((lead & 0xE0U) == 0xC0U && in + 1U < length) {
+            code = ((uint32_t)(lead & 0x1FU) << 6U) |
+                   ((uint8_t)name[in + 1U] & 0x3FU);
+            in += 2U;
+        } else if ((lead & 0xF0U) == 0xE0U && in + 2U < length) {
+            code = ((uint32_t)(lead & 0x0FU) << 12U) |
+                   ((uint32_t)((uint8_t)name[in + 1U] & 0x3FU) << 6U) |
+                   ((uint8_t)name[in + 2U] & 0x3FU);
+            in += 3U;
+        } else {
+            code = lead; /* ASCII (anything else is not produced here) */
+            in += 1U;
+            if (lead >= 0x80U) {
+                key[out++] = (char)lead;
+                continue;
+            }
+        }
+        out += sbx_utf8_put(key + out, sbx_fold(code));
+    }
+    key[out] = 0;
+    return key;
 }
 
 /* The characters Windows reserves in a name, and control bytes. */
@@ -561,16 +695,15 @@ static bool sbx_is_device(const uint8_t *text, size_t length, bool utf8) {
  * (absolute path) and a drive letter ("C:") are covered by the empty
  * component and the reserved ':'. */
 static bool sbx_build_name(const uint8_t *raw, size_t length, char **name_out,
-                           char **key_out, bool *unsafe_out) {
+                           bool *unsafe_out) {
     uint8_t clean[SBX_MAX_NAME * 2U + 2U];
-    uint8_t key_bytes[SBX_MAX_NAME * 2U + 2U];
-    size_t clean_length = 0U, key_length = 0U, start = 0U, index;
+    size_t clean_length = 0U, start = 0U, index;
     bool unsafe = false;
-    char *name, *key;
+    char *name;
     size_t out = 0U;
 
     for (index = 0U; index <= length; ++index) {
-        size_t part, position, component_start, trimmed;
+        size_t part, position;
         bool meaningful = false;
         if (index < length && raw[index] != '\\' && raw[index] != '/') continue;
         part = index - start;
@@ -582,11 +715,7 @@ static bool sbx_build_name(const uint8_t *raw, size_t length, char **name_out,
         for (position = start; position < index; ++position)
             if (raw[position] != '.' && raw[position] != ' ') meaningful = true;
         if (!meaningful) unsafe = true;
-        if (clean_length != 0U) {
-            clean[clean_length++] = '/';
-            key_bytes[key_length++] = '/';
-        }
-        component_start = clean_length;
+        if (clean_length != 0U) clean[clean_length++] = '/';
         if (meaningful && sbx_is_device(raw + start, part, false)) {
             unsafe = true;
             clean[clean_length++] = '_';
@@ -597,57 +726,41 @@ static bool sbx_build_name(const uint8_t *raw, size_t length, char **name_out,
             clean[clean_length++] =
                 (!meaningful || sbx_reserved_char(c)) ? (uint8_t)'_' : c;
         }
-        /* Windows drops trailing dots and spaces, so "a.txt." is "A.TXT". */
-        trimmed = clean_length;
-        while (trimmed > component_start &&
-               (clean[trimmed - 1U] == '.' || clean[trimmed - 1U] == ' '))
-            --trimmed;
-        for (position = component_start; position < trimmed; ++position)
-            key_bytes[key_length++] = sbx_fold(clean[position]);
         start = index + 1U;
     }
     if (clean_length == 0U) {
         clean[clean_length++] = '_';
-        key_bytes[key_length++] = '_';
         unsafe = true;
     }
 
     name = (char *)xx_mem_alloc(clean_length * 3U + 1U);
-    key = (char *)xx_mem_alloc(key_length + 1U);
-    if (!name || !key) {
-        if (name) xx_mem_free(name);
-        if (key) xx_mem_free(key);
-        return false;
-    }
+    if (!name) return false;
     for (index = 0U; index < clean_length; ++index) {
         uint32_t code = clean[index];
+        /* The five unassigned Windows-1252 bytes are written as '_'. */
         if (code >= 0x80U && code < 0xA0U) code = sbx_cp1252_high[code - 0x80U];
         if (code == 0U) code = '_';
-        if (code < 0x80U) {
-            name[out++] = (char)code;
-        } else if (code < 0x800U) {
-            name[out++] = (char)(0xC0U | (code >> 6U));
-            name[out++] = (char)(0x80U | (code & 0x3FU));
-        } else {
-            name[out++] = (char)(0xE0U | (code >> 12U));
-            name[out++] = (char)(0x80U | ((code >> 6U) & 0x3FU));
-            name[out++] = (char)(0x80U | (code & 0x3FU));
-        }
+        out += sbx_utf8_put(name + out, code);
     }
     name[out] = 0;
-    for (index = 0U; index < key_length; ++index) {
-        /* A NUL cannot occur (it is reserved and became '_'). */
-        key[index] = (char)key_bytes[index];
-    }
-    key[key_length] = 0;
     *name_out = name;
-    *key_out = key;
     *unsafe_out = unsafe;
     return true;
 }
 
+/* Replace @p member's key with the key of its current name. */
+static bool sbx_rekey(sbx_member *member) {
+    char *key = sbx_make_key(member->name);
+    if (!key) return false;
+    if (member->key) xx_mem_free(member->key);
+    member->key = key;
+    return true;
+}
+
 /* Add one record to the table.  Two members that fold to the same name must
- * not overwrite each other: the later one gets its member index appended. */
+ * not overwrite each other: the later one gets its member index appended.
+ * The key is rebuilt from the name after every change, so the key checked is
+ * always the key of the path that would be written. */
 static bool sbx_publish(sbx_table *table, const sbx_record *record) {
     sbx_member member;
     char suffix[32];
@@ -664,18 +777,17 @@ static bool sbx_publish(sbx_table *table, const sbx_record *record) {
     }
     xx_mem_zero(&member, sizeof(member));
     if (!sbx_build_name(record->name, record->name_length, &member.name,
-                        &member.key, &member.unsafe))
+                        &member.unsafe))
         return false;
+    if (!sbx_rekey(&member)) goto fail;
     if (sbx_key_taken(table, member.key)) {
         sbx_decimal(suffix, '.', table->count, 4U);
-        if (!sbx_append(&member.name, suffix) ||
-            !sbx_append(&member.key, suffix))
+        if (!sbx_append(&member.name, suffix) || !sbx_rekey(&member))
             goto fail;
         for (attempt = 1U; sbx_key_taken(table, member.key); ++attempt) {
             if (attempt > 16U) goto fail;
             sbx_decimal(suffix, '_', attempt, 1U);
-            if (!sbx_append(&member.name, suffix) ||
-                !sbx_append(&member.key, suffix))
+            if (!sbx_append(&member.name, suffix) || !sbx_rekey(&member))
                 goto fail;
         }
     }
@@ -719,7 +831,7 @@ static bool sbx_build_table(Abstractformat *format, sbx_table **out,
     table->available = location.available;
     table->carrier = location.carrier;
     if (!sbx_walk(format->device, format->base_address, location.available,
-                  location.start, &budget, table, pd) ||
+                  location.limit, location.start, &budget, table, pd) ||
         table->count == 0U) {
         sbx_table_free(table);
         return false;
@@ -748,13 +860,17 @@ static bool sbx_unpack_member(Abstractformat *format,
         /* Nothing to produce: an empty file, whatever the packed bytes. */
         return true;
     }
-    /* The decoder stops at the stored size and tolerates trailing bytes, and
-     * no symbol costs more than a few bytes (a code at most a couple of dozen
-     * bits deep, a position at most 14), so a member never needs more than
-     * eight packed bytes per output byte.  Reading only that much keeps a
-     * record that claims a huge packed size for a small file from pulling it
-     * all into memory. */
-    input = member->unpacked_size * 8 + 64;
+    /* The decoder stops at the stored size and tolerates trailing bytes.  The
+     * adaptive code keeps its total frequency at or below 0x8000, and a
+     * Huffman tree of depth d with weights of at least 1 needs a total of at
+     * least Fibonacci(d + 3) - 1 (Fibonacci(24) = 46,368), so no code is
+     * deeper than 20 bits.  A literal therefore costs at most 20 bits and a
+     * match (three or more bytes) at most 20 + 14, so a member never needs
+     * more than four packed bytes per output byte.  Reading only that much
+     * keeps a record that claims a huge packed size for a small file from
+     * pulling it all into memory: one unpack holds at most 4 * 64 MiB + 64
+     * packed bytes and 64 MiB of output. */
+    input = member->unpacked_size * SBX_MAX_INPUT_PER_BYTE + 64;
     if (input > member->packed_size) input = member->packed_size;
     if ((uint64_t)input > (uint64_t)SIZE_MAX ||
         (uint64_t)member->unpacked_size > (uint64_t)SIZE_MAX)

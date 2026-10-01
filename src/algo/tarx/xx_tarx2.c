@@ -13,6 +13,7 @@
 
 #include "xxfclib/formats/gz/xx_gz.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/global/xx_global.h"
 
 #include <limits.h>
 #include <string.h>
@@ -37,7 +38,6 @@
 #define XX_TARX2_PI_GUARD_WORDS 20U
 #define XX_TARX2_PI_LIMBS \
     (XX_TARX2_PI_OUTPUT_WORDS + XX_TARX2_PI_GUARD_WORDS + 1U)
-#define XX_TARX2_IO_CHUNK_SIZE 32768U
 #define XX_TARX2_MAX_INPUT_SIZE \
     (INT64_C(1024) * INT64_C(1024) * INT64_C(1024))
 
@@ -53,12 +53,16 @@ typedef struct xx_tarx2_filter_s {
     int64_t data_offset;
     int64_t size;
     int64_t position;
+    uint8_t *encrypted;
+    size_t capacity;
+    size_t io_capacity;
 } xx_tarx2_filter;
 
 typedef struct xx_tarx2_count_sink_s {
     xx_io_device device;
     xx_io_device *target;
     int64_t written;
+    size_t io_capacity;
     bool failed;
 } xx_tarx2_count_sink;
 
@@ -432,16 +436,18 @@ static bool xx_tarx2_decrypt_blocks(const xx_tarx2_cipher *cipher,
 }
 
 static bool xx_tarx2_read_exact_at(xx_io_device *device, int64_t offset,
-                                   void *data, size_t size) {
+                                   void *data, size_t size, size_t io_capacity) {
     size_t done = 0U;
     if (!device || (!data && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)data + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -463,7 +469,8 @@ static ssize_t xx_tarx2_filter_read(xx_io_device *device, void *data,
 
     while (remaining != 0U) {
         size_t block_offset = (size_t)(filter->position & 7);
-        if (block_offset != 0U || remaining < XX_TARX2_BLOCK_SIZE) {
+        if (block_offset != 0U || remaining < XX_TARX2_BLOCK_SIZE ||
+            filter->capacity < XX_TARX2_BLOCK_SIZE) {
             uint8_t encrypted[XX_TARX2_BLOCK_SIZE];
             uint8_t plain[XX_TARX2_BLOCK_SIZE];
             int64_t block_position = filter->position - (int64_t)block_offset;
@@ -471,7 +478,7 @@ static ssize_t xx_tarx2_filter_read(xx_io_device *device, void *data,
             if (copy_size > remaining) copy_size = remaining;
             if (!xx_tarx2_read_exact_at(filter->source,
                                         filter->data_offset + block_position,
-                                        encrypted, sizeof(encrypted)) ||
+                                        encrypted, sizeof(encrypted), filter->io_capacity) ||
                 !xx_tarx2_decrypt_blocks(filter->cipher, encrypted, plain,
                                          sizeof(plain))) {
                 return completed != 0U ? (ssize_t)completed : -1;
@@ -481,13 +488,12 @@ static ssize_t xx_tarx2_filter_read(xx_io_device *device, void *data,
             completed += copy_size;
             remaining -= copy_size;
         } else {
-            uint8_t encrypted[XX_TARX2_IO_CHUNK_SIZE];
             size_t block_size = remaining & ~(size_t)7U;
-            if (block_size > sizeof(encrypted)) block_size = sizeof(encrypted);
+            if (block_size > filter->capacity) block_size = filter->capacity;
             if (!xx_tarx2_read_exact_at(filter->source,
                                         filter->data_offset + filter->position,
-                                        encrypted, block_size) ||
-                !xx_tarx2_decrypt_blocks(filter->cipher, encrypted,
+                                        filter->encrypted, block_size, filter->io_capacity) ||
+                !xx_tarx2_decrypt_blocks(filter->cipher, filter->encrypted,
                                          target + completed, block_size)) {
                 return completed != 0U ? (ssize_t)completed : -1;
             }
@@ -538,11 +544,12 @@ static int64_t xx_tarx2_filter_size(xx_io_device *device) {
 }
 
 static bool xx_tarx2_write_all(xx_io_device *device, const void *data,
-                               size_t size) {
+                               size_t size, size_t io_capacity) {
     const uint8_t *cursor = (const uint8_t *)data;
     while (size != 0U) {
-        ssize_t amount = xx_io_write(device, cursor, size);
-        if (amount <= 0 || (size_t)amount > size) return false;
+        size_t request = size > io_capacity ? io_capacity : size;
+        ssize_t amount = xx_io_write(device, cursor, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         cursor += (size_t)amount;
         size -= (size_t)amount;
     }
@@ -555,7 +562,7 @@ static ssize_t xx_tarx2_count_sink_write(xx_io_device *device,
         device ? (xx_tarx2_count_sink *)device->priv : NULL;
     if (!sink || (!data && size != 0U) ||
         size > (uint64_t)(INT64_MAX - sink->written) ||
-        !xx_tarx2_write_all(sink->target, data, size)) {
+        !xx_tarx2_write_all(sink->target, data, size, sink->io_capacity)) {
         if (sink) sink->failed = true;
         return -1;
     }
@@ -569,15 +576,26 @@ static int64_t xx_tarx2_count_sink_size(xx_io_device *device) {
     return sink ? sink->written : -1;
 }
 
-static void xx_tarx2_filter_init(xx_tarx2_filter *filter,
+static bool xx_tarx2_filter_init(xx_tarx2_filter *filter,
                                  xx_io_device *source,
                                  const xx_tarx2_cipher *cipher,
-                                 int64_t data_offset, int64_t size) {
+                                 int64_t data_offset, int64_t size, size_t io_capacity) {
     xx_mem_zero(filter, sizeof(*filter));
     filter->source = source;
     filter->cipher = cipher;
     filter->data_offset = data_offset;
     filter->size = size;
+    filter->io_capacity = io_capacity;
+    filter->capacity = io_capacity;
+    if (filter->capacity > (SIZE_MAX >> 1)) filter->capacity = SIZE_MAX >> 1;
+    if ((uint64_t)size < filter->capacity) filter->capacity = (size_t)size;
+    /* Whole cipher blocks are required; sub-block settings use the fixed
+     * eight-byte protocol state above instead of an ordinary bulk buffer. */
+    filter->capacity &= ~(size_t)(XX_TARX2_BLOCK_SIZE - 1U);
+    if (filter->capacity) {
+        filter->encrypted = (uint8_t *)xx_mem_alloc(filter->capacity);
+        if (!filter->encrypted) return false;
+    }
     filter->device.read = xx_tarx2_filter_read;
     filter->device.seek = xx_tarx2_filter_seek;
     filter->device.seek64 = xx_tarx2_filter_seek64;
@@ -586,12 +604,14 @@ static void xx_tarx2_filter_init(xx_tarx2_filter *filter,
     filter->device.get_total_size = xx_tarx2_filter_size;
     filter->device.size = xx_tarx2_filter_size;
     filter->device.priv = filter;
+    return true;
 }
 
 static void xx_tarx2_count_sink_init(xx_tarx2_count_sink *sink,
-                                     xx_io_device *target) {
+                                     xx_io_device *target, size_t io_capacity) {
     xx_mem_zero(sink, sizeof(*sink));
     sink->target = target;
+    sink->io_capacity = io_capacity;
     sink->device.write = xx_tarx2_count_sink_write;
     sink->device.total_size = xx_tarx2_count_sink_size;
     sink->device.get_total_size = xx_tarx2_count_sink_size;
@@ -628,6 +648,7 @@ bool xx_tarx2_encrypt_blocks(const uint8_t *source, uint8_t *destination,
 bool xx_tarx2_decode_device(xx_io_device *source, int64_t source_offset,
                             int64_t source_size, xx_io_device *destination,
                             int64_t *output_size, xx_pd_struct *pd) {
+    const size_t io_capacity = xx_get_file_buffer_size();
     uint8_t header[XX_TARX2_HEADER_SIZE];
     xx_tarx2_cipher cipher;
     xx_tarx2_filter filter;
@@ -646,7 +667,7 @@ bool xx_tarx2_decode_device(xx_io_device *source, int64_t source_offset,
     total_size = xx_io_total_size(source);
     if (total_size < source_offset || source_size > total_size - source_offset ||
         !xx_tarx2_read_exact_at(source, source_offset, header,
-                                sizeof(header)) ||
+                                sizeof(header), io_capacity) ||
         !xx_tarx2_has_header(header, sizeof(header))) {
         return false;
     }
@@ -656,14 +677,15 @@ bool xx_tarx2_decode_device(xx_io_device *source, int64_t source_offset,
         !xx_tarx2_cipher_init(&cipher)) {
         return false;
     }
-    xx_tarx2_filter_init(&filter, source, &cipher,
+    if (!xx_tarx2_filter_init(&filter, source, &cipher,
                          source_offset + (int64_t)XX_TARX2_HEADER_SIZE,
-                         encrypted_size);
-    xx_tarx2_count_sink_init(&sink, destination);
+                         encrypted_size, io_capacity)) return false;
+    xx_tarx2_count_sink_init(&sink, destination, io_capacity);
     xx_gz_init(&gzip, &filter.device, 0);
     result = xx_gz_handle_base_info(&gzip.format, pd) &&
              xx_gz_unpack_to_device(&gzip, &sink.device, pd) && !sink.failed;
     xx_gz_destroy(&gzip);
+    xx_mem_free(filter.encrypted);
     if (!result || sink.written < 0) return false;
     if (output_size) *output_size = sink.written;
     return true;

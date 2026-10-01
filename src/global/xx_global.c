@@ -21,7 +21,7 @@
 
 /**
  * @file xx_global.c
- * @brief Global buffer and file buffer size configuration implementation.
+ * @brief Global buffer, CPU feature and terminal configuration.
  */
 
 #include "xxfclib/global/xx_global.h"
@@ -76,6 +76,8 @@ static bool g_avx2_detected = false;
 static bool g_sse2_enabled  = false;
 static bool g_avx2_enabled  = false;
 static bool g_features_initialized = false;
+static bool g_color_output_enabled = true;
+static xx_terminal_type_t g_terminal_type = XX_TERMINAL_TYPE_NONE;
 
 static void xx_global_init_features_once(void) {
     if (!g_features_initialized) {
@@ -84,8 +86,48 @@ static void xx_global_init_features_once(void) {
         /* Default is on if feature exists in system */
         g_sse2_enabled = g_sse2_detected;
         g_avx2_enabled = g_avx2_detected;
+        g_terminal_type = xx_global_platform_detect_terminal_type(false);
         g_features_initialized = true;
     }
+}
+
+void xx_set_color_output_enabled(bool enable) {
+    xx_global_init_features_once();
+    g_color_output_enabled = enable;
+}
+
+bool xx_is_color_output_enabled(void) {
+    xx_global_init_features_once();
+    return g_color_output_enabled;
+}
+
+xx_terminal_type_t xx_get_terminal_type(void) {
+    xx_global_init_features_once();
+    return g_terminal_type;
+}
+
+void xx_set_terminal_type(xx_terminal_type_t type) {
+    xx_global_init_features_once();
+    if (type != XX_TERMINAL_TYPE_ANSI && type != XX_TERMINAL_TYPE_WINDOWS) {
+        type = XX_TERMINAL_TYPE_NONE;
+    }
+    g_terminal_type = type;
+}
+
+void xx_global_set_color_output_enabled(bool enable) {
+    xx_set_color_output_enabled(enable);
+}
+
+bool xx_global_is_color_output_enabled(void) {
+    return xx_is_color_output_enabled();
+}
+
+xx_terminal_type_t xx_global_get_terminal_type(void) {
+    return xx_get_terminal_type();
+}
+
+void xx_global_set_terminal_type(xx_terminal_type_t type) {
+    xx_set_terminal_type(type);
 }
 
 bool xx_has_sse2(void) {

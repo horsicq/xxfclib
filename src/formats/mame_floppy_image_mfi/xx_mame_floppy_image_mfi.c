@@ -30,6 +30,7 @@
  * is exposed as its tracks instead.
  */
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/formats/mame_floppy_image_mfi/xx_mame_floppy_image_mfi.h"
 
 #include "xxfclib/algo/deflate/xx_deflate.h"
@@ -447,15 +448,7 @@ static size_t mfi_track_cells(const mfi_table *t, mfi_work *w, size_t count) {
 }
 
 static uint16_t mfi_crc16(const uint8_t *data, size_t size, uint16_t crc) {
-    size_t index;
-    unsigned bit;
-    for (index = 0U; index < size; ++index) {
-        crc ^= (uint16_t)((uint16_t)data[index] << 8U);
-        for (bit = 0U; bit < 8U; ++bit)
-            crc = (uint16_t)((crc & 0x8000U) ? ((crc << 1U) ^ 0x1021U)
-                                             : (crc << 1U));
-    }
-    return crc;
+    return xx_crc16_ccitt_calc(crc, data, size);
 }
 
 /* One encoded byte: data bit k (MSB first) is cell position + scale*(2k+1)
@@ -782,6 +775,8 @@ static bool mfi_parse(Abstractformat *format, mfi_stream **result) {
         return false;
     }
     stream->archive_size = t->format_size;
+    ((xx_mame_floppy_image_mfi *)format)->incomplete_tracks =
+        t->formatted != t->usable;
     if (stream->geometry.has_image) {
         stream->items = (mfi_member *)xx_mem_calloc(1U, sizeof(mfi_member));
         if (!stream->items) goto fail;

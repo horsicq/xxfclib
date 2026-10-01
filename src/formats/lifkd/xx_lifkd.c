@@ -58,6 +58,7 @@
 #include <stdio.h>
 
 #ifdef LIFKD
+
 #define XX_LIFKD_FILE_TYPE XX_FILE_TYPE_LIFKD
 #else
 #define XX_LIFKD_FILE_TYPE XX_FILE_TYPE_UNKNOWN
@@ -71,15 +72,24 @@
 /* A crafted file cannot be made to iterate forever: every step advances by
  * at least the 54-byte header, and the walk stops at this many members. */
 #define LIFKD_MAX_MEMBERS 200000U
-/* LZD decodes in memory, so its plaintext is capped like the other
- * in-memory decoders in this library.  Stored members are streamed and are
- * not subject to it. */
-#define LIFKD_MAX_PLAIN ((uint64_t)256U * 1024U * 1024U)
+/* LZD decodes in memory, packed input and plaintext both, so the plaintext
+ * is capped.  KDC LIF is an MS-DOS installer format: the largest LZD member
+ * in the corpus is 1.9 MB, so 64 MB leaves a wide margin while keeping the
+ * worst single member (64 MB out plus the packed cap below, about 104 MB in)
+ * far from the library's 1 GB line.  Stored members are streamed and are not
+ * subject to it. */
+#define LIFKD_MAX_PLAIN ((uint64_t)64U * 1024U * 1024U)
 /* No single LZD code (at most 13 bits wide, table of 8192 entries) can
  * expand to more than this many bytes, and none is shorter than 9 bits, so a
  * member claiming more than (packed + 1) * this cannot be genuine. */
 #define LIFKD_LZD_MAX_RUN 8192U
 #define LIFKD_COPY_CHUNK 65536U
+/* The dedupe hash table is probed at most this many slots per lookup.  With
+ * a load factor of at most one half and a well mixed hash a genuine archive
+ * never comes near it; a crafted set of names that all land in one cluster
+ * hits it, and the member then stays listed but is not extracted, so the
+ * whole pass costs at most count * LIFKD_MAX_PROBE name comparisons. */
+#define LIFKD_MAX_PROBE 128U
 /* A duplicate name is retried with "_<record>" and then "_<record>_<n>"
  * this many times before the member is listed but not extracted. */
 #define LIFKD_RENAME_TRIES 8U
@@ -115,9 +125,12 @@ typedef struct lifkd_stream_s {
     int64_t archive_size;
 } lifkd_stream;
 
-/* The chain walk reads headers through this window, so a library of many
- * small members costs one device read per window rather than one per
- * member (200000 empty members: about 2600 reads instead of 200000). */
+/* The chain walk reads headers through this fixed stack window, so a library
+ * of many small members costs one device read per window rather than one per
+ * member (200000 empty members: about 2600 reads instead of 200000).  The
+ * size does not follow the host's file buffer setting, and after a member
+ * too large to share the window with its successor only the 54 header bytes
+ * are read, so a chain of large members costs 54 bytes per member. */
 #define LIFKD_WINDOW_SIZE 4096U
 
 typedef struct lifkd_window_s {
@@ -126,15 +139,52 @@ typedef struct lifkd_window_s {
     size_t size;
 } lifkd_window;
 
+#include "xxfclib/global/xx_global.h"
+static size_t gb_lifkd_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_lifkd_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_lifkd_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+
+
 static bool lifkd_read_at(xx_io_device *device, int64_t offset, void *buffer,
                           size_t size) {
+    const size_t file_io_capacity = gb_lifkd_capacity();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = gb_lifkd_read(device, (uint8_t *)buffer + done,
+                                    size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -142,13 +192,13 @@ static bool lifkd_read_at(xx_io_device *device, int64_t offset, void *buffer,
 }
 
 /* Returns the 54 header bytes at @p offset (relative to the device), which
- * the caller has already checked lie before @p end.  The window is refilled
- * from @p offset, never past @p end, whenever the header is not wholly
- * inside it. */
+ * the caller has already checked lie before @p end.  When the header is not
+ * wholly inside the window, the window is refilled from @p offset, never past
+ * @p end: a full window when @p fill is true, otherwise just the header. */
 static const uint8_t *lifkd_window_header(xx_io_device *device,
                                           lifkd_window *window, int64_t offset,
-                                          int64_t end) {
-    size_t amount = LIFKD_WINDOW_SIZE;
+                                          int64_t end, bool fill) {
+    size_t amount = fill ? (size_t)LIFKD_WINDOW_SIZE : (size_t)LIFKD_HEADER_SIZE;
     if (window->size != 0U && offset >= window->start &&
         offset - window->start <=
             (int64_t)window->size - (int64_t)LIFKD_HEADER_SIZE)
@@ -156,7 +206,7 @@ static const uint8_t *lifkd_window_header(xx_io_device *device,
     if (end - offset < (int64_t)amount) amount = (size_t)(end - offset);
     window->size = 0U;
     if (amount < (size_t)LIFKD_HEADER_SIZE ||
-        !lifkd_read_at(device, offset, window->bytes, amount))
+        (xx_io_seek64(device, offset, SEEK_SET) != 0 || gb_lifkd_read(device, window->bytes, amount, LIFKD_WINDOW_SIZE) != (ssize_t)amount))
         return NULL;
     window->start = offset;
     window->size = amount;
@@ -245,7 +295,11 @@ bool xx_lifkd_is_member_header(const uint8_t *bytes, size_t size) {
  * Windows drop them: KDC writes a name without an extension as "MUAD.", and
  * that file is "MUAD" on disk (deark shows it the same way).  A component
  * made only of dots and spaces is left as it is, so that ".." still reads as
- * ".." and lifkd_safe_output_name() refuses it.  Nothing else is rewritten:
+ * ".." and lifkd_safe_output_name() refuses it.  '~' becomes '_': on a
+ * volume with 8.3 names a member called "LONGNA~1.TXT" would otherwise open
+ * the short-name alias of an earlier "LONGNAME1.TXT" and overwrite it, which
+ * no case-insensitive duplicate check can see (lbr and seaarc do the same).
+ * No corpus member name contains '~'.  Nothing else is rewritten:
  * whether a name is safe to create is decided at extraction time, which
  * refuses rather than repairs. */
 static char *lifkd_make_name(const uint8_t *bytes, size_t length) {
@@ -264,7 +318,10 @@ static char *lifkd_make_name(const uint8_t *bytes, size_t length) {
                (bytes[trimmed - 1U] == '.' || bytes[trimmed - 1U] == ' '))
             --trimmed;
         if (trimmed == start) trimmed = end;
-        while (start < trimmed) name[output++] = (char)bytes[start++];
+        while (start < trimmed) {
+            char c = (char)bytes[start++];
+            name[output++] = c == '~' ? '_' : c;
+        }
         if (input >= length) break;
         name[output++] = '/';
         ++input;
@@ -378,12 +435,14 @@ static bool lifkd_walk(Abstractformat *format, lifkd_stream *stream,
                        uint64_t *count_out, int64_t *size_out) {
     int64_t total, size, cursor = 0;
     uint64_t count = 0U;
+    bool fill = true;
     lifkd_window window;
     if (!format || !format->device || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
     if (size < LIFKD_HEADER_SIZE) return false;
+    bool result = false;
     window.start = 0;
     window.size = 0U;
     while (cursor < size) {
@@ -392,10 +451,10 @@ static bool lifkd_walk(Abstractformat *format, lifkd_stream *stream,
         if (count >= LIFKD_MAX_MEMBERS || size - cursor < LIFKD_HEADER_SIZE ||
             !(bytes = lifkd_window_header(format->device, &window,
                                           format->base_address + cursor,
-                                          total)) ||
+                                          total, fill)) ||
             !lifkd_decode_header(bytes, &header) ||
             (int64_t)header.packed > size - cursor - LIFKD_HEADER_SIZE)
-            return false;
+            goto cleanup;
         if (stream) {
             lifkd_member member;
             xx_mem_zero(&member, sizeof(member));
@@ -410,29 +469,42 @@ static bool lifkd_walk(Abstractformat *format, lifkd_stream *stream,
             member.extractable = true;
             member.name = lifkd_make_name(bytes + LIFKD_NAME_OFFSET,
                                           header.name_length);
-            if (!member.name) return false;
+            if (!member.name) goto cleanup;
             if (!lifkd_add_member(stream, &member)) {
                 xx_mem_free(member.name);
-                return false;
+                goto cleanup;
             }
         }
         ++count;
         cursor += LIFKD_HEADER_SIZE + (int64_t)header.packed;
+        /* A full refill only pays off when the next header is close. */
+        fill = header.packed < LIFKD_WINDOW_SIZE - LIFKD_HEADER_SIZE;
     }
-    if (cursor != size || count == 0U) return false;
+    if (cursor != size || count == 0U) goto cleanup;
     if (count_out) *count_out = count;
     if (size_out) *size_out = size;
-    return true;
+    result = true;
+cleanup:
+    return result;
 }
 
 /* ------------------------------------------------------ duplicate names -- */
 
-static uint32_t lifkd_name_hash(const char *name) {
-    uint32_t hash = 2166136261U;
+/* FNV-1a over the upper-cased name, then a 64-bit finalizer so every input
+ * bit reaches the low bits the table mask keeps.  This alone does not stop a
+ * crafted archive from brute forcing names into one cluster; LIFKD_MAX_PROBE
+ * is what bounds the cost. */
+static uint64_t lifkd_name_hash(const char *name) {
+    uint64_t hash = 14695981039346656037ULL;
     while (*name) {
         hash ^= (uint8_t)lifkd_upper(*name++);
-        hash *= 16777619U;
+        hash *= 1099511628211ULL;
     }
+    hash ^= hash >> 33U;
+    hash *= 0xff51afd7ed558ccdULL;
+    hash ^= hash >> 33U;
+    hash *= 0xc4ceb9fe1a85ec53ULL;
+    hash ^= hash >> 33U;
     return hash;
 }
 
@@ -494,7 +566,11 @@ static char *lifkd_renamed(const char *name, uint64_t record, unsigned attempt) 
  * on a case-insensitive filesystem, so every later one is renamed to
  * "<stem>_<record number><ext>" (then "_<record>_<n>" if even that is
  * taken).  A member that still collides after LIFKD_RENAME_TRIES is listed
- * but never extracted.  Open addressing over indices keeps this linear.
+ * but never extracted.  Open addressing over indices keeps this linear;
+ * each lookup probes at most LIFKD_MAX_PROBE slots, and a member whose
+ * lookup runs past that is also listed but not extracted.  That is safe:
+ * slots are never emptied, so a later equal name probes the same, only
+ * longer, run and is refused the same way instead of being missed.
  */
 static bool lifkd_dedupe(lifkd_stream *stream) {
     uint32_t *slots;
@@ -510,6 +586,7 @@ static bool lifkd_dedupe(lifkd_stream *stream) {
         unsigned attempt = 0U;
         for (;;) {
             size_t slot = (size_t)lifkd_name_hash(candidate) & mask;
+            size_t probes = 0U;
             bool taken = false;
             while (slots[slot] != 0U) {
                 if (lifkd_name_equal(stream->items[slots[slot] - 1U].name,
@@ -517,7 +594,13 @@ static bool lifkd_dedupe(lifkd_stream *stream) {
                     taken = true;
                     break;
                 }
+                if (++probes >= LIFKD_MAX_PROBE) break;
                 slot = (slot + 1U) & mask;
+            }
+            if (!taken && slots[slot] != 0U) {
+                if (candidate != member->name) xx_mem_free(candidate);
+                member->extractable = false;
+                break;
             }
             if (!taken) {
                 if (candidate != member->name) {
@@ -623,11 +706,12 @@ static bool lifkd_set_record(xx_archive_record *record,
 /* A NULL destination verifies without writing anything. */
 static bool lifkd_write_all(xx_io_device *destination, const uint8_t *data,
                             size_t size) {
+    const size_t file_io_capacity = gb_lifkd_capacity();
     size_t written = 0U;
     if (!destination) return true;
     while (written < size) {
-        ssize_t amount = xx_io_write(destination, data + written,
-                                     size - written);
+        ssize_t amount = gb_lifkd_write(destination, data + written,
+                                     size - written, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - written) return false;
         written += (size_t)amount;
     }
@@ -642,15 +726,16 @@ static bool lifkd_write_all(xx_io_device *destination, const uint8_t *data,
 static bool lifkd_unpack_stored(Abstractformat *format,
                                 const lifkd_member *member,
                                 xx_io_device *destination, xx_pd_struct *pd) {
+    const size_t file_io_capacity = LIFKD_COPY_CHUNK;
     uint8_t *chunk;
     int64_t done = 0;
     uint16_t crc = 0xffffU;
     bool ok = true;
     if ((uint64_t)member->packed_size != member->unpacked_size) return false;
-    chunk = (uint8_t *)xx_mem_alloc(LIFKD_COPY_CHUNK);
+    chunk = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!chunk) return false;
     while (ok && done < member->packed_size) {
-        size_t amount = LIFKD_COPY_CHUNK;
+        size_t amount = file_io_capacity;
         if ((int64_t)amount > member->packed_size - done)
             amount = (size_t)(member->packed_size - done);
         if ((pd && xx_pd_is_stopped(pd)) ||
@@ -686,10 +771,17 @@ static bool lifkd_unpack_lzd(Abstractformat *format, const lifkd_member *member,
     uint8_t *packed = NULL, *output = NULL;
     size_t input_size, output_size, written = 0U;
     bool ok = false;
+    /* Every data code is at most 13 bits and yields at least one byte, the
+     * table is cleared at most once per 7680 codes (13 bits each, allowed
+     * here as 2 bytes per 4096 plain bytes), plus the end code, byte padding
+     * and the trailing zero quirk.  So packed <= plain * 13 / 8 + plain / 2048
+     * + 16; no corpus member exceeds plain * 13 / 8. */
     if (member->packed_size <= 0 || member->unpacked_size > LIFKD_MAX_PLAIN ||
         member->unpacked_size >
             ((uint64_t)member->packed_size + 1U) * LIFKD_LZD_MAX_RUN ||
-        (uint64_t)member->packed_size > 2U * member->unpacked_size + 64U)
+        (uint64_t)member->packed_size >
+            (member->unpacked_size * 13U + 7U) / 8U +
+                member->unpacked_size / 2048U + 16U)
         return false;
     input_size = (size_t)member->packed_size;
     output_size = (size_t)member->unpacked_size;

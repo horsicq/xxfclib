@@ -6,7 +6,7 @@
  * multi-member archive, so the record list always holds exactly one entry.
  *
  *   header, 4 bytes at offset 0:
- *     0x00   1  u8       0x80 | pass count (1..8)
+ *     0x00   1  u8       0x80 | pass count (1..8), or bare codec 1/2
  *     0x01   3  u24 LE   length of the final plaintext
  *
  *   then, for each pass, a pass header followed by that pass's coded bytes:
@@ -45,9 +45,9 @@
  * it.  Verified byte for byte against U3's output for all 20 samples in
  * F:\ARC\ARC\STUNTS_FT.
  *
- * A stream without the high bit in byte 0 declares no plaintext length at all
- * and therefore cannot be validated; this reader rejects it rather than
- * guessing, which matches the reference implementation's own prefilter.
+ * A bare codec 1/2 header is a single pass: the same u24 plaintext length
+ * follows the codec byte.  ARC1_err contains both bare RLE and bare VLE
+ * resources.  Other no-high-bit values remain invalid.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -516,16 +516,18 @@ static bool xx_stunts_dsi(const uint8_t *packed, size_t packed_size,
     *out = NULL;
     *out_size = 0;
     if (packed_size < XX_STUNTS_HEADER_SIZE) return false;
-    /* No high bit means no declared plaintext length, and with no length
-     * there is nothing to verify a decode against: refuse rather than guess. */
-    if ((packed[0] & 0x80U) == 0U) return false;
-    passes = (int32_t)(packed[0] & 0x7fU);
+    passes = (packed[0] == 1U || packed[0] == 2U)
+                 ? 1
+                 : ((packed[0] & 0x80U) != 0U)
+                       ? (int32_t)(packed[0] & 0x7fU)
+                       : 0;
     if (passes < 1 || passes > XX_STUNTS_MAX_PASSES) return false;
     position = 1U;
     if (!xx_stunts_read_u24(packed, packed_size, &position, &expected)) {
         return false;
     }
     if (expected < 1 || expected > XX_STUNTS_MAX_DECODED) return false;
+    if ((packed[0] & 0x80U) == 0U) position = 0U;
 
     for (pass = 0; pass < passes; ++pass) {
         uint8_t *decoded;
@@ -554,10 +556,17 @@ static bool xx_stunts_dsi(const uint8_t *packed, size_t packed_size,
                                decoded, false, pd);
             /* Stunts 1.0 and earlier store each coded byte bit-reversed.
              * Prefer the later order, but retry when the decode failed or
-             * could not produce the pass header the next pass needs. */
+             * could not produce the pass header the next pass needs.  An
+             * apparent pass header with the wrong final length is equally
+             * suspect: early Stunts files can decode to a plausible codec
+             * byte in the wrong bit order. */
             if (!ok || (pass + 1 < passes &&
                         (pass_size < 4 ||
-                         (decoded[0] != 1U && decoded[0] != 2U)))) {
+                         (decoded[0] != 1U && decoded[0] != 2U) ||
+                         (pass + 2 == passes &&
+                          ((int64_t)decoded[1] |
+                           ((int64_t)decoded[2] << 8) |
+                           ((int64_t)decoded[3] << 16)) != expected)))) {
                 ok = xx_stunts_vle(current, current_size, position, pass_size,
                                    decoded, true, pd);
             }
@@ -614,12 +623,13 @@ static xx_stunts_stream *xx_stunts_parse(Abstractformat *self,
     packed = xx_stunts_load(self, span);
     if (!packed) return NULL;
 
-    /* Cheap structural pre-filter before the decode: the high bit, a sane
-     * pass count and a codec byte this reader implements. */
-    if ((packed[0] & 0x80U) == 0U ||
-        (packed[0] & 0x7fU) < 1U ||
-        (packed[0] & 0x7fU) > XX_STUNTS_MAX_PASSES ||
-        (packed[4] != 1U && packed[4] != 2U)) {
+    /* Bare one-pass resources have the codec at byte zero.  Wrapped
+     * resources declare a pass count and place the first codec at byte four. */
+    if (!((packed[0] == 1U || packed[0] == 2U) ||
+          ((packed[0] & 0x80U) != 0U &&
+           (packed[0] & 0x7fU) >= 1U &&
+           (packed[0] & 0x7fU) <= XX_STUNTS_MAX_PASSES &&
+           (packed[4] == 1U || packed[4] == 2U)))) {
         goto fail;
     }
 

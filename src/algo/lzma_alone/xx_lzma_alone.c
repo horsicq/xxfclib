@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/algo/lzma_alone/xx_lzma_alone.h"
 
@@ -12,6 +13,7 @@
 
 typedef struct xx_lzma_alone_counter_s {
     xx_io_device *destination;
+    size_t io_capacity;
     uint64_t maximum_size;
     uint64_t written;
     bool failed;
@@ -27,16 +29,18 @@ static uint64_t xx_lzma_alone_read_u64le(const uint8_t *data) {
 }
 
 static bool xx_lzma_alone_read_exact_at(xx_io_device *device, int64_t offset,
-                                        void *buffer, size_t size) {
+                                        void *buffer, size_t size, size_t io_capacity) {
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -84,10 +88,13 @@ static ssize_t xx_lzma_alone_counter_write(xx_io_device *device,
         return -1;
     }
     while (done < size && counter->destination) {
-        ssize_t amount = xx_io_write(counter->destination,
+        size_t request = size - done;
+        ssize_t amount;
+        if (request > counter->io_capacity) request = counter->io_capacity;
+        amount = xx_io_write(counter->destination,
                                      (const uint8_t *)data + done,
-                                     size - done);
-        if (amount <= 0 || (size_t)amount > size - done) {
+                                     request);
+        if (amount <= 0 || (size_t)amount > request) {
             counter->failed = true;
             return -1;
         }
@@ -101,6 +108,7 @@ bool xx_lzma_alone_decode_device(xx_io_device *source, int64_t source_offset,
                                  int64_t source_size,
                                  xx_io_device *destination,
                                  int64_t *output_size, xx_pd_struct *pd) {
+    const size_t io_capacity = xx_get_file_buffer_size();
     uint8_t header[XX_LZMA_ALONE_HEADER_SIZE];
     uint64_t declared_size;
     int64_t total_size;
@@ -118,7 +126,7 @@ bool xx_lzma_alone_decode_device(xx_io_device *source, int64_t source_offset,
     total_size = xx_io_total_size(source);
     if (total_size < source_offset || source_size > total_size - source_offset ||
         !xx_lzma_alone_read_exact_at(source, source_offset, header,
-                                     sizeof(header)) ||
+                                     sizeof(header), io_capacity) ||
         !xx_lzma_alone_has_header(header, sizeof(header))) {
         return false;
     }
@@ -127,6 +135,7 @@ bool xx_lzma_alone_decode_device(xx_io_device *source, int64_t source_offset,
     compressed_size = source_size - (int64_t)sizeof(header);
     xx_rt_memset(&counter, 0, sizeof(counter));
     counter.destination = destination;
+    counter.io_capacity = io_capacity;
     counter.maximum_size = declared_size == UINT64_MAX
                                ? (uint64_t)INT64_MAX
                                : declared_size;

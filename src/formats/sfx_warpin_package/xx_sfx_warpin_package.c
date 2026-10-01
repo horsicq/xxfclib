@@ -12,9 +12,11 @@
  * layout U3's WarpIN handler reads.  No code is taken from either.
  *
  * The package is walked, never loaded: the header, the package table in
- * small batches and one 0x11D-byte member header at a time.  The walk is
- * also the validator, so a file that merely opens with the magic dword is
- * refused before anything is allocated.
+ * small batches and one 0x11D-byte member header at a time.  Validation
+ * sizes each package from its table entry and reads only its first member
+ * header (O(packages) per probe); listing walks every member and checks it
+ * against the table totals.  A file that merely opens with the magic dword
+ * is refused before anything is allocated.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -32,6 +34,7 @@
  * here, so the alias macro defined next to the enumerator is tested instead;
  * this picks up the real file type as soon as the reader is registered. */
 #ifdef SFX_WARPIN_PACKAGE
+
 #define XX_SFX_WARPIN_PACKAGE_FILE_TYPE XX_FILE_TYPE_SFX_WARPIN_PACKAGE
 #else
 #define XX_SFX_WARPIN_PACKAGE_FILE_TYPE XX_FILE_TYPE_UNKNOWN
@@ -81,6 +84,9 @@
 #define WPI_NAME_BUFFER (3 * (WPI_MEMBER_NAME_SIZE - 1) + 2 + 10 + 1)
 #define WPI_COPY_CHUNK 65536U
 #define WPI_POLL_MASK 0x3FFU
+/* A package whose offsets count from an enclosing file sits behind at least
+ * that file's DOS header. */
+#define WPI_MIN_STUB 64
 
 typedef struct wpi_layout_s {
     int64_t size;           /**< Bytes from the base address to EOF. */
@@ -94,6 +100,7 @@ typedef struct wpi_layout_s {
     uint32_t packages;
     uint32_t revision;
     uint32_t members;
+    bool has_script;
 } wpi_layout;
 
 typedef struct wpi_member_s {
@@ -111,10 +118,15 @@ typedef struct wpi_key_s {
     uint32_t index;
 } wpi_key;
 
+typedef struct wpi_span_s {
+    int64_t start;
+    int64_t end;
+} wpi_span;
+
 typedef struct wpi_stream_s {
     wpi_layout layout;
     wpi_member *items;
-    size_t count; /**< Members; record 0 is the script, member i is i + 1. */
+    size_t count; /**< Members; index 0 is the script when present. */
     size_t index; /**< Current record. */
     char name[WPI_NAME_BUFFER];
 } wpi_stream;
@@ -127,6 +139,42 @@ typedef struct wpi_sink_s {
     uint64_t written;
 } wpi_sink;
 
+#include "xxfclib/global/xx_global.h"
+static size_t gb_sfx_warpin_package_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_sfx_warpin_package_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_sfx_warpin_package_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+
+
 static uint32_t wpi_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
@@ -138,13 +186,14 @@ static uint32_t wpi_le32(const uint8_t *bytes) {
 
 static bool wpi_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
+    const size_t file_io_capacity = gb_sfx_warpin_package_capacity();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = gb_sfx_warpin_package_read(device, (uint8_t *)buffer + done,
+                                    size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -155,13 +204,14 @@ static bool wpi_read_at(xx_io_device *device, int64_t offset, void *buffer,
 
 static ssize_t wpi_sink_write(xx_io_device *self, const void *buffer,
                               size_t n) {
+    const size_t file_io_capacity = gb_sfx_warpin_package_capacity();
     wpi_sink *sink = self ? (wpi_sink *)self->priv : NULL;
     size_t done = 0U;
     if (!sink || (!buffer && n != 0U)) return -1;
     if ((uint64_t)n > sink->limit - sink->written) return -1;
     while (sink->target && done < n) {
-        ssize_t amount = xx_io_write(sink->target,
-                                     (const uint8_t *)buffer + done, n - done);
+        ssize_t amount = gb_sfx_warpin_package_write(sink->target,
+                                     (const uint8_t *)buffer + done, n - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > n - done) return -1;
         done += (size_t)amount;
     }
@@ -181,16 +231,17 @@ static void wpi_sink_init(wpi_sink *sink, xx_io_device *target,
 /* Stream `size` stored bytes at `offset` into the sink in fixed chunks. */
 static bool wpi_copy_range(xx_io_device *source, int64_t offset, int64_t size,
                            wpi_sink *sink, xx_pd_struct *pd) {
+    const size_t file_io_capacity = gb_sfx_warpin_package_capacity();
     uint8_t *buffer;
     int64_t done = 0;
     bool ok = true;
     if (!source || offset < 0 || size < 0) return false;
     if (size == 0) return true;
-    buffer = (uint8_t *)xx_mem_alloc(WPI_COPY_CHUNK);
+    buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (ok && done < size) {
-        size_t chunk = size - done > (int64_t)WPI_COPY_CHUNK
-                           ? (size_t)WPI_COPY_CHUNK
+        size_t chunk = size - done > (int64_t)file_io_capacity
+                           ? (size_t)file_io_capacity
                            : (size_t)(size - done);
         if ((pd && xx_pd_is_stopped(pd)) ||
             !wpi_read_at(source, offset + done, buffer, chunk) ||
@@ -338,8 +389,8 @@ static bool wpi_read_layout(Abstractformat *format, wpi_layout *out) {
     if (total < format->base_address) return false;
     xx_mem_zero(&layout, sizeof(layout));
     layout.size = total - format->base_address;
-    if (layout.size < (int64_t)(WPI_HEADER_SIZE + WPI_MIN_BZIP2 +
-                                WPI_PACKAGE_ENTRY + WPI_MEMBER_HEADER) ||
+    if (layout.size < (int64_t)(WPI_HEADER_SIZE + WPI_PACKAGE_ENTRY +
+                                WPI_MEMBER_HEADER) ||
         !wpi_read_at(format->device, format->base_address, header,
                      sizeof(header)))
         return false;
@@ -351,8 +402,10 @@ static bool wpi_read_layout(Abstractformat *format, wpi_layout *out) {
     layout.script_unpacked = wpi_le16(header + WPI_SCRIPT_UNPACKED_OFFSET);
     layout.script_packed = wpi_le16(header + WPI_SCRIPT_PACKED_OFFSET);
     blob = (int64_t)(int32_t)wpi_le32(header + WPI_BLOB_OFFSET);
+    layout.has_script = layout.script_packed != 0U;
     if (layout.revision > WPI_MAX_REVISION || layout.packages == 0U ||
-        layout.script_packed < (uint32_t)WPI_MIN_BZIP2 || blob < 0)
+        (layout.has_script && layout.script_packed < (uint32_t)WPI_MIN_BZIP2) ||
+        (!layout.has_script && layout.script_unpacked != 0U) || blob < 0)
         return false;
     position = WPI_HEADER_SIZE;
     if (layout.revision == WPI_MAX_REVISION) {
@@ -372,14 +425,15 @@ static bool wpi_read_layout(Abstractformat *format, wpi_layout *out) {
     /* The script is one bzip2 stream: its header, then a block or the
      * end-of-stream magic.  This is what separates a package from a file
      * that merely opens with the magic dword. */
-    if (!wpi_read_at(format->device, format->base_address + position, probe,
-                     sizeof(probe)) ||
-        probe[0] != 'B' || probe[1] != 'Z' || probe[2] != 'h' ||
-        probe[3] < '1' || probe[3] > '9' ||
-        !((probe[4] == 0x31U && probe[5] == 0x41U && probe[6] == 0x59U &&
-           probe[7] == 0x26U && probe[8] == 0x53U && probe[9] == 0x59U) ||
-          (probe[4] == 0x17U && probe[5] == 0x72U && probe[6] == 0x45U &&
-           probe[7] == 0x38U && probe[8] == 0x50U && probe[9] == 0x90U)))
+    if (layout.has_script &&
+        (!wpi_read_at(format->device, format->base_address + position, probe,
+                      sizeof(probe)) ||
+         probe[0] != 'B' || probe[1] != 'Z' || probe[2] != 'h' ||
+         probe[3] < '1' || probe[3] > '9' ||
+         !((probe[4] == 0x31U && probe[5] == 0x41U && probe[6] == 0x59U &&
+            probe[7] == 0x26U && probe[8] == 0x53U && probe[9] == 0x59U) ||
+           (probe[4] == 0x17U && probe[5] == 0x72U && probe[6] == 0x45U &&
+            probe[7] == 0x38U && probe[8] == 0x50U && probe[9] == 0x90U))))
         return false;
     position += (int64_t)layout.script_packed;
     if (blob > layout.size - position) return false;
@@ -421,10 +475,54 @@ static bool wpi_parse_member(const uint8_t *header, wpi_member *member,
     return true;
 }
 
-/* Walk the package table and every member header.  With `items` NULL this
- * is the probe and keeps nothing; otherwise it fills items[] and keys[] (at
- * most `capacity` members; keys[0] is left to the caller for the script)
- * using `name` (WPI_NAME_BUFFER bytes) to hash every converted name. */
+static int wpi_compare_spans(const void *left, const void *right) {
+    const wpi_span *a = (const wpi_span *)left;
+    const wpi_span *b = (const wpi_span *)right;
+    if (a->start != b->start) return a->start < b->start ? -1 : 1;
+    return a->end < b->end ? -1 : (a->end > b->end ? 1 : 0);
+}
+
+/* Offsets in a plain WPI can address packages in any order.  A package
+ * embedded in a self-installer may instead use offsets from the enclosing
+ * file.  Accept only an origin whose first member header is valid. */
+static bool wpi_choose_origin(Abstractformat *format, const wpi_layout *layout,
+                              int64_t offset, uint32_t files,
+                              int64_t *result) {
+    int64_t origins[3], base, limit;
+    size_t index;
+    uint8_t header[WPI_MEMBER_HEADER];
+    wpi_member member;
+    size_t name_length;
+    if (!format || !layout || !result || offset < 0) return false;
+    base = format->base_address;
+    limit = base + layout->size;
+    origins[0] = base;
+    origins[1] = 0;
+    origins[2] = base + layout->members_offset - offset;
+    for (index = 0U; index < 3U; ++index) {
+        int64_t cursor;
+        if (index == 2U && offset - layout->members_offset < WPI_MIN_STUB)
+            continue;
+        if (origins[index] < -offset || origins[index] > limit - offset)
+            continue;
+        cursor = origins[index] + offset;
+        if (cursor < base + layout->members_offset ||
+            (int64_t)WPI_MEMBER_HEADER > limit - cursor)
+            continue;
+        if (files != 0U &&
+            (!wpi_read_at(format->device, cursor, header, sizeof(header)) ||
+             !wpi_parse_member(header, &member, &name_length)))
+            continue;
+        *result = origins[index];
+        return true;
+    }
+    return false;
+}
+
+/* Probe every package using its table span and first member header, then
+ * reject overlaps after sorting those spans.  The second pass walks every
+ * member header, fills items[] and keys[] (at most `capacity` members;
+ * keys[0] is reserved for the script), and verifies the table totals. */
 static bool wpi_walk(Abstractformat *format, wpi_layout *layout,
                      wpi_member *items, wpi_key *keys, size_t capacity,
                      char *name, xx_pd_struct *pd) {
@@ -432,13 +530,18 @@ static bool wpi_walk(Abstractformat *format, wpi_layout *layout,
     uint8_t header[WPI_MEMBER_HEADER];
     const int64_t base = format->base_address;
     const int64_t limit = base + layout->size;
-    int64_t previous_end = base + layout->members_offset;
     int64_t origin = base;
+    int64_t last_end = base + layout->members_offset;
+    wpi_span *spans;
     uint32_t package, loaded = 0U, first = 0U, count = 0U;
+    spans = (wpi_span *)xx_mem_alloc((size_t)layout->packages * sizeof(*spans));
+    if (!spans) return false;
     for (package = 0U; package < layout->packages; ++package) {
         const uint8_t *entry;
-        int64_t offset, cursor;
+        int64_t offset, cursor, span, unpacked_total, packed_total;
         uint32_t files, file;
+        if ((package & WPI_POLL_MASK) == 0U && pd && xx_pd_is_stopped(pd))
+            goto fail;
         if (package - first >= loaded) {
             uint32_t batch = layout->packages - package;
             if (batch > WPI_PACKAGE_BATCH) batch = WPI_PACKAGE_BATCH;
@@ -446,65 +549,90 @@ static bool wpi_walk(Abstractformat *format, wpi_layout *layout,
                              base + layout->table_offset +
                                  (int64_t)package * WPI_PACKAGE_ENTRY,
                              table, (size_t)batch * WPI_PACKAGE_ENTRY))
-                return false;
+                goto fail;
             first = package;
             loaded = batch;
         }
         entry = table + (size_t)(package - first) * WPI_PACKAGE_ENTRY;
         files = wpi_le16(entry + 2U);
         offset = (int64_t)(int32_t)wpi_le32(entry + 4U);
-        if (offset < 0 || (int32_t)wpi_le32(entry + 8U) < 0 ||
-            (int32_t)wpi_le32(entry + 12U) < 0)
-            return false;
-        if (package == 0U) {
-            /* The first package starts right after the table.  Its offset
-             * is from the package start, or - for a package inside a larger
-             * file - from the start of that file. */
-            if (offset == layout->members_offset)
-                origin = base;
-            else if (base > 0 && offset == base + layout->members_offset)
-                origin = 0;
-            else
-                return false;
-        }
+        unpacked_total = (int64_t)(int32_t)wpi_le32(entry + 8U);
+        packed_total = (int64_t)(int32_t)wpi_le32(entry + 12U);
+        if (offset < 0 || unpacked_total < 0 || packed_total < 0)
+            goto fail;
+        if (package == 0U &&
+            !wpi_choose_origin(format, layout, offset, files, &origin))
+            goto fail;
         cursor = origin + offset;
-        /* Packages follow one another without overlapping, so the output
-         * is bounded by the file. */
-        if (cursor < previous_end || cursor > limit) return false;
-        for (file = 0U; file < files; ++file) {
+        /* No overflow: files <= 0xFFFF and totals are below 2^31. */
+        span = (int64_t)files * WPI_MEMBER_HEADER + packed_total;
+        if (cursor < base + layout->members_offset || cursor > limit ||
+            span > limit - cursor ||
+            (uint64_t)count + files > WPI_MAX_MEMBERS)
+            goto fail;
+        if (files == 0U) {
+            if (packed_total != 0 || unpacked_total != 0) goto fail;
+        } else if (!items) {
             wpi_member member;
             size_t name_length;
-            int64_t data;
-            if ((count & WPI_POLL_MASK) == 0U && pd && xx_pd_is_stopped(pd))
-                return false;
-            if (count >= WPI_MAX_MEMBERS ||
-                (int64_t)WPI_MEMBER_HEADER > limit - cursor ||
-                !wpi_read_at(format->device, cursor, header, sizeof(header)) ||
-                !wpi_parse_member(header, &member, &name_length))
-                return false;
-            data = cursor + WPI_MEMBER_HEADER;
-            if ((int64_t)member.packed > limit - data) return false;
-            if (items) {
-                size_t converted;
-                if (count >= capacity) return false;
-                member.header = cursor;
+            if (!wpi_read_at(format->device, cursor, header, sizeof(header)) ||
+                !wpi_parse_member(header, &member, &name_length) ||
+                (int64_t)member.packed > packed_total ||
+                (int64_t)member.unpacked > unpacked_total)
+                goto fail;
+        } else {
+            int64_t packed_sum = 0, unpacked_sum = 0;
+            int64_t walk = cursor;
+            for (file = 0U; file < files; ++file) {
+                wpi_member member;
+                size_t name_length, converted;
+                int64_t data;
+                if (((count + file) & WPI_POLL_MASK) == 0U && pd &&
+                    xx_pd_is_stopped(pd))
+                    goto fail;
+                if (count + file >= capacity ||
+                    (int64_t)WPI_MEMBER_HEADER > limit - walk ||
+                    !wpi_read_at(format->device, walk, header,
+                                 sizeof(header)) ||
+                    !wpi_parse_member(header, &member, &name_length))
+                    goto fail;
+                data = walk + WPI_MEMBER_HEADER;
+                if ((int64_t)member.packed > limit - data) goto fail;
+                packed_sum += (int64_t)member.packed;
+                unpacked_sum += (int64_t)member.unpacked;
+                member.header = walk;
                 member.package = (uint16_t)package;
-                items[count] = member;
+                items[count + file] = member;
                 converted = wpi_convert_name(header + WPI_MEMBER_NAME,
                                              name_length, name);
-                keys[count + 1U].hash = wpi_name_hash(name, converted);
-                keys[count + 1U].index = count + 1U;
+                keys[count + file + 1U].hash = wpi_name_hash(name, converted);
+                keys[count + file + 1U].index = count + file + 1U;
+                walk = data + (int64_t)member.packed;
             }
-            ++count;
-            cursor = data + (int64_t)member.packed;
+            /* The members must fill the package exactly as its table entry
+             * says, which is what the probe relied on. */
+            if (packed_sum != packed_total || unpacked_sum != unpacked_total ||
+                walk != cursor + span)
+                goto fail;
         }
-        previous_end = cursor;
+        spans[package].start = cursor;
+        spans[package].end = cursor + span;
+        if (spans[package].end > last_end) last_end = spans[package].end;
+        count += files;
     }
-    if (count == 0U) return false;
+    if (count == 0U) goto fail;
+    xx_rt_qsort(spans, layout->packages, sizeof(*spans), wpi_compare_spans);
+    for (package = 1U; package < layout->packages; ++package)
+        if (spans[package - 1U].end > spans[package].start)
+            goto fail;
     layout->members = count;
     layout->origin = origin;
-    layout->end = previous_end - base;
+    layout->end = last_end - base;
+    xx_mem_free(spans);
     return true;
+fail:
+    xx_mem_free(spans);
+    return false;
 }
 
 static bool wpi_scan(Abstractformat *format, wpi_layout *layout,
@@ -572,6 +700,7 @@ static bool wpi_open_stream(Abstractformat *format, wpi_stream **result,
     xx_mem_free(keys);
     stream->layout = layout;
     stream->count = layout.members;
+    stream->index = layout.has_script ? 0U : 1U;
     *result = stream;
     return true;
 fail:
@@ -685,14 +814,16 @@ static bool wpi_set_record(Abstractformat *format, xx_archive_record *record,
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
-/* Decode record `index` into `destination` (NULL only verifies). */
+/* Decode record `index` into `destination` (NULL only verifies).  The
+ * script's real size is unknown (its field keeps only the low 16 bits), so
+ * it is decoded up to `script_limit` bytes and no further. */
 static bool wpi_extract(Abstractformat *format, const wpi_stream *stream,
                         size_t index, xx_io_device *destination,
-                        xx_pd_struct *pd) {
+                        uint64_t script_limit, xx_pd_struct *pd) {
     wpi_sink sink;
     if (index == 0U) {
         const wpi_layout *layout = &stream->layout;
-        wpi_sink_init(&sink, destination, WPI_SCRIPT_MAX);
+        wpi_sink_init(&sink, destination, script_limit);
         /* The size field holds the low 16 bits of the script's size. */
         return xx_bzip2_unpack_device(
                    format->device,
@@ -780,7 +911,8 @@ bool xx_sfx_warpin_package_handle_base_info(Abstractformat *format,
     xx_sfx_warpin_package *archive;
     if (!wpi_scan(format, &layout, pd)) return false;
     archive = (xx_sfx_warpin_package *)format;
-    archive->number_of_records = (uint64_t)layout.members + 1U;
+    archive->number_of_records = (uint64_t)layout.members +
+                                 (layout.has_script ? 1U : 0U);
     archive->number_of_packages = layout.packages;
     archive->revision = layout.revision;
     format->number_of_archive_records = archive->number_of_records;
@@ -817,9 +949,11 @@ xx_archive_record_state *xx_sfx_warpin_package_create_archive_records_reading(
     xx_archive_record_state_init(state, format);
     state->internal_state = stream;
     state->free_internal = wpi_stream_free;
-    state->total_records = (uint64_t)stream->count + 1U;
+    state->total_records = (uint64_t)stream->count +
+                           (stream->layout.has_script ? 1U : 0U);
     if (!wpi_copy_options(&state->options, options) ||
-        !wpi_set_record(format, &state->current_record, stream, 0U)) {
+        !wpi_set_record(format, &state->current_record, stream,
+                        stream->index)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -856,7 +990,7 @@ bool xx_sfx_warpin_package_unpack_current_archive_record(
     const char *base = NULL;
     char *owned_base = NULL;
     char *path = NULL;
-    uint64_t unpacked;
+    uint64_t unpacked, script_limit = WPI_SCRIPT_MAX;
     bool result = false;
     bool created = false;
     if (!format || !state || state->format != format || !state->has_record ||
@@ -868,12 +1002,19 @@ bool xx_sfx_warpin_package_unpack_current_archive_record(
                    : (uint64_t)stream->items[stream->index - 1U].unpacked;
     option = xx_format_resolve_extra_parameter(format, &state->options,
                                                XX_META_ID_OPT_MAX_MEMBER_SIZE);
-    if (option && unpacked > xx_var_get_u64(option)) return false;
+    if (option) {
+        /* For the script `unpacked` is only the low 16 bits of its size, so
+         * the option also caps how far the script is decoded. */
+        const uint64_t maximum = xx_var_get_u64(option);
+        if (unpacked > maximum) return false;
+        if (maximum < script_limit) script_limit = maximum;
+    }
     option = xx_format_resolve_extra_parameter(format, &state->options,
                                                XX_META_ID_OPT_UNPACK_PATH);
     if (!option)
         /* No destination: decode the record through, which verifies it. */
-        return wpi_extract(format, stream, stream->index, NULL, pd);
+        return wpi_extract(format, stream, stream->index, NULL, script_limit,
+                           pd);
     /* stream->name was built from the file by wpi_load_name: refuse it
      * before anything is created when it could escape the output folder or
      * name a device. */
@@ -896,7 +1037,8 @@ bool xx_sfx_warpin_package_unpack_current_archive_record(
         xx_io_device *destination = xx_io_file_open(path, "wb");
         created = destination != NULL;
         if (!destination) goto done;
-        result = wpi_extract(format, stream, stream->index, destination, pd);
+        result = wpi_extract(format, stream, stream->index, destination,
+                             script_limit, pd);
         if (xx_io_close(destination) != 0) result = false;
     }
 done:

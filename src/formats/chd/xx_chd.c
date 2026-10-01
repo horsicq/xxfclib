@@ -1048,7 +1048,6 @@ typedef struct chd_ctx_s {
     uint8_t *mapbuf;       /**< v1-v4 / v5 raw map window. */
     uint32_t mapbuf_first;
     uint32_t mapbuf_count;
-    uint16_t crc16_table[256];
     uint8_t gf_exp[512];
     uint8_t gf_log[256];
     bool map_failed;
@@ -1081,13 +1080,7 @@ static chd_ctx *chd_ctx_create(const chd_info *info, xx_io_device *device) {
         chd_ctx_free(c);
         return NULL;
     }
-    /* FLAC frame CRC-16: polynomial 0x8005, MSB first, initial 0. */
-    for (index = 0U; index < 256U; ++index) {
-        uint32_t crc = index << 8, bit;
-        for (bit = 0U; bit < 8U; ++bit)
-            crc = (crc & 0x8000U) ? ((crc << 1) ^ 0x8005U) : (crc << 1);
-        c->crc16_table[index] = (uint16_t)crc;
-    }
+
     /* GF(2^8) with x^8 + x^4 + x^3 + x^2 + 1 (ECMA-130). */
     for (index = 0U; index < 255U; ++index) {
         c->gf_exp[index] = (uint8_t)x;
@@ -1346,24 +1339,11 @@ static bool chd_get_entry(chd_ctx *c, uint32_t hunk, chd_entry *e) {
 /* FLAC (RFC 9639): the frames of a two-channel stream, no stream header    */
 
 static uint32_t chd_crc8(const uint8_t *p, size_t size) {
-    uint32_t crc = 0U, bit;
-    size_t index;
-    for (index = 0U; index < size; ++index) {
-        crc ^= p[index];
-        for (bit = 0U; bit < 8U; ++bit)
-            crc = (crc & 0x80U) ? ((crc << 1) ^ 0x07U) & 0xFFU : (crc << 1) & 0xFFU;
-    }
-    return crc;
+    return xx_crc8_calc(0U, p, size);
 }
 
-static uint32_t chd_crc16_flac(const chd_ctx *c, const uint8_t *p,
-                               size_t size) {
-    uint32_t crc = 0U;
-    size_t index;
-    for (index = 0U; index < size; ++index)
-        crc = ((crc << 8) ^ c->crc16_table[((crc >> 8) ^ p[index]) & 0xFFU]) &
-              0xFFFFU;
-    return crc;
+static uint32_t chd_crc16_flac(const uint8_t *p, size_t size) {
+    return xx_crc16(XX_CRC_TYPE_CRC16_BUYPASS, p, size);
 }
 
 static bool chd_flac_residual(chd_bits *b, int32_t *out, uint32_t block,
@@ -1546,7 +1526,7 @@ static bool chd_flac_frame(chd_ctx *c, chd_bits *b, uint32_t *block) {
     }
     here = (size_t)(chd_bits_used(b) >> 3);
     if (here + 2U > b->size ||
-        chd_bits_read(b, 16U) != chd_crc16_flac(c, b->data + start, here - start))
+        chd_bits_read(b, 16U) != chd_crc16_flac(b->data + start, here - start))
         return false;
     *block = blocksize;
     return true;

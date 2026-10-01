@@ -2,12 +2,19 @@
  * SPDX-License-Identifier: MIT
  */
 
+/* The component archive API publishes the first eight instruction bytes and
+ * remaining boot-header parameters separately. It does not infer a kernel
+ * payload extent from the memory-footprint image_size or consume the overlay. */
+
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/linuxarm64/xx_linuxarm64.h"
 
 #include "xxfclib/data/xx_data.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
+
+#include "../bmp/xx_component_archive_impl.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the file-type constant resolves to UNKNOWN until the enumerator
@@ -148,6 +155,7 @@ void xx_linuxarm64_init(xx_linuxarm64 *image, xx_io_device *dev,
     image->format.handle_base_info = xx_linuxarm64_handle_base_info;
     image->format.get_format_size = xx_linuxarm64_get_format_size;
     image->format.destroy = xx_linuxarm64_vtable_destroy;
+    xx_components_install(&image->format);
 }
 
 xx_linuxarm64 *xx_linuxarm64_create(xx_io_device *dev, int64_t base_address) {
@@ -221,6 +229,7 @@ bool xx_linuxarm64_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
         self->overlay_size = 0;
     }
     self->number_of_archive_records = 0U;
+    if (!xx_components_finish(self, pd)) return false;
     self->is_valid = true;
     self->base_info_handled = true;
     return true;
@@ -251,4 +260,14 @@ uint32_t xx_linuxarm64_get_page_size(const xx_linuxarm64 *image) {
 }
 bool xx_linuxarm64_is_kernel_big_endian(const xx_linuxarm64 *image) {
     return image ? image->kernel_big_endian : false;
+}
+
+/* Encoded/structural component members; this does not decode media. */
+static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd) {
+
+    (void)pd;
+    /* image_size is a memory footprint. Do not claim the unbounded kernel
+     * body/PE overlay as a declared member of this 64-byte header format. */
+    return xx_component_add(f,s,0,8,"boot-instructions") &&
+        xx_component_add(f,s,8,56,"boot-parameters");
 }

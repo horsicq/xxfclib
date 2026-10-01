@@ -20,7 +20,11 @@
  */
 
 #include "xxfclib/algo/crc/xx_crc.h"
+#include "xxfclib/global/xx_global.h"
 #include "xx_crc_internal.h"
+#include "xx_crc32_slice8.h"
+#include "platforms/xx_crc64_platform.h"
+#include "platforms/xx_crc_small_simd.h"
 
 static const uint32_t _TABLE_CRC32_ISO[256] = {
     0x00000000u, 0x77073096u, 0xEE0E612Cu, 0x990951BAu,
@@ -224,16 +228,91 @@ static const uint32_t _TABLE_CRC32_MPEG2[256] = {
 };
 
 
+#ifdef XX_CRC64_X86
+/* Powers of x modulo the normal-order polynomial. The shared small-width
+ * fold converts reflected input and register state inside the SIMD helper. */
+static const xx_crc_small_params _CRC32_ISO_SIMD = {
+    0x04C11DB7U, 32U, true, 0xE8A45605U, 0xC5B9CD4CU,
+    0xE6228B11U, 0x8833794CU, 0x04C11DB7U, 0xF200AA66U
+};
+static const xx_crc_small_params _CRC32C_SIMD = {
+    0x1EDC6F41U, 32U, true, 0x18571D18U, 0x6503EA99U,
+    0xAA97D41DU, 0xA6955F31U, 0x1EDC6F41U, 0xD7A01665U
+};
+static const xx_crc_small_params _CRC32_MPEG2_SIMD = {
+    0x04C11DB7U, 32U, false, 0xE8A45605U, 0xC5B9CD4CU,
+    0xE6228B11U, 0x8833794CU, 0x04C11DB7U, 0xF200AA66U
+};
+
+static bool xx_crc32_use_pclmul(size_t size, size_t minimum_size) {
+    return size >= minimum_size && xx_is_sse2_enabled() && xx_crc64_has_pclmul();
+}
+#endif
+
+static uint32_t xx_crc32_mpeg2_raw(uint32_t reg, const void *data, size_t size) {
+    const uint8_t *p = (const uint8_t *)data;
+    if (!p || !size) return reg;
+#ifdef XX_CRC64_X86
+    if (xx_crc32_use_pclmul(size, 128U)) {
+        size_t bulk = size & ~(size_t)15U;
+        reg = xx_crc_small_pclmul(reg, p, bulk, &_CRC32_MPEG2_SIMD);
+        p += bulk;
+        size -= bulk;
+    }
+#endif
+    for (size_t i = 0; i < size; ++i)
+        reg = (reg << 8) ^ _TABLE_CRC32_MPEG2[((reg >> 24) ^ p[i]) & 0xFFU];
+    return reg;
+}
+
+
 uint32_t xx_crc32_calc(uint32_t crc, const void *data, size_t size) {
     if (!data || size == 0) {
         return crc;
     }
     const uint8_t *p = (const uint8_t *)data;
     crc = ~crc;
-    for (size_t i = 0; i < size; ++i) {
-        crc = (crc >> 8) ^ _TABLE_CRC32_ISO[(crc ^ p[i]) & 0xFF];
+#ifdef XX_CRC64_X86
+    /* Slice-by-8 wins on short IEEE buffers; PCLMUL takes over on bulk data. */
+    if (xx_crc32_use_pclmul(size, 1280U)) {
+        size_t bulk = size & ~(size_t)15U;
+        crc = xx_crc_small_pclmul(crc, p, bulk, &_CRC32_ISO_SIMD);
+        p += bulk;
+        size -= bulk;
+    }
+#endif
+    while (size >= 8U) {
+        /* Explicit little-endian loads also work on big-endian targets. */
+        uint32_t first = (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
+                         ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+        uint32_t second = (uint32_t)p[4] | ((uint32_t)p[5] << 8) |
+                          ((uint32_t)p[6] << 16) | ((uint32_t)p[7] << 24);
+        first ^= crc;
+        crc = xx_crc32_slices[6][first & 255U] ^ xx_crc32_slices[5][(first >> 8) & 255U] ^
+              xx_crc32_slices[4][(first >> 16) & 255U] ^ xx_crc32_slices[3][first >> 24] ^
+              xx_crc32_slices[2][second & 255U] ^ xx_crc32_slices[1][(second >> 8) & 255U] ^
+              xx_crc32_slices[0][(second >> 16) & 255U] ^ _TABLE_CRC32_ISO[second >> 24];
+        p += 8U;
+        size -= 8U;
+    }
+    while (size-- != 0U) {
+        crc = (crc >> 8) ^ _TABLE_CRC32_ISO[(crc ^ *p++) & 255U];
     }
     return ~crc;
+}
+
+uint32_t xx_crc32_udi_calc(uint32_t crc, const void *data, size_t size) {
+    const uint8_t *p = (const uint8_t *)data;
+    if (!p || !size) return crc;
+    for (size_t i = 0; i < size; ++i) {
+        crc ^= ~(uint32_t)p[i];
+        for (unsigned bit = 0; bit < 8U; ++bit) {
+            uint32_t mask = (crc & 1U) ? UINT32_C(0xedb88320) : 0U;
+            crc = ((crc >> 1U) | (crc & UINT32_C(0x80000000))) ^ mask;
+        }
+        crc = ~crc;
+    }
+    return crc;
 }
 
 uint32_t xx_crc32c_calc(uint32_t crc, const void *data, size_t size) {
@@ -242,6 +321,14 @@ uint32_t xx_crc32c_calc(uint32_t crc, const void *data, size_t size) {
     }
     const uint8_t *p = (const uint8_t *)data;
     crc = ~crc;
+#ifdef XX_CRC64_X86
+    if (xx_crc32_use_pclmul(size, 192U)) {
+        size_t bulk = size & ~(size_t)15U;
+        crc = xx_crc_small_pclmul(crc, p, bulk, &_CRC32C_SIMD);
+        p += bulk;
+        size -= bulk;
+    }
+#endif
     for (size_t i = 0; i < size; ++i) {
         crc = (crc >> 8) ^ _TABLE_CRC32C[(crc ^ p[i]) & 0xFF];
     }
@@ -266,24 +353,12 @@ uint32_t xx_crc32_fast(xx_crc_type_t type, const void *data, size_t size) {
         case XX_CRC_TYPE_CRC32:
             return xx_crc32_calc(0, data, size);
         case XX_CRC_TYPE_CRC32_BZIP2: {
-            if (!data || size == 0) return 0xFFFFFFFFu ^ 0xFFFFFFFFu;
-            const uint8_t *p = (const uint8_t *)data;
-            uint32_t reg = 0xFFFFFFFFu;
-            for (size_t i = 0; i < size; ++i) {
-                reg = (reg << 8) ^ _TABLE_CRC32_MPEG2[((reg >> 24) ^ p[i]) & 0xFF];
-            }
-            return reg ^ 0xFFFFFFFFu;
+            return xx_crc32_mpeg2_raw(0xFFFFFFFFU, data, size) ^ 0xFFFFFFFFU;
         }
         case XX_CRC_TYPE_CRC32C:
             return xx_crc32c_calc(0, data, size);
         case XX_CRC_TYPE_CRC32_MPEG2: {
-            if (!data || size == 0) return 0xFFFFFFFFu;
-            const uint8_t *p = (const uint8_t *)data;
-            uint32_t reg = 0xFFFFFFFFu;
-            for (size_t i = 0; i < size; ++i) {
-                reg = (reg << 8) ^ _TABLE_CRC32_MPEG2[((reg >> 24) ^ p[i]) & 0xFF];
-            }
-            return reg;
+            return xx_crc32_mpeg2_raw(0xFFFFFFFFU, data, size);
         }
         case XX_CRC_TYPE_CRC32_JAMCRC:
             return ~xx_crc32_calc(0, data, size);

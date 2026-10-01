@@ -50,6 +50,7 @@ typedef struct xx_sos_member_s {
     uint32_t method;
     uint64_t timestamp;
     bool is_folder;
+    bool unavailable;
 } xx_sos_member;
 
 typedef struct xx_sos_stream_s {
@@ -88,19 +89,35 @@ static bool xx_sos_range_within(int64_t total, int64_t offset,
            size <= total - offset;
 }
 
-/* Refuse anything that would escape the extraction directory. */
+/* SOS names are single Amiga filename components, never paths. Keep them
+ * single components on Windows too, including its reserved device names. */
 static bool xx_sos_path_safe(const char *name) {
-    const char *cursor = name;
-
-    if (!name || !name[0] || name[0] == '/') return false;
-    while (*cursor) {
-        const char *end = cursor;
-        size_t length;
-        while (*end && *end != '/') ++end;
-        length = (size_t)(end - cursor);
-        if (length == 2U && cursor[0] == '.' && cursor[1] == '.') return false;
-        cursor = *end ? end + 1 : end;
+    size_t length, stem_length = 0U, i;
+    char stem[5] = {0};
+    if (!name || !(length = xx_str_len(name)) ||
+        name[length - 1U] == '.' || name[length - 1U] == ' ')
+        return false;
+    for (i = 0U; i < length; ++i) {
+        unsigned char c = (unsigned char)name[i];
+        if (c < 32U || c == 127U || c == '/' || c == '\\' || c == ':' ||
+            c == '*' || c == '?' || c == '"' || c == '<' || c == '>' ||
+            c == '|' || (c == ' ' && name[i + 1U] == '.'))
+            return false;
+        if (stem_length == i && c != '.') {
+            if (stem_length < sizeof(stem) - 1U)
+                stem[stem_length] = (char)(c >= 'a' && c <= 'z' ? c - 32U : c);
+            ++stem_length;
+        }
     }
+    if (stem_length == 3U &&
+        (!xx_rt_strcmp(stem, "CON") || !xx_rt_strcmp(stem, "PRN") ||
+         !xx_rt_strcmp(stem, "AUX") || !xx_rt_strcmp(stem, "NUL")))
+        return false;
+    if (stem_length == 4U &&
+        (!xx_rt_strncmp(stem, "COM", 3U) ||
+         !xx_rt_strncmp(stem, "LPT", 3U)) &&
+        stem[3] >= '1' && stem[3] <= '9')
+        return false;
     return true;
 }
 
@@ -137,7 +154,7 @@ static bool xx_sos_decode(Abstractformat *self,
 
     *out = NULL;
     *out_size = 0U;
-    if (member->compressed_size < 0 ||
+    if (member->unavailable || member->compressed_size < 0 ||
         (uint64_t)member->compressed_size > (uint64_t)SIZE_MAX) {
         return false;
     }
@@ -194,6 +211,7 @@ static xx_sos_stream *xx_sos_parse(Abstractformat *self, xx_pd_struct *pd) {
     int32_t sector;
     size_t length;
     size_t i;
+    size_t complete_count = 0U;
 
     if (!self || !self->device || self->base_address < 0) return NULL;
     total = xx_io_total_size(self->device);
@@ -268,9 +286,6 @@ static xx_sos_stream *xx_sos_parse(Abstractformat *self, xx_pd_struct *pd) {
         if (data_offset == 0) break;
         if (length == 0U) break;
         if (data_offset < 0 || size < 0) goto fail;
-        /* The only per-member integrity field this format has: the extent must
-         * lie inside the image. */
-        if (!xx_sos_range_within(span, data_offset, size)) goto fail;
         if (stream->count >= (size_t)XX_SOS_MAX_MEMBERS) goto fail;
         /* The reference decodes the name as Latin-1 and accepts every byte.
          * These are Amiga filenames, ASCII in practice, and a control byte
@@ -290,6 +305,8 @@ static xx_sos_stream *xx_sos_parse(Abstractformat *self, xx_pd_struct *pd) {
         member.data_offset = self->base_address + data_offset;
         member.compressed_size = size;
         member.uncompressed_size = size;
+        member.unavailable = !xx_sos_range_within(span, data_offset, size);
+        if (!member.unavailable) ++complete_count;
         if (!xx_sos_add(stream, &member)) {
             xx_str_free(member.name);
             goto fail;
@@ -297,7 +314,9 @@ static xx_sos_stream *xx_sos_parse(Abstractformat *self, xx_pd_struct *pd) {
         offset += XX_SOS_RECORD_SIZE;
     }
 
-    if (stream->count == 0U) goto fail;
+    /* A short disk image can retain its complete directory and early files.
+     * Keep the out-of-range records visible, but never read past the image. */
+    if (stream->count == 0U || complete_count == 0U) goto fail;
     /* The members never fill the floppy, but the image IS the container, so
      * its whole span is the format size. */
     stream->archive_size = span;

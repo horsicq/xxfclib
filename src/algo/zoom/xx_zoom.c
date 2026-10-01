@@ -499,6 +499,8 @@ static bool zoom_image_core(zoom_ctx *ctx, const uint8_t *input,
     size_t image_size;
     size_t produced = 0;
     size_t current = 0;
+    size_t committed = 0;
+    size_t committed_offset = 0;
 
     *consumed_out = 0;
     *produced_out = 0;
@@ -542,7 +544,7 @@ static bool zoom_image_core(zoom_ctx *ctx, const uint8_t *input,
         flag = zoom_be16(record + 0x20);
         offset += ZOOM_CHUNK_HEADER_SIZE;
 
-        if (packed_size > (input_size - offset)) return false;
+        if (packed_size > (input_size - offset)) goto corrupt;
         blob = input + offset;
         offset += packed_size;
 
@@ -559,27 +561,27 @@ static bool zoom_image_core(zoom_ctx *ctx, const uint8_t *input,
 
         if (flag != 0) {
             size_t want = (middle_size != 0) ? middle_size : final_size;
-            if (want > ZOOM_SCRATCH) return false;
+            if (want > ZOOM_SCRATCH) goto corrupt;
             if (!zoom_lzhuf_decode(ctx, buffer, buffer_size, ctx->stage_a,
                                    want)) {
-                return false;
+                goto corrupt;
             }
             buffer = ctx->stage_a;
             buffer_size = want;
         }
         if (middle_size != 0) {
             size_t got = 0;
-            if (final_size > ZOOM_SCRATCH) return false;
+            if (final_size > ZOOM_SCRATCH) goto corrupt;
             if (!zoom_rle_core(buffer, buffer_size, ctx->stage_b, final_size,
                                &got)) {
-                return false;
+                goto corrupt;
             }
             buffer = ctx->stage_b;
             buffer_size = final_size;
         }
 
         if (total < final_size) final_size = total;
-        if (buffer_size < final_size) return false;
+        if (buffer_size < final_size) goto corrupt;
 
         available = final_size;
 
@@ -592,7 +594,7 @@ static bool zoom_image_core(zoom_ctx *ctx, const uint8_t *input,
             while (current < (size_t)cyl[i]) {
                 if (!zoom_emit(output, image_size, &produced, NULL,
                                ZOOM_CYLINDER_SIZE)) {
-                    return false;
+                    goto corrupt;
                 }
                 ++current;
             }
@@ -600,17 +602,17 @@ static bool zoom_image_core(zoom_ctx *ctx, const uint8_t *input,
             bits = mask[i];
             for (k = 0; k < ZOOM_SECTORS_PER_CYLINDER; ++k) {
                 if (bits & 1u) {
-                    if (available < ZOOM_SECTOR_SIZE) return false;
+                    if (available < ZOOM_SECTOR_SIZE) goto corrupt;
                     if (!zoom_emit(output, image_size, &produced,
                                    buffer + source_pos, ZOOM_SECTOR_SIZE)) {
-                        return false;
+                        goto corrupt;
                     }
                     source_pos += ZOOM_SECTOR_SIZE;
                     available -= ZOOM_SECTOR_SIZE;
                 } else {
                     if (!zoom_emit(output, image_size, &produced, NULL,
                                    ZOOM_SECTOR_SIZE)) {
-                        return false;
+                        goto corrupt;
                     }
                 }
                 bits >>= 1;
@@ -619,7 +621,11 @@ static bool zoom_image_core(zoom_ctx *ctx, const uint8_t *input,
         }
 
         /* Every stored sector of the record has to be consumed exactly. */
-        if (available != 0) return false;
+        if (available != 0) goto corrupt;
+        /* Only complete records can be published as a recoverable prefix.
+         * A later corrupt record may have touched output past this point. */
+        committed = produced;
+        committed_offset = offset;
     }
 
     *consumed_out = offset;
@@ -627,15 +633,20 @@ static bool zoom_image_core(zoom_ctx *ctx, const uint8_t *input,
     while (current < cylinders) {
         if (!zoom_emit(output, image_size, &produced, NULL,
                        ZOOM_CYLINDER_SIZE)) {
-            return false;
+            goto corrupt;
         }
         ++current;
     }
 
-    if (produced != image_size) return false;
+    if (produced != image_size) goto corrupt;
     *produced_out = produced;
 
     return true;
+
+corrupt:
+    *consumed_out = committed_offset;
+    *produced_out = committed;
+    return false;
 }
 
 static bool zoom_run(const uint8_t *input, size_t input_size, uint8_t *output,
@@ -674,6 +685,25 @@ bool xx_zoom_decode_memory(const uint8_t *input, size_t input_size,
     if (written) *written = produced;
 
     return true;
+}
+
+bool xx_zoom_decode_prefix_memory(const uint8_t *input, size_t input_size,
+                                  uint8_t *output, size_t output_size,
+                                  size_t *written, bool *complete)
+{
+    size_t consumed = 0;
+    size_t produced = 0;
+    bool ok;
+
+    if (written) *written = 0;
+    if (complete) *complete = false;
+    if (!input || !output || output_size == 0) return false;
+
+    ok = zoom_run(input, input_size, output, output_size, output_size,
+                  &consumed, &produced);
+    if (written) *written = produced;
+    if (complete) *complete = ok;
+    return ok || produced != 0;
 }
 
 bool xx_zoom_scan_memory(const uint8_t *input, size_t input_size,

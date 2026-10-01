@@ -59,6 +59,7 @@
 #include "xxfclib/formats/ftcomp/xx_ftcomp.h"
 
 #include "xxfclib/algo/store/xx_store.h"
+#include "../../algo/ftcomp/xx_ftcomp_entropy33.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
@@ -96,6 +97,8 @@ typedef struct xx_ftcomp_member_s {
     int64_t data_offset;
     int64_t compressed_size;
     int64_t uncompressed_size;
+    int64_t ea_offset;
+    int64_t ea_compressed_size;
     uint64_t timestamp;
     uint32_t attributes;
     uint32_t extra;   /* the unknown u32 at 0x23 */
@@ -109,7 +112,11 @@ typedef struct xx_ftcomp_stream_s {
     size_t index;
     int64_t archive_size;
     uint32_t variant;
+    struct xx_ftcomp_codec_s *shared_codec;
+    size_t next_history_index;
 } xx_ftcomp_stream;
+
+static void xx_ftcomp_codec_free(struct xx_ftcomp_codec_s *codec);
 
 /* ------------------------------------------------------------ helpers --- */
 
@@ -205,6 +212,7 @@ static void xx_ftcomp_stream_free(void *pointer) {
     if (!stream) return;
     for (index = 0U; index < stream->count; ++index)
         xx_str_free(stream->items[index].name);
+    xx_ftcomp_codec_free(stream->shared_codec);
     xx_mem_free(stream->items);
     xx_mem_free(stream);
 }
@@ -289,13 +297,17 @@ static bool xx_ftcomp_read_member(Abstractformat *self, int64_t span,
     } else {
         member_end = span;
     }
-    /* When a member carries an extended-attribute blob it lives between the
-     * payload and the member's end; the payload stops there.  Its internal
-     * format is not decoded, only excluded. */
+    /* The optional extended-attribute stream follows the main payload and
+     * uses the same compression framing. Keep its bounds for history replay. */
     if (extended_attributes != 0U &&
         (int64_t)extended_attributes >= data_offset &&
-        (int64_t)extended_attributes <= member_end)
+        (int64_t)extended_attributes <= member_end) {
+        member->ea_offset = self->base_address +
+                            (int64_t)extended_attributes;
+        member->ea_compressed_size = member_end -
+                                     (int64_t)extended_attributes;
         member_end = (int64_t)extended_attributes;
+    }
     if (member_end < data_offset) return false;
 
     member->name = xx_ftcomp_normalize_name(namebuf, name_length);
@@ -357,9 +369,10 @@ static bool xx_ftcomp_read_member(Abstractformat *self, int64_t span,
  * allocation. */
 #define XX_FTCOMP_MAX_OUTPUT UINT32_C(0x8000000)
 
-/* Only the fT19 dialect (method 0) occurs in the corpus and only it is
- * implemented; fT21/fT32/fT33 exist in the reference and are refused. */
+/* Block names encode the decoder version. */
 #define XX_FTCOMP_TAG_FT19 UINT32_C(0x39315466)
+#define XX_FTCOMP_TAG_FT21 UINT32_C(0x31325466)
+#define XX_FTCOMP_TAG_FT33 UINT32_C(0x33335466)
 
 /* The two fixed weight tables the reference loads before every block:
  * the first codes the transmitted symbol weights, the second the
@@ -785,6 +798,7 @@ typedef struct xx_ftcomp_bits_s {
 typedef struct xx_ftcomp_codec_s {
     uint8_t *window;         /* 512 KiB circular history */
     uint32_t position;       /* write cursor inside the window */
+    uint32_t history_count;  /* unwrapped cursor for entropy ranges */
     uint8_t *plain;          /* the member's plaintext, caller owned */
     size_t plain_size;
     size_t plain_at;
@@ -799,10 +813,10 @@ typedef struct xx_ftcomp_codec_s {
 
 /* The class of the symbol just decoded selects the tree the next one is read
  * from; that is the model's only context. */
-static uint8_t xx_ftcomp_symbol_class(uint32_t symbol) {
+static uint8_t xx_ftcomp_symbol_class(uint32_t symbol, uint8_t version) {
     if (symbol < 0x100U) return 0U;
     if (symbol < 0x140U) return 1U;
-    if (symbol == 0x140U) return 0U; /* method 1 would set this one */
+    if (symbol == 0x140U) return version == 1U ? 1U : 0U;
     if (symbol < 0x181U) return 1U;
     if (symbol < 0x1a1U) return 0U;
     return 1U;
@@ -810,9 +824,10 @@ static uint8_t xx_ftcomp_symbol_class(uint32_t symbol) {
 
 /* How many coded fields follow an LZ token byte: one distance byte, two
  * distance bytes, or a length byte plus two distance bytes. */
-static uint8_t xx_ftcomp_token_fields(uint8_t token) {
+static uint8_t xx_ftcomp_token_fields(uint8_t token, uint8_t version) {
     if (token < 0x40U) return 1U;
-    if (token == 0x40U) return 0U; /* the escaped literal 9E 40 */
+    if (token == 0x40U)
+        return version == 1U ? 2U : 0U; /* method 0 escapes 9E 40 */
     if (token < 0x80U) return 2U;
     if (token == 0x80U) return 3U;
     return 0U;
@@ -947,6 +962,168 @@ static void xx_ftcomp_sort(uint16_t *lut, const uint16_t *node, int32_t low,
     }
 }
 
+/* The post-RLE alphabet uses the same unstable U3 sort as the Huffman
+ * builder, but its frequency counters are full 32-bit integers. Equal
+ * counts must keep the reference ordering: the table's bytes refer to
+ * inverted rank positions, so a stable sort silently corrupts the output. */
+static void xx_ftcomp_sort_rle(uint16_t *lut, const uint32_t *count) {
+    int32_t stack[66];
+    int32_t depth = 2;
+    stack[0] = 0;
+    stack[1] = 255;
+    while (depth != 0) {
+        int32_t right = stack[depth - 1];
+        int32_t left;
+        depth -= 2;
+        left = stack[depth];
+        for (;;) {
+            int32_t a = left, b = right, keep = right, next;
+            if (b - a < 0x11) {
+                int32_t probe = a;
+                for (;;) {
+                    int32_t hold = probe;
+                    int32_t scan = a;
+                    probe = hold + 1;
+                    next = b;
+                    if (probe > b) break;
+                    while (scan < probe && count[lut[scan]] < count[lut[probe]])
+                        ++scan;
+                    if (scan <= hold) {
+                        int32_t k = hold;
+                        for (;;) {
+                            uint16_t swap = lut[k];
+                            lut[k] = lut[k + 1];
+                            lut[k + 1] = swap;
+                            --k;
+                            if (k == scan - 1) break;
+                        }
+                    }
+                }
+            } else {
+                int32_t pivot = (a + b) >> 1, i = a, j = b;
+                for (;;) {
+                    while (count[lut[i]] < count[lut[pivot]]) ++i;
+                    while (count[lut[j]] > count[lut[pivot]]) --j;
+                    if (i <= j) {
+                        uint16_t swap = lut[i];
+                        int32_t moved = j;
+                        lut[i] = lut[j];
+                        lut[j] = swap;
+                        if (pivot != i) {
+                            moved = pivot;
+                            if (pivot == j) moved = i;
+                        }
+                        ++i;
+                        --j;
+                        pivot = moved;
+                    }
+                    if (i > j) break;
+                }
+                if (j - a < b - i) {
+                    keep = j;
+                    next = a;
+                    if (i < b && depth + 2 <= 64) {
+                        stack[depth] = i;
+                        stack[depth + 1] = b;
+                        depth += 2;
+                    }
+                } else {
+                    next = i;
+                    if (a < j && depth + 2 <= 64) {
+                        stack[depth] = a;
+                        stack[depth + 1] = j;
+                        depth += 2;
+                    }
+                }
+            }
+            left = next;
+            right = keep;
+            if (left >= right) break;
+        }
+    }
+}
+
+/* FUN_00662cf0: expand the final RLE layer. A block stores an escape byte,
+ * a count of suffix-table bytes, and a body. Each escape consumes one table
+ * byte whose inverted frequency rank specifies the repetition count. */
+static bool xx_ftcomp_rle(const uint8_t *input, size_t size, uint8_t *output,
+                           size_t capacity, bool paired, size_t *written) {
+    uint32_t frequencies[256];
+    uint16_t order[256];
+    uint8_t ranks[256];
+    size_t main_end, table_at, at, out_at = 0U;
+    uint8_t marker;
+    unsigned index;
+    if (written) *written = 0U;
+    if (!input || !output || size == 0U) return false;
+    if (input[0] == 0xffU) {
+        if (size - 1U > capacity) return false;
+        if (size > 1U) xx_rt_memcpy(output, input + 1U, size - 1U);
+        if (written) *written = size - 1U;
+        return true;
+    }
+    if (size < 3U) return false;
+    marker = input[0];
+    table_at = xx_ftcomp_le16(input + 1U);
+    if (table_at > size - 3U) return false;
+    main_end = size - table_at;
+    table_at = main_end;
+    xx_rt_memset(frequencies, 0, sizeof(frequencies));
+    for (at = 0U; at < main_end; ++at) ++frequencies[input[at]];
+    for (index = 0U; index < 256U; ++index) order[index] = (uint16_t)index;
+    xx_ftcomp_sort_rle(order, frequencies);
+    for (index = 0U; index < 256U; ++index)
+        ranks[order[index]] = (uint8_t)(~index);
+    at = 3U;
+    while (at < main_end) {
+        uint8_t value = input[at++];
+        if (value != marker) {
+            if (out_at >= capacity) return false;
+            output[out_at++] = value;
+            continue;
+        }
+        if (table_at >= size) return false;
+        {
+            uint8_t code = ranks[input[table_at++]];
+            size_t repetitions, unit, amount;
+            const uint8_t *pattern;
+            if (code == 0xffU) {
+                if (out_at >= capacity) return false;
+                output[out_at++] = marker;
+                continue;
+            }
+            if (at >= main_end) return false;
+            value = input[at];
+            if (!paired || code == 0xfeU || value == marker ||
+                main_end - at < 3U || value != input[at + 1U]) {
+                repetitions = (size_t)code + 4U;
+                unit = 1U;
+                pattern = input + at;
+                at += 1U;
+            } else if (main_end - at < 5U || value != input[at + 2U]) {
+                repetitions = (size_t)code + 8U;
+                unit = 2U;
+                pattern = input + at + 1U;
+                at += 3U;
+            } else {
+                repetitions = (size_t)code + 8U;
+                unit = 3U;
+                pattern = input + at + 2U;
+                at += 5U;
+            }
+            amount = repetitions * unit;
+            if (amount > capacity - out_at) return false;
+            while (repetitions--) {
+                xx_rt_memcpy(output + out_at, pattern, unit);
+                out_at += unit;
+            }
+        }
+    }
+    if (table_at != size) return false;
+    if (written) *written = out_at;
+    return true;
+}
+
 /* FUN_00663310: turn the leaf weights already sitting at node[symbol*4] into
  * a tree, then flatten the first nine bits of every code into a lookup. */
 static bool xx_ftcomp_build(xx_ftcomp_huff *huff) {
@@ -1063,6 +1240,23 @@ static bool xx_ftcomp_build_static(xx_ftcomp_huff *huff,
     return xx_ftcomp_build(huff);
 }
 
+static bool xx_ftcomp_build_extra(xx_ftcomp_huff *huff, uint8_t version) {
+    uint16_t weights[258];
+    xx_rt_memcpy(weights, ftcomp_weights_extra,
+                 sizeof(ftcomp_weights_extra));
+    weights[257] = 0U;
+    if (version == 1U) {
+        /* U3's alternative table at 0x009ea012 differs only here. */
+        weights[252] = 4U;
+        weights[253] = 4U;
+        weights[254] = 0U;
+        weights[255] = 0U;
+        weights[257] = 120U;
+    }
+    return xx_ftcomp_build_static(huff, weights,
+                                  version == 1U ? 258U : 257U);
+}
+
 static uint32_t xx_ftcomp_decode_symbol(xx_ftcomp_bits *bits,
                                         const xx_ftcomp_huff *huff) {
     uint32_t top, value;
@@ -1080,21 +1274,48 @@ static uint32_t xx_ftcomp_decode_symbol(xx_ftcomp_bits *bits,
 
 /* --------------------------------------------------------------- LZ ----- */
 
-static void xx_ftcomp_prime(xx_ftcomp_codec *codec) {
-    xx_rt_memset(codec->window, 0x20, XX_FTCOMP_PRIME_RUN);
-    xx_rt_memset(codec->window + XX_FTCOMP_PRIME_RUN, 0xff,
-                 XX_FTCOMP_PRIME_RUN);
-    xx_rt_memset(codec->window + 2U * XX_FTCOMP_PRIME_RUN, 0x00,
-                 XX_FTCOMP_PRIME_RUN);
-    xx_rt_memcpy(codec->window + XX_FTCOMP_DICT_AT, ftcomp_preset_dictionary,
-                 XX_FTCOMP_DICT_SIZE);
-    codec->position = XX_FTCOMP_START_POS;
+static void xx_ftcomp_prime(xx_ftcomp_codec *codec, uint8_t version) {
+    if (version < 2U) {
+        xx_rt_memset(codec->window, 0x20, XX_FTCOMP_PRIME_RUN);
+        xx_rt_memset(codec->window + XX_FTCOMP_PRIME_RUN, 0xff,
+                     XX_FTCOMP_PRIME_RUN);
+        xx_rt_memset(codec->window + 2U * XX_FTCOMP_PRIME_RUN, 0x00,
+                     XX_FTCOMP_PRIME_RUN);
+        xx_rt_memcpy(codec->window + XX_FTCOMP_DICT_AT,
+                     ftcomp_preset_dictionary, XX_FTCOMP_DICT_SIZE);
+        codec->position = XX_FTCOMP_START_POS;
+    } else {
+        xx_rt_memcpy(codec->window, ftcomp_preset_dictionary,
+                     XX_FTCOMP_DICT_SIZE);
+        codec->position = XX_FTCOMP_DICT_SIZE;
+    }
+    codec->history_count = codec->position;
+}
+
+static void xx_ftcomp_codec_free(struct xx_ftcomp_codec_s *codec) {
+    if (!codec) return;
+    if (codec->window) xx_mem_free(codec->window);
+    xx_mem_free(codec);
+}
+
+static xx_ftcomp_codec *xx_ftcomp_codec_create(uint8_t version) {
+    xx_ftcomp_codec *codec =
+        (xx_ftcomp_codec *)xx_mem_calloc(1U, sizeof(*codec));
+    if (!codec) return NULL;
+    codec->window = (uint8_t *)xx_mem_calloc(1U, XX_FTCOMP_WINDOW_SIZE);
+    if (!codec->window) {
+        xx_ftcomp_codec_free(codec);
+        return NULL;
+    }
+    xx_ftcomp_prime(codec, version);
+    return codec;
 }
 
 static bool xx_ftcomp_emit(xx_ftcomp_codec *codec, uint8_t value) {
     if (codec->plain_at >= codec->plain_size) return false;
     codec->window[codec->position] = value;
     codec->position = (codec->position + 1U) & XX_FTCOMP_WINDOW_MASK;
+    ++codec->history_count;
     codec->plain[codec->plain_at++] = value;
     return true;
 }
@@ -1102,9 +1323,10 @@ static bool xx_ftcomp_emit(xx_ftcomp_codec *codec, uint8_t value) {
 /* FUN_00662880: byte-oriented LZ77 whose escape byte is 0x9E.  @p size is
  * the exact number of token bytes this call has to consume. */
 static bool xx_ftcomp_lz(xx_ftcomp_codec *codec, const uint8_t *data,
-                         size_t size) {
+                         size_t size, uint8_t version) {
     size_t at = 0U;
     int64_t remaining = (int64_t)size;
+    uint32_t recent[2] = { 0x101U, 0x200U };
     while (remaining > 0) {
         uint8_t token;
         uint32_t length, distance, source, step;
@@ -1117,32 +1339,68 @@ static bool xx_ftcomp_lz(xx_ftcomp_codec *codec, const uint8_t *data,
         }
         if (at >= size) return false;
         token = data[at++];
-        if (token == 0x40U) {
+        if (token == (version == 0U ? 0x40U : 0xffU)) {
             remaining -= 2;
             if (!xx_ftcomp_emit(codec, 0x9eU)) return false;
             continue;
         }
-        if (token == 0x80U) {
+        if (version < 2U && token == 0x80U) {
             if (size - at < 3U) return false;
             length = (uint32_t)data[at] + 0x43U;
             distance =
                 (uint32_t)data[at + 1U] | ((uint32_t)data[at + 2U] << 8U);
             at += 3U;
             remaining -= 5;
-        } else if ((token & 0x40U) == 0U) {
+        } else if (token < 0x40U ||
+                   (version < 2U && (token & 0x40U) == 0U)) {
             if (size - at < 1U) return false;
             length = (uint32_t)(((uint32_t)token + 3U) & 0xffU);
             distance = (uint32_t)data[at];
             at += 1U;
             remaining -= 3;
-        } else {
+        } else if (token < 0x80U || version < 2U) {
             if (size - at < 2U) return false;
             length = (uint32_t)(token & 0x3fU) + 3U;
             distance = (uint32_t)data[at] | ((uint32_t)data[at + 1U] << 8U);
             at += 2U;
             remaining -= 4;
+        } else if (version >= 2U && token < 0x90U) {
+            uint8_t extra;
+            uint16_t low;
+            if (size - at < 3U) return false;
+            extra = data[at];
+            low = xx_ftcomp_le16(data + at + 1U);
+            length = (uint32_t)extra + ((token & 8U) ? 0x106U : 6U);
+            distance = (((uint32_t)(token & 7U) +
+                         (length < 0x43U ? 1U : 0U)) << 16U) +
+                       (uint32_t)low;
+            at += 3U;
+            remaining -= 5;
+        } else if (version >= 2U && token < 0x94U) {
+            unsigned index = token & 1U;
+            distance = recent[index] - 1U;
+            if (index != 0U) {
+                uint32_t swap = recent[0];
+                recent[0] = recent[1];
+                recent[1] = swap;
+            }
+            if (token < 0x92U) {
+                if (at >= size) return false;
+                length = (uint32_t)data[at++] + 3U;
+                remaining -= 3;
+            } else {
+                length = 2U;
+                remaining -= 2;
+            }
+        } else {
+            return false;
         }
         ++distance;
+        if (version >= 2U && token < 0x90U && distance > 0x100U &&
+            (version == 2U || recent[0] != distance)) {
+            recent[1] = recent[0];
+            recent[0] = distance;
+        }
         source = codec->position - distance;
         for (step = 0U; step < length; ++step) {
             uint8_t value = codec->window[source & XX_FTCOMP_WINDOW_MASK];
@@ -1156,7 +1414,7 @@ static bool xx_ftcomp_lz(xx_ftcomp_codec *codec, const uint8_t *data,
 /* FUN_00666d80, method 0: the token stream is a chain of sub-blocks, each a
  * u16 length, a flag byte, and then either literal bytes or LZ tokens. */
 static bool xx_ftcomp_expand(xx_ftcomp_codec *codec, const uint8_t *data,
-                             size_t size) {
+                             size_t size, uint8_t version) {
     size_t at = 0U;
     int64_t remaining = (int64_t)size;
     while (remaining > 0) {
@@ -1175,7 +1433,7 @@ static bool xx_ftcomp_expand(xx_ftcomp_codec *codec, const uint8_t *data,
         if (flag == 0U) {
             for (step = 0U; step < chunk; ++step)
                 if (!xx_ftcomp_emit(codec, data[at + step])) return false;
-        } else if (!xx_ftcomp_lz(codec, data + at, chunk)) {
+        } else if (!xx_ftcomp_lz(codec, data + at, chunk, version)) {
             return false;
         }
         at += chunk;
@@ -1186,20 +1444,44 @@ static bool xx_ftcomp_expand(xx_ftcomp_codec *codec, const uint8_t *data,
 
 /* ---------------------------------------------------- the Huffman stage -- */
 
+/* fT21 codes recent distance/length fields with two move-to-front values:
+ * 0x100 repeats the current value, 0x101 swaps in the previous value, and
+ * any smaller symbol skips those two values in numeric order. */
+static uint32_t xx_ftcomp_recent_field(uint32_t symbol, uint32_t *current,
+                                       uint32_t *previous) {
+    uint32_t value, low, high;
+    if (symbol == 0x100U) return *current;
+    value = *previous;
+    if (symbol != 0x101U) {
+        value = symbol;
+        low = *current < *previous ? *current : *previous;
+        high = *current < *previous ? *previous : *current;
+        if (low <= value) ++value;
+        if (high <= value) ++value;
+    }
+    *previous = *current;
+    *current = value;
+    return value;
+}
+
 /* FUN_00663dd0: rebuild the two per-block trees from the weights the block
  * transmits, then decode exactly @p expected token bytes into codec->tokens.
  * Returns how many input bytes the bit stream consumed, or 0 on failure. */
 static size_t xx_ftcomp_entropy(xx_ftcomp_codec *codec, const uint8_t *data,
-                                size_t size, uint32_t expected) {
+                                size_t size, uint32_t expected,
+                                uint8_t version) {
     xx_ftcomp_bits bits;
     uint32_t weight_a, weight_b, weight_c, weight_d;
     uint32_t index, filled = 0U, largest = 0U, scale, at = 0U;
     uint32_t pending = 0U, context = 0U, subrange = 0U;
     uint32_t last_byte = 0U, last_near = 0U, last_far = 0U;
-    uint32_t last_wide = 0U, last_high = 0U;
+    uint32_t last_wide = 0U, last_high = 0U, last_special = 0U;
+    uint32_t prev_byte = 1U, prev_near = 1U, prev_far = 1U;
+    uint32_t prev_wide = 1U, prev_high = 1U, prev_special = 1U;
+    bool special = false;
     /* Method 0 pins the position counter past every range threshold, which
      * is what the reference does with its 99999. */
-    uint32_t position = 99999U;
+    uint32_t position = version == 0U ? 99999U : codec->history_count;
     uint16_t pairs[48];
     uint16_t places[48];
     uint32_t pair_head = 0x20U, place_head = 0x20U;
@@ -1238,7 +1520,7 @@ static size_t xx_ftcomp_entropy(xx_ftcomp_codec *codec, const uint8_t *data,
         uint32_t weight = codec->weights[index];
         uint32_t scaled = 0U;
         if (weight != 0U)
-            scaled = (xx_ftcomp_symbol_class(index) == 0U)
+            scaled = (xx_ftcomp_symbol_class(index, version) == 0U)
                          ? (weight_a * weight)
                          : (weight * weight_c);
         codec->table_a.node[index * 4U] = (uint16_t)scaled;
@@ -1264,7 +1546,7 @@ static size_t xx_ftcomp_entropy(xx_ftcomp_codec *codec, const uint8_t *data,
                 uint32_t weight = codec->weights[index];
                 uint32_t scaled = 0U;
                 if (weight != 0U)
-                    scaled = (xx_ftcomp_symbol_class(index) == 0U)
+                    scaled = (xx_ftcomp_symbol_class(index, version) == 0U)
                                  ? (weight_b * weight)
                                  : (weight * weight_d);
                 codec->table_b.node[index * 4U] = (uint16_t)scaled;
@@ -1301,17 +1583,19 @@ static size_t xx_ftcomp_entropy(xx_ftcomp_codec *codec, const uint8_t *data,
                 xx_ftcomp_decode_symbol(
                     &bits, context ? &codec->table_b : &codec->table_a) >> 2;
             if (symbol >= (uint32_t)XX_FTCOMP_SYMBOLS) return 0U;
-            context = xx_ftcomp_symbol_class(symbol);
+            context = xx_ftcomp_symbol_class(symbol, version);
             if (symbol < 0x100U) {
                 ++position;
                 out[at++] = (uint8_t)symbol;
+                if (version == 1U && symbol == 0x9eU) out[at++] = 0xffU;
             } else if (symbol < 0x181U) {
                 uint8_t token = (uint8_t)(symbol - 0x100U);
                 out[at] = 0x9eU;
                 out[at + 1U] = token;
-                pending = xx_ftcomp_token_fields(token);
+                pending = xx_ftcomp_token_fields(token, version);
                 if (pending != 0U) {
                     if (pending < 3U) position += (token & 0x3fU) + 3U;
+                    special = version == 1U && token == 0x40U;
                     if (place_head == 0U) {
                         uint32_t k;
                         for (k = 0U; k < 16U; ++k) places[32U + k] = places[k];
@@ -1363,10 +1647,12 @@ static size_t xx_ftcomp_entropy(xx_ftcomp_codec *codec, const uint8_t *data,
                 /* Only tokens that carry fields are ever recorded, so the
                  * referenced copy must already hold the token byte plus as
                  * many bytes as that token's shape implies. */
-                if (source + 2U > at) return 0U;
+                if (version == 0U && source + 2U > at) return 0U;
                 token = out[source];
-                fields = xx_ftcomp_token_fields(token);
-                if (fields == 0U || source + 1U + fields > at) return 0U;
+                fields = xx_ftcomp_token_fields(token, version);
+                if (version == 0U &&
+                    (fields == 0U || source + 1U + fields > at))
+                    return 0U;
                 out[at] = 0x9eU;
                 out[at + 1U] = token;
                 out[at + 2U] = out[source + 1U];
@@ -1394,7 +1680,10 @@ static size_t xx_ftcomp_entropy(xx_ftcomp_codec *codec, const uint8_t *data,
                 /* The distance splits into a coded high part and a raw low
                  * part whose width the leading bits select. */
                 xx_ftcomp_bits_fill(&bits, 9);
-                if ((bits.accumulator & 0x8000U) == 0U) {
+                if (special) {
+                    subrange = 3U;
+                    field = xx_ftcomp_bits_take(&bits, 2);
+                } else if ((bits.accumulator & 0x8000U) == 0U) {
                     subrange = 0U;
                     field = xx_ftcomp_bits_take(&bits, 5) & 0xfU;
                 } else if (position < 0x5100U) {
@@ -1413,21 +1702,42 @@ static size_t xx_ftcomp_entropy(xx_ftcomp_codec *codec, const uint8_t *data,
             }
             symbol = xx_ftcomp_decode_symbol(&bits, &codec->extra) >> 2;
             if (pending == 1U) {
-                if (symbol != 0x100U) last_byte = symbol;
+                if (version == 1U)
+                    last_byte = xx_ftcomp_recent_field(
+                        symbol, &last_byte, &prev_byte);
+                else if (symbol != 0x100U)
+                    last_byte = symbol;
                 out[at++] = (uint8_t)last_byte;
             } else {
                 if (subrange == 0U) {
-                    if (symbol != 0x100U) last_near = symbol;
+                    if (version == 1U)
+                        last_near = xx_ftcomp_recent_field(
+                            symbol, &last_near, &prev_near);
+                    else if (symbol != 0x100U)
+                        last_near = symbol;
                     value = (field + last_near * 0x10U + 0x100U) & 0xffffU;
                 } else if (subrange == 1U) {
-                    if (symbol != 0x100U) last_far = symbol;
+                    if (version == 1U)
+                        last_far = xx_ftcomp_recent_field(
+                            symbol, &last_far, &prev_far);
+                    else if (symbol != 0x100U)
+                        last_far = symbol;
                     value = (field + last_far * 0x40U + 0x1100U) & 0xffffU;
-                } else {
-                    if (symbol != 0x100U) last_wide = symbol;
+                } else if (subrange == 2U) {
+                    if (version == 1U)
+                        last_wide = xx_ftcomp_recent_field(
+                            symbol, &last_wide, &prev_wide);
+                    else if (symbol != 0x100U)
+                        last_wide = symbol;
                     value =
                         (position < 0x9100U)
                             ? ((field + (last_wide + 0x144U) * 0x40U) & 0xffffU)
                             : ((field + (last_wide + 0xa2U) * 0x80U) & 0xffffU);
+                } else {
+                    if (version != 1U) return 0U;
+                    last_special = xx_ftcomp_recent_field(
+                        symbol, &last_special, &prev_special);
+                    value = (field + last_special * 4U + 0x100U) & 0xffffU;
                 }
                 out[at++] = (uint8_t)(value & 0xffU);
                 out[at++] = (uint8_t)((value >> 8U) & 0xffU);
@@ -1442,8 +1752,15 @@ static size_t xx_ftcomp_entropy(xx_ftcomp_codec *codec, const uint8_t *data,
             ++pending;
             if (pending == 6U) {
                 pending = 0U;
-                if (symbol != 0x100U) last_high = symbol;
+                if (version == 1U)
+                    last_high = xx_ftcomp_recent_field(
+                        symbol, &last_high, &prev_high);
+                else if (symbol != 0x100U)
+                    last_high = symbol;
                 value = last_high;
+            } else if (version == 1U) {
+                value = symbol < 0x100U ? symbol + 2U : symbol - 0x100U;
+                if (pending == 4U) position += value + 0x43U;
             } else {
                 value = (symbol == 0x100U) ? 0U : symbol + 1U;
             }
@@ -1457,17 +1774,159 @@ static size_t xx_ftcomp_entropy(xx_ftcomp_codec *codec, const uint8_t *data,
 
 /* -------------------------------------------------- the member driver --- */
 
+static bool xx_ftcomp_expand_v3(xx_ftcomp_codec *codec,
+                                 const uint8_t *tokens, size_t size) {
+    size_t index;
+    if (!codec || !tokens || size < 2U) return false;
+    if (tokens[0] != 0U)
+        return xx_ftcomp_lz(codec, tokens + 1U, size - 1U, 3U);
+    for (index = 1U; index < size; ++index)
+        if (!xx_ftcomp_emit(codec, tokens[index])) return false;
+    return true;
+}
+
+/* fT21 and fT33 put an RLE transform after the LZ token expansion. fT21
+ * carries the original sub-block structure; fT33 uses one flag byte for the
+ * whole token block and the wider version-3 LZ command set. */
+static bool xx_ftcomp_decode_variant(Abstractformat *self,
+                                      const xx_ftcomp_member *member,
+                                      uint8_t version, uint8_t **plain,
+                                      size_t *plain_size,
+                                      xx_ftcomp_codec *shared) {
+    xx_ftcomp_codec *codec = shared;
+    uint8_t *output = NULL, *intermediate = NULL;
+    size_t capacity, final_at = 0U;
+    int64_t total, cursor, end;
+    bool ok = false;
+    bool owned = shared == NULL;
+    if (!self || !member || !plain || !plain_size ||
+        (version != 1U && version != 3U) ||
+        member->uncompressed_size <= 0 ||
+        member->uncompressed_size > (int64_t)XX_FTCOMP_MAX_OUTPUT ||
+        member->compressed_size < 4 ||
+        member->compressed_size > (int64_t)XX_FTCOMP_MAX_OUTPUT)
+        return false;
+    total = xx_io_total_size(self->device);
+    cursor = member->data_offset + 4;
+    end = member->data_offset + member->compressed_size;
+    if (total < 0 || cursor < 0 || end > total) return false;
+    capacity = (size_t)member->uncompressed_size +
+               (size_t)member->compressed_size + 16U;
+    if (capacity > (size_t)XX_FTCOMP_MAX_OUTPUT * 2U) return false;
+    if (!codec) codec = xx_ftcomp_codec_create(version);
+    output = (uint8_t *)xx_mem_alloc((size_t)member->uncompressed_size);
+    intermediate = (uint8_t *)xx_mem_alloc(capacity);
+    if (!codec || !output || !intermediate) goto done;
+    if (version == 1U &&
+        (!xx_ftcomp_build_static(&codec->header, ftcomp_weights_header,
+                                 sizeof(ftcomp_weights_header) /
+                                     sizeof(ftcomp_weights_header[0])) ||
+         !xx_ftcomp_build_extra(&codec->extra, version)))
+        goto done;
+    codec->plain = intermediate;
+    codec->plain_size = capacity;
+    while (final_at < (size_t)member->uncompressed_size) {
+        uint8_t head[6];
+        uint32_t declared;
+        const uint8_t *tokens;
+        size_t token_count = 0U, emitted = 0U;
+        int64_t remaining = member->uncompressed_size - (int64_t)final_at;
+        if (remaining < 4) {
+            if (end - cursor < remaining ||
+                !xx_ftcomp_read_at(self, cursor, output + final_at,
+                                   (size_t)remaining)) goto done;
+            final_at += (size_t)remaining;
+            break;
+        }
+        if (end - cursor < 6 ||
+            !xx_ftcomp_read_at(self, cursor, head, sizeof(head)) ||
+            xx_ftcomp_le32(head) !=
+                (version == 1U ? XX_FTCOMP_TAG_FT21 : XX_FTCOMP_TAG_FT33))
+            goto done;
+        declared = xx_ftcomp_le16(head + 4U);
+        cursor += 6;
+        if (declared == 0xffffU) {
+            uint8_t length_bytes[2];
+            if (end - cursor < 2 ||
+                !xx_ftcomp_read_at(self, cursor, length_bytes, 2U)) goto done;
+            token_count = xx_ftcomp_le16(length_bytes);
+            cursor += 2;
+            if (token_count == 0U || end - cursor < (int64_t)token_count ||
+                !xx_ftcomp_read_at(self, cursor, codec->input, token_count))
+                goto done;
+            tokens = codec->input;
+            cursor += (int64_t)token_count;
+        } else {
+            size_t avail, consumed;
+            if (declared == 0U) goto done;
+            avail = (size_t)((end - cursor) < (int64_t)XX_FTCOMP_BLOCK_MAX
+                                 ? end - cursor
+                                 : (int64_t)XX_FTCOMP_BLOCK_MAX);
+            if (avail < 4U ||
+                !xx_ftcomp_read_at(self, cursor, codec->input, avail))
+                goto done;
+            if (version == 1U)
+                consumed = xx_ftcomp_entropy(codec, codec->input, avail,
+                                             declared, version);
+            else if (!xx_ftcomp_entropy33_decode(
+                         codec->input, avail, codec->tokens, declared,
+                         (size_t)declared + XX_FTCOMP_TOKEN_SLACK,
+                         codec->history_count,
+                         &token_count, &consumed))
+                consumed = 0U;
+            if (consumed == 0U || consumed > avail) goto done;
+            tokens = codec->tokens;
+            if (version == 1U) token_count = declared;
+            cursor += (int64_t)consumed;
+        }
+        codec->plain_at = 0U;
+        if (!(version == 1U
+                  ? xx_ftcomp_expand(codec, tokens, token_count, version)
+                  : xx_ftcomp_expand_v3(codec, tokens, token_count)) ||
+            codec->plain_at == 0U ||
+            !xx_ftcomp_rle(intermediate, codec->plain_at, output + final_at,
+                            (size_t)member->uncompressed_size - final_at,
+                            version == 3U, &emitted) ||
+            emitted == 0U) {
+            goto done;
+        }
+        final_at += emitted;
+        if (version == 3U && intermediate[0] != 0xffU) {
+            /* The suffix rank table is excluded from the LZ dictionary for
+             * following blocks. Raw 0xFF RLE data has no rank table. */
+            uint32_t table_size = xx_ftcomp_le16(intermediate + 1U);
+            if (table_size > codec->history_count) goto done;
+            codec->position = (codec->position - table_size) &
+                              XX_FTCOMP_WINDOW_MASK;
+            codec->history_count -= table_size;
+        }
+    }
+    if (final_at != (size_t)member->uncompressed_size) goto done;
+    *plain = output;
+    *plain_size = final_at;
+    output = NULL;
+    ok = true;
+done:
+    if (codec) codec->plain = NULL;
+    if (owned) xx_ftcomp_codec_free(codec);
+    if (output) xx_mem_free(output);
+    if (intermediate) xx_mem_free(intermediate);
+    return ok;
+}
+
 /* FUN_00667430: a member's payload opens with a four-byte prologue and then
  * runs as a chain of blocks, each tagged and each either stored or entropy
  * coded, until the declared plaintext length has been produced. */
 static bool xx_ftcomp_decode_member(Abstractformat *self,
                                     const xx_ftcomp_member *member,
-                                    uint8_t **plain, size_t *plain_size) {
+                                    uint8_t **plain, size_t *plain_size,
+                                    xx_ftcomp_codec *shared) {
     xx_ftcomp_codec *codec = NULL;
     uint8_t *output = NULL;
     int64_t total, cursor, end;
     int64_t remaining;
     bool ok = false;
+    uint8_t prologue[4];
 
     if (!self || !member || !plain || !plain_size) return false;
     *plain = NULL;
@@ -1482,6 +1941,22 @@ static bool xx_ftcomp_decode_member(Abstractformat *self,
     end = member->data_offset + member->compressed_size;
     if (cursor < 0 || end > total) return false;
 
+    if (!xx_ftcomp_read_at(self, cursor, prologue, sizeof(prologue)))
+        return false;
+    if (prologue[0] == 0x00U && prologue[1] == 0x82U &&
+        prologue[2] == 0x00U && prologue[3] == 0x00U &&
+        member->method == 1U)
+        return xx_ftcomp_decode_variant(self, member, 1U, plain, plain_size,
+                                        NULL);
+    if (prologue[0] == 0x00U && prologue[1] == 0xfcU &&
+        prologue[2] == 0x00U && prologue[3] == 0x00U &&
+        member->method == 33U)
+        return xx_ftcomp_decode_variant(self, member, 3U, plain, plain_size,
+                                        shared);
+    if (prologue[0] != 0x80U || prologue[1] != 0x60U ||
+        prologue[2] != 0x00U || prologue[3] != 0x00U)
+        return false;
+
     codec = (xx_ftcomp_codec *)xx_mem_alloc(sizeof(*codec));
     output = (uint8_t *)xx_mem_alloc((size_t)member->uncompressed_size);
     if (!codec || !output) goto done;
@@ -1495,7 +1970,7 @@ static bool xx_ftcomp_decode_member(Abstractformat *self,
                                 sizeof(ftcomp_weights_extra) /
                                     sizeof(ftcomp_weights_extra[0])))
         goto done;
-    xx_ftcomp_prime(codec);
+    xx_ftcomp_prime(codec, 0U);
     codec->plain = output;
     codec->plain_size = (size_t)member->uncompressed_size;
     codec->plain_at = 0U;
@@ -1535,7 +2010,7 @@ static bool xx_ftcomp_decode_member(Abstractformat *self,
             if (length == 0U || end - cursor < (int64_t)length) goto done;
             if (!xx_ftcomp_read_at(self, cursor, codec->input, length))
                 goto done;
-            if (!xx_ftcomp_expand(codec, codec->input, length)) goto done;
+            if (!xx_ftcomp_expand(codec, codec->input, length, 0U)) goto done;
             cursor += (int64_t)length;
         } else {
             size_t avail = (size_t)((total - cursor) < (int64_t)
@@ -1547,9 +2022,10 @@ static bool xx_ftcomp_decode_member(Abstractformat *self,
             xx_mem_zero(codec->input, sizeof(codec->input));
             if (!xx_ftcomp_read_at(self, cursor, codec->input, avail))
                 goto done;
-            consumed = xx_ftcomp_entropy(codec, codec->input, avail, declared);
+            consumed = xx_ftcomp_entropy(codec, codec->input, avail, declared,
+                                         0U);
             if (consumed == 0U || consumed > avail) goto done;
-            if (!xx_ftcomp_expand(codec, codec->tokens, declared)) goto done;
+            if (!xx_ftcomp_expand(codec, codec->tokens, declared, 0U)) goto done;
             cursor += (int64_t)consumed;
         }
         if (codec->plain_at <= before) goto done;
@@ -1882,9 +2358,60 @@ bool xx_ftcomp_unpack_current_archive_record(Abstractformat *self,
         stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
-    if (!xx_ftcomp_safe_output_name(member->name) ||
-        !xx_ftcomp_decode_member(self, member, &plain, &plain_size))
+    if (!xx_ftcomp_safe_output_name(member->name)) goto done;
+    if (member->method == 33U) {
+        /* fT33 keeps the LZ dictionary across archive members. Replaying
+         * from the first member also makes a repeated or out-of-order
+         * extraction request independent of how the caller traversed the
+         * listing. The normal sequential path decodes each member once. */
+        if (!stream->shared_codec ||
+            stream->next_history_index > stream->index) {
+            xx_ftcomp_codec_free(stream->shared_codec);
+            stream->shared_codec = xx_ftcomp_codec_create(3U);
+            stream->next_history_index = 0U;
+        }
+        if (!stream->shared_codec) goto done;
+        while (stream->next_history_index <= stream->index) {
+            size_t at = stream->next_history_index;
+            uint8_t *decoded = NULL;
+            size_t decoded_size = 0U;
+            if (!xx_ftcomp_decode_member(self, &stream->items[at], &decoded,
+                                         &decoded_size, stream->shared_codec)) {
+                xx_ftcomp_codec_free(stream->shared_codec);
+                stream->shared_codec = NULL;
+                stream->next_history_index = 0U;
+                goto done;
+            }
+            if (stream->items[at].ea_compressed_size > 0 &&
+                stream->items[at].extra > 0U) {
+                xx_ftcomp_member ea = stream->items[at];
+                uint8_t *ea_plain = NULL;
+                size_t ea_size = 0U;
+                ea.data_offset = ea.ea_offset;
+                ea.compressed_size = ea.ea_compressed_size;
+                ea.uncompressed_size = (int64_t)ea.extra;
+                if (!xx_ftcomp_decode_member(self, &ea, &ea_plain,
+                                             &ea_size, stream->shared_codec)) {
+                    xx_mem_free(decoded);
+                    xx_ftcomp_codec_free(stream->shared_codec);
+                    stream->shared_codec = NULL;
+                    stream->next_history_index = 0U;
+                    goto done;
+                }
+                xx_mem_free(ea_plain);
+            }
+            ++stream->next_history_index;
+            if (at == stream->index) {
+                plain = decoded;
+                plain_size = decoded_size;
+            } else {
+                xx_mem_free(decoded);
+            }
+        }
+    } else if (!xx_ftcomp_decode_member(self, member, &plain, &plain_size,
+                                         NULL)) {
         goto done;
+    }
     path_option = xx_ftcomp_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         result = true;

@@ -15,10 +15,10 @@
 #include "../xx_format_extractor_engine.h"
 #include "xxfclib/formats/stuffit/xx_stuffit.h"
 
-static const uint8_t k_anchor0[] = { 0x53, 0x49, 0x54, 0x21 };
+static const uint8_t k_anchor0[] = { 0x72, 0x4C, 0x61, 0x75 };
 
 static const xx_format_search_anchor k_anchors[] = {
-    { k_anchor0, sizeof(k_anchor0), 0U },
+    { k_anchor0, sizeof(k_anchor0), 10U },
 };
 
 static const xx_file_type_t k_types[] = { XX_FILE_TYPE_STUFFIT };

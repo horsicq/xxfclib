@@ -178,9 +178,19 @@ bool xx_deflate_unpack_memory_to_device_ex(
 bool xx_deflate_decompress_memory(const void *src_buf, size_t src_size,
                                   void *dst_buf, size_t dst_buf_size, size_t *out_written,
                                   bool is_deflate64) {
+    return xx_deflate_decompress_memory_with_dictionary(
+        src_buf, src_size, dst_buf, dst_buf_size, out_written,
+        NULL, 0U, is_deflate64);
+}
+
+bool xx_deflate_decompress_memory_with_dictionary(
+    const void *src_buf, size_t src_size, void *dst_buf, size_t dst_buf_size,
+    size_t *out_written, const void *dictionary, size_t dictionary_size,
+    bool is_deflate64) {
     if (!src_buf || (!dst_buf && dst_buf_size > 0)) {
         return false;
     }
+    if (dictionary_size != 0U && !dictionary) return false;
 
     if (src_size == 0) {
         if (out_written) *out_written = 0;
@@ -192,8 +202,9 @@ bool xx_deflate_decompress_memory(const void *src_buf, size_t src_size,
         return false;
     }
 
-    bool success = xx_deflate_decompress_stream(&reader, NULL, (uint8_t *)dst_buf, dst_buf_size,
-                                                out_written, is_deflate64, NULL);
+    bool success = xx_deflate_decompress_stream_with_dictionary(
+        &reader, NULL, (uint8_t *)dst_buf, dst_buf_size, out_written,
+        is_deflate64, NULL, (const uint8_t *)dictionary, dictionary_size);
     xx_br_free(&reader);
     return success;
 }

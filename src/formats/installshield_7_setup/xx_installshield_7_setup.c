@@ -30,6 +30,7 @@
  * here, so the alias macro defined next to the enumerator is tested instead;
  * this picks up the real file type as soon as the reader is registered. */
 #ifdef INSTALLSHIELD_7_SETUP
+
 #define XX_INSTALLSHIELD_7_SETUP_FILE_TYPE XX_FILE_TYPE_INSTALLSHIELD_7_SETUP
 #else
 #define XX_INSTALLSHIELD_7_SETUP_FILE_TYPE XX_FILE_TYPE_UNKNOWN
@@ -102,7 +103,9 @@ typedef struct is7_window_s {
     int64_t limit;  /**< Relative end of the record area. */
     int64_t start;  /**< Relative offset of buffer[0]. */
     size_t length;
-    uint8_t buffer[IS7_WINDOW];
+    uint8_t *buffer;
+    size_t capacity;
+    uint8_t header[IS7_MAX_HEADER];
 } is7_window;
 
 typedef struct is7_stream_s {
@@ -112,6 +115,42 @@ typedef struct is7_stream_s {
     char name[IS7_NAME_BUFFER];
     char version[IS7_MAX_STRING + 1];
 } is7_stream;
+
+#include "xxfclib/global/xx_global.h"
+static size_t gb_installshield_7_setup_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_installshield_7_setup_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_installshield_7_setup_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+
 
 static uint32_t is7_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
@@ -124,13 +163,14 @@ static uint32_t is7_le32(const uint8_t *bytes) {
 
 static bool is7_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
+    const size_t file_io_capacity = gb_installshield_7_setup_capacity();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = gb_installshield_7_setup_read(device, (uint8_t *)buffer + done,
+                                    size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -141,16 +181,17 @@ static bool is7_read_at(xx_io_device *device, int64_t offset, void *buffer,
  * through when it is NULL) in fixed chunks, never as one allocation. */
 static bool is7_copy_range(xx_io_device *source, int64_t offset, int64_t size,
                            xx_io_device *destination, xx_pd_struct *pd) {
+    const size_t file_io_capacity = gb_installshield_7_setup_capacity();
     uint8_t *buffer;
     int64_t remaining = size;
     bool ok = true;
     if (!source || offset < 0 || size < 0) return false;
     if (size == 0) return true;
-    buffer = (uint8_t *)xx_mem_alloc(IS7_COPY_CHUNK);
+    buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (remaining > 0) {
-        size_t chunk = remaining > (int64_t)IS7_COPY_CHUNK
-                           ? (size_t)IS7_COPY_CHUNK
+        size_t chunk = remaining > (int64_t)file_io_capacity
+                           ? (size_t)file_io_capacity
                            : (size_t)remaining;
         size_t written = 0U;
         if ((pd && xx_pd_is_stopped(pd)) ||
@@ -159,8 +200,8 @@ static bool is7_copy_range(xx_io_device *source, int64_t offset, int64_t size,
             break;
         }
         while (destination && written < chunk) {
-            ssize_t amount = xx_io_write(destination, buffer + written,
-                                         chunk - written);
+            ssize_t amount = gb_installshield_7_setup_write(destination, buffer + written,
+                                         chunk - written, file_io_capacity);
             if (amount <= 0 || (size_t)amount > chunk - written) {
                 ok = false;
                 break;
@@ -262,21 +303,25 @@ static bool is7_locate(Abstractformat *format, is7_layout *layout) {
 /* Return a pointer to relative offset @p pos with
  * min(IS7_MAX_HEADER, limit - pos) bytes behind it; *avail gets the real
  * count.  NULL at or past the limit, or on a read error. */
-static const uint8_t *is7_view(is7_window *window, int64_t pos,
-                               size_t *avail) {
+static const uint8_t *is7_view(is7_window *window, int64_t pos, size_t *avail) {
     int64_t want = window->limit - pos;
     if (pos < 0 || want <= 0) return NULL;
     if (want > IS7_MAX_HEADER) want = IS7_MAX_HEADER;
-    if (pos < window->start ||
+    if ((uint64_t)want > window->capacity) {
+        if (xx_io_seek64(window->device, window->origin + pos, SEEK_SET) != 0 ||
+            gb_installshield_7_setup_read(window->device, window->header,
+                (size_t)want, window->capacity) != want) return NULL;
+        *avail = (size_t)want; return window->header;
+    }
+    if (!window->length || pos < window->start ||
         pos + want > window->start + (int64_t)window->length) {
         int64_t chunk = window->limit - pos;
-        if (chunk > IS7_WINDOW) chunk = IS7_WINDOW;
-        window->length = 0U;
-        if (!is7_read_at(window->device, window->origin + pos, window->buffer,
-                         (size_t)chunk))
-            return NULL;
-        window->start = pos;
-        window->length = (size_t)chunk;
+        if ((uint64_t)chunk > window->capacity) chunk = (int64_t)window->capacity;
+        window->length = 0;
+        if (xx_io_seek64(window->device, window->origin + pos, SEEK_SET) != 0 ||
+            gb_installshield_7_setup_read(window->device, window->buffer,
+                (size_t)chunk, window->capacity) != chunk) return NULL;
+        window->start = pos; window->length = (size_t)chunk;
     }
     *avail = (size_t)(window->start + (int64_t)window->length - pos);
     return window->buffer + (pos - window->start);
@@ -513,6 +558,9 @@ static bool is7_walk(Abstractformat *format, const is7_layout *layout,
     bool ok = false;
     window = (is7_window *)xx_mem_alloc(sizeof(*window));
     if (!window) return false;
+    window->capacity = gb_installshield_7_setup_capacity();
+    window->buffer = (uint8_t *)xx_mem_alloc(window->capacity);
+    if (!window->buffer) { xx_mem_free(window); return false; }
     window->device = format->device;
     window->origin = format->base_address;
     window->limit = layout->limit;
@@ -560,6 +608,7 @@ static bool is7_walk(Abstractformat *format, const is7_layout *layout,
     if (end) *end = pos;
     ok = true;
 done:
+    xx_mem_free(window->buffer);
     xx_mem_free(window);
     return ok;
 }

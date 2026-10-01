@@ -3,6 +3,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/ubi/xx_ubi.h"
 
 #include "xxfclib/algo/crc/xx_crc.h"
@@ -111,6 +112,7 @@ static void xx_ubi_vtable_destroy(Abstractformat *self);
  * 2 GiB, and xx_io_seek() takes a long, which is 32-bit on Win64. */
 static bool xx_ubi_read_at(xx_io_device *device, int64_t offset, void *data,
                            size_t size) {
+    size_t transfer_capacity = xx_get_file_buffer_size();
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
     if (!device || (!data && size != 0U) || offset < 0 ||
@@ -118,8 +120,11 @@ static bool xx_ubi_read_at(xx_io_device *device, int64_t offset, void *data,
         return false;
     }
     while (done < size) {
-        ssize_t got = xx_io_read(device, out + done, size - done);
-        if (got <= 0 || (size_t)got > size - done) return false;
+        size_t request = size - done;
+        ssize_t got;
+        if (request > transfer_capacity) request = transfer_capacity;
+        got = xx_io_read(device, out + done, request);
+        if (got <= 0 || (size_t)got > request) return false;
         done += (size_t)got;
     }
     return true;
@@ -761,7 +766,7 @@ static bool xx_ubi_extract_volume(Abstractformat *self,
                                   xx_io_device *destination,
                                   xx_pd_struct *pd) {
     uint8_t *buffer;
-    size_t buffer_size = 64U * 1024U;
+    size_t buffer_size = xx_get_file_buffer_size();
     uint32_t expected = 0U;
     uint32_t gap_size;
     size_t index;

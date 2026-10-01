@@ -6,9 +6,15 @@
 
 #include "../tar_common/xx_tar_common.h"
 #include "xxfclib/algo/lzop/xx_lzop.h"
+#include "xxfclib/algo/store/xx_store.h"
+#include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+
+#define XX_TAR_LZOP_RAW_NAME "__raw_lzop__/payload.tar"
 
 static void xx_tar_lzop_vtable_destroy(Abstractformat *self);
 
@@ -37,9 +43,16 @@ static xx_tar_common *xx_tar_lzop_common(xx_tar_lzop *archive,
 
 static void xx_tar_lzop_sync_public_state(xx_tar_lzop *archive,
                                           const xx_tar_common *common) {
+    uint64_t inner_records;
+    uint64_t inner_members;
     if (!archive || !common || !common->valid || !common->tar) return;
-    archive->number_of_records = xx_tar_get_number_of_records(common->tar);
-    archive->number_of_members = xx_tar_get_number_of_members(common->tar);
+    inner_records = xx_tar_get_number_of_records(common->tar);
+    inner_members = xx_tar_get_number_of_members(common->tar);
+    archive->number_of_records = inner_records < UINT64_MAX
+                                     ? inner_records + 1U : inner_records;
+    archive->number_of_members = inner_members < UINT64_MAX
+                                     ? inner_members + 1U : inner_members;
+    archive->format.number_of_archive_records = archive->number_of_records;
     archive->compressed_size = common->compressed_size;
     archive->uncompressed_size = common->decoded_size <= (size_t)INT64_MAX
                                      ? (int64_t)common->decoded_size
@@ -176,15 +189,49 @@ uint64_t xx_tar_lzop_get_number_of_archive_records(
                                  common, self, xx_tar_lzop_decode, pd)
                              : 0U;
     if (common && common->valid) xx_tar_lzop_sync_public_state(archive, common);
-    return result;
+    return common && common->valid ? archive->number_of_records : result;
+}
+
+static bool xx_tar_lzop_populate_raw_record(xx_tar_common *common,
+                                            xx_archive_record_state *state) {
+    xx_archive_record *record;
+    if (!common || !common->valid || !state ||
+        common->decoded_size > (size_t)INT64_MAX)
+        return false;
+    record = &state->current_record;
+    xx_archive_record_cleanup(record);
+    xx_archive_record_init(record);
+    record->header_offset = -1;
+    record->data_offset = -1;
+    record->compressed_size = common->compressed_size;
+    state->has_record =
+        xx_archive_record_set_original_name(record, XX_TAR_LZOP_RAW_NAME) &&
+        xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
+                                       (uint64_t)common->decoded_size) &&
+        xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
+                                       (uint64_t)common->compressed_size) &&
+        xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
+        xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
+                                        false);
+    return state->has_record;
 }
 
 xx_archive_record_state *xx_tar_lzop_create_archive_records_reading(
     Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
     xx_tar_common *common = xx_tar_lzop_common((xx_tar_lzop *)self, true);
-    return common ? xx_tar_common_create_archive_records_reading(
-                        common, self, xx_tar_lzop_decode, options, pd)
-                  : NULL;
+    xx_archive_record_state *state =
+        common ? xx_tar_common_create_archive_records_reading(
+                     common, self, xx_tar_lzop_decode, options, pd)
+               : NULL;
+    if (!state) return NULL;
+    xx_tar_lzop_sync_public_state((xx_tar_lzop *)self, common);
+    state->total_records = (int64_t)((xx_tar_lzop *)self)->number_of_records;
+    if (!state->has_record &&
+        !xx_tar_lzop_populate_raw_record(common, state)) {
+        xx_tar_common_free_archive_records_reading(common, state);
+        return NULL;
+    }
+    return state;
 }
 
 const xx_archive_record *xx_tar_lzop_get_current_archive_record(
@@ -192,8 +239,67 @@ const xx_archive_record *xx_tar_lzop_get_current_archive_record(
     xx_tar_common *common = self
                                 ? (xx_tar_common *)((xx_tar_lzop *)self)->internal
                                 : NULL;
-    return common ? xx_tar_common_get_current_archive_record(common, state)
-                  : NULL;
+    if (!common || !state || !state->has_record) return NULL;
+    if (state->total_records > 0 &&
+        state->current_index == state->total_records - 1)
+        return &state->current_record;
+    return xx_tar_common_get_current_archive_record(common, state);
+}
+
+static bool xx_tar_lzop_unpack_raw(xx_tar_common *common,
+                                   xx_archive_record_state *state,
+                                   xx_pd_struct *pd) {
+    const char *base = NULL;
+    char *owned_base = NULL;
+    char *path = NULL;
+    xx_io_device *destination = NULL;
+    size_t offset = 0U;
+    size_t index;
+    bool result = false;
+    if (!common || !common->valid || !state ||
+        (pd && xx_pd_is_stopped(pd))) return false;
+    for (index = 0U; index < state->options.count; ++index) {
+        const xx_meta *meta = (const xx_meta *)xx_list_at(
+            (const xx_list_t *)&state->options, index);
+        if (!meta || meta->meta_id != XX_META_ID_OPT_UNPACK_PATH) continue;
+        if (meta->var.type == XX_VAR_TYPE_STRING ||
+            meta->var.type == XX_VAR_TYPE_STRING_VIEW)
+            base = xx_var_get_str(&meta->var);
+        else if (meta->var.type == XX_VAR_TYPE_WSTRING ||
+                 meta->var.type == XX_VAR_TYPE_WSTRING_VIEW) {
+            owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(&meta->var));
+            base = owned_base;
+        }
+        break;
+    }
+    if (!base) {
+        result = true; /* Validated, but no output path was requested. */
+        goto done;
+    }
+    path = base[0] && base[xx_str_len(base) - 1U] != '/' &&
+                   base[xx_str_len(base) - 1U] != '\\'
+               ? xx_str_concat3(base, "/", XX_TAR_LZOP_RAW_NAME)
+               : xx_str_concat(base, XX_TAR_LZOP_RAW_NAME);
+    if (!path || !xx_store_create_dirs_a(path, false)) goto done;
+    destination = xx_io_file_open(path, "wb");
+    if (!destination) goto done;
+    while (offset < common->decoded_size) {
+        size_t amount = common->decoded_size - offset;
+        ssize_t written;
+        if (amount > 65536U) amount = 65536U;
+        if (pd && xx_pd_is_stopped(pd)) goto done;
+        written = xx_io_write(destination, common->decoded_data + offset,
+                              amount);
+        if (written <= 0 || (size_t)written > amount) goto done;
+        offset += (size_t)written;
+    }
+    result = true;
+done:
+    if (destination && xx_io_close(destination) != 0) result = false;
+    if (!result && path && destination) xx_rt_remove(path);
+    if (path) xx_str_free(path);
+    if (owned_base) xx_str_free(owned_base);
+    return result;
 }
 
 bool xx_tar_lzop_unpack_current_archive_record(
@@ -201,8 +307,11 @@ bool xx_tar_lzop_unpack_current_archive_record(
     xx_tar_common *common = self
                                 ? (xx_tar_common *)((xx_tar_lzop *)self)->internal
                                 : NULL;
-    return common && xx_tar_common_unpack_current_archive_record(common, state,
-                                                                  pd);
+    if (!common || !state || !state->has_record) return false;
+    if (state->total_records > 0 &&
+        state->current_index == state->total_records - 1)
+        return xx_tar_lzop_unpack_raw(common, state, pd);
+    return xx_tar_common_unpack_current_archive_record(common, state, pd);
 }
 
 bool xx_tar_lzop_archive_record_move_to_next(
@@ -210,8 +319,18 @@ bool xx_tar_lzop_archive_record_move_to_next(
     xx_tar_common *common = self
                                 ? (xx_tar_common *)((xx_tar_lzop *)self)->internal
                                 : NULL;
-    return common && xx_tar_common_archive_record_move_to_next(common, state,
-                                                                pd);
+    if (!common || !state || !state->has_record ||
+        (pd && xx_pd_is_stopped(pd))) return false;
+    if (state->current_index >= state->total_records - 1) {
+        state->has_record = false;
+        return false;
+    }
+    if (xx_tar_common_archive_record_move_to_next(common, state, pd))
+        return true;
+    if (state->current_index != state->total_records - 2)
+        return false;
+    ++state->current_index;
+    return xx_tar_lzop_populate_raw_record(common, state);
 }
 
 void xx_tar_lzop_free_archive_records_reading(

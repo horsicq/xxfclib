@@ -484,6 +484,8 @@ bool xx_tws_unpack_current_archive_record(Abstractformat *self,
     const xx_tws_member *member;
     const xx_var *path_option;
     const char *base_path = NULL;
+    const char *output_name;
+    char comment_name[64];
     char *converted_path = NULL;
     char *target_path = NULL;
     uint8_t *plain = NULL;
@@ -499,6 +501,33 @@ bool xx_tws_unpack_current_archive_record(Abstractformat *self,
     if (!stream || stream->index >= stream->count) return false;
     member = &stream->items[stream->index];
     if (!xx_tws_path_safe(member->name)) return false;
+    output_name = member->name;
+    if (xx_rt_strcmp(member->name, "**COMMENT**") == 0) {
+        size_t attempt, i;
+        /* The comment is a metadata member with a DOS-invalid name. Choose
+         * a distinct output leaf even when an ordinary file uses our name. */
+        for (attempt = 0; attempt <= stream->count; ++attempt) {
+            bool collision = false;
+            xx_rt_snprintf(comment_name, sizeof(comment_name),
+                           "archive-comment-%u.txt", (unsigned)attempt);
+            for (i = 0; i < stream->count; ++i) {
+                const char *a = stream->items[i].name, *b = comment_name;
+                bool equal = true;
+                while (*a && *b) {
+                    unsigned char ca = (unsigned char)*a++, cb = (unsigned char)*b++;
+                    if (ca >= 'A' && ca <= 'Z') ca += 'a' - 'A';
+                    if (cb >= 'A' && cb <= 'Z') cb += 'a' - 'A';
+                    if (ca != cb) { equal = false; break; }
+                }
+                if (equal && !*a && !*b) {
+                    collision = true; break;
+                }
+            }
+            if (!collision) break;
+        }
+        if (attempt > stream->count) return false;
+        output_name = comment_name;
+    }
 
     path_option = xx_tws_get_option(&state->options,
                                        XX_META_ID_OPT_UNPACK_PATH);
@@ -525,9 +554,9 @@ bool xx_tws_unpack_current_archive_record(Abstractformat *self,
     if (base_path[0] != '\0' &&
         base_path[xx_str_len(base_path) - 1U] != '/' &&
         base_path[xx_str_len(base_path) - 1U] != '\\') {
-        target_path = xx_str_concat3(base_path, "/", member->name);
+        target_path = xx_str_concat3(base_path, "/", output_name);
     } else {
-        target_path = xx_str_concat(base_path, member->name);
+        target_path = xx_str_concat(base_path, output_name);
     }
     xx_str_free(converted_path);
     if (!target_path) return false;

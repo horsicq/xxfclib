@@ -27,6 +27,7 @@
 #if !defined(_WIN32)
 
 #include "xx_memory_platform.h"
+#include "xxfclib/rt/xx_rt.h"
 #include <stdlib.h>
 
 void* xx_memory_platform_alloc(size_t size) {
@@ -69,58 +70,9 @@ size_t xx_memory_platform_usable_size(void *ptr) {
 }
 
 
-/* ------------------------------------------------------------------------ */
-/*  Runtime memory primitives                                               */
-/* ------------------------------------------------------------------------ */
-/* These define the public xx_rt_mem and xx_rt_malloc families directly, with no
- * wrapper layer - the same shape xx_rt_utf8_to_utf16 uses in the string
- * platform files. They are deliberately NOT folded into xx_memory_platform_*:
- * the contracts differ, xx_rt_malloc rounds a zero-byte request up to one byte
- * and xx_rt_realloc(ptr, 0) keeps the block, where the xx_memory_platform_*
- * pair returns NULL for both. */
-#include <string.h>
-
-
-/* ------------------------------------------------------------------------ */
-/*  CRT-compatible Runtime Memory Primitives                                */
-/* ------------------------------------------------------------------------ */
-
-
-void *xx_rt_memcpy(void *pDestination, const void *pSource, size_t nSize)
-{
-    return memcpy(pDestination, pSource, nSize);
-}
-
-void *xx_rt_memmove(void *pDestination, const void *pSource, size_t nSize)
-{
-    return memmove(pDestination, pSource, nSize);
-}
-
-void *xx_rt_memset(void *pDestination, int nValue, size_t nSize)
-{
-    return memset(pDestination, nValue, nSize);
-}
-
-int xx_rt_memcmp(const void *pLeft, const void *pRight, size_t nSize)
-{
-    return memcmp(pLeft, pRight, nSize);
-}
-
-void *xx_rt_memchr(const void *pMemory, int nChar, size_t nSize)
-{
-    const unsigned char *p = (const unsigned char *)pMemory;
-    unsigned char nWanted = (unsigned char)nChar;
-    size_t i = 0;
-
-    for (i = 0; i < nSize; i++) {
-        if (p[i] == nWanted) {
-            return (void *)(p + i);
-        }
-    }
-
-    return NULL;
-}
-
+/* Runtime allocation remains platform-specific. Its zero-size behavior is
+ * separate from xx_memory_platform_* allocation. Memory operations themselves
+ * are shared in src/memory/xx_memory_rt.c. */
 
 void *xx_rt_malloc(size_t nSize)
 {

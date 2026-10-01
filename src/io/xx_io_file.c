@@ -26,75 +26,122 @@
 
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/rt/xx_rt.h"
 #include "platforms/xx_io_platform.h"
 
+typedef struct xx_io_file_state {
+    void *handle;
+    char *path;
+} xx_io_file_state;
+
+static int xx_io_file_close_cb(xx_io_device *self);
+
+static xx_io_file_state *xx_io_file_state_of(xx_io_device *self) {
+    if (!self || self->close != xx_io_file_close_cb) return NULL;
+    return (xx_io_file_state *)self->priv;
+}
+
 static ssize_t xx_io_file_read_cb(xx_io_device *self, void *buf, size_t n) {
-    if (!self || !self->priv) {
+    xx_io_file_state *state = xx_io_file_state_of(self);
+    if (!state || !state->handle) {
         return -1;
     }
-    return xx_io_platform_file_read(self->priv, buf, n);
+    return xx_io_platform_file_read(state->handle, buf, n);
 }
 
 static ssize_t xx_io_file_write_cb(xx_io_device *self, const void *buf, size_t n) {
-    if (!self || !self->priv) {
+    xx_io_file_state *state = xx_io_file_state_of(self);
+    if (!state || !state->handle) {
         return -1;
     }
-    return xx_io_platform_file_write(self->priv, buf, n);
+    return xx_io_platform_file_write(state->handle, buf, n);
 }
 
 static int xx_io_file_seek_cb(xx_io_device *self, long off, int whence) {
-    if (!self || !self->priv) {
+    xx_io_file_state *state = xx_io_file_state_of(self);
+    if (!state || !state->handle) {
         return -1;
     }
-    return xx_io_platform_file_seek(self->priv, off, whence);
+    return xx_io_platform_file_seek(state->handle, off, whence);
 }
 
 static int xx_io_file_seek64_cb(xx_io_device *self, int64_t off, int whence) {
-    if (!self || !self->priv) {
+    xx_io_file_state *state = xx_io_file_state_of(self);
+    if (!state || !state->handle) {
         return -1;
     }
-    return xx_io_platform_file_seek64(self->priv, off, whence);
+    return xx_io_platform_file_seek64(state->handle, off, whence);
 }
 
 static int64_t xx_io_file_tell_cb(xx_io_device *self) {
-    if (!self || !self->priv) {
+    xx_io_file_state *state = xx_io_file_state_of(self);
+    if (!state || !state->handle) {
         return -1;
     }
-    return xx_io_platform_file_tell(self->priv);
+    return xx_io_platform_file_tell(state->handle);
 }
 
 static int xx_io_file_close_cb(xx_io_device *self) {
+    xx_io_file_state *state;
+    int rc = 0;
     if (!self) {
         return -1;
     }
-    int rc = 0;
-    if (self->priv) {
-        rc = xx_io_platform_file_close(self->priv);
-        self->priv = NULL;
+    state = xx_io_file_state_of(self);
+    if (state) {
+        if (state->handle) rc = xx_io_platform_file_close(state->handle);
+        xx_mem_free(state->path);
+        xx_mem_free(state);
     }
     xx_mem_free(self);
     return rc;
 }
 
 static int64_t xx_io_file_total_size_cb(xx_io_device *self) {
-    if (!self || !self->priv) {
+    xx_io_file_state *state = xx_io_file_state_of(self);
+    if (!state || !state->handle) {
         return -1;
     }
-    return xx_io_platform_file_size(self->priv);
+    return xx_io_platform_file_size(state->handle);
 }
 
 xx_io_device* xx_io_file_open(const char *path, const char *mode) {
+    xx_io_file_state *state;
+    xx_io_device *dev;
+    size_t path_size;
+    void *handle;
     if (!path || !mode) {
         return NULL;
     }
 
-    void *handle = xx_io_platform_file_open(path, mode);
+    handle = xx_io_platform_file_open(path, mode);
     if (!handle) {
         return NULL;
     }
 
-    xx_io_device *dev = (xx_io_device*)xx_mem_calloc(1, sizeof(xx_io_device));
+    path_size = xx_rt_strlen(path);
+    if (path_size == SIZE_MAX) {
+        xx_io_platform_file_close(handle);
+        return NULL;
+    }
+    state = (xx_io_file_state *)xx_mem_calloc(1, sizeof(*state));
+    if (!state) {
+        xx_io_platform_file_close(handle);
+        return NULL;
+    }
+    state->path = (char *)xx_mem_alloc(path_size + 1U);
+    if (!state->path) {
+        xx_mem_free(state);
+        xx_io_platform_file_close(handle);
+        return NULL;
+    }
+    xx_rt_memcpy(state->path, path, path_size + 1U);
+    state->handle = handle;
+
+    dev = (xx_io_device*)xx_mem_calloc(1, sizeof(xx_io_device));
     if (!dev) {
+        xx_mem_free(state->path);
+        xx_mem_free(state);
         xx_io_platform_file_close(handle);
         return NULL;
     }
@@ -106,11 +153,29 @@ xx_io_device* xx_io_file_open(const char *path, const char *mode) {
     dev->total_size     = xx_io_file_total_size_cb;
     dev->get_total_size = xx_io_file_total_size_cb;
     dev->size           = xx_io_file_total_size_cb;
-    dev->priv           = handle;
+    dev->priv           = state;
     dev->seek64         = xx_io_file_seek64_cb;
     dev->tell           = xx_io_file_tell_cb;
 
     return dev;
+}
+
+const char *xx_io_source_path(xx_io_device *device) {
+    xx_io_file_state *state;
+    xx_io_volume volume;
+    int64_t child_size;
+    while (device) {
+        state = xx_io_file_state_of(device);
+        if (state) return state->path;
+        if (xx_io_multivolume_count(device) != 1U ||
+            !xx_io_multivolume_get_volume(device, 0U, &volume, NULL))
+            return NULL;
+        child_size = xx_io_total_size(volume.device);
+        if (volume.offset != 0 || child_size < 0 || volume.size != child_size)
+            return NULL;
+        device = volume.device;
+    }
+    return NULL;
 }
 
 xx_io_device* io_file_open(const char *path, const char *mode) {

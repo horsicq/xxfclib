@@ -203,41 +203,6 @@ static bool xx_apm_append_entry(xx_apm_private *parsed, xx_apm_entry *entry) {
     return true;
 }
 
-/* Pick the map step: 512 when the block at byte 512 is an entry for the map
- * itself (or the device block is 512 anyway), the declared block size when
- * a map entry sits there, and 512 again as the last resort for a map at 512
- * whose first entry describes something else. */
-static bool xx_apm_choose_step(Abstractformat *self, int64_t total_size,
-                               uint32_t block_size, uint32_t *step,
-                               xx_apm_raw_entry *first) {
-    uint8_t buffer[XX_APM_SECTOR];
-    xx_apm_raw_entry narrow;
-    xx_apm_raw_entry wide;
-    bool narrow_ok;
-    int64_t offset;
-    narrow_ok = xx_apm_read_entry(self->device,
-                                  self->base_address + XX_APM_SECTOR,
-                                  total_size, buffer, &narrow);
-    if (narrow_ok && (block_size == XX_APM_SECTOR || narrow.start_block == 1U)) {
-        *step = XX_APM_SECTOR;
-        *first = narrow;
-        return true;
-    }
-    if (block_size != XX_APM_SECTOR &&
-        xx_apm_block_to_offset(self->base_address, 1U, block_size, &offset) &&
-        xx_apm_read_entry(self->device, offset, total_size, buffer, &wide)) {
-        *step = block_size;
-        *first = wide;
-        return true;
-    }
-    if (narrow_ok) {
-        *step = XX_APM_SECTOR;
-        *first = narrow;
-        return true;
-    }
-    return false;
-}
-
 /* Decode one map entry already known to carry the signature and publish it
  * when it has a payload on this device. */
 static bool xx_apm_collect_entry(Abstractformat *self, xx_apm_private *parsed,
@@ -283,20 +248,71 @@ static bool xx_apm_collect_entry(Abstractformat *self, xx_apm_private *parsed,
     return true;
 }
 
+/* Walk the map at one step, starting from its first entry. The walk stops
+ * at the first block that is not a map entry or that the device does not
+ * hold, so a truncated dump keeps its leading partitions. Returns false only
+ * on a hard failure (allocation, cancellation); a walk that publishes
+ * nothing returns true with count == 0. */
+static bool xx_apm_walk(Abstractformat *self, xx_apm_private *parsed,
+                        int64_t total_size, uint32_t step,
+                        const xx_apm_raw_entry *first, xx_pd_struct *pd) {
+    uint8_t buffer[XX_APM_SECTOR];
+    uint32_t index;
+    parsed->map_step = step;
+    parsed->map_entries = first->map_entries;
+    parsed->input_size = total_size;
+    for (index = 1U; index <= parsed->map_entries; ++index) {
+        xx_apm_raw_entry raw;
+        int64_t entry_offset;
+        if (pd && xx_pd_is_stopped(pd)) return false;
+        if (!xx_apm_block_to_offset(self->base_address, index, step,
+                                    &entry_offset) ||
+            !xx_apm_read_entry(self->device, entry_offset, total_size, buffer,
+                               &raw)) {
+            break;
+        }
+        parsed->entries_read = index;
+        if (entry_offset + (int64_t)XX_APM_SECTOR > parsed->archive_end) {
+            parsed->archive_end = entry_offset + (int64_t)XX_APM_SECTOR;
+        }
+        if (!xx_apm_collect_entry(self, parsed, buffer, entry_offset, index)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static void xx_apm_private_reset(xx_apm_private *parsed) {
+    xx_rt_memset(parsed, 0, sizeof(*parsed));
+    parsed->input_size = -1;
+    parsed->archive_end = -1;
+}
+
+/* Choosing the map step. The map is at 512-byte steps when the device block
+ * is 512 or when the entry at byte 512 describes the map itself. Otherwise a
+ * 'PM' entry at byte sbBlkSize suggests a map stepped in device blocks, but
+ * a classic 512-step map with at least sbBlkSize/512 entries also has a 'PM'
+ * there (its entry number sbBlkSize/512). When both layouts are possible,
+ * both are walked and the one that reads more consecutive entries wins; the
+ * wide map keeps a tie, and a wide walk that publishes nothing always gives
+ * way to a narrow walk that does. At most 2 x 257 sectors are read. */
 static bool xx_apm_parse(Abstractformat *self, xx_apm_private *parsed,
                          xx_pd_struct *pd) {
     uint8_t buffer[XX_APM_SECTOR];
-    xx_apm_raw_entry first;
+    xx_apm_raw_entry narrow;
+    xx_apm_raw_entry wide;
+    xx_apm_private alternative;
+    bool narrow_ok;
+    bool wide_ok = false;
     int64_t total_size;
     int64_t device_end;
-    uint32_t index;
+    int64_t offset;
+    uint32_t block_size;
+    uint32_t device_blocks;
     /* Initialise before the guard clause: callers run the cleanup on their
      * stack copy whatever this returns. */
-    if (parsed) {
-        xx_rt_memset(parsed, 0, sizeof(*parsed));
-        parsed->input_size = -1;
-        parsed->archive_end = -1;
-    }
+    if (parsed) xx_apm_private_reset(parsed);
+    xx_apm_private_reset(&alternative);
     if (!self || !self->device || !parsed || self->base_address < 0 ||
         (pd && xx_pd_is_stopped(pd))) return false;
     total_size = xx_io_total_size(self->device);
@@ -312,35 +328,47 @@ static bool xx_apm_parse(Abstractformat *self, xx_apm_private *parsed,
     if (xx_data_get_u16(buffer, XX_APM_SECTOR, 0U, true) != XX_APM_DDM_SIG) {
         return false;
     }
-    parsed->block_size = xx_data_get_u16(buffer, XX_APM_SECTOR, 2U, true);
-    if (!xx_apm_is_block_size(parsed->block_size)) return false;
-    parsed->device_blocks = xx_data_get_u32(buffer, XX_APM_SECTOR, 4U, true);
-    if (!xx_apm_choose_step(self, total_size, parsed->block_size,
-                            &parsed->map_step, &first)) {
-        goto fail;
+    block_size = xx_data_get_u16(buffer, XX_APM_SECTOR, 2U, true);
+    if (!xx_apm_is_block_size(block_size)) return false;
+    device_blocks = xx_data_get_u32(buffer, XX_APM_SECTOR, 4U, true);
+    narrow_ok = xx_apm_read_entry(self->device,
+                                  self->base_address + XX_APM_SECTOR,
+                                  total_size, buffer, &narrow);
+    if (!(narrow_ok && (block_size == XX_APM_SECTOR ||
+                        narrow.start_block == 1U)) &&
+        block_size != XX_APM_SECTOR &&
+        xx_apm_block_to_offset(self->base_address, 1U, block_size, &offset)) {
+        wide_ok = xx_apm_read_entry(self->device, offset, total_size, buffer,
+                                    &wide);
     }
-    parsed->map_entries = first.map_entries;
-    parsed->input_size = total_size;
-    /* The walk stops at the first block that is not a map entry or that the
-     * device does not hold: a truncated dump keeps its leading partitions. */
-    for (index = 1U; index <= parsed->map_entries; ++index) {
-        xx_apm_raw_entry raw;
-        int64_t entry_offset;
-        if (pd && xx_pd_is_stopped(pd)) goto fail;
-        if (!xx_apm_block_to_offset(self->base_address, index,
-                                    parsed->map_step, &entry_offset) ||
-            !xx_apm_read_entry(self->device, entry_offset, total_size, buffer,
-                               &raw)) {
-            break;
-        }
-        parsed->entries_read = index;
-        if (entry_offset + (int64_t)XX_APM_SECTOR > parsed->archive_end) {
-            parsed->archive_end = entry_offset + (int64_t)XX_APM_SECTOR;
-        }
-        if (!xx_apm_collect_entry(self, parsed, buffer, entry_offset, index)) {
+    if (wide_ok) {
+        if (!xx_apm_walk(self, parsed, total_size, block_size, &wide, pd)) {
             goto fail;
         }
+        if (narrow_ok) {
+            if (!xx_apm_walk(self, &alternative, total_size, XX_APM_SECTOR,
+                             &narrow, pd)) {
+                goto fail;
+            }
+            if (alternative.count != 0U &&
+                (parsed->count == 0U ||
+                 alternative.entries_read > parsed->entries_read)) {
+                xx_apm_private_cleanup(parsed);
+                *parsed = alternative;
+                xx_apm_private_reset(&alternative);
+            }
+        }
+    } else if (narrow_ok) {
+        if (!xx_apm_walk(self, parsed, total_size, XX_APM_SECTOR, &narrow,
+                         pd)) {
+            goto fail;
+        }
+    } else {
+        goto fail;
     }
+    xx_apm_private_cleanup(&alternative);
+    parsed->block_size = block_size;
+    parsed->device_blocks = device_blocks;
     if (parsed->entries_read == 0U || parsed->count == 0U) goto fail;
     /* sbBlkCount gives the device size: a disk whose map leaves its tail
      * unaccounted for still ends there, as far as this device holds it. */
@@ -352,6 +380,7 @@ static bool xx_apm_parse(Abstractformat *self, xx_apm_private *parsed,
     }
     return true;
 fail:
+    xx_apm_private_cleanup(&alternative);
     xx_apm_private_cleanup(parsed);
     return false;
 }

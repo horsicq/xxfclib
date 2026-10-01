@@ -1,10 +1,10 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  *
- * EA BIG archives.
+ * EA BIGF and BIG4 archives.
  *
- *   0..3    "BIGF"
- *   4..7    total size, unused here
+ *   0..3    "BIGF" or "BIG4"
+ *   4..7    total size (little endian), unused here
  *   8..11   u32 BE member count
  *   12..15  header size, unused here
  *
@@ -182,7 +182,7 @@ static xx_bigf_stream *xx_bigf_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (span < XX_BIGF_HEADER_SIZE) return NULL;
     if (!xx_bigf_read_at(self, self->base_address, header, sizeof(header)) ||
         header[0] != 'B' || header[1] != 'I' || header[2] != 'G' ||
-        header[3] != 'F') {
+        (header[3] != 'F' && header[3] != '4')) {
         return NULL;
     }
     count = (int64_t)(int32_t)xx_bigf_be32(header + 8);

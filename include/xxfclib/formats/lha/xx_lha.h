@@ -18,6 +18,9 @@ extern "C" {
 typedef struct xx_lha {
     Abstractformat format;
     uint64_t number_of_records;
+    /* SFX carriers may contain an MS-DOS drive prefix; the wrapper opts in
+     * to U3's safe drive-letter spelling while ordinary LHA stays strict. */
+    bool sanitize_sfx_drive;
 } xx_lha;
 
 typedef xx_lha xx_lha_t;

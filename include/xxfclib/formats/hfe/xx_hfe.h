@@ -6,7 +6,7 @@
 
 #include "xxfclib/formats/xx_format.h"
 
-/* HxC Floppy Emulator image.  Flux cells per cylinder; the member is the MFM-decoded flat image. */
+/* HxC Floppy Emulator image. FM/MFM bitcells become a flat sector image. */
 typedef struct xx_hfe {
     Abstractformat format;
     uint64_t number_of_records;

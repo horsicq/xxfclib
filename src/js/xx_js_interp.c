@@ -1523,27 +1523,26 @@ static JSCompletion exec_stmt_node(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame, 
         }
 
         case N_IF: {
-            JSVal test = eval_expr(pCtx, pNode->a, pFrame);
-            int bTest = 0;
+            JSNode *branch = pNode;
 
-            if (pCtx->bException) {
+            /* An else-if chain is represented as nested N_IF nodes. Walk
+             * the false branches without consuming one C stack frame per
+             * clause; bundled detection scripts can have hundreds of them. */
+            while (branch && branch->type == N_IF) {
+                JSVal test = eval_expr(pCtx, branch->a, pFrame);
+                int bTest;
+
+                if (pCtx->bException) {
+                    js_release(pCtx, test);
+                    return completion;
+                }
+
+                bTest = js_to_bool(pCtx, test);
                 js_release(pCtx, test);
-
-                return completion;
+                if (bTest) return exec_stmt(pCtx, branch->b, pFrame);
+                branch = branch->c;
             }
-
-            bTest = js_to_bool(pCtx, test);
-            js_release(pCtx, test);
-
-            if (bTest) {
-                return exec_stmt(pCtx, pNode->b, pFrame);
-            }
-
-            if (pNode->c) {
-                return exec_stmt(pCtx, pNode->c, pFrame);
-            }
-
-            return completion;
+            return branch ? exec_stmt(pCtx, branch, pFrame) : completion;
         }
 
         case N_WHILE: {

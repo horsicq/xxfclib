@@ -40,6 +40,10 @@ XXFC_API const xx_archive_record *xx_mpq_get_current_archive_record(
     Abstractformat *self, xx_archive_record_state *state);
 XXFC_API bool xx_mpq_unpack_current_archive_record(
     Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+/* Decode the selected member into a borrowed device; NULL validates only. */
+XXFC_API bool xx_mpq_unpack_current_archive_record_to_device(
+    Abstractformat *self, xx_archive_record_state *state,
+    xx_io_device *destination, xx_pd_struct *pd);
 XXFC_API bool xx_mpq_archive_record_move_to_next(
     Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 XXFC_API void xx_mpq_free_archive_records_reading(

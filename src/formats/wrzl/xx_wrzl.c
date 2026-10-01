@@ -1,15 +1,16 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  *
- * "WRZL" single-stream compressed file.  The header test is U3's own
- * recognition predicate (FUN_005710d0), minus the one part of it that could
- * not be recovered - see xx_wrzl.h, which also records why the codec is not
- * implemented and why the record is published anyway.
+ * WRZL wraps independently compressed LZRW1/KH blocks. The algorithm was
+ * published by Kurt Haenen in the SWAG Pascal archive (ARCHIVES/0041.PAS);
+ * the block rules were checked against all six local corpus files. The
+ * selected DUMMY.DA$ output matches U3 byte-for-byte.
  */
 
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/wrzl/xx_wrzl.h"
 
+#include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
@@ -25,6 +26,10 @@
 
 /* The container stores no member name. */
 #define WRZL_MEMBER_NAME "wrzl.bin"
+#define WRZL_BLOCK_PLAIN 32768U
+#define WRZL_BLOCK_PACKED 65535U
+#define WRZL_MODE_COMPRESSED 0x40U
+#define WRZL_MODE_COPIED 0x80U
 
 typedef struct wrzl_stream_s {
     int64_t packed_offset;
@@ -60,6 +65,162 @@ static bool wrzl_read_at(xx_io_device *device, int64_t offset, void *buffer,
     return true;
 }
 
+/* A block begins with 0x40 (coded) or 0x80 (verbatim). In coded blocks each
+ * 16-bit big-endian control word describes up to sixteen tokens, highest bit
+ * first. A set bit selects a 12-bit distance plus 4-bit match length; zero
+ * distance instead selects a four-byte repeated-byte run. */
+static bool wrzl_decode_block(const uint8_t *input, size_t input_size,
+                              uint8_t *output, size_t expected) {
+    size_t input_pos = 3U, output_pos = 0U;
+    uint32_t command;
+    unsigned bits = 16U;
+    if (!input || !output || input_size == 0U ||
+        expected > WRZL_BLOCK_PLAIN)
+        return false;
+    if (input[0] == WRZL_MODE_COPIED) {
+        if (input_size != expected + 1U) return false;
+        xx_rt_memcpy(output, input + 1U, expected);
+        return true;
+    }
+    if (input[0] != WRZL_MODE_COMPRESSED || input_size < 3U)
+        return false;
+    command = ((uint32_t)input[1] << 8U) | input[2];
+    while (input_pos < input_size) {
+        if (bits == 0U) {
+            if (input_size - input_pos < 2U) return false;
+            command = ((uint32_t)input[input_pos] << 8U) |
+                      input[input_pos + 1U];
+            input_pos += 2U;
+            bits = 16U;
+            if (input_pos == input_size) return false;
+        }
+        if ((command & 0x8000U) != 0U) {
+            uint32_t distance, length;
+            if (input_size - input_pos < 2U) return false;
+            distance = ((uint32_t)input[input_pos] << 4U) |
+                       (input[input_pos + 1U] >> 4U);
+            if (distance == 0U) {
+                if (input_size - input_pos < 4U) return false;
+                length = ((uint32_t)input[input_pos + 1U] << 8U) |
+                         input[input_pos + 2U];
+                length += 16U;
+                if (length > expected - output_pos) return false;
+                xx_rt_memset(output + output_pos, input[input_pos + 3U],
+                             length);
+                input_pos += 4U;
+                output_pos += length;
+            } else {
+                uint32_t i;
+                length = (input[input_pos + 1U] & 0x0fU) + 3U;
+                if (distance > output_pos ||
+                    length > expected - output_pos)
+                    return false;
+                for (i = 0U; i < length; ++i) {
+                    output[output_pos] = output[output_pos - distance];
+                    ++output_pos;
+                }
+                input_pos += 2U;
+            }
+        } else {
+            if (output_pos >= expected) return false;
+            output[output_pos++] = input[input_pos++];
+        }
+        command = (command << 1U) & 0xffffU;
+        --bits;
+    }
+    return output_pos == expected;
+}
+
+static bool wrzl_scan_chunks(Abstractformat *format, int64_t span,
+                              uint32_t raw_size, uint16_t *first_length,
+                              uint8_t *first_mode, uint8_t *first_control) {
+    int64_t cursor = 8;
+    uint32_t left = raw_size;
+    bool first = true;
+    if (left == 0U || span < 11) return false;
+    while (left != 0U) {
+        uint8_t lead[3];
+        uint16_t packed;
+        uint32_t plain = left < WRZL_BLOCK_PLAIN ? left : WRZL_BLOCK_PLAIN;
+        if (span - cursor < 3 ||
+            !wrzl_read_at(format->device, format->base_address + cursor,
+                          lead, sizeof(lead)))
+            return false;
+        packed = wrzl_le16(lead);
+        if (packed == 0U || packed > span - cursor - 2 ||
+            (lead[2] != WRZL_MODE_COMPRESSED &&
+             lead[2] != WRZL_MODE_COPIED) ||
+            (lead[2] == WRZL_MODE_COMPRESSED && packed < 3U) ||
+            (lead[2] == WRZL_MODE_COPIED &&
+             packed != plain + 1U))
+            return false;
+        if (first) {
+            uint8_t control = 0U;
+            if (packed >= 2U &&
+                !wrzl_read_at(format->device,
+                              format->base_address + cursor + 3,
+                              &control, 1U))
+                return false;
+            *first_length = packed;
+            *first_mode = lead[2];
+            *first_control = control;
+            first = false;
+        }
+        cursor += (int64_t)packed + 2;
+        left -= plain;
+    }
+    return cursor == span;
+}
+
+static bool wrzl_decode_stream(Abstractformat *format,
+                                const wrzl_stream *stream,
+                                xx_io_device *destination,
+                                xx_pd_struct *pd) {
+    uint8_t *packed = NULL, *plain = NULL;
+    int64_t cursor, end;
+    uint64_t left;
+    bool ok = false;
+    if (!format || !stream || stream->packed_offset < 0 ||
+        stream->packed_size < 3 || stream->unpacked_size <= 0)
+        return false;
+    packed = (uint8_t *)xx_mem_alloc(WRZL_BLOCK_PACKED);
+    plain = (uint8_t *)xx_mem_alloc(WRZL_BLOCK_PLAIN);
+    if (!packed || !plain) goto done;
+    cursor = stream->packed_offset;
+    end = cursor + stream->packed_size;
+    left = (uint64_t)stream->unpacked_size;
+    while (left != 0U) {
+        uint8_t size_field[2];
+        uint16_t packed_size;
+        size_t expected, written = 0U;
+        if ((pd && xx_pd_is_stopped(pd)) || end - cursor < 3 ||
+            !wrzl_read_at(format->device, cursor, size_field, 2U))
+            goto done;
+        packed_size = wrzl_le16(size_field);
+        expected = left < WRZL_BLOCK_PLAIN ? (size_t)left :
+                                             WRZL_BLOCK_PLAIN;
+        cursor += 2;
+        if (packed_size == 0U || packed_size > end - cursor ||
+            !wrzl_read_at(format->device, cursor, packed, packed_size) ||
+            !wrzl_decode_block(packed, packed_size, plain, expected))
+            goto done;
+        while (destination && written < expected) {
+            ssize_t amount = xx_io_write(destination, plain + written,
+                                         expected - written);
+            if (amount <= 0 || (size_t)amount > expected - written)
+                goto done;
+            written += (size_t)amount;
+        }
+        cursor += packed_size;
+        left -= expected;
+    }
+    ok = cursor == end;
+done:
+    if (packed) xx_mem_free(packed);
+    if (plain) xx_mem_free(plain);
+    return ok;
+}
+
 static void wrzl_stream_free(void *opaque) {
     if (opaque) xx_mem_free(opaque);
 }
@@ -72,6 +233,8 @@ static bool wrzl_parse(Abstractformat *format, wrzl_stream **result,
     wrzl_stream *stream;
     int64_t total, span;
     uint32_t unpacked_size;
+    uint16_t first_length;
+    uint8_t first_mode, first_control;
 
     if (!format || !format->device || !result || format->base_address < 0 ||
         (pd && xx_pd_is_stopped(pd)))
@@ -79,8 +242,7 @@ static bool wrzl_parse(Abstractformat *format, wrzl_stream **result,
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     span = total - format->base_address;
-    /* The header plus at least one packed byte. */
-    if (span <= (int64_t)XX_WRZL_HEADER_SIZE) return false;
+    if (span < 11) return false;
     if (!wrzl_read_at(format->device, format->base_address, header,
                       sizeof(header)))
         return false;
@@ -91,23 +253,20 @@ static bool wrzl_parse(Abstractformat *format, wrzl_stream **result,
     /* U3 reads this as a signed int and requires it to be non-negative. */
     if ((unpacked_size & 0x80000000U) != 0U) return false;
     if ((int64_t)unpacked_size > XX_WRZL_MAX_UNCOMPRESSED_SIZE) return false;
-    if (wrzl_le16(header + 8) == 0U) return false;
-    /* U3's range test on the mode byte.  The 128-bit membership table that
-     * refines it could not be recovered from the packed binary, so it is not
-     * reproduced; see xx_wrzl.h. */
-    if (header[10] < XX_WRZL_MODE_MIN || header[10] > XX_WRZL_MODE_MAX)
+    if (!wrzl_scan_chunks(format, span, unpacked_size, &first_length,
+                          &first_mode, &first_control))
         return false;
 
     stream = (wrzl_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;
-    stream->packed_offset = format->base_address + (int64_t)XX_WRZL_HEADER_SIZE;
-    /* The container states no packed length, so it is the measured remainder
-     * of what was handed to the reader - never a declared field. */
+    stream->packed_offset = format->base_address +
+                            (int64_t)XX_WRZL_HEADER_SIZE;
+    /* This region includes every two-byte block length and coded block. */
     stream->packed_size = span - (int64_t)XX_WRZL_HEADER_SIZE;
     stream->unpacked_size = (int64_t)unpacked_size;
-    stream->opaque_08 = wrzl_le16(header + 8);
-    stream->mode = header[10];
-    stream->flags = header[11];
+    stream->opaque_08 = first_length;
+    stream->mode = first_mode;
+    stream->flags = first_control;
     stream->consumed = false;
     *result = stream;
     return true;
@@ -150,8 +309,6 @@ static bool wrzl_set_record(xx_archive_record *record,
                                           (uint64_t)stream->unpacked_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
                                           stream->mode) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS,
-                                          stream->flags) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
                                            false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
@@ -313,13 +470,50 @@ bool xx_wrzl_archive_record_move_to_next(Abstractformat *format,
 bool xx_wrzl_unpack_current_archive_record(Abstractformat *format,
                                            xx_archive_record_state *state,
                                            xx_pd_struct *pd) {
-    (void)format;
-    (void)state;
-    (void)pd;
-    /* The codec is not identified.  A reader that refuses is worth more than
-     * one that emits garbage, so this fails closed; the packed extent and the
-     * stored uncompressed length are still published by the record. */
-    return false;
+    wrzl_stream *stream;
+    const xx_var *option;
+    const char *base = NULL;
+    char *owned_base = NULL, *path = NULL;
+    xx_io_device *destination = NULL;
+    bool ok = false, created = false;
+    if (!format || !state || state->format != format || !state->has_record ||
+        !(stream = (wrzl_stream *)state->internal_state) ||
+        stream->consumed || (pd && xx_pd_is_stopped(pd)))
+        return false;
+    option = xx_format_resolve_extra_parameter(
+        format, &state->options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
+    if (option && (uint64_t)stream->unpacked_size > xx_var_get_u64(option))
+        return false;
+    option = xx_format_resolve_extra_parameter(
+        format, &state->options, XX_META_ID_OPT_UNPACK_PATH);
+    if (!option) return wrzl_decode_stream(format, stream, NULL, pd);
+    if (option->type == XX_VAR_TYPE_STRING ||
+        option->type == XX_VAR_TYPE_STRING_VIEW)
+        base = xx_var_get_str(option);
+    else if (option->type == XX_VAR_TYPE_WSTRING ||
+             option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+        owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
+        base = owned_base;
+    }
+    if (!base) goto done;
+    path = base[0] ? xx_str_concat3(base, "/", WRZL_MEMBER_NAME) :
+                     xx_str_dup(WRZL_MEMBER_NAME);
+    if (!path || !xx_store_create_dirs_a(path, false)) goto done;
+    option = xx_format_resolve_extra_parameter(
+        format, &state->options, XX_META_ID_OPT_OVERWRITE);
+    if ((!option || !xx_var_get_bool(option)) &&
+        xx_io_file_exists_a(path))
+        goto done;
+    destination = xx_io_file_open(path, "wb");
+    if (!destination) goto done;
+    created = true;
+    ok = wrzl_decode_stream(format, stream, destination, pd);
+done:
+    if (destination && xx_io_close(destination) != 0) ok = false;
+    if (!ok && created && path) xx_io_file_remove_a(path);
+    if (path) xx_str_free(path);
+    if (owned_base) xx_str_free(owned_base);
+    return ok;
 }
 
 void xx_wrzl_free_archive_records_reading(Abstractformat *format,

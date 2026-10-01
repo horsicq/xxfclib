@@ -3,6 +3,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/tar/xx_tar.h"
 #include "xx_tar_defs.h"
 #include "xxfclib/algo/store/xx_store.h"
@@ -16,6 +17,20 @@
 #include <string.h>
 #include <wchar.h>
 
+/* GNU sparse maps use PAX metadata, a packed member prefix, or old GNU
+ * extension blocks. These limits bound parser memory and extraction work. */
+#define XX_TAR_MAX_SPARSE_EXTENTS 65536U
+#define XX_TAR_MAX_SPARSE_TOTAL_EXTENTS 262144U
+#define XX_TAR_MAX_SPARSE_MAP_BYTES (1024U * 1024U)
+#define XX_TAR_MAX_SPARSE_LOGICAL_BYTES (UINT64_C(16) * 1024U * 1024U * 1024U)
+#define XX_TAR_SPARSE_COPY_BYTES 65536U
+
+typedef struct xx_tar_sparse_extent_s {
+    uint64_t offset;
+    uint64_t size;
+    int64_t packed_offset;
+} xx_tar_sparse_extent;
+
 typedef struct xx_tar_member_s {
     int64_t header_offset;
     int64_t data_offset;
@@ -28,6 +43,10 @@ typedef struct xx_tar_member_s {
     char typeflag;
     char *name;
     char *linkname;
+    xx_tar_sparse_extent *sparse_extents;
+    size_t sparse_count;
+    uint64_t logical_size;
+    bool sparse;
     bool metadata;
     bool directory;
     bool regular;
@@ -38,6 +57,7 @@ typedef struct xx_tar_private_s {
     size_t count;
     size_t capacity;
     uint64_t visible_count;
+    size_t sparse_extent_total;
     int64_t end_marker_offset;
     int64_t archive_end;
 } xx_tar_private;
@@ -45,14 +65,34 @@ typedef struct xx_tar_private_s {
 typedef struct xx_tar_pax_s {
     char *path;
     char *linkpath;
+    char *sparse_name;
     uint64_t size;
     uint64_t mtime;
+    uint64_t sparse_major;
+    uint64_t sparse_minor;
+    uint64_t sparse_realsize;
+    uint64_t sparse_size;
+    uint64_t sparse_numblocks;
+    uint64_t sparse_pending_offset;
+    xx_tar_sparse_extent *sparse_v0_extents;
+    size_t sparse_v0_count;
+    size_t sparse_v0_capacity;
     bool path_present;
     bool linkpath_present;
     bool size_present;
     bool mtime_present;
     bool has_size;
     bool has_mtime;
+    bool sparse_keyword_seen;
+    bool sparse_major_present;
+    bool sparse_minor_present;
+    bool sparse_name_present;
+    bool sparse_realsize_present;
+    bool sparse_size_present;
+    bool sparse_numblocks_present;
+    bool sparse_map_present;
+    bool sparse_pairs_present;
+    bool sparse_pending;
 } xx_tar_pax;
 
 typedef struct xx_tar_archive_stream_s {
@@ -81,6 +121,7 @@ static void xx_tar_normalize_name(char *name);
 
 static bool xx_tar_read_exact_at(xx_io_device *device, int64_t offset,
                                  void *buffer, size_t size) {
+    size_t transfer_capacity = xx_get_file_buffer_size();
     size_t done = 0U;
     uint8_t *bytes = (uint8_t *)buffer;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
@@ -89,8 +130,11 @@ static bool xx_tar_read_exact_at(xx_io_device *device, int64_t offset,
         return false;
     }
     while (done < size) {
-        ssize_t amount = xx_io_read(device, bytes + done, size - done);
-        if (amount <= 0 || (size_t)amount > size - done) {
+        size_t request = size - done;
+        ssize_t amount;
+        if (request > transfer_capacity) request = transfer_capacity;
+        amount = xx_io_read(device, bytes + done, request);
+        if (amount <= 0 || (size_t)amount > request) {
             return false;
         }
         done += (size_t)amount;
@@ -258,6 +302,8 @@ static void xx_tar_pax_cleanup(xx_tar_pax *pax) {
     if (!pax) return;
     if (pax->path) xx_str_free(pax->path);
     if (pax->linkpath) xx_str_free(pax->linkpath);
+    if (pax->sparse_name) xx_str_free(pax->sparse_name);
+    if (pax->sparse_v0_extents) xx_mem_free(pax->sparse_v0_extents);
     xx_mem_zero(pax, sizeof(*pax));
 }
 
@@ -292,6 +338,11 @@ static bool xx_tar_pax_set_string(char **target, const uint8_t *data,
     *target = copy;
     return true;
 }
+
+static bool xx_tar_pax_append_sparse(xx_tar_pax *pax, uint64_t offset,
+                                     uint64_t size);
+static bool xx_tar_pax_parse_sparse_map(xx_tar_pax *pax,
+                                        const uint8_t *data, size_t size);
 
 static bool xx_tar_parse_pax_payload(xx_io_device *device, int64_t offset,
                                      uint64_t size, xx_tar_pax *pax) {
@@ -404,6 +455,97 @@ static bool xx_tar_parse_pax_payload(xx_io_device *device, int64_t offset,
                 pax->mtime_present = true;
                 pax->has_mtime = true;
             }
+        } else if (equal - key_start == 16U &&
+                   xx_rt_memcmp(data + key_start,"GNU.sparse.major",16U)==0) {
+            pax->sparse_keyword_seen = true;
+            pax->sparse_major_present = true;
+            if (!xx_tar_parse_decimal_bytes(data + value_start,value_size,
+                                            &pax->sparse_major)) {
+                xx_mem_free(data);return false;
+            }
+        } else if (equal - key_start == 16U &&
+                   xx_rt_memcmp(data + key_start,"GNU.sparse.minor",16U)==0) {
+            pax->sparse_keyword_seen = true;
+            pax->sparse_minor_present = true;
+            if (!xx_tar_parse_decimal_bytes(data + value_start,value_size,
+                                            &pax->sparse_minor)) {
+                xx_mem_free(data);return false;
+            }
+        } else if (equal - key_start == 15U &&
+                   xx_rt_memcmp(data + key_start,"GNU.sparse.name",15U)==0) {
+            size_t j;
+            pax->sparse_keyword_seen = true;
+            pax->sparse_name_present = true;
+            for (j=0U;j<value_size;++j) {
+                if (data[value_start+j]==0U) {
+                    xx_mem_free(data);return false;
+                }
+            }
+            if (value_size==0U ||
+                !xx_tar_pax_set_string(&pax->sparse_name,
+                                       data + value_start,value_size)) {
+                xx_mem_free(data);return false;
+            }
+        } else if (equal - key_start == 19U &&
+                   xx_rt_memcmp(data + key_start,"GNU.sparse.realsize",19U)==0) {
+            pax->sparse_keyword_seen = true;
+            pax->sparse_realsize_present = true;
+            if (!xx_tar_parse_decimal_bytes(data + value_start,value_size,
+                                            &pax->sparse_realsize)) {
+                xx_mem_free(data);return false;
+            }
+        } else if (equal - key_start == 15U &&
+                   xx_rt_memcmp(data + key_start,"GNU.sparse.size",15U)==0) {
+            pax->sparse_keyword_seen = true;
+            if (pax->sparse_size_present ||
+                !xx_tar_parse_decimal_bytes(data + value_start,value_size,
+                                            &pax->sparse_size)) {
+                xx_mem_free(data);return false;
+            }
+            pax->sparse_size_present = true;
+        } else if (equal - key_start == 20U &&
+                   xx_rt_memcmp(data + key_start,"GNU.sparse.numblocks",20U)==0) {
+            pax->sparse_keyword_seen = true;
+            if (pax->sparse_numblocks_present ||
+                !xx_tar_parse_decimal_bytes(data + value_start,value_size,
+                                            &pax->sparse_numblocks)) {
+                xx_mem_free(data);return false;
+            }
+            pax->sparse_numblocks_present = true;
+        } else if (equal - key_start == 17U &&
+                   xx_rt_memcmp(data + key_start,"GNU.sparse.offset",17U)==0) {
+            pax->sparse_keyword_seen = true;
+            if (pax->sparse_map_present || pax->sparse_pending ||
+                !xx_tar_parse_decimal_bytes(data + value_start,value_size,
+                                            &pax->sparse_pending_offset)) {
+                xx_mem_free(data);return false;
+            }
+            pax->sparse_pending = true;
+            pax->sparse_pairs_present = true;
+        } else if (equal - key_start == 19U &&
+                   xx_rt_memcmp(data + key_start,"GNU.sparse.numbytes",19U)==0) {
+            uint64_t length_value;
+            pax->sparse_keyword_seen = true;
+            if (!pax->sparse_pending ||
+                !xx_tar_parse_decimal_bytes(data + value_start,value_size,
+                                            &length_value) ||
+                !xx_tar_pax_append_sparse(pax,pax->sparse_pending_offset,
+                                          length_value)) {
+                xx_mem_free(data);return false;
+            }
+            pax->sparse_pending = false;
+        } else if (equal - key_start == 14U &&
+                   xx_rt_memcmp(data + key_start,"GNU.sparse.map",14U)==0) {
+            pax->sparse_keyword_seen = true;
+            if (!xx_tar_pax_parse_sparse_map(pax,data + value_start,
+                                             value_size)) {
+                xx_mem_free(data);return false;
+            }
+        } else if (equal - key_start >= 11U &&
+                   xx_rt_memcmp(data + key_start,"GNU.sparse.",11U)==0) {
+            /* A different sparse version must never be unpacked as a
+             * seemingly ordinary, condensed regular file. */
+            pax->sparse_keyword_seen = true;
         }
         cursor = record_end;
     }
@@ -412,9 +554,11 @@ static bool xx_tar_parse_pax_payload(xx_io_device *device, int64_t offset,
 }
 
 static bool xx_tar_pax_merge(xx_tar_pax *destination,
-                             const xx_tar_pax *source) {
+                             xx_tar_pax *source) {
     char *copy;
     if (!destination || !source) return false;
+    if (source->sparse_keyword_seen && destination->sparse_keyword_seen)
+        return false;
     if (source->path_present) {
         copy = source->path ? xx_str_dup(source->path) : NULL;
         if (source->path && !copy) return false;
@@ -439,6 +583,40 @@ static bool xx_tar_pax_merge(xx_tar_pax *destination,
         destination->has_mtime = source->has_mtime;
         destination->mtime_present = true;
     }
+    if (source->sparse_keyword_seen) {
+        destination->sparse_keyword_seen=true;
+        destination->sparse_size=source->sparse_size;
+        destination->sparse_size_present=source->sparse_size_present;
+        destination->sparse_numblocks=source->sparse_numblocks;
+        destination->sparse_numblocks_present=source->sparse_numblocks_present;
+        destination->sparse_map_present=source->sparse_map_present;
+        destination->sparse_pairs_present=source->sparse_pairs_present;
+        destination->sparse_pending=source->sparse_pending;
+        destination->sparse_v0_extents=source->sparse_v0_extents;
+        destination->sparse_v0_count=source->sparse_v0_count;
+        destination->sparse_v0_capacity=source->sparse_v0_capacity;
+        source->sparse_v0_extents=NULL;
+        source->sparse_v0_count=source->sparse_v0_capacity=0U;
+    }
+    if (source->sparse_major_present) {
+        destination->sparse_major=source->sparse_major;
+        destination->sparse_major_present=true;
+    }
+    if (source->sparse_minor_present) {
+        destination->sparse_minor=source->sparse_minor;
+        destination->sparse_minor_present=true;
+    }
+    if (source->sparse_realsize_present) {
+        destination->sparse_realsize=source->sparse_realsize;
+        destination->sparse_realsize_present=true;
+    }
+    if (source->sparse_name_present) {
+        copy=source->sparse_name ? xx_str_dup(source->sparse_name) : NULL;
+        if (source->sparse_name && !copy) return false;
+        if (destination->sparse_name) xx_str_free(destination->sparse_name);
+        destination->sparse_name=copy;
+        destination->sparse_name_present=true;
+    }
     return true;
 }
 
@@ -446,6 +624,7 @@ static void xx_tar_member_cleanup(xx_tar_member *member) {
     if (!member) return;
     if (member->name) xx_str_free(member->name);
     if (member->linkname) xx_str_free(member->linkname);
+    if (member->sparse_extents) xx_mem_free(member->sparse_extents);
     xx_mem_zero(member, sizeof(*member));
 }
 
@@ -491,14 +670,279 @@ static bool xx_tar_add_i64(int64_t left, uint64_t right, int64_t *result) {
     return true;
 }
 
-static bool xx_tar_all_zero_range(xx_io_device *device, int64_t offset,
-                                  int64_t size) {
-    uint8_t buffer[4096];
+static bool xx_tar_pax_append_sparse(xx_tar_pax *pax, uint64_t offset,
+                                     uint64_t size) {
+    xx_tar_sparse_extent *grown;
+    size_t capacity;
+    if (!pax || pax->sparse_v0_count >= XX_TAR_MAX_SPARSE_EXTENTS) return false;
+    if (pax->sparse_v0_count == pax->sparse_v0_capacity) {
+        capacity = pax->sparse_v0_capacity ? pax->sparse_v0_capacity * 2U : 8U;
+        if (capacity > XX_TAR_MAX_SPARSE_EXTENTS)
+            capacity = XX_TAR_MAX_SPARSE_EXTENTS;
+        grown = (xx_tar_sparse_extent *)xx_mem_realloc(
+            pax->sparse_v0_extents, capacity * sizeof(*grown));
+        if (!grown) return false;
+        pax->sparse_v0_extents = grown;
+        pax->sparse_v0_capacity = capacity;
+    }
+    pax->sparse_v0_extents[pax->sparse_v0_count].offset = offset;
+    pax->sparse_v0_extents[pax->sparse_v0_count].size = size;
+    pax->sparse_v0_extents[pax->sparse_v0_count].packed_offset = 0;
+    ++pax->sparse_v0_count;
+    return true;
+}
+
+static bool xx_tar_pax_parse_sparse_map(xx_tar_pax *pax,
+                                        const uint8_t *data, size_t size) {
+    size_t cursor = 0U;
+    if (!pax || !data || size == 0U || pax->sparse_map_present ||
+        pax->sparse_pairs_present || pax->sparse_pending) return false;
+    while (cursor < size) {
+        uint64_t offset, length;
+        size_t start = cursor;
+        while (cursor < size && data[cursor] != ',') ++cursor;
+        if (cursor == size ||
+            !xx_tar_parse_decimal_bytes(data + start, cursor - start,
+                                        &offset)) return false;
+        start = ++cursor;
+        while (cursor < size && data[cursor] != ',') ++cursor;
+        if (!xx_tar_parse_decimal_bytes(data + start, cursor - start,
+                                        &length) ||
+            !xx_tar_pax_append_sparse(pax, offset, length)) return false;
+        if (cursor < size) ++cursor;
+        if (cursor == size && data[size - 1U] == ',') return false;
+    }
+    pax->sparse_map_present = true;
+    return true;
+}
+
+typedef struct xx_tar_sparse_map_reader_s {
+    xx_io_device *device;
+    xx_pd_struct *pd;
+    int64_t offset;
+    uint64_t limit;
+    uint64_t position;
+    uint64_t block_start;
+    size_t block_size;
+    uint8_t block[XX_TAR_BLOCK_SIZE];
+} xx_tar_sparse_map_reader;
+
+static bool xx_tar_sparse_map_byte(xx_tar_sparse_map_reader *reader,
+                                   uint8_t *result) {
+    uint64_t start;
+    size_t amount;
+    if (!reader || !result || reader->position>=reader->limit ||
+        (reader->pd && xx_pd_is_stopped(reader->pd))) return false;
+    start=reader->position & ~(uint64_t)(XX_TAR_BLOCK_SIZE-1U);
+    if (reader->block_start!=start || reader->block_size==0U) {
+        amount=reader->limit-start>XX_TAR_BLOCK_SIZE ?
+               XX_TAR_BLOCK_SIZE : (size_t)(reader->limit-start);
+        if (!xx_tar_read_exact_at(reader->device,
+                                  reader->offset+(int64_t)start,
+                                  reader->block,amount) ||
+            (reader->pd && xx_pd_is_stopped(reader->pd))) return false;
+        reader->block_start=start;
+        reader->block_size=amount;
+    }
+    *result=reader->block[(size_t)(reader->position-start)];
+    ++reader->position;
+    return true;
+}
+
+static bool xx_tar_sparse_map_number(xx_tar_sparse_map_reader *reader,
+                                     uint64_t *value) {
+    uint64_t parsed=0U;
+    unsigned digits=0U;
+    uint8_t ch;
+    if (!reader || !value) return false;
+    while (xx_tar_sparse_map_byte(reader,&ch)) {
+        unsigned digit;
+        if (ch=='\n') {
+            if (digits==0U) return false;
+            *value=parsed;
+            return true;
+        }
+        if (ch<'0' || ch>'9') return false;
+        digit=(unsigned)(ch-'0');
+        if (parsed>(UINT64_MAX-digit)/10U) return false;
+        parsed=parsed*10U+digit;
+        ++digits;
+    }
+    return false;
+}
+
+static bool xx_tar_parse_sparse_map(xx_io_device *device,
+                                    xx_tar_member *member,
+                                    uint64_t logical_size,
+                                    xx_pd_struct *pd) {
+    xx_tar_sparse_map_reader map;
+    xx_tar_sparse_extent *extents=NULL;
+    uint64_t count,packed_map,packed_data=0U,last_end=0U;
+    size_t i;
+    if (!device || !member || member->data_offset<0 ||
+        member->data_size<0 ||
+        logical_size>XX_TAR_MAX_SPARSE_LOGICAL_BYTES) return false;
+    xx_mem_zero(&map,sizeof(map));
+    map.device=device;
+    map.pd=pd;
+    map.offset=member->data_offset;
+    map.limit=(uint64_t)member->data_size;
+    if (map.limit>XX_TAR_MAX_SPARSE_MAP_BYTES)
+        map.limit=XX_TAR_MAX_SPARSE_MAP_BYTES;
+    map.block_start=UINT64_MAX;
+    if (!xx_tar_sparse_map_number(&map,&count) ||
+        count>XX_TAR_MAX_SPARSE_EXTENTS ||
+        count>SIZE_MAX/sizeof(*extents)) return false;
+    if (count) {
+        extents=(xx_tar_sparse_extent *)xx_mem_alloc(
+            (size_t)count*sizeof(*extents));
+        if (!extents) return false;
+    }
+    for (i=0U;i<(size_t)count;++i) {
+        uint64_t offset,size;
+        if (!xx_tar_sparse_map_number(&map,&offset) ||
+            !xx_tar_sparse_map_number(&map,&size) ||
+            offset<last_end || offset>logical_size ||
+            size>logical_size-offset ||
+            (size==0U && (i+1U!=(size_t)count ||
+                          offset!=logical_size)) ||
+            size>(uint64_t)member->data_size-packed_data) goto fail;
+        extents[i].offset=offset;
+        extents[i].size=size;
+        extents[i].packed_offset=0;
+        packed_data+=size;
+        last_end=offset+size;
+    }
+    if (map.position>UINT64_MAX-(XX_TAR_BLOCK_SIZE-1U)) goto fail;
+    packed_map=(map.position+XX_TAR_BLOCK_SIZE-1U) &
+               ~(uint64_t)(XX_TAR_BLOCK_SIZE-1U);
+    if (packed_map>map.limit || packed_map>(uint64_t)member->data_size ||
+        packed_data!=(uint64_t)member->data_size-packed_map) goto fail;
+    while (map.position<packed_map) {
+        uint8_t pad;
+        if (!xx_tar_sparse_map_byte(&map,&pad) || pad!=0U) goto fail;
+    }
+    packed_data=0U;
+    for (i=0U;i<(size_t)count;++i) {
+        if (!xx_tar_add_i64(member->data_offset,
+                            packed_map+packed_data,
+                            &extents[i].packed_offset)) goto fail;
+        packed_data+=extents[i].size;
+    }
+    member->sparse=true;
+    member->logical_size=logical_size;
+    member->sparse_extents=extents;
+    member->sparse_count=(size_t)count;
+    return true;
+fail:
+    if (extents) xx_mem_free(extents);
+    return false;
+}
+
+static bool xx_tar_attach_inline_sparse(xx_tar_member *member,
+                                        const xx_tar_sparse_extent *source,
+                                        size_t count, uint64_t logical_size) {
+    xx_tar_sparse_extent *extents=NULL;
+    uint64_t last_end=0U, packed=0U;
+    size_t i;
+    if (!member || member->data_offset<0 || member->data_size<0 ||
+        logical_size>XX_TAR_MAX_SPARSE_LOGICAL_BYTES ||
+        count>XX_TAR_MAX_SPARSE_EXTENTS ||
+        (count && !source)) return false;
+    if (count) {
+        extents=(xx_tar_sparse_extent *)xx_mem_alloc(count*sizeof(*extents));
+        if (!extents) return false;
+    }
+    for (i=0U;i<count;++i) {
+        uint64_t offset=source[i].offset, size=source[i].size;
+        if (offset<last_end || offset>logical_size ||
+            size>logical_size-offset ||
+            (size==0U && (i+1U!=count || offset!=logical_size)) ||
+            size>(uint64_t)member->data_size-packed ||
+            !xx_tar_add_i64(member->data_offset,packed,
+                            &extents[i].packed_offset)) goto fail;
+        extents[i].offset=offset;
+        extents[i].size=size;
+        packed+=size;
+        last_end=offset+size;
+    }
+    if (packed!=(uint64_t)member->data_size) goto fail;
+    member->sparse=true;
+    member->logical_size=logical_size;
+    member->sparse_extents=extents;
+    member->sparse_count=count;
+    return true;
+fail:
+    if (extents) xx_mem_free(extents);
+    return false;
+}
+
+static bool xx_tar_oldgnu_flag(uint8_t value, bool *extended) {
+    if (!extended) return false;
+    if (value == 1U || value == '1') {
+        *extended = true; return true;
+    }
+    if (value == 0U || value == '0') {
+        *extended = false; return true;
+    }
+    return false;
+}
+
+static bool xx_tar_oldgnu_map_block(xx_tar_pax *map,
+                                    const uint8_t *block, size_t count) {
+    size_t i;
+    if (!map || !block) return false;
+    for (i=0U;i<count;++i) {
+        uint64_t offset,size;
+        const char *entry=(const char *)block+i*24U;
+        if (!xx_tar_parse_number(entry,12U,&offset) ||
+            !xx_tar_parse_number(entry+12U,12U,&size)) return false;
+        if (offset || size) {
+            if (!xx_tar_pax_append_sparse(map,offset,size)) return false;
+        }
+    }
+    return true;
+}
+
+static bool xx_tar_parse_oldgnu_sparse(xx_io_device *device,
+                                       const xx_tar_header *header,
+                                       int64_t total_size,
+                                       xx_tar_member *member) {
+    xx_tar_pax map={0};
+    const uint8_t *bytes=(const uint8_t *)header;
+    uint64_t logical_size;
+    int64_t data_offset;
+    bool extended,success=false;
+    if (!device || !header || !member || member->data_offset<0 ||
+        member->data_size<0 ||
+        xx_rt_memcmp(bytes+257U,"ustar  ",7U)!=0 ||
+        !xx_tar_parse_number((const char *)bytes+483U,12U,&logical_size) ||
+        !xx_tar_oldgnu_flag(bytes[482U],&extended) ||
+        !xx_tar_oldgnu_map_block(&map,bytes+386U,4U)) goto done;
+    data_offset=member->data_offset;
+    while (extended) {
+        uint8_t block[XX_TAR_BLOCK_SIZE];
+        if (data_offset>total_size-XX_TAR_BLOCK_SIZE ||
+            !xx_tar_read_exact_at(device,data_offset,block,sizeof(block)) ||
+            !xx_tar_oldgnu_map_block(&map,block,21U) ||
+            !xx_tar_oldgnu_flag(block[504U],&extended)) goto done;
+        data_offset+=XX_TAR_BLOCK_SIZE;
+    }
+    member->data_offset=data_offset;
+    success=xx_tar_attach_inline_sparse(member,map.sparse_v0_extents,
+                                        map.sparse_v0_count,logical_size);
+done:
+    xx_tar_pax_cleanup(&map);
+    return success;
+}
+
+static bool xx_tar_all_zero_range_buffered(xx_io_device *device, int64_t offset,
+                                  int64_t size, uint8_t *buffer, size_t buffer_capacity) {
     int64_t remaining = size;
     if (!device || offset < 0 || size < 0) return false;
     while (remaining > 0) {
-        size_t amount = remaining > (int64_t)sizeof(buffer)
-                            ? sizeof(buffer)
+        size_t amount = (uint64_t)remaining > (uint64_t)buffer_capacity
+                            ? buffer_capacity
                             : (size_t)remaining;
         size_t i;
         if (!xx_tar_read_exact_at(device, offset, buffer, amount)) return false;
@@ -511,6 +955,17 @@ static bool xx_tar_all_zero_range(xx_io_device *device, int64_t offset,
     return true;
 }
 
+static bool xx_tar_all_zero_range(xx_io_device *device, int64_t offset,
+                                  int64_t size) {
+    size_t buffer_capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
+    bool buffer_result;
+    if (!buffer) return false;
+    buffer_result = xx_tar_all_zero_range_buffered(device, offset, size, buffer, buffer_capacity);
+    xx_mem_free(buffer);
+    return buffer_result;
+}
+
 static bool xx_tar_parse_archive(Abstractformat *self,
                                  xx_tar_private **out_private,
                                  xx_pd_struct *pd) {
@@ -520,6 +975,7 @@ static bool xx_tar_parse_archive(Abstractformat *self,
     char *gnu_long_name = NULL;
     char *gnu_long_link = NULL;
     int64_t total_size;
+    int64_t saved_position;
     int64_t offset;
     bool success = false;
 
@@ -527,13 +983,19 @@ static bool xx_tar_parse_archive(Abstractformat *self,
         return false;
     }
     *out_private = NULL;
+    saved_position=xx_io_tell(self->device);
+    if (saved_position<0) return false;
     total_size = xx_io_total_size(self->device);
     if (total_size < self->base_address ||
         total_size - self->base_address < XX_TAR_BLOCK_SIZE) {
+        (void)xx_io_seek64(self->device,saved_position,SEEK_SET);
         return false;
     }
     priv = (xx_tar_private *)xx_mem_calloc(1U, sizeof(*priv));
-    if (!priv) return false;
+    if (!priv) {
+        (void)xx_io_seek64(self->device,saved_position,SEEK_SET);
+        return false;
+    }
     offset = self->base_address;
 
     while (offset < total_size) {
@@ -565,6 +1027,8 @@ static bool xx_tar_parse_archive(Abstractformat *self,
             uint8_t second[XX_TAR_BLOCK_SIZE];
             int64_t end_offset;
             int64_t remaining = total_size - offset;
+            if (local_pax.sparse_keyword_seen ||
+                global_pax.sparse_keyword_seen) goto cleanup;
             if (remaining >= XX_TAR_END_SIZE) {
                 if (!xx_tar_read_exact_at(self->device,
                                           offset + XX_TAR_BLOCK_SIZE,
@@ -628,12 +1092,23 @@ static bool xx_tar_parse_archive(Abstractformat *self,
         padded_size = (data_size + XX_TAR_BLOCK_SIZE - 1U) &
                       ~(uint64_t)(XX_TAR_BLOCK_SIZE - 1U);
         data_offset = offset + XX_TAR_BLOCK_SIZE;
+        if (header.typeflag == 'S') {
+            if (data_size>(uint64_t)INT64_MAX) goto cleanup_member;
+            member.data_offset=data_offset;
+            member.data_size=(int64_t)data_size;
+            if (!xx_tar_parse_oldgnu_sparse(self->device,&header,
+                                             total_size,&member))
+                goto cleanup_member;
+            data_offset=member.data_offset;
+        }
         if (!xx_tar_add_i64(data_offset, padded_size, &next_offset) ||
             next_offset > total_size) {
             goto cleanup;
         }
 
-        header_name = xx_tar_join_name(&header);
+        header_name = header.typeflag == 'S'
+                          ? xx_tar_field_string(header.name,sizeof(header.name))
+                          : xx_tar_join_name(&header);
         header_link = xx_tar_field_string(header.linkname,
                                           sizeof(header.linkname));
         if (!header_name || !header_link) goto cleanup_member;
@@ -641,6 +1116,7 @@ static bool xx_tar_parse_archive(Abstractformat *self,
         member.data_offset = data_offset;
         member.data_size = (int64_t)data_size;
         member.padded_size = (int64_t)padded_size;
+        if (!member.sparse) member.logical_size = data_size;
         member.mode = mode;
         member.uid = uid;
         member.gid = gid;
@@ -698,6 +1174,41 @@ static bool xx_tar_parse_archive(Abstractformat *self,
                                   : (gnu_long_name ? gnu_long_name
                                                    : member.name);
             }
+            if (global_pax.sparse_keyword_seen) goto cleanup_member;
+            if (local_pax.sparse_keyword_seen) {
+                if (header.typeflag=='S') goto cleanup_member;
+                if (header.typeflag!='0' && header.typeflag!='\0')
+                    goto cleanup_member;
+                if (local_pax.sparse_major_present ||
+                    local_pax.sparse_minor_present) {
+                    if (!local_pax.sparse_major_present ||
+                        !local_pax.sparse_minor_present ||
+                        !local_pax.sparse_name_present ||
+                        !local_pax.sparse_realsize_present ||
+                        local_pax.sparse_size_present ||
+                        local_pax.sparse_numblocks_present ||
+                        local_pax.sparse_v0_count ||
+                        local_pax.sparse_major!=1U ||
+                        local_pax.sparse_minor!=0U ||
+                        !local_pax.sparse_name)
+                        goto cleanup_member;
+                    name_source=local_pax.sparse_name;
+                } else {
+                    if (!local_pax.sparse_size_present ||
+                        !local_pax.sparse_numblocks_present ||
+                        local_pax.sparse_realsize_present ||
+                        local_pax.sparse_pending ||
+                        local_pax.sparse_numblocks!=
+                            local_pax.sparse_v0_count ||
+                        (local_pax.sparse_map_present ==
+                         local_pax.sparse_pairs_present) ||
+                        (local_pax.sparse_map_present &&
+                         !local_pax.sparse_name_present))
+                        goto cleanup_member;
+                    if (local_pax.sparse_name_present)
+                        name_source=local_pax.sparse_name;
+                }
+            }
             if (global_pax.linkpath) link_source = global_pax.linkpath;
             if (gnu_long_link) link_source = gnu_long_link;
             if (local_pax.linkpath_present) {
@@ -731,7 +1242,24 @@ static bool xx_tar_parse_archive(Abstractformat *self,
             member.regular = header.typeflag == '\0' ||
                              header.typeflag == ' ' ||
                              header.typeflag == '0' ||
-                             header.typeflag == '7';
+                             header.typeflag == '7' ||
+                             header.typeflag == 'S';
+            if (local_pax.sparse_keyword_seen &&
+                (!member.regular ||
+                 !(local_pax.sparse_major_present
+                       ? xx_tar_parse_sparse_map(self->device,&member,
+                                                local_pax.sparse_realsize,pd)
+                       : xx_tar_attach_inline_sparse(
+                             &member,local_pax.sparse_v0_extents,
+                             local_pax.sparse_v0_count,
+                             local_pax.sparse_size))))
+                goto cleanup_member;
+            if (member.sparse) {
+                if (member.sparse_count>
+                    XX_TAR_MAX_SPARSE_TOTAL_EXTENTS-
+                    priv->sparse_extent_total) goto cleanup_member;
+                priv->sparse_extent_total+=member.sparse_count;
+            }
             ++priv->visible_count;
         }
 
@@ -762,6 +1290,8 @@ cleanup:
     if (gnu_long_link) xx_str_free(gnu_long_link);
     xx_tar_pax_cleanup(&global_pax);
     xx_tar_pax_cleanup(&local_pax);
+    if (xx_io_seek64(self->device,saved_position,SEEK_SET)!=0)
+        success=false;
     if (!success || priv->archive_end <= self->base_address) {
         xx_tar_private_free(priv);
         return false;
@@ -787,18 +1317,6 @@ static bool xx_tar_copy_options(xx_list_s *destination,
         }
     }
     return true;
-}
-
-static const xx_var *xx_tar_find_option(const xx_list_s *options,
-                                        uint32_t id) {
-    size_t i;
-    if (!options) return NULL;
-    for (i = 0U; i < options->count; ++i) {
-        const xx_meta *item =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, i);
-        if (item && item->meta_id == id) return &item->var;
-    }
-    return NULL;
 }
 
 static bool xx_tar_ascii_equal_nocase(const char *value, size_t length,
@@ -898,11 +1416,12 @@ static bool xx_tar_populate_record(xx_archive_record *record,
                                           member->name) &&
            xx_archive_record_set_meta_u64(record,
                                           XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)member->data_size) &&
+                                          member->logical_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
                                           (uint64_t)member->data_size) &&
            xx_archive_record_set_meta_u64(record,
-                                          XX_META_ID_COMPRESSION_METHOD, 0U) &&
+                                          XX_META_ID_COMPRESSION_METHOD,
+                                          member->sparse ? 1U : 0U) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
                                           member->mtime) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES,
@@ -911,6 +1430,10 @@ static bool xx_tar_populate_record(xx_archive_record *record,
                                            member->directory) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED,
                                            false) &&
+           (member->typeflag != '2' || !member->linkname ||
+            !member->linkname[0] ||
+            xx_archive_record_set_meta_str(record, XX_META_ID_LINK_TARGET,
+                                           member->linkname)) &&
            (!member->linkname || !member->linkname[0] ||
             xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT,
                                            member->linkname));
@@ -1008,18 +1531,26 @@ bool xx_tar_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     xx_tar *tar;
     xx_tar_private *priv = NULL;
     int64_t total_size;
+    int64_t saved_position;
     if (!self || !xx_tar_parse_archive(self, &priv, pd)) {
         if (self) self->is_valid = false;
         return false;
     }
     tar = (xx_tar *)self;
+    saved_position=xx_io_tell(self->device);
+    total_size=xx_io_total_size(self->device);
+    if (saved_position<0 || total_size<priv->archive_end ||
+        xx_io_seek64(self->device,saved_position,SEEK_SET)!=0) {
+        xx_tar_private_free(priv);
+        self->is_valid=false;
+        return false;
+    }
     if (tar->internal) xx_tar_private_free(tar->internal);
     tar->internal = priv;
     tar->number_of_members = (uint64_t)priv->count;
     tar->number_of_records = priv->visible_count;
     tar->archive_end = priv->archive_end;
     self->format_size = priv->archive_end - self->base_address;
-    total_size = xx_io_total_size(self->device);
     self->overlay_offset = priv->archive_end < total_size
                                ? priv->archive_end
                                : -1;
@@ -1131,17 +1662,178 @@ bool xx_tar_archive_record_move_to_next(Abstractformat *self,
     return true;
 }
 
-bool xx_tar_unpack_current_archive_record(Abstractformat *self,
+static bool xx_tar_sparse_write(xx_io_device *output,const uint8_t *bytes,
+                                size_t count,xx_pd_struct *pd) {
+    size_t done=0U;
+    if (!output || (pd && xx_pd_is_stopped(pd))) return false;
+    while (done<count) {
+        ssize_t put=xx_io_write(output,bytes+done,count-done);
+        if (put<=0 || (size_t)put>count-done ||
+            (pd && xx_pd_is_stopped(pd))) return false;
+        done+=(size_t)put;
+    }
+    return true;
+}
+
+static bool xx_tar_sparse_emit(Abstractformat *self,
+                               const xx_tar_member *member,
+                               xx_io_device *output,xx_pd_struct *pd) {
+    uint8_t *buffer;
+    int64_t saved;
+    uint64_t logical=0U;
+    size_t i;
+    bool result=true;
+    if (!self || !self->device || !member || !member->sparse || !output ||
+        output==self->device ||
+        (pd && xx_pd_is_stopped(pd))) return false;
+    saved=xx_io_tell(self->device);
+    if (saved<0) return false;
+    buffer=(uint8_t *)xx_mem_alloc(XX_TAR_SPARSE_COPY_BYTES);
+    if (!buffer) return false;
+    for (i=0U;i<=member->sparse_count && result;++i) {
+        const xx_tar_sparse_extent *extent=i<member->sparse_count ?
+            &member->sparse_extents[i] : NULL;
+        uint64_t end=extent ? extent->offset : member->logical_size;
+        uint64_t zero_bytes;
+        if (end<logical) { result=false;break; }
+        zero_bytes=end-logical;
+        xx_rt_memset(buffer,0,XX_TAR_SPARSE_COPY_BYTES);
+        while (zero_bytes && result) {
+            size_t n=zero_bytes>XX_TAR_SPARSE_COPY_BYTES ?
+                     XX_TAR_SPARSE_COPY_BYTES : (size_t)zero_bytes;
+            result=xx_tar_sparse_write(output,buffer,n,pd);
+            zero_bytes-=n;
+        }
+        if (!result || !extent) break;
+        if (xx_io_seek64(self->device,extent->packed_offset,SEEK_SET)!=0) {
+            result=false;break;
+        }
+        {
+            uint64_t remaining=extent->size;
+            while (remaining && result) {
+                size_t n=remaining>XX_TAR_SPARSE_COPY_BYTES ?
+                         XX_TAR_SPARSE_COPY_BYTES : (size_t)remaining;
+                size_t done=0U;
+                while (done<n) {
+                    ssize_t got=xx_io_read(self->device,buffer+done,n-done);
+                    if (got<=0 || (size_t)got>n-done ||
+                        (pd && xx_pd_is_stopped(pd))) {
+                        result=false;break;
+                    }
+                    done+=(size_t)got;
+                }
+                if (result) result=xx_tar_sparse_write(output,buffer,n,pd);
+                remaining-=n;
+            }
+        }
+        logical=extent->offset+extent->size;
+    }
+    xx_mem_free(buffer);
+    if (xx_io_seek64(self->device,saved,SEEK_SET)!=0) result=false;
+    return result && !(pd && xx_pd_is_stopped(pd));
+}
+
+static bool xx_tar_sparse_limits(Abstractformat *self,
+                                 const xx_list_s *options,
+                                 const xx_tar_member *member) {
+    const xx_var *v;
+    uint64_t work=(uint64_t)member->sparse_count*
+                  sizeof(xx_tar_sparse_extent)+
+                  XX_TAR_SPARSE_COPY_BYTES+8192U;
+    v=xx_format_resolve_extra_parameter(self,options,
+                                         XX_META_ID_OPT_MAX_MEMBER_SIZE);
+    if (v && member->logical_size>xx_var_get_u64(v)) return false;
+    v=xx_format_resolve_extra_parameter(self,options,
+                                         XX_META_ID_OPT_MEMORY_LIMIT);
+    return !v || xx_var_get_u64(v)>=work;
+}
+
+static ssize_t xx_tar_sparse_discard(xx_io_device *output,
+                                     const void *bytes,size_t n) {
+    (void)output;(void)bytes;return (ssize_t)n;
+}
+
+static bool xx_tar_sparse_same_path(const char *left,const char *right) {
+    while (*left && *right) {
+        char a=*left++,b=*right++;
+        if (a=='\\') a='/';
+        if (b=='\\') b='/';
+        if (a>='A' && a<='Z') a=(char)(a+32);
+        if (b>='A' && b<='Z') b=(char)(b+32);
+        if (a!=b) return false;
+    }
+    return *left==*right;
+}
+
+static xx_io_device *xx_tar_sparse_stage(const char *destination,
+                                          char **stage) {
+    char *parent=xx_str_dup(destination);
+    size_t i,cut=0U;
+    unsigned attempt;
+    *stage=NULL;
+    if (!parent) return NULL;
+    for (i=0U;parent[i];++i)
+        if (parent[i]=='/' || parent[i]=='\\') cut=i+1U;
+    parent[cut]=0;
+    for (attempt=0U;attempt<128U;++attempt) {
+        char suffix[40],*candidate;
+        xx_io_device *device;
+        (void)xx_rt_snprintf(suffix,sizeof(suffix),
+                             ".xx_tar_sparse.tmp.%u",attempt);
+        candidate=xx_str_concat(parent,suffix);
+        if (!candidate) break;
+        if (xx_tar_sparse_same_path(candidate,destination)) {
+            xx_str_free(candidate);continue;
+        }
+        device=xx_io_file_open(candidate,"wbx");
+        if (device) {
+            *stage=candidate;xx_str_free(parent);return device;
+        }
+        xx_str_free(candidate);
+    }
+    xx_str_free(parent);return NULL;
+}
+
+static bool xx_tar_sparse_to_path(Abstractformat *self,
+                                  const xx_tar_member *member,
+                                  const xx_list_s *options,
+                                  const char *destination,
+                                  xx_pd_struct *pd) {
+    const xx_var *v;
+    xx_io_device *output=NULL;
+    char *stage=NULL;
+    bool overwrite,result=false;
+    v=xx_format_resolve_extra_parameter(self,options,
+                                         XX_META_ID_OPT_OVERWRITE);
+    overwrite=v && xx_var_get_bool(v);
+    if ((!overwrite && xx_io_file_exists_a(destination)) ||
+        !xx_store_create_dirs_a(destination,false) ||
+        (pd && xx_pd_is_stopped(pd))) return false;
+    output=xx_tar_sparse_stage(destination,&stage);
+    if (!output) return false;
+    result=xx_tar_sparse_emit(self,member,output,pd);
+    if (xx_io_close(output)!=0) result=false;
+    if (result && !(pd && xx_pd_is_stopped(pd)))
+        result=xx_io_file_replace_a(stage,destination,overwrite);
+    else result=false;
+    if (!result) (void)xx_io_file_remove_a(stage);
+    xx_str_free(stage);
+    return result;
+}
+
+bool xx_tar_unpack_current_archive_record_as(Abstractformat *self,
                                           xx_archive_record_state *state,
-                                          xx_pd_struct *pd) {
+                                          xx_pd_struct *pd, const char *relative_name) {
     xx_tar_private *priv;
     xx_tar_archive_stream *stream;
     const xx_tar_member *member;
+    const char *output_name;
     const xx_var *path_value;
     const char *base = NULL;
     char *owned_base = NULL;
     char *destination = NULL;
     bool result = false;
+    bool link_placeholder;
     if (!self || !state || state->format != self || !state->has_record ||
         !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
         return false;
@@ -1150,19 +1842,41 @@ bool xx_tar_unpack_current_archive_record(Abstractformat *self,
     stream = (xx_tar_archive_stream *)state->internal_state;
     if (!priv || stream->member_index >= priv->count) return false;
     member = &priv->members[stream->member_index];
-    if (!member->regular && !member->directory) return false;
-    if (!(member->directory && xx_str_cmp(member->name, ".") == 0) &&
-        !xx_tar_safe_name(member->name)) {
+    output_name = relative_name ? relative_name : member->name;
+    /* A link has no independent payload.  Explicit path extraction may
+     * create a placeholder, but validation must not report its target bytes
+     * as available.  Never follow the stored link target. */
+    link_placeholder = (member->typeflag == '1' || member->typeflag == '2') &&
+                       member->data_size == 0;
+    if (!member->regular && !member->directory && !link_placeholder)
+        return false;
+    if (member->sparse && !xx_tar_sparse_limits(self,&state->options,member))
+        return false;
+    if (!(member->directory && xx_str_cmp(output_name, ".") == 0) &&
+        !xx_tar_safe_name(output_name)) {
         return false;
     }
-    path_value = xx_tar_find_option(&state->options,
-                                    XX_META_ID_OPT_UNPACK_PATH);
+    path_value = xx_format_resolve_extra_parameter(
+        self,&state->options,XX_META_ID_OPT_UNPACK_PATH);
     if (!path_value) {
+        if (link_placeholder) return false;
+        if (member->sparse) {
+            xx_io_device discard;
+            xx_rt_memset(&discard,0,sizeof(discard));
+            discard.write=xx_tar_sparse_discard;
+            return xx_tar_sparse_emit(self,member,&discard,pd);
+        }
         return member->directory ||
                (member->data_offset >= 0 && member->data_size >= 0 &&
                 member->data_offset <= xx_io_total_size(self->device) &&
                 member->data_size <=
                     xx_io_total_size(self->device) - member->data_offset);
+    }
+    if (link_placeholder &&
+        (!member->linkname ||
+         xx_str_len(member->linkname) > XX_TAR_MAX_NAME_SIZE ||
+         !xx_tar_safe_name(member->linkname))) {
+        return false;
     }
     if (path_value->type == XX_VAR_TYPE_STRING ||
         path_value->type == XX_VAR_TYPE_STRING_VIEW) {
@@ -1173,17 +1887,25 @@ bool xx_tar_unpack_current_archive_record(Abstractformat *self,
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (member->directory && xx_str_cmp(member->name, ".") == 0) {
+    if (member->directory && xx_str_cmp(output_name, ".") == 0) {
         destination = xx_str_dup(base);
     } else if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
         base[xx_str_len(base) - 1U] != '\\') {
-        destination = xx_str_concat3(base, "/", member->name);
+        destination = xx_str_concat3(base, "/", output_name);
     } else {
-        destination = xx_str_concat(base, member->name);
+        destination = xx_str_concat(base, output_name);
     }
     if (!destination) goto cleanup;
     if (member->directory) {
         result = xx_store_create_dirs_a(destination, true);
+    } else if (link_placeholder &&
+               xx_store_create_dirs_a(destination, false)) {
+        /* Exclusive creation refuses an existing file or a leaf symlink. */
+        xx_io_device *output = xx_io_file_open(destination, "wbx");
+        if (output) result = xx_io_close(output) == 0;
+    } else if (member->sparse) {
+        result=xx_tar_sparse_to_path(self,member,&state->options,
+                                      destination,pd);
     } else if (xx_store_create_dirs_a(destination, false)) {
         result = xx_store_unpack_device_to_file(
             self->device, member->data_offset, member->data_size,
@@ -1193,6 +1915,12 @@ cleanup:
     if (destination) xx_str_free(destination);
     if (owned_base) xx_str_free(owned_base);
     return result;
+}
+
+bool xx_tar_unpack_current_archive_record(Abstractformat *self,
+                                          xx_archive_record_state *state,
+                                          xx_pd_struct *pd) {
+    return xx_tar_unpack_current_archive_record_as(self, state, pd, NULL);
 }
 
 void xx_tar_free_archive_records_reading(Abstractformat *self,
@@ -1302,15 +2030,14 @@ static bool xx_tar_split_ustar_name(const char *path, size_t length,
     return false;
 }
 
-static bool xx_tar_stream_payload(xx_io_device *source,
+static bool xx_tar_stream_payload_buffered(xx_io_device *source,
                                   xx_io_device *destination,
-                                  uint64_t size, xx_pd_struct *pd) {
-    uint8_t buffer[16384];
+                                  uint64_t size, xx_pd_struct *pd, uint8_t *buffer, size_t buffer_capacity) {
     uint64_t remaining = size;
     if (!source || !destination) return size == 0U;
     while (remaining != 0U) {
-        size_t amount = remaining > (uint64_t)sizeof(buffer)
-                            ? sizeof(buffer)
+        size_t amount = remaining > (uint64_t)buffer_capacity
+                            ? buffer_capacity
                             : (size_t)remaining;
         ssize_t received;
         if (pd && xx_pd_is_stopped(pd)) return false;
@@ -1322,6 +2049,18 @@ static bool xx_tar_stream_payload(xx_io_device *source,
         remaining -= (uint64_t)received;
     }
     return true;
+}
+
+static bool xx_tar_stream_payload(xx_io_device *source,
+                                  xx_io_device *destination,
+                                  uint64_t size, xx_pd_struct *pd) {
+    size_t buffer_capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
+    bool buffer_result;
+    if (!buffer) return false;
+    buffer_result = xx_tar_stream_payload_buffered(source, destination, size, pd, buffer, buffer_capacity);
+    xx_mem_free(buffer);
+    return buffer_result;
 }
 
 static char *xx_tar_record_name_utf8(const xx_archive_record *record) {

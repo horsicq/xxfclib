@@ -1,7 +1,7 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  *
- * Reader for Amiga-Magazin AMPK v2--v4 archives.  AMPK's record walk is more
+ * Reader for Amiga-Magazin AMPK v1--v4 archives.  AMPK's record walk is more
  * authoritative than several deliberately unreliable size hints, notably the
  * packed-size field on stored members.
  */
@@ -39,6 +39,7 @@ typedef struct ampk_member_s {
     uint32_t declared_packed_size;
     uint8_t method;
     uint8_t attributes;
+    bool salvage_tail;
 } ampk_member;
 
 typedef struct ampk_stream_s {
@@ -86,20 +87,29 @@ static bool ampk_valid_component(const uint8_t *name, size_t size) {
 
 static char *ampk_component(const uint8_t *bytes, size_t size) {
     char *result;
-    size_t index, length = size;
+    size_t index, length = size, written = 0U;
     if (!ampk_valid_component(bytes, size)) return NULL;
-    result = (char *)xx_mem_alloc(size + 2U);
+    while (length != 0U && (bytes[length - 1U] == ' ' ||
+                            bytes[length - 1U] == '.')) --length;
+    if (length > (SIZE_MAX - 2U) / 2U) return NULL;
+    result = (char *)xx_mem_alloc(length * 2U + 2U);
     if (!result) return NULL;
-    for (index = 0U; index < size; ++index) {
+    for (index = 0U; index < length; ++index) {
         uint8_t value = bytes[index];
-        result[index] = (value == '"' || value == '*' || value == ':' ||
-                         value == '<' || value == '>' || value == '?' ||
-                         value == '|') ? '_' : (char)value;
+        if (value == '"' || value == '*' || value == ':' || value == '<' ||
+            value == '>' || value == '?' || value == '|') value = '_';
+        /* AMPK names use Amiga Latin-1 bytes.  Filesystem-facing names are
+         * UTF-8; passing a high byte through unchanged turns it into U+FFFD
+         * when the path is converted on Windows. */
+        if (value < 0x80U) {
+            result[written++] = (char)value;
+        } else {
+            result[written++] = (char)(0xC0U | (value >> 6U));
+            result[written++] = (char)(0x80U | (value & 0x3FU));
+        }
     }
-    while (length != 0U && (result[length - 1U] == ' ' ||
-                             result[length - 1U] == '.')) --length;
-    if (length == 0U) result[length++] = '_';
-    result[length] = 0;
+    if (written == 0U) result[written++] = '_';
+    result[written] = 0;
     return result;
 }
 
@@ -184,7 +194,7 @@ static bool ampk_parse(Abstractformat *format, ampk_stream **result) {
     uint32_t declared_original, declared_data;
     uint64_t total_original = 0U, total_data = 0U;
     size_t depth = 0U, directory_count = 0U;
-    bool stop_walk = false;
+    bool stop_walk = false, salvaged_tail = false;
     if (!format || !format->device || !result || format->base_address < 0)
         return false;
     total = xx_io_total_size(format->device);
@@ -193,7 +203,7 @@ static bool ampk_parse(Abstractformat *format, ampk_stream **result) {
     if (size < (int64_t)AMPK_MIN_SIZE ||
         !ampk_read_at(format->device, format->base_address, header,
                       sizeof(header)) || xx_rt_memcmp(header, "AMPK", 4U) != 0 ||
-        header[4] < 2U || header[4] > 4U || header[5] != 0U)
+        header[4] < 1U || header[4] > 4U || header[5] != 0U)
         return false;
     declared_directories = ampk_be16(header + 6U);
     declared_files = ampk_be16(header + 8U);
@@ -244,6 +254,7 @@ static bool ampk_parse(Abstractformat *format, ampk_stream **result) {
             char *component = NULL;
             ampk_member member;
             uint64_t data_size;
+            uint8_t comment_size;
             if (name_size == 0U || ampk_be32(prefix + 2U) != 0U ||
                 size - cursor < (int64_t)AMPK_PREFIX_SIZE + name_size +
                                     AMPK_TRAILER_SIZE) break;
@@ -258,9 +269,25 @@ static bool ampk_parse(Abstractformat *format, ampk_stream **result) {
             member.declared_packed_size = ampk_be32(trailer + 4U);
             member.method = trailer[8];
             member.attributes = trailer[13];
+            comment_size = trailer[16];
             if (member.method > 3U) break;
+            /* The one-byte comment length follows the protection flags in
+             * the 18-byte file trailer.  The comment precedes compressed
+             * data and is not included in its packed-size field. */
+            header_size += comment_size;
+            if (size - cursor < (int64_t)header_size) break;
             data_size = member.method == 0U ? member.original_size
                                              : member.declared_packed_size;
+            /* A damaged member can have a zero packed-size field even though
+             * its LH1 stream follows the header.  Decode that member from the
+             * remaining bytes, but do not claim later records in the tail. */
+            if (member.method == 3U && member.original_size != 0U &&
+                member.declared_packed_size == 0U &&
+                size - cursor > (int64_t)header_size) {
+                data_size = (uint64_t)(size - cursor - (int64_t)header_size);
+                member.salvage_tail = true;
+                salvaged_tail = true;
+            }
             if (data_size > INT64_MAX || member.original_size == 0U &&
                 data_size != 0U || data_size > (uint64_t)(size - cursor -
                                                             (int64_t)header_size))
@@ -287,10 +314,11 @@ static bool ampk_parse(Abstractformat *format, ampk_stream **result) {
     }
     if (stream->count == 0U) goto fail;
     stream->archive_size = cursor;
-    stream->complete = cursor == size && stream->count == declared_files &&
+    stream->complete = !salvaged_tail && cursor == size &&
+                       stream->count == declared_files &&
                        directory_count == declared_directories &&
                        total_original == declared_original &&
-                       total_data == declared_data;
+                       (stream->version == 1U || total_data == declared_data);
     for (depth = 0U; depth < AMPK_MAX_DEPTH; ++depth) {
         if (directories[depth]) xx_mem_free(directories[depth]);
     }
@@ -392,6 +420,10 @@ static bool ampk_decode_member(Abstractformat *format,
         decoded = xx_lzh1_decode_memory(packed, (size_t)member->data_size,
                                         output, member->original_size,
                                         &written);
+        /* The salvage window includes bytes after the member's LH1 stream;
+         * the shared decoder rejects trailing bytes after filling output. */
+        if (member->salvage_tail && written == member->original_size)
+            decoded = true;
     }
     if (!decoded || written != member->original_size) goto fail;
     xx_mem_free(packed);

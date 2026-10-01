@@ -23,13 +23,9 @@
  *   FF D8 FF E1                            SOI + APP1 (Exif)
  *   FF D8 FF DB                            SOI + DQT
  *
- * Not an archive: binwalk carves the image itself (image.jpg) and nothing
- * else, so this reader validates and reports the format size.  Bytes after
- * the EOI are overlay.
- *
- * This is not the Detect-It-Easy metadata helper in src/formats/jpeg/xjpeg.h
- * (type XJpeg); the two share a directory and nothing else.  The user-facing
- * alias here is therefore XJpegImage, never XJpeg. */
+ * The component archive API publishes marker payloads and entropy-coded
+ * scans separately. It does not decode the JPEG image.
+ */
 
 #ifndef XXFCLIB_FORMAT_JPEG_H
 #define XXFCLIB_FORMAT_JPEG_H

@@ -25,6 +25,7 @@
  */
 
 #include "xx_data_platform.h"
+#include "../xx_data_search_internal.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/data/xx_pd.h"
 
@@ -113,6 +114,193 @@ static inline void xx_select_filter_indices(const uint8_t *pat, size_t len, size
     }
     *out_idx1 = i1;
     *out_idx2 = i2;
+}
+
+bool xx_data_can_fuse_literal_prefix_avx2(const uint8_t *pat, size_t pattern_size) {
+    size_t first, second;
+    if (!pat || pattern_size < 2) return false;
+    xx_select_filter_indices(pat, pattern_size, &first, &second);
+    return first == 0 && second == 1;
+}
+
+static inline size_t xx_prefix_emit_avx2(const uint32_t *masks, size_t mask_count,
+                                       size_t base, size_t *positions,
+                                       size_t capacity, size_t *next) {
+    size_t count = 0;
+    for (size_t block = 0; block < mask_count; ++block) {
+        uint32_t mask = masks[block];
+        while (mask) {
+            unsigned long bit;
+#if defined(_MSC_VER)
+            _BitScanForward(&bit, (unsigned long)mask);
+#else
+            bit = (unsigned long)__builtin_ctz(mask);
+#endif
+            size_t offset = base + block * 32 + bit;
+            positions[count++] = offset;
+            if (count == capacity) {
+                *next = offset + 1;
+                return count;
+            }
+            mask &= mask - 1;
+        }
+    }
+    *next = base + mask_count * 32;
+    return count;
+}
+
+XX_TARGET_AVX2
+size_t xx_data_collect_prefixes_avx2(const uint8_t *data, size_t size,
+                                   size_t start, const uint8_t prefix[2],
+                                   size_t *positions, size_t capacity, size_t *next) {
+    if (next) *next = size;
+    if (!data || !prefix || !positions || !next || !capacity ||
+        size < 2 || start > size - 2) return 0;
+    __m256i first = _mm256_set1_epi8((char)prefix[0]);
+    __m256i second = _mm256_set1_epi8((char)prefix[1]);
+
+    /* One extra byte is required for the final adjacent-byte comparison. */
+    while (size - start >= 129) {
+        __m256i m0 = _mm256_and_si256(
+            _mm256_cmpeq_epi8(_mm256_loadu_si256((const __m256i *)(data + start)), first),
+            _mm256_cmpeq_epi8(_mm256_loadu_si256((const __m256i *)(data + start + 1)), second));
+        __m256i m1 = _mm256_and_si256(
+            _mm256_cmpeq_epi8(_mm256_loadu_si256((const __m256i *)(data + start + 32)), first),
+            _mm256_cmpeq_epi8(_mm256_loadu_si256((const __m256i *)(data + start + 33)), second));
+        __m256i m2 = _mm256_and_si256(
+            _mm256_cmpeq_epi8(_mm256_loadu_si256((const __m256i *)(data + start + 64)), first),
+            _mm256_cmpeq_epi8(_mm256_loadu_si256((const __m256i *)(data + start + 65)), second));
+        __m256i m3 = _mm256_and_si256(
+            _mm256_cmpeq_epi8(_mm256_loadu_si256((const __m256i *)(data + start + 96)), first),
+            _mm256_cmpeq_epi8(_mm256_loadu_si256((const __m256i *)(data + start + 97)), second));
+        __m256i any = _mm256_or_si256(_mm256_or_si256(m0, m1), _mm256_or_si256(m2, m3));
+        if (!_mm256_testz_si256(any, any)) {
+            uint32_t masks[4] = {(uint32_t)_mm256_movemask_epi8(m0),
+                (uint32_t)_mm256_movemask_epi8(m1), (uint32_t)_mm256_movemask_epi8(m2),
+                (uint32_t)_mm256_movemask_epi8(m3)};
+            return xx_prefix_emit_avx2(masks, 4, start, positions, capacity, next);
+        }
+        start += 128;
+    }
+    while (size - start >= 33) {
+        __m256i matches = _mm256_and_si256(
+            _mm256_cmpeq_epi8(_mm256_loadu_si256((const __m256i *)(data + start)), first),
+            _mm256_cmpeq_epi8(_mm256_loadu_si256((const __m256i *)(data + start + 1)), second));
+        uint32_t mask = (uint32_t)_mm256_movemask_epi8(matches);
+        if (mask) return xx_prefix_emit_avx2(&mask, 1, start, positions, capacity, next);
+        start += 32;
+    }
+    size_t count = 0;
+    while (start < size - 1) {
+        if (data[start] == prefix[0] && data[start + 1] == prefix[1]) {
+            positions[count++] = start;
+            if (count == capacity) {
+                *next = start + 1;
+                return count;
+            }
+        }
+        ++start;
+    }
+    *next = start;
+    return count;
+}
+
+XX_TARGET_AVX2
+bool xx_data_collect_literal_dual_avx2(const uint8_t *data, size_t size,
+                                       size_t start, const uint8_t prefix[2],
+                                       XXDataLiteralDualBatch *batch) {
+    if (!batch) return false;
+    batch->adjacent_count = batch->skip_count = 0;
+    batch->next = size;
+    if (!data || !prefix || size < 2 || start > size - 2) return false;
+    __m256i first = _mm256_set1_epi8((char)prefix[0]);
+    __m256i second = _mm256_set1_epi8((char)prefix[1]);
+
+    /* Byte shifts cannot cross a 128-bit lane; keep those starts eligible. */
+    __m256i boundary = _mm256_set_epi64x((long long)0xff00000000000000ULL, 0,
+                                       (long long)0xff00000000000000ULL, 0);
+
+    /* Two extra bytes preserve both channels at the last SIMD lane. */
+    while (size - start >= 130) {
+        __m256i f0 = _mm256_cmpeq_epi8(_mm256_loadu_si256((const __m256i *)(data + start)), first);
+        __m256i f1 = _mm256_cmpeq_epi8(_mm256_loadu_si256((const __m256i *)(data + start + 32)), first);
+        __m256i f2 = _mm256_cmpeq_epi8(_mm256_loadu_si256((const __m256i *)(data + start + 64)), first);
+        __m256i f3 = _mm256_cmpeq_epi8(_mm256_loadu_si256((const __m256i *)(data + start + 96)), first);
+        __m256i b0 = _mm256_cmpeq_epi8(_mm256_loadu_si256((const __m256i *)(data + start + 1)), second);
+        __m256i b1 = _mm256_cmpeq_epi8(_mm256_loadu_si256((const __m256i *)(data + start + 33)), second);
+        __m256i b2 = _mm256_cmpeq_epi8(_mm256_loadu_si256((const __m256i *)(data + start + 65)), second);
+        __m256i b3 = _mm256_cmpeq_epi8(_mm256_loadu_si256((const __m256i *)(data + start + 97)), second);
+        /* Reuse the adjacent-byte vectors to reject empty blocks conservatively.
+           Possible matches still pass through the exact comparisons below. */
+        __m256i g0 = _mm256_and_si256(f0, _mm256_or_si256(boundary,
+            _mm256_or_si256(b0, _mm256_srli_si256(b0, 1))));
+        __m256i g1 = _mm256_and_si256(f1, _mm256_or_si256(boundary,
+            _mm256_or_si256(b1, _mm256_srli_si256(b1, 1))));
+        __m256i g2 = _mm256_and_si256(f2, _mm256_or_si256(boundary,
+            _mm256_or_si256(b2, _mm256_srli_si256(b2, 1))));
+        __m256i g3 = _mm256_and_si256(f3, _mm256_or_si256(boundary,
+            _mm256_or_si256(b3, _mm256_srli_si256(b3, 1))));
+        __m256i coarse_any = _mm256_or_si256(_mm256_or_si256(g0, g1), _mm256_or_si256(g2, g3));
+        if (_mm256_testz_si256(coarse_any, coarse_any)) {
+            start += 128;
+            continue;
+        }
+        __m256i a0 = _mm256_and_si256(f0, b0);
+        __m256i a1 = _mm256_and_si256(f1, b1);
+        __m256i a2 = _mm256_and_si256(f2, b2);
+        __m256i a3 = _mm256_and_si256(f3, b3);
+        __m256i s0 = _mm256_and_si256(f0, _mm256_cmpeq_epi8(
+            _mm256_loadu_si256((const __m256i *)(data + start + 2)), second));
+        __m256i s1 = _mm256_and_si256(f1, _mm256_cmpeq_epi8(
+            _mm256_loadu_si256((const __m256i *)(data + start + 34)), second));
+        __m256i s2 = _mm256_and_si256(f2, _mm256_cmpeq_epi8(
+            _mm256_loadu_si256((const __m256i *)(data + start + 66)), second));
+        __m256i s3 = _mm256_and_si256(f3, _mm256_cmpeq_epi8(
+            _mm256_loadu_si256((const __m256i *)(data + start + 98)), second));
+        __m256i adjacent_any = _mm256_or_si256(_mm256_or_si256(a0, a1), _mm256_or_si256(a2, a3));
+        __m256i skip_any = _mm256_or_si256(_mm256_or_si256(s0, s1), _mm256_or_si256(s2, s3));
+        __m256i any = _mm256_or_si256(adjacent_any, skip_any);
+        if (!_mm256_testz_si256(any, any)) {
+            uint32_t adjacent[4] = {(uint32_t)_mm256_movemask_epi8(a0),
+                (uint32_t)_mm256_movemask_epi8(a1), (uint32_t)_mm256_movemask_epi8(a2),
+                (uint32_t)_mm256_movemask_epi8(a3)};
+            uint32_t skip[4] = {(uint32_t)_mm256_movemask_epi8(s0),
+                (uint32_t)_mm256_movemask_epi8(s1), (uint32_t)_mm256_movemask_epi8(s2),
+                (uint32_t)_mm256_movemask_epi8(s3)};
+            size_t ignored;
+            batch->adjacent_count = xx_prefix_emit_avx2(adjacent, 4, start, batch->adjacent, 128, &ignored);
+            batch->skip_count = xx_prefix_emit_avx2(skip, 4, start, batch->skip, 128, &ignored);
+            batch->next = start + 128;
+            return true;
+        }
+        start += 128;
+    }
+    while (size - start >= 34) {
+        __m256i f = _mm256_cmpeq_epi8(_mm256_loadu_si256((const __m256i *)(data + start)), first);
+        __m256i a = _mm256_and_si256(f, _mm256_cmpeq_epi8(
+            _mm256_loadu_si256((const __m256i *)(data + start + 1)), second));
+        __m256i s = _mm256_and_si256(f, _mm256_cmpeq_epi8(
+            _mm256_loadu_si256((const __m256i *)(data + start + 2)), second));
+        if (!_mm256_testz_si256(_mm256_or_si256(a, s), _mm256_or_si256(a, s))) {
+            uint32_t adjacent = (uint32_t)_mm256_movemask_epi8(a);
+            uint32_t skip = (uint32_t)_mm256_movemask_epi8(s);
+            size_t ignored;
+            batch->adjacent_count = xx_prefix_emit_avx2(&adjacent, 1, start, batch->adjacent, 128, &ignored);
+            batch->skip_count = xx_prefix_emit_avx2(&skip, 1, start, batch->skip, 128, &ignored);
+            batch->next = start + 32;
+            return true;
+        }
+        start += 32;
+    }
+    while (start < size - 1) {
+        if (data[start] == prefix[0]) {
+            if (data[start + 1] == prefix[1]) batch->adjacent[batch->adjacent_count++] = start;
+            if (size - start >= 3 && data[start + 2] == prefix[1]) batch->skip[batch->skip_count++] = start;
+        }
+        ++start;
+    }
+    batch->next = start;
+    return batch->adjacent_count || batch->skip_count;
 }
 
 XX_TARGET_AVX2
@@ -354,6 +542,24 @@ int64_t xx_data_find_bytes_avx2(const uint8_t *pdata, size_t data_size, size_t s
     }
 }
 #else
+bool xx_data_collect_literal_dual_avx2(const uint8_t *data, size_t size,
+                                       size_t start, const uint8_t prefix[2],
+                                       XXDataLiteralDualBatch *batch) {
+    (void)data; (void)start; (void)prefix;
+    if (batch) { batch->adjacent_count = batch->skip_count = 0; batch->next = size; }
+    return false;
+}
+bool xx_data_can_fuse_literal_prefix_avx2(const uint8_t *pat, size_t pattern_size) {
+    (void)pat; (void)pattern_size;
+    return false;
+}
+size_t xx_data_collect_prefixes_avx2(const uint8_t *data, size_t size,
+                                   size_t start, const uint8_t prefix[2],
+                                   size_t *positions, size_t capacity, size_t *next) {
+    (void)data; (void)start; (void)prefix; (void)positions; (void)capacity;
+    if (next) *next = size;
+    return 0;
+}
 int64_t xx_data_find_bytes_avx2(const uint8_t *pdata, size_t data_size, size_t start_offset, const uint8_t *pat, size_t pattern_size, xx_pd_struct *pd) {
     (void)pdata; (void)data_size; (void)start_offset; (void)pat; (void)pattern_size; (void)pd;
     return -1;

@@ -27,6 +27,7 @@
  * here, so the alias macro defined next to the enumerator is tested instead;
  * this picks up the real file type as soon as SAR_NS is registered there. */
 #ifdef SAR_NS
+
 #define XX_SAR_NS_FILE_TYPE XX_FILE_TYPE_SAR_NS
 #else
 #define XX_SAR_NS_FILE_TYPE XX_FILE_TYPE_UNKNOWN
@@ -76,6 +77,8 @@ typedef struct sar_window_s {
     int64_t start;  /**< Index-relative offset of buffer[0]. */
     size_t length;
     uint8_t *buffer;
+    size_t capacity;
+    uint8_t entry[SAR_MAX_ENTRY];
 } sar_window;
 
 typedef struct sar_stream_s {
@@ -84,6 +87,42 @@ typedef struct sar_stream_s {
     size_t index;
     char *name; /**< SAR_NAME_BUFFER bytes: the current member's name. */
 } sar_stream;
+
+#include "xxfclib/global/xx_global.h"
+static size_t gb_sar_ns_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_sar_ns_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_sar_ns_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+
 
 static uint16_t sar_be16(const uint8_t *bytes) {
     return (uint16_t)(((uint16_t)bytes[0] << 8U) | (uint16_t)bytes[1]);
@@ -96,13 +135,14 @@ static uint32_t sar_be32(const uint8_t *bytes) {
 
 static bool sar_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
+    const size_t file_io_capacity = gb_sar_ns_capacity();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = gb_sar_ns_read(device, (uint8_t *)buffer + done,
+                                    size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -114,16 +154,17 @@ static bool sar_read_at(xx_io_device *device, int64_t offset, void *buffer,
  * never becomes an allocation of that size. */
 static bool sar_copy_range(xx_io_device *source, int64_t offset, int64_t size,
                            xx_io_device *destination, xx_pd_struct *pd) {
+    const size_t file_io_capacity = gb_sar_ns_capacity();
     uint8_t *buffer;
     int64_t remaining = size;
     bool ok = true;
     if (!source || offset < 0 || size < 0) return false;
     if (size == 0) return true;
-    buffer = (uint8_t *)xx_mem_alloc(SAR_COPY_CHUNK);
+    buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (ok && remaining > 0) {
-        size_t chunk = remaining > (int64_t)SAR_COPY_CHUNK
-                           ? (size_t)SAR_COPY_CHUNK
+        size_t chunk = remaining > (int64_t)file_io_capacity
+                           ? (size_t)file_io_capacity
                            : (size_t)remaining;
         size_t written = 0U;
         if ((pd && xx_pd_is_stopped(pd)) ||
@@ -132,8 +173,8 @@ static bool sar_copy_range(xx_io_device *source, int64_t offset, int64_t size,
             break;
         }
         while (destination && written < chunk) {
-            ssize_t amount = xx_io_write(destination, buffer + written,
-                                         chunk - written);
+            ssize_t amount = gb_sar_ns_write(destination, buffer + written,
+                                         chunk - written, file_io_capacity);
             if (amount <= 0 || (size_t)amount > chunk - written) {
                 ok = false;
                 break;
@@ -330,10 +371,16 @@ static const uint8_t *sar_window_view(sar_window *window, int64_t pos,
     int64_t want = window->size - pos;
     if (pos < 0 || want <= 0) return NULL;
     if (want > SAR_MAX_ENTRY) want = SAR_MAX_ENTRY;
+    if ((uint64_t)want > window->capacity) {
+        if (xx_io_seek64(window->device, window->origin + pos, SEEK_SET) != 0 ||
+            gb_sar_ns_read(window->device, window->entry, (size_t)want,
+                window->capacity) != want) return NULL;
+        *avail = (size_t)want; return window->entry;
+    }
     if (pos < window->start ||
         pos + want > window->start + (int64_t)window->length) {
         int64_t chunk = window->size - pos;
-        if (chunk > SAR_WINDOW) chunk = SAR_WINDOW;
+        if ((uint64_t)chunk > window->capacity) chunk = (int64_t)window->capacity;
         window->length = 0U;
         if (!sar_read_at(window->device, window->origin + pos, window->buffer,
                          (size_t)chunk))
@@ -414,7 +461,8 @@ static bool sar_walk(Abstractformat *format, const sar_layout *layout,
     window.device = format->device;
     window.origin = format->base_address + SAR_HEADER_SIZE;
     window.size = index_size;
-    window.buffer = (uint8_t *)xx_mem_alloc(SAR_WINDOW);
+    window.capacity = gb_sar_ns_capacity();
+    window.buffer = (uint8_t *)xx_mem_alloc(window.capacity);
     if (!window.buffer) return false;
 
     for (index = 0U; index < layout->count; ++index) {

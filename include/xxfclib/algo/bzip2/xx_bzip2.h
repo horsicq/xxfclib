@@ -26,6 +26,11 @@
  * Implements the Bzip2 format (ZIP compression method 12) using a clean C
  * rewrite of the BWT + MTF + Huffman core. Compression level maps to the
  * block-size multiplier: 1 = 100 kB blocks (fastest), 9 = 900 kB blocks.
+ * This limit applies after initial run-length encoding, before BWT; raw
+ * input bytes per block can differ because that stage can expand or shrink.
+ * Compression uses radix-sorted circular prefix ranks and CPU-dispatched
+ * move-to-front encoding, with an SSE2 implementation and scalar fallback.
+ * Packing an empty input emits a complete, valid BZip2 stream.
  */
 
 #ifndef XX_BZIP2_H
@@ -64,6 +69,9 @@ XXFC_API bool xx_bzip2_unpack_device_to_memory(xx_io_device *src_dev, int64_t sr
 
 XXFC_API bool xx_bzip2_unpack_memory_to_device(const void *src_buf, size_t comp_size,
                                                xx_io_device *dst_dev, xx_pd_struct *pd);
+XXFC_API bool xx_bzip2_unpack_memory_to_device_ex(const void *src_buf, size_t comp_size,
+                                                  xx_io_device *dst_dev, size_t *consumed,
+                                                  xx_pd_struct *pd);
 
 XXFC_API bool xx_bzip2_decompress_memory(const void *src_buf, size_t src_size,
                                          void *dst_buf, size_t dst_buf_size, size_t *out_written);

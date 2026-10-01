@@ -131,7 +131,8 @@ static int dcl_symbol(dcl_bits *reader, const dcl_huffman *tree) {
 #define DCL_WINDOW_SIZE 8192U
 
 static bool dcl_run(const uint8_t *input, size_t input_size, uint8_t *output,
-                    size_t limit, size_t *produced, size_t *consumed) {
+                    size_t limit, size_t *produced, size_t *consumed,
+                    bool zero_history) {
     dcl_bits reader;
     dcl_huffman literals, lengths, distances;
     unsigned literal_mode, dictionary_bits;
@@ -141,7 +142,7 @@ static bool dcl_run(const uint8_t *input, size_t input_size, uint8_t *output,
 
     if (produced) *produced = 0U;
     if (consumed) *consumed = 0U;
-    if (!input || input_size < 3U || limit == 0U) return false;
+    if (!input || input_size < 3U) return false;
     if (!output) xx_rt_memset(window, 0, sizeof(window));
 
     xx_rt_memset(&reader, 0, sizeof(reader));
@@ -203,18 +204,21 @@ static bool dcl_run(const uint8_t *input, size_t input_size, uint8_t *output,
             }
             distance = ((size_t)distance_symbol << distance_bits) +
                        distance_extra + 1U;
-            if (distance > output_at || length > limit - output_at) {
+            if ((!zero_history && distance > output_at) ||
+                length > limit - output_at) {
                 return false;
             }
             /* A match may overlap its own output, so this copies one byte at
              * a time rather than in a block. */
             for (copy = 0U; copy < length; ++copy) {
-                if (output) {
-                    output[output_at] = output[output_at - distance];
-                } else {
-                    window[output_at % DCL_WINDOW_SIZE] =
-                        window[(output_at - distance) % DCL_WINDOW_SIZE];
-                }
+                uint8_t value = output_at < distance
+                                    ? 0U
+                                    : output
+                                          ? output[output_at - distance]
+                                          : window[(output_at - distance) %
+                                                   DCL_WINDOW_SIZE];
+                if (output) output[output_at] = value;
+                else window[output_at % DCL_WINDOW_SIZE] = value;
                 ++output_at;
             }
         }
@@ -240,7 +244,8 @@ bool xx_dcl_decode_memory(const uint8_t *input, size_t input_size,
 
     if (written) *written = 0U;
     if (!output) return false;
-    if (!dcl_run(input, input_size, output, output_size, &produced, NULL)) {
+    if (!dcl_run(input, input_size, output, output_size, &produced, NULL,
+                 false)) {
         return false;
     }
     if (written) *written = produced;
@@ -252,6 +257,27 @@ bool xx_dcl_scan_memory(const uint8_t *input, size_t input_size,
                         size_t *produced) {
     if (consumed) *consumed = 0U;
     if (produced) *produced = 0U;
-    if (max_output == 0U) return false;
-    return dcl_run(input, input_size, NULL, max_output, produced, consumed);
+    return dcl_run(input, input_size, NULL, max_output, produced, consumed,
+                   false);
+}
+
+bool xx_dcl_decode_memory_zero_history(const uint8_t *input,
+                                       size_t input_size, uint8_t *output,
+                                       size_t output_size, size_t *written) {
+    size_t produced = 0U;
+    if (written) *written = 0U;
+    if (!output || !dcl_run(input, input_size, output, output_size, &produced,
+                            NULL, true)) return false;
+    if (written) *written = produced;
+    return produced == output_size;
+}
+
+bool xx_dcl_scan_memory_zero_history(const uint8_t *input,
+                                     size_t input_size, size_t max_output,
+                                     size_t *consumed, size_t *produced) {
+    if (consumed) *consumed = 0U;
+    if (produced) *produced = 0U;
+    return max_output != 0U &&
+           dcl_run(input, input_size, NULL, max_output, produced, consumed,
+                   true);
 }

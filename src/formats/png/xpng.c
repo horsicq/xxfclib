@@ -28,7 +28,7 @@
  */
 
 #include "../../formats/png/xpng.h"
-#include "../../die_engine/die_engine_compat.h"
+#include "../../die_engine/xx_die_engine_compat.h"
 
 /* Colour type codes from the PNG specification. */
 #define PNG_COLOR_GRAYSCALE 0

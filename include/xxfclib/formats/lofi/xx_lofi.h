@@ -18,6 +18,7 @@ extern "C" {
 typedef struct xx_lofi {
     Abstractformat format;
     uint64_t number_of_records;
+    void *nested_iso;
 } xx_lofi;
 
 typedef xx_lofi xx_lofi_t;

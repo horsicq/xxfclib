@@ -45,8 +45,8 @@
  *  - The format may not exceed XX_SVG_MAX_SIZE bytes (binwalk has no cap);
  *    the scan never reads past that bound.
  *
- * NOT an archive: binwalk's extractor carves the image itself
- * ("image.svg") and declines even that at offset 0.
+ * The component archive API publishes prolog bytes, root attributes and inner
+ * markup separately. It does not render XML or execute scripts or entities.
  */
 
 #ifndef XXFCLIB_FORMAT_SVG_H

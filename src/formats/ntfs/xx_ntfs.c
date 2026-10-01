@@ -25,6 +25,8 @@
 #define XX_NTFS_MAX_DEPTH 128U
 #define XX_NTFS_MAX_NAME_SIZE 4096U
 #define XX_NTFS_CHUNK 65536U
+#define XX_NTFS_LZNT1_SUBBLOCK 4096U
+#define XX_NTFS_MAX_COMPRESSION_UNIT 65536U
 #define XX_NTFS_BOOT_SIZE 512U
 /* MFT record 5 is the root directory; 0..15 are reserved metadata files that
  * are never published and never appear in a published file's path. */
@@ -40,13 +42,48 @@ static const char *const xx_ntfs_unsupported_reparse =
 static const char *const xx_ntfs_unsupported_multiple_data =
     "NTFS multiple unnamed data attributes are not supported";
 static const char *const xx_ntfs_unsupported_compressed =
-    "NTFS compressed/encrypted data is not supported";
+    "NTFS encrypted or unsupported compressed data is not supported";
 static const char *const xx_ntfs_unsupported_continuation =
     "NTFS external data-attribute continuation is not supported";
 static const char *const xx_ntfs_unsupported_no_data =
     "NTFS file has no supported unnamed data stream";
 
 /* ------------------------------------------------------------- helpers --- */
+
+#include "xxfclib/global/xx_global.h"
+static size_t gb_ntfs_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_ntfs_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_ntfs_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
 
 static uint16_t xx_ntfs_u16(const uint8_t *data) {
     return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8U));
@@ -83,6 +120,8 @@ typedef struct xx_ntfs_run_s {
 typedef struct xx_ntfs_stream_s {
     uint64_t size;
     uint64_t initialized;
+    uint64_t stored_size; /**< On-disk bytes for a compressed stream. */
+    uint64_t compression_unit; /**< Uncompressed bytes per LZNT1 unit, or 0. */
     uint8_t *resident; /**< Owned; valid when !nonresident. */
     size_t resident_size;
     xx_ntfs_run *runs; /**< Owned; ordered by logical, gapless. */
@@ -143,6 +182,7 @@ typedef struct xx_ntfs_reader_s {
     xx_io_device *device;
     int64_t base;
     uint64_t size; /**< Bytes available from base to end of device. */
+    size_t capacity;
     uint64_t read_budget;
     uint64_t keep_budget;
     size_t total_runs;
@@ -179,6 +219,7 @@ static bool xx_ntfs_retain(xx_ntfs_reader *reader, uint64_t bytes) {
  */
 static bool xx_ntfs_read(xx_ntfs_reader *reader, uint64_t off, void *data,
                          uint64_t n, bool metadata) {
+    const size_t file_io_capacity = reader->capacity;
     uint8_t *out = (uint8_t *)data;
     uint64_t done = 0U;
     int64_t absolute;
@@ -195,8 +236,8 @@ static bool xx_ntfs_read(xx_ntfs_reader *reader, uint64_t off, void *data,
         return false;
     }
     while (done < n) {
-        ssize_t got = xx_io_read(reader->device, out + done,
-                                 (size_t)(n - done));
+        ssize_t got = gb_ntfs_read(reader->device, out + done,
+                                 (size_t)(n - done), file_io_capacity);
         if (got <= 0 || (uint64_t)got > n - done) return false;
         done += (uint64_t)got;
     }
@@ -326,6 +367,176 @@ static bool xx_ntfs_stream_locate(const xx_ntfs_stream *stream, uint64_t off,
     return xx_ntfs_span(off - (*out)->logical, 1U, (*out)->size);
 }
 
+/** Decode complete 4096-byte LZNT1 subblocks into one NTFS compression unit. */
+static bool xx_ntfs_lznt1_decode(const uint8_t *input, size_t input_size,
+                                 uint8_t *output, size_t output_size) {
+    size_t source = 0U;
+    size_t target = 0U;
+    if (!input || !output || output_size == 0U ||
+        (output_size % XX_NTFS_LZNT1_SUBBLOCK) != 0U) {
+        return false;
+    }
+    xx_rt_memset(output, 0, output_size);
+    while (target < output_size && source < input_size) {
+        uint16_t header;
+        size_t payload;
+        size_t end;
+        size_t made = 0U;
+        if (input_size - source < 2U) return false;
+        header = xx_ntfs_u16(input + source);
+        if (header == 0U) break;
+        /* Bits 12..14 are the LZNT1 subblock signature 011. */
+        if ((header & 0x7000U) != 0x3000U) return false;
+        payload = (size_t)(header & 0x0fffU) + 1U;
+        source += 2U;
+        if (payload > input_size - source) return false;
+        end = source + payload;
+        if (!(header & 0x8000U)) {
+            if (payload != XX_NTFS_LZNT1_SUBBLOCK) return false;
+            xx_rt_memcpy(output + target, input + source,
+                         XX_NTFS_LZNT1_SUBBLOCK);
+            source = end;
+            target += XX_NTFS_LZNT1_SUBBLOCK;
+            continue;
+        }
+        while (source < end && made < XX_NTFS_LZNT1_SUBBLOCK) {
+            uint8_t tag = input[source++];
+            unsigned bit;
+            for (bit = 0U;
+                 bit < 8U && source < end && made < XX_NTFS_LZNT1_SUBBLOCK;
+                 ++bit) {
+                if (!(tag & (uint8_t)(1U << bit))) {
+                    output[target + made++] = input[source++];
+                } else {
+                    unsigned shift = 12U;
+                    unsigned position;
+                    unsigned token;
+                    unsigned distance;
+                    unsigned length;
+                    if (made == 0U || end - source < 2U) return false;
+                    position = (unsigned)made - 1U;
+                    while (position >= 16U) {
+                        --shift;
+                        position >>= 1U;
+                    }
+                    token = xx_ntfs_u16(input + source);
+                    source += 2U;
+                    distance = (token >> shift) + 1U;
+                    length = (token & ((1U << shift) - 1U)) + 3U;
+                    if (distance > made ||
+                        length > XX_NTFS_LZNT1_SUBBLOCK - made) {
+                        return false;
+                    }
+                    /* Backreferences may overlap their output. */
+                    while (length--) {
+                        output[target + made] =
+                            output[target + made - distance];
+                        ++made;
+                    }
+                }
+            }
+        }
+        source = end;
+        target += XX_NTFS_LZNT1_SUBBLOCK;
+    }
+    /* A physical cluster may contain zero padding after the final subblock. */
+    while (source < input_size) {
+        if (input[source++] != 0U) return false;
+    }
+    return true;
+}
+
+/** Read a unit's physical prefix, then decode or copy it by its run shape. */
+static bool xx_ntfs_load_compression_unit(xx_ntfs_reader *reader,
+                                          const xx_ntfs_stream *stream,
+                                          uint64_t unit_offset,
+                                          uint8_t *raw, uint8_t *decoded,
+                                          bool metadata) {
+    uint64_t position = 0U;
+    size_t stored = 0U;
+    bool saw_sparse = false;
+    size_t unit_size = (size_t)stream->compression_unit;
+    while (position < stream->compression_unit) {
+        const xx_ntfs_run *run = NULL;
+        uint64_t inside;
+        uint64_t count;
+        if (!xx_ntfs_stream_locate(stream, unit_offset + position, &run)) {
+            return false;
+        }
+        inside = unit_offset + position - run->logical;
+        count = run->size - inside;
+        if (count > stream->compression_unit - position) {
+            count = stream->compression_unit - position;
+        }
+        if (run->sparse) {
+            saw_sparse = true;
+        } else {
+            if (saw_sparse || count > unit_size - stored ||
+                !xx_ntfs_read(reader, run->physical + inside, raw + stored,
+                              count, metadata)) {
+                return false;
+            }
+            stored += (size_t)count;
+        }
+        position += count;
+    }
+    if (stored == 0U) {
+        xx_rt_memset(decoded, 0, unit_size);
+        return true;
+    }
+    if (stored == unit_size) {
+        xx_rt_memcpy(decoded, raw, unit_size);
+        return true;
+    }
+    return xx_ntfs_lznt1_decode(raw, stored, decoded, unit_size);
+}
+
+static bool xx_ntfs_read_compressed_stream(xx_ntfs_reader *reader,
+                                           const xx_ntfs_stream *stream,
+                                           uint64_t off, uint64_t n,
+                                           uint8_t *out, bool metadata) {
+    uint8_t *raw;
+    uint8_t *decoded;
+    uint64_t done = 0U;
+    bool ok = true;
+    size_t unit_size;
+    if (stream->compression_unit == 0U ||
+        stream->compression_unit > XX_NTFS_MAX_COMPRESSION_UNIT) {
+        return false;
+    }
+    unit_size = (size_t)stream->compression_unit;
+    raw = (uint8_t *)xx_mem_alloc(unit_size);
+    decoded = (uint8_t *)xx_mem_alloc(unit_size);
+    if (!raw || !decoded) {
+        if (raw) xx_mem_free(raw);
+        if (decoded) xx_mem_free(decoded);
+        return false;
+    }
+    while (done < n && off + done < stream->initialized) {
+        uint64_t position = off + done;
+        uint64_t unit_offset = position - position % stream->compression_unit;
+        uint64_t inside = position - unit_offset;
+        uint64_t count = n - done;
+        if (!xx_ntfs_active(reader) ||
+            !xx_ntfs_load_compression_unit(reader, stream, unit_offset,
+                                           raw, decoded, metadata)) {
+            ok = false;
+            break;
+        }
+        if (count > stream->compression_unit - inside) {
+            count = stream->compression_unit - inside;
+        }
+        if (count > stream->initialized - position) {
+            count = stream->initialized - position;
+        }
+        xx_rt_memcpy(out + done, decoded + inside, (size_t)count);
+        done += count;
+    }
+    xx_mem_free(raw);
+    xx_mem_free(decoded);
+    return ok && xx_ntfs_active(reader);
+}
+
 /**
  * Copy [off, off + n) of @p stream into @p out. Bytes past the valid data
  * length, and bytes covered by a sparse run, read as zero - the buffer is
@@ -340,6 +551,10 @@ static bool xx_ntfs_read_stream(xx_ntfs_reader *reader,
         return false;
     }
     xx_rt_memset(out, 0, (size_t)n);
+    if (stream->compression_unit != 0U) {
+        return xx_ntfs_read_compressed_stream(reader, stream, off, n, out,
+                                              metadata);
+    }
     if (!stream->nonresident) {
         if ((uint64_t)stream->resident_size != stream->size ||
             !stream->resident) {
@@ -555,6 +770,8 @@ static bool xx_ntfs_parse_runs(xx_ntfs_reader *reader, const uint8_t *attr,
     uint64_t logical = 0U;
     uint64_t lcn = 0U;
     uint64_t clusters;
+    uint64_t physical_total = 0U;
+    bool previous_sparse = false;
     bool ended = false;
     if (!attr || !volume || !stream || length < 64U ||
         xx_ntfs_u64(attr + 16U) != 0U) {
@@ -562,7 +779,8 @@ static bool xx_ntfs_parse_runs(xx_ntfs_reader *reader, const uint8_t *attr,
     }
     high = xx_ntfs_u64(attr + 24U);
     offset = xx_ntfs_u16(attr + 32U);
-    if (offset < 64U || offset >= length) return false;
+    if (offset < (stream->compression_unit ? 72U : 64U) ||
+        offset >= length) return false;
     stream->size = xx_ntfs_u64(attr + 48U);
     stream->initialized = xx_ntfs_u64(attr + 56U);
     stream->nonresident = true;
@@ -617,6 +835,19 @@ static bool xx_ntfs_parse_runs(xx_ntfs_reader *reader, const uint8_t *attr,
             if (!xx_ntfs_span(lcn, run_length, clusters)) return false;
         }
         bytes = run_length * volume->cluster_size;
+        if (stream->compression_unit != 0U) {
+            /* Inside one unit, physical clusters precede its sparse suffix.
+             * The next physical run may begin only at a new unit boundary. */
+            if (offsets != 0U && previous_sparse &&
+                logical % stream->compression_unit != 0U) {
+                return false;
+            }
+            previous_sparse = offsets == 0U;
+            if (offsets != 0U) {
+                if (bytes > XX_NTFS_MAX_VOLUME - physical_total) return false;
+                physical_total += bytes;
+            }
+        }
         run.logical = logical;
         run.physical = (offsets != 0U) ? lcn * volume->cluster_size : 0U;
         run.size = bytes;
@@ -627,6 +858,14 @@ static bool xx_ntfs_parse_runs(xx_ntfs_reader *reader, const uint8_t *attr,
     if (!ended || !xx_ntfs_active(reader) || stream->size > logical ||
         xx_ntfs_u64(attr + 40U) > logical) {
         return false;
+    }
+    if (stream->compression_unit != 0U) {
+        stream->stored_size = xx_ntfs_u64(attr + 64U);
+        if (logical % stream->compression_unit != 0U ||
+            xx_ntfs_u64(attr + 40U) != logical ||
+            stream->stored_size != physical_total) {
+            return false;
+        }
     }
     if (logical == 0U) {
         return stream->size == 0U && (high == 0U || high == ~(uint64_t)0);
@@ -675,11 +914,16 @@ static bool xx_ntfs_store_data(xx_ntfs_reader *reader, xx_ntfs_record *record,
         record->unsupported = xx_ntfs_unsupported_multiple_data;
     }
     record->has_data = true;
-    /* 0x8000 is the sparse flag, which the run decoder already handles; any
-     * other flag, or a non-zero compression unit, means encoded data. */
-    if ((flags & (uint16_t)~(uint16_t)0x8000) != 0U ||
-        (nonresident && attr[34] != 0U)) {
+    /* 0x8000 is sparse, 0x0001 is NTFS LZNT1 compression. Encrypted and
+     * provider-compressed attributes still need distinct readers. */
+    if ((flags & (uint16_t)~(uint16_t)0x8001) != 0U ||
+        (nonresident &&
+         (attr[34] != ((flags & 1U) != 0U ? 4U : 0U))) ||
+        ((flags & 1U) != 0U &&
+         (!nonresident || volume->cluster_size > 4096U))) {
         record->unsupported = xx_ntfs_unsupported_compressed;
+    } else if ((flags & 1U) != 0U) {
+        record->data.compression_unit = volume->cluster_size * 16U;
     }
     if (nonresident) {
         if (xx_ntfs_u64(attr + 16U) != 0U) {
@@ -1172,6 +1416,7 @@ static bool xx_ntfs_parse(Abstractformat *self, xx_ntfs_private *parsed,
     total_size = xx_io_total_size(self->device);
     if (total_size < 0 || total_size < self->base_address) return false;
     xx_mem_zero(&reader, sizeof(reader));
+    reader.capacity = gb_ntfs_capacity();
     reader.device = self->device;
     reader.base = self->base_address;
     reader.size = (uint64_t)(total_size - self->base_address);
@@ -1247,7 +1492,8 @@ static bool xx_ntfs_populate_record(xx_archive_record *record,
     if (!record || !entry || !entry->name) return false;
     /* Only a stream that starts with a real, mapped run has a meaningful
      * single device offset; resident and fragmented ones do not. */
-    if (entry->data.nonresident && entry->data.run_count != 0U &&
+    if (entry->data.nonresident && entry->data.compression_unit == 0U &&
+        entry->data.run_count != 0U &&
         !entry->data.runs[0].sparse &&
         entry->data.runs[0].physical <= (uint64_t)(INT64_MAX - base_address)) {
         data_offset = base_address + (int64_t)entry->data.runs[0].physical;
@@ -1260,14 +1506,19 @@ static bool xx_ntfs_populate_record(xx_archive_record *record,
             : (int64_t)-1;
     record->header_size = -1;
     record->data_offset = data_offset;
-    record->compressed_size = (int64_t)entry->data.size;
+    record->compressed_size = (int64_t)(entry->data.compression_unit != 0U
+                                             ? entry->data.stored_size
+                                             : entry->data.size);
     if (!xx_archive_record_set_original_name(record, entry->name) ||
         !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
                                         entry->data.size) ||
         !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
-                                        entry->data.size) ||
+                                        entry->data.compression_unit != 0U
+                                            ? entry->data.stored_size
+                                            : entry->data.size) ||
         !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
-                                        0U) ||
+                                        entry->data.compression_unit != 0U
+                                            ? 1U : 0U) ||
         !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
                                          entry->folder)) {
         return false;
@@ -1484,6 +1735,7 @@ static bool xx_ntfs_write_entry(Abstractformat *self,
                                 const xx_ntfs_private *parsed,
                                 const xx_ntfs_entry *entry,
                                 const char *destination, xx_pd_struct *pd) {
+    const size_t file_io_capacity = gb_ntfs_capacity();
     xx_ntfs_reader reader;
     xx_io_device *output;
     uint8_t *buffer;
@@ -1494,13 +1746,14 @@ static bool xx_ntfs_write_entry(Abstractformat *self,
     (void)parsed;
     if (total_size < 0 || total_size < self->base_address) return false;
     xx_mem_zero(&reader, sizeof(reader));
+    reader.capacity = gb_ntfs_capacity();
     reader.device = self->device;
     reader.base = self->base_address;
     reader.size = (uint64_t)(total_size - self->base_address);
     reader.read_budget = XX_NTFS_READ_BUDGET;
     reader.keep_budget = XX_NTFS_KEEP_BUDGET;
     reader.pd = pd;
-    buffer = (uint8_t *)xx_mem_alloc(XX_NTFS_CHUNK);
+    buffer = (uint8_t *)xx_mem_alloc(reader.capacity < XX_NTFS_CHUNK ? reader.capacity : XX_NTFS_CHUNK);
     if (!buffer) return false;
     output = xx_io_file_open(destination, "wb");
     created = output != NULL;
@@ -1512,14 +1765,15 @@ static bool xx_ntfs_write_entry(Abstractformat *self,
         uint64_t count = entry->data.size - offset;
         uint64_t written = 0U;
         if (count > XX_NTFS_CHUNK) count = XX_NTFS_CHUNK;
+        if (count > reader.capacity) count = reader.capacity;
         if (!xx_ntfs_read_stream(&reader, &entry->data, offset, count, buffer,
                                  false)) {
             ok = false;
             break;
         }
         while (written < count) {
-            ssize_t put = xx_io_write(output, buffer + written,
-                                      (size_t)(count - written));
+            ssize_t put = gb_ntfs_write(output, buffer + written,
+                                      (size_t)(count - written), file_io_capacity);
             if (put <= 0 || (uint64_t)put > count - written) {
                 ok = false;
                 break;

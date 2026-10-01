@@ -20,29 +20,12 @@
  */
 
 #include "xxfclib/algo/aes/xx_aes.h"
+#include "xxfclib/algo/sha/xx_sha.h"
 
-#define XX_SHA1_BLOCK_SIZE          64U
-#define XX_SHA1_DIGEST_SIZE         20U
-#define XX_SHA256_BLOCK_SIZE        64U
-#define XX_SHA256_DIGEST_SIZE       32U
 #define XX_AES_BLOCK_SIZE           16U
 #define XX_AES_MAX_ROUND_KEY_SIZE   240U
 #define XX_WINZIP_AES_MAX_DERIVED   66U
 #define XX_WINZIP_AES_PBKDF2_ROUNDS 1000U
-
-typedef struct xx_sha1_context {
-    uint32_t state[5];
-    uint64_t total_size;
-    uint8_t buffer[XX_SHA1_BLOCK_SIZE];
-    size_t buffer_size;
-} xx_sha1_context;
-
-typedef struct xx_sha256_context {
-    uint32_t state[8];
-    uint64_t total_size;
-    uint8_t buffer[XX_SHA256_BLOCK_SIZE];
-    size_t buffer_size;
-} xx_sha256_context;
 
 typedef struct xx_aes_context {
     uint8_t round_keys[XX_AES_MAX_ROUND_KEY_SIZE];
@@ -77,10 +60,6 @@ static uint32_t xx_rotate_left32(uint32_t value, unsigned int count) {
     return (value << count) | (value >> (32U - count));
 }
 
-static uint32_t xx_rotate_right32(uint32_t value, unsigned int count) {
-    return (value >> count) | (value << (32U - count));
-}
-
 static uint32_t xx_load_be32(const uint8_t *data) {
     return ((uint32_t)data[0] << 24U) |
            ((uint32_t)data[1] << 16U) |
@@ -93,241 +72,6 @@ static void xx_store_be32(uint8_t *data, uint32_t value) {
     data[1] = (uint8_t)(value >> 16U);
     data[2] = (uint8_t)(value >> 8U);
     data[3] = (uint8_t)value;
-}
-
-static void xx_sha256_transform(xx_sha256_context *context,
-                                const uint8_t block[XX_SHA256_BLOCK_SIZE]) {
-    static const uint32_t constants[64] = {
-        0x428A2F98U, 0x71374491U, 0xB5C0FBCFU, 0xE9B5DBA5U,
-        0x3956C25BU, 0x59F111F1U, 0x923F82A4U, 0xAB1C5ED5U,
-        0xD807AA98U, 0x12835B01U, 0x243185BEU, 0x550C7DC3U,
-        0x72BE5D74U, 0x80DEB1FEU, 0x9BDC06A7U, 0xC19BF174U,
-        0xE49B69C1U, 0xEFBE4786U, 0x0FC19DC6U, 0x240CA1CCU,
-        0x2DE92C6FU, 0x4A7484AAU, 0x5CB0A9DCU, 0x76F988DAU,
-        0x983E5152U, 0xA831C66DU, 0xB00327C8U, 0xBF597FC7U,
-        0xC6E00BF3U, 0xD5A79147U, 0x06CA6351U, 0x14292967U,
-        0x27B70A85U, 0x2E1B2138U, 0x4D2C6DFCU, 0x53380D13U,
-        0x650A7354U, 0x766A0ABBU, 0x81C2C92EU, 0x92722C85U,
-        0xA2BFE8A1U, 0xA81A664BU, 0xC24B8B70U, 0xC76C51A3U,
-        0xD192E819U, 0xD6990624U, 0xF40E3585U, 0x106AA070U,
-        0x19A4C116U, 0x1E376C08U, 0x2748774CU, 0x34B0BCB5U,
-        0x391C0CB3U, 0x4ED8AA4AU, 0x5B9CCA4FU, 0x682E6FF3U,
-        0x748F82EEU, 0x78A5636FU, 0x84C87814U, 0x8CC70208U,
-        0x90BEFFFAU, 0xA4506CEBU, 0xBEF9A3F7U, 0xC67178F2U
-    };
-    uint32_t words[64];
-    uint32_t a, b, c, d, e, f, g, h;
-    unsigned int index;
-
-    for (index = 0U; index < 16U; ++index) {
-        words[index] = xx_load_be32(block + ((size_t)index * 4U));
-    }
-    for (index = 16U; index < 64U; ++index) {
-        uint32_t s0 = xx_rotate_right32(words[index - 15U], 7U) ^
-                      xx_rotate_right32(words[index - 15U], 18U) ^
-                      (words[index - 15U] >> 3U);
-        uint32_t s1 = xx_rotate_right32(words[index - 2U], 17U) ^
-                      xx_rotate_right32(words[index - 2U], 19U) ^
-                      (words[index - 2U] >> 10U);
-        words[index] = words[index - 16U] + s0 + words[index - 7U] + s1;
-    }
-
-    a = context->state[0]; b = context->state[1];
-    c = context->state[2]; d = context->state[3];
-    e = context->state[4]; f = context->state[5];
-    g = context->state[6]; h = context->state[7];
-    for (index = 0U; index < 64U; ++index) {
-        uint32_t upper = xx_rotate_right32(e, 6U) ^
-                         xx_rotate_right32(e, 11U) ^
-                         xx_rotate_right32(e, 25U);
-        uint32_t choose = (e & f) ^ ((~e) & g);
-        uint32_t temporary1 = h + upper + choose + constants[index] + words[index];
-        uint32_t lower = xx_rotate_right32(a, 2U) ^
-                         xx_rotate_right32(a, 13U) ^
-                         xx_rotate_right32(a, 22U);
-        uint32_t majority = (a & b) ^ (a & c) ^ (b & c);
-        uint32_t temporary2 = lower + majority;
-        h = g; g = f; f = e; e = d + temporary1;
-        d = c; c = b; b = a; a = temporary1 + temporary2;
-    }
-    context->state[0] += a; context->state[1] += b;
-    context->state[2] += c; context->state[3] += d;
-    context->state[4] += e; context->state[5] += f;
-    context->state[6] += g; context->state[7] += h;
-    xx_crypto_clear(words, sizeof(words));
-}
-
-static void xx_sha256_init(xx_sha256_context *context) {
-    static const uint32_t initial[8] = {
-        0x6A09E667U, 0xBB67AE85U, 0x3C6EF372U, 0xA54FF53AU,
-        0x510E527FU, 0x9B05688CU, 0x1F83D9ABU, 0x5BE0CD19U
-    };
-    xx_bytes_zero((uint8_t *)context, sizeof(*context));
-    xx_bytes_copy((uint8_t *)context->state, (const uint8_t *)initial,
-                  sizeof(initial));
-}
-
-static void xx_sha256_update(xx_sha256_context *context,
-                             const uint8_t *data, size_t size) {
-    context->total_size += size;
-    while (size > 0U) {
-        size_t count = XX_SHA256_BLOCK_SIZE - context->buffer_size;
-        if (count > size) count = size;
-        xx_bytes_copy(context->buffer + context->buffer_size, data, count);
-        context->buffer_size += count;
-        data += count;
-        size -= count;
-        if (context->buffer_size == XX_SHA256_BLOCK_SIZE) {
-            xx_sha256_transform(context, context->buffer);
-            context->buffer_size = 0U;
-        }
-    }
-}
-
-static void xx_sha256_final(xx_sha256_context *context,
-                            uint8_t digest[XX_SHA256_DIGEST_SIZE]) {
-    uint64_t bit_size = context->total_size * 8U;
-    size_t index = context->buffer_size;
-    unsigned int word;
-    context->buffer[index++] = 0x80U;
-    if (index > 56U) {
-        xx_bytes_zero(context->buffer + index, XX_SHA256_BLOCK_SIZE - index);
-        xx_sha256_transform(context, context->buffer);
-        index = 0U;
-    }
-    xx_bytes_zero(context->buffer + index, 56U - index);
-    for (word = 0U; word < 8U; ++word) {
-        context->buffer[63U - word] = (uint8_t)(bit_size >> (8U * word));
-    }
-    xx_sha256_transform(context, context->buffer);
-    for (word = 0U; word < 8U; ++word) {
-        xx_store_be32(digest + ((size_t)word * 4U), context->state[word]);
-    }
-}
-
-static void xx_sha1_transform(xx_sha1_context *context, const uint8_t block[XX_SHA1_BLOCK_SIZE]) {
-    uint32_t words[80];
-    uint32_t a;
-    uint32_t b;
-    uint32_t c;
-    uint32_t d;
-    uint32_t e;
-    unsigned int index;
-
-    for (index = 0U; index < 16U; ++index) {
-        words[index] = xx_load_be32(block + ((size_t)index * 4U));
-    }
-    for (index = 16U; index < 80U; ++index) {
-        words[index] = xx_rotate_left32(words[index - 3U] ^ words[index - 8U] ^
-                                        words[index - 14U] ^ words[index - 16U], 1U);
-    }
-
-    a = context->state[0];
-    b = context->state[1];
-    c = context->state[2];
-    d = context->state[3];
-    e = context->state[4];
-
-    for (index = 0U; index < 80U; ++index) {
-        uint32_t function;
-        uint32_t constant;
-        uint32_t temporary;
-
-        if (index < 20U) {
-            function = (b & c) | ((~b) & d);
-            constant = 0x5A827999U;
-        } else if (index < 40U) {
-            function = b ^ c ^ d;
-            constant = 0x6ED9EBA1U;
-        } else if (index < 60U) {
-            function = (b & c) | (b & d) | (c & d);
-            constant = 0x8F1BBCDCU;
-        } else {
-            function = b ^ c ^ d;
-            constant = 0xCA62C1D6U;
-        }
-
-        temporary = xx_rotate_left32(a, 5U) + function + e + constant + words[index];
-        e = d;
-        d = c;
-        c = xx_rotate_left32(b, 30U);
-        b = a;
-        a = temporary;
-    }
-
-    context->state[0] += a;
-    context->state[1] += b;
-    context->state[2] += c;
-    context->state[3] += d;
-    context->state[4] += e;
-    xx_crypto_clear(words, sizeof(words));
-}
-
-static void xx_sha1_init(xx_sha1_context *context) {
-    context->state[0] = 0x67452301U;
-    context->state[1] = 0xEFCDAB89U;
-    context->state[2] = 0x98BADCFEU;
-    context->state[3] = 0x10325476U;
-    context->state[4] = 0xC3D2E1F0U;
-    context->total_size = 0U;
-    context->buffer_size = 0U;
-    xx_bytes_zero(context->buffer, sizeof(context->buffer));
-}
-
-static void xx_sha1_update(xx_sha1_context *context, const uint8_t *data, size_t data_size) {
-    size_t consumed = 0U;
-
-    context->total_size += (uint64_t)data_size;
-
-    if (context->buffer_size > 0U) {
-        size_t available = XX_SHA1_BLOCK_SIZE - context->buffer_size;
-        size_t amount = data_size < available ? data_size : available;
-        xx_bytes_copy(context->buffer + context->buffer_size, data, amount);
-        context->buffer_size += amount;
-        consumed += amount;
-        if (context->buffer_size == XX_SHA1_BLOCK_SIZE) {
-            xx_sha1_transform(context, context->buffer);
-            context->buffer_size = 0U;
-        }
-    }
-
-    while (data_size - consumed >= XX_SHA1_BLOCK_SIZE) {
-        xx_sha1_transform(context, data + consumed);
-        consumed += XX_SHA1_BLOCK_SIZE;
-    }
-
-    if (consumed < data_size) {
-        size_t remainder = data_size - consumed;
-        xx_bytes_copy(context->buffer, data + consumed, remainder);
-        context->buffer_size = remainder;
-    }
-}
-
-static void xx_sha1_final(xx_sha1_context *context, uint8_t digest[XX_SHA1_DIGEST_SIZE]) {
-    uint64_t bit_size = context->total_size << 3U;
-    unsigned int index;
-
-    context->buffer[context->buffer_size++] = 0x80U;
-    if (context->buffer_size > 56U) {
-        while (context->buffer_size < XX_SHA1_BLOCK_SIZE) {
-            context->buffer[context->buffer_size++] = 0U;
-        }
-        xx_sha1_transform(context, context->buffer);
-        context->buffer_size = 0U;
-    }
-    while (context->buffer_size < 56U) {
-        context->buffer[context->buffer_size++] = 0U;
-    }
-
-    for (index = 0U; index < 8U; ++index) {
-        context->buffer[56U + index] = (uint8_t)(bit_size >> (56U - (index * 8U)));
-    }
-    xx_sha1_transform(context, context->buffer);
-
-    for (index = 0U; index < 5U; ++index) {
-        xx_store_be32(digest + ((size_t)index * 4U), context->state[index]);
-    }
-    xx_crypto_clear(context, sizeof(*context));
 }
 
 static bool xx_sha1_update_progress(xx_sha1_context *context,
@@ -362,7 +106,7 @@ static bool xx_hmac_sha1_parts(const uint8_t *key, size_t key_size,
     if (key_size > XX_SHA1_BLOCK_SIZE) {
         xx_sha1_init(&context);
         if (!xx_sha1_update_progress(&context, key, key_size, pd)) goto cleanup;
-        xx_sha1_final(&context, key_block);
+        xx_sha1_final(&context, key_block, XX_SHA1_DIGEST_SIZE);
     } else if (key_size > 0U) {
         xx_bytes_copy(key_block, key, key_size);
     }
@@ -376,12 +120,12 @@ static bool xx_hmac_sha1_parts(const uint8_t *key, size_t key_size,
     xx_sha1_update(&context, inner_pad, sizeof(inner_pad));
     if (!xx_sha1_update_progress(&context, part1, part1_size, pd) ||
         !xx_sha1_update_progress(&context, part2, part2_size, pd)) goto cleanup;
-    xx_sha1_final(&context, inner_digest);
+    xx_sha1_final(&context, inner_digest, XX_SHA1_DIGEST_SIZE);
 
     xx_sha1_init(&context);
     xx_sha1_update(&context, outer_pad, sizeof(outer_pad));
     xx_sha1_update(&context, inner_digest, sizeof(inner_digest));
-    xx_sha1_final(&context, digest);
+    xx_sha1_final(&context, digest, XX_SHA1_DIGEST_SIZE);
     success = !xx_pd_is_stopped(pd);
 
 cleanup:
@@ -1018,7 +762,7 @@ static bool xx_7zip_aes_derive_key(const uint8_t *password,
         if (password_size > 0U) xx_sha256_update(&hash, password, password_size);
         xx_sha256_update(&hash, counter, sizeof(counter));
     }
-    xx_sha256_final(&hash, key);
+    xx_sha256_final(&hash, key, XX_SHA256_DIGEST_SIZE);
     xx_crypto_clear(&hash, sizeof(hash));
     xx_crypto_clear(counter, sizeof(counter));
     return true;
@@ -1199,12 +943,12 @@ bool xx_rar3_aes_derive(const uint8_t *password_utf16le, size_t password_size,
         xx_sha1_update(&hash, counter, sizeof(counter));
         if ((round & 16383U) == 0) {
             snapshot = hash;
-            xx_sha1_final(&snapshot, digest);
+            xx_sha1_final(&snapshot, digest, XX_SHA1_DIGEST_SIZE);
             iv[round >> 14] = digest[19];
         }
     }
     if (xx_pd_is_stopped(pd)) goto cleanup;
-    xx_sha1_final(&hash, digest);
+    xx_sha1_final(&hash, digest, XX_SHA1_DIGEST_SIZE);
     for (word = 0; word < 4U; ++word)
         for (byte = 0; byte < 4U; ++byte)
             key16[word * 4U + byte] = digest[word * 4U + 3U - byte];
@@ -1234,7 +978,7 @@ static void xx_rar5_hmac_init(xx_rar5_hmac_base *base,
     if (key_size > 64U) {
         xx_sha256_init(&hash);
         xx_sha256_update(&hash, key, key_size);
-        xx_sha256_final(&hash, material);
+        xx_sha256_final(&hash, material, XX_SHA256_DIGEST_SIZE);
         xx_crypto_clear(&hash, sizeof(hash));
     } else xx_bytes_copy(material, key, key_size);
     for (i = 0; i < 64U; ++i) pad[i] = material[i] ^ 0x36U;
@@ -1253,10 +997,10 @@ static void xx_rar5_hmac_digest(const xx_rar5_hmac_base *base,
     xx_sha256_context hash = base->inner;
     uint8_t inner[32];
     xx_sha256_update(&hash, bytes, size);
-    xx_sha256_final(&hash, inner);
+    xx_sha256_final(&hash, inner, XX_SHA256_DIGEST_SIZE);
     hash = base->outer;
     xx_sha256_update(&hash, inner, sizeof(inner));
-    xx_sha256_final(&hash, digest);
+    xx_sha256_final(&hash, digest, XX_SHA256_DIGEST_SIZE);
     xx_crypto_clear(&hash, sizeof(hash));
     xx_crypto_clear(inner, sizeof(inner));
 }
@@ -1319,7 +1063,7 @@ bool xx_rar5_aes_check_password(const uint8_t stored12[12],
     if (!stored12 || !derived8) return false;
     xx_sha256_init(&hash);
     xx_sha256_update(&hash, stored12, 8);
-    xx_sha256_final(&hash, checksum);
+    xx_sha256_final(&hash, checksum, XX_SHA256_DIGEST_SIZE);
     for (i = 0; i < 8U; ++i) difference |= stored12[i] ^ derived8[i];
     for (i = 0; i < 4U; ++i) difference |= stored12[i + 8U] ^ checksum[i];
     xx_crypto_clear(&hash, sizeof(hash));

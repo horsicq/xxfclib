@@ -230,3 +230,13 @@ xx_io_device* xx_io_mem_open_ro(const void *buf, size_t size) {
 xx_io_device* io_mem_open_ro(const void *buf, size_t size) {
     return xx_io_mem_open_ro(buf, size);
 }
+
+bool xx_io_is_memory(const xx_io_device *device) {
+    xx_io_device *parent;
+    while (xx_io_sub_get_range(device, &parent, NULL, NULL)) device = parent;
+    return device && device->priv &&
+           device->read == xx_io_mem_read_cb &&
+           device->seek64 == xx_io_mem_seek64_cb &&
+           device->total_size == xx_io_mem_total_size_cb &&
+           device->close == xx_io_mem_close_cb;
+}

@@ -58,8 +58,11 @@
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/strings/xx_string.h"
+#include "../xx_nested_mbr_fat.h"
 
+#include <limits.h>
 #include <stdio.h>
 
 #ifdef VHDDYNAMIC
@@ -103,10 +106,14 @@ typedef struct vhddynamic_info_s {
 typedef struct vhddynamic_stream_s {
     vhddynamic_info info;
     size_t index; /* 0 while the single record is current */
+    xx_nested_fat *nested;
 } vhddynamic_stream;
 
 static void vhddynamic_stream_free(void *opaque) {
-    if (opaque) xx_mem_free(opaque);
+    vhddynamic_stream *stream = (vhddynamic_stream *)opaque;
+    if (!stream) return;
+    xx_nested_fat_free(stream->nested);
+    xx_mem_free(stream);
 }
 
 static uint32_t vhddynamic_be32(const uint8_t *b) {
@@ -154,39 +161,59 @@ static bool vhddynamic_write_all(xx_io_device *device, const void *data,
 static bool vhddynamic_copy_range(xx_io_device *source, int64_t offset,
                                   uint64_t size, xx_io_device *destination,
                                   xx_pd_struct *pd) {
-    uint8_t buffer[0x8000];
+    size_t capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = NULL;
+    bool buffer_result = false;
     uint64_t left = size;
-    if (!source || offset < 0) return false;
-    if (!destination) return true;
-    if (xx_io_seek64(source, offset, SEEK_SET) != 0) return false;
+    if (!source || offset < 0) { buffer_result = (false); goto buffer_done; }
+    if (!destination) { buffer_result = (true); goto buffer_done; }
+    if (xx_io_seek64(source, offset, SEEK_SET) != 0) { buffer_result = (false); goto buffer_done; }
+    if (capacity > (SIZE_MAX >> 1U)) capacity = SIZE_MAX >> 1U;
+    if (left) { if(capacity>left) capacity=(size_t)left; buffer = (uint8_t *)xx_mem_alloc(capacity); if (!buffer) { buffer_result = false; goto buffer_done; } }
     while (left != 0U) {
-        size_t want = left < sizeof(buffer) ? (size_t)left : sizeof(buffer);
+        size_t want = left < capacity ? (size_t)left : capacity;
         size_t done = 0U;
-        if (pd && xx_pd_is_stopped(pd)) return false;
+        if (pd && xx_pd_is_stopped(pd)) { buffer_result = (false); goto buffer_done; }
         while (done < want) {
             ssize_t amount = xx_io_read(source, buffer + done, want - done);
-            if (amount <= 0 || (size_t)amount > want - done) return false;
+            if (amount <= 0 || (size_t)amount > want - done) { buffer_result = (false); goto buffer_done; }
             done += (size_t)amount;
         }
-        if (!vhddynamic_write_all(destination, buffer, want, pd)) return false;
+        if (!vhddynamic_write_all(destination, buffer, want, pd)) { buffer_result = (false); goto buffer_done; }
         left -= want;
     }
-    return true;
+    { buffer_result = (true); goto buffer_done; }
+
+buffer_done:
+    xx_mem_free(buffer);
+    return buffer_result;
 }
 
 /* Emit `size` zero bytes: unallocated blocks and sectors. */
 static bool vhddynamic_write_zeros(xx_io_device *destination, uint64_t size,
                                    xx_pd_struct *pd) {
-    uint8_t buffer[0x8000];
+    size_t capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = NULL;
+    bool buffer_result = false;
     uint64_t left = size;
-    if (!destination) return true;
-    xx_rt_memset(buffer, 0, sizeof(buffer));
+    if (!destination) { buffer_result = (true); goto buffer_done; }
+    if (capacity > (SIZE_MAX >> 1U)) capacity = SIZE_MAX >> 1U;
+    if (left) {
+        if (capacity > left) capacity = (size_t)left;
+        buffer = (uint8_t *)xx_mem_alloc(capacity);
+        if (!buffer) { buffer_result = false; goto buffer_done; }
+        xx_rt_memset(buffer, 0, capacity);
+    }
     while (left != 0U) {
-        size_t want = left < sizeof(buffer) ? (size_t)left : sizeof(buffer);
-        if (!vhddynamic_write_all(destination, buffer, want, pd)) return false;
+        size_t want = left < capacity ? (size_t)left : capacity;
+        if (!vhddynamic_write_all(destination, buffer, want, pd)) { buffer_result = (false); goto buffer_done; }
         left -= want;
     }
-    return true;
+    { buffer_result = (true); goto buffer_done; }
+
+buffer_done:
+    xx_mem_free(buffer);
+    return buffer_result;
 }
 
 /* One's-complement checksum over the structure with its own checksum field
@@ -349,6 +376,44 @@ static bool vhddynamic_emit(Abstractformat *format,
     bitmap = (uint8_t *)xx_mem_alloc((size_t)bitmap_bytes);
     if (!table || !bitmap) goto done;
 
+    /* First pass over the table, before anything is written: every
+     * allocated block must lie between the front copy and the footer, and
+     * distinct blocks cannot overlap, so together they must fit in that
+     * space.  Entries that share one block (a tiny file expanding to
+     * terabytes of data) fail here. */
+    {
+        uint64_t room = limit - VHDDYNAMIC_FOOTER_SIZE, used = 0U, left;
+        for (index = 0U; index < needed; ++index) {
+            uint32_t entry;
+            uint64_t output, offset;
+            if (pd && xx_pd_is_stopped(pd)) goto done;
+            if (index - slice_start >= slice_count) {
+                slice_start = index;
+                slice_count = needed - index < VHDDYNAMIC_BAT_SLICE
+                                  ? needed - index
+                                  : VHDDYNAMIC_BAT_SLICE;
+                if (!vhddynamic_read_at(format->device,
+                                        info->base +
+                                            (int64_t)(info->bat_offset +
+                                                      index * 4U),
+                                        table, (size_t)slice_count * 4U))
+                    goto done;
+            }
+            entry = vhddynamic_be32(table + (index - slice_start) * 4U);
+            if (entry == 0xffffffffU) continue;
+            left = info->disk_size - index * (uint64_t)info->block_size;
+            output = left < info->block_size ? left : info->block_size;
+            offset = (uint64_t)entry * 512U;
+            if (offset < VHDDYNAMIC_FOOTER_SIZE || offset > limit ||
+                bitmap_bytes + output > limit - offset ||
+                bitmap_bytes + output > room - used)
+                goto done;
+            used += bitmap_bytes + output;
+        }
+        slice_start = 0U;
+        slice_count = 0U;
+    }
+
     for (index = 0U; index < needed; ++index) {
         uint32_t entry;
         uint64_t left = info->disk_size - produced;
@@ -417,13 +482,202 @@ done:
     return result;
 }
 
-/* Append one code point as UTF-8; control characters, surrogates and
- * anything out of range become '?', so the comment is always printable. */
+/* A seekable guest-disk view backed by the VHD BAT and one cached bitmap.
+ * The 512 MiB corpus image needs only its BAT and one 512-byte bitmap. */
+typedef struct vhddynamic_guest_s {
+    xx_io_device device;
+    Abstractformat *owner;
+    vhddynamic_info info;
+    uint32_t *map;
+    uint8_t *bitmap;
+    size_t bitmap_bytes;
+    uint64_t bitmap_index;
+    int64_t position;
+} vhddynamic_guest;
+
+static bool vhddynamic_guest_bitmap(vhddynamic_guest *guest,
+                                    uint64_t index) {
+    uint64_t physical;
+    if (guest->bitmap_index == index) return true;
+    physical = (uint64_t)guest->info.base +
+               (uint64_t)guest->map[index] * 512U;
+    if (physical > INT64_MAX ||
+        !vhddynamic_read_at(guest->owner->device, (int64_t)physical,
+                            guest->bitmap, guest->bitmap_bytes))
+        return false;
+    guest->bitmap_index = index;
+    return true;
+}
+
+static ssize_t vhddynamic_guest_read(xx_io_device *device, void *buffer,
+                                     size_t size) {
+    vhddynamic_guest *guest = (vhddynamic_guest *)device->priv;
+    size_t done = 0U, wanted;
+    if (!guest || (!buffer && size)) return -1;
+    if (guest->position < 0 ||
+        (uint64_t)guest->position >= guest->info.disk_size) return 0;
+    wanted = (uint64_t)size > guest->info.disk_size - (uint64_t)guest->position
+                 ? (size_t)(guest->info.disk_size - (uint64_t)guest->position)
+                 : size;
+    while (done < wanted) {
+        uint64_t at = (uint64_t)guest->position + done;
+        size_t amount = wanted - done;
+        if (guest->info.disk_type == VHDDYNAMIC_TYPE_FIXED) {
+            uint64_t physical = (uint64_t)guest->info.base + at;
+            if (physical > INT64_MAX ||
+                !vhddynamic_read_at(guest->owner->device, (int64_t)physical,
+                                    (uint8_t *)buffer + done, amount))
+                break;
+        } else {
+            uint64_t block = at / guest->info.block_size;
+            uint64_t within = at % guest->info.block_size;
+            uint32_t entry = guest->map[block];
+            if ((uint64_t)amount > guest->info.block_size - within)
+                amount = (size_t)(guest->info.block_size - within);
+            if (entry == UINT32_MAX) {
+                xx_rt_memset((uint8_t *)buffer + done, 0, amount);
+            } else {
+                uint64_t sector = within / 512U;
+                uint64_t end = sector + 1U;
+                uint64_t sector_count = guest->info.block_size / 512U;
+                bool present;
+                uint64_t physical;
+                if (!vhddynamic_guest_bitmap(guest, block)) break;
+                present = (guest->bitmap[sector / 8U] &
+                           (uint8_t)(0x80U >> (sector % 8U))) != 0U;
+                while (end < sector_count &&
+                       end * 512U < within + amount &&
+                       ((guest->bitmap[end / 8U] &
+                         (uint8_t)(0x80U >> (end % 8U))) != 0U) == present)
+                    ++end;
+                if ((uint64_t)amount > end * 512U - within)
+                    amount = (size_t)(end * 512U - within);
+                if (!present) {
+                    xx_rt_memset((uint8_t *)buffer + done, 0, amount);
+                } else {
+                    physical = (uint64_t)guest->info.base +
+                               (uint64_t)entry * 512U +
+                               guest->bitmap_bytes + within;
+                    if (physical > INT64_MAX ||
+                        !vhddynamic_read_at(guest->owner->device,
+                                            (int64_t)physical,
+                                            (uint8_t *)buffer + done, amount))
+                        break;
+                }
+            }
+        }
+        done += amount;
+    }
+    guest->position += (int64_t)done;
+    return done ? (ssize_t)done : (wanted ? -1 : 0);
+}
+
+static int vhddynamic_guest_seek64(xx_io_device *device, int64_t offset,
+                                   int whence) {
+    vhddynamic_guest *guest = (vhddynamic_guest *)device->priv;
+    int64_t base, target;
+    if (!guest) return -1;
+    base = whence == SEEK_SET ? 0 :
+           whence == SEEK_CUR ? guest->position :
+           whence == SEEK_END ? (int64_t)guest->info.disk_size : -1;
+    if (base < 0 || (offset > 0 && base > INT64_MAX - offset) ||
+        (offset < 0 && base < INT64_MIN - offset))
+        return -1;
+    target = base + offset;
+    if (target < 0 || (uint64_t)target > guest->info.disk_size) return -1;
+    guest->position = target;
+    return 0;
+}
+
+static int vhddynamic_guest_seek(xx_io_device *device, long offset,
+                                 int whence) {
+    return vhddynamic_guest_seek64(device, (int64_t)offset, whence);
+}
+
+static int64_t vhddynamic_guest_tell(xx_io_device *device) {
+    vhddynamic_guest *guest = (vhddynamic_guest *)device->priv;
+    return guest ? guest->position : -1;
+}
+
+static int64_t vhddynamic_guest_size(xx_io_device *device) {
+    vhddynamic_guest *guest = (vhddynamic_guest *)device->priv;
+    return guest ? (int64_t)guest->info.disk_size : -1;
+}
+
+static int vhddynamic_guest_close(xx_io_device *device) {
+    vhddynamic_guest *guest = (vhddynamic_guest *)device->priv;
+    if (guest) {
+        xx_mem_free(guest->map);
+        xx_mem_free(guest->bitmap);
+        xx_mem_free(guest);
+    }
+    return 0;
+}
+
+static xx_io_device *vhddynamic_guest_open(Abstractformat *format,
+                                            const vhddynamic_info *info,
+                                            xx_pd_struct *pd) {
+    vhddynamic_guest *guest;
+    uint64_t needed;
+    size_t index;
+    if (!format || !info ||
+        info->disk_type == VHDDYNAMIC_TYPE_DIFFERENCING ||
+        !vhddynamic_emit(format, info, NULL, pd))
+        return NULL;
+    guest = (vhddynamic_guest *)xx_mem_calloc(1U, sizeof(*guest));
+    if (!guest) return NULL;
+    guest->owner = format;
+    guest->info = *info;
+    guest->bitmap_index = UINT64_MAX;
+    if (info->disk_type == VHDDYNAMIC_TYPE_DYNAMIC) {
+        needed = vhddynamic_needed_blocks(info);
+        if (needed > SIZE_MAX / sizeof(*guest->map)) goto fail;
+        guest->map = (uint32_t *)xx_mem_alloc((size_t)needed * 4U);
+        guest->bitmap_bytes = (size_t)((((uint64_t)info->block_size / 512U +
+                                        7U) / 8U + 511U) & ~(uint64_t)511U);
+        guest->bitmap = (uint8_t *)xx_mem_alloc(guest->bitmap_bytes);
+        if (!guest->map || !guest->bitmap ||
+            !vhddynamic_read_at(format->device,
+                                info->base + (int64_t)info->bat_offset,
+                                guest->map, (size_t)needed * 4U)) goto fail;
+        for (index = 0U; index < (size_t)needed; ++index)
+            guest->map[index] = vhddynamic_be32(
+                (const uint8_t *)guest->map + index * 4U);
+    }
+    guest->device.read = vhddynamic_guest_read;
+    guest->device.seek = vhddynamic_guest_seek;
+    guest->device.seek64 = vhddynamic_guest_seek64;
+    guest->device.tell = vhddynamic_guest_tell;
+    guest->device.total_size = vhddynamic_guest_size;
+    guest->device.close = vhddynamic_guest_close;
+    guest->device.priv = guest;
+    return &guest->device;
+fail:
+    xx_mem_free(guest->map);
+    xx_mem_free(guest->bitmap);
+    xx_mem_free(guest);
+    return NULL;
+}
+
+/* Code points that must not reach a UI or log verbatim: C0 and C1
+ * controls, DEL, the bidi marks, embeddings, overrides and isolates
+ * (U+061C, U+200E-U+200F, U+202A-U+202E, U+2066-U+2069), the line and
+ * paragraph separators, BOM / noncharacters U+FFFE-U+FFFF, surrogates and
+ * anything out of range. */
+static bool vhddynamic_unsafe_cp(uint32_t cp) {
+    return cp < 0x20U || (cp >= 0x7fU && cp <= 0x9fU) || cp == 0x61cU ||
+           cp == 0x200eU || cp == 0x200fU ||
+           (cp >= 0x2028U && cp <= 0x202eU) ||
+           (cp >= 0x2066U && cp <= 0x2069U) || cp == 0xfeffU ||
+           (cp & 0xfffeU) == 0xfffeU || (cp >= 0xd800U && cp <= 0xdfffU) ||
+           cp > 0x10ffffU;
+}
+
+/* Append one code point as UTF-8; unsafe code points become '?', so the
+ * comment is always printable and cannot reorder surrounding text. */
 static size_t vhddynamic_put_utf8(char *out, size_t used, size_t size,
                                   uint32_t cp) {
-    if (cp < 0x20U || cp == 0x7fU || (cp >= 0xd800U && cp <= 0xdfffU) ||
-        cp > 0x10ffffU)
-        cp = '?';
+    if (vhddynamic_unsafe_cp(cp)) cp = '?';
     if (cp < 0x80U) {
         if (used + 1U >= size) return used;
         out[used++] = (char)cp;
@@ -645,7 +899,6 @@ bool xx_vhddynamic_handle_base_info(Abstractformat *format,
                                     xx_pd_struct *pd) {
     vhddynamic_info info;
     xx_vhddynamic *archive;
-    (void)pd;
     if (!format || !vhddynamic_parse(format, &info)) {
         if (format) {
             format->format_size = -1;
@@ -657,8 +910,16 @@ bool xx_vhddynamic_handle_base_info(Abstractformat *format,
     }
     archive = (xx_vhddynamic *)format;
     archive->number_of_records = 1U;
+    {
+        xx_nested_fat *nested = xx_nested_fat_open(
+            vhddynamic_guest_open(format, &info, pd), NULL, pd);
+        if (nested) {
+            archive->number_of_records = nested->total_records;
+            xx_nested_fat_free(nested);
+        }
+    }
     archive->archive_end = info.base + info.size;
-    format->number_of_archive_records = 1U;
+    format->number_of_archive_records = archive->number_of_records;
     format->format_size = info.size;
     format->file_type = XX_VHDDYNAMIC_FILE_TYPE;
     format->format_type = XX_TYPE_ARCHIVE;
@@ -690,7 +951,6 @@ xx_archive_record_state *xx_vhddynamic_create_archive_records_reading(
     Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
     vhddynamic_stream *stream;
     xx_archive_record_state *state;
-    (void)pd;
     stream = (vhddynamic_stream *)xx_mem_alloc(sizeof(*stream));
     if (!stream) return NULL;
     xx_rt_memset(stream, 0, sizeof(*stream));
@@ -706,9 +966,15 @@ xx_archive_record_state *xx_vhddynamic_create_archive_records_reading(
     xx_archive_record_state_init(state, format);
     state->internal_state = stream;
     state->free_internal = vhddynamic_stream_free;
-    state->total_records = 1;
+    stream->nested = xx_nested_fat_open(
+        vhddynamic_guest_open(format, &stream->info, pd), options, pd);
+    state->total_records = stream->nested
+                               ? (int64_t)stream->nested->total_records : 1;
     if (!vhddynamic_copy_options(&state->options, options) ||
-        !vhddynamic_set_record(&state->current_record, &stream->info)) {
+        !(stream->nested
+              ? xx_nested_fat_set_record(&state->current_record,
+                                         stream->nested)
+              : vhddynamic_set_record(&state->current_record, &stream->info))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -727,13 +993,18 @@ bool xx_vhddynamic_archive_record_move_to_next(Abstractformat *format,
                                                xx_archive_record_state *state,
                                                xx_pd_struct *pd) {
     vhddynamic_stream *stream;
-    (void)pd;
     if (!format || !state || state->format != format ||
         !(stream = (vhddynamic_stream *)state->internal_state)) {
         if (state) state->has_record = false;
         return false;
     }
-    /* There is exactly one member, so the first step is always the last. */
+    if (stream->nested && xx_nested_fat_advance(stream->nested, pd)) {
+        ++state->current_index;
+        state->has_record = xx_nested_fat_set_record(
+            &state->current_record, stream->nested);
+        return state->has_record;
+    }
+    /* A raw fallback has one member; a nested stream ended. */
     stream->index = 1U;
     xx_archive_record_cleanup(&state->current_record);
     xx_archive_record_init(&state->current_record);
@@ -754,8 +1025,15 @@ bool xx_vhddynamic_unpack_current_archive_record(
     bool created = false;
     if (!format || !state || state->format != format || !state->has_record ||
         !(stream = (vhddynamic_stream *)state->internal_state) ||
-        stream->index != 0U || (pd && xx_pd_is_stopped(pd)))
+        (pd && xx_pd_is_stopped(pd)))
         return false;
+    if (stream->nested) {
+        uint64_t size = xx_archive_record_get_meta_u64(
+            &state->current_record, XX_META_ID_UNCOMPRESSED_SIZE, 0U);
+        return vhddynamic_size_allowed(format, &state->options, size) &&
+               xx_nested_fat_unpack(stream->nested, pd);
+    }
+    if (stream->index != 0U) return false;
     if (!vhddynamic_size_allowed(format, &state->options,
                                  stream->info.disk_size))
         return false;

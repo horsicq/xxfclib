@@ -20,10 +20,12 @@
 #define XX_BFF_MAGIC_STORED 0xea6bU
 #define XX_BFF_MAGIC_PACKED 0xea6cU
 #define XX_BFF_RECORD_MEMBER 0x0bU
+#define XX_BFF_RECORD_MEMBER_COMPACT 0x0cU
 #define XX_BFF_RECORD_TERMINATOR 0x07U
 #define XX_BFF_MODE_MASK UINT32_C(0xf000)
 #define XX_BFF_MODE_DIRECTORY UINT32_C(0x4000)
 #define XX_BFF_MODE_REGULAR UINT32_C(0x8000)
+#define XX_BFF_MODE_SYMLINK UINT32_C(0xa000)
 #define XX_BFF_MAX_MEMBERS 200000U
 
 typedef struct xx_bff_member_s {
@@ -126,6 +128,7 @@ static bool xx_bff_parse(Abstractformat *format, xx_bff_stream **result) {
         int64_t name_area;
         int64_t header_size;
         int64_t next;
+        size_t fixed_header_size;
         size_t name_size;
         uint32_t kind;
         xx_bff_member *grown;
@@ -149,11 +152,18 @@ static bool xx_bff_parse(Abstractformat *format, xx_bff_stream **result) {
             *result = stream;
             return true;
         }
-        if (type != XX_BFF_RECORD_MEMBER || words < 9U) goto fail;
+        if ((type != XX_BFF_RECORD_MEMBER &&
+             type != XX_BFF_RECORD_MEMBER_COMPACT) || words < 9U ||
+            (type == XX_BFF_RECORD_MEMBER_COMPACT && words < 10U)) goto fail;
         name_area = (int64_t)words * 8;
-        header_size = name_area + XX_BFF_TRAILER_SIZE;
+        fixed_header_size = type == XX_BFF_RECORD_MEMBER_COMPACT
+                                ? 0x48U : XX_BFF_FIXED_HEADER_SIZE;
+        /* Type 0x0c carries the data length within its fixed header and has
+         * no 40-byte trailer. Most type 0x0b records retain that trailer. */
+        header_size = name_area +
+                      (type == XX_BFF_RECORD_MEMBER ? XX_BFF_TRAILER_SIZE : 0U);
         if (name_area > SIZE_MAX || offset > relative_size ||
-            header_size > relative_size - offset) goto fail;
+            name_area > relative_size - offset) goto fail;
         header = (uint8_t *)xx_mem_alloc((size_t)name_area);
         if (!header ||
             !xx_bff_read(format->device, format->base_address + offset,
@@ -162,11 +172,11 @@ static bool xx_bff_parse(Abstractformat *format, xx_bff_stream **result) {
             goto fail;
         }
         name_size = 0U;
-        while (XX_BFF_FIXED_HEADER_SIZE + name_size < (size_t)name_area &&
-               header[XX_BFF_FIXED_HEADER_SIZE + name_size] != 0U) ++name_size;
-        if (XX_BFF_FIXED_HEADER_SIZE + name_size >= (size_t)name_area ||
-            !xx_bff_name_valid(header + XX_BFF_FIXED_HEADER_SIZE, name_size) ||
-            XX_BFF_FIXED_HEADER_SIZE +
+        while (fixed_header_size + name_size < (size_t)name_area &&
+               header[fixed_header_size + name_size] != 0U) ++name_size;
+        if (fixed_header_size + name_size >= (size_t)name_area ||
+            !xx_bff_name_valid(header + fixed_header_size, name_size) ||
+            fixed_header_size +
                     (size_t)xx_bff_align((int64_t)name_size + 1, 8) !=
                 (size_t)name_area) {
             xx_mem_free(header);
@@ -186,21 +196,33 @@ static bool xx_bff_parse(Abstractformat *format, xx_bff_stream **result) {
             xx_mem_free(header);
             goto fail;
         }
-        xx_mem_copy(member->name, header + XX_BFF_FIXED_HEADER_SIZE, name_size);
+        xx_mem_copy(member->name, header + fixed_header_size, name_size);
         member->name[name_size] = '\0';
         member->header_offset = format->base_address + offset;
-        member->header_size = header_size;
-        member->data_offset = member->header_offset + header_size;
         member->magic = magic;
         member->mode = xx_bff_u32(header + 0x0cU);
         member->original_size = xx_bff_u32(header + 0x18U);
         member->atime = xx_bff_u32(header + 0x1cU);
         member->mtime = xx_bff_u32(header + 0x20U);
         member->ctime = xx_bff_u32(header + 0x24U);
-        member->packed_size = xx_bff_u32(header + 0x38U);
+        member->packed_size = xx_bff_u32(
+            header + (type == XX_BFF_RECORD_MEMBER ? 0x38U : 0x30U));
         kind = member->mode & XX_BFF_MODE_MASK;
         member->folder = kind == XX_BFF_MODE_DIRECTORY;
-        if (kind != XX_BFF_MODE_DIRECTORY && kind != XX_BFF_MODE_REGULAR) {
+        /* A by-name symlink stores its target as ordinary payload. Legacy
+         * type 0x0b symlinks omit the trailer used by regular files. */
+        if (kind == XX_BFF_MODE_SYMLINK &&
+            type == XX_BFF_RECORD_MEMBER) header_size = name_area;
+        member->header_size = header_size;
+        member->data_offset = member->header_offset + header_size;
+        if (header_size > relative_size - offset) {
+            xx_mem_free(header);
+            goto fail;
+        }
+        /* Exposing the target as a file matches restore tools that cannot
+         * create a Unix symlink on the extraction host. */
+        if (kind != XX_BFF_MODE_DIRECTORY && kind != XX_BFF_MODE_REGULAR &&
+            kind != XX_BFF_MODE_SYMLINK) {
             xx_mem_free(header);
             goto fail;
         }
@@ -283,6 +305,54 @@ static bool xx_bff_safe_name(const char *name) {
             part = p + 1;
         }
     }
+}
+
+/* AIX members may differ only by case. Windows folds those names onto the
+ * same destination, so preserve the later member with the same numbered
+ * prefix that U3's auto-rename extraction uses. */
+static bool xx_bff_earlier_member_collides(const xx_bff_stream *stream) {
+    size_t i;
+    const xx_bff_member *current = &stream->items[stream->index];
+    for (i = 0U; i < stream->index; ++i)
+        if (!stream->items[i].folder &&
+            xx_str_iequals(stream->items[i].name, current->name))
+            return true;
+    return false;
+}
+
+static char *xx_bff_unique_output_path(const char *path) {
+    const char *leaf = path;
+    const char *cursor;
+    size_t prefix_size;
+    size_t leaf_size;
+    uint32_t number;
+
+    if (!path) return NULL;
+    for (cursor = path; *cursor; ++cursor)
+        if (*cursor == '/' || *cursor == '\\') leaf = cursor + 1;
+    prefix_size = (size_t)(leaf - path);
+    leaf_size = xx_str_len(leaf);
+    if (!leaf_size) return NULL;
+    for (number = 0U; number < 100000U; ++number) {
+        char marker[24];
+        int marker_size = snprintf(marker, sizeof(marker), "(%u)", number);
+        char *unique;
+        size_t size;
+        if (marker_size <= 0 || (size_t)marker_size >= sizeof(marker) ||
+            leaf_size > SIZE_MAX - (size_t)marker_size - 1U ||
+            prefix_size > SIZE_MAX - (size_t)marker_size - leaf_size - 1U)
+            return NULL;
+        size = prefix_size + (size_t)marker_size + leaf_size + 1U;
+        unique = (char *)xx_mem_alloc(size);
+        if (!unique) return NULL;
+        xx_mem_copy(unique, path, prefix_size);
+        xx_mem_copy(unique + prefix_size, marker, (size_t)marker_size);
+        xx_mem_copy(unique + prefix_size + (size_t)marker_size, leaf,
+                    leaf_size + 1U);
+        if (!xx_io_file_exists_a(unique)) return unique;
+        xx_str_free(unique);
+    }
+    return NULL;
 }
 
 static bool xx_bff_set_record(xx_archive_record *record,
@@ -528,6 +598,12 @@ bool xx_aixbff_unpack_current_archive_record(Abstractformat *format,
     }
     if (!xx_bff_decode(format, member, &plain, &plain_size, pd) ||
         !xx_store_create_dirs_a(path, false)) goto done;
+    if (xx_io_file_exists_a(path) && xx_bff_earlier_member_collides(stream)) {
+        char *unique = xx_bff_unique_output_path(path);
+        if (!unique) goto done;
+        xx_str_free(path);
+        path = unique;
+    }
     {
         xx_io_device *output = xx_io_file_open(path, "wb");
         created = output != NULL;

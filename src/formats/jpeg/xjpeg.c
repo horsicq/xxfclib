@@ -19,6 +19,7 @@
  * SOFTWARE.
  */
 
+#include "../xio.h"
 #include "../../formats/jpeg/xjpeg.h"
 
 #define JPEG_SIGNATURE_SIZE     2
@@ -314,7 +315,7 @@ static void parse_dqt_md5(XJpeg *pJpeg)
                 nSize = pJpeg->pFile->nSize - nOffset;
             }
 
-            cdbuf_append(&buf, pJpeg->pFile->pData + nOffset, (size_t)nSize);
+            xio_append(pJpeg->pFile, nOffset, (size_t)nSize, &buf);
         }
     }
 

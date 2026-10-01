@@ -21,6 +21,14 @@
 
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "xx_crc_internal.h"
+#include "platforms/xx_crc64_platform.h"
+#include "xxfclib/global/xx_global.h"
+
+#if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
+#include <intrin.h>
+#elif (defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__))
+#include <cpuid.h>
+#endif
 
 static const uint64_t _TABLE_CRC64_XZ[256] = {
     0x0000000000000000ULL, 0xB32E4CBE03A75F6FULL,
@@ -285,7 +293,7 @@ static const uint64_t _TABLE_CRC64_ECMA[256] = {
 };
 
 
-uint64_t xx_crc64_xz_calc(uint64_t crc, const void *data, size_t size) {
+uint64_t xx_crc64_xz_scalar(uint64_t crc, const void *data, size_t size) {
     if (!data || size == 0) {
         return crc;
     }
@@ -297,7 +305,7 @@ uint64_t xx_crc64_xz_calc(uint64_t crc, const void *data, size_t size) {
     return ~crc;
 }
 
-uint64_t xx_crc64_ecma_calc(uint64_t crc, const void *data, size_t size) {
+uint64_t xx_crc64_ecma_scalar(uint64_t crc, const void *data, size_t size) {
     if (!data || size == 0) {
         return crc;
     }
@@ -306,6 +314,59 @@ uint64_t xx_crc64_ecma_calc(uint64_t crc, const void *data, size_t size) {
         crc = (crc << 8) ^ _TABLE_CRC64_ECMA[((crc >> 56) ^ p[i]) & 0xFF];
     }
     return crc;
+}
+
+bool xx_crc64_has_pclmul(void) {
+    /* Cache only the immutable CPU capability. The shared SIMD switches are
+     * consulted on every dispatch, so callers can still change backends. */
+#if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
+    static volatile long capability = 0;
+    long value = _InterlockedCompareExchange(&capability, 0, 0);
+    if (value == 0) {
+        int info[4];
+        bool supported = false;
+        __cpuid(info, 0);
+        if (info[0] >= 1) {
+            __cpuid(info, 1);
+            supported = (info[2] & (1 << 1)) != 0;
+        }
+        value = supported ? 2 : 1;
+        _InterlockedCompareExchange(&capability, value, 0);
+    }
+    return value == 2;
+#elif (defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__))
+    static int capability = 0;
+    int value = __atomic_load_n(&capability, __ATOMIC_RELAXED);
+    if (value == 0) {
+        unsigned eax, ebx, ecx, edx;
+        value = __get_cpuid(1, &eax, &ebx, &ecx, &edx) && (ecx & (1U << 1)) ? 2 : 1;
+        __atomic_store_n(&capability, value, __ATOMIC_RELAXED);
+    }
+    return value == 2;
+#else
+    return false;
+#endif
+}
+
+const xx_crc64_platform *xx_crc64_platform_select(void) {
+    static const xx_crc64_platform scalar = {"scalar", xx_crc64_xz_scalar, xx_crc64_ecma_scalar};
+    static const xx_crc64_platform sse2 = {"sse2+pclmul", xx_crc64_xz_sse2, xx_crc64_ecma_sse2};
+    static const xx_crc64_platform avx2 = {"avx2+pclmul", xx_crc64_xz_avx2, xx_crc64_ecma_avx2};
+    if (xx_crc64_has_pclmul()) {
+        if (xx_is_avx2_enabled()) return &avx2;
+        if (xx_is_sse2_enabled()) return &sse2;
+    }
+    return &scalar;
+}
+
+uint64_t xx_crc64_xz_calc(uint64_t crc, const void *data, size_t size) {
+    if (!data || size < 64) return xx_crc64_xz_scalar(crc, data, size);
+    return xx_crc64_platform_select()->xz(crc, data, size);
+}
+
+uint64_t xx_crc64_ecma_calc(uint64_t crc, const void *data, size_t size) {
+    if (!data || size < 64) return xx_crc64_ecma_scalar(crc, data, size);
+    return xx_crc64_platform_select()->ecma(crc, data, size);
 }
 
 bool xx_crc64_has_fast(xx_crc_type_t type) {

@@ -8,6 +8,7 @@
 
 #include "xxfclib/data/xx_data.h"
 #include "xxfclib/io/xx_io.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 
@@ -32,7 +33,6 @@ static const uint8_t xx_dahuazip_eocd_magic[8] = {
 
 /* Chunk used for the forward EOCD scan.  The scan is linear in the carve and
  * never holds more than this much of the input in memory. */
-#define XX_DAHUAZIP_SCAN_CHUNK ((size_t)65536U)
 
 /* Declared-size ceiling handed to xx_zip for every member unless the caller
  * supplies XX_META_ID_OPT_MAX_MEMBER_SIZE itself.  xx_zip already clamps the
@@ -198,13 +198,16 @@ static bool xx_dahuazip_read_at(xx_io_device *device, int64_t offset,
                                 void *data, size_t size) {
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || (!data && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
-        ssize_t got = xx_io_read(device, out + done, size - done);
-        if (got <= 0 || (size_t)got > size - done) return false;
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
+        ssize_t got = xx_io_read(device, out + done, request);
+        if (got <= 0 || (size_t)got > request) return false;
         done += (size_t)got;
     }
     return true;
@@ -247,67 +250,37 @@ static void xx_dahuazip_private_reset(xx_dahuazip_private *parsed) {
  * plausible end rather than the last.
  */
 static bool xx_dahuazip_find_eocd(xx_io_device *device, int64_t start,
-                                  int64_t total, xx_pd_struct *pd,
-                                  int64_t *eocd_offset,
-                                  uint8_t eocd[XX_DAHUAZIP_EOCD_SIZE]) {
+                                   int64_t total, xx_pd_struct *pd,
+                                   int64_t *eocd_offset,
+                                   uint8_t eocd[XX_DAHUAZIP_EOCD_SIZE]) {
+    const size_t capacity = xx_get_file_buffer_size();
     uint8_t *buffer;
     int64_t position = start;
     bool found = false;
-    if (!device || !eocd_offset || !eocd || start < 0 || total < start) {
-        return false;
-    }
+    if (!device || !eocd_offset || !eocd || start < 0 || total < start) return false;
     *eocd_offset = -1;
-    buffer = (uint8_t *)xx_mem_alloc(XX_DAHUAZIP_SCAN_CHUNK);
+    buffer = (uint8_t *)xx_mem_alloc(capacity);
     if (!buffer) return false;
-    /* Each pass consumes at least SCAN_CHUNK - 7 new bytes, so the loop runs
-     * at most total / (SCAN_CHUNK - 7) + 1 times. */
     while (!found && total - position >= (int64_t)XX_DAHUAZIP_EOCD_SIZE) {
-        size_t length = XX_DAHUAZIP_SCAN_CHUNK;
-        size_t index = 0U;
-        if ((uint64_t)(total - position) < (uint64_t)length) {
-            length = (size_t)(total - position);
-        }
+        uint64_t left = (uint64_t)(total - position - XX_DAHUAZIP_EOCD_SIZE + 1);
+        size_t length = left < capacity ? (size_t)left : capacity, index;
         if ((pd && xx_pd_is_stopped(pd)) ||
-            !xx_dahuazip_read_at(device, position, buffer, length)) {
-            break;
-        }
-        while (index + XX_DAHUAZIP_EOCD_MAGIC_SIZE <= length) {
-            const uint8_t *hit = (const uint8_t *)xx_rt_memchr(
-                buffer + index, 'P',
-                length - index - (XX_DAHUAZIP_EOCD_MAGIC_SIZE - 1U));
-            int64_t candidate;
-            if (!hit) break;
-            index = (size_t)(hit - buffer);
-            candidate = position + (int64_t)index;
-            if (xx_rt_memcmp(hit, xx_dahuazip_eocd_magic,
-                             XX_DAHUAZIP_EOCD_MAGIC_SIZE) == 0 &&
-                total - candidate >= (int64_t)XX_DAHUAZIP_EOCD_SIZE) {
-                bool have = false;
-                if (index + XX_DAHUAZIP_EOCD_SIZE <= length) {
-                    xx_rt_memcpy(eocd, hit, XX_DAHUAZIP_EOCD_SIZE);
-                    have = true;
-                } else {
-                    have = xx_dahuazip_read_at(device, candidate, eocd,
-                                               XX_DAHUAZIP_EOCD_SIZE);
-                }
-                if (have) {
-                    uint16_t on_disk = xx_data_get_u16(
-                        eocd, XX_DAHUAZIP_EOCD_SIZE, 8U, false);
-                    uint16_t entries = xx_data_get_u16(
-                        eocd, XX_DAHUAZIP_EOCD_SIZE, 10U, false);
-                    if (on_disk == entries && entries != 0U) {
-                        *eocd_offset = candidate;
-                        found = true;
-                        break;
-                    }
+            !xx_dahuazip_read_at(device, position, buffer, length)) break;
+        for (index = 0U; index < length; ++index) {
+            int64_t candidate = position + (int64_t)index;
+            if (buffer[index] != 'P') continue;
+            if (!xx_dahuazip_read_at(device, candidate, eocd, XX_DAHUAZIP_EOCD_SIZE)) continue;
+            if (xx_rt_memcmp(eocd, xx_dahuazip_eocd_magic, XX_DAHUAZIP_EOCD_MAGIC_SIZE) == 0) {
+                uint16_t on_disk = xx_data_get_u16(eocd, XX_DAHUAZIP_EOCD_SIZE, 8U, false);
+                uint16_t entries = xx_data_get_u16(eocd, XX_DAHUAZIP_EOCD_SIZE, 10U, false);
+                if (on_disk == entries && entries != 0U) {
+                    *eocd_offset = candidate;
+                    found = true;
+                    break;
                 }
             }
-            ++index;
         }
-        if (found || position + (int64_t)length >= total) break;
-        /* Re-read the last seven bytes: a magic that starts there was not
-         * examined in this pass. */
-        position += (int64_t)(length - (XX_DAHUAZIP_EOCD_MAGIC_SIZE - 1U));
+        position += (int64_t)length;
     }
     xx_mem_free(buffer);
     return found;

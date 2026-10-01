@@ -15,7 +15,7 @@
  *     0x06              count * 4   u32 LE   absolute chunk offset
  *     0x06 + count*4    count * 2   u16 LE   chunk length in bytes
  *
- * A slot with offset 0 and length 0 is an unused hole and is skipped.
+ * A zero-length slot is an unused hole; some producers leave a stale offset.
  *
  * There is no magic.  Recognition is entirely structural, and deliberately
  * strict: sprite_start <= sound_start <= count, the whole table must fit,
@@ -25,13 +25,15 @@
  * rejected -- an arbitrary overlay must not be able to turn a table-shaped
  * file into a VSWAP archive.
  *
- * Chunks are stored; the container compresses nothing.  Names are synthesised
- * from the chunk class the two start indices imply (wall / sprite / sound).
+ * Chunks are stored; the container compresses nothing.  Recognized walls and
+ * sprites are rendered as 64x64 BMPs and sound-table entries as 7 kHz WAVs.
+ * Unrecognized pages retain their raw class-based names and contents.
  *
  * All 3 corpus samples in F:\ARC\ARC\WOLF_FT parse.
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/wolfft/xx_wolfft.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -40,6 +42,8 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+
+#include "xx_wolfft_palette.inc"
 
 #ifdef WOLFFT
 #define XX_WOLFFT_FILE_TYPE XX_FILE_TYPE_WOLFFT
@@ -55,6 +59,15 @@
 /* Original WL1 data sets are sector padded after their last chunk.  Accept a
  * small all-zero tail and nothing else. */
 #define XX_WOLFFT_MAX_TAIL 4096
+#define XX_WOLFFT_BMP_SIZE (54U + 64U * 64U * 4U)
+#define XX_WOLFFT_WAV_HEADER_SIZE 46U
+
+typedef enum xx_wolfft_kind_e {
+    XX_WOLFFT_KIND_RAW,
+    XX_WOLFFT_KIND_WALL_BMP,
+    XX_WOLFFT_KIND_SPRITE_BMP,
+    XX_WOLFFT_KIND_SOUND_WAV
+} xx_wolfft_kind;
 
 typedef struct xx_wolfft_member_s {
     char *name;
@@ -65,6 +78,9 @@ typedef struct xx_wolfft_member_s {
     uint64_t unpacked_size;
     uint32_t crc32;
     uint32_t method;
+    uint32_t chunk_index;
+    uint32_t first_sound_page;
+    xx_wolfft_kind kind;
     bool has_crc;
     bool is_folder;
 } xx_wolfft_member;
@@ -75,6 +91,10 @@ typedef struct xx_wolfft_stream_s {
     size_t capacity;
     size_t index;
     int64_t archive_size;
+    uint8_t *table;
+    uint32_t chunk_count;
+    uint32_t sprite_start;
+    uint32_t sound_start;
 } xx_wolfft_stream;
 
 static void xx_wolfft_vtable_destroy(Abstractformat *self);
@@ -184,7 +204,31 @@ static void xx_wolfft_stream_free(void *pointer) {
         xx_str_free(stream->items[index].name);
     }
     xx_mem_free(stream->items);
+    xx_mem_free(stream->table);
     xx_mem_free(stream);
+}
+
+static void xx_wolfft_put_le16(uint8_t *data, uint16_t value) {
+    data[0] = (uint8_t)value;
+    data[1] = (uint8_t)(value >> 8);
+}
+
+static void xx_wolfft_put_le32(uint8_t *data, uint32_t value) {
+    data[0] = (uint8_t)value;
+    data[1] = (uint8_t)(value >> 8);
+    data[2] = (uint8_t)(value >> 16);
+    data[3] = (uint8_t)(value >> 24);
+}
+
+static uint32_t xx_wolfft_chunk_offset(const xx_wolfft_stream *stream,
+                                       uint32_t index) {
+    return xx_wolfft_le32(stream->table + (size_t)index * 4U);
+}
+
+static uint16_t xx_wolfft_chunk_length(const xx_wolfft_stream *stream,
+                                       uint32_t index) {
+    return xx_wolfft_le16(stream->table + (size_t)stream->chunk_count * 4U +
+                          (size_t)index * 2U);
 }
 
 /* Grow the member vector one entry at a time.  The caller has already bounded
@@ -237,23 +281,209 @@ static char *xx_wolfft_chunk_name(uint32_t index, uint32_t sprite_start,
     return xx_str_dup(text);
 }
 
+/* U3 names rendered images and sounds by their global VSWAP slot number. */
+static char *xx_wolfft_rendered_name(uint32_t index, const char *extension) {
+    char name[32];
+    int written = snprintf(name, sizeof(name), "%03u.%s", index, extension);
+    return written > 0 && (size_t)written < sizeof(name)
+               ? xx_str_dup(name) : NULL;
+}
+
+/* A compiled sprite stores a column-offset table followed by pixel bytes and
+ * short column command runs.  The run's source offset is signed: late runs in
+ * several real sprites address their first pixel via a negative base plus Y. */
+static bool xx_wolfft_sprite_pixels(const uint8_t *raw, size_t size,
+                                    uint8_t *pixels) {
+    uint32_t left, right, x;
+    if (!raw || size < 6U) return false;
+    left = xx_wolfft_le16(raw);
+    right = xx_wolfft_le16(raw + 2U);
+    if (left > right || right >= 64U ||
+        size < 4U + (size_t)(right - left + 1U) * 2U) return false;
+    for (x = left; x <= right; ++x) {
+        size_t command = xx_wolfft_le16(raw + 4U + (size_t)(x - left) * 2U);
+        size_t minimum = 4U + (size_t)(right - left + 1U) * 2U;
+        if (command < minimum) return false;
+        for (;;) {
+            uint32_t start, end, y;
+            int32_t source;
+            if (command > size || size - command < 2U) return false;
+            end = xx_wolfft_le16(raw + command);
+            if (end == 0U) break;
+            if (size - command < 6U) return false;
+            {
+                uint32_t encoded = xx_wolfft_le16(raw + command + 2U);
+                source = encoded < 0x8000U ? (int32_t)encoded
+                                           : (int32_t)encoded - 0x10000;
+            }
+            start = xx_wolfft_le16(raw + command + 4U);
+            if ((start & 1U) || (end & 1U) || start >= end || end > 128U)
+                return false;
+            for (y = start / 2U; y < end / 2U; ++y) {
+                int32_t position = source + (int32_t)y;
+                uint8_t index;
+                if (position < 0 || (size_t)position >= size) return false;
+                index = raw[position];
+                if (index == 255U) return false; /* palette transparency */
+                if (pixels) {
+                    uint8_t *pixel = pixels + ((size_t)(63U - y) * 64U + x) * 4U;
+                    pixel[0] = xx_wolfft_bgr[index][0];
+                    pixel[1] = xx_wolfft_bgr[index][1];
+                    pixel[2] = xx_wolfft_bgr[index][2];
+                    pixel[3] = 255U;
+                }
+            }
+            command += 6U;
+        }
+    }
+    return true;
+}
+
+static bool xx_wolfft_sprite_valid(Abstractformat *self, int64_t at,
+                                    int64_t size) {
+    uint8_t *raw;
+    bool valid;
+    if (size < 6 || size > UINT16_MAX) return false;
+    raw = (uint8_t *)xx_mem_alloc((size_t)size);
+    if (!raw) return false;
+    valid = xx_wolfft_read_at(self, at, raw, (size_t)size) &&
+            xx_wolfft_sprite_pixels(raw, (size_t)size, NULL);
+    xx_mem_free(raw);
+    return valid;
+}
+
+static bool xx_wolfft_wall_valid(Abstractformat *self, int64_t at,
+                                 int64_t size) {
+    uint8_t raw[4096];
+    /* A wall is a full 64x64 palette-index plane. U3 renders index 255 as
+     * magenta here, unlike the sprite run's transparent marker. */
+    return size == 4096 && xx_wolfft_read_at(self, at, raw, sizeof(raw));
+}
+
+/* The last sound page is a u16 (page offset, PCM byte count) table.  Build
+ * the WAV list only when every live entry can be read completely from bounded
+ * pages.  A different or damaged sound table leaves the original raw chunks
+ * available instead of silently dropping data. */
+static bool xx_wolfft_convert_sounds(Abstractformat *self,
+                                     xx_wolfft_stream *stream) {
+    uint32_t info_index, info_offset, info_size, entries, ordinal;
+    uint8_t *info = NULL;
+    xx_wolfft_member *waves = NULL;
+    size_t wave_count = 0U;
+    bool valid = false;
+
+    if (stream->sound_start >= stream->chunk_count ||
+        stream->chunk_count <= 1U) return false;
+    info_index = stream->chunk_count - 1U;
+    info_offset = xx_wolfft_chunk_offset(stream, info_index);
+    info_size = xx_wolfft_chunk_length(stream, info_index);
+    if (info_offset == 0U || info_size == 0U || (info_size & 3U)) return false;
+    entries = info_size / 4U;
+    if (entries == 0U || entries > stream->chunk_count - stream->sound_start)
+        return false;
+    info = (uint8_t *)xx_mem_alloc(info_size);
+    waves = (xx_wolfft_member *)xx_mem_alloc((size_t)entries * sizeof(*waves));
+    if (!info || !waves ||
+        !xx_wolfft_read_at(self, self->base_address + info_offset, info,
+                            info_size)) goto done;
+    xx_mem_zero(waves, (size_t)entries * sizeof(*waves));
+    for (ordinal = 0U; ordinal < entries; ++ordinal) {
+        uint32_t relative = xx_wolfft_le16(info + (size_t)ordinal * 4U);
+        uint32_t data_size = xx_wolfft_le16(info + (size_t)ordinal * 4U + 2U);
+        uint32_t page = stream->sound_start + relative;
+        uint32_t first_page = page;
+        uint32_t remaining = data_size;
+        xx_wolfft_member *member;
+
+        if (relative >= stream->chunk_count - stream->sound_start ||
+            page >= info_index) goto done;
+        /* Unused start pages are suppressed by U3.  Each matching ordinal
+         * still determines the rendered WAV's global-slot filename. */
+        if (xx_wolfft_chunk_offset(stream, page) == 0U &&
+            xx_wolfft_chunk_length(stream, page) == 0U) continue;
+        if (data_size == 0U) goto done;
+        while (remaining != 0U) {
+            uint32_t length;
+            if (page >= info_index) goto done;
+            length = xx_wolfft_chunk_length(stream, page);
+            if (xx_wolfft_chunk_offset(stream, page) == 0U || length == 0U)
+                goto done;
+            remaining -= remaining < length ? remaining : length;
+            ++page;
+        }
+        member = &waves[wave_count];
+        xx_mem_zero(member, sizeof(*member));
+        member->name = xx_wolfft_rendered_name(stream->sound_start + ordinal,
+                                                "wav");
+        if (!member->name) goto done;
+        member->header_offset = self->base_address + info_offset +
+                                (int64_t)ordinal * 4;
+        member->header_size = 4;
+        member->data_offset = self->base_address +
+                              xx_wolfft_chunk_offset(stream, first_page);
+        member->packed_size = data_size;
+        member->unpacked_size = XX_WOLFFT_WAV_HEADER_SIZE + data_size;
+        member->method = XX_WOLFFT_METHOD_STORE;
+        member->chunk_index = stream->sound_start + ordinal;
+        member->first_sound_page = first_page;
+        member->kind = XX_WOLFFT_KIND_SOUND_WAV;
+        ++wave_count;
+    }
+    if (wave_count == 0U) goto done;
+    /* Reserve before changing the raw list, so allocation failures retain
+     * the original members. */
+    if (stream->count + wave_count > stream->capacity) {
+        size_t wanted = stream->count + wave_count;
+        xx_wolfft_member *grown;
+        if (wanted > SIZE_MAX / sizeof(*grown)) goto done;
+        grown = (xx_wolfft_member *)xx_mem_realloc(stream->items,
+                                                   wanted * sizeof(*grown));
+        if (!grown) goto done;
+        stream->items = grown;
+        stream->capacity = wanted;
+    }
+    while (stream->count != 0U &&
+           stream->items[stream->count - 1U].chunk_index >=
+               stream->sound_start) {
+        xx_str_free(stream->items[stream->count - 1U].name);
+        --stream->count;
+    }
+    for (ordinal = 0U; ordinal < wave_count; ++ordinal) {
+        stream->items[stream->count++] = waves[ordinal];
+        waves[ordinal].name = NULL;
+    }
+    valid = true;
+done:
+    if (waves) {
+        for (ordinal = 0U; ordinal < wave_count; ++ordinal)
+            xx_str_free(waves[ordinal].name);
+    }
+    xx_mem_free(waves);
+    xx_mem_free(info);
+    return valid;
+}
+
 /* The tail after the last chunk must be all zero or the file is not ours. */
 static bool xx_wolfft_tail_is_zero(Abstractformat *self, int64_t offset,
                                    int64_t size) {
-    uint8_t buffer[512];
+    size_t capacity=xx_get_file_buffer_size(); uint8_t *buffer=NULL; bool buffer_result=false;
 
-    while (size > 0) {
-        size_t chunk = size > (int64_t)sizeof(buffer) ? sizeof(buffer)
+    while (size > 0) {if(!buffer) { buffer=(uint8_t *)xx_mem_alloc(capacity); if(!buffer) { buffer_result=false; goto buffer_done; } } 
+        size_t chunk = size > (int64_t)capacity ? capacity
                                                       : (size_t)size;
         size_t index;
-        if (!xx_wolfft_read_at(self, offset, buffer, chunk)) return false;
+        if (!xx_wolfft_read_at(self, offset, buffer, chunk)) { buffer_result = (false); goto buffer_done; }
         for (index = 0U; index < chunk; ++index) {
-            if (buffer[index] != 0x00U) return false;
+            if (buffer[index] != 0x00U) { buffer_result = (false); goto buffer_done; }
         }
         offset += (int64_t)chunk;
         size -= (int64_t)chunk;
     }
-    return true;
+    { buffer_result = (true); goto buffer_done; }
+
+buffer_done:
+    xx_mem_free(buffer);
+    return buffer_result;
 }
 
 
@@ -318,7 +548,7 @@ static xx_wolfft_stream *xx_wolfft_parse(Abstractformat *self,
         xx_wolfft_member member;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        if (offset == 0 && size == 0) continue; /* unused slot */
+        if (size == 0) continue; /* unused slot, even with a stale offset */
         /* Chunks must be inside the file, never overlap the table, and run in
          * ascending order; the ordering check is what keeps an arbitrary
          * table-shaped file from being read as an archive. */
@@ -338,6 +568,31 @@ static xx_wolfft_stream *xx_wolfft_parse(Abstractformat *self,
         member.packed_size = size;
         member.unpacked_size = (uint64_t)size;
         member.method = XX_WOLFFT_METHOD_STORE;
+        member.chunk_index = index;
+        member.kind = XX_WOLFFT_KIND_RAW;
+        if (index < sprite_start &&
+            xx_wolfft_wall_valid(self, member.data_offset, size)) {
+            char *rendered = xx_wolfft_rendered_name(index, "bmp");
+            if (!rendered) {
+                xx_str_free(member.name);
+                goto fail;
+            }
+            xx_str_free(member.name);
+            member.name = rendered;
+            member.unpacked_size = XX_WOLFFT_BMP_SIZE;
+            member.kind = XX_WOLFFT_KIND_WALL_BMP;
+        } else if (index >= sprite_start && index < sound_start &&
+                   xx_wolfft_sprite_valid(self, member.data_offset, size)) {
+            char *rendered = xx_wolfft_rendered_name(index, "bmp");
+            if (!rendered) {
+                xx_str_free(member.name);
+                goto fail;
+            }
+            xx_str_free(member.name);
+            member.name = rendered;
+            member.unpacked_size = XX_WOLFFT_BMP_SIZE;
+            member.kind = XX_WOLFFT_KIND_SPRITE_BMP;
+        }
         if (!xx_wolfft_add(stream, &member)) {
             xx_str_free(member.name);
             goto fail;
@@ -352,7 +607,12 @@ static xx_wolfft_stream *xx_wolfft_parse(Abstractformat *self,
         goto fail;
     }
 
-    xx_mem_free(table);
+    stream->table = table;
+    stream->chunk_count = count;
+    stream->sprite_start = sprite_start;
+    stream->sound_start = sound_start;
+    table = NULL;
+    (void)xx_wolfft_convert_sounds(self, stream);
     stream->archive_size = span;
     return stream;
 
@@ -362,30 +622,118 @@ fail:
     return NULL;
 }
 
-/* Members are stored verbatim, so "decoding" is a bounded read; the length
- * comes from offsets parse already proved lie inside the file. */
+static void xx_wolfft_bmp_header(uint8_t *output) {
+    xx_mem_zero(output, XX_WOLFFT_BMP_SIZE);
+    output[0] = 'B';
+    output[1] = 'M';
+    xx_wolfft_put_le32(output + 2U, XX_WOLFFT_BMP_SIZE);
+    xx_wolfft_put_le32(output + 10U, 54U);
+    xx_wolfft_put_le32(output + 14U, 40U);
+    xx_wolfft_put_le32(output + 18U, 64U);
+    xx_wolfft_put_le32(output + 22U, 64U);
+    xx_wolfft_put_le16(output + 26U, 1U);
+    xx_wolfft_put_le16(output + 28U, 32U);
+    xx_wolfft_put_le32(output + 34U, 64U * 64U * 4U);
+}
+
+static void xx_wolfft_wav_header(uint8_t *output, uint32_t data_size) {
+    uint32_t file_size = XX_WOLFFT_WAV_HEADER_SIZE + data_size;
+    xx_mem_zero(output, XX_WOLFFT_WAV_HEADER_SIZE);
+    xx_rt_memcpy(output, "RIFF", 4U);
+    /* U3's RIFF length includes the eight-byte RIFF header itself. */
+    xx_wolfft_put_le32(output + 4U, file_size);
+    xx_rt_memcpy(output + 8U, "WAVEfmt ", 8U);
+    xx_wolfft_put_le32(output + 16U, 18U);
+    xx_wolfft_put_le16(output + 20U, 1U);
+    xx_wolfft_put_le16(output + 22U, 1U);
+    xx_wolfft_put_le32(output + 24U, 7000U);
+    xx_wolfft_put_le32(output + 28U, 7000U);
+    xx_wolfft_put_le16(output + 32U, 1U);
+    xx_wolfft_put_le16(output + 34U, 8U);
+    xx_rt_memcpy(output + 38U, "data", 4U);
+    xx_wolfft_put_le32(output + 42U, data_size);
+}
+
+/* Every source page was bounded by the structural parse.  Render recognized
+ * pages as U3's 32-bit BMP or 7 kHz unsigned PCM WAV; retain the original
+ * bytes for any page whose media structure was not recognized. */
 static bool xx_wolfft_decode(Abstractformat *self,
+                             const xx_wolfft_stream *stream,
                              const xx_wolfft_member *member, uint8_t **out,
-                             size_t *out_size, xx_pd_struct *pd) {{
-    uint8_t *output;
+                             size_t *out_size, xx_pd_struct *pd) {
+    uint8_t *output = NULL;
+    uint8_t *raw = NULL;
+    size_t size, index;
 
     *out = NULL;
     *out_size = 0U;
-    if (!self || !member || member->packed_size < 0) return false;
+    if (!self || !stream || !member || member->packed_size < 0) return false;
     if (pd && xx_pd_is_stopped(pd)) return false;
-    if (member->packed_size == 0) return true;
-    if ((uint64_t)member->packed_size > (uint64_t)SIZE_MAX) return false;
-    output = (uint8_t *)xx_mem_alloc((size_t)member->packed_size);
-    if (!output) return false;
-    if (!xx_wolfft_read_at(self, member->data_offset, output,
-                           (size_t)member->packed_size)) {{
-        xx_mem_free(output);
+    if (member->kind == XX_WOLFFT_KIND_RAW) {
+        size = (size_t)member->packed_size;
+        if (size == 0U) return true;
+        output = (uint8_t *)xx_mem_alloc(size);
+        if (!output || !xx_wolfft_read_at(self, member->data_offset,
+                                           output, size)) goto fail;
+    } else if (member->kind == XX_WOLFFT_KIND_WALL_BMP ||
+               member->kind == XX_WOLFFT_KIND_SPRITE_BMP) {
+        size = XX_WOLFFT_BMP_SIZE;
+        output = (uint8_t *)xx_mem_alloc(size);
+        raw = (uint8_t *)xx_mem_alloc((size_t)member->packed_size);
+        if (!output || !raw ||
+            !xx_wolfft_read_at(self, member->data_offset, raw,
+                                (size_t)member->packed_size)) goto fail;
+        xx_wolfft_bmp_header(output);
+        if (member->kind == XX_WOLFFT_KIND_WALL_BMP) {
+            if (member->packed_size != 4096) goto fail;
+            for (index = 0U; index < 64U * 64U; ++index) {
+                uint32_t x = (uint32_t)(index / 64U);
+                uint32_t y = (uint32_t)(index % 64U);
+                uint8_t color = raw[index];
+                uint8_t *pixel = output + 54U +
+                                 ((size_t)(63U - y) * 64U + x) * 4U;
+                xx_rt_memcpy(pixel, xx_wolfft_bgr[color], 3U);
+            }
+        } else if (!xx_wolfft_sprite_pixels(raw,
+                                            (size_t)member->packed_size,
+                                            output + 54U)) {
+            goto fail;
+        }
+    } else if (member->kind == XX_WOLFFT_KIND_SOUND_WAV) {
+        uint32_t page = member->first_sound_page;
+        size_t remaining = (size_t)member->packed_size;
+        size_t position = XX_WOLFFT_WAV_HEADER_SIZE;
+        size = position + remaining;
+        output = (uint8_t *)xx_mem_alloc(size);
+        if (!output) goto fail;
+        xx_wolfft_wav_header(output, (uint32_t)remaining);
+        while (remaining != 0U) {
+            size_t length;
+            if (pd && xx_pd_is_stopped(pd)) goto fail;
+            if (page >= stream->chunk_count - 1U ||
+                xx_wolfft_chunk_offset(stream, page) == 0U) goto fail;
+            length = xx_wolfft_chunk_length(stream, page);
+            if (length == 0U) goto fail;
+            if (length > remaining) length = remaining;
+            if (!xx_wolfft_read_at(self, self->base_address +
+                                   xx_wolfft_chunk_offset(stream, page),
+                                   output + position, length)) goto fail;
+            position += length;
+            remaining -= length;
+            ++page;
+        }
+    } else {
         return false;
-    }}
+    }
+    xx_mem_free(raw);
     *out = output;
-    *out_size = (size_t)member->packed_size;
+    *out_size = size;
     return true;
-}}
+fail:
+    xx_mem_free(raw);
+    xx_mem_free(output);
+    return false;
+}
 
 
 /* ---------------------------------------------------------- lifecycle --- */
@@ -646,7 +994,7 @@ bool xx_wolfft_unpack_current_archive_record(Abstractformat *self,
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
         if (member->is_folder) return true;
-        result = xx_wolfft_decode(self, member, &plain, &plain_size, pd);
+        result = xx_wolfft_decode(self, stream, member, &plain, &plain_size, pd);
         xx_mem_free(plain);
         return result;
     }
@@ -677,7 +1025,7 @@ bool xx_wolfft_unpack_current_archive_record(Abstractformat *self,
         return result;
     }
     if (!xx_store_create_dirs_a(target_path, false) ||
-        !xx_wolfft_decode(self, member, &plain, &plain_size, pd)) {
+        !xx_wolfft_decode(self, stream, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }

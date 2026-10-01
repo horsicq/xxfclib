@@ -32,11 +32,8 @@
  * bytecode" (2015), and checked against fxc/dxc output from the 10.0.26100
  * Windows SDK.
  *
- * Not an archive: binwalk's extractor carves the container itself, so the
- * reader validates it and reports total_size as the format size.  The
- * checksum is computed and reported (xx_dxbc_get_checksum_state) but is not
- * part of validation -- binwalk never checks it, and an unsigned DXIL
- * container carries sixteen zero bytes there.
+ * The component archive API publishes each declared FourCC chunk payload
+ * separately. It does not execute shaders or decode the shader instruction set.
  */
 
 #ifndef XXFCLIB_FORMAT_DXBC_H

@@ -150,8 +150,20 @@ static void build_memory_map(XPE *pPE)
         cd_i64 nOffset = pSection->nPointerToRawData;
         cd_i64 nSize = pSection->nSizeOfRawData;
         cd_u64 nVirtualSize = pSection->nVirtualSize ? pSection->nVirtualSize : pSection->nSizeOfRawData;
+        size_t nRecordStart = pPE->map.record_count;
+        size_t nRecord;
 
         nVirtualSize = (cd_u64)ALIGN_UP((cd_i64)nVirtualSize, (cd_i64)pPE->nSectionAlignment);
+
+        /* XPE's file-part map starts at the aligned raw offset. The leading
+         * alignment bytes belong to that mapping, while script section
+         * fields still expose the original PointerToRawData/SizeOfRawData. */
+        if ((nOffset <= pPE->pFile->nSize) && (pPE->nFileAlignment > 0)) {
+            cd_i64 nAlignment = (pPE->nFileAlignment > 0x10000) ? 0x200 : pPE->nFileAlignment;
+            cd_i64 nAlignedOffset = nOffset / nAlignment * nAlignment;
+            nSize += nOffset - nAlignedOffset;
+            nOffset = nAlignedOffset;
+        }
 
         if (nOffset > pPE->pFile->nSize) {
             nOffset = pPE->pFile->nSize;
@@ -164,6 +176,9 @@ static void build_memory_map(XPE *pPE)
         pSection->nMappedSize = nSize;
 
         die_map_add_part(&pPE->map, nOffset, nSize, pPE->nImageBase + pSection->nVirtualAddress, nVirtualSize, XX_FILE_PART_SECTION, pSection->sName);
+        for (nRecord = nRecordStart; nRecord < pPE->map.record_count; nRecord++) {
+            pPE->map.records[nRecord].file_part_number = i + 1;
+        }
 
         /* The raw extent is tracked here rather than read back off the map:
          * a section clamped to zero length still moves it -- its offset is
@@ -188,7 +203,11 @@ static void build_memory_map(XPE *pPE)
 
 static void parse_imports(XPE *pPE)
 {
-    cd_i64 nOffset = xpe_rva_to_offset(pPE, pPE->pDirRVA[XPE_DIR_IMPORT]);
+    cd_u32 nImportRVA = pPE->pDirRVA[XPE_DIR_IMPORT];
+    cd_i64 nOffset = nImportRVA ? xx_memory_map_address_to_offset(&pPE->map,
+        pPE->nImageBase + nImportRVA) : -1;
+    int bPartialFirst = nImportRVA && xx_memory_map_address_to_offset(&pPE->map,
+        pPE->nImageBase + nImportRVA + 18) == -1;
     int nCount = 0;
     int i = 0;
     int nTotalPositions = 0;
@@ -204,15 +223,32 @@ static void parse_imports(XPE *pPE)
         cd_i64 nBase = nOffset + nCount * 20;
         cd_u32 nOriginalFirstThunk = xx_io_get_u32(pPE->pFile->pDevice, nBase, false);
         cd_u32 nName = xx_io_get_u32(pPE->pFile->pDevice, nBase + 12, false);
-        cd_u32 nFirstThunk = xx_io_get_u32(pPE->pFile->pDevice, nBase + 16, false);
+        cd_u64 nDescriptorAddress = pPE->nImageBase + nImportRVA + (cd_u64)nCount * 20;
+        cd_i64 nNameOffset;
+        char *pName;
 
-        if ((nOriginalFirstThunk == 0) && (nName == 0) && (nFirstThunk == 0)) {
+        if ((nOriginalFirstThunk == 0) && (nName == 0)) {
             break;
         }
 
-        if (nBase + 20 > pPE->pFile->nSize) {
+        /* Native imports require a contiguous mapped descriptor, except for
+         * the first partially mapped descriptor used by some Upack stubs. */
+        if (nBase > pPE->pFile->nSize - 20 ||
+            xx_memory_map_address_to_offset(&pPE->map, nDescriptorAddress) != nBase ||
+            (!(nCount == 0 && bPartialFirst) &&
+             xx_memory_map_address_to_offset(&pPE->map, nDescriptorAddress + 19) != nBase + 19)) {
             break;
         }
+        nNameOffset = xx_memory_map_address_to_offset(&pPE->map, pPE->nImageBase + nName);
+        if (nNameOffset == -1) {
+            break;
+        }
+        pName = die_ansi_string(pPE->pFile, nNameOffset, 2048);
+        if (!pName || !pName[0]) {
+            cd_free(pName);
+            break;
+        }
+        cd_free(pName);
     }
 
     if (nCount == 0) {
@@ -229,9 +265,10 @@ static void parse_imports(XPE *pPE)
         cd_u32 nOriginalFirstThunk = xx_io_get_u32(pPE->pFile->pDevice, nBase, false);
         cd_u32 nName = xx_io_get_u32(pPE->pFile->pDevice, nBase + 12, false);
         cd_u32 nFirstThunk = xx_io_get_u32(pPE->pFile->pDevice, nBase + 16, false);
-        cd_i64 nNameOffset = xpe_rva_to_offset(pPE, nName);
+        cd_i64 nNameOffset = xx_memory_map_address_to_offset(&pPE->map, pPE->nImageBase + nName);
+        if (bPartialFirst) nFirstThunk &= 0xFFFF;
         cd_u32 nThunkRVA = nOriginalFirstThunk ? nOriginalFirstThunk : nFirstThunk;
-        cd_i64 nThunkOffset = xpe_rva_to_offset(pPE, nThunkRVA);
+        cd_i64 nThunkOffset = xx_memory_map_address_to_offset(&pPE->map, pPE->nImageBase + nThunkRVA);
         CDVec vecFunctions;
         int j = 0;
         int nRemaining = XPE_MAX_IMPORT_POSITIONS - nTotalPositions;
@@ -247,12 +284,21 @@ static void parse_imports(XPE *pPE)
         cdvec_init(&vecFunctions);
         cdbuf_init(&posBuf);
 
-        pPE->pImports[i].pName = (nNameOffset != -1) ? die_ansi_string(pPE->pFile, nNameOffset, 256) : cd_strdup("");
+        pPE->pImports[i].pName = die_ansi_string(pPE->pFile, nNameOffset, 2048);
 
         if (nThunkOffset != -1) {
             for (j = 0; j < nRemaining; j++) {
                 cd_u64 nThunk = 0;
                 char *pFunctionName = NULL;
+                cd_i64 nCurrent = nThunkOffset + (cd_i64)j * (pPE->bIs64 ? 8 : 4);
+                cd_i64 nWidth = pPE->bIs64 ? 8 : 4;
+                cd_u64 nAddress = pPE->nImageBase + nThunkRVA + (cd_u64)j * nWidth;
+
+                if (nCurrent > pPE->pFile->nSize - nWidth ||
+                    xx_memory_map_address_to_offset(&pPE->map, nAddress) != nCurrent ||
+                    xx_memory_map_address_to_offset(&pPE->map, nAddress + nWidth - 1) != nCurrent + nWidth - 1) {
+                    break;
+                }
 
                 if (pPE->bIs64) {
                     nThunk = xx_io_get_u64(pPE->pFile->pDevice, nThunkOffset + j * 8, false);
@@ -267,15 +313,18 @@ static void parse_imports(XPE *pPE)
                 if ((pPE->bIs64 && (nThunk & 0x8000000000000000ull)) || ((!pPE->bIs64) && (nThunk & 0x80000000u))) {
                     char sBuf[32];
 
-                    x_snprintf(sBuf, sizeof(sBuf), "%llu", (unsigned long long)(nThunk & 0xFFFF));
+                    x_snprintf(sBuf, sizeof(sBuf), "%llu", (unsigned long long)(nThunk & (pPE->bIs64 ? 0x7FFFFFFFFFFFFFFFull : 0x7FFFFFFFull)));
                     pFunctionName = cd_strdup(sBuf);
                 } else {
-                    cd_i64 nHintOffset = xpe_rva_to_offset(pPE, (cd_u32)nThunk);
+                    cd_i64 nHintOffset = xx_memory_map_address_to_offset(&pPE->map, pPE->nImageBase + nThunk);
 
-                    if (nHintOffset == -1) {
-                        pFunctionName = cd_strdup("");
-                    } else {
-                        pFunctionName = die_ansi_string(pPE->pFile, nHintOffset + 2, 512);
+                    if (nHintOffset < 0 || nHintOffset > pPE->pFile->nSize - 3) {
+                        break;
+                    }
+                    pFunctionName = die_ansi_string(pPE->pFile, nHintOffset + 2, 2048);
+                    if (!pFunctionName || !pFunctionName[0]) {
+                        cd_free(pFunctionName);
+                        break;
                     }
                 }
 
@@ -336,38 +385,57 @@ static void parse_imports(XPE *pPE)
 static void parse_exports(XPE *pPE)
 {
     cd_i64 nOffset = xpe_rva_to_offset(pPE, pPE->pDirRVA[XPE_DIR_EXPORT]);
+    cd_u32 nNumberOfFunctions = 0;
     cd_u32 nNumberOfNames = 0;
+    cd_u32 nAddressOfFunctions = 0;
     cd_u32 nAddressOfNames = 0;
+    cd_u32 nAddressOfOrdinals = 0;
     cd_i64 nNamesOffset = 0;
+    cd_i64 nOrdinalsOffset = 0;
     cd_u32 i = 0;
 
     if (nOffset == -1) {
         return;
     }
 
+    nNumberOfFunctions = xx_io_get_u32(pPE->pFile->pDevice, nOffset + 20, false);
     nNumberOfNames = xx_io_get_u32(pPE->pFile->pDevice, nOffset + 24, false);
+    nAddressOfFunctions = xx_io_get_u32(pPE->pFile->pDevice, nOffset + 28, false);
     nAddressOfNames = xx_io_get_u32(pPE->pFile->pDevice, nOffset + 32, false);
+    nAddressOfOrdinals = xx_io_get_u32(pPE->pFile->pDevice, nOffset + 36, false);
 
-    if ((nNumberOfNames == 0) || (nNumberOfNames > 100000)) {
+    /* PE_Script uses getExport(false): every function position is present,
+     * including ordinal-only and zero-RVA positions. Names are associated
+     * through AddressOfNameOrdinals, not returned as a separate list. */
+    if ((nNumberOfFunctions == 0) || (nNumberOfFunctions >= 0xFFFF) || (nNumberOfNames >= 0xFFFF)) {
         return;
     }
 
-    nNamesOffset = xpe_rva_to_offset(pPE, nAddressOfNames);
+    nNamesOffset = xx_memory_map_address_to_offset(&pPE->map, pPE->nImageBase + nAddressOfNames);
+    nOrdinalsOffset = xx_memory_map_address_to_offset(&pPE->map, pPE->nImageBase + nAddressOfOrdinals);
 
-    if (nNamesOffset == -1) {
+    if ((nNamesOffset == -1) || (nOrdinalsOffset == -1) ||
+        (xx_memory_map_address_to_offset(&pPE->map, pPE->nImageBase + nAddressOfFunctions) == -1)) {
         return;
     }
 
-    pPE->ppExportFunctions = (char **)cd_calloc(nNumberOfNames, sizeof(char *));
+    pPE->ppExportFunctions = (char **)cd_calloc(nNumberOfFunctions, sizeof(char *));
+    for (i = 0; i < nNumberOfFunctions; i++) {
+        pPE->ppExportFunctions[i] = cd_strdup("");
+    }
 
     for (i = 0; i < nNumberOfNames; i++) {
+        cd_u16 nIndex = xx_io_get_u16(pPE->pFile->pDevice, nOrdinalsOffset + i * 2, false);
         cd_u32 nNameRVA = xx_io_get_u32(pPE->pFile->pDevice, nNamesOffset + i * 4, false);
-        cd_i64 nNameOffset = xpe_rva_to_offset(pPE, nNameRVA);
+        cd_i64 nNameOffset = xx_memory_map_address_to_offset(&pPE->map, pPE->nImageBase + nNameRVA);
 
-        pPE->ppExportFunctions[i] = (nNameOffset != -1) ? die_ansi_string(pPE->pFile, nNameOffset, 512) : cd_strdup("");
+        if (nIndex < nNumberOfFunctions) {
+            cd_free(pPE->ppExportFunctions[nIndex]);
+            pPE->ppExportFunctions[nIndex] = (nNameOffset != -1) ? die_ansi_string(pPE->pFile, nNameOffset, 2048) : cd_strdup("");
+        }
     }
 
-    pPE->nExportCount = (int)nNumberOfNames;
+    pPE->nExportCount = (int)nNumberOfFunctions;
 }
 
 /* ------------------------------------------------------------ resources  */
@@ -518,7 +586,10 @@ static void parse_resources(XPE *pPE)
                 pResource->nNameId = irin1.nId;
                 pResource->pName = irin1.pName ? cd_strdup(irin1.pName) : NULL;
                 pResource->nLangId = irin2.nId;
-                pResource->nOffset = xpe_rva_to_offset(pPE, xx_io_get_u32(pPE->pFile->pDevice, nDataEntry, false));
+                /* A payload RVA of zero maps to the image header. Unlike an
+                 * absent directory, it must not be turned into -1. */
+                pResource->nOffset = xx_memory_map_address_to_offset(&pPE->map,
+                    pPE->nImageBase + xx_io_get_u32(pPE->pFile->pDevice, nDataEntry, false));
                 pResource->nSize = xx_io_get_u32(pPE->pFile->pDevice, nDataEntry + 4, false);
 
                 cdvec_push(&vec, pResource);
@@ -739,11 +810,13 @@ static void parse_debug(XPE *pPE)
     cd_u32 i = 0;
     int nCount = 0;
 
-    if ((nOffset == -1) || (nSize < 28)) {
+    if ((nOffset == -1) || (nSize == 0)) {
         return;
     }
 
-    nMax = nSize / 28;
+    /* XPE::getDebugList visits a header while its starting displacement is
+     * below Size, including a final header with fewer than 28 declared bytes. */
+    nMax = nSize / 28 + (nSize % 28 != 0);
 
     if (nMax > 256) {
         nMax = 256;

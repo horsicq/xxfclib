@@ -224,7 +224,6 @@ static char *notetab_build_name(const uint8_t *bytes, size_t size) {
                         c == (uint8_t)'*';
         name[output++] = reserved ? '_' : (char)c;
     }
-    while (output != 0U && (name[output - 1U] == ' ')) --output;
     if (output == 0U) name[output++] = '_';
     name[output++] = '.';
     name[output++] = 't';
@@ -618,6 +617,7 @@ bool xx_notetab_unpack_current_archive_record(Abstractformat *format,
     char *owned_base = NULL;
     char *path = NULL;
     uint8_t *body = NULL;
+    size_t previous;
     bool result = false;
     bool created = false;
     if (!format || !state || state->format != format || !state->has_record ||
@@ -635,6 +635,16 @@ bool xx_notetab_unpack_current_archive_record(Abstractformat *format,
                              (size_t)clip->body_size)) goto done;
     }
     path_option = notetab_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
+    /* Windows folds case in output paths. NoteTab can store both H="cds" and
+     * H="Cds"; the reference extractor keeps the first clip on disk. */
+    if (path_option) {
+        for (previous = 0U; previous < stream->index; ++previous) {
+            if (xx_str_icmp(stream->items[previous].name, clip->name) == 0) {
+                result = true;
+                goto done;
+            }
+        }
+    }
     if (!path_option) {
         result = true;
         goto done;

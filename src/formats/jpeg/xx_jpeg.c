@@ -34,11 +34,8 @@
  * size of any stream this reader accepts; both only turn a walk through
  * garbage into a rejection.
  *
- * Not an archive.  binwalk's extractor carves the image itself to image.jpg
- * and there is nothing inside to enumerate (an Exif thumbnail is a segment
- * payload, which binwalk does not extract either).  The reader validates,
- * reports the size, the frame header of the first SOFn and a few counters,
- * and publishes everything past the EOI as overlay.
+ * The component archive API publishes marker payloads and entropy-coded
+ * scans separately. It does not decode the JPEG image.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -47,6 +44,9 @@
 #include "xxfclib/data/xx_pd.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
+
+#include "../bmp/xx_component_archive_impl.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -391,6 +391,7 @@ void xx_jpeg_init(xx_jpeg *jpeg, xx_io_device *dev, int64_t base_address) {
     jpeg->format.destroy = xx_jpeg_vtable_destroy;
     jpeg->variant = XX_JPEG_VARIANT_UNKNOWN;
     jpeg->image_end = -1;
+    xx_components_install(&jpeg->format);
 }
 
 xx_jpeg *xx_jpeg_create(xx_io_device *dev, int64_t base_address) {
@@ -459,6 +460,7 @@ bool xx_jpeg_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
         self->overlay_size = 0;
     }
     self->number_of_archive_records = 0U;
+    if (!xx_components_finish(self, pd)) return false;
     self->is_valid = true;
     self->base_info_handled = true;
     return true;
@@ -517,4 +519,40 @@ uint16_t xx_jpeg_get_height(const xx_jpeg *jpeg) {
 
 uint8_t xx_jpeg_get_components(const xx_jpeg *jpeg) {
     return jpeg ? jpeg->components : 0U;
+}
+
+/* Encoded/structural component members; this does not decode media. */
+static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd_struct *pd) {
+
+    xx_jpeg_cursor cursor;
+    int64_t pos=2;
+    bool ok=false;
+    xx_mem_zero(&cursor,sizeof(cursor)); cursor.device=f->device; cursor.base=f->base_address; cursor.span=f->format_size;
+    cursor.window_capacity=65536; cursor.window=(uint8_t *)xx_mem_alloc(cursor.window_capacity);
+    if(!cursor.window) return false;
+    while(pos<f->format_size) {
+        uint8_t a,id,hi,lo; uint32_t length; char kind[11]="segment-00";
+        if(xx_pd_is_stopped(pd) || !xx_jpeg_cursor_byte(&cursor,pos,&a) || a!=0xff ||
+            !xx_jpeg_cursor_byte(&cursor,pos+1,&id)) goto done;
+        pos+=2;
+        if(id==0xd9) { ok=pos==f->format_size; goto done; }
+        if(xx_jpeg_marker_has_no_length(id)) continue;
+        if(!xx_jpeg_cursor_byte(&cursor,pos,&hi) || !xx_jpeg_cursor_byte(&cursor,pos+1,&lo)) goto done;
+        length=((uint32_t)hi<<8)|lo;
+        kind[8]="0123456789ABCDEF"[id>>4]; kind[9]="0123456789ABCDEF"[id&15];
+        if(length<2 || !xx_component_add(f,s,pos+2,length-2,kind)) goto done;
+        pos+=length;
+        if(id==0xda) {
+            int64_t start=pos;
+            while(pos<f->format_size-1) {
+                if(xx_pd_is_stopped(pd) || !xx_jpeg_cursor_byte(&cursor,pos,&a) ||
+                    !xx_jpeg_cursor_byte(&cursor,pos+1,&id)) goto done;
+                if(a==0xff && !xx_jpeg_is_scan_escape(id)) break;
+                ++pos;
+            }
+            if(!xx_component_add(f,s,start,pos-start,"entropy-coded-scan")) goto done;
+        }
+    }
+done:
+    xx_mem_free(cursor.window); return ok;
 }

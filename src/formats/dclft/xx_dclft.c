@@ -69,6 +69,7 @@ typedef struct xx_dclft_member_s {
     int64_t uncompressed_size;
     uint32_t method;
     bool is_folder;
+    bool zero_history;
 } xx_dclft_member;
 
 typedef struct xx_dclft_stream_s {
@@ -150,6 +151,7 @@ static xx_dclft_stream *xx_dclft_parse(Abstractformat *self,
     int64_t total, span;
     size_t consumed = 0U;
     size_t produced = 0U;
+    bool zero_history = false;
 
     if (!self || !self->device || self->base_address < 0) return NULL;
     if (pd && xx_pd_is_stopped(pd)) return NULL;
@@ -179,7 +181,14 @@ static xx_dclft_stream *xx_dclft_parse(Abstractformat *self,
     if (!xx_dcl_scan_memory(payload, (size_t)span,
                             (size_t)XX_DCLFT_MAX_OUTPUT, &consumed,
                             &produced)) {
-        goto fail;
+        /* Old DCL installations sometimes used the initial zero-filled
+         * dictionary for a backward reference before producing enough
+         * plaintext. Decode that exact compatibility variant only for this
+         * raw-stream reader; all other DCL users retain strict validation. */
+        if (!xx_dcl_scan_memory_zero_history(
+                payload, (size_t)span, (size_t)XX_DCLFT_MAX_OUTPUT,
+                &consumed, &produced)) goto fail;
+        zero_history = true;
     }
     if ((int64_t)consumed != span) goto fail;
     /* A zero-length plaintext would make extraction write an empty file and
@@ -204,6 +213,7 @@ static xx_dclft_stream *xx_dclft_parse(Abstractformat *self,
     member.uncompressed_size = (int64_t)produced;
     member.method = XX_DCLFT_METHOD_DCL;
     member.is_folder = false;
+    member.zero_history = zero_history;
     if (!xx_dclft_add(stream, &member)) goto fail_stream;
     name = NULL;
     if (stream->count != (size_t)XX_DCLFT_MAX_MEMBERS) goto fail_stream;
@@ -262,8 +272,13 @@ static bool xx_dclft_decode(Abstractformat *self,
     /* Exactly the measured plaintext length or nothing: with no checksum
      * anywhere, this equality is the whole of extraction's correctness
      * check. */
-    if (!xx_dcl_decode_memory(input, (size_t)member->compressed_size, output,
-                              (size_t)member->uncompressed_size, &written) ||
+    if (!(member->zero_history
+              ? xx_dcl_decode_memory_zero_history(
+                    input, (size_t)member->compressed_size, output,
+                    (size_t)member->uncompressed_size, &written)
+              : xx_dcl_decode_memory(input, (size_t)member->compressed_size,
+                                     output, (size_t)member->uncompressed_size,
+                                     &written)) ||
         written != (size_t)member->uncompressed_size) {
         xx_mem_free(output);
         xx_mem_free(input);

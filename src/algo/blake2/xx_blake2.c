@@ -6,6 +6,8 @@
  */
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/algo/blake2/xx_blake2.h"
+#include "xxfclib/global/xx_global.h"
+#include "xxfclib/memory/xx_memory.h"
 #include <string.h>
 
 #define XX_BLAKE2SP_READY UINT32_C(0x32535042)
@@ -188,19 +190,23 @@ bool xx_blake2sp_calc(const void *data, size_t size, uint8_t digest[32]) {
 bool xx_blake2sp_calc_device(xx_io_device *device, int64_t offset, int64_t size,
                             uint8_t digest[32], xx_pd_struct *pd) {
     xx_blake2sp_context context;
-    uint8_t buffer[8192];
+    uint8_t *buffer;
+    size_t capacity = xx_get_file_buffer_size();
     int64_t total, remaining = size;
     int level;
     bool ok = false;
+    if (capacity > (SIZE_MAX >> 1)) capacity = SIZE_MAX >> 1;
     if (!device || !device->read || !digest || offset < 0 || size < 0 ||
         offset > INT64_MAX - size || xx_pd_is_stopped(pd)) return false;
     total = xx_io_total_size(device);
     if ((total >= 0 && (offset > total || size > total - offset)) ||
         xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
+    buffer = (uint8_t *)xx_mem_alloc(capacity);
+    if (!buffer) return false;
     xx_blake2sp_init(&context);
     level = xx_pd_enter_level(pd, (uint64_t)size, "BLAKE2sp checksum");
     while (remaining) {
-        size_t chunk = remaining > (int64_t)sizeof(buffer) ? sizeof(buffer) : (size_t)remaining;
+        size_t chunk = (uint64_t)remaining > capacity ? capacity : (size_t)remaining;
         ssize_t count;
         if (xx_pd_is_stopped(pd)) goto done;
         count = xx_io_read(device, buffer, chunk);
@@ -212,7 +218,8 @@ bool xx_blake2sp_calc_device(xx_io_device *device, int64_t offset, int64_t size,
     if (!xx_pd_is_stopped(pd)) ok = xx_blake2sp_final(&context, digest);
 done:
     xx_blake2sp_clear(&context);
-    xx_blake2_wipe(buffer, sizeof(buffer));
+    xx_blake2_wipe(buffer, capacity);
+    xx_mem_free(buffer);
     xx_pd_leave_level(pd, level);
     return ok;
 }

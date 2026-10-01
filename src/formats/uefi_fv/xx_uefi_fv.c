@@ -11,29 +11,29 @@
  * EFI_COMMON_SECTION_HEADER2 form), recursion into
  * EFI_SECTION_FIRMWARE_VOLUME_IMAGE and into the section streams of an
  * uncompressed EFI_SECTION_COMPRESSION or a GUID-defined section that does
- * not require processing, and LZMA extraction of GUID-defined sections
- * carrying the LZMA_CUSTOM_DECOMPRESS GUID.
+ * not require processing, and native extraction of supported GUID codecs
+ * and EFI/Tiano-compressed sections.
  *
- * NOT implemented, and therefore published as unsupported records rather
- * than silently dropped: the EFI/Tiano custom compression used by
- * EFI_SECTION_COMPRESSION type 1 and by TIANO_CUSTOM_DECOMPRESS, the
- * Brotli and LZMAF86 (LZMA plus an x86 branch filter) custom decompressors,
- * and any other GUID-defined section whose PROCESSING_REQUIRED attribute is
- * set. No codec for those exists in this library and this reader does not
- * write one. The FFS IntegrityCheck field and the FFS State byte (and with
- * it the erase-polarity rules for marked-for-update and deleted files) are
- * read but not acted upon: a file is published whatever its state says.
+ * Unknown GUID-defined sections whose PROCESSING_REQUIRED attribute is set
+ * are published as unsupported records. The FFS IntegrityCheck field and
+ * the FFS State byte (including erase-polarity rules for marked-for-update
+ * and deleted files) are read but not acted upon: a file is published
+ * whatever its state says.
  */
 
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/uefi_fv/xx_uefi_fv.h"
 
 #include "xxfclib/algo/lzma/xx_lzma.h"
+#include "xxfclib/algo/brotli/xx_brotli.h"
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/data/xx_data.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "../7zip/xx_7zip_branch.h"
+#include "../7zip/xx_7zip_defs.h"
+#include "xx_uefi_tiano_native.h"
 
 /* Registration placeholder. xxfc_defs.h is shared and is not edited from
  * here, so the file-type constant is supplied locally until the enumerator
@@ -79,9 +79,13 @@
 #define XX_UEFI_FV_SECTION_GUID_DEFINED 0x02U
 #define XX_UEFI_FV_SECTION_USER_INTERFACE 0x15U
 #define XX_UEFI_FV_SECTION_FIRMWARE_VOLUME_IMAGE 0x17U
+#define XX_UEFI_FV_SECTION_FREEFORM_SUBTYPE_GUID 0x18U
 
 /* EFI_GUIDED_SECTION_PROCESSING_REQUIRED. When clear the payload is plain. */
 #define XX_UEFI_FV_GUIDED_PROCESSING_REQUIRED 0x01U
+
+/* Local method IDs until the public firmware-volume header is updated. */
+#define XX_UEFI_FV_CODEC_MAX (64U * 1024U * 1024U)
 
 /* EFI_SECTION_COMPRESSION CompressionType values. */
 #define XX_UEFI_FV_COMPRESSION_NONE 0x00U
@@ -97,7 +101,9 @@ typedef struct xx_uefi_fv_entry_s {
     int64_t codec_offset;  /**< Codec input start, past any codec preamble. */
     int64_t codec_size;    /**< Codec input length. */
     uint8_t props[5];      /**< LZMA property block, when method is LZMA. */
+    uint8_t tiano_version; /**< EFI=1, guided Tiano=2. */
     uint32_t method;       /**< One of XX_UEFI_FV_METHOD_*. */
+    bool is_subtype;       /**< Stored body follows a 16-byte subtype GUID. */
     bool is_folder;
 } xx_uefi_fv_entry;
 
@@ -144,6 +150,8 @@ typedef struct xx_uefi_fv_name_s {
 #define XX_UEFI_FV_GUID_OTHER 0U
 #define XX_UEFI_FV_GUID_LZMA 1U
 #define XX_UEFI_FV_GUID_TIANO 2U
+#define XX_UEFI_FV_GUID_LZMAF86 3U
+#define XX_UEFI_FV_GUID_BROTLI 4U
 
 typedef struct xx_uefi_fv_known_guid_s {
     uint8_t guid[XX_UEFI_FV_GUID_SIZE];
@@ -159,10 +167,10 @@ static const xx_uefi_fv_known_guid xx_uefi_fv_known_guids[] = {
      "LZMA_CUSTOM_DECOMPRESS", XX_UEFI_FV_GUID_LZMA},
     {{0xBD, 0xE6, 0x2A, 0xD4, 0x52, 0x13, 0xFB, 0x4B, 0x90, 0x9A, 0xCA, 0x72,
       0xA6, 0xEA, 0xE8, 0x89},
-     "LZMAF86_CUSTOM_DECOMPRESS", XX_UEFI_FV_GUID_OTHER},
+     "LZMAF86_CUSTOM_DECOMPRESS", XX_UEFI_FV_GUID_LZMAF86},
     {{0x50, 0x20, 0x53, 0x3D, 0xDA, 0x5C, 0xD0, 0x4F, 0x87, 0x9E, 0x0F, 0x7F,
       0x63, 0x0D, 0x5A, 0xFB},
-     "BROTLI_CUSTOM_DECOMPRESS", XX_UEFI_FV_GUID_OTHER},
+     "BROTLI_CUSTOM_DECOMPRESS", XX_UEFI_FV_GUID_BROTLI},
     {{0xAD, 0x80, 0x12, 0xA3, 0x1E, 0x48, 0xB6, 0x41, 0x95, 0xE8, 0x12, 0x7F,
       0x4C, 0x98, 0x47, 0x79},
      "TIANO_CUSTOM_DECOMPRESS", XX_UEFI_FV_GUID_TIANO},
@@ -479,6 +487,29 @@ static bool xx_uefi_fv_publish(xx_uefi_fv_private *parsed, char *name,
 
 /* -------------------------------------------------------------- the walks */
 
+/* Validate the EDK2 stream header before publishing a decodable record. */
+static bool xx_uefi_fv_tiano_info(Abstractformat *self,
+                                  xx_uefi_fv_entry *entry,
+                                  bool has_outer_size,
+                                  uint8_t version) {
+    uint8_t preamble[8];
+    uint32_t packed, original;
+    if (!self || !entry || entry->codec_size < (int64_t)sizeof(preamble) ||
+        entry->codec_size > XX_UEFI_FV_CODEC_MAX ||
+        !xx_uefi_fv_read_at(self->device, entry->codec_offset,
+                            preamble, sizeof(preamble))) return false;
+    packed = xx_data_get_u32(preamble, sizeof(preamble), 0U, false);
+    original = xx_data_get_u32(preamble, sizeof(preamble), 4U, false);
+    if ((int64_t)packed != entry->codec_size - (int64_t)sizeof(preamble) ||
+        original > XX_UEFI_FV_CODEC_MAX ||
+        (has_outer_size && (int64_t)original != entry->unpacked_size))
+        return false;
+    entry->unpacked_size = (int64_t)original;
+    entry->tiano_version = version;
+    entry->method = XX_UEFI_FV_METHOD_TIANO;
+    return true;
+}
+
 /* Decode the GUID-defined section at [start, end) whose payload begins at
  * payload. Returns true when the entry was filled in and should be published
  * as a codec record, false when the caller should keep walking the payload
@@ -495,7 +526,8 @@ static bool xx_uefi_fv_guided_entry(Abstractformat *self,
     entry->unpacked_size = payload_size;
     entry->codec_offset = payload;
     entry->codec_size = payload_size;
-    if (id == XX_UEFI_FV_GUID_LZMA) {
+    if (id == XX_UEFI_FV_GUID_LZMA ||
+        id == XX_UEFI_FV_GUID_LZMAF86) {
         /* EDK2 writes an LZMA-Alone preamble: five property bytes and a
          * little-endian u64 expanded size. The size is 0xFFFF... when the
          * writer did not know it, which the codec takes as -1. */
@@ -508,15 +540,36 @@ static bool xx_uefi_fv_guided_entry(Abstractformat *self,
         }
         expanded = xx_data_get_u64(preamble, sizeof(preamble), 5U, false);
         xx_mem_copy(entry->props, preamble, sizeof(entry->props));
-        entry->method = XX_UEFI_FV_METHOD_LZMA;
+        entry->method = id == XX_UEFI_FV_GUID_LZMA
+                            ? XX_UEFI_FV_METHOD_LZMA
+                            : XX_UEFI_FV_METHOD_LZMAF86;
         entry->codec_offset = payload + (int64_t)sizeof(preamble);
         entry->codec_size = payload_size - (int64_t)sizeof(preamble);
         entry->unpacked_size =
             (expanded <= (uint64_t)INT64_MAX) ? (int64_t)expanded : -1;
         return true;
     }
+    if (id == XX_UEFI_FV_GUID_BROTLI) {
+        /* The EDK2 BrotliCompress stream begins with LE64 decoded and
+         * scratch sizes. The latter describes EDK2's own decoder and is not
+         * an allocation request for this native implementation. */
+        uint8_t preamble[16];
+        uint64_t expanded, scratch;
+        if (payload_size < (int64_t)sizeof(preamble) ||
+            !xx_uefi_fv_read_at(self->device, payload, preamble,
+                                sizeof(preamble))) return true;
+        expanded = xx_data_get_u64(preamble, sizeof(preamble), 0U, false);
+        scratch = xx_data_get_u64(preamble, sizeof(preamble), 8U, false);
+        if (expanded > XX_UEFI_FV_CODEC_MAX || scratch > UINT32_MAX)
+            return true;
+        entry->method = XX_UEFI_FV_METHOD_BROTLI;
+        entry->codec_offset = payload + (int64_t)sizeof(preamble);
+        entry->codec_size = payload_size - (int64_t)sizeof(preamble);
+        entry->unpacked_size = (int64_t)expanded;
+        return true;
+    }
     if (id == XX_UEFI_FV_GUID_TIANO) {
-        entry->method = XX_UEFI_FV_METHOD_TIANO;
+        (void)xx_uefi_fv_tiano_info(self, entry, false, 2U);
         return true;
     }
     if ((attributes & XX_UEFI_FV_GUIDED_PROCESSING_REQUIRED) == 0U) {
@@ -658,9 +711,10 @@ static void xx_uefi_fv_walk_sections(Abstractformat *self,
                 xx_uefi_fv_walk_sections(self, parsed, entry.data_offset,
                                          offset + size, &name, depth + 1U, pd);
             } else if (compression_type == XX_UEFI_FV_COMPRESSION_STANDARD) {
-                /* EFI/Tiano compression. No codec for it exists here, so the
-                 * section is published as an unsupported record. */
-                entry.method = XX_UEFI_FV_METHOD_TIANO;
+                /* PI standard compression uses the EFI PBIT=4 variant; its
+                 * inner EDK2 header must agree with the outer section size. */
+                if (!xx_uefi_fv_tiano_info(self, &entry, true, 1U))
+                    entry.method = XX_UEFI_FV_METHOD_UNKNOWN;
             } else {
                 entry.method = XX_UEFI_FV_METHOD_UNKNOWN;
             }
@@ -682,6 +736,19 @@ static void xx_uefi_fv_walk_sections(Abstractformat *self,
                                              depth + 1U, pd);
             }
             publish_plain = false;
+        } else if (type == XX_UEFI_FV_SECTION_FREEFORM_SUBTYPE_GUID) {
+            uint8_t subtype_guid[XX_UEFI_FV_GUID_SIZE];
+            if (body_size < XX_UEFI_FV_GUID_SIZE ||
+                !xx_uefi_fv_read_at(self->device, body, subtype_guid,
+                                    sizeof(subtype_guid))) return;
+            xx_uefi_fv_name_add_char(&name, '_');
+            xx_uefi_fv_name_add_guid(&name, subtype_guid);
+            entry.data_offset += XX_UEFI_FV_GUID_SIZE;
+            entry.data_size -= XX_UEFI_FV_GUID_SIZE;
+            entry.codec_offset = entry.data_offset;
+            entry.codec_size = entry.data_size;
+            entry.unpacked_size = entry.data_size;
+            entry.is_subtype = true;
         } else if (type == XX_UEFI_FV_SECTION_USER_INTERFACE) {
             /* The payload is a NUL-terminated UCS-2 name. Only the low byte
              * of each unit is taken, which covers the ASCII names EDK2
@@ -997,6 +1064,134 @@ static const xx_var *xx_uefi_fv_find_option(const xx_list_s *options,
     return NULL;
 }
 
+static const xx_var *xx_uefi_fv_resolve_option(
+    Abstractformat *self, const xx_archive_record_state *state,
+    uint32_t meta_id) {
+    return xx_format_resolve_extra_parameter(self, &state->options, meta_id);
+}
+
+static bool xx_uefi_fv_cancel_tiano(void *context) {
+    xx_pd_struct *pd = (xx_pd_struct *)context;
+    return pd && xx_pd_is_stopped(pd);
+}
+
+/* These codecs operate on one complete bounded stream. EDK2's producer
+ * writes the expanded size in the preamble, so a guessed allocation is never
+ * needed. Keep input and output separate to detect short reads and to avoid
+ * having the x86 converter touch the compressed bytes. */
+static bool xx_uefi_fv_decode_guided(Abstractformat *self,
+                                     const xx_archive_record_state *state,
+                                     const xx_uefi_fv_entry *entry,
+                                     uint8_t **plain, size_t *plain_size,
+                                     xx_pd_struct *pd) {
+    const xx_var *option;
+    uint8_t *packed = NULL, *filtered = NULL, *decoded = NULL;
+    size_t packed_size, expanded, written = 0U;
+    uint64_t budget;
+    int64_t total, cursor;
+    bool ok = false;
+    if (!plain || !plain_size) return false;
+    *plain = NULL;
+    *plain_size = 0U;
+    if (!self || !self->device || !state || !entry ||
+        (pd && xx_pd_is_stopped(pd)) || entry->codec_offset < 0 ||
+        entry->codec_size < 0 || entry->unpacked_size < 0 ||
+        entry->codec_size > XX_UEFI_FV_CODEC_MAX ||
+        entry->unpacked_size > XX_UEFI_FV_CODEC_MAX) return false;
+    total = xx_io_total_size(self->device);
+    if (total < 0 || entry->codec_offset > total ||
+        entry->codec_size > total - entry->codec_offset) return false;
+    packed_size = (size_t)entry->codec_size;
+    expanded = (size_t)entry->unpacked_size;
+    option = xx_uefi_fv_resolve_option(self, state,
+                                      XX_META_ID_OPT_MAX_MEMBER_SIZE);
+    if (option && expanded > xx_var_get_u64(option)) return false;
+    budget = (uint64_t)packed_size + expanded + 4096U;
+    if (entry->method == XX_UEFI_FV_METHOD_LZMAF86) budget += expanded;
+    option = xx_uefi_fv_resolve_option(self, state,
+                                      XX_META_ID_OPT_MEMORY_LIMIT);
+    if (option && budget > xx_var_get_u64(option)) return false;
+    cursor = xx_io_tell(self->device);
+    packed = (uint8_t *)xx_mem_alloc(packed_size ? packed_size : 1U);
+    decoded = (uint8_t *)xx_mem_alloc(expanded ? expanded : 1U);
+    if (!packed || !decoded ||
+        (packed_size && !xx_uefi_fv_read_at(self->device,
+                                            entry->codec_offset, packed,
+                                            packed_size))) goto done;
+    if (entry->is_subtype) {
+        size_t copied = 0U;
+        if (packed_size != expanded) goto done;
+        while (copied < expanded) {
+            size_t part = expanded - copied;
+            if (pd && xx_pd_is_stopped(pd)) goto done;
+            if (part > 4096U) part = 4096U;
+            xx_mem_copy(decoded + copied, packed + copied, part);
+            copied += part;
+        }
+        written = expanded;
+        ok = true;
+    } else if (entry->method == XX_UEFI_FV_METHOD_BROTLI) {
+        ok = xx_brotli_decompress_memory(packed, packed_size, decoded,
+                                         expanded, &written);
+    } else if (entry->method == XX_UEFI_FV_METHOD_TIANO) {
+        ok = xx_uefi_tiano_decompress_memory(
+            packed, packed_size, decoded, expanded, entry->tiano_version,
+            xx_uefi_fv_cancel_tiano, pd);
+        if (ok) written = expanded;
+    } else if (entry->method == XX_UEFI_FV_METHOD_LZMAF86) {
+        filtered = (uint8_t *)xx_mem_alloc(expanded ? expanded : 1U);
+        if (!filtered) goto done;
+        ok = xx_lzma_decompress_memory(
+            packed, packed_size, entry->props, sizeof(entry->props),
+            (int64_t)expanded, filtered, expanded, &written);
+        if (ok && written == expanded && (!pd || !xx_pd_is_stopped(pd)))
+            ok = xx_7zip_branch_decode(XX_7ZIP_METHOD_BCJ, NULL, 0U,
+                                        filtered, expanded, decoded, expanded);
+    }
+    ok = ok && written == expanded && (!pd || !xx_pd_is_stopped(pd));
+    if (ok) {
+        *plain = decoded;
+        *plain_size = expanded;
+        decoded = NULL;
+    }
+done:
+    if (cursor >= 0 && xx_io_seek64(self->device, cursor, SEEK_SET) != 0)
+        ok = false;
+    if (packed) xx_mem_free(packed);
+    if (filtered) xx_mem_free(filtered);
+    if (decoded) xx_mem_free(decoded);
+    if (!ok && *plain) {
+        xx_mem_free(*plain);
+        *plain = NULL;
+        *plain_size = 0U;
+    }
+    return ok;
+}
+
+static bool xx_uefi_fv_write_all(xx_io_device *device, const uint8_t *data,
+                                 size_t size, xx_pd_struct *pd) {
+    size_t written = 0U;
+    while (written < size) {
+        ssize_t count;
+        if (pd && xx_pd_is_stopped(pd)) return false;
+        count = xx_io_write(device, data + written, size - written);
+        if (count <= 0 || (size_t)count > size - written) return false;
+        written += (size_t)count;
+    }
+    return !pd || !xx_pd_is_stopped(pd);
+}
+
+static int xx_uefi_fv_fold_compare(const char *left, const char *right) {
+    for (;;) {
+        unsigned char a = (unsigned char)*left++;
+        unsigned char b = (unsigned char)*right++;
+        if (a >= 'A' && a <= 'Z') a = (unsigned char)(a + 32U);
+        if (b >= 'A' && b <= 'Z') b = (unsigned char)(b + 32U);
+        if (a != b) return a < b ? -1 : 1;
+        if (!a) return 0;
+    }
+}
+
 static bool xx_uefi_fv_populate_record(xx_archive_record *record,
                                        const xx_uefi_fv_entry *entry) {
     if (!record || !entry || !entry->name) return false;
@@ -1243,6 +1438,11 @@ bool xx_uefi_fv_unpack_current_archive_record(Abstractformat *self,
     const char *base = NULL;
     char *owned_base = NULL;
     char *destination = NULL;
+    char *stage_path = NULL;
+    uint8_t *guided_plain = NULL;
+    size_t guided_size = 0U;
+    xx_io_device *stage = NULL;
+    bool guided, overwrite = false, stage_created = false;
     bool result = false;
     if (!self || !self->device || !state || state->format != self ||
         !state->has_record || !state->internal_state ||
@@ -1251,15 +1451,25 @@ bool xx_uefi_fv_unpack_current_archive_record(Abstractformat *self,
     if (stream->index >= stream->parsed.count) return false;
     entry = &stream->parsed.entries[stream->index];
     if (!xx_uefi_fv_safe_name(entry->name)) return false;
-    /* No codec exists for these, so extraction is refused rather than
-     * producing the still-compressed bytes under an innocent name. */
-    if (entry->method == XX_UEFI_FV_METHOD_TIANO ||
-        entry->method == XX_UEFI_FV_METHOD_UNKNOWN) {
+    guided = entry->is_subtype ||
+             entry->method == XX_UEFI_FV_METHOD_TIANO ||
+             entry->method == XX_UEFI_FV_METHOD_LZMAF86 ||
+             entry->method == XX_UEFI_FV_METHOD_BROTLI;
+    /* Unknown processing-required codecs must never be emitted as plain. */
+    if (entry->method == XX_UEFI_FV_METHOD_UNKNOWN) {
         return false;
     }
-    option = xx_uefi_fv_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
+    option = xx_uefi_fv_resolve_option(self, state,
+                                      XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
         int64_t total = xx_io_total_size(self->device);
+        if (guided) {
+            result = xx_uefi_fv_decode_guided(self, state, entry,
+                                                &guided_plain, &guided_size,
+                                                pd);
+            if (guided_plain) xx_mem_free(guided_plain);
+            return result;
+        }
         return entry->data_offset >= 0 && entry->data_size >= 0 &&
                entry->data_offset <= total &&
                entry->data_size <= total - entry->data_offset;
@@ -1289,7 +1499,41 @@ bool xx_uefi_fv_unpack_current_archive_record(Abstractformat *self,
     if (entry->is_folder) {
         result = xx_store_create_dirs_a(destination, true);
     } else if (xx_store_create_dirs_a(destination, false)) {
-        if (entry->method == XX_UEFI_FV_METHOD_LZMA) {
+        if (guided) {
+            size_t prefix = 0U, index;
+            unsigned attempt;
+            const xx_var *overwrite_option = xx_uefi_fv_resolve_option(
+                self, state, XX_META_ID_OPT_OVERWRITE);
+            if (overwrite_option) overwrite = xx_var_get_bool(overwrite_option);
+            if (!overwrite && xx_io_file_exists_a(destination)) goto cleanup;
+            if (!xx_uefi_fv_decode_guided(self, state, entry,
+                                           &guided_plain, &guided_size, pd))
+                goto cleanup;
+            for (index = 0U; destination[index]; ++index)
+                if (destination[index] == '/' || destination[index] == '\\')
+                    prefix = index + 1U;
+            stage_path = (char *)xx_mem_alloc(prefix + 50U);
+            if (!stage_path) goto cleanup;
+            xx_mem_copy(stage_path, destination, prefix);
+            for (attempt = 0U; attempt < 128U; ++attempt) {
+                int width = xx_rt_snprintf(stage_path + prefix, 50U,
+                    ".xxfc-uefi-%u-%u.tmp", (unsigned)stream->index, attempt);
+                if (width <= 0 || width >= 50) goto cleanup;
+                if (xx_uefi_fv_fold_compare(stage_path, destination) == 0)
+                    continue;
+                stage = xx_io_file_open(stage_path, "wbx");
+                if (stage) { stage_created = true; break; }
+            }
+            if (!stage) goto cleanup;
+            result = xx_uefi_fv_write_all(stage, guided_plain,
+                                           guided_size, pd);
+            if (xx_io_close(stage)) result = false;
+            stage = NULL;
+            if (result && (!pd || !xx_pd_is_stopped(pd)))
+                result = xx_io_file_replace_a(stage_path, destination,
+                                               overwrite);
+            else result = false;
+        } else if (entry->method == XX_UEFI_FV_METHOD_LZMA) {
             result = xx_lzma_unpack_device_to_file(
                 self->device, entry->codec_offset, entry->codec_size,
                 entry->props, sizeof(entry->props), entry->unpacked_size,
@@ -1301,6 +1545,12 @@ bool xx_uefi_fv_unpack_current_archive_record(Abstractformat *self,
         }
     }
 cleanup:
+    if (stage) (void)xx_io_close(stage);
+    if (stage_path) {
+        if (!result && stage_created) (void)xx_io_file_remove_a(stage_path);
+        xx_mem_free(stage_path);
+    }
+    if (guided_plain) xx_mem_free(guided_plain);
     if (owned_base) xx_str_free(owned_base);
     if (destination) xx_str_free(destination);
     return result;

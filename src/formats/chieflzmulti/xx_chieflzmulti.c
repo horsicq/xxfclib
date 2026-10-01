@@ -15,7 +15,8 @@
  *   0x53 bytes are then SKIPPED, so the directory starts at 0x7e:
  *     count entries of 0x29 bytes, immediately followed by every name packed
  *     end to end. Entry i consumes name_length bytes in entry order and the
- *     lengths must sum to the declared total exactly.
+ *     lengths must sum to the declared total exactly. Each name byte is
+ *     stored as plaintext plus its zero-based character position plus four.
  *
  *   entry, 0x29 bytes:
  *     0x00  u8       kind; 0 selects the parent index at 0x01, else 0x03
@@ -211,8 +212,17 @@ static char *xx_chieflzmulti_build_path(const uint8_t *directory,
             xx_str_free(path);
             return NULL;
         }
-        xx_rt_memcpy(path + cursor, directory + name_offset[walk],
-                     (size_t)copy);
+        /* Names are stored with a position-dependent byte increment.  The
+         * first character is advanced by four, the next by five, and so on;
+         * the sequence restarts for each directory entry. */
+        {
+            uint32_t character;
+            for (character = 0U; character < copy; ++character) {
+                path[cursor + (int64_t)character] = (char)(uint8_t)(
+                    directory[name_offset[walk] + character] -
+                    (uint8_t)(character + 4U));
+            }
+        }
         walk = parents[walk];
         if (walk < 0 || walk >= count || walk == index) break;
         if (depth >= XX_CHIEFLZMULTI_MAX_PATH_DEPTH) break;
@@ -342,10 +352,14 @@ static xx_chieflzmulti_stream *xx_chieflzmulti_parse(Abstractformat *self,
         {
             uint32_t scan;
             for (scan = 0U; scan < (uint32_t)entry[0x23]; ++scan) {
-                /* Control bytes never appear in a stored name. Bytes above
-                 * 0x7e are accepted: the names are DOS OEM text and accented
-                 * characters are ordinary there. */
-                if (directory[name_position + (int64_t)scan] < 0x20U) {
+                uint8_t decoded = (uint8_t)(
+                    directory[name_position + (int64_t)scan] -
+                    (uint8_t)(scan + 4U));
+                /* Each entry contributes one path component.  Validate the
+                 * decoded byte, since an encoded control byte is harmless
+                 * while an encoded printable byte may become a separator. */
+                if (decoded < 0x20U || decoded == '/' || decoded == '\\' ||
+                    decoded == ':') {
                     goto fail;
                 }
             }

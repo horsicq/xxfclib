@@ -28,8 +28,9 @@
  * compareEP, and a raw-size/overlay estimate.
  */
 
+#include "../xio.h"
 #include "../../formats/elf/xelf.h"
-#include "../../die_engine/die_engine_compat.h"
+#include "../../die_engine/xx_die_engine_compat.h"
 
 #define ELF_PT_NOTE 4
 #define ELF_SHT_NOTE 7
@@ -564,17 +565,7 @@ static cd_i64 elf_addr_to_offset(XELF *pElf, cd_u64 nAddress)
 /* Reads a NUL-terminated string at nOffset, bounded by the file. */
 static char *elf_read_asciiz(DieFile *pFile, cd_i64 nOffset)
 {
-    cd_i64 nEnd = nOffset;
-
-    if ((nOffset < 0) || (nOffset >= pFile->nSize)) {
-        return cd_strdup("");
-    }
-
-    while ((nEnd < pFile->nSize) && (pFile->pData[nEnd] != 0)) {
-        nEnd++;
-    }
-
-    return cd_strndup((const char *)pFile->pData + nOffset, (size_t)(nEnd - nOffset));
+    return xio_raw_string(pFile, nOffset, -1);
 }
 
 static void elf_parse_dynamic(DieFile *pFile, XELF *pElf)
@@ -972,11 +963,11 @@ int xelf_string_in_table_present(DieFile *pFile, XELF *pElf, const char *pSectio
     while (nOffset < nEnd) {
         cd_i64 nStart = nOffset;
 
-        while ((nOffset < nEnd) && (pFile->pData[nOffset] != 0)) {
+        while ((nOffset < nEnd) && (xx_io_get_u8(pFile->pDevice, nOffset) != 0)) {
             nOffset++;
         }
 
-        if (((size_t)(nOffset - nStart) == nQueryLen) && (x_memcmp(pFile->pData + nStart, pString, nQueryLen) == 0)) {
+        if (((size_t)(nOffset - nStart) == nQueryLen) && (xio_match(pFile, nStart, pString, nQueryLen))) {
             return 1;
         }
 

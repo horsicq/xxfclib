@@ -19,6 +19,7 @@
  * the carrier is looked at, let alone run.
  */
 
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/installshield_issetupstream/xx_installshield_issetupstream.h"
 
@@ -52,7 +53,6 @@
 #define ISS_MAX_SECTIONS 96U
 #define ISS_SECTION_SIZE 40U
 #define ISS_MAX_STREAM 0x7FFFFFFFU
-#define ISS_CHUNK 65536U
 /* No member of a 32-bit installer container inflates past 4 GiB; the cap
  * bounds what a hostile stream can write. */
 #define ISS_OUTPUT_CAP (UINT64_C(1) << 32)
@@ -73,6 +73,7 @@ typedef struct iss_layout_s {
     int64_t end;       /**< Device offset behind the last complete record. */
     uint32_t declared; /**< Header record count. */
     uint32_t complete; /**< Records wholly inside the device. */
+    bool cut;          /**< Plus one whose data runs past the device end. */
     uint32_t version;
     bool in_pe;
     bool truncated;
@@ -86,7 +87,10 @@ typedef struct iss_member_s {
     uint32_t selector; /**< Normalised: 0, 2, 6 or ISS_SELECTOR_BAD. */
     uint32_t raw_selector;
     uint16_t storage;
-    bool renamed;
+    bool renamed;      /**< Output name carries "_<suffix>". */
+    bool blocked;      /**< No collision-free output name was found. */
+    bool cut;          /**< Data runs past the device end: never produced. */
+    uint32_t suffix;
 } iss_member;
 
 typedef struct iss_key_s {
@@ -118,14 +122,17 @@ static uint32_t iss_le32(const uint8_t *bytes) {
 
 static bool iss_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
+    const size_t io_capacity = xx_get_file_buffer_size();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -228,6 +235,53 @@ static bool iss_locate(xx_io_device *device, int64_t base, int64_t total,
     return false;
 }
 
+/* An Authenticode certificate table appended behind the container belongs
+ * to the carrier: when the PE security directory (data directory 4, a file
+ * offset) starts within 8 bytes of padding behind `end` and ends inside the
+ * device, return its end; otherwise `end`. */
+static int64_t iss_pe_certificate_end(xx_io_device *device, int64_t base,
+                                      int64_t total, int64_t end) {
+    uint8_t mz[0x40];
+    uint8_t optional[2];
+    uint8_t entry[8];
+    uint8_t count_field[4];
+    int64_t lfanew, optional_offset, directory, offset, size;
+    uint32_t optional_size, count_at, dirs_at;
+    if (total - base < (int64_t)sizeof(mz) ||
+        !iss_read_at(device, base, mz, sizeof(mz)))
+        return end;
+    lfanew = (int64_t)iss_le32(mz + 0x3CU);
+    if (lfanew > total - base - 24 ||
+        !iss_read_at(device, base + lfanew + 20, optional, sizeof(optional)))
+        return end;
+    optional_size = iss_le16(optional);
+    optional_offset = base + lfanew + 24;
+    if (!iss_read_at(device, optional_offset, optional, sizeof(optional)))
+        return end;
+    if (iss_le16(optional) == 0x10BU) {
+        count_at = 92U;
+        dirs_at = 96U;
+    } else if (iss_le16(optional) == 0x20BU) {
+        count_at = 108U;
+        dirs_at = 112U;
+    } else {
+        return end;
+    }
+    if (optional_size < dirs_at + 5U * 8U ||
+        !iss_read_at(device, optional_offset + count_at, count_field,
+                     sizeof(count_field)) ||
+        iss_le32(count_field) < 5U)
+        return end;
+    directory = optional_offset + (int64_t)dirs_at + 4 * 8;
+    if (!iss_read_at(device, directory, entry, sizeof(entry))) return end;
+    offset = base + (int64_t)iss_le32(entry);
+    size = (int64_t)iss_le32(entry + 4U);
+    if (size == 0 || offset < end || offset - end >= 8 ||
+        size > total - offset)
+        return end;
+    return offset + size;
+}
+
 /* ---- header and record walk ---------------------------------------------- */
 
 static bool iss_read_layout(Abstractformat *format, iss_layout *layout) {
@@ -276,15 +330,36 @@ static bool iss_record_fields(const uint8_t *record, uint32_t *name_bytes,
     return true;
 }
 
+static void iss_fill_member(iss_member *member, int64_t position,
+                            uint32_t name_bytes, uint32_t selector,
+                            uint32_t stream_size, uint16_t storage, bool cut) {
+    member->header_offset = position;
+    member->data_offset =
+        position + (int64_t)ISS_RECORD_SIZE + (int64_t)name_bytes;
+    member->size = (int64_t)stream_size;
+    member->name_bytes = name_bytes;
+    member->raw_selector = selector;
+    member->selector = iss_normalise_selector(selector);
+    member->storage = storage;
+    member->renamed = false;
+    member->blocked = false;
+    member->cut = cut;
+    member->suffix = 0U;
+}
+
 /* Walk the records.  The first one must be well formed and lie wholly in
  * the device; a later one that does not ends the listing there (a truncated
- * or damaged tail), as the reference extractor also stops at it.  With
- * `items` NULL this is the probe and keeps nothing. */
+ * or damaged tail), as the reference extractor also stops at it.  When that
+ * record's header and name are still there and only its data is cut short,
+ * it is kept as a `cut` member (layout->cut), listed so the loss is visible
+ * and refused on unpack.  With `items` NULL this is the probe and keeps
+ * nothing.  `items` has room for layout->declared members. */
 static bool iss_walk(xx_io_device *device, iss_layout *layout,
                      iss_member *items, xx_pd_struct *pd) {
     int64_t position = layout->tag + ISS_HEADER_SIZE;
     uint32_t index;
     layout->complete = 0U;
+    layout->cut = false;
     layout->truncated = false;
     for (index = 0U; index < layout->declared; ++index) {
         uint8_t record[ISS_RECORD_SIZE];
@@ -306,20 +381,19 @@ static bool iss_walk(xx_io_device *device, iss_layout *layout,
         if (need > layout->total - position) {
             if (index == 0U) return false;
             layout->truncated = true;
+            if ((int64_t)ISS_RECORD_SIZE + (int64_t)name_bytes <=
+                layout->total - position) {
+                if (items)
+                    iss_fill_member(&items[index], position, name_bytes,
+                                    selector, stream_size, storage, true);
+                layout->cut = true;
+                position = layout->total;
+            }
             break;
         }
-        if (items) {
-            iss_member *member = &items[index];
-            member->header_offset = position;
-            member->data_offset =
-                position + (int64_t)ISS_RECORD_SIZE + (int64_t)name_bytes;
-            member->size = (int64_t)stream_size;
-            member->name_bytes = name_bytes;
-            member->raw_selector = selector;
-            member->selector = iss_normalise_selector(selector);
-            member->storage = storage;
-            member->renamed = false;
-        }
+        if (items)
+            iss_fill_member(&items[index], position, name_bytes, selector,
+                            stream_size, storage, false);
         position += need;
         ++layout->complete;
     }
@@ -368,42 +442,204 @@ static size_t iss_utf16_to_utf8(const uint8_t *raw, size_t units,
     return at;
 }
 
-/* 64-bit FNV-1a over the display name with ASCII folded to lower case, so
- * names a case-insensitive filesystem treats as one hash alike. */
-static uint64_t iss_name_hash(const char *name, size_t length) {
-    uint64_t hash = UINT64_C(0xcbf29ce484222325);
-    size_t index;
-    for (index = 0U; index < length; ++index) {
-        uint8_t c = (uint8_t)name[index];
-        if (c >= (uint8_t)'A' && c <= (uint8_t)'Z')
-            c = (uint8_t)(c - (uint8_t)'A' + (uint8_t)'a');
-        hash ^= (uint64_t)c;
-        hash *= UINT64_C(0x100000001b3);
+/* Case fold for duplicate detection.  Every code point maps to the lowest
+ * member of its case class; the classes are the union of the Windows
+ * upper-case table (RtlUpcaseUnicodeChar, which is what NTFS writes into
+ * $UpCase: one UTF-16 unit at a time, BMP only) and the Unicode 15.1 simple
+ * upper, lower and case-fold mappings (UnicodeData.txt / CaseFolding.txt
+ * C+S, supplementary planes included).  The union errs towards merging
+ * (Kelvin sign, Ohm sign, Cherokee, Mtavruli...): an extra merge only costs
+ * an extra "_<n>" suffix, a missed one would let two members share one
+ * output file.  Runs: code points start, start + step, ... (count of them)
+ * each map to themselves minus `back`.  Sorted by start and disjoint. */
+typedef struct iss_fold_run_s {
+    uint32_t start;
+    uint8_t count;
+    uint8_t step;
+    uint32_t back;
+} iss_fold_run;
+
+static const iss_fold_run iss_fold_runs[] = {
+    {0x61U, 26, 1, 32U}, {0xE0U, 23, 1, 32U}, {0xF8U, 7, 1, 32U},
+    {0x101U, 24, 2, 1U}, {0x131U, 1, 1, 232U}, {0x133U, 3, 2, 1U},
+    {0x13AU, 8, 2, 1U}, {0x14BU, 23, 2, 1U}, {0x178U, 1, 1, 121U},
+    {0x17AU, 3, 2, 1U}, {0x17FU, 1, 1, 300U}, {0x183U, 2, 2, 1U},
+    {0x188U, 1, 1, 1U}, {0x18CU, 1, 1, 1U}, {0x192U, 1, 1, 1U},
+    {0x199U, 1, 1, 1U}, {0x1A1U, 3, 2, 1U}, {0x1A8U, 1, 1, 1U},
+    {0x1ADU, 1, 1, 1U}, {0x1B0U, 1, 1, 1U}, {0x1B4U, 2, 2, 1U},
+    {0x1B9U, 1, 1, 1U}, {0x1BDU, 1, 1, 1U}, {0x1C5U, 1, 1, 1U},
+    {0x1C6U, 1, 1, 2U}, {0x1C8U, 1, 1, 1U}, {0x1C9U, 1, 1, 2U},
+    {0x1CBU, 1, 1, 1U}, {0x1CCU, 1, 1, 2U}, {0x1CEU, 8, 2, 1U},
+    {0x1DDU, 1, 1, 79U}, {0x1DFU, 9, 2, 1U}, {0x1F2U, 1, 1, 1U},
+    {0x1F3U, 1, 1, 2U}, {0x1F5U, 1, 1, 1U}, {0x1F6U, 1, 1, 97U},
+    {0x1F7U, 1, 1, 56U}, {0x1F9U, 20, 2, 1U}, {0x220U, 1, 1, 130U},
+    {0x223U, 9, 2, 1U}, {0x23CU, 1, 1, 1U}, {0x23DU, 1, 1, 163U},
+    {0x242U, 1, 1, 1U}, {0x243U, 1, 1, 195U}, {0x247U, 5, 2, 1U},
+    {0x253U, 1, 1, 210U}, {0x254U, 1, 1, 206U}, {0x256U, 2, 1, 205U},
+    {0x259U, 1, 1, 202U}, {0x25BU, 1, 1, 203U}, {0x260U, 1, 1, 205U},
+    {0x263U, 1, 1, 207U}, {0x268U, 1, 1, 209U}, {0x269U, 1, 1, 211U},
+    {0x26FU, 1, 1, 211U}, {0x272U, 1, 1, 213U}, {0x275U, 1, 1, 214U},
+    {0x280U, 1, 1, 218U}, {0x283U, 1, 1, 218U}, {0x288U, 1, 1, 218U},
+    {0x289U, 1, 1, 69U}, {0x28AU, 2, 1, 217U}, {0x28CU, 1, 1, 71U},
+    {0x292U, 1, 1, 219U}, {0x371U, 2, 2, 1U}, {0x377U, 1, 1, 1U},
+    {0x399U, 1, 1, 84U}, {0x39CU, 1, 1, 743U}, {0x3ACU, 1, 1, 38U},
+    {0x3ADU, 3, 1, 37U}, {0x3B1U, 8, 1, 32U}, {0x3B9U, 1, 1, 116U},
+    {0x3BAU, 2, 1, 32U}, {0x3BCU, 1, 1, 775U}, {0x3BDU, 5, 1, 32U},
+    {0x3C2U, 1, 1, 31U}, {0x3C3U, 9, 1, 32U}, {0x3CCU, 1, 1, 64U},
+    {0x3CDU, 2, 1, 63U}, {0x3D0U, 1, 1, 62U}, {0x3D1U, 1, 1, 57U},
+    {0x3D5U, 1, 1, 47U}, {0x3D6U, 1, 1, 54U}, {0x3D7U, 1, 1, 8U},
+    {0x3D9U, 12, 2, 1U}, {0x3F0U, 1, 1, 86U}, {0x3F1U, 1, 1, 80U},
+    {0x3F3U, 1, 1, 116U}, {0x3F4U, 1, 1, 92U}, {0x3F5U, 1, 1, 96U},
+    {0x3F8U, 1, 1, 1U}, {0x3F9U, 1, 1, 7U}, {0x3FBU, 1, 1, 1U},
+    {0x3FDU, 3, 1, 130U}, {0x430U, 32, 1, 32U}, {0x450U, 16, 1, 80U},
+    {0x461U, 17, 2, 1U}, {0x48BU, 27, 2, 1U}, {0x4C2U, 7, 2, 1U},
+    {0x4CFU, 1, 1, 15U}, {0x4D1U, 48, 2, 1U}, {0x561U, 38, 1, 48U},
+    {0x13F8U, 6, 1, 8U}, {0x1C80U, 1, 1, 6254U}, {0x1C81U, 1, 1, 6253U},
+    {0x1C82U, 1, 1, 6244U}, {0x1C83U, 2, 1, 6242U}, {0x1C85U, 1, 1, 6243U},
+    {0x1C86U, 1, 1, 6236U}, {0x1C87U, 1, 1, 6181U}, {0x1C90U, 43, 1, 3008U},
+    {0x1CBDU, 3, 1, 3008U}, {0x1E01U, 75, 2, 1U}, {0x1E9BU, 1, 1, 59U},
+    {0x1E9EU, 1, 1, 7615U}, {0x1EA1U, 48, 2, 1U}, {0x1F08U, 8, 1, 8U},
+    {0x1F18U, 6, 1, 8U}, {0x1F28U, 8, 1, 8U}, {0x1F38U, 8, 1, 8U},
+    {0x1F48U, 6, 1, 8U}, {0x1F59U, 4, 2, 8U}, {0x1F68U, 8, 1, 8U},
+    {0x1F88U, 8, 1, 8U}, {0x1F98U, 8, 1, 8U}, {0x1FA8U, 8, 1, 8U},
+    {0x1FB8U, 2, 1, 8U}, {0x1FBAU, 2, 1, 74U}, {0x1FBCU, 1, 1, 9U},
+    {0x1FBEU, 1, 1, 7289U}, {0x1FC8U, 4, 1, 86U}, {0x1FCCU, 1, 1, 9U},
+    {0x1FD8U, 2, 1, 8U}, {0x1FDAU, 2, 1, 100U}, {0x1FE8U, 2, 1, 8U},
+    {0x1FEAU, 2, 1, 112U}, {0x1FECU, 1, 1, 7U}, {0x1FF8U, 2, 1, 128U},
+    {0x1FFAU, 2, 1, 126U}, {0x1FFCU, 1, 1, 9U}, {0x2126U, 1, 1, 7549U},
+    {0x212AU, 1, 1, 8415U}, {0x212BU, 1, 1, 8294U}, {0x214EU, 1, 1, 28U},
+    {0x2170U, 16, 1, 16U}, {0x2184U, 1, 1, 1U}, {0x24D0U, 26, 1, 26U},
+    {0x2C30U, 48, 1, 48U}, {0x2C61U, 1, 1, 1U}, {0x2C62U, 1, 1, 10743U},
+    {0x2C63U, 1, 1, 3814U}, {0x2C64U, 1, 1, 10727U}, {0x2C65U, 1, 1, 10795U},
+    {0x2C66U, 1, 1, 10792U}, {0x2C68U, 3, 2, 1U}, {0x2C6DU, 1, 1, 10780U},
+    {0x2C6EU, 1, 1, 10749U}, {0x2C6FU, 1, 1, 10783U}, {0x2C70U, 1, 1, 10782U},
+    {0x2C73U, 1, 1, 1U}, {0x2C76U, 1, 1, 1U}, {0x2C7EU, 2, 1, 10815U},
+    {0x2C81U, 50, 2, 1U}, {0x2CECU, 2, 2, 1U}, {0x2CF3U, 1, 1, 1U},
+    {0x2D00U, 38, 1, 7264U}, {0x2D27U, 1, 1, 7264U}, {0x2D2DU, 1, 1, 7264U},
+    {0xA641U, 5, 2, 1U}, {0xA64AU, 1, 1, 35266U}, {0xA64BU, 1, 1, 35267U},
+    {0xA64DU, 17, 2, 1U}, {0xA681U, 14, 2, 1U}, {0xA723U, 7, 2, 1U},
+    {0xA733U, 31, 2, 1U}, {0xA77AU, 2, 2, 1U}, {0xA77DU, 1, 1, 35332U},
+    {0xA77FU, 5, 2, 1U}, {0xA78CU, 1, 1, 1U}, {0xA78DU, 1, 1, 42280U},
+    {0xA791U, 2, 2, 1U}, {0xA797U, 10, 2, 1U}, {0xA7AAU, 1, 1, 42308U},
+    {0xA7ABU, 1, 1, 42319U}, {0xA7ACU, 1, 1, 42315U}, {0xA7ADU, 1, 1, 42305U},
+    {0xA7AEU, 1, 1, 42308U}, {0xA7B0U, 1, 1, 42258U}, {0xA7B1U, 1, 1, 42282U},
+    {0xA7B2U, 1, 1, 42261U}, {0xA7B5U, 8, 2, 1U}, {0xA7C4U, 1, 1, 48U},
+    {0xA7C5U, 1, 1, 42307U}, {0xA7C6U, 1, 1, 35384U}, {0xA7C8U, 2, 2, 1U},
+    {0xA7D1U, 1, 1, 1U}, {0xA7D7U, 2, 2, 1U}, {0xA7F6U, 1, 1, 1U},
+    {0xAB53U, 1, 1, 928U}, {0xAB70U, 80, 1, 38864U}, {0xFF41U, 26, 1, 32U},
+    {0x10428U, 40, 1, 40U}, {0x104D8U, 36, 1, 40U}, {0x10597U, 11, 1, 39U},
+    {0x105A3U, 15, 1, 39U}, {0x105B3U, 7, 1, 39U}, {0x105BBU, 2, 1, 39U},
+    {0x10CC0U, 51, 1, 64U}, {0x118C0U, 32, 1, 32U}, {0x16E60U, 32, 1, 32U},
+    {0x1E922U, 34, 1, 34U},
+};
+
+static uint32_t iss_fold(uint32_t c) {
+    size_t low = 0U, high = sizeof(iss_fold_runs) / sizeof(iss_fold_runs[0]);
+    const iss_fold_run *run;
+    if (c < 0x80U) return (c >= 'a' && c <= 'z') ? c - 0x20U : c;
+    if (c > 0x10FFFFU) return c;
+    /* The last run starting at or below c. */
+    while (high - low > 1U) {
+        size_t middle = low + (high - low) / 2U;
+        if (iss_fold_runs[middle].start <= c) low = middle;
+        else high = middle;
+    }
+    run = &iss_fold_runs[low];
+    if (c >= run->start && (c - run->start) % run->step == 0U &&
+        (c - run->start) / run->step < run->count)
+        return c - run->back;
+    return c;
+}
+
+#define ISS_HASH_START UINT64_C(0xcbf29ce484222325)
+
+/* 64-bit FNV-1a, continued from `hash`, over the case-folded code points of
+ * a UTF-8 name, so names a case-insensitive filesystem treats as one hash
+ * alike.  A byte that does not start a well-formed sequence is hashed on its
+ * own.  Pieces split at ASCII bytes hash like the whole. */
+static uint64_t iss_name_hash_more(uint64_t hash, const char *name,
+                                   size_t length) {
+    size_t index = 0U;
+    while (index < length) {
+        const uint8_t *at = (const uint8_t *)name + index;
+        size_t left = length - index, used = 1U;
+        uint32_t c = at[0], shift;
+        if (c >= 0xC2U && c <= 0xDFU && left >= 2U &&
+            (at[1] & 0xC0U) == 0x80U) {
+            c = ((c & 0x1FU) << 6U) | (at[1] & 0x3FU);
+            used = 2U;
+        } else if (c >= 0xE0U && c <= 0xEFU && left >= 3U &&
+                   (at[1] & 0xC0U) == 0x80U && (at[2] & 0xC0U) == 0x80U) {
+            c = ((c & 0x0FU) << 12U) | ((uint32_t)(at[1] & 0x3FU) << 6U) |
+                (at[2] & 0x3FU);
+            used = 3U;
+        } else if (c >= 0xF0U && c <= 0xF4U && left >= 4U &&
+                   (at[1] & 0xC0U) == 0x80U && (at[2] & 0xC0U) == 0x80U &&
+                   (at[3] & 0xC0U) == 0x80U) {
+            c = ((c & 0x07U) << 18U) | ((uint32_t)(at[1] & 0x3FU) << 12U) |
+                ((uint32_t)(at[2] & 0x3FU) << 6U) | (at[3] & 0x3FU);
+            used = 4U;
+        } else if (c >= 0x80U) {
+            c |= 0x80000000U; /* Stray byte: never equal to a code point. */
+        }
+        c = iss_fold(c);
+        for (shift = 0U; shift < 32U; shift += 8U) {
+            hash ^= (uint64_t)((c >> shift) & 0xFFU);
+            hash *= UINT64_C(0x100000001b3);
+        }
+        index += used;
     }
     return hash;
 }
 
-/* Insert "_<index>" before the extension of the last component. */
-static void iss_insert_suffix(char *name, size_t length, uint32_t index) {
-    char suffix[12];
-    char digits[10];
-    size_t suffix_length = 0U, digit_count = 0U, component = 0U, at, tail;
-    size_t dot = length;
+static uint64_t iss_name_hash(const char *name, size_t length) {
+    return iss_name_hash_more(ISS_HASH_START, name, length);
+}
+
+/* Where "_<n>" goes in a name: before the extension of its last
+ * component (a leading dot does not start an extension). */
+static size_t iss_suffix_at(const char *name, size_t length) {
+    size_t component = 0U, at;
     for (at = 0U; at < length; ++at)
         if (name[at] == '/') component = at + 1U;
     for (at = length; at > component + 1U; --at)
-        if (name[at - 1U] == '.') {
-            dot = at - 1U;
-            break;
-        }
+        if (name[at - 1U] == '.') return at - 1U;
+    return length;
+}
+
+/* "_<n>" into `suffix` (room for 12 bytes); returns its length. */
+static size_t iss_format_suffix(uint32_t n, char *suffix) {
+    char digits[10];
+    size_t suffix_length = 0U, digit_count = 0U;
     do {
-        digits[digit_count++] = (char)('0' + (char)(index % 10U));
-        index /= 10U;
-    } while (index != 0U && digit_count < sizeof(digits));
+        digits[digit_count++] = (char)('0' + (char)(n % 10U));
+        n /= 10U;
+    } while (n != 0U && digit_count < sizeof(digits));
     suffix[suffix_length++] = '_';
     while (digit_count != 0U) suffix[suffix_length++] = digits[--digit_count];
+    return suffix_length;
+}
+
+/* Folded hash of `name` with "_<n>" inserted, without building it. */
+static uint64_t iss_suffixed_hash(const char *name, size_t length,
+                                  uint32_t n) {
+    char suffix[12];
+    size_t dot = iss_suffix_at(name, length);
+    size_t suffix_length = iss_format_suffix(n, suffix);
+    uint64_t hash = iss_name_hash_more(ISS_HASH_START, name, dot);
+    hash = iss_name_hash_more(hash, suffix, suffix_length);
+    return iss_name_hash_more(hash, name + dot, length - dot);
+}
+
+/* Insert "_<n>" before the extension of the last component.  `name` has
+ * room for ISS_NAME_BUFFER bytes and `length` < ISS_KEY_BUFFER, so the
+ * suffix (at most 11 bytes) always fits. */
+static void iss_insert_suffix(char *name, size_t length, uint32_t n) {
+    char suffix[12];
+    size_t dot = iss_suffix_at(name, length);
+    size_t suffix_length = iss_format_suffix(n, suffix);
+    size_t tail = length - dot, at;
     if (length + suffix_length >= ISS_NAME_BUFFER) return;
-    tail = length - dot;
     for (at = tail + 1U; at > 0U; --at)
         name[dot + suffix_length + at - 1U] = name[dot + at - 1U];
     xx_rt_memcpy(name + dot, suffix, suffix_length);
@@ -433,13 +669,13 @@ static bool iss_load_name(xx_io_device *device, iss_stream *stream,
     }
     stream->name[shown] = 0;
     if (with_suffix && member->renamed)
-        iss_insert_suffix(stream->name, shown, (uint32_t)index);
+        iss_insert_suffix(stream->name, shown, member->suffix);
     if (length) *length = shown;
     return true;
 }
 
-/* A Windows device name (CON, PRN, AUX, NUL, COM0-9, LPT0-9, CLOCK$, CONIN$,
- * CONOUT$) as the part of a component before its first '.', trailing spaces
+/* A Windows device name (CON, PRN, AUX, NUL, COM0-9, LPT0-9, COM/LPT with a
+ * superscript digit, CLOCK$, CONIN$, CONOUT$) as the part of a component before its first '.', trailing spaces
  * ignored. */
 static bool iss_reserved_component(const char *segment, size_t length) {
     static const char *const devices[] = {"CON",    "PRN",    "AUX",
@@ -456,7 +692,12 @@ static bool iss_reserved_component(const char *segment, size_t length) {
         stem[index] = (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
     }
     stem[stem_length] = 0;
-    if (stem_length == 4U && stem[3] >= '0' && stem[3] <= '9' &&
+    /* COM0-9 / LPT0-9, and COM/LPT with a superscript 1, 2 or 3 (UTF-8
+     * C2 B9 / C2 B2 / C2 B3), which Windows also reserves. */
+    if (((stem_length == 4U && stem[3] >= '0' && stem[3] <= '9') ||
+         (stem_length == 5U && (uint8_t)stem[3] == 0xC2U &&
+          ((uint8_t)stem[4] == 0xB9U || (uint8_t)stem[4] == 0xB2U ||
+           (uint8_t)stem[4] == 0xB3U))) &&
         ((stem[0] == 'C' && stem[1] == 'O' && stem[2] == 'M') ||
          (stem[0] == 'L' && stem[1] == 'P' && stem[2] == 'T')))
         return true;
@@ -589,6 +830,7 @@ static int64_t iss_cipher_tell(xx_io_device *self) {
 typedef struct iss_sink_s {
     xx_io_device *destination;
     uint64_t total;
+    size_t io_capacity;
     uint32_t a;
     uint32_t b;
 } iss_sink;
@@ -613,8 +855,11 @@ static ssize_t iss_sink_write(xx_io_device *self, const void *buffer,
         sink->b %= 65521U;
     }
     while (sink->destination && done < n) {
-        ssize_t amount = xx_io_write(sink->destination, in + done, n - done);
-        if (amount <= 0 || (size_t)amount > n - done) return -1;
+        size_t request = n - done;
+        ssize_t amount;
+        if (request > sink->io_capacity) request = sink->io_capacity;
+        amount = xx_io_write(sink->destination, in + done, request);
+        if (amount <= 0 || (size_t)amount > request) return -1;
         done += (size_t)amount;
     }
     sink->total += (uint64_t)n;
@@ -649,6 +894,7 @@ static int64_t iss_sink_size(xx_io_device *self) {
 static bool iss_decode(xx_io_device *source, const iss_member *member,
                        const uint8_t *key, size_t key_length,
                        xx_io_device *destination, xx_pd_struct *pd) {
+    const size_t io_capacity = xx_get_file_buffer_size();
     iss_cipher *cipher = NULL;
     uint8_t *salted = NULL;
     uint8_t *buffer = NULL;
@@ -691,6 +937,7 @@ static bool iss_decode(xx_io_device *source, const iss_member *member,
     xx_mem_zero(&sink, sizeof(sink));
     sink.destination = destination;
     sink.a = 1U;
+    sink.io_capacity = io_capacity;
     xx_mem_zero(&output, sizeof(output));
     output.read = iss_sink_read;
     output.write = iss_sink_write;
@@ -703,11 +950,11 @@ static bool iss_decode(xx_io_device *source, const iss_member *member,
 
     if (member->storage == 0U) {
         int64_t remaining = member->size;
-        buffer = (uint8_t *)xx_mem_alloc(ISS_CHUNK);
+        buffer = (uint8_t *)xx_mem_alloc(io_capacity);
         if (!buffer || xx_io_seek64(&input, 0, SEEK_SET) != 0) goto done;
         while (remaining > 0) {
-            size_t chunk = remaining > (int64_t)ISS_CHUNK
-                               ? (size_t)ISS_CHUNK
+            size_t chunk = (uint64_t)remaining > (uint64_t)io_capacity
+                               ? (size_t)io_capacity
                                : (size_t)remaining;
             if ((pd && xx_pd_is_stopped(pd)) ||
                 xx_io_read(&input, buffer, chunk) != (ssize_t)chunk ||
@@ -763,6 +1010,70 @@ static int iss_compare_keys(const void *left, const void *right) {
     return a->index < b->index ? -1 : (a->index > b->index ? 1 : 0);
 }
 
+/* Open-addressing set of folded name hashes (0 marks a free slot). */
+static bool iss_set_add(uint64_t *table, size_t mask, uint64_t hash) {
+    /* Called at most `capacity / 2` times, so a free slot always exists. */
+    size_t slot;
+    if (hash == 0U) hash = 1U;
+    slot = (size_t)(hash ^ (hash >> 32U)) & mask;
+    while (table[slot] != 0U) {
+        if (table[slot] == hash) return false;
+        slot = (slot + 1U) & mask;
+    }
+    table[slot] = hash;
+    return true;
+}
+
+/* Give every renamed member a "_<n>" suffix whose folded full name is used
+ * by no other member, original or renamed, so no two members can land in
+ * one output file (a real "a_1.txt" next to a renamed duplicate "a.txt").
+ * `keys` holds the sorted folded hashes of all original names.  The
+ * candidate n starts at the member's index (the old, stable naming) and
+ * never goes below the last n handed out, so each taken name costs at most
+ * one extra try overall: the whole pass is linear in the record count. */
+static bool iss_assign_suffixes(xx_io_device *device, iss_stream *stream,
+                                const iss_key *keys, xx_pd_struct *pd) {
+    size_t capacity = 16U, index, tries = 0U, budget;
+    uint64_t *table;
+    uint32_t next = 0U;
+    while (capacity < 2U * stream->count) capacity <<= 1U;
+    capacity <<= 1U; /* originals plus renamed ones, at most half full */
+    table = (uint64_t *)xx_mem_calloc(capacity, sizeof(uint64_t));
+    if (!table) return false;
+    for (index = 0U; index < stream->count; ++index)
+        (void)iss_set_add(table, capacity - 1U, keys[index].hash);
+    /* Every try uses a larger n than the one before, and a failed try hits
+     * one of at most 2 * count taken names. */
+    budget = 3U * stream->count + 16U;
+    for (index = 0U; index < stream->count; ++index) {
+        iss_member *member = &stream->items[index];
+        size_t length = 0U;
+        uint32_t n;
+        if (!member->renamed) continue;
+        if (pd && xx_pd_is_stopped(pd)) goto fail;
+        if (!iss_load_name(device, stream, index, false, &length)) goto fail;
+        n = (uint32_t)index > next ? (uint32_t)index : next;
+        member->blocked = true;
+        while (tries < budget) {
+            uint64_t hash;
+            ++tries;
+            member->suffix = n;
+            hash = iss_suffixed_hash(stream->name, length, n);
+            if (iss_set_add(table, capacity - 1U, hash)) {
+                member->blocked = false;
+                break;
+            }
+            ++n;
+        }
+        next = n + 1U;
+    }
+    xx_mem_free(table);
+    return true;
+fail:
+    xx_mem_free(table);
+    return false;
+}
+
 static bool iss_open_stream(Abstractformat *format, iss_stream **result,
                             xx_pd_struct *pd) {
     iss_layout layout;
@@ -781,7 +1092,7 @@ static bool iss_open_stream(Abstractformat *format, iss_stream **result,
     if (!stream->items || !stream->raw || !stream->key || !stream->name ||
         !iss_walk(format->device, &layout, stream->items, pd))
         goto fail;
-    stream->count = layout.complete;
+    stream->count = (size_t)layout.complete + (layout.cut ? 1U : 0U);
     keys = (iss_key *)xx_mem_alloc(stream->count * sizeof(*keys));
     if (!keys) goto fail;
     for (index = 0U; index < stream->count; ++index) {
@@ -799,6 +1110,7 @@ static bool iss_open_stream(Abstractformat *format, iss_stream **result,
             if (keys[index].hash == keys[index - 1U].hash &&
                 keys[index].index < stream->count)
                 stream->items[keys[index].index].renamed = true;
+        if (!iss_assign_suffixes(format->device, stream, keys, pd)) goto fail;
     }
     xx_mem_free(keys);
     *result = stream;
@@ -860,7 +1172,7 @@ static bool iss_set_record(Abstractformat *format, xx_archive_record *record,
         !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
         return false;
     /* A zlib member's unpacked size is recorded nowhere. */
-    if (member->storage == 0U &&
+    if (member->storage == 0U && !member->cut &&
         !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
                                         (uint64_t)member->size))
         return false;
@@ -935,11 +1247,20 @@ bool xx_installshield_issetupstream_handle_base_info(Abstractformat *format,
                                                      xx_pd_struct *pd) {
     iss_layout layout;
     xx_installshield_issetupstream *archive;
+    int64_t carrier_end;
     if (!iss_read_layout(format, &layout) ||
         !iss_walk(format->device, &layout, NULL, pd))
         return false;
     archive = (xx_installshield_issetupstream *)format;
-    archive->number_of_records = layout.complete;
+    /* A certificate table behind a complete container is part of the
+     * carrier (a carve must keep it for the image to stay well formed). */
+    carrier_end = layout.in_pe && !layout.cut
+                      ? iss_pe_certificate_end(format->device,
+                                               format->base_address,
+                                               layout.total, layout.end)
+                      : layout.end;
+    archive->number_of_records =
+        layout.complete + (layout.cut ? 1U : 0U);
     archive->declared_records = layout.declared;
     archive->container_version = layout.version;
     archive->stream_offset = layout.tag;
@@ -947,11 +1268,11 @@ bool xx_installshield_issetupstream_handle_base_info(Abstractformat *format,
     archive->in_pe = layout.in_pe;
     archive->truncated = layout.truncated;
     xx_format_set_version(format, layout.version == 2U ? "2" : "3");
-    format->number_of_archive_records = layout.complete;
-    format->format_size = layout.end - format->base_address;
-    if (layout.end < layout.total) {
-        format->overlay_offset = layout.end;
-        format->overlay_size = layout.total - layout.end;
+    format->number_of_archive_records = archive->number_of_records;
+    format->format_size = carrier_end - format->base_address;
+    if (carrier_end < layout.total) {
+        format->overlay_offset = carrier_end;
+        format->overlay_size = layout.total - carrier_end;
     } else {
         format->overlay_offset = -1;
         format->overlay_size = 0;
@@ -1042,6 +1363,7 @@ bool xx_installshield_issetupstream_unpack_current_archive_record(
         stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
+    if (member->blocked || member->cut) return false;
     path_option = iss_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option)
         /* No destination: decode the member through, which verifies it. */

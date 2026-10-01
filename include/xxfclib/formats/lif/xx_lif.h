@@ -55,19 +55,13 @@
  * another, i.e. impossible dates.  Only one of the two readings is
  * self-consistent, so that is the one used.
  *
- * WHAT THIS READER DOES NOT DO.  Method 6 is not decoded.  It is not any of
- * the codecs this library already carries, and nothing in the container
- * anchors a candidate decode - there is no CRC and no stored plaintext
- * length, only the packed length.  The reference unpacker does decode it
- * (helphk.dll comes out at 2304 bytes from a 1069-byte container), so the
- * algorithm exists and is recoverable; it is simply not recovered here.
- * Unpacking therefore fails closed rather than emitting a guess.
- *
- * The record IS published even so.  Unlike a nameless single stream, this
- * container stores the member's real name, its packed extent and its
- * timestamp, and those are genuine, verifiable facts about the file that a
- * caller wants listed.  Refusing to list them would hide information the
- * format actually carries.
+ * METHOD 6 is Zoo-style LZD: little-bit-first 9..13-bit LZW with clear code
+ * 256 and EOF code 257.  The header omits the raw size, so the reader first
+ * scans the stream to determine its exact decoded length, then uses the
+ * shared Zoo LZD decoder for extraction.  The packed length may include one
+ * extra zero alignment byte after EOF; the decoder sees only the bytes
+ * through EOF.  Decoding all nine corpus members yielded the expected
+ * lengths, including helphk.dll at 2304 bytes, and its bytes matched U3.
  */
 
 #ifndef XXFCLIB_FORMAT_LIF_H
@@ -86,7 +80,7 @@ extern "C" {
 #define XX_LIF_NAME_SIZE 15U
 /** Only version ever seen. */
 #define XX_LIF_VERSION 2U
-/** Only method ever seen; not decoded by this reader. */
+/** Only method ever seen; Zoo LZD. */
 #define XX_LIF_METHOD 6U
 
 typedef struct xx_lif xx_lif;

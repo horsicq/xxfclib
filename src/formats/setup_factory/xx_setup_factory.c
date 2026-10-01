@@ -18,6 +18,7 @@
  * executable is run or emulated.
  */
 
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/setup_factory/xx_setup_factory.h"
 
@@ -66,7 +67,6 @@
 /* ---- DCL ---------------------------------------------------------------- */
 
 #define SF_DCL_MAX_BITS 13U
-#define SF_IN_BUFFER 16384U
 #define SF_OUT_WINDOW 65536U
 /* The farthest a DCL match reaches back is (63 << 6) + 63 + 1 bytes. */
 #define SF_HISTORY 4096U
@@ -114,8 +114,21 @@ typedef struct sf_input_s {
     size_t position;
     uint32_t bits;
     unsigned count;
-    uint8_t buffer[SF_IN_BUFFER];
+    uint8_t *buffer;
+    size_t io_capacity;
 } sf_input;
+
+static sf_input *sf_input_create(void) {
+    size_t capacity = xx_get_file_buffer_size();
+    sf_input *state;
+    if (capacity > ((size_t)-1 - sizeof(*state)) / 1U) return NULL;
+    state = (sf_input *)xx_mem_calloc(1U, sizeof(*state) + capacity * 1U);
+    if (!state) return NULL;
+    state->io_capacity = capacity;
+    state->buffer = (uint8_t *)(state + 1);
+    return state;
+}
+
 
 typedef struct sf_output_s {
     uint8_t *window;
@@ -187,13 +200,16 @@ static uint32_t sf_le32(const uint8_t *bytes) {
 static bool sf_read_at(xx_io_device *device, int64_t offset, void *buffer,
                        size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -202,9 +218,12 @@ static bool sf_read_at(xx_io_device *device, int64_t offset, void *buffer,
 static bool sf_write_all(xx_io_device *device, const uint8_t *data,
                          size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     while (done < size) {
-        ssize_t wrote = xx_io_write(device, data + done, size - done);
-        if (wrote <= 0 || (size_t)wrote > size - done) return false;
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
+        ssize_t wrote = xx_io_write(device, data + done, request);
+        if (wrote <= 0 || (size_t)wrote > request) return false;
         done += (size_t)wrote;
     }
     return true;
@@ -261,8 +280,8 @@ static bool sf_in_byte(sf_input *in, uint32_t *value) {
     if (in->position >= in->length) {
         size_t chunk;
         if (in->remaining == 0U) return false;
-        chunk = in->remaining < (uint64_t)SF_IN_BUFFER ? (size_t)in->remaining
-                                                        : (size_t)SF_IN_BUFFER;
+        chunk = in->remaining < (uint64_t)in->io_capacity ? (size_t)in->remaining
+                                                        : in->io_capacity;
         if (!sf_read_at(in->device, in->offset, in->buffer, chunk))
             return false;
         in->offset += (int64_t)chunk;
@@ -749,7 +768,7 @@ static bool sf_is_device(const uint8_t *text, size_t length) {
     while (stem > 0U && text[stem - 1U] == ' ') --stem;
     for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index)
         if (sf_same_ascii(text, stem, devices[index])) return true;
-    if (stem == 4U && text[3] >= '1' && text[3] <= '9' &&
+    if (stem == 4U && text[3] >= '0' && text[3] <= '9' &&
         (sf_same_ascii(text, 3U, "COM") || sf_same_ascii(text, 3U, "LPT")))
         return true;
     /* COM and LPT also take the superscript digits 1..3 (cp1252 B9 B2 B3). */
@@ -773,8 +792,11 @@ static void sf_add_component(sf_name *name, const uint8_t *text,
     if (name->length != 0U) sf_put(name, '/');
     for (index = 0U; index < length; ++index) {
         uint8_t c = text[index];
+        /* A separator only reaches here from a caller that did not split
+         * the text; refuse it rather than let it add a directory level. */
         if (c < 0x20U || c == 0x7FU || c == ':' || c == '*' || c == '?' ||
-            c == '"' || c == '<' || c == '>' || c == '|') {
+            c == '"' || c == '<' || c == '>' || c == '|' || c == '/' ||
+            c == '\\') {
             name->unsafe = true;
             sf_put(name, '_');
         } else if (c < 0x80U) {
@@ -816,8 +838,10 @@ static void sf_compose_name(const sf_entry *entry, sf_name *name) {
                rest[close] != '%')
             ++close;
         if (close < rest_length && rest[close] == '%' && close >= 2U) {
+            /* The variable body is split like the rest of the path, so a
+             * body such as "../x" cannot pass as one component. */
             if (!sf_same_ascii(rest + 1U, close - 1U, "AppDir"))
-                sf_add_component(name, rest + 1U, close - 1U);
+                sf_add_path(name, rest + 1U, close - 1U);
             rest += close + 1U;
             rest_length -= close + 1U;
         }
@@ -834,13 +858,22 @@ static void sf_compose_name(const sf_entry *entry, sf_name *name) {
 }
 
 /* Case-insensitive comparison of two UTF-8 names as Windows would match
- * them for ASCII and Latin-1 letters. */
+ * them, for every letter a cp1252 name can hold: ASCII, Latin-1
+ * U+00E0..U+00FE, and the cp1252 extras s caron, oe, z caron (U+0161,
+ * U+0153, U+017E) and y diaeresis (U+00FF, upper case U+0178).  Both forms
+ * of each pair are two UTF-8 bytes, so folding works byte by byte.  The
+ * caller only asks for a non-NUL byte, so text[index + 1] is readable. */
 static uint32_t sf_fold(const uint8_t *text, size_t index) {
     uint8_t c = text[index];
+    uint8_t lead = index > 0U ? text[index - 1U] : 0U;
     if (c >= 'a' && c <= 'z') return (uint32_t)(c - 'a' + 'A');
-    if (index > 0U && text[index - 1U] == 0xC3U && c >= 0xA0U && c <= 0xBEU &&
-        c != 0xB7U)
+    /* y diaeresis C3 BF folds to C5 B8, lead byte included. */
+    if (c == 0xC3U && text[index + 1U] == 0xBFU) return 0xC5U;
+    if (lead == 0xC3U && c == 0xBFU) return 0xB8U;
+    if (lead == 0xC3U && c >= 0xA0U && c <= 0xBEU && c != 0xB7U)
         return (uint32_t)(c - 0x20U);
+    if (lead == 0xC5U && (c == 0xA1U || c == 0x93U || c == 0xBEU))
+        return (uint32_t)(c - 1U);
     return c;
 }
 
@@ -965,7 +998,7 @@ static bool sf_decode_manifest(Abstractformat *format, const sf_locate *where,
     bool ok;
     *data = NULL;
     *size = 0U;
-    in = (sf_input *)xx_mem_calloc(1U, sizeof(*in));
+    in = sf_input_create();
     xx_mem_zero(&out, sizeof(out));
     out.window = (uint8_t *)xx_mem_alloc(SF_OUT_WINDOW);
     if (!in || !out.window) {
@@ -1124,7 +1157,7 @@ static bool sf_extract(Abstractformat *format, const sf_member *member,
             left -= chunk;
         }
     } else {
-        sf_input *in = (sf_input *)xx_mem_calloc(1U, sizeof(*in));
+        sf_input *in = sf_input_create();
         if (in) {
             in->device = format->device;
             in->offset = member->data_offset;

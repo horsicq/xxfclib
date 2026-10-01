@@ -48,9 +48,9 @@
  * @par Provenance
  * Adapted from the `utils.h` / `utils.c` runtime layer of cdie
  * (github.com/horsicq, MIT), where it served the same purpose. The `x_`
- * prefix was renamed to `xx_rt_` on import; the implementations are
- * otherwise unchanged, including the exact-round-trip double formatters in
- * xx_rt_fp.c that a JavaScript Number.toString depends on.
+ * prefix was renamed to `xx_rt_` on import. Memory operations now use shared
+ * CPU backends; the exact-round-trip double formatters in xx_rt_fp.c that a
+ * JavaScript Number.toString depends on remain unchanged.
  */
 
 #ifndef XXFCLIB_XX_RT_H
@@ -107,10 +107,10 @@ wchar_t *xx_rt_wcschr(const wchar_t *pString, wchar_t nChar);
 /* Locale-independent ASCII folding. Bytes outside A..Z are unchanged. */
 int xx_rt_ascii_tolower(int nChar);
 
-/* Implemented in src/memory/platforms/xx_memory_windows.c and
- * src/memory/platforms/xx_memory_posix.c. These stay separate from the
- * xx_memory_platform_* allocator: xx_rt_malloc(0) returns a one-byte block
- * the way the CRT does, where xx_memory_platform_alloc(0) returns NULL. */
+/* Memory operations live in src/memory/xx_memory_rt.c, with CPU backends in
+ * src/memory/platforms. Allocators remain in the OS platform files; on Windows
+ * xx_rt_malloc(0) returns a one-byte block, while xx_memory_platform_alloc(0)
+ * returns NULL. */
 /* ------------------------------------------------------------- memory --- */
 
 void *xx_rt_memcpy(void *pDestination, const void *pSource, size_t nSize);

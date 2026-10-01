@@ -44,7 +44,11 @@ extern "C" {
  *   the payload follows the descriptor inline, `payload size` bytes.
  *
  *   Payloads are FINEAR streams (17-byte header, LHA -lh1- body, stored
- *   plaintext length and CRC-16/ARC), decoded and verified here.  The method
+ *   plaintext length and CRC-16/ARC), decoded and verified here.  Container
+ *   records also expose each original bounded payload under the virtual
+ *   __raw_finear__/ directory, so callers can retain incomplete fragments
+ *   and recover the exact bytes exported by U3 without losing decoded files.
+ *   The method
  *   word says whether a payload is whole: 0 is a self-contained member, 6 is
  *   the first fragment of a member that continues on the next volume (FINEAR
  *   header present, body cut off at the end of the volume) and 2 is the

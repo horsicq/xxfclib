@@ -61,8 +61,46 @@ typedef struct {
  */
 bool xxfc_open(xxfc_opened *out, xx_io_device *device, int64_t base_address);
 
+/** Construct the reader for a caller-selected type without detecting again.
+ * BINARY/UNKNOWN have no archive reader. Validate and parse after opening. */
+bool xxfc_open_type(xxfc_opened *out, xx_io_device *device,
+                    int64_t base_address, xx_file_type_t type);
+
+/**
+ * Try every reader whose declared extension matches @p source_path (longest
+ * suffix first). A candidate is returned only after its format-specific
+ * validity check and base-info parser both succeed; those implementations
+ * remain in each reader's own format source file. If distinct file types
+ * validate for the same suffix, the result is ambiguous and no reader wins.
+ * Use this only when the signature detector reports BINARY or UNKNOWN.
+ * The device remains owned by the caller and its cursor is restored.
+ */
+bool xxfc_open_extension(xxfc_opened *out, xx_io_device *device,
+                         int64_t base_address, const char *source_path,
+                         xx_pd_struct *pd);
+
+/** Validate only the default reader selected by the static extension hint.
+ * No content detector or competing reader probes are run. The returned
+ * reader has already handled its base info. False means the caller should
+ * use the legacy detector; it does not mean the file is necessarily invalid. */
+bool xxfc_open_extension_fast(xxfc_opened *out, xx_io_device *device,
+                              int64_t base_address, const char *source_path,
+                              xx_pd_struct *pd);
+
+/** Select a reader by its table name, for raw or ambiguous images.
+ * Validation and base-info parsing remain the caller's responsibility. */
+bool xxfc_open_named(xxfc_opened *out, xx_io_device *device,
+                     int64_t base_address, const char *name);
+
 /** Release a reader opened by xxfc_open(). The device stays the caller's. */
 void xxfc_close(xxfc_opened *opened);
+
+/** After base-info parsing, report readers that recovered an incomplete chain. */
+bool xxfc_is_incomplete(const xxfc_opened *opened);
+
+/** Attach supported sibling data files after parsing (currently CUE sheets).
+ * The reader owns files it opens; referenced names stay within the source folder. */
+void xxfc_attach_source_files(xxfc_opened *opened, const char *source_path);
 
 /**
  * Construct a reader for writing, chosen by container name.

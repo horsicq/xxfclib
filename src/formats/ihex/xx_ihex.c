@@ -16,6 +16,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/ihex/xx_ihex.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -68,7 +69,8 @@ typedef struct xx_ihexfmt_lines_s {
     xx_io_device *device;
     int64_t position;      /**< Device offset just past the buffered bytes. */
     int64_t end;
-    uint8_t buffer[4096];
+    uint8_t *buffer;
+    size_t capacity;
     size_t fill;           /**< Valid bytes in buffer. */
     size_t cursor;         /**< Next unread byte in buffer. */
     bool exhausted;
@@ -114,6 +116,7 @@ typedef struct xx_ihexfmt_scan_s {
     uint8_t entry_type;
     bool has_entry_point;
     bool seen_eof;
+    bool incomplete_records;
     bool has_segment;
     bool has_linear;
     int64_t stream_size;   /**< Bytes of text consumed from base_address. */
@@ -127,11 +130,13 @@ static void xx_ihexfmt_vtable_destroy(Abstractformat *self);
 
 static void xx_ihexfmt_lines_init(xx_ihexfmt_lines *lines,
                                   xx_io_device *device, int64_t offset,
-                                  int64_t end) {
+                                  int64_t end, uint8_t *buffer, size_t capacity) {
     xx_mem_zero(lines, sizeof(*lines));
     lines->device = device;
     lines->position = offset;
     lines->end = end;
+    lines->buffer = buffer;
+    lines->capacity = capacity;
 }
 
 static bool xx_ihexfmt_lines_fill(xx_ihexfmt_lines *lines) {
@@ -139,8 +144,8 @@ static bool xx_ihexfmt_lines_fill(xx_ihexfmt_lines *lines) {
     size_t want;
     if (lines->cursor < lines->fill) return true;
     if (lines->exhausted || lines->position >= lines->end) return false;
-    want = (uint64_t)(lines->end - lines->position) > sizeof(lines->buffer)
-               ? sizeof(lines->buffer)
+    want = (uint64_t)(lines->end - lines->position) > lines->capacity
+               ? lines->capacity
                : (size_t)(lines->end - lines->position);
     amount = xx_io_read(lines->device, lines->buffer, want);
     if (amount <= 0 || (size_t)amount > want) {
@@ -205,7 +210,10 @@ static xx_ihexfmt_line_status xx_ihexfmt_lines_next(xx_ihexfmt_lines *lines,
             *out_length = used;
             return XX_IHEXFMT_LINE_OK;
         }
-        if (used >= out_capacity) return XX_IHEXFMT_LINE_OVERLONG;
+        if (used >= out_capacity) {
+            *out_length = used;
+            return XX_IHEXFMT_LINE_OVERLONG;
+        }
         out[used++] = (char)ch;
     }
     if (!any) return XX_IHEXFMT_LINE_END;
@@ -271,6 +279,25 @@ static bool xx_ihexfmt_count_fits_type(uint8_t type, uint8_t count) {
 
 static bool xx_ihexfmt_is_space(char ch) {
     return ch == ' ' || ch == '\t';
+}
+
+/* A declared record begins with a colon and the hexadecimal count/address/
+ * type fields. A shortened but still hexadecimal header is recognizable
+ * once its count byte is present. Colon-prefixed prose is ordinary overlay.
+ * This is only used after the strict window; it never accepts a bad record.
+ */
+static bool xx_ihexfmt_has_record_prefix(const char *line, size_t length) {
+    size_t index, header_length;
+    uint8_t value;
+    while (length != 0U && xx_ihexfmt_is_space(line[0])) {
+        ++line;
+        --length;
+    }
+    if (length < 3U || line[0] != ':') return false;
+    header_length = length < 9U ? length : 9U;
+    for (index = 1U; index < header_length; ++index)
+        if (!xx_ihexfmt_hex_digit((uint8_t)line[index], &value)) return false;
+    return true;
 }
 
 /* Decode one line.  Every field is validated: the colon, the hex alphabet,
@@ -450,8 +477,8 @@ static bool xx_ihexfmt_acceptable(const xx_ihexfmt_scan *scan, bool detect) {
  * a block past XX_IHEX_MAX_BLOCKS, ends the text at that line.  The block cap
  * cannot be reached inside the window (a data record line is at least 12
  * bytes), so whatever the detector accepts, this walk accepts too. */
-static bool xx_ihexfmt_scan_run(Abstractformat *self, xx_ihexfmt_scan *scan,
-                                xx_pd_struct *pd, bool detect) {
+static bool xx_ihexfmt_scan_run_buffered(Abstractformat *self, xx_ihexfmt_scan *scan,
+                                xx_pd_struct *pd, bool detect, uint8_t *buffer, size_t buffer_capacity) {
     xx_ihexfmt_lines lines;
     char line[XX_IHEX_MAX_LINE_LENGTH];
     int64_t total_size;
@@ -474,7 +501,7 @@ static bool xx_ihexfmt_scan_run(Abstractformat *self, xx_ihexfmt_scan *scan,
     }
     stream_end = total_size;
     xx_ihexfmt_lines_init(&lines, self->device, self->base_address,
-                          total_size);
+                          total_size, buffer, buffer_capacity);
     for (;;) {
         size_t length = 0U;
         int64_t start = -1;
@@ -508,6 +535,8 @@ static bool xx_ihexfmt_scan_run(Abstractformat *self, xx_ihexfmt_scan *scan,
         if (status != XX_IHEXFMT_LINE_OK ||
             !xx_ihexfmt_decode_line(line, length, &record)) {
             if (!lenient) goto fail;
+            scan->incomplete_records =
+                xx_ihexfmt_has_record_prefix(line, length);
             stream_end = start;  /* Past the window: the text ends here. */
             break;
         }
@@ -527,6 +556,7 @@ static bool xx_ihexfmt_scan_run(Abstractformat *self, xx_ihexfmt_scan *scan,
                     } else {
                         if (!xx_ihexfmt_reserve_block(scan)) {
                             if (!lenient) goto fail;
+                            scan->incomplete_records = true;
                             stream_end = start;
                             goto walked;
                         }
@@ -575,6 +605,20 @@ walked:
 fail:
     xx_ihexfmt_scan_cleanup(scan);
     return false;
+}
+
+static bool xx_ihexfmt_scan_run(Abstractformat *self, xx_ihexfmt_scan *scan,
+                                xx_pd_struct *pd, bool detect) {
+    size_t buffer_capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
+    bool buffer_result;
+    if (!buffer) {
+        if (scan) { xx_mem_zero(scan, sizeof(*scan)); scan->low = UINT64_MAX; scan->stream_size = -1; }
+        return false;
+    }
+    buffer_result = xx_ihexfmt_scan_run_buffered(self, scan, pd, detect, buffer, buffer_capacity);
+    xx_mem_free(buffer);
+    return buffer_result;
 }
 
 /* Heap sort of block indices by (address, index), used once to find blocks
@@ -635,12 +679,12 @@ static bool xx_ihexfmt_mark_duplicates(xx_ihexfmt_scan *scan) {
 }
 
 /* Output buffer, so that a block is not written sixteen bytes at a time. */
-#define XX_IHEXFMT_SINK_SIZE 65536U
 
 typedef struct xx_ihexfmt_sink_s {
     xx_io_device *device;
     uint8_t *buffer;
     size_t used;
+    size_t capacity;
 } xx_ihexfmt_sink;
 
 static bool xx_ihexfmt_sink_flush(xx_ihexfmt_sink *sink) {
@@ -657,21 +701,22 @@ static bool xx_ihexfmt_sink_flush(xx_ihexfmt_sink *sink) {
 
 static bool xx_ihexfmt_sink_put(xx_ihexfmt_sink *sink, const uint8_t *data,
                                 size_t size) {
-    if (size > XX_IHEXFMT_SINK_SIZE - sink->used &&
-        !xx_ihexfmt_sink_flush(sink)) {
-        return false;
+    while (size) {
+        size_t step = sink->capacity - sink->used;
+        if (!step) { if (!xx_ihexfmt_sink_flush(sink)) return false; step = sink->capacity; }
+        if (step > size) step = size;
+        xx_rt_memcpy(sink->buffer + sink->used, data, step);
+        sink->used += step; data += step; size -= step;
     }
-    xx_rt_memcpy(sink->buffer + sink->used, data, size);
-    sink->used += size;
     return true;
 }
 
 /* Decode one block from the text again, feeding its bytes to sink (or only
  * checking them when sink is NULL).  Only the block's own lines are read,
  * and every record must continue exactly where the parse said it would. */
-static bool xx_ihexfmt_walk_records(Abstractformat *self,
+static bool xx_ihexfmt_walk_records_buffered(Abstractformat *self,
                                     const xx_ihexfmt_block *block,
-                                    xx_ihexfmt_sink *sink, xx_pd_struct *pd) {
+                                    xx_ihexfmt_sink *sink, xx_pd_struct *pd, uint8_t *buffer, size_t buffer_capacity) {
     xx_ihexfmt_lines lines;
     char line[XX_IHEX_MAX_LINE_LENGTH];
     uint64_t expected;
@@ -683,7 +728,7 @@ static bool xx_ihexfmt_walk_records(Abstractformat *self,
         return false;
     }
     xx_ihexfmt_lines_init(&lines, self->device, block->text_offset,
-                          block->text_end);
+                          block->text_end, buffer, buffer_capacity);
     base = block->base;
     expected = block->address;
     remaining = block->size;
@@ -729,6 +774,18 @@ static bool xx_ihexfmt_walk_records(Abstractformat *self,
     return !sink || xx_ihexfmt_sink_flush(sink);
 }
 
+static bool xx_ihexfmt_walk_records(Abstractformat *self,
+                                    const xx_ihexfmt_block *block,
+                                    xx_ihexfmt_sink *sink, xx_pd_struct *pd) {
+    size_t buffer_capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
+    bool buffer_result;
+    if (!buffer) return false;
+    buffer_result = xx_ihexfmt_walk_records_buffered(self, block, sink, pd, buffer, buffer_capacity);
+    xx_mem_free(buffer);
+    return buffer_result;
+}
+
 /* Write block to destination, or only verify it when destination is NULL. */
 static bool xx_ihexfmt_walk_block(Abstractformat *self,
                                   const xx_ihexfmt_block *block,
@@ -739,7 +796,8 @@ static bool xx_ihexfmt_walk_block(Abstractformat *self,
     if (!destination) return xx_ihexfmt_walk_records(self, block, NULL, pd);
     sink.device = destination;
     sink.used = 0U;
-    sink.buffer = (uint8_t *)xx_mem_alloc(XX_IHEXFMT_SINK_SIZE);
+    sink.capacity = xx_get_file_buffer_size();
+    sink.buffer = (uint8_t *)xx_mem_alloc(sink.capacity);
     if (!sink.buffer) return false;
     result = xx_ihexfmt_walk_records(self, block, &sink, pd);
     xx_mem_free(sink.buffer);
@@ -750,7 +808,7 @@ static bool xx_ihexfmt_walk_block(Abstractformat *self,
 /* Probe                                                               */
 /* ------------------------------------------------------------------ */
 
-bool xx_ihex_probe_device(xx_io_device *dev, int64_t base_address) {
+static bool xx_ihex_probe_device_buffered(xx_io_device *dev, int64_t base_address, uint8_t *buffer, size_t buffer_capacity) {
     xx_ihexfmt_lines lines;
     char line[XX_IHEX_MAX_LINE_LENGTH];
     int64_t total_size;
@@ -765,7 +823,7 @@ bool xx_ihex_probe_device(xx_io_device *dev, int64_t base_address) {
     /* A bounded window: enough for a few blank lines plus one record. */
     window = (int64_t)XX_IHEX_MAX_LINE_LENGTH * 4;
     if (window > total_size - base_address) window = total_size - base_address;
-    xx_ihexfmt_lines_init(&lines, dev, base_address, base_address + window);
+    xx_ihexfmt_lines_init(&lines, dev, base_address, base_address + window, buffer, buffer_capacity);
     for (;;) {
         size_t length = 0U;
         int64_t start = -1;
@@ -780,6 +838,16 @@ bool xx_ihex_probe_device(xx_io_device *dev, int64_t base_address) {
         }
         return xx_ihexfmt_decode_line(line, length, &record);
     }
+}
+
+bool xx_ihex_probe_device(xx_io_device *dev, int64_t base_address) {
+    size_t buffer_capacity = xx_get_file_buffer_size();
+    uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
+    bool buffer_result;
+    if (!buffer) return false;
+    buffer_result = xx_ihex_probe_device_buffered(dev, base_address, buffer, buffer_capacity);
+    xx_mem_free(buffer);
+    return buffer_result;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1016,6 +1084,7 @@ static void xx_ihexfmt_reset_summary(xx_ihex *archive) {
     archive->entry_type = 0U;
     archive->has_entry_point = false;
     archive->has_eof_record = false;
+    archive->has_incomplete_records = false;
     archive->has_segment_records = false;
     archive->has_linear_records = false;
     archive->stream_end = -1;
@@ -1096,6 +1165,7 @@ bool xx_ihex_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     archive->entry_type = scan->entry_type;
     archive->has_entry_point = scan->has_entry_point;
     archive->has_eof_record = scan->seen_eof;
+    archive->has_incomplete_records = scan->incomplete_records;
     archive->has_segment_records = scan->has_segment;
     archive->has_linear_records = scan->has_linear;
     archive->stream_end = self->base_address + scan->stream_size;

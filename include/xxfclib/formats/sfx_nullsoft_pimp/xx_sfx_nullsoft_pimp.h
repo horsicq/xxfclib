@@ -28,6 +28,8 @@
  * Layout 1 (older packages, as U3 reads them; no known sample):
  *   B+0x100 4      member count
  *   B+0x104        members: u32 name size, name, u32 packed size, zlib
+ *   With no stored size, a layout-1 member is refused past 64 MiB of
+ *   output, and all layout-1 members of one archive past 256 MiB.
  *
  * The members are followed by a u32 command size and the post-install
  * command line (NUL-terminated, e.g. |"$WINDIR\notepad.exe" whatsnew.txt).

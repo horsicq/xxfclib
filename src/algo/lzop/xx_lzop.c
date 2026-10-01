@@ -12,6 +12,7 @@
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/algo/lzo/xx_lzo.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/global/xx_global.h"
 
 #include <limits.h>
 #include <string.h>
@@ -35,6 +36,7 @@ typedef struct xx_lzop_reader_s {
     xx_io_device *device;
     int64_t cursor;
     int64_t end;
+    size_t capacity; /* Captured for the entire stream operation. */
 } xx_lzop_reader;
 
 typedef struct xx_lzop_checksums_s {
@@ -54,9 +56,12 @@ static bool xx_lzop_read(xx_lzop_reader *reader, void *data, size_t size) {
         return false;
     }
     while (done < size) {
-        ssize_t amount = xx_io_read(reader->device, (uint8_t *)data + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        size_t request = size - done;
+        ssize_t amount;
+        if (request > reader->capacity) request = reader->capacity;
+        if (request > (SIZE_MAX >> 1U)) request = SIZE_MAX >> 1U;
+        amount = xx_io_read(reader->device, (uint8_t *)data + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     reader->cursor += (int64_t)size;
@@ -132,13 +137,16 @@ static bool xx_lzop_read_u32be_plain(xx_lzop_reader *reader,
 }
 
 static bool xx_lzop_write_all(xx_io_device *destination, const void *data,
-                              size_t size) {
+                              size_t size, size_t capacity) {
     size_t done = 0U;
     if (!destination || (!data && size != 0U)) return false;
     while (done < size) {
-        ssize_t amount = xx_io_write(destination, (const uint8_t *)data + done,
-                                     size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        size_t request = size - done;
+        ssize_t amount;
+        if (request > capacity) request = capacity;
+        if (request > (SIZE_MAX >> 1U)) request = SIZE_MAX >> 1U;
+        amount = xx_io_write(destination, (const uint8_t *)data + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -153,12 +161,18 @@ static bool xx_lzop_read_extra_field(xx_lzop_reader *reader, bool crc32) {
     uint32_t length;
     uint32_t expected;
     xx_lzop_checksums checksums;
-    uint8_t buffer[4096];
+    size_t capacity = reader ? reader->capacity : 0;
+    uint8_t *buffer = NULL;
     if (!reader || !xx_lzop_read_u32be_plain(reader, &length) ||
         length > XX_LZOP_MAX_EXTRA_SIZE) {
         return false;
     }
     xx_lzop_checksums_init(&checksums);
+    if (length) {
+        if (capacity > length) capacity = length;
+        buffer = (uint8_t *)xx_mem_alloc(capacity);
+        if (!buffer) return false;
+    }
     {
         uint8_t bytes[4] = {(uint8_t)(length >> 24U),
                             (uint8_t)(length >> 16U),
@@ -166,12 +180,14 @@ static bool xx_lzop_read_extra_field(xx_lzop_reader *reader, bool crc32) {
         xx_lzop_checksums_update(&checksums, bytes, sizeof(bytes));
     }
     while (length != 0U) {
-        size_t count = length > sizeof(buffer) ? sizeof(buffer) : length;
+        size_t count = length > capacity ? capacity : length;
         if (!xx_lzop_read_checked(reader, buffer, count, &checksums)) {
+            xx_mem_free(buffer);
             return false;
         }
         length -= (uint32_t)count;
     }
+    xx_mem_free(buffer);
     return xx_lzop_read_u32be_plain(reader, &expected) &&
            expected == (crc32 ? checksums.crc32 : checksums.adler32);
 }
@@ -319,7 +335,7 @@ static bool xx_lzop_decode_stream(xx_lzop_reader *reader,
             return false;
         }
         result = xx_lzop_write_all(destination, output_data,
-                                   (size_t)expanded_size);
+                                   (size_t)expanded_size, reader->capacity);
         xx_mem_free(expanded);
         xx_mem_free(packed);
         if (!result) return false;
@@ -336,6 +352,7 @@ bool xx_lzop_decode_device(xx_io_device *source, int64_t source_offset,
     int64_t total_size;
     uint64_t total_output = 0U;
     size_t count = 0U;
+    size_t capacity = xx_get_file_buffer_size();
 
     if (output_size) *output_size = -1;
     if (stream_count) *stream_count = 0U;
@@ -353,6 +370,7 @@ bool xx_lzop_decode_device(xx_io_device *source, int64_t source_offset,
     reader.device = source;
     reader.cursor = source_offset;
     reader.end = source_offset + source_size;
+    reader.capacity = capacity;
     while (reader.cursor < reader.end) {
         if (count == SIZE_MAX || !xx_lzop_read(&reader, magic, sizeof(magic)) ||
             !xx_lzop_has_header(magic, sizeof(magic)) ||

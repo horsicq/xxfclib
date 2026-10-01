@@ -20,9 +20,11 @@ extern "C" {
  * in every known build) followed by one complete bzip2 stream per installed
  * file, back to back, then a file directory and a fixed footer that ends the
  * file.  All offsets are little endian and count from the start of the
- * executable.
+ * executable.  Signing appends an Authenticode certificate table (found
+ * through the PE security directory) behind the footer, and a copy may carry
+ * zero padding; the reader looks for the footer before either.
  *
- * Footer, the last 24 bytes:
+ * Footer, 24 bytes:
  *   +0x00  u32   unknown (differs per installer)
  *   +0x04  u32   unknown (differs per installer)
  *   +0x08  u32   directory offset
@@ -52,6 +54,8 @@ typedef struct xx_spoon_installer {
     uint64_t unpacked_total;  /**< Sum of the declared unpacked sizes. */
     uint32_t footer_value0;   /**< Footer +0x00, meaning unknown. */
     uint32_t footer_value1;   /**< Footer +0x04, meaning unknown. */
+    int64_t trailing_size;    /**< Bytes behind the footer (certificate
+                                   table, zero padding); 0 normally. */
 } xx_spoon_installer;
 
 typedef xx_spoon_installer xx_spoon_installer_t;

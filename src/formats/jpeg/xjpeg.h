@@ -25,7 +25,7 @@
 #ifndef XJPEG_H
 #define XJPEG_H
 
-#include "../../die_engine/die_engine_bin.h"
+#include "../../die_engine/xx_die_engine_bin.h"
 
 typedef struct {
     cd_u8 nId;

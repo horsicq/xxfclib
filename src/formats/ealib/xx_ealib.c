@@ -239,6 +239,41 @@ static void xx_ealib_name_to_string(const uint8_t *entry, size_t index,
     }
 }
 
+/* Some LIBs leave a tiny producer trailer after the sentinel.  A CAT can
+ * instead concatenate another EALIB stream immediately at that boundary.
+ * Verify the latter's directory boundaries before treating a large trailer
+ * as another archive rather than accepting arbitrary appended bytes. */
+static bool xx_ealib_tail_valid(Abstractformat *self, int64_t start,
+                                int64_t trailing_size) {
+    uint8_t header[XX_EALIB_HEADER_SIZE];
+    uint8_t offset[4];
+    int64_t directory_end;
+    int64_t nested_end;
+    uint16_t count;
+
+    if (trailing_size == 0 || trailing_size <= 16) return true;
+    if (trailing_size < XX_EALIB_HEADER_SIZE + 2 * XX_EALIB_ENTRY_SIZE ||
+        !xx_ealib_read_at(self, start, header, sizeof(header)) ||
+        xx_rt_memcmp(header, "EALIB", 5U) != 0)
+        return false;
+    count = xx_ealib_le16(header + 5);
+    if (count == 0U) return false;
+    directory_end = XX_EALIB_HEADER_SIZE +
+                    (int64_t)(count + 1U) * XX_EALIB_ENTRY_SIZE;
+    if (directory_end > trailing_size ||
+        !xx_ealib_read_at(self, start + XX_EALIB_HEADER_SIZE +
+                               XX_EALIB_OFFSET_OFFSET, offset, sizeof(offset)) ||
+        (int64_t)(int32_t)xx_ealib_le32(offset) != directory_end)
+        return false;
+    if (!xx_ealib_read_at(self, start + XX_EALIB_HEADER_SIZE +
+                                  (int64_t)count * XX_EALIB_ENTRY_SIZE +
+                                  XX_EALIB_OFFSET_OFFSET,
+                          offset, sizeof(offset)))
+        return false;
+    nested_end = (int64_t)(int32_t)xx_ealib_le32(offset);
+    return nested_end >= directory_end && nested_end <= trailing_size;
+}
+
 static xx_ealib_stream *xx_ealib_parse(Abstractformat *self,
                                        xx_pd_struct *pd) {
     xx_ealib_stream *stream = NULL;
@@ -312,16 +347,16 @@ static xx_ealib_stream *xx_ealib_parse(Abstractformat *self,
     sentinel_offset = (int64_t)(int32_t)xx_ealib_le32(
         directory + (size_t)member_count * XX_EALIB_ENTRY_SIZE +
         XX_EALIB_OFFSET_OFFSET);
-    /* Header, directory and payload tile the file exactly: the first entry
-     * starts right behind the directory and the sentinel marks EOF. This is
-     * the whole reason a five-byte ASCII magic is safe to detect on, so it
-     * must not be relaxed into "every member lies somewhere inside the
-     * file". */
+    /* The first entry starts behind the directory.  The sentinel bounds the
+     * payload; any remaining bytes must be a short trailer or the start of
+     * another structurally valid EALIB archive. */
     if (first_offset != directory_offset + directory_size) {
         xx_mem_free(directory);
         return NULL;
     }
-    if (sentinel_offset != span) {
+    if (sentinel_offset < first_offset || sentinel_offset > span ||
+        !xx_ealib_tail_valid(self, self->base_address + sentinel_offset,
+                             span - sentinel_offset)) {
         xx_mem_free(directory);
         return NULL;
     }
@@ -405,9 +440,7 @@ static xx_ealib_stream *xx_ealib_parse(Abstractformat *self,
     xx_mem_free(directory);
     directory = NULL;
     if (pd && xx_pd_is_stopped(pd)) goto fail;
-    /* The sentinel already pinned the end of the payload to EOF, so the
-     * archive is the whole span. */
-    stream->archive_size = span;
+    stream->archive_size = sentinel_offset;
     return stream;
 
 fail:

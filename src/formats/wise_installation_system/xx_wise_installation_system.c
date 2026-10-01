@@ -45,6 +45,7 @@
  * local-header names.
  */
 
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/wise_installation_system/xx_wise_installation_system.h"
 
@@ -75,7 +76,6 @@
 #define WISE_MAX_SEGMENTS 1024U
 #define WISE_SCAN 0x4000U
 #define WISE_HEAD (WISE_SCAN + 0x1000U)
-#define WISE_MARKER_CHUNK 0x8000U
 /* The first member is the colour DIB or the script: the corpus peaks at
  * 16824 bytes.  Candidates are decoded up to WISE_FIRST_QUICK, and at most
  * WISE_MAX_BIG_ATTEMPTS of them again up to WISE_FIRST_RAW_MAX. */
@@ -83,12 +83,25 @@
 #define WISE_FIRST_RAW_MAX (1024U * 1024U)
 #define WISE_MAX_ATTEMPTS 64U
 #define WISE_MAX_BIG_ATTEMPTS 4U
+/* Input a first-member decode may consume: its output limit plus a
+ * quarter (stored blocks, Huffman tables) and some slack.  Without it a
+ * stream of empty non-final blocks would be read to the end of the file on
+ * every attempt. */
+#define WISE_FIRST_INPUT(limit) \
+    ((int64_t)(limit) + (int64_t)(limit) / 4 + 4096)
+/* PK candidates per locate: walks tried, local headers and central
+ * directory bytes read over all of them.  A crafted overlay of back-to-back
+ * empty local headers offers a candidate every 30 bytes, each of which
+ * would otherwise walk the whole chain again. */
+#define WISE_PLAUSIBLE_INPUT 1024U
+#define WISE_MAX_PK_WALKS 4U
+#define WISE_PK_HEADER_BUDGET (WISE_MAX_MEMBERS + 4096U)
+#define WISE_PK_CD_BUDGET (16 * 1024 * 1024)
 /* Sizes in the script and in the local headers are u32. */
 #define WISE_MEMBER_RAW_MAX UINT64_C(0xFFFFFFFF)
 #define WISE_WALK_RATIO 64U
 #define WISE_WALK_EXTRA (UINT64_C(64) * 1024U * 1024U)
 #define WISE_MAX_MEMBERS 65536U
-#define WISE_WINDOW (1024U * 1024U)
 #define WISE_SCRIPT_MAX (4U * 1024U * 1024U)
 #define WISE_SCRIPT_CANDIDATES 3U
 #define WISE_MAX_MATCHES 262144U
@@ -103,6 +116,10 @@
 #define WISE_NAME_DISTANCE_MAX 64U
 #define WISE_PATH_MAX 260U
 #define WISE_RENAME_PASSES 3U
+/* Duplicate check: distinct names compared one by one within a run of
+ * equal hashes before the run is sorted by name instead. */
+#define WISE_DEDUPE_REPS 16U
+#define WISE_DEDUPE_DROPPED 0xFFU
 #define WISE_EOCD_SCAN (65535 + 22)
 #define WISE_CD_MAX (16 * 1024 * 1024)
 #define WISE_PEEK 4096U
@@ -137,6 +154,7 @@ typedef struct wise_table_s {
     bool is_ne;
     bool pk_mode;
     bool truncated;
+    bool budget_stop; /* the last record is the unwalked rest of the chain */
 } wise_table;
 
 typedef struct wise_cursor_s {
@@ -173,6 +191,14 @@ typedef struct wise_sink_s {
     bool over_limit;
 } wise_sink;
 
+typedef struct wise_effort_s {
+    unsigned attempts;      /* first-member decodes tried */
+    unsigned big_attempts;  /* of those, retried at the full limit */
+    unsigned pk_walks;      /* PK chains walked */
+    uint32_t pk_headers;    /* local headers read over all PK walks */
+    int64_t pk_cd_bytes;    /* central directory bytes read over all walks */
+} wise_effort;
+
 typedef struct wise_window_s {
     xx_io_device *device;
     int64_t base;
@@ -203,11 +229,14 @@ static bool wise_range(int64_t total, int64_t offset, int64_t size) {
 static bool wise_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || offset < 0 || (size != 0U && !buffer)) return false;
     if (size == 0U) return true;
     if (xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
     while (done < size) {
-        ssize_t got = xx_io_read(device, (uint8_t *)buffer + done, size - done);
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
+        ssize_t got = xx_io_read(device, (uint8_t *)buffer + done, request);
         if (got <= 0) return false;
         done += (size_t)got;
     }
@@ -377,15 +406,18 @@ static bool wise_window_load(wise_window *window, int64_t position) {
  * end, and falling back to a streaming decode for a stream longer than
  * the window. */
 static bool wise_window_inflate(wise_window *window, int64_t position,
-                                uint64_t limit, wise_inflated *result,
-                                xx_pd_struct *pd) {
+                                int64_t input_cap, uint64_t limit,
+                                wise_inflated *result, xx_pd_struct *pd) {
     int64_t window_end = window->start + (int64_t)window->size;
+    int64_t end = window->limit;
     size_t slack = window->capacity / 8U;
-    size_t offset;
+    size_t offset, available;
     bool exhausted = false;
     bool ok;
     result->over_limit = false;
-    if (position < 0 || position >= window->limit) return false;
+    if (position < 0 || position >= window->limit || input_cap <= 0)
+        return false;
+    if (input_cap < end - position) end = position + input_cap;
     if (window->size == 0U || position < window->start ||
         position >= window_end ||
         (window_end - position < (int64_t)slack && window_end < window->limit)) {
@@ -393,12 +425,13 @@ static bool wise_window_inflate(wise_window *window, int64_t position,
         window_end = window->start + (int64_t)window->size;
     }
     offset = (size_t)(position - window->start);
-    ok = wise_inflate_memory(window->buffer + offset, window->size - offset,
-                             NULL, limit, result, &exhausted, pd);
-    if (!exhausted || window_end >= window->limit) return ok;
+    available = window->size - offset;
+    if (window_end > end) available = (size_t)(end - position);
+    ok = wise_inflate_memory(window->buffer + offset, available, NULL, limit,
+                             result, &exhausted, pd);
+    if (!exhausted || position + (int64_t)available >= end) return ok;
     return wise_inflate_device(window->device, window->base + position,
-                               window->limit - position, NULL, limit, result,
-                               pd);
+                               end - position, NULL, limit, result, pd);
 }
 
 /* The CRC-32 after a stream, possibly behind up to three zero bytes.
@@ -563,30 +596,29 @@ done:
 /* The stub imports WiseMain from WISE0001.DLL by name: "\0WiseMain\0". */
 static bool wise_has_marker(xx_io_device *device, int64_t base,
                             int64_t image_end) {
-    static const uint8_t marker[10] = {0, 'W', 'i', 's', 'e',
-                                       'M', 'a', 'i', 'n', 0};
-    uint8_t *buffer;
+    static const uint8_t marker[10] = {0, 'W', 'i', 's', 'e', 'M', 'a', 'i', 'n', 0};
+    const size_t capacity = xx_get_file_buffer_size();
+    uint8_t frame[sizeof(marker)], *buffer;
     int64_t position = 0;
-    size_t keep = 0U;
+    size_t have = 0U;
     bool found = false;
-    buffer = (uint8_t *)xx_mem_alloc(WISE_MARKER_CHUNK + sizeof(marker));
+    buffer = (uint8_t *)xx_mem_alloc(capacity);
     if (!buffer) return false;
     while (!found && position < image_end) {
-        size_t chunk = image_end - position < (int64_t)WISE_MARKER_CHUNK
-                           ? (size_t)(image_end - position)
-                           : WISE_MARKER_CHUNK;
-        size_t have, at;
-        if (!wise_read_at(device, base + position, buffer + keep, chunk)) break;
-        have = keep + chunk;
-        for (at = 0U; at + sizeof(marker) <= have; ++at) {
-            if (buffer[at] == 0U && buffer[at + 1U] == 'W' &&
-                xx_rt_memcmp(buffer + at, marker, sizeof(marker)) == 0) {
+        size_t chunk = (uint64_t)(image_end - position) < capacity ?
+                           (size_t)(image_end - position) : capacity, at;
+        if (!wise_read_at(device, base + position, buffer, chunk)) break;
+        for (at = 0U; at < chunk; ++at) {
+            if (have == sizeof(frame)) {
+                xx_rt_memmove(frame, frame + 1U, sizeof(frame) - 1U);
+                --have;
+            }
+            frame[have++] = buffer[at];
+            if (have == sizeof(frame) && xx_rt_memcmp(frame, marker, sizeof(marker)) == 0) {
                 found = true;
                 break;
             }
         }
-        keep = have < sizeof(marker) - 1U ? have : sizeof(marker) - 1U;
-        xx_rt_memmove(buffer, buffer + have - keep, keep);
         position += (int64_t)chunk;
     }
     xx_mem_free(buffer);
@@ -648,7 +680,7 @@ static bool wise_offset_known(const int64_t *offsets, size_t count,
  * directory and its end record.  Fills @p table when given. */
 static bool wise_pk_walk(xx_io_device *device, int64_t base, int64_t total,
                          int64_t first, wise_table *table,
-                         int64_t *chain_end) {
+                         int64_t *chain_end, wise_effort *effort) {
     int64_t *offsets = NULL;
     size_t count = 0U, capacity = 0U;
     uint8_t *tail = NULL;
@@ -662,6 +694,10 @@ static bool wise_pk_walk(xx_io_device *device, int64_t base, int64_t total,
         uint8_t header[30];
         uint16_t flags, method, name_size, extra_size;
         int64_t packed, raw, header_size;
+        if (effort) {
+            if (effort->pk_headers >= WISE_PK_HEADER_BUDGET) goto done;
+            ++effort->pk_headers;
+        }
         if (!wise_read_at(device, base + position, header, sizeof(header)))
             goto done;
         if (wise_le32(header) != 0x04034B50U) break;
@@ -739,8 +775,13 @@ static bool wise_pk_walk(xx_io_device *device, int64_t base, int64_t total,
     if (wise_le16(tail + at + 4U) != 0U || wise_le16(tail + at + 6U) != 0U ||
         wise_le16(tail + at + 8U) != entries || entries == 0U ||
         entries > count || count - entries > 4U || cd_offset != position ||
-        cd_size != eocd - cd_offset || cd_size > WISE_CD_MAX)
+        cd_size != eocd - cd_offset || cd_size > WISE_CD_MAX ||
+        cd_size < (int64_t)entries * 46)
         goto done;
+    if (effort) {
+        if (cd_size > WISE_PK_CD_BUDGET - effort->pk_cd_bytes) goto done;
+        effort->pk_cd_bytes += cd_size;
+    }
     directory = (uint8_t *)xx_mem_alloc((size_t)cd_size);
     if (!directory ||
         !wise_read_at(device, base + cd_offset, directory, (size_t)cd_size))
@@ -791,7 +832,8 @@ static bool wise_native_first(wise_window *window, int64_t position,
     size_t produced, available;
     int64_t next;
     int pad;
-    bool ok = wise_window_inflate(window, position, limit, &first, pd);
+    bool ok = wise_window_inflate(window, position, WISE_FIRST_INPUT(limit),
+                                  limit, &first, pd);
     *over_limit = !ok && first.over_limit;
     if (!ok || first.raw_size == 0U) return false;
     pad = wise_find_crc(window->device, window->base, window->limit,
@@ -812,16 +854,15 @@ static bool wise_native_first(wise_window *window, int64_t position,
 static bool wise_plausible_first(const uint8_t *head, size_t size) {
     uint8_t out[8];
     size_t produced;
+    /* The first bytes of a real stream follow at most a dynamic-Huffman
+     * header (under 300 bytes); empty blocks in front of them are not
+     * worth parsing at every offset of the scan. */
+    if (size > WISE_PLAUSIBLE_INPUT) size = WISE_PLAUSIBLE_INPUT;
     if (!wise_quick_peek(head, size, out, &produced) || produced < 4U)
         return false;
     return out[1] == 0U && out[0] >= 4U && out[0] <= 0xA0U &&
            (out[0] & 1U) == 0U;
 }
-
-typedef struct wise_effort_s {
-    unsigned attempts;      /* first-member decodes tried */
-    unsigned big_attempts;  /* of those, retried at the full limit */
-} wise_effort;
 
 static bool wise_try_candidate(xx_io_device *device, int64_t base,
                                int64_t total, wise_window *window,
@@ -836,7 +877,11 @@ static bool wise_try_candidate(xx_io_device *device, int64_t base,
     if (offset + 8U > head_size) return false;
     if (head[offset] == 'P' && head[offset + 1U] == 'K' &&
         head[offset + 2U] == 3U && head[offset + 3U] == 4U) {
-        if (!wise_pk_walk(device, base, total, position, NULL, &chain_end))
+        /* A few chains per locate, and a shared header budget. */
+        if (effort->pk_walks >= WISE_MAX_PK_WALKS) return false;
+        ++effort->pk_walks;
+        if (!wise_pk_walk(device, base, total, position, NULL, &chain_end,
+                          effort))
             return false;
         found->first = position;
         found->pk_mode = true;
@@ -844,12 +889,13 @@ static bool wise_try_candidate(xx_io_device *device, int64_t base,
     }
     /* A raw-DEFLATE stream never opens with the reserved block type. */
     if (((head[offset] >> 1U) & 3U) == 3U) return false;
-    if (scanning && !wise_plausible_first(head + offset, head_size - offset))
-        return false;
     /* Bounded effort: every colour table and script measured decodes to
      * less than WISE_FIRST_QUICK bytes; only a few candidates may use the
-     * full limit, so a crafted header costs a few MiB of decoding at most. */
+     * full limit, and each decode may consume only WISE_FIRST_INPUT of its
+     * limit, so a crafted header costs a few MiB of decoding at most. */
     if (effort->attempts >= WISE_MAX_ATTEMPTS) return false;
+    if (scanning && !wise_plausible_first(head + offset, head_size - offset))
+        return false;
     ++effort->attempts;
     ok = wise_native_first(window, position, WISE_FIRST_QUICK, &over_limit,
                            pd);
@@ -916,14 +962,14 @@ static bool wise_locate(Abstractformat *format, wise_found *found,
                     : WISE_HEAD;
     head = (uint8_t *)xx_mem_alloc(head_size);
     xx_mem_zero(&window, sizeof(window));
-    window.buffer = (uint8_t *)xx_mem_alloc(WISE_HEAD);
+    window.capacity = xx_get_file_buffer_size();
+    window.buffer = (uint8_t *)xx_mem_alloc(window.capacity);
     if (!head || !window.buffer ||
         !wise_read_at(device, base + image_end, head, head_size))
         goto done;
     window.device = device;
     window.base = base;
     window.limit = total;
-    window.capacity = WISE_HEAD;
 
     candidates[candidate_count++] = 0x51U;
     if (head_size > 0x5BU) candidates[candidate_count++] = 0x5CU + head[0x5BU];
@@ -938,7 +984,8 @@ static bool wise_locate(Abstractformat *format, wise_found *found,
         ok = wise_try_candidate(device, base, total, &window, head, head_size,
                                 candidates[index], false, &effort, found, pd);
     for (index = 0U; !ok && index + 8U <= head_size && index < WISE_SCAN &&
-                     effort.attempts < WISE_MAX_ATTEMPTS;
+                     (effort.attempts < WISE_MAX_ATTEMPTS ||
+                      effort.pk_walks < WISE_MAX_PK_WALKS);
          ++index) {
         if (pd && xx_pd_is_stopped(pd)) break;
         ok = wise_try_candidate(device, base, total, &window, head, head_size,
@@ -968,8 +1015,8 @@ static bool wise_native_walk(xx_io_device *device, int64_t base,
     window.device = device;
     window.base = base;
     window.limit = total;
-    window.capacity = WISE_WINDOW;
-    window.buffer = (uint8_t *)xx_mem_alloc(WISE_WINDOW);
+    window.capacity = xx_get_file_buffer_size();
+    window.buffer = (uint8_t *)xx_mem_alloc(window.capacity);
     if (!window.buffer) return false;
     while (position < total) {
         wise_inflated result;
@@ -983,12 +1030,29 @@ static bool wise_native_walk(xx_io_device *device, int64_t base,
             table->truncated = true;
             break;
         }
-        if (!wise_window_inflate(&window, position,
+        if (!wise_window_inflate(&window, position, INT64_MAX,
                                  budget - decoded < WISE_MEMBER_RAW_MAX
                                      ? budget - decoded
                                      : WISE_MEMBER_RAW_MAX,
                                  &result, pd)) {
             table->truncated = true;
+            /* The decode budget (not the data) stopped the walk: list the
+             * rest of the chain as one record that cannot be extracted, so
+             * the short listing shows up as a failed record instead of
+             * silently missing members. */
+            if (result.over_limit && decoded != 0U &&
+                (member = wise_table_add(table)) != NULL) {
+                member->header_offset = position;
+                member->data_offset = position;
+                member->packed_size = total - position;
+                member->span = total - position;
+                member->method = 8U;
+                member->extractable = false;
+                xx_rt_memcpy(member->head, result.head, sizeof(member->head));
+                member->head_size = result.head_size;
+                position = total;
+                table->budget_stop = true;
+            }
             break;
         }
         decoded += result.raw_size;
@@ -1478,43 +1542,34 @@ static void wise_names_from_script(xx_io_device *device, int64_t base,
 /* ---------------------------------------------------------------------- */
 /* Unique names                                                            */
 
-static uint32_t wise_name_hash(const char *name) {
-    uint32_t hash = 2166136261U;
-    for (; *name; ++name) {
-        unsigned char c = (unsigned char)*name;
-        if (c >= 'A' && c <= 'Z') c = (unsigned char)(c + 0x20);
-        hash = (hash ^ c) * 16777619U;
+/* Names are UTF-8 made from Windows-1252 bytes (or ASCII), and NTFS
+ * compares them case-insensitively: fold every letter of that repertoire
+ * to upper case (a-z, U+00E0..U+00FE except U+00F7, and the cp1252 pairs
+ * s/z caron, oe and y diaeresis).  Returns the next folded code point and
+ * advances @p text; a malformed sequence is taken byte by byte. */
+static uint32_t wise_fold_next(const char **text) {
+    const unsigned char *at = (const unsigned char *)*text;
+    uint32_t code = at[0];
+    size_t length = 1U;
+    if (code >= 0xC0U && code < 0xE0U && (at[1] & 0xC0U) == 0x80U) {
+        code = ((code & 0x1FU) << 6U) | (at[1] & 0x3FU);
+        length = 2U;
+    } else if (code >= 0xE0U && code < 0xF0U && (at[1] & 0xC0U) == 0x80U &&
+               (at[2] & 0xC0U) == 0x80U) {
+        code = ((code & 0x0FU) << 12U) | ((uint32_t)(at[1] & 0x3FU) << 6U) |
+               (at[2] & 0x3FU);
+        length = 3U;
     }
-    return hash;
-}
-
-static bool wise_name_equal(const char *left, const char *right) {
-    for (;; ++left, ++right) {
-        unsigned char a = (unsigned char)*left, b = (unsigned char)*right;
-        if (a >= 'A' && a <= 'Z') a = (unsigned char)(a + 0x20);
-        if (b >= 'A' && b <= 'Z') b = (unsigned char)(b + 0x20);
-        if (a != b) return false;
-        if (a == 0U) return true;
+    *text += length;
+    if (code >= 'a' && code <= 'z') return code - 0x20U;
+    if (code >= 0xE0U && code <= 0xFEU && code != 0xF7U) return code - 0x20U;
+    switch (code) {
+    case 0xFFU: return 0x0178U;
+    case 0x0161U: return 0x0160U;
+    case 0x0153U: return 0x0152U;
+    case 0x017EU: return 0x017DU;
+    default: return code;
     }
-}
-
-static bool wise_table_contains(const wise_table *table,
-                                const uint32_t *slots, size_t mask,
-                                const char *name) {
-    size_t slot = (size_t)wise_name_hash(name) & mask;
-    while (slots[slot] != 0U) {
-        if (wise_name_equal(table->items[slots[slot] - 1U].name, name))
-            return true;
-        slot = (slot + 1U) & mask;
-    }
-    return false;
-}
-
-static void wise_table_insert(const wise_table *table, uint32_t *slots,
-                              size_t mask, size_t member) {
-    size_t slot = (size_t)wise_name_hash(table->items[member].name) & mask;
-    while (slots[slot] != 0U) slot = (slot + 1U) & mask;
-    slots[slot] = (uint32_t)(member + 1U);
 }
 
 /* "dir/name.ext" -> "dir/name_<number>.ext" (plus "_<pass>" later). */
@@ -1547,42 +1602,234 @@ static char *wise_renamed(const char *name, size_t number, unsigned pass) {
     return result;
 }
 
+/* Folded order of two names: equal exactly when NTFS would treat them as
+ * the same name (see wise_fold_next).  Any consistent total order does. */
+static int wise_name_order(const char *left, const char *right) {
+    for (;;) {
+        uint32_t a, b;
+        if (*left == 0 || *right == 0)
+            return (*left != 0) - (*right != 0);
+        a = wise_fold_next(&left);
+        b = wise_fold_next(&right);
+        if (a != b) return a < b ? -1 : 1;
+    }
+}
+
+/* 64-bit FNV-1a over the folded code points, plus their count. */
+static uint64_t wise_name_key(const char *name, uint32_t *points) {
+    uint64_t hash = UINT64_C(14695981039346656037);
+    uint32_t count = 0U;
+    while (*name) {
+        uint32_t code = wise_fold_next(&name);
+        hash = (hash ^ (code & 0xFFU)) * UINT64_C(1099511628211);
+        hash = (hash ^ (code >> 8U)) * UINT64_C(1099511628211);
+        ++count;
+    }
+    *points = count;
+    return hash;
+}
+
+typedef struct wise_dedupe_s {
+    const wise_member *items;
+    const uint64_t *hash;
+    const uint32_t *points;
+} wise_dedupe;
+
+/* (hash, length, index): only integers, so the sort costs O(n log n)
+ * whatever the names are; equal names end up next to each other. */
+static int wise_key_compare(const void *left, const void *right,
+                            void *context) {
+    const wise_dedupe *d = (const wise_dedupe *)context;
+    uint32_t a = *(const uint32_t *)left, b = *(const uint32_t *)right;
+    if (d->hash[a] != d->hash[b]) return d->hash[a] < d->hash[b] ? -1 : 1;
+    if (d->points[a] != d->points[b])
+        return d->points[a] < d->points[b] ? -1 : 1;
+    return a < b ? -1 : (a > b ? 1 : 0);
+}
+
+/* (folded name, index): the fallback for a run of equal keys that holds
+ * more than WISE_DEDUPE_REPS different names. */
+static int wise_run_compare(const void *left, const void *right,
+                            void *context) {
+    const wise_dedupe *d = (const wise_dedupe *)context;
+    uint32_t a = *(const uint32_t *)left, b = *(const uint32_t *)right;
+    int order = wise_name_order(d->items[a].name, d->items[b].name);
+    if (order != 0) return order;
+    return a < b ? -1 : (a > b ? 1 : 0);
+}
+
+/* True for a component shaped like an NTFS 8.3 short-name alias
+ * ("LONGFI~1.TXT"): a stem of 3..8 bytes ending in '~' and digits, at most
+ * one dot and an extension of at most 3 bytes.  On a volume with short
+ * names such a member would open the file of an earlier member. */
+static bool wise_is_alias83(const char *segment, size_t length) {
+    size_t dot = length, index, stem;
+    for (index = 0U; index < length; ++index)
+        if (segment[index] == '.') {
+            if (dot != length) return false;
+            dot = index;
+        }
+    stem = dot;
+    if (stem < 3U || stem > 8U || (dot < length && length - dot - 1U > 3U))
+        return false;
+    index = stem;
+    while (index > 0U && segment[index - 1U] >= '0' &&
+           segment[index - 1U] <= '9')
+        --index;
+    return index < stem && index >= 2U && segment[index - 1U] == '~';
+}
+
+/* Gives member @p index the name "<original>_<index>[_<attempt>]"; after
+ * WISE_RENAME_PASSES attempts (or in the last round) it is not written. */
+static bool wise_rename_member(wise_table *table, char **original,
+                               uint8_t *attempts, size_t index, bool last) {
+    wise_member *member = &table->items[index];
+    char *renamed;
+    if (last || attempts[index] >= WISE_RENAME_PASSES) {
+        member->extractable = false;
+        attempts[index] = WISE_DEDUPE_DROPPED;
+        return true;
+    }
+    if (!original[index]) original[index] = member->name;
+    renamed = wise_renamed(original[index], index, ++attempts[index]);
+    if (!renamed) return false;
+    if (member->name != original[index]) xx_mem_free(member->name);
+    member->name = renamed;
+    return true;
+}
+
+/* Every written member gets a name no other one has, compared the way
+ * NTFS compares (case-insensitive): the lowest index keeps the name, a
+ * later one becomes "name_<index>.ext" (then "_<index>_2", "_<index>_3"),
+ * and one that still clashes is not written.  A last component in 8.3
+ * alias form is renamed the same way; a member with such a directory
+ * component is not written.
+ *
+ * Each round sorts the member indices by (hash, length, index) with
+ * integer compares, then walks every run of equal keys in index order,
+ * comparing a member only with the run's distinct names so far.  Equal
+ * names cost one compare each; a run with more than WISE_DEDUPE_REPS
+ * distinct names (a forged hash multicollision) is sorted by name instead.
+ * No input can make this worse than O(n log n) name compares per round. */
 static bool wise_make_unique(wise_table *table) {
-    uint32_t *slots;
-    size_t capacity = 2U, mask, index;
-    if (table->count < 2U) return true;
-    while (capacity < table->count * 2U) capacity <<= 1U;
-    slots = (uint32_t *)xx_mem_calloc(capacity, sizeof(*slots));
-    if (!slots) return false;
-    mask = capacity - 1U;
-    for (index = 0U; index < table->count; ++index) {
-        wise_member *member = &table->items[index];
-        if (wise_table_contains(table, slots, mask, member->name)) {
-            unsigned pass;
-            bool placed = false;
-            for (pass = 1U; pass <= WISE_RENAME_PASSES && !placed; ++pass) {
-                char *renamed = wise_renamed(member->name, index, pass);
-                if (!renamed) {
-                    xx_mem_free(slots);
-                    return false;
+    size_t count = table->count, index, round;
+    uint32_t *order = NULL, *points = NULL;
+    uint64_t *hash = NULL;
+    uint8_t *attempts = NULL;
+    char **original = NULL;
+    wise_dedupe d;
+    bool ok = false;
+    if (count == 0U) return true;
+    order = (uint32_t *)xx_mem_alloc(count * sizeof(*order));
+    points = (uint32_t *)xx_mem_alloc(count * sizeof(*points));
+    hash = (uint64_t *)xx_mem_alloc(count * sizeof(*hash));
+    attempts = (uint8_t *)xx_mem_calloc(count, 1U);
+    original = (char **)xx_mem_calloc(count, sizeof(*original));
+    if (!order || !points || !hash || !attempts || !original) goto done;
+    d.items = table->items;
+    d.hash = hash;
+    d.points = points;
+
+    for (index = 0U; index < count; ++index) {
+        const char *name = table->items[index].name;
+        size_t start = 0U, at;
+        for (at = 0U;; ++at) {
+            if (name[at] != '/' && name[at] != 0) continue;
+            if (wise_is_alias83(name + start, at - start)) {
+                if (name[at] != 0) {
+                    table->items[index].extractable = false;
+                    attempts[index] = WISE_DEDUPE_DROPPED;
+                } else if (!wise_rename_member(table, original, attempts,
+                                               index, false)) {
+                    goto done;
                 }
-                if (!wise_table_contains(table, slots, mask, renamed)) {
-                    xx_mem_free(member->name);
-                    member->name = renamed;
-                    placed = true;
-                } else {
-                    xx_mem_free(renamed);
-                }
+                break;
             }
-            if (!placed) {
-                member->extractable = false;
+            if (name[at] == 0) break;
+            start = at + 1U;
+        }
+    }
+
+    for (round = 0U; round <= WISE_RENAME_PASSES; ++round) {
+        bool last = round == WISE_RENAME_PASSES, clash = false;
+        size_t live = 0U, run;
+        for (index = 0U; index < count; ++index) {
+            if (attempts[index] == WISE_DEDUPE_DROPPED) continue;
+            hash[index] = wise_name_key(table->items[index].name,
+                                        &points[index]);
+            order[live++] = (uint32_t)index;
+        }
+        xx_rt_qsort_context(order, live, sizeof(*order), wise_key_compare,
+                            &d);
+        for (run = 0U; run < live;) {
+            size_t end = run + 1U, reps[WISE_DEDUPE_REPS], used = 0U, at;
+            bool sorted = false;
+            while (end < live && hash[order[end]] == hash[order[run]] &&
+                   points[order[end]] == points[order[run]])
+                ++end;
+            if (end - run < 2U) {
+                run = end;
                 continue;
             }
+            /* The run is in index order: the first of each name keeps it. */
+            for (at = run; at < end && !sorted; ++at) {
+                size_t rep;
+                for (rep = 0U; rep < used; ++rep)
+                    if (wise_name_order(table->items[order[reps[rep]]].name,
+                                        table->items[order[at]].name) == 0)
+                        break;
+                if (rep == used) {
+                    if (used == WISE_DEDUPE_REPS) sorted = true;
+                    else reps[used++] = at;
+                }
+            }
+            if (sorted) {
+                size_t keep = run;
+                xx_rt_qsort_context(order + run, end - run, sizeof(*order),
+                                    wise_run_compare, &d);
+                for (at = run + 1U; at < end; ++at) {
+                    if (wise_name_order(table->items[order[keep]].name,
+                                        table->items[order[at]].name) != 0) {
+                        keep = at;
+                        continue;
+                    }
+                    clash = true;
+                    if (!wise_rename_member(table, original, attempts,
+                                            order[at], last))
+                        goto done;
+                }
+            } else {
+                for (at = run; at < end; ++at) {
+                    size_t rep;
+                    for (rep = 0U; rep < used && reps[rep] < at; ++rep)
+                        if (wise_name_order(
+                                table->items[order[reps[rep]]].name,
+                                table->items[order[at]].name) == 0)
+                            break;
+                    if (rep == used || reps[rep] >= at) continue;
+                    clash = true;
+                    if (!wise_rename_member(table, original, attempts,
+                                            order[at], last))
+                        goto done;
+                }
+            }
+            run = end;
         }
-        wise_table_insert(table, slots, mask, index);
+        if (!clash) break;
     }
-    xx_mem_free(slots);
-    return true;
+    ok = true;
+done:
+    if (original) {
+        for (index = 0U; index < count; ++index)
+            if (original[index] && original[index] != table->items[index].name)
+                xx_mem_free(original[index]);
+        xx_mem_free(original);
+    }
+    if (order) xx_mem_free(order);
+    if (points) xx_mem_free(points);
+    if (hash) xx_mem_free(hash);
+    if (attempts) xx_mem_free(attempts);
+    return ok;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -1626,7 +1873,7 @@ static bool wise_parse(Abstractformat *format, wise_table **out,
     table->pk_mode = found.pk_mode;
     if (found.pk_mode) {
         ok = wise_pk_walk(format->device, format->base_address, found.total,
-                          found.first, table, &table->chain_end);
+                          found.first, table, &table->chain_end, NULL);
         if (ok) {
             bool script_named = false;
             for (index = 0U; index < table->count; ++index) {
@@ -1677,7 +1924,8 @@ static bool wise_parse(Abstractformat *format, wise_table **out,
         }
     }
     if (ok) ok = wise_make_unique(table);
-    if (ok && table->chain_end < found.total) table->truncated = true;
+    if (ok && (table->chain_end < found.total || table->budget_stop))
+        table->truncated = true;
     if (!ok || table->count == 0U) {
         wise_table_release(table);
         return false;
@@ -1693,19 +1941,23 @@ static bool wise_unpack_member(xx_io_device *device, int64_t base,
                                const wise_member *member,
                                xx_io_device *destination, xx_pd_struct *pd) {
     wise_inflated result;
+    if (!member->extractable) return false;
     if (member->method == 0U) {
         wise_sink sink;
         uint8_t *buffer;
         int64_t done = 0;
+        size_t io_capacity = xx_get_file_buffer_size();
         bool ok = true;
         if ((uint64_t)member->packed_size != member->raw_size) return false;
-        buffer = (uint8_t *)xx_mem_alloc(65536U);
+        if (member->packed_size > 0 && (uint64_t)member->packed_size < io_capacity)
+            io_capacity = (size_t)member->packed_size;
+        buffer = (uint8_t *)xx_mem_alloc(io_capacity);
         if (!buffer) return false;
         wise_sink_init(&sink, destination, member->raw_size);
         while (ok && done < member->packed_size) {
-            size_t chunk = member->packed_size - done < 65536
+            size_t chunk = (uint64_t)(member->packed_size - done) < io_capacity
                                ? (size_t)(member->packed_size - done)
-                               : 65536U;
+                               : io_capacity;
             if (pd && xx_pd_is_stopped(pd)) ok = false;
             else if (!wise_read_at(device, base + member->data_offset + done,
                                    buffer, chunk) ||

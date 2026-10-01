@@ -52,7 +52,7 @@ extern "C" {
  */
 typedef struct xx_installshield_issetupstream {
     Abstractformat format;
-    uint64_t number_of_records;  /**< Complete records present. */
+    uint64_t number_of_records;  /**< Complete records, plus a cut last one. */
     uint32_t declared_records;   /**< The header's record count. */
     uint32_t container_version;  /**< 2 or 3. */
     int64_t stream_offset;       /**< Device offset of the tag. */

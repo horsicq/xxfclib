@@ -13,8 +13,7 @@
  *     one caller-owned heap block here, and the inverse-BWT walk writes
  *     straight into the caller's output buffer instead of into a temporary
  *     that is then appended;
- *   - the CRC-32 table is built per call into that block instead of into a
- *     function-local static (this library forbids mutable global state);
+ *   - checksum verification uses the library's common CRC-32 implementation;
  *   - the scratch buffers are sized to min(RSVK_MAX_ROWS - 1, output_size)
  *     rather than to the reference's RSVK_MAX_MTF.  A block longer than that
  *     is rejected by the reference too -- either by its RSVK_MAX_ROWS row cap
@@ -23,6 +22,7 @@
  */
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/algo/rsvk/xx_rsvk.h"
 
 #define RSVK_BLOCK_HEADER_SIZE 20
@@ -79,7 +79,6 @@ typedef struct rsvk_arith_s {
 typedef struct rsvk_state_s {
     rsvk_model selector;
     rsvk_model groups[RSVK_GROUPS];
-    uint32_t crc_table[256];
     uint8_t *mtf;    /* capacity bytes            */
     uint8_t *column; /* capacity + 1 bytes        */
     int32_t *succ;   /* capacity + 1 entries      */
@@ -88,28 +87,6 @@ typedef struct rsvk_state_s {
     size_t capacity;
     size_t mtf_size;
 } rsvk_state;
-
-static void rsvk_crc_init(uint32_t *table) {
-    uint32_t i;
-    for (i = 0; i < 256U; ++i) {
-        uint32_t c = i;
-        int32_t k;
-        for (k = 0; k < 8; ++k) {
-            c = (c & 1U) ? (0xedb88320U ^ (c >> 1)) : (c >> 1);
-        }
-        table[i] = c;
-    }
-}
-
-static uint32_t rsvk_crc32(const uint32_t *table, const uint8_t *data,
-                           size_t size) {
-    uint32_t crc = 0xffffffffU;
-    size_t i;
-    for (i = 0; i < size; ++i) {
-        crc = table[(crc ^ data[i]) & 0xffU] ^ (crc >> 8);
-    }
-    return crc ^ 0xffffffffU;
-}
 
 static int32_t rsvk_read_bit(rsvk_bits *bits) {
     int32_t bit;
@@ -446,7 +423,6 @@ XXFC_API bool xx_rsvk_decode_memory(const uint8_t *input, size_t input_size,
         rsvk_free(state);
         return false;
     }
-    rsvk_crc_init(state->crc_table);
 
     while (cursor + RSVK_BLOCK_HEADER_SIZE <= input_size) {
         const uint8_t *header = input + cursor;
@@ -484,7 +460,7 @@ XXFC_API bool xx_rsvk_decode_memory(const uint8_t *input, size_t input_size,
             ok = false;
             break;
         }
-        if (rsvk_crc32(state->crc_table, output + produced, length) !=
+        if (xx_crc32_calc(0U, output + produced, length) !=
             expected_crc) {
             ok = false;
             break;

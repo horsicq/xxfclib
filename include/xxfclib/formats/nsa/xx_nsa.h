@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-/** @file xx_nsa.h @brief NScripter NSA resource archive reader. */
+/** @file xx_nsa.h @brief NScripter NSA archive (arc.nsa) reader. */
 
 #ifndef XXFCLIB_FORMAT_NSA_H
 #define XXFCLIB_FORMAT_NSA_H
@@ -14,49 +14,57 @@ extern "C" {
 #endif
 
 /**
- * @brief An NScripter / ONScripter ".nsa" archive (arc.nsa, arc1.nsa, ...).
+ * @brief An NScripter / ONScripter NSA resource archive (arc.nsa, arc1.nsa,
+ * ...; some games name it *.dat).
  *
- * All integers are big endian.  There is no magic:
- *
- *   0x00  u16  member count (1..65535)
- *   0x02  u32  base: offset of the data area, from the header start
- *   0x06  count entries, packed back to back up to base:
- *           name   NUL-terminated CP932 path, '\' separated
+ * Every field is BIG endian:
+ *   0x00  u16 number of entries (1..65535)
+ *   0x02  u32 base: offset of the data area from the header start, which is
+ *         also the end of the index
+ *   0x06  the index, one entry per member:
+ *           char[] name, NUL terminated; Shift-JIS bytes with '\\' as the
+ *                  directory separator
  *           u8     codec: 0 stored, 1 SPB, 2 LZSS, 4 NBZ
- *           u32    member offset, from base
+ *           u32    data offset, relative to base
  *           u32    packed size
- *           u32    unpacked size (meaningful for LZSS)
- *   base  member data
+ *           u32    unpacked size
+ *   base  the member data
  *
- * A header whose count reads 0 is the layout GARbro also opens with two
- * leading zero bytes: the real header then starts at offset 2 and every
- * offset is relative to it.
+ * A variant (opened by GARbro) prefixes the header with two zero bytes; the
+ * base is then counted from offset 2.  Encrypted (password) archives are not
+ * supported: they are indistinguishable from noise without the key.
  *
- * Codecs: LZSS is Okumura's 8/4-bit variant (256-byte ring cleared to zero,
- * write cursor 239, MSB-first flag bits, 1 = literal); SPB is the engine's
- * planar delta image codec and is emitted as the 24-bit bottom-up BMP the
- * engine builds from it; NBZ is a BE u32 plain size followed by one bzip2
- * stream.  A codec-0 member whose name ends in ".nbz" is NBZ as well.
+ * Codecs:
+ *   - SPB: BE u16 width, BE u16 height, then three planes (B, G, R) of
+ *     predicted, serpentine-ordered samples; the output is a bottom-up
+ *     24-bit BMP with a 54-byte header, whatever the unpacked-size field says.
+ *   - LZSS: 256-byte ring, zero filled, write cursor 239; MSB-first bits,
+ *     1 = 8-bit literal, 0 = 8-bit ring position + 4-bit (length - 2).  The
+ *     output is exactly the unpacked-size field long.
+ *   - NBZ: BE u32 output size, then a bzip2 stream.  A member whose name ends
+ *     in ".nbz" is NBZ whatever its codec byte says (as in GARbro).
  *
- * Recognition is structural: the entry table must end exactly at base, every
- * codec must be one of the four, offsets must not decrease, every member
- * must lie inside the data area, an LZSS member cannot claim more than 11
- * times its packed size, and the members together must end exactly at EOF.
+ * There is no magic, so the index walk is also the detection probe (run
+ * late, after every signature-gated format): the base must lie inside the
+ * file and leave room for the index; every name is 1..1024 bytes with no
+ * control byte; every codec is one of 0, 1, 2, 4; an LZSS member cannot
+ * claim more output than its packed bits can encode; the entries must end
+ * exactly at base; member offsets must not decrease (a member may share an
+ * earlier one's data); and the furthest member end must be exactly EOF.
+ *
+ * Member names follow the sar_ns reader's rules: '\\' becomes '/', Shift-JIS
+ * double-byte characters and other bytes >= 0x80 become "%XX", '%' becomes
+ * "%25", a repeated name (case-insensitive) gets "%_<entry index>" before its
+ * extension, and unsafe names (absolute, drive, "..", device names, control
+ * or reserved characters) are listed but refused on extraction.
  */
 typedef struct xx_nsa {
     Abstractformat format;
     uint64_t number_of_records;
-    int64_t header_offset; /**< Absolute offset of the count field. */
-    int64_t data_offset;   /**< Absolute offset of the data area. */
+    int64_t data_base; /**< Absolute offset of the data area. */
 } xx_nsa;
 
 typedef xx_nsa xx_nsa_t;
-
-/** Codec byte values of an NSA entry. */
-#define XX_NSA_CODEC_STORED 0U
-#define XX_NSA_CODEC_SPB 1U
-#define XX_NSA_CODEC_LZSS 2U
-#define XX_NSA_CODEC_NBZ 4U
 
 XXFC_API void xx_nsa_init(xx_nsa *archive, xx_io_device *device,
                           int64_t base_address);
@@ -81,31 +89,6 @@ XXFC_API bool xx_nsa_archive_record_move_to_next(
     Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 XXFC_API void xx_nsa_free_archive_records_reading(
     Abstractformat *self, xx_archive_record_state *state);
-
-/**
- * @brief Decode one NScripter LZSS stream held in memory.
- * @return true when exactly @p output_size bytes were produced before the
- *         input ran out.
- */
-XXFC_API bool xx_nsa_lzss_decode_memory(const uint8_t *packed,
-                                        size_t packed_size, uint8_t *output,
-                                        size_t output_size);
-
-/**
- * @brief Size of the BMP an SPB stream decodes to (54 + stride * height),
- *        from its first four bytes; 0 when the dimensions are refused.
- */
-XXFC_API uint64_t xx_nsa_spb_output_size(const uint8_t *packed,
-                                         size_t packed_size);
-
-/**
- * @brief Decode one SPB stream held in memory into a 24-bit BMP.
- * @param output      receives xx_nsa_spb_output_size() bytes
- * @return true when all three planes decode inside the input.
- */
-XXFC_API bool xx_nsa_spb_decode_memory(const uint8_t *packed,
-                                       size_t packed_size, uint8_t *output,
-                                       size_t output_size);
 
 #ifdef __cplusplus
 }

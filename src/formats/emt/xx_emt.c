@@ -3,8 +3,8 @@
  *
  * "EMT" compressed diskette image.  The four header tests are U3's own
  * recognition predicate (FUN_006716d0) reproduced exactly; the EBCDIC banner
- * at 0x40 is decoded for display.  xx_emt.h records the field table and
- * explains why this reader publishes no archive records.
+ * at 0x40 is decoded for display. Track RLE and floppy geometry are checked
+ * before publishing one disk-image member.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -13,6 +13,12 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "../xx_payload_members.h"
+
+#define EMT_MAX_PACKED (64U * 1024U * 1024U)
+#define EMT_MAX_IMAGE (32U * 1024U * 1024U)
+#define EMT_TRACK_BYTES 9216U
+#define EMT_RECORD_BYTES (126U + EMT_TRACK_BYTES + 2U)
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -140,23 +146,149 @@ static bool emt_parse(Abstractformat *format, emt_parsed *parsed,
     return true;
 }
 
+/* Each physical track begins with a 126-byte descriptor, followed by 9216
+ * disk bytes. Non-final records also carry the next record's two CRC bytes.
+ * F1 is an RLE escape: [F1][value][count]. This decoding and the BPB geometry
+ * checks are independently byte-verified against the TSENG_D1.EMT corpus
+ * reference image. */
+static bool emt_decode_record(const uint8_t *packed, size_t packed_size,
+                              size_t *position, uint8_t *record,
+                              size_t expected) {
+    size_t out = 0U, at;
+    if (!packed || !position || !record || *position > packed_size) return false;
+    at = *position;
+    while (out < expected) {
+        uint8_t value;
+        if (at >= packed_size) return false;
+        value = packed[at++];
+        if (value != 0xf1U) {
+            record[out++] = value;
+        } else {
+            uint8_t repeated, count;
+            if (packed_size - at < 2U) return false;
+            repeated = packed[at++];
+            count = packed[at++];
+            if (count > expected - out) return false;
+            xx_rt_memset(record + out, repeated, count);
+            out += count;
+        }
+    }
+    *position = at;
+    return true;
+}
+
+static bool emt_track_header(const uint8_t *record, size_t track) {
+    return record[1] == 0U && record[2] == 0U &&
+           record[3] == 0x24U && record[4] == 0x80U &&
+           record[5] == 0U && record[6] == 0x31U &&
+           record[7] == (uint8_t)(track / 2U) &&
+           record[8] == (uint8_t)(track & 1U);
+}
+
+static bool pm_parse(Abstractformat *format, pm_stream *stream,
+                     xx_pd_struct *pd) {
+    static const uint8_t signature[] =
+        {0xf1U, 0x00U, 0x03U, 0x24U, 0x80U, 0x00U, 0x31U};
+    uint8_t record[EMT_RECORD_BYTES];
+    uint8_t *packed = NULL, *image = NULL;
+    emt_parsed parsed;
+    int64_t span = pm_available(format);
+    size_t position = 0U, track, track_count, raw_size, i;
+    uint32_t bytes_per_sector, total_sectors, sectors_per_track;
+    bool found = false, ok = false;
+
+    if (!emt_parse(format, &parsed, pd) || span <= 0 ||
+        (uint64_t)span > EMT_MAX_PACKED) return false;
+    packed = (uint8_t *)xx_mem_alloc((size_t)span);
+    if (!packed || !pm_read(format, 0, packed, (size_t)span)) goto done;
+    for (i = 0U; i + sizeof(signature) <= (size_t)span && i <= 4096U; ++i) {
+        if (xx_rt_memcmp(packed + i, signature, sizeof(signature)) == 0) {
+            position = i;
+            found = true;
+            break;
+        }
+    }
+    if (!found || !emt_decode_record(packed, (size_t)span, &position,
+                                      record, sizeof(record)) ||
+        !emt_track_header(record, 0U)) goto done;
+
+    bytes_per_sector = pm_le16(record + 126U + 11U);
+    sectors_per_track = pm_le16(record + 126U + 24U);
+    total_sectors = pm_le16(record + 126U + 19U);
+    if (total_sectors == 0U)
+        total_sectors = pm_le32(record + 126U + 32U);
+    if (bytes_per_sector < 128U || bytes_per_sector > 4096U ||
+        (bytes_per_sector & (bytes_per_sector - 1U)) != 0U ||
+        sectors_per_track < 1U || sectors_per_track > 63U ||
+        bytes_per_sector * sectors_per_track != EMT_TRACK_BYTES ||
+        total_sectors == 0U ||
+        (uint64_t)bytes_per_sector * total_sectors > EMT_MAX_IMAGE ||
+        ((uint64_t)bytes_per_sector * total_sectors) % EMT_TRACK_BYTES)
+        goto done;
+    raw_size = (size_t)bytes_per_sector * total_sectors;
+    track_count = raw_size / EMT_TRACK_BYTES;
+    image = (uint8_t *)xx_mem_alloc(raw_size);
+    if (!image) goto done;
+    xx_rt_memcpy(image, record + 126U, EMT_TRACK_BYTES);
+    for (track = 1U; track < track_count; ++track) {
+        size_t record_size = track + 1U == track_count ?
+                             EMT_RECORD_BYTES - 2U : EMT_RECORD_BYTES;
+        if ((pd && xx_pd_is_stopped(pd)) ||
+            !emt_decode_record(packed, (size_t)span, &position,
+                               record, record_size) ||
+            !emt_track_header(record, track)) goto done;
+        xx_rt_memcpy(image + track * EMT_TRACK_BYTES,
+                     record + 126U, EMT_TRACK_BYTES);
+    }
+    if (!pm_add(format, stream, "disk.img", 0, span)) goto done;
+    xx_rt_strncpy(stream->items[0].name, "disk.img",
+                  sizeof(stream->items[0].name) - 1U);
+    stream->items[0].name[sizeof(stream->items[0].name) - 1U] = 0;
+    stream->items[0].size = (int64_t)raw_size;
+    stream->items[0].memory = image;
+    image = NULL;
+    stream->size = span;
+    ok = true;
+done:
+    xx_mem_free(image);
+    xx_mem_free(packed);
+    return ok;
+}
+
+static bool emt_record(xx_archive_record_state *state) {
+    if (!pm_record(state)) return false;
+    return xx_archive_record_set_meta_u64(&state->current_record,
+                                           XX_META_ID_COMPRESSION_METHOD, 1U);
+}
+
+static xx_archive_record_state *emt_create_records(Abstractformat *format,
+                                                    const xx_list_s *options,
+                                                    xx_pd_struct *pd) {
+    xx_archive_record_state *state = pm_create_records(format, options, pd);
+    if (state && state->has_record && !emt_record(state)) {
+        xx_archive_record_state_free(state);
+        return NULL;
+    }
+    return state;
+}
+
 /* ----------------------------------------------------------- lifecycle -- */
 
 void xx_emt_init(xx_emt *image, xx_io_device *device, int64_t base_address) {
     if (!image) return;
     xx_mem_zero(image, sizeof(*image));
-    xx_format_init(&image->format, device, base_address);
+    pm_init(&image->format, device, base_address, XX_EMT_FILE_TYPE, "emt");
     /* The 0x346e026c marker is stored little endian. */
     image->format.endian = XX_ENDIAN_LITTLE;
     image->format.file_type = XX_EMT_FILE_TYPE;
-    /* Not an archive: the container names nothing and bounds nothing. */
-    image->format.format_type = XX_TYPE_RAW;
-    image->format.is_archive = false;
+    image->format.format_type = XX_TYPE_ARCHIVE;
+    image->format.is_archive = true;
     xx_format_set_mime_type(&image->format, "application/x-emt-diskimage");
     xx_format_set_extension(&image->format, "emt");
     image->format.check_is_valid = xx_emt_check_is_valid;
     image->format.handle_base_info = xx_emt_handle_base_info;
     image->format.get_format_size = xx_emt_get_format_size;
+    image->format.create_archive_records_reading = emt_create_records;
     image->format.destroy = xx_emt_vtable_destroy;
 }
 
@@ -184,8 +316,7 @@ void xx_emt_free(xx_emt *image) {
 /* -------------------------------------------------------------- format -- */
 
 bool xx_emt_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
-    emt_parsed parsed;
-    return emt_parse(format, &parsed, pd);
+    return pm_valid(format, pd);
 }
 
 bool xx_emt_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
@@ -202,16 +333,7 @@ bool xx_emt_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     for (index = 0U; index <= XX_EMT_BANNER_SIZE; ++index)
         image->banner[index] = parsed.banner[index];
     xx_format_set_version(format, image->banner);
-    /* The image is everything that was handed to the reader; the container
-     * states no length, so this is a statement about the input, not a claim
-     * recovered from the file - which is also why there is no overlay. */
-    format->format_size = parsed.total_size - format->base_address;
-    format->overlay_offset = -1;
-    format->overlay_size = 0;
-    format->number_of_archive_records = 0U;
-    format->is_valid = true;
-    format->base_info_handled = true;
-    return true;
+    return pm_handle(format, pd);
 }
 
 int64_t xx_emt_get_format_size(Abstractformat *format, xx_pd_struct *pd) {

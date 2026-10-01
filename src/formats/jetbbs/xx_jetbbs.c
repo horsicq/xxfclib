@@ -50,6 +50,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/formats/jetbbs/xx_jetbbs.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -185,23 +186,15 @@ static uint32_t xx_jetbbs_le32(const uint8_t *data) {
 }
 
 /* CRC-16/ARC, the polynomial LHA uses for its common extended header. */
-static uint16_t xx_jetbbs_crc16(const uint8_t *data, size_t size,
-                                size_t skip_offset) {
-    uint16_t crc = 0U;
-    size_t index;
-
-    for (index = 0U; index < size; ++index) {
-        uint8_t byte = data[index];
-        int bit;
-
-        /* The stored CRC counts as zero in its own computation. */
-        if (index == skip_offset || index == skip_offset + 1U) byte = 0U;
-        crc = (uint16_t)(crc ^ byte);
-        for (bit = 0; bit < 8; ++bit) {
-            crc = (uint16_t)((crc >> 1) ^ ((crc & 1U) ? 0xA001U : 0U));
-        }
-    }
-    return crc;
+static uint16_t xx_jetbbs_crc16(const uint8_t *data, size_t size, size_t skip_offset) {
+    static const uint8_t zero[2] = {0U, 0U};
+    uint16_t crc;
+    size_t skipped;
+    if (skip_offset >= size) return xx_crc16_arc_calc(0U, data, size);
+    crc = xx_crc16_arc_calc(0U, data, skip_offset);
+    skipped = size - skip_offset < 2U ? size - skip_offset : 2U;
+    crc = xx_crc16_arc_calc(crc, zero, skipped);
+    return xx_crc16_arc_calc(crc, data + skip_offset + skipped, size - skip_offset - skipped);
 }
 
 /* The header checksum is the whole of the format's structural self-check:

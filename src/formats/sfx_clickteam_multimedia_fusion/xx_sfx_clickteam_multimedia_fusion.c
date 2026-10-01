@@ -31,6 +31,7 @@
  * here, so the alias macro defined next to the enumerator is tested instead;
  * the real file type is picked up as soon as the format is registered. */
 #ifdef SFX_CLICKTEAM_MULTIMEDIA_FUSION
+
 #define XX_SFX_CLICKTEAM_MULTIMEDIA_FUSION_FILE_TYPE \
     XX_FILE_TYPE_SFX_CLICKTEAM_MULTIMEDIA_FUSION
 #else
@@ -64,6 +65,9 @@
  * the input anyway. */
 #define MMF_DEFAULT_MAX_INFLATED (UINT64_C(256) << 20)
 #define MMF_COPY_BUFFER 0x10000U
+/* Largest packed zlib member whose stream may end before its packed size
+ * (see mmf_adler_before_slack); it is decoded a second time in memory. */
+#define MMF_SLACK_MAX (UINT32_C(16) << 20)
 #define MMF_SSIZE_LIMIT (((size_t)-1) >> 1U)
 
 enum {
@@ -101,9 +105,13 @@ typedef struct mmf_table_s {
     bool truncated;
     int64_t ccn_offset;
     int64_t ccn_size;
-    /* Case-insensitive set of published names: slot = entry index + 1. */
+    /* Case-insensitive set of published names: slot = entry index + 1,
+     * with the name's full keyed hash beside it (see mmf_name_hash). */
     uint32_t *slots;
+    uint32_t *hashes;
     size_t mask;
+    uint64_t key0;
+    uint64_t key1;
 } mmf_table;
 
 typedef struct mmf_stream_s {
@@ -117,6 +125,42 @@ typedef struct mmf_stream_s {
 /* ---------------------------------------------------------------------- */
 /* Helpers                                                                 */
 
+#include "xxfclib/global/xx_global.h"
+static size_t gb_sfx_clickteam_multimedia_fusion_capacity(void) {
+    size_t n = xx_get_file_buffer_size();
+    if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
+    return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
+}
+static ssize_t gb_sfx_clickteam_multimedia_fusion_read(xx_io_device *device, void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_read(device, (uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+static ssize_t gb_sfx_clickteam_multimedia_fusion_write(xx_io_device *device, const void *buffer, size_t size, size_t capacity) {
+    size_t done = 0;
+    if (size > (SIZE_MAX >> 1)) return -1;
+    while (done < size) {
+        size_t take = size - done;
+        ssize_t n;
+        if (take > capacity) take = capacity;
+        n = xx_io_write(device, (const uint8_t *)buffer + done, take);
+        if (n < 0 || (size_t)n > take) return -1;
+        if (!n) break;
+        done += (size_t)n;
+    }
+    return (ssize_t)done;
+}
+
+
 static uint32_t mmf_le16(const uint8_t *p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8U);
 }
@@ -128,13 +172,14 @@ static uint32_t mmf_le32(const uint8_t *p) {
 
 static bool mmf_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
+    const size_t file_io_capacity = gb_sfx_clickteam_multimedia_fusion_capacity();
     size_t done = 0U;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
+        ssize_t amount = gb_sfx_clickteam_multimedia_fusion_read(device, (uint8_t *)buffer + done,
+                                    size - done, file_io_capacity);
         if (amount <= 0 || (size_t)amount > size - done) return false;
         done += (size_t)amount;
     }
@@ -264,11 +309,11 @@ static bool mmf_probe_payload(const uint8_t *head, size_t data,
 /* Probe the first record under one name encoding.  @p head holds @p avail
  * bytes from pack + 0x20; @p room is how many pack bytes follow there.
  *
- * A zero first dword can only be an empty checksum, so the two-field
- * layout is read.  Otherwise the single packed-size field is tried first,
- * as both references do; a first record that carries a checksum (none of
- * the known builds writes one for mmfs2.dll) is still recognised by the
- * two-field reading when the single-field one leaves no payload behind. */
+ * As in both references, the first dword decides the layout: zero can only
+ * be the empty checksum of the two-field layout (a packed size is never
+ * zero), anything else is the single packed-size field.  Every known build
+ * leaves the first record's checksum empty; a pack whose first record
+ * carries one is not accepted, since neither reference would read it. */
 static bool mmf_probe_record(const uint8_t *head, size_t avail, int64_t room,
                              bool unicode, bool *two_fields, bool *stored) {
     uint32_t length, first, second;
@@ -281,16 +326,12 @@ static bool mmf_probe_record(const uint8_t *head, size_t avail, int64_t room,
     if (avail < position || avail - position < 11U) return false;
     first = mmf_le32(head + position);
     second = mmf_le32(head + position + 4U);
-    if (first != 0U &&
-        mmf_probe_payload(head, position + 4U, first, room, stored)) {
+    if (first != 0U) {
         *two_fields = false;
-        return true;
+        return mmf_probe_payload(head, position + 4U, first, room, stored);
     }
-    if (mmf_probe_payload(head, position + 8U, second, room, stored)) {
-        *two_fields = true;
-        return true;
-    }
-    return false;
+    *two_fields = true;
+    return mmf_probe_payload(head, position + 8U, second, room, stored);
 }
 
 static bool mmf_try_pack(xx_io_device *device, int64_t pack, int64_t end,
@@ -481,48 +522,202 @@ static bool mmf_safe_name(const char *name) {
     return true;
 }
 
-static uint32_t mmf_name_hash(const char *name) {
-    uint32_t hash = UINT32_C(2166136261);
-    for (; *name; ++name) {
-        hash ^= (uint8_t)mmf_upper(*name);
-        hash *= UINT32_C(16777619);
+/* Next code point of a published name.  Published names are well-formed
+ * UTF-8 (mmf_decode_name, or ASCII built here), so no validation is done
+ * beyond never stepping over the terminator. */
+static uint32_t mmf_next_code(const char **cursor) {
+    const unsigned char *p = (const unsigned char *)*cursor;
+    uint32_t code = p[0];
+    size_t extra = 0U, index;
+    if (code >= 0xF0U) {
+        code &= 0x07U;
+        extra = 3U;
+    } else if (code >= 0xE0U) {
+        code &= 0x0FU;
+        extra = 2U;
+    } else if (code >= 0xC0U) {
+        code &= 0x1FU;
+        extra = 1U;
     }
-    return hash;
+    for (index = 1U; index <= extra && p[index] != 0U; ++index)
+        code = (code << 6U) | (p[index] & 0x3FU);
+    *cursor = (const char *)(p + index);
+    return code;
+}
+
+/* Upper-case one code point the way a case-insensitive file system does,
+ * for the scripts file names are written in: ASCII, Latin-1, Latin
+ * Extended-A and Additional, Greek, Cyrillic, Armenian, full-width Latin.
+ * Folding more than NTFS does only renames a member that would not have
+ * collided, which is the safe direction, so the table errs that way (the
+ * dotless i, long s, final sigma and micro sign fold too). */
+static uint32_t mmf_fold(uint32_t c) {
+    if (c < 0x80U) return (c >= 'a' && c <= 'z') ? c - 0x20U : c;
+    if (c == 0xB5U) return 0x39CU;
+    if (c >= 0xE0U && c <= 0xFEU && c != 0xF7U) return c - 0x20U;
+    if (c == 0xFFU) return 0x178U;
+    if (c < 0x100U) return c;
+    if (c < 0x180U) {
+        if (c == 0x130U || c == 0x131U) return 'I';
+        if (c == 0x17FU) return 'S';
+        if ((c >= 0x139U && c <= 0x148U) || (c >= 0x179U && c <= 0x17EU))
+            return (c & 1U) ? c : c - 1U;
+        if (c <= 0x137U || (c >= 0x14AU && c <= 0x177U))
+            return (c & 1U) ? c - 1U : c;
+        return c;
+    }
+    if (c >= 0x370U && c < 0x400U) {
+        if (c == 0x3ACU) return 0x386U;
+        if (c >= 0x3ADU && c <= 0x3AFU) return c - 0x25U;
+        if (c == 0x3C2U) return 0x3A3U;
+        if (c >= 0x3B1U && c <= 0x3CBU) return c - 0x20U;
+        if (c == 0x3CCU) return 0x38CU;
+        if (c == 0x3CDU || c == 0x3CEU) return c - 0x3FU;
+        return c;
+    }
+    if (c >= 0x400U && c < 0x530U) {
+        if (c >= 0x430U && c <= 0x44FU) return c - 0x20U;
+        if (c >= 0x450U && c <= 0x45FU) return c - 0x50U;
+        if ((c >= 0x460U && c <= 0x481U) || (c >= 0x48AU && c <= 0x4BFU) ||
+            c >= 0x4D0U)
+            return (c & 1U) ? c - 1U : c;
+        if (c >= 0x4C1U && c <= 0x4CEU) return (c & 1U) ? c : c - 1U;
+        if (c == 0x4CFU) return 0x4C0U;
+        return c;
+    }
+    if (c >= 0x561U && c <= 0x586U) return c - 0x30U;
+    if (c >= 0x1E00U && c <= 0x1EFFU && !(c >= 0x1E96U && c <= 0x1E9FU))
+        return (c & 1U) ? c - 1U : c;
+    if (c >= 0xFF41U && c <= 0xFF5AU) return c - 0x20U;
+    return c;
+}
+
+/* SipHash-1-3 over the folded code points (four bytes each).  The key is
+ * picked per table (mmf_table_key), so a crafted name table cannot aim
+ * its names at one run of slots: publicly known unkeyed hashes let a
+ * 65,536-name table turn every lookup into a walk of the whole table. */
+#define MMF_ROTL64(x, b) (((x) << (b)) | ((x) >> (64U - (b))))
+#define MMF_SIPROUND(v0, v1, v2, v3)                                        \
+    do {                                                                     \
+        v0 += v1; v1 = MMF_ROTL64(v1, 13U); v1 ^= v0;                        \
+        v0 = MMF_ROTL64(v0, 32U);                                            \
+        v2 += v3; v3 = MMF_ROTL64(v3, 16U); v3 ^= v2;                        \
+        v0 += v3; v3 = MMF_ROTL64(v3, 21U); v3 ^= v0;                        \
+        v2 += v1; v1 = MMF_ROTL64(v1, 17U); v1 ^= v2;                        \
+        v2 = MMF_ROTL64(v2, 32U);                                            \
+    } while (0)
+
+static uint32_t mmf_name_hash(const mmf_table *table, const char *name) {
+    uint64_t v0 = table->key0 ^ UINT64_C(0x736f6d6570736575);
+    uint64_t v1 = table->key1 ^ UINT64_C(0x646f72616e646f6d);
+    uint64_t v2 = table->key0 ^ UINT64_C(0x6c7967656e657261);
+    uint64_t v3 = table->key1 ^ UINT64_C(0x7465646279746573);
+    uint64_t block = 0U, length = 0U;
+    unsigned half = 0U;
+    while (*name) {
+        uint64_t code = mmf_fold(mmf_next_code(&name));
+        length += 4U;
+        if (half == 0U) {
+            block = code;
+            half = 1U;
+            continue;
+        }
+        block |= code << 32U;
+        half = 0U;
+        v3 ^= block;
+        MMF_SIPROUND(v0, v1, v2, v3);
+        v0 ^= block;
+    }
+    block = (half ? block : 0U) | (length << 56U);
+    v3 ^= block;
+    MMF_SIPROUND(v0, v1, v2, v3);
+    v0 ^= block;
+    v2 ^= 0xFFU;
+    MMF_SIPROUND(v0, v1, v2, v3);
+    MMF_SIPROUND(v0, v1, v2, v3);
+    MMF_SIPROUND(v0, v1, v2, v3);
+    v0 ^= v1 ^ v2 ^ v3;
+    return (uint32_t)(v0 ^ (v0 >> 32U));
+}
+
+static uint64_t mmf_mix64(uint64_t x) {
+    x += UINT64_C(0x9E3779B97F4A7C15);
+    x = (x ^ (x >> 30U)) * UINT64_C(0xBF58476D1CE4E5B9);
+    x = (x ^ (x >> 27U)) * UINT64_C(0x94D049BB133111EB);
+    return x ^ (x >> 31U);
+}
+
+/* The key only has to be unknown to whoever wrote the file: the clock,
+ * heap and stack addresses (randomised by the loader) and the CRT-free
+ * generator's state.  Which names collide never depends on it, so the
+ * published names are the same on every run. */
+static void mmf_table_key(mmf_table *table) {
+    uint64_t seed = (uint64_t)xx_rt_clock_ms();
+    seed = mmf_mix64(seed ^ (uint64_t)(uintptr_t)table->slots);
+    seed = mmf_mix64(seed ^ (uint64_t)(uintptr_t)&seed);
+    seed = mmf_mix64(seed ^ (uint64_t)(uint32_t)xx_rt_rand());
+    table->key0 = seed;
+    table->key1 = mmf_mix64(seed ^ (uint64_t)(uintptr_t)table->entries);
 }
 
 static bool mmf_same_name(const char *left, const char *right) {
-    for (; *left && *right; ++left, ++right)
-        if (mmf_upper(*left) != mmf_upper(*right)) return false;
+    while (*left && *right)
+        if (mmf_fold(mmf_next_code(&left)) != mmf_fold(mmf_next_code(&right)))
+            return false;
     return *left == *right;
 }
 
 static bool mmf_name_taken(const mmf_table *table, const char *name) {
-    size_t slot = mmf_name_hash(name) & table->mask, probes;
+    uint32_t hash = mmf_name_hash(table, name);
+    size_t slot = hash & table->mask, probes;
     for (probes = 0U; probes <= table->mask; ++probes) {
         uint32_t value = table->slots[slot];
         if (value == 0U) return false;
-        if (mmf_same_name(table->entries[value - 1U].name, name)) return true;
+        if (table->hashes[slot] == hash &&
+            mmf_same_name(table->entries[value - 1U].name, name))
+            return true;
         slot = (slot + 1U) & table->mask;
     }
     return true;
 }
 
 static void mmf_name_insert(mmf_table *table, size_t index) {
-    size_t slot = mmf_name_hash(table->entries[index].name) & table->mask,
-           probes;
+    uint32_t hash = mmf_name_hash(table, table->entries[index].name);
+    size_t slot = hash & table->mask, probes;
     for (probes = 0U; probes <= table->mask; ++probes) {
         if (table->slots[slot] == 0U) {
             table->slots[slot] = (uint32_t)(index + 1U);
+            table->hashes[slot] = hash;
             return;
         }
         slot = (slot + 1U) & table->mask;
     }
 }
 
+/* A name shaped like a generated 8.3 alias ("LONGFI~1.DLL": a stem of at
+ * most eight bytes ending in '~' and digits, an extension of at most
+ * three).  On a volume with short names it can be the alias of a member
+ * already written, so such a name is always published with a suffix. */
+static bool mmf_alias_shaped(const char *name) {
+    size_t length = xx_str_len(name), stem = length, index;
+    for (index = length; index > 0U; --index)
+        if (name[index - 1U] == '.') {
+            stem = index - 1U;
+            break;
+        }
+    if (stem == 0U || stem > 8U || (stem < length && length - stem - 1U > 3U))
+        return false;
+    index = stem;
+    while (index > 0U && name[index - 1U] >= '0' && name[index - 1U] <= '9')
+        --index;
+    return index < stem && index > 0U && name[index - 1U] == '~';
+}
+
 /* Give entry @p index a unique, safe name derived from @p decoded (which
  * this takes ownership of; NULL when the raw name was unusable).  Unsafe
- * names become "file_NNNN"; a name already published gets "_NNNN" (and a
- * further counter if needed) appended, so no member overwrites another. */
+ * names become "file_NNNN"; a name already published (compared after case
+ * folding) or shaped like an 8.3 alias gets "_NNNN" (and a further counter
+ * if needed) appended, so no member overwrites another. */
 static bool mmf_publish_name(mmf_table *table, size_t index, char *decoded,
                              uint32_t ordinal) {
     mmf_entry *entry = &table->entries[index];
@@ -536,7 +731,7 @@ static bool mmf_publish_name(mmf_table *table, size_t index, char *decoded,
         (void)xx_rt_snprintf(base, 32U, "file_%04u", (unsigned)ordinal);
     }
     entry->extractable = false;
-    if (!mmf_name_taken(table, base)) {
+    if (!mmf_alias_shaped(base) && !mmf_name_taken(table, base)) {
         entry->name = base;
         entry->extractable = true;
     } else {
@@ -585,6 +780,7 @@ static void mmf_table_free(mmf_table *table) {
         xx_mem_free(table->entries);
     }
     if (table->slots) xx_mem_free(table->slots);
+    if (table->hashes) xx_mem_free(table->hashes);
     xx_mem_zero(table, sizeof(*table));
 }
 
@@ -607,8 +803,10 @@ static bool mmf_walk(Abstractformat *format, const mmf_layout *layout,
         table->entries = (mmf_entry *)xx_mem_calloc(table->capacity,
                                                     sizeof(mmf_entry));
         table->slots = (uint32_t *)xx_mem_calloc(slots, sizeof(uint32_t));
+        table->hashes = (uint32_t *)xx_mem_calloc(slots, sizeof(uint32_t));
         table->mask = slots - 1U;
-        if (!table->entries || !table->slots) goto fail;
+        if (!table->entries || !table->slots || !table->hashes) goto fail;
+        mmf_table_key(table);
     }
     for (index = 0U; index < layout->declared; ++index) {
         uint32_t length, checksum = 0U, packed;
@@ -640,14 +838,26 @@ static bool mmf_walk(Abstractformat *format, const mmf_layout *layout,
         if (build) {
             mmf_entry *entry = &table->entries[table->count];
             char *decoded;
+            uint8_t start[3];
             entry->header_offset = position;
             entry->header_size = data - position;
             entry->data_offset = data;
             entry->packed_size = (int64_t)packed;
             entry->checksum = checksum;
-            entry->kind = (index == 0U && layout->first_stored)
-                              ? MMF_KIND_STORED
-                              : MMF_KIND_ZLIB;
+            /* The first record's kind is what the probe found.  A later
+             * record is inflated when it opens with a zlib header and
+             * copied as it is otherwise, as XArchive does. */
+            if (index == 0U) {
+                entry->kind = layout->first_stored ? MMF_KIND_STORED
+                                                   : MMF_KIND_ZLIB;
+            } else {
+                entry->kind = packed >= 3U &&
+                                      mmf_read_at(format->device, data,
+                                                  start, sizeof(start)) &&
+                                      mmf_zlib_start(start)
+                                  ? MMF_KIND_ZLIB
+                                  : MMF_KIND_STORED;
+            }
             decoded = mmf_decode_name(head, length, layout->unicode);
             if (!mmf_publish_name(table, table->count, decoded, index))
                 goto fail;
@@ -705,6 +915,7 @@ typedef struct mmf_sink_s {
 
 static ssize_t mmf_sink_write(xx_io_device *self, const void *buffer,
                               size_t size) {
+    const size_t file_io_capacity = gb_sfx_clickteam_multimedia_fusion_capacity();
     mmf_sink *sink = self ? (mmf_sink *)self->priv : NULL;
     const uint8_t *bytes = (const uint8_t *)buffer;
     size_t index = 0U, done = 0U;
@@ -731,7 +942,7 @@ static ssize_t mmf_sink_write(xx_io_device *self, const void *buffer,
         sink->adler_b = b % 65521U;
     }
     while (sink->target && done < size) {
-        ssize_t wrote = xx_io_write(sink->target, bytes + done, size - done);
+        ssize_t wrote = gb_sfx_clickteam_multimedia_fusion_write(sink->target, bytes + done, size - done, file_io_capacity);
         if (wrote <= 0 || (size_t)wrote > size - done) return -1;
         done += (size_t)wrote;
     }
@@ -758,14 +969,15 @@ static uint32_t mmf_sink_checksum(const mmf_sink *sink) {
 
 static bool mmf_copy(xx_io_device *source, int64_t offset, int64_t size,
                      mmf_sink *sink, xx_pd_struct *pd) {
+    const size_t file_io_capacity = gb_sfx_clickteam_multimedia_fusion_capacity();
     uint8_t *buffer;
     bool result = true;
     if (size < 0 || (uint64_t)size > sink->limit) return false;
-    buffer = (uint8_t *)xx_mem_alloc(MMF_COPY_BUFFER);
+    buffer = (uint8_t *)xx_mem_alloc(file_io_capacity);
     if (!buffer) return false;
     while (size > 0) {
-        size_t chunk = size < (int64_t)MMF_COPY_BUFFER ? (size_t)size
-                                                       : MMF_COPY_BUFFER;
+        size_t chunk = size < (int64_t)file_io_capacity ? (size_t)size
+                                                       : file_io_capacity;
         if ((pd && xx_pd_is_stopped(pd)) ||
             !mmf_read_at(source, offset, buffer, chunk) ||
             mmf_sink_write(&sink->device, buffer, chunk) != (ssize_t)chunk) {
@@ -774,6 +986,39 @@ static bool mmf_copy(xx_io_device *source, int64_t offset, int64_t size,
         }
         offset += (int64_t)chunk;
         size -= (int64_t)chunk;
+    }
+    xx_mem_free(buffer);
+    return result;
+}
+
+/* A zlib member whose Adler-32 is not in its last four bytes: decode the
+ * deflate data once more, in memory and without output, to learn where the
+ * stream ends, and check the Adler-32 that follows it against @p first,
+ * the sink of the pass that wrote the member.  Only for members of at
+ * most MMF_SLACK_MAX packed bytes; the output limit still applies. */
+static bool mmf_adler_before_slack(xx_io_device *device,
+                                   const mmf_entry *entry,
+                                   const mmf_sink *first, uint64_t limit,
+                                   xx_pd_struct *pd) {
+    mmf_sink verify;
+    uint8_t *buffer;
+    size_t size, consumed = 0U;
+    bool result = false;
+    if (entry->packed_size - 2 > (int64_t)MMF_SLACK_MAX) return false;
+    size = (size_t)(entry->packed_size - 2);
+    buffer = (uint8_t *)xx_mem_alloc(size);
+    if (!buffer) return false;
+    mmf_sink_init(&verify, NULL, limit);
+    if (mmf_read_at(device, entry->data_offset + 2, buffer, size) &&
+        xx_deflate_unpack_memory_to_device_ex(buffer, size, &verify.device,
+                                              &consumed, false, pd) &&
+        consumed <= size && size - consumed >= 4U &&
+        verify.written == first->written &&
+        verify.adler_a == first->adler_a && verify.adler_b == first->adler_b) {
+        const uint8_t *p = buffer + consumed;
+        uint32_t adler = ((uint32_t)p[0] << 24U) | ((uint32_t)p[1] << 16U) |
+                         ((uint32_t)p[2] << 8U) | (uint32_t)p[3];
+        result = adler == ((first->adler_b << 16U) | first->adler_a);
     }
     xx_mem_free(buffer);
     return result;
@@ -806,12 +1051,15 @@ static bool mmf_unpack_entry(Abstractformat *format, const mmf_stream *stream,
                          entry->data_offset + entry->packed_size - 4, trailer,
                          4U))
             return false;
-        /* Every writer stores the whole zlib stream, so its Adler-32 closes
-         * the packed data; this also catches a stream the decoder ran past
-         * the end of. */
+        /* Every known build stores the whole zlib stream, so its Adler-32
+         * closes the packed data.  When it does not, the stream may end
+         * early with slack behind it (the references accept that too):
+         * find where it ends and take the Adler-32 from there. */
         adler = ((uint32_t)trailer[0] << 24U) | ((uint32_t)trailer[1] << 16U) |
                 ((uint32_t)trailer[2] << 8U) | (uint32_t)trailer[3];
-        if (adler != ((sink.adler_b << 16U) | sink.adler_a)) return false;
+        if (adler != ((sink.adler_b << 16U) | sink.adler_a) &&
+            !mmf_adler_before_slack(format->device, entry, &sink, limit, pd))
+            return false;
     } else if (!mmf_copy(format->device, entry->data_offset,
                          entry->packed_size, &sink, pd)) {
         return false;
@@ -1086,6 +1334,7 @@ bool xx_sfx_clickteam_multimedia_fusion_unpack_current_archive_record(
     mmf_stream *stream;
     const mmf_entry *entry;
     const xx_var *path_option;
+    const xx_var *overwrite_option;
     const char *base = NULL;
     char *owned_base = NULL;
     char *path = NULL;
@@ -1114,8 +1363,17 @@ bool xx_sfx_clickteam_multimedia_fusion_unpack_current_archive_record(
                ? xx_str_concat3(base, "/", entry->name)
                : xx_str_concat(base, entry->name);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
+    /* Without XX_META_ID_OPT_OVERWRITE an existing file is never replaced:
+     * besides a user's own file, this also stops a member whose name only a
+     * file system's own case or alias rules make equal to an earlier one.
+     */
+    overwrite_option = xx_format_resolve_extra_parameter(
+        format, &state->options, XX_META_ID_OPT_OVERWRITE);
     {
-        xx_io_device *destination = xx_io_file_open(path, "wb");
+        bool overwrite =
+            overwrite_option && xx_var_get_bool(overwrite_option);
+        xx_io_device *destination =
+            xx_io_file_open(path, overwrite ? "wb" : "wbx");
         created = destination != NULL;
         if (!destination) goto done;
         result = mmf_unpack_entry(format, stream, entry, destination, pd);

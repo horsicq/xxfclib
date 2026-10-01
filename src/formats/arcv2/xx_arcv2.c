@@ -128,11 +128,13 @@ static char *arcv2_name(const uint8_t *raw, size_t size) {
             xx_mem_free(result);
             return NULL;
         }
-        result[index] = (value == '/' || value == '\\' || value == ':' ||
-                         value == '<' || value == '>' || value == '"' ||
-                         value == '|' || value == '?' || value == '*')
-                            ? '_'
-                            : (char)value;
+        result[index] = (value == '/' || value == '\\')
+                            ? '/'
+                            : (value == ':' || value == '<' || value == '>' ||
+                               value == '"' || value == '|' || value == '?' ||
+                               value == '*')
+                                  ? '_'
+                                  : (char)value;
     }
     while (size != 0U && (result[size - 1U] == ' ' ||
                           result[size - 1U] == '.'))
@@ -145,19 +147,59 @@ static char *arcv2_name(const uint8_t *raw, size_t size) {
     return result;
 }
 
+static bool arcv2_ascii_name_equals(const char *name, size_t length,
+                                    const char *literal) {
+    size_t index;
+    for (index = 0U; index < length; ++index) {
+        unsigned char ch = (unsigned char)name[index];
+        if (!literal[index]) return false;
+        if (ch >= 'a' && ch <= 'z') ch = (unsigned char)(ch - 'a' + 'A');
+        if (ch != (unsigned char)literal[index]) return false;
+    }
+    return literal[index] == 0;
+}
+
+static bool arcv2_windows_device_component(const char *name, size_t length) {
+    static const char *const devices[] = {
+        "CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"
+    };
+    size_t stem = 0U;
+    size_t index;
+    while (stem < length && name[stem] != '.') ++stem;
+    while (stem != 0U && name[stem - 1U] == ' ') --stem;
+    for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index) {
+        if (arcv2_ascii_name_equals(name, stem, devices[index])) return true;
+    }
+    return stem == 4U && name[3] >= '1' && name[3] <= '9' &&
+           (arcv2_ascii_name_equals(name, 3U, "COM") ||
+            arcv2_ascii_name_equals(name, 3U, "LPT"));
+}
+
 static bool arcv2_safe_output_name(const char *name) {
     const char *at;
-    if (!name || !name[0] || name[0] == '/' || name[0] == '\\' ||
-        name[1] == ':')
-        return false;
-    for (at = name; *at; ++at) {
+    const char *component;
+    if (!name || !name[0]) return false;
+    component = name;
+    for (at = name;; ++at) {
         unsigned char value = (unsigned char)*at;
-        if (value < 0x20U || value == ':' || value == '<' || value == '>' ||
-            value == '"' || value == '|' || value == '?' || value == '*' ||
-            value == '/' || value == '\\')
+        if (value == '/' || value == 0U) {
+            size_t length = (size_t)(at - component);
+            /* Win32 ignores trailing dots and spaces in path components. */
+            while (length != 0U && (component[length - 1U] == ' ' ||
+                                    component[length - 1U] == '.'))
+                --length;
+            if (length == 0U ||
+                arcv2_windows_device_component(component, length))
+                return false;
+            if (value == 0U) return true;
+            component = at + 1;
+            continue;
+        }
+        if (value < 0x20U || value > 0x7eU || value == ':' || value == '<' ||
+            value == '>' || value == '"' || value == '|' || value == '?' ||
+            value == '*' || value == '\\')
             return false;
     }
-    return xx_rt_strcmp(name, ".") != 0 && xx_rt_strcmp(name, "..") != 0;
 }
 
 static void arcv2_stream_free(void *opaque) {
@@ -253,7 +295,8 @@ static bool arcv2_parse(Abstractformat *format, arcv2_stream **result,
         member.dos_datetime = arcv2_le32(tail + 12U);
         member.flags = flags;
         member.packed_crc32 = arcv2_le32(tail + 24U);
-        if (!member.name || relative_data_offset > size ||
+        if (!member.name || !arcv2_safe_output_name(member.name) ||
+            relative_data_offset > size ||
             member.data_size > (uint64_t)(size - relative_data_offset) ||
             (!arcv2_is_split(&member) &&
              member.compressed_size != member.data_size) ||

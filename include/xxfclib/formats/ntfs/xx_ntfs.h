@@ -11,9 +11,9 @@
  *
  * Deliberately unsupported (the parse fails, or the record is published with a
  * reason attached rather than extracted): attribute-list extensions, reparse
- * and compressed-provider files, compressed or encrypted $DATA, a sparse or
- * partially initialised $MFT, and named data streams. No LZNT1 decompressor is
- * part of this reader.
+ * and compressed-provider files, encrypted $DATA, unsupported NTFS compression
+ * units, a sparse or partially initialised $MFT, and named data streams.
+ * Ordinary LZNT1-compressed unnamed $DATA uses bounded 4096-byte subblocks.
  */
 
 #ifndef XXFCLIB_FORMAT_NTFS_H

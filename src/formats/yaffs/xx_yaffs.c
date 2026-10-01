@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/yaffs/xx_yaffs.h"
 
@@ -53,7 +54,11 @@
 #define XX_YAFFS_MAX_DEPTH 128U           /**< Parent chain links followed. */
 #define XX_YAFFS_MAX_PATH 4096U           /**< Longest rebuilt path. */
 #define XX_YAFFS_PROBE_CHUNKS 64U         /**< Chunks scored per candidate. */
-#define XX_YAFFS_WINDOW 262144U           /**< Read-ahead of the full scan. */
+/* Consecutive chunks without YAFFS tags (erased chunks aside) that end an
+ * image: whatever follows it - a kernel, another filesystem, the next NAND
+ * partition, padding - is not part of it. One or two bad tags inside an
+ * image are tolerated, as a raw NAND dump can carry bit errors. */
+#define XX_YAFFS_END_RUN 4U
 #define XX_YAFFS_MAX_COLLISIONS 1000U     /**< "name~N" attempts per name. */
 /* "name~N" attempts for the whole image: ten thousand objects with one
  * name would otherwise cost fifty million attempts. */
@@ -104,6 +109,8 @@ typedef struct xx_yaffs_tags_s {
     uint32_t chunk_id;   /**< 0 for any header chunk. */
     uint32_t byte_count;
     bool extra;          /**< YAFFS2 extra header info present. */
+    bool suspect;        /**< YAFFS1 SKIP whose status bytes are neither
+                              clean nor a marker the driver writes. */
     uint32_t extra_parent;
     uint32_t extra_type;
     xx_yaffs_chunk_class kind;
@@ -217,6 +224,7 @@ typedef struct xx_yaffs_archive_stream_s {
     xx_yaffs_private parsed;
     size_t index;
     uint64_t link_budget; /**< Bytes hardlink copies may still write. */
+    uint64_t hole_budget; /**< Zero bytes holes may still write. */
 } xx_yaffs_archive_stream;
 
 static void xx_yaffs_vtable_destroy(Abstractformat *self);
@@ -227,8 +235,8 @@ static void xx_yaffs_vtable_destroy(Abstractformat *self);
 
 /* Positioned read. xx_io_seek64() rather than xx_io_seek(), because long is
  * 32 bits on Win64 and a NAND image is routinely larger than 2 GiB. */
-static bool xx_yaffs_read_at(xx_io_device *device, int64_t offset, void *data,
-                             size_t size) {
+static bool xx_yaffs_read_at_sized(xx_io_device *device, int64_t offset, void *data,
+                             size_t size, size_t io_capacity) {
     uint8_t *out = (uint8_t *)data;
     size_t done = 0U;
     if (!device || (!data && size != 0U) || offset < 0 ||
@@ -236,11 +244,18 @@ static bool xx_yaffs_read_at(xx_io_device *device, int64_t offset, void *data,
         return false;
     }
     while (done < size) {
-        ssize_t got = xx_io_read(device, out + done, size - done);
-        if (got <= 0 || (size_t)got > size - done) return false;
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
+        ssize_t got = xx_io_read(device, out + done, request);
+        if (got <= 0 || (size_t)got > request) return false;
         done += (size_t)got;
     }
     return true;
+}
+
+static bool xx_yaffs_read_at(xx_io_device *device, int64_t offset, void *data,
+                             size_t size) {
+    return xx_yaffs_read_at_sized(device, offset, data, size, xx_get_file_buffer_size());
 }
 
 static bool xx_yaffs_range_within(int64_t total_size, int64_t offset,
@@ -250,33 +265,101 @@ static bool xx_yaffs_range_within(int64_t total_size, int64_t offset,
 }
 
 /* Reads bounded by the input size, optionally through a read-ahead window.
+ *
  * The full scan visits every chunk in order and takes a few bytes from
  * each; straight from the device that is one or two system calls per chunk
- * and, on a cold disk, one small random read each. The detection probe
- * reads too little to need the window and runs unbuffered. */
+ * and, on a cold disk, one small random read each. It gets a window of
+ * xx_get_file_buffer_size() bytes, allocated up front.
+ *
+ * The detection probe (xx_yaffs_detect) must stay cheap for any buffer
+ * size the application sets, since the format search runs it at every
+ * offset its anchor bytes match. It gets small fixed buffers instead:
+ *   - slices: for each page size P, the XX_YAFFS_SLICE_SIZE bytes from
+ *     P - 16, read once after the gate. They hold chunk 0's tags for every
+ *     candidate geometry (in-band at P - 16, out-of-band at P or P + 2),
+ *     so a candidate that fails there costs no read of its own;
+ *   - window: XX_YAFFS_PROBE_WINDOW bytes, allocated only once a candidate
+ *     has passed chunk 0, used only for chunks small enough that one fill
+ *     serves several of them, and never filled past that candidate's
+ *     XX_YAFFS_PROBE_CHUNKS chunks (fill_limit).
+ * Every other probe read goes straight to the device. */
+#define XX_YAFFS_SLICES 6U       /**< One per entry of xx_yaffs_page_sizes. */
+#define XX_YAFFS_SLICE_SIZE 48U
+#define XX_YAFFS_PROBE_WINDOW 65536U
+#define XX_YAFFS_PROBE_WINDOW_CHUNKS 8U     /**< Chunks per fill, at least. */
+/* Window fills start this small and double up to the window's capacity, so
+ * a small image - the format search may find thousands of them in one
+ * crafted file - costs reads in proportion to its own size. */
+#define XX_YAFFS_FIRST_FILL 16384U
+
 typedef struct xx_yaffs_source_s {
     xx_io_device *device;
     int64_t total_size;
-    uint8_t *window;      /**< NULL: read straight from the device. */
+    uint8_t slice[XX_YAFFS_SLICES][XX_YAFFS_SLICE_SIZE]; /**< Probe only. */
+    int64_t slice_start[XX_YAFFS_SLICES];
+    size_t slice_length[XX_YAFFS_SLICES];
+    size_t slice_count;
+    uint8_t *window;      /**< NULL: no window (yet). */
     int64_t window_start; /**< Offset of window[0]; -1 when empty. */
     size_t window_length;
+    size_t window_capacity;
+    bool probe;           /**< Detection probe source (see above). */
+    bool window_lazy;     /**< Probe: allocate the window on first use. */
+    bool window_enabled;  /**< Probe: the current candidate may use it. */
+    int64_t fill_limit;   /**< No window fill reaches past this offset. */
+    size_t fill_size;     /**< Size of the next window fill. */
+    size_t io_capacity;   /**< Largest single device read. */
 } xx_yaffs_source;
 
 static void xx_yaffs_source_init(xx_yaffs_source *source,
                                  xx_io_device *device, int64_t total_size,
                                  bool buffered) {
+    xx_mem_zero(source, sizeof(*source));
     source->device = device;
     source->total_size = total_size;
     source->window_start = -1;
-    source->window_length = 0U;
-    /* A failed allocation only costs speed. */
-    source->window = buffered ? (uint8_t *)xx_mem_alloc(XX_YAFFS_WINDOW) : NULL;
+    source->fill_limit = total_size;
+    source->fill_size = XX_YAFFS_FIRST_FILL;
+    source->io_capacity = xx_get_file_buffer_size();
+    if (source->io_capacity == 0U) source->io_capacity = 4096U;
+    if (buffered) {
+        /* A failed allocation only costs speed. */
+        source->window_capacity = source->io_capacity;
+        source->window = (uint8_t *)xx_mem_alloc(source->window_capacity);
+        source->window_enabled = true;
+    } else {
+        source->window_capacity = XX_YAFFS_PROBE_WINDOW;
+        source->window_lazy = true;
+        source->probe = true;
+    }
+}
+
+/* Probe: buffer the slice around the end of the first page, for a page of
+ * @p page_size bytes at @p start. A slice that cannot be read is simply
+ * not buffered. */
+static void xx_yaffs_source_add_slice(xx_yaffs_source *source, int64_t start,
+                                      uint32_t page_size) {
+    int64_t at = start + (int64_t)page_size - (int64_t)XX_YAFFS_TAGS_SIZE;
+    int64_t left = source->total_size - at;
+    size_t want;
+    if (source->slice_count >= XX_YAFFS_SLICES || left <= 0) return;
+    want = left < (int64_t)XX_YAFFS_SLICE_SIZE ? (size_t)left
+                                               : XX_YAFFS_SLICE_SIZE;
+    if (!xx_yaffs_read_at_sized(source->device, at,
+                                source->slice[source->slice_count], want,
+                                source->io_capacity)) {
+        return;
+    }
+    source->slice_start[source->slice_count] = at;
+    source->slice_length[source->slice_count] = want;
+    ++source->slice_count;
 }
 
 static void xx_yaffs_source_cleanup(xx_yaffs_source *source) {
     if (source->window) xx_mem_free(source->window);
     source->window = NULL;
     source->window_start = -1;
+    source->slice_count = 0U;
 }
 
 static bool xx_yaffs_source_read(xx_yaffs_source *source, int64_t offset,
@@ -284,17 +367,55 @@ static bool xx_yaffs_source_read(xx_yaffs_source *source, int64_t offset,
     if (!xx_yaffs_range_within(source->total_size, offset, (int64_t)size)) {
         return false;
     }
-    if (!source->window || size > XX_YAFFS_WINDOW) {
-        return xx_yaffs_read_at(source->device, offset, data, size);
+    {
+        size_t index;
+        for (index = 0U; index < source->slice_count; ++index) {
+            if (offset >= source->slice_start[index] &&
+                offset - source->slice_start[index] <=
+                    (int64_t)source->slice_length[index] - (int64_t)size) {
+                xx_mem_copy(data,
+                            source->slice[index] +
+                                (size_t)(offset - source->slice_start[index]),
+                            size);
+                return true;
+            }
+        }
+    }
+    if (!source->window_enabled || size > source->window_capacity) {
+        return xx_yaffs_read_at_sized(source->device, offset, data, size,
+                                      source->io_capacity);
     }
     if (source->window_start < 0 || offset < source->window_start ||
         offset - source->window_start >
             (int64_t)source->window_length - (int64_t)size) {
         int64_t left = source->total_size - offset;
-        size_t want = left < (int64_t)XX_YAFFS_WINDOW ? (size_t)left
-                                                      : XX_YAFFS_WINDOW;
+        size_t want;
+        if (source->fill_limit - offset < left) {
+            left = source->fill_limit - offset;
+        }
+        if (left < (int64_t)size) left = (int64_t)size;
+        want = (uint64_t)left < (uint64_t)source->window_capacity
+                   ? (size_t)left
+                   : source->window_capacity;
+        if (want > source->fill_size && source->fill_size >= size) {
+            want = source->fill_size;
+        }
+        if (source->fill_size < source->window_capacity / 2U) {
+            source->fill_size *= 2U;
+        } else {
+            source->fill_size = source->window_capacity;
+        }
+        if (!source->window && source->window_lazy) {
+            source->window = (uint8_t *)xx_mem_alloc(source->window_capacity);
+            source->window_lazy = false;
+        }
+        if (!source->window) {
+            return xx_yaffs_read_at_sized(source->device, offset, data, size,
+                                          source->io_capacity);
+        }
         source->window_start = -1;
-        if (!xx_yaffs_read_at(source->device, offset, source->window, want)) {
+        if (!xx_yaffs_read_at_sized(source->device, offset, source->window,
+                                    want, source->io_capacity)) {
             return false;
         }
         source->window_start = offset;
@@ -426,6 +547,16 @@ static void xx_yaffs_decode_tags_v1(const uint8_t *spare, uint32_t data_size,
     /* A cleared page status marks a deleted chunk, a cleared block status a
      * bad block; one flipped bit is tolerated, as YAFFS1 itself does. */
     if (xx_yaffs_popcount8(spare[4]) < 7U || xx_yaffs_popcount8(spare[5]) < 7U) {
+        /* The driver clears page_status to 0 on delete and writes 'Y' to
+         * block_status on a bad block. Anything else in between is what
+         * random bytes look like: still skipped by the scan, but counted
+         * as evidence against the layout by the detection score. */
+        unsigned page_bits = xx_yaffs_popcount8(spare[4]);
+        unsigned block_bits = xx_yaffs_popcount8(spare[5]);
+        bool page_marker = page_bits >= 7U || page_bits <= 1U;
+        bool block_marker =
+            block_bits >= 7U || block_bits <= 1U || spare[5] == (uint8_t)'Y';
+        tags->suspect = !(page_marker && block_marker);
         tags->kind = XX_YAFFS_CHUNK_SKIP;
         return;
     }
@@ -613,8 +744,38 @@ static bool xx_yaffs_plausible_tags(const xx_yaffs_geometry *geometry,
     return tags->sequence <= 0x00FFFFFFU && tags->object_id <= 0x0003FFFFU;
 }
 
+/* Does a good header chunk at a later position start a second image placed
+ * right after the first one? A YAFFS2 sequence number names one erase block,
+ * whose chunks are contiguous and programmed in order, so chunk 0's
+ * sequence cannot come back once the scan has left that block, nor after an
+ * erased chunk of that block. When it does, on a header shaped like a first
+ * chunk (parent 1), that is where the next image begins.
+ * @p left_first: two chunks in a row from another block were seen (one odd
+ * sequence may be a bit error); @p gap: an erased chunk since the last good
+ * one. Two images built into a single block each and placed back to back
+ * without padding cannot be told apart from one image this way, and stay
+ * merged. */
+static bool xx_yaffs_restarts(const xx_yaffs_geometry *geometry,
+                              const xx_yaffs_tags *tags,
+                              const xx_yaffs_header *header, uint32_t first_seq,
+                              bool left_first, bool gap) {
+    if (geometry->kind != XX_YAFFS_TAGS_V2) return false;
+    if (tags->sequence != first_seq ||
+        header->parent_id != XX_YAFFS_OBJECTID_ROOT) {
+        return false;
+    }
+    return left_first || gap;
+}
+
 /* Score one tagged geometry over the leading chunks of the image. A negative
- * score rejects the candidate outright. */
+ * score rejects the candidate outright.
+ *
+ * Only the image itself is weighed: XX_YAFFS_END_RUN bad chunks in a row
+ * after the last good one end it, as they end the full scan, so a small
+ * image followed by other data is judged on its own chunks - but it then
+ * needs at least one good chunk besides chunk 0. The loop also stops as
+ * soon as the verdict can no longer change to an accept, so a candidate
+ * that matched chunk 0 by chance costs a handful of chunks, not 64. */
 static int xx_yaffs_score_tagged(xx_yaffs_source *source,
                                  const xx_yaffs_geometry *geometry,
                                  int64_t base,
@@ -628,6 +789,12 @@ static int xx_yaffs_score_tagged(xx_yaffs_source *source,
     int64_t index;
     int valid = 0;
     int invalid = 0;
+    int bad_run = 0;
+    bool ended = false;
+    uint32_t first_seq;
+    int other_run = 0;
+    bool left_first = false;
+    bool gap = false;
     int score;
     if (chunks < 1) return -1;
     if (!xx_yaffs_read_tags(source, geometry, base, &tags) ||
@@ -635,13 +802,26 @@ static int xx_yaffs_score_tagged(xx_yaffs_source *source,
         return -1;
     }
     score = 30;
+    first_seq = tags.sequence;
     if (xx_yaffs_plausible_tags(geometry, &tags)) score += 2;
     seen[seen_count++] = tags.object_id;
     if (chunks > (int64_t)XX_YAFFS_PROBE_CHUNKS) {
         chunks = (int64_t)XX_YAFFS_PROBE_CHUNKS;
     }
+    /* Chunk 0 matched: the rest of this candidate's chunks may go through
+     * the probe window, if one fill covers several of them. */
+    if (source->probe) {
+        source->window_enabled =
+            (uint64_t)geometry->chunk_size * XX_YAFFS_PROBE_WINDOW_CHUNKS <=
+            (uint64_t)source->window_capacity;
+        source->fill_limit = base + chunks * chunk_size;
+        source->fill_size = XX_YAFFS_FIRST_FILL;
+    }
     for (index = 1; index < chunks; ++index) {
         int64_t offset = base + index * chunk_size;
+        int valid_before = valid;
+        int invalid_before = invalid;
+        bool restart = false;
         if (!xx_yaffs_read_tags(source, geometry, offset, &tags)) break;
         if ((tags.kind == XX_YAFFS_CHUNK_HEADER ||
              tags.kind == XX_YAFFS_CHUNK_DATA) &&
@@ -657,6 +837,11 @@ static int xx_yaffs_score_tagged(xx_yaffs_source *source,
                 (!tags.extra || (tags.extra_parent == header.parent_id &&
                                  tags.extra_type == header.type))) {
                 size_t at;
+                if (xx_yaffs_restarts(geometry, &tags, &header, first_seq,
+                                      left_first, gap)) {
+                    restart = true;
+                    break;
+                }
                 score += 5;
                 ++valid;
                 /* A parent the tags already introduced: the tree holds
@@ -684,13 +869,46 @@ static int xx_yaffs_score_tagged(xx_yaffs_source *source,
             ++invalid;
             break;
         default:
-            /* Erased, deleted, bad or checkpoint: no evidence either way. */
+            /* Erased, deleted, bad or checkpoint: no evidence either way,
+             * unless the YAFFS1 status bytes are plain noise. */
+            if (tags.kind == XX_YAFFS_CHUNK_ERASED) gap = true;
+            if (tags.suspect) {
+                score -= 3;
+                ++invalid;
+            }
             break;
         }
+        /* The next image starts here: this one is complete. */
+        if (restart) break;
+        if (valid != valid_before) {
+            bad_run = 0;
+            gap = false;
+            if (tags.sequence != first_seq) {
+                if (++other_run >= 2) left_first = true;
+            } else {
+                other_run = 0;
+            }
+        } else if (invalid != invalid_before) {
+            if (++bad_run >= (int)XX_YAFFS_END_RUN) {
+                /* The image ended at the last good chunk; the run is not
+                 * part of it. */
+                invalid -= bad_run;
+                ended = true;
+                break;
+            }
+        }
+        /* Even if every chunk left in the window were good, the bad ones
+         * would still outnumber them. */
+        if ((int64_t)(invalid - bad_run) - valid > chunks - 1 - index) break;
     }
-    /* More garbage than YAFFS among the chunks that follow means the tags
-     * of chunk 0 matched by chance. */
+    if (source->probe) {
+        source->window_enabled = false;
+        source->fill_limit = source->total_size;
+    }
+    /* More garbage than YAFFS among the image's chunks means the tags of
+     * chunk 0 matched by chance; so does chunk 0 alone followed by data. */
     if (invalid > valid) return -1;
+    if (ended && valid == 0) return -1;
     return score;
 }
 
@@ -723,6 +941,16 @@ static int xx_yaffs_score_positional(xx_yaffs_source *source,
         ++index;
         if (index >= chunks || ++probed >= (int)XX_YAFFS_PROBE_CHUNKS) break;
         offset = base + index * chunk_size;
+        /* The first sixteen bytes settle most pages - for the second page
+         * they are already in the probe's slices - and a page that is
+         * neither erased nor carries the FF FF of a header is a miss. */
+        if (!xx_yaffs_source_read(source, offset, page, XX_YAFFS_TAGS_SIZE)) {
+            return -1;
+        }
+        if (!xx_yaffs_all_ones(page, XX_YAFFS_TAGS_SIZE) &&
+            (page[8] != 0xFFU || page[9] != 0xFFU)) {
+            return -1;
+        }
         if (!xx_yaffs_source_read(source, offset, page, sizeof(page))) {
             return -1;
         }
@@ -775,9 +1003,18 @@ static bool xx_yaffs_detect(xx_io_device *device, int64_t base,
     first_ok[1] = xx_yaffs_first_header(page, true, &first[1]);
     if (!first_ok[0] && !first_ok[1]) return false;
 
-    /* Past the gate: the candidates read the leading chunks over and over,
-     * so they share one read-ahead window. */
-    xx_yaffs_source_init(&source, device, total_size, true);
+    /* Past the gate every candidate first checks chunk 0's sixteen tag
+     * bytes, all of them inside six small slice reads, and only a
+     * candidate that passes goes on to the next 63 chunks. Nothing here
+     * scales with xx_get_file_buffer_size(): the format search runs this
+     * probe at every offset the gate bytes match (xx_yaffs_source). */
+    xx_yaffs_source_init(&source, device, total_size, false);
+    for (page_index = 0U; page_index < sizeof(xx_yaffs_page_sizes) /
+                                           sizeof(xx_yaffs_page_sizes[0]);
+         ++page_index) {
+        xx_yaffs_source_add_slice(&source, base,
+                                  xx_yaffs_page_sizes[page_index]);
+    }
     for (endian_index = 0U; endian_index < 2U && !stopped; ++endian_index) {
         if (!first_ok[endian_index]) continue;
         for (page_index = 0U; page_index < sizeof(xx_yaffs_page_sizes) /
@@ -1025,6 +1262,32 @@ static size_t xx_yaffs_utf8_length(const uint8_t *text, size_t available) {
     return length;
 }
 
+/* NTFS and most host file systems allow 255 UTF-16 units per component. A
+ * raw YAFFS name is at most 255 bytes, so it always fits; the '_' device
+ * prefix and the "~N" dedup suffix are what can push it over. */
+#define XX_YAFFS_COMPONENT_UNITS 255U
+
+/* UTF-16 units of the well-formed UTF-8 text[0..size). */
+static size_t xx_yaffs_utf16_units(const char *text, size_t size) {
+    size_t units = 0U;
+    size_t index;
+    for (index = 0U; index < size; ++index) {
+        uint8_t byte = (uint8_t)text[index];
+        if ((byte & 0xC0U) != 0x80U) units += byte >= 0xF0U ? 2U : 1U;
+    }
+    return units;
+}
+
+/* The longest prefix of the well-formed UTF-8 text[0..size) that ends on a
+ * character boundary and is at most @p units UTF-16 units long. */
+static size_t xx_yaffs_fit_units(const char *text, size_t size, size_t units) {
+    while (size != 0U && xx_yaffs_utf16_units(text, size) > units) {
+        --size;
+        while (size != 0U && ((uint8_t)text[size] & 0xC0U) == 0x80U) --size;
+    }
+    return size;
+}
+
 /* One stored name as one host-safe path component: bytes that are not
  * well-formed UTF-8, control characters and the punctuation Windows
  * reserves become '_', trailing dots and spaces (which Windows drops, and
@@ -1067,6 +1330,20 @@ static char *xx_yaffs_component(const char *raw) {
     result[at] = '\0';
     if (!xx_yaffs_reserved_name(result + 1U)) {
         xx_rt_memmove(result, result + 1U, at);
+        return result;
+    }
+    /* The prefix stays: shorten the name behind it, if need be, so the
+     * component still fits. Only the tail goes, and the stem that made it
+     * a device name is far shorter, so the prefix is still needed. */
+    {
+        size_t body = xx_yaffs_fit_units(result + 1U, at - 1U,
+                                         XX_YAFFS_COMPONENT_UNITS - 1U);
+        at = body + 1U;
+        for (index = at; index > 1U; --index) {
+            if (result[index - 1U] != '.' && result[index - 1U] != ' ') break;
+            result[index - 1U] = '_';
+        }
+        result[at] = '\0';
     }
     return result;
 }
@@ -1302,6 +1579,8 @@ static char *xx_yaffs_suffixed(const char *leaf, uint32_t suffix) {
     size_t leaf_size = xx_str_len(leaf);
     size_t suffix_size;
     size_t before;
+    size_t kept;
+    size_t tail_units;
     char *combined;
     if (xx_rt_snprintf(suffix_text, sizeof(suffix_text), "~%u",
                        (unsigned)suffix) < 0) {
@@ -1311,13 +1590,22 @@ static char *xx_yaffs_suffixed(const char *leaf, uint32_t suffix) {
     before = (dot && dot != leaf && leaf_size - (size_t)(dot - leaf) <= 32U)
                  ? (size_t)(dot - leaf)
                  : leaf_size;
+    /* Shorten the stem so stem + "~N" + extension stays one component the
+     * host can create. The extension is at most 32 bytes and the suffix at
+     * most 11, so some stem is always left. */
+    tail_units = xx_yaffs_utf16_units(leaf + before, leaf_size - before) +
+                 suffix_size;
+    if (tail_units >= XX_YAFFS_COMPONENT_UNITS) return NULL;
+    kept = xx_yaffs_fit_units(leaf, before,
+                              XX_YAFFS_COMPONENT_UNITS - tail_units);
+    if (kept == 0U) return NULL;
     combined = (char *)xx_mem_alloc(leaf_size + suffix_size + 1U);
     if (!combined) return NULL;
-    xx_mem_copy(combined, leaf, before);
-    xx_mem_copy(combined + before, suffix_text, suffix_size);
-    xx_mem_copy(combined + before + suffix_size, leaf + before,
+    xx_mem_copy(combined, leaf, kept);
+    xx_mem_copy(combined + kept, suffix_text, suffix_size);
+    xx_mem_copy(combined + kept + suffix_size, leaf + before,
                 leaf_size - before);
-    combined[leaf_size + suffix_size] = '\0';
+    combined[kept + suffix_size + (leaf_size - before)] = '\0';
     return combined;
 }
 
@@ -1744,30 +2032,48 @@ static bool xx_yaffs_build_paths(xx_yaffs_private *parsed) {
 /* One pass over every chunk: headers become objects, data chunks are kept
  * by object id until the objects are all known. Also measures where the
  * image ends: after the last chunk that carries YAFFS tags, plus the erased
- * chunks that follow it. */
+ * chunks that follow it. The image ends at XX_YAFFS_END_RUN chunks in a row
+ * that are not YAFFS - a header tag over a page that is no header counts as
+ * one, and random bytes make such tags half the time - or where a second
+ * image begins (xx_yaffs_restarts); neither is scanned further. The
+ * detection score applies the same two rules. */
 static bool xx_yaffs_scan_tagged(Abstractformat *self, xx_yaffs_private *parsed,
                                  xx_yaffs_source *source, xx_pd_struct *pd) {
     const xx_yaffs_geometry *geometry = &parsed->geometry;
     int64_t index;
     int64_t end_chunks = 0;
     bool erased_run = false;
+    uint32_t bad_run = 0U;
+    uint32_t first_seq = 0U;
+    uint32_t other_run = 0U;
+    bool left_first = false;
+    bool gap = false;
     for (index = 0; index < parsed->total_chunks; ++index) {
         int64_t offset =
             self->base_address + index * (int64_t)geometry->chunk_size;
         xx_yaffs_tags tags;
         xx_yaffs_header header;
+        bool good = false;
+        bool bad = false;
+        bool restart = false;
         if (pd && xx_pd_is_stopped(pd)) return false;
         if (!xx_yaffs_read_tags(source, geometry, offset, &tags)) break;
         switch (tags.kind) {
         case XX_YAFFS_CHUNK_HEADER:
-            end_chunks = index + 1;
-            erased_run = true;
             if (!xx_yaffs_read_header(source, offset, geometry->big_endian,
-                                      false, &header)) {
+                                      false, &header) ||
+                (tags.extra && (tags.extra_parent != header.parent_id ||
+                                tags.extra_type != header.type))) {
+                bad = true;
                 break;
             }
-            if (tags.extra && (tags.extra_parent != header.parent_id ||
-                               tags.extra_type != header.type)) {
+            good = true;
+            if (index == 0) {
+                first_seq = tags.sequence;
+            } else if (xx_yaffs_restarts(geometry, &tags, &header, first_seq,
+                                         left_first, gap)) {
+                good = false;
+                restart = true;
                 break;
             }
             /* Only the root may be nameless. */
@@ -1781,23 +2087,57 @@ static bool xx_yaffs_scan_tagged(Abstractformat *self, xx_yaffs_private *parsed,
             }
             break;
         case XX_YAFFS_CHUNK_DATA:
-            end_chunks = index + 1;
-            erased_run = true;
+            good = true;
             if (!xx_yaffs_add_chunk(parsed, tags.object_id, tags.chunk_id,
                                     tags.sequence, tags.byte_count, offset)) {
                 return false;
             }
             break;
         case XX_YAFFS_CHUNK_SKIP:
+            if (tags.suspect) {
+                bad = true;
+            } else if (tags.object_id != 0U || tags.chunk_id != 0U ||
+                       tags.byte_count != 0U) {
+                end_chunks = index + 1;
+                erased_run = true;
+            }
+            /* Else YAFFS1 tags of all zeros: a factory bad block inside
+             * the image, or zero padding after it. Neither extends it. */
+            break;
+        case XX_YAFFS_CHUNK_ERASED: {
+            /* Tags and data are programmed together: blank tags over a
+             * page that is not blank are not YAFFS - typically the next
+             * image, laid out on another page grid. */
+            uint8_t head[XX_YAFFS_TAGS_SIZE];
+            if (!xx_yaffs_source_read(source, offset, head, sizeof(head)) ||
+                !xx_yaffs_all_ones(head, sizeof(head))) {
+                bad = true;
+                break;
+            }
+            if (erased_run) end_chunks = index + 1;
+            gap = true;
+            break;
+        }
+        default:
+            bad = true;
+            break;
+        }
+        if (restart) break;
+        if (good) {
             end_chunks = index + 1;
             erased_run = true;
-            break;
-        case XX_YAFFS_CHUNK_ERASED:
-            if (erased_run) end_chunks = index + 1;
-            break;
-        default:
+            bad_run = 0U;
+            gap = false;
+            /* Two chunks in a row from another block: chunk 0's block is
+             * behind the scan (one odd sequence may be a bit error). */
+            if (index != 0 && tags.sequence != first_seq) {
+                if (++other_run >= 2U) left_first = true;
+            } else {
+                other_run = 0U;
+            }
+        } else if (bad) {
             erased_run = false;
-            break;
+            if (++bad_run >= XX_YAFFS_END_RUN) break;
         }
     }
     parsed->archive_end = self->base_address +
@@ -2145,23 +2485,54 @@ static bool xx_yaffs_safe_name(const char *name) {
     }
 }
 
+/* Write @p size zero bytes to @p output (NULL: count only). */
+static bool xx_yaffs_write_zeros(xx_io_device *output, uint8_t *page,
+                                 uint32_t data_size, uint64_t size,
+                                 xx_pd_struct *pd) {
+    if (!output) return true;
+    xx_mem_zero(page, data_size);
+    while (size != 0U) {
+        size_t want = size < (uint64_t)data_size ? (size_t)size
+                                                 : (size_t)data_size;
+        ssize_t written;
+        if (pd && xx_pd_is_stopped(pd)) return false;
+        written = xx_io_write(output, page, want);
+        if (written < 0 || (size_t)written != want) return false;
+        size -= (uint64_t)want;
+    }
+    return true;
+}
+
 /* Walk one file's chunk run in chunk id order and pick, for each chunk id,
- * the copy that was written last. @p output may be NULL, which only checks
- * that every page the file size calls for is present. A missing page fails
- * the file: silently zero-filling it would let a few bytes of header claim
- * any amount of output. */
+ * the copy that was written last. A chunk id missing below the file size is
+ * a hole - a file written past its end with lseek() or extended with
+ * ftruncate() - and reads as zeros, as the driver returns it:
+ *   - between two chunks that are there, always;
+ *   - after the last chunk, only when the header that sets the size was
+ *     written after that chunk (an extending ftruncate). An image cut short
+ *     loses the tail of a file whose header came first, and that file is
+ *     refused rather than padded.
+ * @p output may be NULL, which only checks. The number of zero bytes the
+ * file needs goes to @p holes; the caller holds them to a budget before
+ * anything is written, so a few bytes of header cannot claim an arbitrary
+ * amount of output. */
 static bool xx_yaffs_emit_file(Abstractformat *self,
                                const xx_yaffs_private *parsed,
                                const xx_yaffs_object *object,
-                               xx_io_device *output, xx_pd_struct *pd) {
+                               xx_io_device *output, uint64_t *holes,
+                               xx_pd_struct *pd) {
     uint8_t *page = NULL;
     uint64_t remaining = object->file_size;
+    uint64_t zeros = 0U;
     uint32_t expected = 1U;
     size_t index = object->first_chunk;
     size_t end = object->first_chunk + object->chunk_count;
     uint32_t data_size = parsed->geometry.data_size;
+    size_t used = SIZE_MAX; /* The chunk that ends the data, if any. */
     bool result = true;
+    if (holes) *holes = 0U;
     if (remaining == 0U) return true;
+    if (data_size == 0U) return false;
     if (output) {
         page = (uint8_t *)xx_mem_alloc(data_size);
         if (!page) return false;
@@ -2190,8 +2561,18 @@ static bool xx_yaffs_emit_file(Abstractformat *self,
             continue;
         }
         if (parsed->chunks[best].chunk_id != expected) {
-            result = false;
-            break;
+            /* A hole up to this chunk, or to the end of the file. */
+            uint64_t gap = (uint64_t)(parsed->chunks[best].chunk_id - expected) *
+                           (uint64_t)data_size;
+            if (gap > remaining) gap = remaining;
+            if (!xx_yaffs_write_zeros(output, page, data_size, gap, pd)) {
+                result = false;
+                break;
+            }
+            zeros += gap;
+            remaining -= gap;
+            expected = parsed->chunks[best].chunk_id;
+            continue;
         }
         want = remaining < (uint64_t)data_size ? (size_t)remaining
                                                : (size_t)data_size;
@@ -2216,10 +2597,31 @@ static bool xx_yaffs_emit_file(Abstractformat *self,
         }
         remaining -= (uint64_t)want;
         ++expected;
+        used = best;
         index = last + 1U;
     }
-    if (remaining != 0U) result = false;
+    /* Past the last chunk that is there: a hole to the end of the file,
+     * if the size was set after that chunk was written. */
+    if (result && remaining != 0U) {
+        bool later = false;
+        if (used != SIZE_MAX) {
+            const xx_yaffs_data_chunk *chunk = &parsed->chunks[used];
+            if (parsed->geometry.kind == XX_YAFFS_TAGS_V2 &&
+                object->sequence != chunk->sequence) {
+                later = object->sequence > chunk->sequence;
+            } else {
+                later = object->header_offset > chunk->offset;
+            }
+        }
+        if (later &&
+            xx_yaffs_write_zeros(output, page, data_size, remaining, pd)) {
+            zeros += remaining;
+        } else {
+            result = false;
+        }
+    }
     if (page) xx_mem_free(page);
+    if (holes) *holes = zeros;
     return result;
 }
 
@@ -2229,15 +2631,15 @@ static bool xx_yaffs_write_file(Abstractformat *self,
                                 const char *destination, xx_pd_struct *pd) {
     xx_io_device *output;
     bool result;
-    /* Check before creating anything, so a broken file leaves no stub. */
-    if (!xx_yaffs_emit_file(self, parsed, object, NULL, pd)) return false;
+    bool created = false;
     output = xx_io_file_open(destination, "wb");
     if (!output) return false;
-    result = xx_yaffs_emit_file(self, parsed, object, output, pd);
+    created = true;
+    result = xx_yaffs_emit_file(self, parsed, object, output, NULL, pd);
     xx_io_close(output);
     /* Only output this call created is discarded; a file that did not open
      * above was never touched. */
-    if (!result) xx_rt_remove(destination);
+    if (!result && created) xx_rt_remove(destination);
     return result;
 }
 
@@ -2419,6 +2821,7 @@ xx_archive_record_state *xx_yaffs_create_archive_records_reading(
     /* Hard links copy their target's data again; all of them together may
      * write no more than the image itself holds. */
     stream->link_budget = (uint64_t)stream->parsed.input_size;
+    stream->hole_budget = (uint64_t)stream->parsed.input_size;
     state->internal_state = stream;
     state->free_internal = xx_yaffs_archive_stream_free;
     state->total_records = (int64_t)stream->parsed.record_count;
@@ -2488,16 +2891,27 @@ bool xx_yaffs_unpack_current_archive_record(Abstractformat *self,
     name = xx_archive_record_get_original_name(record);
     if (!xx_yaffs_safe_name(name)) return false;
     data = xx_yaffs_data_object(&stream->parsed, object);
-    if (data && object->type == XX_YAFFS_OBJECT_TYPE_HARDLINK) {
-        if (data->file_size > stream->link_budget) return false;
-        stream->link_budget -= data->file_size;
+    if (data) {
+        uint64_t holes = 0U;
+        /* Check before creating anything, so a broken file leaves no
+         * stub. Holes and hardlink copies each draw on a budget the size
+         * of the image. */
+        if (!xx_yaffs_emit_file(self, &stream->parsed, data, NULL, &holes,
+                                pd) ||
+            holes > stream->hole_budget) {
+            return false;
+        }
+        if (object->type == XX_YAFFS_OBJECT_TYPE_HARDLINK) {
+            if (data->file_size > stream->link_budget) return false;
+            stream->link_budget -= data->file_size;
+        }
+        stream->hole_budget -= holes;
     }
     option = xx_yaffs_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
-        /* Test mode: no destination, so only confirm the payload is all
-         * there and inside the device. */
-        return !data ||
-               xx_yaffs_emit_file(self, &stream->parsed, data, NULL, pd);
+        /* Test mode: no destination; the check above confirmed the
+         * payload is inside the device. */
+        return true;
     }
     if (option->type == XX_VAR_TYPE_STRING ||
         option->type == XX_VAR_TYPE_STRING_VIEW) {

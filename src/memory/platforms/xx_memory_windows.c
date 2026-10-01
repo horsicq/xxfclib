@@ -27,6 +27,7 @@
 #if defined(_WIN32)
 
 #include "xx_memory_platform.h"
+#include "xxfclib/rt/xx_rt.h"
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
@@ -113,148 +114,9 @@ size_t xx_memory_platform_usable_size(void *ptr) {
 }
 
 
-/* ------------------------------------------------------------------------ */
-/*  Runtime memory primitives                                               */
-/* ------------------------------------------------------------------------ */
-/* These define the public xx_rt_mem and xx_rt_malloc families directly, with no
- * wrapper layer - the same shape xx_rt_utf8_to_utf16 uses in the string
- * platform files. They are deliberately NOT folded into xx_memory_platform_*:
- * the contracts differ, xx_rt_malloc rounds a zero-byte request up to one byte
- * and xx_rt_realloc(ptr, 0) keeps the block, where the xx_memory_platform_*
- * pair returns NULL for both. */
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#else
-#include <stdlib.h>
-#include <string.h>
-#endif
-
-#if defined(_MSC_VER)
-/* Stop the compiler from rewriting the loops below into calls to itself. */
-#pragma function(memset, memcpy)
-#endif
-
-/* ------------------------------------------------------------------------ */
-/*  CRT-compatible Runtime Memory Primitives                                */
-/* ------------------------------------------------------------------------ */
-
-/* The Rtl*Memory names in winnt.h are macros that expand back to the CRT, so
- * they would not remove the dependency. These copy a machine word at a time
- * to stay close to the CRT in the hot paths (signature compare, string
- * concatenation).                                                           */
-typedef size_t xx_rt_word;
-
-void *xx_rt_memcpy(void *pDestination, const void *pSource, size_t nSize)
-{
-    unsigned char *pDst = (unsigned char *)pDestination;
-    const unsigned char *pSrc = (const unsigned char *)pSource;
-
-    while (nSize >= sizeof(xx_rt_word)) {
-        *(xx_rt_word *)pDst = *(const xx_rt_word *)pSrc;
-        pDst += sizeof(xx_rt_word);
-        pSrc += sizeof(xx_rt_word);
-        nSize -= sizeof(xx_rt_word);
-    }
-
-    while (nSize--) {
-        *pDst++ = *pSrc++;
-    }
-
-    return pDestination;
-}
-
-void *xx_rt_memmove(void *pDestination, const void *pSource, size_t nSize)
-{
-    unsigned char *pDst = (unsigned char *)pDestination;
-    const unsigned char *pSrc = (const unsigned char *)pSource;
-
-    if (pDst == pSrc) {
-        return pDestination;
-    }
-
-    if ((pDst < pSrc) || (pDst >= pSrc + nSize)) {
-        return xx_rt_memcpy(pDestination, pSource, nSize);
-    }
-
-    /* Overlapping and moving forward: copy backwards. */
-    pDst += nSize;
-    pSrc += nSize;
-
-    while (nSize--) {
-        *--pDst = *--pSrc;
-    }
-
-    return pDestination;
-}
-
-void *xx_rt_memset(void *pDestination, int nValue, size_t nSize)
-{
-    unsigned char *pDst = (unsigned char *)pDestination;
-    unsigned char nByte = (unsigned char)nValue;
-    xx_rt_word nPattern = 0;
-    size_t i = 0;
-
-    for (i = 0; i < sizeof(xx_rt_word); i++) {
-        nPattern = (nPattern << 8) | nByte;
-    }
-
-    while (nSize >= sizeof(xx_rt_word)) {
-        *(xx_rt_word *)pDst = nPattern;
-        pDst += sizeof(xx_rt_word);
-        nSize -= sizeof(xx_rt_word);
-    }
-
-    while (nSize--) {
-        *pDst++ = nByte;
-    }
-
-    return pDestination;
-}
-
-int xx_rt_memcmp(const void *pLeft, const void *pRight, size_t nSize)
-{
-    const unsigned char *pA = (const unsigned char *)pLeft;
-    const unsigned char *pB = (const unsigned char *)pRight;
-
-    /* RtlCompareMemory returns the count of equal bytes, not an ordering,
-     * so it cannot stand in for memcmp.                                     */
-    while (nSize >= sizeof(xx_rt_word)) {
-        if (*(const xx_rt_word *)pA != *(const xx_rt_word *)pB) {
-            break;
-        }
-
-        pA += sizeof(xx_rt_word);
-        pB += sizeof(xx_rt_word);
-        nSize -= sizeof(xx_rt_word);
-    }
-
-    while (nSize--) {
-        if (*pA != *pB) {
-            return (int)*pA - (int)*pB;
-        }
-
-        pA++;
-        pB++;
-    }
-
-    return 0;
-}
-
-void *xx_rt_memchr(const void *pMemory, int nChar, size_t nSize)
-{
-    const unsigned char *p = (const unsigned char *)pMemory;
-    unsigned char nWanted = (unsigned char)nChar;
-    size_t i = 0;
-
-    for (i = 0; i < nSize; i++) {
-        if (p[i] == nWanted) {
-            return (void *)(p + i);
-        }
-    }
-
-    return NULL;
-}
+/* Runtime allocation remains platform-specific. Its zero-size behavior is
+ * separate from xx_memory_platform_* allocation. Memory operations themselves
+ * are shared in src/memory/xx_memory_rt.c. */
 
 static HANDLE xx_rt_process_heap(void)
 {

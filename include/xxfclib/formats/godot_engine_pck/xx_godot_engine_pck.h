@@ -122,6 +122,12 @@ XXFC_API xx_godot_engine_pck *xx_godot_engine_pck_create(
 XXFC_API void xx_godot_engine_pck_destroy(xx_godot_engine_pck *archive);
 XXFC_API void xx_godot_engine_pck_free(xx_godot_engine_pck *archive);
 
+/** Cheap detector gate for a standalone GDPC header, an MZ carrier (which
+ *  may have a pck section), or a bounded EOF trailer that points at GDPC.
+ *  Supports trailer-bearing non-Windows executables without reading their
+ *  executable structure. The full reader still validates the pack. */
+XXFC_API bool xx_godot_engine_pck_probe_device(xx_io_device *device);
+
 XXFC_API bool xx_godot_engine_pck_check_is_valid(Abstractformat *self,
                                                  xx_pd_struct *pd);
 XXFC_API bool xx_godot_engine_pck_handle_base_info(Abstractformat *self,

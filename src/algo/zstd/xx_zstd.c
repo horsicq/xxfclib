@@ -21,6 +21,7 @@
 
 /* Native Zstandard framing, raw-block encoding, and decompression. */
 
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/algo/zstd/xx_zstd.h"
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/memory/xx_memory.h"
@@ -44,12 +45,15 @@ size_t xx_zstd_compress_bound(size_t source_size) {
     return source_size + 13U + blocks * 3U;
 }
 
-static bool xx_zstd_read_exact(xx_io_device *device, void *buffer, size_t size) {
+static bool xx_zstd_read_exact(xx_io_device *device, void *buffer, size_t size, size_t io_capacity) {
     uint8_t *bytes = (uint8_t *)buffer;
     size_t done = 0;
     while (done < size) {
-        ssize_t amount = xx_io_read(device, bytes + done, size - done);
-        if (amount <= 0) {
+        size_t request = size - done;
+        ssize_t amount;
+        if (request > io_capacity) request = io_capacity;
+        amount = xx_io_read(device, bytes + done, request);
+        if (amount <= 0 || (size_t)amount > request) {
             return false;
         }
         done += (size_t)amount;
@@ -58,7 +62,7 @@ static bool xx_zstd_read_exact(xx_io_device *device, void *buffer, size_t size) 
 }
 
 static bool xx_zstd_write_exact(xx_io_device *device, const void *buffer,
-                                size_t size, xx_pd_struct *progress) {
+                                size_t size, xx_pd_struct *progress, size_t io_capacity) {
     const uint8_t *bytes = (const uint8_t *)buffer;
     size_t done = 0;
 
@@ -68,8 +72,8 @@ static bool xx_zstd_write_exact(xx_io_device *device, const void *buffer,
     while (done < size) {
         size_t chunk = size - done;
         ssize_t amount;
-        if (chunk > 64U * 1024U) {
-            chunk = 64U * 1024U;
+        if (chunk > io_capacity) {
+            chunk = io_capacity;
         }
         if (progress && xx_pd_is_stopped(progress)) {
             return false;
@@ -147,10 +151,32 @@ bool xx_zstd_compress_memory(const void *source, size_t source_size,
 }
 
 bool xx_zstd_decompress_memory(const void *source, size_t source_size,
-                               void *destination, size_t destination_size,
-                               size_t *out_written) {
+                              void *destination, size_t destination_size,
+                              size_t *out_written) {
     return xx_zstd_decode_frames(source, source_size, destination,
                                  destination_size, out_written);
+}
+
+bool xx_zstd_decompress_memory_bounded(const void *source, size_t source_size,
+                                       void *destination, size_t destination_capacity,
+                                       size_t *out_written) {
+    return xx_zstd_decompress_memory_bounded_ex(source, source_size,
+                                                destination,
+                                                destination_capacity,
+                                                out_written, NULL);
+}
+
+bool xx_zstd_decompress_memory_bounded_ex(const void *source,
+                                          size_t source_size,
+                                          void *destination,
+                                          size_t destination_capacity,
+                                          size_t *out_written,
+                                          bool *needs_more_output) {
+    return xx_zstd_decode_frames_bounded_retry(source, source_size,
+                                                destination,
+                                                destination_capacity,
+                                                out_written,
+                                                needs_more_output);
 }
 
 static bool xx_zstd_pack_device_internal(xx_io_device *source,
@@ -160,6 +186,7 @@ static bool xx_zstd_pack_device_internal(xx_io_device *source,
                                          xx_pd_struct *progress,
                                          size_t *out_compressed_size,
                                          uint32_t *out_crc32) {
+    const size_t io_capacity = xx_get_file_buffer_size();
     uint8_t *input = NULL;
     uint8_t *output = NULL;
     size_t input_size;
@@ -205,8 +232,8 @@ static bool xx_zstd_pack_device_internal(xx_io_device *source,
     while (offset < input_size) {
         size_t chunk = input_size - offset;
         ssize_t amount;
-        if (chunk > 64U * 1024U) {
-            chunk = 64U * 1024U;
+        if (chunk > io_capacity) {
+            chunk = io_capacity;
         }
         if (progress && xx_pd_is_stopped(progress)) {
             goto cleanup;
@@ -231,7 +258,7 @@ static bool xx_zstd_pack_device_internal(xx_io_device *source,
         (progress && xx_pd_is_stopped(progress))) {
         goto cleanup;
     }
-    if (!xx_zstd_write_exact(destination, output, compressed_size, progress)) {
+    if (!xx_zstd_write_exact(destination, output, compressed_size, progress, io_capacity)) {
         goto cleanup;
     }
 
@@ -321,6 +348,7 @@ cleanup:
 bool xx_zstd_unpack_device_to_device(xx_io_device *source, int64_t source_offset,
                                      int64_t compressed_size, xx_io_device *destination,
                                      uint64_t uncompressed_size, xx_pd_struct *progress) {
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!source || !destination || source_offset < 0 || compressed_size < 0 ||
         (uint64_t)compressed_size > (uint64_t)SIZE_MAX ||
         uncompressed_size > (uint64_t)SIZE_MAX) {
@@ -341,7 +369,7 @@ bool xx_zstd_unpack_device_to_device(xx_io_device *source, int64_t source_offset
     }
 
     bool success = xx_io_seek64(source, source_offset, SEEK_SET) == 0 &&
-                   xx_zstd_read_exact(source, input, input_size);
+                   xx_zstd_read_exact(source, input, input_size, io_capacity);
     if (success) {
         size_t result = 0;
         success = xx_zstd_decompress_memory(input, input_size, output,
@@ -350,7 +378,7 @@ bool xx_zstd_unpack_device_to_device(xx_io_device *source, int64_t source_offset
     }
     if (success && output_size > 0) {
         success = xx_zstd_write_exact(destination, output, output_size,
-                                      progress);
+                                      progress, io_capacity);
     }
 
     xx_mem_free(input);

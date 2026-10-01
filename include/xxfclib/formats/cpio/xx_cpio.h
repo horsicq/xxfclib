@@ -22,7 +22,8 @@ typedef enum xx_cpio_variant_e {
     XX_CPIO_VARIANT_BINARY_LE,
     XX_CPIO_VARIANT_BINARY_BE,
     /* Solaris block-compressed CPIO wrapper (0x199E 'TL' / 0x199E 'TG').
-     * The members below the wrapper are ordinary newc/CRC records. */
+     * The reconstructed stream is exposed as payload.cpio (or a numbered
+     * collision-safe name) alongside safely extractable newc/CRC members. */
     XX_CPIO_VARIANT_SOLARIS
 } xx_cpio_variant_t;
 

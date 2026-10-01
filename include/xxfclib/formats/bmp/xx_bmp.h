@@ -46,8 +46,8 @@
  * files (binwalk's own tests/inputs/bmp.bin among them) store a value larger
  * than the pixel array.
  *
- * Not an archive: binwalk "extracts" a BMP by carving the image itself, so
- * there are no members to publish.
+ * The component archive API publishes the DIB header, optional palette/masks
+ * and encoded pixel array separately. It does not decode pixels or BMP RLE.
  */
 
 #ifndef XXFCLIB_FORMAT_BMP_H

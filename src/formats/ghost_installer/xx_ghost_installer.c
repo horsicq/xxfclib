@@ -28,11 +28,35 @@
  * with 1..32768 plain bytes per block, and a file table behind the folder
  * table whose entries name a folder of this cabinet (or one of the three
  * "continued" markers) and carry a NUL-terminated name without control
- * characters.  The probe allocates nothing and reads the cabinet's tables
- * through a 4 KiB window; the CFDATA walk is capped at one block per nine
- * cabinet bytes, the smallest a block can occupy.
+ * characters.  The folders' CFDATA chains must start in strictly ascending
+ * order, as every cabinet writer lays them out, so no two folders share a
+ * chain.  The probe allocates two read windows of the file-buffer size
+ * (64 KiB by default, never more than the file): one moves forward through
+ * the header, folder and file tables, the other through the CFDATA chains.
+ * The CFDATA walk is capped at one block per nine cabinet bytes, the
+ * smallest a block can occupy, and the bytes the two windows read for one
+ * cabinet are capped at twice its size plus four windows each.
+ *
+ * Extraction decodes each folder at most once per failure: a folder that
+ * failed is never tried again, and the bytes decoded over one reading
+ * session are capped at twice the sum of all folders plus 64 MiB, so
+ * members that alternate between folders cannot force a decode each.
+ * STORE and MSZIP folders are decoded only as far as their members reach.
+ *
+ * Names: at most 256 bytes each ([MS-CAB] CB_MAX_FILENAME) and 32 MiB
+ * stored in total per package (Latin-1 names count double), checked the
+ * same way by the probe, the base info and the listing.  Duplicates are
+ * found with a merge sort over folded keys, and a renamed member keeps only
+ * its new name (the rename suffix position recovers its own name), so the
+ * listing holds the names plus, while it deduplicates, one folded copy.
+ *
+ * A later segment that the previous trailer announces and whose signature
+ * is present, but which cannot be read, is reported (flag, placeholder
+ * record "[damaged segment N]", format size up to its end) instead of the
+ * package silently ending before it.
  */
 
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/ghost_installer/xx_ghost_installer.h"
 
@@ -67,15 +91,16 @@
 #define GI_DATA 8U               /* CFDATA header without its reserve */
 #define GI_SMALLEST_CABINET (GI_HEADER + GI_FOLDER + GI_FILE + 2U + GI_DATA + 1U)
 #define GI_MAX_HEADER_RESERVE 60000U
-#define GI_MAX_NAME 1024U
+#define GI_MAX_NAME 256U         /* CB_MAX_FILENAME of [MS-CAB] */
+#define GI_NAME_BUDGET ((uint64_t)32U << 20U) /* stored name bytes, package */
 #define GI_MAX_TEXT 256U         /* previous / next cabinet and disk names */
 #define GI_MAX_BLOCK 32768U      /* plain bytes of one CFDATA block */
 #define GI_MAX_RECORDS 262144U
 #define GI_MAX_FOLDERS 262144U   /* over all segments of one package */
 #define GI_DEFAULT_LIMIT ((uint64_t)256U << 20U) /* folder decode buffers */
 #define GI_MSZIP_STEP ((size_t)1U << 20U)          /* first MSZIP output buffer */
+#define GI_DECODE_SLACK ((uint64_t)64U << 20U)     /* re-decodes allowed beyond 2x */
 #define GI_RENAME_PASSES 4U
-#define GI_BUFFER 4096U
 #define GI_NO_FOLDER UINT32_MAX
 
 #define GI_FLAG_PREV 1U
@@ -99,6 +124,7 @@ typedef struct gi_folder_s {
     int64_t data_offset;   /* absolute offset of the first CFDATA */
     uint64_t plain_size;   /* sum of cbUncomp */
     uint64_t packed_size;  /* sum of cbData */
+    uint64_t needed;       /* plain bytes its members reach (at least 1) */
     uint32_t blocks;
     uint16_t type;
     uint8_t data_reserve;
@@ -106,7 +132,8 @@ typedef struct gi_folder_s {
 
 typedef struct gi_member_s {
     char *name;            /* UTF-8, '/'-separated, after renaming */
-    char *original;        /* name before the first rename, else NULL */
+    uint32_t suffix_at;    /* where the rename suffix starts in name */
+    uint32_t suffix_length; /* 0 when the name is the archive's own */
     uint32_t size;
     uint32_t folder_offset;
     uint32_t folder;       /* index into gi_package.folders, or GI_NO_FOLDER */
@@ -118,7 +145,9 @@ typedef struct gi_member_s {
 
 /* Sort order of two members: folded name, original names before renamed
  * ones, then record order. */
-static int gi_member_order(const gi_member *members, size_t left, size_t right);
+static int gi_member_order(const gi_member *members,
+                           const uint8_t *const *keys, size_t left,
+                           size_t right);
 
 typedef struct gi_package_s {
     gi_folder *folders;
@@ -134,11 +163,16 @@ typedef struct gi_package_s {
     uint32_t segment_count;
     uint32_t first_trailer;
     bool is_sfx;
+    uint64_t name_bytes;      /* stored name bytes, capped at GI_NAME_BUDGET */
+    uint32_t damaged_index;   /* 1-based announced segment that failed, or 0 */
     /* reading session */
     size_t index;
     size_t cached_folder;
     uint8_t *cache;
     size_t cache_size;
+    uint8_t *failed;          /* one flag per folder: decode failed once */
+    uint64_t decode_budget;   /* packed + plain bytes one session may decode */
+    uint64_t decoded;         /* charged so far, failed attempts included */
 } gi_package;
 
 typedef struct gi_reader_s {
@@ -146,7 +180,9 @@ typedef struct gi_reader_s {
     int64_t total;
     int64_t start;
     size_t length;
-    uint8_t buffer[GI_BUFFER];
+    uint8_t *buffer;
+    size_t capacity;
+    uint64_t read_total;      /* bytes read from the device */
 } gi_reader;
 
 /* ------------------------------------------------------------ reading -- */
@@ -163,37 +199,51 @@ static uint32_t gi_u32(const uint8_t *p) {
 static bool gi_raw_read(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || offset < 0 || (!buffer && size != 0U) ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
-                                    size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+                                    request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
 }
 
 static bool gi_reader_open(gi_reader *reader, xx_io_device *device) {
+    reader->buffer = NULL;
+    reader->capacity = xx_get_file_buffer_size();
     reader->device = device;
     reader->total = device ? xx_io_total_size(device) : -1;
     reader->start = 0;
     reader->length = 0U;
-    return reader->total > 0;
+    reader->read_total = 0U;
+    if (reader->total <= 0) return false;
+    if ((uint64_t)reader->total < reader->capacity)
+        reader->capacity = (size_t)reader->total;
+    reader->buffer = (uint8_t *)xx_mem_alloc(reader->capacity);
+    return reader->buffer != NULL;
 }
 
-/** Clear bytes at @p offset, through a 4 KiB window for small requests. */
+/** Clear bytes at @p offset, using the captured file-buffer capacity. */
 static bool gi_get(gi_reader *reader, int64_t offset, void *out, size_t size) {
     if (offset < 0 || offset > reader->total ||
         (uint64_t)size > (uint64_t)(reader->total - offset))
         return false;
-    if (size > GI_BUFFER) return gi_raw_read(reader->device, offset, out, size);
+    if (size > reader->capacity) {
+        reader->read_total += size;
+        return gi_raw_read(reader->device, offset, out, size);
+    }
     if (reader->length == 0U || offset < reader->start ||
         (uint64_t)(offset - reader->start) + size > reader->length) {
-        size_t want = GI_BUFFER;
+        size_t want = reader->capacity;
         if ((uint64_t)want > (uint64_t)(reader->total - offset))
             want = (size_t)(reader->total - offset);
+        reader->read_total += want;
         if (!gi_raw_read(reader->device, offset, reader->buffer, want)) {
             reader->length = 0U;
             return false;
@@ -399,6 +449,16 @@ static char *gi_make_name(const uint8_t *raw, size_t length) {
     return name;
 }
 
+/** Bytes gi_make_name stores for @p raw, its NUL included. */
+static uint64_t gi_name_cost(const uint8_t *raw, size_t length) {
+    size_t index;
+    uint64_t cost = (uint64_t)length + 1U;
+    if (gi_utf8_valid(raw, length)) return cost;
+    for (index = 0U; index < length; ++index)
+        if (raw[index] >= 0x80U) ++cost;
+    return cost;
+}
+
 static uint8_t gi_fold(uint8_t c) {
     return (c >= (uint8_t)'a' && c <= (uint8_t)'z') ? (uint8_t)(c - 0x20U) : c;
 }
@@ -465,46 +525,162 @@ static bool gi_name_safe(const char *name) {
     }
 }
 
-static int gi_name_compare(const char *left, const char *right) {
-    const uint8_t *a = (const uint8_t *)left;
-    const uint8_t *b = (const uint8_t *)right;
-    for (;;) {
-        uint8_t x = gi_fold(*a++);
-        uint8_t y = gi_fold(*b++);
-        if (x != y) return x < y ? -1 : 1;
-        if (x == 0U) return 0;
+/* Next code point of a name built by gi_make_name (always UTF-8); a stray
+ * byte stands for itself. */
+static uint32_t gi_next_code(const uint8_t **cursor) {
+    const uint8_t *p = *cursor;
+    uint32_t c = p[0];
+    if (c >= 0xC2U && c <= 0xDFU && (p[1] & 0xC0U) == 0x80U) {
+        *cursor = p + 2;
+        return ((c & 0x1FU) << 6U) | (p[1] & 0x3FU);
     }
+    if (c >= 0xE0U && c <= 0xEFU && (p[1] & 0xC0U) == 0x80U &&
+        (p[2] & 0xC0U) == 0x80U) {
+        *cursor = p + 3;
+        return ((c & 0x0FU) << 12U) | ((uint32_t)(p[1] & 0x3FU) << 6U) |
+               (p[2] & 0x3FU);
+    }
+    if (c >= 0xF0U && c <= 0xF4U && (p[1] & 0xC0U) == 0x80U &&
+        (p[2] & 0xC0U) == 0x80U && (p[3] & 0xC0U) == 0x80U) {
+        *cursor = p + 4;
+        return ((c & 0x07U) << 18U) | ((uint32_t)(p[1] & 0x3FU) << 12U) |
+               ((uint32_t)(p[2] & 0x3FU) << 6U) | (p[3] & 0x3FU);
+    }
+    *cursor = p + (c != 0U ? 1 : 0);
+    return c;
 }
 
-static int gi_member_order(const gi_member *members, size_t left,
+/* Upper case as the NTFS upcase table has it for the scripts installers
+ * use: ASCII, Latin-1, Latin Extended-A, Greek, Cyrillic, fullwidth ASCII. */
+static uint32_t gi_upcase(uint32_t c) {
+    if (c >= 'a' && c <= 'z') return c - 0x20U;
+    if (c < 0x80U) return c;
+    if (c >= 0xE0U && c <= 0xFEU && c != 0xF7U) return c - 0x20U;
+    if (c == 0xFFU) return 0x178U;
+    if (c >= 0x100U && c <= 0x17FU) {
+        if ((c >= 0x139U && c <= 0x148U) || (c >= 0x179U && c <= 0x17EU))
+            return (c & 1U) == 0U ? c - 1U : c;
+        if ((c >= 0x100U && c <= 0x137U) || (c >= 0x14AU && c <= 0x177U))
+            return c & ~1U;
+        return c;
+    }
+    if (c == 0x3C2U) return 0x3A3U;
+    if (c >= 0x3B1U && c <= 0x3CBU) return c - 0x20U;
+    if (c >= 0x430U && c <= 0x44FU) return c - 0x20U;
+    if (c >= 0x450U && c <= 0x45FU) return c - 0x50U;
+    if (c == 0x4CFU) return 0x4C0U;
+    if (c >= 0x460U && c <= 0x4FFU && !(c >= 0x482U && c <= 0x489U))
+        return (c >= 0x4C1U && c <= 0x4CEU) ? ((c & 1U) == 0U ? c - 1U : c)
+                                            : (c & ~1U);
+    if (c >= 0xFF41U && c <= 0xFF5AU) return c - 0x20U;
+    return c;
+}
+
+/* Encode code point @p c as UTF-8 at @p out (NULL: only count). */
+static size_t gi_put_utf8(uint8_t *out, uint32_t c) {
+    if (c < 0x80U) {
+        if (out) out[0] = (uint8_t)c;
+        return 1U;
+    }
+    if (c < 0x800U) {
+        if (out) {
+            out[0] = (uint8_t)(0xC0U | (c >> 6U));
+            out[1] = (uint8_t)(0x80U | (c & 0x3FU));
+        }
+        return 2U;
+    }
+    if (c < 0x10000U) {
+        if (out) {
+            out[0] = (uint8_t)(0xE0U | (c >> 12U));
+            out[1] = (uint8_t)(0x80U | ((c >> 6U) & 0x3FU));
+            out[2] = (uint8_t)(0x80U | (c & 0x3FU));
+        }
+        return 3U;
+    }
+    if (out) {
+        out[0] = (uint8_t)(0xF0U | (c >> 18U));
+        out[1] = (uint8_t)(0x80U | ((c >> 12U) & 0x3FU));
+        out[2] = (uint8_t)(0x80U | ((c >> 6U) & 0x3FU));
+        out[3] = (uint8_t)(0x80U | (c & 0x3FU));
+    }
+    return 4U;
+}
+
+/**
+ * The name upper-cased the way a Windows volume compares names (gi_upcase
+ * per code point), as NUL-terminated UTF-8 at @p out; NULL only counts.
+ * UTF-8 keeps code point order, so two keys compare byte by byte exactly as
+ * their names compare case-insensitively.  Returns the bytes, NUL included.
+ */
+static size_t gi_fold_key(const char *name, uint8_t *out) {
+    const uint8_t *cursor = (const uint8_t *)name;
+    size_t at = 0U;
+    for (;;) {
+        uint32_t c = gi_upcase(gi_next_code(&cursor));
+        if (c == 0U) break;
+        at += gi_put_utf8(out ? out + at : NULL, c);
+    }
+    if (out) out[at] = 0U;
+    return at + 1U;
+}
+
+static int gi_key_compare(const uint8_t *a, const uint8_t *b) {
+    while (*a == *b && *a != 0U) {
+        ++a;
+        ++b;
+    }
+    return *a == *b ? 0 : (*a < *b ? -1 : 1);
+}
+
+/* Folded name, names the archive carries before renamed ones, then record
+ * order: a strict total order, so the sort is deterministic. */
+static int gi_member_order(const gi_member *members,
+                           const uint8_t *const *keys, size_t left,
                            size_t right) {
-    int names = gi_name_compare(members[left].name, members[right].name);
-    bool left_renamed = members[left].original != NULL;
-    bool right_renamed = members[right].original != NULL;
+    int names = gi_key_compare(keys[left], keys[right]);
+    bool left_renamed = members[left].suffix_length != 0U;
+    bool right_renamed = members[right].suffix_length != 0U;
     if (names != 0) return names;
     if (left_renamed != right_renamed) return left_renamed ? 1 : -1;
     return left < right ? -1 : (left > right ? 1 : 0);
 }
 
-/* Shell sort of member indices by gi_member_order. */
-static void gi_sort(size_t *order, size_t count, const gi_member *members) {
-    size_t gap = 1U;
+/* Bottom-up merge sort of member indices by gi_member_order: n log n
+ * compares whatever the input; @p scratch holds @p count indices. */
+static bool gi_sort(size_t *order, size_t *scratch, size_t count,
+                    const gi_member *members, const uint8_t *const *keys,
+                    xx_pd_struct *pd) {
+    size_t width;
     size_t index;
+    size_t *from = order;
+    size_t *to = scratch;
     for (index = 0U; index < count; ++index) order[index] = index;
-    while (gap < count / 3U) gap = gap * 3U + 1U;
-    for (; gap > 0U; gap /= 3U) {
-        for (index = gap; index < count; ++index) {
-            size_t value = order[index];
-            size_t slot = index;
-            while (slot >= gap) {
-                size_t other = order[slot - gap];
-                if (gi_member_order(members, value, other) > 0) break;
-                order[slot] = other;
-                slot -= gap;
-            }
-            order[slot] = value;
+    for (width = 1U; width < count; width = width > count / 2U ? count
+                                                                 : width * 2U) {
+        size_t start;
+        size_t *swap;
+        if (pd && xx_pd_is_stopped(pd)) return false;
+        for (start = 0U; start < count; start += 2U * width) {
+            size_t middle = start + width < count ? start + width : count;
+            size_t end = middle + width < count ? middle + width : count;
+            size_t left = start;
+            size_t right = middle;
+            size_t at = start;
+            while (left < middle && right < end)
+                to[at++] = gi_member_order(members, keys, from[left],
+                                               from[right]) <= 0
+                               ? from[left++]
+                               : from[right++];
+            while (left < middle) to[at++] = from[left++];
+            while (right < end) to[at++] = from[right++];
+            if (end == count) break;
         }
+        swap = from;
+        from = to;
+        to = swap;
     }
+    if (from != order) xx_mem_copy(order, from, count * sizeof(*order));
+    return true;
 }
 
 static size_t gi_put_decimal(char *out, uint64_t value) {
@@ -520,24 +696,35 @@ static size_t gi_put_decimal(char *out, uint64_t value) {
     return count;
 }
 
-/* "<stem>_<number>[_<pass>]<extension>" in the last path component. */
-static char *gi_renamed(const char *name, size_t number, unsigned pass) {
-    size_t length = xx_str_len(name);
+/* "<stem>_<number>[_<pass>]<extension>" in the last path component of the
+ * member's own name (its name without an earlier suffix).  The member's
+ * name and suffix position are replaced; nothing else is kept, so a rename
+ * costs no more than the suffix. */
+static bool gi_rename(gi_member *member, size_t number, unsigned pass) {
+    const char *name = member->name;
+    size_t full = xx_str_len(name);
+    size_t cut_at = member->suffix_length != 0U ? member->suffix_at : full;
+    size_t cut = member->suffix_length;
+    size_t length = full - cut; /* length of the member's own name */
     size_t component = 0U;
-    size_t insert = length;
+    size_t insert;
     size_t index;
     size_t at;
     char suffix[56];
     size_t suffix_length = 0U;
     char *out;
+    /* Byte @p i of the own name. */
+#define GI_OWN(i) (name[(i) < cut_at ? (i) : (i) + cut])
     for (index = 0U; index < length; ++index)
-        if (name[index] == '/') component = index + 1U;
+        if (GI_OWN(index) == '/') component = index + 1U;
+    insert = length;
     for (index = length; index > component + 1U; --index) {
-        if (name[index - 1U] == '.') {
+        if (GI_OWN(index - 1U) == '.') {
             insert = index - 1U;
             break;
         }
     }
+#undef GI_OWN
     suffix[suffix_length++] = '_';
     suffix_length += gi_put_decimal(suffix + suffix_length, (uint64_t)number);
     if (pass != 0U) {
@@ -545,64 +732,86 @@ static char *gi_renamed(const char *name, size_t number, unsigned pass) {
         suffix_length += gi_put_decimal(suffix + suffix_length, pass);
     }
     out = (char *)xx_mem_alloc(length + suffix_length + 1U);
-    if (!out) return NULL;
+    if (!out) return false;
     at = 0U;
-    xx_mem_copy(out, name, insert);
-    at += insert;
-    xx_mem_copy(out + at, suffix, suffix_length);
-    at += suffix_length;
-    xx_mem_copy(out + at, name + insert, length - insert);
-    at += length - insert;
+    for (index = 0U; index < length; ++index) {
+        if (index == insert) {
+            xx_mem_copy(out + at, suffix, suffix_length);
+            at += suffix_length;
+        }
+        out[at++] = name[index < cut_at ? index : index + cut];
+    }
+    if (insert == length) {
+        xx_mem_copy(out + at, suffix, suffix_length);
+        at += suffix_length;
+    }
     out[at] = 0;
-    return out;
+    xx_mem_free(member->name);
+    member->name = out;
+    member->suffix_at = (uint32_t)insert;
+    member->suffix_length = (uint32_t)suffix_length;
+    return true;
 }
 
 /**
- * Names compared ASCII case-insensitively are made unique: every later
+ * Names compared case-insensitively (gi_fold_key) are made unique: every later
  * duplicate gets "_<record number>" before its extension, always derived
  * from its original name, and a name the archive itself carries is never
  * the one renamed in favour of a renamed one.  A name that is still shared
  * after a few passes is listed but never extracted.
  */
-static bool gi_dedupe(gi_package *package) {
+static bool gi_dedupe(gi_package *package, xx_pd_struct *pd) {
     size_t count = package->member_count;
     size_t *order;
+    size_t *scratch;
     uint8_t *victims;
+    const uint8_t **keys;
+    uint8_t *arena = NULL;
     unsigned pass;
     size_t index;
     bool result = false;
     if (count < 2U) return true;
     order = (size_t *)xx_mem_calloc(count, sizeof(*order));
+    scratch = (size_t *)xx_mem_calloc(count, sizeof(*scratch));
     victims = (uint8_t *)xx_mem_calloc(count, 1U);
-    if (!order || !victims) goto done;
+    keys = (const uint8_t **)xx_mem_calloc(count, sizeof(*keys));
+    if (!order || !scratch || !victims || !keys) goto done;
     for (pass = 0U; pass <= GI_RENAME_PASSES; ++pass) {
         bool changed = false;
+        size_t arena_size = 0U;
+        size_t at = 0U;
+        if (pd && xx_pd_is_stopped(pd)) goto done;
+        /* One folded key per member, rebuilt each pass (names change); the
+         * names are capped at GI_NAME_BUDGET, so this stays bounded. */
+        for (index = 0U; index < count; ++index) {
+            size_t size = gi_fold_key(package->members[index].name, NULL);
+            if (size > SIZE_MAX - arena_size) goto done;
+            arena_size += size;
+        }
+        if (arena) xx_mem_free(arena);
+        arena = (uint8_t *)xx_mem_alloc(arena_size);
+        if (!arena) goto done;
+        for (index = 0U; index < count; ++index) {
+            keys[index] = arena + at;
+            at += gi_fold_key(package->members[index].name, arena + at);
+        }
         /* Decide every victim against the names as they stand, then
          * rename, so a fresh name is only judged in the next pass. */
-        gi_sort(order, count, package->members);
+        if (!gi_sort(order, scratch, count, package->members, keys, pd))
+            goto done;
         xx_mem_zero(victims, count);
         for (index = 1U; index < count; ++index) {
-            if (gi_name_compare(package->members[order[index - 1U]].name,
-                                package->members[order[index]].name) == 0)
+            if (gi_key_compare(keys[order[index - 1U]], keys[order[index]]) == 0)
                 victims[order[index]] = 1U;
         }
         for (index = 0U; index < count; ++index) {
             gi_member *victim = &package->members[index];
-            const char *source;
-            char *fresh;
             if (!victims[index]) continue;
             if (pass == GI_RENAME_PASSES) {
                 victim->extractable = false;
                 continue;
             }
-            source = victim->original ? victim->original : victim->name;
-            fresh = gi_renamed(source, index + 1U, pass);
-            if (!fresh) goto done;
-            if (victim->original)
-                xx_mem_free(victim->name);
-            else
-                victim->original = victim->name;
-            victim->name = fresh;
+            if (!gi_rename(victim, index + 1U, pass)) goto done;
             changed = true;
         }
         if (!changed) break;
@@ -610,7 +819,10 @@ static bool gi_dedupe(gi_package *package) {
     result = true;
 done:
     if (order) xx_mem_free(order);
+    if (scratch) xx_mem_free(scratch);
     if (victims) xx_mem_free(victims);
+    if (keys) xx_mem_free((void *)keys);
+    if (arena) xx_mem_free(arena);
     return result;
 }
 
@@ -651,9 +863,7 @@ static bool gi_skip_text(gi_reader *reader, int64_t end, int64_t *at) {
 
 static void gi_member_release(gi_member *member) {
     if (member->name) xx_mem_free(member->name);
-    if (member->original) xx_mem_free(member->original);
     member->name = NULL;
-    member->original = NULL;
 }
 
 static bool gi_grow(void **items, size_t *capacity, size_t needed,
@@ -676,11 +886,14 @@ static bool gi_grow(void **items, size_t *capacity, size_t needed,
 
 /**
  * Validate the cabinet at @p at and, with @p package, append its folders
- * and members.  On failure nothing is left appended.
+ * and members.  @p name_bytes carries the stored name bytes of the package
+ * so far; a cabinet that would take it past GI_NAME_BUDGET is refused, in
+ * the probe and the listing alike.  On failure nothing is left appended.
  */
-static bool gi_parse_cabinet(gi_reader *reader, int64_t at,
+static bool gi_parse_cabinet(gi_reader *reader, gi_reader *chain, int64_t at,
                              gi_package *package, uint32_t *folder_total,
-                             int64_t *cabinet_end, uint32_t *file_count) {
+                             uint64_t *name_bytes, int64_t *cabinet_end,
+                             uint32_t *file_count) {
     uint8_t header[GI_HEADER];
     uint32_t cabinet;
     uint32_t files_at;
@@ -690,8 +903,12 @@ static bool gi_parse_cabinet(gi_reader *reader, int64_t at,
     uint32_t folder_reserve = 0U;
     uint32_t data_reserve = 0U;
     uint64_t budget;
+    uint64_t names = *name_bytes;
+    uint64_t read_base = reader->read_total + chain->read_total;
+    uint64_t read_cap;
     int64_t end;
     int64_t position;
+    int64_t previous_start;
     size_t first_folder = package ? package->folder_count : 0U;
     size_t first_member = package ? package->member_count : 0U;
     uint32_t index;
@@ -713,6 +930,11 @@ static bool gi_parse_cabinet(gi_reader *reader, int64_t at,
         return false;
     end = at + (int64_t)cabinet;
     position = at + (int64_t)GI_HEADER;
+    /* In a well-formed cabinet both windows only move forward, so each reads
+     * about the cabinet once; more than this is a layout that is refused. */
+    read_cap = 2U * (uint64_t)cabinet +
+               4U * ((uint64_t)reader->capacity + chain->capacity) + 4096U;
+    previous_start = position - 1;
     if ((flags & GI_FLAG_RESERVE) != 0U) {
         uint8_t reserve[4];
         uint32_t header_reserve;
@@ -741,8 +963,10 @@ static bool gi_parse_cabinet(gi_reader *reader, int64_t at,
          !gi_grow((void **)&package->folders, &package->folder_capacity,
                   package->folder_count + folders, sizeof(gi_folder))))
         return false;
-    /* No two blocks of a well-formed cabinet overlap and each takes at least
-     * nine bytes, so this bounds the walk whatever the folders claim. */
+    /* Chains start in strictly ascending order (checked below), so no two
+     * folders share a chain; a block takes at least nine bytes, which bounds
+     * the visits, and read_cap bounds the bytes read however the chains of
+     * a damaged cabinet overlap. */
     budget = (uint64_t)cabinet / (GI_DATA + 1U) + 1U;
     for (index = 0U; index < folders; ++index) {
         uint8_t entry[GI_FOLDER];
@@ -760,17 +984,20 @@ static bool gi_parse_cabinet(gi_reader *reader, int64_t at,
         folder.type = gi_u16(entry + 6U);
         folder.data_reserve = (uint8_t)data_reserve;
         if (gi_u32(entry) < GI_HEADER || gi_u32(entry) >= cabinet ||
-            folder.blocks == 0U || !gi_type_known(folder.type))
+            folder.data_offset <= previous_start || folder.blocks == 0U ||
+            !gi_type_known(folder.type))
             goto fail;
         cursor = folder.data_offset;
         for (block = 0U; block < folder.blocks; ++block) {
             uint8_t data[GI_DATA];
             uint32_t packed;
             uint32_t plain;
-            if (budget == 0U) goto fail;
+            if (budget == 0U ||
+                reader->read_total + chain->read_total - read_base > read_cap)
+                goto fail;
             --budget;
             if ((int64_t)(GI_DATA + data_reserve) > end - cursor ||
-                !gi_get_cabinet(reader, cursor, data, sizeof(data)))
+                !gi_get_cabinet(chain, cursor, data, sizeof(data)))
                 goto fail;
             packed = gi_u16(data + 4U);
             plain = gi_u16(data + 6U);
@@ -783,6 +1010,7 @@ static bool gi_parse_cabinet(gi_reader *reader, int64_t at,
             folder.plain_size += plain;
             folder.packed_size += packed;
         }
+        previous_start = folder.data_offset;
         if (package) package->folders[package->folder_count++] = folder;
     }
 
@@ -798,6 +1026,7 @@ static bool gi_parse_cabinet(gi_reader *reader, int64_t at,
         size_t length = 0U;
         uint32_t folder;
         if ((int64_t)GI_FILE > end - position ||
+            reader->read_total + chain->read_total - read_base > read_cap ||
             !gi_get_cabinet(reader, position, entry, sizeof(entry)))
             goto fail;
         position += (int64_t)GI_FILE;
@@ -810,6 +1039,10 @@ static bool gi_parse_cabinet(gi_reader *reader, int64_t at,
             if (name[length] < 0x20U || ++length > GI_MAX_NAME) goto fail;
         }
         if (length == 0U) goto fail;
+        /* Stored names (Latin-1 doubles) of the whole package are capped,
+         * which bounds the listing's memory and the duplicate search. */
+        names += gi_name_cost(name, length);
+        if (names > GI_NAME_BUDGET) goto fail;
         position += (int64_t)length + 1;
         folder = gi_u16(entry + 8U);
         if (folder >= folders && folder < 0xFFFDU) goto fail;
@@ -842,6 +1075,7 @@ static bool gi_parse_cabinet(gi_reader *reader, int64_t at,
     *cabinet_end = end;
     *file_count = files;
     *folder_total += folders;
+    *name_bytes = names;
     return true;
 fail:
     if (package) {
@@ -861,16 +1095,70 @@ static void gi_package_free(void *opaque) {
     if (package->members) xx_mem_free(package->members);
     if (package->folders) xx_mem_free(package->folders);
     if (package->cache) xx_mem_free(package->cache);
+    if (package->failed) xx_mem_free(package->failed);
     xx_mem_free(package);
+}
+
+/** The eight masked signature bytes at @p offset, whatever follows them. */
+static bool gi_starts_segment(gi_reader *reader, int64_t offset) {
+    uint8_t head[GI_MAGIC_SIZE];
+    return offset >= 0 && offset <= reader->total &&
+           reader->total - offset >= (int64_t)GI_MAGIC_SIZE &&
+           gi_get(reader, offset, head, sizeof(head)) &&
+           xx_rt_memcmp(head, gi_magic, sizeof(head)) == 0;
+}
+
+/** End of a segment that could not be read: its declared cabinet end when
+ * that header field is readable and inside the device, else the device end. */
+static int64_t gi_damaged_end(gi_reader *reader, int64_t at) {
+    uint8_t header[12];
+    if (reader->total - at >= (int64_t)sizeof(header) &&
+        gi_get_cabinet(reader, at, header, sizeof(header)) &&
+        header[0] == 'M' && header[1] == 'S' && header[2] == 'C' &&
+        header[3] == 'F' && gi_u32(header + 8U) >= GI_MAGIC_SIZE &&
+        (int64_t)gi_u32(header + 8U) <= reader->total - at)
+        return at + (int64_t)gi_u32(header + 8U);
+    return reader->total;
+}
+
+/** Placeholder member "[damaged segment N]": listed, never extracted. */
+static bool gi_add_damaged(gi_package *package, uint32_t number) {
+    static const char prefix[] = "[damaged segment ";
+    gi_member member;
+    size_t at = sizeof(prefix) - 1U;
+    char *name = (char *)xx_mem_alloc(sizeof(prefix) + 24U);
+    if (!name ||
+        !gi_grow((void **)&package->members, &package->member_capacity,
+                 package->member_count + 1U, sizeof(gi_member))) {
+        if (name) xx_mem_free(name);
+        return false;
+    }
+    xx_mem_copy(name, prefix, at);
+    at += gi_put_decimal(name + at, number);
+    name[at++] = ']';
+    name[at] = 0;
+    xx_mem_zero(&member, sizeof(member));
+    member.name = name;
+    member.folder = GI_NO_FOLDER;
+    member.extractable = false;
+    package->members[package->member_count++] = member;
+    return true;
 }
 
 /**
  * Locate and walk the package.  @p first_only stops after the first
  * cabinet (the probe); @p collect keeps folders and members.
+ *
+ * A later segment that is announced - the previous segment's trailer is
+ * followed by the masked signature - but cannot be read (damaged,
+ * truncated, over the record, folder, name or segment caps) is not dropped
+ * silently: the package counts one extra, unextractable record for it, and
+ * its bytes belong to the format.
  */
 static bool gi_parse(Abstractformat *format, bool first_only, bool collect,
-                     gi_package *out) {
+                     gi_package *out, xx_pd_struct *pd) {
     gi_reader stack_reader;
+    gi_reader chain_reader;
     gi_reader *reader = &stack_reader;
     gi_package *target = collect ? out : NULL;
     int64_t at;
@@ -879,31 +1167,46 @@ static bool gi_parse(Abstractformat *format, bool first_only, bool collect,
 
     if (!format || !format->device || !out || format->base_address < 0)
         return false;
+    chain_reader.buffer = NULL;
     if (!gi_reader_open(reader, format->device) ||
+        !gi_reader_open(&chain_reader, format->device) ||
         format->base_address >= reader->total ||
         !gi_locate(reader, format->base_address, &out->payload_offset,
                    &out->is_sfx))
         goto done;
     at = out->payload_offset;
-    for (segment = 0U; segment < GI_MAX_SEGMENTS; ++segment) {
+    for (segment = 0U;; ++segment) {
         int64_t cabinet_end = 0;
         uint32_t files = 0U;
         uint32_t trailer;
         size_t folders_before = target ? target->folder_count : 0U;
-        if (segment != 0U && !gi_has_magic(reader, at)) break;
-        if (!gi_parse_cabinet(reader, at, target, &out->folder_total,
-                              &cabinet_end, &files)) {
-            if (segment == 0U) goto done;
-            break;
-        }
-        if (out->record_count + files > GI_MAX_RECORDS) {
-            if (segment == 0U) goto done;
+        uint32_t folder_total_before = out->folder_total;
+        uint64_t name_bytes_before = out->name_bytes;
+        bool fits;
+        if (pd && xx_pd_is_stopped(pd)) goto done;
+        if (segment != 0U && !gi_starts_segment(reader, at)) break;
+        fits = segment < GI_MAX_SEGMENTS &&
+               gi_parse_cabinet(reader, &chain_reader, at, target,
+                                &out->folder_total, &out->name_bytes,
+                                &cabinet_end, &files);
+        if (fits && out->record_count + files > GI_MAX_RECORDS) {
+            fits = false;
             if (target) {
                 /* Drop the cabinet that does not fit. */
                 while (target->member_count > out->record_count)
                     gi_member_release(&target->members[--target->member_count]);
                 target->folder_count = folders_before;
             }
+            out->folder_total = folder_total_before;
+            out->name_bytes = name_bytes_before;
+        }
+        if (!fits) {
+            if (segment == 0U) goto done;
+            /* Announced by the previous trailer, signature present. */
+            out->damaged_index = segment + 1U;
+            out->payload_end = gi_damaged_end(reader, at);
+            ++out->record_count;
+            if (target && !gi_add_damaged(target, segment + 1U)) goto done;
             break;
         }
         out->record_count += files;
@@ -916,6 +1219,8 @@ static bool gi_parse(Abstractformat *format, bool first_only, bool collect,
     }
     result = out->segment_count != 0U;
 done:
+    if (reader->buffer) xx_mem_free(reader->buffer);
+    if (chain_reader.buffer) xx_mem_free(chain_reader.buffer);
     return result;
 }
 
@@ -1019,35 +1324,49 @@ static bool gi_decode_folder(Abstractformat *format, gi_package *package,
     size_t packed_used = 0U;
     size_t plain_used = 0U;
     size_t output_capacity;
+    size_t target;         /* plain bytes decoded: whole blocks up to needed */
+    uint32_t used_blocks = 0U;
     int64_t cursor = folder->data_offset;
     uint32_t block;
     bool ok = false;
 
     if (package->cache && package->cached_folder == index) return true;
+    /* A folder that failed once fails again; never pay for it twice. */
+    if (!package->failed || package->failed[index]) return false;
     if (package->cache) {
         xx_mem_free(package->cache);
         package->cache = NULL;
         package->cache_size = 0U;
     }
-    if (folder->plain_size == 0U || folder->plain_size > limit ||
-        folder->packed_size > limit - folder->plain_size ||
-        folder->plain_size > SIZE_MAX || folder->packed_size > SIZE_MAX)
+    /* STORE and MSZIP folders are decoded only up to the block that holds
+     * the furthest byte a member of the folder reaches (folder->needed):
+     * their CFDATA blocks decode in order, so a prefix of the blocks is a
+     * prefix of the folder.  LZX and Quantum need the whole folder (an LZX
+     * block may span frames), so for them needed is the folder size. */
+    if (folder->plain_size == 0U || folder->needed == 0U ||
+        folder->needed > folder->plain_size || folder->needed > limit ||
+        folder->packed_size > limit - folder->needed ||
+        folder->plain_size > SIZE_MAX || folder->packed_size > SIZE_MAX) {
+        package->failed[index] = 1U;
         return false;
+    }
+    /* Members that alternate between folders would re-decode each time;
+     * the session budget stops that (attempts are charged up front). */
+    if (folder->needed + folder->packed_size >
+        package->decode_budget - package->decoded)
+        return false;
+    package->decoded += folder->needed + folder->packed_size;
     /* MSZIP grows its output block by block, so a folder that claims far
      * more than its data holds fails before the whole buffer exists; LZX
-     * and Quantum decode the folder in one call into its full size. */
-    output_capacity = (size_t)folder->plain_size;
-    if (method == GI_MSZIP && output_capacity > GI_MSZIP_STEP)
-        output_capacity = GI_MSZIP_STEP;
-    output = (uint8_t *)xx_mem_alloc(output_capacity);
+     * and Quantum decode the prefix in one call into its full size. */
+    target = (size_t)folder->needed;
     packed = (uint8_t *)xx_mem_alloc((size_t)folder->packed_size);
     blocks = (const uint8_t **)xx_mem_calloc(folder->blocks, sizeof(*blocks));
     packed_sizes = (size_t *)xx_mem_calloc(folder->blocks, sizeof(*packed_sizes));
     plain_sizes = (size_t *)xx_mem_calloc(folder->blocks, sizeof(*plain_sizes));
-    if (!output || !packed || !blocks || !packed_sizes || !plain_sizes)
-        goto done;
+    if (!packed || !blocks || !packed_sizes || !plain_sizes) goto done;
 
-    for (block = 0U; block < folder->blocks; ++block) {
+    for (block = 0U; block < folder->blocks && plain_used < target; ++block) {
         uint8_t header[GI_DATA];
         uint32_t stored_sum;
         size_t size;
@@ -1079,12 +1398,19 @@ static bool gi_decode_folder(Abstractformat *format, gi_package *package,
         packed_used += size;
         plain_used += plain;
     }
-    if (plain_used != (size_t)folder->plain_size) goto done;
+    if (plain_used < target) goto done;
+    used_blocks = block;
+    target = plain_used; /* the needed bytes rounded up to a block end */
+    output_capacity = target;
+    if (method == GI_MSZIP && output_capacity > GI_MSZIP_STEP)
+        output_capacity = GI_MSZIP_STEP;
+    output = (uint8_t *)xx_mem_alloc(output_capacity);
+    if (!output) goto done;
 
     switch (method) {
     case GI_STORE:
         plain_used = 0U;
-        for (block = 0U; block < folder->blocks; ++block) {
+        for (block = 0U; block < used_blocks; ++block) {
             if (packed_sizes[block] != plain_sizes[block]) goto done;
             xx_mem_copy(output + plain_used, blocks[block], plain_sizes[block]);
             plain_used += plain_sizes[block];
@@ -1096,13 +1422,13 @@ static bool gi_decode_folder(Abstractformat *format, gi_package *package,
         scratch_out = (uint8_t *)xx_mem_alloc(32768U + GI_MAX_BLOCK);
         if (!scratch_in || !scratch_out) goto done;
         plain_used = 0U;
-        for (block = 0U; block < folder->blocks; ++block) {
+        for (block = 0U; block < used_blocks; ++block) {
             if (pd && xx_pd_is_stopped(pd)) goto done;
             if (plain_sizes[block] > output_capacity - plain_used) {
-                size_t whole = (size_t)folder->plain_size;
+                size_t whole = target;
                 size_t grown_capacity = output_capacity;
                 uint8_t *grown;
-                /* Doubling, capped at the folder size, which the block
+                /* Doubling, capped at the decoded size, which the block
                  * walk above showed is where plain_used ends. */
                 while (plain_sizes[block] > grown_capacity - plain_used)
                     grown_capacity = grown_capacity > whole / 2U
@@ -1123,18 +1449,17 @@ static bool gi_decode_folder(Abstractformat *format, gi_package *package,
         break;
     case GI_LZX: {
         size_t wrote = 0U;
-        ok = xx_lzx_cab_decode(blocks, packed_sizes, plain_sizes,
-                               folder->blocks, window, output,
-                               (size_t)folder->plain_size, &wrote) &&
-             wrote == (size_t)folder->plain_size;
+        ok = xx_lzx_cab_decode(blocks, packed_sizes, plain_sizes, used_blocks,
+                               window, output, target, &wrote) &&
+             wrote == target;
         break;
     }
     case GI_QUANTUM: {
         size_t wrote = 0U;
         ok = xx_quantum_cab_decode(blocks, packed_sizes, plain_sizes,
-                                   folder->blocks, window, output,
-                                   (size_t)folder->plain_size, &wrote) &&
-             wrote == (size_t)folder->plain_size;
+                                   used_blocks, window, output, target,
+                                   &wrote) &&
+             wrote == target;
         break;
     }
     default:
@@ -1142,11 +1467,13 @@ static bool gi_decode_folder(Abstractformat *format, gi_package *package,
     }
     if (ok) {
         package->cache = output;
-        package->cache_size = (size_t)folder->plain_size;
+        package->cache_size = target;
         package->cached_folder = index;
         output = NULL;
     }
 done:
+    /* A cancelled decode is not the folder's fault. */
+    if (!ok && !(pd && xx_pd_is_stopped(pd))) package->failed[index] = 1U;
     if (output) xx_mem_free(output);
     if (packed) xx_mem_free(packed);
     if (blocks) xx_mem_free((void *)blocks);
@@ -1206,9 +1533,12 @@ static bool gi_set_record(xx_archive_record *record, const gi_package *package,
 static bool gi_write_all(xx_io_device *output, const uint8_t *data,
                          size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     while (done < size) {
-        ssize_t amount = xx_io_write(output, data + done, size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
+        ssize_t amount = xx_io_write(output, data + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -1266,25 +1596,25 @@ void xx_ghost_installer_free(xx_ghost_installer *archive) {
 
 bool xx_ghost_installer_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     gi_package package;
-    (void)pd;
     xx_mem_zero(&package, sizeof(package));
-    return gi_parse(self, true, false, &package);
+    return gi_parse(self, true, false, &package, pd);
 }
 
 bool xx_ghost_installer_handle_base_info(Abstractformat *self,
                                          xx_pd_struct *pd) {
     gi_package package;
     xx_ghost_installer *archive = (xx_ghost_installer *)self;
-    (void)pd;
     if (!self) return false;
     xx_mem_zero(&package, sizeof(package));
-    if (!gi_parse(self, false, false, &package)) return false;
+    if (!gi_parse(self, false, false, &package, pd)) return false;
     archive->number_of_records = package.record_count;
     archive->payload_offset = package.payload_offset;
     archive->payload_end = package.payload_end;
     archive->segment_count = package.segment_count;
     archive->first_trailer = package.first_trailer;
     archive->is_sfx = package.is_sfx;
+    archive->damaged_segment = package.damaged_index != 0U;
+    archive->damaged_index = package.damaged_index;
     if (package.is_sfx) xx_format_set_extension(self, "exe");
     self->number_of_archive_records = package.record_count;
     self->format_size = package.payload_end - self->base_address;
@@ -1313,17 +1643,53 @@ xx_archive_record_state *xx_ghost_installer_create_archive_records_reading(
     Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
     gi_package *package;
     xx_archive_record_state *state;
-    (void)pd;
+    size_t index;
     if (!self) return NULL;
     package = (gi_package *)xx_mem_calloc(1U, sizeof(*package));
     if (!package) return NULL;
-    if (!gi_parse(self, false, true, package) || package->member_count == 0U ||
-        !gi_dedupe(package)) {
+    if (!gi_parse(self, false, true, package, pd) ||
+        package->member_count == 0U || !gi_dedupe(package, pd)) {
         gi_package_free(package);
         return NULL;
     }
+    /* How far into each folder its members reach (see gi_decode_folder). */
+    for (index = 0U; index < package->member_count; ++index) {
+        const gi_member *member = &package->members[index];
+        gi_folder *folder;
+        uint64_t end;
+        if (member->folder == GI_NO_FOLDER) continue;
+        folder = &package->folders[member->folder];
+        end = (uint64_t)member->folder_offset + member->size;
+        if (end <= folder->plain_size && end > folder->needed)
+            folder->needed = end;
+    }
+    for (index = 0U; index < package->folder_count; ++index) {
+        gi_folder *folder = &package->folders[index];
+        uint32_t method = folder->type & 0x0FU;
+        if (folder->needed == 0U) folder->needed = 1U;
+        if (method == GI_LZX || method == GI_QUANTUM)
+            folder->needed = folder->plain_size;
+    }
     package->cached_folder = SIZE_MAX;
-    state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
+    package->failed = (uint8_t *)xx_mem_calloc(
+        package->folder_count ? package->folder_count : 1U, 1U);
+    if (!package->failed) {
+        gi_package_free(package);
+        return NULL;
+    }
+    /* Every folder may be decoded twice, plus 64 MiB of slack; saturating.
+     * A folder holds at most 65535 blocks of 32 KiB plain and 64 KiB packed,
+     * and there are at most GI_MAX_FOLDERS folders, so the sum fits. */
+    {
+        uint64_t sum = 0U;
+        for (index = 0U; index < package->folder_count; ++index)
+            sum += package->folders[index].needed +
+                   package->folders[index].packed_size;
+        package->decode_budget = sum > (UINT64_MAX - GI_DECODE_SLACK) / 2U
+                                     ? UINT64_MAX
+                                     : 2U * sum + GI_DECODE_SLACK;
+    }
+    state =(xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
     if (!state) {
         gi_package_free(package);
         return NULL;
@@ -1377,6 +1743,7 @@ bool xx_ghost_installer_unpack_current_archive_record(
     size_t base_length;
     bool overwrite;
     bool result;
+    bool created = false;
 
     if (!self || !self->device || !state || state->format != self ||
         !state->has_record || (pd && xx_pd_is_stopped(pd)))
@@ -1432,10 +1799,12 @@ bool xx_ghost_installer_unpack_current_archive_record(
         xx_str_free(target);
         return false;
     }
+    created = true;
     result = gi_write_all(output, package->cache + member->folder_offset,
                           member->size);
     if (xx_io_close(output) != 0) result = false;
-    if (!result) xx_rt_remove(target);
+    /* Only a file this call opened is removed (never a pre-existing one). */
+    if (!result && created) xx_rt_remove(target);
     xx_str_free(target);
     return result;
 }
@@ -1460,4 +1829,9 @@ uint32_t xx_ghost_installer_get_segment_count(
 
 bool xx_ghost_installer_is_sfx(const xx_ghost_installer *archive) {
     return archive ? archive->is_sfx : false;
+}
+
+bool xx_ghost_installer_has_damaged_segment(
+    const xx_ghost_installer *archive) {
+    return archive ? archive->damaged_segment : false;
 }

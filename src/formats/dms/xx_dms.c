@@ -13,6 +13,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/formats/dms/xx_dms.h"
 
 #include "xxfclib/algo/store/xx_store.h"
@@ -84,47 +85,8 @@
 #define XX_DMS_DEEP_NODES (XX_DMS_DEEP_SYMBOLS * 2U - 1U)
 #define XX_DMS_DEEP_ROOT (XX_DMS_DEEP_SYMBOLS * 2U - 2U)
 
-static const uint16_t xx_dms_crc16_table[256] = {
-    0x0000, 0xc0c1, 0xc181, 0x0140, 0xc301, 0x03c0, 0x0280, 0xc241, 0xc601,
-    0x06c0, 0x0780, 0xc741, 0x0500, 0xc5c1, 0xc481, 0x0440, 0xcc01, 0x0cc0,
-    0x0d80, 0xcd41, 0x0f00, 0xcfc1, 0xce81, 0x0e40, 0x0a00, 0xcac1, 0xcb81,
-    0x0b40, 0xc901, 0x09c0, 0x0880, 0xc841, 0xd801, 0x18c0, 0x1980, 0xd941,
-    0x1b00, 0xdbc1, 0xda81, 0x1a40, 0x1e00, 0xdec1, 0xdf81, 0x1f40, 0xdd01,
-    0x1dc0, 0x1c80, 0xdc41, 0x1400, 0xd4c1, 0xd581, 0x1540, 0xd701, 0x17c0,
-    0x1680, 0xd641, 0xd201, 0x12c0, 0x1380, 0xd341, 0x1100, 0xd1c1, 0xd081,
-    0x1040, 0xf001, 0x30c0, 0x3180, 0xf141, 0x3300, 0xf3c1, 0xf281, 0x3240,
-    0x3600, 0xf6c1, 0xf781, 0x3740, 0xf501, 0x35c0, 0x3480, 0xf441, 0x3c00,
-    0xfcc1, 0xfd81, 0x3d40, 0xff01, 0x3fc0, 0x3e80, 0xfe41, 0xfa01, 0x3ac0,
-    0x3b80, 0xfb41, 0x3900, 0xf9c1, 0xf881, 0x3840, 0x2800, 0xe8c1, 0xe981,
-    0x2940, 0xeb01, 0x2bc0, 0x2a80, 0xea41, 0xee01, 0x2ec0, 0x2f80, 0xef41,
-    0x2d00, 0xedc1, 0xec81, 0x2c40, 0xe401, 0x24c0, 0x2580, 0xe541, 0x2700,
-    0xe7c1, 0xe681, 0x2640, 0x2200, 0xe2c1, 0xe381, 0x2340, 0xe101, 0x21c0,
-    0x2080, 0xe041, 0xa001, 0x60c0, 0x6180, 0xa141, 0x6300, 0xa3c1, 0xa281,
-    0x6240, 0x6600, 0xa6c1, 0xa781, 0x6740, 0xa501, 0x65c0, 0x6480, 0xa441,
-    0x6c00, 0xacc1, 0xad81, 0x6d40, 0xaf01, 0x6fc0, 0x6e80, 0xae41, 0xaa01,
-    0x6ac0, 0x6b80, 0xab41, 0x6900, 0xa9c1, 0xa881, 0x6840, 0x7800, 0xb8c1,
-    0xb981, 0x7940, 0xbb01, 0x7bc0, 0x7a80, 0xba41, 0xbe01, 0x7ec0, 0x7f80,
-    0xbf41, 0x7d00, 0xbdc1, 0xbc81, 0x7c40, 0xb401, 0x74c0, 0x7580, 0xb541,
-    0x7700, 0xb7c1, 0xb681, 0x7640, 0x7200, 0xb2c1, 0xb381, 0x7340, 0xb101,
-    0x71c0, 0x7080, 0xb041, 0x5000, 0x90c1, 0x9181, 0x5140, 0x9301, 0x53c0,
-    0x5280, 0x9241, 0x9601, 0x56c0, 0x5780, 0x9741, 0x5500, 0x95c1, 0x9481,
-    0x5440, 0x9c01, 0x5cc0, 0x5d80, 0x9d41, 0x5f00, 0x9fc1, 0x9e81, 0x5e40,
-    0x5a00, 0x9ac1, 0x9b81, 0x5b40, 0x9901, 0x59c0, 0x5880, 0x9841, 0x8801,
-    0x48c0, 0x4980, 0x8941, 0x4b00, 0x8bc1, 0x8a81, 0x4a40, 0x4e00, 0x8ec1,
-    0x8f81, 0x4f40, 0x8d01, 0x4dc0, 0x4c80, 0x8c41, 0x4400, 0x84c1, 0x8581,
-    0x4540, 0x8701, 0x47c0, 0x4680, 0x8641, 0x8201, 0x42c0, 0x4380, 0x8341,
-    0x4100, 0x81c1, 0x8081, 0x4040};
-
 static uint16_t xx_dms_crc16(const uint8_t *data, size_t size) {
-    uint16_t accumulator = 0U;
-    size_t index;
-    if (!data) return 0U;
-    for (index = 0U; index < size; ++index) {
-        accumulator = (uint16_t)((accumulator >> 8) ^
-                                 xx_dms_crc16_table[(accumulator & 0xffU) ^
-                                                    data[index]]);
-    }
-    return accumulator;
+    return xx_crc16_arc_calc(0U, data, size);
 }
 
 /* The per-track checksum is a plain additive sum truncated to 16 bits. */
@@ -176,6 +138,7 @@ typedef struct xx_dms_private_s {
     uint32_t last_track;
     uint32_t context_size; /**< Largest LZ window any recorded track needs. */
     uint32_t tmp_size;     /**< Largest intermediate buffer any track needs. */
+    uint32_t missing_tracks; /**< Tracks of [first, last] with no chunk. */
     bool is_hd;
     bool is_obfuscated;
 } xx_dms_private;
@@ -922,7 +885,10 @@ static bool xx_dms_handle_track_size(const xx_dms_output *output) {
 }
 
 /* The heavy modes are allowed to lose the very last byte of a track, which
- * the stored additive checksum lets us reconstruct. */
+ * the stored additive checksum lets us reconstruct. Only a byte that is
+ * really missing is rebuilt: a complete track whose checksum disagrees is
+ * left alone so that the caller's checksum test rejects it, and the fix
+ * never touches a byte outside the chunk's own slot. */
 static bool xx_dms_apply_fix(xx_dms_decoder *decoder, xx_dms_output *output,
                              uint32_t mode, uint32_t raw_length,
                              size_t image_offset, uint16_t file_sum) {
@@ -930,16 +896,15 @@ static bool xx_dms_apply_fix(xx_dms_decoder *decoder, xx_dms_output *output,
     uint16_t proto_sum;
     if (mode < XX_DMS_MODE_HEAVY1) return xx_dms_handle_track_size(output);
     missing = output->end - output->offset;
+    if (missing == 0U) return true;
     if (missing > 1U || raw_length < missing) return false;
     proto_sum = xx_dms_checksum(decoder->raw + image_offset,
                                 raw_length - missing);
-    if (missing != 0U) {
-        xx_dms_write_byte(output, 0U);
-        if (output->failed) return false;
-    }
+    xx_dms_write_byte(output, 0U);
+    if (output->failed) return false;
     if (proto_sum != file_sum) {
         uint16_t fix;
-        if (output->offset == 0U) return false;
+        if (output->offset <= image_offset) return false;
         proto_sum = (uint16_t)(proto_sum - decoder->raw[output->offset - 1U]);
         fix = (uint16_t)(file_sum - proto_sum);
         if (fix >= 0x100U) return false;
@@ -1072,7 +1037,8 @@ static void xx_dms_private_cleanup(xx_dms_private *parsed) {
  * Copyright (C) Jason Summers): the header's first/last track fields give
  * the disk's range unless both are zero with a size field missing, and
  * inside that range the LAST chunk carrying a track number is the real
- * one. Everything else is an "extra" chunk, published as a record of its
+ * one, and an image exists only when every track of the range is present.
+ * Everything else is an "extra" chunk, published as a record of its
  * own. */
 
 /* Whether a chunk can be a disk track at all. From xDMS's unpack rule, a
@@ -1270,6 +1236,14 @@ static bool xx_dms_parse(Abstractformat *self, xx_dms_private *parsed,
     }
     parsed->first_track = first;
     parsed->last_track = last;
+    /* Deark's rule, the part that decides whether an image exists at all:
+     * every track of the range must be present. A chain cut short by
+     * truncation or a damaged chunk leaves some out; the tracks that are
+     * there still extract, but disk.adf is not claimed complete. */
+    parsed->missing_tracks = 0U;
+    for (number = first; number <= last; ++number) {
+        if (chosen[number] < 0) ++parsed->missing_tracks;
+    }
     parsed->raw_offset = lowest_real * track_size;
     parsed->raw_size =
         (highest_real - lowest_real) * track_size +
@@ -1517,8 +1491,6 @@ static bool xx_dms_decode_all(Abstractformat *self,
         return false;
     }
     packed = (uint8_t *)xx_mem_alloc(parsed->packed_size);
-    /* Tracks the archive never mentions read back as zeros, like an
-     * unwritten floppy. */
     result->image = (uint8_t *)xx_mem_calloc(parsed->raw_size, 1U);
     result->track_ok = (uint8_t *)xx_mem_calloc(parsed->count, 1U);
     if (!packed || !result->image || !result->track_ok) goto done;
@@ -1540,7 +1512,8 @@ static bool xx_dms_decode_all(Abstractformat *self,
             xx_dms_decoder_create(parsed, result->extra, parsed->extra_size);
         if (!extra_chain.decoder || !info_chain.decoder) goto done;
     }
-    result->image_ok = parsed->data_count != 0U;
+    result->image_ok =
+        parsed->data_count != 0U && parsed->missing_tracks == 0U;
     for (index = 0U; index < parsed->count; ++index) {
         const xx_dms_track *track = &parsed->tracks[index];
         xx_dms_chain *chain;
@@ -1747,6 +1720,40 @@ static bool xx_dms_safe_name(const char *name) {
             return false;
         }
     }
+    return true;
+}
+
+/* A disk whose only missing tracks are at the advertised end still has a
+ * useful, byte-exact ADF prefix.  Never publish an image with an interior
+ * hole, a missing first track, or an unverified track. */
+static bool xx_dms_verified_image_prefix(const xx_dms_private *parsed,
+                                         const xx_dms_result *result) {
+    uint8_t present[XX_DMS_TRACKS_PER_DISK] = {0};
+    uint32_t highest, number;
+    size_t index;
+    if (!parsed || !result || !result->image || !result->track_ok ||
+        parsed->missing_tracks == 0U || parsed->first_track != 0U ||
+        parsed->raw_offset != 0U || parsed->track_size == 0U ||
+        parsed->raw_size == 0U) return false;
+    highest = (parsed->raw_size - 1U) / parsed->track_size;
+    if (highest >= XX_DMS_TRACKS_PER_DISK ||
+        parsed->last_track <= highest ||
+        parsed->missing_tracks != parsed->last_track - highest) return false;
+    for (index = 0U; index < parsed->count; ++index) {
+        const xx_dms_track *track = &parsed->tracks[index];
+        uint32_t expected;
+        if (!track->is_real) continue;
+        number = track->number;
+        if (number > highest || present[number] || !result->track_ok[index] ||
+            track->image_offset != number * parsed->track_size) return false;
+        expected = number == highest
+                       ? parsed->raw_size - number * parsed->track_size
+                       : parsed->track_size;
+        if (track->raw_size != expected) return false;
+        present[number] = 1U;
+    }
+    for (number = 0U; number <= highest; ++number)
+        if (!present[number]) return false;
     return true;
 }
 
@@ -1992,8 +1999,11 @@ bool xx_dms_unpack_current_archive_record(Abstractformat *self,
         stream->decoded = true;
     }
     if (stream->index == 0U) {
-        /* The image is only whole when every real track verified. */
-        if (!stream->result.image_ok) return false;
+        /* A verified prefix is useful when only trailing advertised tracks
+         * are absent; its published size is the real decoded length. */
+        if (!stream->result.image_ok &&
+            !xx_dms_verified_image_prefix(&stream->parsed, &stream->result))
+            return false;
         blob = stream->result.image;
         blob_size = stream->parsed.raw_size;
     } else {

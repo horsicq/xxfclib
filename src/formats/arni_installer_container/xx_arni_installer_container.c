@@ -40,6 +40,7 @@
 #include "xxfclib/algo/lzhuf/xx_lzhuf.h"
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/io/xx_io.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 
@@ -86,7 +87,6 @@
 #define ARNI_MAX_WALKS 4U          /* RCDATA leaves walked per locate */
 #define ARNI_MAX_CONTAINER INT64_C(0x10000000)
 #define ARNI_SCAN_BUDGET INT64_C(0x20000000) /* bytes scanned per locate */
-#define ARNI_SCAN_CHUNK 0x10000
 /* An LZHUF match costs at least one code bit and nine position bits and
  * yields at most 60 bytes, so no stream expands by more than 48 to 1. */
 #define ARNI_MAX_RATIO 48
@@ -119,13 +119,16 @@ static uint32_t arni_le32(const uint8_t *bytes) {
 static bool arni_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
     size_t done = 0U;
+    const size_t io_capacity = xx_get_file_buffer_size();
     if (!device || (!buffer && size != 0U) || offset < 0 ||
         xx_io_seek64(device, offset, SEEK_SET) != 0)
         return false;
     while (done < size) {
+        size_t request = size - done;
+        if (request > io_capacity) request = io_capacity;
         ssize_t amount =
-            xx_io_read(device, (uint8_t *)buffer + done, size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+            xx_io_read(device, (uint8_t *)buffer + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
         done += (size_t)amount;
     }
     return true;
@@ -161,6 +164,8 @@ typedef struct arni_window_s {
     int64_t length;
     int64_t *budget;
     uint8_t *data;
+    size_t io_capacity;
+    uint8_t frame[ARNI_PROBE]; /* One complete header, independent of staging. */
 } arni_window;
 
 static bool arni_window_open(arni_window *window, xx_io_device *device,
@@ -171,7 +176,8 @@ static bool arni_window_open(arni_window *window, xx_io_device *device,
     window->end = end;
     window->budget = budget;
     window->start = -1;
-    window->data = (uint8_t *)xx_mem_alloc(ARNI_SCAN_CHUNK + ARNI_PROBE);
+    window->io_capacity = xx_get_file_buffer_size();
+    window->data = (uint8_t *)xx_mem_alloc(window->io_capacity);
     return window->data != NULL;
 }
 
@@ -189,8 +195,8 @@ static bool arni_window_load(arni_window *window, int64_t offset,
         offset + need <= window->start + window->length)
         return true;
     length = window->end - offset;
-    if (length > ARNI_SCAN_CHUNK + ARNI_PROBE)
-        length = ARNI_SCAN_CHUNK + ARNI_PROBE;
+    if ((uint64_t)length > window->io_capacity)
+        length = (int64_t)window->io_capacity;
     if (*window->budget < length) return false;
     *window->budget -= length;
     window->start = -1;
@@ -202,24 +208,35 @@ static bool arni_window_load(arni_window *window, int64_t offset,
     return true;
 }
 
+/* Assemble the fixed header through the reusable captured-size cache. */
+static bool arni_window_probe(arni_window *window, int64_t offset) {
+    size_t i;
+    if (offset < 0 || offset > window->end - ARNI_PROBE) return false;
+    for (i = 0U; i < ARNI_PROBE; ++i) {
+        int64_t at = offset + (int64_t)i;
+        if (!arni_window_load(window, at, 1)) return false;
+        window->frame[i] = window->data[at - window->start];
+    }
+    return true;
+}
+
 /* The first offset at or after @p from that holds a member header or the end
  * record; -1 when there is none before the window's end. */
 static int64_t arni_find_header(arni_window *window, int64_t from,
                                 xx_pd_struct *pd) {
     int64_t position = from;
+    if (!arni_window_probe(window, position)) return -1;
     while (position <= window->end - ARNI_PROBE) {
-        const uint8_t *bytes;
-        int64_t last;
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !arni_window_load(window, position, ARNI_PROBE))
-            return -1;
-        bytes = window->data + (position - window->start);
-        last = window->start + window->length - ARNI_PROBE;
-        for (; position <= last; ++position, ++bytes) {
-            if (bytes[0] == 'A' &&
-                arni_classify(bytes, NULL) != ARNI_KIND_NONE)
-                return position;
-        }
+        int64_t next;
+        if (pd && xx_pd_is_stopped(pd)) return -1;
+        if (window->frame[0] == 'A' &&
+            arni_classify(window->frame, NULL) != ARNI_KIND_NONE) return position;
+        if (position == window->end - ARNI_PROBE) break;
+        next = position + ARNI_PROBE;
+        if (!arni_window_load(window, next, 1)) return -1;
+        xx_rt_memmove(window->frame, window->frame + 1U, ARNI_PROBE - 1U);
+        window->frame[ARNI_PROBE - 1U] = window->data[next - window->start];
+        ++position;
     }
     return -1;
 }
@@ -302,9 +319,9 @@ static bool arni_walk(xx_io_device *device, int64_t base, int64_t start,
         int64_t unpacked = 0, data, next, packed;
         int kind;
         if ((pd && xx_pd_is_stopped(pd)) || count >= ARNI_MAX_MEMBERS ||
-            !arni_window_load(&window, offset, ARNI_PROBE))
+            !arni_window_probe(&window, offset))
             break;
-        kind = arni_classify(window.data + (offset - window.start),
+        kind = arni_classify(window.frame,
                              &unpacked);
         if (kind == ARNI_KIND_END) {
             if (count == 0U) break;
