@@ -1,0 +1,22 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com>
+ * SPDX-License-Identifier: MIT
+ * Layout reference: https://raw.githubusercontent.com/libertyernie/brawltools/master/BrawlLib/SSBB/Types/BRES.cs
+ * BRRES v0 big endian resource dictionary entries. Exports encoded resource sections; embedded string pool references retain their original offsets.
+ */
+#ifndef XX_NINTENDO_BRRES_H
+#define XX_NINTENDO_BRRES_H
+#include "xxfclib/formats/xx_format.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
+typedef struct xx_nintendo_brres { Abstractformat format; } xx_nintendo_brres;
+XXFC_API void xx_nintendo_brres_init(xx_nintendo_brres *,xx_io_device *,int64_t);
+XXFC_API xx_nintendo_brres *xx_nintendo_brres_create(xx_io_device *,int64_t);
+XXFC_API void xx_nintendo_brres_destroy(xx_nintendo_brres *);
+XXFC_API void xx_nintendo_brres_free(xx_nintendo_brres *);
+XXFC_API bool xx_nintendo_brres_check_is_valid(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_nintendo_brres_handle_base_info(Abstractformat *,xx_pd_struct *);
+#ifdef __cplusplus
+}
+#endif
+#endif

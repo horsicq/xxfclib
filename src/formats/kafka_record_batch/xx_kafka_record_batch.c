@@ -1,0 +1,20 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com>
+ * SPDX-License-Identifier: MIT
+ * Bounded primary-layout reader. Payloads are never executed.
+ */
+/* Primary layout: https://kafka.apache.org/43/implementation/message-format/ */
+#include "xxfclib/formats/kafka_record_batch/xx_kafka_record_batch.h"
+#include "../nix_nar/xx_eleventh_containers.h"
+
+static bool ka_bytes(Abstractformat *f,pm_stream *s,nh_blob *b,uint64_t *at,uint64_t end,const char *name,bool nullable,bool utf) {int64_t n;if(!ec_zig(b,at,end,&n) || n< (nullable ? -1:0) || n>67108864) return false;if(n==-1) return true;if(!eh_span(*at,(uint64_t)n,end) || !nh_span(b,*at,(uint64_t)n) || (utf && !ec_utf(b,*at,(uint64_t)n)) || !nh_add(f,s,b,name,*at,(uint64_t)n)) return false;*at+=(uint64_t)n;return true;}
+static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {nh_blob b;uint64_t at=0,end,i,j,recend,start,prev=0;int64_t n,ts,off,headers;uint32_t count,last;uint16_t attr;bool ok=false;if(!nh_load(f,&b,pd)) return false;while(at<b.n) {NH_NEED(nh_span(&b,at,61) && b.p[(size_t)at+16]==2 && !(ec_be64(b.p+(size_t)at)>>63));n=pm_be32(b.p+(size_t)at+8);NH_NEED(n>=49 && nh_span(&b,at,(uint64_t)n+12));end=at+(uint64_t)n+12;attr=pm_be16(b.p+(size_t)at+21);last=pm_be32(b.p+(size_t)at+23);count=pm_be32(b.p+(size_t)at+57);NH_NEED(!(attr&0xffe7U) && count && count<=2048 && !(last&0x80000000U) && ec_crc(&b,at+21,end-at-21,pm_be32(b.p+(size_t)at+17),true) && nh_add(f,s,&b,"batch-header",at,61));at+=61;
+        for(i=0;i<count;++i) {NH_NEED(ec_zig(&b,&at,end,&n) && n>=7 && eh_span(at,(uint64_t)n,end));recend=at+(uint64_t)n;start=at;NH_NEED(nh_span(&b,at,1) && !b.p[(size_t)at++] && ec_zig(&b,&at,recend,&ts) && ec_zig(&b,&at,recend,&off) && off>=0 && (uint64_t)off<=last && (!i || (uint64_t)off>prev));prev=(uint64_t)off;NH_NEED(nh_add(f,s,&b,"record-prefix",start,at-start) && ka_bytes(f,s,&b,&at,recend,"key",true,false) && ka_bytes(f,s,&b,&at,recend,"value",true,false) && ec_zig(&b,&at,recend,&headers) && headers>=0 && headers<=256);for(j=0;j<(uint64_t)headers;++j) NH_NEED(ka_bytes(f,s,&b,&at,recend,"header-key",false,true) && ka_bytes(f,s,&b,&at,recend,"header-value",true,false));NH_NEED(at==recend);}
+        NH_NEED(at==end);
+    }NH_NEED(s->count);s->size=(int64_t)b.n;ok=true;done:xx_mem_free(b.p);return ok;}
+
+void xx_kafka_record_batch_init(xx_kafka_record_batch *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_KAFKA_RECORD_BATCH,"batch"); } }
+xx_kafka_record_batch *xx_kafka_record_batch_create(xx_io_device *d,int64_t b) { xx_kafka_record_batch *r=(xx_kafka_record_batch *)xx_mem_alloc(sizeof(*r)); if(r) xx_kafka_record_batch_init(r,d,b); return r; }
+void xx_kafka_record_batch_destroy(xx_kafka_record_batch *r) { if(r) xx_format_cleanup_extra_parameters(&r->format); }
+void xx_kafka_record_batch_free(xx_kafka_record_batch *r) { if(r) { xx_kafka_record_batch_destroy(r); xx_mem_free(r); } }
+bool xx_kafka_record_batch_check_is_valid(Abstractformat *f,xx_pd_struct *pd) { return pm_valid(f,pd); }
+bool xx_kafka_record_batch_handle_base_info(Abstractformat *f,xx_pd_struct *pd) { return pm_handle(f,pd); }

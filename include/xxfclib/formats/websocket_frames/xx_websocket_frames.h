@@ -1,0 +1,21 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com>
+ * SPDX-License-Identifier: MIT
+ * Bounded primary grammar. Payloads are never executed.
+ */
+#ifndef XX_WEBSOCKET_FRAMES_H
+#define XX_WEBSOCKET_FRAMES_H
+#include "xxfclib/formats/xx_format.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
+typedef struct xx_websocket_frames {Abstractformat format;} xx_websocket_frames;
+XXFC_API void xx_websocket_frames_init(xx_websocket_frames *,xx_io_device *,int64_t);
+XXFC_API xx_websocket_frames *xx_websocket_frames_create(xx_io_device *,int64_t);
+XXFC_API void xx_websocket_frames_destroy(xx_websocket_frames *);
+XXFC_API void xx_websocket_frames_free(xx_websocket_frames *);
+XXFC_API bool xx_websocket_frames_check_is_valid(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_websocket_frames_handle_base_info(Abstractformat *,xx_pd_struct *);
+#ifdef __cplusplus
+}
+#endif
+#endif

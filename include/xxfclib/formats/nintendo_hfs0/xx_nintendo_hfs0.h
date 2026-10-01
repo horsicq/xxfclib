@@ -1,0 +1,22 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com>
+ * SPDX-License-Identifier: MIT
+ * Layout reference: https://github.com/SciresM/hactool/blob/master/hfs0.h
+ * Stored partition files with bounded string/range tables and numeric names. SHA-256 hashed prefix verified; suffix-dependent gamecard variants are rejected.
+ */
+#ifndef XX_NINTENDO_HFS0_H
+#define XX_NINTENDO_HFS0_H
+#include "xxfclib/formats/xx_format.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
+typedef struct xx_nintendo_hfs0 { Abstractformat format; } xx_nintendo_hfs0;
+XXFC_API void xx_nintendo_hfs0_init(xx_nintendo_hfs0 *,xx_io_device *,int64_t);
+XXFC_API xx_nintendo_hfs0 *xx_nintendo_hfs0_create(xx_io_device *,int64_t);
+XXFC_API void xx_nintendo_hfs0_destroy(xx_nintendo_hfs0 *);
+XXFC_API void xx_nintendo_hfs0_free(xx_nintendo_hfs0 *);
+XXFC_API bool xx_nintendo_hfs0_check_is_valid(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_nintendo_hfs0_handle_base_info(Abstractformat *,xx_pd_struct *);
+#ifdef __cplusplus
+}
+#endif
+#endif

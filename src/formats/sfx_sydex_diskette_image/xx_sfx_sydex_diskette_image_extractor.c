@@ -1,0 +1,72 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
+
+/* xx_sfx_sydex_diskette_image_extractor.c - search raw data for Sydex self-extracting diskette images.
+ *
+ * Every supported container starts with an MZ executable header.
+ * Offset 0 is always tried as well. The reader validates the executable
+ * structure and its archive payload; the detector must identify the same
+ * format on the candidate view. See xx_format_extractor_engine.h.
+ */
+
+#include "../xx_format_extractor_engine.h"
+#include "xxfclib/formats/sfx_sydex_diskette_image/xx_sfx_sydex_diskette_image.h"
+
+static const uint8_t k_anchor0[] = { 0x4D, 0x5A };
+
+static const xx_format_search_anchor k_anchors[] = {
+    { k_anchor0, sizeof(k_anchor0), 0U },
+};
+
+static const xx_file_type_t k_types[] = {
+    XX_FILE_TYPE_SFX_SYDEX_DISKETTE_IMAGE
+};
+
+static Abstractformat *xx_sfx_sydex_diskette_image_search_open(xx_io_device *window) {
+    xx_sfx_sydex_diskette_image *reader = xx_sfx_sydex_diskette_image_create(window, 0);
+    return reader ? &reader->format : NULL;
+}
+
+static void xx_sfx_sydex_diskette_image_search_close(Abstractformat *format) {
+    /* The format is the first member, so this is the reader itself. */
+    xx_sfx_sydex_diskette_image_free((xx_sfx_sydex_diskette_image *)format);
+}
+
+static const xx_format_search_desc k_desc = {
+    k_types, sizeof(k_types) / sizeof(k_types[0]),
+    k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
+    xx_sfx_sydex_diskette_image_search_open, xx_sfx_sydex_diskette_image_search_close
+};
+
+static xx_format_search_state *xx_sfx_sydex_diskette_image_create_format_search(
+    xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,
+    xx_pd_struct *pd) {
+    (void)self;
+    return xx_format_search_create(&k_desc, device, options, pd);
+}
+
+static const xx_format_search_info *xx_sfx_sydex_diskette_image_get_current_format_info(
+    xx_format_extractor *self, xx_format_search_state *state) {
+    (void)self;
+    return xx_format_search_current(state);
+}
+
+static bool xx_sfx_sydex_diskette_image_format_search_find_next(
+    xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd) {
+    (void)self;
+    return xx_format_search_find_next(state, pd);
+}
+
+static void xx_sfx_sydex_diskette_image_free_format_search(
+    xx_format_extractor *self, xx_format_search_state *state) {
+    (void)self;
+    xx_format_search_free(state);
+}
+
+xx_format_extractor xx_sfx_sydex_diskette_image_extractor = {
+    xx_sfx_sydex_diskette_image_create_format_search,
+    xx_sfx_sydex_diskette_image_get_current_format_info,
+    xx_sfx_sydex_diskette_image_format_search_find_next,
+    xx_sfx_sydex_diskette_image_free_format_search
+};

@@ -1,0 +1,30 @@
+/* SPDX-License-Identifier: MIT
+ * Primary reference: https://raw.githubusercontent.com/aros-development-team/AROS/master/workbench/libs/icon/diskobjio.c
+ * Classic Amiga68k DiskObject v1: complete Gadget flags, optional old/new drawer descriptor, planar Image descriptors/data, length-prefixed terminated default/tool/window strings and counted tooltypes. Original encoded icon components exported; NewIcons/ColorIcons/extra extensions and chained imagery declined.
+ * Bounded32MiB input,4096 components and bounded work.
+ */
+#include "xxfclib/formats/amiga_diskobject/xx_amiga_diskobject.h"
+#include "../adobe_acb/xx_thirteenth_games.h"
+static bool tg_quick(Abstractformat *f,uint64_t n) {uint8_t b[4];return n>=78&&pm_read(f,0,b,4)&&tg_tag(b,"\xe3\x10\0\1",4);}
+static bool icon_string(Abstractformat *f,pm_stream *s,tg_bin *q,const char *label) {const uint8_t *p;uint64_t start=q->p;uint32_t z,i;if(!tg_take(q,4,&p)||(z=pm_be32(p))<1||z>8192||!tg_take(q,z,&p)||p[z-1])return false;for(i=0;i+1<z;++i)if(!p[i]||p[i]<32)return false;return tg_emit(f,s,label,start,q->p-start,q->n);}
+static bool icon_image(Abstractformat *f,pm_stream *s,tg_bin *q,const char *label) {const uint8_t *p;uint64_t start=q->p,z;uint16_t w,h,d;unsigned i,bits=0;if(!tg_take(q,20,&p))return false;w=pm_be16(p+4);h=pm_be16(p+6);d=pm_be16(p+8);if(!w||!h||w>8192||h>8192||d<1||d>8||!pm_be32(p+10)||pm_be32(p+16))return false;for(i=0;i<8;++i)bits+=(p[14]>>i)&1;if(bits>d)return false;z=((uint64_t)w+15)/16*2*h*d;return tg_take(q,z,NULL)&&tg_emit(f,s,label,start,q->p-start,q->n);}
+static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
+ tg_bin q={b,78,n,pd};const uint8_t *p;uint32_t types,i;uint16_t flags;bool drawer;
+ if(n<78||!tg_tag(b,"\xe3\x10\0\1",4)||pm_be32(b+4)||pm_be16(b+12)<1||pm_be16(b+14)<1||b[48]<1||b[48]>8||pm_be32(b+30)||pm_be32(b+38)||!pm_be32(b+22)||pm_be32(b+74)>16777216)return false;
+ flags=pm_be16(b+16);drawer=pm_be32(b+66)!=0;if(!(flags&4)||((flags&2)==0&&pm_be32(b+26)))return false;
+ if(!tg_emit(f,s,"diskobject.info",0,78,n))return false;
+ if(drawer){uint64_t start=q.p;if(!tg_take(&q,56,&p)||pm_be32(p+26)||pm_be32(p+30)||pm_be32(p+34)||!tg_emit(f,s,"drawer.info",start,56,n))return false;}
+ if(!icon_image(f,s,&q,"normal-planar.info")||(pm_be32(b+26)&&!icon_image(f,s,&q,"selected-planar.info")))return false;
+ if(pm_be32(b+50)&&!icon_string(f,s,&q,"default-tool.info"))return false;
+ if(pm_be32(b+54)){uint64_t start=q.p;if(!tg_take(&q,4,&p)||(types=pm_be32(p))<4||types>4*2048||(types&3)||!tg_emit(f,s,"tooltypes-count.info",start,4,n))return false;types=types/4-1;for(i=0;i<types;++i)if(!icon_string(f,s,&q,"tooltype.info"))return false;}
+ if(pm_be32(b+70)&&!icon_string(f,s,&q,"tool-window.info"))return false;
+ if(drawer&&(pm_be32(b+44)&255)){uint64_t start=q.p;if((pm_be32(b+44)&255)!=1||!tg_take(&q,6,&p)||pm_be32(p)>2||pm_be16(p+4)>5||!tg_emit(f,s,"new-drawer.info",start,6,n))return false;}
+ if(q.p!=n)return false;s->size=(int64_t)n;return true;
+}
+
+void xx_amiga_diskobject_init(xx_amiga_diskobject *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_AMIGA_DISKOBJECT,"info");}}
+xx_amiga_diskobject *xx_amiga_diskobject_create(xx_io_device *d,int64_t at) {xx_amiga_diskobject *r=(xx_amiga_diskobject *)xx_mem_alloc(sizeof(*r));if(r)xx_amiga_diskobject_init(r,d,at);return r;}
+void xx_amiga_diskobject_destroy(xx_amiga_diskobject *r) {if(r)xx_format_cleanup_extra_parameters(&r->format);}
+void xx_amiga_diskobject_free(xx_amiga_diskobject *r) {if(r){xx_amiga_diskobject_destroy(r);xx_mem_free(r);}}
+bool xx_amiga_diskobject_check_is_valid(Abstractformat *f,xx_pd_struct *pd) {return pm_valid(f,pd);}
+bool xx_amiga_diskobject_handle_base_info(Abstractformat *f,xx_pd_struct *pd) {return pm_handle(f,pd);}

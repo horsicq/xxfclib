@@ -1,0 +1,1092 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com>
+ * SPDX-License-Identifier: MIT
+ *
+ * UFS2 (FFSv2) reader; xx_ufs2.h carries the layout.
+ *
+ * Written from the documented on-disk structures (FreeBSD <ufs/ffs/fs.h>,
+ * <ufs/ufs/dinode.h>, <ufs/ufs/dir.h>). The accepted signature (fs_magic
+ * 0x19540119 at superblock + 0x55C, superblock at 64 KiB) and the basic
+ * sanity rules (fs_frag == fs_bsize / fs_fsize, fs_bsize <= 64 KiB, a
+ * non-zero group count) match what unblob's ufs2 handler requires
+ * (unblob/handlers/filesystem/ufs.py, MIT licence); no code was taken from
+ * it. The derived fields (shifts, fs_nindir, fs_inopb, fs_sblockloc) and the
+ * group geometry are checked as well so that garbage is rejected before any
+ * inode is read, and the root directory must start with "." and "..".
+ */
+
+#include "xxfclib/global/xx_global.h"
+#include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/formats/ufs2/xx_ufs2.h"
+
+#include "xxfclib/algo/store/xx_store.h"
+#include "xxfclib/io/xx_io.h"
+#include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/strings/xx_string.h"
+
+#include <limits.h>
+#include <stdio.h>
+
+/* Registration placeholder. xxfc_defs.h is shared and is not edited from
+ * here, so the alias macro defined next to the enumerator is tested instead;
+ * this picks up the real file type as soon as UFS2 is registered there. */
+#ifdef UFS2
+#define XX_UFS2_FILE_TYPE XX_FILE_TYPE_UFS2
+#else
+#define XX_UFS2_FILE_TYPE XX_FILE_TYPE_UNKNOWN
+#endif
+
+#define UFS2_SUPER_PRIMARY 65536
+#define UFS2_SUPER_PIGGY 262144
+#define UFS2_SUPER_SIZE 0x560U
+#define UFS2_MAGIC_OFFSET 0x55CU
+#define UFS2_MAGIC 0x19540119U
+#define UFS2_MAGIC_EA 0x19012038U
+#define UFS2_INODE_SIZE 256U
+#define UFS2_NDADDR 12U
+#define UFS2_NIADDR 3U
+#define UFS2_ROOT_INODE 2U
+#define UFS2_DIRBLKSIZ 512U
+#define UFS2_DIRENT_HEADER 8U
+#define UFS2_MAX_DEPTH 64U
+#define UFS2_MAX_RECORDS 100000U
+/* Directory bytes examined over one whole parse. Several hostile
+ * directories may share the same blocks, so the scan is budgeted. */
+#define UFS2_MAX_DIR_BYTES (256U * 1024U * 1024U)
+#define UFS2_MAX_PATH 4096U
+/* A regular file may be sparse and larger than the filesystem, but not by
+ * more than this factor: a small hostile image cannot claim terabytes. */
+#define UFS2_SPARSE_FACTOR 8U
+
+#define UFS2_S_IFMT 0170000U
+#define UFS2_S_IFDIR 0040000U
+#define UFS2_S_IFREG 0100000U
+
+typedef struct ufs2_geometry_s {
+    int64_t base;
+    int64_t super_offset;
+    uint64_t fs_bytes;      /**< fs_size * fs_fsize. */
+    uint64_t size;          /**< fs_size, in fragments. */
+    uint32_t bsize;
+    uint32_t fsize;
+    uint32_t frag;
+    uint32_t ncg;
+    uint32_t ipg;
+    uint32_t fpg;
+    uint32_t iblkno;
+    uint32_t nindir;
+    bool big;
+} ufs2_geometry;
+
+typedef struct ufs2_inode_s {
+    uint32_t mode;
+    uint64_t size;
+    uint64_t db[UFS2_NDADDR];
+    uint64_t ib[UFS2_NIADDR];
+} ufs2_inode;
+
+typedef struct ufs2_entry_s {
+    char *name;
+    int64_t data_offset;  /**< First mapped data block, or -1. */
+    uint32_t inode;
+    uint64_t size;
+    bool is_folder;
+} ufs2_entry;
+
+typedef struct ufs2_parsed_s {
+    ufs2_geometry geo;
+    ufs2_entry *entries;
+    size_t count;
+    size_t capacity;
+    uint32_t *name_slots;   /**< Case-folded path set: entry index + 1. */
+    size_t name_capacity;
+    uint32_t *dir_slots;    /**< Visited directory inodes (0 = empty). */
+    size_t dir_capacity;
+    size_t dir_count;
+    uint64_t dir_bytes_left;
+} ufs2_parsed;
+
+typedef struct ufs2_stream_s {
+    ufs2_parsed parsed;
+    size_t index;
+} ufs2_stream;
+
+static void ufs2_vtable_destroy(Abstractformat *self);
+
+static bool ufs2_read_at(xx_io_device *device, int64_t offset, void *data,
+                         size_t size) {
+    uint8_t *out = (uint8_t *)data;
+    size_t done = 0U;
+    if (!device || (!data && size != 0U) || offset < 0 ||
+        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+        return false;
+    }
+    while (done < size) {
+        ssize_t got = xx_io_read(device, out + done, size - done);
+        if (got <= 0 || (size_t)got > size - done) return false;
+        done += (size_t)got;
+    }
+    return true;
+}
+
+static uint32_t ufs2_u16(bool big, const uint8_t *p) {
+    return big ? ((uint32_t)p[0] << 8) | p[1] : ((uint32_t)p[1] << 8) | p[0];
+}
+
+static uint32_t ufs2_u32(bool big, const uint8_t *p) {
+    return big ? ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
+                     ((uint32_t)p[2] << 8) | p[3]
+               : ((uint32_t)p[3] << 24) | ((uint32_t)p[2] << 16) |
+                     ((uint32_t)p[1] << 8) | p[0];
+}
+
+static uint64_t ufs2_u64(bool big, const uint8_t *p) {
+    uint64_t hi = big ? ufs2_u32(big, p) : ufs2_u32(big, p + 4);
+    uint64_t lo = big ? ufs2_u32(big, p + 4) : ufs2_u32(big, p);
+    return (hi << 32) | lo;
+}
+
+static bool ufs2_pow2(uint32_t value) {
+    return value != 0U && (value & (value - 1U)) == 0U;
+}
+
+static uint32_t ufs2_log2(uint32_t value) {
+    uint32_t shift = 0U;
+    while (shift < 31U && (1U << shift) < value) ++shift;
+    return shift;
+}
+
+/* 1 = little-endian magic, 2 = big-endian magic, 0 = none. */
+static int ufs2_magic_order(const uint8_t *magic) {
+    uint32_t le = ufs2_u32(false, magic);
+    uint32_t be = ufs2_u32(true, magic);
+    if (le == UFS2_MAGIC || le == UFS2_MAGIC_EA) return 1;
+    if (be == UFS2_MAGIC || be == UFS2_MAGIC_EA) return 2;
+    return 0;
+}
+
+/* Decode and validate the superblock found at `location` bytes from the
+ * base. Everything later relies on these bounds: power-of-two sizes that
+ * agree with their derived fields, groups that cover exactly fs_size
+ * fragments, and a filesystem that fits the device. */
+static bool ufs2_try_geometry(Abstractformat *self, int64_t total,
+                              int64_t location, ufs2_geometry *geo) {
+    uint8_t sb[UFS2_SUPER_SIZE];
+    uint8_t *magic = sb + UFS2_MAGIC_OFFSET;
+    int order;
+    bool big;
+    uint64_t inode_frags;
+    xx_mem_zero(geo, sizeof(*geo));
+    if (total - self->base_address < location + (int64_t)UFS2_SUPER_SIZE)
+        return false;
+    /* Cheap early exit: the magic alone, before the full superblock. */
+    if (!ufs2_read_at(self->device,
+                      self->base_address + location + UFS2_MAGIC_OFFSET, magic,
+                      4U))
+        return false;
+    order = ufs2_magic_order(magic);
+    if (order == 0) return false;
+    big = order == 2;
+    if (!ufs2_read_at(self->device, self->base_address + location, sb,
+                      UFS2_SUPER_SIZE))
+        return false;
+    if (ufs2_u64(big, sb + 0x3E8) != (uint64_t)location) return false;
+    geo->big = big;
+    geo->base = self->base_address;
+    geo->super_offset = location;
+    geo->iblkno = ufs2_u32(big, sb + 0x10);
+    geo->ncg = ufs2_u32(big, sb + 0x2C);
+    geo->bsize = ufs2_u32(big, sb + 0x30);
+    geo->fsize = ufs2_u32(big, sb + 0x34);
+    geo->frag = ufs2_u32(big, sb + 0x38);
+    geo->nindir = ufs2_u32(big, sb + 0x74);
+    geo->ipg = ufs2_u32(big, sb + 0xB8);
+    geo->fpg = ufs2_u32(big, sb + 0xBC);
+    geo->size = ufs2_u64(big, sb + 0x438);
+    if (!ufs2_pow2(geo->bsize) || geo->bsize < 4096U || geo->bsize > 65536U ||
+        !ufs2_pow2(geo->fsize) || geo->fsize < 512U ||
+        geo->fsize > geo->bsize || geo->frag != geo->bsize / geo->fsize ||
+        geo->frag > 8U ||
+        ufs2_u32(big, sb + 0x50) != ufs2_log2(geo->bsize) ||
+        ufs2_u32(big, sb + 0x54) != ufs2_log2(geo->fsize) ||
+        geo->nindir != geo->bsize / 8U ||
+        ufs2_u32(big, sb + 0x78) != geo->bsize / UFS2_INODE_SIZE)
+        return false;
+    if (geo->ncg == 0U || geo->ipg == 0U || geo->fpg == 0U ||
+        geo->size == 0U || geo->fpg % geo->frag != 0U ||
+        geo->ipg % (geo->bsize / UFS2_INODE_SIZE) != 0U)
+        return false;
+    /* ncg groups of fpg fragments cover fs_size, the last one partially. */
+    if ((uint64_t)geo->ncg * geo->fpg < geo->size ||
+        (uint64_t)(geo->ncg - 1U) * geo->fpg >= geo->size)
+        return false;
+    /* The inode table fits inside one group. */
+    inode_frags = ((uint64_t)geo->ipg * UFS2_INODE_SIZE + geo->fsize - 1U) /
+                  geo->fsize;
+    if ((uint64_t)geo->iblkno + inode_frags > geo->fpg) return false;
+    /* Guard the byte size against overflow; the whole filesystem must be
+     * present. */
+    if (geo->size > (uint64_t)INT64_MAX / geo->fsize) return false;
+    geo->fs_bytes = geo->size * geo->fsize;
+    if (geo->fs_bytes > (uint64_t)(total - self->base_address) ||
+        geo->fs_bytes < (uint64_t)location + UFS2_SUPER_SIZE)
+        return false;
+    return true;
+}
+
+static bool ufs2_read_geometry(Abstractformat *self, ufs2_geometry *geo) {
+    int64_t total;
+    xx_mem_zero(geo, sizeof(*geo));
+    if (!self || !self->device || self->base_address < 0) return false;
+    total = xx_io_total_size(self->device);
+    if (total < 0 || total < self->base_address) return false;
+    return ufs2_try_geometry(self, total, UFS2_SUPER_PRIMARY, geo) ||
+           ufs2_try_geometry(self, total, UFS2_SUPER_PIGGY, geo);
+}
+
+static bool ufs2_read_inode(xx_io_device *device, const ufs2_geometry *geo,
+                            uint32_t number, ufs2_inode *inode) {
+    uint8_t raw[UFS2_INODE_SIZE];
+    uint64_t offset;
+    unsigned index;
+    xx_mem_zero(inode, sizeof(*inode));
+    if (number == 0U || (uint64_t)number >= (uint64_t)geo->ncg * geo->ipg)
+        return false;
+    /* group * fpg < ncg * fpg < 2^64; bound it before scaling to bytes. */
+    offset = (uint64_t)(number / geo->ipg) * geo->fpg;
+    if (offset >= geo->size) return false;
+    offset = (offset + geo->iblkno) * geo->fsize +
+             (uint64_t)(number % geo->ipg) * UFS2_INODE_SIZE;
+    if (offset > geo->fs_bytes || geo->fs_bytes - offset < UFS2_INODE_SIZE ||
+        !ufs2_read_at(device, geo->base + (int64_t)offset, raw, sizeof(raw)))
+        return false;
+    inode->mode = ufs2_u16(geo->big, raw);
+    inode->size = ufs2_u64(geo->big, raw + 16);
+    for (index = 0U; index < UFS2_NDADDR; ++index)
+        inode->db[index] = ufs2_u64(geo->big, raw + 112 + index * 8U);
+    for (index = 0U; index < UFS2_NIADDR; ++index)
+        inode->ib[index] = ufs2_u64(geo->big, raw + 208 + index * 8U);
+    return true;
+}
+
+/* True when `bytes` bytes starting at fragment `address` lie inside the
+ * filesystem. */
+static bool ufs2_extent_ok(const ufs2_geometry *geo, uint64_t address,
+                           uint64_t bytes) {
+    uint64_t start;
+    if (address == 0U || address >= geo->size) return false;
+    start = address * geo->fsize;
+    return geo->fs_bytes - start >= bytes;
+}
+
+static int64_t ufs2_frag_offset(const ufs2_geometry *geo, uint64_t address) {
+    return geo->base + (int64_t)(address * geo->fsize);
+}
+
+/* Entry `index` of the pointer block at fragment `address`; 0 stays a hole. */
+static bool ufs2_pointer(xx_io_device *device, const ufs2_geometry *geo,
+                         uint64_t address, uint64_t index, uint64_t *out) {
+    uint8_t raw[8];
+    *out = 0U;
+    if (address == 0U) return true;
+    if (index >= geo->nindir || !ufs2_extent_ok(geo, address, geo->bsize) ||
+        !ufs2_read_at(device, ufs2_frag_offset(geo, address) +
+                                  (int64_t)(index * 8U),
+                      raw, 8U))
+        return false;
+    *out = ufs2_u64(geo->big, raw);
+    return true;
+}
+
+/* Fragment address of logical block `index` of a file; 0 means a hole. */
+static bool ufs2_map(xx_io_device *device, const ufs2_geometry *geo,
+                     const ufs2_inode *inode, uint64_t index, uint64_t *out) {
+    uint64_t per = geo->nindir;
+    uint64_t address;
+    *out = 0U;
+    if (index < UFS2_NDADDR) {
+        address = inode->db[index];
+    } else if ((index -= UFS2_NDADDR) < per) {
+        if (!ufs2_pointer(device, geo, inode->ib[0], index, &address))
+            return false;
+    } else if ((index -= per) < per * per) {
+        if (!ufs2_pointer(device, geo, inode->ib[1], index / per, &address) ||
+            !ufs2_pointer(device, geo, address, index % per, &address))
+            return false;
+    } else if ((index -= per * per) < per * per * per) {
+        if (!ufs2_pointer(device, geo, inode->ib[2], index / (per * per),
+                          &address) ||
+            !ufs2_pointer(device, geo, address, (index / per) % per,
+                          &address) ||
+            !ufs2_pointer(device, geo, address, index % per, &address))
+            return false;
+    } else {
+        return false;
+    }
+    *out = address;
+    return true;
+}
+
+/* Largest byte count a file of this filesystem may claim. */
+static uint64_t ufs2_max_file(const ufs2_geometry *geo) {
+    uint64_t per = geo->nindir;   /* <= 8192, so per^3 * bsize < 2^56 */
+    uint64_t blocks = UFS2_NDADDR + per + per * per + per * per * per;
+    uint64_t addressable = blocks * geo->bsize;
+    uint64_t sparse = geo->fs_bytes * UFS2_SPARSE_FACTOR;
+    return addressable < sparse ? addressable : sparse;
+}
+
+static uint32_t ufs2_hash_u32(uint32_t value) {
+    value ^= value >> 16;
+    value *= 0x7FEB352DU;
+    value ^= value >> 15;
+    value *= 0x846CA68BU;
+    value ^= value >> 16;
+    return value;
+}
+
+/* Remember a directory inode; false when it was seen before or the set can
+ * no longer grow (the walk then stops descending). */
+static bool ufs2_mark_dir(ufs2_parsed *parsed, uint32_t inode) {
+    size_t slot;
+    if (parsed->dir_count + 1U > parsed->dir_capacity / 2U) {
+        size_t capacity = parsed->dir_capacity ? parsed->dir_capacity * 2U : 64U;
+        uint32_t *slots;
+        size_t index;
+        if (capacity > ((size_t)UFS2_MAX_RECORDS + 1U) * 4U) return false;
+        slots = (uint32_t *)xx_mem_calloc(capacity, sizeof(*slots));
+        if (!slots) return false;
+        for (index = 0U; index < parsed->dir_capacity; ++index) {
+            uint32_t v = parsed->dir_slots[index];
+            if (v == 0U) continue;
+            slot = ufs2_hash_u32(v) & (capacity - 1U);
+            while (slots[slot] != 0U) slot = (slot + 1U) & (capacity - 1U);
+            slots[slot] = v;
+        }
+        if (parsed->dir_slots) xx_mem_free(parsed->dir_slots);
+        parsed->dir_slots = slots;
+        parsed->dir_capacity = capacity;
+    }
+    slot = ufs2_hash_u32(inode) & (parsed->dir_capacity - 1U);
+    while (parsed->dir_slots[slot] != 0U) {
+        if (parsed->dir_slots[slot] == inode) return false;
+        slot = (slot + 1U) & (parsed->dir_capacity - 1U);
+    }
+    parsed->dir_slots[slot] = inode;
+    ++parsed->dir_count;
+    return true;
+}
+
+static char ufs2_fold(char c) {
+    return (c >= 'A' && c <= 'Z') ? (char)(c - 'A' + 'a') : c;
+}
+
+static uint32_t ufs2_hash_name(const char *name) {
+    uint32_t hash = 2166136261U;
+    for (; *name; ++name) {
+        hash ^= (uint8_t)ufs2_fold(*name);
+        hash *= 16777619U;
+    }
+    return hash;
+}
+
+static bool ufs2_same_name(const char *left, const char *right) {
+    for (; *left && *right; ++left, ++right)
+        if (ufs2_fold(*left) != ufs2_fold(*right)) return false;
+    return *left == *right;
+}
+
+static bool ufs2_name_taken(const ufs2_parsed *parsed, const char *name) {
+    size_t slot;
+    if (!parsed->name_slots) return false;
+    slot = ufs2_hash_name(name) & (parsed->name_capacity - 1U);
+    while (parsed->name_slots[slot] != 0U) {
+        if (ufs2_same_name(parsed->entries[parsed->name_slots[slot] - 1U].name,
+                           name))
+            return true;
+        slot = (slot + 1U) & (parsed->name_capacity - 1U);
+    }
+    return false;
+}
+
+static bool ufs2_name_insert(ufs2_parsed *parsed, size_t index) {
+    size_t slot;
+    if ((parsed->count + 1U) * 2U > parsed->name_capacity) {
+        size_t capacity = parsed->name_capacity ? parsed->name_capacity * 2U : 64U;
+        uint32_t *slots = (uint32_t *)xx_mem_calloc(capacity, sizeof(*slots));
+        size_t old;
+        if (!slots) return false;
+        for (old = 0U; old < parsed->name_capacity; ++old) {
+            uint32_t v = parsed->name_slots[old];
+            if (v == 0U) continue;
+            slot = ufs2_hash_name(parsed->entries[v - 1U].name) & (capacity - 1U);
+            while (slots[slot] != 0U) slot = (slot + 1U) & (capacity - 1U);
+            slots[slot] = v;
+        }
+        if (parsed->name_slots) xx_mem_free(parsed->name_slots);
+        parsed->name_slots = slots;
+        parsed->name_capacity = capacity;
+    }
+    slot = ufs2_hash_name(parsed->entries[index].name) &
+           (parsed->name_capacity - 1U);
+    while (parsed->name_slots[slot] != 0U)
+        slot = (slot + 1U) & (parsed->name_capacity - 1U);
+    parsed->name_slots[slot] = (uint32_t)index + 1U;
+    return true;
+}
+
+static void ufs2_parsed_cleanup(ufs2_parsed *parsed) {
+    size_t index;
+    if (!parsed) return;
+    for (index = 0U; index < parsed->count; ++index)
+        if (parsed->entries[index].name) xx_mem_free(parsed->entries[index].name);
+    if (parsed->entries) xx_mem_free(parsed->entries);
+    if (parsed->name_slots) xx_mem_free(parsed->name_slots);
+    if (parsed->dir_slots) xx_mem_free(parsed->dir_slots);
+    xx_mem_zero(parsed, sizeof(*parsed));
+}
+
+/* Join prefix and name into a fresh path. */
+static char *ufs2_join(const char *prefix, const char *name, size_t name_size,
+                       const char *suffix) {
+    size_t prefix_size = xx_str_len(prefix);
+    size_t suffix_size = suffix ? xx_str_len(suffix) : 0U;
+    size_t total = prefix_size + (prefix_size ? 1U : 0U) + name_size +
+                   suffix_size;
+    char *path;
+    if (total >= UFS2_MAX_PATH) return NULL;
+    path = (char *)xx_mem_alloc(total + 1U);
+    if (!path) return NULL;
+    if (prefix_size) {
+        xx_mem_copy(path, prefix, prefix_size);
+        path[prefix_size] = '/';
+        xx_mem_copy(path + prefix_size + 1U, name, name_size);
+    } else {
+        xx_mem_copy(path, name, name_size);
+    }
+    if (suffix_size)
+        xx_mem_copy(path + total - suffix_size, suffix, suffix_size);
+    path[total] = '\0';
+    return path;
+}
+
+/* Append a record, renaming a later duplicate (compared case-insensitively
+ * so that nothing overwrites an earlier member on a case-folding host) to
+ * "name~2", "name~3", ... Returns the stored path or NULL when skipped. */
+static const char *ufs2_add(ufs2_parsed *parsed, const char *prefix,
+                            const char *name, size_t name_size,
+                            uint32_t inode, uint64_t size, bool folder,
+                            int64_t data_offset) {
+    char *path = ufs2_join(prefix, name, name_size, NULL);
+    unsigned attempt;
+    ufs2_entry *entry;
+    if (!path) return NULL;
+    for (attempt = 2U; ufs2_name_taken(parsed, path); ++attempt) {
+        char suffix[4];
+        size_t used = 0U;
+        xx_mem_free(path);
+        if (attempt > 99U) return NULL;
+        suffix[used++] = '~';
+        if (attempt >= 10U) suffix[used++] = (char)('0' + attempt / 10U);
+        suffix[used++] = (char)('0' + attempt % 10U);
+        suffix[used] = '\0';
+        path = ufs2_join(prefix, name, name_size, suffix);
+        if (!path) return NULL;
+    }
+    if (parsed->count == parsed->capacity) {
+        size_t capacity = parsed->capacity ? parsed->capacity * 2U : 32U;
+        ufs2_entry *grown = (ufs2_entry *)xx_mem_realloc(
+            parsed->entries, capacity * sizeof(*parsed->entries));
+        if (!grown) {
+            xx_mem_free(path);
+            return NULL;
+        }
+        parsed->entries = grown;
+        parsed->capacity = capacity;
+    }
+    entry = &parsed->entries[parsed->count];
+    entry->name = path;
+    entry->inode = inode;
+    entry->size = folder ? 0U : size;
+    entry->is_folder = folder;
+    entry->data_offset = data_offset;
+    if (!ufs2_name_insert(parsed, parsed->count)) {
+        xx_mem_free(path);
+        return NULL;
+    }
+    ++parsed->count;
+    return path;
+}
+
+/* A directory entry name is one path component: separators and control
+ * bytes make it implausible, and such entries are dropped. */
+static bool ufs2_plausible_name(const uint8_t *name, size_t size) {
+    size_t index;
+    if (size == 0U) return false;
+    if (name[0] == '.' && (size == 1U || (size == 2U && name[1] == '.')))
+        return false;
+    for (index = 0U; index < size; ++index)
+        if (name[index] < 0x20U || name[index] == 0x7FU || name[index] == '/')
+            return false;
+    return true;
+}
+
+static void ufs2_walk(xx_io_device *device, ufs2_parsed *parsed,
+                      const ufs2_inode *dir, const char *prefix,
+                      unsigned depth, xx_pd_struct *pd);
+
+/* Handle one live directory entry of the directory at `prefix`. */
+static void ufs2_visit(xx_io_device *device, ufs2_parsed *parsed,
+                       uint32_t number, const uint8_t *name, size_t name_size,
+                       const char *prefix, unsigned depth, xx_pd_struct *pd) {
+    const ufs2_geometry *geo = &parsed->geo;
+    ufs2_inode child;
+    uint32_t type;
+    if (!ufs2_plausible_name(name, name_size) ||
+        !ufs2_read_inode(device, geo, number, &child))
+        return;
+    type = child.mode & UFS2_S_IFMT;
+    if (type == UFS2_S_IFREG) {
+        uint64_t first = 0U;
+        int64_t offset = -1;
+        if (child.size > ufs2_max_file(geo)) return;
+        if (child.size != 0U && ufs2_map(device, geo, &child, 0U, &first) &&
+            ufs2_extent_ok(geo, first, 1U))
+            offset = ufs2_frag_offset(geo, first);
+        (void)ufs2_add(parsed, prefix, (const char *)name, name_size, number,
+                       child.size, false, offset);
+    } else if (type == UFS2_S_IFDIR) {
+        const char *path;
+        if (child.size > geo->fs_bytes || !ufs2_mark_dir(parsed, number))
+            return;
+        /* The path string is owned by its entry and outlives the walk even
+         * when the entries array itself is reallocated. */
+        path = ufs2_add(parsed, prefix, (const char *)name, name_size, number,
+                        0U, true, -1);
+        if (path) ufs2_walk(device, parsed, &child, path, depth + 1U, pd);
+    }
+    /* Symbolic links, devices, fifos, sockets and whiteouts are skipped. */
+}
+
+/* Walk one directory: logical block by logical block, each block split
+ * into 512-byte chunks whose entries must not cross the chunk. A malformed
+ * entry abandons the rest of its chunk, like the kernel does. */
+static void ufs2_walk(xx_io_device *device, ufs2_parsed *parsed,
+                      const ufs2_inode *dir, const char *prefix,
+                      unsigned depth, xx_pd_struct *pd) {
+    const ufs2_geometry *geo = &parsed->geo;
+    uint64_t blocks, logical;
+    uint8_t *block;
+    if (depth > UFS2_MAX_DEPTH || dir->size > geo->fs_bytes) return;
+    /* Each level owns its block buffer: the walk recurses while the
+     * block is still being scanned. */
+    block = (uint8_t *)xx_mem_alloc(geo->bsize);
+    if (!block) return;
+    blocks = (dir->size + geo->bsize - 1U) / geo->bsize;
+    for (logical = 0U; logical < blocks; ++logical) {
+        uint64_t address;
+        uint64_t length = dir->size - logical * geo->bsize;
+        uint64_t chunk;
+        if (length > geo->bsize) length = geo->bsize;
+        if (parsed->count >= UFS2_MAX_RECORDS || (pd && xx_pd_is_stopped(pd)) ||
+            parsed->dir_bytes_left < length)
+            break;
+        parsed->dir_bytes_left -= length;
+        if (!ufs2_map(device, geo, dir, logical, &address)) break;
+        if (address == 0U) continue;
+        if (!ufs2_extent_ok(geo, address, length) ||
+            !ufs2_read_at(device, ufs2_frag_offset(geo, address), block,
+                          (size_t)length))
+            break;
+        for (chunk = 0U; chunk < length; chunk += UFS2_DIRBLKSIZ) {
+            uint64_t end = chunk + UFS2_DIRBLKSIZ;
+            uint64_t pos = chunk;
+            if (end > length) end = length;
+            while (end - pos >= UFS2_DIRENT_HEADER) {
+                const uint8_t *entry = block + pos;
+                uint32_t number = ufs2_u32(geo->big, entry);
+                uint32_t reclen = ufs2_u16(geo->big, entry + 4);
+                uint32_t namlen = entry[7];
+                if (reclen < UFS2_DIRENT_HEADER || (reclen & 3U) != 0U ||
+                    reclen > end - pos ||
+                    namlen > reclen - UFS2_DIRENT_HEADER)
+                    break;
+                if (number != 0U) {
+                    size_t size = 0U;
+                    /* The name ends at namlen or at an embedded NUL. */
+                    while (size < namlen && entry[UFS2_DIRENT_HEADER + size])
+                        ++size;
+                    if (size == namlen)
+                        ufs2_visit(device, parsed, number,
+                                   entry + UFS2_DIRENT_HEADER, size, prefix,
+                                   depth, pd);
+                    if (parsed->count >= UFS2_MAX_RECORDS) break;
+                }
+                pos += reclen;
+            }
+        }
+    }
+    xx_mem_free(block);
+}
+
+/* Quick structural check used by the probe: superblock plus a root
+ * directory whose first entries are "." and ".." naming inode 2. */
+static bool ufs2_check(Abstractformat *self, ufs2_geometry *geo,
+                       ufs2_inode *root) {
+    uint8_t raw[24];
+    if (!ufs2_read_geometry(self, geo) ||
+        !ufs2_read_inode(self->device, geo, UFS2_ROOT_INODE, root) ||
+        (root->mode & UFS2_S_IFMT) != UFS2_S_IFDIR ||
+        root->size < sizeof(raw) || root->size > geo->fs_bytes ||
+        !ufs2_extent_ok(geo, root->db[0], sizeof(raw)) ||
+        !ufs2_read_at(self->device, ufs2_frag_offset(geo, root->db[0]), raw,
+                      sizeof(raw)))
+        return false;
+    /* "."  : ino 2, reclen 12, namlen 1, ".\0"  */
+    /* ".." : ino 2, namlen 2, "..\0"            */
+    return ufs2_u32(geo->big, raw) == UFS2_ROOT_INODE &&
+           ufs2_u16(geo->big, raw + 4) == 12U && raw[7] == 1U &&
+           raw[8] == '.' && raw[9] == 0U &&
+           ufs2_u32(geo->big, raw + 12) == UFS2_ROOT_INODE &&
+           raw[19] == 2U && raw[20] == '.' && raw[21] == '.' && raw[22] == 0U;
+}
+
+static bool ufs2_parse(Abstractformat *self, ufs2_parsed *parsed,
+                       xx_pd_struct *pd) {
+    ufs2_inode root;
+    xx_mem_zero(parsed, sizeof(*parsed));
+    if (!self || (pd && xx_pd_is_stopped(pd)) ||
+        !ufs2_check(self, &parsed->geo, &root)) {
+        return false;
+    }
+    parsed->dir_bytes_left = UFS2_MAX_DIR_BYTES;
+    if (!ufs2_mark_dir(parsed, UFS2_ROOT_INODE)) {
+        ufs2_parsed_cleanup(parsed);
+        return false;
+    }
+    ufs2_walk(self->device, parsed, &root, "", 0U, pd);
+    if (pd && xx_pd_is_stopped(pd)) {
+        ufs2_parsed_cleanup(parsed);
+        return false;
+    }
+    return true;
+}
+
+/* Extraction writes <base>/<path>. Every component must stay inside the
+ * destination on every host: no absolute or drive paths, no "." or "..",
+ * nothing Windows would resolve to them (only dots and spaces, a trailing
+ * dot or space), no reserved punctuation or control bytes, and no device
+ * names such as CON, LPT1.TXT or CONIN$ in any case. */
+static bool ufs2_is_device_stem(const char *name, size_t stem) {
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL",
+                                          "CONIN$", "CONOUT$", "CLOCK$"};
+    size_t index, k;
+    for (index = 0U; index < sizeof(devices) / sizeof(devices[0]); ++index) {
+        const char *word = devices[index];
+        for (k = 0U; k < stem; ++k) {
+            char c = name[k];
+            if (c >= 'a' && c <= 'z') c = (char)(c - 'a' + 'A');
+            if (!word[k] || c != word[k]) break;
+        }
+        if (k == stem && word[k] == 0) return true;
+    }
+    if (stem == 4U && name[3] >= '0' && name[3] <= '9') {
+        char a = ufs2_fold(name[0]), b = ufs2_fold(name[1]),
+             c = ufs2_fold(name[2]);
+        if ((a == 'c' && b == 'o' && c == 'm') ||
+            (a == 'l' && b == 'p' && c == 't'))
+            return true;
+    }
+    return false;
+}
+
+static bool ufs2_safe_component(const char *name, size_t length) {
+    size_t index, stem = 0U;
+    bool meaningful = false;
+    if (length == 0U) return false;
+    for (index = 0U; index < length; ++index) {
+        unsigned char c = (unsigned char)name[index];
+        if (c < 0x20U || c == 0x7FU || c == '\\' || c == ':' || c == '<' ||
+            c == '>' || c == '"' || c == '|' || c == '?' || c == '*')
+            return false;
+        if (c != '.' && c != ' ') meaningful = true;
+    }
+    if (!meaningful || name[length - 1U] == '.' || name[length - 1U] == ' ')
+        return false;
+    while (stem < length && name[stem] != '.') ++stem;
+    while (stem > 0U && name[stem - 1U] == ' ') --stem;
+    return !ufs2_is_device_stem(name, stem);
+}
+
+static bool ufs2_safe_path(const char *path) {
+    const char *start = path;
+    const char *cursor;
+    if (!path || !path[0] || path[0] == '/') return false;
+    for (cursor = path;; ++cursor) {
+        if (*cursor == '/' || *cursor == 0) {
+            if (!ufs2_safe_component(start, (size_t)(cursor - start)))
+                return false;
+            if (*cursor == 0) return true;
+            start = cursor + 1;
+        }
+    }
+}
+
+static bool ufs2_copy_options(xx_list_s *destination,
+                              const xx_list_s *source) {
+    size_t index;
+    if (!source) return true;
+    for (index = 0U; index < source->count; ++index) {
+        const xx_meta *original =
+            (const xx_meta *)xx_list_at((const xx_list_t *)source, index);
+        xx_meta copy;
+        if (!original) continue;
+        xx_meta_init(&copy, original->meta_id);
+        if (!xx_var_copy(&copy.var, &original->var) ||
+            !xx_list_append(destination, &copy)) {
+            xx_meta_cleanup(&copy);
+            return false;
+        }
+    }
+    return true;
+}
+
+static const xx_var *ufs2_option(const xx_list_s *options, uint32_t id) {
+    size_t index;
+    if (!options) return NULL;
+    for (index = 0U; index < options->count; ++index) {
+        const xx_meta *meta =
+            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
+        if (meta && meta->meta_id == id) return &meta->var;
+    }
+    return NULL;
+}
+
+static bool ufs2_set_record(xx_archive_record *record,
+                            const ufs2_entry *entry) {
+    xx_archive_record_cleanup(record);
+    xx_archive_record_init(record);
+    record->header_offset = -1;
+    record->header_size = 0;
+    record->data_offset = entry->data_offset;
+    record->compressed_size = (int64_t)entry->size;
+    return xx_archive_record_set_original_name(record, entry->name) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
+                                          entry->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
+                                          entry->size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
+                                          0U) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
+                                           entry->is_folder);
+}
+
+/* Stream one regular file (holes as zeros) to destination, or only verify
+ * that it is readable when destination is NULL. */
+static bool ufs2_copy_file(xx_io_device *device, const ufs2_geometry *geo,
+                           uint32_t number, xx_io_device *destination,
+                           xx_pd_struct *pd) {
+    ufs2_inode inode;
+    uint8_t *buffer;
+    uint64_t remaining, logical = 0U;
+    bool ok = true;
+    if (!ufs2_read_inode(device, geo, number, &inode) ||
+        (inode.mode & UFS2_S_IFMT) != UFS2_S_IFREG ||
+        inode.size > ufs2_max_file(geo)) {
+        return false;
+    }
+    buffer = (uint8_t *)xx_mem_alloc(geo->bsize);
+    if (!buffer) return false;
+    remaining = inode.size;
+    while (remaining != 0U) {
+        uint64_t address;
+        size_t part = (size_t)(remaining < geo->bsize ? remaining : geo->bsize);
+        if ((pd && xx_pd_is_stopped(pd)) ||
+            !ufs2_map(device, geo, &inode, logical, &address)) {
+            ok = false;
+            break;
+        }
+        if (address == 0U) {
+            xx_mem_zero(buffer, part);
+        } else if (!ufs2_extent_ok(geo, address, part) ||
+                   !ufs2_read_at(device, ufs2_frag_offset(geo, address),
+                                 buffer, part)) {
+            ok = false;
+            break;
+        }
+        if (destination &&
+            xx_io_write(destination, buffer, part) != (ssize_t)part) {
+            ok = false;
+            break;
+        }
+        remaining -= part;
+        ++logical;
+    }
+    xx_mem_free(buffer);
+    return ok;
+}
+
+void xx_ufs2_init(xx_ufs2 *ufs2, xx_io_device *dev, int64_t base_address) {
+    if (!ufs2) return;
+    xx_mem_zero(ufs2, sizeof(*ufs2));
+    xx_format_init(&ufs2->format, dev, base_address);
+    ufs2->format.endian = XX_ENDIAN_LITTLE;
+    ufs2->format.file_type = XX_UFS2_FILE_TYPE;
+    ufs2->format.format_type = XX_TYPE_ARCHIVE;
+    ufs2->format.is_archive = true;
+    xx_format_set_mime_type(&ufs2->format, "application/x-ufs2");
+    xx_format_set_extension(&ufs2->format, "img");
+    ufs2->format.check_is_valid = xx_ufs2_check_is_valid;
+    ufs2->format.handle_base_info = xx_ufs2_handle_base_info;
+    ufs2->format.get_format_size = xx_ufs2_get_format_size;
+    ufs2->format.get_number_of_archive_records =
+        xx_ufs2_get_number_of_archive_records;
+    ufs2->format.create_archive_records_reading =
+        xx_ufs2_create_archive_records_reading;
+    ufs2->format.get_current_archive_record =
+        xx_ufs2_get_current_archive_record;
+    ufs2->format.unpack_current_archive_record =
+        xx_ufs2_unpack_current_archive_record;
+    ufs2->format.archive_record_move_to_next =
+        xx_ufs2_archive_record_move_to_next;
+    ufs2->format.free_archive_records_reading =
+        xx_ufs2_free_archive_records_reading;
+    ufs2->format.destroy = ufs2_vtable_destroy;
+}
+
+xx_ufs2 *xx_ufs2_create(xx_io_device *dev, int64_t base_address) {
+    xx_ufs2 *ufs2 = (xx_ufs2 *)xx_mem_alloc(sizeof(*ufs2));
+    if (ufs2) xx_ufs2_init(ufs2, dev, base_address);
+    return ufs2;
+}
+
+void xx_ufs2_destroy(xx_ufs2 *ufs2) {
+    if (!ufs2) return;
+    if (ufs2->internal) {
+        ufs2_parsed_cleanup((ufs2_parsed *)ufs2->internal);
+        xx_mem_free(ufs2->internal);
+        ufs2->internal = NULL;
+    }
+    xx_format_cleanup_extra_parameters(&ufs2->format);
+}
+
+static void ufs2_vtable_destroy(Abstractformat *self) {
+    xx_ufs2_destroy((xx_ufs2 *)self);
+}
+
+void xx_ufs2_free(xx_ufs2 *ufs2) {
+    if (!ufs2) return;
+    xx_ufs2_destroy(ufs2);
+    xx_mem_free(ufs2);
+}
+
+bool xx_ufs2_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+    ufs2_geometry geo;
+    ufs2_inode root;
+    (void)pd;
+    return self && ufs2_check(self, &geo, &root);
+}
+
+bool xx_ufs2_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+    xx_ufs2 *ufs2 = (xx_ufs2 *)self;
+    ufs2_parsed *parsed;
+    int64_t total, end;
+    if (!self) return false;
+    parsed = (ufs2_parsed *)xx_mem_alloc(sizeof(*parsed));
+    if (!parsed) return false;
+    if (!ufs2_parse(self, parsed, pd)) {
+        xx_mem_free(parsed);
+        self->is_valid = false;
+        self->base_info_handled = false;
+        return false;
+    }
+    if (ufs2->internal) {
+        ufs2_parsed_cleanup((ufs2_parsed *)ufs2->internal);
+        xx_mem_free(ufs2->internal);
+    }
+    ufs2->internal = parsed;
+    ufs2->number_of_records = parsed->count;
+    ufs2->block_size = parsed->geo.bsize;
+    ufs2->fragment_size = parsed->geo.fsize;
+    ufs2->group_count = parsed->geo.ncg;
+    ufs2->fragment_count = parsed->geo.size;
+    ufs2->superblock_offset = parsed->geo.super_offset;
+    ufs2->big_endian = parsed->geo.big;
+    self->endian = parsed->geo.big ? XX_ENDIAN_BIG : XX_ENDIAN_LITTLE;
+    self->format_size = (int64_t)parsed->geo.fs_bytes;
+    end = self->base_address + (int64_t)parsed->geo.fs_bytes;
+    total = xx_io_total_size(self->device);
+    if (total > end) {
+        self->overlay_offset = end;
+        self->overlay_size = total - end;
+    } else {
+        self->overlay_offset = -1;
+        self->overlay_size = 0;
+    }
+    self->number_of_archive_records = parsed->count;
+    self->is_valid = true;
+    self->base_info_handled = true;
+    return true;
+}
+
+int64_t xx_ufs2_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
+    if (!self || (!self->base_info_handled &&
+                  !xx_format_handle_base_info(self, pd))) return -1;
+    return self->format_size;
+}
+
+uint64_t xx_ufs2_get_number_of_archive_records(Abstractformat *self,
+                                               xx_pd_struct *pd) {
+    if (!self || (!self->base_info_handled &&
+                  !xx_format_handle_base_info(self, pd))) return 0U;
+    return ((xx_ufs2 *)self)->number_of_records;
+}
+
+static void ufs2_stream_free(void *pointer) {
+    ufs2_stream *stream = (ufs2_stream *)pointer;
+    if (!stream) return;
+    ufs2_parsed_cleanup(&stream->parsed);
+    xx_mem_free(stream);
+}
+
+xx_archive_record_state *xx_ufs2_create_archive_records_reading(
+    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+    xx_archive_record_state *state;
+    ufs2_stream *stream;
+    if (!self || !self->device) return NULL;
+    stream = (ufs2_stream *)xx_mem_calloc(1U, sizeof(*stream));
+    if (!stream) return NULL;
+    if (!ufs2_parse(self, &stream->parsed, pd)) {
+        xx_mem_free(stream);
+        return NULL;
+    }
+    state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
+    if (!state) {
+        ufs2_stream_free(stream);
+        return NULL;
+    }
+    xx_archive_record_state_init(state, self);
+    state->internal_state = stream;
+    state->free_internal = ufs2_stream_free;
+    state->total_records = (int64_t)stream->parsed.count;
+    if (!ufs2_copy_options(&state->options, options)) {
+        xx_archive_record_state_free(state);
+        return NULL;
+    }
+    if (stream->parsed.count != 0U) {
+        if (!ufs2_set_record(&state->current_record,
+                             &stream->parsed.entries[0])) {
+            xx_archive_record_state_free(state);
+            return NULL;
+        }
+        state->has_record = true;
+        state->current_index = 0;
+    }
+    return state;
+}
+
+const xx_archive_record *xx_ufs2_get_current_archive_record(
+    Abstractformat *self, xx_archive_record_state *state) {
+    return self && state && state->format == self && state->has_record
+               ? &state->current_record : NULL;
+}
+
+bool xx_ufs2_archive_record_move_to_next(Abstractformat *self,
+                                         xx_archive_record_state *state,
+                                         xx_pd_struct *pd) {
+    ufs2_stream *stream;
+    if (!self || !state || state->format != self || !state->has_record ||
+        !(stream = (ufs2_stream *)state->internal_state) ||
+        (pd && xx_pd_is_stopped(pd))) {
+        return false;
+    }
+    if (++stream->index >= stream->parsed.count ||
+        !ufs2_set_record(&state->current_record,
+                         &stream->parsed.entries[stream->index])) {
+        xx_archive_record_cleanup(&state->current_record);
+        xx_archive_record_init(&state->current_record);
+        state->has_record = false;
+        return false;
+    }
+    ++state->current_index;
+    return true;
+}
+
+bool xx_ufs2_unpack_current_archive_record(Abstractformat *self,
+                                           xx_archive_record_state *state,
+                                           xx_pd_struct *pd) {
+    ufs2_stream *stream;
+    const ufs2_entry *entry;
+    const xx_var *option;
+    const char *base = NULL;
+    char *owned_base = NULL;
+    char *path = NULL;
+    bool result = false;
+    bool created = false;
+    if (!self || !self->device || !state || state->format != self ||
+        !state->has_record ||
+        !(stream = (ufs2_stream *)state->internal_state) ||
+        stream->index >= stream->parsed.count || (pd && xx_pd_is_stopped(pd)))
+        return false;
+    entry = &stream->parsed.entries[stream->index];
+    option = ufs2_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
+    if (!option) {
+        return entry->is_folder ||
+               ufs2_copy_file(self->device, &stream->parsed.geo, entry->inode,
+                              NULL, pd);
+    }
+    if (!ufs2_safe_path(entry->name)) return false;
+    if (option->type == XX_VAR_TYPE_STRING ||
+        option->type == XX_VAR_TYPE_STRING_VIEW) {
+        base = xx_var_get_str(option);
+    } else if (option->type == XX_VAR_TYPE_WSTRING ||
+               option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+        owned_base = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
+        base = owned_base;
+    }
+    if (!base) goto done;
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' &&
+            base[xx_str_len(base) - 1U] != '\\')
+               ? xx_str_concat3(base, "/", entry->name)
+               : xx_str_concat(base, entry->name);
+    if (!path) goto done;
+    if (entry->is_folder) {
+        result = xx_store_create_dirs_a(path, true);
+        goto done;
+    }
+    if (!xx_store_create_dirs_a(path, false)) goto done;
+    {
+        xx_io_device *destination = xx_io_file_open(path, "wb");
+        if (!destination) goto done;
+        created = true;
+        result = ufs2_copy_file(self->device, &stream->parsed.geo,
+                                entry->inode, destination, pd);
+        if (xx_io_close(destination) != 0) result = false;
+    }
+done:
+    if (!result && path && created) xx_rt_remove(path);
+    if (path) xx_str_free(path);
+    if (owned_base) xx_str_free(owned_base);
+    return result;
+}
+
+void xx_ufs2_free_archive_records_reading(Abstractformat *self,
+                                          xx_archive_record_state *state) {
+    (void)self;
+    xx_archive_record_state_free(state);
+}
+
+uint64_t xx_ufs2_get_number_of_records(const xx_ufs2 *ufs2) {
+    return ufs2 ? ufs2->number_of_records : 0U;
+}
+uint32_t xx_ufs2_get_block_size(const xx_ufs2 *ufs2) {
+    return ufs2 ? ufs2->block_size : 0U;
+}
+uint32_t xx_ufs2_get_fragment_size(const xx_ufs2 *ufs2) {
+    return ufs2 ? ufs2->fragment_size : 0U;
+}
+int64_t xx_ufs2_get_superblock_offset(const xx_ufs2 *ufs2) {
+    return ufs2 ? ufs2->superblock_offset : -1;
+}
+bool xx_ufs2_is_big_endian(const xx_ufs2 *ufs2) {
+    return ufs2 ? ufs2->big_endian : false;
+}

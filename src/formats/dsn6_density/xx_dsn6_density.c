@@ -1,0 +1,18 @@
+/* SPDX-License-Identifier: MIT
+ * Primary reference: https://raw.githubusercontent.com/project-gemmi/gemmi/master/include/gemmi/dsn6.hpp
+ * DSN6/BRIX density-map family: complete typed binary/ASCII descriptor, valid positive grid/cell/scaling parameters and exact8x8x8 brick extents. Binary reserved descriptor words must be zero; brick padding outside declared extents is retained unchanged. Original descriptor and encoded density bricks exported; no resampling and no external map dependencies.
+ * Bounded32MiB input,4096 components and bounded work.
+ */
+#include "xxfclib/formats/dsn6_density/xx_dsn6_density.h"
+#include "../wbmp_image/xx_fifteenth_games.h"
+static bool vg_quick(Abstractformat *f,uint64_t n) {uint8_t b[38];return n>=1024&&pm_read(f,0,b,sizeof(b))&&(vg_tag(b,":-)",3)||pm_be16(b+36)==100||pm_le16(b+36)==100);}
+static bool vg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {int32_t ext[3],grid[3],origin,v;double cell[6],prod,plus,sigma;uint64_t bricks=1,i;unsigned k;bool ascii=vg_tag(b,":-)",3);char name[48];if(n<1024)return false;if(ascii){vg_lex q={b,0,512,pd,0,false,false,false};if(!vg_utf(b,512,true,pd)||!vg_char(&q,':')||!vg_char(&q,'-')||!vg_char(&q,')')||!vg_kw(&q,"origin"))return false;for(k=0;k<3;++k)if(!vg_integer(&q,&origin)||origin< -32768||origin>32767)return false;if(!vg_kw(&q,"extent"))return false;for(k=0;k<3;++k)if(!vg_integer(&q,&ext[k]))return false;if(!vg_kw(&q,"grid"))return false;for(k=0;k<3;++k)if(!vg_integer(&q,&grid[k]))return false;if(!vg_kw(&q,"cell"))return false;for(k=0;k<6;++k)if(!vg_number(&q,&cell[k]))return false;if(!vg_kw(&q,"prod")||!vg_number(&q,&prod)||!vg_kw(&q,"plus")||!vg_integer(&q,&v)||!vg_kw(&q,"sigma")||!vg_number(&q,&sigma)||sigma<0||!vg_end(&q))return false;plus=v;}
+ else {bool le=pm_le16(b+36)==100;int32_t scale=(int16_t)(le?pm_le16(b+34):pm_be16(b+34));if((!le&&pm_be16(b+36)!=100)||scale<=0)return false;for(k=0;k<3;++k){ext[k]=(int16_t)(le?pm_le16(b+6+k*2):pm_be16(b+6+k*2));grid[k]=(int16_t)(le?pm_le16(b+12+k*2):pm_be16(b+12+k*2));}for(k=0;k<6;++k)cell[k]=(double)(int16_t)(le?pm_le16(b+18+k*2):pm_be16(b+18+k*2))/scale;prod=(double)(int16_t)(le?pm_le16(b+30):pm_be16(b+30))/100;plus=(int16_t)(le?pm_le16(b+32):pm_be16(b+32));if(!vg_zero(b+38,474))return false;}
+ if(prod<=0||prod>1e12||plus< -32768||plus>32767)return false;for(k=0;k<3;++k){if(ext[k]<1||ext[k]>4096||grid[k]<1||grid[k]>32767||ext[k]>grid[k]||cell[k]<=0||cell[k+3]<=0||cell[k+3]>=180)return false;bricks*=(uint64_t)(ext[k]+7)/8;if(bricks>4095)return false;}if(n!=512+bricks*512||!vg_emit(f,s,"descriptor.dsn6",0,512,n))return false;for(i=0;i<bricks;++i){if(vg_stop(pd))return false;xx_rt_snprintf(name,sizeof(name),"density-brick-%llu.bin",(unsigned long long)i);if(!vg_emit(f,s,name,512+i*512,512,n))return false;}return true;}
+
+void xx_dsn6_density_init(xx_dsn6_density *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_DSN6_DENSITY,"dsn6");}}
+xx_dsn6_density *xx_dsn6_density_create(xx_io_device *d,int64_t at) {xx_dsn6_density *r=(xx_dsn6_density *)xx_mem_alloc(sizeof(*r));if(r)xx_dsn6_density_init(r,d,at);return r;}
+void xx_dsn6_density_destroy(xx_dsn6_density *r) {if(r)xx_format_cleanup_extra_parameters(&r->format);}
+void xx_dsn6_density_free(xx_dsn6_density *r) {if(r){xx_dsn6_density_destroy(r);xx_mem_free(r);}}
+bool xx_dsn6_density_check_is_valid(Abstractformat *f,xx_pd_struct *pd) {return pm_valid(f,pd);}
+bool xx_dsn6_density_handle_base_info(Abstractformat *f,xx_pd_struct *pd) {return pm_handle(f,pd);}

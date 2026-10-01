@@ -1,0 +1,18 @@
+/* SPDX-License-Identifier: MIT. Bounded original-component reader. */
+#ifndef XX_COMMODORE_PC64_H
+#define XX_COMMODORE_PC64_H
+#include "xxfclib/formats/xx_format.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
+typedef struct xx_commodore_pc64 { Abstractformat format; } xx_commodore_pc64;
+XXFC_API void xx_commodore_pc64_init(xx_commodore_pc64 *,xx_io_device *,int64_t);
+XXFC_API xx_commodore_pc64 *xx_commodore_pc64_create(xx_io_device *,int64_t);
+XXFC_API void xx_commodore_pc64_destroy(xx_commodore_pc64 *);
+XXFC_API void xx_commodore_pc64_free(xx_commodore_pc64 *);
+XXFC_API bool xx_commodore_pc64_check_is_valid(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_commodore_pc64_handle_base_info(Abstractformat *,xx_pd_struct *);
+#ifdef __cplusplus
+}
+#endif
+#endif

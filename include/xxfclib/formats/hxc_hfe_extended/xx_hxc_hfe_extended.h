@@ -1,0 +1,46 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
+#ifndef XXFCLIB_FORMAT_HXC_HFE_EXTENDED_H
+#define XXFCLIB_FORMAT_HXC_HFE_EXTENDED_H
+
+#include "xxfclib/formats/xx_format.h"
+
+/* HxC Floppy Emulator "extended" HFE (format revision 1, hxcfe HXC_EXTHFE).
+ * Same cylinder LUT and interleaved bit-cell layout as HFE revision 0; the
+ * single member is the MFM-decoded flat sector image. */
+typedef struct xx_hxc_hfe_extended {
+    Abstractformat format;
+    uint64_t number_of_records;
+    int64_t archive_end;
+} xx_hxc_hfe_extended;
+
+XXFC_API void xx_hxc_hfe_extended_init(xx_hxc_hfe_extended *archive,
+                                       xx_io_device *device,
+                                       int64_t base_address);
+XXFC_API xx_hxc_hfe_extended *xx_hxc_hfe_extended_create(xx_io_device *device,
+                                                         int64_t base_address);
+XXFC_API void xx_hxc_hfe_extended_destroy(xx_hxc_hfe_extended *archive);
+XXFC_API void xx_hxc_hfe_extended_free(xx_hxc_hfe_extended *archive);
+XXFC_API bool xx_hxc_hfe_extended_check_is_valid(Abstractformat *self,
+                                                 xx_pd_struct *pd);
+XXFC_API bool xx_hxc_hfe_extended_handle_base_info(Abstractformat *self,
+                                                   xx_pd_struct *pd);
+XXFC_API int64_t xx_hxc_hfe_extended_get_format_size(Abstractformat *self,
+                                                     xx_pd_struct *pd);
+XXFC_API uint64_t xx_hxc_hfe_extended_get_number_of_archive_records(
+    Abstractformat *self, xx_pd_struct *pd);
+XXFC_API xx_archive_record_state *
+xx_hxc_hfe_extended_create_archive_records_reading(Abstractformat *self,
+                                                   const xx_list_s *options,
+                                                   xx_pd_struct *pd);
+XXFC_API const xx_archive_record *xx_hxc_hfe_extended_get_current_archive_record(
+    Abstractformat *self, xx_archive_record_state *state);
+XXFC_API bool xx_hxc_hfe_extended_unpack_current_archive_record(
+    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API bool xx_hxc_hfe_extended_archive_record_move_to_next(
+    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+XXFC_API void xx_hxc_hfe_extended_free_archive_records_reading(
+    Abstractformat *self, xx_archive_record_state *state);
+
+#endif

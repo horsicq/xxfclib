@@ -1,0 +1,441 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com>
+ * SPDX-License-Identifier: MIT
+ * Native Commodore D9060/D9090 DOS 3 reader from published sector structures.
+ */
+#include "xxfclib/formats/cbm_d90/xx_cbm_d90.h"
+#include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/strings/xx_string.h"
+#include "xxfclib/algo/store/xx_store.h"
+#include <stdio.h>
+#ifdef CBM_D90
+#define CB_TYPE XX_FILE_TYPE_CBM_D90
+#else
+#define CB_TYPE XX_FILE_TYPE_UNKNOWN
+#endif
+#define CB_SECTOR 256U
+#define CB_TRACKS 153U
+#define CB_SECTORS (CB_TRACKS * 192U)
+#define CB_MAX_FILES 8192U
+#define CB_MAX_DIR_SECTORS (CB_MAX_FILES / 8U)
+#define CB_MAX_BAM 20U
+#define CB_MAX_WORK 2000000U
+#define CB_COPY 256U
+typedef struct cb_member_s {
+    char *name;
+    uint64_t header;
+    uint32_t size;
+    uint16_t first_chain, blocks, first_sector;
+    uint8_t type, locked;
+} cb_member;
+typedef struct cb_view_s {
+    xx_io_device *device;
+    int64_t base;
+    uint64_t bytes, path_bytes, retained_memory;
+    uint32_t work, sectors, tracks, heads, bam_expected;
+    xx_cbm_d90_variant variant;
+    uint8_t free_map[(CB_SECTORS + 7U) / 8U], claimed[(CB_SECTORS + 7U) / 8U];
+    uint16_t chain[CB_SECTORS];
+    size_t chain_count, count, index;
+    cb_member members[CB_MAX_FILES];
+    char disk_name[64], disk_id[8];
+} cb_view;
+static bool cb_stopped(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
+static bool cb_work(cb_view *v, xx_pd_struct *pd) { return !cb_stopped(pd) && ++v->work <= CB_MAX_WORK; }
+static bool cb_bit(const uint8_t *map, uint16_t sector) { return (map[sector / 8U] & (uint8_t)(1U << (sector % 8U))) != 0U; }
+static void cb_set(uint8_t *map, uint16_t sector) { map[sector / 8U] |= (uint8_t)(1U << (sector % 8U)); }
+static bool cb_index(const cb_view *v, unsigned track, unsigned sector, uint16_t *index) {
+    unsigned value;
+    if (!v || track >= CB_TRACKS || sector >= v->heads * 32U) return false;
+    value = track * v->heads * 32U + sector;
+    if (value >= v->sectors) return false;
+    *index = (uint16_t)value; return true;
+}
+static bool cb_read_abs(cb_view *v, uint64_t offset, void *output, size_t size, xx_pd_struct *pd) {
+    int64_t cursor; size_t done = 0U; bool ok = false;
+    if (!v || offset > v->bytes || size > v->bytes - offset ||
+        offset > (uint64_t)(INT64_MAX - v->base) || cb_stopped(pd)) return false;
+    cursor = xx_io_tell(v->device); if (cursor < 0) return false;
+    if (!xx_io_seek64(v->device, v->base + (int64_t)offset, SEEK_SET)) {
+        while (done < size && !cb_stopped(pd)) {
+            ssize_t got = xx_io_read(v->device, (uint8_t *)output + done, size - done);
+            if (got <= 0 || (size_t)got > size - done) break;
+            done += (size_t)got;
+        }
+        ok = done == size;
+    }
+    if (xx_io_seek64(v->device, cursor, SEEK_SET)) ok = false;
+    return ok && !cb_stopped(pd);
+}
+static bool cb_read_sector(cb_view *v, uint16_t index, uint8_t data[CB_SECTOR], xx_pd_struct *pd) {
+    return index < v->sectors && cb_work(v, pd) && cb_read_abs(v, (uint64_t)index * CB_SECTOR, data, CB_SECTOR, pd);
+}
+static bool cb_equal(const char *a, const char *b) {
+    while (*a && *b) {
+        unsigned char x = (unsigned char)*a++, y = (unsigned char)*b++;
+        if (x >= 'A' && x <= 'Z') x += 'a' - 'A';
+        if (y >= 'A' && y <= 'Z') y += 'a' - 'A';
+        if (x != y) return false;
+    }
+    return !*a && !*b;
+}
+static bool cb_device_name(const char *name) {
+    static const char *const devices[] = {"CON","PRN","AUX","NUL","CONIN$","CONOUT$","CLOCK$"};
+    char stem[32]; size_t i = 0U, j;
+    while (name[i] && name[i] != '.' && i + 1U < sizeof(stem)) { stem[i] = name[i]; ++i; }
+    stem[i] = 0;
+    if (name[i] && name[i] != '.') return false;
+    for (j = 0U; j < sizeof(devices) / sizeof(devices[0]); ++j) if (cb_equal(stem, devices[j])) return true;
+    return i == 4U && stem[3] >= '0' && stem[3] <= '9' &&
+        ((stem[0] == 'C' || stem[0] == 'c') && (stem[1] == 'O' || stem[1] == 'o') && (stem[2] == 'M' || stem[2] == 'm') ||
+         (stem[0] == 'L' || stem[0] == 'l') && (stem[1] == 'P' || stem[1] == 'p') && (stem[2] == 'T' || stem[2] == 't'));
+}
+static bool cb_name(const uint8_t raw[16], char out[80]) {
+    unsigned i; size_t used = 0U; bool padded = false;
+    for (i = 0U; i < 16U; ++i) {
+        unsigned char c = raw[i]; char decoded;
+        if (c == 0xA0U) { padded = true; continue; }
+        if (padded || c == 0U) return false;
+        if (c >= 0xC1U && c <= 0xDAU) c = (unsigned char)(c - 0xC1U + 'A');
+        else if (c >= 0x41U && c <= 0x5AU) c = (unsigned char)(c - 0x41U + 'A');
+        decoded = (char)c;
+        if (c < 0x20U || c > 0x7EU) {
+            static const char digits[] = "0123456789ABCDEF";
+            out[used++] = '~'; out[used++] = digits[c >> 4U]; out[used++] = digits[c & 15U];
+        } else {
+            if (decoded == '/' || decoded == '\\' || decoded == ':' || decoded == '<' || decoded == '>' ||
+                decoded == '"' || decoded == '|' || decoded == '?' || decoded == '*') decoded = '_';
+            out[used++] = decoded;
+        }
+    }
+    while (used && (out[used - 1U] == ' ' || out[used - 1U] == '.')) out[used - 1U] = '_';
+    out[used] = 0;
+    if (!used) return false;
+    if ((used == 1U && out[0] == '.') || (used == 2U && out[0] == '.' && out[1] == '.') || cb_device_name(out)) {
+        size_t j;
+        for (j = used + 1U; j; --j) out[j] = out[j - 1U];
+        out[0] = '_';
+    }
+    return true;
+}
+static bool cb_append(cb_view *v, const char *stem, const char *extension, uint64_t header,
+    uint8_t type, uint8_t locked, uint16_t first, uint16_t blocks, uint32_t size, uint16_t chain_start, xx_pd_struct *pd) {
+    unsigned suffix;
+    if (v->count >= CB_MAX_FILES) return false;
+    for (suffix = 0U; suffix < CB_MAX_FILES; ++suffix) {
+        char leaf[96]; size_t i, bytes; char *name; bool taken = false;
+        if (!cb_work(v, pd)) return false;
+        if (suffix) xx_rt_snprintf(leaf, sizeof(leaf), "%s~%u.%s", stem, suffix + 1U, extension);
+        else xx_rt_snprintf(leaf, sizeof(leaf), "%s.%s", stem, extension);
+        for (i = 0U; i < v->count; ++i) if (cb_equal(leaf, v->members[i].name)) { taken = true; break; }
+        if (taken) continue;
+        bytes = xx_str_len(leaf) + 1U;
+        if (bytes > UINT64_MAX - v->path_bytes || v->path_bytes + bytes > 1048576U) return false;
+        name = xx_str_dup(leaf); if (!name) return false;
+        v->members[v->count].name = name; v->members[v->count].header = header;
+        v->members[v->count].type = type; v->members[v->count].locked = locked;
+        v->members[v->count].first_sector = first; v->members[v->count].blocks = blocks;
+        v->members[v->count].size = size; v->members[v->count].first_chain = chain_start;
+        ++v->count; v->path_bytes += bytes; return true;
+    }
+    return false;
+}
+static bool cb_claim(cb_view *v, uint16_t index) {
+    if (index >= v->sectors || cb_bit(v->free_map, index) || cb_bit(v->claimed, index)) return false;
+    cb_set(v->claimed, index); return true;
+}
+static bool cb_file(cb_view *v, const uint8_t *entry, uint64_t header, xx_pd_struct *pd) {
+    uint8_t kind = entry[0] & 7U, track = entry[1], sector = entry[2];
+    uint16_t declared = (uint16_t)((unsigned)entry[28] | ((unsigned)entry[29] << 8U));
+    uint16_t start = (uint16_t)v->chain_count, first = 0U; uint32_t size = 0U;
+    const char *extension = kind == 1U ? "seq" : kind == 2U ? "prg" : "usr";
+    char stem[80];
+    if (kind < 1U || kind > 3U || !(entry[0] & 0x80U) || (entry[0] & 0x38U) || !cb_name(entry + 3U, stem)) return false;
+    if (!track) {
+        if (sector || declared) return false;
+    } else {
+        while (track) {
+            uint16_t index; uint8_t data[CB_SECTOR];
+            if (!cb_work(v, pd) || !cb_index(v, track, sector, &index) || !cb_claim(v, index) ||
+                v->chain_count >= v->sectors || !cb_read_sector(v, index, data, pd)) return false;
+            if (v->chain_count == start) first = index;
+            v->chain[v->chain_count++] = index;
+            if (!data[0]) {
+                if (data[1] < 1U) return false;
+                size = (uint32_t)(v->chain_count - start - 1U) * 254U + (uint32_t)data[1] - 1U;
+                break;
+            }
+            track = data[0]; sector = data[1];
+        }
+        if (declared != v->chain_count - start) return false;
+    }
+    return cb_append(v, stem, extension, header, kind, (uint8_t)((entry[0] & 0x40U) != 0U), first,
+        declared, size, start, pd);
+}
+static bool cb_directory(cb_view *v, unsigned track, unsigned sector, xx_pd_struct *pd) {
+    unsigned visited = 0U;
+    while (track) {
+        uint16_t index; uint8_t data[CB_SECTOR]; unsigned slot;
+        if (++visited > CB_MAX_DIR_SECTORS || !cb_index(v, track, sector, &index) ||
+            !cb_claim(v, index) || !cb_read_sector(v, index, data, pd)) return false;
+        for (slot = 0U; slot < 8U; ++slot) {
+            const uint8_t *entry = data + slot * 32U + 2U;
+            if ((entry[0] & 7U) == 0U) continue;
+            if (!cb_file(v, entry, (uint64_t)index * CB_SECTOR + slot * 32U + 2U, pd)) return false;
+        }
+        track = data[0]; sector = data[1];
+        if (!track && sector != 255U) return false;
+    }
+    return true;
+}
+static void cb_view_free(void *ptr) {
+    cb_view *v = (cb_view *)ptr; size_t i;
+    if (!v) return;
+    for (i = 0U; i < v->count; ++i) xx_str_free(v->members[i].name);
+    xx_mem_free(v);
+}
+static cb_view *cb_parse(Abstractformat *self, xx_pd_struct *pd) {
+    xx_cbm_d90 *disk = (xx_cbm_d90 *)self;
+    cb_view *v; uint8_t config[CB_SECTOR], header[CB_SECTOR], bad[CB_SECTOR], bam[CB_SECTOR];
+    int64_t total; uint16_t head_index, bam_index[CB_MAX_BAM];
+    unsigned bam_count = 0U, expected = 0U, next_track = 1U, next_sector = 0U;
+    unsigned previous_track = 255U, previous_sector = 255U, i;
+    if (!self || !self->device || self->base_address < 0 || cb_stopped(pd) ||
+        (disk->variant != XX_CBM_D90_9060 && disk->variant != XX_CBM_D90_9090) ||
+        (total = xx_io_total_size(self->device)) < self->base_address) return NULL;
+    v = (cb_view *)xx_mem_alloc(sizeof(*v)); if (!v) return NULL;
+    xx_mem_zero(v, sizeof(*v)); v->device = self->device; v->base = self->base_address;
+    v->variant = disk->variant; v->heads = disk->variant == XX_CBM_D90_9060 ? 4U : 6U;
+    v->bam_expected = v->heads == 4U ? 13U : 20U;
+    v->tracks = CB_TRACKS; v->sectors = CB_TRACKS * v->heads * 32U;
+    v->bytes = (uint64_t)v->sectors * CB_SECTOR;
+    if ((uint64_t)(total - v->base) < v->bytes) goto fail;
+    if (!cb_read_sector(v, 0U, config, pd) || !cb_read_sector(v, 1U, bad, pd) ||
+        config[0] != 0U || config[1] != 1U || config[2] != 0U || config[3] != 255U ||
+        config[4] != 76U || config[5] != 10U || config[6] != 76U || config[7] != 20U ||
+        config[8] != 1U || config[9] != 0U) goto fail;
+    for (i = 0U; i < CB_SECTOR; ++i) if (bad[i] != 255U) goto fail;
+    if (!cb_index(v, config[6], config[7], &head_index) ||
+        !cb_read_sector(v, head_index, header, pd) ||
+        header[0] != config[4] || header[1] != config[5] ||
+        header[24] != config[10] || header[25] != config[11] ||
+        header[27] != '3' || header[28] != 'A') goto fail;
+    while (bam_count < CB_MAX_BAM) {
+        unsigned first, last, track, head, sector;
+        if (next_track < 1U || next_sector != 0U ||
+            !cb_index(v, next_track, next_sector, bam_index + bam_count)) goto fail;
+        for (i = 0U; i < bam_count; ++i) if (bam_index[i] == bam_index[bam_count]) goto fail;
+        if (!cb_read_sector(v, bam_index[bam_count], bam, pd) ||
+            bam[2] != previous_track || bam[3] != previous_sector ||
+            bam[4] != expected || bam[5] <= bam[4] ||
+            bam[5] > CB_TRACKS || (unsigned)bam[5] - (unsigned)bam[4] > 250U / (5U * v->heads)) goto fail;
+        first = bam[4]; last = bam[5];
+        for (track = first; track < last; ++track) {
+            for (head = 0U; head < v->heads; ++head) {
+                const uint8_t *entry = bam + 16U + (track - first) * (5U * v->heads) + head * 5U;
+                unsigned free_count = 0U;
+                for (sector = 0U; sector < 32U; ++sector) {
+                    uint16_t index;
+                    if (!cb_work(v, pd) || !cb_index(v, track, head * 32U + sector, &index)) goto fail;
+                    if (entry[1U + sector / 8U] & (1U << (sector % 8U))) {
+                        cb_set(v->free_map, index); ++free_count;
+                    }
+                }
+                if (free_count != entry[0]) goto fail;
+            }
+        }
+        expected = last; previous_track = next_track; previous_sector = next_sector;
+        ++bam_count;
+        next_track = bam[0]; next_sector = bam[1];
+        if (next_track == 255U && next_sector == 255U) break;
+        if (next_track == 255U || next_sector == 255U) goto fail;
+    }
+    if (expected != CB_TRACKS || bam_count != v->bam_expected ||
+        next_track != 255U || next_sector != 255U ||
+        !cb_claim(v, 0U) || !cb_claim(v, 1U) || !cb_claim(v, head_index)) goto fail;
+    for (i = 0U; i < bam_count; ++i) if (!cb_claim(v, bam_index[i])) goto fail;
+    if (!cb_directory(v, config[4], config[5], pd)) goto fail;
+    {
+        char name[80], id[80]; uint8_t raw_name[16], raw_id[16];
+        for (i = 0U; i < 16U; ++i) raw_name[i] = header[6U + i];
+        for (i = 0U; i < 16U; ++i) raw_id[i] = i < 2U ? header[24U + i] : 0xA0U;
+        if (cb_name(raw_name, name)) xx_rt_snprintf(v->disk_name, sizeof(v->disk_name), "%s", name);
+        if (cb_name(raw_id, id)) xx_rt_snprintf(v->disk_id, sizeof(v->disk_id), "%s", id);
+    }
+    v->retained_memory = sizeof(*v) + v->path_bytes;
+    return v;
+fail:
+    cb_view_free(v); return NULL;
+}
+static void cb_vtable_destroy(Abstractformat *self) { xx_cbm_d90_destroy((xx_cbm_d90 *)self); }
+void xx_cbm_d90_init_ex(xx_cbm_d90 *v, xx_io_device *device, int64_t base, xx_cbm_d90_variant variant) {
+    if (!v) return;
+    xx_mem_zero(v, sizeof(*v)); xx_format_init(&v->format, device, base);
+    v->variant = variant;
+    v->format.endian = XX_ENDIAN_LITTLE; v->format.file_type = CB_TYPE;
+    v->format.format_type = XX_TYPE_ARCHIVE; v->format.is_archive = true;
+    xx_format_set_mime_type(&v->format, "application/x-commodore-d90");
+    xx_format_set_extension(&v->format, "d90");
+    v->format.check_is_valid = xx_cbm_d90_check_is_valid;
+    v->format.handle_base_info = xx_cbm_d90_handle_base_info;
+    v->format.get_format_size = xx_cbm_d90_get_format_size;
+    v->format.get_number_of_archive_records = xx_cbm_d90_get_number_of_archive_records;
+    v->format.create_archive_records_reading = xx_cbm_d90_create_archive_records_reading;
+    v->format.get_current_archive_record = xx_cbm_d90_get_current_archive_record;
+    v->format.archive_record_move_to_next = xx_cbm_d90_archive_record_move_to_next;
+    v->format.unpack_current_archive_record = xx_cbm_d90_unpack_current_archive_record;
+    v->format.free_archive_records_reading = xx_cbm_d90_free_archive_records_reading;
+    v->format.destroy = cb_vtable_destroy;
+}
+void xx_cbm_d90_init(xx_cbm_d90 *v, xx_io_device *device, int64_t base) {
+    xx_cbm_d90_init_ex(v, device, base, XX_CBM_D90_9090);
+}
+xx_cbm_d90 *xx_cbm_d90_create(xx_io_device *device, int64_t base) {
+    return xx_cbm_d90_create_ex(device, base, XX_CBM_D90_9090);
+}
+xx_cbm_d90 *xx_cbm_d90_create_ex(xx_io_device *device, int64_t base, xx_cbm_d90_variant variant) {
+    xx_cbm_d90 *v = (xx_cbm_d90 *)xx_mem_alloc(sizeof(*v)); if (v) xx_cbm_d90_init_ex(v, device, base, variant); return v;
+}
+void xx_cbm_d90_destroy(xx_cbm_d90 *v) { if (v) xx_format_cleanup_extra_parameters(&v->format); }
+void xx_cbm_d90_free(xx_cbm_d90 *v) { if (v) { xx_cbm_d90_destroy(v); xx_mem_free(v); } }
+bool xx_cbm_d90_check_is_valid(Abstractformat *self, xx_pd_struct *pd) { cb_view *v = cb_parse(self, pd); bool ok = v != NULL; cb_view_free(v); return ok; }
+bool xx_cbm_d90_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+    xx_cbm_d90 *disk = (xx_cbm_d90 *)self; cb_view *v = cb_parse(self, pd); int64_t total, end;
+    if (!self) return false;
+    if (!v) { self->is_valid = false; self->base_info_handled = false; return false; }
+    disk->number_of_records = v->count;
+    disk->variant = v->variant; disk->track_count = v->tracks; disk->head_count = v->heads;
+    xx_rt_snprintf(disk->disk_name, sizeof(disk->disk_name), "%s", v->disk_name);
+    xx_rt_snprintf(disk->disk_id, sizeof(disk->disk_id), "%s", v->disk_id);
+    self->format_size = (int64_t)v->bytes; self->number_of_archive_records = v->count;
+    total = xx_io_total_size(self->device); end = self->base_address + self->format_size;
+    self->overlay_offset = total > end ? end : -1; self->overlay_size = total > end ? total - end : 0;
+    self->is_valid = true; self->base_info_handled = true;
+    cb_view_free(v); return true;
+}
+int64_t xx_cbm_d90_get_format_size(Abstractformat *self, xx_pd_struct *pd) { return xx_cbm_d90_handle_base_info(self, pd) ? self->format_size : -1; }
+uint64_t xx_cbm_d90_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd) { return xx_cbm_d90_handle_base_info(self, pd) ? ((xx_cbm_d90 *)self)->number_of_records : 0U; }
+static bool cb_record(xx_archive_record *record, const cb_view *v, const cb_member *m) {
+    xx_archive_record_cleanup(record); xx_archive_record_init(record);
+    record->header_offset = v->base + (int64_t)m->header; record->header_size = 30U;
+    record->data_offset = m->blocks ? v->base + (int64_t)m->first_sector * CB_SECTOR + 2 : -1;
+    record->compressed_size = m->size;
+    return xx_archive_record_set_original_name(record, m->name) &&
+        xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, m->size) &&
+        xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, m->size) &&
+        xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) &&
+        xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, m->locked);
+}
+static bool cb_options(xx_list_s *destination, const xx_list_s *source) {
+    size_t i; if (!source) return true;
+    for (i = 0U; i < source->count; ++i) {
+        const xx_meta *item = (const xx_meta *)xx_list_at(source, i); xx_meta copy;
+        if (!item) continue; xx_meta_init(&copy, item->meta_id);
+        if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) { xx_meta_cleanup(&copy); return false; }
+    }
+    return true;
+}
+xx_archive_record_state *xx_cbm_d90_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+    cb_view *v = cb_parse(self, pd); xx_archive_record_state *state;
+    if (!v) return NULL;
+    state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state)); if (!state) { cb_view_free(v); return NULL; }
+    xx_archive_record_state_init(state, self); state->internal_state = v; state->free_internal = cb_view_free; state->total_records = (int64_t)v->count;
+    if (!cb_options(&state->options, options) || (v->count && !cb_record(&state->current_record, v, v->members))) { xx_archive_record_state_free(state); return NULL; }
+    state->has_record = v->count != 0U; state->current_index = v->count ? 0 : -1; return state;
+}
+const xx_archive_record *xx_cbm_d90_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state) {
+    return self && state && state->format == self && state->has_record ? &state->current_record : NULL;
+}
+bool xx_cbm_d90_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+    cb_view *v;
+    if (!self || !state || state->format != self || !state->has_record || !(v = (cb_view *)state->internal_state) || cb_stopped(pd)) return false;
+    if (v->index + 1U >= v->count) {
+        v->index = v->count; state->has_record = false; state->current_index = -1;
+        xx_archive_record_cleanup(&state->current_record); xx_archive_record_init(&state->current_record); return false;
+    }
+    if (!cb_record(&state->current_record, v, v->members + v->index + 1U)) { state->has_record = false; return false; }
+    ++v->index; ++state->current_index; return true;
+}
+static uint64_t cb_limit(Abstractformat *self, const xx_list_s *options, uint32_t id, uint64_t fallback) {
+    const xx_var *value = xx_format_resolve_extra_parameter(self, options, id);
+    if (!value) return fallback;
+    switch (value->type) {
+    case XX_VAR_TYPE_UINT8: case XX_VAR_TYPE_UINT16: case XX_VAR_TYPE_UINT32: case XX_VAR_TYPE_UINT64: return xx_var_get_u64(value);
+    case XX_VAR_TYPE_INT8: case XX_VAR_TYPE_INT16: case XX_VAR_TYPE_INT32: case XX_VAR_TYPE_INT64: {
+        int64_t n = xx_var_get_i64(value); return n < 0 ? fallback : (uint64_t)n;
+    }
+    default: return fallback;
+    }
+}
+static bool cb_limits(Abstractformat *self, xx_archive_record_state *state, const cb_view *v, const cb_member *m, size_t *buffer_size) {
+    *buffer_size = m->size < CB_COPY ? m->size : CB_COPY;
+    return m->size <= cb_limit(self, &state->options, XX_META_ID_OPT_MAX_MEMBER_SIZE, UINT64_MAX) &&
+        v->retained_memory + sizeof(*state) + *buffer_size <= cb_limit(self, &state->options, XX_META_ID_OPT_MEMORY_LIMIT, UINT64_MAX);
+}
+bool xx_cbm_d90_extract_record_to_device(Abstractformat *self, xx_archive_record_state *state, xx_io_device *destination, xx_pd_struct *pd) {
+    cb_view *v; const cb_member *m; uint8_t *buffer; uint32_t done = 0U; size_t buffer_size; bool ok = true; unsigned block;
+    if (!self || !self->device || destination == self->device || !state || state->format != self || !state->has_record ||
+        !(v = (cb_view *)state->internal_state) || v->index >= v->count || cb_stopped(pd)) return false;
+    m = v->members + v->index;
+    if (!cb_limits(self, state, v, m, &buffer_size)) return false;
+    if (!buffer_size) return true;
+    buffer = (uint8_t *)xx_mem_alloc(buffer_size); if (!buffer) return false;
+    for (block = 0U; block < m->blocks && done < m->size; ++block) {
+        size_t part = m->size - done, written = 0U;
+        uint16_t sector = v->chain[(size_t)m->first_chain + block];
+        if (part > 254U) part = 254U;
+        if (part > buffer_size) part = buffer_size;
+        if (!cb_work(v, pd) || !cb_read_abs(v, (uint64_t)sector * CB_SECTOR + 2U, buffer, part, pd)) { ok = false; break; }
+        while (destination && written < part && !cb_stopped(pd)) {
+            ssize_t got = xx_io_write(destination, buffer + written, part - written);
+            if (got <= 0 || (size_t)got > part - written) { ok = false; break; }
+            written += (size_t)got;
+        }
+        if (!ok || cb_stopped(pd)) { ok = false; break; }
+        done += (uint32_t)part;
+    }
+    xx_mem_free(buffer); return ok && done == m->size && !cb_stopped(pd);
+}
+static xx_io_device *cb_stage(const char *destination, char **stage_path) {
+    unsigned attempt; size_t i, parent = 0U; char *directory = xx_str_dup(destination);
+    *stage_path = NULL; if (!directory) return NULL;
+    for (i = 0U; directory[i]; ++i) if (directory[i] == '/' || directory[i] == '\\') parent = i + 1U;
+    directory[parent] = 0;
+    for (attempt = 0U; attempt < 128U; ++attempt) {
+        char suffix[48], *candidate; xx_io_device *output;
+        xx_rt_snprintf(suffix, sizeof(suffix), ".xx_cbm_d90.tmp.%u", attempt);
+        candidate = xx_str_concat(directory, suffix); if (!candidate) break;
+        if (cb_equal(candidate, destination)) { xx_str_free(candidate); continue; }
+        output = xx_io_file_open(candidate, "wbx");
+        if (output) { *stage_path = candidate; xx_str_free(directory); return output; }
+        xx_str_free(candidate);
+    }
+    xx_str_free(directory); return NULL;
+}
+bool xx_cbm_d90_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+    cb_view *v; const xx_var *option, *overwrite_option; const char *base = NULL;
+    char *owned = NULL, *path = NULL, *stage_path = NULL; size_t buffer_size; bool overwrite, ok = false;
+    if (!self || !state || state->format != self || !state->has_record || !(v = (cb_view *)state->internal_state) || v->index >= v->count || cb_stopped(pd)) return false;
+    if (!cb_limits(self, state, v, v->members + v->index, &buffer_size)) return false;
+    option = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_UNPACK_PATH);
+    overwrite_option = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_OVERWRITE);
+    overwrite = overwrite_option && xx_var_get_bool(overwrite_option);
+    if (!option) return xx_cbm_d90_extract_record_to_device(self, state, NULL, pd);
+    if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) base = xx_var_get_str(option);
+    else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) { owned = xx_str_unicode_to_utf8(xx_var_get_wstr(option)); base = owned; }
+    if (!base) goto done;
+    path = (*base && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\')
+        ? xx_str_concat3(base, "/", v->members[v->index].name) : xx_str_concat(base, v->members[v->index].name);
+    if (!path || (!overwrite && xx_io_file_exists_a(path)) || !xx_store_create_dirs_a(path, false)) goto done;
+    {
+        xx_io_device *output = cb_stage(path, &stage_path); if (!output) goto done;
+        ok = xx_cbm_d90_extract_record_to_device(self, state, output, pd);
+        if (xx_io_close(output)) ok = false;
+    }
+    if (cb_stopped(pd)) ok = false;
+    if (ok) ok = xx_io_file_replace_a(stage_path, path, overwrite);
+done:
+    if (!ok && stage_path) xx_io_file_remove_a(stage_path);
+    xx_str_free(stage_path); xx_str_free(path); xx_str_free(owned); return ok;
+}
+void xx_cbm_d90_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state) { (void)self; xx_archive_record_state_free(state); }

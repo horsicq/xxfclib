@@ -1,0 +1,3270 @@
+{
+  "source": "Binary/audio.1.sg",
+  "format_count": 408,
+  "formats": [
+    {
+      "format_id": "SHIRU_1TRACKER",
+      "slug": "shiru_1tracker",
+      "source_line": 36,
+      "heuristic": false,
+      "display_name": "Shiru's 1tracker module (.1TM)",
+      "file_type": 1600
+    },
+    {
+      "format_id": "SUBZ3RO_ADLIBTRACKER2_A2M",
+      "slug": "subz3ro_adlibtracker2_a2m",
+      "source_line": 57,
+      "heuristic": false,
+      "display_name": "subz3ro's AdLib Tracker II module (.A2M)",
+      "file_type": 1601
+    },
+    {
+      "format_id": "SUBZ3RO_ADLIBTRACKER2_TINY",
+      "slug": "subz3ro_adlibtracker2_tiny",
+      "source_line": 65,
+      "heuristic": false,
+      "display_name": "subz3ro's AdLib Tracker II module (.A2T)",
+      "file_type": 1602
+    },
+    {
+      "format_id": "SAUER_ARTANDMAGIC",
+      "slug": "sauer_artandmagic",
+      "source_line": 77,
+      "heuristic": false,
+      "display_name": "F.Sauer & Y.Grolet's Art & Magic module (.AAM)",
+      "file_type": 1603
+    },
+    {
+      "format_id": "FERNANDEZ_ADLIB",
+      "slug": "fernandez_adlib",
+      "source_line": 86,
+      "heuristic": false,
+      "display_name": "Martin Fernandez's Adlib module (.ADLIB)",
+      "file_type": 1604
+    },
+    {
+      "format_id": "IONEO_AEROSTUDIO",
+      "slug": "ioneo_aerostudio",
+      "source_line": 96,
+      "heuristic": false,
+      "display_name": "ioNeo's Aero Studio module (.AERO)",
+      "file_type": 1605
+    },
+    {
+      "format_id": "NEVO_ARKOSTRACKER2",
+      "slug": "nevo_arkostracker2",
+      "source_line": 102,
+      "heuristic": false,
+      "display_name": "Julien Névo's Arkos Tracker 2 module (.AKS)",
+      "file_type": 1606
+    },
+    {
+      "format_id": "NEWBEAT_ACETRACKER_AM01",
+      "slug": "newbeat_acetracker_am01",
+      "source_line": 107,
+      "heuristic": false,
+      "display_name": "New Beat's Ace Tracker module (.AM)",
+      "file_type": 1607
+    },
+    {
+      "format_id": "NEWBEAT_ACETRACKER_ASG1",
+      "slug": "newbeat_acetracker_asg1",
+      "source_line": 146,
+      "heuristic": false,
+      "display_name": "New Beat's Ace Tracker module patterns (.ASG)",
+      "file_type": 1608
+    },
+    {
+      "format_id": "HAWLITZECK_AMCOMPOSER",
+      "slug": "hawlitzeck_amcomposer",
+      "source_line": 165,
+      "heuristic": false,
+      "display_name": "Marc Hawlitzeck's A.M. Composer module (.AMC)",
+      "file_type": 1609
+    },
+    {
+      "format_id": "ELYSSIS_AMUSIC_AMD",
+      "slug": "elyssis_amusic_amd",
+      "source_line": 183,
+      "heuristic": false,
+      "display_name": "Elyssis AMUSiC module (.AMD)",
+      "file_type": 1610
+    },
+    {
+      "format_id": "EA_ASYLUMMUSICFORMAT",
+      "slug": "ea_asylummusicformat",
+      "source_line": 205,
+      "heuristic": false,
+      "display_name": "Electronic Arts' ASYLUM Music Format module (.AMF)",
+      "file_type": 1611
+    },
+    {
+      "format_id": "EXTREMESTRACKER_AMS",
+      "slug": "extremestracker_ams",
+      "source_line": 225,
+      "heuristic": false,
+      "display_name": "Extreme's Tracker Advanced Module System track (.AMS)",
+      "file_type": 1612
+    },
+    {
+      "format_id": "VELVETSTUDIO_AMS",
+      "slug": "velvetstudio_ams",
+      "source_line": 270,
+      "heuristic": false,
+      "display_name": "Velvet Studio Advanced Module System track (.AMS)",
+      "file_type": 1613
+    },
+    {
+      "format_id": "AND_XSYNTH_AMX",
+      "slug": "and_xsynth_amx",
+      "source_line": 355,
+      "heuristic": false,
+      "display_name": "Dmitry 'AND' Andreev's XSynth module (.AMX)",
+      "file_type": 1614
+    },
+    {
+      "format_id": "TWICE_ARTOFNOISE",
+      "slug": "twice_artofnoise",
+      "source_line": 361,
+      "heuristic": false,
+      "display_name": "Bastian 'Twice' Spiegel's Art of Noise/Chorus module (.AON)",
+      "file_type": 1615
+    },
+    {
+      "format_id": "URKEDAL_APROSYS",
+      "slug": "urkedal_aprosys",
+      "source_line": 389,
+      "heuristic": false,
+      "display_name": "Petter A. Urkedal's AProSys module (.APS)",
+      "file_type": 1616
+    },
+    {
+      "format_id": "MAJORTOM_PLAYER2_ARP",
+      "slug": "majortom_player2_arp",
+      "source_line": 394,
+      "heuristic": false,
+      "display_name": "Major Tom's Player 2 module (.ARP)",
+      "file_type": 1617
+    },
+    {
+      "format_id": "KLEPS_ACTIONAMICSSOUNDTOOL",
+      "slug": "kleps_actionamicssoundtool",
+      "source_line": 399,
+      "heuristic": false,
+      "display_name": "Michael Kleps's Actionamics Sound Tool module (.AST)",
+      "file_type": 1618
+    },
+    {
+      "format_id": "CAGLIOSTRO_AST",
+      "slug": "cagliostro_ast",
+      "source_line": 406,
+      "heuristic": false,
+      "display_name": "Patrice 'Cagliostro' Bouchand's All Sound Tracker module (.AST)",
+      "file_type": 1619
+    },
+    {
+      "format_id": "SYNCHRONASSY_AUDIOSCULPTURE",
+      "slug": "synchronassy_audiosculpture",
+      "source_line": 438,
+      "heuristic": false,
+      "display_name": "Synchron Assembly's Audio Sculpture synth file (.AS)",
+      "file_type": 1620
+    },
+    {
+      "format_id": "ATHAUDIA_ATHTUNE",
+      "slug": "athaudia_athtune",
+      "source_line": 443,
+      "heuristic": false,
+      "display_name": "Athaudia's Athtune module (.ATHTUNE)",
+      "file_type": 1621
+    },
+    {
+      "format_id": "RESOLUTION_AXS",
+      "slug": "resolution_axs",
+      "source_line": 450,
+      "heuristic": false,
+      "display_name": "Resolution's AXS module (.AXS)",
+      "file_type": 1622
+    },
+    {
+      "format_id": "SHIRU_BEEPOLA",
+      "slug": "shiru_beepola",
+      "source_line": 470,
+      "heuristic": false,
+      "display_name": "Shiru's Beepola module (.BBSONG)",
+      "file_type": 1623
+    },
+    {
+      "format_id": "BENDAGLISH_SID",
+      "slug": "bendaglish_sid",
+      "source_line": 578,
+      "heuristic": false,
+      "display_name": "Ben Daglish's SID (.BDS)",
+      "file_type": 1624
+    },
+    {
+      "format_id": "THEBRAIN_EASYADLIB_MBF",
+      "slug": "thebrain_easyadlib_mbf",
+      "source_line": 593,
+      "heuristic": false,
+      "display_name": "The Brain's Easy Adlib module (.BMF)",
+      "file_type": 1625
+    },
+    {
+      "format_id": "TAMMELIN_JESKOLABUZZ_BMX",
+      "slug": "tammelin_jeskolabuzz_bmx",
+      "source_line": 644,
+      "heuristic": false,
+      "display_name": "Oskari Tammelin's Jeskola Buzz module (.BMX)",
+      "file_type": 1626
+    },
+    {
+      "format_id": "ADLIBVISUALCOMPOSER_STANDARDBNK",
+      "slug": "adlibvisualcomposer_standardbnk",
+      "source_line": 654,
+      "heuristic": false,
+      "display_name": "Instrument bank for Adlib Visual Composer (STANDARD.BNK)",
+      "file_type": 1627
+    },
+    {
+      "format_id": "BERO_TRACKER",
+      "slug": "bero_tracker",
+      "source_line": 660,
+      "heuristic": false,
+      "display_name": "Benjamin 'BeRo' Rousseaux's BeRoTracker module (.BRT)",
+      "file_type": 1628
+    },
+    {
+      "format_id": "ANDERSSON_BOYSCOUT_BSF",
+      "slug": "andersson_boyscout_bsf",
+      "source_line": 703,
+      "heuristic": false,
+      "display_name": "Christer Andersson's BoyScout module (.BSF)",
+      "file_type": 1629
+    },
+    {
+      "format_id": "SLATES_BSI_FUCO",
+      "slug": "slates_bsi_fuco",
+      "source_line": 708,
+      "heuristic": false,
+      "display_name": "Anthony J. 'Slates' Bybell's BSI Future Composer module (.BSI)",
+      "file_type": 1630
+    },
+    {
+      "format_id": "LOPATIC_BSS",
+      "slug": "lopatic_bss",
+      "source_line": 722,
+      "heuristic": false,
+      "display_name": "Thomas 'Dr.Nobody' Lopatic's Beathoven Synthesizer (.BSS)",
+      "file_type": 1631
+    },
+    {
+      "format_id": "CHUCKBISCUITS_CBA",
+      "slug": "chuckbiscuits_cba",
+      "source_line": 736,
+      "heuristic": false,
+      "display_name": "Chuck Biscuits & Zenic/Heretics' module (.CBA)",
+      "file_type": 1632
+    },
+    {
+      "format_id": "TYR_BOOMTRACKER4_CFF",
+      "slug": "tyr_boomtracker4_cff",
+      "source_line": 753,
+      "heuristic": false,
+      "display_name": "Daniel 'Tyr' Eschbach/CUD's Boom Tracker 4 module (.CFF)",
+      "file_type": 1633
+    },
+    {
+      "format_id": "ALONECODER_CHIPTRACKER",
+      "slug": "alonecoder_chiptracker",
+      "source_line": 760,
+      "heuristic": false,
+      "display_name": "Dmitry 'Alone Coder' Bystrov's Chip Tracker module (.CHI)",
+      "file_type": 1634
+    },
+    {
+      "format_id": "PHIPPS_COREDESIGN",
+      "slug": "phipps_coredesign",
+      "source_line": 776,
+      "heuristic": false,
+      "display_name": "Simon Phipps/Core Design module (.CORE)",
+      "file_type": 1635
+    },
+    {
+      "format_id": "OMAN_CYBERTRACKER",
+      "slug": "oman_cybertracker",
+      "source_line": 789,
+      "heuristic": false,
+      "display_name": "Andreas Öman's Cybertracker module (.CT)",
+      "file_type": 1636
+    },
+    {
+      "format_id": "CYBERBRAIN_CYBERTRACKER",
+      "slug": "cyberbrain_cybertracker",
+      "source_line": 794,
+      "heuristic": false,
+      "display_name": "CyberBrain's Cybertracker C64 module (.CT)",
+      "file_type": 1637
+    },
+    {
+      "format_id": "CYBERBRAIN_CYBERTRACKER_CI",
+      "slug": "cyberbrain_cybertracker_ci",
+      "source_line": 812,
+      "heuristic": false,
+      "display_name": "CyberBrain's Cybertracker C64 instrument (.CI)",
+      "file_type": 1638
+    },
+    {
+      "format_id": "DELIADDON_AMIGACUST",
+      "slug": "deliaddon_amigacust",
+      "source_line": 820,
+      "heuristic": false,
+      "display_name": "DeliTracker player addon or Amiga Custom Module (.CUST)",
+      "file_type": 1639
+    },
+    {
+      "format_id": "JCH_EDLIB_S01",
+      "slug": "jch_edlib_s01",
+      "source_line": 828,
+      "heuristic": false,
+      "display_name": "Jens Christian 'JCH/Vibrants' Huus's Edlib Tracker samples (.S01)",
+      "file_type": 1640
+    },
+    {
+      "format_id": "JCH_EDLIB_D00_D01",
+      "slug": "jch_edlib_d00_d01",
+      "source_line": 839,
+      "heuristic": false,
+      "display_name": "Jens Christian 'JCH/Vibrants' Huus's Edlib Tracker module (.D00,.D01)",
+      "file_type": 1641
+    },
+    {
+      "format_id": "APCTCP_DIGIBOOSTERPRO_DBM",
+      "slug": "apctcp_digiboosterpro_dbm",
+      "source_line": 861,
+      "heuristic": false,
+      "display_name": "Andeas Magerl/APC&TCP's DigiBooster Pro module (.DBM)",
+      "file_type": 1642
+    },
+    {
+      "format_id": "HANNEY_DH",
+      "slug": "hanney_dh",
+      "source_line": 901,
+      "heuristic": false,
+      "display_name": "David Hanney's module (.DH)",
+      "file_type": 1643
+    },
+    {
+      "format_id": "APCTCP_DIGIBOOSTER_DIGI",
+      "slug": "apctcp_digibooster_digi",
+      "source_line": 907,
+      "heuristic": false,
+      "display_name": "Andeas Magerl/APC&TCP's DigiBooster module (.DIGI)",
+      "file_type": 1644
+    },
+    {
+      "format_id": "DAVELOWE_UNCLEART",
+      "slug": "davelowe_uncleart",
+      "source_line": 935,
+      "heuristic": false,
+      "display_name": "Dave 'Uncle Tom' Lowe module (.DL)",
+      "file_type": 1645
+    },
+    {
+      "format_id": "SHOGUN_DELTAMUSIC1",
+      "slug": "shogun_deltamusic1",
+      "source_line": 973,
+      "heuristic": false,
+      "display_name": "Bent 'SHOGUN' Nielsen's Delta Music module (.DM)",
+      "file_type": 1646
+    },
+    {
+      "format_id": "SHOGUN_DELTAMUSIC2",
+      "slug": "shogun_deltamusic2",
+      "source_line": 979,
+      "heuristic": false,
+      "display_name": "Bent 'SHOGUN' Nielsen's Delta Music 2 module (.DM2)",
+      "file_type": 1647
+    },
+    {
+      "format_id": "WEBFOOT_DSMIAMFHACK",
+      "slug": "webfoot_dsmiamfhack",
+      "source_line": 984,
+      "heuristic": false,
+      "display_name": "Webfoot Digital Sound and Music Interface Advanced Music Format hack (.DMF)",
+      "file_type": 1648
+    },
+    {
+      "format_id": "DLUSION_XTRACKER_DMF",
+      "slug": "dlusion_xtracker_dmf",
+      "source_line": 991,
+      "heuristic": false,
+      "display_name": "D-Lusion X-Tracker module (.DMF)",
+      "file_type": 1649
+    },
+    {
+      "format_id": "DELEK_DEFLEMASK",
+      "slug": "delek_deflemask",
+      "source_line": 1069,
+      "heuristic": false,
+      "display_name": "Leonardo 'Delek' Demartino's DeFleMask module (.DMF)",
+      "file_type": 1650
+    },
+    {
+      "format_id": "RHINO_DIGITALMUGICIAN",
+      "slug": "rhino_digitalmugician",
+      "source_line": 1103,
+      "heuristic": false,
+      "display_name": "Reinier 'Rhino' van Vliet's Digital Mugician module (.DMU,.MUG)",
+      "file_type": 1651
+    },
+    {
+      "format_id": "HASAN_DASIK_DSM",
+      "slug": "hasan_dasik_dsm",
+      "source_line": 1122,
+      "heuristic": false,
+      "display_name": "Carlos Hasan's Digital Audio Sound Interface Kit module (.DSM)",
+      "file_type": 1652
+    },
+    {
+      "format_id": "HASAN_DSIK_DSM",
+      "slug": "hasan_dsik_dsm",
+      "source_line": 1145,
+      "heuristic": false,
+      "display_name": "Carlos Hasan's Digital Sound Interface Kit module (.DSM)",
+      "file_type": 1653
+    },
+    {
+      "format_id": "THELOOMSYNDICATE_DYNAMICSTUDIO_DSM",
+      "slug": "theloomsyndicate_dynamicstudio_dsm",
+      "source_line": 1165,
+      "heuristic": false,
+      "display_name": "The Loom Syndicate's Dynamic Studio module (.DSM)",
+      "file_type": 1654
+    },
+    {
+      "format_id": "AUDIOSIMULATION_DREAMSTATION1",
+      "slug": "audiosimulation_dreamstation1",
+      "source_line": 1174,
+      "heuristic": false,
+      "display_name": "Audio Simulation's DreamStation module (.DSS)",
+      "file_type": 1655
+    },
+    {
+      "format_id": "AUDIOSIMULATION_DREAMSTATION2",
+      "slug": "audiosimulation_dreamstation2",
+      "source_line": 1190,
+      "heuristic": false,
+      "display_name": "Audio Simulation's DreamStation II module (.DS2)",
+      "file_type": 1656
+    },
+    {
+      "format_id": "GREATVALLEYPROD_DIGITALSOUNDSTUDIO",
+      "slug": "greatvalleyprod_digitalsoundstudio",
+      "source_line": 1204,
+      "heuristic": false,
+      "display_name": "Great Valley Products' Digital Sound Studio module (.DSS)",
+      "file_type": 1657
+    },
+    {
+      "format_id": "TIPTON_DRUMTRAKER_DTL",
+      "slug": "tipton_drumtraker_dtl",
+      "source_line": 1214,
+      "heuristic": false,
+      "display_name": "Larry Tipton's Drum Traker module (.DTL)",
+      "file_type": 1658
+    },
+    {
+      "format_id": "SOFTJEE_DIGITALTRACKER_DTM",
+      "slug": "softjee_digitaltracker_dtm",
+      "source_line": 1225,
+      "heuristic": false,
+      "display_name": "Softjee's Digital Tracker module (.DTM)",
+      "file_type": 1659
+    },
+    {
+      "format_id": "DEFY_ADLIBTRACKER_DTM",
+      "slug": "defy_adlibtracker_dtm",
+      "source_line": 1236,
+      "heuristic": false,
+      "display_name": "DeFy AdLib Tracker module (.DTM)",
+      "file_type": 1660
+    },
+    {
+      "format_id": "BEHAM_DIGITREKKER_DTM",
+      "slug": "beham_digitrekker_dtm",
+      "source_line": 1247,
+      "heuristic": false,
+      "display_name": "Horst Beham Jr.'s DigiTrekker module (.DTM)",
+      "file_type": 1661
+    },
+    {
+      "format_id": "WHITTAKER_DW_SFX",
+      "slug": "whittaker_dw_sfx",
+      "source_line": 1254,
+      "heuristic": false,
+      "display_name": "David Whittaker's SFX module (.DW)",
+      "file_type": 1662
+    },
+    {
+      "format_id": "WERNER_DARKWAVESTUDIO_DWP",
+      "slug": "werner_darkwavestudio_dwp",
+      "source_line": 1259,
+      "heuristic": false,
+      "display_name": "Daniel Werner/ExperimentalScene's DarkWave Studio module (.DWP)",
+      "file_type": 1663
+    },
+    {
+      "format_id": "GROULEFF_EARACHE",
+      "slug": "grouleff_earache",
+      "source_line": 1264,
+      "heuristic": false,
+      "display_name": "Morten Grouleff's EarAche module (.EA,.EAS)",
+      "file_type": 1664
+    },
+    {
+      "format_id": "LINCOLN_QUADRACOMPOSER_EMOD",
+      "slug": "lincoln_quadracomposer_emod",
+      "source_line": 1271,
+      "heuristic": false,
+      "display_name": "Bo Lincoln's Quadra Composer module (.EMOD)",
+      "file_type": 1665
+    },
+    {
+      "format_id": "ODIE_ELECTRONICMUSICSYSTEM",
+      "slug": "odie_electronicmusicsystem",
+      "source_line": 1292,
+      "heuristic": false,
+      "display_name": "Sean 'Odie' Connolly's Electronic Music System module (.EMS)",
+      "file_type": 1666
+    },
+    {
+      "format_id": "MUSITEC_SMARTSCORE_ENF",
+      "slug": "musitec_smartscore_enf",
+      "source_line": 1311,
+      "heuristic": false,
+      "display_name": "Musitek SmartScore Extended Notation Format sheet music (.ENF)",
+      "file_type": 1667
+    },
+    {
+      "format_id": "WOLOSZYK_ETRACKER",
+      "slug": "woloszyk_etracker",
+      "source_line": 1328,
+      "heuristic": false,
+      "display_name": " M.J.Wołoszyk & A.Siuda's E-Tracker file (.ETC,.SAA)",
+      "file_type": 1668
+    },
+    {
+      "format_id": "FUJITSU_EUPHONY_EUP",
+      "slug": "fujitsu_euphony_eup",
+      "source_line": 1405,
+      "heuristic": false,
+      "display_name": "Fujitsu EUPHONY module (.EUP)",
+      "file_type": 1669
+    },
+    {
+      "format_id": "FUJITSU_EUPHONY2_EUX",
+      "slug": "fujitsu_euphony2_eux",
+      "source_line": 1414,
+      "heuristic": false,
+      "display_name": "Fujitsu EUPHONY II/MTR module (.EUX)",
+      "file_type": 1670
+    },
+    {
+      "format_id": "POTTER_FARANDOLE",
+      "slug": "potter_farandole",
+      "source_line": 1472,
+      "heuristic": false,
+      "display_name": "Daniel Potter/Digital Infinity's Farandole Composer module (.FAR)",
+      "file_type": 1671
+    },
+    {
+      "format_id": "POTTER_FARANDOLE_FPT",
+      "slug": "potter_farandole_fpt",
+      "source_line": 1494,
+      "heuristic": false,
+      "display_name": "Daniel Potter/Digital Infinity's Farandole Composer pattern (.FPT)",
+      "file_type": 1672
+    },
+    {
+      "format_id": "POTTER_FARANDOLE_FSM",
+      "slug": "potter_farandole_fsm",
+      "source_line": 1502,
+      "heuristic": false,
+      "display_name": "Daniel Potter/Digital Infinity's Farandole Composer sample (.FSM)",
+      "file_type": 1673
+    },
+    {
+      "format_id": "SUPERIONS_FUTURECOMPOSER_FC13",
+      "slug": "superions_futurecomposer_fc13",
+      "source_line": 1517,
+      "heuristic": false,
+      "display_name": "Superions' Future Composer module (.FC,.FC13,.SMOD)",
+      "file_type": 1674
+    },
+    {
+      "format_id": "SUPERIONS_FUTURECOMPOSER_FC14",
+      "slug": "superions_futurecomposer_fc14",
+      "source_line": 1534,
+      "heuristic": false,
+      "display_name": "Superions' Future Composer module (.FC,.FC14)",
+      "file_type": 1675
+    },
+    {
+      "format_id": "WILENIUS_FMKINGTRACKER",
+      "slug": "wilenius_fmkingtracker",
+      "source_line": 1557,
+      "heuristic": false,
+      "display_name": "Sami Wilenius's FM-Kingtracker module (.FMK)",
+      "file_type": 1676
+    },
+    {
+      "format_id": "TAYLOR_FMTRACKER",
+      "slug": "taylor_fmtracker",
+      "source_line": 1570,
+      "heuristic": false,
+      "display_name": "Davey W. Taylor's FM Tracker module (.FMT)",
+      "file_type": 1677
+    },
+    {
+      "format_id": "XORJS_FMTRACKER",
+      "slug": "xorjs_fmtracker",
+      "source_line": 1580,
+      "heuristic": false,
+      "display_name": "Jean-Sebastien 'XorJS' Royer's FM-Tracker module (.FMT)",
+      "file_type": 1678
+    },
+    {
+      "format_id": "STENSHORNE_FMTRACKER",
+      "slug": "stenshorne_fmtracker",
+      "source_line": 1585,
+      "heuristic": false,
+      "display_name": "Morten Stenshorne/Sagitta Software's FM Tracker module (.FMT)",
+      "file_type": 1679
+    },
+    {
+      "format_id": "VDVALK_FUTUREPLAYER",
+      "slug": "vdvalk_futureplayer",
+      "source_line": 1593,
+      "heuristic": false,
+      "display_name": "Paul van der Valk's Future Player module (.FP)",
+      "file_type": 1680
+    },
+    {
+      "format_id": "CLERMONTE_FREDEDITOR_PROJECT",
+      "slug": "clermonte_frededitor_project",
+      "source_line": 1623,
+      "heuristic": false,
+      "display_name": "Fred & Julien Clermonte's Fred Editor module (.FRED,.MOD)",
+      "file_type": 1681
+    },
+    {
+      "format_id": "MAXON_FACETHEMUSIC",
+      "slug": "maxon_facethemusic",
+      "source_line": 1638,
+      "heuristic": false,
+      "display_name": "Jörg W.Schmidt/MAXON's Face the Music module (.FTM)",
+      "file_type": 1682
+    },
+    {
+      "format_id": "BLEUBLEU_FAMISTUDIO",
+      "slug": "bleubleu_famistudio",
+      "source_line": 1657,
+      "heuristic": false,
+      "display_name": "BleuBleu's FamiStudio module (.FMS)",
+      "file_type": 1683
+    },
+    {
+      "format_id": "LISS_FAMITRACKER_FTM",
+      "slug": "liss_famitracker_ftm",
+      "source_line": 1664,
+      "heuristic": false,
+      "display_name": "Jonathan Liss's FamiTracker module (.FTM)",
+      "file_type": 1684
+    },
+    {
+      "format_id": "TILDEARROW_FURNACETRACKER",
+      "slug": "tildearrow_furnacetracker",
+      "source_line": 1679,
+      "heuristic": false,
+      "display_name": "tildearrow et al.'s Furnace Tracker module (.FUR)",
+      "file_type": 1685
+    },
+    {
+      "format_id": "TILDEARROW_FURNACETRACKER_FUI",
+      "slug": "tildearrow_furnacetracker_fui",
+      "source_line": 1683,
+      "heuristic": false,
+      "display_name": "tildearrow et al.'s Furnace Tracker instrument (.FUI)",
+      "file_type": 1686
+    },
+    {
+      "format_id": "TILDEARROW_FURNACETRACKER_FUW",
+      "slug": "tildearrow_furnacetracker_fuw",
+      "source_line": 1687,
+      "heuristic": false,
+      "display_name": "tildearrow et al.'s Furnace Tracker wavetable (.FUW)",
+      "file_type": 1687
+    },
+    {
+      "format_id": "TILDEARROW_FURNACETRACKER_UNK",
+      "slug": "tildearrow_furnacetracker_unk",
+      "source_line": 1691,
+      "heuristic": false,
+      "display_name": "unknown tildearrow et al.'s Furnace Tracker file",
+      "file_type": 1688
+    },
+    {
+      "format_id": "CAPCOM_ARCDEVELOPMENTS_FW",
+      "slug": "capcom_arcdevelopments_fw",
+      "source_line": 1961,
+      "heuristic": false,
+      "display_name": "Capcom/ARC Developments' Forgotten Worlds BGM module (.FW)",
+      "file_type": 1689
+    },
+    {
+      "format_id": "FUXOFT_AYLANGUAGE_FXM",
+      "slug": "fuxoft_aylanguage_fxm",
+      "source_line": 1966,
+      "heuristic": false,
+      "display_name": "František Fuka's Fuxoft AY Language module (.FXM)",
+      "file_type": 1690
+    },
+    {
+      "format_id": "GAMEBOY_RIPPEDFORMAT",
+      "slug": "gameboy_rippedformat",
+      "source_line": 1973,
+      "heuristic": false,
+      "display_name": "Gameboy Ripped Format chiptune (.GBR)",
+      "file_type": 1691
+    },
+    {
+      "format_id": "GAMEBOY_SOUND",
+      "slug": "gameboy_sound",
+      "source_line": 1980,
+      "heuristic": false,
+      "display_name": "Gameboy Sound chiptune (.GBS)",
+      "file_type": 1692
+    },
+    {
+      "format_id": "BWSB_GDM",
+      "slug": "bwsb_gdm",
+      "source_line": 1995,
+      "heuristic": false,
+      "display_name": "BWSB General Digital Music module (.GDM)",
+      "file_type": 1693
+    },
+    {
+      "format_id": "GLUEMASTER_GLUEMON",
+      "slug": "gluemaster_gluemon",
+      "source_line": 2028,
+      "heuristic": false,
+      "display_name": "Lars 'GlueMaster' Malmborg's GlueMon module (.GLUE)",
+      "file_type": 1694
+    },
+    {
+      "format_id": "FREDGRAY",
+      "slug": "fredgray",
+      "source_line": 2041,
+      "heuristic": false,
+      "display_name": "Fred Gray's module (.GRAY)",
+      "file_type": 1695
+    },
+    {
+      "format_id": "DUMBO_GRAOUMFTRACKER",
+      "slug": "dumbo_graoumftracker",
+      "source_line": 2061,
+      "heuristic": false,
+      "display_name": "Laurent 'Dumbo' de Soras's Graoumf Tracker module (.GTK)",
+      "file_type": 1696
+    },
+    {
+      "format_id": "DUMBO_GRAOUMFTRACKER2",
+      "slug": "dumbo_graoumftracker2",
+      "source_line": 2063,
+      "heuristic": false,
+      "display_name": "Laurent 'Dumbo' de Soras's Graoumf Tracker 2 module (.GT2)",
+      "file_type": 1697
+    },
+    {
+      "format_id": "HOWIEDAVIES",
+      "slug": "howiedavies",
+      "source_line": 2136,
+      "heuristic": false,
+      "display_name": "Howie Davies's module (.HD)",
+      "file_type": 1698
+    },
+    {
+      "format_id": "HUDSONENTSYS_HES",
+      "slug": "hudsonentsys_hes",
+      "source_line": 2153,
+      "heuristic": false,
+      "display_name": "Hudson Entertainment System multitrack tune (.HES)",
+      "file_type": 1699
+    },
+    {
+      "format_id": "FAUST_GOATTRACKER2_INS",
+      "slug": "faust_goattracker2_ins",
+      "source_line": 2171,
+      "heuristic": false,
+      "display_name": "Lasse 'Faust' Öörni's GoatTracker 2 Instrument (.INS)",
+      "file_type": 1700
+    },
+    {
+      "format_id": "BERGSTEDT_SIMS_INSTEREO1",
+      "slug": "bergstedt_sims_instereo1",
+      "source_line": 2176,
+      "heuristic": false,
+      "display_name": "Hans Bergstedt's Sound Invasion Music System/In Stereo! module (.IS)",
+      "file_type": 1701
+    },
+    {
+      "format_id": "BERGSTEDT_SIMS_INSTEREO2",
+      "slug": "bergstedt_sims_instereo2",
+      "source_line": 2184,
+      "heuristic": false,
+      "display_name": "Hans Bergstedt's Sound Invasion Music System/In Stereo! module (.IS20)",
+      "file_type": 1702
+    },
+    {
+      "format_id": "SAHARASURFERS_IXALANCE_CO",
+      "slug": "saharasurfers_ixalance_co",
+      "source_line": 2190,
+      "heuristic": false,
+      "display_name": "Sahara Surfers' iXalance module (.IXS)",
+      "file_type": 1703
+    },
+    {
+      "format_id": "JAZZJR2_GSS_CO",
+      "slug": "jazzjr2_gss_co",
+      "source_line": 2199,
+      "heuristic": false,
+      "display_name": "Jazz Jackrabbit 2 container (.J2B)/Galaxy Sound System module",
+      "file_type": 1704
+    },
+    {
+      "format_id": "JMFLOGEL",
+      "slug": "jmflogel",
+      "source_line": 2208,
+      "heuristic": false,
+      "display_name": "Janko Mrsic-Flogel's module (.JMF)",
+      "file_type": 1705
+    },
+    {
+      "format_id": "TURNER_JPO",
+      "slug": "turner_jpo",
+      "source_line": 2220,
+      "heuristic": false,
+      "display_name": "Steve Turner's module (.JPO)",
+      "file_type": 1706
+    },
+    {
+      "format_id": "KONAMI_KSS",
+      "slug": "konami_kss",
+      "source_line": 2245,
+      "heuristic": false,
+      "display_name": "Konami's KSS chiptune (.KSS)",
+      "file_type": 1707
+    },
+    {
+      "format_id": "KOMETBOMB_KLYSTRACK",
+      "slug": "kometbomb_klystrack",
+      "source_line": 2283,
+      "heuristic": false,
+      "display_name": "Tero 'kometbomb' Lindeman's Klystrack/Klystron module (.KT)",
+      "file_type": 1708
+    },
+    {
+      "format_id": "KOMETBOMB_KLYSTRACK_KI",
+      "slug": "kometbomb_klystrack_ki",
+      "source_line": 2366,
+      "heuristic": false,
+      "display_name": "Tero 'kometbomb' Lindeman's Klystrack instrument (.KI)",
+      "file_type": 1709
+    },
+    {
+      "format_id": "KOMETBOMB_KLYSTRACK_FX",
+      "slug": "kometbomb_klystrack_fx",
+      "source_line": 2370,
+      "heuristic": false,
+      "display_name": "Tero 'kometbomb' Lindeman's Klystrack effects (.KF?)",
+      "file_type": 1710
+    },
+    {
+      "format_id": "LUCASARTS_ADLIB",
+      "slug": "lucasarts_adlib",
+      "source_line": 2376,
+      "heuristic": false,
+      "display_name": "Lucas Arts Adlib chiptune (.LAA)",
+      "file_type": 1711
+    },
+    {
+      "format_id": "OREN_LIQUIDTRACKER",
+      "slug": "oren_liquidtracker",
+      "source_line": 2386,
+      "heuristic": false,
+      "display_name": "Nir Oren's Liquid Tracker module (.LIQ)",
+      "file_type": 1712
+    },
+    {
+      "format_id": "LEGGLESS_LME",
+      "slug": "leggless_lme",
+      "source_line": 2401,
+      "heuristic": false,
+      "display_name": "Steve 'Leggless' Hasler module (.LME)",
+      "file_type": 1713
+    },
+    {
+      "format_id": "GIESEN_MUSICASM",
+      "slug": "giesen_musicasm",
+      "source_line": 2418,
+      "heuristic": false,
+      "display_name": "O.Giesen & M.Swagerman's Music Assembler module (.MA)",
+      "file_type": 1714
+    },
+    {
+      "format_id": "BIRNEY_PLAYERPRO_MAD",
+      "slug": "birney_playerpro_mad",
+      "source_line": 2440,
+      "heuristic": false,
+      "display_name": "B. Birney's PlayerPro module (.MAD)",
+      "file_type": 1715
+    },
+    {
+      "format_id": "MOONBLASTER_FM",
+      "slug": "moonblaster_fm",
+      "source_line": 2448,
+      "heuristic": false,
+      "display_name": "R.Schrijvers & M.Delorme's MoonBlaster for MoonSound FM module (.MFM)",
+      "file_type": 1716
+    },
+    {
+      "format_id": "MOONBLASTER_WAVE",
+      "slug": "moonblaster_wave",
+      "source_line": 2486,
+      "heuristic": false,
+      "display_name": "R.Schrijvers & M.Delorme's MoonBlaster for MoonSound Wave module (.MWM+.MWK)",
+      "file_type": 1717
+    },
+    {
+      "format_id": "MOONBLASTER_WAVE_MWK",
+      "slug": "moonblaster_wave_mwk",
+      "source_line": 2520,
+      "heuristic": false,
+      "display_name": "R.Schrijvers & M.Delorme's MoonBlaster Wave for MoonSound wave kit (.MWK)",
+      "file_type": 1718
+    },
+    {
+      "format_id": "MARK_COOKSEY",
+      "slug": "mark_cooksey",
+      "source_line": 2543,
+      "heuristic": false,
+      "display_name": "Mark Cooksey's module (.MC)",
+      "file_type": 1719
+    },
+    {
+      "format_id": "CULCHAN_MDC",
+      "slug": "culchan_mdc",
+      "source_line": 2549,
+      "heuristic": false,
+      "display_name": "かるちゃん/CUL.'s music creative driver module (.MDC)",
+      "file_type": 1720
+    },
+    {
+      "format_id": "NFACTOR_DIGITRAKKER_MDL",
+      "slug": "nfactor_digitrakker_mdl",
+      "source_line": 2564,
+      "heuristic": false,
+      "display_name": "Prodatron/n-Factor's DigiTrakker module (.MDL)",
+      "file_type": 1721
+    },
+    {
+      "format_id": "CROWTHER_PACKEDMED_MMDC",
+      "slug": "crowther_packedmed_mmdc",
+      "source_line": 2574,
+      "heuristic": false,
+      "display_name": "Tony Crowther's packed MED module (.MMDC)",
+      "file_type": 1722
+    },
+    {
+      "format_id": "PARAGON5_BEYOND_GBTRACKER_MGB",
+      "slug": "paragon5_beyond_gbtracker_mgb",
+      "source_line": 2580,
+      "heuristic": false,
+      "display_name": "Paragon 5/Beyond Game Boy Tracker module (.MGB)",
+      "file_type": 1723
+    },
+    {
+      "format_id": "SIMPLET_MEGATRACKER",
+      "slug": "simplet_megatracker",
+      "source_line": 2586,
+      "heuristic": false,
+      "display_name": "Simplet & Axel Follet's Megatracker module (.MGT)",
+      "file_type": 1724
+    },
+    {
+      "format_id": "STANDARD_MIDI",
+      "slug": "standard_midi",
+      "source_line": 2593,
+      "heuristic": false,
+      "display_name": "Standard MIDI File (.SMF,.MID)",
+      "file_type": 1725
+    },
+    {
+      "format_id": "CLIP_MIDI2",
+      "slug": "clip_midi2",
+      "source_line": 2659,
+      "heuristic": false,
+      "display_name": "MIDI Clip File (.midi2)",
+      "file_type": 1726
+    },
+    {
+      "format_id": "MK_JAMZ",
+      "slug": "mk_jamz",
+      "source_line": 2664,
+      "heuristic": false,
+      "display_name": "MK-Jamz module (.MKJ)",
+      "file_type": 1727
+    },
+    {
+      "format_id": "MUSICLINEEDITOR",
+      "slug": "musiclineeditor",
+      "source_line": 2670,
+      "heuristic": false,
+      "display_name": "Ch.Cyréus & J. 'Ziphoid' Carehag's Musicline Editor module (.ML)",
+      "file_type": 1728
+    },
+    {
+      "format_id": "WINISCHHOFER_MUSICMAKER_EXT",
+      "slug": "winischhofer_musicmaker_ext",
+      "source_line": 2719,
+      "heuristic": false,
+      "display_name": "Thomas Winischhofer's Music Maker EXT module (.MM8,.MM4)",
+      "file_type": 1729
+    },
+    {
+      "format_id": "MUSICMAKER_STD_IP",
+      "slug": "musicmaker_std_ip",
+      "source_line": 2731,
+      "heuristic": false,
+      "display_name": "Music Maker STD instrument (.IP)",
+      "file_type": 1730
+    },
+    {
+      "format_id": "BASSMOD_MO3",
+      "slug": "bassmod_mo3",
+      "source_line": 2737,
+      "heuristic": false,
+      "display_name": "MO3 MOD module (.MO3)",
+      "file_type": 1731
+    },
+    {
+      "format_id": "MOD_RASP",
+      "slug": "mod_rasp",
+      "source_line": 2743,
+      "heuristic": false,
+      "display_name": "Generic module (.MOD)",
+      "file_type": 1732
+    },
+    {
+      "format_id": "TRIXTER_MONOTONE",
+      "slug": "trixter_monotone",
+      "source_line": 2754,
+      "heuristic": false,
+      "display_name": "Trixter's MONOTONE module (.MON)",
+      "file_type": 1733
+    },
+    {
+      "format_id": "MEGASTATION_MS",
+      "slug": "megastation_ms",
+      "source_line": 2767,
+      "heuristic": false,
+      "display_name": "MegaStation module (.MS)",
+      "file_type": 1734
+    },
+    {
+      "format_id": "MEGASTATION_MIDI",
+      "slug": "megastation_midi",
+      "source_line": 2773,
+      "heuristic": false,
+      "display_name": "MegaStation MIDI module (.MSM)",
+      "file_type": 1735
+    },
+    {
+      "format_id": "VDVALK_MEDLEYSOUND_MSO",
+      "slug": "vdvalk_medleysound_mso",
+      "source_line": 2779,
+      "heuristic": false,
+      "display_name": "Paul van der Valk's Medley Sound Editor module (.MSO)",
+      "file_type": 1736
+    },
+    {
+      "format_id": "MULTITRACKCONTAINER",
+      "slug": "multitrackcontainer",
+      "source_line": 2786,
+      "heuristic": false,
+      "display_name": "Multi-track Container module (.MTC)",
+      "file_type": 1737
+    },
+    {
+      "format_id": "SUBZER0_MPU401TRAKKER_MTK",
+      "slug": "subzer0_mpu401trakker_mtk",
+      "source_line": 2806,
+      "heuristic": false,
+      "display_name": "SuBZeR0's MPU-401 Trakker Adlib module (.MTK)",
+      "file_type": 1738
+    },
+    {
+      "format_id": "STARSCREAM_MULTITRACKER",
+      "slug": "starscream_multitracker",
+      "source_line": 2816,
+      "heuristic": false,
+      "display_name": "StarScream/Renaissance's Multitracker module (.MTM)",
+      "file_type": 1739
+    },
+    {
+      "format_id": "DELWICHE_MADTRACKER2",
+      "slug": "delwiche_madtracker2",
+      "source_line": 2836,
+      "heuristic": false,
+      "display_name": "Yannick Delwiche's MadTracker 2 module (.MT2)",
+      "file_type": 1740
+    },
+    {
+      "format_id": "PYROFYRE_MASTERTRACKER",
+      "slug": "pyrofyre_mastertracker",
+      "source_line": 2935,
+      "heuristic": false,
+      "display_name": "Pyro-Fyre/Arkham's Master Tracker module (.MTR)",
+      "file_type": 1741
+    },
+    {
+      "format_id": "PACKEN_MUAP98_TONESDTA",
+      "slug": "packen_muap98_tonesdta",
+      "source_line": 2947,
+      "heuristic": false,
+      "display_name": "Packen/ぱっくん Software MUAP98/みゅあっぷ tone data (TONES.DTA)",
+      "file_type": 1742
+    },
+    {
+      "format_id": "KANEDA_MVSTRACKERSUITE_MUS",
+      "slug": "kaneda_mvstrackersuite_mus",
+      "source_line": 2953,
+      "heuristic": false,
+      "display_name": "Kaneda's MVSTracker Suite module (.MUS)",
+      "file_type": 1743
+    },
+    {
+      "format_id": "IDSOFT_DOOM_MUS",
+      "slug": "idsoft_doom_mus",
+      "source_line": 2958,
+      "heuristic": false,
+      "display_name": "idSoft's DOOM music module (.MUS)",
+      "file_type": 1744
+    },
+    {
+      "format_id": "MSX_FACSOUNDTRACKER_MUS",
+      "slug": "msx_facsoundtracker_mus",
+      "source_line": 2965,
+      "heuristic": false,
+      "display_name": "Federation Against Commodore's FAC Soundtracker module (.MUS)",
+      "file_type": 1745
+    },
+    {
+      "format_id": "BEISERT_MXMPLAY",
+      "slug": "beisert_mxmplay",
+      "source_line": 2978,
+      "heuristic": false,
+      "display_name": "Niklas 'pascal' Beisert's MXMplay module (.MXM)",
+      "file_type": 1746
+    },
+    {
+      "format_id": "TALIN_MAXTRAX_MUSICX",
+      "slug": "talin_maxtrax_musicx",
+      "source_line": 2988,
+      "heuristic": false,
+      "display_name": "David 'Talin' Joiner & Joe Pearce's MaxTrax/Music-X module (MXTX.+SMPL.)",
+      "file_type": 1747
+    },
+    {
+      "format_id": "ARGURU_NOISETREKKER",
+      "slug": "arguru_noisetrekker",
+      "source_line": 2993,
+      "heuristic": false,
+      "display_name": "J.A.A. 'Arguru' Ruis's NoiseTrekker module (.NTK)",
+      "file_type": 1748
+    },
+    {
+      "format_id": "ARGURU_PROTREKKR_SNG6_PROTREK",
+      "slug": "arguru_protrekkr_sng6_protrek",
+      "source_line": 3003,
+      "heuristic": false,
+      "display_name": "J.A.A. 'Arguru' Rius et al.'s ProTrekkr module (.PTK)",
+      "file_type": 1749
+    },
+    {
+      "format_id": "NINTENDOSOUNDFORMAT_NESMNSFE",
+      "slug": "nintendosoundformat_nesmnsfe",
+      "source_line": 3012,
+      "heuristic": false,
+      "display_name": "Nintendo Sound Format audio (.",
+      "file_type": 1750
+    },
+    {
+      "format_id": "SANDER_OKTALYZER",
+      "slug": "sander_oktalyzer",
+      "source_line": 3140,
+      "heuristic": false,
+      "display_name": "Armin Sander's Oktalyzer module (.OK,.OKT,.OKTA)",
+      "file_type": 1751
+    },
+    {
+      "format_id": "ALTAR_ONYXMUSICFILE",
+      "slug": "altar_onyxmusicfile",
+      "source_line": 3159,
+      "heuristic": false,
+      "display_name": "Altar/Onyx's Onyx Music File (.OMF)",
+      "file_type": 1752
+    },
+    {
+      "format_id": "PIXEL_ORGANYA",
+      "slug": "pixel_organya",
+      "source_line": 3179,
+      "heuristic": false,
+      "display_name": "Amaya 'Pixel' Daisuke's Organya/ORG Maker module (.ORG)",
+      "file_type": 1753
+    },
+    {
+      "format_id": "OBI_SYNTHPACK",
+      "slug": "obi_synthpack",
+      "source_line": 3192,
+      "heuristic": false,
+      "display_name": "Karsten 'Obi' Obarski's Synth Pack module (.OSP+SMP.set)",
+      "file_type": 1754
+    },
+    {
+      "format_id": "OBI_SYNTHPACK_SMPSET",
+      "slug": "obi_synthpack_smpset",
+      "source_line": 3232,
+      "heuristic": false,
+      "display_name": "Karsten 'Obi' Obarski's Synth Pack's sample set (SMP.SET)",
+      "file_type": 1755
+    },
+    {
+      "format_id": "OBI_SYNTHPACK_SMPSET_RAW",
+      "slug": "obi_synthpack_smpset_raw",
+      "source_line": 3244,
+      "heuristic": false,
+      "display_name": "Karsten 'Obi' Obarski's Synth Pack's sample set (SMP.SET)",
+      "file_type": 1756
+    },
+    {
+      "format_id": "HELLSTROM_SBSTUDIO_PAC",
+      "slug": "hellstrom_sbstudio_pac",
+      "source_line": 3253,
+      "heuristic": false,
+      "display_name": "Henning Hellström's SBStudio II module (.PAC)",
+      "file_type": 1757
+    },
+    {
+      "format_id": "STATIX_DISORDERTRACKER2_PLM",
+      "slug": "statix_disordertracker2_plm",
+      "source_line": 3280,
+      "heuristic": false,
+      "display_name": "Alex 'Statix' Evans' Disorder Tracker 2 module (.PLM)",
+      "file_type": 1758
+    },
+    {
+      "format_id": "RAINBOWARTS_PALLADIXSS_PLX",
+      "slug": "rainbowarts_palladixss_plx",
+      "source_line": 3315,
+      "heuristic": false,
+      "display_name": "Rainbow Arts' Palladix Sound System module (.PLX)",
+      "file_type": 1759
+    },
+    {
+      "format_id": "HAERTEL_POKEYNOISE",
+      "slug": "haertel_pokeynoise",
+      "source_line": 3324,
+      "heuristic": false,
+      "display_name": "Achim Haertel's POKEYNoise chiptune (.PN)",
+      "file_type": 1760
+    },
+    {
+      "format_id": "EEBEN_POLYANNA",
+      "slug": "eeben_polyanna",
+      "source_line": 3329,
+      "heuristic": false,
+      "display_name": "Aleksi Eeben's Polyanna module (.PRG)",
+      "file_type": 1761
+    },
+    {
+      "format_id": "PROFESSIONALSOUNDARTISTS",
+      "slug": "professionalsoundartists",
+      "source_line": 3338,
+      "heuristic": false,
+      "display_name": "Professional Sound Artists module (.PSA)",
+      "file_type": 1762
+    },
+    {
+      "format_id": "CORLETT_PSF_SERIES",
+      "slug": "corlett_psf_series",
+      "source_line": 3370,
+      "heuristic": false,
+      "display_name": "Neil Corlett's Portable Sound Format module (.",
+      "file_type": 1763
+    },
+    {
+      "format_id": "KOLPAKOV_FMSXX128_PSG",
+      "slug": "kolpakov_fmsxx128_psg",
+      "source_line": 3424,
+      "heuristic": false,
+      "display_name": "Kirill Kolpakov's fMSX/x128 PSG chiptune (.PSG)",
+      "file_type": 1764
+    },
+    {
+      "format_id": "KOLPAKOV_EXTENDED_PSG",
+      "slug": "kolpakov_extended_psg",
+      "source_line": 3429,
+      "heuristic": false,
+      "display_name": "Kirill Kolpakov's Extended PSG chiptune (.EPSG)",
+      "file_type": 1765
+    },
+    {
+      "format_id": "KOLPAKOV_PSG2",
+      "slug": "kolpakov_psg2",
+      "source_line": 3439,
+      "heuristic": false,
+      "display_name": "Kirill Kolpakov's PSG2 chiptune (.PSG2)",
+      "file_type": 1766
+    },
+    {
+      "format_id": "EPIC_MASI_PSM",
+      "slug": "epic_masi_psm",
+      "source_line": 3444,
+      "heuristic": false,
+      "display_name": "Epic Megagames MASI module (.PSM)",
+      "file_type": 1767
+    },
+    {
+      "format_id": "SEGURA_PSYCLEMMCS",
+      "slug": "segura_psyclemmcs",
+      "source_line": 3457,
+      "heuristic": false,
+      "display_name": "J.M.A. Segura/Psycledelics' Psycle Modular Music Creation Studio module (.PSY)",
+      "file_type": 1768
+    },
+    {
+      "format_id": "SEGAMD_PRESMP_PSZ",
+      "slug": "segamd_presmp_psz",
+      "source_line": 3614,
+      "heuristic": false,
+      "display_name": "Sega MegaDrive Pre-SMP chiptune (.PSZ)",
+      "file_type": 1769
+    },
+    {
+      "format_id": "PIXEL_PXTONE_PTTUNE",
+      "slug": "pixel_pxtone_pttune",
+      "source_line": 3625,
+      "heuristic": false,
+      "display_name": "Amaya 'Pixel' Daisuke's pxtone tune (.PTTUNE)",
+      "file_type": 1770
+    },
+    {
+      "format_id": "PIXEL_PXTONE_PTCOP",
+      "slug": "pixel_pxtone_ptcop",
+      "source_line": 3628,
+      "heuristic": false,
+      "display_name": "Amaya 'Pixel' Daisuke's pxtone project (.PTCOP)",
+      "file_type": 1771
+    },
+    {
+      "format_id": "PIXEL_PXTONE_PTNOISE",
+      "slug": "pixel_pxtone_ptnoise",
+      "source_line": 3704,
+      "heuristic": false,
+      "display_name": "Amaya 'Pixel' Daisuke's pxtone Noise instrument (.PTNOISE)",
+      "file_type": 1772
+    },
+    {
+      "format_id": "PIXEL_PXTONE_PTVOICE",
+      "slug": "pixel_pxtone_ptvoice",
+      "source_line": 3709,
+      "heuristic": false,
+      "display_name": "Amaya 'Pixel' Daisuke's pxtone Voice instrument (.PTVOICE)",
+      "file_type": 1773
+    },
+    {
+      "format_id": "LONERANGER_POLYTRACKER_PTM",
+      "slug": "loneranger_polytracker_ptm",
+      "source_line": 3717,
+      "heuristic": false,
+      "display_name": "Lone Ranger/AcmE's Poly Tracker module (.PTM)",
+      "file_type": 1774
+    },
+    {
+      "format_id": "REALITYADLIBTRACKER_RAD",
+      "slug": "realityadlibtracker_rad",
+      "source_line": 3736,
+      "heuristic": false,
+      "display_name": "Shayde & Rogue & Void's Reality ADlib Tracker module (.RAD)",
+      "file_type": 1775
+    },
+    {
+      "format_id": "RAWOPLCAPTURE_RAWADATA",
+      "slug": "rawoplcapture_rawadata",
+      "source_line": 3814,
+      "heuristic": false,
+      "display_name": "Raw OPL Capture chiptune (.RAW)",
+      "file_type": 1776
+    },
+    {
+      "format_id": "MULLER_RENOISE_RNS0",
+      "slug": "muller_renoise_rns0",
+      "source_line": 3859,
+      "heuristic": false,
+      "display_name": "Eduard Müller's Renoise module (.RNS)",
+      "file_type": 1777
+    },
+    {
+      "format_id": "MULLER_RENOISE_XRNS",
+      "slug": "muller_renoise_xrns",
+      "source_line": 3901,
+      "heuristic": false,
+      "display_name": "Eduard Müller's Renoise module (.XRNS)",
+      "file_type": 1778
+    },
+    {
+      "format_id": "MULLER_RENOISE_XRDP",
+      "slug": "muller_renoise_xrdp",
+      "source_line": 3908,
+      "heuristic": false,
+      "display_name": "Eduard Müller's Renoise filter device preset (.XRDP)",
+      "file_type": 1779
+    },
+    {
+      "format_id": "MULLER_XRNI",
+      "slug": "muller_xrni",
+      "source_line": 3918,
+      "heuristic": false,
+      "display_name": "Eduard Müller's Renoise instrument (.XRNI)",
+      "file_type": 1780
+    },
+    {
+      "format_id": "MULLER_RENOISE_XRNO",
+      "slug": "muller_renoise_xrno",
+      "source_line": 3922,
+      "heuristic": false,
+      "display_name": "Eduard Müller's Renoise sample modulation set (.XRNO)",
+      "file_type": 1781
+    },
+    {
+      "format_id": "MULLER_RENOISE_XRNT_UNP",
+      "slug": "muller_renoise_xrnt_unp",
+      "source_line": 3931,
+      "heuristic": false,
+      "display_name": "Eduard Müller's Renoise effect chain (.XRNT)",
+      "file_type": 1782
+    },
+    {
+      "format_id": "MULLER_RENOISE_XRNT_PK",
+      "slug": "muller_renoise_xrnt_pk",
+      "source_line": 3940,
+      "heuristic": false,
+      "display_name": "Eduard Müller's Renoise effect chain (.XRNT)",
+      "file_type": 1783
+    },
+    {
+      "format_id": "MULLER_RENOISE_XRNZ",
+      "slug": "muller_renoise_xrnz",
+      "source_line": 3944,
+      "heuristic": false,
+      "display_name": "Eduard Müller's Renoise instrument phrase (.XRNZ)",
+      "file_type": 1784
+    },
+    {
+      "format_id": "RIFFRAFF_RIFF",
+      "slug": "riffraff_riff",
+      "source_line": 3954,
+      "heuristic": false,
+      "display_name": "Riff Raff module (.RIFF)",
+      "file_type": 1785
+    },
+    {
+      "format_id": "RONKLAREN_RK",
+      "slug": "ronklaren_rk",
+      "source_line": 3965,
+      "heuristic": false,
+      "display_name": "Ron Klaren module (.RK)",
+      "file_type": 1786
+    },
+    {
+      "format_id": "HASENFRATZ_REALTRACKER",
+      "slug": "hasenfratz_realtracker",
+      "source_line": 3970,
+      "heuristic": false,
+      "display_name": "Arnaud Hasenfratz's Real Tracker module (.RTM)",
+      "file_type": 1787
+    },
+    {
+      "format_id": "FUXOFT_SAMADEUS",
+      "slug": "fuxoft_samadeus",
+      "source_line": 3984,
+      "heuristic": false,
+      "display_name": "František Fuka/Fuxoft's Samadeus module (.samadeus)",
+      "file_type": 1788
+    },
+    {
+      "format_id": "BSC_AMSTRADCPC_SOUNDTRAKKER",
+      "slug": "bsc_amstradcpc_soundtrakker",
+      "source_line": 3992,
+      "heuristic": false,
+      "display_name": "Oliver 'BSC' Mayer's Amstrad CPC Soundtrakker module (.STK)",
+      "file_type": 1789
+    },
+    {
+      "format_id": "BSC_AMSTRADCPC_SOUNDTRAKKER128K",
+      "slug": "bsc_amstradcpc_soundtrakker128k",
+      "source_line": 4006,
+      "heuristic": false,
+      "display_name": "Oliver 'BSC' Mayer's Amstrad CPC Soundtrakker 128K module (.128)",
+      "file_type": 1790
+    },
+    {
+      "format_id": "BSC_AMSTRADCPC_SOUNDTRAKKER_RAW",
+      "slug": "bsc_amstradcpc_soundtrakker_raw",
+      "source_line": 4023,
+      "heuristic": false,
+      "display_name": "Oliver 'BSC' Mayer's Amstrad CPC Soundtrakker module (.STK)",
+      "file_type": 1791
+    },
+    {
+      "format_id": "RURURU_S98",
+      "slug": "rururu_s98",
+      "source_line": 4037,
+      "heuristic": false,
+      "display_name": "Ru³'s S98 chiptune (.S98)",
+      "file_type": 1792
+    },
+    {
+      "format_id": "BIENIAS_SLIGHTATARIPLAYER",
+      "slug": "bienias_slightatariplayer",
+      "source_line": 4099,
+      "heuristic": false,
+      "display_name": "Adam Bienias's Slight Atari Player chiptune (.SAP)",
+      "file_type": 1793
+    },
+    {
+      "format_id": "BEN_SC68000",
+      "slug": "ben_sc68000",
+      "source_line": 4126,
+      "heuristic": false,
+      "display_name": "Benjamin Gerard's SC 68000 programmatic chiptune (.SC68)",
+      "file_type": 1794
+    },
+    {
+      "format_id": "MARIOPAINT_SHROOM",
+      "slug": "mariopaint_shroom",
+      "source_line": 4159,
+      "heuristic": false,
+      "display_name": "Mario Paint's Shroom module (.SHO)",
+      "file_type": 1795
+    },
+    {
+      "format_id": "C64SID",
+      "slug": "c64sid",
+      "source_line": 4169,
+      "heuristic": false,
+      "display_name": "SID programmatic chiptune (.SID)",
+      "file_type": 1796
+    },
+    {
+      "format_id": "NISSIMO_SOUNDIMAGES_GEN2",
+      "slug": "nissimo_soundimages_gen2",
+      "source_line": 4221,
+      "heuristic": false,
+      "display_name": "Tony 'Nissimo' Willams' Sound Images module (.SIG)",
+      "file_type": 1797
+    },
+    {
+      "format_id": "BAKTERY_SKALETRACKER_SKM",
+      "slug": "baktery_skaletracker_skm",
+      "source_line": 4226,
+      "heuristic": false,
+      "display_name": "Ruben Ramos 'baktery' Salvador's Skale Tracker module (.SKM)",
+      "file_type": 1798
+    },
+    {
+      "format_id": "BERO_PICATUNE",
+      "slug": "bero_picatune",
+      "source_line": 4232,
+      "heuristic": false,
+      "display_name": "Benjamin 'BeRo' Rousseaux's Picatune module v1 (.SMUFI) or v2 (.PT2)",
+      "file_type": 1799
+    },
+    {
+      "format_id": "BLUEMOON_SOUNDCLUB_SN",
+      "slug": "bluemoon_soundclub_sn",
+      "source_line": 4251,
+      "heuristic": false,
+      "display_name": "BlueMoon's Sound Club for DOS module (.SN)",
+      "file_type": 1800
+    },
+    {
+      "format_id": "BLUEMOON_SOUNDCLUB_SN2",
+      "slug": "bluemoon_soundclub_sn2",
+      "source_line": 4263,
+      "heuristic": false,
+      "display_name": "Bluemoon's Sound Club for Windows module (.SN2)",
+      "file_type": 1801
+    },
+    {
+      "format_id": "ATARIST_SOUNDHEADER",
+      "slug": "atarist_soundheader",
+      "source_line": 4287,
+      "heuristic": false,
+      "display_name": "Atari ST Sound Header module (.SND,.SNDH)",
+      "file_type": 1802
+    },
+    {
+      "format_id": "FAUST_FAUSTMUSICCREATOR_SNG",
+      "slug": "faust_faustmusiccreator_sng",
+      "source_line": 4317,
+      "heuristic": false,
+      "display_name": "Lasse 'Faust' Öörni's Faust Music Creator module (.SNG)",
+      "file_type": 1803
+    },
+    {
+      "format_id": "FAUST_GOATTRACKER_SNG",
+      "slug": "faust_goattracker_sng",
+      "source_line": 4325,
+      "heuristic": false,
+      "display_name": "Lasse 'Faust' Öörni's GoatTracker module (.SNG)",
+      "file_type": 1804
+    },
+    {
+      "format_id": "VALTONEN_SNGPLAYER",
+      "slug": "valtonen_sngplayer",
+      "source_line": 4359,
+      "heuristic": false,
+      "display_name": "Jonne Valtonen's SNG Player module (.SNG)",
+      "file_type": 1805
+    },
+    {
+      "format_id": "RICHARDJOSEPH_RJP_SNG",
+      "slug": "richardjoseph_rjp_sng",
+      "source_line": 4372,
+      "heuristic": false,
+      "display_name": "Richard Joseph's module (.SNG)",
+      "file_type": 1806
+    },
+    {
+      "format_id": "SYNDER_SNGPLAYER",
+      "slug": "synder_sngplayer",
+      "source_line": 4378,
+      "heuristic": false,
+      "display_name": "Synder SNG-player module (.SNG)",
+      "file_type": 1807
+    },
+    {
+      "format_id": "SYNDER_TRACKER",
+      "slug": "synder_tracker",
+      "source_line": 4385,
+      "heuristic": false,
+      "display_name": "Synder Tracker module (.SNG)",
+      "file_type": 1808
+    },
+    {
+      "format_id": "SYNDER_SNGPLAYERSTEREO",
+      "slug": "synder_sngplayerstereo",
+      "source_line": 4392,
+      "heuristic": false,
+      "display_name": "Synder SNG-player Stereo module (.SNG)",
+      "file_type": 1809
+    },
+    {
+      "format_id": "AJ_ZOUNDMONITOR",
+      "slug": "aj_zoundmonitor",
+      "source_line": 4401,
+      "heuristic": false,
+      "display_name": "AJ [Activas]'s ZoundMonitor module (.SNG + Samples/)",
+      "file_type": 1810
+    },
+    {
+      "format_id": "RICHARDJOSEPH_INS",
+      "slug": "richardjoseph_ins",
+      "source_line": 4412,
+      "heuristic": false,
+      "display_name": "Richard Joseph's module instruments (.INS)",
+      "file_type": 1811
+    },
+    {
+      "format_id": "NINTENDO_SNESSPC700",
+      "slug": "nintendo_snesspc700",
+      "source_line": 4420,
+      "heuristic": false,
+      "display_name": "Nintendo SNES SPC chiptune (.SPC)",
+      "file_type": 1812
+    },
+    {
+      "format_id": "TARGHAN_STARKOS_SKS",
+      "slug": "targhan_starkos_sks",
+      "source_line": 4470,
+      "heuristic": false,
+      "display_name": "Julien 'Targhan' Nevo's STarKos module (.SKS)",
+      "file_type": 1813
+    },
+    {
+      "format_id": "TARGHAN_STARKOS_BIN",
+      "slug": "targhan_starkos_bin",
+      "source_line": 4570,
+      "heuristic": false,
+      "display_name": "Julien 'Targhan' Nevo's STarKos module (.BIN)",
+      "file_type": 1814
+    },
+    {
+      "format_id": "GEHRMANN_SORPOL",
+      "slug": "gehrmann_sorpol",
+      "source_line": 4583,
+      "heuristic": false,
+      "display_name": "Holger Gehrmann's Sound Programming Language/SOPROL module (.SPL)",
+      "file_type": 1815
+    },
+    {
+      "format_id": "MARTY_STONETRACKER_SPM",
+      "slug": "marty_stonetracker_spm",
+      "source_line": 4595,
+      "heuristic": false,
+      "display_name": "Emmanuel Marty & Michael Lavaire's Stonetracker module (.SPM)",
+      "file_type": 1816
+    },
+    {
+      "format_id": "MARTY_STONETRACKER_SPS",
+      "slug": "marty_stonetracker_sps",
+      "source_line": 4604,
+      "heuristic": false,
+      "display_name": "Emmanuel Marty & Michael Lavaire's Stonetracker sample bank (.SPS)",
+      "file_type": 1817
+    },
+    {
+      "format_id": "PSXALT_ETERNALSPUPLUGIN",
+      "slug": "psxalt_eternalspuplugin",
+      "source_line": 4615,
+      "heuristic": false,
+      "display_name": "PSX Alternative!'s Eternal SPU Plugin chiptune (.SPU)",
+      "file_type": 1818
+    },
+    {
+      "format_id": "WINTERBERG_SPEEDYSYSTEM",
+      "slug": "winterberg_speedysystem",
+      "source_line": 4629,
+      "heuristic": false,
+      "display_name": "Michael Winterberg's Speedy System module (.SS)",
+      "file_type": 1819
+    },
+    {
+      "format_id": "BZYK_SOUNDTRACKER_AYST11",
+      "slug": "bzyk_soundtracker_ayst11",
+      "source_line": 4634,
+      "heuristic": false,
+      "display_name": "AY container/Jarek 'BZYK' Burczyński's Sound Tracker module (.ST1, .ST11)",
+      "file_type": 1820
+    },
+    {
+      "format_id": "BZYK_SOUNDTRACKER_STP3",
+      "slug": "bzyk_soundtracker_stp3",
+      "source_line": 4645,
+      "heuristic": false,
+      "display_name": "Jarek 'BZYK' Burczyński's Sound Tracker Pro II module (.STP)",
+      "file_type": 1821
+    },
+    {
+      "format_id": "SCHMIDT_SUNTRONIC",
+      "slug": "schmidt_suntronic",
+      "source_line": 4650,
+      "heuristic": false,
+      "display_name": "Felix Schmidt's SUNtronic module (.SUN)",
+      "file_type": 1822
+    },
+    {
+      "format_id": "NIGHTRADIO_SUNVOX",
+      "slug": "nightradio_sunvox",
+      "source_line": 4655,
+      "heuristic": false,
+      "display_name": "Alexander 'NightRadio' Zolotov's SunVox module (.SUNVOX)",
+      "file_type": 1823
+    },
+    {
+      "format_id": "MENG_SYMPHONIE_SYMMOD",
+      "slug": "meng_symphonie_symmod",
+      "source_line": 4694,
+      "heuristic": false,
+      "display_name": "Patrick Meng's Symphonie module (.SYMMOD)",
+      "file_type": 1824
+    },
+    {
+      "format_id": "BRAINTRACEDESIGN_SYNTHESIS",
+      "slug": "braintracedesign_synthesis",
+      "source_line": 4772,
+      "heuristic": false,
+      "display_name": "C. 'Mr Soundwave' Herbst & B. MIkic/BrainTrace Design's Synthesis module (.SYN)",
+      "file_type": 1825
+    },
+    {
+      "format_id": "FLINK_SYNTRACKER_SYNMOD",
+      "slug": "flink_syntracker_synmod",
+      "source_line": 4790,
+      "heuristic": false,
+      "display_name": "Bastian 'flink'/'twiCe' Spiegel's SynTracker module (.SYNMOD)",
+      "file_type": 1826
+    },
+    {
+      "format_id": "BERO_T0AST",
+      "slug": "bero_t0ast",
+      "source_line": 4802,
+      "heuristic": false,
+      "display_name": "Benjamin 'BeRo' Rousseaux's The 0ok Amazing Synth Tracker module (.T0AST)",
+      "file_type": 1827
+    },
+    {
+      "format_id": "BERO_TOAST_INS",
+      "slug": "bero_toast_ins",
+      "source_line": 4865,
+      "heuristic": false,
+      "display_name": "Benjamin 'BeRo' Rousseaux's The 0ok Amazing Synth Tracker instrument file",
+      "file_type": 1828
+    },
+    {
+      "format_id": "FOLLIN_PLAYER2_TF",
+      "slug": "follin_player2_tf",
+      "source_line": 4876,
+      "heuristic": false,
+      "display_name": "Tim Follin & Mike D.'s Follin Player II module (.TF)",
+      "file_type": 1829
+    },
+    {
+      "format_id": "SHIRU_TFMD",
+      "slug": "shiru_tfmd",
+      "source_line": 4881,
+      "heuristic": false,
+      "display_name": "Shiru's TFM Music Maker tune (.TFD)",
+      "file_type": 1830
+    },
+    {
+      "format_id": "SHIRU_TFMV2",
+      "slug": "shiru_tfmv2",
+      "source_line": 4895,
+      "heuristic": false,
+      "display_name": "Shiru's TFM Music Maker module (.TFE)",
+      "file_type": 1831
+    },
+    {
+      "format_id": "JASKIER_THETAMUSICCOMPOSER_TM2",
+      "slug": "jaskier_thetamusiccomposer_tm2",
+      "source_line": 4939,
+      "heuristic": false,
+      "display_name": "Marcin 'Jaskier' Lewandowski's Theta Music Composer (.TM2)",
+      "file_type": 1832
+    },
+    {
+      "format_id": "LUURING_THEMUSICALENLIGHTENMENT",
+      "slug": "luuring_themusicalenlightenment",
+      "source_line": 4973,
+      "heuristic": false,
+      "display_name": "N.J. Luuring Jr.'s The Musical Enlightenment module (.TME)",
+      "file_type": 1833
+    },
+    {
+      "format_id": "DAVIDSON_RAMTRACKER_TRK",
+      "slug": "davidson_ramtracker_trk",
+      "source_line": 4979,
+      "heuristic": false,
+      "display_name": "Adam Davidson & Ramjet & Toxic Volume's RamTracker module (.TRK)",
+      "file_type": 1834
+    },
+    {
+      "format_id": "UNIQUEDEV_BLADEPACKER_UDS",
+      "slug": "uniquedev_bladepacker_uds",
+      "source_line": 4995,
+      "heuristic": false,
+      "display_name": "Unique Development/BladePacker's module (UDS.+SMP.)",
+      "file_type": 1835
+    },
+    {
+      "format_id": "MAS_ULTRATRACKER",
+      "slug": "mas_ultratracker",
+      "source_line": 5039,
+      "heuristic": false,
+      "display_name": "Marc 'MAS' Schallehn's UltraTracker module (.ULT)",
+      "file_type": 1836
+    },
+    {
+      "format_id": "SHIRU_VGE",
+      "slug": "shiru_vge",
+      "source_line": 5082,
+      "heuristic": false,
+      "display_name": "Shiru's VGM Music Maker module (.VGE)",
+      "file_type": 1837
+    },
+    {
+      "format_id": "VIDEOGAMEMUSIC_VGM",
+      "slug": "videogamemusic_vgm",
+      "source_line": 5143,
+      "heuristic": false,
+      "display_name": "Video Game Music chiptune stream (.VGM)",
+      "file_type": 1838
+    },
+    {
+      "format_id": "KAHLIN_VICTRACKER",
+      "slug": "kahlin_victracker",
+      "source_line": 5252,
+      "heuristic": false,
+      "display_name": "Daniel Kahlin's VIC-TRACKER module (.VT)",
+      "file_type": 1839
+    },
+    {
+      "format_id": "PARTL_VOODOOSUPREMESYNTHESIZER",
+      "slug": "partl_voodoosupremesynthesizer",
+      "source_line": 5270,
+      "heuristic": false,
+      "display_name": "Tomas Partl's Voodoo Supreme Synthesizer audio (.VSS)",
+      "file_type": 1840
+    },
+    {
+      "format_id": "WALLYBEBEN",
+      "slug": "wallybeben",
+      "source_line": 5276,
+      "heuristic": false,
+      "display_name": "Wally Beben's module (.WB)",
+      "file_type": 1841
+    },
+    {
+      "format_id": "WONDERSWANR_WSRF",
+      "slug": "wonderswanr_wsrf",
+      "source_line": 5282,
+      "heuristic": false,
+      "display_name": "WonderSwan R programmatic chiptune (.WSR)",
+      "file_type": 1842
+    },
+    {
+      "format_id": "RIVEN_EXOTICADLIB_XAD",
+      "slug": "riven_exoticadlib_xad",
+      "source_line": 5340,
+      "heuristic": false,
+      "display_name": "Riven the Mage's Exotic AdLib module (.XAD)",
+      "file_type": 1843
+    },
+    {
+      "format_id": "HUSS_FASTTRACKER2_XM",
+      "slug": "huss_fasttracker2_xm",
+      "source_line": 5351,
+      "heuristic": false,
+      "display_name": "Fredrik 'Mr. H' Huss and Magnus 'Vogue' Högdahl's Fast Tracker 2 Extended module (.XM)",
+      "file_type": 1844
+    },
+    {
+      "format_id": "EXTENDEDMIDI_XMI",
+      "slug": "extendedmidi_xmi",
+      "source_line": 5562,
+      "heuristic": false,
+      "display_name": "Extended MIDI chiptune (.XMI,.C55,.PCS)",
+      "file_type": 1845
+    },
+    {
+      "format_id": "TAYLOR_EXTRASIMPLEMUSIC_XSM",
+      "slug": "taylor_extrasimplemusic_xsm",
+      "source_line": 5570,
+      "heuristic": false,
+      "display_name": "Davey W. Taylor's Extra Simple Music module (.XSM)",
+      "file_type": 1846
+    },
+    {
+      "format_id": "LEONARD_YM",
+      "slug": "leonard_ym",
+      "source_line": 5577,
+      "heuristic": false,
+      "display_name": "Arnaud 'Leonard' Carré's ST-Sound chiptune stream (.YM)",
+      "file_type": 1847
+    },
+    {
+      "format_id": "MRSTYCKX_MYST_STYM",
+      "slug": "mrstyckx_myst_stym",
+      "source_line": 5646,
+      "heuristic": false,
+      "display_name": "Nicolas 'Mr.Styckx' Pomarede's MYST ST-YM module (.YMST,.YM)",
+      "file_type": 1848
+    },
+    {
+      "format_id": "FUXOFT_AYAMADEUS",
+      "slug": "fuxoft_ayamadeus",
+      "source_line": 5683,
+      "heuristic": false,
+      "display_name": "AY container/František Fuka/Fuxoft's AY Amadeus module (.AMAD)",
+      "file_type": 1849
+    },
+    {
+      "format_id": "BULBA_AYEMUL",
+      "slug": "bulba_ayemul",
+      "source_line": 5705,
+      "heuristic": false,
+      "display_name": "Sergej Bulba's AY Emul chiptune (.EMUL)",
+      "file_type": 1850
+    },
+    {
+      "format_id": "BOB_ADLIBMUSIC_BAM",
+      "slug": "bob_adlibmusic_bam",
+      "source_line": 5743,
+      "heuristic": false,
+      "display_name": "Bob's Adlib Music module (.BAM)",
+      "file_type": 1851
+    },
+    {
+      "format_id": "CREATIVELABS_CMF",
+      "slug": "creativelabs_cmf",
+      "source_line": 5769,
+      "heuristic": false,
+      "display_name": "Creative Labs' Creative Music Format chiptune (.CMF)",
+      "file_type": 1852
+    },
+    {
+      "format_id": "OREGANDEV_DIGITALSYMPHONY",
+      "slug": "oregandev_digitalsymphony",
+      "source_line": 5798,
+      "heuristic": false,
+      "display_name": "Oregan Developments' Digital Symphony module (.DSYM)",
+      "file_type": 1853
+    },
+    {
+      "format_id": "VERHAAG_DIGITALFM",
+      "slug": "verhaag_digitalfm",
+      "source_line": 5822,
+      "heuristic": false,
+      "display_name": "Rene Verhaag's Digital-FM module (.DFM)",
+      "file_type": 1854
+    },
+    {
+      "format_id": "DOSBOXRAWOPL",
+      "slug": "dosboxrawopl",
+      "source_line": 5873,
+      "heuristic": false,
+      "display_name": "DOSBox Raw OPL chiptune (.DRO)",
+      "file_type": 1855
+    },
+    {
+      "format_id": "NUNN_FUNKTRACKER",
+      "slug": "nunn_funktracker",
+      "source_line": 5926,
+      "heuristic": false,
+      "display_name": "Jason Nunn's Funktracker module (.FNK,.Funk)",
+      "file_type": 1856
+    },
+    {
+      "format_id": "PINK_PRETRACKER_PRT",
+      "slug": "pink_pretracker_prt",
+      "source_line": 5966,
+      "heuristic": false,
+      "display_name": "Manfred 'Pink' Linzner's PreTracker module (.PRT)",
+      "file_type": 1857
+    },
+    {
+      "format_id": "PINK_COMEBACKTRACKER_CBT",
+      "slug": "pink_comebacktracker_cbt",
+      "source_line": 5991,
+      "heuristic": false,
+      "display_name": "Manfred 'Pink' Linzner's Comeback Tracker module (.CBT)",
+      "file_type": 1858
+    },
+    {
+      "format_id": "DEXUS_PROSOUNDMAKER",
+      "slug": "dexus_prosoundmaker",
+      "source_line": 6044,
+      "heuristic": false,
+      "display_name": "Denis 'Dexus' Dratov's Pro Sound Maker module (.PSM)",
+      "file_type": 1859
+    },
+    {
+      "format_id": "PROTRACKER_IFF_PTM",
+      "slug": "protracker_iff_ptm",
+      "source_line": 6082,
+      "heuristic": false,
+      "display_name": "ProTracker IFF-wrapped module (.PTM)",
+      "file_type": 1860
+    },
+    {
+      "format_id": "PSI_SCREAMTACKER3_S3M",
+      "slug": "psi_screamtacker3_s3m",
+      "source_line": 6212,
+      "heuristic": false,
+      "display_name": "Sami 'Psi' Tammilehto's ScreamTracker 3 module (.S3M)",
+      "file_type": 1861
+    },
+    {
+      "format_id": "MLAT_ADLIBTRACKER_MAD",
+      "slug": "mlat_adlibtracker_mad",
+      "source_line": 6233,
+      "heuristic": false,
+      "display_name": "Mlat Adlib Tracker module (.MAD)",
+      "file_type": 1862
+    },
+    {
+      "format_id": "KOMETBOMB_PROTOTRACKER_SONG",
+      "slug": "kometbomb_prototracker_song",
+      "source_line": 6262,
+      "heuristic": false,
+      "display_name": "Tero 'kometbomb' Lindeman's ProtoTracker module (.SONG)",
+      "file_type": 1863
+    },
+    {
+      "format_id": "GNILK_BEAVERSWEEPER_GTK",
+      "slug": "gnilk_beaversweeper_gtk",
+      "source_line": 6346,
+      "heuristic": false,
+      "display_name": "Fredrik 'Gnilk' Kling & Stefan 'Steffo' Hållén & Zyrax's Beaver Sweeper module (.GTK)",
+      "file_type": 1864
+    },
+    {
+      "format_id": "ZONIX_MUSICPLAYER_HOT",
+      "slug": "zonix_musicplayer_hot",
+      "source_line": 6375,
+      "heuristic": false,
+      "display_name": "Anders 'Zonix' 0land's Music & Player module (.HOT)",
+      "file_type": 1865
+    },
+    {
+      "format_id": "CHRONS_UNIMODTRK",
+      "slug": "chrons_unimodtrk",
+      "source_line": 6456,
+      "heuristic": false,
+      "display_name": "Otto Chrons/libmikmod UNIMOD/UNITRK module (.UNI)",
+      "file_type": 1866
+    },
+    {
+      "format_id": "JCH_EDLIBTRACKER_RAW",
+      "slug": "jch_edlibtracker_raw",
+      "source_line": 6508,
+      "heuristic": false,
+      "display_name": "Jens Christian 'JCH/Vibrants' Huus's Edlib Tracker module (.D00)?",
+      "file_type": 1867
+    },
+    {
+      "format_id": "AMIGAFREELANCERS_PROTRACKER_MOD",
+      "slug": "amigafreelancers_protracker_mod",
+      "source_line": 6666,
+      "heuristic": false,
+      "display_name": "Amiga Freelancers' Protracker module (.MOD)",
+      "file_type": 1868
+    },
+    {
+      "format_id": "WOMBELL_CHIPTRACKER_KRIS",
+      "slug": "wombell_chiptracker_kris",
+      "source_line": 6710,
+      "heuristic": false,
+      "display_name": "Krister Wombell's ChipTracker module (.KRIS,.MOD)",
+      "file_type": 1869
+    },
+    {
+      "format_id": "GARGAJ_MVX_MVM",
+      "slug": "gargaj_mvx_mvm",
+      "source_line": 6771,
+      "heuristic": false,
+      "display_name": "Gargaj/Conspiracy's MVX Module (.MVM)",
+      "file_type": 1870
+    },
+    {
+      "format_id": "KINNUNEN_OCTAMED_MED",
+      "slug": "kinnunen_octamed_med",
+      "source_line": 6853,
+      "heuristic": false,
+      "display_name": "Teijo Kinnunen's OctaMED module (.MED)",
+      "file_type": 1871
+    },
+    {
+      "format_id": "KINNUNEN_OCTAMED_MMD",
+      "slug": "kinnunen_octamed_mmd",
+      "source_line": 6927,
+      "heuristic": false,
+      "display_name": "Teijo Kinnunen's",
+      "file_type": 1872
+    },
+    {
+      "format_id": "ABYSS_HIGHESTEXPERIENCE",
+      "slug": "abyss_highestexperience",
+      "source_line": 6998,
+      "heuristic": false,
+      "display_name": "Dexter & Pink/Abyss' Highest eXperience module (.AHX)",
+      "file_type": 1873
+    },
+    {
+      "format_id": "IRIS_HIVELYTRACKER",
+      "slug": "iris_hivelytracker",
+      "source_line": 7002,
+      "heuristic": false,
+      "display_name": "IRIS & Up Rough's Hively Tracker module (.HVL)",
+      "file_type": 1874
+    },
+    {
+      "format_id": "AZATOTH_PHAPACKER",
+      "slug": "azatoth_phapacker",
+      "source_line": 7049,
+      "heuristic": false,
+      "display_name": "Azatoth/Phenomena's Pha Packer module (.PHA)",
+      "file_type": 1875
+    },
+    {
+      "format_id": "LIM_IMPULSETRACKER",
+      "slug": "lim_impulsetracker",
+      "source_line": 7697,
+      "heuristic": false,
+      "display_name": "Jeffrey 'Pulse' Lim's Impulse Tracker module (.IT)",
+      "file_type": 1876
+    },
+    {
+      "format_id": "OPENMPT_MPTM",
+      "slug": "openmpt_mptm",
+      "source_line": 7698,
+      "heuristic": false,
+      "display_name": "Open ModPlug Tracker/OpenMPT module (.MPTM)",
+      "file_type": 1877
+    },
+    {
+      "format_id": "JAZZJR2_GSS_UNP",
+      "slug": "jazzjr2_gss_unp",
+      "source_line": 7757,
+      "heuristic": false,
+      "display_name": "Jazz Jackrabbit 2/Galaxy Sound System module (.J2B)",
+      "file_type": 1878
+    },
+    {
+      "format_id": "ROBHUBBARD_ST_RHO",
+      "slug": "robhubbard_st_rho",
+      "source_line": 7794,
+      "heuristic": false,
+      "display_name": "Rob Hubbard ST module (.RHO)",
+      "file_type": 1879
+    },
+    {
+      "format_id": "ASC_ADVANCEDSOUNDMASTER_V1",
+      "slug": "asc_advancedsoundmaster_v1",
+      "source_line": 7822,
+      "heuristic": false,
+      "display_name": "A.'Andrew Strikes Code' Sendetskii/Power of Sound's ASC/Advanced Sound Master module (.ASC)",
+      "file_type": 1880
+    },
+    {
+      "format_id": "ASC_ADVANCEDSOUNDMASTER_V0",
+      "slug": "asc_advancedsoundmaster_v0",
+      "source_line": 7857,
+      "heuristic": false,
+      "display_name": "Andrei 'Andrew Strikes Code' Sendetskii/Titus's Advanced Sound Master module (.AS0)",
+      "file_type": 1881
+    },
+    {
+      "format_id": "DOCTORMAX_GLOBALTRACKER_GTR",
+      "slug": "doctormax_globaltracker_gtr",
+      "source_line": 7888,
+      "heuristic": false,
+      "display_name": "Doctor Max/Global Corp.'s Global Tracker module (.GTR)",
+      "file_type": 1882
+    },
+    {
+      "format_id": "POSTMA_SOUNDMON_BP",
+      "slug": "postma_soundmon_bp",
+      "source_line": 7926,
+      "heuristic": false,
+      "display_name": "Brian Postma's SoundMon module (.BP)",
+      "file_type": 1883
+    },
+    {
+      "format_id": "FUCHS_TRACKER",
+      "slug": "fuchs_tracker",
+      "source_line": 7959,
+      "heuristic": false,
+      "display_name": "Andreas Fuchs's FuchsTracker module (.FUCHS)",
+      "file_type": 1884
+    },
+    {
+      "format_id": "TADIC_GAMEMUSICCREATOR",
+      "slug": "tadic_gamemusiccreator",
+      "source_line": 8024,
+      "heuristic": false,
+      "display_name": "Andreas Tadic's Game Music Creator module (.GMC)",
+      "file_type": 1885
+    },
+    {
+      "format_id": "SCHRIJVERS_MOONBLASTER_MBM",
+      "slug": "schrijvers_moonblaster_mbm",
+      "source_line": 8069,
+      "heuristic": false,
+      "display_name": "R.Schrijvers & M.Delorme's MoonBlaster module (.MBM)",
+      "file_type": 1886
+    },
+    {
+      "format_id": "GOLDENDISK_PROTRACKER_PT1_CO",
+      "slug": "goldendisk_protracker_pt1_co",
+      "source_line": 8116,
+      "heuristic": false,
+      "display_name": "Golden Disk ProTracker module (.PT1)",
+      "file_type": 1887
+    },
+    {
+      "format_id": "GOLDENDISK_PROTRACKER_PT2",
+      "slug": "goldendisk_protracker_pt2",
+      "source_line": 8151,
+      "heuristic": false,
+      "display_name": "Golden Disk ProTracker module (.PT2)",
+      "file_type": 1888
+    },
+    {
+      "format_id": "GOLDENDISK_PROTRACKER_PT3",
+      "slug": "goldendisk_protracker_pt3",
+      "source_line": 8231,
+      "heuristic": false,
+      "display_name": "Golden Disk ProTracker module (.PT3)",
+      "file_type": 1889
+    },
+    {
+      "format_id": "KVA_PROSOUNDCREATOR",
+      "slug": "kva_prosoundcreator",
+      "source_line": 8292,
+      "heuristic": false,
+      "display_name": "Viktor 'KVA' Kuźmin's Pro Sound Creator module (.PSC)",
+      "file_type": 1890
+    },
+    {
+      "format_id": "ORIONSAND_FASTTRACKER_FTC",
+      "slug": "orionsand_fasttracker_ftc",
+      "source_line": 8323,
+      "heuristic": false,
+      "display_name": "S.'Orion' Matveev & A.'Sand' Plużnikov's Fast Tracker module (.FTС)",
+      "file_type": 1891
+    },
+    {
+      "format_id": "KSA_SOUNDTRACKERPRO_STF_PROJECT_CO",
+      "slug": "ksa_soundtrackerpro_stf_project_co",
+      "source_line": 8351,
+      "heuristic": false,
+      "display_name": "Stanislav 'KSA' Kuzin's Sound Tracker Pro module (.STF,.F)",
+      "file_type": 1892
+    },
+    {
+      "format_id": "KSA_SOUNDTRACKERPRO_STP",
+      "slug": "ksa_soundtrackerpro_stp",
+      "source_line": 8377,
+      "heuristic": false,
+      "display_name": "Stanislav 'KSA' Kuzin's Sound Tracker Pro module (.STP)",
+      "file_type": 1893
+    },
+    {
+      "format_id": "KOUDELKA_SCALEXQJETATRACKER",
+      "slug": "koudelka_scalexqjetatracker",
+      "source_line": 8425,
+      "heuristic": false,
+      "display_name": "Jiří 'George' Koudelka's Scalex Qjeta Tracker module (.SQT)",
+      "file_type": 1894
+    },
+    {
+      "format_id": "BZYK_SOUNDTRACKER_STC_ZXS",
+      "slug": "bzyk_soundtracker_stc_zxs",
+      "source_line": 8486,
+      "heuristic": false,
+      "display_name": "Jarosław 'BZYK' Burczyński's Sound Tracker module (.STC,.ZXS)",
+      "file_type": 1895
+    },
+    {
+      "format_id": "STMUSICSTCRECOMPV2_ST3",
+      "slug": "stmusicstcrecompv2_st3",
+      "source_line": 8548,
+      "heuristic": false,
+      "display_name": "S.T. Music's Recompiler v2 rebuilt STC module (.ST3)",
+      "file_type": 1896
+    },
+    {
+      "format_id": "REINIERVANVLIET_SIDMON1",
+      "slug": "reiniervanvliet_sidmon1",
+      "source_line": 8611,
+      "heuristic": false,
+      "display_name": "SIDMon module (.SID1,.SMN,.SID)",
+      "file_type": 1897
+    },
+    {
+      "format_id": "KLEPS_SIDMON2",
+      "slug": "kleps_sidmon2",
+      "source_line": 8654,
+      "heuristic": false,
+      "display_name": "Michael Kleps's SIDMon II MIDI module (.SID2)",
+      "file_type": 1898
+    },
+    {
+      "format_id": "DIGITALILLUSIONSCREATIVEENT_DI",
+      "slug": "digitalillusionscreativeent_di",
+      "source_line": 8690,
+      "heuristic": false,
+      "display_name": "Digital Illusions Creative Entertainment packed module (.DI)",
+      "file_type": 1899
+    },
+    {
+      "format_id": "ROEDER_IMAGOORPHEUS_IMF",
+      "slug": "roeder_imagoorpheus_imf",
+      "source_line": 8740,
+      "heuristic": false,
+      "display_name": "Lutz Roeder's Imago Orpheus module (.IMF)",
+      "file_type": 1900
+    },
+    {
+      "format_id": "KAJAPON_PROFESSIONALMD_M",
+      "slug": "kajapon_professionalmd_m",
+      "source_line": 8822,
+      "heuristic": false,
+      "display_name": "Masahiro 'Kajapon' Kajihara's Professional Music Driver module (.M,.M2)",
+      "file_type": 1901
+    },
+    {
+      "format_id": "PACKEN_MUAP98_OBJECT",
+      "slug": "packen_muap98_object",
+      "source_line": 8881,
+      "heuristic": false,
+      "display_name": "Packen/ぱっくん Software MUAP98/みゅあっぷ Object chiptune (.O,.OX+TONES.DTA)",
+      "file_type": 1902
+    },
+    {
+      "format_id": "ROBHUBBARD_RH",
+      "slug": "robhubbard_rh",
+      "source_line": 8952,
+      "heuristic": false,
+      "display_name": "Rob Hubbard's module (.RH)",
+      "file_type": 1903
+    },
+    {
+      "format_id": "MEYRIGNAC_PUMATRACKER",
+      "slug": "meyrignac_pumatracker",
+      "source_line": 9024,
+      "heuristic": false,
+      "display_name": "Jean-Charles Meyrignac's PumaTracker module (.PUMA)",
+      "file_type": 1904
+    },
+    {
+      "format_id": "SEANCONRAN_SCR",
+      "slug": "seanconran_scr",
+      "source_line": 9100,
+      "heuristic": false,
+      "display_name": "Sean Conran module (.SCR)",
+      "file_type": 1905
+    },
+    {
+      "format_id": "BENDAGLISH_BD",
+      "slug": "bendaglish_bd",
+      "source_line": 9261,
+      "heuristic": false,
+      "display_name": "Ben Daglish's module (.BD)",
+      "file_type": 1906
+    },
+    {
+      "format_id": "ANDREWPARTON_BYE",
+      "slug": "andrewparton_bye",
+      "source_line": 9302,
+      "heuristic": false,
+      "display_name": "Andrew Parton's module (.BYE)",
+      "file_type": 1907
+    },
+    {
+      "format_id": "ASHLEYHOGG_ASH",
+      "slug": "ashleyhogg_ash",
+      "source_line": 9388,
+      "heuristic": false,
+      "display_name": "Ashley Hogg's module (.ASH)",
+      "file_type": 1908
+    },
+    {
+      "format_id": "CINEMAWARE_CIN",
+      "slug": "cinemaware_cin",
+      "source_line": 9417,
+      "heuristic": false,
+      "display_name": "Cinemaware module (.CIN)",
+      "file_type": 1909
+    },
+    {
+      "format_id": "ZOER_CUSTOMMADE_CM",
+      "slug": "zoer_custommade_cm",
+      "source_line": 9492,
+      "heuristic": false,
+      "display_name": "Ivo Zoer & Ron Klaren's CustomMade module (.CM)",
+      "file_type": 1910
+    },
+    {
+      "format_id": "DAVELOWE_NEW",
+      "slug": "davelowe_new",
+      "source_line": 9568,
+      "heuristic": false,
+      "display_name": "Dave 'Uncle Tom' Lowe's New module (.DLN)",
+      "file_type": 1911
+    },
+    {
+      "format_id": "DENTONS_DESIREPLAYER",
+      "slug": "dentons_desireplayer",
+      "source_line": 9627,
+      "heuristic": false,
+      "display_name": "Dentons' Desire player module (.DSR)",
+      "file_type": 1912
+    },
+    {
+      "format_id": "DAVIDWHITTAKER_DW",
+      "slug": "davidwhittaker_dw",
+      "source_line": 9773,
+      "heuristic": false,
+      "display_name": "David Whittaker's module (.DW)",
+      "file_type": 1913
+    },
+    {
+      "format_id": "FASHION_TRACKER_EX",
+      "slug": "fashion_tracker_ex",
+      "source_line": 9829,
+      "heuristic": false,
+      "display_name": "Fashion Tracker module (.EX)",
+      "file_type": 1914
+    },
+    {
+      "format_id": "SIMPLEMUSICALSCORE_SMUS",
+      "slug": "simplemusicalscore_smus",
+      "source_line": 9907,
+      "heuristic": false,
+      "display_name": "SIMPLEMUSICALSCORE_SMUS",
+      "file_type": 1915
+    },
+    {
+      "format_id": "LIONET_AMOSMUSICBANK_ABK",
+      "slug": "lionet_amosmusicbank_abk",
+      "source_line": 9955,
+      "heuristic": false,
+      "display_name": "François Lionet's AMOS Music Bank module (.ABK)",
+      "file_type": 1916
+    },
+    {
+      "format_id": "BRAINCONTROL_TUNEFISH_TF4",
+      "slug": "braincontrol_tunefish_tf4",
+      "source_line": 9976,
+      "heuristic": false,
+      "display_name": "Brain Control's TuneFish module (.TF4)",
+      "file_type": 1917
+    },
+    {
+      "format_id": "HIPPEL_7",
+      "slug": "hippel_7",
+      "source_line": 10096,
+      "heuristic": false,
+      "display_name": "Jochen 'Mad Max' Hippel's module (.HIP7,.S7G)",
+      "file_type": 1918
+    },
+    {
+      "format_id": "HIPPEL_CO",
+      "slug": "hippel_co",
+      "source_line": 10132,
+      "heuristic": false,
+      "display_name": "Jochen 'Mad Max' Hippel's module (.HIPC)",
+      "file_type": 1919
+    },
+    {
+      "format_id": "HIPPEL_ST",
+      "slug": "hippel_st",
+      "source_line": 10248,
+      "heuristic": false,
+      "display_name": "Jochen 'Mad Max' Hippel's Atari ST module (.HST,.SOC,.SOG)",
+      "file_type": 1920
+    },
+    {
+      "format_id": "PIMMEL_EDITEURMUSICALSEQUENTIEL",
+      "slug": "pimmel_editeurmusicalsequentiel",
+      "source_line": 10291,
+      "heuristic": false,
+      "display_name": "Thomas 'Tom' Pimmel's Editeur Musical Sequentiel module (.EMS)",
+      "file_type": 1921
+    },
+    {
+      "format_id": "MARKII_DZ",
+      "slug": "markii_dz",
+      "source_line": 10316,
+      "heuristic": false,
+      "display_name": "Darius 'Mark II' Zendeh module (.DZ)",
+      "file_type": 1922
+    },
+    {
+      "format_id": "MARKII_SOUNDSYSTEM_MK2",
+      "slug": "markii_soundsystem_mk2",
+      "source_line": 10344,
+      "heuristic": false,
+      "display_name": "Darius 'Mark II' Zendeh's Mark II Sound System module (.MK2)",
+      "file_type": 1923
+    },
+    {
+      "format_id": "BETRAYAL_JAMCRACKER",
+      "slug": "betrayal_jamcracker",
+      "source_line": 10375,
+      "heuristic": false,
+      "display_name": "Gemmel & Xag/Betrayal's JamCracker/Pro module (.JAM,.JC)",
+      "file_type": 1924
+    },
+    {
+      "format_id": "BJERREGAARD_JBM",
+      "slug": "bjerregaard_jbm",
+      "source_line": 10426,
+      "heuristic": false,
+      "display_name": "Johannes Bjerregaard Adlib module (.JBM)",
+      "file_type": 1925
+    },
+    {
+      "format_id": "HALLER_SOUNDFX_MULTIMEDIASOUND",
+      "slug": "haller_soundfx_multimediasound",
+      "source_line": 10456,
+      "heuristic": false,
+      "display_name": "C.Haller & C.A.Webber's SoundFX ",
+      "file_type": 1926
+    },
+    {
+      "format_id": "JESPEROLSEN_JO",
+      "slug": "jesperolsen_jo",
+      "source_line": 10583,
+      "heuristic": false,
+      "display_name": "Jesper Olsen's module (.JO)",
+      "file_type": 1927
+    },
+    {
+      "format_id": "JASONCBROOKE",
+      "slug": "jasoncbrooke",
+      "source_line": 10658,
+      "heuristic": false,
+      "display_name": "Jason C. Brooke's module (.JB,.JCB)",
+      "file_type": 1928
+    },
+    {
+      "format_id": "RAZMO_KEFRENSSOUNDMACHINE",
+      "slug": "razmo_kefrenssoundmachine",
+      "source_line": 10723,
+      "heuristic": false,
+      "display_name": "Jess D. 'Razmo' Skov-Nielsen's Kefrens Sound Machine module (.KSM)",
+      "file_type": 1929
+    },
+    {
+      "format_id": "PAULROBOTHAM_DAT",
+      "slug": "paulrobotham_dat",
+      "source_line": 10750,
+      "heuristic": false,
+      "display_name": "Paul Robotham's module (.DAT+.SSD)",
+      "file_type": 1930
+    },
+    {
+      "format_id": "LAVE_DIGITALMUSICMAKER",
+      "slug": "lave_digitalmusicmaker",
+      "source_line": 10785,
+      "heuristic": false,
+      "display_name": "Vasilii 'BACA' Pakhomov/LAVE's Digital Music Maker module (.DMM)",
+      "file_type": 1931
+    },
+    {
+      "format_id": "TRAN_CDFM_COMPOSER670",
+      "slug": "tran_cdfm_composer670",
+      "source_line": 10828,
+      "heuristic": false,
+      "display_name": "Thomas 'Tran' Pytel's CDFM/Composer 670 module (.C67)",
+      "file_type": 1932
+    },
+    {
+      "format_id": "ODIE_SCN",
+      "slug": "odie_scn",
+      "source_line": 10845,
+      "heuristic": false,
+      "display_name": "Sean 'Odie' Connolly's module (.SCN)",
+      "file_type": 1933
+    },
+    {
+      "format_id": "WALKER_ACTIVISIONPRO",
+      "slug": "walker_activisionpro",
+      "source_line": 10895,
+      "heuristic": false,
+      "display_name": "Martin Walker's Activision Pro module (.AVP)",
+      "file_type": 1934
+    },
+    {
+      "format_id": "JASONPAGE",
+      "slug": "jasonpage",
+      "source_line": 10942,
+      "heuristic": false,
+      "display_name": "Jason Page's ",
+      "file_type": 1935
+    },
+    {
+      "format_id": "MIKEDAVIES",
+      "slug": "mikedavies",
+      "source_line": 11089,
+      "heuristic": false,
+      "display_name": "Mike Davies module (.MD)",
+      "file_type": 1936
+    },
+    {
+      "format_id": "PERNOT_SILMARILS_MOK",
+      "slug": "pernot_silmarils_mok",
+      "source_line": 11125,
+      "heuristic": false,
+      "display_name": "Michel Pernot's Silmarils module (.MOK)",
+      "file_type": 1937
+    },
+    {
+      "format_id": "SUTOR_GTGAMESYSTEMS_DUX",
+      "slug": "sutor_gtgamesystems_dux",
+      "source_line": 11153,
+      "heuristic": false,
+      "display_name": "Thomas Sutor & Gerald Bühner's GT Game Systems module (.DUX)",
+      "file_type": 1938
+    },
+    {
+      "format_id": "STEPANOV_BUZZIC2",
+      "slug": "stepanov_buzzic2",
+      "source_line": 11189,
+      "heuristic": false,
+      "display_name": "Andrey Stepanov's Buzzic module (.buz2)",
+      "file_type": 1939
+    },
+    {
+      "format_id": "INFOGRAMES_RH2_DUM",
+      "slug": "infogrames_rh2_dum",
+      "source_line": 11211,
+      "heuristic": false,
+      "display_name": "Infogrames (RobHubbard2) module (.DUM&.INS)",
+      "file_type": 1940
+    },
+    {
+      "format_id": "CANNONDUNN_SPECIALFX_JD",
+      "slug": "cannondunn_specialfx_jd",
+      "source_line": 11235,
+      "heuristic": false,
+      "display_name": "M.Cannon & J.Dunn's Special FX module (.JD)",
+      "file_type": 1941
+    },
+    {
+      "format_id": "CANNONDUNN_SPECIALFXST_DODA",
+      "slug": "cannondunn_specialfxst_doda",
+      "source_line": 11302,
+      "heuristic": false,
+      "display_name": "M.Cannon & J.Dunn's Special FX ST module (.DODA)",
+      "file_type": 1942
+    },
+    {
+      "format_id": "TRONIC_DELTAPACKER",
+      "slug": "tronic_deltapacker",
+      "source_line": 11320,
+      "heuristic": false,
+      "display_name": "Tronic Delta Packer module (.DP)",
+      "file_type": 1943
+    },
+    {
+      "format_id": "BAILEY_DIGITALSONIXCHROME",
+      "slug": "bailey_digitalsonixchrome",
+      "source_line": 11349,
+      "heuristic": false,
+      "display_name": "A.Bailey & D.Hanlon's Digital Sonix & Chrome module (.DSC)",
+      "file_type": 1944
+    },
+    {
+      "format_id": "PAULSHIELDS",
+      "slug": "paulshields",
+      "source_line": 11384,
+      "heuristic": false,
+      "display_name": "Paul Shields' module (.PS)",
+      "file_type": 1945
+    },
+    {
+      "format_id": "ADLIB_ROL",
+      "slug": "adlib_rol",
+      "source_line": 11424,
+      "heuristic": false,
+      "display_name": "Ad Lib's AdLib Visual Composer pianoroll (.ROL)",
+      "file_type": 1946
+    },
+    {
+      "format_id": "GENSMD_YM2612_GYM",
+      "slug": "gensmd_ym2612_gym",
+      "source_line": 11444,
+      "heuristic": false,
+      "display_name": "Sega Genesis/Mega Drive YM2612 chiptune (.GYM)",
+      "file_type": 1947
+    },
+    {
+      "format_id": "SOEDE_SOUNDMASTER",
+      "slug": "soede_soundmaster",
+      "source_line": 11524,
+      "heuristic": false,
+      "display_name": "Michiel J. Soede's Sound Master module (.SM,.SMPRO,.SM3)",
+      "file_type": 1948
+    },
+    {
+      "format_id": "PAKARINEN_TOMYTRACKER_SG",
+      "slug": "pakarinen_tomytracker_sg",
+      "source_line": 11548,
+      "heuristic": false,
+      "display_name": "Tom Pakarinen's Tomy Tracker module (.SG)",
+      "file_type": 1949
+    },
+    {
+      "format_id": "GEHRMANN_SOUNDCONTROL_SCT",
+      "slug": "gehrmann_soundcontrol_sct",
+      "source_line": 11592,
+      "heuristic": false,
+      "display_name": "Holger Gehrmann's Soundcontrol module (.SCT)",
+      "file_type": 1950
+    },
+    {
+      "format_id": "URWANI_SOUNDFACTORY_PSF",
+      "slug": "urwani_soundfactory_psf",
+      "source_line": 11625,
+      "heuristic": false,
+      "display_name": "Z.Urwani & T.Kolbe's Soundfactory module (.PSF)",
+      "file_type": 1951
+    },
+    {
+      "format_id": "SPP_BENITRACKERADLIB_PIS",
+      "slug": "spp_benitrackeradlib_pis",
+      "source_line": 11666,
+      "heuristic": false,
+      "display_name": "SPP's Beni Tracker (Adlib) module (.PIS)",
+      "file_type": 1952
+    },
+    {
+      "format_id": "STEVEBARRETT",
+      "slug": "stevebarrett",
+      "source_line": 11702,
+      "heuristic": false,
+      "display_name": "Steve Barrett's module (.SB)",
+      "file_type": 1953
+    },
+    {
+      "format_id": "MICRODEAL_QUARTET_SQT",
+      "slug": "microdeal_quartet_sqt",
+      "source_line": 11736,
+      "heuristic": false,
+      "display_name": "Illusions/Microdeal Quartet module (SQT.)",
+      "file_type": 1954
+    },
+    {
+      "format_id": "BRAINTRACEDESIGN_SONICARRANGER_INS",
+      "slug": "braintracedesign_sonicarranger_ins",
+      "source_line": 11821,
+      "heuristic": false,
+      "display_name": "BrainTrace Design/MEDIA Verlags Sonic Arranger synth instrument",
+      "file_type": 1955
+    },
+    {
+      "format_id": "JEROENTEL",
+      "slug": "jeroentel",
+      "source_line": 11859,
+      "heuristic": false,
+      "display_name": "Jeroen 'WAVE' Tel's module (.JT)",
+      "file_type": 1956
+    },
+    {
+      "format_id": "ANCOOL_TCBTRACKER",
+      "slug": "ancool_tcbtracker",
+      "source_line": 11881,
+      "heuristic": false,
+      "display_name": "Anders 'AN Cool' Nilsson's TCB Tracker module (.TCB)",
+      "file_type": 1957
+    },
+    {
+      "format_id": "STEPANOV_BUZZIC10",
+      "slug": "stepanov_buzzic10",
+      "source_line": 11969,
+      "heuristic": false,
+      "display_name": "Andrey Stepanov's Buzzic module (.BUZ)",
+      "file_type": 1958
+    },
+    {
+      "format_id": "STEPANOV_BUZZIC11",
+      "slug": "stepanov_buzzic11",
+      "source_line": 12024,
+      "heuristic": false,
+      "display_name": "Andrey Stepanov's Buzzic module (.BUZ)",
+      "file_type": 1959
+    },
+    {
+      "format_id": "KONAMI_MUSICDATAEXTENDED_MDX",
+      "slug": "konami_musicdataextended_mdx",
+      "source_line": 12188,
+      "heuristic": false,
+      "display_name": "Konami's X68k Music Data eXtended module (.MDX)",
+      "file_type": 1960
+    },
+    {
+      "format_id": "CLERMONTE_FREDEDITOR_FINAL",
+      "slug": "clermonte_frededitor_final",
+      "source_line": 12261,
+      "heuristic": false,
+      "display_name": "Fred & Julien Clermonte's Fred Editor module (.FRED,.FRD)",
+      "file_type": 1961
+    },
+    {
+      "format_id": "DSMI_AMF",
+      "slug": "dsmi_amf",
+      "source_line": 12304,
+      "heuristic": false,
+      "display_name": "Digital Sound and Music Interface Advanced Music Format module (.AMF)",
+      "file_type": 1962
+    },
+    {
+      "format_id": "SURPRISEPRODUCTIONS_ADLIBTRACKER",
+      "slug": "surpriseproductions_adlibtracker",
+      "source_line": 12353,
+      "heuristic": false,
+      "display_name": "Surprise! Productions' Surprise! AdLib Tracker ",
+      "file_type": 1963
+    },
+    {
+      "format_id": "HULSBECK_THEFINALMUSICSYSTEMEXTENDED",
+      "slug": "hulsbeck_thefinalmusicsystemextended",
+      "source_line": 12472,
+      "heuristic": false,
+      "display_name": "Chris Hülsbeck's The Final Musicsystem eXtended module (TFX.,.TFM,MDAT.+SMPL.,MDST.+SMPL.)",
+      "file_type": 1964
+    },
+    {
+      "format_id": "THOMASHERMANN_THM",
+      "slug": "thomashermann_thm",
+      "source_line": 12622,
+      "heuristic": false,
+      "display_name": "Thomas Hermann's module (.THM+.SMP)",
+      "file_type": 1965
+    },
+    {
+      "format_id": "RHINO_JAYTRAXSYNTRAX_JXS",
+      "slug": "rhino_jaytraxsyntrax_jxs",
+      "source_line": 12672,
+      "heuristic": false,
+      "display_name": "Reinier 'Rhino' van Vliet's Jaytrax/Syntrax module (.JXS)",
+      "file_type": 1966
+    },
+    {
+      "format_id": "SAHARASURFERS_IXALANCE_IXS_UNP",
+      "slug": "saharasurfers_ixalance_ixs_unp",
+      "source_line": 12748,
+      "heuristic": false,
+      "display_name": "Sahara Surfers' iXalance module (.IXS)",
+      "file_type": 1967
+    },
+    {
+      "format_id": "MSXPERFORMER_OPX",
+      "slug": "msxperformer_opx",
+      "source_line": 12774,
+      "heuristic": false,
+      "display_name": "MSX Performer OPX chiptune (.OPX)",
+      "file_type": 1968
+    },
+    {
+      "format_id": "GIGAMIX_MGSDRV",
+      "slug": "gigamix_mgsdrv",
+      "source_line": 12793,
+      "heuristic": false,
+      "display_name": "Ain/GIGAMIX MGSDRV chiptune (.MGS)",
+      "file_type": 1969
+    },
+    {
+      "format_id": "ASCII_MUSICA_BGM",
+      "slug": "ascii_musica_bgm",
+      "source_line": 12908,
+      "heuristic": false,
+      "display_name": "ASCII Corp./アスキー Yoshida 'Soram' Tetsuma's MuSICA chiptune (.BGM,.BGR)",
+      "file_type": 1970
+    },
+    {
+      "format_id": "CROSSLEY_IMAGESMUSICSYSTEM",
+      "slug": "crossley_imagesmusicsystem",
+      "source_line": 12956,
+      "heuristic": false,
+      "display_name": "Neil Crossley's Images Music System module (.IMS)",
+      "file_type": 1971
+    },
+    {
+      "format_id": "OBI_SOUNDTRACKER_STK",
+      "slug": "obi_soundtracker_stk",
+      "source_line": 13105,
+      "heuristic": false,
+      "display_name": "Karsten 'Obi' Obarski's SoundTracker module (.STK,.MOD)",
+      "file_type": 1972
+    },
+    {
+      "format_id": "TRAN_CDFM_COMPOSER670_CO",
+      "slug": "tran_cdfm_composer670_co",
+      "source_line": 13156,
+      "heuristic": false,
+      "display_name": "CDFM/Composer 670 module (.670)",
+      "file_type": 1973
+    },
+    {
+      "format_id": "LOUDNESS_SOUNDSYSTEM_LDS",
+      "slug": "loudness_soundsystem_lds",
+      "source_line": 13188,
+      "heuristic": false,
+      "display_name": "Loudness Sound System Ad Lib module (.LDS)",
+      "file_type": 1974
+    },
+    {
+      "format_id": "SILVERMAN_ADLIB_KSM",
+      "slug": "silverman_adlib_ksm",
+      "source_line": 13206,
+      "heuristic": false,
+      "display_name": "Ken Silverman's Adlib module (.KSM)",
+      "file_type": 1975
+    },
+    {
+      "format_id": "JASKIER_THETAMUSICCOMPOSER_TMC",
+      "slug": "jaskier_thetamusiccomposer_tmc",
+      "source_line": 13236,
+      "heuristic": false,
+      "display_name": "Marcin 'Jaskier' Lewandowski's Theta Music Composer module (.TMC,.TM4,.TM8)",
+      "file_type": 1976
+    },
+    {
+      "format_id": "RASTER_MUSICTRACKER",
+      "slug": "raster_musictracker",
+      "source_line": 13264,
+      "heuristic": false,
+      "display_name": "Radik 'Raster' Štěrba's Raster Music Tracker module (.RMT)",
+      "file_type": 1977
+    },
+    {
+      "format_id": "EEBEN_POLLYTRACKER_MOD",
+      "slug": "eeben_pollytracker_mod",
+      "source_line": 13330,
+      "heuristic": false,
+      "display_name": "Aleksi Eeben's Polly Tracker module (.MOD)",
+      "file_type": 1978
+    },
+    {
+      "format_id": "COMPUTE_SIDPLAYER_MUS",
+      "slug": "compute_sidplayer_mus",
+      "source_line": 13355,
+      "heuristic": false,
+      "display_name": "COMPUTE!'s Enhanced SidPlayer tune (.MUS+.STR+.WDS)",
+      "file_type": 1979
+    },
+    {
+      "format_id": "ORIGINSYSTEMS_ULTIMA6",
+      "slug": "originsystems_ultima6",
+      "source_line": 13404,
+      "heuristic": false,
+      "display_name": "Ultima 6 Adlib module (.M)",
+      "file_type": 1980
+    },
+    {
+      "format_id": "MICRODEAL_QUARTET_SMP",
+      "slug": "microdeal_quartet_smp",
+      "source_line": 13430,
+      "heuristic": false,
+      "display_name": "Illusions/Microdeal Quartet module (QTS.+SMP., .4V+.SET)",
+      "file_type": 1981
+    },
+    {
+      "format_id": "SQDIGITALTRACKER",
+      "slug": "sqdigitaltracker",
+      "source_line": 13479,
+      "heuristic": false,
+      "display_name": "D.J.Sham's SQ Digital Tracker module (.SQD,.M)",
+      "file_type": 1982
+    },
+    {
+      "format_id": "WINTERBERG_SPEEDYA1SYSTEM",
+      "slug": "winterberg_speedya1system",
+      "source_line": 13508,
+      "heuristic": false,
+      "display_name": "Michael Winterberg's Speedy A1 System module (.SAS)",
+      "file_type": 1983
+    },
+    {
+      "format_id": "SOUTHERN_MAGNETICFIELDSPACKER",
+      "slug": "southern_magneticfieldspacker",
+      "source_line": 13540,
+      "heuristic": false,
+      "display_name": "Shaun Southern's Magnetic Fields Packer module (.MFP+.SMP)",
+      "file_type": 1984
+    },
+    {
+      "format_id": "WESTWOOD_ADL",
+      "slug": "westwood_adl",
+      "source_line": 13645,
+      "heuristic": false,
+      "display_name": "Westwood ADL module (.ADL)",
+      "file_type": 1985
+    },
+    {
+      "format_id": "AMADEUSVOXON_FLASHTRACKER",
+      "slug": "amadeusvoxon_flashtracker",
+      "source_line": 13705,
+      "heuristic": false,
+      "display_name": "Amadeus Voxon/Flash Inc.'s Flash Tracker module (.FLS)",
+      "file_type": 1986
+    },
+    {
+      "format_id": "IDAPOGEE_MUSICFORMAT",
+      "slug": "idapogee_musicformat",
+      "source_line": 13725,
+      "heuristic": true,
+      "display_name": "id/Apogee Music Format chiptune (.IMF)",
+      "file_type": 1987
+    },
+    {
+      "format_id": "SVARTRACKER",
+      "slug": "svartracker",
+      "source_line": 13729,
+      "heuristic": true,
+      "display_name": "SVArTracker module (.SVAR)",
+      "file_type": 1988
+    },
+    {
+      "format_id": "SIERRA_SCISOUND",
+      "slug": "sierra_scisound",
+      "source_line": 13735,
+      "heuristic": true,
+      "display_name": "Sierra SCI Sound Adlib chiptune (.SND)",
+      "file_type": 1989
+    },
+    {
+      "format_id": "KLEPACKI_SOUNDINTERFACESYSTEM_LEM",
+      "slug": "klepacki_soundinterfacesystem_lem",
+      "source_line": 13740,
+      "heuristic": true,
+      "display_name": "Frank Klepacki's Sound Interface System module (.LEM)",
+      "file_type": 1990
+    },
+    {
+      "format_id": "NERDSRUS_NERDTRACKER2_NED",
+      "slug": "nerdsrus_nerdtracker2_ned",
+      "source_line": 13744,
+      "heuristic": true,
+      "display_name": "Michel 'Bananmos' Iwaniec/Nerds 'R' Us Nerd Tracker 2 module (.NED)",
+      "file_type": 1991
+    },
+    {
+      "format_id": "ATARIST_SNDH",
+      "slug": "atarist_sndh",
+      "source_line": 13751,
+      "heuristic": true,
+      "display_name": "Atari ST module (.SND,.SNDH)",
+      "file_type": 1992
+    },
+    {
+      "format_id": "VSOFT_VORTEXPROJECT",
+      "slug": "vsoft_vortexproject",
+      "source_line": 13773,
+      "heuristic": true,
+      "display_name": "Roman Ŝerbakov/V_Soft Vortex Project chiptune (.VTX)",
+      "file_type": 1993
+    },
+    {
+      "format_id": "KONAMI_MXDRV_PCM",
+      "slug": "konami_mxdrv_pcm",
+      "source_line": 13829,
+      "heuristic": true,
+      "display_name": "Konami's MXDRV external PCM resource (.PDX)",
+      "file_type": 1994
+    },
+    {
+      "format_id": "SILVERMAN_DIGITALMUSIC_KDM",
+      "slug": "silverman_digitalmusic_kdm",
+      "source_line": 13848,
+      "heuristic": true,
+      "display_name": "Ken Silverman's Digital Music module (.KDM)",
+      "file_type": 1995
+    },
+    {
+      "format_id": "UNDERGROUNDSYSTEMS_DIGITALSTUDIO",
+      "slug": "undergroundsystems_digitalstudio",
+      "source_line": 13874,
+      "heuristic": true,
+      "display_name": "Underground Systems Digital Studio module (.DST)",
+      "file_type": 1996
+    },
+    {
+      "format_id": "REDLIMITED_EXTREMETRACKER",
+      "slug": "redlimited_extremetracker",
+      "source_line": 13913,
+      "heuristic": true,
+      "display_name": "Red Limited's Extreme Tracker module (.ET1)",
+      "file_type": 1997
+    },
+    {
+      "format_id": "TEL_MANIACSOFNOISE",
+      "slug": "tel_maniacsofnoise",
+      "source_line": 13929,
+      "heuristic": true,
+      "display_name": "J. 'WAVE' Tel & C.Deenen's Maniacs of Noise module (.MON)",
+      "file_type": 1998
+    },
+    {
+      "format_id": "HIPPEL_ATARIST_SMPSET",
+      "slug": "hippel_atarist_smpset",
+      "source_line": 13946,
+      "heuristic": true,
+      "display_name": "Jochen 'Mad Max' Hippel's Atari ST sample set (SMP.set)",
+      "file_type": 1999
+    },
+    {
+      "format_id": "FARBRAUSCH_V2SYNTHESIZER",
+      "slug": "farbrausch_v2synthesizer",
+      "source_line": 13988,
+      "heuristic": true,
+      "display_name": "farbrausch V2 Synthesizer module (.V2M)",
+      "file_type": 2000
+    },
+    {
+      "format_id": "TWINTEAM_TWINTRACKPLAYER_DMO",
+      "slug": "twinteam_twintrackplayer_dmo",
+      "source_line": 14003,
+      "heuristic": true,
+      "display_name": "TwinTeam's Twin Trackplayer module (.DMO)",
+      "file_type": 2001
+    },
+    {
+      "format_id": "SHINING8_VOICES_8",
+      "slug": "shining8_voices_8",
+      "source_line": 14024,
+      "heuristic": true,
+      "display_name": "SHINING 8's Voices_8/8CHNL Soundtracker module",
+      "file_type": 2002
+    },
+    {
+      "format_id": "SEIFERT_HSC",
+      "slug": "seifert_hsc",
+      "source_line": 14126,
+      "heuristic": true,
+      "display_name": "Hannes Seifert's HSC Adlib Composer/ECR HSC-Tracker module (.HSC)",
+      "file_type": 2003
+    },
+    {
+      "format_id": "OHSHIMA_FMX",
+      "slug": "ohshima_fmx",
+      "source_line": 14147,
+      "heuristic": true,
+      "display_name": "K.Ohshima's FMX chiptune (.FMX)",
+      "file_type": 2004
+    },
+    {
+      "format_id": "YM2612REGLOG_GYM",
+      "slug": "ym2612reglog_gym",
+      "source_line": 14162,
+      "heuristic": true,
+      "display_name": "Sega Genesis/Mega Drive YM2612 (OPN2) chiptune (.GYM)",
+      "file_type": 2005
+    },
+    {
+      "format_id": "YM2151OPMREGLOG_CYM",
+      "slug": "ym2151opmreglog_cym",
+      "source_line": 14178,
+      "heuristic": true,
+      "display_name": "YM2151 (OPM)/Callus chiptune (.CYM)",
+      "file_type": 2006
+    },
+    {
+      "format_id": "YM3812OPL2REGLOG",
+      "slug": "ym3812opl2reglog",
+      "source_line": 14194,
+      "heuristic": true,
+      "display_name": "YM3812 (OPL2)/Ad Lib chiptune",
+      "file_type": 2007
+    }
+  ]
+}

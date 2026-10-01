@@ -1,0 +1,69 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
+
+/* xx_stuffit5_extractor.c - raw-data search for StuffIt 5 archive.
+ *
+ * Candidates are nominated by a fixed signature; the reader validates the
+ * structure and the detector must confirm the type before a find is returned.
+ * See xx_format_extractor_engine.h for the shared bounded search engine.
+ */
+
+#include "../xx_format_extractor_engine.h"
+#include "xxfclib/formats/stuffit5/xx_stuffit5.h"
+
+static const uint8_t k_anchor0[] = { 0x53, 0x74, 0x75, 0x66, 0x66, 0x49, 0x74, 0x20, 0x28, 0x63, 0x29, 0x31, 0x39, 0x39, 0x37, 0x2D };
+
+static const xx_format_search_anchor k_anchors[] = {
+    { k_anchor0, sizeof(k_anchor0), 0U },
+};
+
+static const xx_file_type_t k_types[] = { XX_FILE_TYPE_STUFFIT5 };
+
+static Abstractformat *xx_stuffit5_search_open(xx_io_device *window) {
+    xx_stuffit5 *reader = xx_stuffit5_create(window, 0);
+    return reader ? &reader->format : NULL;
+}
+
+static void xx_stuffit5_search_close(Abstractformat *format) {
+    xx_stuffit5_free((xx_stuffit5 *)format);
+}
+
+static const xx_format_search_desc k_desc = {
+    k_types, sizeof(k_types) / sizeof(k_types[0]),
+    k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
+    xx_stuffit5_search_open, xx_stuffit5_search_close
+};
+
+static xx_format_search_state *xx_stuffit5_create_format_search(
+    xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,
+    xx_pd_struct *pd) {
+    (void)self;
+    return xx_format_search_create(&k_desc, device, options, pd);
+}
+
+static const xx_format_search_info *xx_stuffit5_get_current_format_info(
+    xx_format_extractor *self, xx_format_search_state *state) {
+    (void)self;
+    return xx_format_search_current(state);
+}
+
+static bool xx_stuffit5_format_search_find_next(
+    xx_format_extractor *self, xx_format_search_state *state, xx_pd_struct *pd) {
+    (void)self;
+    return xx_format_search_find_next(state, pd);
+}
+
+static void xx_stuffit5_free_format_search(
+    xx_format_extractor *self, xx_format_search_state *state) {
+    (void)self;
+    xx_format_search_free(state);
+}
+
+xx_format_extractor xx_stuffit5_extractor = {
+    xx_stuffit5_create_format_search,
+    xx_stuffit5_get_current_format_info,
+    xx_stuffit5_format_search_find_next,
+    xx_stuffit5_free_format_search
+};
+

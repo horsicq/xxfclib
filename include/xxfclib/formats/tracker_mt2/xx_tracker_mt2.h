@@ -1,0 +1,18 @@
+/* SPDX-License-Identifier: MIT. Bounded original-component reader. */
+#ifndef XX_TRACKER_MT2_H
+#define XX_TRACKER_MT2_H
+#include "xxfclib/formats/xx_format.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
+typedef struct xx_tracker_mt2 { Abstractformat format; } xx_tracker_mt2;
+XXFC_API void xx_tracker_mt2_init(xx_tracker_mt2 *,xx_io_device *,int64_t);
+XXFC_API xx_tracker_mt2 *xx_tracker_mt2_create(xx_io_device *,int64_t);
+XXFC_API void xx_tracker_mt2_destroy(xx_tracker_mt2 *);
+XXFC_API void xx_tracker_mt2_free(xx_tracker_mt2 *);
+XXFC_API bool xx_tracker_mt2_check_is_valid(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_tracker_mt2_handle_base_info(Abstractformat *,xx_pd_struct *);
+#ifdef __cplusplus
+}
+#endif
+#endif

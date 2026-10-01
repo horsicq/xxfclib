@@ -1,0 +1,22 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com>
+ * SPDX-License-Identifier: MIT
+ * https://vice-emu.sourceforge.io/vice_17.html
+ * Publishes stored payload components; see docs/registered_second_fifty_formats.md.
+ */
+#ifndef XX_COMMODORE_CRT_H
+#define XX_COMMODORE_CRT_H
+#include "xxfclib/formats/xx_format.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
+typedef struct xx_commodore_crt { Abstractformat format; } xx_commodore_crt;
+XXFC_API void xx_commodore_crt_init(xx_commodore_crt *,xx_io_device *,int64_t);
+XXFC_API xx_commodore_crt *xx_commodore_crt_create(xx_io_device *,int64_t);
+XXFC_API void xx_commodore_crt_destroy(xx_commodore_crt *);
+XXFC_API void xx_commodore_crt_free(xx_commodore_crt *);
+XXFC_API bool xx_commodore_crt_check_is_valid(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_commodore_crt_handle_base_info(Abstractformat *,xx_pd_struct *);
+#ifdef __cplusplus
+}
+#endif
+#endif

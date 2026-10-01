@@ -1,0 +1,19 @@
+/* SPDX-License-Identifier: MIT
+ * Wire specification: https://biopython.org/docs/latest/api/Bio.SeqIO.InsdcIO.html */
+#ifndef XX_GENOMICS_EMBL_H
+#define XX_GENOMICS_EMBL_H
+#include "xxfclib/formats/xx_format.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
+typedef struct xx_genomics_embl { Abstractformat format; } xx_genomics_embl;
+XXFC_API void xx_genomics_embl_init(xx_genomics_embl *,xx_io_device *,int64_t);
+XXFC_API xx_genomics_embl *xx_genomics_embl_create(xx_io_device *,int64_t);
+XXFC_API void xx_genomics_embl_destroy(xx_genomics_embl *);
+XXFC_API void xx_genomics_embl_free(xx_genomics_embl *);
+XXFC_API bool xx_genomics_embl_check_is_valid(Abstractformat *,xx_pd_struct *);
+XXFC_API bool xx_genomics_embl_handle_base_info(Abstractformat *,xx_pd_struct *);
+#ifdef __cplusplus
+}
+#endif
+#endif
