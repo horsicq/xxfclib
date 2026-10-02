@@ -53,8 +53,8 @@
 #define XX_BINHEX_FILE_TYPE XX_FILE_TYPE_UNKNOWN
 #endif
 
-#define HQX_BANNER "(This file must be converted with BinHex"
-#define HQX_BANNER_SIZE 40U
+#define HQX_BANNER "(This file must be converted with BinHex 4.0)"
+#define HQX_BANNER_SIZE (sizeof(HQX_BANNER) - 1U)
 #define HQX_MAX_ENCODED ((int64_t)128 * 1024 * 1024)
 #define HQX_MAX_DECODED ((size_t)128 * 1024 * 1024)
 #define HQX_MAX_NAME 63U
@@ -328,7 +328,6 @@ static bool hqx_parse(Abstractformat *format, hqx_stream **result) {
     int64_t total;
     int64_t size;
     size_t source_size;
-    size_t index;
     size_t colon;
     size_t decoded_size = 0U;
     size_t quartet_remainder = 0U;
@@ -359,12 +358,10 @@ static bool hqx_parse(Abstractformat *format, hqx_stream **result) {
         xx_rt_memcmp(source, HQX_BANNER, HQX_BANNER_SIZE) != 0)
         goto fail;
 
-    /* The banner occupies its own line; the payload starts at the first ':'
-     * after it. */
-    for (index = 0U; index < source_size; ++index)
-        if (source[index] == '\r' || source[index] == '\n') break;
-    if (index >= source_size) goto fail;
-    colon = index;
+    /* Some encoders place ':' directly after the banner without a newline.
+     * Accept either layout; the decoded header and fork CRCs still validate
+     * the data, and arbitrary text between banner and payload is rejected. */
+    colon = HQX_BANNER_SIZE;
     while (colon < source_size && hqx_is_space(source[colon])) ++colon;
     if (colon >= source_size || source[colon] != ':') goto fail;
 

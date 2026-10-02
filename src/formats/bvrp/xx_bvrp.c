@@ -9,7 +9,8 @@
  *   { char name[12]; u16 dos_attributes; u16 dos_date; u16 dos_time;
  *     u8 method; u32 next_header_offset; u32 unpacked; u32 crc; u8 pad; }
  * where +0x13 is the ABSOLUTE offset of the next header rather than a packed
- * length, so the payload extent is derived from the link.  Method 1 is plain
+ * length, so the payload extent is derived from the link. Method 0 is stored.
+ * Method 1 is plain
  * Yoshizaki LZHUF with the stock lh1 parameters and the CRC field is a
  * CRC-16/ARC over the unpacked bytes.  Ported from XArchive's
  * games/xbvrppac.cpp.
@@ -193,6 +194,7 @@ static bool bvrp_add_member(bvrp_stream *stream, const bvrp_member *member) {
 #define BVRP_ENTRY_SIZE 32U
 #define BVRP_NAME_SIZE 12U
 #define BVRP_SIGNATURE 0xa9d6U
+#define BVRP_METHOD_STORED 0U
 #define BVRP_METHOD_LZHUF 1U
 
 static bool bvrp_parse(Abstractformat *format, bvrp_stream **result) {
@@ -249,9 +251,20 @@ static bool bvrp_parse(Abstractformat *format, bvrp_stream **result) {
         tail_size = crc_field >> 16U;
         while (name_size < BVRP_NAME_SIZE && entry[name_size] != 0U)
             ++name_size;
-        /* Some PAC writers append the NUL-terminated member name to each
-         * compressed payload and store that trailer length in the high word
-         * of the CRC field.  Verify it before removing it from the slice. */
+        /* PAC writers may append the NUL-terminated member name to each
+         * compressed payload. Some record its length in the high CRC word;
+         * others leave that word zero. The exact name and terminating NUL
+         * identify the latter trailer without accepting arbitrary padding. */
+        if (tail_size == 0U && entry[0x12U] == BVRP_METHOD_LZHUF &&
+            (int64_t)(name_size + 1U) <=
+                next - cursor - BVRP_ENTRY_SIZE &&
+            bvrp_read_at(format->device,
+                          format->base_address + next - name_size - 1U,
+                          name_tail, name_size + 1U) &&
+            xx_rt_memcmp(name_tail, entry, name_size) == 0 &&
+            name_tail[name_size] == 0U) {
+            tail_size = (uint32_t)name_size + 1U;
+        }
         if (tail_size != 0U) {
             if (tail_size != name_size + 1U ||
                 (int64_t)tail_size > next - cursor - BVRP_ENTRY_SIZE ||
@@ -352,7 +365,8 @@ static bool bvrp_decode_member(Abstractformat *format,
     size_t written = 0U, output_size;
     if (!format || !member || !plain || !plain_size || member->packed_size < 0 ||
         member->unpacked_size > SIZE_MAX ||
-        member->method != BVRP_METHOD_LZHUF)
+        (member->method != BVRP_METHOD_LZHUF &&
+         member->method != BVRP_METHOD_STORED))
         return false;
     output_size = (size_t)member->unpacked_size;
     packed = (uint8_t *)xx_mem_alloc(member->packed_size != 0
@@ -362,9 +376,17 @@ static bool bvrp_decode_member(Abstractformat *format,
         (member->packed_size != 0 &&
          !bvrp_read_at(format->device, member->data_offset, packed,
                        (size_t)member->packed_size)) ||
-        !xx_lzh1_decode_memory(packed, (size_t)member->packed_size, output,
-                               output_size, &written) ||
-        written != output_size ||
+        (member->method == BVRP_METHOD_STORED &&
+         (size_t)member->packed_size != output_size))
+        goto fail;
+    if (member->method == BVRP_METHOD_STORED) {
+        if (output_size != 0U) xx_rt_memcpy(output, packed, output_size);
+        written = output_size;
+    } else if (!xx_lzh1_decode_memory(packed, (size_t)member->packed_size,
+                                      output, output_size, &written)) {
+        goto fail;
+    }
+    if (written != output_size ||
         xx_crc16_arc_calc(0U, output, written) != (uint16_t)member->crc)
         goto fail;
     xx_mem_free(packed);

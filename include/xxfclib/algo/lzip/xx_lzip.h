@@ -18,12 +18,14 @@ extern "C" {
 #define XX_LZIP_HEADER_SIZE 6U
 #define XX_LZIP_TRAILER_SIZE 20U
 #define XX_LZIP_MIN_MEMBER_SIZE 36U
+#define XX_LZIP_V0_MIN_MEMBER_SIZE 28U
 
 /** Return true when data begins with a syntactically valid Lzip header. */
 XXFC_API bool xx_lzip_has_header(const uint8_t *data, size_t size);
 
 /**
- * Decode a complete Lzip stream, including concatenated members.
+ * Decode a complete Lzip stream, including concatenated version 1 members
+ * and single-member version 0 files with their shorter CRC/size trailer.
  *
  * The source extent must contain exactly the Lzip stream.  Each member's
  * LZMA end marker, decoded byte count, and CRC-32 trailer are verified.

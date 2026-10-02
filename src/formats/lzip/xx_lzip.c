@@ -83,7 +83,7 @@ static bool xx_lzip_decode_stream(Abstractformat *self,
     }
     total_size = xx_io_total_size(self->device);
     if (total_size < self->base_address ||
-        total_size - self->base_address < (int64_t)XX_LZIP_MIN_MEMBER_SIZE) {
+        total_size - self->base_address < (int64_t)XX_LZIP_V0_MIN_MEMBER_SIZE) {
         return false;
     }
     input_size = total_size - self->base_address;
@@ -226,7 +226,7 @@ bool xx_lzip_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     total_size = xx_io_total_size(self->device);
     return total_size >= self->base_address &&
            total_size - self->base_address >=
-               (int64_t)XX_LZIP_MIN_MEMBER_SIZE &&
+               (int64_t)XX_LZIP_V0_MIN_MEMBER_SIZE &&
            xx_lzip_read_exact_at(self->device, self->base_address, header,
                                  sizeof(header)) &&
            xx_lzip_has_header(header, sizeof(header));

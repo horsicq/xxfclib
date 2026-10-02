@@ -24,10 +24,9 @@
  * declared length with no end marker: state and dictionary reset at every
  * segment boundary. Nothing is checksummed anywhere in the container.
  *
- * Only the "lzma" flavour is implemented. `lofiadm -C gzip` writes the same
- * container with a "gzip" name field and deflate segments, and the reference
- * refuses it outright rather than guessing at its framing, so this reader
- * does too.
+ * The gzip, gzip-6, and gzip-9 flavours use the same index with zlib streams
+ * in compressed segments. Under either algorithm a zero framing byte marks
+ * a verbatim segment, commonly used for incompressible data.
  *
  * Because the decoder re-reads the header and the index for itself, the
  * member's published extent starts at the base address rather than at the
@@ -150,6 +149,7 @@ static bool xx_lofi_add(xx_lofi_stream *stream,
 #define XX_LOFI_MAX_INDEX_ENTRIES (1 << 20)
 #define XX_LOFI_MAX_MEMBERS 1
 #define XX_LOFI_METHOD_LZMA 1U
+#define XX_LOFI_METHOD_ZLIB 2U
 #define XX_LOFI_MEMBER_NAME "lofi_image.img"
 #define XX_LOFI_MAX_DECODED (256 * 1024 * 1024)
 
@@ -203,6 +203,8 @@ static xx_lofi_stream *xx_lofi_parse(Abstractformat *self,
     int64_t segments;
     int64_t entry;
     int64_t previous = 0;
+    uint32_t method;
+    int64_t name_length;
 
     if (!self || !self->device || self->base_address < 0) return NULL;
     total = xx_io_total_size(self->device);
@@ -213,16 +215,19 @@ static xx_lofi_stream *xx_lofi_parse(Abstractformat *self,
         return NULL;
     }
 
-    /* The algorithm name and its 32-byte zero pad. Four magic characters
-     * alone would be thin, but a name field that is "lzma" followed by
-     * thirty-two zeros is 36 bytes of fixed content, and it is also what
-     * separates an lzma image from the "gzip" flavour this reader refuses
-     * rather than guessing at. */
-    if (header[0] != 'l' || header[1] != 'z' || header[2] != 'm' ||
-        header[3] != 'a') {
+    /* Algorithm names are exact and zero-padded to the whole field. */
+    if (xx_rt_memcmp(header, "lzma", 4U) == 0) {
+        method = XX_LOFI_METHOD_LZMA;
+        name_length = 4;
+    } else if (xx_rt_memcmp(header, "gzip", 4U) == 0) {
+        method = XX_LOFI_METHOD_ZLIB;
+        name_length = 4;
+        if (header[4] == '-' && (header[5] == '6' || header[5] == '9'))
+            name_length = 6;
+    } else {
         return NULL;
     }
-    for (entry = 4; entry < XX_LOFI_NAME_SIZE; ++entry) {
+    for (entry = name_length; entry < XX_LOFI_NAME_SIZE; ++entry) {
         if (header[entry] != 0U) return NULL;
     }
 
@@ -275,8 +280,7 @@ static xx_lofi_stream *xx_lofi_parse(Abstractformat *self,
                 xx_mem_free(index);
                 return NULL;
             }
-        } else if ((int64_t)value < previous + XX_LOFI_SEGMENT_PREFIX +
-                                        XX_LOFI_ALONE_HEADER) {
+        } else if ((int64_t)value < previous + XX_LOFI_SEGMENT_PREFIX + 1) {
             /* Written as an addition rather than as a difference: the
              * reference does the subtraction signed, where a descending index
              * goes negative and is refused; unsigned it would wrap and be
@@ -313,7 +317,7 @@ static xx_lofi_stream *xx_lofi_parse(Abstractformat *self,
     member.data_offset = self->base_address;
     member.compressed_size = data_offset + data_size;
     member.uncompressed_size = image_size;
-    member.method = XX_LOFI_METHOD_LZMA;
+    member.method = method;
     /* A disk image carries no timestamp in its lofi wrapper. */
     member.timestamp = 0U;
     member.is_folder = false;
@@ -345,11 +349,8 @@ static bool xx_lofi_decode(Abstractformat *self, const xx_lofi_member *member,
     *out = NULL;
     *out_size = 0U;
     if (!member || (pd && xx_pd_is_stopped(pd))) return false;
-    /* The container names its algorithm instead of numbering it, and the
-     * parse admits only "lzma"; the "gzip" flavour would need framing this
-     * reader does not implement, and copying its segments through as stored
-     * would hand back compressed bytes. */
-    if (member->method != XX_LOFI_METHOD_LZMA) return false;
+    if (member->method != XX_LOFI_METHOD_LZMA &&
+        member->method != XX_LOFI_METHOD_ZLIB) return false;
     if (member->compressed_size <= 0 ||
         member->compressed_size > (int64_t)XX_LOFI_MAX_DECODED) {
         return false;

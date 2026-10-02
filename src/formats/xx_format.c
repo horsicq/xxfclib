@@ -7212,7 +7212,11 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
     bool is_qnxbase = magic_size >= 16 && magic[0x0] == 0xebU && magic[0x1] == 0x4cU && magic[0x2] == 0x44U && magic[0x3] == 0x44U && magic[0x4] == 0x44U && magic[0x5] == 0x44U;
     bool is_qda = magic_size >= 0x10 && xx_rt_memcmp(magic + 0x4U, "QDA0", 4U) == 0 && magic[1] == 0U;
     bool is_pkt = magic_size >= 0x3a && magic[0x12] == 0x02U && magic[0x13] == 0x00U;
-    bool is_lofi = magic_size >= 0x24 && xx_rt_memcmp(magic, "lzma", 4U) == 0 && magic[4] == 0U;
+    bool is_lofi = magic_size >= 0x24 &&
+        ((xx_rt_memcmp(magic, "lzma\0", 5U) == 0) ||
+         (xx_rt_memcmp(magic, "gzip\0", 5U) == 0) ||
+         (xx_rt_memcmp(magic, "gzip-6\0", 7U) == 0) ||
+         (xx_rt_memcmp(magic, "gzip-9\0", 7U) == 0));
     bool is_lim = magic_size >= 8 && xx_rt_memcmp(magic, "LM", 2U) == 0 &&
                   magic[0x2] == 0x1aU && magic[0x3] == 0x08U && magic[4] == 0U;
     bool is_kolibrikpack = magic_size >= 12 && xx_rt_memcmp(magic, "KPCK", 4U) == 0;

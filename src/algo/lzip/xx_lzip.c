@@ -13,6 +13,7 @@
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/algo/lzma/xx_lzma.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "../lzma/xx_lzma_internal.h"
 
 #include <limits.h>
 #include <string.h>
@@ -89,7 +90,7 @@ bool xx_lzip_has_header(const uint8_t *data, size_t size) {
     return data && size >= XX_LZIP_HEADER_SIZE &&
            data[0] == (uint8_t)'L' && data[1] == (uint8_t)'Z' &&
            data[2] == (uint8_t)'I' && data[3] == (uint8_t)'P' &&
-           data[4] == UINT8_C(1) &&
+           (data[4] == UINT8_C(0) || data[4] == UINT8_C(1)) &&
            xx_lzip_dictionary_size(data[5], &ignored_size);
 }
 
@@ -123,7 +124,7 @@ static bool xx_lzip_member_before(xx_io_device *source, int64_t stream_start,
     member_size = (int64_t)member_size64;
     offset = end - member_size;
     if (!xx_lzip_read_exact_at(source, offset, header, sizeof(header), io_capacity) ||
-        !xx_lzip_has_header(header, sizeof(header)) ||
+        !xx_lzip_has_header(header, sizeof(header)) || header[4] != 1U ||
         !xx_lzip_dictionary_size(header[5], &dictionary_size)) {
         return false;
     }
@@ -150,12 +151,47 @@ static bool xx_lzip_collect_members(xx_io_device *source,
     uint64_t total_output = 0U;
     xx_lzip_member temporary;
     xx_lzip_member *members;
+    uint8_t header[XX_LZIP_HEADER_SIZE];
 
     if (!source || !members_out || !count_out || !output_size ||
-        source_offset < 0 || source_size < (int64_t)XX_LZIP_MIN_MEMBER_SIZE) {
+        source_offset < 0 ||
+        source_size < (int64_t)XX_LZIP_V0_MIN_MEMBER_SIZE ||
+        source_size > INT64_MAX - source_offset ||
+        !xx_lzip_read_exact_at(source, source_offset, header, sizeof(header),
+                               io_capacity) ||
+        !xx_lzip_has_header(header, sizeof(header))) {
         return false;
     }
     end = source_offset + source_size;
+    /* Version 0 predates the member-size field. Its one member occupies the
+     * supplied extent and ends with CRC32 + uncompressed size (12 bytes).
+     * Decode still verifies the LZMA end marker, byte count and CRC; do not
+     * search for a plausible trailer or mix these files into a v1 chain. */
+    if (header[4] == 0U) {
+        uint8_t trailer[12];
+        uint64_t output_size64;
+        uint32_t dictionary_size;
+        if (!xx_lzip_read_exact_at(source, end - (int64_t)sizeof(trailer),
+                                   trailer, sizeof(trailer), io_capacity) ||
+            !xx_lzip_dictionary_size(header[5], &dictionary_size)) {
+            return false;
+        }
+        output_size64 = xx_lzip_read_u64le(trailer + 4U);
+        if (output_size64 > (uint64_t)INT64_MAX) return false;
+        members = (xx_lzip_member *)xx_mem_alloc(sizeof(*members));
+        if (!members) return false;
+        members[0].offset = source_offset;
+        members[0].compressed_offset = source_offset + (int64_t)sizeof(header);
+        members[0].compressed_size = source_size - (int64_t)sizeof(header) -
+                                     (int64_t)sizeof(trailer);
+        members[0].uncompressed_size = (int64_t)output_size64;
+        members[0].crc32 = xx_lzip_read_u32le(trailer);
+        members[0].dictionary_size = dictionary_size;
+        *members_out = members;
+        *count_out = 1U;
+        *output_size = (int64_t)output_size64;
+        return true;
+    }
     cursor = end;
     while (cursor > source_offset) {
         if (count >= XX_LZIP_MAX_MEMBERS ||
@@ -218,6 +254,29 @@ static ssize_t xx_lzip_counter_write(xx_io_device *device, const void *data,
     return (ssize_t)size;
 }
 
+/* Lzip's trailer must immediately follow the end of its LZMA stream. The
+ * general LZMA API stops at an end marker and permits an unused source tail;
+ * here that would accept two v0 files as one and silently lose the second.
+ * Inspect this codec's buffered input as well as the device bytes remaining. */
+static bool xx_lzip_unpack_member(xx_io_device *source,
+                                  const xx_lzip_member *member,
+                                  const uint8_t *properties,
+                                  xx_io_device *sink, xx_pd_struct *pd) {
+    lzma_props props;
+    lzma_range_dec decoder;
+    bool result;
+    if (!lzma_parse_props(properties, XX_LZMA_PROPS_SIZE, &props) ||
+        xx_io_seek64(source, member->compressed_offset, SEEK_SET) != 0 ||
+        !lzma_rd_init(&decoder, source, NULL, 0, member->compressed_size)) {
+        return false;
+    }
+    result = xx_lzma_decompress_stream(&decoder, &props, -1, sink,
+                                       NULL, 0U, NULL, pd) &&
+             decoder.remaining == 0 && decoder.ibuf_pos == decoder.ibuf_len;
+    lzma_rd_free(&decoder);
+    return result;
+}
+
 bool xx_lzip_decode_device(xx_io_device *source, int64_t source_offset,
                            int64_t source_size, xx_io_device *destination,
                            int64_t *output_size, size_t *member_count,
@@ -267,9 +326,7 @@ bool xx_lzip_decode_device(xx_io_device *source, int64_t source_offset,
         /* Lzip requires LZMA's end marker even though its footer also records
          * the expanded size.  Decode to the marker and constrain output via
          * the member's size field in the write callback. */
-        if (!xx_lzma_unpack_device(source, member->compressed_offset,
-                                   member->compressed_size, properties,
-                                   sizeof(properties), -1, &sink, pd) ||
+        if (!xx_lzip_unpack_member(source, member, properties, &sink, pd) ||
             counter.failed || counter.written != counter.expected_size ||
             counter.crc32 != member->crc32) {
             goto cleanup;

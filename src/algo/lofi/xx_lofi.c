@@ -25,6 +25,7 @@
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/algo/lofi/xx_lofi.h"
 #include "xxfclib/algo/lzma/xx_lzma.h"
+#include "xxfclib/algo/deflate/xx_deflate.h"
 
 #define LOFI_NAME_SIZE 36
 #define LOFI_INDEX_OFFSET 0x30
@@ -38,6 +39,7 @@
 #define LOFI_MAX_INDEX_ENTRIES (64u * 1024u * 1024u)
 
 typedef struct lofi_geometry_s {
+    bool zlib_segments;
     uint64_t segment_size;
     uint64_t last_segment_size;
     uint64_t index_entries; /* segments + 1 */
@@ -79,13 +81,20 @@ static bool lofi_parse_geometry(const uint8_t *input, size_t input_size,
 
     if (input_size < (size_t)(LOFI_INDEX_OFFSET + 8)) return false;
 
-    /* The name field is the algorithm followed by zero padding.  Only "lzma"
-     * is supported; see the header for why "gzip" is refused. */
-    if ((input[0] != 'l') || (input[1] != 'z') || (input[2] != 'm') ||
-        (input[3] != 'a')) {
+    /* illumos lofiadm calls its zlib-compressed segments gzip, gzip-6, or
+     * gzip-9. These are RFC 1950 streams made by compress2(), not RFC 1952
+     * gzip files. See usr/src/cmd/lofiadm/main.c in illumos-gate. */
+    if (xx_rt_memcmp(input, "lzma", 4U) == 0) {
+        geometry->zlib_segments = false;
+        i = 4U;
+    } else if (xx_rt_memcmp(input, "gzip", 4U) == 0) {
+        geometry->zlib_segments = true;
+        i = 4U;
+        if (input[4] == '-' && (input[5] == '6' || input[5] == '9')) i = 6U;
+    } else {
         return false;
     }
-    for (i = 4; i < (uint64_t)LOFI_NAME_SIZE; i++) {
+    for (; i < (uint64_t)LOFI_NAME_SIZE; i++) {
         if (input[i] != 0) return false;
     }
 
@@ -126,9 +135,9 @@ static bool lofi_parse_geometry(const uint8_t *input, size_t input_size,
          * framing bytes. */
         if (i == 0) {
             if (value != 0) return false;
-        } else if (value <
-                   previous + (uint64_t)(LOFI_SEGMENT_PREFIX + LOFI_ALONE_HEADER)) {
-            /* Written as an addition, not as (value - previous) < 14: the
+        } else if (value < previous + LOFI_SEGMENT_PREFIX + 1U) {
+            /* A stored final segment may contain just one byte. Written as
+             * an addition, not as unsigned (value - previous): the
              * reference does that subtraction in SIGNED qint64, where a
              * descending index goes negative and is rejected.  Unsigned, the
              * same subtraction would wrap and accept it.  `previous` is capped
@@ -192,29 +201,36 @@ bool xx_lofi_decode_memory(const uint8_t *input, size_t input_size,
         uint64_t want;
         size_t segment_written = 0;
 
-        if (segment_bytes <=
-            (uint64_t)(LOFI_SEGMENT_PREFIX + LOFI_ALONE_HEADER)) {
-            return false;
-        }
         segment = base + start;
-        /* Every segment carries this framing byte in every known image; it is
-         * not part of the LZMA "alone" header that follows it. */
-        if (segment[0] != 0x01) return false;
-
-        props = segment + LOFI_SEGMENT_PREFIX;
-        declared = lofi_le64(props + 5);
         want = (i + 1 == segments) ? geometry.last_segment_size
                                    : geometry.segment_size;
-        if (declared != want) return false;
         if (produced + want > (uint64_t)output_size) return false;
-
-        if (!xx_lzma_decompress_memory(
-                segment + LOFI_SEGMENT_PREFIX + LOFI_ALONE_HEADER,
-                (size_t)(segment_bytes - LOFI_SEGMENT_PREFIX -
-                         LOFI_ALONE_HEADER),
-                props, 5, (int64_t)want, output + (size_t)produced,
-                (size_t)want, &segment_written)) {
+        if (segment[0] == 0U) {
+            /* Incompressible segments are explicitly stored, under either
+             * algorithm. Their index extent must match the geometry. */
+            if (segment_bytes - LOFI_SEGMENT_PREFIX != want) return false;
+            xx_rt_memcpy(output + (size_t)produced,
+                          segment + LOFI_SEGMENT_PREFIX, (size_t)want);
+            segment_written = (size_t)want;
+        } else if (segment[0] != 1U) {
             return false;
+        } else if (geometry.zlib_segments) {
+            if (!xx_zlib_stream_decode_memory(segment + LOFI_SEGMENT_PREFIX,
+                    (size_t)(segment_bytes - LOFI_SEGMENT_PREFIX),
+                    output + (size_t)produced, (size_t)want, &segment_written) ||
+                !xx_zlib_stream_trailer_matches(segment + LOFI_SEGMENT_PREFIX,
+                    (size_t)(segment_bytes - LOFI_SEGMENT_PREFIX),
+                    output + (size_t)produced, segment_written)) return false;
+        } else {
+            if (segment_bytes <= LOFI_SEGMENT_PREFIX + LOFI_ALONE_HEADER)
+                return false;
+            props = segment + LOFI_SEGMENT_PREFIX;
+            declared = lofi_le64(props + 5);
+            if (declared != want || !xx_lzma_decompress_memory(
+                    segment + LOFI_SEGMENT_PREFIX + LOFI_ALONE_HEADER,
+                    (size_t)(segment_bytes - LOFI_SEGMENT_PREFIX - LOFI_ALONE_HEADER),
+                    props, 5, (int64_t)want, output + (size_t)produced,
+                    (size_t)want, &segment_written)) return false;
         }
         if ((uint64_t)segment_written != want) return false;
         produced += want;

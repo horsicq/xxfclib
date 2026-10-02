@@ -11,12 +11,12 @@ extern "C" {
 #endif
 
 /**
- * @brief Decode a Solaris compressed lofi disk image (`lofiadm -C lzma`).
+ * @brief Decode a Solaris compressed lofi disk image (`lofiadm -C`).
  *
  * The container has no per-member framing -- the whole image is one logical
  * output -- so @p input must start at offset 0 of the file:
  *
- *     +0x00  char[36]   algorithm name, "lzma" followed by 32 zero bytes
+ *     +0x00  char[36]   zero-padded lzma/gzip/gzip-6/gzip-9 algorithm name
  *     +0x24  u32 BE     segment size
  *     +0x28  u32 BE     number of index entries
  *     +0x2c  u32 BE     size of the final segment, 1..segment size
@@ -31,12 +31,9 @@ extern "C" {
  * the last.  Each segment is an independent LZMA stream decoded to its exact
  * declared length with no end marker (the reference calls LzmaDec_Init per
  * segment, i.e. state and dictionary reset at every segment boundary).
- * Nothing is checksummed.
- *
- * Only the "lzma" flavour is implemented; `lofiadm -C gzip` writes the same
- * container with a "gzip" name field and deflate segments, and the reference
- * refuses it outright rather than guessing at its framing, so this port does
- * too.
+ * The gzip flavours contain full zlib streams (including Adler-32 trailers)
+ * instead of LZMA headers. Under either algorithm a segment whose first byte
+ * is 0x00 is stored verbatim, with its exact length determined by the index.
  *
  * @param input       The container, from offset 0.
  * @param input_size  Length of @p input.

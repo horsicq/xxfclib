@@ -917,8 +917,10 @@ static bool xx_dms_apply_fix(xx_dms_decoder *decoder, xx_dms_output *output,
 static bool xx_dms_process_track(xx_dms_decoder *decoder,
                                  const xx_dms_track *track,
                                  const uint8_t *packed, size_t packed_size,
-                                 size_t chunk_start, uint16_t file_sum) {
+                                 size_t chunk_start, uint16_t file_sum,
+                                 bool *state_ok) {
     bool do_rle;
+    if (state_ok) *state_ok = false;
     if (chunk_start > packed_size ||
         (size_t)track->packed_size > packed_size - chunk_start) {
         return false;
@@ -952,6 +954,16 @@ static bool xx_dms_process_track(xx_dms_decoder *decoder,
             break;
         }
         produced = stage.offset;
+        /* A HEAVY chunk's context and Huffman tables are updated by this
+         * first stage only. A complete, well-formed first stage remains
+         * usable even when the independent RLE expansion or plaintext
+         * checksum fails. Packed CRC verification happens in run_chunk.
+         * Other modes keep the conservative broken-chain behaviour. */
+        if (state_ok && track->mode >= XX_DMS_MODE_HEAVY1 &&
+            !decoder->input.failed && !stage.failed &&
+            stage.offset == stage.end) {
+            *state_ok = true;
+        }
         /* Whatever the LZ stage managed to produce is fed to the RLE stage;
          * a short first stage is normal, not an error. */
         decoder->input.failed = false;
@@ -1403,6 +1415,7 @@ static bool xx_dms_run_chunk(xx_dms_chain *chain, const xx_dms_track *track,
     xx_dms_decoder *decoder = chain->decoder;
     bool uses_context = track->mode >= XX_DMS_MODE_QUICK;
     bool uses_tables = track->mode >= XX_DMS_MODE_HEAVY1;
+    bool state_ok = false;
     bool ok = target != NULL && chunk_start <= packed_size &&
               (size_t)track->packed_size <= packed_size - chunk_start &&
               (size_t)track->image_offset <= target_size &&
@@ -1422,13 +1435,13 @@ static bool xx_dms_run_chunk(xx_dms_chain *chain, const xx_dms_track *track,
          !(uses_tables && chain->tables_broken);
     if (ok) {
         ok = xx_dms_process_track(decoder, track, packed, packed_size,
-                                  chunk_start, track->checksum);
+                                  chunk_start, track->checksum, &state_ok);
     }
     if (ok) {
         ok = xx_dms_checksum(decoder->raw + track->image_offset,
                              track->raw_size) == track->checksum;
     }
-    if (!ok) {
+    if (!ok && !state_ok) {
         if (uses_context) chain->context_broken = true;
         if (uses_tables) chain->tables_broken = true;
     }

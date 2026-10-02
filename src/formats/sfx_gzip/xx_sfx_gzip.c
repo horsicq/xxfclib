@@ -18,7 +18,29 @@ static bool w6_gz_at(Abstractformat *f,pm_stream *s,int64_t at,xx_pd_struct *pd)
     ok=w6_component(f,s,at,(int64_t)(p+consumed+8),"payload.gz");
 done:if(dest) xx_io_close(dest);if(input) xx_mem_free(input);if(output) xx_mem_free(output);return ok;
 }
-static bool w5_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { static const uint8_t sig[]={31,139,8};return w6_scan(f,s,sig,3,0,true,true,w6_gz_at,pd); }
+/* UPX launchers can declare SizeOfHeaders=4096 while their first raw section
+ * starts at 512. Their bounded DOS image still authenticates the carrier;
+ * the complete gzip DEFLATE stream, trailer CRC and ISIZE authenticate the
+ * payload before this fallback exposes it. */
+static bool w5_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
+    static const uint8_t sig[]={31,139,8};
+    int64_t low,limit=pm_available(f),position,end;
+    unsigned candidates=0;
+    if(w6_scan(f,s,sig,3,0,true,true,w6_gz_at,pd)) return true;
+    if(s->count || wg_stop(pd) || !w5_carrier(f,false,&low,pd) ||
+       low<0 || low>=limit) return false;
+    end=limit-low>16777216 ? low+16777216 : limit;
+    for(position=low;position<=end-3;++position) {
+        int64_t found=xx_io_find_bytes_buffer_optimize_ex(
+            f->device,f->base_address+position,end-position,sig,sizeof(sig),
+            xx_get_file_buffer_size(),pd);
+        if(found<0 || wg_stop(pd) || ++candidates>8) break;
+        position=found-f->base_address;
+        if(w6_gz_at(f,s,position,pd)) return true;
+        if(s->count) break;
+    }
+    return false;
+}
 
 
 

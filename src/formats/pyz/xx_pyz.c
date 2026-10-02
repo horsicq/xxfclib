@@ -9,8 +9,8 @@
  *   0x04  uint32    the Python bytecode magic of the interpreter that wrote
  *                   the archive - it changes with every release, so it is
  *                   carried through unchecked
- *   0x08  uint32    offset of the table of contents, BIG-endian; this is the
- *                   only big-endian field in the container
+ *   0x08  uint32    offset of the table of contents, BIG-endian in current
+ *                   archives; early PYZ writers used native little endian
  *
  * Member data: zlib (RFC 1950) streams packed between the header and the
  * table of contents. Each stream ends exactly at the length the table of
@@ -19,7 +19,8 @@
  * Table of contents: from the offset at 0x08 to EOF, a marshalled Python
  * object, and the only thing in the file with any structure to it:
  *
- *   [ (name, (type, offset, size)), ... ]
+ *   [ (name, (type, offset, size)), ... ], or the older dictionary
+ *   { name: (type, offset, size), ... }
  *
  *   name    dotted module name, a marshal string
  *   type    0 = module, 1 = package, 3 = namespace package (no stream at all)
@@ -149,6 +150,8 @@ static bool xx_pyz_add(xx_pyz_stream *stream,
 #define XX_PYZ_KIND_INT 1
 #define XX_PYZ_KIND_STR 2
 #define XX_PYZ_KIND_SEQ 3
+#define XX_PYZ_KIND_DICT 4
+#define XX_PYZ_KIND_STOP 5
 
 typedef struct xx_pyz_value_s {
     int kind;
@@ -308,10 +311,15 @@ static bool xx_pyz_read_object(xx_pyz_marshal *reader, xx_pyz_value *value,
         return false;
     }
 
-    if ((type == 'N') || (type == '0') || (type == 'F') || (type == 'T')) {
-        /* None, the stop code, False and True carry no payload and are never a
-         * name, an offset or a size, so they stay KIND_OTHER and every use
-         * site rejects them. */
+    if (type == 'N') {
+        /* None carries no payload and is not a valid TOC field. */
+    } else if (type == '0') {
+        /* The old dictionary representation ends with marshal's NULL code. */
+        value->kind = XX_PYZ_KIND_STOP;
+    } else if ((type == 'F') || (type == 'T')) {
+        /* Older writers record the package flag as a Python bool. */
+        value->kind = XX_PYZ_KIND_INT;
+        value->number = type == 'T' ? 1 : 0;
     } else if ((type == 'i') || (type == 'I')) {
         if (!xx_pyz_take(reader, (type == 'i') ? 4 : 8, &raw)) {
             return false;
@@ -389,6 +397,10 @@ static bool xx_pyz_read_object(xx_pyz_marshal *reader, xx_pyz_value *value,
         }
         value->kind = XX_PYZ_KIND_SEQ;
         value->count = (int64_t)raw[0];
+    } else if (type == '{') {
+        /* Dictionaries are an open-ended stream of key/value pairs; only
+         * the root TOC may use this shape, and its caller bounds the count. */
+        value->kind = XX_PYZ_KIND_DICT;
     } else if (type == 'r') {
         if (!xx_pyz_take(reader, 4, &raw)) {
             return false;
@@ -401,12 +413,13 @@ static bool xx_pyz_read_object(xx_pyz_marshal *reader, xx_pyz_value *value,
          * and they are not in the stream a second time. Refuse it rather than
          * desynchronise the reader - a desynchronised reader still produces
          * member-shaped output. */
-        if (reader->refs[index].kind == XX_PYZ_KIND_SEQ) {
+        if ((reader->refs[index].kind == XX_PYZ_KIND_SEQ) ||
+            (reader->refs[index].kind == XX_PYZ_KIND_DICT)) {
             return false;
         }
         *value = reader->refs[index];
     } else {
-        /* Every other marshal code - code objects, dicts, sets, floats,
+        /* Every other marshal code - code objects, sets, floats,
          * complex - is one a PYZ table of contents never contains, and
          * accepting one would mean guessing at its length. */
         return false;
@@ -503,6 +516,8 @@ static xx_pyz_stream *xx_pyz_parse(Abstractformat *self, xx_pd_struct *pd)
     int64_t entry_type;
     int64_t data_offset;
     int64_t data_size;
+    bool dictionary;
+    bool dictionary_ended = false;
 
     xx_mem_zero(&reader, sizeof(reader));
     total = xx_io_total_size(self->device);
@@ -520,6 +535,12 @@ static xx_pyz_stream *xx_pyz_parse(Abstractformat *self, xx_pd_struct *pd)
     /* header[4..7] is the writing interpreter's bytecode magic. It changes
      * with every Python release, so there is no value to check it against. */
     toc_offset = (int64_t)xx_pyz_be32(header + 8);
+    /* Early PYZ archives used the writing host's byte order. Only take that
+     * route when the modern offset is impossible, then validate the entire
+     * TOC, each member extent, and each zlib header exactly as usual. */
+    if ((toc_offset < XX_PYZ_HEADER_SIZE) || (toc_offset >= span)) {
+        toc_offset = (int64_t)xx_pyz_le32(header + 8);
+    }
     /* The table of contents lives after the header and ends at EOF; a TOC
      * that starts inside the header, or at or past EOF, is not a PYZ. */
     if ((toc_offset < XX_PYZ_HEADER_SIZE) || (toc_offset >= span)) {
@@ -553,14 +574,15 @@ static xx_pyz_stream *xx_pyz_parse(Abstractformat *self, xx_pd_struct *pd)
     if (!xx_pyz_read_object(&reader, &root, 0)) {
         goto fail;
     }
-    if (root.kind != XX_PYZ_KIND_SEQ) {
+    dictionary = root.kind == XX_PYZ_KIND_DICT;
+    if ((root.kind != XX_PYZ_KIND_SEQ) && !dictionary) {
         goto fail;
     }
-    count = root.count;
+    count = dictionary ? XX_PYZ_MAX_MEMBERS + 1 : root.count;
     /* An empty table of contents is not a degenerate-but-valid archive:
      * PyInstaller never writes one, and accepting it would make twelve bytes
      * plus an empty list a match. */
-    if ((count <= 0) || (count > XX_PYZ_MAX_MEMBERS)) {
+    if ((count <= 0) || (!dictionary && count > XX_PYZ_MAX_MEMBERS)) {
         goto fail;
     }
 
@@ -571,15 +593,20 @@ static xx_pyz_stream *xx_pyz_parse(Abstractformat *self, xx_pd_struct *pd)
         /* Shape first: (name, (type, offset, size)) and nothing else. Each of
          * these counts is exact - a tuple of a different width means the blob
          * is not a PYZ table of contents, whatever else it parses as. */
-        if (!xx_pyz_read_object(&reader, &item, 1)) {
-            goto fail;
-        }
-        if ((item.kind != XX_PYZ_KIND_SEQ) || (item.count != 2)) {
-            goto fail;
+        if (!dictionary) {
+            if (!xx_pyz_read_object(&reader, &item, 1) ||
+                (item.kind != XX_PYZ_KIND_SEQ) || (item.count != 2)) {
+                goto fail;
+            }
         }
         if (!xx_pyz_read_object(&reader, &name, 2)) {
             goto fail;
         }
+        if (dictionary && name.kind == XX_PYZ_KIND_STOP) {
+            dictionary_ended = true;
+            break;
+        }
+        if (index >= XX_PYZ_MAX_MEMBERS) goto fail;
         if (name.kind != XX_PYZ_KIND_STR) {
             goto fail;
         }
@@ -688,7 +715,8 @@ static xx_pyz_stream *xx_pyz_parse(Abstractformat *self, xx_pd_struct *pd)
      * shape above this is the strongest check in the format: a random tail
      * that happens to start with a list code has to consume itself to the
      * last byte and no further. Do not relax this to "<=". */
-    if (reader.position != reader.size) {
+    if (reader.position != reader.size ||
+        (dictionary && !dictionary_ended)) {
         goto fail;
     }
     /* A table of contents of nothing but namespace markers has no bytes in
