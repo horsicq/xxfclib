@@ -52,6 +52,8 @@ typedef struct {
     xx_huff_entry fast[1 << 9]; /* 9-bit fast lookup table */
     uint16_t count[16];         /* Number of codes of each length */
     uint16_t offset[16];        /* Offset into symbol table for each length */
+    uint16_t first_code[16];    /* First canonical code of each length */
+    uint8_t min_bits, max_bits;
     uint16_t symbols[320];      /* Symbols sorted by code length */
 } xx_huff_decoder;
 

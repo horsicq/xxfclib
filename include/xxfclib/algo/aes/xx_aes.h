@@ -28,6 +28,7 @@
 #define XX_AES_H
 
 #include "xxfclib/xxfc_defs.h"
+#include "xxfclib/io/xx_io.h"
 #include "xxfclib/data/xx_pd.h"
 
 #include <stdbool.h>
@@ -166,6 +167,21 @@ XXFC_API bool xx_7zip_aes_decrypt(const uint8_t *input,
                                   uint8_t *output,
                                   size_t output_capacity,
                                   size_t plaintext_size);
+
+/** Bounded-memory 7z AES streams. Destinations should be private staging
+ * devices: cancellation or failure can leave partial output. Encryption uses
+ * fresh OS-random salt/IV and returns the 34-byte coder properties. Decryption
+ * must be followed by the archive's CRC validation before publishing output. */
+XXFC_API bool xx_7zip_aes_encrypt_device(
+    xx_io_device *source, int64_t source_offset, int64_t plaintext_size,
+    const uint8_t *password_utf16le, size_t password_size,
+    uint8_t properties[34], size_t *properties_size,
+    xx_io_device *destination, int64_t *output_size, xx_pd_struct *pd);
+XXFC_API bool xx_7zip_aes_decrypt_device(
+    xx_io_device *source, int64_t source_offset, int64_t input_size,
+    const uint8_t *password_utf16le, size_t password_size,
+    const uint8_t *properties, size_t properties_size, int64_t plaintext_size,
+    xx_io_device *destination, xx_pd_struct *pd);
 
 /**
  * Decrypt complete AES-CBC blocks with a 16-, 24-, or 32-byte key.

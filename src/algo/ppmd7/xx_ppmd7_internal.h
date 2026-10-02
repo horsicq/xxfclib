@@ -184,6 +184,10 @@ bool xx_ppmd7_decompress_stream(ppmd7_range_dec *rd,
                                  xx_io_device *dst_dev,
                                  uint8_t *mem_dst, size_t mem_cap, size_t *out_written,
                                  xx_pd_struct *pd);
+/* Sized 7z streams need not contain a PPMd EOS symbol. */
+bool xx_ppmd7_decompress_stream_sized(ppmd7_range_dec *rd, int order,
+                                      uint32_t mem_size, xx_io_device *destination,
+                                      uint64_t expected_size, xx_pd_struct *pd);
 
 /* =========================================================================
  * Range encoder
@@ -213,6 +217,12 @@ bool xx_ppmd7_compress_stream(xx_io_device *src_dev, const uint8_t *src_mem, siz
                               int64_t src_offset, int64_t uncomp_size,
                               xx_io_device *dst_dev, uint8_t *dst_mem, size_t dst_cap,
                               size_t *out_written, int order, uint32_t mem_mb, xx_pd_struct *pd);
+
+/* Known-size 7z folder framing: flush the range coder without an EOS symbol. */
+bool xx_ppmd7_compress_stream_sized(xx_io_device *src_dev, const uint8_t *src_mem, size_t src_size,
+                                    int64_t src_offset, int64_t uncomp_size,
+                                    xx_io_device *dst_dev, uint8_t *dst_mem, size_t dst_cap,
+                                    size_t *out_written, int order, uint32_t mem_mb, xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

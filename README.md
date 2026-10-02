@@ -67,19 +67,21 @@ freed iteratively. Stack-allocated trees use `xx_tree_init` and
 Standalone consumers can include `xxformats.cmake` to build the format readers,
 extractors and algorithms with their required I/O, memory, data and runtime
 support. It excludes `die_engine`, its legacy parsers, the JavaScript
-interpreter and the bundled Capstone decoder. Add `XXFORMATS_SOURCES` to a
+interpreter and its cdisasm dependency. Add `XXFORMATS_SOURCES` to a
 static target, define `XXFC_STATIC` publicly, add `XXFORMATS_INCLUDE_DIR`
 publicly and `XXFORMATS_INCLUDE_DIRS` privately, and link
 `XXFORMATS_LIBRARIES`. XFileUnpacker uses this subset.
 
 ## Disassembler dependency
 
-The DIE script API embeds the vendored Capstone x86 decoder from the sibling
-XCapstone tree. CMake defaults `XXFC_CAPSTONE_ROOT` to
-`../XCapstone/3rdparty/Capstone/src`; set that cache path to another compatible
-Capstone source tree when using a different layout. `XXFC_CAPSTONE_X86_REDUCE`
-defaults to `ON` to match diec's reduced x86 configuration. Capstone objects are
-included directly in xxfclib, so consumers do not link a separate archive.
+The DIE script API uses the sibling `cdisasm` source tree for x86 decoding and
+Intel text formatting. CMake defaults `XXFC_CDISASM_DIR` to `../cdisasm`; set
+that cache path when using a different source layout. It builds cdisasm as a
+static dependency of xxfclib, so CDiE executables need no separate decoder
+DLL. CMake propagates the decoder archive to static xxfclib consumers;
+manual linker commands must include cdisasm after xxfclib.
+`cdisasm` is MIT licensed; its generated-data notices and license texts are in
+its source tree.
 
 ## Terminal output
 

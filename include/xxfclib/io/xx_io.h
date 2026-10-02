@@ -148,6 +148,8 @@ static inline int64_t io_get_size(xx_io_device *d) { return xx_io_total_size(d);
  * @return Allocated xx_io_device pointer, or NULL on error.
  */
 XXFC_API xx_io_device* xx_io_file_open(const char *path, const char *mode);
+/** Seekable 64-bit temporary file, removed automatically on close. */
+XXFC_API xx_io_device* xx_io_temp_open(void);
 XXFC_API xx_io_device* io_file_open(const char *path, const char *mode);
 
 /**

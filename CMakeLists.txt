@@ -22,6 +22,7 @@ set(CMAKE_C_EXTENSIONS OFF)
 option(BUILD_SHARED_LIBS "Build xxfclib as a shared/dynamic library instead of static" OFF)
 option(XXFC_BUILD_BOTH "Build both static and shared library targets" OFF)
 option(XXFC_BUILD_TESTS "Build test suite to verify linkage and functionality" OFF)
+option(XXFC_BUILD_DISASM_TESTS "Build the focused DIE disassembly regression test" OFF)
 option(XXFC_BUILD_SCAN_TESTS "Build the focused scan and subdevice regression tests" OFF)
 option(XXFC_BUILD_ZIP_SUPPORT_TESTS "Build the focused ZIP method regression tests" OFF)
 option(XXFC_BUILD_FORMAT_EXPANSION_TESTS "Build additional reader registration and extraction tests" OFF)
@@ -266,6 +267,7 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/algo/lzfse/xx_lzfse.h
     include/xxfclib/algo/blake2/xx_blake2.h
     include/xxfclib/algo/entropy/xx_entropy.h
+    include/xxfclib/algo/kpa/xx_kpa.h
     include/xxfclib/algo/store/xx_store.h
     include/xxfclib/algo/deflate/xx_deflate.h
     include/xxfclib/algo/bzip2/xx_bzip2.h
@@ -1838,6 +1840,7 @@ set(XXFCLIB_SOURCES
     src/algo/entropy/xx_entropy.c
     src/algo/entropy/platforms/xx_entropy_sse2.c
     src/algo/entropy/platforms/xx_entropy_avx2.c
+    src/algo/kpa/xx_kpa.c
     src/algo/store/xx_store.c
     src/algo/deflate/xx_deflate.c
     src/algo/deflate/xx_zlib_stream.c
@@ -2003,6 +2006,8 @@ set(XXFCLIB_SOURCES
     src/formats/7zip/xx_7zip.c
     src/formats/7zip/xx_7zip_extractor.c
     src/formats/7zip/xx_7zip_branch.c
+    src/formats/7zip/xx_7zip_stream.c
+    src/formats/7zip/xx_7zip_writer.c
     src/formats/rar/xx_rar.c
     src/formats/rar/xx_rar_extractor.c
     src/formats/ar/xx_ar.c
@@ -4635,14 +4640,18 @@ if(NOT WIN32)
 endif()
 
 # Helper to configure target include dirs, warnings, and export/import definitions
-include(src/die_engine/xx_die_engine_capstone.cmake)
+include(src/die_engine/xx_die_engine_cdisasm.cmake)
 
 function(xxfclib_configure_target target is_shared)
+    if(is_shared)
+        target_link_libraries(${target} PRIVATE cdisasm::cdisasm)
+    else()
+        target_link_libraries(${target} PUBLIC cdisasm::cdisasm)
+    endif()
     if(APPLE)
         target_link_libraries(${target} PUBLIC "-framework CoreFoundation")
     endif()
     target_include_directories(${target}
-        PRIVATE "${XXFC_CAPSTONE_ROOT}/include"
         PUBLIC
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
@@ -5219,11 +5228,6 @@ install(FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/formats/hfsplus/LICENSE.NetBSD"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/formats/hfsplus/LICENSE.Unicode"
     DESTINATION "${CMAKE_INSTALL_DATADIR}/xxfclib/licenses/hfsplus")
-install(FILES
-    "${XXFC_CAPSTONE_ROOT}/LICENSE.TXT"
-    "${XXFC_CAPSTONE_ROOT}/LICENSE_LLVM.TXT"
-    DESTINATION "${CMAKE_INSTALL_DATADIR}/xxfclib/licenses/capstone"
-)
 install(TARGETS ${XXFCLIB_INSTALL_TARGETS}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -5273,6 +5277,22 @@ if(XXFC_BUILD_TESTS OR XXFC_BUILD_SCAN_TESTS)
         target_compile_options(test_io_sub PRIVATE -UNDEBUG)
     endif()
     add_test(NAME test_io_sub COMMAND test_io_sub)
+endif()
+
+if(XXFC_BUILD_DISASM_TESTS)
+    if(TARGET xxfclib_static)
+        set(_xxfc_disasm_test_library xxfclib_static)
+    elseif(TARGET xxfclib AND NOT BUILD_SHARED_LIBS)
+        set(_xxfc_disasm_test_library xxfclib)
+    else()
+        message(FATAL_ERROR "XXFC_BUILD_DISASM_TESTS requires a static xxfclib target")
+    endif()
+    enable_testing()
+    add_executable(test_die_disasm tests/test_die_disasm.c)
+    target_include_directories(test_die_disasm PRIVATE src)
+    target_link_libraries(test_die_disasm PRIVATE ${_xxfc_disasm_test_library})
+    add_test(NAME test_die_disasm COMMAND test_die_disasm)
+    unset(_xxfc_disasm_test_library)
 endif()
 
 if(XXFC_BUILD_TESTS)

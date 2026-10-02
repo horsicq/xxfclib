@@ -21,24 +21,17 @@
 
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/7zip/xx_7zip.h"
-#include "xx_7zip_branch.h"
 #include "xx_7zip_defs.h"
-#include "xx_7zip_deflate_native.h"
-#include "xx_7zip_simple_filters_native.h"
+#include "xx_7zip_branch.h"
+#include "xx_7zip_stream.h"
+#include "xx_7zip_writer.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/algo/store/xx_store.h"
-#include "xxfclib/algo/bzip2/xx_bzip2.h"
 #include "xxfclib/algo/lzma/xx_lzma.h"
-#include "xxfclib/algo/lz4/xx_lz4.h"
-#include "xxfclib/algo/lz5/xx_lz5.h"
-#include "xxfclib/algo/lizard/xx_lizard.h"
-#include "xxfclib/algo/brotli/xx_brotli.h"
-#include "xxfclib/algo/zstd/xx_zstd.h"
 #include "xxfclib/algo/ppmd7/xx_ppmd7.h"
-#include "xxfclib/algo/aes/xx_aes.h"
 
 /* Native separator, reserved device names and OS entropy. */
 #include "../../io/platforms/xx_io_platform.h"
@@ -51,13 +44,6 @@
 #define XX_7ZIP_MAX_HEADER_SIZE  (64U * 1024U * 1024U)
 #define XX_7ZIP_MAX_ITEMS        262144U
 #define XX_7ZIP_MAX_CODERS       64U
-/* The BCJ2 path keeps decoded branch streams and final output in memory.
- * A 32-bit process has too little address space for folders near 1 GiB. */
-#if SIZE_MAX > UINT32_MAX
-#define XX_7ZIP_MAX_FOLDER_OUTPUT (1024U * 1024U * 1024U)
-#else
-#define XX_7ZIP_MAX_FOLDER_OUTPUT (512U * 1024U * 1024U)
-#endif
 #define XX_7ZIP_MAX_PROPERTIES   64U
 
 typedef struct xx_7zip_reader_s {
@@ -137,18 +123,15 @@ typedef struct xx_7zip_private_s {
 } xx_7zip_private;
 
 typedef struct xx_7zip_extract_cache_s {
-    uint8_t *buffer;
-    size_t size;
+    xx_io_device *device;
+    uint64_t size;
     uint64_t folder_index;
 } xx_7zip_extract_cache;
 
 static void xx_7zip_extract_cache_clear(xx_7zip_extract_cache *cache) {
     if (!cache) return;
-    if (cache->buffer) {
-        xx_mem_zero(cache->buffer, cache->size);
-        xx_mem_free(cache->buffer);
-    }
-    cache->buffer = NULL;
+    if (cache->device) xx_io_close(cache->device);
+    cache->device = NULL;
     cache->size = 0U;
     cache->folder_index = UINT64_MAX;
 }
@@ -165,11 +148,14 @@ typedef struct xx_7zip_folder_decode_s {
     const xx_7zip_streams *streams;
     const xx_7zip_folder *folder;
     xx_pd_struct *pd;
-    uint8_t **input_data;
-    size_t *input_sizes;
-    uint8_t **output_data;
-    size_t *output_sizes;
+    xx_io_device **input_data;
+    uint64_t *input_sizes;
+    xx_io_device **output_data;
+    uint64_t *output_sizes;
     uint8_t *output_busy;
+    xx_io_device *destination;
+    uint8_t *password;
+    size_t password_size;
 } xx_7zip_folder_decode;
 
 typedef struct xx_7zip_buffer_device_s {
@@ -1190,155 +1176,63 @@ static bool xx_7zip_pack_offset(const Abstractformat *self, const xx_7zip_stream
     return true;
 }
 
-static bool xx_7zip_decode_coder_memory(Abstractformat *self,
-                                         const xx_7zip_coder *coder,
-                                         const uint8_t *input, size_t input_size,
-                                         uint8_t *output, size_t output_size,
-                                         xx_pd_struct *pd) {
-    xx_7zip_buffer_device source;
-    xx_7zip_buffer_device sink;
-    size_t written = 0U;
+/* Decoded folders and graph intermediates use seekable temporary files.
+ * This keeps working RAM independent of folder size, including solid archives
+ * and BCJ2 branch graphs. Signed 64-bit device offsets remain the IO boundary. */
+static bool xx_7zip_copy_range(xx_io_device *source, uint64_t offset,
+    uint64_t size, xx_io_device *destination, xx_pd_struct *pd) {
+    uint8_t buffer[65536];
     bool result = false;
-    if (!self || !coder || (!input && input_size) || (!output && output_size)) return false;
-    xx_7zip_buffer_device_init(&source, (uint8_t *)input, input_size);
-    source.length = input_size;
-    xx_7zip_buffer_device_init(&sink, output, output_size);
-
-    if (coder->method == XX_7ZIP_METHOD_COPY) {
-        result = input_size == output_size;
-        if (result && output_size) xx_mem_copy(output, input, output_size);
-        if (result) sink.position = sink.length = output_size;
-    } else if (coder->method == XX_7ZIP_METHOD_LZMA) {
-        result = xx_lzma_unpack_device(&source.device, 0, (int64_t)input_size,
-                                       coder->properties, coder->properties_size,
-                                       (int64_t)output_size, &sink.device, pd);
-    } else if (coder->method == XX_7ZIP_METHOD_LZMA2) {
-        result = xx_lzma2_unpack_device(&source.device, 0, (int64_t)input_size,
-                                        coder->properties[0], &sink.device, pd);
-    } else if (coder->method == XX_7ZIP_METHOD_BZIP2) {
-        result = xx_bzip2_unpack_device(&source.device, 0, (int64_t)input_size,
-                                        &sink.device, pd);
-    } else if (coder->method == XX_7ZIP_METHOD_DEFLATE ||
-               coder->method == XX_7ZIP_METHOD_DEFLATE64) {
-        result = xx_7zip_deflate_native(input, input_size, output,
-                   output_size, coder->method == XX_7ZIP_METHOD_DEFLATE64, pd);
-        if (result) sink.position = sink.length = output_size;
-    } else if (coder->method == XX_7ZIP_METHOD_DELTA ||
-               coder->method == XX_7ZIP_METHOD_SWAP2 ||
-               coder->method == XX_7ZIP_METHOD_SWAP4) {
-        result = xx_7zip_simple_filter_native(coder->method,
-                   coder->properties, coder->properties_size,
-                   input, input_size, output, output_size, pd);
-        if (result) sink.position = sink.length = output_size;
-    } else if (coder->method == XX_7ZIP_METHOD_PPMD7) {
-        uint32_t memory_size = xx_7zip_read_le32(coder->properties + 1U);
-        result = xx_ppmd7_unpack_device_to_memory_bytes(
-                     &source.device, 0, (int64_t)input_size,
-                     coder->properties[0], memory_size,
-                     output, output_size, &written, pd) &&
-                 written == output_size;
-        if (result) sink.position = sink.length = written;
-    } else if (coder->method == XX_7ZIP_METHOD_ZSTD) {
-        result = xx_zstd_decompress_memory(input, input_size, output,
-                                           output_size, &written) &&
-                 written == output_size;
-        if (result) sink.position = sink.length = written;
-    } else if (coder->method == XX_7ZIP_METHOD_BROTLI) {
-        result = xx_brotli_decompress_memory(input, input_size, output,
-                                             output_size, &written) &&
-                 written == output_size;
-        if (result) sink.position = sink.length = written;
-    } else if (coder->method == XX_7ZIP_METHOD_LZ4) {
-        result = xx_lz4_decompress_memory(input, input_size, output,
-                                          output_size, &written) &&
-                 written == output_size;
-        if (result) sink.position = sink.length = written;
-    } else if (coder->method == XX_7ZIP_METHOD_LZ5) {
-        result = xx_lz5_decompress_memory(input, input_size, output,
-                                          output_size, &written) &&
-                 written == output_size;
-        if (result) sink.position = sink.length = written;
-    } else if (coder->method == XX_7ZIP_METHOD_LIZARD) {
-        result = xx_lizard_decompress_memory(input, input_size, output,
-                                             output_size, &written) &&
-                 written == output_size;
-        if (result) sink.position = sink.length = written;
-    } else if (coder->method == XX_7ZIP_METHOD_BCJ ||
-               coder->method == XX_7ZIP_METHOD_PPC ||
-               coder->method == XX_7ZIP_METHOD_IA64 ||
-               coder->method == XX_7ZIP_METHOD_ARM ||
-               coder->method == XX_7ZIP_METHOD_ARMT ||
-               coder->method == XX_7ZIP_METHOD_SPARC ||
-               coder->method == XX_7ZIP_METHOD_ARM64 ||
-               coder->method == XX_7ZIP_METHOD_RISCV) {
-        result = xx_7zip_branch_decode(coder->method, coder->properties,
-                                       coder->properties_size, input, input_size,
-                                       output, output_size);
-        if (result) sink.position = sink.length = output_size;
-    } else if (coder->method == XX_7ZIP_METHOD_AES) {
-        uint8_t *password = NULL;
-        size_t password_size = 0U;
-        result = xx_7zip_get_password_utf16le(self, &password,
-                                              &password_size) &&
-                 xx_7zip_aes_decrypt(input, input_size, password,
-                                     password_size, coder->properties,
-                                     coder->properties_size, output,
-                                     output_size, output_size);
-        if (password) {
-            xx_mem_zero(password, password_size);
-            xx_mem_free(password);
+    if (!source || !destination || offset > INT64_MAX || size > INT64_MAX ||
+        offset > (uint64_t)INT64_MAX - size ||
+        xx_io_seek64(source, (int64_t)offset, SEEK_SET) != 0) goto cleanup;
+    while (size) {
+        size_t count = size > sizeof(buffer) ? sizeof(buffer) : (size_t)size;
+        size_t at = 0U;
+        if (pd && xx_pd_is_stopped(pd)) goto cleanup;
+        while (at < count) {
+            ssize_t read = xx_io_read(source, buffer + at, count - at);
+            if (read <= 0 || (size_t)read > count - at) goto cleanup;
+            at += (size_t)read;
         }
-        if (result) sink.position = sink.length = output_size;
+        if (xx_io_write(destination, buffer, count) != (ssize_t)count) goto cleanup;
+        size -= count;
     }
-    return result && sink.length == output_size;
+    result = !(pd && xx_pd_is_stopped(pd));
+cleanup:
+    xx_mem_zero(buffer, sizeof(buffer));
+    return result;
 }
 
 static bool xx_7zip_folder_decode_output(xx_7zip_folder_decode *context,
-                                          uint64_t output_index,
-                                          const uint8_t **data, size_t *size);
+    uint64_t output_index, xx_io_device **data, uint64_t *size);
 
 static bool xx_7zip_folder_decode_input(xx_7zip_folder_decode *context,
-                                         uint64_t input_index,
-                                         const uint8_t **data, size_t *size) {
-    uint64_t bind;
-    uint64_t packed;
+    uint64_t input_index, xx_io_device **data, uint64_t *size) {
+    uint64_t bind, packed, packed_size, global_pack;
     int64_t offset;
-    uint64_t packed_size;
     if (!context || !data || !size || input_index >= context->folder->total_in) return false;
     for (bind = 0U; bind < context->folder->bind_count; ++bind) {
-        if (context->folder->bind_inputs[bind] == input_index) {
+        if (context->folder->bind_inputs[bind] == input_index)
             return xx_7zip_folder_decode_output(context,
                 context->folder->bind_outputs[bind], data, size);
-        }
     }
-    for (packed = 0U; packed < context->folder->packed_count; ++packed) {
+    for (packed = 0U; packed < context->folder->packed_count; ++packed)
         if (context->folder->packed_indices[packed] == input_index) break;
-    }
     if (packed == context->folder->packed_count ||
         context->folder->first_pack_index > UINT64_MAX - packed) return false;
     if (!context->input_data[input_index]) {
-        uint64_t global_pack = context->folder->first_pack_index + packed;
+        global_pack = context->folder->first_pack_index + packed;
         if (!xx_7zip_pack_offset(context->format, context->streams, global_pack,
-                                 &offset, &packed_size) || packed_size > SIZE_MAX ||
-            packed_size > XX_7ZIP_MAX_FOLDER_OUTPUT + 16U ||
+                &offset, &packed_size) ||
             (context->streams->pack_crc_defined[global_pack] &&
              !xx_crc_verify_device(context->format->device, offset, (int64_t)packed_size,
-                                   XX_CRC_TYPE_CRC32,
-                                   context->streams->pack_crcs[global_pack], context->pd))) {
+                 XX_CRC_TYPE_CRC32, context->streams->pack_crcs[global_pack], context->pd)))
             return false;
-        }
-        context->input_data[input_index] = (uint8_t *)xx_mem_alloc(
-            packed_size ? (size_t)packed_size : 1U);
-        if (!context->input_data[input_index] ||
-            !xx_7zip_read_exact_at(context->format->device, offset,
-                                   context->input_data[input_index], (size_t)packed_size)) {
-            if (context->input_data[input_index]) {
-                xx_mem_free(context->input_data[input_index]);
-                context->input_data[input_index] = NULL;
-            }
-            return false;
-        }
-        context->input_sizes[input_index] = (size_t)packed_size;
+        context->input_data[input_index] = xx_io_sub_open_ro(context->format->device,
+            offset, (int64_t)packed_size);
+        if (!context->input_data[input_index]) return false;
+        context->input_sizes[input_index] = packed_size;
     }
     *data = context->input_data[input_index];
     *size = context->input_sizes[input_index];
@@ -1346,20 +1240,15 @@ static bool xx_7zip_folder_decode_input(xx_7zip_folder_decode *context,
 }
 
 static bool xx_7zip_folder_decode_output(xx_7zip_folder_decode *context,
-                                          uint64_t output_index,
-                                          const uint8_t **data, size_t *size) {
-    uint64_t input_base = 0U;
-    uint64_t output_base = 0U;
-    size_t coder_index;
+    uint64_t output_index, xx_io_device **data, uint64_t *size) {
+    uint64_t input_base = 0U, output_base = 0U, expected, input_size = 0U;
+    size_t coder_index, i;
     const xx_7zip_coder *coder = NULL;
-    const uint8_t *input = NULL;
-    const uint8_t *bcj2_inputs[4];
-    size_t input_size = 0U;
-    size_t bcj2_input_sizes[4];
-    size_t i;
-    uint64_t expected64;
-    if (!context || !data || !size || output_index >= context->folder->total_out) return false;
-    if (context->output_busy[output_index]) return false;
+    xx_io_device *input = NULL, *inputs[4], *output = NULL;
+    uint64_t input_sizes[4];
+    bool result;
+    if (!context || !data || !size || output_index >= context->folder->total_out ||
+        context->output_busy[output_index]) return false;
     if (context->output_data[output_index]) {
         *data = context->output_data[output_index];
         *size = context->output_sizes[output_index];
@@ -1368,54 +1257,38 @@ static bool xx_7zip_folder_decode_output(xx_7zip_folder_decode *context,
     for (coder_index = 0U; coder_index < context->folder->coder_count; ++coder_index) {
         const xx_7zip_coder *candidate = &context->folder->coders[coder_index];
         if (output_index >= output_base && output_index < output_base + candidate->num_out) {
-            coder = candidate;
-            break;
+            coder = candidate; break;
         }
-        input_base += candidate->num_in;
-        output_base += candidate->num_out;
+        input_base += candidate->num_in; output_base += candidate->num_out;
     }
-    if (!coder || coder->num_out != 1U ||
-        (coder->method == XX_7ZIP_METHOD_BCJ2 ? coder->num_in != 4U :
-                                                   coder->num_in != 1U) ||
-        output_index != output_base) return false;
-    expected64 = context->folder->unpack_sizes[output_index];
-    if (expected64 > SIZE_MAX || expected64 > XX_7ZIP_MAX_FOLDER_OUTPUT)
+    if (!coder || coder->num_out != 1U || output_index != output_base ||
+        (coder->method == XX_7ZIP_METHOD_BCJ2 ? coder->num_in != 4U : coder->num_in != 1U))
         return false;
+    expected = context->folder->unpack_sizes[output_index];
+    if (expected > INT64_MAX || (context->pd && xx_pd_is_stopped(context->pd))) return false;
     context->output_busy[output_index] = 1U;
     if (coder->method == XX_7ZIP_METHOD_BCJ2) {
-        for (i = 0U; i < 4U; ++i) {
-            if (!xx_7zip_folder_decode_input(context, input_base + i,
-                                             &bcj2_inputs[i],
-                                             &bcj2_input_sizes[i])) goto failed;
-        }
-    } else if (!xx_7zip_folder_decode_input(context, input_base,
-                                             &input, &input_size)) {
-        goto failed;
-    }
-    context->output_data[output_index] = (uint8_t *)xx_mem_alloc(
-        expected64 ? (size_t)expected64 : 1U);
-    if (!context->output_data[output_index] ||
-        !(coder->method == XX_7ZIP_METHOD_BCJ2
-            ? xx_7zip_bcj2_decode(bcj2_inputs, bcj2_input_sizes,
-                                   coder->properties, coder->properties_size,
-                                   context->output_data[output_index],
-                                   (size_t)expected64)
-            : xx_7zip_decode_coder_memory(context->format, coder, input,
-                                           input_size,
-                                           context->output_data[output_index],
-                                           (size_t)expected64, context->pd)))
-        goto failed;
+        for (i = 0U; i < 4U; ++i)
+            if (!xx_7zip_folder_decode_input(context, input_base + i, &inputs[i], &input_sizes[i]))
+                goto failed;
+    } else if (!xx_7zip_folder_decode_input(context, input_base, &input, &input_size)) goto failed;
+    output = output_index == context->folder->final_output_index
+        ? context->destination : xx_io_temp_open();
+    if (!output) goto failed;
+    result = coder->method == XX_7ZIP_METHOD_BCJ2
+        ? xx_7zip_stream_bcj2(inputs, input_sizes, coder->properties,
+            coder->properties_size, expected, output, context->pd)
+        : xx_7zip_stream_decode(coder->method, coder->properties, coder->properties_size,
+            input, 0, input_size, expected, output, context->password,
+            context->password_size, context->pd);
+    if (!result || xx_io_total_size(output) != (int64_t)expected) goto failed;
     context->output_busy[output_index] = 0U;
-    context->output_sizes[output_index] = (size_t)expected64;
-    *data = context->output_data[output_index];
-    *size = context->output_sizes[output_index];
+    context->output_data[output_index] = output;
+    context->output_sizes[output_index] = expected;
+    *data = output; *size = expected;
     return true;
 failed:
-    if (context->output_data[output_index]) {
-        xx_mem_zero(context->output_data[output_index], (size_t)expected64);
-        xx_mem_free(context->output_data[output_index]);
-        context->output_data[output_index] = NULL;
-    }
+    if (output && output != context->destination) xx_io_close(output);
     context->output_busy[output_index] = 0U;
     return false;
 }
@@ -1423,166 +1296,56 @@ failed:
 static void xx_7zip_folder_decode_cleanup(xx_7zip_folder_decode *context) {
     uint64_t i;
     if (!context || !context->folder) return;
-    for (i = 0U; i < context->folder->total_in; ++i) {
-        if (context->input_data && context->input_data[i]) {
-            xx_mem_zero(context->input_data[i], context->input_sizes[i]);
-            xx_mem_free(context->input_data[i]);
-        }
+    for (i = 0U; i < context->folder->total_in; ++i)
+        if (context->input_data && context->input_data[i]) xx_io_close(context->input_data[i]);
+    for (i = 0U; i < context->folder->total_out; ++i)
+        if (context->output_data && context->output_data[i] &&
+            context->output_data[i] != context->destination) xx_io_close(context->output_data[i]);
+    xx_mem_free(context->input_data); xx_mem_free(context->input_sizes);
+    xx_mem_free(context->output_data); xx_mem_free(context->output_sizes);
+    xx_mem_free(context->output_busy);
+    if (context->password) {
+        xx_mem_zero(context->password, context->password_size); xx_mem_free(context->password);
     }
-    for (i = 0U; i < context->folder->total_out; ++i) {
-        if (context->output_data && context->output_data[i]) {
-            xx_mem_zero(context->output_data[i], context->output_sizes[i]);
-            xx_mem_free(context->output_data[i]);
-        }
-    }
-    if (context->input_data) xx_mem_free(context->input_data);
-    if (context->input_sizes) xx_mem_free(context->input_sizes);
-    if (context->output_data) xx_mem_free(context->output_data);
-    if (context->output_sizes) xx_mem_free(context->output_sizes);
-    if (context->output_busy) xx_mem_free(context->output_busy);
     xx_mem_zero(context, sizeof(*context));
 }
 
-static bool xx_7zip_decode_bcj2_folder(Abstractformat *self,
-                                        const xx_7zip_streams *streams,
-                                        const xx_7zip_folder *folder,
-                                        xx_io_device *destination,
-                                        xx_pd_struct *pd) {
-    xx_7zip_folder_decode context;
-    const uint8_t *output;
-    size_t output_size;
-    bool result = false;
-    if (!self || !streams || !folder || !destination || folder->unpack_size > SIZE_MAX ||
-        folder->unpack_size > XX_7ZIP_MAX_FOLDER_OUTPUT) return false;
-    xx_mem_zero(&context, sizeof(context));
-    context.format = self; context.streams = streams; context.folder = folder; context.pd = pd;
-    context.input_data = (uint8_t **)xx_7zip_alloc_array(folder->total_in, sizeof(uint8_t *));
-    context.input_sizes = (size_t *)xx_7zip_alloc_array(folder->total_in, sizeof(size_t));
-    context.output_data = (uint8_t **)xx_7zip_alloc_array(folder->total_out, sizeof(uint8_t *));
-    context.output_sizes = (size_t *)xx_7zip_alloc_array(folder->total_out, sizeof(size_t));
-    context.output_busy = (uint8_t *)xx_7zip_alloc_array(folder->total_out, sizeof(uint8_t));
-    if (!context.input_data || !context.input_sizes || !context.output_data ||
-        !context.output_sizes || !context.output_busy) goto cleanup;
-    if (!xx_7zip_folder_decode_output(&context, folder->final_output_index,
-                                       &output, &output_size) ||
-        output_size != (size_t)folder->unpack_size ||
-        (output_size && xx_io_write(destination, output, output_size) !=
-                               (ssize_t)folder->unpack_size) ||
-        xx_io_total_size(destination) != (int64_t)folder->unpack_size ||
-        (folder->crc_defined && !xx_crc_verify_device(destination, 0,
-            (int64_t)folder->unpack_size, XX_CRC_TYPE_CRC32, folder->crc, pd))) goto cleanup;
-    result = true;
-cleanup:
-    xx_7zip_folder_decode_cleanup(&context);
-    return result;
-}
-
 static bool xx_7zip_decode_folder(Abstractformat *self, const xx_7zip_streams *streams,
-                                  uint64_t folder_index, xx_io_device *destination,
-                                  xx_pd_struct *pd) {
+    uint64_t folder_index, xx_io_device *destination, xx_pd_struct *pd) {
     const xx_7zip_folder *folder;
-    uint8_t *current = NULL;
-    size_t current_size;
-    uint64_t input_index;
-    uint64_t visited = 0U;
-    size_t stages = 0U;
-    int64_t source_offset;
-    uint64_t compressed_size;
+    xx_7zip_folder_decode context;
+    xx_io_device *output;
+    uint64_t output_size, i;
     bool result = false;
-
     if (!self || !self->device || !streams || !destination ||
         folder_index >= streams->num_folders) return false;
     folder = &streams->folders[folder_index];
-    if (!folder->supported ||
-        !folder->packed_indices || !folder->unpack_sizes ||
-        folder->coder_count == 0U || folder->coder_count > 63U ||
-        folder->unpack_size > (uint64_t)INT64_MAX) return false;
-    for (input_index = 0U; input_index < folder->coder_count; ++input_index) {
-        if (folder->coders[input_index].method == XX_7ZIP_METHOD_BCJ2) {
-            return xx_7zip_decode_bcj2_folder(self, streams, folder, destination, pd);
-        }
-    }
-    if (folder->packed_count != 1U ||
-        !xx_7zip_pack_offset(self, streams, folder->first_pack_index,
-                             &source_offset, &compressed_size) ||
-        compressed_size > SIZE_MAX || compressed_size > XX_7ZIP_MAX_FOLDER_OUTPUT + 16U ||
-        folder->unpack_size > (uint64_t)INT64_MAX) return false;
-    if (streams->pack_crc_defined[folder->first_pack_index] &&
-        !xx_crc_verify_device(self->device, source_offset, (int64_t)compressed_size,
-                              XX_CRC_TYPE_CRC32,
-                              streams->pack_crcs[folder->first_pack_index], pd)) return false;
-
-    current_size = (size_t)compressed_size;
-    current = (uint8_t *)xx_mem_alloc(current_size ? current_size : 1U);
-    if (!current || !xx_7zip_read_exact_at(self->device, source_offset,
-                                           current, current_size)) goto cleanup;
-    input_index = folder->packed_indices[0];
-
-    while (stages < folder->coder_count) {
-        const xx_7zip_coder *coder = NULL;
-        size_t coder_index;
-        uint64_t in_base = 0U;
-        uint64_t out_base = 0U;
-        uint64_t output_index = UINT64_MAX;
-        uint64_t next_input = UINT64_MAX;
-        uint64_t expected64;
-        uint8_t *next;
-        size_t expected;
-        size_t bond;
-
-        for (coder_index = 0U; coder_index < folder->coder_count; ++coder_index) {
-            const xx_7zip_coder *candidate = &folder->coders[coder_index];
-            if (input_index >= in_base && input_index < in_base + candidate->num_in) {
-                if (candidate->num_in != 1U || candidate->num_out != 1U ||
-                    (visited & (UINT64_C(1) << coder_index)) != 0U) goto cleanup;
-                coder = candidate;
-                output_index = out_base;
-                visited |= UINT64_C(1) << coder_index;
-                break;
-            }
-            in_base += candidate->num_in;
-            out_base += candidate->num_out;
-        }
-        if (!coder || output_index >= folder->total_out) goto cleanup;
-        expected64 = folder->unpack_sizes[output_index];
-        if (expected64 > SIZE_MAX || expected64 > XX_7ZIP_MAX_FOLDER_OUTPUT) goto cleanup;
-        expected = (size_t)expected64;
-        next = (uint8_t *)xx_mem_alloc(expected ? expected : 1U);
-        if (!next || !xx_7zip_decode_coder_memory(self, coder,
-                                                   current, current_size,
-                                                   next, expected, pd)) {
-            if (next) xx_mem_free(next);
-            goto cleanup;
-        }
-        xx_mem_zero(current, current_size);
-        xx_mem_free(current);
-        current = next;
-        current_size = expected;
-        ++stages;
-        if (output_index == folder->final_output_index) break;
-        for (bond = 0U; bond < folder->bind_count; ++bond) {
-            if (folder->bind_outputs[bond] == output_index) {
-                next_input = folder->bind_inputs[bond];
-                break;
-            }
-        }
-        if (next_input == UINT64_MAX) goto cleanup;
-        input_index = next_input;
-    }
-    if (stages != folder->coder_count || current_size != (size_t)folder->unpack_size ||
-        (current_size && xx_io_write(destination, current, current_size) !=
-                             (ssize_t)current_size) ||
-        xx_io_total_size(destination) != (int64_t)folder->unpack_size) goto cleanup;
-    if (folder->crc_defined &&
-        !xx_crc_verify_device(destination, 0, (int64_t)folder->unpack_size,
-                              XX_CRC_TYPE_CRC32, folder->crc, pd)) goto cleanup;
-    result = true;
-
+    if (!folder->supported || !folder->packed_indices || !folder->unpack_sizes ||
+        !folder->coder_count || folder->coder_count > XX_7ZIP_MAX_CODERS ||
+        folder->unpack_size > INT64_MAX) return false;
+    xx_mem_zero(&context, sizeof(context));
+    context.format = self; context.streams = streams; context.folder = folder;
+    context.pd = pd; context.destination = destination;
+    context.input_data = (xx_io_device **)xx_7zip_alloc_array(folder->total_in, sizeof(xx_io_device *));
+    context.input_sizes = (uint64_t *)xx_7zip_alloc_array(folder->total_in, sizeof(uint64_t));
+    context.output_data = (xx_io_device **)xx_7zip_alloc_array(folder->total_out, sizeof(xx_io_device *));
+    context.output_sizes = (uint64_t *)xx_7zip_alloc_array(folder->total_out, sizeof(uint64_t));
+    context.output_busy = (uint8_t *)xx_7zip_alloc_array(folder->total_out, sizeof(uint8_t));
+    if (!context.input_data || !context.input_sizes || !context.output_data ||
+        !context.output_sizes || !context.output_busy ||
+        (folder->encrypted && !xx_7zip_get_password_utf16le(self, &context.password, &context.password_size)))
+        goto cleanup;
+    if (!xx_7zip_folder_decode_output(&context, folder->final_output_index, &output, &output_size) ||
+        output_size != folder->unpack_size) goto cleanup;
+    /* Every declared coder must belong to the decoded graph; disconnected
+     * cycles must not disappear just because the final stream is reachable. */
+    for (i = 0U; i < folder->total_out; ++i)
+        if (!context.output_data[i]) goto cleanup;
+    if (folder->crc_defined && !xx_crc_verify_device(destination, 0, (int64_t)folder->unpack_size,
+        XX_CRC_TYPE_CRC32, folder->crc, pd)) goto cleanup;
+    result = !(pd && xx_pd_is_stopped(pd));
 cleanup:
-    if (current) {
-        xx_mem_zero(current, current_size);
-        xx_mem_free(current);
-    }
+    xx_7zip_folder_decode_cleanup(&context);
     return result;
 }
 
@@ -1689,6 +1452,10 @@ void xx_7zip_init(xx_7zip *archive, xx_io_device *dev, int64_t base_address) {
     archive->format.unpack_current_archive_record = xx_7zip_unpack_current_archive_record;
     archive->format.archive_record_move_to_next = xx_7zip_archive_record_move_to_next;
     archive->format.free_archive_records_reading = xx_7zip_free_archive_records_reading;
+    archive->format.create_archive_records_writing = xx_7zip_create_archive_records_writing;
+    archive->format.pack_archive_record = xx_7zip_pack_archive_record;
+    archive->format.finalize_archive_records_writing = xx_7zip_finalize_archive_records_writing;
+    archive->format.free_archive_records_writing = xx_7zip_free_archive_records_writing;
     archive->format.data_struct_id_to_string = xx_7zip_data_struct_id_to_string;
     archive->format.data_struct_string_to_id = xx_7zip_data_struct_string_to_id;
     archive->format.create_data_structs_reading = xx_7zip_create_data_structs_reading;
@@ -2197,54 +1964,64 @@ static wchar_t *xx_7zip_normalized_name(const wchar_t *name) {
 }
 
 static bool xx_7zip_extract_file_to_device(Abstractformat *self,
-                                           const xx_7zip_file *file,
-                                           xx_7zip_extract_cache *cache,
-                                           xx_io_device *output,
-                                           xx_pd_struct *pd) {
+    const xx_7zip_file *file, xx_7zip_extract_cache *cache, xx_io_device *output, xx_pd_struct *pd) {
     xx_7zip_private *priv = (xx_7zip_private *)((xx_7zip *)self)->internal;
     xx_7zip_folder *folder;
-    uint8_t *buffer = NULL;
-    xx_7zip_buffer_device memory;
+    xx_io_device *decoded = NULL;
     uint64_t end;
-    bool keep_buffer;
-    bool result = false;
-    if (!priv || !file || !cache || file->is_folder || file->anti) return false;
+    bool keep, result = false;
+    if (!priv || !file || !cache || file->is_folder || file->anti ||
+        (pd && xx_pd_is_stopped(pd))) return false;
     if (file->empty_stream) return file->size == 0;
     if (file->folder_index < 0 || (uint64_t)file->folder_index >= priv->streams.num_folders) return false;
     folder = &priv->streams.folders[file->folder_index];
-    if (!folder->supported || folder->unpack_size > XX_7ZIP_MAX_FOLDER_OUTPUT ||
-        folder->unpack_size > SIZE_MAX ||
-        !xx_7zip_u64_add(file->offset_in_folder, file->size, &end) || end > folder->unpack_size) return false;
-    if (pd && xx_pd_is_stopped(pd)) return false;
-    keep_buffer = folder->num_substreams > 1U;
-    if (cache->buffer && cache->folder_index == (uint64_t)file->folder_index) {
-        buffer = cache->buffer;
-    } else {
+    if (!folder->supported || folder->unpack_size > INT64_MAX ||
+        !xx_7zip_u64_add(file->offset_in_folder, file->size, &end) || end > folder->unpack_size)
+        return false;
+    keep = folder->num_substreams > 1U;
+    if (cache->device && cache->folder_index == (uint64_t)file->folder_index) decoded = cache->device;
+    else {
         xx_7zip_extract_cache_clear(cache);
-        buffer = (uint8_t *)xx_mem_alloc((size_t)(folder->unpack_size ? folder->unpack_size : 1U));
-        if (!buffer) return false;
-        xx_7zip_buffer_device_init(&memory, buffer, (size_t)folder->unpack_size);
-        if (!xx_7zip_decode_folder(self, &priv->streams, (uint64_t)file->folder_index,
-                                   &memory.device, pd)) goto cleanup;
-        if (keep_buffer) {
-            cache->buffer = buffer;
-            cache->size = (size_t)folder->unpack_size;
+        decoded = xx_io_temp_open();
+        if (!decoded || !xx_7zip_decode_folder(self, &priv->streams,
+            (uint64_t)file->folder_index, decoded, pd)) goto cleanup;
+        if (keep) {
+            cache->device = decoded; cache->size = folder->unpack_size;
             cache->folder_index = (uint64_t)file->folder_index;
         }
     }
-    if (file->crc_defined &&
-        xx_crc32(XX_CRC_TYPE_CRC32, buffer + (size_t)file->offset_in_folder,
-                 (size_t)file->size) != file->crc) goto cleanup;
-    if (output && file->size &&
-        xx_io_write(output, buffer + (size_t)file->offset_in_folder, (size_t)file->size) != (ssize_t)file->size) goto cleanup;
-    result = true;
-
+    if (file->crc_defined && !xx_crc_verify_device(decoded, (int64_t)file->offset_in_folder,
+        (int64_t)file->size, XX_CRC_TYPE_CRC32, file->crc, pd)) goto cleanup;
+    result = !output || xx_7zip_copy_range(decoded, file->offset_in_folder, file->size, output, pd);
+    if (pd && xx_pd_is_stopped(pd)) result = false;
 cleanup:
-    if (buffer && buffer != cache->buffer) {
-        xx_mem_zero(buffer, (size_t)folder->unpack_size);
-        xx_mem_free(buffer);
-    }
+    if (decoded && decoded != cache->device) xx_io_close(decoded);
     return result;
+}
+
+static xx_io_device *xx_7zip_open_stage(const char *destination, char **path) {
+    static const char hex[] = "0123456789abcdef";
+    unsigned int attempt;
+    *path = NULL;
+    for (attempt = 0U; attempt < 8U; ++attempt) {
+        uint8_t random[16];
+        char suffix[46] = ".xxfclib.tmp.";
+        size_t i;
+        char *candidate;
+        xx_io_device *device;
+        if (!xx_io_platform_secure_random(random, sizeof(random))) return NULL;
+        for (i = 0U; i < sizeof(random); ++i) {
+            suffix[13U + 2U * i] = hex[random[i] >> 4U];
+            suffix[14U + 2U * i] = hex[random[i] & 15U];
+        }
+        suffix[45] = '\0';
+        candidate = xx_str_concat(destination, suffix);
+        if (!candidate) return NULL;
+        device = xx_io_file_open(candidate, "wbx");
+        if (device) { *path = candidate; return device; }
+        xx_str_free(candidate);
+    }
+    return NULL;
 }
 
 bool xx_7zip_unpack_current_archive_record(Abstractformat *self,
@@ -2259,12 +2036,17 @@ bool xx_7zip_unpack_current_archive_record(Abstractformat *self,
     wchar_t *name = NULL;
     wchar_t *full_path = NULL;
     char *utf8_path = NULL;
+    char *stage_path = NULL;
     bool result = false;
-    bool created = false;
-    if (!self || !state || state->format != self || !state->has_record || state->current_index < 0) return false;
+    if (!self || !state || state->format != self || !state->has_record || state->current_index < 0 ||
+        (pd && xx_pd_is_stopped(pd))) return false;
     priv = (xx_7zip_private *)((xx_7zip *)self)->internal;
     if (!priv || (uint64_t)state->current_index >= priv->num_files) return false;
     file = &priv->files[state->current_index];
+    {
+        const xx_var *limit = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
+        if (limit && !file->is_folder && file->size > xx_var_get_u64(limit)) return false;
+    }
     path_option = xx_7zip_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (path_option) {
         if (path_option->type == XX_VAR_TYPE_WSTRING || path_option->type == XX_VAR_TYPE_WSTRING_VIEW)
@@ -2295,17 +2077,25 @@ bool xx_7zip_unpack_current_archive_record(Abstractformat *self,
         if (!xx_store_create_dirs_w(full_path, false)) goto cleanup;
         utf8_path = xx_str_unicode_to_utf8(full_path);
         if (!utf8_path) goto cleanup;
-        output = xx_io_file_open(utf8_path, "w+b");
-        created = output != NULL;
+        output = xx_7zip_open_stage(utf8_path, &stage_path);
         if (!output) goto cleanup;
         result = xx_7zip_extract_file_to_device(self, file,
                                                   (xx_7zip_extract_cache *)state->internal_state,
                                                   output, pd);
         if (xx_io_close(output) != 0) result = false;
-        if (!result && created) xx_rt_remove(utf8_path);
+        if (result && pd && xx_pd_is_stopped(pd)) result = false;
+        if (result) {
+            const xx_var *overwrite = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_OVERWRITE);
+            result = xx_io_file_replace_a(stage_path, utf8_path,
+                overwrite ? xx_var_get_bool(overwrite) : true);
+        }
     }
 
 cleanup:
+    if (stage_path) {
+        (void)xx_io_file_remove_a(stage_path);
+        xx_str_free(stage_path);
+    }
     if (utf8_path) xx_str_free(utf8_path);
     if (full_path) xx_str_wfree(full_path);
     if (name) xx_str_wfree(name);

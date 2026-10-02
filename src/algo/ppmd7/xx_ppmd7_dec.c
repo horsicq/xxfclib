@@ -230,11 +230,12 @@ int Ppmd7_DecodeSymbol(CPpmd7 *p, ppmd7_range_dec *rc)
     }
 }
 
-bool xx_ppmd7_decompress_stream(ppmd7_range_dec *rd,
+static bool xx_ppmd7_decompress_stream_impl(ppmd7_range_dec *rd,
                                 int order, uint32_t mem_size,
                                 xx_io_device *dst_dev,
                                 uint8_t *mem_dst, size_t mem_cap, size_t *out_written,
-                                xx_pd_struct *pd)
+                                xx_pd_struct *pd, bool size_defined,
+                                uint64_t expected_size)
 {
     if (order < PPMD7_MIN_ORDER || order > PPMD7_MAX_ORDER) return false;
     if (mem_size < XX_PPMD7_MIN_MEM_SIZE ||
@@ -253,7 +254,8 @@ bool xx_ppmd7_decompress_stream(ppmd7_range_dec *rd,
     }
     Ppmd7_Init(&ppmd, (unsigned)order);
 
-    size_t opos = 0, tot = 0;
+    size_t opos = 0;
+    uint64_t tot = 0U;
     size_t io_capacity = rd->io_capacity;
     uint8_t *staging = io_capacity <= (size_t)-1 / 2U
         ? (uint8_t *)xx_mem_alloc(io_capacity * 2U) : NULL;
@@ -271,6 +273,7 @@ bool xx_ppmd7_decompress_stream(ppmd7_range_dec *rd,
 
     while (ok) {
         if (pd && xx_pd_is_stopped(pd)) { ok = false; break; }
+        if (size_defined && tot + (uint64_t)opos == expected_size) break;
 
         int sym = Ppmd7_DecodeSymbol(&ppmd, rd);
         if (rd->error || sym < -1) {
@@ -289,7 +292,7 @@ bool xx_ppmd7_decompress_stream(ppmd7_range_dec *rd,
                 if (w < 0 || (size_t)w != opos) { ok = false; break; }
             } else if (mem_dst) {
                 if (tot + opos > mem_cap) { ok = false; break; }
-                xx_rt_memcpy(mem_dst + tot, outbuf, opos);
+                xx_rt_memcpy(mem_dst + (size_t)tot, outbuf, opos);
             }
             tot += opos;
             opos = 0;
@@ -307,7 +310,7 @@ bool xx_ppmd7_decompress_stream(ppmd7_range_dec *rd,
             if (w < 0 || (size_t)w != opos) ok = false;
         } else if (mem_dst) {
             if (tot + opos <= mem_cap)
-                xx_rt_memcpy(mem_dst + tot, outbuf, opos);
+                xx_rt_memcpy(mem_dst + (size_t)tot, outbuf, opos);
             else
                 ok = false;
         }
@@ -315,7 +318,7 @@ bool xx_ppmd7_decompress_stream(ppmd7_range_dec *rd,
         if (pd && pd_level >= 0) xx_pd_set_current(pd, pd_level, (uint64_t)tot);
     }
 
-    if (out_written) *out_written = tot;
+    if (out_written) *out_written = (size_t)tot;
     Ppmd7_Free(&ppmd);
     xx_mem_free(staging);
     rd->ibuf = &rd->input_byte;
@@ -326,5 +329,21 @@ bool xx_ppmd7_decompress_stream(ppmd7_range_dec *rd,
         xx_pd_leave_level(pd, pd_level);
     }
 
-    return ok;
+    return ok && (!size_defined || tot == expected_size);
+}
+
+bool xx_ppmd7_decompress_stream(ppmd7_range_dec *rd, int order,
+                                uint32_t mem_size, xx_io_device *dst_dev,
+                                uint8_t *mem_dst, size_t mem_cap, size_t *out_written,
+                                xx_pd_struct *pd) {
+    return xx_ppmd7_decompress_stream_impl(rd, order, mem_size, dst_dev,
+                                           mem_dst, mem_cap, out_written, pd, false, 0U);
+}
+
+bool xx_ppmd7_decompress_stream_sized(ppmd7_range_dec *rd, int order,
+                                      uint32_t mem_size, xx_io_device *destination,
+                                      uint64_t expected_size, xx_pd_struct *pd) {
+    if (!destination || expected_size > INT64_MAX) return false;
+    return xx_ppmd7_decompress_stream_impl(rd, order, mem_size, destination,
+                                           NULL, 0U, NULL, pd, true, expected_size);
 }

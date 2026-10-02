@@ -27,6 +27,19 @@ typedef struct xx_terminal_state_s {
 } xx_terminal_state;
 
 /**
+ * @brief Apply one common command-line option to the process-global settings.
+ * Recognizes --sse2/--nosse2, --avx2/--noavx2 and --color/--nocolor.
+ * The --no-sse2, --no-avx2 and --no-color spellings are also accepted.
+ * CPU options are recognized but ignored if the CPU/OS lacks the feature.
+ * Supported CPU features and color output are enabled by default; options do
+ * not reset existing settings, so the last option for each setting wins.
+ * Apply options before starting work. The caller handles --, application
+ * options and positional arguments. This function performs no allocation.
+ * @return true for a recognized option, false for NULL or an unknown option.
+ */
+XXFC_API bool xx_terminal_handle_option(const char *option);
+
+/**
  * @brief Prepare a standard stream for terminal output.
  * Stdout uses the global terminal type; stderr is detected independently.
  * Redirected streams remain plain. Pair each init with finish, in reverse order.

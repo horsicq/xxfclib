@@ -229,10 +229,11 @@ void Ppmd7_EncodeSymbol(CPpmd7 *p, ppmd7_range_enc *rc, int symbol)
     }
 }
 
-bool xx_ppmd7_compress_stream(xx_io_device *src_dev, const uint8_t *src_mem, size_t src_size,
+static bool ppmd7_compress_stream(xx_io_device *src_dev, const uint8_t *src_mem, size_t src_size,
                               int64_t src_offset, int64_t uncomp_size,
                               xx_io_device *dst_dev, uint8_t *dst_mem, size_t dst_cap,
-                              size_t *out_written, int order, uint32_t mem_mb, xx_pd_struct *pd)
+                              size_t *out_written, int order, uint32_t mem_mb, xx_pd_struct *pd,
+                              bool write_end_marker)
 {
     if (order < PPMD7_MIN_ORDER || order > PPMD7_MAX_ORDER) return false;
     if (mem_mb < 1) mem_mb = 1;
@@ -240,7 +241,7 @@ bool xx_ppmd7_compress_stream(xx_io_device *src_dev, const uint8_t *src_mem, siz
     if (!dst_dev && (!dst_mem && dst_cap > 0)) return false;
     if (!src_dev && !src_mem) return false;
 
-    if (src_dev && src_offset > 0) {
+    if (src_dev && (src_offset > 0 || !write_end_marker)) {
         if (xx_io_seek64(src_dev, src_offset, SEEK_SET) != 0)
             return false;
     }
@@ -312,9 +313,11 @@ bool xx_ppmd7_compress_stream(xx_io_device *src_dev, const uint8_t *src_mem, siz
         }
     }
 
+    if (!write_end_marker && rem != 0) ok = false;
     if (ok) {
-        /* Write EndMarker and flush */
-        Ppmd7_EncodeSymbol(&ppmd, &rc, -1);
+        /* Standalone streams carry EOS. 7z folders provide the exact decoded
+         * size and require the final range state without another symbol. */
+        if (write_end_marker) Ppmd7_EncodeSymbol(&ppmd, &rc, -1);
         ppmd7_re_flush(&rc);
         if (rc.error) ok = false;
     }
@@ -330,4 +333,26 @@ bool xx_ppmd7_compress_stream(xx_io_device *src_dev, const uint8_t *src_mem, siz
         *out_written = rc.total_written;
 
     return ok;
+}
+
+bool xx_ppmd7_compress_stream(xx_io_device *src_dev, const uint8_t *src_mem, size_t src_size,
+                              int64_t src_offset, int64_t uncomp_size,
+                              xx_io_device *dst_dev, uint8_t *dst_mem, size_t dst_cap,
+                              size_t *out_written, int order, uint32_t mem_mb, xx_pd_struct *pd)
+{
+    return ppmd7_compress_stream(src_dev, src_mem, src_size, src_offset, uncomp_size,
+        dst_dev, dst_mem, dst_cap, out_written, order, mem_mb, pd, true);
+}
+
+bool xx_ppmd7_compress_stream_sized(xx_io_device *src_dev, const uint8_t *src_mem, size_t src_size,
+                                    int64_t src_offset, int64_t uncomp_size,
+                                    xx_io_device *dst_dev, uint8_t *dst_mem, size_t dst_cap,
+                                    size_t *out_written, int order, uint32_t mem_mb, xx_pd_struct *pd)
+{
+    if (out_written) *out_written = 0;
+    if (uncomp_size < 0 || src_offset < 0 || src_offset > INT64_MAX - uncomp_size ||
+        (!src_dev && (uint64_t)uncomp_size > (uint64_t)src_size) ||
+        (pd && xx_pd_is_stopped(pd))) return false;
+    return ppmd7_compress_stream(src_dev, src_mem, src_size, src_offset, uncomp_size,
+        dst_dev, dst_mem, dst_cap, out_written, order, mem_mb, pd, false);
 }

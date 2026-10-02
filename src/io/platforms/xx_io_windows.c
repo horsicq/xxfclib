@@ -79,6 +79,44 @@ static void xx_win_free_path(wchar_t *path, wchar_t *stack) {
     if (path && path != stack) HeapFree(GetProcessHeap(), 0, path);
 }
 
+void* xx_io_platform_temp_open(void) {
+    static const wchar_t hex[] = L"0123456789abcdef";
+    wchar_t stack_path[MAX_PATH];
+    wchar_t *path = stack_path;
+    DWORD length = GetTempPathW(MAX_PATH, stack_path);
+    size_t capacity;
+    unsigned int attempt;
+    HANDLE result = INVALID_HANDLE_VALUE;
+    if (!length) return NULL;
+    capacity = (size_t)length + 48U;
+    if (capacity > MAX_PATH) {
+        if (capacity > 32767U) return NULL;
+        path = (wchar_t *)HeapAlloc(GetProcessHeap(), 0, capacity * sizeof(wchar_t));
+        if (!path) return NULL;
+        length = GetTempPathW((DWORD)capacity, path);
+        if (!length || (size_t)length + 48U > capacity) goto cleanup;
+    }
+    for (attempt = 0U; attempt < 8U; ++attempt) {
+        uint8_t random[16];
+        size_t at = length, i;
+        if (!xx_io_platform_secure_random(random, sizeof(random))) break;
+        if (at && path[at - 1U] != L'\\' && path[at - 1U] != L'/') path[at++] = L'\\';
+        path[at++] = L'x'; path[at++] = L'x'; path[at++] = L'f'; path[at++] = L'c';
+        for (i = 0U; i < sizeof(random); ++i) {
+            path[at++] = hex[random[i] >> 4U];
+            path[at++] = hex[random[i] & 15U];
+        }
+        path[at++] = L'.'; path[at++] = L't'; path[at++] = L'm'; path[at++] = L'p'; path[at] = L'\0';
+        result = CreateFileW(path, GENERIC_READ | GENERIC_WRITE, 0, NULL,
+            CREATE_NEW, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, NULL);
+        if (result != INVALID_HANDLE_VALUE) break;
+        if (GetLastError() != ERROR_FILE_EXISTS && GetLastError() != ERROR_ALREADY_EXISTS) break;
+    }
+cleanup:
+    if (path != stack_path) HeapFree(GetProcessHeap(), 0, path);
+    return result == INVALID_HANDLE_VALUE ? NULL : (void*)result;
+}
+
 void* xx_io_platform_file_open(const char *path, const char *mode) {
     if (!path || !mode) {
         return NULL;

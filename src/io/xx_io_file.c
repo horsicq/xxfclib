@@ -105,21 +105,15 @@ static int64_t xx_io_file_total_size_cb(xx_io_device *self) {
     return xx_io_platform_file_size(state->handle);
 }
 
-xx_io_device* xx_io_file_open(const char *path, const char *mode) {
+static xx_io_device* xx_io_file_wrap(void *handle, const char *path) {
     xx_io_file_state *state;
     xx_io_device *dev;
     size_t path_size;
-    void *handle;
-    if (!path || !mode) {
-        return NULL;
-    }
-
-    handle = xx_io_platform_file_open(path, mode);
     if (!handle) {
         return NULL;
     }
 
-    path_size = xx_rt_strlen(path);
+    path_size = path ? xx_rt_strlen(path) : 0U;
     if (path_size == SIZE_MAX) {
         xx_io_platform_file_close(handle);
         return NULL;
@@ -129,13 +123,15 @@ xx_io_device* xx_io_file_open(const char *path, const char *mode) {
         xx_io_platform_file_close(handle);
         return NULL;
     }
-    state->path = (char *)xx_mem_alloc(path_size + 1U);
-    if (!state->path) {
-        xx_mem_free(state);
-        xx_io_platform_file_close(handle);
-        return NULL;
+    if (path) {
+        state->path = (char *)xx_mem_alloc(path_size + 1U);
+        if (!state->path) {
+            xx_mem_free(state);
+            xx_io_platform_file_close(handle);
+            return NULL;
+        }
+        xx_rt_memcpy(state->path, path, path_size + 1U);
     }
-    xx_rt_memcpy(state->path, path, path_size + 1U);
     state->handle = handle;
 
     dev = (xx_io_device*)xx_mem_calloc(1, sizeof(xx_io_device));
@@ -158,6 +154,15 @@ xx_io_device* xx_io_file_open(const char *path, const char *mode) {
     dev->tell           = xx_io_file_tell_cb;
 
     return dev;
+}
+
+xx_io_device* xx_io_file_open(const char *path, const char *mode) {
+    if (!path || !mode) return NULL;
+    return xx_io_file_wrap(xx_io_platform_file_open(path, mode), path);
+}
+
+xx_io_device* xx_io_temp_open(void) {
+    return xx_io_file_wrap(xx_io_platform_temp_open(), NULL);
 }
 
 const char *xx_io_source_path(xx_io_device *device) {

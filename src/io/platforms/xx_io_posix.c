@@ -47,6 +47,10 @@ void* xx_io_platform_file_open(const char *path, const char *mode) {
     return (void*)fopen(path, mode);
 }
 
+void* xx_io_platform_temp_open(void) {
+    return (void*)tmpfile();
+}
+
 ssize_t xx_io_platform_file_read(void *handle, void *buf, size_t n) {
     if (!handle || !buf) {
         return -1;

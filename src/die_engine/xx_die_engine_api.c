@@ -37,6 +37,7 @@
 #include "xx_die_engine_xdisasm.h"
 #include "../formats/iso9660/xiso9660.h"
 #include "../js/xx_js_internal.h"
+#include "xxfclib/algo/kpa/xx_kpa.h"
 
 
 typedef enum {
@@ -79,6 +80,7 @@ typedef enum {
     A_getSignature,
     A_calculateEntropy,
     A_isZeroFilled,
+    A_scanBufferForEncryptedPe,
     A_calculateMD5,
     A_calculateCRC32,
     A_crc16,
@@ -1708,6 +1710,48 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
             return js_num(dEntropy);
         }
         case A_isZeroFilled: return js_bool(die_is_zero_filled(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_i64(pCtx, nArgc, pArgv, 1, 0)));
+        case A_scanBufferForEncryptedPe: {
+            cd_i64 nStart = die_engine_profile_start(pEngine);
+            const char *pszAlgo = "";
+            if (nArgc > 0 && pArgv[0].tag == JT_OBJ) {
+                int64_t nLen = js_array_length(pCtx, pArgv[0]);
+                int64_t nMax = arg_i64(pCtx, nArgc, pArgv, 1, nLen);
+                if (nMax < 0 || nMax > nLen) nMax = nLen;
+                if (nMax >= 0x100) {
+                    uint8_t *pBytes = (uint8_t *)cd_malloc((size_t)nMax);
+                    if (pBytes) {
+                        for (int64_t i = 0; i < nMax; i++) {
+                            JSVal elem = js_get_index(pCtx, pArgv[0], i);
+                            pBytes[i] = (uint8_t)(js_to_int32(pCtx, elem) & 0xFF);
+                        }
+                        pszAlgo = xx_kpa_scan_buffer_encrypted_pe(pBytes, (size_t)nMax);
+                        cd_free(pBytes);
+                    }
+                }
+            } else if (nArgc >= 2) {
+                cd_i64 nOffset = arg_i64(pCtx, nArgc, pArgv, 0, 0);
+                cd_i64 nSize = arg_i64(pCtx, nArgc, pArgv, 1, 0);
+                if (nSize >= 0x100 && pFile) {
+                    cd_i64 nFileSize = pFile->nSize;
+                    if (nOffset >= 0 && nOffset < nFileSize) {
+                        if (nOffset + nSize > nFileSize) nSize = nFileSize - nOffset;
+                        if (pFile->pData) {
+                            pszAlgo = xx_kpa_scan_buffer_encrypted_pe(pFile->pData + nOffset, (size_t)nSize);
+                        } else {
+                            uint8_t *pBytes = (uint8_t *)cd_malloc((size_t)nSize);
+                            if (pBytes) {
+                                if (die_file_read_at(pFile, nOffset, pBytes, (size_t)nSize)) {
+                                    pszAlgo = xx_kpa_scan_buffer_encrypted_pe(pBytes, (size_t)nSize);
+                                }
+                                cd_free(pBytes);
+                            }
+                        }
+                    }
+                }
+            }
+            die_engine_profile_end(pEngine, nStart, "scanBufferForEncryptedPe: [%s]", pszAlgo ? pszAlgo : "");
+            return js_str(pCtx, pszAlgo ? pszAlgo : "");
+        }
         case A_calculateMD5: return str_take(pCtx, die_md5(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_i64(pCtx, nArgc, pArgv, 1, 0)));
         case A_calculateCRC32: return js_num((double)die_crc32(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_i64(pCtx, nArgc, pArgv, 1, 0), 0));
         case A_crc32: return js_num((double)die_crc32(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_i64(pCtx, nArgc, pArgv, 1, 0), (cd_u32)arg_i64(pCtx, nArgc, pArgv, 2, 0)));
@@ -1829,23 +1873,9 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
 
             disasm = xdisasm_at(pFile, nOffset, pEngine->nBits, (cd_u64)nAddress);
 
-            if (disasm.bRelative) {
-                char sInstruction[48];
-
-                x_snprintf(sInstruction, sizeof(sInstruction), "%s 0X%llX", disasm.sMnemonic,
-                           (unsigned long long)xdisasm_next_address(&disasm, (cd_u64)nAddress));
-
-                return js_str(pCtx, sInstruction);
-            }
-
-            if (disasm.sOperands[0]) {
-                char sInstruction[208];
-
-                x_snprintf(sInstruction, sizeof(sInstruction), "%s %s", disasm.sMnemonic, disasm.sOperands);
-                return js_str(pCtx, sInstruction);
-            }
-
-            return js_str(pCtx, disasm.sMnemonic);
+            /* The decoder supplies complete uppercase Intel text, including
+             * prefixes and the absolute target of a relative transfer. */
+            return js_str(pCtx, disasm.sInstruction);
         }
 
         case A_getDisasmNextAddress: {
@@ -1859,8 +1889,8 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
 
             disasm = xdisasm_at(pFile, nOffset, pEngine->nBits, (cd_u64)nAddress);
 
-            /* Capstone's reduced build omits relative-detail groups and thus
-             * advances physically; the full build exposes branch targets. */
+            /* The script API walks encoded instructions sequentially; branch
+             * targets are already included in the formatted instruction. */
             return js_num(disasm.nSize > 0 ?
                           (double)xdisasm_next_address(&disasm, (cd_u64)nAddress) : 0);
         }
@@ -3487,6 +3517,7 @@ static const ApiEntry g_apiTable[] = {
     {"getSignature", A_getSignature, 2},
     {"calculateEntropy", A_calculateEntropy, 2},
     {"isZeroFilled", A_isZeroFilled, 2},
+    {"scanBufferForEncryptedPe", A_scanBufferForEncryptedPe, 2},
     {"calculateMD5", A_calculateMD5, 2},
     {"calculateCRC32", A_calculateCRC32, 2},
     {"crc16", A_crc16, 3},

@@ -80,11 +80,12 @@ static bool xx_7zip_x86_ms_byte(uint8_t value) {
     return ((uint8_t)(value + 1U) & 0xFEU) == 0U;
 }
 
-static void xx_7zip_filter_bcj(uint8_t *data, size_t size, uint32_t ip) {
+static size_t xx_7zip_filter_bcj(uint8_t *data, size_t size, uint32_t ip,
+                                 uint32_t *saved_mask) {
     size_t pos = 0U;
     size_t limit;
-    uint32_t mask = 0U;
-    if (!data || size < 5U) return;
+    uint32_t mask = *saved_mask;
+    if (!data || size < 5U) return 0U;
     limit = size - 4U;
     ip += 5U;
     while (pos < limit) {
@@ -95,7 +96,10 @@ static void xx_7zip_filter_bcj(uint8_t *data, size_t size, uint32_t ip) {
         while (candidate < limit && (data[candidate] & 0xFEU) != 0xE8U) ++candidate;
         distance = candidate - pos;
         pos = candidate;
-        if (candidate >= limit) return;
+        if (candidate >= limit) {
+            *saved_mask = distance > 2U ? 0U : mask >> (unsigned)distance;
+            return pos;
+        }
         if (distance > 2U) {
             mask = 0U;
         } else {
@@ -129,6 +133,8 @@ static void xx_7zip_filter_bcj(uint8_t *data, size_t size, uint32_t ip) {
         data[candidate + 4U] = (uint8_t)(0U - ((value >> 24U) & 1U));
         pos = candidate + 5U;
     }
+    *saved_mask = mask;
+    return pos;
 }
 
 static void xx_7zip_filter_arm(uint8_t *data, size_t size, uint32_t ip) {
@@ -144,9 +150,9 @@ static void xx_7zip_filter_arm(uint8_t *data, size_t size, uint32_t ip) {
     }
 }
 
-static void xx_7zip_filter_armt(uint8_t *data, size_t size, uint32_t ip) {
+static size_t xx_7zip_filter_armt(uint8_t *data, size_t size, uint32_t ip) {
     size_t pos;
-    if (!data) return;
+    if (!data) return 0U;
     for (pos = 0U; pos + 4U <= size; pos += 2U) {
         uint32_t high = (uint32_t)(data[pos + 1U] ^ 8U);
         uint32_t low = data[pos + 3U];
@@ -161,6 +167,7 @@ static void xx_7zip_filter_armt(uint8_t *data, size_t size, uint32_t ip) {
         data[pos + 3U] = (uint8_t)(0xF8U | (value >> 8U));
         pos += 2U;
     }
+    return pos;
 }
 
 static void xx_7zip_filter_ppc(uint8_t *data, size_t size, uint32_t ip) {
@@ -248,31 +255,20 @@ static void xx_7zip_filter_arm64(uint8_t *data, size_t size, uint32_t ip) {
 }
 
 /* RISC-V's converter has three call forms: JAL and two AUIPC-based pairs.
- * The encoded representation stores their target as an absolute address; this
- * decoder restores the PC-relative instruction fields. */
+ * Its wire representation permutes JAL target bytes and escapes AUIPC pairs.
+ * Format and scan rules follow Igor Pavlov's public-domain Bra.c in 7-Zip
+ * 26.03: https://github.com/ip7z/7zip/blob/26.03/C/Bra.c. */
 static uint16_t xx_7zip_branch_read_le16(const uint8_t *p) {
     return (uint16_t)((uint16_t)p[0] | ((uint16_t)p[1] << 8U));
 }
 
-static bool xx_7zip_riscv_jal_register(uint32_t instruction) {
-    uint32_t rd = (instruction >> 7U) & 31U;
-    return (instruction & 0x7FU) == 0x6FU && (rd == 1U || rd == 5U);
-}
-
-static bool xx_7zip_riscv_pair_a(uint16_t first, uint32_t tag) {
+static bool xx_7zip_riscv_pair_a(uint32_t first, uint32_t tag) {
     return (((tag - 3U) ^ ((uint32_t)first << 8U)) & UINT32_C(0x000F8003)) == 0U;
 }
 
-static bool xx_7zip_riscv_pair_b(uint16_t first, uint32_t register_bits) {
-    uint32_t normalized = (uint32_t)first - UINT32_C(0x00003288);
+static bool xx_7zip_riscv_pair_b(uint32_t first, uint32_t register_bits) {
+    uint32_t normalized = first - UINT32_C(0x00003108);
     return (normalized << 18U) < (register_bits & UINT32_C(0x1D));
-}
-
-static uint32_t xx_7zip_riscv_jal_immediate(uint32_t instruction) {
-    return ((instruction >> 20U) & UINT32_C(0x7FE)) |
-           ((instruction >> 9U) & UINT32_C(0x800)) |
-           (instruction & UINT32_C(0xFF000)) |
-           ((instruction >> 11U) & UINT32_C(0x100000));
 }
 
 static uint32_t xx_7zip_riscv_jal_with_immediate(uint32_t instruction,
@@ -284,26 +280,33 @@ static uint32_t xx_7zip_riscv_jal_with_immediate(uint32_t instruction,
            (immediate & UINT32_C(0x000FF000));
 }
 
-static void xx_7zip_filter_riscv(uint8_t *data, size_t size, uint32_t ip) {
-    size_t pos;
-    if (!data || size < 8U) return;
-    for (pos = 0U; pos + 8U <= size; pos += 2U) {
-        uint16_t first = xx_7zip_branch_read_le16(data + pos);
+static size_t xx_7zip_filter_riscv(uint8_t *data, size_t size, uint32_t ip) {
+    size_t pos = 0U, limit;
+    size &= ~(size_t)1U;
+    if (!data || size <= 6U) return 0U;
+    limit = size - 6U;
+    while (pos < limit) {
+        uint32_t first = ((uint32_t)xx_7zip_branch_read_le16(data + pos) ^ 0x10U) + 1U;
         uint32_t instruction;
         uint32_t pc;
-        if ((first & 3U) != 3U) continue;
-        instruction = xx_7zip_branch_read_le32(data + pos);
+        if ((first & 0x77U) != 0U) { pos += 2U; continue; }
         pc = ip + (uint32_t)pos;
-        if (xx_7zip_riscv_jal_register(instruction)) {
-            uint32_t absolute = xx_7zip_riscv_jal_immediate(instruction);
-            uint32_t relative = absolute - pc;
+        if ((first & 8U) == 0U) {
+            uint32_t saved, absolute, relative;
+            first -= UINT32_C(0x81);
+            if ((first & UINT32_C(0xD80)) != 0U) { pos += 2U; continue; }
+            saved = (first + UINT32_C(0x70)) & UINT32_C(0xFFF);
+            absolute = ((uint32_t)data[pos + 3U] << 1U) |
+                       ((uint32_t)data[pos + 2U] << 9U) |
+                       ((first & UINT32_C(0xF000)) << 5U);
+            relative = absolute - pc;
             xx_7zip_branch_write_le32(data + pos,
-                xx_7zip_riscv_jal_with_immediate(instruction, relative));
-            pos += 2U;
+                xx_7zip_riscv_jal_with_immediate(saved, relative));
+            pos += 4U;
             continue;
         }
-        if ((instruction & 0x7FU) != 0x17U) continue;
-        if (((uint32_t)first & UINT32_C(0xE80)) == 0U) {
+        instruction = xx_7zip_branch_read_le32(data + pos);
+        if ((first & UINT32_C(0xE80)) == 0U) {
             uint32_t register_bits = instruction >> 27U;
             if (xx_7zip_riscv_pair_b(first, register_bits)) {
                 uint32_t absolute = xx_7zip_branch_read_be32(data + pos + 4U);
@@ -315,20 +318,21 @@ static void xx_7zip_filter_riscv(uint8_t *data, size_t size, uint32_t ip) {
                 second |= absolute << 20U;
                 xx_7zip_branch_write_le32(data + pos, first_out);
                 xx_7zip_branch_write_le32(data + pos + 4U, second);
-                pos += 6U;
-            }
+                pos += 8U;
+            } else pos += 4U;
         } else {
             uint32_t second = xx_7zip_branch_read_le32(data + pos + 4U);
             if (xx_7zip_riscv_pair_a(first, second)) {
                 uint32_t first_out = (instruction & UINT32_C(0xFFFFF000)) |
                                      (second >> 20U);
                 uint32_t second_out = (second << 12U) | UINT32_C(0x117);
-                xx_7zip_branch_write_le32(data + pos, first_out);
-                xx_7zip_branch_write_le32(data + pos + 4U, second_out);
-                pos += 6U;
-            }
+                xx_7zip_branch_write_le32(data + pos, second_out);
+                xx_7zip_branch_write_le32(data + pos + 4U, first_out);
+                pos += 8U;
+            } else pos += 6U;
         }
     }
+    return pos;
 }
 
 bool xx_7zip_branch_decode(uint64_t method, const uint8_t *properties,
@@ -336,13 +340,14 @@ bool xx_7zip_branch_decode(uint64_t method, const uint8_t *properties,
                            size_t input_size, uint8_t *output,
                            size_t output_size) {
     uint32_t ip;
+    uint32_t x86_mask = 0U;
     if ((!properties && properties_size) || (!input && input_size) ||
         (!output && output_size) || input_size != output_size ||
         !xx_7zip_branch_method_supported(method, properties_size)) return false;
     if (output_size) xx_mem_copy(output, input, output_size);
     ip = xx_7zip_branch_start_ip(properties, properties_size);
     switch (method) {
-        case XX_7ZIP_METHOD_BCJ: xx_7zip_filter_bcj(output, output_size, ip); break;
+        case XX_7ZIP_METHOD_BCJ: (void)xx_7zip_filter_bcj(output, output_size, ip, &x86_mask); break;
         case XX_7ZIP_METHOD_PPC: xx_7zip_filter_ppc(output, output_size, ip); break;
         case XX_7ZIP_METHOD_IA64: xx_7zip_filter_ia64(output, output_size, ip); break;
         case XX_7ZIP_METHOD_ARM: xx_7zip_filter_arm(output, output_size, ip); break;
@@ -353,6 +358,51 @@ bool xx_7zip_branch_decode(uint64_t method, const uint8_t *properties,
         default: return false;
     }
     return true;
+}
+
+bool xx_7zip_branch_state_init(xx_7zip_branch_state *state, uint64_t method,
+                               const uint8_t *properties, size_t properties_size) {
+    if (!state || (!properties && properties_size) ||
+        !xx_7zip_branch_method_supported(method, properties_size)) return false;
+    state->method = method;
+    state->ip = xx_7zip_branch_start_ip(properties, properties_size);
+    state->x86_mask = 0U;
+    return true;
+}
+
+size_t xx_7zip_branch_process(xx_7zip_branch_state *state, uint8_t *data,
+                               size_t size, bool final) {
+    size_t processed;
+    if (!state || (!data && size)) return SIZE_MAX;
+    switch (state->method) {
+        case XX_7ZIP_METHOD_BCJ:
+            processed = xx_7zip_filter_bcj(data, size, state->ip, &state->x86_mask);
+            break;
+        case XX_7ZIP_METHOD_ARMT:
+            processed = xx_7zip_filter_armt(data, size, state->ip);
+            break;
+        case XX_7ZIP_METHOD_RISCV:
+            processed = xx_7zip_filter_riscv(data, size, state->ip);
+            break;
+        case XX_7ZIP_METHOD_IA64:
+            processed = size & ~(size_t)15U;
+            xx_7zip_filter_ia64(data, processed, state->ip);
+            break;
+        case XX_7ZIP_METHOD_PPC:
+        case XX_7ZIP_METHOD_ARM:
+        case XX_7ZIP_METHOD_SPARC:
+        case XX_7ZIP_METHOD_ARM64:
+            processed = size & ~(size_t)3U;
+            if (state->method == XX_7ZIP_METHOD_PPC) xx_7zip_filter_ppc(data, processed, state->ip);
+            else if (state->method == XX_7ZIP_METHOD_ARM) xx_7zip_filter_arm(data, processed, state->ip);
+            else if (state->method == XX_7ZIP_METHOD_SPARC) xx_7zip_filter_sparc(data, processed, state->ip);
+            else xx_7zip_filter_arm64(data, processed, state->ip);
+            break;
+        default: return SIZE_MAX;
+    }
+    if (final) processed = size;
+    state->ip += (uint32_t)processed;
+    return processed;
 }
 
 static bool xx_7zip_bcj2_read_range_byte(xx_7zip_bcj2_decoder *decoder,

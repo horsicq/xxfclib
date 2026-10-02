@@ -19,7 +19,7 @@
  * SOFTWARE.
  */
 
-/* xx_die_engine_xdisasm.h - reference-compatible x86 / x86-64 disassembly for DIE scripts. */
+/* xx_die_engine_xdisasm.h - x86 / x86-64 disassembly for DIE scripts. */
 
 #ifndef XDISASM_H
 #define XDISASM_H
@@ -28,11 +28,8 @@
 
 typedef struct {
     int nSize;          /* instruction length in bytes (0 when unknown) */
-    char sMnemonic[32]; /* uppercase Capstone mnemonic                  */
-    char sOperands[160]; /* full uppercase Intel operands               */
-    int bRelative;      /* direct relative control transfer             */
-    int nTargetBits;    /* branch wrap width; -1 is invalid-byte fallback */
-    cd_i64 nRelative;   /* signed displacement from end of instruction */
+    char sInstruction[512]; /* complete uppercase Intel instruction      */
+    int bInvalid;       /* undecodable byte; next address is zero       */
 } XDisasmResult;
 
 XDisasmResult xdisasm(DieFile *pFile, cd_i64 nOffset, int nBits);

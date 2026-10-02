@@ -1239,8 +1239,9 @@ typedef struct xx_zip_buffer_sink_s {
 } xx_zip_buffer_sink;
 
 typedef struct xx_zip_verify_sink_s {
-    xx_crc_context crc;
+    uint32_t crc;
     uint64_t position;
+    xx_io_device *target;
 } xx_zip_verify_sink;
 
 typedef struct xx_zip_limit_sink_s {
@@ -1538,6 +1539,7 @@ static void xx_zip_init_buffer_sink(xx_io_device *device,
 static ssize_t xx_zip_verify_sink_write(xx_io_device *device,
                                         const void *buffer, size_t size) {
     xx_zip_verify_sink *sink;
+    ssize_t written;
     if (!device || !device->priv || (!buffer && size != 0U) ||
         size > (size_t)PTRDIFF_MAX) {
         return -1;
@@ -1546,9 +1548,17 @@ static ssize_t xx_zip_verify_sink_write(xx_io_device *device,
     if ((uint64_t)size > (uint64_t)INT64_MAX - sink->position) {
         return -1;
     }
-    xx_crc_context_update(&sink->crc, buffer, size);
-    sink->position += (uint64_t)size;
-    return (ssize_t)size;
+    /* A real extraction target can accept a short prefix. CRC and count
+     * only bytes it actually accepted, so a caller's retry cannot count any
+     * byte twice or authenticate bytes that were never written. */
+    written = sink->target ? xx_io_write(sink->target, buffer, size)
+                           : (ssize_t)size;
+    if (written < 0 || (size_t)written > size) return -1;
+    if (written > 0) {
+        sink->crc = xx_crc32_calc(sink->crc, buffer, (size_t)written);
+        sink->position += (uint64_t)written;
+    }
+    return written;
 }
 
 static int64_t xx_zip_verify_sink_size(xx_io_device *device) {
@@ -1567,9 +1577,6 @@ static bool xx_zip_init_verify_sink(xx_io_device *device,
     }
     xx_mem_zero(device, sizeof(*device));
     xx_mem_zero(sink, sizeof(*sink));
-    if (!xx_crc_context_init_type(&sink->crc, XX_CRC_TYPE_CRC32)) {
-        return false;
-    }
     device->write = xx_zip_verify_sink_write;
     device->total_size = xx_zip_verify_sink_size;
     device->get_total_size = xx_zip_verify_sink_size;
@@ -1961,7 +1968,7 @@ static bool xx_zip_verify_unencrypted_record(
         return false;
     }
     return sink.position == uncompressed_size &&
-           xx_crc_context_final(&sink.crc) == expected_crc &&
+           sink.crc == expected_crc &&
            !xx_pd_is_stopped(pd);
 }
 
@@ -2733,41 +2740,51 @@ bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_archive_recor
             bool overwrite = overwrite_var && xx_var_get_bool(overwrite_var);
             char *stage_path = NULL;
             xx_io_device *stage = NULL;
+            xx_io_device crc_device;
+            xx_zip_verify_sink crc_sink = {0};
+            xx_io_device *destination = NULL;
 
             bool is_encrypted = xx_archive_record_get_meta_bool(rec, XX_META_ID_IS_ENCRYPTED, false);
             if (overwrite || !xx_io_file_exists_a(dest_path_utf8)) {
                 stage = xx_zip_open_stage_file(dest_path_utf8, &stage_path);
             }
-            if (stage && is_encrypted) {
+            if (stage) {
+                if (is_encrypted) {
+                    destination = stage;
+                } else if (xx_zip_init_verify_sink(&crc_device, &crc_sink)) {
+                    crc_sink.target = stage;
+                    destination = &crc_device;
+                }
+            }
+            if (destination && is_encrypted) {
                 success = xx_zip_unpack_encrypted_to_device(
-                    self, state, rec, method, flags, stage, pd);
-            } else if (stage && method == 92U) {
+                    self, state, rec, method, flags, destination, pd);
+            } else if (destination && method == 92U) {
                 success = xx_zip_unpack_reference_to_device(
-                    self, state, rec, NULL, stage, pd);
-            } else if (stage) {
+                    self, state, rec, NULL, destination, pd);
+            } else if (destination) {
                 success = xx_zip_unpack_method_to_device(
                     self->device, data_offset, comp_size, method, flags,
-                    uncomp_size, stage, pd);
+                    uncomp_size, destination, pd);
             }
             if (stage && xx_io_close(stage) != 0) {
                 success = false;
             }
             stage = NULL;
             if (success && !is_encrypted) {
-                /* Validate every extracted member. For split sets this also
-                 * detects reordered/corrupt payload-only continuation disks. */
-                xx_io_device *verify = xx_io_file_open(stage_path, "rb");
-                success = verify && uncomp_size <= INT64_MAX &&
-                    xx_crc_verify_device(verify, 0, (int64_t)uncomp_size,
-                        XX_CRC_TYPE_CRC32,
-                        xx_archive_record_get_meta_u64(rec, XX_META_ID_CRC32,
-                                                       UINT64_MAX), pd);
-                if (verify && xx_io_close(verify) != 0) success = false;
-                if (!success) {
+                /* Validate the bytes accepted by the staged file before
+                 * publishing it. A second full-output read is unnecessary;
+                 * this also detects corrupt split continuation payloads. */
+                success = !xx_pd_is_stopped(pd) && uncomp_size <= INT64_MAX &&
+                    crc_sink.position == uncomp_size &&
+                    crc_sink.crc == xx_archive_record_get_meta_u64(
+                        rec, XX_META_ID_CRC32, UINT64_MAX);
+                if (!success && !xx_pd_is_stopped(pd)) {
                     xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
                                     "ZIP output CRC mismatch");
                 }
             }
+            if (success && xx_pd_is_stopped(pd)) success = false;
             if (success) {
                 success = xx_io_file_replace_a(stage_path, dest_path_utf8,
                                                overwrite);

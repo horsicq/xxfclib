@@ -21,7 +21,7 @@
 
 /**
  * @file xx_7zip.h
- * @brief Read-only 7-Zip archive format implementation.
+ * @brief 7-Zip archive reading and creation.
  */
 
 #ifndef XXFCLIB_FORMAT_7ZIP_H
@@ -48,12 +48,13 @@ typedef enum xx_7zip_data_struct_id_e {
 /**
  * @brief Concrete 7-Zip archive format.
  *
- * The implementation is deliberately read-only.  It enumerates all ordinary
- * records and extracts Copy, LZMA, LZMA2, BZip2, PPMd7, Brotli, LZ4, LZ5,
+ * Enumerates ordinary records and extracts Copy, LZMA, LZMA2, BZip2, PPMd7,
+ * Deflate, Deflate64, Brotli, LZ4, LZ5,
  * Lizard, Zstandard, and the BCJ/x86, BCJ2, PPC, IA64, ARM, ARMT, SPARC,
- * ARM64, and RISC-V branch filters. A native 7z AES-256-CBC stage is supported for
+ * ARM64, RISC-V, Delta and Swap filters. A native 7z AES-256-CBC stage supports
  * simple AES-to-codec chains and for four independently encrypted BCJ2 branches.
- * Other coder graphs remain enumerable and fail extraction.
+ * Other coder graphs remain enumerable and fail extraction. Creation uses
+ * separate folders per nonempty file; see the writer APIs below.
  */
 struct xx_7zip {
     Abstractformat format;             /**< Base format (must be first). */
@@ -80,6 +81,15 @@ XXFC_API const xx_archive_record *xx_7zip_get_current_archive_record(Abstractfor
 XXFC_API bool xx_7zip_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 XXFC_API bool xx_7zip_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 XXFC_API void xx_7zip_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
+
+/** Create a non-solid archive on a seekable output device. Default: LZMA2.
+ * Methods use 7z coder IDs (not ZIP method IDs). Supported encoders: Copy,
+ * LZMA, LZMA2, BZip2, PPMd7, Deflate, Deflate64 and Zstandard. Password options
+ * encrypt file payloads with AES-256; filenames remain visible. */
+XXFC_API xx_archive_write_state *xx_7zip_create_archive_records_writing(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API bool xx_7zip_pack_archive_record(Abstractformat *self, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source_dev, xx_pd_struct *pd);
+XXFC_API bool xx_7zip_finalize_archive_records_writing(Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd);
+XXFC_API void xx_7zip_free_archive_records_writing(Abstractformat *self, xx_archive_write_state *state);
 
 XXFC_API const char *xx_7zip_data_struct_id_to_string(Abstractformat *self, uint32_t id);
 XXFC_API uint32_t xx_7zip_data_struct_string_to_id(Abstractformat *self, const char *name);
@@ -164,6 +174,19 @@ static inline bool X7Zip_archive_record_move_to_next(xx_7zip *archive, xx_archiv
 
 static inline void X7Zip_free_archive_records_reading(xx_7zip *archive, xx_archive_record_state *state) {
     if (archive) xx_7zip_free_archive_records_reading(&archive->format, state);
+}
+
+static inline xx_archive_write_state *X7Zip_create_archive_records_writing(xx_7zip *archive, const xx_list_s *options, xx_pd_struct *pd) {
+    return archive ? xx_7zip_create_archive_records_writing(&archive->format, options, pd) : NULL;
+}
+static inline bool X7Zip_pack_archive_record(xx_7zip *archive, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source, xx_pd_struct *pd) {
+    return archive ? xx_7zip_pack_archive_record(&archive->format, state, record, source, pd) : false;
+}
+static inline bool X7Zip_finalize_archive_records_writing(xx_7zip *archive, xx_archive_write_state *state, xx_pd_struct *pd) {
+    return archive ? xx_7zip_finalize_archive_records_writing(&archive->format, state, pd) : false;
+}
+static inline void X7Zip_free_archive_records_writing(xx_7zip *archive, xx_archive_write_state *state) {
+    if (archive) xx_7zip_free_archive_records_writing(&archive->format, state);
 }
 
 static inline const char *X7Zip_data_struct_id_to_string(xx_7zip *archive, uint32_t id) {

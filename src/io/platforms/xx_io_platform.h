@@ -41,6 +41,7 @@ extern "C" {
  * @brief Open file handle on host platform.
  */
 void* xx_io_platform_file_open(const char *path, const char *mode);
+void* xx_io_platform_temp_open(void);
 
 /**
  * @brief Read bytes from platform file handle.

@@ -21,6 +21,7 @@
 
 #include "xxfclib/rt/xx_rt.h"
 #include "xx_deflate_internal.h"
+#include "platforms/xx_deflate_dec_platform.h"
 #include <string.h>
 
 /* ========================================================================= */
@@ -57,7 +58,8 @@ void xx_br_free(xx_bit_reader *br) {
 
 static bool xx_br_refill(xx_bit_reader *br, int need_bits) {
     while (br->bit_count < need_bits) {
-        uint8_t byte = 0;
+        const uint8_t *source;
+        size_t available, consumed;
         if (br->dev) {
             if (br->buffer_pos >= br->buffer_len) {
                 if (br->eof) {
@@ -84,19 +86,41 @@ static bool xx_br_refill(xx_bit_reader *br, int need_bits) {
                     br->remaining_input -= n;
                 }
             }
-            byte = br->buffer[br->buffer_pos++];
+            source = br->buffer + br->buffer_pos;
+            available = br->buffer_len - br->buffer_pos;
         } else if (br->mem_src) {
             if (br->mem_pos >= br->mem_size) {
                 br->eof = true;
                 return false;
             }
-            byte = br->mem_src[br->mem_pos++];
+            source = br->mem_src + br->mem_pos;
+            available = br->mem_size - br->mem_pos;
         } else {
             return false;
         }
 
-        br->bit_buf |= ((uint64_t)byte) << br->bit_count;
-        br->bit_count += 8;
+        /* All callers need at most sixteen bits. Opportunistic word refill
+         * removes per-byte source checks without reading beyond the supplied
+         * span or overflowing the bit accumulator. Prefetched bytes remain
+         * accounted for by bit_count, including following stored blocks. */
+        if (available >= 4U && br->bit_count <= 32) {
+            uint32_t word;
+#if defined(_WIN32) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+            memcpy(&word, source, sizeof(word));
+#else
+            word = (uint32_t)source[0] | ((uint32_t)source[1] << 8U) |
+                   ((uint32_t)source[2] << 16U) | ((uint32_t)source[3] << 24U);
+#endif
+            br->bit_buf |= (uint64_t)word << br->bit_count;
+            br->bit_count += 32;
+            consumed = 4U;
+        } else {
+            br->bit_buf |= (uint64_t)*source << br->bit_count;
+            br->bit_count += 8;
+            consumed = 1U;
+        }
+        if (br->dev) br->buffer_pos += consumed;
+        else br->mem_pos += consumed;
     }
     return true;
 }
@@ -182,6 +206,7 @@ static bool xx_br_read_bytes(xx_bit_reader *br, uint8_t *dst, size_t size) {
 static bool xx_huff_build(xx_huff_decoder *dec, const uint8_t *lengths, int num_symbols) {
     xx_rt_memset(dec, 0, sizeof(*dec));
     dec->num_symbols = num_symbols;
+    dec->min_bits = XX_DEFLATE_MAX_BITS + 1;
 
     for (int i = 0; i < num_symbols; ++i) {
         uint8_t len = lengths[i];
@@ -190,6 +215,8 @@ static bool xx_huff_build(xx_huff_decoder *dec, const uint8_t *lengths, int num_
         }
         if (len > 0) {
             dec->count[len]++;
+            if (len < dec->min_bits) dec->min_bits = len;
+            if (len > dec->max_bits) dec->max_bits = len;
         }
     }
 
@@ -226,6 +253,7 @@ static bool xx_huff_build(xx_huff_decoder *dec, const uint8_t *lengths, int num_
     for (int len = 1; len <= XX_DEFLATE_MAX_BITS; ++len) {
         cur_code = (cur_code + dec->count[len - 1]) << 1;
         next_code[len] = cur_code;
+        dec->first_code[len] = (uint16_t)cur_code;
     }
 
     for (int sym = 0; sym < num_symbols; ++sym) {
@@ -255,9 +283,8 @@ static bool xx_huff_build(xx_huff_decoder *dec, const uint8_t *lengths, int num_
 }
 
 static inline int xx_huff_decode(const xx_huff_decoder *dec, xx_bit_reader *br) {
-    uint32_t code = 0U;
-    uint32_t first_code = 0U;
-    int len;
+    uint32_t reversed;
+    int len, available;
     /* Refill opportunistically. A final code can need fewer than nine bits;
      * a failed lookahead must not reject it or consume padded missing bits. */
     if (br->bit_count < 9) (void)xx_br_refill(br, 9);
@@ -269,17 +296,22 @@ static inline int xx_huff_decode(const xx_huff_decoder *dec, xx_bit_reader *br) 
         }
     }
 
-    /* Huffman code bits themselves arrive most-significant first. Assemble
-     * their canonical value and index its length group directly, including
-     * long codes and short final codes. No per-symbol candidate scan. */
-    for (len = 1; len <= XX_DEFLATE_MAX_BITS; ++len) {
-        if (!xx_br_refill(br, 1)) {
-            br->error = true;
-            return -1;
-        }
-        code = (code << 1U) | xx_br_read(br, 1);
-        first_code = (first_code + dec->count[len - 1]) << 1U;
+    /* Reverse the available prefix once. Checking canonical ranges avoids
+     * the old refill/read/drop for every individual long-code bit. Missing
+     * input bits never contribute to a successful final short code. */
+    if (br->bit_count < dec->max_bits) (void)xx_br_refill(br, dec->max_bits);
+    available = br->bit_count < dec->max_bits ? br->bit_count : dec->max_bits;
+    reversed = (uint32_t)br->bit_buf & 65535U;
+    reversed = ((reversed & 0x5555U) << 1U) | ((reversed >> 1U) & 0x5555U);
+    reversed = ((reversed & 0x3333U) << 2U) | ((reversed >> 2U) & 0x3333U);
+    reversed = ((reversed & 0x0f0fU) << 4U) | ((reversed >> 4U) & 0x0f0fU);
+    reversed = ((reversed & 255U) << 8U) | (reversed >> 8U);
+    len = br->bit_count >= 9 ? 10 : dec->min_bits;
+    for (; len <= available; ++len) {
+        uint32_t code = reversed >> (16 - len);
+        uint32_t first_code = dec->first_code[len];
         if (code >= first_code && code - first_code < dec->count[len]) {
+            xx_br_drop(br, len);
             return dec->symbols[dec->offset[len] + code - first_code];
         }
     }
@@ -310,6 +342,140 @@ static void xx_huff_build_fixed(xx_huff_decoder *lit_dec, xx_huff_decoder *dist_
 /* --- Output Buffer Accumulator                                         --- */
 /* ========================================================================= */
 
+typedef void (*xx_decode_copy_fn)(uint8_t *, const uint8_t *, size_t);
+typedef void (*xx_decode_match_fn)(uint8_t *, size_t, size_t, size_t, uint32_t, size_t);
+
+/* Constant-size memcpy loads/stores are unaligned and alias-safe. No helper
+ * reads or writes beyond the actual span, including the final short match. */
+static inline void xx_decode_copy_words(uint8_t *dst, const uint8_t *src, size_t size) {
+    while (size >= 8U) {
+        uint64_t word;
+        memcpy(&word, src, sizeof(word));
+        memcpy(dst, &word, sizeof(word));
+        src += 8U;
+        dst += 8U;
+        size -= 8U;
+    }
+    while (size-- != 0U) *dst++ = *src++;
+}
+
+static void xx_decode_copy_scalar(uint8_t *dst, const uint8_t *src, size_t size) {
+    xx_decode_copy_words(dst, src, size);
+}
+
+/* Seed spans belong to the same ring allocation and can overlap physically
+ * even though the logical history ranges are distinct across a ring wrap. */
+static inline void xx_decode_move_words(uint8_t *dst, const uint8_t *src, size_t size) {
+    if (dst <= src) {
+        xx_decode_copy_words(dst, src, size);
+    } else {
+        while (size >= 8U) {
+            uint64_t word;
+            size -= 8U;
+            memcpy(&word, src + size, sizeof(word));
+            memcpy(dst + size, &word, sizeof(word));
+        }
+        while (size-- != 0U) dst[size] = src[size];
+    }
+}
+
+static inline void xx_decode_fill_words(uint8_t *dst, uint8_t value, size_t size) {
+    uint64_t word = (uint64_t)value * UINT64_C(0x0101010101010101);
+    while (size >= 8U) {
+        memcpy(dst, &word, sizeof(word));
+        dst += 8U;
+        size -= 8U;
+    }
+    while (size-- != 0U) *dst++ = value;
+}
+
+static void xx_decode_match_scalar(uint8_t *window, size_t win_size,
+                                    size_t target, size_t source,
+                                    uint32_t distance, size_t chunk) {
+    size_t seed, first, produced;
+    if (distance == 1U) {
+        xx_decode_fill_words(window + target, window[source], chunk);
+        return;
+    }
+    seed = chunk < distance ? chunk : distance;
+    first = win_size - source;
+    if (first > seed) first = seed;
+    xx_decode_move_words(window + target, window + source, first);
+    if (seed > first)
+        xx_decode_move_words(window + target + first, window, seed - first);
+    produced = seed;
+    while (produced < chunk) {
+        size_t copy = chunk - produced;
+        if (copy > produced) copy = produced;
+        xx_decode_copy_words(window + target + produced, window + target, copy);
+        produced += copy;
+    }
+}
+
+#ifdef XX_DEFLATE_DEC_X86
+XX_DEFLATE_DEC_TARGET_SSE2
+static inline void xx_decode_copy_vectors(uint8_t *dst, const uint8_t *src, size_t size) {
+    while (size >= 16U) {
+        __m128i value = _mm_loadu_si128((const __m128i *)(const void *)src);
+        _mm_storeu_si128((__m128i *)(void *)dst, value);
+        src += 16U;
+        dst += 16U;
+        size -= 16U;
+    }
+    xx_decode_copy_words(dst, src, size);
+}
+
+XX_DEFLATE_DEC_TARGET_SSE2
+static XX_DEFLATE_DEC_NOINLINE void xx_decode_copy_sse2(uint8_t *dst,
+                                                       const uint8_t *src, size_t size) {
+    xx_decode_copy_vectors(dst, src, size);
+}
+
+XX_DEFLATE_DEC_TARGET_SSE2
+static XX_DEFLATE_DEC_NOINLINE void xx_decode_match_sse2(uint8_t *window, size_t win_size,
+                                                        size_t target, size_t source,
+                                                        uint32_t distance, size_t chunk) {
+    uint8_t *dst = window + target;
+    if (distance == 1U) {
+        uint8_t value = window[source];
+        __m128i repeated = _mm_set1_epi8((char)value);
+        while (chunk >= 16U) {
+            _mm_storeu_si128((__m128i *)(void *)dst, repeated);
+            dst += 16U;
+            chunk -= 16U;
+        }
+        xx_decode_fill_words(dst, value, chunk);
+    } else if (distance >= 16U) {
+        /* Load before store, advancing forwards in stream order. A full
+         * vector is no longer than the distance, so it only reads initialized
+         * history, including newly generated bytes of overlapping matches. */
+        while (chunk != 0U) {
+            size_t span = win_size - source;
+            if (span > chunk) span = chunk;
+            xx_decode_copy_vectors(dst, window + source, span);
+            dst += span;
+            chunk -= span;
+            source = 0U;
+        }
+    } else {
+        /* A short distance cannot safely use a forward vector until its
+         * periodic prefix is initialized. Seed, then double disjoint spans. */
+        size_t seed = chunk < distance ? chunk : distance;
+        size_t first = win_size - source;
+        size_t produced = seed;
+        if (first > seed) first = seed;
+        xx_decode_move_words(dst, window + source, first);
+        if (seed > first) xx_decode_move_words(dst + first, window, seed - first);
+        while (produced < chunk) {
+            size_t copy = chunk - produced;
+            if (copy > produced) copy = produced;
+            xx_decode_copy_vectors(dst + produced, dst, copy);
+            produced += copy;
+        }
+    }
+}
+#endif
+
 typedef struct {
     xx_io_device *dev;
     uint8_t     *mem_dst;
@@ -320,6 +486,8 @@ typedef struct {
     size_t       buf_pos;
     int64_t      total_written;
     bool         error;
+    xx_decode_copy_fn copy;
+    xx_decode_match_fn match;
 } xx_out_acc;
 
 static bool xx_out_init(xx_out_acc *out, xx_io_device *dev, uint8_t *mem_dst, size_t mem_cap) {
@@ -327,6 +495,16 @@ static bool xx_out_init(xx_out_acc *out, xx_io_device *dev, uint8_t *mem_dst, si
     out->dev = dev;
     out->mem_dst = mem_dst;
     out->mem_cap = mem_cap;
+    out->copy = xx_decode_copy_scalar;
+    out->match = xx_decode_match_scalar;
+#ifdef XX_DEFLATE_DEC_X86
+    /* Respect the existing acceleration switch and resolve it once per
+     * operation, avoiding CPU-feature dispatch for each short output match. */
+    if (xx_is_sse2_enabled()) {
+        out->copy = xx_decode_copy_sse2;
+        out->match = xx_decode_match_sse2;
+    }
+#endif
 
     if (dev) {
         out->buf_cap = xx_get_file_buffer_size();
@@ -393,7 +571,7 @@ static bool xx_out_write(xx_out_acc *out, const uint8_t *data, size_t size) {
                 available = out->buf_cap;
             }
             chunk = size < available ? size : available;
-            xx_rt_memcpy(out->buf + out->buf_pos, data, chunk);
+            out->copy(out->buf + out->buf_pos, data, chunk);
             out->buf_pos += chunk;
             out->total_written += (int64_t)chunk;
             data += chunk;
@@ -405,7 +583,7 @@ static bool xx_out_write(xx_out_acc *out, const uint8_t *data, size_t size) {
                 out->error = true;
                 return false;
             }
-            xx_rt_memcpy(out->mem_dst + out->mem_written, data, size);
+            out->copy(out->mem_dst + out->mem_written, data, size);
             out->mem_written += size;
         }
         out->total_written += (int64_t)size;
@@ -420,27 +598,8 @@ static bool xx_out_copy_match(xx_out_acc *out, uint8_t *window,
         size_t target = *win_pos & (win_size - 1U);
         size_t source = (*win_pos - distance) & (win_size - 1U);
         size_t chunk = win_size - target;
-        size_t seed, first, produced;
         if (chunk > length) chunk = length;
-        if (distance == 1U) {
-            xx_rt_memset(window + target, window[source], chunk);
-        } else {
-            seed = chunk < distance ? chunk : distance;
-            first = win_size - source;
-            if (first > seed) first = seed;
-            xx_rt_memmove(window + target, window + source, first);
-            if (seed > first)
-                xx_rt_memmove(window + target + first, window, seed - first);
-            /* A match can be longer than its distance. Expand from the bytes
-             * just generated, doubling the available periodic prefix. */
-            produced = seed;
-            while (produced < chunk) {
-                size_t copy = chunk - produced;
-                if (copy > produced) copy = produced;
-                xx_rt_memcpy(window + target + produced, window + target, copy);
-                produced += copy;
-            }
-        }
+        out->match(window, win_size, target, source, distance, chunk);
         if (!xx_out_write(out, window + target, chunk)) return false;
         *win_pos += chunk;
         length -= (uint32_t)chunk;

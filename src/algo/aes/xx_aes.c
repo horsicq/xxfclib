@@ -21,6 +21,7 @@
 
 #include "xxfclib/algo/aes/xx_aes.h"
 #include "xxfclib/algo/sha/xx_sha.h"
+#include "../../io/platforms/xx_io_platform.h"
 
 #define XX_AES_BLOCK_SIZE           16U
 #define XX_AES_MAX_ROUND_KEY_SIZE   240U
@@ -723,13 +724,15 @@ static bool xx_7zip_aes_derive_key(const uint8_t *password,
                                    const uint8_t *salt,
                                    size_t salt_size,
                                    uint8_t cycles_power,
-                                   uint8_t key[XX_SHA256_DIGEST_SIZE]) {
+                                   uint8_t key[XX_SHA256_DIGEST_SIZE],
+                                   xx_pd_struct *pd) {
     xx_sha256_context hash;
     uint8_t counter[8];
     uint32_t rounds;
     uint32_t round;
 
-    if ((password_size > 0U && !password) || (salt_size > 0U && !salt)) {
+    if ((password_size > 0U && !password) || (salt_size > 0U && !salt) ||
+        (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     xx_bytes_zero(key, XX_SHA256_DIGEST_SIZE);
@@ -755,6 +758,11 @@ static bool xx_7zip_aes_derive_key(const uint8_t *password,
     xx_bytes_zero(counter, sizeof(counter));
     for (round = 0U; round < rounds; ++round) {
         unsigned int index;
+        if ((round & 1023U) == 0U && pd && xx_pd_is_stopped(pd)) {
+            xx_crypto_clear(&hash, sizeof(hash));
+            xx_crypto_clear(counter, sizeof(counter));
+            return false;
+        }
         for (index = 0U; index < 4U; ++index) {
             counter[index] = (uint8_t)(round >> (8U * index));
         }
@@ -827,7 +835,7 @@ bool xx_7zip_aes_decrypt(const uint8_t *input,
         xx_bytes_copy(iv, properties + property_offset + salt_size, iv_size);
     }
     if (!xx_7zip_aes_derive_key(password_utf16le, password_size,
-                                 salt, salt_size, cycles_power, key) ||
+                                 salt, salt_size, cycles_power, key, NULL) ||
         !xx_aes_set_key(&aes_context, key, sizeof(key))) {
         goto cleanup;
     }
@@ -858,6 +866,124 @@ cleanup:
     xx_crypto_clear(ciphertext, sizeof(ciphertext));
     xx_crypto_clear(plaintext, sizeof(plaintext));
     return success;
+}
+
+static bool xx_7zip_aes_read_exact(xx_io_device *source, uint8_t *data, size_t size, xx_pd_struct *pd) {
+    while (size) {
+        if (pd && xx_pd_is_stopped(pd)) return false;
+        ssize_t count = xx_io_read(source, data, size);
+        if (count <= 0 || (size_t)count > size) return false;
+        data += count; size -= (size_t)count;
+    }
+    return true;
+}
+
+static bool xx_7zip_aes_crypt_device(xx_aes_context *aes, uint8_t previous[16],
+    bool encrypt, xx_io_device *source, int64_t source_offset, int64_t input_size,
+    int64_t plaintext_size, xx_io_device *destination, xx_pd_struct *pd) {
+    uint8_t input[8192], output[8192];
+    int64_t remaining = input_size, meaningful = plaintext_size;
+    bool result = false;
+    if (xx_io_seek64(source, source_offset, SEEK_SET) != 0) goto cleanup;
+    while (remaining > 0) {
+        size_t count = remaining > (int64_t)sizeof(input) ? sizeof(input) : (size_t)remaining;
+        size_t padded = encrypt ? (count + 15U) & ~(size_t)15U : count;
+        size_t at, written;
+        if ((pd && xx_pd_is_stopped(pd)) || !xx_7zip_aes_read_exact(source, input, count, pd) ||
+            (pd && xx_pd_is_stopped(pd))) goto cleanup;
+        if (padded > count) xx_bytes_zero(input + count, padded - count);
+        for (at = 0U; at < padded; at += 16U) {
+            unsigned int i;
+            if (encrypt) {
+                for (i = 0U; i < 16U; ++i) input[at + i] ^= previous[i];
+                xx_aes_encrypt_block(aes, input + at, output + at);
+                xx_bytes_copy(previous, output + at, 16U);
+            } else {
+                xx_aes_decrypt_block(aes, input + at, output + at);
+                for (i = 0U; i < 16U; ++i) output[at + i] ^= previous[i];
+                xx_bytes_copy(previous, input + at, 16U);
+            }
+        }
+        written = encrypt ? padded : (meaningful < (int64_t)count ? (size_t)meaningful : count);
+        if (written && xx_io_write(destination, output, written) != (ssize_t)written) goto cleanup;
+        remaining -= (int64_t)count;
+        if (!encrypt) meaningful -= (int64_t)written;
+    }
+    result = !(pd && xx_pd_is_stopped(pd)) && (encrypt || meaningful == 0);
+cleanup:
+    xx_crypto_clear(input, sizeof(input));
+    xx_crypto_clear(output, sizeof(output));
+    return result;
+}
+
+bool xx_7zip_aes_encrypt_device(xx_io_device *source, int64_t source_offset,
+    int64_t plaintext_size, const uint8_t *password_utf16le, size_t password_size,
+    uint8_t properties[34], size_t *properties_size, xx_io_device *destination,
+    int64_t *output_size, xx_pd_struct *pd) {
+    xx_aes_context aes;
+    uint8_t key[32], previous[16];
+    bool result = false;
+    xx_bytes_zero((uint8_t *)&aes, sizeof(aes));
+    xx_bytes_zero(key, sizeof(key)); xx_bytes_zero(previous, sizeof(previous));
+    if (properties_size) *properties_size = 0U;
+    if (output_size) *output_size = 0;
+    if (!source || !destination || !properties || !properties_size ||
+        source == destination || source_offset < 0 || plaintext_size < 0 ||
+        plaintext_size > INT64_MAX - 15 || source_offset > INT64_MAX - plaintext_size ||
+        (password_size && !password_utf16le) || (password_size & 1U) ||
+        (pd && xx_pd_is_stopped(pd))) goto cleanup;
+    properties[0] = 0xD3U; properties[1] = 0xFFU;
+    if (!xx_io_platform_secure_random(properties + 2U, 32U) ||
+        !xx_7zip_aes_derive_key(password_utf16le, password_size, properties + 2U,
+            16U, 19U, key, pd) || !xx_aes_set_key(&aes, key, sizeof(key))) goto cleanup;
+    xx_bytes_copy(previous, properties + 18U, 16U);
+    result = xx_7zip_aes_crypt_device(&aes, previous, true, source, source_offset,
+        plaintext_size, plaintext_size, destination, pd);
+    if (result) {
+        *properties_size = 34U;
+        if (output_size) *output_size = (plaintext_size + 15) & ~(int64_t)15;
+    }
+cleanup:
+    if (!result && properties) xx_crypto_clear(properties, 34U);
+    xx_crypto_clear(&aes, sizeof(aes)); xx_crypto_clear(key, sizeof(key));
+    xx_crypto_clear(previous, sizeof(previous));
+    return result;
+}
+
+bool xx_7zip_aes_decrypt_device(xx_io_device *source, int64_t source_offset,
+    int64_t input_size, const uint8_t *password_utf16le, size_t password_size,
+    const uint8_t *properties, size_t properties_size, int64_t plaintext_size,
+    xx_io_device *destination, xx_pd_struct *pd) {
+    xx_aes_context aes;
+    uint8_t key[32], previous[16];
+    size_t salt_size = 0U, iv_size = 0U, at = 1U;
+    uint8_t cycles;
+    bool result = false;
+    xx_bytes_zero((uint8_t *)&aes, sizeof(aes));
+    xx_bytes_zero(key, sizeof(key)); xx_bytes_zero(previous, sizeof(previous));
+    if (!source || !destination || source == destination || !properties || !properties_size ||
+        source_offset < 0 || input_size < 0 || (input_size & 15) || plaintext_size < 0 ||
+        plaintext_size > input_size || input_size - plaintext_size > 15 ||
+        source_offset > INT64_MAX - input_size || (password_size & 1U) ||
+        (password_size && !password_utf16le) || (pd && xx_pd_is_stopped(pd))) goto cleanup;
+    cycles = properties[0] & 0x3FU;
+    if (properties[0] & 0xC0U) {
+        if (properties_size < 2U) goto cleanup;
+        salt_size = ((properties[0] >> 7U) & 1U) + (properties[1] >> 4U);
+        iv_size = ((properties[0] >> 6U) & 1U) + (properties[1] & 15U);
+        at = 2U;
+    }
+    if (salt_size > 16U || iv_size > 16U || at + salt_size + iv_size != properties_size ||
+        !xx_7zip_aes_derive_key(password_utf16le, password_size,
+            properties + at, salt_size, cycles, key, pd) ||
+        !xx_aes_set_key(&aes, key, sizeof(key))) goto cleanup;
+    xx_bytes_copy(previous, properties + at + salt_size, iv_size);
+    result = xx_7zip_aes_crypt_device(&aes, previous, false, source, source_offset,
+        input_size, plaintext_size, destination, pd);
+cleanup:
+    xx_crypto_clear(&aes, sizeof(aes)); xx_crypto_clear(key, sizeof(key));
+    xx_crypto_clear(previous, sizeof(previous));
+    return result;
 }
 
 /* RAR uses CBC with archive-defined framing and integrity, rather than the
