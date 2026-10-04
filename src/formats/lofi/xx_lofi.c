@@ -163,16 +163,15 @@ static void xx_lofi_nested_iso_free(xx_lofi_nested_iso *nested);
 static bool xx_lofi_prefix_iso_record(xx_archive_record_state *state);
 
 
-/* Each segment carries a framing byte and an LZMA "alone" header ahead of its
- * data, so consecutive index entries must differ by at least this much. */
+/* Each segment carries a framing byte; compressed data follows its declared
+ * algorithm, while stored data can be as short as one byte. */
 /* `lofiadm` caps the segment size far below this; the bound only keeps a
  * corrupt header from describing an absurd image. */
 /* An 8 MiB index, i.e. a million segments. The library tolerates far more,
  * but this reader reads the index into memory to validate it, so the bound is
  * also a bound on that allocation. */
 /* One logical image, so one member. */
-/* The container names the algorithm rather than numbering it; this is the
- * only flavour the library decodes. */
+/* The container names the algorithm rather than numbering it. */
 
 static uint32_t xx_lofi_be32(const uint8_t *data) {
     return ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16) |

@@ -185,23 +185,17 @@ static bool pdb_range_within(int64_t total, int64_t offset, int64_t size) {
  * that fills the buffer completely puts its terminator in the last byte, and
  * reading one short would reject the record. */
 static bool pdb_check_name(const uint8_t *name) {
-    int32_t terminator = -1;
     int32_t index;
     if (name[0] == 0U) return false;
     for (index = 0; index < PDB_NAME_SIZE; ++index) {
-        if (name[index] == 0U) {
-            terminator = index;
-            break;
-        }
+        /* The field is a C string, not a zero-padded record. Palm writers
+         * can leave stale bytes after its NUL; those bytes are not part of
+         * the name and say nothing about the database's validity. */
+        if (name[index] == 0U) return true;
         /* Control characters never appear in a PalmOS database name; high
          * bytes do, because national character sets are stored raw. */
         if (name[index] < 0x20U) return false;
     }
-    if (terminator >= 0)
-        /* Everything past the terminator must be padding.  Stale bytes there
-         * would mean this is not a PalmOS header at all. */
-        for (index = terminator; index < PDB_NAME_SIZE; ++index)
-            if (name[index] != 0U) return false;
     return true;
 }
 

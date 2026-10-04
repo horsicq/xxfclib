@@ -1,12 +1,14 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  *
- * Solaris compressed lofi image decoder.  Ported from the XArchive reference
- * decoder (XArchive/Algos/xlofidecoder.cpp): the same header rules, the same
- * index rules (entry 0 is zero, every later entry ascends by at least the
- * 1 + 13 framing bytes), the same per-segment framing byte, the same demand
+ * Solaris compressed lofi image decoder. The LZMA path follows XArchive's
+ * XArchive/Algos/xlofidecoder.cpp, including the same demand
  * that the alone header's declared length equal the geometry's expectation,
  * and the same per-segment LZMA reset.
+ *
+ * Gzip names and stored-segment framing follow the illumos writer:
+ * https://github.com/illumos/illumos-gate/blob/master/usr/src/cmd/lofiadm/main.c
+ * https://github.com/illumos/illumos-gate/blob/master/usr/src/uts/common/sys/lofi.h
  *
  * Deviations, all output-equivalent:
  *   - The index is validated in place out of the input buffer instead of being
@@ -130,9 +132,8 @@ static bool lofi_parse_geometry(const uint8_t *input, size_t input_size,
     for (i = 0; i < geometry->index_entries; i++) {
         uint64_t value = lofi_index_at(input, i);
         if (value > (uint64_t)INT64_MAX) return false;
-        /* Entry 0 is 0 (the reference detector checks exactly this), and the
-         * rest strictly ascend: every segment must carry at least its own
-         * framing bytes. */
+        /* Entry 0 is 0, and every segment has a framing byte plus at least
+         * one data byte. Codec-specific minimum lengths are checked below. */
         if (i == 0) {
             if (value != 0) return false;
         } else if (value < previous + LOFI_SEGMENT_PREFIX + 1U) {
