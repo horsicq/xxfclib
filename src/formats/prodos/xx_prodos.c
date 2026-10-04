@@ -120,6 +120,7 @@ typedef struct pd_list_s {
     uint32_t *slots;  /**< Case-folded name set: member index + 1, 0 free. */
     size_t slot_count;
     bool damaged;
+    uint64_t memory_limit,memory_used,member_limit;
 } pd_list;
 
 typedef struct pd_frame_s {
@@ -142,17 +143,20 @@ static uint32_t pd_le24(const uint8_t *bytes) {
 
 static bool pd_read_at(xx_io_device *device, int64_t offset, void *buffer,
                        size_t size) {
-    size_t done = 0U;
+    size_t done = 0U; int64_t saved; bool result = false;
     if (!device || (!buffer && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0)
-        return false;
+        (saved = xx_io_tell(device)) < 0) return false;
+    if (xx_io_seek64(device, offset, SEEK_SET) != 0) goto done;
     while (done < size) {
         ssize_t amount = xx_io_read(device, (uint8_t *)buffer + done,
                                     size - done);
-        if (amount <= 0 || (size_t)amount > size - done) return false;
+        if (amount <= 0 || (size_t)amount > size - done) goto done;
         done += (size_t)amount;
     }
-    return true;
+    result = true;
+done:
+    if (xx_io_seek64(device, saved, SEEK_SET) != 0) result = false;
+    return result;
 }
 
 /* Image offset (relative to the volume start) of byte @p at of @p block. */
@@ -372,18 +376,22 @@ static bool pd_reserve(pd_list *list) {
         size_t grown = list->capacity ? list->capacity * 2U : 64U;
         pd_member *items;
         if (grown > PD_MAX_MEMBERS) grown = PD_MAX_MEMBERS;
+        if ((grown-list->capacity)*sizeof(*items)>list->memory_limit-list->memory_used) return false;
         items = (pd_member *)xx_mem_realloc(list->items,
                                             grown * sizeof(*items));
         if (!items) return false;
         list->items = items;
+        list->memory_used+=(grown-list->capacity)*sizeof(*items);
         list->capacity = grown;
     }
     /* Keep the name set at most half full. */
     if ((list->count + 1U) * 2U > list->slot_count) {
         size_t slots = list->slot_count ? list->slot_count * 2U : 128U, index;
+        if(slots*sizeof(uint32_t)>list->memory_limit-list->memory_used)return false;
         uint32_t *table = (uint32_t *)xx_mem_calloc(slots, sizeof(*table));
         if (!table) return false;
         if (list->slots) xx_mem_free(list->slots);
+        list->memory_used+=(slots-list->slot_count)*sizeof(uint32_t);
         list->slots = table;
         list->slot_count = slots;
         for (index = 0U; index < list->count; ++index)
@@ -428,9 +436,13 @@ static char *pd_unique_path(const pd_list *list, const char *parent,
 
 static bool pd_append(pd_list *list, pd_member *member, const char *parent,
                       const char *component, const char *extension) {
+    uint64_t path=(parent?xx_rt_strlen(parent)+1U:0U)+xx_rt_strlen(component)+(extension?xx_rt_strlen(extension):0U)+1U;
+    if(member->eof>list->member_limit || path>4096U || path*2U+32U>list->memory_limit-list->memory_used)return false;
     if (!pd_reserve(list)) return false;
+    if(path*2U+32U>list->memory_limit-list->memory_used)return false;
     member->name = pd_unique_path(list, parent, component, extension);
     if (!member->name) return false;
+    list->memory_used+=xx_rt_strlen(member->name)+1U;
     list->items[list->count] = *member;
     pd_slot_insert(list, list->count);
     ++list->count;
@@ -531,7 +543,7 @@ static bool pd_add_file(pd_list *list, const uint8_t *entry,
 /* Walk the volume.  Returns false only when memory runs out; damage
  * (unreadable blocks, loops, bad headers) stops the affected directory and
  * sets list->damaged.  The member cap stops the walk the same way. */
-static bool pd_walk(pd_list *list, const uint8_t *key_block) {
+static bool pd_walk(pd_list *list, const uint8_t *key_block, xx_pd_struct *pd) {
     pd_volume *volume = &list->volume;
     pd_frame *frames;
     uint8_t *visited;
@@ -554,6 +566,7 @@ static bool pd_walk(pd_list *list, const uint8_t *key_block) {
         char component[PD_COMPONENT_MAX];
         uint32_t storage;
         int64_t header_offset;
+        if (pd && xx_pd_is_stopped(pd)) goto done;
         if (frame->slot >= frame->entries_per_block) {
             uint32_t next = pd_le16(frame->data + 2U);
             if (next == 0U) {
@@ -633,7 +646,18 @@ static bool pd_walk(pd_list *list, const uint8_t *key_block) {
             }
             continue;
         }
-        /* Pascal areas (4) and anything else are not files ProDOS reads. */
+        /* A Pascal area is a contiguous volume reservation, not a ProDOS
+         * file fork. Preserve ordinary ProDOS files on such hybrid volumes;
+         * the PPM/layout reader interprets the area itself. */
+        if (storage == 4U && frame->folder == SIZE_MAX &&
+            entry[PD_E_TYPE] == 0xefU) {
+            uint32_t key=pd_le16(entry+PD_E_KEY), blocks=pd_le16(entry+PD_E_BLOCKS);
+            uint32_t bytes=pd_le24(entry+PD_E_EOF);
+            if(key>=3U && blocks && key<volume->total_blocks &&
+               blocks<=volume->total_blocks-key && bytes<=(uint64_t)blocks*PD_BLOCK)
+                continue;
+        }
+        /* Unknown storage types remain explicit damage. */
         list->damaged = true;
     }
     result = true;
@@ -643,14 +667,19 @@ done:
     return result;
 }
 
-static bool pd_parse(Abstractformat *format, pd_list **result) {
+static bool pd_parse(Abstractformat *format, pd_list **result, xx_pd_struct *pd,const xx_list_s *options) {
     uint8_t key_block[PD_BLOCK];
     pd_list *list;
-    if (!result) return false;
+    if (!result || (pd && xx_pd_is_stopped(pd))) return false;
     list = (pd_list *)xx_mem_calloc(1U, sizeof(*list));
     if (!list) return false;
+    {const xx_var *v=xx_format_resolve_extra_parameter(format,options,XX_META_ID_OPT_MEMORY_LIMIT);
+        list->memory_limit=v?xx_var_get_u64(v):UINT64_C(64)*1024U*1024U;
+        list->memory_used=sizeof(*list)+sizeof(xx_archive_record_state)+(PD_MAX_DEPTH+1U)*sizeof(pd_frame)+(PD_MAX_BLOCKS+8U)/8U+3U*PD_BLOCK;
+        v=xx_format_resolve_extra_parameter(format,options,XX_META_ID_OPT_MAX_MEMBER_SIZE);list->member_limit=v?xx_var_get_u64(v):UINT64_MAX;
+        if(list->memory_used>list->memory_limit){pd_list_free(list);return false;}}
     if (!pd_open_volume(format, &list->volume, key_block) ||
-        !pd_walk(list, key_block)) {
+        !pd_walk(list, key_block, pd)) {
         pd_list_free(list);
         return false;
     }
@@ -900,8 +929,7 @@ bool xx_prodos_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     pd_list *list;
     xx_prodos *volume;
     int64_t total, extent, end;
-    (void)pd;
-    if (!format || !pd_parse(format, &list)) return false;
+    if (!format || !pd_parse(format, &list, pd,NULL)) return false;
     volume = (xx_prodos *)format;
     total = xx_io_total_size(format->device);
     extent = pd_volume_extent(&list->volume);
@@ -944,8 +972,10 @@ xx_archive_record_state *xx_prodos_create_archive_records_reading(
     Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
     pd_list *list;
     xx_archive_record_state *state;
-    (void)pd;
-    if (!pd_parse(format, &list)) return NULL;
+    if (!pd_parse(format, &list, pd,options)) return NULL;
+    ((xx_prodos *)format)->damaged = list->damaged;
+    ((xx_prodos *)format)->truncated = !list->volume.dos_order &&
+        (int64_t)list->volume.total_blocks * PD_BLOCK > list->volume.image_size;
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
     if (!state) {
         pd_list_free(list);
@@ -989,6 +1019,20 @@ bool xx_prodos_archive_record_move_to_next(Abstractformat *format,
     return state->has_record;
 }
 
+bool xx_prodos_extract_record_to_device(Abstractformat *format,
+    xx_archive_record_state *state, xx_io_device *destination, xx_pd_struct *pd) {
+    pd_list *list; const pd_member *member; const xx_var *limit;
+    if (!format || !state || state->format != format || !state->has_record ||
+        !(list = (pd_list *)state->internal_state) || list->index >= list->count ||
+        (pd && xx_pd_is_stopped(pd))) return false;
+    member = &list->items[list->index];
+    limit = xx_format_resolve_extra_parameter(format, &state->options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
+    if (limit && member->eof > xx_var_get_u64(limit)) return false;
+    limit = xx_format_resolve_extra_parameter(format, &state->options, XX_META_ID_OPT_MEMORY_LIMIT);
+    if (limit && list->memory_used > xx_var_get_u64(limit)) return false;
+    return member->folder ? true : pd_copy_fork(&list->volume, member, destination, pd);
+}
+
 bool xx_prodos_unpack_current_archive_record(Abstractformat *format,
                                              xx_archive_record_state *state,
                                              xx_pd_struct *pd) {
@@ -1007,8 +1051,7 @@ bool xx_prodos_unpack_current_archive_record(Abstractformat *format,
     member = &list->items[list->index];
     path_option = pd_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option)
-        return member->folder ? true
-                              : pd_copy_fork(&list->volume, member, NULL, pd);
+        return xx_prodos_extract_record_to_device(format,state,NULL,pd);
     if (!pd_safe_output_name(member->name)) return false;
     if (path_option->type == XX_VAR_TYPE_STRING ||
         path_option->type == XX_VAR_TYPE_STRING_VIEW) {

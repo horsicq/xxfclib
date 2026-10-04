@@ -1,9 +1,10 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  * Active Delivery AD01: the PE actdlvry section holds an ordinary ZIP with
- * absolute local/directory offsets. Its stub supplies a ZipCrypto password
- * from .data. In encrypted packages the first stored CAB has a separate
- * password in the decoded ADX configuration. Every member is CRC-checked.
+ * coherent ZIP-relative or absolute local/directory offsets. Its stub supplies a ZipCrypto password
+ * from .data. Mode-2 packages have one or three leading stored payloads;
+ * their separate password is in the decoded ADX configuration. Remaining
+ * Deflate support members use the stub password. Every member is CRC-checked.
  */
 #include "xxfclib/formats/sfx_ad01/xx_sfx_ad01.h"
 #include "../makeself/xx_fourth_wrapper_table.h"
@@ -75,12 +76,13 @@ static bool ad_safe_name(const char *name, size_t n) {
 
 static bool ad_directory(Abstractformat *f, int64_t start, int64_t end,
                          ad_member members[AD_MAX_COUNT], unsigned *count_out,
-                         bool *encrypted_out, xx_pd_struct *pd) {
+                         unsigned *stored_out, bool *encrypted_out,
+                         xx_pd_struct *pd) {
     uint8_t eocd[22], central[46], local[30];
-    int64_t directory, at, previous_end = start;
+    int64_t directory, bias, at, previous_end = start;
     uint32_t bytes;
     uint64_t raw_total = 0U;
-    unsigned count, i, j;
+    unsigned count, i, j, stored = 0U;
     bool encrypted = false, control = false;
     if (end - start < 22 || !pm_read(f, end - 22, eocd, sizeof(eocd)) ||
         xx_rt_memcmp(eocd, "PK\5\6", 4) ||
@@ -90,15 +92,18 @@ static bool ad_directory(Abstractformat *f, int64_t start, int64_t end,
     if (!count || count > AD_MAX_COUNT || pm_le16(eocd + 8) != count)
         return false;
     bytes = pm_le32(eocd + 12);
-    directory = pm_le32(eocd + 16); /* AD01 writes absolute file offsets. */
-    if (directory < start || directory > end - 22 ||
-        bytes != (uint64_t)(end - 22 - directory) ||
+    if (bytes > (uint64_t)(end - start - 22)) return false;
+    directory = end - 22 - bytes;
+    bias = directory - pm_le32(eocd + 16);
+    /* Some stubs retain ordinary ZIP-relative offsets, while others rewrite
+     * the whole graph to absolute file offsets. Require a single origin for
+     * the directory and every local member; never repair individual offsets. */
+    if ((bias != 0 && bias != start) ||
         !wg_zip(f, start, end, pd)) return false;
     at = directory;
     for (i = 0U; i < count; ++i) {
         uint16_t names, extra, comment, local_names, local_extra;
-        uint32_t local_at;
-        int64_t record_bytes, data;
+        int64_t local_at, record_bytes, data;
         ad_member *m = &members[i];
         if (wg_stop(pd) || at > end - 22 - 46 ||
             !pm_read(f, at, central, sizeof(central)) ||
@@ -120,7 +125,7 @@ static bool ad_directory(Abstractformat *f, int64_t start, int64_t end,
         m->crc = pm_le32(central + 16);
         m->packed = pm_le32(central + 20);
         m->raw = pm_le32(central + 24);
-        local_at = pm_le32(central + 42);
+        local_at = (int64_t)pm_le32(central + 42) + bias;
         if (!m->raw || m->raw > AD_MEMBER_MAX ||
             m->raw > AD_TOTAL_MAX - raw_total ||
             !m->packed || m->packed > AD_MEMBER_MAX ||
@@ -140,10 +145,17 @@ static bool ad_directory(Abstractformat *f, int64_t start, int64_t end,
         if (encrypted) {
             if (count != AD_ENCRYPTED_COUNT) return false;
             if (i == 0U) {
-                if (names < 5U || m->raw < 4U ||
+                if (names < 5U ||
                     xx_rt_strcmp(m->name + names - 4U, ".cab") ||
-                    m->flags != 1U || m->method != 0U ||
-                    m->packed <= XX_ZIPCRYPTO_HEADER_SIZE) return false;
+                    m->flags != 1U || m->method != 0U) return false;
+            }
+            if (m->flags == 1U && m->method == 0U) {
+                /* The delivery DLL's mode-2 password applies to the entire
+                 * leading stored payload group, not just its first CAB. */
+                if (i != stored || stored >= 3U ||
+                    m->packed != (uint64_t)m->raw + XX_ZIPCRYPTO_HEADER_SIZE)
+                    return false;
+                ++stored;
             } else if (m->flags != 3U || m->method != 8U ||
                        m->packed <= XX_ZIPCRYPTO_HEADER_SIZE) return false;
         } else if ((m->flags != 0U || m->method != 0U ||
@@ -151,8 +163,10 @@ static bool ad_directory(Abstractformat *f, int64_t start, int64_t end,
                    (m->flags != 2U || m->method != 8U)) return false;
         at += record_bytes;
     }
-    if (at != end - 22 || !control) return false;
+    if (at != end - 22 || !control ||
+        (encrypted && stored != 1U && stored != 3U)) return false;
     *count_out = count;
+    *stored_out = stored;
     *encrypted_out = encrypted;
     return true;
 }
@@ -347,7 +361,8 @@ static bool pm_parse(Abstractformat *f, pm_stream *stream, xx_pd_struct *pd) {
     int64_t data_at, ad_at, zip_at, zip_end, limit = pm_available(f);
     uint32_t data_size, ad_size, zip_size;
     size_t password_size = 0U, cab_password_size = 0U;
-    unsigned i, count = 0U, adx_index = AD_MAX_COUNT;
+    unsigned i, count = 0U, stored = 0U, adx_index = AD_MAX_COUNT;
+    unsigned control_index = AD_MAX_COUNT;
     bool okay = false, encrypted = false;
     xx_mem_zero(members, sizeof(members));
     xx_mem_zero(decoded, sizeof(decoded));
@@ -360,16 +375,26 @@ static bool pm_parse(Abstractformat *f, pm_stream *stream, xx_pd_struct *pd) {
     zip_at = ad_at + 12;
     zip_end = zip_at + zip_size;
     if (zip_size < 22U || zip_size > ad_size - 12U || zip_end > limit ||
-        !ad_directory(f, zip_at, zip_end, members, &count, &encrypted, pd))
+        !ad_directory(f, zip_at, zip_end, members, &count, &stored,
+                      &encrypted, pd))
         goto done;
-    if (encrypted &&
-        !ad_password(f, data_at, data_size, &members[1], password,
-                     &password_size, pd)) goto done;
-    for (i = encrypted ? 1U : 0U; i < count; ++i) {
+    if (encrypted) {
+        for (i = stored; i < count; ++i)
+            if (!xx_rt_strcmp(members[i].name, "_Active Delivery_"))
+                control_index = i;
+        /* Prove the stub password on its small control member. A stored
+         * application payload can require a different ADX password. */
+        if (control_index == AD_MAX_COUNT ||
+            members[control_index].raw > AD_ADX_MAX ||
+            !ad_password(f, data_at, data_size, &members[control_index],
+                         password, &password_size, pd)) goto done;
+    }
+    for (i = encrypted ? stored : 0U; i < count; ++i) {
         size_t name_size = xx_rt_strlen(members[i].name);
         if (encrypted && name_size >= 4U &&
             !xx_rt_strcmp(members[i].name + name_size - 4U, ".adx")) {
-            if (adx_index != AD_MAX_COUNT) goto done;
+            if (adx_index != AD_MAX_COUNT || members[i].raw > AD_ADX_MAX)
+                goto done;
             adx_index = i;
         }
         if (wg_stop(pd) || !ad_decode(f, &members[i], encrypted, password,
@@ -378,10 +403,13 @@ static bool pm_parse(Abstractformat *f, pm_stream *stream, xx_pd_struct *pd) {
     if (encrypted) {
         if (adx_index == AD_MAX_COUNT ||
             !ad_adx_cab_password(decoded[adx_index], members[adx_index].raw,
-                                 cab_password, &cab_password_size, pd) ||
-            !ad_decode(f, &members[0], true, cab_password,
-                       cab_password_size, &decoded[0], pd) ||
-            xx_rt_memcmp(decoded[0], "MSCF", 4)) goto done;
+                                 cab_password, &cab_password_size, pd)) goto done;
+        for (i = 0U; i < stored; ++i)
+            if (!ad_decode(f, &members[i], true, cab_password,
+                           cab_password_size, &decoded[i], pd)) goto done;
+        /* The .cab payload is opaque to this wrapper (for example, IC60
+         * InstallShield data). Its name does not require Microsoft CAB
+         * syntax; the complete ZIP size and CRC were verified above. */
     }
     for (i = 0U; i < count; ++i) {
         pm_member *added;
@@ -391,6 +419,18 @@ static bool pm_parse(Abstractformat *f, pm_stream *stream, xx_pd_struct *pd) {
         added = &stream->items[stream->count - 1U];
         xx_rt_snprintf(added->name, sizeof(added->name), "%s",
                        members[i].name);
+        added->source_encrypted = encrypted;
+        added->compression_method = members[i].method;
+        if (encrypted) {
+            const uint8_t *recovered = i < stored ? cab_password : password;
+            size_t recovered_size = i < stored ? cab_password_size : password_size;
+            /* Publication follows validation of every member. The stream
+             * owns this copy and clears it independently of decoded data. */
+            added->password = (char *)xx_mem_alloc(recovered_size + 1U);
+            if (!added->password) goto done;
+            xx_mem_copy(added->password, recovered, recovered_size);
+            added->password[recovered_size] = '\0';
+        }
         added->memory = decoded[i];
         added->size = members[i].raw;
         decoded[i] = NULL;

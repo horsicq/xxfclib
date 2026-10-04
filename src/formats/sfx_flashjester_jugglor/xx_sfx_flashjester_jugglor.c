@@ -12,7 +12,7 @@
  * and a Jugglor chain must end in its 220-byte trailer, whose fields are
  * cross-checked as XArchive archives/xjugglor.cpp checks them (MIT License,
  * Copyright (c) 2026 hors): the overlay offset, the chain size, the member
- * count, the zero word, the sum of the unpacked sizes and the
+ * count, the version-specific reserved word, the sum of the unpacked sizes and the
  * "Jester Jugglor Version " string.  Walking forward, the payload does not
  * have to end the file, so an embedded bundle is found as well.
  *
@@ -467,7 +467,9 @@ static bool jg_member_parse(const uint8_t *h, size_t avail, uint32_t variant,
 
 static bool jg_trailer_parse(const uint8_t *t, const jg_layout *layout,
                              int64_t position, char *version) {
+    static const char legacy_version[] = "Jester Jugglor Version 1.01";
     uint32_t length = t[JG_TRAILER_VERSION_AT], index;
+    uint32_t reserved = jg_le32(t + 16U);
     const uint8_t *text = t + JG_TRAILER_VERSION_AT + 1U;
     size_t prefix = sizeof(JG_VERSION_PREFIX) - 1U;
     if (layout->overlay > (int64_t)UINT32_MAX ||
@@ -475,13 +477,18 @@ static bool jg_trailer_parse(const uint8_t *t, const jg_layout *layout,
         jg_le32(t + 4U) != (uint32_t)layout->overlay ||
         jg_le32(t + 8U) != (uint32_t)(position - layout->overlay) ||
         (uint64_t)jg_le32(t + 12U) != layout->count ||
-        jg_le32(t + 16U) != 0U ||
         jg_le32(t + 20U) != (uint32_t)layout->unpacked ||
         length < prefix || length > JG_TRAILER_VERSION_MAX)
         return false;
     for (index = 0U; index < length; ++index)
         if (text[index] < 0x20U || text[index] > 0x7EU) return false;
     if (xx_rt_memcmp(text, JG_VERSION_PREFIX, prefix) != 0) return false;
+    /* The observed 1.01 builder writes 797 here; later builds write zero.
+     * No interpretation of other nonzero values is established. */
+    if (reserved != 0U &&
+        (reserved != 797U || length != sizeof(legacy_version) - 1U ||
+         xx_rt_memcmp(text, legacy_version, sizeof(legacy_version) - 1U)))
+        return false;
     xx_rt_memcpy(version, text + prefix, length - prefix);
     version[length - prefix] = 0;
     return true;

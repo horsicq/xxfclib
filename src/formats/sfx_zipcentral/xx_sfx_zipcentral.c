@@ -5,6 +5,7 @@
  */
 #include "xxfclib/formats/sfx_zipcentral/xx_sfx_zipcentral.h"
 #include "../sfx_arcv2/xx_sixth_wrapper_table.h"
+#include "xx_demolition_password.h"
 
 /* A complete ZIP directory authenticates the payload independently of the
  * executable image. Some UPX PEs claim SizeOfHeaders=4096 while their first
@@ -417,12 +418,33 @@ static xx_archive_record_state *w5_records(Abstractformat *f,
                                             xx_pd_struct *pd) {
     xx_sfx_zipcentral *r = (xx_sfx_zipcentral *)f;
     xx_archive_record_state *state;
+    w5_demo_state *demo;
     if (!w5_ensure(r, pd)) return pm_create_records(f, opts, pd);
     state = xx_zip_create_archive_records_reading(&r->inner.format, opts, pd);
-    if (state && !w5_normalize_record(r, state, pd)) {
+    if (!state) return NULL;
+    /* NULL-format API calls must keep using the wrapper callbacks, including
+     * the private ZIP-state adapter and current outer parameter precedence. */
+    state->format = f;
+    demo = (w5_demo_state *)xx_mem_alloc(sizeof(*demo));
+    if (!demo) {
         xx_zip_free_archive_records_reading(&r->inner.format, state);
         return NULL;
     }
+    xx_mem_zero(demo, sizeof(*demo));
+    demo->preferred = -1;
+    demo->remaining_work = UINT64_C(1073741824);
+    w5_demo_locate(f, demo, pd);
+    if (!w5_normalize_record(r, state, pd) ||
+        !w5_demo_record(r, state, demo, pd)) {
+        w5_demo_free(demo);
+        xx_zip_free_archive_records_reading(&r->inner.format, state);
+        return NULL;
+    }
+    if (demo->count) {
+        demo->zip_state = state->internal_state;
+        demo->zip_free = state->free_internal;
+        w5_demo_attach(state, demo);
+    } else w5_demo_free(demo);
     return state;
 }
 static const xx_archive_record *w5_current(Abstractformat *f,
@@ -435,16 +457,57 @@ static const xx_archive_record *w5_current(Abstractformat *f,
 static bool w5_next(Abstractformat *f, xx_archive_record_state *state,
                     xx_pd_struct *pd) {
     xx_sfx_zipcentral *r = (xx_sfx_zipcentral *)f;
+    w5_demo_state *demo;
+    bool result;
     if (!r->inner_ready) return pm_next(f, state, pd);
-    return xx_zip_archive_record_move_to_next(&r->inner.format, state, pd) &&
-           w5_normalize_record(r, state, pd);
+    demo = w5_demo_detach(state);
+    result = xx_zip_archive_record_move_to_next(&r->inner.format, state, pd) &&
+             w5_normalize_record(r, state, pd) &&
+             w5_demo_record(r, state, demo, pd);
+    if (demo) w5_demo_attach(state, demo);
+    return result;
 }
 static bool w5_unpack(Abstractformat *f, xx_archive_record_state *state,
                       xx_pd_struct *pd) {
     xx_sfx_zipcentral *r = (xx_sfx_zipcentral *)f;
-    return r->inner_ready
-               ? xx_zip_unpack_current_archive_record(&r->inner.format, state, pd)
-               : pm_unpack(f, state, pd);
+    w5_demo_state *demo;
+    xx_list_s saved_options, saved_parameters, options;
+    const char *recovered;
+    bool result;
+    size_t i;
+    if (!r->inner_ready) return pm_unpack(f, state, pd);
+    if (!state || !state->has_record || wg_stop(pd)) return false;
+    demo = w5_demo_detach(state);
+    saved_options = state->options;
+    saved_parameters = r->inner.format.list_extra_parameters;
+    /* The outer parameters are borrowed only for this synchronous operation.
+     * Clearing/replacing an outer password never leaves a stale child value. */
+    r->inner.format.list_extra_parameters = f->list_extra_parameters;
+    recovered = xx_archive_record_get_meta_str(&state->current_record,
+                                                XX_META_ID_PASSWORD);
+    xx_list_init(&options, sizeof(xx_meta), NULL);
+    if (recovered && !xx_format_resolve_extra_parameter(
+            f, &saved_options, XX_META_ID_OPT_PASSWORD)) {
+        xx_meta password;
+        for (i = 0; i < saved_options.count; ++i) {
+            const xx_meta *item = (const xx_meta *)xx_list_at(&saved_options, i);
+            if (!item || !xx_list_append(&options, item)) goto failed;
+        }
+        xx_meta_init(&password, XX_META_ID_OPT_PASSWORD);
+        xx_var_set_str_view(&password.var, recovered, xx_rt_strlen(recovered));
+        if (!xx_list_append(&options, &password)) goto failed;
+        state->options = options;
+    }
+    result = xx_zip_unpack_current_archive_record(&r->inner.format, state, pd);
+    goto done;
+failed:
+    result = false;
+done:
+    state->options = saved_options;
+    r->inner.format.list_extra_parameters = saved_parameters;
+    xx_list_cleanup(&options);
+    if (demo) w5_demo_attach(state, demo);
+    return result;
 }
 static void w5_free_records(Abstractformat *f, xx_archive_record_state *state) {
     xx_sfx_zipcentral *r = (xx_sfx_zipcentral *)f;

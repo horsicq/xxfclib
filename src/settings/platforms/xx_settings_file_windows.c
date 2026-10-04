@@ -3,6 +3,7 @@
  */
 #if defined(_WIN32)
 #include "xx_settings_platform.h"
+#include "../../io/xx_io_policy.h"
 #include <windows.h>
 
 static WCHAR *absolute_path(const char *path) {
@@ -63,6 +64,7 @@ xxfc_status_t xx_settings_platform_read_file(const char *path, char **text, size
 }
 
 xxfc_status_t xx_settings_platform_write_file(const char *path, const char *text, size_t size) {
+    if (!xx_io_policy_mutation_allowed()) return XXFC_ERR_IO;
     WCHAR *wide = absolute_path(path), *temporary;
     HANDLE file = INVALID_HANDLE_VALUE;
     DWORD written = 0;

@@ -5,6 +5,7 @@
 #include "xxfclib/formats/ace/xx_ace.h"
 #include "xx_ace_dec.h"
 #include "xxfclib/algo/store/xx_store.h"
+#include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
@@ -30,6 +31,28 @@ static uint16_t ace_u16(const uint8_t *p){return (uint16_t)(p[0]|((uint16_t)p[1]
 static uint32_t ace_u32(const uint8_t *p){return (uint32_t)p[0]|((uint32_t)p[1]<<8)|((uint32_t)p[2]<<16)|((uint32_t)p[3]<<24);}
 static uint64_t ace_u64(const uint8_t *p){return (uint64_t)ace_u32(p)|((uint64_t)ace_u32(p+4)<<32);}
 static bool ace_read(xx_io_device *d,int64_t off,void *out,size_t n){size_t at=0;uint8_t *p=(uint8_t *)out;if(!d||(!out&&n)||off<0||off>LONG_MAX||xx_io_seek(d,(long)off,SEEK_SET)!=0)return false;while(at<n){ssize_t got=xx_io_read(d,p+at,n-at);if(got<=0||(size_t)got>n-at)return false;at+=(size_t)got;}return true;}
+/* ACE stores the complement of the ordinary ISO-HDLC/PKZIP checksum. */
+static bool ace_crc_matches(const void *bytes, size_t size, uint32_t expected) {
+    return (xx_crc32_calc(0U, bytes, size) ^ UINT32_MAX) == expected;
+}
+static bool ace_stored_verify(Abstractformat *s, const ace_entry *e,
+                               xx_pd_struct *pd) {
+    uint8_t buffer[65536];
+    uint64_t left = e->packed_size;
+    int64_t cursor = e->data_offset;
+    uint32_t crc = 0U;
+    if (e->packed_size != e->unpacked_size || e->packed_size > INT64_MAX)
+        return false;
+    while (left) {
+        size_t amount = left < sizeof(buffer) ? (size_t)left : sizeof(buffer);
+        if ((pd && xx_pd_is_stopped(pd)) ||
+            !ace_read(s->device, cursor, buffer, amount)) return false;
+        crc = xx_crc32_calc(crc, buffer, amount);
+        cursor += (int64_t)amount;
+        left -= amount;
+    }
+    return !(pd && xx_pd_is_stopped(pd)) && (crc ^ UINT32_MAX) == e->crc32;
+}
 static bool ace_name_ok(const char *s){const char *start,*p;if(!s||!*s||*s=='/'||*s=='\\')return false;start=s;for(p=s;;++p){unsigned char c=(unsigned char)*p;size_t n;if(c==':'||c=='<'||c=='>'||c=='"'||c=='|'||c=='?'||c=='*'||(c&&c<32))return false;if(c!='/'&&c!='\\'&&c)continue;n=(size_t)(p-start);if(!n||(n==1&&start[0]=='.')||(n==2&&start[0]=='.'&&start[1]=='.'))return false;if(!c)return true;start=p+1;}}
 static void ace_cleanup(ace_parsed *p){size_t i;if(!p)return;for(i=0;i<p->count;i++)xx_str_free(p->entries[i].name);xx_mem_free(p->entries);xx_mem_zero(p,sizeof(*p));p->end=-1;}
 static bool ace_append(ace_parsed *p,ace_entry *e){ace_entry *grown;size_t cap;if(!p||!e||!e->name||p->count>=ACE_MAX_ENTRIES)return false;if(p->count==p->capacity){cap=p->capacity?p->capacity*2U:32U;if(cap<p->count||cap>SIZE_MAX/sizeof(*p->entries))return false;grown=(ace_entry *)xx_mem_realloc(p->entries,cap*sizeof(*p->entries));if(!grown)return false;p->entries=grown;p->capacity=cap;}p->entries[p->count++]=*e;xx_mem_zero(e,sizeof(*e));return true;}
@@ -83,7 +106,8 @@ static bool ace_decode_solid_to(Abstractformat *s, ace_stream *x,
                 e->packed_size > SIZE_MAX) break;
             packed = (uint8_t *)xx_mem_alloc((size_t)e->packed_size);
             if (!packed || !ace_read(s->device, e->data_offset, packed,
-                                     (size_t)e->packed_size)) {
+                                     (size_t)e->packed_size) ||
+                !ace_crc_matches(packed, (size_t)e->packed_size, e->crc32)) {
                 xx_mem_free(packed);
                 break;
             }
@@ -120,6 +144,7 @@ static bool ace_decode_solid_to(Abstractformat *s, ace_stream *x,
                                         (size_t)e->unpacked_size,
                                         (unsigned)(e->parameter & 15U) + 10U,
                                         &x->solid_history);
+        if (ok) ok = ace_crc_matches(plain, (size_t)e->unpacked_size, e->crc32);
         if (i != target) {
             xx_mem_free(packed);
             xx_mem_free(plain);
@@ -145,5 +170,88 @@ static bool ace_decode_entry(Abstractformat *s, ace_stream *x,
                                      (size_t)e->unpacked_size, bits);
     return false;
 }
-bool xx_ace_unpack_current_archive_record(Abstractformat *s,xx_archive_record_state *st,xx_pd_struct *pd){ace_stream *x;const ace_entry *e;const xx_var *o;const char *base;char *dest=NULL;bool ok=false,created=false;if(!s||!st||st->format!=s||!st->has_record||(pd&&xx_pd_is_stopped(pd)))return false;x=(ace_stream *)st->internal_state;e=&x->parsed.entries[x->index];if(e->method>2U||(e->flags&(ACE_PASSWORD|ACE_SPLIT))||e->packed_size>SIZE_MAX||e->unpacked_size>SIZE_MAX)return false;o=ace_option(&st->options,XX_META_ID_OPT_UNPACK_PATH);if(!o)return true;base=xx_var_get_str(o);if(!base||!ace_name_ok(e->name))return false;dest=xx_str_concat(base,"/");if(!dest)goto done;{char *joined=xx_str_concat(dest,e->name);xx_str_free(dest);dest=joined;}if(!dest)goto done;if((e->attributes&ACE_DIRECTORY)!=0U)ok=xx_store_create_dirs_a(dest,true);else if(xx_store_create_dirs_a(dest,false)){if(e->method==0U)ok=e->packed_size==e->unpacked_size&&e->packed_size<=INT64_MAX&&xx_store_unpack_device_to_file(s->device,e->data_offset,(int64_t)e->packed_size,dest,pd);else if(!e->packed_size&&!e->unpacked_size){xx_io_device *out=xx_io_file_open(dest,"wb");if(out){ok=true;xx_io_close(out);}}else{uint8_t *packed=(uint8_t *)xx_mem_alloc((size_t)e->packed_size);uint8_t *plain=(uint8_t *)xx_mem_alloc(e->unpacked_size?(size_t)e->unpacked_size:1U);xx_io_device *out=NULL;if(packed&&plain&&ace_read(s->device,e->data_offset,packed,(size_t)e->packed_size)&&ace_decode_entry(s,x,e,packed,plain,pd)){size_t at=0;out=xx_io_file_open(dest,"wb");if(out){created=true;ok=true;while(at<(size_t)e->unpacked_size){ssize_t wrote=xx_io_write(out,plain+at,(size_t)e->unpacked_size-at);if(wrote<=0){ok=false;break;}at+=(size_t)wrote;}xx_io_close(out);}}xx_mem_free(packed);xx_mem_free(plain);}}if(!ok&&created)xx_rt_remove(dest);done:xx_str_free(dest);return ok;}
+bool xx_ace_unpack_current_archive_record(Abstractformat *s,
+                                          xx_archive_record_state *st,
+                                          xx_pd_struct *pd) {
+    ace_stream *x;
+    const ace_entry *e;
+    const xx_var *o, *limit;
+    const char *base;
+    char *dest = NULL;
+    uint8_t *packed = NULL, *plain = NULL;
+    bool ok = false, created = false;
+    uint64_t memory_limit = UINT64_C(256) * 1024U * 1024U;
+    if (!s || !st || st->format != s || !st->has_record ||
+        !st->internal_state || (pd && xx_pd_is_stopped(pd))) return false;
+    x = (ace_stream *)st->internal_state;
+    if (x->index >= x->parsed.count) return false;
+    e = &x->parsed.entries[x->index];
+    if (e->method > 2U || (e->flags & (ACE_PASSWORD | ACE_SPLIT)) ||
+        e->packed_size > SIZE_MAX || e->unpacked_size > SIZE_MAX) return false;
+    limit = xx_format_resolve_extra_parameter(s, &st->options,
+                                               XX_META_ID_OPT_MAX_MEMBER_SIZE);
+    if (limit && e->unpacked_size > xx_var_get_u64(limit)) return false;
+    o = ace_option(&st->options, XX_META_ID_OPT_UNPACK_PATH);
+    /* Validation always reads/decodes and verifies content before any output
+     * is opened. No destination means the verified bytes are discarded. */
+    if ((e->attributes & ACE_DIRECTORY) != 0U) {
+        if (e->packed_size || e->unpacked_size) return false;
+    } else if (e->method == 0U) {
+        if (!ace_stored_verify(s, e, pd)) return false;
+    } else if (!e->packed_size && !e->unpacked_size) {
+        if (!ace_crc_matches(NULL, 0U, e->crc32)) return false;
+    } else {
+        limit = xx_format_resolve_extra_parameter(s, &st->options,
+                                                  XX_META_ID_OPT_MEMORY_LIMIT);
+        if (limit) memory_limit = xx_var_get_u64(limit);
+        if (e->packed_size > memory_limit ||
+            e->unpacked_size > memory_limit - e->packed_size) return false;
+        packed = (uint8_t *)xx_mem_alloc(e->packed_size ?
+                                           (size_t)e->packed_size : 1U);
+        plain = (uint8_t *)xx_mem_alloc(e->unpacked_size ?
+                                          (size_t)e->unpacked_size : 1U);
+        if (!packed || !plain ||
+            !ace_read(s->device, e->data_offset, packed, (size_t)e->packed_size) ||
+            !ace_decode_entry(s, x, e, packed, plain, pd) ||
+            !ace_crc_matches(plain, (size_t)e->unpacked_size, e->crc32) ||
+            (pd && xx_pd_is_stopped(pd))) goto done;
+    }
+    if (!o) { ok = true; goto done; }
+    base = xx_var_get_str(o);
+    if (!base || !ace_name_ok(e->name)) goto done;
+    dest = xx_str_concat3(base, "/", e->name);
+    if (!dest) goto done;
+    if ((e->attributes & ACE_DIRECTORY) != 0U) {
+        ok = xx_store_create_dirs_a(dest, true);
+    } else if (xx_store_create_dirs_a(dest, false)) {
+        if (e->method == 0U) {
+            ok = xx_store_unpack_device_to_file(s->device, e->data_offset,
+                                                (int64_t)e->packed_size, dest, pd);
+        } else {
+            xx_io_device *out = xx_io_file_open(dest, "wb");
+            if (out) {
+                size_t at = 0U;
+                created = true;
+                ok = true;
+                while (at < (size_t)e->unpacked_size) {
+                    ssize_t wrote;
+                    if (pd && xx_pd_is_stopped(pd)) { ok = false; break; }
+                    wrote = xx_io_write(out, plain + at,
+                                        (size_t)e->unpacked_size - at);
+                    if (wrote <= 0 || (size_t)wrote > (size_t)e->unpacked_size - at) {
+                        ok = false; break;
+                    }
+                    at += (size_t)wrote;
+                }
+                if (xx_io_close(out) != 0) ok = false;
+            }
+        }
+    }
+done:
+    if (!ok && created) xx_rt_remove(dest);
+    xx_mem_free(packed);
+    xx_mem_free(plain);
+    xx_str_free(dest);
+    return ok;
+}
 void xx_ace_free_archive_records_reading(Abstractformat *s,xx_archive_record_state *st){(void)s;xx_archive_record_state_free(st);}

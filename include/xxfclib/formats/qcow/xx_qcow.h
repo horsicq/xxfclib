@@ -55,8 +55,10 @@
  * back into the L1 table - turns into recursion or into a large allocation.
  *
  * QCOW version 1 has an unrelated header and is rejected rather than guessed
- * at; see xx_qcow.c. Encrypted images (crypt_method != 0) are listed but
- * never decrypted.
+ * at; see xx_qcow1. Legacy AES-CBC and detached LUKS1 encrypted payloads
+ * accept an explicitly supplied OPT_PASSWORD. Legacy QCOW encryption has no
+ * authentication/password verifier; LUKS1 verifies the recovered master key.
+ * NULL-destination decoding validates every stored guest cluster in RAM.
  */
 
 #ifndef XXFCLIB_FORMAT_QCOW_H

@@ -138,35 +138,41 @@ static bool xx_corelltec_range_within(int64_t total, int64_t offset,
            size <= total - offset;
 }
 
-/* Names are 8.3, upper case, and the corpus uses only A-Z 0-9 '.' '_'. The
- * format stores no directories, so a path separator means the record is not a
- * record rather than that the member lives in a subdirectory. */
+/* Names can contain relative DOS subpaths, e.g. CSI\HCP_UTIV.CS_.  Validate
+ * each component before normalizing the separators for the extraction API. */
 static bool xx_corelltec_name_valid(const uint8_t *name, size_t size) {
-    size_t index;
+    size_t index, component = 0U;
 
     if (size < (size_t)XX_CORELLTEC_MIN_NAME_LENGTH ||
         size > (size_t)XX_CORELLTEC_MAX_NAME_LENGTH) {
         return false;
     }
-    for (index = 0U; index < size; ++index) {
-        const uint8_t character = name[index];
+    for (index = 0U; index <= size; ++index) {
+        const uint8_t character = index < size ? name[index] : 0U;
+        if (character == '/' || character == '\\' || index == size) {
+            const size_t length = index - component;
+            if (length == 0U ||
+                (length == 1U && name[component] == '.') ||
+                (length == 2U && name[component] == '.' &&
+                 name[component + 1U] == '.') ||
+                name[index - 1U] == '.' || name[index - 1U] == ' ')
+                return false;
+            component = index + 1U;
+            continue;
+        }
         if (character < 0x20U || character > 0x7eU) return false;
-        if (character == '/' || character == '\\' || character == ':') {
+        if (character == ':' || character == '<' || character == '>' ||
+            character == '"' || character == '|' || character == '*' ||
+            character == '?') {
             return false;
         }
     }
     return true;
 }
 
-/* The name check above already refuses every separator, so this only has to
- * catch the two relative names that are otherwise well formed. */
 static bool xx_corelltec_path_safe(const char *name) {
-    if (!name || !name[0]) return false;
-    if (name[0] == '.' &&
-        (name[1] == '\0' || (name[1] == '.' && name[2] == '\0'))) {
-        return false;
-    }
-    return true;
+    return name && xx_corelltec_name_valid((const uint8_t *)name,
+                                           xx_str_len(name));
 }
 
 static void xx_corelltec_stream_free(void *pointer) {
@@ -347,6 +353,8 @@ static xx_corelltec_stream *xx_corelltec_parse(Abstractformat *self,
         name = (char *)xx_mem_alloc((size_t)name_size);
         if (!name) goto fail;
         xx_rt_memcpy(name, name_field, (size_t)name_size);
+        for (index = 0U; index + 1U < (size_t)name_size; ++index)
+            if (name[index] == '\\') name[index] = '/';
         xx_mem_free(name_field);
         name_field = NULL;
 

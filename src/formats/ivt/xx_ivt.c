@@ -16,9 +16,11 @@
  *   0x2A  u16 LE  level count
  *   0x2C  u32 LE  total entries
  *
- * The pages follow, each exactly 0x2000 bytes. The page whose ordinal equals
- * the level count is the index page and carries no file entries; every other
- * page is a leaf. A leaf opens with a 12-byte node header whose first u16 is
+ * The pages follow, each exactly 0x2000 bytes. The root page index at +0x1e
+ * and level count describe the tree; index pages can occur at any ordinal.
+ * Index nodes carry a first child followed by name/child separators. A leaf
+ * opens with a 12-byte node header (unused bytes, count, previous, next).
+ * Its first u16 is
  * the page's unused tail, and then packs entries end to end:
  *
  *   u8       name length, never zero
@@ -259,6 +261,89 @@ static bool xx_ivt_read_leb128(const uint8_t *page, int64_t *position,
     return true;
 }
 
+/* InfoViewer orders its ASCII directory keys without case distinction. */
+static int xx_ivt_key_compare(const uint8_t *left, size_t left_size,
+                               const uint8_t *right, size_t right_size) {
+    size_t i, common = left_size < right_size ? left_size : right_size;
+    for (i = 0U; i < common; ++i) {
+        uint8_t a = left[i], b = right[i];
+        if (a >= 'A' && a <= 'Z') a += 'a' - 'A';
+        if (b >= 'A' && b <= 'Z') b += 'a' - 'A';
+        if (a != b) return a < b ? -1 : 1;
+    }
+    return left_size == right_size ? 0 : (left_size < right_size ? -1 : 1);
+}
+
+typedef struct xx_ivt_tree_s {
+    Abstractformat *format;
+    xx_pd_struct *pd;
+    int64_t pages_offset;
+    uint32_t pages;
+    uint8_t *visited;
+    uint32_t visited_count;
+    uint32_t *leaves;
+    uint32_t leaf_count;
+} xx_ivt_tree;
+
+/* The depth determines the node layout. Following the root's child graph
+ * also proves that each page occurs once, rather than guessing node kinds
+ * from a page ordinal or from bytes that happen to resemble a leaf. */
+static bool xx_ivt_walk_tree(xx_ivt_tree *tree, uint32_t ordinal,
+                              unsigned depth, uint8_t *first_key,
+                              size_t *first_size) {
+    uint8_t *page = NULL;
+    uint16_t count, unused;
+    int64_t position;
+    size_t index;
+    bool ok = false;
+    if (ordinal >= tree->pages || tree->visited[ordinal] ||
+        (tree->pd && xx_pd_is_stopped(tree->pd))) return false;
+    tree->visited[ordinal] = 1U;
+    ++tree->visited_count;
+    page = (uint8_t *)xx_mem_alloc(XX_IVT_PAGE_SIZE);
+    if (!page || !xx_ivt_read_at(tree->format,
+            tree->format->base_address + tree->pages_offset +
+                (int64_t)ordinal * XX_IVT_PAGE_SIZE,
+            page, XX_IVT_PAGE_SIZE)) goto done;
+    unused = xx_ivt_le16(page);
+    count = xx_ivt_le16(page + 2);
+    if (count == 0U || unused > XX_IVT_PAGE_SIZE - 12) goto done;
+    if (depth == 0U) {
+        size_t length = page[12];
+        if (length == 0U || length > XX_IVT_PAGE_SIZE - 13U) goto done;
+        xx_mem_copy(first_key, page + 13, length);
+        *first_size = length;
+        tree->leaves[tree->leaf_count++] = ordinal;
+        ok = true;
+        goto done;
+    }
+    if (!xx_ivt_walk_tree(tree, xx_ivt_le32(page + 4), depth - 1U,
+                           first_key, first_size)) goto done;
+    position = 8;
+    for (index = 0U; index < count; ++index) {
+        uint8_t key[255], child_key[255];
+        size_t length, child_size;
+        uint32_t child;
+        if (position >= XX_IVT_PAGE_SIZE) goto done;
+        length = page[position++];
+        if (length == 0U || length + 4U >
+                (size_t)(XX_IVT_PAGE_SIZE - position)) goto done;
+        xx_mem_copy(key, page + position, length);
+        position += (int64_t)length;
+        child = xx_ivt_le32(page + position);
+        position += 4;
+        if (!xx_ivt_walk_tree(tree, child, depth - 1U,
+                               child_key, &child_size) ||
+            xx_ivt_key_compare(key, length, child_key, child_size) != 0)
+            goto done;
+    }
+    if (position + unused != XX_IVT_PAGE_SIZE) goto done;
+    ok = true;
+done:
+    xx_mem_free(page);
+    return ok;
+}
+
 static xx_ivt_stream *xx_ivt_parse(Abstractformat *self, xx_pd_struct *pd) {
     xx_ivt_stream *stream = NULL;
     uint8_t *page = NULL;
@@ -274,7 +359,11 @@ static xx_ivt_stream *xx_ivt_parse(Abstractformat *self, xx_pd_struct *pd) {
     int64_t total_entries;
     int64_t seen_entries = 0;
     int64_t page_index;
+    uint32_t leaf_ordinal;
     uint16_t levels;
+    xx_ivt_tree tree;
+
+    xx_mem_zero(&tree, sizeof(tree));
 
     if (!self || !self->device || self->base_address < 0) return NULL;
     total = xx_io_total_size(self->device);
@@ -311,6 +400,7 @@ static xx_ivt_stream *xx_ivt_parse(Abstractformat *self, xx_pd_struct *pd) {
     total_entries = (int64_t)(int32_t)xx_ivt_le32(btree + 0x2C);
     if (total_pages <= 0 || total_pages > XX_IVT_MAX_PAGES) return NULL;
     if (total_entries <= 0 || total_entries > XX_IVT_MAX_MEMBERS) return NULL;
+    if (levels == 0U || levels > 32U || levels > total_pages) return NULL;
 
     pages_offset = directory_offset + XX_IVT_BTREE_HEADER_SIZE;
     if (!xx_ivt_range_within(span, pages_offset,
@@ -324,16 +414,31 @@ static xx_ivt_stream *xx_ivt_parse(Abstractformat *self, xx_pd_struct *pd) {
     page = (uint8_t *)xx_mem_alloc((size_t)XX_IVT_PAGE_SIZE);
     if (!page) goto fail;
 
-    for (page_index = 0; page_index < total_pages; ++page_index) {
+    tree.format = self;
+    tree.pd = pd;
+    tree.pages_offset = pages_offset;
+    tree.pages = (uint32_t)total_pages;
+    tree.visited = (uint8_t *)xx_mem_calloc((size_t)total_pages, 1U);
+    tree.leaves = (uint32_t *)xx_mem_alloc((size_t)total_pages * sizeof(uint32_t));
+    if (!tree.visited || !tree.leaves) goto fail;
+    {
+        uint8_t first_key[255];
+        size_t first_size;
+        if (!xx_ivt_walk_tree(&tree, xx_ivt_le32(btree + 0x1e),
+                               levels - 1U, first_key, &first_size) ||
+            tree.visited_count != tree.pages || tree.leaf_count == 0U ||
+            tree.leaves[tree.leaf_count - 1U] != xx_ivt_le32(btree + 0x1a))
+            goto fail;
+    }
+
+    for (leaf_ordinal = 0U; leaf_ordinal < tree.leaf_count; ++leaf_ordinal) {
         int64_t position;
         int64_t unused;
         int64_t entry_count;
         int64_t entry;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        /* The page whose ordinal equals the level count is the index page: it
-         * holds no file entries, and its layout is not the leaf layout. */
-        if (page_index == (int64_t)levels) continue;
+        page_index = tree.leaves[leaf_ordinal];
 
         if (!xx_ivt_read_at(self,
                             self->base_address + pages_offset +
@@ -343,6 +448,11 @@ static xx_ivt_stream *xx_ivt_parse(Abstractformat *self, xx_pd_struct *pd) {
         }
         unused = (int64_t)xx_ivt_le16(page);
         entry_count = (int64_t)xx_ivt_le16(page + 2);
+        if (xx_ivt_le32(page + 4) !=
+                (leaf_ordinal ? tree.leaves[leaf_ordinal - 1U] : UINT32_MAX) ||
+            xx_ivt_le32(page + 8) !=
+                (leaf_ordinal + 1U < tree.leaf_count
+                    ? tree.leaves[leaf_ordinal + 1U] : UINT32_MAX)) goto fail;
         if (unused > XX_IVT_PAGE_SIZE - XX_IVT_NODE_HEADER_SIZE) goto fail;
         if (seen_entries + entry_count > total_entries) goto fail;
 
@@ -447,11 +557,15 @@ static xx_ivt_stream *xx_ivt_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (pd && xx_pd_is_stopped(pd)) goto fail;
 
     xx_mem_free(page);
+    xx_mem_free(tree.visited);
+    xx_mem_free(tree.leaves);
     stream->archive_size = span;
     return stream;
 
 fail:
     xx_mem_free(page);
+    xx_mem_free(tree.visited);
+    xx_mem_free(tree.leaves);
     xx_str_free(name);
     xx_ivt_stream_free(stream);
     return NULL;

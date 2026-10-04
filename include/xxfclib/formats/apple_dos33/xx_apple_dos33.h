@@ -1,7 +1,7 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  * Native read-only Apple DOS3.3 filesystem for raw16-sector logical images.
- * Supports18–50 tracks, DOS sector order and ProDOS block order. AUTO parses
+ * Supports18–80 tracks, DOS sector order and ProDOS block order. AUTO parses
  * both orders and refuses ambiguity; explicit selection handles empty disks.
  * VTOC, catalog allocation, catalog sector counts and all T/S lists are
  * validated, including sparse maps, loops, crosslinks and source bounds.
@@ -23,7 +23,8 @@
  * fixed sector/member views, iterator and transfer buffer (at most64KiB).
  * Operation options override format-wide options. Generic metadata/options
  * bookkeeping and the caller's device storage are outside this memory budget.
- * No13/32-sector,80-half-track, nibble/flux, deleted recovery or disk writing.
+ * Basis 108 80-track volumes use their two-byte-per-track allocation bitmap.
+ * No13/32-sector, nibble/flux, deleted recovery or disk writing.
  * The DDD image decoder is a separate outer format, not this filesystem.
  * References: Beneath Apple DOS (5th printing); The DOS Manual;
  * https://ciderpress2.com/formatdoc/DOS-notes.html

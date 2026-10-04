@@ -1,7 +1,7 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  */
-/** @file xx_lpaq8.h @brief LPAQ8 compressed stream reader (identification only). */
+/** @file xx_lpaq8.h @brief LPAQ8 compressed stream reader (RAM-only decoding). */
 
 #ifndef XXFCLIB_FORMAT_LPAQ8_H
 #define XXFCLIB_FORMAT_LPAQ8_H
@@ -18,15 +18,18 @@ extern "C" {
  * LPAQ8 is Matt Mahoney's lightweight PAQ variant. Unlike BCM the container
  * carries a real nine-byte header -- magic, a memory-level digit, the original
  * size and a data mode -- so those are reported here. What follows is a single
- * context-mixing bitstream, which this reader does not decode; XArchive takes
- * the same position, handing the payload to an external backend.
+ * context-mixing bitstream, which this reader decodes with a separately licensed
+ * RAM-only helper. The decoded stream is exposed as one archive member.
  *
- * Because the payload cannot be produced, no archive record is advertised.
- * The stored original size is still worth having: it is what a caller needs to
- * decide whether unpacking is worth attempting elsewhere.
+ * A NULL destination still decodes the complete stream under the operation's
+ * memory limit. This wire format does not contain a payload checksum.
  */
 typedef struct xx_lpaq8 {
     Abstractformat format;
+    const xx_list_s *parse_options;
+    uint64_t number_of_records;
+    bool incomplete;
+    const char *note;
     uint8_t level;             /**< Memory level, the ASCII digit decoded to 0..9. */
     uint8_t data_mode;         /**< Stored mode byte, 0..2. */
     uint32_t uncompressed_size; /**< Original size in bytes, big-endian in the file. */

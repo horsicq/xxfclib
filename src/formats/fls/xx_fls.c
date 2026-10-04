@@ -20,7 +20,7 @@
  *     +0x01  u8  compression flag, 0 = stored, 1 = FLS-LZ
  *     +0x02  four bytes 00 00 00 01       member tag, only these four
  *            bytes are invariant
- *     +0x06  u8  0x20 or 0x00
+ *     +0x06  u8  0x20, 0x21 or 0x00
  *     +0x07  u8  free-form ASCII letter, NOT constrained (see below)
  *     +0x08  u32 LE name reference: byte offset, from the start of the name
  *            block, of this member's array of path-component pointers
@@ -318,7 +318,7 @@ static xx_fls_stream *xx_fls_parse(Abstractformat *self, xx_pd_struct *pd) {
         }
 
         /* Only the first four bytes of the member tag are invariant. Across
-         * the reference corpus the fifth is 0x20 or 0x00 and the sixth is a
+         * the reference corpus the fifth is 0x20, 0x21 or 0x00 and the sixth is a
          * free-form ASCII letter taking at least ten values, so pinning the
          * pair rejects the majority of otherwise identical archives. Do not
          * "tighten" byte +0x07. */
@@ -326,7 +326,8 @@ static xx_fls_stream *xx_fls_parse(Abstractformat *self, xx_pd_struct *pd) {
             record[4] != 0x00U || record[5] != 0x01U) {
             goto fail;
         }
-        if (record[6] != 0x20U && record[6] != 0x00U) goto fail;
+        if (record[6] != 0x20U && record[6] != 0x21U && record[6] != 0x00U)
+            goto fail;
 
         compression_flag = record[1];
         name_reference = (int64_t)xx_fls_le32(record + 8);

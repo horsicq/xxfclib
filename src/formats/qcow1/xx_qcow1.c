@@ -24,6 +24,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "../xx_disk_crypto_private.h"
 
 #ifdef QCOW1
 #define XX_QCOW1_FILE_TYPE XX_FILE_TYPE_QCOW1
@@ -55,9 +56,6 @@
 
 /* Output staging buffer; a multiple of every legal cluster size. */
 #define XX_QCOW1_STAGE_SIZE ((size_t)1 << 20)
-
-/* Clusters decoded by an unpack call that has no destination. */
-#define XX_QCOW1_PROBE_CLUSTERS UINT64_C(64)
 
 typedef struct xx_qcow1_private_s {
     uint64_t *l1_table;          /**< l1_size entries, host byte offsets. */
@@ -161,8 +159,8 @@ static char *xx_qcow1_read_backing_file(xx_io_device *device,
 
 /* ---------------------------------------------------------------- parse -- */
 
-static bool xx_qcow1_parse(Abstractformat *self, xx_qcow1_private *parsed,
-                           xx_pd_struct *pd) {
+static bool xx_qcow1_parse_impl(Abstractformat *self, xx_qcow1_private *parsed,
+                           const xx_list_s *options, xx_pd_struct *pd) {
     uint8_t header[XX_QCOW1_HEADER_SIZE];
     uint8_t *raw_l1 = NULL;
     int64_t total_size;
@@ -228,6 +226,9 @@ static bool xx_qcow1_parse(Abstractformat *self, xx_qcow1_private *parsed,
                                  (int64_t)bytes, &l1_at)) {
             goto fail;
         }
+        { uint64_t limit, live_bytes=0; const xx_qcow1_private *live=(const xx_qcow1_private*)((xx_qcow1*)self)->internal;
+          if(live) live_bytes=(uint64_t)live->l1_size*8U+sizeof(*live)+1024U;
+          if (!dc_limit(self, options, XX_META_ID_OPT_MEMORY_LIMIT, UINT64_MAX, &limit) || (uint64_t)bytes * 2U + sizeof(*parsed) + live_bytes > limit) goto fail; }
         raw_l1 = (uint8_t *)xx_mem_alloc(bytes);
         parsed->l1_table =
             (uint64_t *)xx_mem_calloc(parsed->l1_size, sizeof(uint64_t));
@@ -253,6 +254,11 @@ fail:
     return false;
 }
 
+static bool xx_qcow1_parse(Abstractformat *self, xx_qcow1_private *parsed, const xx_list_s *options, xx_pd_struct *pd) {
+    int64_t cursor=self&&self->device?xx_io_tell(self->device):-1; bool ok=xx_qcow1_parse_impl(self,parsed,options,pd);
+    if(cursor>=0&&xx_io_seek64(self->device,cursor,SEEK_SET)!=0) { xx_qcow1_private_cleanup(parsed); ok=false; } return ok;
+}
+
 /* --------------------------------------------------------------- reader -- */
 
 /* The L2 table the walk is currently in. At most 8 << 13 = 64 KB. */
@@ -268,7 +274,7 @@ typedef struct xx_qcow1_l2_cache_s {
 static bool xx_qcow1_read_cluster(Abstractformat *self,
                                   const xx_qcow1_private *parsed,
                                   uint64_t cluster_index, uint8_t *out,
-                                  uint8_t *scratch, xx_qcow1_l2_cache *cache) {
+                                  uint8_t *scratch, xx_qcow1_l2_cache *cache, dc_crypto *crypto, xx_pd_struct *pd) {
     uint64_t l1_index = cluster_index >> parsed->l2_bits;
     uint64_t l2_index = cluster_index & (((uint64_t)1 << parsed->l2_bits) - 1U);
     size_t l2_bytes = (size_t)8U << parsed->l2_bits;
@@ -294,6 +300,7 @@ static bool xx_qcow1_read_cluster(Abstractformat *self,
     if (entry == 0U) return true;
 
     if ((entry & XX_QCOW1_FLAG_COMPRESSED) != 0U) {
+        if (parsed->crypt_method != 0U) return false;
         uint32_t shift = 63U - parsed->cluster_bits;
         uint64_t host = entry & (((uint64_t)1 << shift) - 1U);
         uint64_t csize = (entry >> shift) & (uint64_t)(parsed->cluster_size - 1U);
@@ -319,11 +326,13 @@ static bool xx_qcow1_read_cluster(Abstractformat *self,
             !xx_qcow1_host_range(parsed, entry, 0, &at)) {
             return false;
         }
+        if (parsed->crypt_method != 0U) return false;
         tail = parsed->input_size - at;
         if (tail <= 0) return false;
         return xx_qcow1_read_at(self->device, at, out, (size_t)tail);
     }
-    return xx_qcow1_read_at(self->device, at, out, parsed->cluster_size);
+    if (!xx_qcow1_read_at(self->device, at, out, parsed->cluster_size)) return false;
+    return parsed->crypt_method == 0U || dc_decrypt(crypto, cluster_index * (uint64_t)parsed->cluster_size / 512U, out, parsed->cluster_size, pd);
 }
 
 static bool xx_qcow1_write_all(xx_io_device *output, const uint8_t *data,
@@ -338,13 +347,11 @@ static bool xx_qcow1_write_all(xx_io_device *output, const uint8_t *data,
     return true;
 }
 
-/* Walk the guest address space. With no output only the first
- * XX_QCOW1_PROBE_CLUSTERS clusters are decoded: the virtual size is a header
- * field and may claim terabytes in a tiny file. Output is staged in a 1 MB
- * buffer (a whole number of clusters) so the device sees few large writes. */
+/* Walk every guest cluster. A NULL destination verifies all stored clusters.
+ * Output is staged in a 1 MB buffer; absent sparse L1 extents are skipped. */
 static bool xx_qcow1_write_image(Abstractformat *self,
                                  const xx_qcow1_private *parsed,
-                                 xx_io_device *output, xx_pd_struct *pd) {
+                                 xx_io_device *output, dc_crypto *crypto, xx_pd_struct *pd) {
     uint8_t *stage;
     uint8_t *scratch;
     xx_qcow1_l2_cache cache;
@@ -352,7 +359,7 @@ static bool xx_qcow1_write_image(Abstractformat *self,
     size_t fill = 0U;
     uint64_t remaining = parsed->virtual_size;
     uint64_t index = 0U;
-    uint64_t budget = output ? UINT64_MAX : XX_QCOW1_PROBE_CLUSTERS;
+
     bool result = true;
 
     xx_mem_zero(&cache, sizeof(cache));
@@ -365,7 +372,18 @@ static bool xx_qcow1_write_image(Abstractformat *self,
         if (cache.table) xx_mem_free(cache.table);
         return false;
     }
-    while (remaining != 0U && budget != 0U) {
+    while (remaining != 0U) {
+        /* A NULL destination still verifies the complete mapping. An absent
+         * L1 extent has no stored bytes or compressed stream to consume. */
+        uint64_t l1 = index >> parsed->l2_bits;
+        if (!output && (l1 >= parsed->l1_size || parsed->l1_table[l1] == 0U)) {
+            uint64_t clusters = (UINT64_C(1) << parsed->l2_bits) - (index & ((UINT64_C(1) << parsed->l2_bits)-1U));
+            uint64_t bytes = clusters * parsed->cluster_size;
+            if (xx_pd_is_stopped(pd)) { result=false; break; }
+            if (bytes > remaining) bytes=remaining;
+            remaining-=bytes; index+=(bytes+parsed->cluster_size-1U)/parsed->cluster_size; continue;
+        }
+
         size_t chunk = remaining < (uint64_t)parsed->cluster_size
                            ? (size_t)remaining
                            : (size_t)parsed->cluster_size;
@@ -382,19 +400,19 @@ static bool xx_qcow1_write_image(Abstractformat *self,
             fill = 0U;
         }
         if (!xx_qcow1_read_cluster(self, parsed, index, stage + fill, scratch,
-                                   &cache)) {
+                                   &cache, crypto, pd)) {
             result = false;
             break;
         }
         fill += chunk;
         remaining -= (uint64_t)chunk;
         ++index;
-        if (budget != UINT64_MAX) --budget;
     }
     if (result && output && fill != 0U &&
         !xx_qcow1_write_all(output, stage, fill)) {
         result = false;
     }
+    dc_clear(stage,stage_size); dc_clear(scratch,parsed->cluster_size);
     xx_mem_free(stage);
     xx_mem_free(scratch);
     xx_mem_free(cache.table);
@@ -461,7 +479,7 @@ void xx_qcow1_free(xx_qcow1 *qcow1) {
 
 bool xx_qcow1_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     xx_qcow1_private parsed;
-    bool result = xx_qcow1_parse(self, &parsed, pd);
+    bool result = xx_qcow1_parse(self, &parsed, NULL, pd);
 
     xx_qcow1_private_cleanup(&parsed);
     return result;
@@ -473,7 +491,7 @@ bool xx_qcow1_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
 
     if (!self) return false;
     parsed = (xx_qcow1_private *)xx_mem_alloc(sizeof(*parsed));
-    if (!parsed || !xx_qcow1_parse(self, parsed, pd)) {
+    if (!parsed || !xx_qcow1_parse(self, parsed, NULL, pd)) {
         if (parsed) xx_mem_free(parsed);
         self->is_valid = false;
         self->base_info_handled = false;
@@ -603,7 +621,7 @@ xx_archive_record_state *xx_qcow1_create_archive_records_reading(
     }
     xx_archive_record_state_init(state, self);
     if (!xx_qcow1_copy_options(&state->options, options) ||
-        !xx_qcow1_parse(self, parsed, pd)) {
+        !xx_qcow1_parse(self, parsed, options, pd)) {
         xx_qcow1_private_free(parsed);
         xx_archive_record_state_free(state);
         return NULL;
@@ -644,17 +662,18 @@ bool xx_qcow1_archive_record_move_to_next(Abstractformat *self,
     return false;
 }
 
-bool xx_qcow1_unpack_current_archive_record(Abstractformat *self,
+static bool xx_qcow1_unpack_impl(Abstractformat *self,
                                             xx_archive_record_state *state,
-                                            xx_pd_struct *pd) {
+                                            dc_crypto *crypto, xx_pd_struct *pd) {
     xx_qcow1_private *parsed;
     const xx_var *option;
     const char *base = NULL;
     char *owned_base = NULL;
     char *destination = NULL;
+    char *stage = NULL;
     xx_io_device *output = NULL;
     bool result;
-    bool created = false;
+    bool overwrite = false;
 
     if (!self || !self->device || !state || state->format != self ||
         !state->has_record || (pd && xx_pd_is_stopped(pd))) {
@@ -662,11 +681,8 @@ bool xx_qcow1_unpack_current_archive_record(Abstractformat *self,
     }
     parsed = (xx_qcow1_private *)state->internal_state;
     if (!parsed || parsed->consumed) return false;
-    /* AES-encrypted clusters are ciphertext; they are not decrypted here. */
-    if (parsed->crypt_method != 0U) return false;
-
-    option = xx_qcow1_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!option) return xx_qcow1_write_image(self, parsed, NULL, pd);
+    option = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_UNPACK_PATH);
+    if (!option) return xx_qcow1_write_image(self, parsed, NULL, crypto, pd);
     if (option->type == XX_VAR_TYPE_STRING ||
         option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(option);
@@ -691,12 +707,36 @@ bool xx_qcow1_unpack_current_archive_record(Abstractformat *self,
         xx_str_free(destination);
         return false;
     }
-    output = xx_io_file_open(destination, "wb");
-    created = output != NULL;
-    result = output != NULL && xx_qcow1_write_image(self, parsed, output, pd);
+    option=xx_format_resolve_extra_parameter(self,&state->options,XX_META_ID_OPT_OVERWRITE);
+    overwrite=option&&xx_var_get_bool(option);
+    if(dc_same_path(destination,xx_io_source_path(self->device)) || (!overwrite&&xx_io_file_exists_a(destination))) { xx_str_free(destination); return false; }
+    output = dc_stage(destination,&stage);
+    result = output != NULL && xx_qcow1_write_image(self, parsed, output, crypto, pd);
     if (output && xx_io_close(output) != 0) result = false;
-    if (!result && created) xx_rt_remove(destination);
+    if (result && stage) result=!xx_pd_is_stopped(pd)&&xx_io_file_replace_a(stage,destination,overwrite);
+    if(stage) { if(!result) xx_io_file_remove_a(stage); xx_str_free(stage); }
     xx_str_free(destination);
+    return result;
+}
+
+
+bool xx_qcow1_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+    xx_qcow1_private *parsed; dc_crypto crypto; const uint8_t *password; size_t password_size; char *owned=NULL;
+    uint8_t key[16]={0}; uint64_t memory, member, required; int64_t cursor; bool result=false;
+    if(!self || !self->device || !state || state->format!=self || !state->has_record) return false;
+    parsed=(xx_qcow1_private*)state->internal_state; if(!parsed || parsed->consumed || xx_pd_is_stopped(pd)) return false;
+    xx_mem_zero(&crypto,sizeof(crypto)); cursor=xx_io_tell(self->device);
+    required=(uint64_t)parsed->l1_size*8U + XX_QCOW1_STAGE_SIZE+(uint64_t)parsed->cluster_size+((uint64_t)8U<<parsed->l2_bits) + sizeof(crypto) + 8192U;
+    { const xx_qcow1_private *live=(const xx_qcow1_private*)((xx_qcow1*)self)->internal; if(live&&live!=parsed) required+=(uint64_t)live->l1_size*8U+sizeof(*live)+1024U; }
+    if(!dc_limit(self,&state->options,XX_META_ID_OPT_MEMORY_LIMIT,UINT64_MAX,&memory) || !dc_limit(self,&state->options,XX_META_ID_OPT_MAX_MEMBER_SIZE,UINT64_MAX,&member) || required>memory || parsed->virtual_size>member) goto done;
+    if(parsed->crypt_method) {
+        if(!dc_password(self,&state->options,&password,&password_size,&owned,memory-required)) { xx_pd_set_error(pd,XXFC_ERR_INVALID_ARG,"Disk image password required"); goto done; }
+        if(parsed->crypt_method==1U) { if(password_size>16) password_size=16; dc_copy(key,password,password_size); if(!dc_crypto_init(&crypto,DC_CBC_PLAIN64,key,16)) goto done; }
+    }
+    result=xx_qcow1_unpack_impl(self,state,&crypto,pd);
+done:
+    if(owned) { dc_clear(owned,xx_str_len(owned)); xx_str_free(owned); } dc_clear(key,sizeof(key)); dc_clear(&crypto,sizeof(crypto));
+    if(cursor>=0 && xx_io_seek64(self->device,cursor,SEEK_SET)!=0) result=false;
     return result;
 }
 

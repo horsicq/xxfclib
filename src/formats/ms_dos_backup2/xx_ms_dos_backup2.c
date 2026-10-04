@@ -59,14 +59,16 @@ typedef struct dbk_fragment_s {
     uint32_t offset;
     uint32_t length;
     uint32_t next;   /**< Next fragment of the same member, or DBK_NONE. */
-    uint8_t volume;
+    uint8_t volume;  /**< Index into data[], or prior_data[] when prior. */
+    bool prior;
 } dbk_fragment;
 
 typedef struct dbk_member_s {
     char *name;      /**< Unique output name, '/'-separated, UTF-8. */
     char *key;       /**< Name before de-duplication, for continuations. */
     bool safe;
-    bool broken;     /**< Starts mid-file, skips a fragment or overruns. */
+    bool broken;     /**< Overruns its size. */
+    uint16_t first_number; /**< Fragment number of the first fragment. */
     uint32_t total_size;
     uint64_t stored;
     uint16_t attributes;
@@ -310,6 +312,7 @@ static bool dbk_add_fragment(dbk_set *set, dbk_member *member, uint8_t volume,
     fragment->length = length;
     fragment->next = DBK_NONE;
     fragment->volume = volume;
+    fragment->prior = false;
     if (member->fragment_count == 0U)
         member->first_fragment = index;
     else
@@ -318,6 +321,26 @@ static bool dbk_add_fragment(dbk_set *set, dbk_member *member, uint8_t volume,
     ++member->fragment_count;
     member->stored += length;
     if (member->stored > member->total_size) member->broken = true;
+    return true;
+}
+
+/* Puts a fragment of an earlier volume in front of the member's first. */
+static bool dbk_prepend_fragment(dbk_set *set, dbk_member *member,
+                                 uint8_t prior_volume, uint32_t offset,
+                                 uint32_t length) {
+    uint32_t first = member->first_fragment, last = member->last_fragment;
+    uint32_t index;
+    if (member->fragment_count == 0U || first >= set->fragment_count ||
+        last >= set->fragment_count ||
+        !dbk_add_fragment(set, member, prior_volume, offset, length))
+        return false;
+    /* add_fragment linked it behind the old last one; move it to the front. */
+    index = member->last_fragment;
+    set->fragments[last].next = DBK_NONE;
+    member->last_fragment = last;
+    set->fragments[index].prior = true;
+    set->fragments[index].next = first;
+    member->first_fragment = index;
     return true;
 }
 
@@ -494,7 +517,9 @@ static bool dbk_parse_volume(dbk_set *set, xx_io_device *device,
                         goto finished;
                     pending = &set->members[set->count - 1U];
                     set->pending = (uint32_t)(set->count - 1U);
-                    if (number != 1U) pending->broken = true;
+                    /* Anything but 1 starts mid-file: incomplete unless an
+                     * earlier volume supplies the fragments before it. */
+                    pending->first_number = (uint16_t)number;
                 }
                 pending->last_number = (uint16_t)number;
                 if (!dbk_add_fragment(set, pending, volume, dbk_le32(item + 0x14),
@@ -513,11 +538,86 @@ done:
     return result;
 }
 
+/* The fragment numbered @p number of a member continued on the volume after
+ * @p control: it must be the last file item of that earlier CONTROL file,
+ * with the member's name and size, and the volume must be numbered
+ * @p sequence and not be marked last. */
+static bool dbk_prior_fragment(xx_io_device *control, uint32_t sequence,
+                               const char *key, uint32_t total_size,
+                               uint32_t number, uint32_t *offset,
+                               uint32_t *length) {
+    uint8_t header[DBK_HEADER_SIZE];
+    dbk_set *earlier;
+    int64_t end = 0;
+    bool ok = false;
+    if (!control || !key || sequence == 0U || sequence > 255U || number == 0U ||
+        !dbk_read_at(control, 0, header, sizeof(header)) ||
+        !dbk_header_ok(header) || header[9] != sequence ||
+        header[DBK_LAST_OFFSET] != 0U)
+        return false;
+    earlier = (dbk_set *)xx_mem_calloc(1U, sizeof(*earlier));
+    if (!earlier) return false;
+    earlier->pending = DBK_NONE;
+    if (dbk_parse_volume(earlier, control, 0, 0U, &end) && earlier->count > 0U) {
+        const dbk_member *last = &earlier->members[earlier->count - 1U];
+        if (!last->broken && last->fragment_count == 1U &&
+            last->first_number == number && last->last_number == number &&
+            last->total_size == total_size && last->stored < total_size &&
+            dbk_names_equal(last->key, key)) {
+            const dbk_fragment *fragment =
+                &earlier->fragments[last->first_fragment];
+            *offset = fragment->offset;
+            *length = fragment->length;
+            ok = true;
+        }
+    }
+    dbk_set_free(earlier);
+    return ok;
+}
+
+/* Completes the first member of the first CONTROL file, when it continues a
+ * file from the volume before, from the attached earlier volumes. */
+static void dbk_backfill(dbk_set *set, const xx_ms_dos_backup2 *archive) {
+    dbk_member *member;
+    uint32_t prior, number;
+    if (set->count == 0U || archive->prior_count == 0U) return;
+    member = &set->members[0];
+    if (member->fragment_count == 0U ||
+        member->first_fragment >= set->fragment_count ||
+        set->fragments[member->first_fragment].volume != 0U ||
+        set->fragments[member->first_fragment].prior)
+        return;
+    number = member->first_number;
+    for (prior = 0U; prior < archive->prior_count && number > 1U; ++prior) {
+        uint32_t offset = 0U, length = 0U;
+        if (set->sequence < prior + 2U ||
+            !dbk_prior_fragment(archive->prior_control[prior],
+                                set->sequence - 1U - prior, member->key,
+                                member->total_size, number - 1U, &offset,
+                                &length) ||
+            !dbk_prepend_fragment(set, member, (uint8_t)prior, offset, length))
+            return;
+        --number;
+        member->first_number = (uint16_t)number;
+    }
+}
+
 static dbk_set *dbk_load(xx_ms_dos_backup2 *archive) {
     dbk_set *set;
     uint32_t volume;
     int64_t end = 0;
     if (!archive || !archive->format.device) return NULL;
+    /* Nothing attached: look beside the CONTROL file once, when the device
+     * is that file itself. */
+    if (!archive->companions_tried) {
+        archive->companions_tried = true;
+        if (archive->format.base_address == 0 && archive->volume_count == 1U &&
+            !archive->data[0] && archive->prior_count == 0U) {
+            const char *path = xx_io_source_path(archive->format.device);
+            if (path && path[0])
+                (void)xx_ms_dos_backup2_open_volume_files(archive, path);
+        }
+    }
     set = (dbk_set *)xx_mem_calloc(1U, sizeof(*set));
     if (!set) return NULL;
     set->pending = DBK_NONE;
@@ -541,6 +641,7 @@ static dbk_set *dbk_load(xx_ms_dos_backup2 *archive) {
                               &ignored))
             break;
     }
+    dbk_backfill(set, archive);
     return set;
 }
 
@@ -548,8 +649,8 @@ static dbk_set *dbk_load(xx_ms_dos_backup2 *archive) {
 /* Records and extraction                                                  */
 
 static bool dbk_complete(const dbk_member *member) {
-    return !member->broken && member->fragment_count > 0U &&
-           member->stored == member->total_size;
+    return !member->broken && member->first_number == 1U &&
+           member->fragment_count > 0U && member->stored == member->total_size;
 }
 
 static bool dbk_copy_options(xx_list_s *destination, const xx_list_s *source) {
@@ -624,9 +725,14 @@ static bool dbk_copy_member(xx_ms_dos_backup2 *archive, const dbk_set *set,
         if (index >= set->fragment_count || ++steps > member->fragment_count)
             return false;
         fragment = &set->fragments[index];
-        if (fragment->volume >= archive->volume_count ||
-            !(data = archive->data[fragment->volume]))
+        if (fragment->prior) {
+            if (fragment->volume >= archive->prior_count ||
+                !(data = archive->prior_data[fragment->volume]))
+                return false;
+        } else if (fragment->volume >= archive->volume_count ||
+                   !(data = archive->data[fragment->volume])) {
             return false;
+        }
         size = xx_io_total_size(data);
         if (size < 0 ||
             (int64_t)fragment->offset + (int64_t)fragment->length > size)
@@ -692,8 +798,16 @@ void xx_ms_dos_backup2_destroy(xx_ms_dos_backup2 *archive) {
         archive->control_owned[index] = archive->data_owned[index] = false;
         archive->data[index] = NULL;
         if (index) archive->control[index] = NULL;
+        if (archive->prior_control_owned[index] && archive->prior_control[index])
+            xx_io_close(archive->prior_control[index]);
+        if (archive->prior_data_owned[index] && archive->prior_data[index])
+            xx_io_close(archive->prior_data[index]);
+        archive->prior_control_owned[index] = archive->prior_data_owned[index] =
+            false;
+        archive->prior_control[index] = archive->prior_data[index] = NULL;
     }
     archive->volume_count = 1U;
+    archive->prior_count = 0U;
     xx_format_cleanup_extra_parameters(&archive->format);
 }
 
@@ -767,6 +881,21 @@ bool xx_ms_dos_backup2_add_volume(xx_ms_dos_backup2 *archive,
     archive->control_owned[archive->volume_count] = false;
     archive->data_owned[archive->volume_count] = false;
     ++archive->volume_count;
+    archive->format.base_info_handled = false;
+    return true;
+}
+
+bool xx_ms_dos_backup2_add_prior_volume(xx_ms_dos_backup2 *archive,
+                                        xx_io_device *control,
+                                        xx_io_device *data) {
+    if (!archive || !control ||
+        archive->prior_count >= XX_MS_DOS_BACKUP2_MAX_VOLUMES)
+        return false;
+    archive->prior_control[archive->prior_count] = control;
+    archive->prior_data[archive->prior_count] = data;
+    archive->prior_control_owned[archive->prior_count] = false;
+    archive->prior_data_owned[archive->prior_count] = false;
+    ++archive->prior_count;
     archive->format.base_info_handled = false;
     return true;
 }
@@ -854,6 +983,51 @@ uint32_t xx_ms_dos_backup2_open_volume_files(xx_ms_dos_backup2 *archive,
         archive->data_owned[archive->volume_count] = data != NULL;
         ++archive->volume_count;
         if (data) ++attached;
+    }
+    /* The first CONTROL file may open with the continuation of a file split
+     * at the end of the volume before it: walk back while each earlier
+     * volume holds the fragment in front. */
+    if (archive->prior_count == 0U && sequence > 1U) {
+        dbk_set *set = (dbk_set *)xx_mem_calloc(1U, sizeof(*set));
+        int64_t end = 0;
+        if (set) set->pending = DBK_NONE;
+        if (set &&
+            dbk_parse_volume(set, archive->format.device,
+                             archive->format.base_address, 0U, &end) &&
+            set->count > 0U && set->members[0].fragment_count > 0U) {
+            const dbk_member *member = &set->members[0];
+            uint32_t number = member->first_number;
+            while (number > 1U && archive->prior_count + 1U < sequence &&
+                   archive->prior_count < XX_MS_DOS_BACKUP2_MAX_VOLUMES) {
+                uint32_t earlier = sequence - 1U - archive->prior_count;
+                uint32_t offset = 0U, length = 0U;
+                char *path;
+                xx_io_device *control, *data;
+                path = dbk_sibling(control_path, directory,
+                                   lower ? "control" : "CONTROL", earlier);
+                if (!path) break;
+                control = xx_io_file_open(path, "rb");
+                xx_mem_free(path);
+                if (!control) break;
+                if (!dbk_prior_fragment(control, earlier, member->key,
+                                        member->total_size, number - 1U,
+                                        &offset, &length)) {
+                    xx_io_close(control);
+                    break;
+                }
+                path = dbk_sibling(control_path, directory,
+                                   lower ? "backup" : "BACKUP", earlier);
+                data = path ? xx_io_file_open(path, "rb") : NULL;
+                if (path) xx_mem_free(path);
+                archive->prior_control[archive->prior_count] = control;
+                archive->prior_control_owned[archive->prior_count] = true;
+                archive->prior_data[archive->prior_count] = data;
+                archive->prior_data_owned[archive->prior_count] = data != NULL;
+                ++archive->prior_count;
+                --number;
+            }
+        }
+        if (set) dbk_set_free(set);
     }
     archive->format.base_info_handled = false;
     return attached;

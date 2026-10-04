@@ -421,6 +421,21 @@ static xx_secondnature_stream *xx_secondnature_parse(Abstractformat *self,
         data_offset = (int64_t)xx_secondnature_le32(entry + value_offset);
         data_size = (int64_t)xx_secondnature_le32(entry + value_offset + 4);
 
+        /* Some SNX writers leave all-one offset/size sentinels in unused
+         * picture slots and companion REF slots. Accept only those exact
+         * sentinels, with either a valid name or an all-one name field. */
+        if (kind == XX_SECONDNATURE_KIND_SNX &&
+            data_offset == (int64_t)UINT32_MAX &&
+            data_size == (int64_t)UINT32_MAX) {
+            bool all_ones = true;
+            size_t byte;
+            for (byte = 0U; byte < XX_SECONDNATURE_NAME_FIELD; ++byte)
+                if (entry[byte] != 0xffU) all_ones = false;
+            if (all_ones || xx_secondnature_name_valid(entry, name_length))
+                continue;
+            goto fail;
+        }
+
         /* Unused slot: .SNX pads its table to three, and a .REF slot that
          * merely names a companion file carries a zero offset and size. */
         if (name_length == 0U && data_offset == 0 && data_size == 0) continue;

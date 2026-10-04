@@ -148,9 +148,50 @@ static inline int64_t io_get_size(xx_io_device *d) { return xx_io_total_size(d);
  * @return Allocated xx_io_device pointer, or NULL on error.
  */
 XXFC_API xx_io_device* xx_io_file_open(const char *path, const char *mode);
-/** Seekable 64-bit temporary file, removed automatically on close. */
+/** Seekable 64-bit temporary stream, removed automatically on close. While a
+ * memory-only scope is active it is RAM-backed and never spills to disk. */
 XXFC_API xx_io_device* xx_io_temp_open(void);
 XXFC_API xx_io_device* io_file_open(const char *path, const char *mode);
+
+/** Memory-only archive work policy, local to the calling thread. Initialize
+ * each scope to zero. Begin before opening/detecting an archive and end after
+ * its iterators/readers/temporary streams have closed. Scopes nest in LIFO
+ * order and are not inherited by worker threads. Do not share a scope or its
+ * temporary streams between threads.
+ *
+ * Read-only file opens remain allowed. Filesystem mutations (including writes
+ * to already-open file devices) fail explicitly. Temporary streams use owned,
+ * seekable RAM with an aggregate capacity ceiling, including nested scopes;
+ * there is no disk fallback. A zero ceiling permits empty streams only.
+ * This ceiling covers temporary payload capacity, not decoder allocations.
+ * Inside a nested scope, outer temporary streams may be read/seeked but not
+ * written: every temporary write belongs to the innermost active scope.
+ */
+typedef struct xx_io_memory_only_scope {
+    void *internal;
+    uint32_t error;
+} xx_io_memory_only_scope;
+typedef enum xx_io_memory_only_error_t {
+    XX_IO_MEMORY_ONLY_OK = 0,
+    XX_IO_MEMORY_ONLY_DISK_WRITE = 1,
+    XX_IO_MEMORY_ONLY_LIMIT = 2,
+    XX_IO_MEMORY_ONLY_ALLOCATION = 3,
+    XX_IO_MEMORY_ONLY_LIVE_TEMP = 4,
+    XX_IO_MEMORY_ONLY_SCOPE_ORDER = 5
+} xx_io_memory_only_error_t;
+XXFC_API bool xx_io_memory_only_begin(xx_io_memory_only_scope *scope,
+                                      uint64_t temporary_byte_limit);
+/** Pop this scope, returning false on an attempted disk mutation, allocation
+ * or capacity failure, or an unclosed temporary stream. Except for an invalid
+ * nesting order, the scope is popped even on failure. Unclosed RAM streams
+ * remain safely closable but must not be used after the scope ends. */
+XXFC_API bool xx_io_memory_only_end(xx_io_memory_only_scope *scope);
+XXFC_API bool xx_io_memory_only_active(void);
+/** Aggregate allocated temporary payload capacity for the active scope. */
+XXFC_API uint64_t xx_io_memory_only_used(void);
+/** First failure, retained in the token after end for useful diagnostics. */
+XXFC_API xx_io_memory_only_error_t xx_io_memory_only_error(
+    const xx_io_memory_only_scope *scope);
 
 /**
  * Return the borrowed path used to open a file-backed device. A one-range

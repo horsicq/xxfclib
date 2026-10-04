@@ -61,6 +61,7 @@ typedef struct gst_member_s {
     uint32_t stamp;
     uint8_t flags;
     uint8_t method;
+    bool alternate_magic;
 } gst_member;
 
 typedef struct gst_stream_s {
@@ -156,6 +157,9 @@ static bool gst_add_member(gst_stream *stream, const gst_member *member) {
     return true;
 }
 
+static bool gst_decode_member(Abstractformat *format, const gst_member *member,
+                              uint8_t **plain, size_t *plain_size);
+
 static bool gst_parse(Abstractformat *format, gst_stream **result) {
     gst_stream *stream = NULL;
     int64_t total, size, cursor = 0;
@@ -175,7 +179,8 @@ static bool gst_parse(Abstractformat *format, gst_stream **result) {
             !gst_read_at(format->device, format->base_address + cursor, header,
                          sizeof(header)))
             goto fail;
-        if (header[0] != 0xe9U || header[1] != 0xc8U) goto fail;
+        if (!((header[0] == 0xe9U && header[1] == 0xc8U) ||
+              (header[0] == 0xeaU && header[1] == 0xc9U))) goto fail;
         unpacked = gst_le32(header + 8U);
         packed = gst_le32(header + 12U);
         /* Bound the declared payload against what the file actually holds
@@ -185,8 +190,11 @@ static bool gst_parse(Abstractformat *format, gst_stream **result) {
             goto fail;
         if ((uint64_t)unpacked > GST_MAX_UNPACKED_SIZE) goto fail;
         xx_mem_zero(&member, sizeof(member));
+        member.alternate_magic = header[0] == 0xeaU;
         member.stamp = gst_le32(header + 2U);
         member.flags = header[6];
+        if (member.flags != 0U && member.flags != 1U && member.flags != 0x20U)
+            goto fail;
         member.method = header[7];
         member.unpacked_size = unpacked;
         member.packed_size = (int64_t)packed;
@@ -209,6 +217,20 @@ static bool gst_parse(Abstractformat *format, gst_stream **result) {
     }
     /* No trailer, no count: the chain landing exactly on EOF is the test. */
     if (cursor != size || stream->count == 0U) goto fail;
+    /* The alternate signature has only been observed in a narrow legacy
+     * variant. Its entire member must decode and pass the stored CRC before
+     * that spelling can identify an archive. */
+    {
+        size_t index;
+        for (index = 0U; index < stream->count; ++index) {
+            uint8_t *plain = NULL;
+            size_t plain_size = 0U;
+            if (!stream->items[index].alternate_magic) continue;
+            if (!gst_decode_member(format, &stream->items[index],
+                                     &plain, &plain_size)) goto fail;
+            xx_mem_free(plain);
+        }
+    }
     stream->archive_size = size;
     *result = stream;
     return true;

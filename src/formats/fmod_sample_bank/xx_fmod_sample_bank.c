@@ -9,7 +9,9 @@
  * (FSB4 flag 0x40 aligning each next sample to 32 bank bytes, FSB5 sizes
  * running to the next sample's offset) were measured against fsbext 0.3.8a.
  *
- * Every sample is extracted as stored.  All counts, sizes and offsets are
+ * PCM samples are reconstructed as playable WAV files. Other codecs retain
+ * their encoded sample data (MPEG mono/stereo gets an MP3 extension).
+ * All counts, sizes and offsets are
  * validated against the device before a record exists, the header tables are
  * read once under a size cap, and member names are made unique (name, name_1,
  * name_2, ... as fsbext does) through a hash so hostile banks of identical
@@ -45,6 +47,11 @@ typedef struct fsb_member_s {
     char *name;
     int64_t header_offset, header_size; /* relative to the bank */
     int64_t data_offset, size;          /* relative to the bank */
+    uint32_t codec, rate, samples, mode;
+    uint16_t channels, bits;
+    uint8_t wave_header[128], wave_size, byte_width;
+    bool swap_endian, flip_sign;
+    uint64_t output_data_size, output_size;
 } fsb_member;
 
 typedef struct fsb_stream_s {
@@ -52,7 +59,11 @@ typedef struct fsb_stream_s {
     size_t count, index;
     int64_t archive_size;
     uint32_t version, codec;
+    xx_pd_struct *pd;
 } fsb_stream;
+
+static bool fsb_prepare_audio(fsb_member *m);
+static uint64_t fsba_option_bytes(const xx_list_s *options);
 
 static void fmod_sample_bank_vtable_destroy(Abstractformat *self);
 
@@ -192,8 +203,15 @@ static bool fsb_unique_names(fsb_stream *s) {
             char *candidate = NULL;
             for (;;) {
                 char tail[16];
+                const char *extension = xx_rt_strrchr(s->items[i].name, '.');
                 xx_rt_snprintf(tail, sizeof(tail), "_%u", (unsigned)suffix);
-                candidate = xx_str_concat(s->items[i].name, tail);
+                if (s->items[i].wave_size || s->items[i].codec == 11U) {
+                    size_t stem = extension ? (size_t)(extension - s->items[i].name) : xx_str_len(s->items[i].name);
+                    char *prefix = (char *)xx_mem_alloc(stem + 1U);
+                    if (!prefix) { ok = false; break; }
+                    xx_rt_memcpy(prefix, s->items[i].name, stem); prefix[stem] = 0;
+                    candidate = xx_str_concat3(prefix, tail, extension ? extension : ""); xx_str_free(prefix);
+                } else candidate = xx_str_concat(s->items[i].name, tail);
                 if (!candidate) { ok = false; break; }
                 slot = fsb_find(table, size - 1U, candidate);
                 ++suffix;
@@ -234,12 +252,18 @@ static bool fsb_parse_v1(Abstractformat *self, int64_t span,
     at = data;
     for (i = 0; i < n; ++i) {
         const uint8_t *h = headers + (size_t)i * 0x40U;
+        if (xx_pd_is_stopped(s->pd)) goto done;
         int64_t length = (int64_t)fsb_u32(h + 0x24);
         if (length > end - at) goto done;
         if (records &&
             !fsb_add(s, n, fsb_name(h, 32U, i), table + (int64_t)i * 0x40,
                      0x40, at, length))
             goto done;
+        if (records) {
+            fsb_member *m = s->items + i;
+            m->samples = fsb_u32(h + 0x20); m->rate = fsb_u32(h + 0x28);
+            m->channels = (uint16_t)fsb_u16(h + 0x2e); m->mode = fsb_u32(h + 0x34);
+        }
         at += length;
     }
     s->archive_size = end;
@@ -283,6 +307,7 @@ static bool fsb_parse_v234(Abstractformat *self, int64_t span,
     at = data;
     for (i = 0; i < n; ++i) {
         const uint8_t *h = headers + pos;
+        if (xx_pd_is_stopped(s->pd)) goto done;
         uint32_t header_size;
         int64_t length;
         char *name = NULL;
@@ -310,6 +335,15 @@ static bool fsb_parse_v234(Abstractformat *self, int64_t span,
             if (!fsb_add(s, n, name, fixed + (int64_t)pos, header_size, at,
                          length))
                 goto done;
+            {
+                fsb_member *m = s->items + i;
+                m->samples = fsb_u32(h + (header_size == 8U ? 0 : 0x20));
+                if (header_size == 8U) {
+                    m->rate = s->items[0].rate; m->channels = s->items[0].channels; m->mode = s->items[0].mode;
+                } else {
+                    m->mode = fsb_u32(h + 0x30); m->rate = fsb_u32(h + 0x34); m->channels = (uint16_t)fsb_u16(h + 0x3e);
+                }
+            }
         }
         pos += header_size;
         at += length;
@@ -356,8 +390,19 @@ static bool fsb_parse_v5(Abstractformat *self, int64_t span,
         int64_t offset;
         size_t start = pos;
         bool more;
+        if (xx_pd_is_stopped(s->pd)) goto done;
         if (table_size - pos < 8U) goto done;
         raw = fsb_u64(headers + pos);
+        if (records) {
+            static const uint32_t rates[] = {4000,8000,11000,11025,16000,22050,24000,32000,44100,48000,96000};
+            static const uint16_t channels[] = {1,2,6,8};
+            fsb_member *m = s->items + i;
+            uint32_t rate_index = (uint32_t)((raw >> 1U) & 15U);
+            m->codec = codec; m->samples = (uint32_t)(raw >> 34U);
+            m->channels = channels[(raw >> 5U) & 3U];
+            m->rate = rate_index < sizeof(rates) / sizeof(rates[0]) ? rates[rate_index] : 0;
+            m->swap_endian = codec == 2U && revision == 1U && (fsb_u32(head + 0x20) & 1U);
+        }
         pos += 8U;
         more = (raw & 1U) != 0U;
         /* Each chunk consumes at least its 4-byte prefix, so this loop is
@@ -370,6 +415,11 @@ static bool fsb_parse_v5(Abstractformat *self, int64_t span,
             more = (chunk & 1U) != 0U;
             chunk_size = (chunk >> 1U) & 0xFFFFFFU;
             if (chunk_size > table_size - pos) goto done;
+            if (records) {
+                uint32_t type = chunk >> 25U;
+                if (type == 1U) { if (chunk_size != 1U) goto done; s->items[i].channels = headers[pos]; }
+                if (type == 2U) { if (chunk_size != 4U) goto done; s->items[i].rate = fsb_u32(headers + pos); }
+            }
             pos += chunk_size;
         }
         offset = (int64_t)(((raw >> 7U) & 0x7FFFFFFU) << 5U);
@@ -420,8 +470,8 @@ done:
     return ok;
 }
 
-static fsb_stream *fsb_parse(Abstractformat *self, bool records,
-                             xx_pd_struct *pd) {
+static fsb_stream *fsb_parse_impl(Abstractformat *self, bool records,
+                             const xx_list_s *options, xx_pd_struct *pd) {
     uint8_t head[0x40];
     int64_t total, span;
     uint32_t version;
@@ -443,9 +493,24 @@ static fsb_stream *fsb_parse(Abstractformat *self, bool records,
         return NULL;
     version = (uint32_t)(head[3] - '0');
     if (version == 5U && span < 0x3C) return NULL;
+    {
+        const xx_var *limit = xx_format_resolve_extra_parameter(self, options, XX_META_ID_OPT_MEMORY_LIMIT);
+        uint64_t budget = limit ? xx_var_get_u64(limit) : UINT64_C(256) * 1024U * 1024U;
+        uint64_t n = fsb_u32(head + (version == 5U ? 8 : 4));
+        uint64_t tables = version == 1U ? n * 64U : fsb_u32(head + (version == 5U ? 12 : 8));
+        if (version == 5U) tables += fsb_u32(head + 16);
+        /* Header tables, record array, owned/current names and dedup hash are
+         * simultaneously live. Bound all of them before allocating any. */
+        uint64_t retained = n * (sizeof(fsb_member) + 2U * (FSB_MAX_NAME + 24U) + 96U);
+        uint64_t option_bytes = fsba_option_bytes(options), defaults = fsba_option_bytes(&self->list_extra_parameters);
+        if (option_bytes > budget || defaults > budget - option_bytes) return NULL;
+        budget -= option_bytes + defaults;
+        if (budget < 32768U || tables > budget - 32768U || (records && retained > budget - 32768U - tables)) return NULL;
+    }
     s = (fsb_stream *)xx_mem_calloc(1U, sizeof(*s));
     if (!s) return NULL;
     s->version = version;
+    s->pd = pd;
     if (records) {
         uint32_t n = fsb_u32(head + (version == 5U ? 8 : 4));
         /* Sized from the declared count, which the parsers bound by the
@@ -468,13 +533,28 @@ static fsb_stream *fsb_parse(Abstractformat *self, bool records,
         ok = fsb_parse_v5(self, span, head, s, records);
     else
         ok = fsb_parse_v234(self, span, head, version, s, records);
-    if (ok && records) ok = fsb_unique_names(s);
+    if (ok && records) {
+        size_t i;
+        const xx_var *limit = xx_format_resolve_extra_parameter(self, options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
+        uint64_t maximum = limit ? xx_var_get_u64(limit) : UINT64_MAX;
+        for (i = 0; i < s->count && ok; ++i) ok = fsb_prepare_audio(s->items + i) && s->items[i].output_size <= maximum;
+        if (ok) ok = fsb_unique_names(s);
+    }
     if (!ok) {
         fsb_stream_free(s);
         return NULL;
     }
     return s;
 }
+
+static fsb_stream *fsb_parse(Abstractformat *self, bool records, const xx_list_s *options, xx_pd_struct *pd) {
+    int64_t saved = self && self->device ? xx_io_tell(self->device) : -1;
+    fsb_stream *stream = fsb_parse_impl(self, records, options, pd);
+    if (saved >= 0 && xx_io_seek64(self->device, saved, SEEK_SET) != 0) { fsb_stream_free(stream); return NULL; }
+    return stream;
+}
+
+#include "xx_fmod_audio.inc"
 
 /* ---------------------------------------------------------- lifecycle --- */
 
@@ -539,7 +619,7 @@ static void fmod_sample_bank_vtable_destroy(Abstractformat *self) {
 
 bool xx_fmod_sample_bank_check_is_valid(Abstractformat *self,
                                         xx_pd_struct *pd) {
-    fsb_stream *s = fsb_parse(self, false, pd);
+    fsb_stream *s = fsb_parse(self, false, NULL, pd);
     if (!s) return false;
     fsb_stream_free(s);
     return true;
@@ -551,7 +631,7 @@ bool xx_fmod_sample_bank_handle_base_info(Abstractformat *self,
     fsb_stream *s;
     if (!self || (pd && xx_pd_is_stopped(pd))) return false;
     self->base_info_handled = true;
-    s = fsb_parse(self, true, pd);
+    s = fsb_parse(self, true, NULL, pd);
     if (!s) {
         self->is_valid = false;
         self->format_size = 0;
@@ -598,7 +678,7 @@ static bool fsb_set_record(Abstractformat *self, xx_archive_record *record,
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
                                           (uint64_t)m->size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
-                                          (uint64_t)m->size) &&
+                                          m->output_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD,
                                           0U) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
@@ -616,25 +696,30 @@ static bool fsb_copy_options(xx_list_s *target, const xx_list_s *options) {
         xx_meta copied;
         if (!source) continue;
         xx_meta_init(&copied, source->meta_id);
-        if (!xx_var_copy(&copied.var, &source->var) ||
+        bool okay;
+        if (source->var.type == XX_VAR_TYPE_STRING_VIEW || source->var.type == XX_VAR_TYPE_STRING) {
+            size_t length = source->var.val.str.len;
+            char *text = length <= 65536U && (source->var.val.str.ptr || !length) ? (char *)xx_mem_alloc(length + 1U) : NULL;
+            if (text) { if (length) xx_rt_memcpy(text, source->var.val.str.ptr, length); text[length] = 0; }
+            okay = text && xx_str_len(text) == length && xx_var_set_str_take(&copied.var, text, length);
+            if (!okay) xx_mem_free(text);
+        } else if (source->var.type == XX_VAR_TYPE_WSTRING_VIEW || source->var.type == XX_VAR_TYPE_WSTRING) {
+            size_t length = source->var.val.wstr.len, i;
+            wchar_t *text = length <= 32768U && (source->var.val.wstr.ptr || !length) ? (wchar_t *)xx_mem_alloc((length + 1U) * sizeof(wchar_t)) : NULL;
+            if (text) { if (length) xx_rt_memcpy(text, source->var.val.wstr.ptr, length * sizeof(wchar_t)); text[length] = 0; }
+            for (i = 0; text && i < length && text[i]; ++i) {}
+            okay = text && i == length && xx_var_set_wstr_take(&copied.var, text, length);
+            if (!okay) xx_mem_free(text);
+        } else if (source->var.type == XX_VAR_TYPE_BYTES_VIEW)
+            okay = xx_var_set_bytes(&copied.var, source->var.val.bytes.data, source->var.val.bytes.size);
+        else okay = xx_var_copy(&copied.var, &source->var);
+        if (!okay ||
             !xx_list_append(target, &copied)) {
             xx_meta_cleanup(&copied);
             return false;
         }
     }
     return true;
-}
-
-static const xx_var *fsb_get_option(const xx_list_s *options,
-                                    uint32_t meta_id) {
-    size_t index;
-    if (!options) return NULL;
-    for (index = 0U; index < options->count; ++index) {
-        const xx_meta *meta =
-            (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
-        if (meta && meta->meta_id == meta_id) return &meta->var;
-    }
-    return NULL;
 }
 
 static bool fsb_stem_is(const char *name, size_t stem, const char *word) {
@@ -677,32 +762,12 @@ static bool fsb_name_safe(const char *name) {
     return true;
 }
 
-/* Reads the member through without writing it anywhere. */
-static bool fsb_verify(Abstractformat *self, const fsb_member *m,
-                       xx_pd_struct *pd) {
-    uint8_t buffer[0x4000];
-    int64_t done = 0;
-    if (xx_io_seek64(self->device, self->base_address + m->data_offset,
-                     SEEK_SET) != 0)
-        return false;
-    while (done < m->size) {
-        size_t want = m->size - done < (int64_t)sizeof(buffer)
-                          ? (size_t)(m->size - done) : sizeof(buffer);
-        ssize_t got;
-        if (pd && xx_pd_is_stopped(pd)) return false;
-        got = xx_io_read(self->device, buffer, want);
-        if (got <= 0 || (size_t)got > want) return false;
-        done += got;
-    }
-    return true;
-}
-
 xx_archive_record_state *xx_fmod_sample_bank_create_archive_records_reading(
     Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
     fsb_stream *s;
     xx_archive_record_state *state;
     if (!self || !self->device) return NULL;
-    s = fsb_parse(self, true, pd);
+    s = fsb_parse(self, true, options, pd);
     if (!s) return NULL;
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
     if (!state) {
@@ -765,8 +830,18 @@ bool xx_fmod_sample_bank_unpack_current_archive_record(
     s = (fsb_stream *)state->internal_state;
     if (!s || s->index >= s->count) return false;
     m = &s->items[s->index];
-    path_option = fsb_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option) return fsb_verify(self, m, pd);
+    {
+        const xx_var *limit = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
+        if (limit && m->output_size > xx_var_get_u64(limit)) return false;
+        limit = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_MEMORY_LIMIT);
+        if (limit) {
+            uint64_t budget = xx_var_get_u64(limit), option_bytes = fsba_option_bytes(&state->options), defaults = fsba_option_bytes(&self->list_extra_parameters);
+            uint64_t retained = 32768U + s->count * (sizeof(fsb_member) + 2U * (FSB_MAX_NAME + 24U) + 96U);
+            if (option_bytes > budget || defaults > budget - option_bytes || retained > budget - option_bytes - defaults) return false;
+        }
+    }
+    path_option = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_UNPACK_PATH);
+    if (!path_option) return fsba_transfer(self, m, NULL, pd);
     if (!fsb_name_safe(m->name)) return false;
     if (path_option->type == XX_VAR_TYPE_STRING ||
         path_option->type == XX_VAR_TYPE_STRING_VIEW) {
@@ -783,10 +858,29 @@ bool xx_fmod_sample_bank_unpack_current_archive_record(
     else
         target = xx_str_concat(base_path, m->name);
     if (!target || !xx_store_create_dirs_a(target, false)) goto done;
-    /* The store helper removes its own output on failure (and only output
-     * it created), so nothing is removed here. */
-    result = xx_store_unpack_device_to_file(
-        self->device, self->base_address + m->data_offset, m->size, target, pd);
+    {
+        const xx_var *overwrite_option = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_OVERWRITE);
+        bool overwrite = overwrite_option && xx_var_get_bool(overwrite_option);
+        char *stage = NULL;
+        xx_io_device *output = NULL;
+        unsigned attempt;
+        if (!overwrite && xx_io_file_exists_a(target)) goto done;
+        for (attempt = 0; attempt < 128U && !output; ++attempt) {
+            char suffix[40];
+            xx_rt_snprintf(suffix, sizeof(suffix), ".xx_fsb.tmp.%u", attempt);
+            stage = xx_str_concat(target, suffix);
+            if (!stage) break;
+            output = xx_io_file_open(stage, "wbx");
+            if (!output) { xx_str_free(stage); stage = NULL; }
+        }
+        if (output) {
+            result = fsba_transfer(self, m, output, pd);
+            if (xx_io_close(output) != 0) result = false;
+            if (result) result = !xx_pd_is_stopped(pd) && xx_io_file_replace_a(stage, target, overwrite);
+            if (!result) (void)xx_io_file_remove_a(stage);
+        }
+        xx_str_free(stage);
+    }
 done:
     if (target) xx_str_free(target);
     if (converted) xx_str_free(converted);

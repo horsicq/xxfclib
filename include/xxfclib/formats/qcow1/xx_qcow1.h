@@ -32,8 +32,10 @@
  *   otherwise          host byte offset of the cluster
  *
  * The reader publishes ONE member, "disk.img", the reconstructed guest disk.
- * Encrypted images are listed but not decrypted (unpack is refused). A
- * backing file is reported as the record comment but never opened.
+ * Legacy AES-128-CBC encrypted clusters accept an explicitly supplied
+ * OPT_PASSWORD (the first 16 bytes, zero padded). This legacy encryption has
+ * no password verifier or integrity tag. NULL-destination decoding validates
+ * all stored clusters. A backing file is reported but never opened.
  */
 
 #ifndef XXFCLIB_FORMAT_QCOW1_H

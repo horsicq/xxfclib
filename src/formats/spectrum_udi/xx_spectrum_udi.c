@@ -637,10 +637,6 @@ xx_archive_record_state *xx_spectrum_udi_create_archive_records_reading(
     xx_archive_record_state *state;
     (void)pd;
     if (!udi_parse(format, &stream)) return NULL;
-    if (stream->member_count == 0U) {
-        udi_stream_free(stream);
-        return NULL;
-    }
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
     if (!state) {
         udi_stream_free(stream);
@@ -650,13 +646,20 @@ xx_archive_record_state *xx_spectrum_udi_create_archive_records_reading(
     state->internal_state = stream;
     state->free_internal = udi_stream_free;
     state->total_records = (int64_t)stream->member_count;
-    if (!udi_copy_options(&state->options, options) ||
-        !udi_set_record(&state->current_record, stream, &stream->members[0],
+    if (!udi_copy_options(&state->options, options)) {
+        xx_archive_record_state_free(state);
+        return NULL;
+    }
+    /* An unformatted disk (every track blank, no sector IDs) is a valid
+     * image with no members: iterate nothing rather than fail. */
+    if (stream->member_count == 0U) return state;
+    if (!udi_set_record(&state->current_record, stream, &stream->members[0],
                         format->base_address)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
     state->has_record = true;
+    state->current_index = 0;
     return state;
 }
 

@@ -43,8 +43,9 @@
  * image references, which is everything in a split part without metadata.
  * A file with several images puts each under "<index>/".  Named data
  * streams become "<file>.__streams__/<name>".  Symbolic links and junctions
- * are not written as files, like the other readers' links; a relative link
- * that stays inside the image reports its target as XX_META_ID_LINK_TARGET.
+ * are extracted as ordinary files holding their target text (no link is
+ * created); a relative link that stays inside the image also reports its
+ * target as XX_META_ID_LINK_TARGET.
  * Every stream is checked against its SHA-1 on extraction, and one that does
  * not match fails (its output file is removed), stored or decoded alike.
  *
@@ -2204,34 +2205,102 @@ static bool wim_extract(wim_model *m, const wim_member *member,
     return true;
 }
 
+/* Reads a link's reparse data (without its 8-byte reparse header, as WIM
+ * stores it) and locates the target: the print name, or the substitute name
+ * when there is none.  On success *data is owned by the caller and *name
+ * points to len bytes of UTF-16LE inside it. */
+static bool wim_link_name(wim_model *m, const wim_member *member,
+                          uint8_t **data, const uint8_t **name, size_t *len,
+                          bool *relative) {
+    const wim_blob *b;
+    size_t header, size, off_a, len_a, off_b, len_b, off;
+    *data = NULL;
+    if (member->blob == WIM_NONE || member->missing) return false;
+    b = &m->blobs[member->blob];
+    if (b->size > WIM_MAX_REPARSE ||
+        !wim_read_resource_memory(m, b, WIM_MAX_REPARSE, data))
+        return false;
+    size = (size_t)b->size;
+    header = member->reparse_tag == WIM_TAG_SYMLINK ? 12U : 8U;
+    if (size < header) goto fail;
+    off_a = wim_le16(*data + 4U); /* print name */
+    len_a = wim_le16(*data + 6U);
+    off_b = wim_le16(*data);      /* substitute name */
+    len_b = wim_le16(*data + 2U);
+    *relative = header == 12U && (wim_le32(*data + 8U) & 1U) != 0U;
+    off = len_a != 0U ? off_a : off_b;
+    *len = len_a != 0U ? len_a : len_b;
+    if (*len == 0U || (*len & 1U) != 0U || off > size - header ||
+        *len > size - header - off)
+        goto fail;
+    *name = *data + header + off;
+    return true;
+fail:
+    xx_mem_free(*data);
+    *data = NULL;
+    return false;
+}
+
+/* The target of a symbolic link or junction exactly as stored, in UTF-8, as
+ * the bytes of an ordinary file: a link is extracted as a file holding its
+ * target, so nothing is ever created that the file system would follow. */
+static char *wim_link_text(wim_model *m, const wim_member *member,
+                           size_t *out_len) {
+    uint8_t *data = NULL;
+    const uint8_t *p;
+    size_t len, units, i = 0U, n = 0U;
+    bool relative;
+    char *s;
+    if (!wim_link_name(m, member, &data, &p, &len, &relative)) return NULL;
+    units = len / 2U;
+    s = (char *)xx_mem_alloc(units * 3U + 1U);
+    if (s) {
+        while (i < units) {
+            uint32_t cp = wim_le16(p + 2U * i++);
+            if (cp >= 0xD800U && cp <= 0xDBFFU && i < units &&
+                wim_le16(p + 2U * i) >= 0xDC00U &&
+                wim_le16(p + 2U * i) <= 0xDFFFU) {
+                cp = 0x10000U + ((cp - 0xD800U) << 10U) +
+                     (wim_le16(p + 2U * i) - 0xDC00U);
+                ++i;
+            } else if (cp >= 0xD800U && cp <= 0xDFFFU) {
+                cp = 0xFFFDU;
+            }
+            if (cp < 0x80U) {
+                s[n++] = (char)cp;
+            } else if (cp < 0x800U) {
+                s[n++] = (char)(0xC0U | (cp >> 6U));
+                s[n++] = (char)(0x80U | (cp & 0x3FU));
+            } else if (cp < 0x10000U) {
+                s[n++] = (char)(0xE0U | (cp >> 12U));
+                s[n++] = (char)(0x80U | ((cp >> 6U) & 0x3FU));
+                s[n++] = (char)(0x80U | (cp & 0x3FU));
+            } else {
+                s[n++] = (char)(0xF0U | (cp >> 18U));
+                s[n++] = (char)(0x80U | ((cp >> 12U) & 0x3FU));
+                s[n++] = (char)(0x80U | ((cp >> 6U) & 0x3FU));
+                s[n++] = (char)(0x80U | (cp & 0x3FU));
+            }
+        }
+        s[n] = 0;
+        *out_len = n;
+    }
+    xx_mem_free(data);
+    return s;
+}
+
 /* The target of a symbolic link or junction, relative to the image root, or
  * NULL when it is absolute or leaves the image. */
 static char *wim_link_target(wim_model *m, const wim_member *member,
                              const char *name) {
     uint8_t *data = NULL;
-    const wim_blob *b;
-    size_t header, size, off_a, len_a, off_b, len_b, off, len, i, n = 0U;
+    const uint8_t *p;
+    size_t len, i, n = 0U;
     bool relative;
     char *target = NULL, *out = NULL;
     const char *slash;
-    if (member->blob == WIM_NONE || member->missing) return NULL;
-    b = &m->blobs[member->blob];
-    if (b->size > WIM_MAX_REPARSE ||
-        !wim_read_resource_memory(m, b, WIM_MAX_REPARSE, &data))
-        return NULL;
-    size = (size_t)b->size;
-    header = member->reparse_tag == WIM_TAG_SYMLINK ? 12U : 8U;
-    if (size < header) goto done;
-    off_a = wim_le16(data + 4U); /* print name */
-    len_a = wim_le16(data + 6U);
-    off_b = wim_le16(data);      /* substitute name */
-    len_b = wim_le16(data + 2U);
-    relative = header == 12U && (wim_le32(data + 8U) & 1U) != 0U;
-    off = len_a != 0U ? off_a : off_b;
-    len = len_a != 0U ? len_a : len_b;
-    if (!relative || len == 0U || (len & 1U) != 0U || off > size - header ||
-        len > size - header - off)
-        goto done;
+    if (!wim_link_name(m, member, &data, &p, &len, &relative)) return NULL;
+    if (!relative) goto done;
     /* Start from the link's own directory and apply the target's parts. */
     slash = name;
     for (i = 0U; name[i]; ++i)
@@ -2244,7 +2313,6 @@ static char *wim_link_target(wim_model *m, const wim_member *member,
     }
     out[n] = 0;
     {
-        const uint8_t *p = data + header + off;
         size_t units = len / 2U, start = 0U, k;
         for (k = 0U; k <= units; ++k) {
             bool end = k == units || wim_le16(p + 2U * k) == '\\' ||
@@ -2364,6 +2432,8 @@ static bool wim_copy_options(xx_list_s *destination, const xx_list_s *source) {
 /* ---------------------------------------------------------------------- */
 /* Public API                                                              */
 
+#include "xx_wim_writer.inc"
+
 void xx_wim_init(xx_wim *archive, xx_io_device *device, int64_t base_address) {
     if (!archive) return;
     xx_mem_zero(archive, sizeof(*archive));
@@ -2389,6 +2459,13 @@ void xx_wim_init(xx_wim *archive, xx_io_device *device, int64_t base_address) {
         xx_wim_archive_record_move_to_next;
     archive->format.free_archive_records_reading =
         xx_wim_free_archive_records_reading;
+    archive->format.create_archive_records_writing =
+        xx_wim_create_archive_records_writing;
+    archive->format.pack_archive_record = xx_wim_pack_archive_record;
+    archive->format.finalize_archive_records_writing =
+        xx_wim_finalize_archive_records_writing;
+    archive->format.free_archive_records_writing =
+        xx_wim_free_archive_records_writing;
     archive->archive_end = -1;
 }
 
@@ -2530,6 +2607,8 @@ bool xx_wim_unpack_current_archive_record(Abstractformat *format,
     xx_io_device *destination = NULL;
     bool result = false;
     bool created = false;
+    char *link_text = NULL;
+    size_t link_len = 0U;
     uint64_t limit;
     if (!format || !state || state->format != format || !state->has_record ||
         !(m = (wim_model *)state->internal_state) ||
@@ -2542,23 +2621,31 @@ bool xx_wim_unpack_current_archive_record(Abstractformat *format,
                        &limit) &&
         member->size > limit)
         return false;
-    /* A link is not a byte stream: its target is on the record as
-     * XX_META_ID_LINK_TARGET and creating it is the caller's decision.
-     * Writing the reparse data into a regular file would pass it off as
-     * the file's content. */
-    if (member->kind == WIM_KIND_LINK) {
-        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
-                        "WIM symbolic link or junction is not a byte stream");
-        return false;
-    }
     if (member->missing) {
         xx_pd_set_error(pd, XXFC_ERR_IO,
                         "WIM stream is stored in another part of a split image");
         return false;
     }
+    /* A symbolic link or junction is extracted as an ordinary file holding
+     * its target text (the reparse data itself would pass binary metadata
+     * off as content).  No link is created, so nothing is ever followed. */
+    if (member->kind == WIM_KIND_LINK) {
+        m->pd = pd;
+        link_text = wim_link_text(m, member, &link_len);
+        if (!link_text) {
+            xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
+                            "WIM link reparse data could not be read");
+            return false;
+        }
+    }
     path_option = wim_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option)
+    if (!path_option) {
+        if (link_text) {
+            xx_mem_free(link_text);
+            return true;
+        }
         return member->kind == WIM_KIND_DIR || wim_extract(m, member, NULL, pd);
+    }
     if (path_option->type == XX_VAR_TYPE_STRING ||
         path_option->type == XX_VAR_TYPE_STRING_VIEW)
         base = xx_var_get_str(path_option);
@@ -2581,11 +2668,16 @@ bool xx_wim_unpack_current_archive_record(Abstractformat *format,
     destination = xx_io_file_open(path, "wb");
     created = destination != NULL;
     if (!destination) goto done;
-    result = wim_extract(m, member, destination, pd);
+    if (link_text)
+        result = link_len == 0U ||
+                 xx_io_write(destination, link_text, link_len) == (ssize_t)link_len;
+    else
+        result = wim_extract(m, member, destination, pd);
     if (xx_io_close(destination) != 0) result = false;
     destination = NULL;
 done:
     if (!result && path && member->kind != WIM_KIND_DIR && created) xx_rt_remove(path);
+    if (link_text) xx_mem_free(link_text);
     if (path) xx_str_free(path);
     if (owned_base) xx_str_free(owned_base);
     return result;

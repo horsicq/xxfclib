@@ -99,6 +99,7 @@ typedef struct xx_lha_member_s {
     int64_t compressed_size;
     int64_t uncompressed_size;
     uint32_t method;
+    uint16_t payload_crc;
     uint64_t timestamp;
     bool is_folder;
 } xx_lha_member;
@@ -311,6 +312,39 @@ static xx_lha_stream *xx_lha_parse(Abstractformat *self, xx_pd_struct *pd) {
         uint8_t carrier[128];
         size_t bytes = span < 128 ? (size_t)span : 128, i;
         if (!xx_lha_read_at(self, self->base_address, carrier, bytes)) return NULL;
+        ((xx_lha *)self)->sfx_boa_mask = false;
+        /* Exact carrier markers and offset fields from the Amiga/C64
+         * producers. The ordinary full LHA chain parser below still checks
+         * every bounded member header; no executable instructions run. */
+        if (bytes >= 56U && carrier[0]==0 && carrier[1]==0 && carrier[2]==3 && carrier[3]==0xF3 &&
+            xx_rt_memcmp(carrier+44U,"SFX!",4U)==0) {
+            offset=(int64_t)((uint32_t)carrier[52]<<24U|(uint32_t)carrier[53]<<16U|(uint32_t)carrier[54]<<8U|carrier[55]);
+            if(offset<56 || offset>span-24) return NULL;
+            ((xx_lha *)self)->sfx_boa_mask=offset==0x1914;
+        } else if (span >= 0xE90 && carrier[0]==1U && carrier[2]==0x28U && carrier[3]==0x1CU) {
+            uint8_t marker[0x160];
+            if(!xx_lha_read_at(self,self->base_address+0xD30,marker,sizeof(marker))) return NULL;
+            if(marker[0]!='1' || xx_rt_memcmp(marker+0x14,"LHA",3) || marker[0x15B]!='-' || marker[0x15C]!='l' || marker[0x15D]!='h' || marker[0x15F]!='-') return NULL;
+            offset=0xE89;
+        } else if ((bytes>=44U && carrier[36]=='L' && carrier[37]=='H' && carrier[39]=='\'' && xx_rt_memcmp(carrier+40,"s SF",4)==0) ||
+                   (bytes>=40U && xx_rt_memcmp(carrier+32,"LZSS sel",8)==0) ||
+                   (bytes>=18U && xx_rt_memcmp(carrier+6,"SFX of LHarc",12)==0) ||
+                   (bytes>=84U && carrier[37]=='L' && carrier[38]=='H' && xx_rt_memcmp(carrier+76,"name to ",8)==0)) {
+            uint64_t limit=(uint64_t)(span-24); bool found=false; int64_t candidate;
+            if(limit>1024U*1024U) limit=1024U*1024U;
+            for(candidate=18; (uint64_t)candidate<=limit; ++candidate) {
+                uint8_t framed[257]; unsigned size,j,sum=0;
+                if(pd && xx_pd_is_stopped(pd)) return NULL;
+                if(!xx_lha_read_at(self,self->base_address+candidate,framed,24)) return NULL;
+                size=framed[0]+2U;
+                if(!xx_lha_tag_ok(framed) || framed[20]>1U || size<24U || size>(uint64_t)(span-candidate)) continue;
+                if(!xx_lha_read_at(self,self->base_address+candidate,framed,size)) return NULL;
+                for(j=2U;j<size;++j) sum+=framed[j];
+                if((uint8_t)sum!=framed[1]) continue;
+                offset=candidate; found=true; break;
+            }
+            if(!found) return NULL;
+        }
         if (carrier[0] == 'M' && carrier[1] == 'Z') {
             static const char banner[] = "LHarc's SFX ";
             bool identified = false, found = false;
@@ -712,6 +746,7 @@ static xx_lha_stream *xx_lha_parse(Abstractformat *self, xx_pd_struct *pd) {
         member.compressed_size = compressed_size;
         member.uncompressed_size = uncompressed_size;
         member.method = method;
+        member.payload_crc=xx_lha_le16(header+(level<=1U?22U+header[21]:21U));
         /* Stored verbatim: the field is an MS-DOS time|date pair at levels 0
          * and 1 but a Unix time_t at levels 2 and 3, and the level is the
          * only thing that says which. */
@@ -813,6 +848,14 @@ static bool xx_lha_decode(Abstractformat *self, const xx_lha_member *member,
         return false;
     }
 
+    if(((xx_lha *)self)->sfx_boa_mask) {
+        static const uint8_t mask[4]={'B','O','A',15U}; size_t index;
+        for(index=0U;index<(size_t)member->compressed_size;++index) {
+            if((index&4095U)==0 && pd && xx_pd_is_stopped(pd)) { xx_mem_free(packed); return false; }
+            packed[index]^=mask[index&3U];
+        }
+    }
+
     /* xx_mem_alloc(0) returns NULL, which the caller cannot tell from a
      * failure, so a genuinely empty member still gets one byte. */
     plain = (uint8_t *)xx_mem_alloc(plain_size ? plain_size : (size_t)1);
@@ -876,6 +919,10 @@ static bool xx_lha_decode(Abstractformat *self, const xx_lha_member *member,
     if (written != plain_size) {
         xx_mem_free(plain);
         return false;
+    }
+    if(xx_lha_crc16(plain,plain_size,plain_size)!=member->payload_crc) {
+        xx_pd_set_error(pd,1,"LHA member payload CRC mismatch");
+        xx_mem_free(plain); return false;
     }
     *out = plain;
     *out_size = written;

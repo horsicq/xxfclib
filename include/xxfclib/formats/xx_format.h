@@ -139,7 +139,7 @@ typedef enum xx_meta_id_e {
   XX_META_ID_OPT_UNPACK_PATH,             /**< Target directory path for unpacking (Unicode/string dynamic) */
   XX_META_ID_OPT_PASSWORD,                /**< Format-wide or operation password (Unicode/string/bytes dynamic) */
   XX_META_ID_OPT_OVERWRITE,               /**< Overwrite existing files on unpack (bool) */
-  XX_META_ID_COMPRESSION_LEVEL,            /**< Compression level (0-9) */
+  XX_META_ID_COMPRESSION_LEVEL,            /**< Format-specific level (typically 0-9; WIM 0/default..100) */
   XX_META_ID_ENCRYPTION_METHOD,            /**< Encryption method selector (format-specific integer) */
   XX_META_ID_OPT_MAX_MEMBER_SIZE,          /**< Maximum declared unpacked member size in bytes; absent is unlimited (uint64_t) */
   XX_META_ID_OPT_MEMORY_LIMIT,             /**< Maximum format-owned extraction buffer budget; absent is unlimited (uint64_t) */

@@ -11,6 +11,8 @@ from collections import defaultdict
 
 root = pathlib.Path(__file__).resolve().parents[2]
 definitions = (root / "include/xxfclib/xxfc_defs.h").read_text(encoding="utf-8")
+for enum_include in ("xx_format_gap_enums.inc", "die_music/xx_die_music_enums.inc", "xx_uniextract_enums.inc"):
+    definitions += (root / "include/xxfclib/formats" / enum_include).read_text(encoding="utf-8")
 enum_names = {int(value): name for name, value in re.findall(
     r"\b(XX_FILE_TYPE_\w+)\s*=\s*(\d+)", definitions)}
 rows = subprocess.run([sys.argv[1]], check=True, capture_output=True,
@@ -19,6 +21,13 @@ suffixes = defaultdict(list)
 for row in rows:
     reader, value, extension = row.split("\t")
     name = enum_names[int(value)]
+    if name in {"XX_FILE_TYPE_HXC_RAW_FLOPPY", "XX_FILE_TYPE_CASIO_FZF", "XX_FILE_TYPE_EMULATORII_EII",
+                "XX_FILE_TYPE_HXC_LOGIC_ANALYZER", "XX_FILE_TYPE_MICRAL_N_RAW",
+                "XX_FILE_TYPE_AMDOS", "XX_FILE_TYPE_OZDOS", "XX_FILE_TYPE_UNIDOS", "XX_FILE_TYPE_CFFA",
+                "XX_FILE_TYPE_APPLE_DOS_HYBRID", "XX_FILE_TYPE_DOS_MASTER", "XX_FILE_TYPE_COHERENT_FS",
+                "XX_FILE_TYPE_UNIX_V7", "XX_FILE_TYPE_MINIX_PARTITIONS", "XX_FILE_TYPE_PC98_PARTITIONS",
+                "XX_FILE_TYPE_APRICOT_PARTITIONS"}:
+        continue  # These grammars require an explicitly selected interpretation.
     if name == "XX_FILE_TYPE_BINARY":
         name = "XX_FILE_TYPE_UNKNOWN"  # Subtypes need content, not a guess.
     extension = extension.lower().lstrip(".")
@@ -37,6 +46,18 @@ for extension, candidates in suffixes.items():
 table.update({"tgz": "XX_FILE_TYPE_TAR_GZ", "tbz": "XX_FILE_TYPE_TAR_BZ2",
               "tbz2": "XX_FILE_TYPE_TAR_BZ2", "txz": "XX_FILE_TYPE_TAR_XZ",
               "tzst": "XX_FILE_TYPE_TAR_ZSTD", "tlz4": "XX_FILE_TYPE_TAR_LZ4"})
+# Stable suffix aliases used by Universal Extractor; ambiguous PAK/DAT/EXE
+# suffixes still require content validation or a selected reader.
+for kind, aliases in {
+    "GNU_GETTEXT_MO": "mo gmo", "QT_QM": "qm", "MIME_MESSAGE": "eml mht mhtml", "WINDOWS_HELP": "hlp", "MICROSOFT_LIT": "lit",
+    "ASF": "asf wma wmv", "AUDIBLE_AA": "aa", "MP4": "aax m4a m4v 3gp", "MATROSKA": "webm",
+    "OGG": "ogv oga opus", "BRUNS_MEDIA": "um3", "RPG_MAKER_MV": "rpgmvp rpgmvo rpgmvm",
+    "UTAGE_MEDIA": "utage", "YCG_IMAGE": "ycg", "LIVE_MAKER_GAL": "gal", "SMILE_GAME_PACK": "sgbpack",
+    "UUE": "xx xxe", "BASE64": "ntx b64", "ZIP": "wz imz xpi", "TAR": "ctar",
+    "RPG_MAKER_RGSSAD": "rgss2a rgss3a", "TAR_GZ": "unitypackage"
+}.items():
+    for extension in aliases.split():
+        table[extension] = "XX_FILE_TYPE_" + kind
 # These document containers use the ZIP reader when no dedicated reader exists.
 for extension in ("docx", "docm", "dotx", "dotm", "xlsx", "xlsm", "xltx",
                   "xltm", "xlsb", "pptx", "pptm", "potx", "potm", "ppsx",

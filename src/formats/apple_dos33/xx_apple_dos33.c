@@ -15,7 +15,7 @@
 #endif
 #define DOS33_SECTOR 256U
 #define DOS33_TRACK 4096U
-#define DOS33_MAX_SECTORS 800U
+#define DOS33_MAX_SECTORS 1280U
 #define DOS33_LOGICAL_SECTORS 65536U
 /* DOS logical sector -> ProDOS logical half-block on one16-sector track. */
 static const uint8_t dos33_prodos_sector[16] = {0,14,13,12,11,10,9,8,7,6,5,4,3,2,1,15};
@@ -75,7 +75,9 @@ static bool dos33_claim(dos33_view *view, uint16_t index) {
     uint8_t track = (uint8_t)(index / 16U), sector = (uint8_t)(index % 16U);
     uint8_t byte;
     if (index >= view->tracks * 16U || index >= DOS33_MAX_SECTORS) return false;
-    byte = view->bitmap[track * 4U + 1U - sector / 8U];
+    /* Basis 108 80-track volumes use two bitmap bytes per track; ordinary
+     * volumes use the high two bytes of each four-byte track entry. */
+    byte = view->bitmap[track * (view->tracks > 50U ? 2U : 4U) + 1U - sector / 8U];
     if (view->claimed[index] || (byte & (1U << (sector % 8U)))) return false;
     view->claimed[index] = 1U; return true;
 }
@@ -201,7 +203,7 @@ static bool dos33_parse_order(Abstractformat *self, xx_apple_dos33_order order,
     view->bytes = 18U * DOS33_TRACK; view->tracks = 18U; view->order = order; view->mode = mode;
     if (!dos33_sector(view, 17U * 16U, vtoc, pd)) return false;
     view->tracks = vtoc[52]; view->volume = vtoc[6]; view->bytes = view->tracks * DOS33_TRACK;
-    if (vtoc[3] != 3U || vtoc[39] != 122U || view->tracks < 18U || view->tracks > 50U ||
+    if (vtoc[3] != 3U || vtoc[39] != 122U || view->tracks < 18U || view->tracks > 80U ||
         vtoc[53] != 16U || dos33_u16(vtoc + 54) != DOS33_SECTOR || !view->volume || view->volume == 255U ||
         vtoc[48] >= view->tracks || (vtoc[49] != 1U && vtoc[49] != 255U) ||
         view->bytes > (uint64_t)(total - view->base)) return false;

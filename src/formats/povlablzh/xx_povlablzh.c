@@ -189,19 +189,30 @@ static bool xx_povlablzh_checksum_valid(const uint8_t *header,
     return (sum & 0xFFU) == (uint32_t)header[1];
 }
 
-/* DOS 8.3 member names. Path separators are rejected outright: the format is
- * flat, so a separator here would only ever be a mis-parse walking into
- * payload bytes. */
+/* DOS names can carry relative subdirectories. Validate each component
+ * before normalizing separators for extraction. */
 static bool xx_povlablzh_name_valid(const uint8_t *name, int64_t length) {
     int64_t index;
+    int64_t component = 0;
 
     if (length < 1) return false;
     for (index = 0; index < length; ++index) {
         if (name[index] < 0x20U || name[index] > 0x7EU) return false;
-        if (name[index] == '/' || name[index] == '\\' || name[index] == ':') {
-            return false;
+        if (name[index] == ':' || name[index] == '<' || name[index] == '>' ||
+            name[index] == '"' || name[index] == '|' || name[index] == '?' ||
+            name[index] == '*') return false;
+        if (name[index] == '/' || name[index] == '\\') {
+            int64_t size = index - component;
+            if (size == 0 || (size == 1 && name[component] == '.') ||
+                (size == 2 && name[component] == '.' &&
+                             name[component + 1] == '.')) return false;
+            component = index + 1;
         }
     }
+    if (component == length ||
+        (length - component == 1 && name[component] == '.') ||
+        (length - component == 2 && name[component] == '.' &&
+                                   name[component + 1] == '.')) return false;
     return true;
 }
 
@@ -322,7 +333,8 @@ static bool xx_povlablzh_read_member(Abstractformat *self, int64_t span,
     }
 
     for (index = 0; index < name_length; ++index) {
-        name_buffer[index] = header[XX_POVLABLZH_NAME_OFFSET + index];
+        uint8_t character = header[XX_POVLABLZH_NAME_OFFSET + index];
+        name_buffer[index] = character == '\\' ? '/' : character;
     }
     name_buffer[name_length] = 0U;
     name = xx_str_dup((const char *)name_buffer);
@@ -343,7 +355,7 @@ static bool xx_povlablzh_read_member(Abstractformat *self, int64_t span,
     /* Already packed date-high / time-low by the container, so it is stored
      * verbatim rather than re-assembled. */
     member->timestamp = (uint64_t)xx_povlablzh_le32(header + 15);
-    /* The format is flat: there are no directory entries. */
+    /* Names can include relative DOS subdirectories; these are file records. */
     member->is_folder = false;
     /* The CRC-16 behind the name covers the UNPACKED member, so verifying it
      * here would decompress the whole archive on every format probe. */

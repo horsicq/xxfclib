@@ -4,6 +4,7 @@
 #if !defined(_WIN32)
 #define _POSIX_C_SOURCE 200809L
 #include "xx_settings_platform.h"
+#include "../../io/xx_io_policy.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -42,6 +43,7 @@ static bool create_parents(char *path) {
 }
 
 xxfc_status_t xx_settings_platform_write_file(const char *path, const char *text, size_t size) {
+    if (!xx_io_policy_mutation_allowed()) return XXFC_ERR_IO;
     char *directory = xx_settings_duplicate(path, xx_rt_strlen(path));
     if (!directory) return XXFC_ERR_OUT_OF_MEMORY;
     bool ok = create_parents(directory);

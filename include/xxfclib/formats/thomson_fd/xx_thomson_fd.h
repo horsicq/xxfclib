@@ -17,10 +17,15 @@ extern "C" {
  * 2s320, as emitted by Greaseweazle's FD image writer. */
 typedef struct xx_thomson_fd_s {
     Abstractformat format;
+    bool hxc_geometry;
 } xx_thomson_fd;
 
 XXFC_API void xx_thomson_fd_init(xx_thomson_fd *, xx_io_device *, int64_t);
 XXFC_API xx_thomson_fd *xx_thomson_fd_create(xx_io_device *, int64_t);
+/* Explicit HxC geometry: 320KiB=80 cylinders/1 head; 640KiB=80/2.
+ * The legacy create/init retain Greaseweazle's 320KiB=40/2 interpretation. */
+XXFC_API void xx_thomson_fd_init_hxc(xx_thomson_fd *, xx_io_device *, int64_t);
+XXFC_API xx_thomson_fd *xx_thomson_fd_create_hxc(xx_io_device *, int64_t);
 XXFC_API void xx_thomson_fd_destroy(xx_thomson_fd *);
 XXFC_API void xx_thomson_fd_free(xx_thomson_fd *);
 

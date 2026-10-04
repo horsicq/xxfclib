@@ -200,7 +200,8 @@ bool xx_tarx1_unpack_current_archive_record(
     const char *name = record ? xx_archive_record_get_original_name(record) : NULL;
     /* QNX install packages store paths rooted at /qnx4. Publish the stored
      * name in the listing, but extract beneath the requested destination.
-     * UNC paths, drives, and traversal still fail the TAR safety check. */
+     * The TAR name policy makes other rooted names relative as well and
+     * still refuses traversal, device names and reserved characters. */
     if (name && name[0] == '/' && name[1] != '/' && common && common->tar) {
         return xx_tar_unpack_current_archive_record_as(
             &common->tar->format, state, pd, name + 1);

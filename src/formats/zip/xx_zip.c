@@ -2494,71 +2494,111 @@ static bool xx_zip_unpack_reference_to_device(
     return success && !xx_pd_is_stopped(pd);
 }
 
-static bool xx_zip_relative_name_is_safe(const wchar_t *name) {
-    const wchar_t *segment;
-    const wchar_t *position;
-    if (!name || !name[0] || name[0] == L'/' || name[0] == L'\\' ||
-        (name[0] && name[1] == L':')) {
-        return false;
+/* Returns an independently allocated extraction name whose components are
+ * joined by @p separator, or NULL when the stored name must be refused.  This
+ * is the CPIO reader's policy (cpio_safe_output_name) for ZIP's wide names.
+ * As Info-ZIP unzip and 7-Zip do, absolute names ("/x", "\x", "//srv/x",
+ * "C:\x", "C:x") are made relative by dropping leading separators and drive
+ * prefixes (7-Zip keeps a drive as a "C_" directory; like the CPIO reader,
+ * this drops it), and "." and empty components ("./x", "a//b") are dropped.
+ * Both '/' and '\' separate components on every platform: APPNOTE mandates
+ * '/', but Windows zippers have stored '\'.  Refused: any ".." component (so
+ * "/../x" and "C:\..\x" cannot escape), control characters, the characters
+ * Win32 cannot put in a name (':' would also open an NTFS stream), components
+ * ending in '.' or ' ' (Win32 strips those and so aliases another path) and,
+ * on Windows, reserved device names.  These run on every platform so an
+ * archive refused on one host is refused on all;
+ * xx_io_platform_wsegment_is_reserved is false off Windows.  A name with
+ * nothing left ("/", "C:\", "./") denotes the output root: NULL is returned
+ * and *is_root is set.  The name is the central-directory one; the local
+ * header name and the Unicode Path extra field (0x7075) are not consulted;
+ * code that starts using either must route it through here too. */
+static wchar_t *xx_zip_safe_relative_name(const wchar_t *name,
+                                          wchar_t separator, bool *is_root) {
+    size_t length;
+    size_t index;
+    size_t start;
+    size_t out = 0U;
+    wchar_t *result;
+    *is_root = false;
+    if (!name || !name[0]) {
+        return NULL;
     }
-    segment = name;
-    position = name;
     for (;;) {
-        bool at_end = *position == L'\0';
-        bool separator = *position == L'/' || *position == L'\\';
-        if (*position == L':') {
-            return false;
+        if (name[0] == L'/' || name[0] == L'\\') {
+            ++name;
+        } else if (((name[0] >= L'A' && name[0] <= L'Z') ||
+                    (name[0] >= L'a' && name[0] <= L'z')) &&
+                   name[1] == L':') {
+            name += 2;
+        } else {
+            break;
         }
-        if (at_end || separator) {
-            size_t length = (size_t)(position - segment);
-            if ((length == 1U && segment[0] == L'.') ||
-                (length == 2U && segment[0] == L'.' &&
-                 segment[1] == L'.')) {
-                return false;
-            }
-            /* Win32 aliases leading spaces and trailing spaces/dots, which
-             * could otherwise turn a lexically safe name into a different
-             * on-disk path (including a reserved device name). The checks run
-             * on every platform so an archive rejected on one is rejected on
-             * all; xx_io_platform_wsegment_is_reserved is false off Windows. */
-            if (length != 0U &&
-                (segment[0] == L' ' || segment[length - 1U] == L'.' ||
-                  segment[length - 1U] == L' ')) {
-                return false;
-            }
-            if (length != 0U &&
-                xx_io_platform_wsegment_is_reserved(segment, length)) {
-                return false;
-            }
-            if (at_end) {
-                return true;
-            }
-            segment = position + 1;
-        }
-        position++;
     }
+    /* ZIP names are at most 65535 bytes; the guard keeps the size exact. */
+    length = xx_str_wlen(name);
+    if (length >= SIZE_MAX / sizeof(wchar_t)) {
+        return NULL;
+    }
+    result = (wchar_t *)xx_mem_alloc((length + 1U) * sizeof(wchar_t));
+    if (!result) {
+        return NULL;
+    }
+    for (start = 0U, index = 0U; index <= length; ++index) {
+        wchar_t c = name[index];
+        size_t size;
+        if (index != length && c != L'/' && c != L'\\') {
+            if ((uint32_t)c < 0x20U || c == L'\x7f' || c == L':' || c == L'<' ||
+                c == L'>' || c == L'"' || c == L'|' || c == L'?' ||
+                c == L'*') {
+                xx_mem_free(result);
+                return NULL;
+            }
+            continue;
+        }
+        size = index - start;
+        if (size == 2U && name[start] == L'.' && name[start + 1U] == L'.') {
+            xx_mem_free(result);
+            return NULL;
+        }
+        if (size != 0U && !(size == 1U && name[start] == L'.')) {
+            if (name[index - 1U] == L'.' || name[index - 1U] == L' ' ||
+                xx_io_platform_wsegment_is_reserved(name + start, size)) {
+                xx_mem_free(result);
+                return NULL;
+            }
+            if (out != 0U) {
+                result[out++] = separator;
+            }
+            xx_mem_copy(result + out, name + start, size * sizeof(wchar_t));
+            out += size;
+        }
+        start = index + 1U;
+    }
+    if (out == 0U) {
+        xx_mem_free(result);
+        *is_root = true;
+        return NULL;
+    }
+    result[out] = L'\0';
+    return result;
 }
 
 static wchar_t *xx_zip_make_destination(const wchar_t *base,
-                                        const wchar_t *name) {
+                                        const wchar_t *name, bool *is_root) {
     wchar_t *normalized;
     wchar_t *result;
     size_t base_length;
     bool separator_needed;
-    if (!base || !name || !xx_zip_relative_name_is_safe(name)) {
-        return NULL;
-    }
     const wchar_t separator = xx_io_platform_wseparator();
     const wchar_t separator_text[2] = {separator, L'\0'};
-
-    normalized = xx_str_wdup(name);
-    if (!normalized) {
+    *is_root = false;
+    if (!base || !name) {
         return NULL;
     }
-    for (size_t index = 0; normalized[index]; ++index) {
-        if (normalized[index] == L'/' || normalized[index] == L'\\') {
-            normalized[index] = separator;
-        }
+    normalized = xx_zip_safe_relative_name(name, separator, is_root);
+    if (!normalized) {
+        return NULL;
     }
     base_length = xx_str_wlen(base);
     separator_needed = base_length != 0U &&
@@ -2697,15 +2737,19 @@ bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_archive_recor
         item_name_w = xx_str_wdup(L"unnamed_file");
     }
 
-    /* Reject absolute, drive-qualified and dot-segment names before joining
-       them to the extraction root. */
-    wchar_t *full_dest_w = xx_zip_make_destination(unpack_path_w, item_name_w);
+    /* Make absolute and drive-qualified names relative and refuse traversal
+       or unmappable names before joining them to the extraction root. */
+    bool is_root = false;
+    wchar_t *full_dest_w = xx_zip_make_destination(unpack_path_w, item_name_w,
+                                                   &is_root);
 
     xx_str_wfree(unpack_path_w);
     xx_str_wfree(item_name_w);
 
     if (!full_dest_w) {
-        return false;
+        /* A "/" or "C:\" directory entry is the output directory itself;
+           there is nothing to create. */
+        return is_root && is_folder;
     }
 
     bool success = false;
@@ -3026,6 +3070,15 @@ static bool xx_zip_pack_source_staged(
             success = xx_deflate_pack_source(source, source_path,
                 out_uncompressed_size, out_compressed_size, out_crc32,
                 destination, level, method == 9U, progress);
+            if (success && *out_uncompressed_size == 0 &&
+                *out_compressed_size == 0) {
+                /* Both Deflate variants need a final block for an empty file.
+                 * The standalone codec's zero-length API emits no bytes. */
+                static const uint8_t empty_stream[2] = {0x03U, 0x00U};
+                success = xx_zip_write_exact_progress(destination, empty_stream,
+                    sizeof(empty_stream), progress);
+                if (success) *out_compressed_size = (int64_t)sizeof(empty_stream);
+            }
             break;
         case 12:
             success = xx_bzip2_pack_source(source, source_path,
@@ -3646,6 +3699,12 @@ encrypted_cleanup:
             bool compression_ok = xx_deflate_pack_source(
                 source_dev, name_utf8, &out_uncomp, &out_comp,
                 &comp_crc, self->device, level, method == 9U, pd);
+            if (compression_ok && out_uncomp == 0 && out_comp == 0) {
+                static const uint8_t empty_stream[2] = {0x03U, 0x00U};
+                compression_ok = xx_zip_write_exact_progress(self->device,
+                    empty_stream, sizeof(empty_stream), pd);
+                if (compression_ok) out_comp = (int64_t)sizeof(empty_stream);
+            }
             if (!compression_ok || out_uncomp < 0 || out_comp < 0 ||
                 (uint64_t)out_uncomp > UINT32_MAX ||
                 (uint64_t)out_comp > UINT32_MAX) {

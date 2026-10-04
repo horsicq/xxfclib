@@ -16,8 +16,11 @@ extern "C" {
 /**
  * @brief An FMOD Sample Bank: a table of sample headers followed by the raw
  * (codec-specific) data of every sample.  Every sample is one record; its
- * bytes are extracted exactly as stored (no WAV/MP3 wrapping), under the
- * sample's own name, or "%08u.dat" (the sample index) when it has none.
+ * PCM integer/float samples are reconstructed as playable WAV files using
+ * their rate/channel/length metadata, trimming bank alignment bytes. MPEG
+ * mono/stereo payloads receive an .mp3 extension. Other codecs are extracted
+ * exactly as stored and may need a platform-specific decoder. Names come
+ * from each sample or "%08u.dat" (the sample index) when absent.
  * All fields are little-endian.
  *
  * FSB1 (FMOD 3):

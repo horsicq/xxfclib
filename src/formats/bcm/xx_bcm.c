@@ -4,24 +4,33 @@
  * BCM, Ilya Muravyov's BWT + context-mixing compressor.  xx_bcm.h carries the
  * stream layout.
  *
- * "BCM!" (BCM 1.xx) is decoded here.  The model -- a 32-bit binary range
+ * Both 1.xx bitstreams are decoded here.  The model -- a 32-bit binary range
  * coder with 18-bit probabilities, an order-0 counter (rate 2), two order-1
  * counters keyed on the previous two symbols (rate 4, only the first one is
  * trained), and an interpolated SSE stage (rate 6) selected by a run flag --
- * and the inverse BWT follow bcm.cpp v1.30 by Ilya Muravyov
- * (https://github.com/encode84/bcm), MIT licence, Copyright (C) 2008-2018
- * Ilya Muravyov.  The code below is a C re-expression of that design, not
- * a copy of it.
+ * and the inverse BWT follow bcm.cpp by Ilya Muravyov
+ * (https://github.com/encode84/bcm; history mirrored at
+ * https://github.com/FS-make-simple/bcm):
+ *   "BCM!"  v1.10 beta .. v1.30 (and later), MIT licence, Copyright (C)
+ *           2008-2018 Ilya Muravyov;
+ *   "BCM1"  v1.00 .. v1.04, "written and placed in the public domain by Ilya
+ *           Muravyov" (v1.04 was later relicensed MIT, Copyright (C)
+ *           2008-2016).  It differs from "BCM!" only in the counter mix
+ *           ((4*p0 + 3*p1 + p2) / 8 instead of (7*(p0 + p1) + 2*p2) / 16),
+ *           in the last SSE slot's initial value (15 << 12 instead of
+ *           65535), in coding the block length, primary index and end
+ *           marker as four model-coded bytes (most significant first)
+ *           instead of 32 flat bits, and in carrying no CRC.
+ * The code below is a C re-expression of that design, not a copy of it.
  *
  * The container stores no total length and no member name, so the one member
  * is called "payload" and its size is only known after decoding.  Detection
  * decodes the first block header (length and primary index) and stops there;
  * the whole stream is decoded only on extraction, where the stored CRC-32 is
- * checked.
+ * checked ("BCM!") and the input must be consumed without running dry.
  *
- * The older "BCM1".."BCM9" streams (0.xx releases) use a different bitstream
- * that is not decoded: they are identified and sized and report zero
- * records, as before.
+ * No published 1.xx release writes "BCM2".."BCM9" and the 0.xx format is
+ * undocumented, so any magic other than "BCM!" and "BCM1" is refused.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -42,12 +51,12 @@
 #endif
 
 #define XX_BCM_MAGIC_SIZE 4U
-/* Old streams: four magic bytes cannot be a compressed stream on their own
- * (XArchive uses the same floor). */
+/* Magic plus the four bytes the decoder primes with: no stream is shorter
+ * ("BCM1" writes 10 bytes for an empty input). */
 #define XX_BCM_MIN_SIZE 8
 /* "BCM!": magic, then at least the 0 terminator word, the CRC word and the
  * four flush bytes -- exactly what bcm writes for an empty input. */
-#define XX_BCM1_MIN_SIZE 16
+#define XX_BCM_V110_MIN_SIZE 16
 /* bcm's -b switch takes the block size in MB; this is the largest block the
  * reader will rebuild (it needs five bytes of memory per block byte). */
 #define XX_BCM_MAX_BLOCK ((uint32_t)256U * 1024U * 1024U)
@@ -161,20 +170,25 @@ typedef struct bcm_model_s {
     uint32_t prev1;
     uint32_t prev2;
     uint32_t run;
+    bool legacy; /**< "BCM1" (v1.00..v1.04) rather than "BCM!". */
 } bcm_model;
 
-static void bcm_model_init(bcm_model *m) {
+static void bcm_model_init(bcm_model *m, bool legacy) {
     int i, j, k;
+    /* The top SSE slot starts at 65535 in "BCM!" and at 15 << 12 in
+     * "BCM1". */
+    const uint16_t top = legacy ? (uint16_t)(15U << 12) : (uint16_t)0xFFFFU;
     for (i = 0; i < 256; ++i) m->order0[i] = 1U << 15;
     for (i = 0; i < 256; ++i)
         for (j = 0; j < 256; ++j) m->order1[i][j] = 1U << 15;
     for (i = 0; i < 2; ++i)
         for (j = 0; j < 256; ++j)
             for (k = 0; k < 17; ++k)
-                m->sse[i][j][k] = (uint16_t)((k << 12) - (k == 16 ? 1 : 0));
+                m->sse[i][j][k] = k == 16 ? top : (uint16_t)(k << 12);
     m->prev1 = 0U;
     m->prev2 = 0U;
     m->run = 0U;
+    m->legacy = legacy;
 }
 
 #define BCM_ADAPT(counter, bit, rate) \
@@ -197,8 +211,12 @@ static uint32_t bcm_decode_symbol(bcm_model *m, bcm_decoder *rc) {
     }
     sse = m->sse[m->run > 2U ? 1 : 0];
     while (ctx < 256U) {
-        int p = (((int)m->order0[ctx] + (int)first[ctx]) * 7 +
-                 (int)second[ctx] * 2) >> 4;
+        /* Both mixes stay within 0..65535, so j + 1 <= 16. */
+        int p = m->legacy
+                    ? ((int)m->order0[ctx] * 4 + (int)first[ctx] * 3 +
+                       (int)second[ctx]) >> 3
+                    : (((int)m->order0[ctx] + (int)first[ctx]) * 7 +
+                       (int)second[ctx] * 2) >> 4;
         int j = p >> 12;
         int x1 = sse[ctx][j];
         int x2 = sse[ctx][j + 1];
@@ -216,6 +234,17 @@ static uint32_t bcm_decode_symbol(bcm_model *m, bcm_decoder *rc) {
     m->prev2 = m->prev1;
     m->prev1 = ctx & 0xFFU;
     return ctx & 0xFFU;
+}
+
+/* A block length, primary index or end marker: 32 flat bits in "BCM!", four
+ * model-coded bytes (most significant first) in "BCM1", where they also move
+ * the model's context like any other symbol. */
+static uint32_t bcm_decode_word(bcm_model *m, bcm_decoder *rc) {
+    uint32_t value = 0U;
+    int i;
+    if (!m->legacy) return bcm_decode32(rc);
+    for (i = 0; i < 4; ++i) value = (value << 8) | bcm_decode_symbol(m, rc);
+    return value;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -289,10 +318,11 @@ static bool bcm_reserve(uint8_t **buffer, size_t *capacity, size_t need,
     return true;
 }
 
-/* mode 0: header probe only (first block length and primary index);
- * mode 1: full decode into `out` with CRC check. */
-static bool bcm_walk(Abstractformat *self, bcm_output *out, bool full,
-                     int64_t *consumed, xx_pd_struct *pd) {
+/* full == false: header probe only (first block length and primary index);
+ * full == true: decode into `out`, with the CRC check for "BCM!".
+ * `legacy` selects the "BCM1" bitstream. */
+static bool bcm_walk(Abstractformat *self, bool legacy, bcm_output *out,
+                     bool full, int64_t *consumed, xx_pd_struct *pd) {
     bcm_input *in = NULL;
     bcm_model *model = NULL;
     bcm_decoder rc;
@@ -300,15 +330,22 @@ static bool bcm_walk(Abstractformat *self, bcm_output *out, bool full,
     size_t block_capacity = 0U;
     uint32_t *next = NULL;
     size_t next_capacity = 0U;
+    uint32_t first_length = 0U;
     int64_t total;
     bool result = false;
 
     total = xx_io_total_size(self->device);
     if (total < self->base_address ||
-        total - self->base_address < XX_BCM1_MIN_SIZE)
+        total - self->base_address <
+            (legacy ? XX_BCM_MIN_SIZE : XX_BCM_V110_MIN_SIZE))
         return false;
     in = (bcm_input *)xx_mem_alloc(sizeof(*in));
     if (!in) return false;
+    /* The model is needed even by the probe: "BCM1" codes the block header
+     * with it. */
+    model = (bcm_model *)xx_mem_alloc(sizeof(*model));
+    if (!model) goto done;
+    bcm_model_init(model, legacy);
     in->device = self->device;
     in->next = self->base_address + (int64_t)XX_BCM_MAGIC_SIZE;
     in->end = total;
@@ -320,33 +357,33 @@ static bool bcm_walk(Abstractformat *self, bcm_output *out, bool full,
     bcm_decoder_init(&rc, in);
 
     if (!full) {
-        uint32_t length = bcm_decode32(&rc);
+        uint32_t length = bcm_decode_word(model, &rc);
         if (in->overrun) goto done;
         if (length == 0U) {
-            /* Empty input: the terminator must be followed by the CRC of
-             * nothing. */
-            result = bcm_decode32(&rc) == 0U && !in->overrun;
+            /* Empty input.  "BCM!" follows the terminator with the CRC of
+             * nothing; "BCM1" ends there. */
+            result = legacy || (bcm_decode32(&rc) == 0U && !in->overrun);
         } else {
-            uint32_t primary = bcm_decode32(&rc);
+            uint32_t primary = bcm_decode_word(model, &rc);
             result = !in->overrun && length <= XX_BCM_MAX_BLOCK &&
                      primary >= 1U && primary <= length;
         }
         goto done;
     }
 
-    model = (bcm_model *)xx_mem_alloc(sizeof(*model));
-    if (!model) goto done;
-    bcm_model_init(model);
     for (;;) {
         uint32_t length, primary, i, p, emitted;
         uint32_t counts[257];
         if (pd && xx_pd_is_stopped(pd)) goto done;
-        length = bcm_decode32(&rc);
+        length = bcm_decode_word(model, &rc);
         if (in->overrun) goto done;
         if (length == 0U) break;
-        primary = bcm_decode32(&rc);
-        if (in->overrun || length > XX_BCM_MAX_BLOCK || primary < 1U ||
-            primary > length)
+        /* bcm sizes its buffers from the first block and calls any later,
+         * larger block corrupt. */
+        if (first_length == 0U) first_length = length;
+        primary = bcm_decode_word(model, &rc);
+        if (in->overrun || length > XX_BCM_MAX_BLOCK ||
+            length > first_length || primary < 1U || primary > length)
             goto done;
         for (i = 0U; i < length; ++i) {
             if ((size_t)i >= block_capacity &&
@@ -391,7 +428,8 @@ static bool bcm_walk(Abstractformat *self, bcm_output *out, bool full,
     }
     bcm_output_flush(out);
     if (out->failed) goto done;
-    {
+    if (!legacy) {
+        /* "BCM1" carries no checksum. */
         uint32_t stored = bcm_decode32(&rc);
         if (in->overrun || stored != out->crc) goto done;
     }
@@ -406,8 +444,8 @@ done:
     return result;
 }
 
-/* A stream is BCM when it carries a known magic and enough payload.  For
- * "BCM!" the first block header must also decode sensibly. */
+/* A stream is BCM when it carries the "BCM!" or "BCM1" magic and its first
+ * block header decodes sensibly. */
 static bool xx_bcm_probe(Abstractformat *self, uint8_t *signature_out) {
     uint8_t magic[XX_BCM_MAGIC_SIZE];
     int64_t total;
@@ -418,12 +456,10 @@ static bool xx_bcm_probe(Abstractformat *self, uint8_t *signature_out) {
         total - self->base_address < XX_BCM_MIN_SIZE)
         return false;
     if (!bcm_read_magic(self, magic)) return false;
-    if (magic[0] != 'B' || magic[1] != 'C' || magic[2] != 'M') return false;
-    if (magic[3] == '!') {
-        if (!bcm_walk(self, NULL, false, NULL, NULL)) return false;
-    } else if (magic[3] < '1' || magic[3] > '9') {
+    if (magic[0] != 'B' || magic[1] != 'C' || magic[2] != 'M' ||
+        (magic[3] != '!' && magic[3] != '1') ||
+        !bcm_walk(self, magic[3] == '1', NULL, false, NULL, NULL))
         return false;
-    }
     if (signature_out) *signature_out = magic[3];
     return true;
 }
@@ -510,7 +546,7 @@ bool xx_bcm_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     }
     archive->signature = signature;
     archive->version = signature == '!' ? 0U : (uint8_t)(signature - '0');
-    archive->number_of_records = signature == '!' ? 1U : 0U;
+    archive->number_of_records = 1U;
     self->number_of_archive_records = archive->number_of_records;
     /* The bitstream carries no length; its end is only known after a full
      * decode, so the stream is taken to run to the end of the device. */
@@ -544,8 +580,7 @@ bool xx_bcm_unpack_to_device(xx_bcm *archive, xx_io_device *destination,
     bcm_output *out;
     uint8_t signature = 0U;
     bool result;
-    if (!archive || !xx_bcm_probe(&archive->format, &signature) ||
-        signature != '!')
+    if (!archive || !xx_bcm_probe(&archive->format, &signature))
         return false;
     out = (bcm_output *)xx_mem_alloc(sizeof(*out));
     if (!out) return false;
@@ -554,7 +589,8 @@ bool xx_bcm_unpack_to_device(xx_bcm *archive, xx_io_device *destination,
     out->total = 0U;
     out->length = 0U;
     out->failed = false;
-    result = bcm_walk(&archive->format, out, true, consumed, pd);
+    result = bcm_walk(&archive->format, signature == '1', out, true, consumed,
+                      pd);
     if (result && out_size) *out_size = out->total;
     xx_mem_free(out);
     return result;

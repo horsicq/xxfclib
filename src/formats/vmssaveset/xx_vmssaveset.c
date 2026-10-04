@@ -330,6 +330,8 @@ static bool vmssaveset_add_member(vmssaveset_stream *stream, const vmssaveset_me
 #define VMSSAVESET_MAX_BODY_RECORDS 40000000
 #define VMSSAVESET_MAX_NAME 512U
 #define VMSSAVESET_FLAG_VARREC 0x01U
+#define VMSSAVESET_FCH_NOBACKUP 0x00000002U
+#define VMSSAVESET_FCH_DIRECTORY 0x00002000U
 
 /* A save set is a flat sequence of fixed-size BLOCKS.  Every block opens with
  * a 0x100-byte block header and the rest of it holds a packed sequence of
@@ -347,6 +349,7 @@ typedef struct vmssaveset_walker_s {
     vmssaveset_cursor *cursor;
     int64_t remaining;
     int32_t block_size;
+    bool at_end;
 } vmssaveset_walker;
 
 static bool vmssaveset_cursor_read(vmssaveset_cursor *cursor, size_t count,
@@ -393,19 +396,23 @@ static bool vmssaveset_block_header_ok(const uint8_t *header) {
            vmssaveset_le16(header + 0xfcU) == 0U;
 }
 
-/* The block-and-record iterator.  `remaining` is allowed to go negative
- * exactly as the reference lets it: the next block header is only fetched
- * when it is EXACTLY zero. */
+/* Records remain inside their declared physical block. A clean end is
+ * distinct from a failed header/read, including after opaque filler blocks. */
 static bool vmssaveset_next_record(vmssaveset_walker *walker,
                                    int32_t *record_size,
                                    int32_t *record_type) {
     uint8_t header[VMSSAVESET_BLOCK_HEADER_SIZE];
     if (!walker || !walker->cursor || !record_size || !record_type)
         return false;
+    walker->at_end = false;
     if (walker->remaining == 0) {
         for (;;) {
             uint16_t applic;
             int32_t block;
+            if (walker->cursor->position == walker->cursor->size) {
+                walker->at_end = true;
+                return false;
+            }
             if (!vmssaveset_cursor_read(walker->cursor,
                                         VMSSAVESET_BLOCK_HEADER_SIZE, header))
                 return false;
@@ -429,10 +436,12 @@ static bool vmssaveset_next_record(vmssaveset_walker *walker,
             if (applic != 2U) break;
             if (!vmssaveset_cursor_skip(walker->cursor, walker->remaining))
                 return false;
+            walker->remaining = 0;
         }
     }
     {
         uint8_t record[VMSSAVESET_RECORD_HEADER_SIZE];
+        if (walker->remaining < VMSSAVESET_RECORD_HEADER_SIZE) return false;
         if (!vmssaveset_cursor_read(walker->cursor,
                                     VMSSAVESET_RECORD_HEADER_SIZE, record))
             return false;
@@ -440,27 +449,32 @@ static bool vmssaveset_next_record(vmssaveset_walker *walker,
         if (vmssaveset_le32(record + 0x0cU) != 0U) return false;
         *record_size = (int32_t)vmssaveset_le16(record);
         *record_type = (int32_t)vmssaveset_le16(record + 2U);
+        if (*record_size > walker->remaining) return false;
         walker->remaining -= *record_size;
     }
     return true;
 }
 
-/* The rtype-3 file-attributes record.  The reference bounds this loop with
- * the FULL record size without subtracting the two magic bytes and then seeks
- * to the record end, so the over-read is harmless; that is reproduced here,
- * not "fixed". */
+/* The rtype-3 file-attributes record. Attribute lengths exclude the two magic
+ * bytes; the remaining zero bytes align the complete record to a longword. */
 static bool vmssaveset_attributes(vmssaveset_cursor *cursor,
                                   int32_t record_size, char *name,
                                   size_t name_size, uint64_t *file_size,
-                                  bool *is_directory, bool *var_rec) {
+                                  bool *is_directory, bool *var_rec,
+                                  uint32_t *characteristics,
+                                  uint16_t file_id[3]) {
     uint8_t scratch[0x40];
-    int64_t left = record_size;
-    if (!cursor || !name || !file_size || !is_directory || !var_rec)
+    int64_t left = (int64_t)record_size - 2;
+    bool seen_fid = false, seen_characteristics = false;
+    if (!cursor || !name || !file_size || !is_directory || !var_rec ||
+        !characteristics || !file_id || left < 0)
         return false;
     name[0] = '\0';
     *file_size = 0U;
     *is_directory = false;
     *var_rec = false;
+    *characteristics = 0U;
+    file_id[0] = file_id[1] = file_id[2] = 0U;
     if (!vmssaveset_cursor_read(cursor, 2U, scratch)) return false;
     if (scratch[0] != 1U || scratch[1] != 1U) return false;
     while (left > 3) {
@@ -491,10 +505,19 @@ static bool vmssaveset_attributes(vmssaveset_cursor *cursor,
                 }
                 name[take] = '\0';
             }
+        } else if (tag == 0x2c) {
+            if (length != 6 || seen_fid) return false;
+            seen_fid = true;
+            if (!vmssaveset_cursor_read(cursor, 6U, scratch)) return false;
+            file_id[0] = vmssaveset_le16(scratch);
+            file_id[1] = vmssaveset_le16(scratch + 2U);
+            file_id[2] = vmssaveset_le16(scratch + 4U);
         } else if (tag == 0x33) {
-            if (length != 4) return false;
+            if (length != 4 || seen_characteristics) return false;
+            seen_characteristics = true;
             if (!vmssaveset_cursor_read(cursor, 4U, scratch)) return false;
-            *is_directory = (vmssaveset_le32(scratch) & 0x2000U) != 0U;
+            *characteristics = vmssaveset_le32(scratch);
+            *is_directory = (*characteristics & VMSSAVESET_FCH_DIRECTORY) != 0U;
         } else if (tag == 0x34) {
             uint64_t high, low, first_free, end_block;
             if (length != 0x20) return false;
@@ -514,7 +537,68 @@ static bool vmssaveset_attributes(vmssaveset_cursor *cursor,
             if (!vmssaveset_cursor_skip(cursor, length)) return false;
         }
     }
+    if (left != 0) {
+        int64_t index;
+        if (!vmssaveset_cursor_read(cursor, (size_t)left, scratch)) return false;
+        for (index = 0; index < left; ++index)
+            if (scratch[index] != 0U) return false;
+    }
     return true;
+}
+
+static bool vmssaveset_name_is(const char *name, const char *expected) {
+    while (*name && *expected) {
+        unsigned char c = (unsigned char)*name++;
+        if (c >= 'a' && c <= 'z') c -= 'a' - 'A';
+        if (c != (unsigned char)*expected++) return false;
+    }
+    return *name == '\0' && *expected == '\0';
+}
+
+/* Image BACKUP saves these Files-11 control files as headers, not disk
+ * contents. The names AND reserved FID/sequence must agree: an ordinary
+ * file named BADBLK.SYS does not acquire this exception.
+ * VSI Guide to Extended File Specifications, image-save HEADCOPIED example:
+ * https://docs.vmssoftware.com/vsi-openvms-guide-to-extended-file-specifications/
+ * FIDs: VSI System Management Utilities Reference Manual, ANALYZE/DISK list.
+ */
+static bool vmssaveset_reserved_header(const char *name,
+                                      const uint16_t file_id[3]) {
+    if (file_id[0] != file_id[1] || file_id[2] == 0U) return false;
+    switch (file_id[0]) {
+    case 1U: return vmssaveset_name_is(name, "[000000]INDEXF.SYS;1");
+    case 2U: return vmssaveset_name_is(name, "[000000]BITMAP.SYS;1");
+    case 3U: return vmssaveset_name_is(name, "[000000]BADBLK.SYS;1");
+    case 9U: return vmssaveset_name_is(name, "[000000]BADLOG.SYS;1");
+    default: return false;
+    }
+}
+
+/* A NOBACKUP flag can be overridden by /IGNORE=NOBACKUP. Inspect records
+ * up to the next file header without advancing the real cursor, so data is
+ * still consumed and checked normally, and a partial body never becomes a
+ * header-only success. A failed physical read is never an absent body.
+ */
+static bool vmssaveset_body_present(const vmssaveset_walker *walker,
+                                   bool *present) {
+    vmssaveset_cursor cursor = *walker->cursor;
+    vmssaveset_walker look = *walker;
+    int64_t records = 0;
+    look.cursor = &cursor;
+    *present = false;
+    for (;;) {
+        int32_t size, type;
+        if (++records > VMSSAVESET_MAX_BODY_RECORDS) return false;
+        if (!vmssaveset_next_record(&look, &size, &type)) return look.at_end;
+        if (type == 4) {
+            *present = true;
+            return true;
+        }
+        if (type == 3) return true;
+        if (type != 0 && type != 1 && type != 2 && type != 7 && type != 0x0b)
+            return false;
+        if (!vmssaveset_cursor_skip(&cursor, size)) return false;
+    }
 }
 
 /* VMS variable-length records to CRLF text.  The body is {u16 length, that
@@ -632,6 +716,7 @@ static bool vmssaveset_parse(Abstractformat *format,
     vmssaveset_cursor cursor;
     vmssaveset_walker walker;
     int64_t total, size;
+    bool complete = false;
 
     if (!format || !format->device || !result || format->base_address < 0)
         return false;
@@ -657,21 +742,34 @@ static bool vmssaveset_parse(Abstractformat *format,
     walker.remaining = 0;
     walker.block_size = 0;
 
-    /* Stop at the first malformed record and keep what is already there,
-     * which is what the reference does. */
+    /* A useful prefix is not a complete save set. Unsupported metadata,
+     * missing bodies or malformed trailing records must fail the parse. */
     for (;;) {
         int32_t record_size = 0, record_type = 0;
         int64_t header_offset, record_end;
         char name[VMSSAVESET_MAX_NAME];
         uint64_t file_size;
+        uint32_t characteristics;
+        uint16_t file_id[3];
         bool is_directory, var_rec;
         vmssaveset_member member;
         if (stream->count >= VMSSAVESET_MAX_MEMBERS) break;
-        if (!vmssaveset_next_record(&walker, &record_size, &record_type))
+        if (!vmssaveset_next_record(&walker, &record_size, &record_type)) {
+            complete = walker.at_end;
             break;
+        }
         header_offset = cursor.position - VMSSAVESET_RECORD_HEADER_SIZE;
         record_end = cursor.position + record_size;
         if (record_type != 3) {
+            /* BACKUP volume (2) and FID (7) records describe the saved
+             * volume, not a file body.  File attributes supply the names
+             * and extents used here, so these known ancillary records may
+             * be skipped only within their complete physical block. */
+            if (record_type == 2 || record_type == 7) {
+                if (walker.remaining < 0 ||
+                    !vmssaveset_cursor_seek(&cursor, record_end)) break;
+                continue;
+            }
             if (record_type != 0 && record_type != 1 && record_type != 0x0b &&
                 record_type != 4)
                 break;
@@ -679,9 +777,24 @@ static bool vmssaveset_parse(Abstractformat *format,
             continue;
         }
         if (!vmssaveset_attributes(&cursor, record_size, name, sizeof(name),
-                                   &file_size, &is_directory, &var_rec))
+                                   &file_size, &is_directory, &var_rec,
+                                   &characteristics, file_id))
             break;
         if (!vmssaveset_cursor_seek(&cursor, record_end)) break;
+
+        if (!is_directory && file_size != 0U &&
+            ((characteristics & VMSSAVESET_FCH_NOBACKUP) != 0U ||
+             vmssaveset_reserved_header(name, file_id))) {
+            bool body_present;
+            if (!vmssaveset_body_present(&walker, &body_present)) break;
+            /* SET FILE/NOBACKUP stores attributes without contents. Reserved
+             * image control files also have HEADCOPIED records. They are not
+             * extractable byte streams: omit them rather than fabricate an
+             * empty or zero-filled version of their declared logical size.
+             * https://docs.vmssoftware.com/vsi-openvms-dcl-dictionary-n-z/
+             */
+            if (!body_present) continue;
+        }
 
         xx_mem_zero(&member, sizeof(member));
         member.header_offset = format->base_address + header_offset;
@@ -693,6 +806,7 @@ static bool vmssaveset_parse(Abstractformat *format,
         member.aux2 = file_size;
         member.flags = var_rec ? VMSSAVESET_FLAG_VARREC : 0U;
         member.folder = is_directory;
+        member.attributes = characteristics;
 
         /* A directory's body still has to be consumed or the walk
          * desynchronises, but the reference emits no member for it.  For a
@@ -722,7 +836,7 @@ static bool vmssaveset_parse(Abstractformat *format,
             break;
         }
     }
-    if (stream->count == 0U) goto fail;
+    if (!complete || stream->count == 0U) goto fail;
     stream->archive_size = size;
     *result = stream;
     return true;

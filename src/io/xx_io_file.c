@@ -28,6 +28,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "platforms/xx_io_platform.h"
+#include "xx_io_policy.h"
 
 typedef struct xx_io_file_state {
     void *handle;
@@ -162,6 +163,7 @@ xx_io_device* xx_io_file_open(const char *path, const char *mode) {
 }
 
 xx_io_device* xx_io_temp_open(void) {
+    if (xx_io_memory_only_active()) return xx_io_memory_temp_open();
     return xx_io_file_wrap(xx_io_platform_temp_open(), NULL);
 }
 

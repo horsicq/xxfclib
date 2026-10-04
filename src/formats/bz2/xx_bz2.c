@@ -54,6 +54,8 @@ typedef struct xx_bz2_ds_name_s {
     const char *name;
 } xx_bz2_ds_name;
 
+#include "../xx_single_stream_writer.h"
+
 static void xx_bz2_vtable_destroy(Abstractformat *self);
 
 static bool xx_bz2_read_exact_at(xx_io_device *device, int64_t offset,
@@ -310,6 +312,10 @@ void xx_bz2_init(xx_bz2 *bz2, xx_io_device *dev, int64_t base_address) {
         xx_bz2_data_struct_record_move_to_next;
     bz2->format.free_data_struct_records_reading =
         xx_bz2_free_data_struct_records_reading;
+    bz2->format.create_archive_records_writing = xx_bz2_create_archive_records_writing;
+    bz2->format.pack_archive_record = xx_bz2_pack_archive_record;
+    bz2->format.finalize_archive_records_writing = xx_bz2_finalize_archive_records_writing;
+    bz2->format.free_archive_records_writing = xx_bz2_free_archive_records_writing;
     bz2->format.destroy = xx_bz2_vtable_destroy;
     bz2->stream_end = -1;
 }
@@ -855,3 +861,8 @@ uint64_t xx_bz2_get_uncompressed_size(const xx_bz2 *bz2) {
 int64_t xx_bz2_get_stream_end(const xx_bz2 *bz2) {
     return bz2 ? bz2->stream_end : -1;
 }
+
+xx_archive_write_state *xx_bz2_create_archive_records_writing(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) { return ss_create(self, options, pd); }
+bool xx_bz2_pack_archive_record(Abstractformat *self, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source, xx_pd_struct *pd) { return ss_pack(self, state, record, source, pd); }
+bool xx_bz2_finalize_archive_records_writing(Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd) { return ss_finalize(self, state, pd); }
+void xx_bz2_free_archive_records_writing(Abstractformat *self, xx_archive_write_state *state) { ss_free(self, state); }

@@ -16,6 +16,111 @@
  */
 
 #include "xxfc_readers.h"
+#include <xxfclib/formats/sevenzip_engine/xx_sevenzip_engine.h>
+#include <xxfclib/formats/ue2_documents/xx_ue2_documents.h>
+#include <xxfclib/formats/microsoft_lit/xx_microsoft_lit.h>
+static Abstractformat *mk_lit(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_microsoft_lit_create(d,b); }
+static void rm_lit(void *r) { xx_microsoft_lit_free((xx_microsoft_lit *)r); }
+#include <xxfclib/formats/sqlite_sql/xx_sqlite_sql.h>
+#include <xxfclib/formats/ue2_games/xx_ue2_games.h>
+#include <xxfclib/formats/chromium_pak/xx_chromium_pak.h>
+#include <xxfclib/formats/windows_thumbnail_cache/xx_windows_thumbnail_cache.h>
+#include <xxfclib/formats/enigma_virtual_box/xx_enigma_virtual_box.h>
+#include <xxfclib/formats/bitrock/xx_bitrock.h>
+#include <xxfclib/formats/smart_install_maker/xx_smart_install_maker.h>
+#include <xxfclib/formats/upx_engine/xx_upx_engine.h>
+#include <xxfclib/formats/molebox/xx_molebox.h>
+#include <xxfclib/formats/superdat/xx_superdat.h>
+#include <xxfclib/formats/excelsior/xx_excelsior.h>
+#include <xxfclib/formats/fead/xx_fead.h>
+static Abstractformat *mk_fead(xx_io_device *d,int64_t b) { return xx_fead_create(d,b); }
+static void rm_fead(void *r) { xx_fead_free((Abstractformat *)r); }
+#include <xxfclib/formats/legacy_archive_engine/xx_legacy_archive_engine.h>
+static Abstractformat *mk_excelsior(xx_io_device *d,int64_t b) { return xx_excelsior_create(d,b); }
+static void rm_excelsior(void *r) { xx_excelsior_free((Abstractformat *)r); }
+static Abstractformat *mk_dgca(xx_io_device *d,int64_t b) { return xx_dgca_create(d,b); }
+static void rm_legacy_archive(void *r) { xx_legacy_archive_free((Abstractformat *)r); }
+static Abstractformat *mk_superdat(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_superdat_create(d,b); }
+static void rm_superdat(void *r) { xx_superdat_free((xx_superdat *)r); }
+#include <xxfclib/formats/media_engine/xx_media_engine.h>
+static Abstractformat *mk_enigma(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_enigma_virtual_box_create(d,b); }
+static void rm_enigma(void *r) { xx_enigma_virtual_box_free((xx_enigma_virtual_box *)r); }
+static Abstractformat *mk_bitrock(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_bitrock_create(d,b); }
+static void rm_bitrock(void *r) { xx_bitrock_free((xx_bitrock *)r); }
+static Abstractformat *mk_smart_install_maker(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_smart_install_maker_create(d,b); }
+static void rm_smart_install_maker(void *r) { xx_smart_install_maker_free((xx_smart_install_maker *)r); }
+static Abstractformat *mk_upx(xx_io_device *d,int64_t b) { return xx_upx_create(d,b); }
+static Abstractformat *mk_molebox(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_molebox_create(d,b); }
+static void rm_molebox(void *r) { xx_molebox_free((xx_molebox *)r); }
+#define MEDIA_FACTORY(name,type,ext,mode) static Abstractformat *mk_media_##name(xx_io_device *d,int64_t b) { Abstractformat *f=xx_media_engine_create(d,b,mode);if(f) { f->file_type=type;xx_format_set_extension(f,ext); }return f; }
+MEDIA_FACTORY(gif,XX_FILE_TYPE_GIF,"gif","frames")
+MEDIA_FACTORY(png,XX_FILE_TYPE_PNG,"png","frames")
+MEDIA_FACTORY(flac,XX_FILE_TYPE_FLAC,"flac","audio")
+MEDIA_FACTORY(ogg,XX_FILE_TYPE_OGG,"ogg",NULL)
+MEDIA_FACTORY(mp4,XX_FILE_TYPE_MP4,"mp4",NULL)
+MEDIA_FACTORY(matroska,XX_FILE_TYPE_MATROSKA,"mkv",NULL)
+MEDIA_FACTORY(riff,XX_FILE_TYPE_RIFF,"avi",NULL)
+MEDIA_FACTORY(mp3,XX_FILE_TYPE_AUDIO_MPEG_MP3,"mp3","audio")
+MEDIA_FACTORY(aac,XX_FILE_TYPE_AUDIO_AAC_ADTS,"aac","audio")
+MEDIA_FACTORY(flv,XX_FILE_TYPE_FLASH_VIDEO_FLV,"flv","video")
+MEDIA_FACTORY(smk,XX_FILE_TYPE_RAD_SMACKER,"smk","video")
+MEDIA_FACTORY(asf,XX_FILE_TYPE_ASF,"asf",NULL)
+MEDIA_FACTORY(aa,XX_FILE_TYPE_AUDIBLE_AA,"aa","audio")
+static Abstractformat *mk_media(xx_io_device *d,int64_t b) { return xx_media_engine_create(d,b,NULL); }
+static Abstractformat *mk_media_audio(xx_io_device *d,int64_t b) { return xx_media_engine_create(d,b,"audio"); }
+static Abstractformat *mk_media_video(xx_io_device *d,int64_t b) { return xx_media_engine_create(d,b,"video"); }
+static Abstractformat *mk_media_frames(xx_io_device *d,int64_t b) { return xx_media_engine_create(d,b,"frames"); }
+static Abstractformat *mk_sqlite_sql(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_sqlite_sql_create(d,b); }
+static void rm_sqlite_sql(void *r) { xx_sqlite_sql_free((xx_sqlite_sql *)r); }
+static Abstractformat *mk_pdf(xx_io_device *d,int64_t b) { return xx_sevenzip_engine_create_helper(d,b,"PDF","xfu_document_helper.exe",XX_FILE_TYPE_PDF,"pdf"); }
+static Abstractformat *mk_garbro(xx_io_device *d,int64_t b) { return xx_sevenzip_engine_create_helper(d,b,NULL,"xfu_garbro_helper.exe",XX_FILE_TYPE_GAME_ARCHIVE,"dat"); }
+#define UE2_GAME_FACTORY(name,type) static Abstractformat *mk_ue2_##name(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_ue2_games_create(d,b,type); }
+UE2_GAME_FACTORY(bruns,XX_FILE_TYPE_BRUNS_MEDIA)
+UE2_GAME_FACTORY(rpgmv,XX_FILE_TYPE_RPG_MAKER_MV)
+UE2_GAME_FACTORY(utage,XX_FILE_TYPE_UTAGE_MEDIA)
+UE2_GAME_FACTORY(ycg,XX_FILE_TYPE_YCG_IMAGE)
+UE2_GAME_FACTORY(unreal_pak,XX_FILE_TYPE_UNREAL_PAK)
+UE2_GAME_FACTORY(fallout_dat,XX_FILE_TYPE_FALLOUT_DAT)
+UE2_GAME_FACTORY(gal,XX_FILE_TYPE_LIVE_MAKER_GAL)
+UE2_GAME_FACTORY(sgbpack,XX_FILE_TYPE_SMILE_GAME_PACK)
+static void rm_ue2_game(void *r) { xx_ue2_games_free((xx_ue2_games *)r); }
+static Abstractformat *mk_chromium_pak(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_chromium_pak_create(d,b); }
+static void rm_chromium_pak(void *r) { xx_chromium_pak_free((xx_chromium_pak *)r); }
+static Abstractformat *mk_thumbnail_cache(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_windows_thumbnail_cache_create(d,b); }
+static void rm_thumbnail_cache(void *r) { xx_windows_thumbnail_cache_free((xx_windows_thumbnail_cache *)r); }
+static Abstractformat *mk_gettext_mo(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_ue2_documents_create(d,b,XX_FILE_TYPE_GNU_GETTEXT_MO); }
+static Abstractformat *mk_qt_qm(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_ue2_documents_create(d,b,XX_FILE_TYPE_QT_QM); }
+static Abstractformat *mk_mime(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_ue2_documents_create(d,b,XX_FILE_TYPE_MIME_MESSAGE); }
+static Abstractformat *mk_hlp(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_ue2_documents_create(d,b,XX_FILE_TYPE_WINDOWS_HELP); }
+static void rm_documents(void *r) { xx_ue2_documents_free((xx_ue2_documents *)r); }
+#include <xxfclib/formats/sevenzip_engine/xx_sevenzip_engine.h>
+#include "xxfclib/formats/amiga_ext_adf/xx_amiga_ext_adf.h"
+#include "xxfclib/formats/amiga_old_ext_adf/xx_amiga_old_ext_adf.h"
+#include "xxfclib/formats/atari_dim/xx_atari_dim.h"
+#include "xxfclib/formats/atari_stt/xx_atari_stt.h"
+#include "xxfclib/formats/atari_stw/xx_atari_stw.h"
+#include "xxfclib/formats/discferret_dfi/xx_discferret_dfi.h"
+#include "xxfclib/formats/xx_format_gap_headers.inc"
+#include "xxfclib/formats/hxc_afi/xx_hxc_afi.h"
+#include "xxfclib/formats/hxc_qd/xx_hxc_qd.h"
+#include "xxfclib/formats/hxc_stream/xx_hxc_stream.h"
+#include "xxfclib/formats/svd/xx_svd.h"
+#include "xxfclib/formats/sdu/xx_sdu.h"
+#include "xxfclib/formats/fei/xx_fei.h"
+#include "xxfclib/formats/oric_dsk/xx_oric_dsk.h"
+#include "xxfclib/formats/ensoniq_gkh/xx_ensoniq_gkh.h"
+#include "xxfclib/formats/ensoniq_ede/xx_ensoniq_ede.h"
+#include "xxfclib/formats/samcoupe_sad/xx_samcoupe_sad.h"
+#include "xxfclib/formats/apple_nib/xx_apple_nib.h"
+#include "xxfclib/formats/ti99_pc99/xx_ti99_pc99.h"
+#include "xxfclib/formats/emax_disk/xx_emax_disk.h"
+#include "xxfclib/formats/emulatorii_eii/xx_emulatorii_eii.h"
+#include "xxfclib/formats/casio_fzf/xx_casio_fzf.h"
+#include "xxfclib/formats/vtr_disk/xx_vtr_disk.h"
+#include "xxfclib/formats/speccydos_sdd/xx_speccydos_sdd.h"
+#include "xxfclib/formats/hxc_raw_floppy/xx_hxc_raw_floppy.h"
+#include "xxfclib/formats/hxc_xml_disk_layout/xx_hxc_xml_disk_layout.h"
+
 #include <ctype.h>
 #include <string.h>
 #include <xxfclib/formats/mozilla_mar/xx_mozilla_mar.h>
@@ -123,6 +228,7 @@
 #include <xxfclib/formats/sfx_clickteam_multimedia_fusion/xx_sfx_clickteam_multimedia_fusion.h>
 #include <xxfclib/formats/sfx_abbyy_fine_objects/xx_sfx_abbyy_fine_objects.h>
 #include <xxfclib/formats/sfx_flashjester_jugglor/xx_sfx_flashjester_jugglor.h>
+#include <xxfclib/formats/sfx_inftool/xx_sfx_inftool.h>
 #include <xxfclib/formats/sfx_jgsoft_deploymaster_package/xx_sfx_jgsoft_deploymaster_package.h>
 #include <xxfclib/formats/sfx_ardi_diskette_image/xx_sfx_ardi_diskette_image.h>
 #include <xxfclib/formats/sfx_nullsoft_pimp/xx_sfx_nullsoft_pimp.h>
@@ -3695,10 +3801,9 @@ static Abstractformat *mk_uefi_fv(xx_io_device *d, int64_t b) {
 }
 static void rm_uefi_fv(void *p) { xx_uefi_fv_free((xx_uefi_fv *)p); }
 static Abstractformat *mk_uharc(xx_io_device *d, int64_t b) {
-    xx_uharc *r = xx_uharc_create(d, b);
-    return r ? &r->format : NULL;
+    return xx_uharc_payload_create(d, b);
 }
-static void rm_uharc(void *p) { xx_uharc_free((xx_uharc *)p); }
+static void rm_uharc(void *p) { xx_legacy_archive_free((Abstractformat *)p); }
 static Abstractformat *mk_uimage(xx_io_device *d, int64_t b) {
     xx_uimage *r = xx_uimage_create(d, b);
     return r ? &r->format : NULL;
@@ -4011,6 +4116,11 @@ static Abstractformat *mk_sfx_softpaq4(xx_io_device *d, int64_t b) {
     xx_sfx_softpaq4 *r = xx_sfx_softpaq4_create(d, b);
     return r ? &r->format : NULL;
 }
+static Abstractformat *mk_sfx_inftool(xx_io_device *d, int64_t b) {
+    xx_sfx_inftool *r = xx_sfx_inftool_create(d, b);
+    return r ? &r->format : NULL;
+}
+static void rm_sfx_inftool(void *p) { xx_sfx_inftool_free((xx_sfx_inftool *)p); }
 static void rm_sfx_softpaq4(void *p) { xx_sfx_softpaq4_free((xx_sfx_softpaq4 *)p); }
 
 static Abstractformat *mk_sfx_wasp_windows_auto(xx_io_device *d, int64_t b) {
@@ -4299,9 +4409,28 @@ static Abstractformat *mk_stuffit5(xx_io_device *d, int64_t b) {
     return r ? &r->format : NULL;
 }
 static void rm_stuffit5(void *p) { xx_stuffit5_free((xx_stuffit5 *)p); }
+bool xxfc_reader_uses_helper(const xxfc_opened *opened) {
+    const char *name=opened?opened->reader_name:NULL;
+    return name && (!xx_rt_strncmp(name,"sevenzip",8) || !xx_rt_strncmp(name,"media",5) || !xx_rt_strcmp(name,"pdf") || !xx_rt_strncmp(name,"garbro",6) || !xx_rt_strcmp(name,"upx") || !xx_rt_strcmp(name,"uharc"));
+}
 bool xxfc_is_incomplete(const xxfc_opened *opened) {
+    if (xxfc_reader_uses_helper(opened)) return false;
     if (!opened || !opened->format) return false;
+    if (opened->type >= XX_FILE_TYPE_NSIS && opened->type <= XX_FILE_TYPE_S_OMNI)
+        return ((const xx_legacy_archive_info *)opened->format)->incomplete;
+    if (opened->type >= XX_FILE_TYPE_APPLELINK_PE && opened->type <= XX_FILE_TYPE_APPLE_CASSETTE)
+        return ((const xx_apple_family_info *)opened->format)->incomplete;
+    if (opened->reader_name && !xx_rt_strcmp(opened->reader_name, "apple_woz"))
+        return ((const xx_apple_woz *)opened->format)->incomplete;
+    if(opened->type>=XX_FILE_TYPE_LISA_BLU && opened->type<=XX_FILE_TYPE_MICRAL_N_RAW)
+        return ((const xx_disk_additions_info *)opened->format)->incomplete;
+    if (opened->reader_name && !xx_rt_strcmp(opened->reader_name, "hfe"))
+        return ((const xx_hfe *)opened->format)->incomplete_tracks;
     switch (opened->type) {
+        case XX_FILE_TYPE_EMAX_DISK:
+            return ((const xx_emax_disk *)opened->format)->incomplete;
+        case XX_FILE_TYPE_EMULATORII_EII:
+            return ((const xx_emulatorii_eii *)opened->format)->incomplete;
         case XX_FILE_TYPE_PRODOS: {
             const xx_prodos *r = (const xx_prodos *)opened->format;
             return r->truncated || r->damaged;
@@ -4393,7 +4522,14 @@ bool xxfc_is_incomplete(const xxfc_opened *opened) {
 
 void xxfc_attach_source_files(xxfc_opened *opened, const char *source_path) {
     if (!opened || !opened->format || !source_path) return;
-    if (opened->type == XX_FILE_TYPE_CUE)
+    if (xxfc_reader_uses_helper(opened)) {
+        (void)xx_sevenzip_engine_set_source_path(opened->format, source_path); return;
+    }
+    if (opened->type == XX_FILE_TYPE_BLINDWRITE4)
+        (void)xx_blindwrite4_open_data_files((xx_blindwrite4 *)opened->format, source_path);
+    else if (opened->type == XX_FILE_TYPE_BLINDWRITE_5_6_IMAGE)
+        (void)xx_blindwrite_5_6_image_open_data_files((xx_blindwrite_5_6_image *)opened->format, source_path);
+    else if (opened->type == XX_FILE_TYPE_CUE)
         (void)xx_cue_open_data_files((xx_cue *)opened->format, source_path);
     else if (opened->type == XX_FILE_TYPE_GDI)
         (void)xx_gdi_open_data_files((xx_gdi *)opened->format, source_path);
@@ -7347,6 +7483,62 @@ static Abstractformat *mk_pc98_d88(xx_io_device *d, int64_t b) {
     return r ? &r->format : NULL;
 }
 static void rm_pc98_d88(void *p) { xx_pc98_d88_free((xx_pc98_d88 *)p); }
+static Abstractformat *mk_amiga_ext_adf(xx_io_device *d,int64_t b) { xx_amiga_ext_adf *r=xx_amiga_ext_adf_create(d,b); return r ? &r->format : NULL; }
+static void rm_amiga_ext_adf(void *p) { xx_amiga_ext_adf_free((xx_amiga_ext_adf *)p); }
+static Abstractformat *mk_amiga_old_ext_adf(xx_io_device *d,int64_t b) { xx_amiga_old_ext_adf *r=xx_amiga_old_ext_adf_create(d,b); return r ? &r->format : NULL; }
+static void rm_amiga_old_ext_adf(void *p) { xx_amiga_old_ext_adf_free((xx_amiga_old_ext_adf *)p); }
+static Abstractformat *mk_atari_dim(xx_io_device *d,int64_t b) { xx_atari_dim *r=xx_atari_dim_create(d,b); return r ? &r->format : NULL; }
+static void rm_atari_dim(void *p) { xx_atari_dim_free((xx_atari_dim *)p); }
+static Abstractformat *mk_atari_stt(xx_io_device *d,int64_t b) { xx_atari_stt *r=xx_atari_stt_create(d,b); return r ? &r->format : NULL; }
+static void rm_atari_stt(void *p) { xx_atari_stt_free((xx_atari_stt *)p); }
+static Abstractformat *mk_atari_stw(xx_io_device *d,int64_t b) { xx_atari_stw *r=xx_atari_stw_create(d,b); return r ? &r->format : NULL; }
+static void rm_atari_stw(void *p) { xx_atari_stw_free((xx_atari_stw *)p); }
+static Abstractformat *mk_discferret_dfi(xx_io_device *d,int64_t b) { xx_discferret_dfi *r=xx_discferret_dfi_create(d,b); return r ? &r->format : NULL; }
+static void rm_discferret_dfi(void *p) { xx_discferret_dfi_free((xx_discferret_dfi *)p); }
+#include "xx_format_gap_factories.inc"
+static Abstractformat *mk_hxc_afi(xx_io_device *d,int64_t b) { xx_hxc_afi *r=xx_hxc_afi_create(d,b); return r ? &r->format : NULL; }
+static void rm_hxc_afi(void *p) { xx_hxc_afi_free((xx_hxc_afi *)p); }
+static Abstractformat *mk_hxc_qd(xx_io_device *d,int64_t b) { xx_hxc_qd *r=xx_hxc_qd_create(d,b); return r ? &r->format : NULL; }
+static void rm_hxc_qd(void *p) { xx_hxc_qd_free((xx_hxc_qd *)p); }
+static Abstractformat *mk_hxc_stream(xx_io_device *d,int64_t b) { xx_hxc_stream *r=xx_hxc_stream_create(d,b); return r ? &r->format : NULL; }
+static void rm_hxc_stream(void *p) { xx_hxc_stream_free((xx_hxc_stream *)p); }
+static Abstractformat *mk_svd(xx_io_device *d,int64_t b) { xx_svd *r=xx_svd_create(d,b); return r ? &r->format : NULL; }
+static void rm_svd(void *p) { xx_svd_free((xx_svd *)p); }
+static Abstractformat *mk_sdu(xx_io_device *d,int64_t b) { xx_sdu *r=xx_sdu_create(d,b); return r ? &r->format : NULL; }
+static void rm_sdu(void *p) { xx_sdu_free((xx_sdu *)p); }
+static Abstractformat *mk_fei(xx_io_device *d,int64_t b) { xx_fei *r=xx_fei_create(d,b); return r ? &r->format : NULL; }
+static void rm_fei(void *p) { xx_fei_free((xx_fei *)p); }
+static Abstractformat *mk_oric_dsk(xx_io_device *d,int64_t b) { xx_oric_dsk *r=xx_oric_dsk_create(d,b); return r ? &r->format : NULL; }
+static void rm_oric_dsk(void *p) { xx_oric_dsk_free((xx_oric_dsk *)p); }
+static Abstractformat *mk_ensoniq_gkh(xx_io_device *d,int64_t b) { xx_ensoniq_gkh *r=xx_ensoniq_gkh_create(d,b); return r ? &r->format : NULL; }
+static void rm_ensoniq_gkh(void *p) { xx_ensoniq_gkh_free((xx_ensoniq_gkh *)p); }
+static Abstractformat *mk_ensoniq_ede(xx_io_device *d,int64_t b) { xx_ensoniq_ede *r=xx_ensoniq_ede_create(d,b); return r ? &r->format : NULL; }
+static void rm_ensoniq_ede(void *p) { xx_ensoniq_ede_free((xx_ensoniq_ede *)p); }
+static Abstractformat *mk_samcoupe_sad(xx_io_device *d,int64_t b) { xx_samcoupe_sad *r=xx_samcoupe_sad_create(d,b); return r ? &r->format : NULL; }
+static void rm_samcoupe_sad(void *p) { xx_samcoupe_sad_free((xx_samcoupe_sad *)p); }
+static Abstractformat *mk_apple_nib(xx_io_device *d,int64_t b) { xx_apple_nib *r=xx_apple_nib_create(d,b); return r ? &r->format : NULL; }
+static void rm_apple_nib(void *p) { xx_apple_nib_free((xx_apple_nib *)p); }
+static Abstractformat *mk_ti99_pc99(xx_io_device *d,int64_t b) { xx_ti99_pc99 *r=xx_ti99_pc99_create(d,b); return r ? &r->format : NULL; }
+static void rm_ti99_pc99(void *p) { xx_ti99_pc99_free((xx_ti99_pc99 *)p); }
+static Abstractformat *mk_emax_disk(xx_io_device *d,int64_t b) { xx_emax_disk *r=xx_emax_disk_create(d,b); return r ? &r->format : NULL; }
+static void rm_emax_disk(void *p) { xx_emax_disk_free((xx_emax_disk *)p); }
+static Abstractformat *mk_emulatorii_eii(xx_io_device *d,int64_t b) { xx_emulatorii_eii *r=xx_emulatorii_eii_create(d,b); return r ? &r->format : NULL; }
+static void rm_emulatorii_eii(void *p) { xx_emulatorii_eii_free((xx_emulatorii_eii *)p); }
+static Abstractformat *mk_casio_fzf(xx_io_device *d,int64_t b) { xx_casio_fzf *r=xx_casio_fzf_create(d,b); return r ? &r->format : NULL; }
+static void rm_casio_fzf(void *p) { xx_casio_fzf_free((xx_casio_fzf *)p); }
+static Abstractformat *mk_vtr_disk(xx_io_device *d,int64_t b) { xx_vtr_disk *r=xx_vtr_disk_create(d,b); return r ? &r->format : NULL; }
+static void rm_vtr_disk(void *p) { xx_vtr_disk_free((xx_vtr_disk *)p); }
+static Abstractformat *mk_speccydos_sdd(xx_io_device *d,int64_t b) { xx_speccydos_sdd *r=xx_speccydos_sdd_create(d,b); return r ? &r->format : NULL; }
+static void rm_speccydos_sdd(void *p) { xx_speccydos_sdd_free((xx_speccydos_sdd *)p); }
+static Abstractformat *mk_hxc_raw_floppy(xx_io_device *d,int64_t b) { xx_hxc_raw_floppy *r=xx_hxc_raw_floppy_create(d,b); return r ? &r->format : NULL; }
+static void rm_hxc_raw_floppy(void *p) { xx_hxc_raw_floppy_free((xx_hxc_raw_floppy *)p); }
+static Abstractformat *mk_hxc_xml_disk_layout(xx_io_device *d,int64_t b) { xx_hxc_xml_disk_layout *r=xx_hxc_xml_disk_layout_create(d,b); return r ? &r->format : NULL; }
+static void rm_hxc_xml_disk_layout(void *p) { xx_hxc_xml_disk_layout_free((xx_hxc_xml_disk_layout *)p); }
+static Abstractformat *mk_thomson_fd_hxc(xx_io_device *d,int64_t b) { xx_thomson_fd *r=xx_thomson_fd_create_hxc(d,b); return r ? &r->format : NULL; }
+#define XXFC_HXC_PROFILE(id,name) static Abstractformat *mk_hxc_profile_##id(xx_io_device *d,int64_t b) { xx_hxc_raw_floppy *r=xx_hxc_raw_floppy_create_profile(d,b,name); return r ? &r->format : NULL; }
+#include "xxfc_hxc_profiles.inc"
+#undef XXFC_HXC_PROFILE
+
 static Abstractformat *mk_hxc_mfm(xx_io_device *d, int64_t b) {
     xx_hxc_mfm *r = xx_hxc_mfm_create(d, b);
     return r ? &r->format : NULL;
@@ -9061,7 +9253,36 @@ static void rm_rvz(void *p) { xx_rvz_free((xx_rvz *)p); }
 #undef XX_DIE_MUSIC_CLI_ROW
 #endif
 
+static void rm_sevenzip_engine(void *p) { xx_sevenzip_engine_free((Abstractformat *)p); }
+#include "xx_sevenzip_factories.inc"
 static xxfc_reader_entry g_readers[] = {
+#define MEDIA_ENTRY(name,type) { "media_" #name,mk_media_##name,rm_sevenzip_engine,type },
+    MEDIA_ENTRY(gif,XX_FILE_TYPE_GIF)
+    MEDIA_ENTRY(png,XX_FILE_TYPE_PNG)
+    MEDIA_ENTRY(flac,XX_FILE_TYPE_FLAC)
+    MEDIA_ENTRY(ogg,XX_FILE_TYPE_OGG)
+    MEDIA_ENTRY(mp4,XX_FILE_TYPE_MP4)
+    MEDIA_ENTRY(matroska,XX_FILE_TYPE_MATROSKA)
+    MEDIA_ENTRY(riff,XX_FILE_TYPE_RIFF)
+    MEDIA_ENTRY(mp3,XX_FILE_TYPE_AUDIO_MPEG_MP3)
+    MEDIA_ENTRY(aac,XX_FILE_TYPE_AUDIO_AAC_ADTS)
+    MEDIA_ENTRY(flv,XX_FILE_TYPE_FLASH_VIDEO_FLV)
+    MEDIA_ENTRY(smk,XX_FILE_TYPE_RAD_SMACKER)
+    MEDIA_ENTRY(asf,XX_FILE_TYPE_ASF)
+    MEDIA_ENTRY(aa,XX_FILE_TYPE_AUDIBLE_AA)
+#undef MEDIA_ENTRY
+    { "sqlite_sql", mk_sqlite_sql, rm_sqlite_sql, XX_FILE_TYPE_SQLITE3 },
+    { "pdf", mk_pdf, rm_sevenzip_engine, XX_FILE_TYPE_PDF },
+    { "lit", mk_lit, rm_lit, XX_FILE_TYPE_MICROSOFT_LIT },
+    { "bitrock", mk_bitrock, rm_bitrock, XX_FILE_TYPE_BITROCK },
+    { "smart_install_maker", mk_smart_install_maker, rm_smart_install_maker, XX_FILE_TYPE_SMART_INSTALL_MAKER },
+    { "upx", mk_upx, rm_sevenzip_engine, XX_FILE_TYPE_UPX },
+    { "molebox", mk_molebox, rm_molebox, XX_FILE_TYPE_MOLEBOX },
+    { "superdat", mk_superdat, rm_superdat, XX_FILE_TYPE_SUPERDAT },
+    { "excelsior", mk_excelsior, rm_excelsior, XX_FILE_TYPE_EXCELSIOR_INSTALLER },
+    { "fead", mk_fead, rm_fead, XX_FILE_TYPE_NETOPSYSTEMS_FEAD },
+    { "dgca", mk_dgca, rm_legacy_archive, XX_FILE_TYPE_DGCA },
+    { "garbro", mk_garbro, rm_sevenzip_engine, XX_FILE_TYPE_GAME_ARCHIVE },
     {"ckp", mk_ckp, rm_ckp, XX_FILE_TYPE_CKP},
     {"edp", mk_edp, rm_edp, XX_FILE_TYPE_EDP},
     {"parsec_rib", mk_parsec_rib, rm_parsec_rib, XX_FILE_TYPE_PARSEC_RIB},
@@ -9943,6 +10164,36 @@ static xxfc_reader_entry g_readers[] = {
     { "tracker_archimedes", mk_tracker_archimedes, rm_tracker_archimedes, XX_FILE_TYPE_UNKNOWN },
     { "pce_psi", mk_pce_psi, rm_pce_psi, XX_FILE_TYPE_UNKNOWN },
     { "pc98_d88", mk_pc98_d88, rm_pc98_d88, XX_FILE_TYPE_UNKNOWN },
+    { "amiga_ext_adf", mk_amiga_ext_adf, rm_amiga_ext_adf, XX_FILE_TYPE_AMIGA_EXT_ADF },
+    { "amiga_old_ext_adf", mk_amiga_old_ext_adf, rm_amiga_old_ext_adf, XX_FILE_TYPE_AMIGA_OLD_EXT_ADF },
+    { "atari_dim", mk_atari_dim, rm_atari_dim, XX_FILE_TYPE_ATARI_DIM },
+    { "atari_stt", mk_atari_stt, rm_atari_stt, XX_FILE_TYPE_ATARI_STT },
+    { "atari_stw", mk_atari_stw, rm_atari_stw, XX_FILE_TYPE_ATARI_STW },
+    { "discferret_dfi", mk_discferret_dfi, rm_discferret_dfi, XX_FILE_TYPE_DISCFERRET_DFI },
+#include "xx_format_gap_reader_table.inc"
+    { "hxc_afi", mk_hxc_afi, rm_hxc_afi, XX_FILE_TYPE_HXC_AFI },
+    { "hxc_qd", mk_hxc_qd, rm_hxc_qd, XX_FILE_TYPE_HXC_QD },
+    { "hxc_stream", mk_hxc_stream, rm_hxc_stream, XX_FILE_TYPE_HXC_STREAM },
+    { "svd", mk_svd, rm_svd, XX_FILE_TYPE_SVD },
+    { "sdu", mk_sdu, rm_sdu, XX_FILE_TYPE_SDU },
+    { "fei", mk_fei, rm_fei, XX_FILE_TYPE_FEI },
+    { "oric_dsk", mk_oric_dsk, rm_oric_dsk, XX_FILE_TYPE_ORIC_DSK },
+    { "ensoniq_gkh", mk_ensoniq_gkh, rm_ensoniq_gkh, XX_FILE_TYPE_ENSONIQ_GKH },
+    { "ensoniq_ede", mk_ensoniq_ede, rm_ensoniq_ede, XX_FILE_TYPE_ENSONIQ_EDE },
+    { "samcoupe_sad", mk_samcoupe_sad, rm_samcoupe_sad, XX_FILE_TYPE_SAMCOUPE_SAD },
+    { "apple_nib", mk_apple_nib, rm_apple_nib, XX_FILE_TYPE_APPLE_NIB },
+    { "ti99_pc99", mk_ti99_pc99, rm_ti99_pc99, XX_FILE_TYPE_TI99_PC99 },
+    { "emax_disk", mk_emax_disk, rm_emax_disk, XX_FILE_TYPE_EMAX_DISK },
+    { "emulatorii_eii", mk_emulatorii_eii, rm_emulatorii_eii, XX_FILE_TYPE_EMULATORII_EII },
+    { "casio_fzf", mk_casio_fzf, rm_casio_fzf, XX_FILE_TYPE_CASIO_FZF },
+    { "vtr_disk", mk_vtr_disk, rm_vtr_disk, XX_FILE_TYPE_VTR_DISK },
+    { "speccydos_sdd", mk_speccydos_sdd, rm_speccydos_sdd, XX_FILE_TYPE_SPECCYDOS_SDD },
+    { "hxc_raw_floppy", mk_hxc_raw_floppy, rm_hxc_raw_floppy, XX_FILE_TYPE_HXC_RAW_FLOPPY },
+    { "hxc_xml_disk_layout", mk_hxc_xml_disk_layout, rm_hxc_xml_disk_layout, XX_FILE_TYPE_HXC_XML_DISK_LAYOUT },
+    { "thomson_fd_hxc", mk_thomson_fd_hxc, rm_thomson_fd, XX_FILE_TYPE_THOMSON_FD },
+#define XXFC_HXC_PROFILE(id,name) { "hxc-raw:" name, mk_hxc_profile_##id, rm_hxc_raw_floppy, XX_FILE_TYPE_HXC_RAW_FLOPPY },
+#include "xxfc_hxc_profiles.inc"
+#undef XXFC_HXC_PROFILE
     { "hxc_mfm", mk_hxc_mfm, rm_hxc_mfm, XX_FILE_TYPE_UNKNOWN },
     { "yaze_ydsk", mk_yaze_ydsk, rm_yaze_ydsk, XX_FILE_TYPE_UNKNOWN },
     { "lammps_data", mk_lammps_data, rm_lammps_data, XX_FILE_TYPE_UNKNOWN },
@@ -10119,6 +10370,7 @@ static xxfc_reader_entry g_readers[] = {
     { "sfx_ardi_diskette_image", mk_sfx_ardi_diskette_image, rm_sfx_ardi_diskette_image, XX_FILE_TYPE_UNKNOWN },
     { "sfx_jgsoft_deploymaster_package", mk_sfx_jgsoft_deploymaster_package, rm_sfx_jgsoft_deploymaster_package, XX_FILE_TYPE_UNKNOWN },
     { "sfx_flashjester_jugglor", mk_sfx_flashjester_jugglor, rm_sfx_flashjester_jugglor, XX_FILE_TYPE_UNKNOWN },
+    { "sfx_inftool", mk_sfx_inftool, rm_sfx_inftool, XX_FILE_TYPE_SFX_INFTOOL },
     { "sfx_abbyy_fine_objects", mk_sfx_abbyy_fine_objects, rm_sfx_abbyy_fine_objects, XX_FILE_TYPE_UNKNOWN },
     { "sfx_clickteam_multimedia_fusion", mk_sfx_clickteam_multimedia_fusion, rm_sfx_clickteam_multimedia_fusion, XX_FILE_TYPE_UNKNOWN },
     { "sfx_hci_instalit", mk_sfx_hci_instalit, rm_sfx_hci_instalit, XX_FILE_TYPE_UNKNOWN },
@@ -10577,6 +10829,26 @@ static xxfc_reader_entry g_readers[] = {
     { "zxzip", mk_zxzip, rm_zxzip, XX_FILE_TYPE_UNKNOWN },
     { "zz", mk_zz, rm_zz, XX_FILE_TYPE_UNKNOWN },
     { "zzz", mk_zzz, rm_zzz, XX_FILE_TYPE_UNKNOWN },
+#include "xx_sevenzip_reader_table.inc"
+    { "gettext_mo", mk_gettext_mo, rm_documents, XX_FILE_TYPE_GNU_GETTEXT_MO },
+    { "qt_qm", mk_qt_qm, rm_documents, XX_FILE_TYPE_QT_QM },
+    { "mime", mk_mime, rm_documents, XX_FILE_TYPE_MIME_MESSAGE },
+    { "windows_help", mk_hlp, rm_documents, XX_FILE_TYPE_WINDOWS_HELP },
+    { "bruns_media", mk_ue2_bruns, rm_ue2_game, XX_FILE_TYPE_BRUNS_MEDIA },
+    { "rpg_maker_mv", mk_ue2_rpgmv, rm_ue2_game, XX_FILE_TYPE_RPG_MAKER_MV },
+    { "utage", mk_ue2_utage, rm_ue2_game, XX_FILE_TYPE_UTAGE_MEDIA },
+    { "ycg", mk_ue2_ycg, rm_ue2_game, XX_FILE_TYPE_YCG_IMAGE },
+    { "unreal_pak", mk_ue2_unreal_pak, rm_ue2_game, XX_FILE_TYPE_UNREAL_PAK },
+    { "fallout_dat", mk_ue2_fallout_dat, rm_ue2_game, XX_FILE_TYPE_FALLOUT_DAT },
+    { "livemaker_gal", mk_ue2_gal, rm_ue2_game, XX_FILE_TYPE_LIVE_MAKER_GAL },
+    { "smile_game_pack", mk_ue2_sgbpack, rm_ue2_game, XX_FILE_TYPE_SMILE_GAME_PACK },
+    { "chromium_pak", mk_chromium_pak, rm_chromium_pak, XX_FILE_TYPE_CHROMIUM_PAK },
+    { "windows_thumbnail_cache", mk_thumbnail_cache, rm_thumbnail_cache, XX_FILE_TYPE_WINDOWS_THUMBNAIL_CACHE },
+    { "enigma_virtual_box", mk_enigma, rm_enigma, XX_FILE_TYPE_ENIGMA_VIRTUAL_BOX },
+    { "media", mk_media, rm_sevenzip_engine, XX_FILE_TYPE_UNKNOWN },
+    { "media_audio", mk_media_audio, rm_sevenzip_engine, XX_FILE_TYPE_UNKNOWN },
+    { "media_video", mk_media_video, rm_sevenzip_engine, XX_FILE_TYPE_UNKNOWN },
+    { "media_frames", mk_media_frames, rm_sevenzip_engine, XX_FILE_TYPE_UNKNOWN },
 };
 
 static int g_learned = 0;
@@ -10619,6 +10891,14 @@ bool xxfc_open(xxfc_opened *out, xx_io_device *device, int64_t base_address) {
     if (!out || !device) return false;
     return xxfc_open_type(out, device, base_address,
                           xx_format_get_file_type_device(device));
+}
+
+/* Executable engine handlers expose carrier sections. They are considered
+ * only by the constrained fallback, after native installer detection. */
+static bool xxfc_engine_carrier(const xxfc_reader_entry *entry) {
+    return entry->name && !strncmp(entry->name,"sevenzip_",9) &&
+        (entry->type==XX_FILE_TYPE_PE32 || entry->type==XX_FILE_TYPE_ELF32 ||
+         entry->type==XX_FILE_TYPE_MACHO32);
 }
 
 bool xxfc_open_type(xxfc_opened *out, xx_io_device *device,
@@ -10742,12 +11022,17 @@ bool xxfc_open_type(xxfc_opened *out, xx_io_device *device,
     }
 
     for (i = 0; i < xxfc_reader_count(); ++i) {
-        if (table[i].type != type || type == XX_FILE_TYPE_BINARY) continue;
+        if (table[i].type != type || type == XX_FILE_TYPE_BINARY ||
+            xxfc_engine_carrier(&table[i])) continue;
         out->format = table[i].create(device, base_address);
-        if (!out->format) return false;
+        if (!out->format) continue;
         out->release = table[i].release;
         out->reader_name = table[i].name;
         out->type = type;
+        if (!strncmp(out->reader_name,"sevenzip_",9) &&
+            !xx_sevenzip_engine_set_start_only(out->format,true)) {
+            xxfc_close(out); return false;
+        }
         return true;
     }
 
@@ -10775,6 +11060,22 @@ static bool xxfc_extension_matches(const char *source_path,
     return true;
 }
 
+/* True when content detection names a format, other than the numbered split,
+ * whose own reader is registered for the suffix @p source_path ends with. */
+static bool xxfc_content_claims_suffix(xx_io_device *device,
+                                       const char *source_path) {
+    xxfc_reader_entry *table = xxfc_reader_table();
+    xx_file_type_t content = xx_format_get_file_type_device(device);
+    size_t i;
+    if (content == XX_FILE_TYPE_UNKNOWN || content == XX_FILE_TYPE_BINARY ||
+        content == XX_FILE_TYPE_NUMBERED_SPLIT) return false;
+    for (i = 0; i < xxfc_reader_count(); ++i)
+        if (table[i].type == content && g_reader_extensions[i][0] &&
+            xxfc_extension_matches(source_path, g_reader_extensions[i]))
+            return true;
+    return false;
+}
+
 bool xxfc_open_extension_fast(xxfc_opened *out, xx_io_device *device,
                               int64_t base_address, const char *source_path,
                               xx_pd_struct *pd) {
@@ -10785,18 +11086,33 @@ bool xxfc_open_extension_fast(xxfc_opened *out, xx_io_device *device,
     if (!out) return false;
     memset(out, 0, sizeof(*out));
     out->type = XX_FILE_TYPE_UNKNOWN;
-    if (!device || hint == XX_FILE_TYPE_UNKNOWN ||
+    if (!device || hint == XX_FILE_TYPE_UNKNOWN || hint == XX_FILE_TYPE_HXC_RAW_FLOPPY ||
+        hint == XX_FILE_TYPE_CASIO_FZF || hint == XX_FILE_TYPE_EMULATORII_EII ||
         (pd && xx_pd_is_stopped(pd))) return false;
     table = xxfc_reader_table();
     original_position = xx_io_tell(device);
     if (original_position < 0) original_position = 0;
+    /* The split engine has no signature and accepts any name ending .001,
+     * but formats such as MS-DOS BACKUP (CONTROL.001) and Asymetrix number
+     * their own volumes that way. When content detection names one of them,
+     * decline the hint so the caller's content path opens that reader. */
+    if (hint == XX_FILE_TYPE_NUMBERED_SPLIT && base_address == 0 &&
+        xxfc_content_claims_suffix(device, source_path)) {
+        (void)xx_io_seek64(device, original_position, SEEK_SET);
+        return false;
+    }
     for (i = 0; i < xxfc_reader_count(); ++i) {
-        if (table[i].type != hint) continue;
+        if (table[i].type != hint || xxfc_engine_carrier(&table[i])) continue;
         out->format = table[i].create(device, base_address);
         if (!out->format) break;
         out->release = table[i].release;
         out->reader_name = table[i].name;
         out->type = hint;
+        if (!strncmp(out->reader_name,"sevenzip_",9) &&
+            (!xx_sevenzip_engine_set_start_only(out->format,true) ||
+             !xx_sevenzip_engine_set_source_path(out->format,source_path))) {
+            xxfc_close(out); break;
+        }
         if (hint == XX_FILE_TYPE_PCE_ANADISK)
             xx_pce_anadisk_set_conservative_probe(
                 (xx_pce_anadisk *)out->format, true);
@@ -10815,6 +11131,17 @@ bool xxfc_open_extension_fast(xxfc_opened *out, xx_io_device *device,
     return out->format != NULL;
 }
 
+static bool xxfc_requires_explicit_profile(xx_file_type_t type) {
+    switch(type) {
+    case XX_FILE_TYPE_HXC_LOGIC_ANALYZER: case XX_FILE_TYPE_MICRAL_N_RAW:
+    case XX_FILE_TYPE_AMDOS: case XX_FILE_TYPE_OZDOS: case XX_FILE_TYPE_UNIDOS:
+    case XX_FILE_TYPE_CFFA: case XX_FILE_TYPE_APPLE_DOS_HYBRID: case XX_FILE_TYPE_DOS_MASTER:
+    case XX_FILE_TYPE_COHERENT_FS: case XX_FILE_TYPE_UNIX_V7:
+    case XX_FILE_TYPE_MINIX_PARTITIONS: case XX_FILE_TYPE_PC98_PARTITIONS:
+    case XX_FILE_TYPE_APRICOT_PARTITIONS: return true;
+    default:return false;
+    }
+}
 bool xxfc_open_extension(xxfc_opened *out, xx_io_device *device,
                          int64_t base_address, const char *source_path,
                          xx_pd_struct *pd) {
@@ -10836,6 +11163,9 @@ bool xxfc_open_extension(xxfc_opened *out, xx_io_device *device,
     /* A compound suffix such as tar.gz is more precise than gz. Readers
      * without a declared suffix can still be addressed by their table name. */
     for (i = 0; i < xxfc_reader_count(); ++i) {
+        if(xxfc_requires_explicit_profile(table[i].type) || xxfc_engine_carrier(&table[i])) continue;
+        if (table[i].type == XX_FILE_TYPE_HXC_RAW_FLOPPY || table[i].type == XX_FILE_TYPE_CASIO_FZF ||
+            table[i].type == XX_FILE_TYPE_EMULATORII_EII) continue;
         const char *extension = g_reader_extensions[i][0]
                                     ? g_reader_extensions[i] : table[i].name;
         size_t length = strlen(extension);
@@ -10846,6 +11176,9 @@ bool xxfc_open_extension(xxfc_opened *out, xx_io_device *device,
 
     for (suffix_length = longest; suffix_length > 0; --suffix_length) {
         for (i = 0; i < xxfc_reader_count(); ++i) {
+            if(xxfc_requires_explicit_profile(table[i].type) || xxfc_engine_carrier(&table[i])) continue;
+            if (table[i].type == XX_FILE_TYPE_HXC_RAW_FLOPPY || table[i].type == XX_FILE_TYPE_CASIO_FZF ||
+                table[i].type == XX_FILE_TYPE_EMULATORII_EII) continue;
             const char *extension = g_reader_extensions[i][0]
                                         ? g_reader_extensions[i] : table[i].name;
             xxfc_opened candidate = {0};
@@ -10858,6 +11191,11 @@ bool xxfc_open_extension(xxfc_opened *out, xx_io_device *device,
             if (!candidate.format) continue;
             candidate.release = table[i].release;
             candidate.reader_name = table[i].name;
+            if (!strncmp(candidate.reader_name,"sevenzip_",9) &&
+                (!xx_sevenzip_engine_set_start_only(candidate.format,true) ||
+                 !xx_sevenzip_engine_set_source_path(candidate.format,source_path))) {
+                xxfc_close(&candidate); continue;
+            }
             if (strcmp(table[i].name, "pce_anadisk") == 0)
                 xx_pce_anadisk_set_conservative_probe(
                     (xx_pce_anadisk *)candidate.format, true);
@@ -10893,6 +11231,19 @@ bool xxfc_open_extension(xxfc_opened *out, xx_io_device *device,
     return true;
 }
 
+static bool xxfc_profile_numbers(const char *text,uint32_t *a,uint32_t *b,uint32_t *c,char delimiter) {
+    uint32_t *values[3]={a,b,c}; unsigned i;
+    for(i=0;i<3;++i) { uint64_t value=0; unsigned digits=0;
+        while(*text>='0' && *text<='9') { value=value*10U+(unsigned)(*text++-'0'); if(value>UINT32_MAX) return false; ++digits; }
+        if(!digits || (i<2?*text++!=delimiter:*text!=0)) return false;
+        *values[i]=(uint32_t)value;
+    } return true;
+}
+static bool xxfc_profile_number(const char *text,uint32_t *out) {
+    uint64_t value=0; unsigned digits=0;
+    while(*text>='0' && *text<='9') { value=value*10U+(unsigned)(*text++-'0'); if(value>UINT32_MAX) return false; ++digits; }
+    if(!digits || *text) return false; *out=(uint32_t)value; return true;
+}
 bool xxfc_open_named(xxfc_opened *out, xx_io_device *device,
                      int64_t base_address, const char *name) {
     xxfc_reader_entry *table;
@@ -10901,6 +11252,36 @@ bool xxfc_open_named(xxfc_opened *out, xx_io_device *device,
     xx_rt_memset(out, 0, sizeof(*out));
     out->type = XX_FILE_TYPE_UNKNOWN;
     if (!device || !name || !name[0]) return false;
+    if(xx_rt_strncmp(name,"cffa:",5)==0 || xx_rt_strncmp(name,"dos_master:",11)==0) {
+        uint32_t profile; bool cffa=xx_rt_strncmp(name,"cffa:",5)==0; xx_apple_family_info *reader;
+        if(!xxfc_profile_number(name+(cffa?5:11),&profile)) return false;
+        if(cffa ? (profile!=4 && profile!=6 && profile!=8) :
+            (profile!=143360 && profile!=163840 && profile!=204800 && profile!=409600)) return false;
+        reader=cffa?(xx_apple_family_info *)xx_cffa_create(device,base_address):(xx_apple_family_info *)xx_dos_master_create(device,base_address);
+        if(!reader) return false; reader->profile=profile;
+        out->format=&reader->format; out->release=cffa?rm_cffa:rm_dos_master;
+        out->reader_name=cffa?"cffa":"dos_master"; out->type=cffa?XX_FILE_TYPE_CFFA:XX_FILE_TYPE_DOS_MASTER; return true;
+    }
+    if(xx_rt_strncmp(name,"pc98_partitions:",16)==0) {
+        uint32_t bytes,heads,sectors; xx_pc98_partitions *reader;
+        if(!xxfc_profile_numbers(name+16,&bytes,&heads,&sectors,'x')) return false;
+        reader=xx_pc98_partitions_create(device,base_address); if(!reader) return false;
+        if(!xx_volume_set_geometry(reader,bytes,heads,sectors)) { xx_pc98_partitions_free(reader); return false; }
+        out->format=&reader->format; out->release=rm_pc98_partitions; out->reader_name="pc98_partitions"; out->type=XX_FILE_TYPE_PC98_PARTITIONS; return true;
+    }
+    if(xx_rt_strncmp(name,"hxc_logic_analyzer:",19)==0) {
+        uint32_t hz,data_bit,index_bit; xx_hxc_logic_analyzer *reader;
+        if(!xxfc_profile_numbers(name+19,&hz,&data_bit,&index_bit,':')) return false;
+        reader=xx_hxc_logic_analyzer_create(device,base_address); if(!reader) return false;
+        if(!xx_hxc_logic_analyzer_set_signals(reader,hz,data_bit,index_bit)) { xx_hxc_logic_analyzer_free(reader); return false; }
+        out->format=&reader->format; out->release=rm_hxc_logic_analyzer; out->reader_name="hxc_logic_analyzer"; out->type=XX_FILE_TYPE_HXC_LOGIC_ANALYZER; return true;
+    }
+    if (xx_rt_strncmp(name, "hxc-raw:", 8U) == 0) {
+        xx_hxc_raw_floppy *reader=xx_hxc_raw_floppy_create_profile(device,base_address,name+8);
+        if(!reader) return false;
+        out->format=&reader->format; out->release=rm_hxc_raw_floppy;
+        out->reader_name=reader->profile->name; out->type=XX_FILE_TYPE_HXC_RAW_FLOPPY; return true;
+    }
     if (xx_rt_strncmp(name, "cpm:", 4U) == 0) {
         xx_cpm_preset preset;
         xx_cpm *reader;
@@ -10912,6 +11293,17 @@ bool xxfc_open_named(xxfc_opened *out, xx_io_device *device,
         out->reader_name = xx_cpm_preset_name(preset);
         out->type = XX_FILE_TYPE_CPM;
         return true;
+    }
+    if (!xx_rt_strcmp(name, "sevenzip") || !xx_rt_strcmp(name, "7zip-engine")) {
+        out->format=xx_sevenzip_engine_create(device,base_address,NULL);
+        if (!out->format) return false;
+        out->release=rm_sevenzip_engine; out->reader_name="sevenzip";
+        return true;
+    }
+    if(!xx_rt_strncmp(name,"garbro:",7) && name[7]) {
+        out->format=xx_sevenzip_engine_create_helper(device,base_address,name+7,"xfu_garbro_helper.exe",XX_FILE_TYPE_GAME_ARCHIVE,"dat");
+        if(!out->format)return false;
+        out->release=rm_sevenzip_engine;out->reader_name="garbro";out->type=XX_FILE_TYPE_GAME_ARCHIVE;return true;
     }
     table = xxfc_reader_table();
     for (i = 0; i < xxfc_reader_count(); ++i) {
@@ -10943,6 +11335,10 @@ Abstractformat *xxfc_make_writer(const char *kind, xx_io_device *device,
         { "tar.bz2",  "tar_bz2"  }, { "tar.xz",  "tar_xz"   },
         { "tar.zst",  "tar_zstd" }, { "tar.lz4", "tar_lz4"  },
         { "zip",      "zip"      }, { "cpio",    "cpio"     },
+        { "7z",       "7zip"     }, { "7zip",    "7zip"     },
+        { "gz",       "gz"       }, { "gzip",    "gz"       },
+        { "bz2",      "bz2"      }, { "bzip2",   "bz2"      },
+        { "xz",       "xz"       }, { "wim",     "wim"     },
     };
     xxfc_reader_entry *table = xxfc_reader_table();
     size_t i, j;
@@ -10961,4 +11357,109 @@ Abstractformat *xxfc_make_writer(const char *kind, xx_io_device *device,
         }
     }
     return NULL;
+}
+
+void xxfc_refresh_sevenzip_type(xxfc_opened *opened) {
+    static const struct { const char *handler; xx_file_type_t type; const char *extension,*reader; } handlers[] = {
+#include "xx_sevenzip_handler_table.inc"
+    };
+    const char *name; size_t i; xx_file_type_t detected,previous;
+    if (!opened || !opened->format || !opened->reader_name || xx_rt_strncmp(opened->reader_name,"sevenzip",8)) return;
+    name=xx_sevenzip_engine_get_handler(opened->format); if (!name) return;
+    for (i=0;i<sizeof(handlers)/sizeof(handlers[0]);++i) if (!strcmp(name,handlers[i].handler)) {
+        previous=opened->type;
+        opened->type=handlers[i].type;
+        if (!strcmp(name,"zip") && (previous==XX_FILE_TYPE_ZIP64 || previous==XX_FILE_TYPE_JAR ||
+            previous==XX_FILE_TYPE_APK || previous==XX_FILE_TYPE_IPA)) opened->type=previous;
+        /* Preserve the actual executable width supplied by the native detector. */
+        if (!strcmp(name,"ELF") || !strcmp(name,"MachO") || !strcmp(name,"PE")) {
+            xx_io_device *source=opened->format->device,*view=source;
+            int64_t saved=xx_io_tell(source),base=opened->format->base_address,size=xx_io_size(source);
+            if (base>0) view=size>=base?xx_io_sub_open_ro(source,base,size-base):NULL;
+            detected=view?xx_format_get_file_type_device(view):XX_FILE_TYPE_UNKNOWN;
+            if (view && view!=source) xx_io_close(view);
+            if (saved>=0) (void)xx_io_seek64(source,saved,SEEK_SET);
+            if ((!strcmp(name,"PE") && (detected==XX_FILE_TYPE_PE32 || detected==XX_FILE_TYPE_PE64)) ||
+                (!strcmp(name,"ELF") && (detected==XX_FILE_TYPE_ELF32 || detected==XX_FILE_TYPE_ELF64)) ||
+                (!strcmp(name,"MachO") && (detected==XX_FILE_TYPE_MACHO32 || detected==XX_FILE_TYPE_MACHO64)))
+                opened->type=detected;
+        }
+        opened->format->file_type=opened->type;
+        strcpy(opened->format->extension,handlers[i].extension);
+        return;
+    }
+}
+
+bool xxfc_open_sevenzip(xxfc_opened *out,xx_io_device *device,int64_t base,
+                        const char *path,const char *password,
+                        xx_file_type_t required_type,xx_pd_struct *pd) {
+    xxfc_opened candidate={0};
+    if (!out || !device || (pd && xx_pd_is_stopped(pd))) return false;
+    candidate.format=xx_sevenzip_engine_create(device,base,NULL);
+    if (!candidate.format) return false;
+    candidate.release=rm_sevenzip_engine; candidate.reader_name="sevenzip";
+    if (!xx_sevenzip_engine_set_start_only(candidate.format,true) ||
+        !xx_sevenzip_engine_set_source_path(candidate.format,path) ||
+        (password && !xx_format_set_password(candidate.format,password))) { xxfc_close(&candidate); return false; }
+    xx_pd_clear_error(pd);
+    if (!xx_format_is_valid(candidate.format,pd) || !xx_format_handle_base_info(candidate.format,pd)) {
+        xxfc_close(&candidate); return false;
+    }
+    xxfc_refresh_sevenzip_type(&candidate);
+    if (candidate.type==XX_FILE_TYPE_UNKNOWN) { xxfc_close(&candidate); return false; }
+    /* Carrier sections do not validate the installer wrapped around them.
+     * They remain available through explicit sevenzip reader selection. */
+    if (candidate.type==XX_FILE_TYPE_PE32 || candidate.type==XX_FILE_TYPE_PE64 ||
+        candidate.type==XX_FILE_TYPE_ELF32 || candidate.type==XX_FILE_TYPE_ELF64 ||
+        candidate.type==XX_FILE_TYPE_MACHO32 || candidate.type==XX_FILE_TYPE_MACHO64) {
+        xxfc_close(&candidate); return false;
+    }
+    if (required_type!=XX_FILE_TYPE_UNKNOWN && required_type!=XX_FILE_TYPE_BINARY &&
+        candidate.type!=required_type) {
+        /* ZIP derivatives share the same stream decoder. Other wrappers must
+         * retain their own validation, including their declared payload bounds. */
+        if (candidate.type!=XX_FILE_TYPE_ZIP ||
+            (required_type!=XX_FILE_TYPE_ZIP64 && required_type!=XX_FILE_TYPE_JAR &&
+             required_type!=XX_FILE_TYPE_APK && required_type!=XX_FILE_TYPE_IPA)) {
+            xxfc_close(&candidate); return false;
+        }
+        candidate.type=required_type;
+        candidate.format->file_type=required_type;
+    }
+    xxfc_close(out); *out=candidate; xx_pd_clear_error(pd); return true;
+}
+
+/* Fast catalog evidence prevents arbitrary invalid inputs from starting .NET. */
+#include "xxfc_garbro_probe.inc"
+
+bool xxfc_open_fallback(xxfc_opened *out,xx_io_device *device,int64_t base,
+                        const char *path,const char *password,
+                        xx_file_type_t required_type,xx_pd_struct *pd) {
+    xxfc_opened candidate={0};
+    if(xxfc_open_sevenzip(out,device,base,path,password,required_type,pd))return true;
+    if(!out || !device || xx_pd_is_stopped(pd))return false;
+    /* Preserve known-container validation. In particular, a rejected
+     * installer must not become a game archive through a trailing ZIP. */
+    if(required_type!=XX_FILE_TYPE_UNKNOWN && required_type!=XX_FILE_TYPE_BINARY &&
+       !(required_type>=XX_FILE_TYPE_BRUNS_MEDIA && required_type<=XX_FILE_TYPE_GAME_ARCHIVE)) {
+        switch(required_type) {
+        case XX_FILE_TYPE_WINTERMUTEDCP:case XX_FILE_TYPE_GODOT_ENGINE_PCK:
+        case XX_FILE_TYPE_SAR_NS:case XX_FILE_TYPE_KIRIKIRI_XP3:case XX_FILE_TYPE_RENPY_RPA:
+        case XX_FILE_TYPE_BETHESDA_BSA:case XX_FILE_TYPE_BETHESDA_BA2:
+        case XX_FILE_TYPE_VISIONAIRE_STUDIO_VIS:case XX_FILE_TYPE_DXA:
+        case XX_FILE_TYPE_TELLTALE_TTARCH:case XX_FILE_TYPE_YPF:
+        case XX_FILE_TYPE_RPG_MAKER_RGSSAD:case XX_FILE_TYPE_NITROPLUS_NPA:break;
+        default:return false;
+        }
+    }
+    if ((required_type==XX_FILE_TYPE_UNKNOWN || required_type==XX_FILE_TYPE_BINARY) &&
+        !xxfc_garbro_possible(device,base,path)) return false;
+    candidate.format=mk_garbro(device,base);
+    if(!candidate.format)return false;
+    candidate.release=rm_sevenzip_engine;candidate.reader_name="garbro";candidate.type=XX_FILE_TYPE_GAME_ARCHIVE;
+    if(!xx_sevenzip_engine_set_source_path(candidate.format,path) ||
+       (password && !xx_format_set_password(candidate.format,password))) {xxfc_close(&candidate);return false;}
+    xx_pd_clear_error(pd);
+    if(!xx_format_is_valid(candidate.format,pd) || !xx_format_handle_base_info(candidate.format,pd)) {xxfc_close(&candidate);return false;}
+    xxfc_close(out);*out=candidate;xx_pd_clear_error(pd);return true;
 }

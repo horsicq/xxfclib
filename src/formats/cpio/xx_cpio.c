@@ -1026,49 +1026,124 @@ static const xx_var *cpio_option(const xx_list_s *options, uint32_t id) {
     return NULL;
 }
 
+/* True when @p name is rooted ("/x", "\x") or carries a drive prefix. */
+static bool cpio_name_is_absolute(const char *name) {
+    return name && (name[0] == '/' || name[0] == '\\' ||
+                    (name[0] != '\0' && name[1] == ':'));
+}
+
+static bool cpio_ascii_equal_nocase(const char *value, size_t length,
+                                    const char *expected) {
+    size_t index;
+    if (xx_str_len(expected) != length) return false;
+    for (index = 0U; index < length; ++index) {
+        unsigned char left = (unsigned char)value[index];
+        if (left >= 'a' && left <= 'z') left = (unsigned char)(left - 32U);
+        if (left != (unsigned char)expected[index]) return false;
+    }
+    return true;
+}
+
+/* True for a component Win32 would not map to a plain file of that name: a
+ * reserved device (with or without an extension, including COM/LPT with a
+ * UTF-8 superscript digit) or a name ending in '.' or ' ', which Win32 strips
+ * and so aliases another path.  Checked on every platform, like TAR and ZIP,
+ * so an archive refused on one host is refused on all. */
+static bool cpio_component_is_unsafe(const char *component, size_t length) {
+    size_t base = 0U;
+    if (component[length - 1U] == '.' || component[length - 1U] == ' ')
+        return true;
+    while (base < length && component[base] != '.') ++base;
+    if (cpio_ascii_equal_nocase(component, base, "CON") ||
+        cpio_ascii_equal_nocase(component, base, "PRN") ||
+        cpio_ascii_equal_nocase(component, base, "AUX") ||
+        cpio_ascii_equal_nocase(component, base, "NUL") ||
+        cpio_ascii_equal_nocase(component, base, "CONIN$") ||
+        cpio_ascii_equal_nocase(component, base, "CONOUT$") ||
+        cpio_ascii_equal_nocase(component, base, "CLOCK$")) {
+        return true;
+    }
+    if (base < 4U || !(cpio_ascii_equal_nocase(component, 3U, "COM") ||
+                       cpio_ascii_equal_nocase(component, 3U, "LPT"))) {
+        return false;
+    }
+    return (base == 4U && component[3] >= '1' && component[3] <= '9') ||
+           (base == 5U && (unsigned char)component[3] == 0xC2U &&
+            ((unsigned char)component[4] == 0xB9U ||
+             (unsigned char)component[4] == 0xB2U ||
+             (unsigned char)component[4] == 0xB3U));
+}
+
 /* Returns an independently allocated, slash-normalized safe extraction name.
  * CPIO is historically permissive about filenames; keeping the stored name
  * visible while rejecting unsafe filesystem mappings avoids traversal through
- * absolute paths, drive names, and dot components. */
-static char *cpio_safe_output_name(const char *source) {
+ * dot components.  As GNU cpio --no-absolute-filenames and 7-Zip do, absolute
+ * names ("/home/x", "C:\x", "//srv/x") are made relative by dropping drive
+ * prefixes and leading separators, and "." and empty components ("./x",
+ * "a//b") are dropped.  Any ".." component is still refused, so "/../x" and
+ * "C:\..\x" cannot escape, as are device names and trailing dots/spaces
+ * (cpio_component_is_unsafe).  A name with nothing left ("." or "/") denotes the
+ * output root: NULL is returned and *is_root, when supplied, is set. */
+static char *cpio_safe_output_name(const char *source, bool *is_root) {
     size_t length;
     size_t index;
-    size_t component_start = 0U;
+    size_t start;
+    size_t out = 0U;
     char *name;
+    if (is_root) *is_root = false;
     if (!source || !source[0]) return NULL;
+    for (;;) {
+        if (source[0] == '/' || source[0] == '\\') {
+            ++source;
+        } else if (((source[0] >= 'A' && source[0] <= 'Z') ||
+                    (source[0] >= 'a' && source[0] <= 'z')) &&
+                   source[1] == ':') {
+            source += 2;
+        } else {
+            break;
+        }
+    }
     length = xx_str_len(source);
-    if (length == 0U || source[0] == '/' || source[0] == '\\' ||
-        (length >= 2U && source[1] == ':') || length > XX_CPIO_MAX_NAME_SIZE) {
+    if (length > XX_CPIO_MAX_NAME_SIZE) return NULL;
+    name = (char *)xx_mem_alloc(length + 2U);
+    if (!name) return NULL;
+    for (start = 0U, index = 0U; index <= length; ++index) {
+        unsigned char c = (unsigned char)source[index];
+        size_t size;
+        if (index != length && c != '/' && c != '\\') {
+            if (c < 0x20U || c == 0x7fU || c == ':' || c == '<' || c == '>' ||
+                c == '"' || c == '|' || c == '?' || c == '*') {
+                xx_mem_free(name);
+                return NULL;
+            }
+            continue;
+        }
+        size = index - start;
+        if (size == 2U && source[start] == '.' && source[start + 1U] == '.') {
+            xx_mem_free(name);
+            return NULL;
+        }
+        if (size != 0U && !(size == 1U && source[start] == '.')) {
+            if (cpio_component_is_unsafe(source + start, size)) {
+                xx_mem_free(name);
+                return NULL;
+            }
+            if (out != 0U) name[out++] = '/';
+            xx_mem_copy(name + out, source + start, size);
+            out += size;
+        }
+        start = index + 1U;
+    }
+    if (out == 0U) {
+        xx_mem_free(name);
+        if (is_root) *is_root = true;
         return NULL;
     }
-    name = (char *)xx_mem_alloc(length + 1U);
-    if (!name) return NULL;
-    for (index = 0U; index < length; ++index) {
-        unsigned char c = (unsigned char)source[index];
-        if (c < 0x20U || c == 0x7fU || c == ':' || c == '<' || c == '>' ||
-            c == '"' || c == '|' || c == '?' || c == '*') {
-            xx_mem_free(name);
-            return NULL;
-        }
-        name[index] = source[index] == '\\' ? '/' : source[index];
+    /* One final slash is kept: the writer uses it to mark a directory. */
+    if (source[length - 1U] == '/' || source[length - 1U] == '\\') {
+        name[out++] = '/';
     }
-    name[length] = '\0';
-    for (index = 0U; index <= length; ++index) {
-        if (index != length && name[index] != '/') continue;
-        if (index == component_start) {
-            /* One final slash is accepted for a directory entry. */
-            if (index == length && index != 0U) break;
-            xx_mem_free(name);
-            return NULL;
-        }
-        if ((index - component_start == 1U && name[component_start] == '.') ||
-            (index - component_start == 2U && name[component_start] == '.' &&
-             name[component_start + 1U] == '.')) {
-            xx_mem_free(name);
-            return NULL;
-        }
-        component_start = index + 1U;
-    }
+    name[out] = '\0';
     return name;
 }
 
@@ -1086,7 +1161,9 @@ static bool cpio_solaris_publish(cpio_stream *stream) {
         stream->image_size == 0U) return false;
     for (read_index = 0U; read_index < stream->count; ++read_index) {
         cpio_member *member = &stream->items[read_index];
-        char *safe_name = cpio_safe_output_name(member->name);
+        char *safe_name = cpio_name_is_absolute(member->name)
+                              ? NULL
+                              : cpio_safe_output_name(member->name, NULL);
         if (safe_name && (member->regular || member->directory)) {
             xx_mem_free(safe_name);
             if (safe_count != read_index) {
@@ -1337,7 +1414,7 @@ static char *cpio_record_name_utf8(const xx_archive_record *record) {
         converted = xx_str_unicode_to_utf8(wide_name);
     }
     if (!converted) return NULL;
-    safe_name = cpio_safe_output_name(converted);
+    safe_name = cpio_safe_output_name(converted, NULL);
     xx_str_free(converted);
     return safe_name;
 }
@@ -1557,6 +1634,7 @@ bool xx_cpio_unpack_current_archive_record(Abstractformat *self,
     xx_io_device *stage = NULL;
     xx_io_device *source;
     uint64_t written = 0U;
+    bool is_root = false;
     bool result = false;
     if (!self || !state || state->format != self || !state->has_record ||
         !(stream = (cpio_stream *)state->internal_state) ||
@@ -1566,8 +1644,13 @@ bool xx_cpio_unpack_current_archive_record(Abstractformat *self,
     member = &stream->items[stream->index];
     if (!member->regular && !member->directory) return false;
     source = stream->image_device ? stream->image_device : self->device;
-    safe_name = cpio_safe_output_name(member->name);
-    if (!safe_name) goto cleanup;
+    safe_name = cpio_safe_output_name(member->name, &is_root);
+    if (!safe_name) {
+        /* A "." or "/" directory entry is the output directory itself
+         * (GNU `find . | cpio -o` emits one); there is nothing to create. */
+        result = is_root && member->directory;
+        goto cleanup;
+    }
     path_option = cpio_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         result = member->compression == 0U ||

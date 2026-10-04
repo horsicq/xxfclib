@@ -109,6 +109,8 @@ typedef struct xx_xz_record_stream_s {
     size_t count;
 } xx_xz_record_stream;
 
+#include "../xx_single_stream_writer.h"
+
 static void xx_xz_vtable_destroy(Abstractformat *self);
 
 static bool xx_xz_vli(const uint8_t *data, size_t limit, size_t *cursor,
@@ -1116,6 +1118,10 @@ void xx_xz_init(xx_xz *xz, xx_io_device *dev, int64_t base_address) {
         xx_xz_data_struct_record_move_to_next;
     xz->format.free_data_struct_records_reading =
         xx_xz_free_data_struct_records_reading;
+    xz->format.create_archive_records_writing = xx_xz_create_archive_records_writing;
+    xz->format.pack_archive_record = xx_xz_pack_archive_record;
+    xz->format.finalize_archive_records_writing = xx_xz_finalize_archive_records_writing;
+    xz->format.free_archive_records_writing = xx_xz_free_archive_records_writing;
     xz->format.destroy = xx_xz_vtable_destroy;
     xz->index_offset = -1;
     xz->footer_offset = -1;
@@ -1635,3 +1641,8 @@ uint8_t xx_xz_get_check_type(const xx_xz *xz) {
 bool xx_xz_can_extract(const xx_xz *xz) {
     return xz && xz->can_extract;
 }
+
+xx_archive_write_state *xx_xz_create_archive_records_writing(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) { return ss_create(self, options, pd); }
+bool xx_xz_pack_archive_record(Abstractformat *self, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source, xx_pd_struct *pd) { return ss_pack(self, state, record, source, pd); }
+bool xx_xz_finalize_archive_records_writing(Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd) { return ss_finalize(self, state, pd); }
+void xx_xz_free_archive_records_writing(Abstractformat *self, xx_archive_write_state *state) { ss_free(self, state); }

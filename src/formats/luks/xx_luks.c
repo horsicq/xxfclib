@@ -5,14 +5,10 @@
  * On-Disk Format Specification and the LUKS2 format specification, both
  * published by the cryptsetup project; the per-field notes live in xx_luks.h.
  *
- * NO DECRYPTION IS ATTEMPTED, EVER. There is no passphrase input, no PBKDF2
- * or Argon2 call, no key-slot unwrapping and no master-key recovery. The
- * reader identifies the container, publishes what the cleartext header says
- * about it, publishes the payload region as one record carrying
- * XX_META_ID_IS_ENCRYPTED, and returns false from the unpack entry point.
- * This is the same shape as src/formats/pcsecure/xx_pcsecure.c takes for a
- * member whose key it cannot recover: list it, never write ciphertext out as
- * if it were plaintext.
+ * LUKS1 AES-CBC/plain/plain64/ESSIV-SHA256 and AES-XTS/plain64 payloads
+ * are decoded with an explicitly supplied password after PBKDF2/AF keyslot
+ * recovery and master-key digest verification. LUKS2 remains metadata-only;
+ * unsupported ciphers/KDFs are refused without publishing ciphertext.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -24,6 +20,8 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/algo/store/xx_store.h"
+#include "../xx_disk_crypto_private.h"
 
 /* Registration placeholder. xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -51,7 +49,7 @@
 /* How much of the LUKS2 JSON area is scanned for the data segment offset. */
 #define XX_LUKS2_JSON_SCAN 65536U
 
-#define XX_LUKS_MEMBER_NAME "payload.enc"
+#define XX_LUKS_MEMBER_NAME "payload.img"
 
 typedef struct xx_luks_private_s {
     int64_t input_size;
@@ -323,7 +321,7 @@ static bool xx_luks_parse_v2(xx_io_device *device, xx_luks_private *parsed) {
     return true;
 }
 
-static bool xx_luks_parse(Abstractformat *self, xx_luks_private *parsed,
+static bool xx_luks_parse_impl(Abstractformat *self, xx_luks_private *parsed,
                           xx_pd_struct *pd) {
     uint8_t magic[8];
     int64_t total_size;
@@ -360,6 +358,11 @@ static bool xx_luks_parse(Abstractformat *self, xx_luks_private *parsed,
     if (parsed->payload_offset > (uint64_t)total_size) return false;
     parsed->payload_size = (uint64_t)total_size - parsed->payload_offset;
     return true;
+}
+
+static bool xx_luks_parse(Abstractformat *self, xx_luks_private *parsed, xx_pd_struct *pd) {
+    int64_t cursor=self&&self->device?xx_io_tell(self->device):-1; bool ok=xx_luks_parse_impl(self,parsed,pd);
+    if(cursor>=0&&xx_io_seek64(self->device,cursor,SEEK_SET)!=0) ok=false; return ok;
 }
 
 /* ------------------------------------------------------------ lifecycle -- */
@@ -543,8 +546,7 @@ static bool xx_luks_populate_record(xx_archive_record *record,
     }
     xx_luks_append_text(detail, sizeof(detail), &used, " ENCRYPTED");
     return xx_archive_record_set_original_name(record, XX_LUKS_MEMBER_NAME) &&
-           /* The plaintext size is unknowable without the master key; the
-            * ciphertext extent is all there is to report. */
+           /* Supported sector ciphers preserve the declared payload length. */
            xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE,
                                           parsed->payload_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE,
@@ -620,20 +622,49 @@ bool xx_luks_archive_record_move_to_next(Abstractformat *self,
     return false;
 }
 
-bool xx_luks_unpack_current_archive_record(Abstractformat *self,
-                                           xx_archive_record_state *state,
-                                           xx_pd_struct *pd) {
-    (void)self;
-    (void)state;
-    (void)pd;
-    /* The refusal this reader exists to make. Every byte of the payload is
-     * ciphertext under a key derived from a passphrase nobody has supplied;
-     * there is nothing to unpack, and copying the ciphertext out under the
-     * member's name would misrepresent it as the volume's contents. The
-     * XX_META_ID_OPT_PASSWORD option is deliberately NOT honoured: honouring
-     * it would mean implementing PBKDF2/Argon2 key-slot unwrapping, which is
-     * out of scope for this library. */
-    return false;
+static bool xx_luks_decode(Abstractformat *self, const xx_luks_private *parsed, dc_crypto *crypto, xx_io_device *output, xx_pd_struct *pd) {
+    uint8_t *buffer=(uint8_t*)xx_mem_alloc(65536); uint64_t done=0; bool result=false; int level;
+    if(!buffer) return false; level=xx_pd_enter_level(pd,parsed->payload_size,"Decoding LUKS1 payload");
+    while(done<parsed->payload_size) {
+        size_t n=(size_t)(parsed->payload_size-done),sent=0; if(n>65536) n=65536;
+        if(xx_pd_is_stopped(pd) || !dc_read_at(self->device,parsed->payload_offset+done,buffer,n) || !dc_decrypt(crypto,done/512,buffer,n,pd)) goto end;
+        while(output && sent<n) { ssize_t z=xx_io_write(output,buffer+sent,n-sent); if(z<=0||(size_t)z>n-sent) goto end; sent+=(size_t)z; }
+        done+=n; xx_pd_set_current(pd,level,done);
+    } result=!xx_pd_is_stopped(pd);
+end: xx_pd_leave_level(pd,level); dc_clear(buffer,65536); xx_mem_free(buffer); return result;
+}
+
+bool xx_luks_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+    xx_luks_private *parsed; dc_crypto crypto; const uint8_t *pw; size_t pwn; char *owned=NULL,*wide=NULL,*path=NULL,*stage=NULL;
+    const xx_var *value; const char *base; xx_io_device *output=NULL; uint64_t memory,member; int64_t cursor; bool result=false,overwrite=false;
+    if(!self||!self->device||!state||state->format!=self||!state->has_record||xx_pd_is_stopped(pd)) return false;
+    parsed=(xx_luks_private*)state->internal_state; if(!parsed||parsed->consumed) return false;
+    xx_mem_zero(&crypto,sizeof(crypto)); cursor=xx_io_tell(self->device);
+    if(parsed->version!=1) { xx_pd_set_error(pd,XXFC_ERR_INVALID_ARG,"LUKS2 payload decryption is not supported"); goto done; }
+    if((parsed->payload_size&511U) || !dc_limit(self,&state->options,XX_META_ID_OPT_MEMORY_LIMIT,UINT64_MAX,&memory) ||
+       !dc_limit(self,&state->options,XX_META_ID_OPT_MAX_MEMBER_SIZE,UINT64_MAX,&member) || memory<65536+16384U || parsed->payload_size>member) goto done;
+    if(!dc_password(self,&state->options,&pw,&pwn,&owned,memory-(65536+16384U))) { xx_pd_set_error(pd,XXFC_ERR_INVALID_ARG,"LUKS1 password required"); goto done; }
+    if(!dc_luks_unlock(self->device,(uint64_t)parsed->base_address,(uint64_t)(parsed->input_size-parsed->base_address),false,pw,pwn,&crypto,pd)) {
+        if(!xx_pd_is_stopped(pd)) xx_pd_set_error(pd,XXFC_ERR_GENERIC,"LUKS1 keyslot could not be unlocked (wrong password or unsupported parameters)"); goto done;
+    }
+    value=xx_format_resolve_extra_parameter(self,&state->options,XX_META_ID_OPT_UNPACK_PATH);
+    if(!value) { result=xx_luks_decode(self,parsed,&crypto,NULL,pd); goto done; }
+    base=NULL; if(value->type==XX_VAR_TYPE_STRING||value->type==XX_VAR_TYPE_STRING_VIEW) base=xx_var_get_str(value);
+    else if(value->type==XX_VAR_TYPE_WSTRING||value->type==XX_VAR_TYPE_WSTRING_VIEW) { wide=xx_str_unicode_to_utf8(xx_var_get_wstr(value)); base=wide; }
+    if(!base) goto done;
+    path=xx_str_concat3(base,(base[0]&&base[xx_str_len(base)-1]!='/'&&base[xx_str_len(base)-1]!='\\')?"/":"",XX_LUKS_MEMBER_NAME);
+    if(!path || !xx_store_create_dirs_a(path,false)) goto done;
+    value=xx_format_resolve_extra_parameter(self,&state->options,XX_META_ID_OPT_OVERWRITE);overwrite=value&&xx_var_get_bool(value);
+    if(dc_same_path(path,xx_io_source_path(self->device))||(!overwrite&&xx_io_file_exists_a(path))) goto done;
+    output=dc_stage(path,&stage);
+    result=output && xx_luks_decode(self,parsed,&crypto,output,pd);
+    if(output) { if(xx_io_close(output)!=0) result=false; output=NULL; }
+    if(result&&stage) result=!xx_pd_is_stopped(pd)&&xx_io_file_replace_a(stage,path,overwrite);
+done:
+    if(output) xx_io_close(output); if(owned) { dc_clear(owned,xx_str_len(owned)); xx_str_free(owned); }
+    if(stage) { if(!result) xx_io_file_remove_a(stage); xx_str_free(stage); }
+    if(wide) xx_str_free(wide); if(path) xx_str_free(path); dc_clear(&crypto,sizeof(crypto));
+    if(cursor>=0&&xx_io_seek64(self->device,cursor,SEEK_SET)!=0) result=false; return result;
 }
 
 void xx_luks_free_archive_records_reading(Abstractformat *self,

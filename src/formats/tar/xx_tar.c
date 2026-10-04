@@ -1334,6 +1334,8 @@ static bool xx_tar_ascii_equal_nocase(const char *value, size_t length,
     return true;
 }
 
+/* True for a reserved Win32 device name, with or without an extension,
+ * including COM/LPT followed by a UTF-8 superscript digit (as CPIO). */
 static bool xx_tar_component_is_windows_device(const char *component,
                                                 size_t length) {
     size_t base_length = 0U;
@@ -1344,13 +1346,22 @@ static bool xx_tar_component_is_windows_device(const char *component,
         xx_tar_ascii_equal_nocase(component, base_length, "PRN") ||
         xx_tar_ascii_equal_nocase(component, base_length, "AUX") ||
         xx_tar_ascii_equal_nocase(component, base_length, "NUL") ||
+        xx_tar_ascii_equal_nocase(component, base_length, "CONIN$") ||
+        xx_tar_ascii_equal_nocase(component, base_length, "CONOUT$") ||
         xx_tar_ascii_equal_nocase(component, base_length, "CLOCK$")) {
         return true;
     }
-    return base_length == 4U &&
-           (xx_tar_ascii_equal_nocase(component, 3U, "COM") ||
-            xx_tar_ascii_equal_nocase(component, 3U, "LPT")) &&
-           component[3] >= '1' && component[3] <= '9';
+    if (base_length < 4U ||
+        !(xx_tar_ascii_equal_nocase(component, 3U, "COM") ||
+          xx_tar_ascii_equal_nocase(component, 3U, "LPT"))) {
+        return false;
+    }
+    return (base_length == 4U && component[3] >= '1' &&
+            component[3] <= '9') ||
+           (base_length == 5U && (unsigned char)component[3] == 0xC2U &&
+            ((unsigned char)component[4] == 0xB9U ||
+             (unsigned char)component[4] == 0xB2U ||
+             (unsigned char)component[4] == 0xB3U));
 }
 
 static bool xx_tar_safe_name(const char *name) {
@@ -1384,6 +1395,89 @@ static bool xx_tar_safe_name(const char *name) {
             component = cursor + 1;
         }
     }
+}
+
+/* Returns an independently allocated, slash-normalized extraction name for
+ * the stored member name @p source, or NULL when it cannot be extracted
+ * safely.  As GNU tar and 7-Zip do, absolute names ("/etc/x", "C:\x",
+ * "//srv/x") are made relative by dropping leading separators and drive
+ * prefixes, and "." and empty components ("./x", "a//b") are dropped.  Any
+ * ".." component is still refused, so "/../x" and "C:\..\x" cannot escape,
+ * as are control and reserved characters, Windows device names and trailing
+ * dots/spaces.  A name with nothing left ("", "." or "/") denotes the output
+ * root: NULL is returned and *is_root, when supplied, is set.  This is the
+ * CPIO reader's policy (cpio_safe_output_name); xx_tar_safe_name keeps the
+ * strict form for names the writer stores. */
+static char *xx_tar_safe_output_name(const char *source, bool *is_root) {
+    size_t length;
+    size_t index;
+    size_t start;
+    size_t out = 0U;
+    char *name;
+    if (is_root) *is_root = false;
+    if (!source) return NULL;
+    for (;;) {
+        if (source[0] == '/' || source[0] == '\\') {
+            ++source;
+        } else if (((source[0] >= 'A' && source[0] <= 'Z') ||
+                    (source[0] >= 'a' && source[0] <= 'z')) &&
+                   source[1] == ':') {
+            source += 2;
+        } else {
+            break;
+        }
+    }
+    length = xx_str_len(source);
+    if (length > XX_TAR_MAX_NAME_SIZE) return NULL;
+    name = (char *)xx_mem_alloc(length + 1U);
+    if (!name) return NULL;
+    for (start = 0U, index = 0U; index <= length; ++index) {
+        unsigned char c = (unsigned char)source[index];
+        size_t size;
+        if (index != length && c != '/' && c != '\\') {
+            if (c < 0x20U || c == 0x7fU || c == ':' || c == '<' ||
+                c == '>' || c == '"' || c == '|' || c == '?' || c == '*') {
+                xx_mem_free(name);
+                return NULL;
+            }
+            continue;
+        }
+        size = index - start;
+        if (size == 2U && source[start] == '.' &&
+            source[start + 1U] == '.') {
+            xx_mem_free(name);
+            return NULL;
+        }
+        if (size != 0U && !(size == 1U && source[start] == '.')) {
+            if (source[index - 1U] == '.' || source[index - 1U] == ' ' ||
+                xx_tar_component_is_windows_device(source + start, size)) {
+                xx_mem_free(name);
+                return NULL;
+            }
+            if (out != 0U) name[out++] = '/';
+            xx_mem_copy(name + out, source + start, size);
+            out += size;
+        }
+        start = index + 1U;
+    }
+    if (out == 0U) {
+        xx_mem_free(name);
+        if (is_root) *is_root = true;
+        return NULL;
+    }
+    name[out] = '\0';
+    return name;
+}
+
+/* A link placeholder is an empty file; its target is never followed, but it
+ * must still name an extractable member under the same name policy. */
+static bool xx_tar_link_target_safe(const char *linkname) {
+    char *safe;
+    if (!linkname || xx_str_len(linkname) > XX_TAR_MAX_NAME_SIZE) return false;
+    safe = xx_tar_safe_output_name(linkname, NULL);
+    if (!safe) return false;
+    xx_mem_free(safe);
+    return true;
 }
 
 /* TAR writers commonly prefix every member with "./".  Removing only
@@ -1831,8 +1925,10 @@ bool xx_tar_unpack_current_archive_record_as(Abstractformat *self,
     const xx_var *path_value;
     const char *base = NULL;
     char *owned_base = NULL;
+    char *safe_name = NULL;
     char *destination = NULL;
     bool result = false;
+    bool is_root = false;
     bool link_placeholder;
     if (!self || !state || state->format != self || !state->has_record ||
         !state->internal_state || (pd && xx_pd_is_stopped(pd))) {
@@ -1843,40 +1939,39 @@ bool xx_tar_unpack_current_archive_record_as(Abstractformat *self,
     if (!priv || stream->member_index >= priv->count) return false;
     member = &priv->members[stream->member_index];
     output_name = relative_name ? relative_name : member->name;
-    /* A link has no independent payload.  Explicit path extraction may
-     * create a placeholder, but validation must not report its target bytes
-     * as available.  Never follow the stored link target. */
+    /* A link has no independent payload. Test its relative target structure
+     * without following it; explicit extraction may create a placeholder. */
     link_placeholder = (member->typeflag == '1' || member->typeflag == '2') &&
                        member->data_size == 0;
     if (!member->regular && !member->directory && !link_placeholder)
         return false;
     if (member->sparse && !xx_tar_sparse_limits(self,&state->options,member))
         return false;
-    if (!(member->directory && xx_str_cmp(output_name, ".") == 0) &&
-        !xx_tar_safe_name(output_name)) {
-        return false;
-    }
+    /* Absolute names extract beneath the destination; a name that reduces
+     * to nothing ("/", "./") is the destination directory itself. */
+    safe_name = xx_tar_safe_output_name(output_name, &is_root);
+    if (!safe_name && !(is_root && member->directory)) return false;
+    if (link_placeholder && !xx_tar_link_target_safe(member->linkname))
+        goto cleanup;
     path_value = xx_format_resolve_extra_parameter(
         self,&state->options,XX_META_ID_OPT_UNPACK_PATH);
     if (!path_value) {
-        if (link_placeholder) return false;
-        if (member->sparse) {
+        if (link_placeholder) {
+            result = true;
+        } else if (member->sparse) {
             xx_io_device discard;
             xx_rt_memset(&discard,0,sizeof(discard));
             discard.write=xx_tar_sparse_discard;
-            return xx_tar_sparse_emit(self,member,&discard,pd);
+            result = xx_tar_sparse_emit(self,member,&discard,pd);
+        } else {
+            result = member->directory ||
+                     (member->data_offset >= 0 && member->data_size >= 0 &&
+                      member->data_offset <= xx_io_total_size(self->device) &&
+                      member->data_size <=
+                          xx_io_total_size(self->device) -
+                              member->data_offset);
         }
-        return member->directory ||
-               (member->data_offset >= 0 && member->data_size >= 0 &&
-                member->data_offset <= xx_io_total_size(self->device) &&
-                member->data_size <=
-                    xx_io_total_size(self->device) - member->data_offset);
-    }
-    if (link_placeholder &&
-        (!member->linkname ||
-         xx_str_len(member->linkname) > XX_TAR_MAX_NAME_SIZE ||
-         !xx_tar_safe_name(member->linkname))) {
-        return false;
+        goto cleanup;
     }
     if (path_value->type == XX_VAR_TYPE_STRING ||
         path_value->type == XX_VAR_TYPE_STRING_VIEW) {
@@ -1887,13 +1982,13 @@ bool xx_tar_unpack_current_archive_record_as(Abstractformat *self,
         base = owned_base;
     }
     if (!base) goto cleanup;
-    if (member->directory && xx_str_cmp(output_name, ".") == 0) {
+    if (!safe_name) {
         destination = xx_str_dup(base);
     } else if (base[0] && base[xx_str_len(base) - 1U] != '/' &&
         base[xx_str_len(base) - 1U] != '\\') {
-        destination = xx_str_concat3(base, "/", output_name);
+        destination = xx_str_concat3(base, "/", safe_name);
     } else {
-        destination = xx_str_concat(base, output_name);
+        destination = xx_str_concat(base, safe_name);
     }
     if (!destination) goto cleanup;
     if (member->directory) {
@@ -1913,6 +2008,7 @@ bool xx_tar_unpack_current_archive_record_as(Abstractformat *self,
     }
 cleanup:
     if (destination) xx_str_free(destination);
+    if (safe_name) xx_mem_free(safe_name);
     if (owned_base) xx_str_free(owned_base);
     return result;
 }

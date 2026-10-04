@@ -309,14 +309,78 @@ static bool sp_blob(Abstractformat *f,int64_t at,int64_t end,xx_pd_struct *pd) {
         if(!h[16] && !pm_le32(h+21) && pm_le32(h+17) && !wg_sum(f,p+25+name,packed,pm_le32(h+17),pd)) return false; total+=raw; if(total>declared) return false; p+=25+name+packed;
     } return p==end && total==declared;
 }
+
+/* The PE security directory uses a file offset, not an RVA.  A signed
+ * GP-Install ends its SPIS chain before the aligned WIN_CERTIFICATE table.
+ * Only a complete, precisely framed table at EOF may bound that chain. */
+static bool sp_pe_payload_end(Abstractformat *f, int64_t overlay,
+                              int64_t *end, bool *certificate,
+                              xx_pd_struct *pd) {
+    uint8_t h[24], padding[7];
+    uint32_t pe, directory_count, offset, bytes;
+    uint16_t optional_size, magic;
+    unsigned directory_base, count_offset;
+    int64_t at, limit = pm_available(f);
+    *end = limit;
+    *certificate = false;
+    if (!pm_read(f, 60, h, 4)) return false;
+    pe = pm_le32(h);
+    if (!pm_read(f, pe, h, 24)) return false;
+    optional_size = pm_le16(h + 20);
+    if (!pm_read(f, (int64_t)pe + 24, h, 2)) return false;
+    magic = pm_le16(h);
+    directory_base = magic == 0x10bU ? 96U : 112U;
+    count_offset = directory_base - 4U;
+    if (optional_size < directory_base) return true;
+    if (!pm_read(f, (int64_t)pe + 24 + count_offset, h, 4)) return false;
+    directory_count = pm_le32(h);
+    if (directory_count < 5U) return true;
+    if (optional_size < directory_base + 40U ||
+        !pm_read(f, (int64_t)pe + 24 + directory_base + 32U, h, 8))
+        return false;
+    offset = pm_le32(h); bytes = pm_le32(h + 4);
+    if (!offset && !bytes) return true;
+    if (!offset || bytes < 8U || (offset & 7U) || offset < overlay ||
+        !wg_range(limit, offset, bytes) || (uint64_t)offset + bytes != (uint64_t)limit)
+        return false;
+    at = offset;
+    while (at < limit) {
+        uint32_t length;
+        uint64_t aligned;
+        size_t pad;
+        if (wg_stop(pd) || limit - at < 8 || !pm_read(f, at, h, 8)) return false;
+        length = pm_le32(h);
+        /* The supported signed layout carries PKCS#7, revision 2.0. */
+        if (length < 8U || pm_le16(h + 4) != 0x200U ||
+            pm_le16(h + 6) != 2U) return false;
+        aligned = ((uint64_t)length + 7U) & ~UINT64_C(7);
+        if (!wg_range(limit, (uint64_t)at, aligned)) return false;
+        pad = (size_t)(aligned - length);
+        if (pad && (!pm_read(f, at + length, padding, pad) ||
+                    !wg_zero(padding, pad))) return false;
+        at += (int64_t)aligned;
+    }
+    *end = offset;
+    *certificate = true;
+    return at == limit;
+}
 static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     static const char prologue[]="\x00\x07""Can&cel\x42""PreSetup will prepare the temporary files needed for installation.\x34""Setup needs to run on Win-32. Installation may fail";
-    int64_t overlay,cab,cabend,limit=pm_available(f),at=-1; uint8_t h[64]; unsigned count=0;
+    int64_t overlay,cab,cabend,physical=pm_available(f),limit=physical,at=-1; uint8_t h[128]; unsigned count=0;
+    bool certificate = false;
     if (sp_pe_resource(f, s, pd)) return true;
     if(wg_pe(f,&overlay,&cab,&cabend,pd)) {
-        at=overlay; while(at<limit) { uint32_t bytes; char name[48]; if(wg_stop(pd) || !pm_read(f,at,h,4) || (bytes=pm_le32(h))<21 || !wg_range(limit,at+4,bytes) || !sp_blob(f,at+4,at+4+bytes,pd)) return false;
+        if (!sp_pe_payload_end(f, overlay, &limit, &certificate, pd)) return false;
+        at=overlay;
+        if (wg_range(limit, (uint64_t)at, sizeof(h)) &&
+            pm_read(f, at, h, sizeof(h)) &&
+            !xx_rt_memcmp(h, prologue, sizeof(h))) goto installus;
+        while(at<limit) { uint32_t bytes; char name[48];
+            if (certificate && limit - at <= 7 && pm_read(f, at, h, (size_t)(limit - at)) &&
+                wg_zero(h, (size_t)(limit - at))) { at = limit; break; }
+            if(wg_stop(pd) || !wg_range(limit, (uint64_t)at, 4U) || !pm_read(f,at,h,4) || (bytes=pm_le32(h))<21 || !wg_range(limit,at+4,bytes) || !sp_blob(f,at+4,at+4+bytes,pd)) return false;
             xx_rt_snprintf(name,sizeof(name),"payload-%u.spis",count++); if(!pm_add(f,s,name,at+4,bytes)) return false; at+=4+bytes; if(count>4096) return false;
-        } if(!count) return false; s->size=at; return true;
+        } if(!count) return false; s->size=physical; return true;
     }
     if(!pm_read(f,0,h,64) || xx_rt_memcmp(h,"MZ",2) || pm_le32(h+60)<64 || !pm_read(f,pm_le32(h+60),h,2) || xx_rt_memcmp(h,"NE",2)) return false;
     {
@@ -355,6 +419,7 @@ static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if (buffer) xx_mem_free(buffer);
         if (!ok || !found) return false;
     }
+installus:
     { unsigned i; uint64_t sizes[2]={0,0}; unsigned blobs=1; int64_t first; for(i=0;i<9;++i) { if(!pm_read(f,at,h,1) || !wg_range(limit,at+1,h[0])) return false; at+=1+h[0]; }
         if(!pm_read(f,at,h,5)) return false;
         if(xx_rt_memcmp(h,"SPIS\x1a",5)) { blobs=2; for(i=0;i<2;++i) { uint8_t digits[10]; if(!pm_read(f,at,h,1) || !h[0] || h[0]>10 || !pm_read(f,at+1,digits,h[0]) || !wg_decimal((const char *)digits,h[0],&sizes[i])) return false; at+=1+h[0]; } }
@@ -374,7 +439,7 @@ static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             }
             at += (int64_t)sizes[i];
         }
-    } s->size=limit; return true;
+    } s->size=physical; return true;
 }
 static bool sp_member_extents(pm_stream *s, xx_pd_struct *pd) {
     wg_extent *ranges;

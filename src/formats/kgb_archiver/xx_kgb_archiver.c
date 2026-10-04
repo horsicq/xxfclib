@@ -7,9 +7,9 @@
  *
  * The file table is plain in every archive, so all members are listed.
  * Algorithm 0 stores the data as is and is extracted here, each member
- * checked against the byte sum its entry carries.  Algorithms 1..7 feed
- * all members through one solid PAQ-family context-mixing model; that
- * model is not implemented here, so those members are listed only.
+ * checked against the byte sum its entry carries. Algorithms 1..7 are
+ * decoded in the separately licensed, bounded RAM-only codec helper.
+ * Every member checksum is verified before any output file is opened.
  *
  * Hostile input: the entry count is bounded by what the file can hold, each
  * member size by 1 TiB and its byte sum by 255 * size, names must be
@@ -27,9 +27,23 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/algo/aes/xx_aes.h"
 
 #include <limits.h>
 #include <stdio.h>
+
+/* The private codec pipe operates only on this explicitly bounded blob. */
+typedef struct ac_blob {
+    uint8_t *p;
+    uint32_t n;
+    uint64_t used, limit;
+    xx_pd_struct *pd;
+} ac_blob;
+static bool ac_error(ac_blob *b, const char *why) {
+    xx_pd_set_error(b->pd, 1, why);
+    return false;
+}
+#include "../xx_archive_codec_pipe.h"
 
 /* Registration placeholder: picks up the real file type as soon as
  * KGB_ARCHIVER is registered in xxfc_defs.h. */
@@ -80,6 +94,8 @@ typedef struct kgb_stream {
     kgb_item *items;
     uint32_t count;
     uint32_t index;
+    uint8_t *decoded;
+    bool decoded_valid;
 } kgb_stream;
 
 static uint32_t kgb_le32(const uint8_t *p) {
@@ -414,6 +430,124 @@ static bool kgb_resolve_duplicates(kgb_item *items, uint32_t count) {
 
 /* ---- extraction --------------------------------------------------------- */
 
+static bool kgb_decode_stream(Abstractformat *format,
+                              xx_archive_record_state *state,
+                              kgb_stream *stream, xx_pd_struct *pd) {
+    ac_blob blob;
+    const xx_var *option;
+    uint64_t metadata = sizeof(*stream), at = 0U;
+    uint32_t index;
+    uint8_t key[32] = {0}, iv[16] = {0};
+    bool result = false;
+    xx_mem_zero(&blob, sizeof(blob));
+    if (stream->decoded_valid) return true;
+    blob.pd = pd;
+    /* Algorithms 4/5 have fixed workspaces larger than 256 MiB. */
+    blob.limit = UINT64_C(512) * 1024U * 1024U;
+    option = xx_format_resolve_extra_parameter(format, &state->options,
+                                               XX_META_ID_OPT_MEMORY_LIMIT);
+    if (option) blob.limit = xx_var_get_u64(option);
+    for (index = 0U; index < stream->count; ++index)
+        metadata += sizeof(kgb_item) + xx_str_len(stream->items[index].name) + 1U;
+    if (stream->header.format_size <= 0 ||
+        stream->header.format_size > 64 * 1024 * 1024 ||
+        stream->header.total > 64U * 1024U * 1024U ||
+        metadata > blob.limit ||
+        (uint64_t)stream->header.format_size > blob.limit - metadata ||
+        stream->header.total + 1U > blob.limit - metadata -
+                                     (uint64_t)stream->header.format_size)
+        return ac_error(&blob, "KGB solid stream exceeds archive memory limit");
+    blob.n = (uint32_t)stream->header.format_size;
+    blob.used = metadata + blob.n + stream->header.total + 1U;
+    blob.p = (uint8_t *)xx_mem_alloc(blob.n);
+    stream->decoded = (uint8_t *)xx_mem_alloc((size_t)stream->header.total + 1U);
+    if (!blob.p || !stream->decoded ||
+        !kgb_read_at(format->device, format->base_address, blob.p, blob.n))
+        goto done;
+    if (pd && xx_pd_is_stopped(pd)) goto done;
+    if (stream->header.encrypted) {
+        const uint8_t *password = NULL;
+        size_t password_size = 0U;
+        char *converted = NULL;
+        uint64_t sum = 0U, expected;
+        uint32_t begin = (uint32_t)stream->header.data_offset;
+        uint32_t packed = blob.n - begin;
+        option = xx_format_resolve_extra_parameter(format, &state->options,
+                                                   XX_META_ID_OPT_PASSWORD);
+        if (!option || (packed & 15U)) {
+            ac_error(&blob, "KGB password required or encrypted payload damaged");
+            goto done;
+        }
+        if (option->type == XX_VAR_TYPE_STRING || option->type == XX_VAR_TYPE_STRING_VIEW) {
+            password = (const uint8_t *)xx_var_get_str(option);
+            if (password) password_size = xx_str_len((const char *)password);
+        } else if (option->type == XX_VAR_TYPE_BYTES || option->type == XX_VAR_TYPE_BYTES_VIEW) {
+            password = (const uint8_t *)xx_var_get_bytes(option, &password_size);
+        } else if (option->type == XX_VAR_TYPE_WSTRING || option->type == XX_VAR_TYPE_WSTRING_VIEW) {
+            converted = xx_str_unicode_to_utf8(xx_var_get_wstr(option));
+            password = (const uint8_t *)converted;
+            if (converted) password_size = xx_str_len(converted);
+        }
+        if (password_size > sizeof(key)) password_size = sizeof(key);
+        if (password_size && !password) {
+            if (converted) xx_str_free(converted);
+            goto done;
+        }
+        if (password_size) xx_rt_memcpy(key, password, password_size);
+        if (converted) xx_str_free(converted);
+        expected = kgb_le64(blob.p + begin - 8U);
+        for (uint32_t block = 0U; block < packed; block += 16U) {
+            if ((pd && xx_pd_is_stopped(pd)) ||
+                !xx_aes_cbc_decrypt(blob.p + begin + block, 16U, key,
+                                    sizeof(key), iv, blob.p + begin + block))
+                goto done;
+            for (unsigned byte = 0U; byte < 16U; ++byte)
+                sum += blob.p[begin + block + byte];
+        }
+        if (sum != expected) {
+            ac_error(&blob, "KGB password incorrect or encrypted payload damaged");
+            goto done;
+        }
+        /* The helper flag 2 means authenticated ECB padding may remain. */
+        xx_rt_memmove(blob.p + begin - 8U, blob.p + begin, packed);
+        blob.n -= 8U;
+        blob.p[8] = 2U;
+    }
+    if (stream->header.algorithm == XX_KGB_ARCHIVER_METHOD_STORED) {
+        uint32_t begin = (uint32_t)stream->header.entries_end;
+        if (stream->header.total > blob.n - begin ||
+            blob.n - begin - stream->header.total > 15U) goto done;
+        xx_rt_memcpy(stream->decoded, blob.p + begin, (size_t)stream->header.total);
+    } else if (!af_decode(&blob, stream->header.algorithm + 6U,
+                           stream->decoded, (uint32_t)stream->header.total))
+        goto done;
+    for (index = 0U; index < stream->count; ++index) {
+        uint64_t sum = 0U;
+        for (uint64_t byte = 0U; byte < stream->items[index].size; ++byte) {
+            if (!(byte & 65535U) && pd && xx_pd_is_stopped(pd)) goto done;
+            sum += stream->decoded[at + byte];
+        }
+        if (sum != stream->items[index].sum) {
+            ac_error(&blob, "KGB member checksum mismatch");
+            goto done;
+        }
+        at += stream->items[index].size;
+    }
+    stream->decoded_valid = result = true;
+done:
+    xx_mem_zero(key, sizeof(key));
+    if (blob.p) {
+        if (stream->header.encrypted) xx_mem_zero(blob.p, blob.n);
+        xx_mem_free(blob.p);
+    }
+    if (!result) {
+        if (stream->decoded) xx_mem_zero(stream->decoded, (size_t)stream->header.total);
+        xx_mem_free(stream->decoded);
+        stream->decoded = NULL;
+    }
+    return result;
+}
+
 static bool kgb_extract(Abstractformat *format, const kgb_stream *stream,
                         const kgb_item *item, xx_io_device *destination,
                         xx_pd_struct *pd) {
@@ -421,10 +555,31 @@ static bool kgb_extract(Abstractformat *format, const kgb_stream *stream,
     uint64_t remaining, sum = 0U;
     int64_t offset;
     bool result = false;
-    if (!format || !stream || !item || stream->header.encrypted ||
+    if (!format || !stream || !item) return false;
+    if (stream->decoded_valid) {
+        uint64_t begin = 0U;
+        for (uint32_t index = 0U; index < item->index; ++index)
+            begin += stream->items[index].size;
+        remaining = item->size;
+        while (remaining) {
+            size_t chunk = remaining > KGB_COPY_CHUNK ? KGB_COPY_CHUNK : (size_t)remaining;
+            if (pd && xx_pd_is_stopped(pd)) return false;
+            if (destination) {
+                size_t done = 0U;
+                while (done < chunk) {
+                    ssize_t wrote = xx_io_write(destination, stream->decoded + begin + done, chunk - done);
+                    if (wrote <= 0 || (size_t)wrote > chunk - done) return false;
+                    done += (size_t)wrote;
+                }
+            }
+            begin += chunk;
+            remaining -= chunk;
+        }
+        return true;
+    }
+    if (stream->header.encrypted ||
         stream->header.algorithm != XX_KGB_ARCHIVER_METHOD_STORED ||
-        item->data_offset < 0)
-        return false;
+        item->data_offset < 0) return false;
     if (item->size == 0U) return item->sum == 0U;
     buffer = (uint8_t *)xx_mem_alloc(KGB_COPY_CHUNK);
     if (!buffer) return false;
@@ -460,6 +615,9 @@ static void kgb_stream_free(void *opaque) {
     kgb_stream *stream = (kgb_stream *)opaque;
     if (!stream) return;
     kgb_free_items(stream->items, stream->count);
+    if (stream->decoded && stream->header.encrypted)
+        xx_mem_zero(stream->decoded, (size_t)stream->header.total);
+    xx_mem_free(stream->decoded);
     xx_mem_free(stream);
 }
 
@@ -687,13 +845,13 @@ bool xx_kgb_archiver_unpack_current_archive_record(
         stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
         return false;
     item = &stream->items[stream->index];
-    if (stream->header.encrypted ||
-        stream->header.algorithm != XX_KGB_ARCHIVER_METHOD_STORED ||
-        item->data_offset < 0)
-        return false;
     option = xx_format_resolve_extra_parameter(format, &state->options,
                                                XX_META_ID_OPT_MAX_MEMBER_SIZE);
     if (option && item->size > xx_var_get_u64(option)) return false;
+    if ((stream->header.encrypted ||
+         stream->header.algorithm != XX_KGB_ARCHIVER_METHOD_STORED) &&
+        !kgb_decode_stream(format, state, stream, pd)) return false;
+    if (!stream->decoded_valid && item->data_offset < 0) return false;
     option = xx_format_resolve_extra_parameter(format, &state->options,
                                                XX_META_ID_OPT_UNPACK_PATH);
     if (!option) return kgb_extract(format, stream, item, NULL, pd);

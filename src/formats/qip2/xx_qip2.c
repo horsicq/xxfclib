@@ -1,9 +1,10 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  *
- * Quarterdeck install archive version 2.  A 16-byte header is followed by a
+ * Quarterdeck indexed install archives, generations 1 and 2. A 16-byte header is followed by a
  * contiguous index of 16-byte entries, each carrying the ABSOLUTE offset of a
- * 36-byte "QD" member record; the packed bytes follow that record inline.
+ * 32-byte (generation 1) or 36-byte (generation 2) "QD" member record;
+ * the packed bytes follow that record inline.
  * Members are PKWARE DCL streams.  The header test is U3's own recognition
  * predicate; the record layout is XArchive's QIP1 record plus one u32.
  * xx_qip2.h has the field table and the corpus evidence.
@@ -33,6 +34,7 @@
 typedef struct qip2_member_s {
     char name[XX_QIP2_RECORD_NAME_SIZE + 1];
     int64_t record_offset;
+    uint32_t record_size;
     int64_t data_offset;
     uint32_t packed_size;
     uint32_t unpacked_size;
@@ -112,6 +114,8 @@ static bool qip2_parse(Abstractformat *format, qip2_stream **result,
     qip2_stream *stream = NULL;
     int64_t total, span, table_size, end;
     uint32_t declared_table;
+    uint32_t version;
+    uint32_t record_size;
     uint16_t count, entry;
     bool valid = false;
 
@@ -121,8 +125,7 @@ static bool qip2_parse(Abstractformat *format, qip2_stream **result,
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     span = total - format->base_address;
-    if (span < (int64_t)(XX_QIP2_HEADER_SIZE + XX_QIP2_INDEX_ENTRY_SIZE +
-                         XX_QIP2_RECORD_SIZE))
+    if (span < (int64_t)(XX_QIP2_HEADER_SIZE + XX_QIP2_INDEX_ENTRY_SIZE + 32U))
         return false;
     if (!qip2_read_at(format->device, format->base_address, header,
                       sizeof(header)))
@@ -138,6 +141,12 @@ static bool qip2_parse(Abstractformat *format, qip2_stream **result,
     if (declared_table == 0U || (declared_table & 0x80000000U) != 0U) return false;
     if ((declared_table & 0xfU) != 0U) return false;
     if ((declared_table >> 4U) != (uint32_t)count) return false;
+    version = qip2_le32(header + 8);
+    if ((version != 1U && version != 2U) || qip2_le32(header + 12) != 0U)
+        return false;
+    /* The indexed generation-1 variant uses the original 32-byte QD
+     * descriptor. Generation 2 inserts an opaque u32 before the plain size. */
+    record_size = version == 1U ? 32U : XX_QIP2_RECORD_SIZE;
 
     table_size = (int64_t)declared_table;
     /* The declared index must fit in the real file before it is used to
@@ -149,7 +158,7 @@ static bool qip2_parse(Abstractformat *format, qip2_stream **result,
     stream->items =
         (qip2_member *)xx_mem_calloc((size_t)count, sizeof(*stream->items));
     if (!stream->items) goto done;
-    stream->format_version = qip2_le32(header + 8);
+    stream->format_version = version;
     end = (int64_t)XX_QIP2_HEADER_SIZE + table_size;
 
     for (entry = 0U; entry < count; ++entry) {
@@ -169,11 +178,12 @@ static bool qip2_parse(Abstractformat *format, qip2_stream **result,
         record_offset = (int64_t)qip2_le32(index_entry);
         /* A record has to sit after the index and leave room for itself. */
         if (record_offset < (int64_t)XX_QIP2_HEADER_SIZE + table_size ||
-            record_offset > span - (int64_t)XX_QIP2_RECORD_SIZE)
+            record_offset > span - (int64_t)record_size ||
+            (version == 1U && record_offset != end))
             goto done;
         if (!qip2_read_at(format->device,
                           format->base_address + record_offset, record,
-                          sizeof(record)))
+                          record_size))
             goto done;
         if (xx_rt_memcmp(record, XX_QIP2_RECORD_SIGNATURE, 2U) != 0) goto done;
         /* Only file records are indexed.  A path record here would mean the
@@ -182,41 +192,46 @@ static bool qip2_parse(Abstractformat *format, qip2_stream **result,
         if (qip2_le16(record + 2) != XX_QIP2_KIND_FILE) goto done;
 
         packed_size = qip2_le32(record + 4);
-        unpacked_size = qip2_le32(record + 0x13);
+        unpacked_size = qip2_le32(record + (version == 1U ? 0x0f : 0x13));
         /* Both halves of the extent must lie inside the real file. */
         if ((int64_t)packed_size <
                 (int64_t)QIP2_MIN_PACKED_SIZE ||
             (int64_t)packed_size >
-                span - record_offset - (int64_t)XX_QIP2_RECORD_SIZE)
+                span - record_offset - (int64_t)record_size)
             goto done;
         if ((int64_t)unpacked_size > XX_QIP2_MAX_UNCOMPRESSED_SIZE) goto done;
 
         /* The record's own name field is the wider one; the index entry is
          * the fallback when it is empty or unusable. */
-        if (!qip2_copy_name(record + 0x17, XX_QIP2_RECORD_NAME_SIZE,
+        if (!qip2_copy_name(record + (version == 1U ? 0x13 : 0x17),
+                            XX_QIP2_RECORD_NAME_SIZE,
                             member->name) &&
             !qip2_copy_name(index_entry + 4, XX_QIP2_INDEX_NAME_SIZE,
                             member->name))
             goto done;
 
         member->record_offset = format->base_address + record_offset;
+        member->record_size = record_size;
         member->data_offset = format->base_address + record_offset +
-                              (int64_t)XX_QIP2_RECORD_SIZE;
+                              (int64_t)record_size;
         member->packed_size = packed_size;
         member->unpacked_size = unpacked_size;
         member->sequence = qip2_le16(record + 8);
         member->flags = record[10];
+        if (version == 1U && member->flags != 0U && member->flags != 0x20U)
+            goto done;
         member->dos_time = qip2_le16(record + 11);
         member->dos_date = qip2_le16(record + 13);
-        member->opaque = qip2_le32(record + 15);
+        member->opaque = version == 1U ? 0U : qip2_le32(record + 15);
 
-        if (record_offset + (int64_t)XX_QIP2_RECORD_SIZE +
+        if (record_offset + (int64_t)record_size +
                 (int64_t)packed_size >
             end)
-            end = record_offset + (int64_t)XX_QIP2_RECORD_SIZE +
+            end = record_offset + (int64_t)record_size +
                   (int64_t)packed_size;
     }
 
+    if (version == 1U && end != span) goto done;
     stream->count = (size_t)count;
     stream->archive_size = end;
     valid = true;
@@ -266,7 +281,7 @@ static bool qip2_set_record(xx_archive_record *record,
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->record_offset;
-    record->header_size = XX_QIP2_RECORD_SIZE;
+    record->header_size = member->record_size;
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
     return xx_archive_record_set_original_name(record, member->name) &&

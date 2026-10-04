@@ -2,8 +2,8 @@
  * SPDX-License-Identifier: MIT
  *
  * Native reader for the HxC Floppy Emulator (HFE v1) image.  The container
- * stores raw bit cells, so the member is produced by decoding IBM MFM or FM:
- * address marks, sector headers and data fields, each checked against its CRC.
+ * stores raw bit cells, so members are produced by decoding IBM MFM/FM or
+ * AmigaDOS MFM sectors, including their header and data checksums.
  */
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/algo/crc/xx_crc.h"
@@ -42,6 +42,8 @@ typedef struct hfe_stream_s {
     size_t count;
     size_t index;
     int64_t archive_size;
+    uint32_t recovered_cylinders;
+    bool incomplete_tracks;
 } hfe_stream;
 
 static uint16_t hfe_le16(const uint8_t *b) {
@@ -159,7 +161,10 @@ typedef struct hfe_geometry_s {
     int64_t lut_offset;
     uint64_t image_size;
     bool fm;
+    bool amiga;
     bool variable;
+    bool incomplete_tracks;
+    uint32_t recovered_cylinders;
 } hfe_geometry;
 
 /* "HXCPICFE", a zero revision byte, the track and side counts, then a lookup
@@ -180,7 +185,10 @@ static bool hfe_header(const uint8_t *file, size_t size, hfe_geometry *out) {
     out->sector_size = 0;
     out->first_sector = 0;
     out->fm = file[11] == 2U; /* ISO/IBM FM, doubled in HFE bitcells. */
+    out->amiga = file[11] == 1U;
     out->variable = false;
+    out->incomplete_tracks = false;
+    out->recovered_cylinders = 0U;
     out->lut_offset = (int64_t)hfe_le16(file + 0x12) * HFE_BLOCK;
     if (out->tracks > HFE_MAX_TRACKS || out->lut_offset < HFE_HEADER_SIZE ||
         out->lut_offset > (int64_t)size)
@@ -255,6 +263,162 @@ static bool hfe_mfm_bytes(const uint8_t *bits, size_t cells, size_t position,
         if (!hfe_mfm_byte(bits, cells, position + index * 16U, out + index))
             return false;
     return true;
+}
+
+#define HFE_AMIGA_MASK 0x55555555U
+#define HFE_AMIGA_SYNC 0x44894489U
+#define HFE_AMIGA_WORDS 270U
+#define HFE_AMIGA_MAX_SECTORS 22U
+#define HFE_AMIGA_SECTOR_SIZE 512U
+
+/* A track is a circular bit stream: the index can cut either the sync or
+ * sector data. Unlike IBM MFM, AmigaDOS stores all odd data bits followed by
+ * all even bits and uses XOR checksums over the masked encoded words.
+ * Primary layout: keirf/flashfloppy src/image/adf.c, adf_write_track(). */
+static uint32_t hfe_amiga_word(const uint8_t *bits, size_t cells,
+                               size_t position) {
+    uint32_t value = 0U;
+    unsigned bit;
+    position %= cells;
+    for (bit = 0U; bit < 32U; ++bit) {
+        value = (value << 1U) | bits[position];
+        if (++position == cells) position = 0U;
+    }
+    return value;
+}
+
+static bool hfe_amiga_side(const uint8_t *bits, size_t cells,
+                            uint32_t track, uint8_t *sectors,
+                            uint32_t *count, xx_pd_struct *pd) {
+    uint32_t words[HFE_AMIGA_WORDS];
+    uint8_t payload[HFE_AMIGA_SECTOR_SIZE];
+    uint8_t seen[HFE_AMIGA_MAX_SECTORS];
+    uint32_t shift = 0U, found = 0U, max_remaining = 0U;
+    size_t position;
+    xx_mem_zero(seen, sizeof(seen));
+    *count = 0U;
+    if (cells < (HFE_AMIGA_WORDS + 1U) * 32U || track > 255U)
+        return false;
+    for (position = 0U; position < cells + 31U; ++position) {
+        uint32_t info, id, header_sum = 0U, data_sum = 0U, stored;
+        size_t word, at;
+        if ((position & 4095U) == 0U && pd && xx_pd_is_stopped(pd))
+            return false;
+        shift = (shift << 1U) | bits[position < cells ? position : position - cells];
+        if (position < 31U || shift != HFE_AMIGA_SYNC) continue;
+        at = position + 1U;
+        /* False syncs are common on arbitrary raw tracks. Read only the info
+         * words before committing to the remaining encoded sector body. */
+        for (word = 0U; word < 2U; ++word)
+            words[word] = hfe_amiga_word(bits, cells, at + word * 32U);
+        info = ((words[0] & HFE_AMIGA_MASK) << 1U) |
+               (words[1] & HFE_AMIGA_MASK);
+        if ((info >> 24U) != 0xffU) continue; /* Other raw-track formats. */
+        for (word = 2U; word < HFE_AMIGA_WORDS; ++word)
+            words[word] = hfe_amiga_word(bits, cells, at + word * 32U);
+        for (word = 0U; word < 10U; ++word) header_sum ^= words[word];
+        stored = ((words[10] & HFE_AMIGA_MASK) << 1U) |
+                 (words[11] & HFE_AMIGA_MASK);
+        if ((header_sum & HFE_AMIGA_MASK) != stored ||
+            ((info >> 16U) & 0xffU) != track)
+            return false;
+        id = (info >> 8U) & 0xffU;
+        if (id >= HFE_AMIGA_MAX_SECTORS || (info & 0xffU) == 0U ||
+            (info & 0xffU) > HFE_AMIGA_MAX_SECTORS)
+            return false;
+        if ((info & 0xffU) > max_remaining) max_remaining = info & 0xffU;
+        for (word = 14U; word < HFE_AMIGA_WORDS; ++word)
+            data_sum ^= words[word];
+        stored = ((words[12] & HFE_AMIGA_MASK) << 1U) |
+                 (words[13] & HFE_AMIGA_MASK);
+        if ((data_sum & HFE_AMIGA_MASK) != stored) return false;
+        for (word = 0U; word < 128U; ++word) {
+            uint32_t value = ((words[14U + word] & HFE_AMIGA_MASK) << 1U) |
+                             (words[142U + word] & HFE_AMIGA_MASK);
+            payload[word * 4U] = (uint8_t)(value >> 24U);
+            payload[word * 4U + 1U] = (uint8_t)(value >> 16U);
+            payload[word * 4U + 2U] = (uint8_t)(value >> 8U);
+            payload[word * 4U + 3U] = (uint8_t)value;
+        }
+        if (seen[id]) {
+            if (xx_mem_compare(sectors + id * HFE_AMIGA_SECTOR_SIZE,
+                                payload, sizeof(payload)) != 0)
+                return false;
+        } else {
+            xx_mem_copy(sectors + id * HFE_AMIGA_SECTOR_SIZE,
+                        payload, sizeof(payload));
+            seen[id] = 1U;
+            ++found;
+        }
+    }
+    if (found == 0U) return true;
+    if ((found != 11U && found != 22U) || max_remaining > found)
+        return false;
+    for (position = 0U; position < found; ++position)
+        if (!seen[position]) return false;
+    *count = found;
+    return true;
+}
+
+/* Only complete sector tracks are emitted. Undecodable trailing cylinders
+ * can follow a complete prefix, but are explicitly partial and never filled
+ * with invented zero sectors. Holes, one-sided tracks and damaged checksums
+ * reject the conversion, as do decoded tracks after an undecodable cylinder. */
+static bool hfe_amiga_walk(const uint8_t *file, size_t size,
+                           hfe_geometry *geometry, uint8_t *image,
+                           size_t image_capacity, xx_pd_struct *pd) {
+    const size_t capacity = 0x40000U;
+    uint8_t *bits[2] = {NULL, NULL};
+    uint8_t sectors[2][HFE_AMIGA_MAX_SECTORS * HFE_AMIGA_SECTOR_SIZE];
+    uint32_t cylinder, expected_count = 0U, recovered = 0U;
+    size_t written = 0U;
+    bool trailing = false, ok = false;
+    if (geometry->sides != 2 || geometry->tracks > 128 ||
+        (pd && xx_pd_is_stopped(pd))) return false;
+    bits[0] = (uint8_t *)xx_mem_alloc(capacity);
+    bits[1] = (uint8_t *)xx_mem_alloc(capacity);
+    if (!bits[0] || !bits[1]) goto done;
+    for (cylinder = 0U; cylinder < (uint32_t)geometry->tracks; ++cylinder) {
+        size_t cells[2] = {0U, 0U};
+        uint32_t count[2] = {0U, 0U};
+        unsigned side;
+        if (pd && xx_pd_is_stopped(pd)) goto done;
+        if (!hfe_track_bits(file, size, geometry, (int32_t)cylinder,
+                            bits[0], bits[1], capacity, &cells[0], &cells[1]))
+            goto done;
+        for (side = 0U; side < 2U; ++side)
+            if (!hfe_amiga_side(bits[side], cells[side], cylinder * 2U + side,
+                                sectors[side], &count[side], pd))
+                goto done;
+        if (count[0] == 0U && count[1] == 0U) {
+            trailing = true;
+            continue;
+        }
+        if (trailing || count[0] == 0U || count[0] != count[1]) goto done;
+        if (expected_count == 0U) expected_count = count[0];
+        if (count[0] != expected_count) goto done;
+        for (side = 0U; side < 2U; ++side) {
+            size_t bytes = count[side] * HFE_AMIGA_SECTOR_SIZE;
+            if (written > HFE_MAX_OUTPUT - bytes ||
+                (image && (written > image_capacity || bytes > image_capacity - written)))
+                goto done;
+            if (image) xx_mem_copy(image + written, sectors[side], bytes);
+            written += bytes;
+        }
+        ++recovered;
+    }
+    if (recovered == 0U || (image && written != image_capacity)) goto done;
+    geometry->recovered_cylinders = recovered;
+    geometry->incomplete_tracks = recovered != (uint32_t)geometry->tracks;
+    geometry->sectors_per_track = (int32_t)expected_count;
+    geometry->sector_size = HFE_AMIGA_SECTOR_SIZE;
+    geometry->first_sector = 0;
+    geometry->image_size = written;
+    ok = true;
+done:
+    if (bits[0]) xx_mem_free(bits[0]);
+    if (bits[1]) xx_mem_free(bits[1]);
+    return ok;
 }
 
 /* Variable IBM layouts have different sector counts, IDs, sizes or encodings
@@ -835,10 +999,12 @@ static bool hfe_capture_render(const hfe_capture *capture,
     return cursor == capture->image_size;
 }
 
-static bool hfe_probe(const uint8_t *file, size_t size, hfe_geometry *out) {
+static bool hfe_probe(const uint8_t *file, size_t size, hfe_geometry *out,
+                       xx_pd_struct *pd) {
     hfe_sink sink;
     hfe_capture capture;
-    if (!hfe_header(file, size, out)) return false;
+    if ((pd && xx_pd_is_stopped(pd)) || !hfe_header(file, size, out)) return false;
+    if (out->amiga) return hfe_amiga_walk(file, size, out, NULL, 0U, pd);
     if (hfe_capture_all(file, size, out, &capture)) {
         /* In FM, a lone missing address mark can otherwise masquerade as a
          * shorter final sector range.  The legacy FM path already handles
@@ -892,19 +1058,21 @@ static bool hfe_load(Abstractformat *format, int64_t base, int64_t size,
     return true;
 }
 
-static bool hfe_parse(Abstractformat *format, hfe_stream **result) {
+static bool hfe_parse(Abstractformat *format, hfe_stream **result,
+                       xx_pd_struct *pd) {
     uint8_t *file = NULL;
     hfe_stream *stream;
     hfe_member member;
     hfe_geometry geometry;
     int64_t total, size;
-    if (!format || !format->device || !result || format->base_address < 0)
+    if (!format || !format->device || !result || format->base_address < 0 ||
+        (pd && xx_pd_is_stopped(pd)))
         return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
     if (!hfe_load(format, format->base_address, size, &file)) return false;
-    if (!hfe_probe(file, (size_t)size, &geometry)) {
+    if (!hfe_probe(file, (size_t)size, &geometry, pd)) {
         xx_mem_free(file);
         return false;
     }
@@ -912,7 +1080,9 @@ static bool hfe_parse(Abstractformat *format, hfe_stream **result) {
     stream = (hfe_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;
     xx_mem_zero(&member, sizeof(member));
-    member.name = hfe_make_name("image", -1, -1, ".img");
+    member.name = hfe_make_name("image", -1, -1,
+                               geometry.amiga ? (geometry.incomplete_tracks ?
+                                   ".partial.adf" : ".adf") : ".img");
     member.header_offset = format->base_address;
     member.header_size = HFE_HEADER_SIZE;
     /* The LUT scatters the flux over the whole container, so the member's
@@ -928,20 +1098,22 @@ static bool hfe_parse(Abstractformat *format, hfe_stream **result) {
         return false;
     }
     stream->archive_size = size;
+    stream->recovered_cylinders = geometry.recovered_cylinders;
+    stream->incomplete_tracks = geometry.incomplete_tracks;
     *result = stream;
     return true;
 }
 
 static bool hfe_decode(Abstractformat *format, const hfe_member *member,
-                       uint8_t **plain, size_t *plain_size) {
+                       uint8_t **plain, size_t *plain_size, xx_pd_struct *pd) {
     uint8_t *file = NULL;
     uint8_t *output;
     hfe_geometry geometry;
     hfe_sink sink;
-    if (member->unpacked_size == 0U || member->unpacked_size > HFE_MAX_OUTPUT ||
+    if ((pd && xx_pd_is_stopped(pd)) || member->unpacked_size == 0U || member->unpacked_size > HFE_MAX_OUTPUT ||
         !hfe_load(format, member->data_offset, member->packed_size, &file))
         return false;
-    if (!hfe_probe(file, (size_t)member->packed_size, &geometry) ||
+    if (!hfe_probe(file, (size_t)member->packed_size, &geometry, pd) ||
         geometry.image_size != member->unpacked_size) {
         xx_mem_free(file);
         return false;
@@ -950,6 +1122,19 @@ static bool hfe_decode(Abstractformat *format, const hfe_member *member,
     if (!output) {
         xx_mem_free(file);
         return false;
+    }
+    if (geometry.amiga) {
+        bool ok = hfe_amiga_walk(file, (size_t)member->packed_size,
+                                 &geometry, output,
+                                 (size_t)member->unpacked_size, pd);
+        xx_mem_free(file);
+        if (!ok) {
+            xx_mem_free(output);
+            return false;
+        }
+        *plain = output;
+        *plain_size = (size_t)member->unpacked_size;
+        return true;
     }
     if (geometry.variable) {
         hfe_capture capture;
@@ -1047,10 +1232,10 @@ static bool hfe_set_record(xx_archive_record *record,
 /* Stored members are copied verbatim; everything else goes to the format
  * codec above, which is the only place a size can grow. */
 static bool hfe_extract(Abstractformat *format, const hfe_member *member,
-                        uint8_t **plain, size_t *plain_size) {
+                        uint8_t **plain, size_t *plain_size, xx_pd_struct *pd) {
     uint8_t *output;
     if (!format || !member || !plain || !plain_size) return false;
-    if (member->decode) return hfe_decode(format, member, plain, plain_size);
+    if (member->decode) return hfe_decode(format, member, plain, plain_size, pd);
     if (member->packed_size < 0 ||
         (uint64_t)member->packed_size > HFE_MAX_OUTPUT) return false;
     output = (uint8_t *)xx_mem_alloc(member->packed_size != 0
@@ -1113,8 +1298,7 @@ void xx_hfe_free(xx_hfe *archive) {
 
 bool xx_hfe_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     hfe_stream *stream;
-    (void)pd;
-    if (!hfe_parse(format, &stream)) return false;
+    if (!hfe_parse(format, &stream, pd)) return false;
     hfe_stream_free(stream);
     return true;
 }
@@ -1122,11 +1306,12 @@ bool xx_hfe_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
 bool xx_hfe_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
     hfe_stream *stream;
     xx_hfe *archive;
-    (void)pd;
-    if (!format || !hfe_parse(format, &stream)) return false;
+    if (!format || !hfe_parse(format, &stream, pd)) return false;
     archive = (xx_hfe *)format;
     archive->number_of_records = stream->count;
     archive->archive_end = format->base_address + stream->archive_size;
+    archive->recovered_cylinders = stream->recovered_cylinders;
+    archive->incomplete_tracks = stream->incomplete_tracks;
     format->number_of_archive_records = stream->count;
     format->format_size = stream->archive_size;
     format->is_valid = true;
@@ -1152,8 +1337,7 @@ xx_archive_record_state *xx_hfe_create_archive_records_reading(
     Abstractformat *format, const xx_list_s *options, xx_pd_struct *pd) {
     hfe_stream *stream;
     xx_archive_record_state *state;
-    (void)pd;
-    if (!hfe_parse(format, &stream)) return NULL;
+    if (!hfe_parse(format, &stream, pd)) return NULL;
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
     if (!state) {
         hfe_stream_free(stream);
@@ -1213,7 +1397,8 @@ bool xx_hfe_unpack_current_archive_record(Abstractformat *format,
         stream->index >= stream->count || (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
-    if (!hfe_extract(format, member, &plain, &plain_size)) goto done;
+    if (!hfe_extract(format, member, &plain, &plain_size, pd) ||
+        (pd && xx_pd_is_stopped(pd))) goto done;
     path_option = hfe_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         result = true;

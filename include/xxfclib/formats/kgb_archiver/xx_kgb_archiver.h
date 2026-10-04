@@ -22,9 +22,18 @@
  *          in front of the (block-encrypted) data.
  *
  * Records: every file in header order, with its size, attributes, write
- * time and algorithm.  Only algorithm 0 without encryption is extracted
- * (and checked against the byte sum); the PAQ-family algorithms 1..7 and
- * encrypted archives are listed but their unpack returns false.
+ * time and algorithm. Algorithm 0 is stored; algorithms 1..7 use the matching
+ * original model in the separately licensed RAM-only codec helper. Solid
+ * compressed and encrypted streams are limited to 64 MiB input/output and
+ * checked against every member byte sum before extraction. The default KGB
+ * working-memory budget is 512 MiB, overridden by OPT_MEMORY_LIMIT; levels
+ * requiring more memory fail cleanly. KGB 1 text archives are a different
+ * format and are not handled here.
+ *
+ * Encrypted payloads use AES-256 ECB with a zero-padded/truncated 32-byte
+ * password. Supply OPT_PASSWORD as an ASCII string or raw legacy password
+ * bytes (for non-ASCII archives made with a Windows ANSI codepage). Passwords
+ * are not embedded in KGB archives. No plaintext temporary files are used.
  */
 
 #ifndef XXFCLIB_FORMAT_KGB_ARCHIVER_H

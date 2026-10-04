@@ -21,6 +21,9 @@ typedef struct xx_lha {
     /* SFX carriers may contain an MS-DOS drive prefix; the wrapper opts in
      * to U3's safe drive-letter spelling while ordinary LHA stays strict. */
     bool sanitize_sfx_drive;
+    /* LhA 1.50r's Amiga SFX masks packed payload bytes with BOA/0x0f.
+     * This is a fixed producer transform, never a caller password. */
+    bool sfx_boa_mask;
 } xx_lha;
 
 typedef xx_lha xx_lha_t;

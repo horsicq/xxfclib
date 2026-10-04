@@ -48,6 +48,8 @@ typedef struct {
     const char *reader_name;
     xx_file_type_t type;
 } xxfc_opened;
+/** True for the bounded external decoder adapters sharing the helper ABI. */
+bool xxfc_reader_uses_helper(const xxfc_opened *opened);
 
 /**
  * Detect what @p device holds and construct the reader for it.
@@ -92,6 +94,25 @@ bool xxfc_open_extension_fast(xxfc_opened *out, xx_io_device *device,
 bool xxfc_open_named(xxfc_opened *out, xx_io_device *device,
                      int64_t base_address, const char *name);
 
+/** Validated automatic 7-Zip fallback, including archive companion volumes.
+ * Retains the existing reader on failure; replaces it only after a successful
+ * engine parse (or an encrypted header requiring a password). A known required
+ * type constrains fallback to that container; UNKNOWN/BINARY permit any archive
+ * beginning at the supplied base. Executable sections require an explicit reader.
+ * This prevents a rejected installer from falling back to its executable carrier. */
+bool xxfc_open_sevenzip(xxfc_opened *out, xx_io_device *device,
+                        int64_t base_address, const char *source_path,
+                        const char *password, xx_file_type_t required_type,
+                        xx_pd_struct *pd);
+/** Validated 7-Zip then RAM-only GARbro archive fallback. Retains the current
+ * reader if neither backend recognizes actual payload members. */
+bool xxfc_open_fallback(xxfc_opened *out, xx_io_device *device,
+                        int64_t base_address, const char *source_path,
+                        const char *password, xx_file_type_t required_type,
+                        xx_pd_struct *pd);
+/** Update the file type after an automatic engine has selected its handler. */
+void xxfc_refresh_sevenzip_type(xxfc_opened *opened);
+
 /** Release a reader opened by xxfc_open(). The device stays the caller's. */
 void xxfc_close(xxfc_opened *opened);
 
@@ -106,7 +127,8 @@ void xxfc_attach_source_files(xxfc_opened *opened, const char *source_path);
  * Construct a reader for writing, chosen by container name.
  *
  * Only the containers xxfclib can write answer to this: "tar", "tar.gz",
- * "tar.bz2", "tar.xz", "tar.zst", "tar.lz4", "zip" and "cpio". Reading is a
+ * "tar.bz2", "tar.xz", "tar.zst", "tar.lz4", "zip", "cpio", "7z", "gz",
+ * "bz2", "xz" and "wim". Raw compressed streams hold one file. Reading is a
  * far wider set -- see the table above -- and the asymmetry is the library's,
  * not this program's.
  *

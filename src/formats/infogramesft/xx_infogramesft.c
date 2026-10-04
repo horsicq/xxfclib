@@ -9,8 +9,10 @@
  * The container is headerless, so acceptance rests on two independent
  * descriptions of the same set of records agreeing: the offset table and the
  * record chain.  Every non-zero table slot must land exactly on a chain record
- * header, the chain must tile the file, and one compressed member must pass a
- * bounded trial decode before the file is accepted (see ipak_trial_decode).
+ * header, and one compressed member must pass a bounded trial decode before
+ * the file is accepted (see ipak_trial_decode). A bounded indexed variant
+ * permits short gaps between otherwise complete records; every compressed
+ * member in that variant must pass the trial.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -67,6 +69,9 @@
 /* The chain tiles the file, so the only slack an archive may end on is the
  * PKZIP crumb that closes it. */
 #define IPAK_MAX_TAIL 4096
+/* Independently decoded ITD_RESS records have 12- or 14-byte unused gaps.
+ * The indexed fallback may skip at most one small block between records. */
+#define IPAK_MAX_INDEXED_GAP 16
 
 #define IPAK_METHOD_STORED 0x00U
 #define IPAK_METHOD_IMPLODE 0x01U
@@ -539,13 +544,15 @@ done:
     return decoded;
 }
 
-static bool ipak_parse(Abstractformat *format, ipak_stream **result) {
+static bool ipak_parse_layout(Abstractformat *format, ipak_stream **result,
+                               bool indexed) {
     uint8_t prefix[8];
     uint8_t *table = NULL;
     ipak_slot *slots = NULL;
     ipak_stream *stream = NULL;
     int64_t total, size, table_size, position, footer_offset = -1;
     size_t slot_count, used_slots = 0U, distinct = 0U, resolved = 0U, index;
+    size_t next_slot = 0U;
     bool any_payload = false, name_by_id;
     if (!format || !format->device || !result || format->base_address < 0)
         return false;
@@ -603,6 +610,26 @@ static bool ipak_parse(Abstractformat *format, ipak_stream **result) {
         size_t found;
         uint8_t method, info;
         if (stream->count >= (size_t)IPAK_MAX_ENTRIES) goto fail;
+        if (indexed && next_slot < used_slots) {
+            int64_t indexed_offset = (int64_t)slots[next_slot].offset;
+            /* A table-driven record may begin after unused bytes, but it
+             * cannot overlap any prior header or payload. */
+            if (indexed_offset < position ||
+                indexed_offset - position > IPAK_MAX_INDEXED_GAP)
+                goto fail;
+            position = indexed_offset;
+        } else if (indexed) {
+            /* All indexed records were consumed. Keep the established
+             * bounded central-directory trailer, never an arbitrary suffix. */
+            uint8_t signature[4];
+            if (size - position < 4 ||
+                !ipak_read_at(format->device, format->base_address + position,
+                              signature, sizeof(signature)) ||
+                xx_rt_memcmp(signature, "PK\x01\x02", 4U) != 0)
+                goto fail;
+            footer_offset = position;
+            break;
+        }
         if (size - position < (int64_t)IPAK_RECORD_HEADER_SIZE) {
             footer_offset = position;
             break;
@@ -680,6 +707,16 @@ static bool ipak_parse(Abstractformat *format, ipak_stream **result) {
                 ++resolved;
             }
         }
+        if (indexed) {
+            uint32_t current;
+            if (member.resource_id < 0 || header_shift != 0) goto fail;
+            current = slots[next_slot].offset;
+            while (next_slot < used_slots && slots[next_slot].offset == current)
+                ++next_slot;
+            if (next_slot < used_slots &&
+                data_offset + packed_size > (int64_t)slots[next_slot].offset)
+                goto fail;
+        }
         if (descriptor_size >= IPAK_MIN_NAMED_DESCRIPTOR &&
             header_shift + IPAK_RECORD_HEADER_SIZE + descriptor_size <=
                 probe_size &&
@@ -750,7 +787,7 @@ static bool ipak_parse(Abstractformat *format, ipak_stream **result) {
             stream->items[index].unpacked_size <= 0)
             continue;
         if (!ipak_trial_decode(format, &stream->items[index])) goto fail;
-        break;
+        if (!indexed) break;
     }
 
     stream->archive_size = size;
@@ -764,6 +801,11 @@ fail:
     if (slots) xx_mem_free(slots);
     ipak_stream_free(stream);
     return false;
+}
+
+static bool ipak_parse(Abstractformat *format, ipak_stream **result) {
+    if (ipak_parse_layout(format, result, false)) return true;
+    return ipak_parse_layout(format, result, true);
 }
 
 /* Extraction of one member at its full declared size (the parse already

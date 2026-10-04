@@ -27,6 +27,7 @@
 #if defined(_WIN32)
 
 #include "xx_io_platform.h"
+#include "../xx_io_policy.h"
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
@@ -53,21 +54,24 @@ static int xx_win_mode_has_char(const char *str, char c) {
     return 0;
 }
 
-static wchar_t *xx_win_utf8_path(const char *path, wchar_t *stack,
-                                 size_t stack_count) {
+#define XX_WIN_PATH_LIMIT 32767U
+
+static wchar_t *xx_win_codepage_path(const char *path, UINT codepage,
+                                     DWORD flags, wchar_t *stack,
+                                     size_t stack_count) {
     int length;
     wchar_t *result = stack;
     HANDLE heap = GetProcessHeap();
     if (!path || !stack || stack_count == 0U) return NULL;
-    length = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+    length = MultiByteToWideChar(codepage, flags,
                                  path, -1, NULL, 0);
-    if (length <= 0) return NULL;
+    if (length <= 0 || (size_t)length > XX_WIN_PATH_LIMIT) return NULL;
     if ((size_t)length > stack_count) {
         result = (wchar_t *)HeapAlloc(heap, 0,
                                      (SIZE_T)length * sizeof(wchar_t));
         if (!result) return NULL;
     }
-    if (MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, path, -1,
+    if (MultiByteToWideChar(codepage, flags, path, -1,
                             result, length) <= 0) {
         if (result != stack) HeapFree(heap, 0, result);
         return NULL;
@@ -75,13 +79,94 @@ static wchar_t *xx_win_utf8_path(const char *path, wchar_t *stack,
     return result;
 }
 
+static wchar_t *xx_win_utf8_path(const char *path, wchar_t *stack,
+                                 size_t stack_count) {
+    return xx_win_codepage_path(path, CP_UTF8, MB_ERR_INVALID_CHARS,
+                                 stack, stack_count);
+}
+
 static void xx_win_free_path(wchar_t *path, wchar_t *stack) {
     if (path && path != stack) HeapFree(GetProcessHeap(), 0, path);
 }
 
+static wchar_t *xx_win_copy_path(const wchar_t *path, size_t length,
+                                  wchar_t *stack, size_t stack_count) {
+    wchar_t *result = stack;
+    size_t i;
+    if (length + 1U > stack_count) {
+        result = (wchar_t *)HeapAlloc(GetProcessHeap(), 0,
+                                      (length + 1U) * sizeof(wchar_t));
+        if (!result) return NULL;
+    }
+    for (i = 0U; i <= length; ++i) result[i] = path[i];
+    return result;
+}
+
+/* Extended paths must be absolute and use backslashes.  Resolve ordinary
+ * relative paths before adding the prefix, without requiring a registry or
+ * application-manifest change.  Short file API paths retain their previous
+ * Win32 interpretation; directory walks request the absolute form so every
+ * ancestor can be checked.  Existing extended/device namespaces are retained. */
+static wchar_t *xx_win_api_path(const wchar_t *path, wchar_t *stack,
+                                 size_t stack_count, bool absolute) {
+    size_t length = 0U, prefix, skip, i;
+    DWORD needed, full_length;
+    wchar_t *full, *result;
+    if (!path || !stack || !stack_count) return NULL;
+    while (length < XX_WIN_PATH_LIMIT && path[length]) ++length;
+    if (!length || length == XX_WIN_PATH_LIMIT) return NULL;
+    if (length >= 4U && path[0] == L'\\' && path[1] == L'\\' &&
+        (path[2] == L'?' || path[2] == L'.') && path[3] == L'\\')
+        return xx_win_copy_path(path, length, stack, stack_count);
+    needed = GetFullPathNameW(path, 0, NULL, NULL);
+    if (!needed || needed > XX_WIN_PATH_LIMIT) return NULL;
+    full = (wchar_t *)HeapAlloc(GetProcessHeap(), 0,
+                                (size_t)needed * sizeof(wchar_t));
+    if (!full) return NULL;
+    full_length = GetFullPathNameW(path, needed, full, NULL);
+    if (!full_length || full_length >= needed) {
+        HeapFree(GetProcessHeap(), 0, full);
+        return NULL;
+    }
+    if (full_length < MAX_PATH && length < MAX_PATH && !absolute) {
+        HeapFree(GetProcessHeap(), 0, full);
+        return xx_win_copy_path(path, length, stack, stack_count);
+    }
+    for (i = 0U; i < full_length; ++i)
+        if (full[i] == L'/') full[i] = L'\\';
+    /* CreateDirectory's legacy limit also reserves room for an 8.3 name. */
+    if (full_length < MAX_PATH - 12U) {
+        result = xx_win_copy_path(full, full_length, stack, stack_count);
+        HeapFree(GetProcessHeap(), 0, full);
+        return result;
+    }
+    skip = full[0] == L'\\' && full[1] == L'\\' ? 2U : 0U;
+    prefix = skip ? 8U : 4U;
+    length = prefix + (size_t)full_length - skip;
+    if (length + 1U > XX_WIN_PATH_LIMIT) {
+        HeapFree(GetProcessHeap(), 0, full);
+        return NULL;
+    }
+    result = length + 1U <= stack_count ? stack :
+        (wchar_t *)HeapAlloc(GetProcessHeap(), 0,
+                             (length + 1U) * sizeof(wchar_t));
+    if (result) {
+        static const wchar_t local_prefix[] = L"\\\\?\\";
+        static const wchar_t unc_prefix[] = L"\\\\?\\UNC\\";
+        const wchar_t *text = skip ? unc_prefix : local_prefix;
+        for (i = 0U; i < prefix; ++i) result[i] = text[i];
+        for (i = skip; i <= full_length; ++i)
+            result[prefix + i - skip] = full[i];
+    }
+    HeapFree(GetProcessHeap(), 0, full);
+    return result;
+}
+
 void* xx_io_platform_temp_open(void) {
+    if (!xx_io_policy_mutation_allowed()) return NULL;
     static const wchar_t hex[] = L"0123456789abcdef";
     wchar_t stack_path[MAX_PATH];
+    wchar_t api_stack[MAX_PATH];
     wchar_t *path = stack_path;
     DWORD length = GetTempPathW(MAX_PATH, stack_path);
     size_t capacity;
@@ -107,8 +192,13 @@ void* xx_io_platform_temp_open(void) {
             path[at++] = hex[random[i] & 15U];
         }
         path[at++] = L'.'; path[at++] = L't'; path[at++] = L'm'; path[at++] = L'p'; path[at] = L'\0';
-        result = CreateFileW(path, GENERIC_READ | GENERIC_WRITE, 0, NULL,
-            CREATE_NEW, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, NULL);
+        {
+            wchar_t *api = xx_win_api_path(path, api_stack, MAX_PATH, false);
+            if (!api) break;
+            result = CreateFileW(api, GENERIC_READ | GENERIC_WRITE, 0, NULL,
+                CREATE_NEW, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, NULL);
+            xx_win_free_path(api, api_stack);
+        }
         if (result != INVALID_HANDLE_VALUE) break;
         if (GetLastError() != ERROR_FILE_EXISTS && GetLastError() != ERROR_ALREADY_EXISTS) break;
     }
@@ -118,6 +208,7 @@ cleanup:
 }
 
 void* xx_io_platform_file_open(const char *path, const char *mode) {
+    if (!xx_io_policy_file_open_allowed(mode)) return NULL;
     if (!path || !mode) {
         return NULL;
     }
@@ -154,65 +245,25 @@ void* xx_io_platform_file_open(const char *path, const char *mode) {
         return NULL;
     }
 
-    /* Convert UTF-8 path to UTF-16 wide string */
-    int path_wlen = MultiByteToWideChar(CP_UTF8, 0, path, -1, NULL, 0);
-    if (path_wlen <= 0) {
-        return NULL;
-    }
-
-    wchar_t stack_wpath[MAX_PATH];
-    wchar_t *wpath = stack_wpath;
-    HANDLE hHeap = GetProcessHeap();
-
-    if ((size_t)path_wlen > (sizeof(stack_wpath) / sizeof(stack_wpath[0]))) {
-        wpath = (wchar_t*)HeapAlloc(hHeap, 0, (SIZE_T)path_wlen * sizeof(wchar_t));
-        if (!wpath) {
-            return NULL;
+    wchar_t text_stack[MAX_PATH], api_stack[MAX_PATH];
+    wchar_t *text, *api;
+    HANDLE hFile = INVALID_HANDLE_VALUE;
+    unsigned int attempt;
+    /* Retain the legacy ANSI retry used by file_open, including short paths. */
+    for (attempt = 0U; attempt < 2U; ++attempt) {
+        text = xx_win_codepage_path(path, attempt ? CP_ACP : CP_UTF8, 0,
+                                     text_stack, MAX_PATH);
+        if (!text) continue;
+        api = xx_win_api_path(text, api_stack, MAX_PATH, false);
+        if (api) {
+            hFile = CreateFileW(api, dwDesiredAccess, dwShareMode, NULL,
+                dwCreationDisposition, FILE_ATTRIBUTE_NORMAL, NULL);
+            xx_win_free_path(api, api_stack);
         }
+        xx_win_free_path(text, text_stack);
+        if (hFile != INVALID_HANDLE_VALUE) break;
     }
-
-    if (MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, path_wlen) <= 0) {
-        if (wpath != stack_wpath) {
-            HeapFree(hHeap, 0, wpath);
-        }
-        return NULL;
-    }
-
-    HANDLE hFile = CreateFileW(
-        wpath,
-        dwDesiredAccess,
-        dwShareMode,
-        NULL,
-        dwCreationDisposition,
-        FILE_ATTRIBUTE_NORMAL,
-        NULL
-    );
-
-    if (wpath != stack_wpath) {
-        HeapFree(hHeap, 0, wpath);
-    }
-
-    if (hFile == INVALID_HANDLE_VALUE) {
-        /* Retry converting path using CP_ACP in case path was passed in local ANSI code page */
-        path_wlen = MultiByteToWideChar(CP_ACP, 0, path, -1, NULL, 0);
-        if (path_wlen > 0) {
-            wpath = stack_wpath;
-            if ((size_t)path_wlen > (sizeof(stack_wpath) / sizeof(stack_wpath[0]))) {
-                wpath = (wchar_t*)HeapAlloc(hHeap, 0, (SIZE_T)path_wlen * sizeof(wchar_t));
-            }
-            if (wpath && MultiByteToWideChar(CP_ACP, 0, path, -1, wpath, path_wlen) > 0) {
-                hFile = CreateFileW(wpath, dwDesiredAccess, dwShareMode, NULL,
-                    dwCreationDisposition, FILE_ATTRIBUTE_NORMAL, NULL);
-            }
-            if (wpath && wpath != stack_wpath) {
-                HeapFree(hHeap, 0, wpath);
-            }
-        }
-    }
-
-    if (hFile == INVALID_HANDLE_VALUE) {
-        return NULL;
-    }
+    if (hFile == INVALID_HANDLE_VALUE) return NULL;
 
     if (append) {
         LARGE_INTEGER liZero;
@@ -246,6 +297,7 @@ ssize_t xx_io_platform_file_read(void *handle, void *buf, size_t n) {
 }
 
 ssize_t xx_io_platform_file_write(void *handle, const void *buf, size_t n) {
+    if (!xx_io_policy_mutation_allowed()) return -1;
     if (!handle || handle == INVALID_HANDLE_VALUE || !buf) {
         return -1;
     }
@@ -349,7 +401,11 @@ int64_t xx_io_platform_file_size(void *handle) {
 }
 
 bool xx_io_platform_file_exists_w(const wchar_t *path) {
-    return path && path[0] && GetFileAttributesW(path) != INVALID_FILE_ATTRIBUTES;
+    wchar_t stack[MAX_PATH];
+    wchar_t *api = xx_win_api_path(path, stack, MAX_PATH, false);
+    bool result = api && GetFileAttributesW(api) != INVALID_FILE_ATTRIBUTES;
+    xx_win_free_path(api, stack);
+    return result;
 }
 
 bool xx_io_platform_file_exists_a(const char *path) {
@@ -362,7 +418,12 @@ bool xx_io_platform_file_exists_a(const char *path) {
 }
 
 bool xx_io_platform_file_remove_w(const wchar_t *path) {
-    return path && path[0] && DeleteFileW(path) != 0;
+    if (!xx_io_policy_mutation_allowed()) return false;
+    wchar_t stack[MAX_PATH];
+    wchar_t *api = xx_win_api_path(path, stack, MAX_PATH, false);
+    bool result = api && DeleteFileW(api) != 0;
+    xx_win_free_path(api, stack);
+    return result;
 }
 
 bool xx_io_platform_file_remove_a(const char *path) {
@@ -377,10 +438,19 @@ bool xx_io_platform_file_remove_a(const char *path) {
 bool xx_io_platform_file_replace_w(const wchar_t *source,
                                    const wchar_t *destination,
                                    bool overwrite) {
+    if (!xx_io_policy_mutation_allowed()) return false;
     DWORD flags = MOVEFILE_WRITE_THROUGH;
-    if (!source || !source[0] || !destination || !destination[0]) return false;
+    wchar_t source_stack[MAX_PATH], destination_stack[MAX_PATH];
+    wchar_t *source_api = xx_win_api_path(source, source_stack, MAX_PATH, false);
+    wchar_t *destination_api = xx_win_api_path(destination, destination_stack,
+                                                MAX_PATH, false);
+    bool result;
     if (overwrite) flags |= MOVEFILE_REPLACE_EXISTING;
-    return MoveFileExW(source, destination, flags) != 0;
+    result = source_api && destination_api &&
+        MoveFileExW(source_api, destination_api, flags) != 0;
+    xx_win_free_path(source_api, source_stack);
+    xx_win_free_path(destination_api, destination_stack);
+    return result;
 }
 
 bool xx_io_platform_file_replace_a(const char *source,
@@ -400,91 +470,141 @@ bool xx_io_platform_file_replace_a(const char *source,
     return result;
 }
 
-bool xx_io_platform_create_dirs_w(const wchar_t *path, bool is_dir) {
-    if (!path || !path[0]) {
-        return false;
-    }
-    wchar_t temp[MAX_PATH];
-    size_t len = 0;
-    while (path[len] != L'\0') {
-        len++;
-    }
-    if (len >= MAX_PATH) {
-        return false;
-    }
-    for (size_t i = 0; i < len; ++i) {
-        temp[i] = path[i];
-    }
-    temp[len] = L'\0';
-
-    for (size_t i = 0; i < len; ++i) {
-        if (temp[i] == L'/' || temp[i] == L'\\') {
-            DWORD attributes;
-            temp[i] = L'\0';
-            if (i > 0 && temp[i - 1] != L':') {
-                attributes = GetFileAttributesW(temp);
-                if (attributes == INVALID_FILE_ATTRIBUTES) {
-                    if (!CreateDirectoryW(temp, NULL)) return false;
-                } else if ((attributes & FILE_ATTRIBUTE_DIRECTORY) == 0 ||
-                           (attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0) {
-                    return false;
-                }
+/* Returns the filesystem root's end, including its trailing separator when
+ * present. Never split a UNC server/share or an extended prefix as directories. */
+static size_t xx_win_root_length(const wchar_t *path) {
+    size_t at = 0U, component;
+    bool unc = false;
+    if (path[0] == L'\\' && path[1] == L'\\') {
+        if (path[2] == L'.' && path[3] == L'\\') return 0U;
+        if (path[2] == L'?' && path[3] == L'\\') {
+            at = 4U;
+            if ((path[at] == L'U' || path[at] == L'u') &&
+                (path[at + 1U] == L'N' || path[at + 1U] == L'n') &&
+                (path[at + 2U] == L'C' || path[at + 2U] == L'c') &&
+                path[at + 3U] == L'\\') {
+                at += 4U;
+                unc = true;
+            } else if (path[at] == L'V' && path[at + 1U] == L'o' &&
+                       path[at + 2U] == L'l' && path[at + 3U] == L'u' &&
+                       path[at + 4U] == L'm' && path[at + 5U] == L'e' &&
+                       path[at + 6U] == L'{') {
+                while (path[at] && path[at] != L'\\') ++at;
+                return path[at] == L'\\' ? at + 1U : 0U;
             }
-            temp[i] = L'\\';
+        } else {
+            at = 2U;
+            unc = true;
         }
     }
-    if (is_dir) {
-        DWORD attributes = GetFileAttributesW(temp);
-        if (attributes == INVALID_FILE_ATTRIBUTES) {
-            if (!CreateDirectoryW(temp, NULL)) return false;
-        } else if ((attributes & FILE_ATTRIBUTE_DIRECTORY) == 0 ||
-                   (attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0) {
-            return false;
+    if (!unc) {
+        if (!((path[at] >= L'A' && path[at] <= L'Z') ||
+              (path[at] >= L'a' && path[at] <= L'z')) ||
+            path[at + 1U] != L':' || path[at + 2U] != L'\\') return 0U;
+        return at + 3U;
+    }
+    for (component = 0U; component < 2U; ++component) {
+        size_t begin = at;
+        while (path[at] && path[at] != L'\\') ++at;
+        if (at == begin) return 0U;
+        if (component == 0U && !path[at]) return 0U;
+        if (path[at] == L'\\') ++at;
+    }
+    return at;
+}
+
+static bool xx_win_directory_attributes_ok(DWORD attributes) {
+    return attributes != INVALID_FILE_ATTRIBUTES &&
+        (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0U &&
+        (attributes & FILE_ATTRIBUTE_REPARSE_POINT) == 0U;
+}
+
+static bool xx_win_check_root(const wchar_t *path) {
+    DWORD attributes = GetFileAttributesW(path);
+    HANDLE handle;
+    BY_HANDLE_FILE_INFORMATION info;
+    bool result;
+    if (attributes != INVALID_FILE_ATTRIBUTES)
+        return xx_win_directory_attributes_ok(attributes);
+    /* GetFileAttributes cannot always inspect a UNC share root. Query its
+     * directory handle without following a reparse point instead. */
+    handle = CreateFileW(path, FILE_READ_ATTRIBUTES,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL,
+        OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
+        NULL);
+    if (handle == INVALID_HANDLE_VALUE) return false;
+    result = GetFileInformationByHandle(handle, &info) != 0 &&
+        xx_win_directory_attributes_ok(info.dwFileAttributes);
+    CloseHandle(handle);
+    return result;
+}
+
+static bool xx_win_ensure_directory(const wchar_t *path) {
+    DWORD attributes = GetFileAttributesW(path);
+    if (attributes == INVALID_FILE_ATTRIBUTES) {
+        if (!CreateDirectoryW(path, NULL) &&
+            GetLastError() != ERROR_ALREADY_EXISTS) return false;
+        attributes = GetFileAttributesW(path);
+    }
+    return xx_win_directory_attributes_ok(attributes);
+}
+
+bool xx_io_platform_create_dirs_w(const wchar_t *path, bool is_dir) {
+    if (!xx_io_policy_mutation_allowed()) return false;
+    wchar_t stack[MAX_PATH];
+    wchar_t *temp = xx_win_api_path(path, stack, MAX_PATH, true);
+    size_t root, length = 0U, i;
+    bool result = false;
+    wchar_t saved;
+    if (!temp) return false;
+    while (temp[length]) ++length;
+    root = xx_win_root_length(temp);
+    if (!root || root > length) goto cleanup;
+    saved = temp[root];
+    temp[root] = L'\0';
+    result = xx_win_check_root(temp);
+    temp[root] = saved;
+    if (!result) goto cleanup;
+    for (i = root; i < length; ++i) {
+        if (temp[i] == L'/' || temp[i] == L'\\') {
+            saved = temp[i];
+            temp[i] = L'\0';
+            result = xx_win_ensure_directory(temp);
+            temp[i] = saved;
+            if (!result) goto cleanup;
         }
     }
-    return true;
+    if (is_dir && length > root && temp[length - 1U] != L'\\')
+        result = xx_win_ensure_directory(temp);
+cleanup:
+    xx_win_free_path(temp, stack);
+    return result;
 }
 
 bool xx_io_platform_create_dirs_a(const char *path, bool is_dir) {
-    if (!path || !path[0]) {
-        return false;
-    }
-    int wlen = MultiByteToWideChar(CP_UTF8, 0, path, -1, NULL, 0);
-    if (wlen <= 0) {
-        return false;
-    }
-    wchar_t stack_wpath[MAX_PATH];
-    wchar_t *wpath = stack_wpath;
-    HANDLE hHeap = GetProcessHeap();
-    if ((size_t)wlen > MAX_PATH) {
-        wpath = (wchar_t*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, (size_t)wlen * sizeof(wchar_t));
-        if (!wpath) {
-            return false;
-        }
-    }
-    MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, wlen);
-    bool res = xx_io_platform_create_dirs_w(wpath, is_dir);
-    if (wpath != stack_wpath) {
-        HeapFree(hHeap, 0, wpath);
-    }
-    return res;
+    wchar_t stack[MAX_PATH];
+    wchar_t *wide = xx_win_utf8_path(path, stack, MAX_PATH);
+    bool result = wide && xx_io_platform_create_dirs_w(wide, is_dir);
+    xx_win_free_path(wide, stack);
+    return result;
 }
 
 bool xx_io_platform_apply_dos_time_and_attrs_w(const wchar_t *path, uint16_t dos_date, uint16_t dos_time, uint32_t attrs) {
-    if (!path || !path[0]) {
-        return false;
-    }
+    if (!xx_io_policy_mutation_allowed()) return false;
+    wchar_t stack[MAX_PATH];
+    wchar_t *api = xx_win_api_path(path, stack, MAX_PATH, false);
+    if (!api) return false;
 
     if (dos_date != 0 || dos_time != 0) {
         FILETIME ftLocal, ftUtc;
         if (DosDateTimeToFileTime((WORD)dos_date, (WORD)dos_time, &ftLocal)) {
             if (LocalFileTimeToFileTime(&ftLocal, &ftUtc)) {
                 DWORD flags = FILE_ATTRIBUTE_NORMAL;
-                DWORD attr_existing = GetFileAttributesW(path);
+                DWORD attr_existing = GetFileAttributesW(api);
                 if (attr_existing != INVALID_FILE_ATTRIBUTES && (attr_existing & FILE_ATTRIBUTE_DIRECTORY)) {
                     flags = FILE_FLAG_BACKUP_SEMANTICS;
                 }
-                HANDLE h = CreateFileW(path, FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                HANDLE h = CreateFileW(api, FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE,
                                        NULL, OPEN_EXISTING, flags, NULL);
                 if (h != INVALID_HANDLE_VALUE) {
                     SetFileTime(h, NULL, NULL, &ftUtc);
@@ -497,36 +617,21 @@ bool xx_io_platform_apply_dos_time_and_attrs_w(const wchar_t *path, uint16_t dos
     if (attrs != 0) {
         DWORD win_attrs = attrs & 0x3F; /* Archive, Read-Only, Hidden, System */
         if (win_attrs) {
-            SetFileAttributesW(path, win_attrs);
+            SetFileAttributesW(api, win_attrs);
         }
     }
 
+    xx_win_free_path(api, stack);
     return true;
 }
 
 bool xx_io_platform_apply_dos_time_and_attrs_a(const char *path, uint16_t dos_date, uint16_t dos_time, uint32_t attrs) {
-    if (!path || !path[0]) {
-        return false;
-    }
-    int wlen = MultiByteToWideChar(CP_UTF8, 0, path, -1, NULL, 0);
-    if (wlen <= 0) {
-        return false;
-    }
-    wchar_t stack_wpath[MAX_PATH];
-    wchar_t *wpath = stack_wpath;
-    HANDLE hHeap = GetProcessHeap();
-    if ((size_t)wlen > MAX_PATH) {
-        wpath = (wchar_t*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, (size_t)wlen * sizeof(wchar_t));
-        if (!wpath) {
-            return false;
-        }
-    }
-    MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, wlen);
-    bool res = xx_io_platform_apply_dos_time_and_attrs_w(wpath, dos_date, dos_time, attrs);
-    if (wpath != stack_wpath) {
-        HeapFree(hHeap, 0, wpath);
-    }
-    return res;
+    wchar_t stack[MAX_PATH];
+    wchar_t *wide = xx_win_utf8_path(path, stack, MAX_PATH);
+    bool result = wide && xx_io_platform_apply_dos_time_and_attrs_w(
+        wide, dos_date, dos_time, attrs);
+    xx_win_free_path(wide, stack);
+    return result;
 }
 
 

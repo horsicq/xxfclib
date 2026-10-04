@@ -87,6 +87,8 @@ typedef struct xx_gz_sink_s {
     bool failed;
 } xx_gz_sink;
 
+#include "../xx_single_stream_writer.h"
+
 static void xx_gz_vtable_destroy(Abstractformat *self);
 
 static bool xx_gz_read_exact_at(xx_io_device *device, int64_t offset,
@@ -683,6 +685,10 @@ void xx_gz_init(xx_gz *gz, xx_io_device *dev, int64_t base_address) {
         xx_gz_data_struct_record_move_to_next;
     gz->format.free_data_struct_records_reading =
         xx_gz_free_data_struct_records_reading;
+    gz->format.create_archive_records_writing = xx_gz_create_archive_records_writing;
+    gz->format.pack_archive_record = xx_gz_pack_archive_record;
+    gz->format.finalize_archive_records_writing = xx_gz_finalize_archive_records_writing;
+    gz->format.free_archive_records_writing = xx_gz_free_archive_records_writing;
     gz->format.destroy = xx_gz_vtable_destroy;
     gz->stream_end = -1;
 }
@@ -1243,3 +1249,8 @@ uint64_t xx_gz_get_number_of_members(const xx_gz *gz) {
 int64_t xx_gz_get_stream_end(const xx_gz *gz) {
     return gz ? gz->stream_end : -1;
 }
+
+xx_archive_write_state *xx_gz_create_archive_records_writing(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) { return ss_create(self, options, pd); }
+bool xx_gz_pack_archive_record(Abstractformat *self, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source, xx_pd_struct *pd) { return ss_pack(self, state, record, source, pd); }
+bool xx_gz_finalize_archive_records_writing(Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd) { return ss_finalize(self, state, pd); }
+void xx_gz_free_archive_records_writing(Abstractformat *self, xx_archive_write_state *state) { ss_free(self, state); }

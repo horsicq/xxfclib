@@ -23,7 +23,15 @@ extern "C" {
  * needs the matching BACKUP file(s): attach them with
  * xx_ms_dos_backup2_set_data_device / _add_volume, or let
  * xx_ms_dos_backup2_open_volume_files find them next to the CONTROL file.
+ * When nothing was attached and the reader's device is a plain file opened
+ * by path at offset 0, the first catalogue read calls
+ * xx_ms_dos_backup2_open_volume_files on that path itself.
  * Without data a member is still listed, and extracting it fails.
+ *
+ * A CONTROL file of volume 2 or later may begin with the continuation of a
+ * file split at the end of the volume before it.  That member is completed
+ * from the earlier volumes (xx_ms_dos_backup2_add_prior_volume, or found by
+ * xx_ms_dos_backup2_open_volume_files); their other members are not listed.
  *
  * CONTROL.nnn, all integers little endian:
  *
@@ -79,6 +87,15 @@ typedef struct xx_ms_dos_backup2 {
     uint64_t number_of_records;
     uint32_t sequence;   /**< Volume number of the first CONTROL file. */
     bool last_volume;    /**< The last attached volume closes the set. */
+    /** Volumes before the first one, nearest first: prior_control[0] is
+     *  volume sequence - 1.  Only used to complete the member the first
+     *  CONTROL file continues. */
+    uint32_t prior_count;
+    xx_io_device *prior_control[XX_MS_DOS_BACKUP2_MAX_VOLUMES];
+    xx_io_device *prior_data[XX_MS_DOS_BACKUP2_MAX_VOLUMES];
+    bool prior_control_owned[XX_MS_DOS_BACKUP2_MAX_VOLUMES];
+    bool prior_data_owned[XX_MS_DOS_BACKUP2_MAX_VOLUMES];
+    bool companions_tried; /**< Automatic lookup beside the source done. */
 } xx_ms_dos_backup2;
 
 typedef xx_ms_dos_backup2 xx_ms_dos_backup2_t;
@@ -128,10 +145,22 @@ XXFC_API bool xx_ms_dos_backup2_add_volume(xx_ms_dos_backup2 *archive,
                                            xx_io_device *data);
 
 /**
+ * @brief Attach the volume before the earliest one attached so far (first
+ * call: volume sequence - 1 of format.device), CONTROL and BACKUP devices,
+ * borrowed.  @p data may be NULL.  Used only to complete the member the
+ * first CONTROL file continues from that volume.
+ */
+XXFC_API bool xx_ms_dos_backup2_add_prior_volume(xx_ms_dos_backup2 *archive,
+                                                 xx_io_device *control,
+                                                 xx_io_device *data);
+
+/**
  * @brief Open the BACKUP file beside @p control_path (CONTROL.nnn ->
  * BACKUP.nnn in the same directory), then CONTROL/BACKUP of each following
  * volume in that directory until the one marked last or the first missing
- * file.  Opened devices are owned by the reader.
+ * file.  When the CONTROL file continues a member from the volume before
+ * it, the earlier CONTROL/BACKUP files that member needs are opened too.
+ * Opened devices are owned by the reader.
  * @return the number of volumes that now have their data attached.
  */
 XXFC_API uint32_t xx_ms_dos_backup2_open_volume_files(xx_ms_dos_backup2 *archive,

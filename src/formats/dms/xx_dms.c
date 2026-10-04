@@ -1072,6 +1072,7 @@ static bool xx_dms_parse(Abstractformat *self, xx_dms_private *parsed,
     int64_t total_size;
     int64_t available;
     int64_t offset;
+    uint32_t carrier_size=0U;
     uint32_t info;
     uint32_t track_size;
     uint32_t header_first;
@@ -1098,10 +1099,25 @@ static bool xx_dms_parse(Abstractformat *self, xx_dms_private *parsed,
     if (!xx_dms_range_within(total_size, self->base_address,
                              XX_DMS_HEADER_SIZE) ||
         !xx_dms_read_at(self->device, self->base_address, header,
-                        sizeof(header)) ||
-        xx_rt_memcmp(header, "DMS!", 4U) != 0) {
+                        sizeof(header))) {
         goto fail;
     }
+    /* Exact HUNK executable wrappers from DMS 2.03/2.04. Only their declared
+     * static payload offsets are interpreted; no executable code runs. */
+    if(xx_data_get_u32(header,sizeof(header),0U,true)==0x3F3U) {
+        uint8_t stub[88]; uint32_t kind;
+        if(!xx_dms_range_within(total_size,self->base_address,sizeof(stub)) || !xx_dms_read_at(self->device,self->base_address,stub,sizeof(stub))) goto fail;
+        kind=xx_data_get_u32(stub,sizeof(stub),20U,true);
+        if(kind==0x1605U && xx_data_get_u32(stub,sizeof(stub),24U,true)==0x1C24U &&
+            xx_data_get_u32(stub,sizeof(stub),64U,true)==0x303C05CDU && xx_data_get_u32(stub,sizeof(stub),68U,true)==0x421B51C8U && xx_data_get_u32(stub,sizeof(stub),72U,true)==0xFFFC47F9U) carrier_size=0x58C4U;
+        else if((kind==0x2462U || kind==0x2466U) && xx_data_get_u32(stub,sizeof(stub),44U,true)==0xABCDU &&
+            xx_data_get_u32(stub,sizeof(stub),76U,true)==0x48E7FFF6U && xx_data_get_u32(stub,sizeof(stub),80U,true)==0x61000030U && xx_data_get_u32(stub,sizeof(stub),84U,true)==0x4CDF6FFFU) carrier_size=kind==0x2462U?0x45D0U:0x45E0U;
+        else if(kind==0x3269U && xx_data_get_u32(stub,sizeof(stub),36U,true)==0x60000006U && xx_data_get_u32(stub,sizeof(stub),40U,true)==0x24E2U &&
+            xx_data_get_u32(stub,sizeof(stub),44U,true)==0x48E77EFEU && xx_data_get_u32(stub,sizeof(stub),48U,true)==0x24482400U && xx_data_get_u32(stub,sizeof(stub),64U,true)==0x3B61425BU) carrier_size=0x537CU;
+        else goto fail;
+        if(!xx_dms_range_within(total_size,self->base_address+carrier_size,sizeof(header)) || !xx_dms_read_at(self->device,self->base_address+carrier_size,header,sizeof(header))) goto fail;
+    }
+    if(xx_rt_memcmp(header,"DMS!",4U)) goto fail;
     parsed->input_size = total_size;
     available = total_size - self->base_address;
     /* The header CRC is the detector: four magic bytes alone are far too
@@ -1137,7 +1153,7 @@ static bool xx_dms_parse(Abstractformat *self, xx_dms_private *parsed,
     /* The chain ends at the first thing that is not a well formed chunk:
      * trailing data is overlay. Only a first chunk that is broken makes
      * the file something other than DMS. */
-    offset = XX_DMS_HEADER_SIZE;
+    offset = carrier_size+XX_DMS_HEADER_SIZE;
     while (offset + (int64_t)XX_DMS_TRACK_HEADER_SIZE <= available) {
         uint8_t entry[XX_DMS_TRACK_HEADER_SIZE];
         xx_dms_track *track;

@@ -358,53 +358,117 @@ static const xx_var *tar_nextstep_find_option(const xx_list_s *options,
     return NULL;
 }
 
-/* Convert harmless leading ./ components to a relative path and reject names
- * that have ambiguous or unsafe Windows/POSIX filesystem meanings. */
+static bool tar_nextstep_ascii_equal_nocase(const char *value, size_t length,
+                                            const char *expected) {
+    size_t index;
+    if (xx_str_len(expected) != length) return false;
+    for (index = 0U; index < length; ++index) {
+        unsigned char left = (unsigned char)value[index];
+        if (left >= 'a' && left <= 'z') left = (unsigned char)(left - 32U);
+        if (left != (unsigned char)expected[index]) return false;
+    }
+    return true;
+}
+
+/* True for a component Win32 would not map to a plain file of that name: a
+ * reserved device (with or without an extension, including COM/LPT with a
+ * UTF-8 superscript digit) or a name ending in '.' or ' '. */
+static bool tar_nextstep_component_is_unsafe(const char *component,
+                                             size_t length) {
+    size_t base = 0U;
+    if (component[length - 1U] == '.' || component[length - 1U] == ' ')
+        return true;
+    while (base < length && component[base] != '.') ++base;
+    if (tar_nextstep_ascii_equal_nocase(component, base, "CON") ||
+        tar_nextstep_ascii_equal_nocase(component, base, "PRN") ||
+        tar_nextstep_ascii_equal_nocase(component, base, "AUX") ||
+        tar_nextstep_ascii_equal_nocase(component, base, "NUL") ||
+        tar_nextstep_ascii_equal_nocase(component, base, "CONIN$") ||
+        tar_nextstep_ascii_equal_nocase(component, base, "CONOUT$") ||
+        tar_nextstep_ascii_equal_nocase(component, base, "CLOCK$")) {
+        return true;
+    }
+    if (base < 4U || !(tar_nextstep_ascii_equal_nocase(component, 3U, "COM") ||
+                       tar_nextstep_ascii_equal_nocase(component, 3U, "LPT"))) {
+        return false;
+    }
+    return (base == 4U && component[3] >= '1' && component[3] <= '9') ||
+           (base == 5U && (unsigned char)component[3] == 0xC2U &&
+            ((unsigned char)component[4] == 0xB9U ||
+             (unsigned char)component[4] == 0xB2U ||
+             (unsigned char)component[4] == 0xB3U));
+}
+
+/* Returns an independently allocated, slash-normalized extraction name, or
+ * NULL when the stored name cannot be extracted safely.  The TAR/CPIO policy:
+ * absolute names ("/usr/x", "C:\x", "//srv/x") are made relative by dropping
+ * leading separators and drive prefixes, and "." and empty components are
+ * dropped.  Any ".." component is refused, so "/../x" cannot escape, as are
+ * control and reserved characters, device names and trailing dots/spaces.
+ * A directory with nothing left ("./", "/") is the archive root, "."; a file
+ * with nothing left is refused. */
 static char *tar_nextstep_safe_output_name(const char *source,
                                            bool directory) {
-    const char *name = source;
     size_t length;
     size_t index;
-    size_t component_start = 0U;
+    size_t start;
+    size_t out = 0U;
     char *result;
     if (!source) return NULL;
-    while (name[0] == '.' && (name[1] == '/' || name[1] == '\\')) name += 2;
-    length = xx_str_len(name);
-    if (directory) {
-        while (length > 0U && (name[length - 1U] == '/' ||
-                              name[length - 1U] == '\\')) --length;
-        /* Only an actual sequence of leading ./ components denotes the
-         * archive root; an absolute slash-only path must stay invalid. */
-        if (length == 0U) return name[0] == '\0' ? xx_str_dup(".") : NULL;
+    for (;;) {
+        if (source[0] == '/' || source[0] == '\\') {
+            ++source;
+        } else if (((source[0] >= 'A' && source[0] <= 'Z') ||
+                    (source[0] >= 'a' && source[0] <= 'z')) &&
+                   source[1] == ':') {
+            source += 2;
+        } else {
+            break;
+        }
     }
-    if (length == 0U || name[0] == '/' || name[0] == '\\' ||
-        (length >= 2U && name[1] == ':')) {
+    length = xx_str_len(source);
+    /* A file name cannot end in a separator. */
+    if (!directory && length != 0U &&
+        (source[length - 1U] == '/' || source[length - 1U] == '\\')) {
         return NULL;
     }
-    result = (char *)xx_mem_alloc(length + 1U);
+    result = (char *)xx_mem_alloc(length + 2U);
     if (!result) return NULL;
-    for (index = 0U; index < length; ++index) {
-        unsigned char value = (unsigned char)name[index];
-        if (value < 0x20U || value == 0x7fU || value == ':' || value == '<' ||
-            value == '>' || value == '"' || value == '|' || value == '?' ||
-            value == '*') {
+    for (start = 0U, index = 0U; index <= length; ++index) {
+        unsigned char value = (unsigned char)source[index];
+        size_t size;
+        if (index != length && value != '/' && value != '\\') {
+            if (value < 0x20U || value == 0x7fU || value == ':' ||
+                value == '<' || value == '>' || value == '"' ||
+                value == '|' || value == '?' || value == '*') {
+                xx_mem_free(result);
+                return NULL;
+            }
+            continue;
+        }
+        size = index - start;
+        if ((size == 2U && source[start] == '.' &&
+             source[start + 1U] == '.') ||
+            (size != 0U && !(size == 1U && source[start] == '.') &&
+             tar_nextstep_component_is_unsafe(source + start, size))) {
             xx_mem_free(result);
             return NULL;
         }
-        result[index] = name[index] == '\\' ? '/' : name[index];
+        if (size != 0U && !(size == 1U && source[start] == '.')) {
+            if (out != 0U) result[out++] = '/';
+            xx_mem_copy(result + out, source + start, size);
+            out += size;
+        }
+        start = index + 1U;
     }
-    result[length] = '\0';
-    for (index = 0U; index <= length; ++index) {
-        if (index != length && result[index] != '/') continue;
-        if (index == component_start ||
-            (index - component_start == 1U && result[component_start] == '.') ||
-            (index - component_start == 2U && result[component_start] == '.' &&
-             result[component_start + 1U] == '.')) {
+    if (out == 0U) {
+        if (!directory) {
             xx_mem_free(result);
             return NULL;
         }
-        component_start = index + 1U;
+        result[out++] = '.';
     }
+    result[out] = '\0';
     return result;
 }
 

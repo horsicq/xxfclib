@@ -8,7 +8,7 @@
  *
  *   x   extract, keeping the paths stored in the archive
  *   l   list what is inside
- *   t   test -- extract to a scratch directory and throw it away
+ *   t   test -- decode to memory without creating output files
  *   a   add files to a new archive
  *
  * 7-Zip's `e` (extract flattened) is deliberately absent rather than aliased
@@ -51,7 +51,7 @@ static void usage(FILE *out, const char *program) {
             "  formats                   Show available reader names\n"
             "  x <archive> [-o<dir>]     Extract with full paths\n"
             "  l <archive>               List contents\n"
-            "  t <archive>               Test: extract to a scratch dir, then discard\n"
+            "  t <archive>               Test in memory without creating output files\n"
             "  a <archive> <file>...     Add files to a new archive\n"
             "\n"
             "Options:\n"
@@ -65,7 +65,7 @@ static void usage(FILE *out, const char *program) {
             "Notes:\n"
             "  `a` writes the container the archive's extension names, and only\n"
             "  the formats xxfclib can write: .tar .tar.gz .tar.bz2 .tar.xz\n"
-            "  .tar.zst .tar.lz4 .zip .cpio\n",
+            "  .tar.zst .tar.lz4 .zip .cpio .7z .gz .bz2 .xz .wim\n",
             program);
 }
 
@@ -202,10 +202,6 @@ static int walk(const char *archive_path, const char *unpack_to, bool quiet,
         goto done;
     }
     xxfc_attach_source_files(&opened, archive_path);
-    if (xxfc_is_incomplete(&opened)) {
-        fprintf(stderr, "%s: incomplete archive; showing recovered members\n", archive_path);
-        status = 1;
-    }
 
     if (!quiet) {
         printf("%s: %s\n", archive_path,
@@ -236,6 +232,10 @@ static int walk(const char *archive_path, const char *unpack_to, bool quiet,
         goto done;
     }
 
+    if (xxfc_is_incomplete(&opened)) {
+        fprintf(stderr, "%s: incomplete archive; showing recovered members\n", archive_path);
+        status = 1;
+    }
     for (;;) {
         const xx_archive_record *record =
             xx_format_get_current_archive_record(opened.format, state);
@@ -250,8 +250,8 @@ static int walk(const char *archive_path, const char *unpack_to, bool quiet,
             char *key = NULL, *saved = NULL;
             bool can_extract = true;
 
-            if (unpack_to) {
-                if (!folder && xxfc_safe_relative_name(name)) {
+            if (unpack_to || quiet) {
+                if (unpack_to && !folder && xxfc_safe_relative_name(name)) {
                     key = xxfc_normalized_name(name);
                     if (!key) can_extract = false;
                     else if (xxfc_seen_contains(&seen, key)) {
@@ -294,6 +294,8 @@ static int walk(const char *archive_path, const char *unpack_to, bool quiet,
             free(saved);
             xx_str_free(owned);
         }
+        if(quiet) { uint64_t count=state->total_records; unsigned percentage=count && (uint64_t)total<count?(unsigned)((uint64_t)total*100/count):99U;
+            printf("%u%%\n",percentage); }
 
         if (total >= RECORD_LIMIT) {
             fprintf(stderr, "%s: stopping after %d members\n", archive_path,
@@ -355,6 +357,8 @@ static Abstractformat *make_writer(const char *path, xx_io_device *device,
         { ".tar.zst", "tar.zst" }, { ".tar.lz4", "tar.lz4" },
         { ".tar",     "tar"     }, { ".zip",     "zip"     },
         { ".cpio",    "cpio"    },
+        { ".7z", "7z" }, { ".gz", "gz" }, { ".gzip", "gz" },
+        { ".bz2", "bz2" }, { ".bzip2", "bz2" }, { ".xz", "xz" }, { ".wim", "wim" },
     };
     size_t i;
 
@@ -374,6 +378,16 @@ static int add(const char *archive_path, char **files, int count) {
     xx_archive_write_state *state;
     int i, status = 0;
 
+    /* Validate writer selection before truncating an existing destination. */
+    device = xx_io_mem_open(NULL, 0);
+    format = device ? make_writer(archive_path, device, &release, &kind) : NULL;
+    if (!format || ((!strcmp(kind, "gz") || !strcmp(kind, "bz2") || !strcmp(kind, "xz")) && count != 1)) {
+        if (format) release(format);
+        if (device) xx_io_close(device);
+        fprintf(stderr, "%s: unsupported writer or compressed stream needs one input file\n", archive_path);
+        return 2;
+    }
+    release(format); xx_io_close(device);
     device = xx_io_file_open(archive_path, "wb");
     if (!device) {
         fprintf(stderr, "cannot create %s\n", archive_path);
@@ -384,7 +398,7 @@ static int add(const char *archive_path, char **files, int count) {
     if (!format) {
         fprintf(stderr,
                 "%s: xxfclib cannot write this container. Writable: .tar "
-                ".tar.gz .tar.bz2 .tar.xz .tar.zst .tar.lz4 .zip .cpio\n",
+                ".tar.gz .tar.bz2 .tar.xz .tar.zst .tar.lz4 .zip .cpio .7z .gz .bz2 .xz .wim\n",
                 archive_path);
         xx_io_close(device);
         return 2;
@@ -500,18 +514,13 @@ static int xxfc_main(int argc, char **argv) {
         case CMD_LIST:
             return walk(archive, NULL, false, reader_name, password, npa_payload, qlie_profile);
         case CMD_TEST: {
-            /* Extraction is the only way to find out whether the payload
-             * decodes: asking a reader to unpack with nowhere to put the
-             * bytes is answered "fine" without decoding anything. */
-            const char *scratch = "xxfc_unpack_test_tmp";
-            int status;
-            if (!xx_io_create_dirs_a(scratch, true)) {
-                fprintf(stderr, "cannot create %s\n", scratch);
-                return 2;
-            }
-            status = walk(archive, scratch, false, reader_name, password, npa_payload, qlie_profile);
-            fprintf(stderr, "(tested into %s -- remove it when done)\n",
-                    scratch);
+            xx_io_memory_only_scope scope={0}; int status;
+            if(!xx_io_memory_only_begin(&scope,UINT64_C(256)*1024*1024)) return 2;
+            printf("0%%\n");
+            status = walk(archive, NULL, true, reader_name, password, npa_payload, qlie_profile);
+            if(xx_io_memory_only_error(&scope)!=XX_IO_MEMORY_ONLY_OK) status=2;
+            if(!xx_io_memory_only_end(&scope)) status=2;
+            if(!status) printf("100%%\n");
             return status;
         }
         case CMD_ADD: {

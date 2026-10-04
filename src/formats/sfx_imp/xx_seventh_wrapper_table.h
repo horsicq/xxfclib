@@ -119,10 +119,18 @@ static bool w7_cazip(Abstractformat*f,int64_t at,const uint8_t*b,size_t n,xx_pd_
     uint8_t*raw;size_t used=0,wrote=0;bool ok=false;(void)f;(void)at;if(n<=22 || b[8]<'0' || b[8]>'9' || b[9]<'0' || b[9]>'9' || pm_le16(b+10)!=1 || pm_le16(b+12)!=1 || b[18] || b[19] || b[20]>1 || b[21]<4 || b[21]>6 || wg_stop(pd))return false;
     if(!xx_dcl_scan_memory(b+20,n-20,W7_LIMIT,&used,&wrote) || used!=n-20 || wrote>W7_LIMIT || wg_stop(pd))return false;raw=(uint8_t*)xx_mem_alloc(wrote ? wrote:1);if(!raw)return false;if(xx_dcl_decode_memory(b+20,n-20,raw,wrote,&wrote) && used==n-20 && !wg_stop(pd) && w6_crc_checked(raw,wrote,pm_le32(b+14),pd))ok=true;xx_mem_free(raw);return ok;
 }
-static bool w7_tgcf(Abstractformat*f,int64_t at,const uint8_t*b,size_t n,xx_pd_struct*pd) {
-    size_t p,initial;bool extended;wg_extent ranges[W7_COUNT*2+1];size_t rc=0;unsigned count=0;uint16_t version,name;(void)f;(void)at;if(n<28)return false;version=pm_be16(b+6);extended=version==0x160;if(version!=0x130 && version!=0x140 && !extended)return false;name=pm_be16(b+26);if(!name || name>1024 || !w7_range(n,28,name+4U+(extended ? 4U:0U)))return false;initial=28U+name+4U+(extended ? 4U:0U);p=extended ? pm_be32(b+28+name):initial;if(p<initial || p>n)return false;ranges[rc].lo=0;ranges[rc].hi=ranges[rc].lo+((int64_t)initial);++rc;
+/* The extent table holds up to 2*W7_COUNT+1 entries (128 KiB), so it lives
+ * on the heap: this validator runs beneath the content detector, whose own
+ * frame already takes most of a 1 MiB thread stack. */
+static bool w7_tgcf_walk(const uint8_t*b,size_t n,wg_extent*ranges,xx_pd_struct*pd) {
+    size_t p,initial;bool extended;size_t rc=0;unsigned count=0;uint16_t version,name;if(n<28)return false;version=pm_be16(b+6);extended=version==0x160;if(version!=0x130 && version!=0x140 && !extended)return false;name=pm_be16(b+26);if(!name || name>1024 || !w7_range(n,28,name+4U+(extended ? 4U:0U)))return false;initial=28U+name+4U+(extended ? 4U:0U);p=extended ? pm_be32(b+28+name):initial;if(p<initial || p>n)return false;ranges[rc].lo=0;ranges[rc].hi=ranges[rc].lo+((int64_t)initial);++rc;
     while(p<n) {size_t q,data;uint32_t packed,raw;uint16_t method;if(n-p==10 && !xx_rt_memcmp(b+p,"TGCF",4) && pm_be32(b+p+4)>0 && pm_be32(b+p+4)<=W7_COUNT){p=n;break;}if(wg_stop(pd) || ++count>W7_COUNT || !w7_range(n,p,36) || xx_rt_memcmp(b+p,"TGCF",4) || pm_le16(b+p+12)==2)return false;method=pm_le16(b+p+14);packed=pm_be32(b+p+20);raw=pm_be32(b+p+24);if(method!=0 && method!=4)return false;q=p+36;if(!w7_string(b,n,&q,1024) || !w7_string(b,n,&q,1024) || !w7_range(n,q,5U+(extended ? 4U:0U)))return false;++q;data=extended ? pm_be32(b+q):q+4;if(extended)q+=4;q+=4;if(!w7_range(n,data,packed) || (method==0 && packed!=raw))return false;ranges[rc].lo=(int64_t)p;ranges[rc].hi=ranges[rc].lo+((int64_t)(q-p));++rc;if(packed) {ranges[rc].lo=(int64_t)data;ranges[rc].hi=ranges[rc].lo+(packed);++rc;}p=extended ? q:data+packed;
     }return count && wg_extents(ranges,rc,pd);
+}
+static bool w7_tgcf(Abstractformat*f,int64_t at,const uint8_t*b,size_t n,xx_pd_struct*pd) {
+    wg_extent*ranges;bool ok;(void)f;(void)at;if(n<28)return false;
+    ranges=(wg_extent*)xx_mem_alloc((W7_COUNT*2U+1U)*sizeof(*ranges));if(!ranges)return false;
+    ok=w7_tgcf_walk(b,n,ranges,pd);xx_mem_free(ranges);return ok;
 }
 static bool w7_var(const uint8_t*b,size_t n,size_t*p,uint64_t*v) {unsigned i;uint64_t r=0;for(i=0;i<9 && *p<n;++i) {uint8_t c=b[(*p)++];r=(r<<7)|(c&127);if(c&128) {*v=r;return true;}}return false;}
 static bool w7_col(const uint8_t*b,size_t n,size_t*p,uint64_t*size,uint64_t*pos) {*pos=0;return w7_var(b,n,p,size) && (!*size || w7_var(b,n,p,pos));}

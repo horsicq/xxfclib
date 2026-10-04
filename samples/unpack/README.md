@@ -5,7 +5,7 @@ Unpacks archives with xxfclib, driven with 7-Zip's command letters.
 ```
 xxfc_unpack x <archive> [-o<dir>]     extract, keeping stored paths
 xxfc_unpack l <archive>               list contents
-xxfc_unpack t <archive>               test: extract to a scratch dir
+xxfc_unpack t <archive>               test: decode in bounded RAM
 xxfc_unpack a <archive> <file>...     add files to a new archive
 ```
 
@@ -75,9 +75,10 @@ places extracted files itself, from the names inside the archive, and this
 program gets no say in the layout â€” so `e` would either be a lie or an alias
 for `x`. It is neither.
 
-`t` extracts to a scratch directory rather than decoding to nowhere: asking a
-reader to unpack with no destination is answered "fine" without touching the
-payload, so a test that skipped the write would pass on a corrupt archive.
+`t` starts a memory-only I/O scope before detection and validates members with
+no output path. Seekable decoder work files stay in RAM within a 256 MiB
+budget. A reader that attempts disk mutation fails the test. The console shows
+overall percentages, and reaches 100% only after successful completion.
 
 ## Building
 

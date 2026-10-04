@@ -40,11 +40,11 @@
  *     +448  u8[64]   checksum
  *   The data segment's offset lives in the JSON area, not in the binary part.
  *
- * A LUKS container is ENCRYPTED BY DEFINITION: without the passphrase there
- * is no plaintext to hand out, and this reader attempts NO key derivation,
- * NO passphrase search and NO decryption of any kind. It identifies the
- * container, publishes the header metadata, publishes the payload region as
- * a single record flagged XX_META_ID_IS_ENCRYPTED, and refuses extraction.
+ * The record represents the logical decrypted payload and retains its
+ * source-encrypted metadata. LUKS1 AES-CBC and AES-XTS with SHA1/SHA256
+ * PBKDF2 can be unlocked using OPT_PASSWORD; a verified master-key digest is
+ * required before plaintext output. LUKS2 and unsupported modes fail decode.
+
  */
 
 #ifndef XXFCLIB_FORMAT_LUKS_H
@@ -102,7 +102,7 @@ XXFC_API xx_archive_record_state *xx_luks_create_archive_records_reading(
     Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
 XXFC_API const xx_archive_record *xx_luks_get_current_archive_record(
     Abstractformat *self, xx_archive_record_state *state);
-/** Always returns false: a LUKS payload is ciphertext and stays that way. */
+/** Decode a supported LUKS1 payload with an explicitly supplied password. */
 XXFC_API bool xx_luks_unpack_current_archive_record(
     Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 XXFC_API bool xx_luks_archive_record_move_to_next(

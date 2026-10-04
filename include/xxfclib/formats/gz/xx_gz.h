@@ -77,6 +77,15 @@ XXFC_API bool xx_gz_unpack_current_archive_record(Abstractformat *self, xx_archi
 XXFC_API bool xx_gz_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 XXFC_API void xx_gz_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
+/** Write exactly one regular file (including an empty file) through borrowed
+ * devices. Compression level and memory/member limits are supported. Multiple
+ * members, directories, links and encryption are rejected. The source cursor
+ * is restored, and no temporary files are created. */
+XXFC_API xx_archive_write_state *xx_gz_create_archive_records_writing(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
+XXFC_API bool xx_gz_pack_archive_record(Abstractformat *self, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source, xx_pd_struct *pd);
+XXFC_API bool xx_gz_finalize_archive_records_writing(Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd);
+XXFC_API void xx_gz_free_archive_records_writing(Abstractformat *self, xx_archive_write_state *state);
+
 XXFC_API const char *xx_gz_data_struct_id_to_string(Abstractformat *self, uint32_t id);
 XXFC_API uint32_t xx_gz_data_struct_string_to_id(Abstractformat *self, const char *name);
 XXFC_API xx_data_struct_state *xx_gz_create_data_structs_reading(Abstractformat *self, xx_pd_struct *pd);

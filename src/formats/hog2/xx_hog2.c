@@ -220,9 +220,26 @@ static xx_hog2_stream *xx_hog2_parse(Abstractformat *self,
         cursor += size;
     }
 
-    /* The payloads are contiguous and fill the file; a leftover tail means
-     * the table did not describe this file. */
-    if (cursor != span) goto fail;
+    /* Some mission packers appended one duplicate of the complete payload
+     * region. Recover only that exact case; arbitrary overlays still fail. */
+    if (cursor != span) {
+        int64_t start = XX_HOG2_HEADER_SIZE + table_size;
+        int64_t payload_size = cursor - start;
+        int64_t compared = 0;
+        uint8_t original[4096], duplicate[4096];
+        if (payload_size <= 0 || span - cursor != payload_size) goto fail;
+        while (compared < payload_size) {
+            size_t amount = (size_t)((payload_size - compared > 4096)
+                                        ? 4096 : payload_size - compared);
+            if ((pd && xx_pd_is_stopped(pd)) ||
+                !xx_hog2_read_at(self, self->base_address + start + compared,
+                                  original, amount) ||
+                !xx_hog2_read_at(self, self->base_address + cursor + compared,
+                                  duplicate, amount) ||
+                xx_rt_memcmp(original, duplicate, amount) != 0) goto fail;
+            compared += (int64_t)amount;
+        }
+    }
 
     xx_mem_free(table);
     stream->archive_size = span;

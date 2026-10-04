@@ -1807,6 +1807,7 @@ set(XXFCLIB_SOURCES
     src/io/xx_io.c
     src/io/xx_io_file.c
     src/io/xx_io_mem.c
+    src/io/xx_io_memory_only.c
     src/io/xx_io_sub.c
     src/io/xx_io_process.c
     src/memory/xx_memory.c
@@ -4598,6 +4599,38 @@ set(XXFCLIB_SOURCES
 # One generated C reader in its own subfolder for each DIE music family.
 include("${CMAKE_CURRENT_SOURCE_DIR}/src/formats/die_music/xx_die_music_sources.cmake")
 list(APPEND XXFCLIB_SOURCES ${XX_DIE_MUSIC_SOURCES})
+include(src/formats/xx_native_format_sources.cmake)
+list(APPEND XXFCLIB_SOURCES
+    src/formats/ue2_documents/xx_ue2_documents.c
+    src/formats/microsoft_lit/xx_microsoft_lit.c
+    src/formats/ue2_games/xx_ue2_games.c
+    src/formats/sqlite_sql/xx_sqlite_sql.c
+    src/formats/sqlite_sql/xx_sqlite_amalgamation.c
+    src/formats/chromium_pak/xx_chromium_pak.c
+    src/formats/windows_thumbnail_cache/xx_windows_thumbnail_cache.c)
+list(APPEND XXFCLIB_SOURCES src/formats/enigma_virtual_box/xx_enigma_virtual_box.c src/formats/media_engine/xx_media_engine.c)
+list(APPEND XXFCLIB_SOURCES src/formats/bitrock/xx_bitrock.c)
+list(APPEND XXFCLIB_SOURCES src/formats/smart_install_maker/xx_smart_install_maker.c)
+list(APPEND XXFCLIB_SOURCES src/formats/upx_engine/xx_upx_engine.c)
+list(APPEND XXFCLIB_SOURCES src/formats/molebox/xx_molebox.c)
+list(APPEND XXFCLIB_SOURCES src/formats/superdat/xx_superdat.c)
+list(APPEND XXFCLIB_SOURCES
+    src/formats/fead/xx_fead.c src/formats/fead/xx_fead_restore.c
+    src/formats/fead/xx_fead_bcj2.c
+    src/formats/fead/xx_fead_zlib_encoder.c
+    src/formats/fead/encoder/deflate.c src/formats/fead/encoder/trees.c
+    src/formats/fead/encoder/adler32.c src/formats/fead/encoder/crc32.c
+    src/formats/fead/encoder/compress.c)
+list(APPEND XXFCLIB_SOURCES src/formats/excelsior/xx_excelsior.c src/formats/legacy_archive_engine/xx_legacy_archive_engine.c)
+list(APPEND XXFCLIB_SOURCES
+    src/formats/dgca/xx_dgca_decode.c
+    src/formats/dgca/xx_dgca_payload.c
+    src/formats/dgca/xx_dgca_entropy.c
+    src/formats/dgca/xx_dgca_lzp.c
+    src/formats/dgca/xx_dgca_range.c
+    src/formats/dgca/xx_dgca_cipher.c
+    src/formats/dgca/xx_dgca_transform.c
+    src/formats/dgca/xx_dgca_adapter.c)
 
 if(WIN32)
     list(APPEND XXFCLIB_SOURCES
@@ -5046,6 +5079,12 @@ function(xxfclib_configure_target target is_shared)
             $<$<CONFIG:RelWithDebInfo>:/Z7>
         )
         target_compile_definitions(${target} PRIVATE _CRT_SECURE_NO_WARNINGS)
+        if(XXFC_MSVC_X64 AND (is_shared OR XXFC_STATIC_NO_CRT))
+            # SQLite's hosted amalgamation must not introduce CRT imports into
+            # the existing freestanding builds. The raw SQLite page reader is
+            # still available there; hosted builds provide the SQL export.
+            target_compile_definitions(${target} PRIVATE XXFC_SQLITE_HOSTED_DISABLED)
+        endif()
 
         if(is_shared AND XXFC_MSVC_X64)
             # This configuration links without the CRT, so xx_entry_windows.c
@@ -5204,13 +5243,81 @@ if(MSVC)
 endif()
 
 
+option(XXFC_BUILD_ARCHIVE_CODEC_HELPER "Build separate GPL/LGPL codec executable" ON)
+if(XXFC_BUILD_ARCHIVE_CODEC_HELPER)
+    add_subdirectory(helpers/archive_codecs)
+endif()
+
 # Optional sample programs
+option(XXFC_BUILD_SEVENZIP_ENGINE "Build the separate full 7-Zip reader engine on Windows x64" ON)
+option(XXFC_BUILD_DOCUMENT_ENGINE "Build the separate memory-only PDF reader on Windows x64" ON)
+option(XXFC_BUILD_CONVERTLIT_HELPER "Build the memory-only Microsoft Reader LIT decoder" ON)
+if(XXFC_BUILD_CONVERTLIT_HELPER)
+    add_subdirectory(helpers/convertlit)
+endif()
+option(XXFC_BUILD_GARBRO_ENGINE "Build the RAM-only GARbro reader on Windows x64" ON)
+if(XXFC_BUILD_GARBRO_ENGINE AND WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+    add_subdirectory(helpers/garbro_engine)
+endif()
+option(XXFC_BUILD_UPX_ENGINE "Build the RAM-only UPX unpacker on Windows x64" ON)
+option(XXFC_BUILD_WIM_CODEC_ENGINE "Build the RAM-only wimlib compressor on Windows x64" ON)
+option(XXFC_BUILD_LEGACY_ARCHIVE_ENGINE "Build the RAM-only UnUHARC compatibility helper" ON)
+if(XXFC_BUILD_LEGACY_ARCHIVE_ENGINE AND WIN32 AND MSVC)
+    set(_xxfc_legacy_source "${CMAKE_CURRENT_SOURCE_DIR}/helpers/legacy_archive_engine")
+    set(XXFC_LEGACY_RUNTIME_DIR "${CMAKE_CURRENT_BINARY_DIR}/legacy-runtime/$<CONFIG>")
+    file(GLOB_RECURSE _xxfc_legacy_sources CONFIGURE_DEPENDS "${_xxfc_legacy_source}/*")
+    set(_xxfc_legacy_outputs)
+    foreach(_file xfu_legacy_helper.exe xfu_legacy_io.dll xfu_unuharc06.exe UNUHARC-LICENSE.DOC)
+        list(APPEND _xxfc_legacy_outputs "${XXFC_LEGACY_RUNTIME_DIR}/${_file}")
+    endforeach()
+    add_custom_command(OUTPUT ${_xxfc_legacy_outputs}
+        COMMAND "${CMAKE_COMMAND}" "-DBUILD_DIR=${CMAKE_CURRENT_BINARY_DIR}/helpers/legacy_archive_win32"
+            "-DOUTPUT_DIR=${XXFC_LEGACY_RUNTIME_DIR}" "-DCONFIG=$<CONFIG>" -P "${_xxfc_legacy_source}/build.cmake"
+        DEPENDS ${_xxfc_legacy_sources} VERBATIM)
+    add_custom_target(xxfc_legacy_archive_runtime ALL DEPENDS ${_xxfc_legacy_outputs})
+    install(PROGRAMS "${XXFC_LEGACY_RUNTIME_DIR}/xfu_legacy_helper.exe" "${XXFC_LEGACY_RUNTIME_DIR}/xfu_legacy_io.dll" "${XXFC_LEGACY_RUNTIME_DIR}/xfu_unuharc06.exe" DESTINATION bin)
+    install(FILES "${XXFC_LEGACY_RUNTIME_DIR}/UNUHARC-LICENSE.DOC" DESTINATION bin)
+    install(DIRECTORY "${_xxfc_legacy_source}/" DESTINATION "${CMAKE_INSTALL_DATADIR}/xxfclib/source/legacy_archive_engine")
+endif()
+if(XXFC_BUILD_WIM_CODEC_ENGINE AND WIN32 AND MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+    enable_language(CXX)
+    add_subdirectory(helpers/wim_codec_engine)
+endif()
+if(XXFC_BUILD_UPX_ENGINE AND WIN32 AND MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+    enable_language(CXX)
+    add_subdirectory(helpers/upx_engine)
+endif()
+option(XXFC_BUILD_MEDIA_ENGINE "Build the separate memory-only media reader on Windows x64" ON)
+if(XXFC_BUILD_MEDIA_ENGINE AND WIN32 AND MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+    enable_language(CXX)
+    add_subdirectory(helpers/media_engine)
+endif()
+if(XXFC_BUILD_DOCUMENT_ENGINE AND WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+    enable_language(CXX)
+    add_subdirectory(helpers/document_engine)
+endif()
+if(XXFC_BUILD_SEVENZIP_ENGINE AND WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+    enable_language(CXX)
+    add_subdirectory(helpers/sevenzip_engine)
+endif()
+
 if(XXFC_BUILD_SAMPLES)
     add_subdirectory(samples/console)
     add_subdirectory(samples/unpack)
 endif()
 
 # Installation Targets
+foreach(_native bitrock smart_install_maker molebox superdat excelsior fead wim legacy_archive_engine dgca)
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/formats/${_native}/"
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/xxfclib/source/${_native}")
+endforeach()
+foreach(_documented_native excelsior fead)
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/tests/${_documented_native}/FORMAT.md"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/${_documented_native}/provenance.json"
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/xxfclib/source/${_documented_native}")
+endforeach()
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/docs/smart-install-maker-coverage.json"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/xxfclib/docs")
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/algo/bzip2/LICENSE.bzip2"
     DESTINATION "${CMAKE_INSTALL_DATADIR}/xxfclib/licenses/bzip2")
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/algo/wavpack/LICENSE"

@@ -26,6 +26,7 @@
 
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "xx_io_policy.h"
 
 typedef struct {
     uint8_t       *buffer;
@@ -234,6 +235,7 @@ xx_io_device* io_mem_open_ro(const void *buf, size_t size) {
 bool xx_io_is_memory(const xx_io_device *device) {
     xx_io_device *parent;
     while (xx_io_sub_get_range(device, &parent, NULL, NULL)) device = parent;
+    if (xx_io_memory_temp_is_device(device)) return true;
     return device && device->priv &&
            device->read == xx_io_mem_read_cb &&
            device->seek64 == xx_io_mem_seek64_cb &&

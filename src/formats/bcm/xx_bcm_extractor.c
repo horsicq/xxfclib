@@ -5,15 +5,8 @@
 /* xx_bcm_extractor.c - search raw data for BCM.
  *
  * Scans for:
- *   42 43 4D 31 at +0  ("BCM1")
- *   42 43 4D 32 at +0  ("BCM2")
- *   42 43 4D 33 at +0  ("BCM3")
- *   42 43 4D 34 at +0  ("BCM4")
- *   42 43 4D 35 at +0  ("BCM5")
- *   42 43 4D 36 at +0  ("BCM6")
- *   42 43 4D 37 at +0  ("BCM7")
- *   42 43 4D 38 at +0  ("BCM8")
- *   42 43 4D 39 at +0  ("BCM9")
+ *   42 43 4D 21 at +0  ("BCM!", v1.10 and later)
+ *   42 43 4D 31 at +0  ("BCM1", v1.00 .. v1.04)
  * Offset 0 is always tried as well.
  * Each candidate must be accepted by the bcm reader, which also measures it,
  * and named by the detector, both on a view that starts at the candidate.
@@ -23,26 +16,12 @@
 #include "../xx_format_extractor_engine.h"
 #include "xxfclib/formats/bcm/xx_bcm.h"
 
-static const uint8_t k_anchor0[] = { 0x42, 0x43, 0x4D, 0x31 };
-static const uint8_t k_anchor1[] = { 0x42, 0x43, 0x4D, 0x32 };
-static const uint8_t k_anchor2[] = { 0x42, 0x43, 0x4D, 0x33 };
-static const uint8_t k_anchor3[] = { 0x42, 0x43, 0x4D, 0x34 };
-static const uint8_t k_anchor4[] = { 0x42, 0x43, 0x4D, 0x35 };
-static const uint8_t k_anchor5[] = { 0x42, 0x43, 0x4D, 0x36 };
-static const uint8_t k_anchor6[] = { 0x42, 0x43, 0x4D, 0x37 };
-static const uint8_t k_anchor7[] = { 0x42, 0x43, 0x4D, 0x38 };
-static const uint8_t k_anchor8[] = { 0x42, 0x43, 0x4D, 0x39 };
+static const uint8_t k_anchor0[] = { 0x42, 0x43, 0x4D, 0x21 };
+static const uint8_t k_anchor1[] = { 0x42, 0x43, 0x4D, 0x31 };
 
 static const xx_format_search_anchor k_anchors[] = {
     { k_anchor0, sizeof(k_anchor0), 0U },
     { k_anchor1, sizeof(k_anchor1), 0U },
-    { k_anchor2, sizeof(k_anchor2), 0U },
-    { k_anchor3, sizeof(k_anchor3), 0U },
-    { k_anchor4, sizeof(k_anchor4), 0U },
-    { k_anchor5, sizeof(k_anchor5), 0U },
-    { k_anchor6, sizeof(k_anchor6), 0U },
-    { k_anchor7, sizeof(k_anchor7), 0U },
-    { k_anchor8, sizeof(k_anchor8), 0U },
 };
 
 static const xx_file_type_t k_types[] = { XX_FILE_TYPE_BCM };

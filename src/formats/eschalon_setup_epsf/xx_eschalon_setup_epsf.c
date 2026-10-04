@@ -523,15 +523,16 @@ static bool epsf_stem_is(const char *name, size_t stem, const char *word) {
     return word[stem] == 0;
 }
 
-/* Ported from xx_xpak.c's xpak_safe_output_name (xxfclib, MIT). */
-static bool epsf_safe_output_name(const char *name) {
+/* One path component: printable ASCII, not only dots and spaces (so never
+ * "." or ".."), and not a Windows device name.  Ported from xx_xpak.c's
+ * xpak_safe_output_name (xxfclib, MIT). */
+static bool epsf_safe_component(const char *name, size_t length) {
     static const char *const devices[] = { "CON",    "PRN",     "AUX",
                                            "NUL",    "CONIN$",  "CONOUT$",
                                            "CLOCK$" };
-    size_t length, stem = 0U, index;
+    size_t stem = 0U, index;
     bool meaningful = false;
-    if (!name || !name[0]) return false;
-    length = xx_str_len(name);
+    if (length == 0U) return false;
     for (index = 0U; index < length; ++index) {
         char c = name[index];
         if ((unsigned char)c < 0x20U || (unsigned char)c > 0x7EU ||
@@ -552,6 +553,25 @@ static bool epsf_safe_output_name(const char *name) {
           epsf_upper(name[2]) == 'T')))
         return false;
     return true;
+}
+
+/* ARCV4 member names are relative paths: the reader turns "E:\SETUP\X.DLL"
+ * into "E_/SETUP/X.DLL".  '/' separates components; each component must be
+ * safe on its own, so no absolute path, empty component, "." or ".." and no
+ * device name can reach the file system. */
+static bool epsf_safe_output_name(const char *name) {
+    size_t start = 0U, index = 0U;
+    if (!name || !name[0]) return false;
+    for (;;) {
+        char c = name[index];
+        if (c == '/' || c == 0) {
+            if (!epsf_safe_component(name + start, index - start))
+                return false;
+            if (c == 0) return true;
+            start = index + 1U;
+        }
+        ++index;
+    }
 }
 
 static uint32_t epsf_node_height(const epsf_names *set, uint32_t node) {
@@ -641,7 +661,8 @@ static bool epsf_names_put(epsf_names *set, const char *name) {
     return true;
 }
 
-/* "NAME.EXT" -> "NAME_<n>.EXT"; the dot of a leading-dot name is kept. */
+/* "DIR/NAME.EXT" -> "DIR/NAME_<n>.EXT"; only the last path component's
+ * extension is looked at, and the dot of a leading-dot name is kept. */
 static char *epsf_suffixed(const char *name, uint32_t number) {
     char digits[16];
     size_t digit_count = 0U, length, dot, total, index, at = 0U;
@@ -654,6 +675,7 @@ static char *epsf_suffixed(const char *name, uint32_t number) {
     length = xx_str_len(name);
     dot = length;
     for (index = length; index > 1U; --index) {
+        if (name[index - 1U] == '/' || name[index - 2U] == '/') break;
         if (name[index - 1U] == '.') {
             dot = index - 1U;
             break;

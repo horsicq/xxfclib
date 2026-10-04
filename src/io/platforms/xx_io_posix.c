@@ -35,12 +35,14 @@
 #endif
 
 #include "xx_io_platform.h"
+#include "../xx_io_policy.h"
 
 #include "xxfclib/rt/xx_rt.h"
 #include <stdio.h>
 #include <stdlib.h>
 
 void* xx_io_platform_file_open(const char *path, const char *mode) {
+    if (!xx_io_policy_file_open_allowed(mode)) return NULL;
     if (!path || !mode) {
         return NULL;
     }
@@ -48,6 +50,7 @@ void* xx_io_platform_file_open(const char *path, const char *mode) {
 }
 
 void* xx_io_platform_temp_open(void) {
+    if (!xx_io_policy_mutation_allowed()) return NULL;
     return (void*)tmpfile();
 }
 
@@ -74,6 +77,7 @@ ssize_t xx_io_platform_file_read(void *handle, void *buf, size_t n) {
 }
 
 ssize_t xx_io_platform_file_write(void *handle, const void *buf, size_t n) {
+    if (!xx_io_policy_mutation_allowed()) return -1;
     if (!handle || !buf) {
         return -1;
     }
@@ -174,6 +178,7 @@ bool xx_io_platform_file_exists_w(const wchar_t *path) {
 }
 
 bool xx_io_platform_file_remove_a(const char *path) {
+    if (!xx_io_policy_mutation_allowed()) return false;
     return path && path[0] && unlink(path) == 0;
 }
 
@@ -186,6 +191,7 @@ bool xx_io_platform_file_remove_w(const wchar_t *path) {
 bool xx_io_platform_file_replace_a(const char *source,
                                    const char *destination,
                                    bool overwrite) {
+    if (!xx_io_policy_mutation_allowed()) return false;
     if (!source || !source[0] || !destination || !destination[0]) return false;
     if (overwrite) return rename(source, destination) == 0;
     if (link(source, destination) != 0) return false;
@@ -204,6 +210,7 @@ bool xx_io_platform_file_replace_w(const wchar_t *source,
 }
 
 bool xx_io_platform_create_dirs_a(const char *path, bool is_dir) {
+    if (!xx_io_policy_mutation_allowed()) return false;
     if (!path || !path[0]) {
         return false;
     }
@@ -301,6 +308,7 @@ bool xx_io_platform_create_dirs_w(const wchar_t *path, bool is_dir) {
 }
 
 bool xx_io_platform_apply_dos_time_and_attrs_a(const char *path, uint16_t dos_date, uint16_t dos_time, uint32_t attrs) {
+    if (!xx_io_policy_mutation_allowed()) return false;
     if (!path || !path[0]) {
         return false;
     }

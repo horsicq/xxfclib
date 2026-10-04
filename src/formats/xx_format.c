@@ -53,6 +53,18 @@
 #include "xxfclib/formats/xz/xx_xz.h"
 #else
 #include "xx_format_additional.h"
+#include "xxfclib/formats/ue2_documents/xx_ue2_documents.h"
+#include "xxfclib/formats/ue2_games/xx_ue2_games.h"
+#include "xxfclib/formats/chromium_pak/xx_chromium_pak.h"
+#include "xxfclib/formats/windows_thumbnail_cache/xx_windows_thumbnail_cache.h"
+#include "xxfclib/formats/enigma_virtual_box/xx_enigma_virtual_box.h"
+#include "xxfclib/formats/bitrock/xx_bitrock.h"
+#include "xxfclib/formats/smart_install_maker/xx_smart_install_maker.h"
+#include "xxfclib/formats/upx_engine/xx_upx_engine.h"
+#include "xxfclib/formats/molebox/xx_molebox.h"
+#include "xxfclib/formats/superdat/xx_superdat.h"
+#include "xxfclib/formats/excelsior/xx_excelsior.h"
+#include "xxfclib/formats/fead/xx_fead.h"
 #include "xxfclib/formats/bz2/xx_bz2.h"
 #include "xxfclib/formats/gz/xx_gz.h"
 #include "xxfclib/formats/jar/xx_jar.h"
@@ -205,6 +217,7 @@
 #include "xxfclib/formats/bigf/xx_bigf.h"
 #include "xxfclib/formats/ckp/xx_ckp.h"
 #include "xxfclib/formats/edp/xx_edp.h"
+#include "xxfclib/formats/sfx_inftool/xx_sfx_inftool.h"
 #include "xxfclib/formats/parsec_rib/xx_parsec_rib.h"
 #include "xxfclib/formats/parsec_archive/xx_parsec_archive.h"
 #include "xxfclib/formats/parsec_pmm/xx_parsec_pmm.h"
@@ -718,6 +731,32 @@
 #include "xxfclib/formats/pce_psi/xx_pce_psi.h"
 #include "xxfclib/formats/pc98_d88/xx_pc98_d88.h"
 #include "xxfclib/formats/hxc_mfm/xx_hxc_mfm.h"
+#include "xxfclib/formats/amiga_ext_adf/xx_amiga_ext_adf.h"
+#include "xxfclib/formats/amiga_old_ext_adf/xx_amiga_old_ext_adf.h"
+#include "xxfclib/formats/atari_dim/xx_atari_dim.h"
+#include "xxfclib/formats/atari_stt/xx_atari_stt.h"
+#include "xxfclib/formats/atari_stw/xx_atari_stw.h"
+#include "xxfclib/formats/discferret_dfi/xx_discferret_dfi.h"
+#include "xxfclib/formats/hxc_afi/xx_hxc_afi.h"
+#include "xxfclib/formats/hxc_qd/xx_hxc_qd.h"
+#include "xxfclib/formats/hxc_stream/xx_hxc_stream.h"
+#include "xxfclib/formats/svd/xx_svd.h"
+#include "xxfclib/formats/sdu/xx_sdu.h"
+#include "xxfclib/formats/fei/xx_fei.h"
+#include "xxfclib/formats/oric_dsk/xx_oric_dsk.h"
+#include "xxfclib/formats/ensoniq_gkh/xx_ensoniq_gkh.h"
+#include "xxfclib/formats/ensoniq_ede/xx_ensoniq_ede.h"
+#include "xxfclib/formats/samcoupe_sad/xx_samcoupe_sad.h"
+#include "xxfclib/formats/apple_nib/xx_apple_nib.h"
+#include "xxfclib/formats/ti99_pc99/xx_ti99_pc99.h"
+#include "xxfclib/formats/emax_disk/xx_emax_disk.h"
+#include "xxfclib/formats/emulatorii_eii/xx_emulatorii_eii.h"
+#include "xxfclib/formats/casio_fzf/xx_casio_fzf.h"
+#include "xxfclib/formats/vtr_disk/xx_vtr_disk.h"
+#include "xxfclib/formats/speccydos_sdd/xx_speccydos_sdd.h"
+#include "xxfclib/formats/hxc_raw_floppy/xx_hxc_raw_floppy.h"
+#include "xxfclib/formats/hxc_xml_disk_layout/xx_hxc_xml_disk_layout.h"
+
 #include "xxfclib/formats/yaze_ydsk/xx_yaze_ydsk.h"
 #include "xxfclib/formats/lammps_data/xx_lammps_data.h"
 #include "xxfclib/formats/lammps_dump/xx_lammps_dump.h"
@@ -6143,6 +6182,8 @@ static bool xx_format_is_iso9660_device(xx_io_device *device) {
 
 xx_file_type_t xx_format_get_parent_file_type(xx_file_type_t type) {
     switch (type) {
+        case XX_FILE_TYPE_SFX_INFTOOL:
+            return XX_FILE_TYPE_PE32;
         /* ZIP containers. */
         case XX_FILE_TYPE_ZIP64:
         case XX_FILE_TYPE_JAR:
@@ -6611,6 +6652,15 @@ static XX_FORMAT_NOINLINE bool xx_format_probe_sfx_softpaq4(xx_io_device *dev) {
     return valid;
 }
 
+static XX_FORMAT_NOINLINE bool xx_format_probe_sfx_inftool(xx_io_device *dev) {
+    xx_sfx_inftool reader;
+    bool valid;
+    xx_sfx_inftool_init(&reader, dev, 0);
+    valid = xx_sfx_inftool_check_is_valid(&reader.format, NULL);
+    xx_sfx_inftool_destroy(&reader);
+    return valid;
+}
+
 static bool xx_format_is_mlb_ft_device(xx_io_device *device) {
     xx_mlb_ft value;
     bool result;
@@ -6731,7 +6781,13 @@ static bool xx_format_is_installanywhere_unix_device(xx_io_device *device) {
     return result;
 }
 
+xx_file_type_t xx_format_gap_detect(xx_io_device *device);
+
+#ifndef XXFC_FORMAT_DETECTION_LZMA_XZ_ONLY
+static XX_FORMAT_NOINLINE xx_file_type_t xx_format_get_unpacked_file_type_device(xx_io_device *dev) {
+#else
 xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
+#endif
 #ifdef XXFC_FORMAT_DETECTION_LZMA_XZ_ONLY
     /* A codec-only build must not pull in every format reader through the
      * generic detector. Keep cursor preservation and real LZMA validation. */
@@ -6797,6 +6853,78 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
     if (!xx_format_read_probe_exact(dev, magic, magic_size)) {
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
         return XX_FILE_TYPE_BINARY;
+    }
+
+    {
+        xx_file_type_t document=xx_ue2_documents_detect_device(dev);
+        (void)xx_io_seek64(dev,orig_pos,SEEK_SET);
+        if(document!=XX_FILE_TYPE_UNKNOWN) return document;
+        document=xx_ue2_games_detect_device(dev,NULL);
+        (void)xx_io_seek64(dev,orig_pos,SEEK_SET);
+        if(document!=XX_FILE_TYPE_UNKNOWN) return document;
+        if(magic_size>=4 && (xx_rt_memcmp(magic,"CMMM",4)==0 ||
+           (magic[0]>=4 && magic[0]<=5 && !magic[1] && !magic[2] && !magic[3]))) {
+            Abstractformat *candidate=magic[0]=='C'?(Abstractformat *)xx_windows_thumbnail_cache_create(dev,0):(Abstractformat *)xx_chromium_pak_create(dev,0);
+            bool valid=candidate && candidate->check_is_valid(candidate,NULL);
+            document=candidate?candidate->file_type:XX_FILE_TYPE_UNKNOWN;
+            if(magic[0]=='C')xx_windows_thumbnail_cache_free((xx_windows_thumbnail_cache *)candidate);else xx_chromium_pak_free((xx_chromium_pak *)candidate);
+            (void)xx_io_seek64(dev,orig_pos,SEEK_SET);
+            if(valid)return document;
+        }
+        if(magic_size>=16 && !xx_rt_memcmp(magic,"\x30\x26\xb2\x75\x8e\x66\xcf\x11\xa6\xd9\x00\xaa\x00\x62\xce\x6c",16))return XX_FILE_TYPE_ASF;
+        if(magic_size>=8 && !xx_rt_memcmp(magic+4,"\x57\x90\x75\x36",4))return XX_FILE_TYPE_AUDIBLE_AA;
+        if(magic_size>=12 && !xx_rt_memcmp(magic,"ITOLITLS",8) && magic[8]==1 && !magic[9] && !magic[10] && !magic[11])return XX_FILE_TYPE_MICROSOFT_LIT;
+        if(magic_size>=8 && !xx_rt_memcmp(magic,"%PDF-",5) &&
+           magic[5]>='0' && magic[5]<='9' && magic[6]=='.' &&
+           magic[7]>='0' && magic[7]<='9')return XX_FILE_TYPE_PDF;
+        if(magic_size>=4&&!xx_rt_memcmp(magic,"DGCA",4)&&xx_io_total_size(dev)>=32)return XX_FILE_TYPE_DGCA;
+        {
+            xx_file_type_t installer=xx_excelsior_detect_device(dev,NULL);
+            (void)xx_io_seek64(dev,orig_pos,SEEK_SET);
+            if(installer!=XX_FILE_TYPE_UNKNOWN)return installer;
+        }
+        {
+            xx_file_type_t installer=xx_fead_detect_device(dev,NULL);
+            (void)xx_io_seek64(dev,orig_pos,SEEK_SET);
+            if(installer!=XX_FILE_TYPE_UNKNOWN)return installer;
+        }
+        if(xx_bitrock_has_candidate_device(dev,0)) {
+            xx_bitrock *r=xx_bitrock_create(dev,0);
+            bool valid=r && r->format.check_is_valid(&r->format,NULL);
+            xx_bitrock_free(r);
+            (void)xx_io_seek64(dev,orig_pos,SEEK_SET);
+            if(valid)return XX_FILE_TYPE_BITROCK;
+        }
+        if(xx_smart_install_maker_has_candidate_device(dev,0)) {
+            xx_smart_install_maker *r=xx_smart_install_maker_create(dev,0);
+            bool valid=r && ((Abstractformat *)r)->check_is_valid((Abstractformat *)r,NULL);
+            xx_smart_install_maker_free(r);
+            (void)xx_io_seek64(dev,orig_pos,SEEK_SET);
+            if(valid)return XX_FILE_TYPE_SMART_INSTALL_MAKER;
+        }
+        if(xx_superdat_has_candidate_device(dev,0)) {
+            xx_superdat *r=xx_superdat_create(dev,0);
+            bool valid=r && r->format.check_is_valid(&r->format,NULL);
+            xx_superdat_free(r);
+            (void)xx_io_seek64(dev,orig_pos,SEEK_SET);
+            if(valid)return XX_FILE_TYPE_SUPERDAT;
+        }
+        if(xx_molebox_has_candidate_device(dev,0)) {
+            xx_molebox *r=xx_molebox_create(dev,0);
+            bool valid=r && r->format.check_is_valid(&r->format,NULL);
+            xx_molebox_free(r);
+            (void)xx_io_seek64(dev,orig_pos,SEEK_SET);
+            if(valid)return XX_FILE_TYPE_MOLEBOX;
+        }
+        if((magic_size>=2 && magic[0]=='M' && magic[1]=='Z') ||
+           (magic_size>=4 && !xx_rt_memcmp(magic,"EVB\0",4))) {
+            xx_enigma_virtual_box *r=xx_enigma_virtual_box_create(dev,0);
+            bool valid=r && r->format.check_is_valid(&r->format,NULL);xx_enigma_virtual_box_free(r);
+            (void)xx_io_seek64(dev,orig_pos,SEEK_SET);if(valid)return XX_FILE_TYPE_ENIGMA_VIRTUAL_BOX;
+        }
+        xx_file_type_t added=xx_format_gap_detect(dev);
+        (void)xx_io_seek64(dev,orig_pos,SEEK_SET);
+        if(added!=XX_FILE_TYPE_UNKNOWN) return added;
     }
 
     if (magic_size >= 4U && xx_rt_memcmp(magic, "RVZ\x01", 4U) == 0) {
@@ -6945,6 +7073,48 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
         if (valid) return XX_FILE_TYPE_WINDOWS_ANI;
     }
+
+    /* Distinct HxC image containers require framing validation. Headerless
+     * sector profiles are explicitly selected; size is not an identity. */
+#define XX_PROBE_HXC(stem, id) do { \
+        xx_##stem reader; bool valid; \
+        xx_##stem##_init(&reader, dev, 0); \
+        valid=xx_format_is_valid(&reader.format, NULL); \
+        xx_##stem##_destroy(&reader); \
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET); \
+        if(valid) return XX_FILE_TYPE_##id; \
+    } while(0)
+    if(magic_size>=8U && !xx_rt_memcmp(magic,"UAE-1ADF",8U)) XX_PROBE_HXC(amiga_ext_adf,AMIGA_EXT_ADF);
+    if(magic_size>=8U && !xx_rt_memcmp(magic,"UAE--ADF",8U)) XX_PROBE_HXC(amiga_old_ext_adf,AMIGA_OLD_EXT_ADF);
+    if(magic_size>=8U && (!xx_rt_memcmp(magic,"A2R2",4U) || !xx_rt_memcmp(magic,"A2R3",4U))) XX_PROBE_HXC(apple_a2r,APPLE_A2R);
+    if(magic_size>=2U && !xx_rt_memcmp(magic,"BB",2U)) XX_PROBE_HXC(atari_dim,ATARI_DIM);
+    if(magic_size>=4U && !xx_rt_memcmp(magic,"STEM",4U)) XX_PROBE_HXC(atari_stt,ATARI_STT);
+    if(magic_size>=4U && !xx_rt_memcmp(magic,"STW\0",4U)) XX_PROBE_HXC(atari_stw,ATARI_STW);
+    if(magic_size>=4U && (!xx_rt_memcmp(magic,"DFER",4U) || !xx_rt_memcmp(magic,"DFE2",4U))) XX_PROBE_HXC(discferret_dfi,DISCFERRET_DFI);
+    if(magic_size>=14U && !xx_rt_memcmp(magic,"AFI_FLOPPY_IMG",14U)) XX_PROBE_HXC(hxc_afi,HXC_AFI);
+    if(magic_size>=8U && !xx_rt_memcmp(magic,"HXCQDDRV",8U)) XX_PROBE_HXC(hxc_qd,HXC_QD);
+    if(magic_size>=4U && !xx_rt_memcmp(magic,"CHKH",4U)) XX_PROBE_HXC(hxc_stream,HXC_STREAM);
+    if(magic_size>=4U && (!xx_rt_memcmp(magic,"1.2\n",4U) || !xx_rt_memcmp(magic,"1.5\n",4U) ||
+        !xx_rt_memcmp(magic,"2.0\n",4U) || !xx_rt_memcmp(magic,"1.2\r",4U) ||
+        !xx_rt_memcmp(magic,"1.5\r",4U) || !xx_rt_memcmp(magic,"2.0\r",4U))) XX_PROBE_HXC(svd,SVD);
+    if(magic_size>=20U && !xx_rt_memcmp(magic,"SAB Diskette Utility",20U)) XX_PROBE_HXC(sdu,SDU);
+    if(magic_size>=8U && (!xx_rt_memcmp(magic,"MFM_DISK",8U) || !xx_rt_memcmp(magic,"ORICDISK",8U))) XX_PROBE_HXC(oric_dsk,ORIC_DSK);
+    if(magic_size>=6U && !xx_rt_memcmp(magic,"TDDFI\1",6U)) XX_PROBE_HXC(ensoniq_gkh,ENSONIQ_GKH);
+    if(magic_size>=2U && magic[0]==13U && magic[1]==10U) XX_PROBE_HXC(ensoniq_ede,ENSONIQ_EDE);
+    if(magic_size>=18U && !xx_rt_memcmp(magic,"Aley's disk backup",18U)) XX_PROBE_HXC(samcoupe_sad,SAMCOUPE_SAD);
+    if(magic_size>=13U && !xx_rt_memcmp(magic,"emaxutil v1.1",13U)) XX_PROBE_HXC(emax_disk,EMAX_DISK);
+    if(magic_size>=7U && !xx_rt_memcmp(magic,"VTrucco",7U)) XX_PROBE_HXC(vtr_disk,VTR_DISK);
+    if(magic_size>=5U && !xx_rt_memcmp(magic,"TRKY2",5U)) XX_PROBE_HXC(speccydos_sdd,SPECCYDOS_SDD);
+    if((total_size==35*6656 || total_size==40*6656) && (magic[0]&0x80U)) XX_PROBE_HXC(apple_nib,APPLE_NIB);
+    if(total_size==40*3253 || total_size==80*3253 || total_size==40*6872 || total_size==80*6872) XX_PROBE_HXC(ti99_pc99,TI99_PC99);
+    if(total_size>=25000 && total_size<=8500000 && total_size%25000==0) XX_PROBE_HXC(fei,FEI);
+    {
+        size_t i=0;
+        if(magic_size>=3U && magic[0]==0xefU && magic[1]==0xbbU && magic[2]==0xbfU) i=3;
+        while(i<magic_size && (magic[i]==' ' || magic[i]=='\t' || magic[i]=='\r' || magic[i]=='\n')) ++i;
+        if(i<magic_size && magic[i]=='<') XX_PROBE_HXC(hxc_xml_disk_layout,HXC_XML_DISK_LAYOUT);
+    }
+#undef XX_PROBE_HXC
 
     /* Validate each distinct DIE audio container before the broad detector.
      * Prefixes keep these bounded native probes off unrelated files. */
@@ -7134,7 +7304,7 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
                     ((magic[0] == 0xc7U && magic[1] == 0x71U) ||
                      (magic[0] == 0x71U && magic[1] == 0xc7U))) ||
                    /* Solaris ships its cpio archives inside a block-compressed
-                    * wrapper whose own header is "TL"; the cpio
+                    * wrapper whose own header is "ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€¦Ã‚Â¾TL"; the cpio
                     * stream only appears after inflating it. The reader knows
                     * that container, so the prefilter has to let it through. */
                    (magic_size >= 4 &&
@@ -7284,7 +7454,10 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
     bool is_xorarchive = xx_xorarchive_test_magic(magic, magic_size);
     bool is_mwave = (magic_size >= 24U && magic[0] == 0x1fU && magic[1] == 0x9dU && magic[6] == 0x20U && magic[7] == 0x00U && magic[20] == 0U && magic[21] == 0U && magic[22] == 0U && (magic[23] & 0x60U) == 0U && (magic[23] & 0x1fU) >= 9U && (magic[23] & 0x1fU) <= 16U);
     bool is_finear = (magic_size >= 17U && xx_rt_memcmp(magic, "FINEAR", 6U) == 0 && magic[6] == 0xddU && magic[7] == 0x88U && magic[8] == 0xddU);
-    bool is_gst = (magic_size >= 32U && magic[0] == 0xe9U && magic[1] == 0xc8U && (magic[7] == 0x00U || magic[7] == 0x01U));
+    bool is_gst = (magic_size >= 32U &&
+                   ((magic[0] == 0xe9U && magic[1] == 0xc8U) ||
+                    (magic[0] == 0xeaU && magic[1] == 0xc9U)) &&
+                   (magic[7] == 0x00U || magic[7] == 0x01U));
     bool is_winlink = (magic_size >= 24U && magic[0] == 0x02U && magic[1] == 0x00U && magic[2] == 0x00U && magic[20] == 0xFFU && magic[21] == 0xFFU && magic[22] == 0xFFU && magic[23] == 0xFFU);
     bool is_ftcomp = (magic_size >= 31U && magic[0] == 0xA5U && magic[1] == 0x96U && magic[2] == 0xFDU && magic[3] == 0xFFU && xx_rt_memcmp(magic + 24, "FTCOMP", 6U) == 0);
     bool is_gpfpack = (magic_size >= 14U && magic[0] == 0xC0U && magic[1] == 0U && magic[2] == 0U && magic[3] == 0U && xx_rt_memcmp(magic + 4, "GPFPACK", 7U) == 0 && magic[12] == 0x01U && magic[13] == 0x00U);
@@ -7673,7 +7846,7 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
     bool is_lpaq8 = magic_size >= 4 && magic[0] == 'p' && magic[1] == 'Q' &&
                     magic[2] == 0x08U && magic[3] >= '0' && magic[3] <= '9';
     bool is_bcm = magic_size >= 4 && xx_rt_memcmp(magic, "BCM", 3U) == 0 &&
-                  magic[3] >= '1' && magic[3] <= '9';
+                  (magic[3] == '!' || magic[3] == '1');
     bool is_lzip = xx_lzip_has_header(magic, magic_size);
     bool is_lzma_alone = xx_lzma_alone_has_header(magic, magic_size);
     bool is_lzop = xx_lzop_has_header(magic, magic_size);
@@ -7992,6 +8165,11 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         bool valid = xx_format_probe_sfx_abbyy_fine_objects(dev);
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
         if (valid) return XX_FILE_TYPE_SFX_ABBYY_FINE_OBJECTS;
+    }
+    if (is_mz) {
+        bool valid = xx_format_probe_sfx_inftool(dev);
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+        if (valid) return XX_FILE_TYPE_SFX_INFTOOL;
     }
     if (is_mz) {
         bool valid = xx_format_probe_sfx_flashjester_jugglor(dev);
@@ -10203,6 +10381,13 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
     }
     if (is_shar) {
+        xx_makeself makeself;
+        bool valid_makeself;
+        xx_makeself_init(&makeself, dev, 0);
+        valid_makeself = xx_makeself_check_is_valid(&makeself.format, NULL);
+        xx_makeself_destroy(&makeself);
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+        if (valid_makeself) return XX_FILE_TYPE_MAKESELF;
         if (xx_format_is_shar_device(dev)) {
             (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
             return XX_FILE_TYPE_SHAR;
@@ -11405,6 +11590,25 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
 #endif /* XXFC_FORMAT_DETECTION_LZMA_XZ_ONLY */
 }
 
+#ifndef XXFC_FORMAT_DETECTION_LZMA_XZ_ONLY
+XX_FORMAT_NOINLINE xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
+    int64_t size;
+    xx_file_type_t packed;
+    if (!dev) return XX_FILE_TYPE_UNKNOWN;
+    size = xx_io_total_size(dev);
+    if (size <= 0) return XX_FILE_TYPE_UNKNOWN;
+    if (size < 4) return XX_FILE_TYPE_BINARY;
+    /* Run the bounded helper before the broad detector allocates its legacy
+     * reader frame. Both functions stay separate even under link-time inlining.
+     * Damaged packed carriers retain their type and cannot expose raw sections. */
+    if (xx_upx_has_marker_device(dev, NULL)) {
+        packed = xx_upx_detect_device(dev, NULL);
+        return packed != XX_FILE_TYPE_UNKNOWN ? packed : XX_FILE_TYPE_UPX;
+    }
+    return xx_format_get_unpacked_file_type_device(dev);
+}
+#endif
+
 xx_file_type_t xx_format_get_file_type(Abstractformat *fmt) {
     if (!fmt) {
         return XX_FILE_TYPE_UNKNOWN;
@@ -11712,7 +11916,14 @@ xx_archive_record_state *xx_format_create_archive_records_reading(Abstractformat
     if (!xx_format_handle_split_format(f, pd)) {
         return NULL;
     }
-    if (!f->base_info_handled) {
+    /* These readers parse their index under the reading operation's memory
+     * limit. Explicit INFO and detection retain their normal default budget. */
+    if (!f->base_info_handled &&
+        !(f->create_archive_records_reading &&
+          (f->file_type == XX_FILE_TYPE_SUPERDAT ||
+           f->file_type == XX_FILE_TYPE_EXCELSIOR_INSTALLER ||
+           f->file_type == XX_FILE_TYPE_NETOPSYSTEMS_FEAD ||
+           f->file_type == XX_FILE_TYPE_DGCA))) {
         xx_format_handle_base_info(f, pd);
     }
     if (f->create_archive_records_reading) {
@@ -11895,6 +12106,34 @@ const char *xx_data_struct_type_to_string(xx_data_struct_type_t type) {
 
 const char *xx_format_file_type_to_string(xx_file_type_t type) {
     switch (type) {
+        case XX_FILE_TYPE_GNU_GETTEXT_MO: return "GNU gettext message catalog";
+        case XX_FILE_TYPE_QT_QM: return "Qt compiled message catalog";
+        case XX_FILE_TYPE_MIME_MESSAGE: return "MIME email / HTML archive";
+        case XX_FILE_TYPE_WINDOWS_HELP: return "Windows Help internal filesystem";
+        case XX_FILE_TYPE_MICROSOFT_LIT: return "Microsoft Reader LIT";
+        case XX_FILE_TYPE_BRUNS_MEDIA: return "Bruns encrypted media";
+        case XX_FILE_TYPE_GAME_ARCHIVE: return "GARbro game archive";
+        case XX_FILE_TYPE_RPG_MAKER_MV: return "RPG Maker MV encrypted media";
+        case XX_FILE_TYPE_UTAGE_MEDIA: return "UTAGE encrypted media";
+        case XX_FILE_TYPE_YCG_IMAGE: return "YU-RIS YCG image";
+        case XX_FILE_TYPE_UNREAL_PAK: return "Unreal Engine PAK";
+        case XX_FILE_TYPE_FALLOUT_DAT: return "Fallout DAT";
+        case XX_FILE_TYPE_LIVE_MAKER_GAL: return "LiveMaker GAL layered image";
+        case XX_FILE_TYPE_SMILE_GAME_PACK: return "Smile Game Builder pack";
+        case XX_FILE_TYPE_CHROMIUM_PAK: return "Chromium DataPack";
+        case XX_FILE_TYPE_WINDOWS_THUMBNAIL_CACHE: return "Windows thumbnail cache";
+        case XX_FILE_TYPE_ENIGMA_VIRTUAL_BOX: return "Enigma Virtual Box filesystem";
+        case XX_FILE_TYPE_BITROCK: return "BitRock CookFS installer";
+        case XX_FILE_TYPE_SMART_INSTALL_MAKER: return "Smart Install Maker installer";
+        case XX_FILE_TYPE_UPX: return "UPX packed executable";
+        case XX_FILE_TYPE_MOLEBOX: return "MoleBox SVFS package";
+        case XX_FILE_TYPE_EXCELSIOR_INSTALLER: return "Excelsior Installer";
+        case XX_FILE_TYPE_NETOPSYSTEMS_FEAD: return "Netopsystems FEAD installer";
+        case XX_FILE_TYPE_DGCA: return "DGCA archive";
+        case XX_FILE_TYPE_SUPERDAT: return "SuperDAT update archive";
+        case XX_FILE_TYPE_ASF: return "ASF / Windows Media";
+        case XX_FILE_TYPE_AUDIBLE_AA: return "Audible AA audio";
+#include "xx_format_gap_type_strings.inc"
         case XX_FILE_TYPE_BZIP1: return "BZIP1";
         case XX_FILE_TYPE_FREEZE: return "Freeze";
         case XX_FILE_TYPE_LPAK: return "LPAK";
@@ -12990,7 +13229,35 @@ const char *xx_format_file_type_to_string(xx_file_type_t type) {
         case XX_FILE_TYPE_PARSEC_PMM: return "Parsec PSM 2.00 music module";
         case XX_FILE_TYPE_MACHOFAT: return "MACHOFAT";
         case XX_FILE_TYPE_CFBF: return "CFBF";
+        case XX_FILE_TYPE_NUMBERED_SPLIT: return "Numbered split file";
         case XX_FILE_TYPE_PDF: return "PDF";
+        case XX_FILE_TYPE_SFX_INFTOOL: return "sfx inftool";
+        case XX_FILE_TYPE_AMIGA_EXT_ADF: return "amiga ext adf";
+        case XX_FILE_TYPE_AMIGA_OLD_EXT_ADF: return "amiga old ext adf";
+        case XX_FILE_TYPE_ATARI_DIM: return "atari dim";
+        case XX_FILE_TYPE_ATARI_STT: return "atari stt";
+        case XX_FILE_TYPE_ATARI_STW: return "atari stw";
+        case XX_FILE_TYPE_DISCFERRET_DFI: return "discferret dfi";
+        case XX_FILE_TYPE_HXC_AFI: return "hxc afi";
+        case XX_FILE_TYPE_HXC_QD: return "hxc qd";
+        case XX_FILE_TYPE_HXC_STREAM: return "hxc stream";
+        case XX_FILE_TYPE_SVD: return "svd";
+        case XX_FILE_TYPE_SDU: return "sdu";
+        case XX_FILE_TYPE_FEI: return "fei";
+        case XX_FILE_TYPE_ORIC_DSK: return "oric dsk";
+        case XX_FILE_TYPE_ENSONIQ_GKH: return "ensoniq gkh";
+        case XX_FILE_TYPE_ENSONIQ_EDE: return "ensoniq ede";
+        case XX_FILE_TYPE_SAMCOUPE_SAD: return "samcoupe sad";
+        case XX_FILE_TYPE_APPLE_NIB: return "apple nib";
+        case XX_FILE_TYPE_TI99_PC99: return "ti99 pc99";
+        case XX_FILE_TYPE_EMAX_DISK: return "emax disk";
+        case XX_FILE_TYPE_EMULATORII_EII: return "emulatorii eii";
+        case XX_FILE_TYPE_CASIO_FZF: return "casio fzf";
+        case XX_FILE_TYPE_VTR_DISK: return "vtr disk";
+        case XX_FILE_TYPE_SPECCYDOS_SDD: return "speccydos sdd";
+        case XX_FILE_TYPE_HXC_RAW_FLOPPY: return "hxc raw floppy";
+        case XX_FILE_TYPE_HXC_XML_DISK_LAYOUT: return "hxc xml disk layout";
+
         case XX_FILE_TYPE_PTERO_BIGF: return "Ptero-Engine BIGF/ZBL archive";
         case XX_FILE_TYPE_RVZ: return "Dolphin RVZ GameCube image";
 #define XX_DIE_MUSIC_TYPE_NAME(type, name) case type: return name;

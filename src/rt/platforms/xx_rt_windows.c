@@ -15,6 +15,7 @@
 
 #include "xxfclib/rt/xx_rt.h"
 #include "xx_rt_platform.h"
+#include "../../io/xx_io_policy.h"
 
 #include <windows.h>
 
@@ -100,6 +101,10 @@ void *xx_rt_stderr(void)
 
 int xx_rt_platform_write_stream(void *pStream, const char *pData, size_t nSize)
 {
+    /* Diagnostic stdout/stderr remain available; archive workspace writes do
+     * not, including legacy handles opened before the test scope. */
+    if (pStream != xx_rt_stdout() && pStream != xx_rt_stderr() &&
+        !xx_io_policy_mutation_allowed()) return -1;
     DWORD nWritten = 0;
 
     if ((pStream == NULL) || (pStream == INVALID_HANDLE_VALUE) || (nSize == 0)) {
@@ -115,6 +120,7 @@ int xx_rt_platform_write_stream(void *pStream, const char *pData, size_t nSize)
 
 void *xx_rt_fopen(const char *pFileName, const char *pMode)
 {
+    if (!xx_io_policy_file_open_allowed(pMode)) return NULL;
     int bWrite = ((pMode != NULL) && ((pMode[0] == 'w') || (pMode[0] == 'a'))) ? 1 : 0;
     WCHAR *pWide = xx_rt_utf8_to_utf16(pFileName);
     HANDLE hFile = INVALID_HANDLE_VALUE;
@@ -146,6 +152,7 @@ int xx_rt_fclose(void *pFile)
 
 int xx_rt_remove(const char *pFileName)
 {
+    if (!xx_io_policy_mutation_allowed()) return -1;
     WCHAR *pWide = xx_rt_utf8_to_utf16(pFileName);
     int nResult;
 

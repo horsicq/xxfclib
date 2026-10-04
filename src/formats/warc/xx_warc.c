@@ -414,6 +414,13 @@ static bool warc_parse_record(Abstractformat *format, int64_t relative_offset,
     member->data_size = data_size;
     member->type = warc_eq_ci(type, type_size, "response") ? 1U :
                    (warc_eq_ci(type, type_size, "resource") ? 2U : 0U);
+    /* WARC/1.0 writers (wget, early Heritrix) wrap WARC-Target-URI in angle
+     * brackets as in the 1.0 ABNF; WARC/1.1 dropped them.  Accept both. */
+    if (target && target_size >= 2U && target[0] == '<' &&
+        target[target_size - 1U] == '>') {
+        ++target;
+        target_size -= 2U;
+    }
     if (member->type != 0U && target &&
         warc_safe_uri_name(target, target_size, &member->name))
         *visible = true;

@@ -902,14 +902,15 @@ static bool iz_set_record(xx_archive_record *record, const iz_record *item) {
 
 /* Lift the block-data chunk tags back out of a framed member. */
 static bool iz_deframe(Abstractformat *format, const iz_record *item,
-                       uint8_t *out) {
+                       uint8_t *out, xx_pd_struct *pd) {
+    uint8_t discard[65536];
     int64_t cursor = item->stream_offset;
     int64_t end = item->stream_offset + item->stream_size;
     int64_t left = item->unpacked_size;
     while (left > 0) {
         uint8_t tag;
         int64_t chunk;
-        if (cursor >= end) return false;
+        if ((pd && xx_pd_is_stopped(pd)) || cursor >= end) return false;
         if (!iz_read_at(format->device, cursor, &tag, 1)) return false;
         ++cursor;
         if (tag == IZ_TC_BLOCKDATALONG) {
@@ -932,12 +933,18 @@ static bool iz_deframe(Abstractformat *format, const iz_record *item,
         }
         if (chunk <= 0) return false;
         if (chunk > left) chunk = left;
-        if (cursor + chunk > end ||
-            !iz_read_at(format->device, cursor, out, (size_t)chunk))
-            return false;
-        cursor += chunk;
-        out += chunk;
+        if (cursor + chunk > end) return false;
         left -= chunk;
+        while (chunk > 0) {
+            size_t amount = chunk < (int64_t)sizeof(discard) ?
+                                (size_t)chunk : sizeof(discard);
+            if ((pd && xx_pd_is_stopped(pd)) ||
+                !iz_read_at(format->device, cursor, out ? out : discard, amount))
+                return false;
+            cursor += (int64_t)amount;
+            if (out) out += amount;
+            chunk -= (int64_t)amount;
+        }
     }
     return true;
 }
@@ -1119,7 +1126,9 @@ bool xx_izpack_unpack_current_archive_record(Abstractformat *format,
     item = &stream->items[stream->index];
     if (!iz_safe_output_name(item->name)) return false;
     path_option = iz_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option) return true; /* A dry run: the member is addressable. */
+    if (!path_option)
+        return item->folder || !item->framed ||
+               iz_deframe(format, item, NULL, pd);
     if (path_option->type == XX_VAR_TYPE_STRING ||
         path_option->type == XX_VAR_TYPE_STRING_VIEW)
         base = xx_var_get_str(path_option);
@@ -1149,7 +1158,7 @@ bool xx_izpack_unpack_current_archive_record(Abstractformat *format,
     plain = (uint8_t *)xx_mem_alloc(item->unpacked_size
                                         ? (size_t)item->unpacked_size
                                         : 1U);
-    if (!plain || !iz_deframe(format, item, plain)) goto done;
+    if (!plain || !iz_deframe(format, item, plain, pd)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");
         size_t total = (size_t)item->unpacked_size;

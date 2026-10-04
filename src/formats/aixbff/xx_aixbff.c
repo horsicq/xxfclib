@@ -20,6 +20,7 @@
 #define XX_BFF_MAGIC_STORED 0xea6bU
 #define XX_BFF_MAGIC_PACKED 0xea6cU
 #define XX_BFF_RECORD_MEMBER 0x0bU
+#define XX_BFF_RECORD_MEMBER_LEGACY 0x09U
 #define XX_BFF_RECORD_MEMBER_COMPACT 0x0cU
 #define XX_BFF_RECORD_TERMINATOR 0x07U
 #define XX_BFF_MODE_MASK UINT32_C(0xf000)
@@ -100,6 +101,8 @@ static bool xx_bff_name_valid(const uint8_t *name, size_t size) {
     return true;
 }
 
+static bool xx_bff_safe_name(const char *name);
+
 static bool xx_bff_parse(Abstractformat *format, xx_bff_stream **result) {
     uint8_t volume[XX_BFF_VOLUME_HEADER_SIZE];
     xx_bff_stream *stream;
@@ -153,11 +156,15 @@ static bool xx_bff_parse(Abstractformat *format, xx_bff_stream **result) {
             return true;
         }
         if ((type != XX_BFF_RECORD_MEMBER &&
-             type != XX_BFF_RECORD_MEMBER_COMPACT) || words < 9U ||
+             type != XX_BFF_RECORD_MEMBER_LEGACY &&
+             type != XX_BFF_RECORD_MEMBER_COMPACT) ||
+            words < (type == XX_BFF_RECORD_MEMBER_LEGACY ? 7U : 9U) ||
             (type == XX_BFF_RECORD_MEMBER_COMPACT && words < 10U)) goto fail;
         name_area = (int64_t)words * 8;
-        fixed_header_size = type == XX_BFF_RECORD_MEMBER_COMPACT
-                                ? 0x48U : XX_BFF_FIXED_HEADER_SIZE;
+        fixed_header_size = type == XX_BFF_RECORD_MEMBER_LEGACY
+                                ? 0x30U
+                                : (type == XX_BFF_RECORD_MEMBER_COMPACT
+                                       ? 0x48U : XX_BFF_FIXED_HEADER_SIZE);
         /* Type 0x0c carries the data length within its fixed header and has
          * no 40-byte trailer. Most type 0x0b records retain that trailer. */
         header_size = name_area +
@@ -198,21 +205,50 @@ static bool xx_bff_parse(Abstractformat *format, xx_bff_stream **result) {
         }
         xx_mem_copy(member->name, header + fixed_header_size, name_size);
         member->name[name_size] = '\0';
+        /* By-name backups can retain an absolute Unix path. Publish it
+         * relative to the extraction root, removing precisely one slash;
+         * doubled roots, traversal and Windows drive paths still fail. */
+        if (member->name[0] == '/') {
+            size_t character;
+            for (character = 0U; character < name_size; ++character)
+                member->name[character] = member->name[character + 1U];
+        }
+        if (!xx_bff_safe_name(member->name)) {
+            xx_str_free(member->name);
+            member->name = NULL;
+            xx_mem_free(header);
+            goto fail;
+        }
         member->header_offset = format->base_address + offset;
         member->magic = magic;
-        member->mode = xx_bff_u32(header + 0x0cU);
-        member->original_size = xx_bff_u32(header + 0x18U);
-        member->atime = xx_bff_u32(header + 0x1cU);
-        member->mtime = xx_bff_u32(header + 0x20U);
-        member->ctime = xx_bff_u32(header + 0x24U);
-        member->packed_size = xx_bff_u32(
-            header + (type == XX_BFF_RECORD_MEMBER ? 0x38U : 0x30U));
+        if (type == XX_BFF_RECORD_MEMBER_LEGACY) {
+            /* AIX dumprestor.h FS_NAME uses the older 16-bit inode/mode/
+             * ownership fields and has no ACL/PCL security trailer. */
+            member->mode = xx_bff_u16(header + 0x08U);
+            member->original_size = xx_bff_u32(header + 0x10U);
+            member->atime = xx_bff_u32(header + 0x14U);
+            member->mtime = xx_bff_u32(header + 0x18U);
+            member->ctime = xx_bff_u32(header + 0x1cU);
+            member->packed_size = xx_bff_u32(header + 0x28U);
+        } else {
+            member->mode = xx_bff_u32(header + 0x0cU);
+            member->original_size = xx_bff_u32(header + 0x18U);
+            member->atime = xx_bff_u32(header + 0x1cU);
+            member->mtime = xx_bff_u32(header + 0x20U);
+            member->ctime = xx_bff_u32(header + 0x24U);
+            member->packed_size = xx_bff_u32(
+                header + (type == XX_BFF_RECORD_MEMBER ? 0x38U : 0x30U));
+        }
         kind = member->mode & XX_BFF_MODE_MASK;
         member->folder = kind == XX_BFF_MODE_DIRECTORY;
         /* A by-name symlink stores its target as ordinary payload. Legacy
          * type 0x0b symlinks omit the trailer used by regular files. */
         if (kind == XX_BFF_MODE_SYMLINK &&
             type == XX_BFF_RECORD_MEMBER) header_size = name_area;
+        /* IBM's by-name writer writes size bytes from readlink(), without
+         * packing or a security trailer. dsize can retain stale stat data. */
+        if (kind == XX_BFF_MODE_SYMLINK && magic == XX_BFF_MAGIC_STORED)
+            member->packed_size = member->original_size;
         member->header_size = header_size;
         member->data_offset = member->header_offset + header_size;
         if (header_size > relative_size - offset) {

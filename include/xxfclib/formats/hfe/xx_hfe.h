@@ -11,6 +11,10 @@ typedef struct xx_hfe {
     Abstractformat format;
     uint64_t number_of_records;
     int64_t archive_end;
+    /* Amiga sector conversion can recover a complete prefix while trailing
+     * raw cylinders contain no supported sectors. It does not fill them. */
+    uint32_t recovered_cylinders;
+    bool incomplete_tracks;
 } xx_hfe;
 
 XXFC_API void xx_hfe_init(xx_hfe *archive, xx_io_device *device,

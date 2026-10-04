@@ -88,6 +88,10 @@ XXFC_API const xx_archive_record *xx_prodos_get_current_archive_record(
     Abstractformat *self, xx_archive_record_state *state);
 XXFC_API bool xx_prodos_unpack_current_archive_record(
     Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+/** Stream a validated fork to a caller-owned device, or verify with NULL.
+ * No filesystem path or temporary file is used. */
+XXFC_API bool xx_prodos_extract_record_to_device(Abstractformat *self,
+    xx_archive_record_state *state, xx_io_device *destination, xx_pd_struct *pd);
 XXFC_API bool xx_prodos_archive_record_move_to_next(
     Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 XXFC_API void xx_prodos_free_archive_records_reading(

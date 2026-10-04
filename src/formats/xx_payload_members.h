@@ -13,7 +13,21 @@
 #include <stdio.h>
 #include <limits.h>
 
-typedef struct pm_member { char name[96]; int64_t offset, size, packed_size; uint8_t *memory; } pm_member;
+typedef struct pm_member {
+    char name[96]; int64_t offset, size, packed_size; uint8_t *memory;
+    /* Optional recovered credential, owned independently of decoded data. */
+    char *password;
+    bool source_encrypted;
+    uint16_t compression_method;
+    /* Optional logical-image reader. This also runs for a NULL destination:
+     * validation must consume mapped, sparse or decoded bytes in memory. */
+    bool (*read_range)(Abstractformat *, struct pm_member *, uint64_t, void *, size_t, xx_pd_struct *);
+    void *context;
+    void (*free_context)(void *);
+    bool (*read_all)(Abstractformat *, struct pm_member *, xx_io_device *, xx_pd_struct *);
+    char *display_name;
+    bool directory;
+} pm_member;
 typedef struct pm_stream { pm_member *items; size_t count, capacity, index; int64_t size; } pm_stream;
 static bool pm_parse(Abstractformat *, pm_stream *, xx_pd_struct *);
 static uint16_t pm_le16(const uint8_t *p) { return (uint16_t)(p[0] | p[1]<<8); }
@@ -61,10 +75,22 @@ static bool pm_add(Abstractformat *f, pm_stream *s, const char *label, int64_t a
     }
     m->offset=f->base_address+at; m->size=m->packed_size=size; ++s->count; return true;
 }
+static void pm_free_password(void *p) {
+    char *password=(char *)p;
+    if(password) {
+        xx_mem_zero(password,xx_rt_strlen(password)+1U);
+        xx_mem_free(password);
+    }
+}
 static void pm_free_stream(void *p) {
     pm_stream *s=(pm_stream *)p; size_t i;
     if (!s) return;
-    for(i=0;i<s->count;++i) if(s->items[i].memory) xx_mem_free(s->items[i].memory);
+    for(i=0;i<s->count;++i) {
+        if(s->items[i].memory) xx_mem_free(s->items[i].memory);
+        if(s->items[i].free_context) s->items[i].free_context(s->items[i].context);
+        xx_mem_free(s->items[i].display_name);
+        pm_free_password(s->items[i].password);
+    }
     if(s->items) xx_mem_free(s->items); xx_mem_free(s);
 }
 static pm_stream *pm_open(Abstractformat *f, xx_pd_struct *pd) {
@@ -97,12 +123,24 @@ static bool pm_record(xx_archive_record_state *st) {
     xx_archive_record_cleanup(r); xx_archive_record_init(r);
     r->header_offset=st->format->base_address; r->header_size=0;
     r->data_offset=m->offset; r->compressed_size=m->packed_size;
-    return xx_archive_record_set_original_name(r,m->name) &&
+    if(!(xx_archive_record_set_original_name(r,m->display_name?m->display_name:m->name) &&
         xx_archive_record_set_meta_u64(r,XX_META_ID_COMPRESSED_SIZE,(uint64_t)m->packed_size) &&
         xx_archive_record_set_meta_u64(r,XX_META_ID_UNCOMPRESSED_SIZE,(uint64_t)m->size) &&
-        xx_archive_record_set_meta_u64(r,XX_META_ID_COMPRESSION_METHOD,0) &&
-        xx_archive_record_set_meta_bool(r,XX_META_ID_IS_FOLDER,false) &&
-        xx_archive_record_set_meta_bool(r,XX_META_ID_IS_ENCRYPTED,false);
+        xx_archive_record_set_meta_u64(r,XX_META_ID_COMPRESSION_METHOD,m->compression_method) &&
+        xx_archive_record_set_meta_bool(r,XX_META_ID_IS_FOLDER,m->directory) &&
+        xx_archive_record_set_meta_bool(r,XX_META_ID_IS_ENCRYPTED,m->source_encrypted))) return false;
+    if(m->password) {
+        xx_meta recovered;
+        xx_meta_init(&recovered,XX_META_ID_PASSWORD);
+        if(!xx_var_set_str(&recovered.var,m->password)) return false;
+        /* The record owns its copy; neither iterator movement nor stream
+         * destruction leaves metadata pointing into a credential buffer. */
+        recovered.var.free_fn=pm_free_password;
+        if(!xx_list_append(&r->list_meta,&recovered)) {
+            xx_meta_cleanup(&recovered); return false;
+        }
+    }
+    return true;
 }
 static xx_archive_record_state *pm_create_records(Abstractformat *f, const xx_list_s *opts, xx_pd_struct *pd) {
     pm_stream *s=pm_open(f,pd); xx_archive_record_state *st; size_t i;
@@ -181,8 +219,9 @@ static bool pm_unpack(Abstractformat *f, xx_archive_record_state *st, xx_pd_stru
         if(v->type==XX_VAR_TYPE_STRING || v->type==XX_VAR_TYPE_STRING_VIEW) base=xx_var_get_str(v);
         else if(v->type==XX_VAR_TYPE_WSTRING || v->type==XX_VAR_TYPE_WSTRING_VIEW) base=owned=xx_str_unicode_to_utf8(xx_var_get_wstr(v));
         if(!base) goto done;
-        path=base[0] ? xx_str_concat3(base,"/",m->name) : xx_str_dup(m->name);
+        path=base[0] ? xx_str_concat3(base,"/",m->display_name?m->display_name:m->name) : xx_str_dup(m->display_name?m->display_name:m->name);
         if(!path || !xx_store_create_dirs_a(path,false)) goto done;
+        if(m->directory) { result=xx_store_create_dirs_a(path,true); goto done; }
         v=xx_format_resolve_extra_parameter(f,&st->options,XX_META_ID_OPT_OVERWRITE);
         overwrite=v && xx_var_get_bool(v);
         if((!overwrite && xx_io_file_exists_a(path)) ||
@@ -190,8 +229,10 @@ static bool pm_unpack(Abstractformat *f, xx_archive_record_state *st, xx_pd_stru
         output=pm_stage(path,&stage);
         if(!output) goto done;
     }
+    if(m->directory) { result=true; goto done; }
     cursor=xx_io_tell(f->device);
-    {
+    if(m->read_all) result=m->read_all(f,m,output,pd);
+    else {
         size_t capacity=xx_get_file_buffer_size();
         uint8_t *buffer=NULL; int64_t at=m->offset,left=m->size,position=0;
         if(!m->memory && left>0) buffer=(uint8_t *)xx_mem_alloc(capacity);
@@ -201,7 +242,9 @@ static bool pm_unpack(Abstractformat *f, xx_archive_record_state *st, xx_pd_stru
             const uint8_t *data=m->memory ? m->memory+(size_t)position : buffer;
             size_t written=0;
             if(pd && xx_pd_is_stopped(pd)) { result=false; break; }
-            if(!m->memory) {
+            if(m->read_range) {
+                if(!m->read_range(f,m,(uint64_t)position,buffer,n,pd)) { result=false; break; }
+            } else if(!m->memory) {
                 size_t received=0;
                 if(xx_io_seek64(f->device,at,SEEK_SET)!=0) { result=false; break; }
                 while(received<n) {
