@@ -1,0 +1,75 @@
+{
+  "reader": "BitRock InstallBuilder / old CookFS",
+  "file_type_id": 2763,
+  "implementation_license": "MIT",
+  "implementation": "Independent bounded C implementation of documented upstream page/footer/fsindex grammar; no installer input is executed.",
+  "primary_sources": [
+    {
+      "repository": "https://github.com/vpetrigo/bitrock-unpacker",
+      "commit": "fc680e2709d3bb6dccc04e3c5f196b379db27c47",
+      "license": "MIT",
+      "files": [
+        "bitrock_unpacker/cookfs.py",
+        "bitrock_unpacker/extract.py",
+        "LICENSE.md"
+      ]
+    },
+    {
+      "repository": "https://github.com/chpock/cookfs",
+      "commit": "95b4b6111a8f89f059496a5806d5ced5fb4b43d4",
+      "files": [
+        "scripts/pages.tcl",
+        "scripts/fsindex.tcl"
+      ],
+      "purpose": "Original CFS0002 page tables, MD5/CRC encoding and CFS2.200 recursive index serialization. No upstream Tcl source is compiled or distributed."
+    }
+  ],
+  "supported": [
+    "CFS0002 footer with CFS2.200 fsindex",
+    "Raw, raw Deflate, bzip2 with four-byte CookFS wrapper and LZMA-Alone pages/indexes",
+    "MD5 and CookFS CRC32/length page integrity",
+    "Recursive folders, UTF-8 filenames, empty files and page-slice file assembly",
+    "___bitrockBigFileN reconstruction, retaining orphan chunks rather than discarding payload",
+    "Opaque PE/ELF/shell prefixes, dist-endoffset markers, bounded signed/launcher tails and cookfsinfo.txt redirect"
+  ],
+  "limits": {
+    "page_compressed_bytes": 67108864,
+    "page_uncompressed_bytes": 67108864,
+    "index_compressed_bytes": 67108864,
+    "index_uncompressed_bytes": 67108864,
+    "metadata_bytes": 67108864,
+    "pages": 65535,
+    "members": 65535,
+    "blocks": 1000000,
+    "directory_depth": 64,
+    "ram_default_and_max_bytes": 268435456,
+    "full_reader_suffix_scan_tail_bytes": 16777216,
+    "candidate_gate_prefix_and_tail_bytes_each": 131072,
+    "suffix_candidates": 64,
+    "cookfsinfo_redirect_hops": 4,
+    "cookfsinfo_text_bytes": 65536
+  },
+  "limitations": [
+    "CFS0003/newer CookFS indexes are unsupported.",
+    "Encrypted/proprietary maui::util or custom codecs are rejected; no encrypted payload/password recovery is claimed.",
+    "Installer actions, links and executable rebuilding are not interpreted; actual indexed archive contents are returned.",
+    "No installer execution or host temporary writes. TEST decodes, checksums and validates all referenced page slices in RAM.",
+    "Fast auto-detection requires an EOF CFS0002 marker, a prefix dist-endoffset marker or a marker in the last 128 KiB; explicit reader validation searches the last 16 MiB.",
+    "RAM budget includes cached decoded pages and native decoder workspace estimates; archives larger than the configured budget fail explicitly."
+  ],
+  "validation": {
+    "checks": 249,
+    "fixtures": 69,
+    "failed": 0,
+    "reference": "Unmodified MIT Python upstream parser plus independent standard-library zlib/bz2/lzma producers.",
+    "byte_exact_extraction": true,
+    "all_page_index_codec_combinations": 16,
+    "memory_only_test": true,
+    "TEMP_TMP_regular_file_blocker": true,
+    "source_hash_unchanged": true,
+    "before_output_page_integrity": true,
+    "freestanding_O2_undefined_symbols": "xx_* API and expected __chkstk only, no CRT imports",
+    "portable_command": "python tests/uniextract_bitrock_regression.py --probe <uniextract_bitrock_probe> --work <build>/bitrock-regression",
+    "report": "F:/ownCloud_build/cxfileunpacker/uniextract-expansion/bitrock-regression/run-1791079364686399300/uniextract-bitrock-report.json"
+  }
+}

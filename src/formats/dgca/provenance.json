@@ -1,0 +1,109 @@
+{
+  "schema": 1,
+  "format": "DGCA",
+  "license": "MIT",
+  "implementation": "Independent C container, range probability models, LZP, BWT, plane transforms and password cipher",
+  "runtime_executables": [],
+  "runtime_libraries": [],
+  "original_producer_oracle": {
+    "version": "DGCAC 1.10",
+    "sha256": "9b8b4a8515bb29c75bdc380a1c1aef161fd13f316977d3ab50cfddaa41ad9e97",
+    "used_for": "Development interoperability experiments only",
+    "bundled": false,
+    "runtime_required": false
+  },
+  "algorithms": {
+    "SHA512": "https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf",
+    "password_encoding": "UTF-8",
+    "source_derived_from_proprietary_code": false
+  },
+  "verification": {
+    "native_checks": 1122,
+    "native_archive_cases": 383,
+    "original_fixture_variants": 6,
+    "reports": [
+      {
+        "report": "full-native-verification.json",
+        "sha256": "0e7d16201be76f7a8d5e77c817d1a54cde5a1f475ea334d53166583d249349e3"
+      },
+      {
+        "report": "codec-prototype-verification.json",
+        "sha256": "93d0627133f4b552a61fb7c9b803962a0f84c2f3f68e928331c43dad9f66e523"
+      },
+      {
+        "report": "cipher-primitive-verification.json",
+        "sha256": "579078b5235cab45bc36ec89863e6fabaf27d7336fdfc2a5e8b55c33c6c29ce4"
+      },
+      {
+        "report": "transform-verification.json",
+        "sha256": "13798ba5c12baeeb33c088feb7833b0ef5741e4a6dcac5e96fce651f8606cdea"
+      },
+      {
+        "report": "native-six-fixture-adapter-verification.json",
+        "sha256": "f0d767d1622120624852a3a30f25d9654da7e84bd52695bab57aabaf03ee268b"
+      },
+      {
+        "report": "container-review/container-review-results.json",
+        "sha256": "73b948ac5cd5ce0c4d4c49c06e71bac3f37e7e7cf5697b072359f9cb72e2ed20"
+      },
+      {
+        "report": "historical-native-verification.json",
+        "sha256": "005f413eb208ff068781852a6585c4e3a2c8460992548aecdc58e2bf0b1ba168"
+      },
+      {
+        "report": "adapter-lifecycle-regression.json",
+        "sha256": "7cf973ccfa295aa8d9168663141cf88725f81f849a16a1c06086db0593893568"
+      },
+      {
+        "report": "container-review/cache-review-results.json",
+        "sha256": "3c02c166dca0698786de4388646181dba9c086308a9dda9ec2bd677af90cb0e0"
+      },
+      {
+        "report": "container-review/protected-cache-review-results.json",
+        "sha256": "3ad40b3ddccf8187715c87205897d1abaabdb9e807ab847e6bd764bd46841f8d"
+      },
+      {
+        "report": "container-review/oracle-comparison/historical-original-oracle-comparison.json",
+        "sha256": "3079a64b2064795777e0629ce05e0c90ae57710be981f4a36be49b70ddb6a0ef"
+      }
+    ],
+    "historical_checks": 45,
+    "historical_original_archives": 4,
+    "adapter_lifecycle_checks": 958,
+    "cache_safety_controls": 29,
+    "cache_protected_page_runs": 13,
+    "historical_oracle_exact_file_payloads": 57,
+    "historical_oracle_exact_utf8_member_names": 58
+  },
+  "source_sha256": {
+    "xx_dgca_decode.c": "212f97c945898a48b1e89911c71f3a162c4982448f7cedfd8ed093542a7b3648",
+    "xx_dgca_payload.c": "ee30fd383f6577f0e091317b49e98e7d9d1f7c782d512bc8934f7f4a869dc36a",
+    "xx_dgca_entropy.c": "9d34a5de09ef8314d7376c05a64b3fc87ada1ebf512482ff0a8c8b73cee479be",
+    "xx_dgca_lzp.c": "9a906ac08853a2c1c633bec81ad8cb54977a5649adb5e52026fa2a020a70d111",
+    "xx_dgca_range.c": "d7953f05340c30d271819f07461e13f41bba149b5b24758df0f68b49c051295d",
+    "xx_dgca_cipher.c": "84d444a208d201697cb7b890e68162075ea7d463e1c303202ed7cb0ed2acd80b",
+    "xx_dgca_transform.c": "f249a648a8212ef3fb7c1e40f304f9cb1cf06badae707de1e440f4b305fc007c"
+  },
+  "limits": {
+    "default_memory_bytes": 268435456,
+    "maximum_members": 65535,
+    "maximum_utf8_password_bytes": 1024,
+    "supported_methods": [
+      0,
+      1,
+      2
+    ],
+    "unverified": [
+      "recovery archives",
+      "split volumes",
+      "key-file encryption",
+      "self-extracting wrapper discovery"
+    ],
+    "default_memory_scope": "Decoder retained member data, compressed block cache and workspace; record-state metadata and explicit extraction buffers are separate"
+  },
+  "archive_versions": [
+    " 001",
+    " 990",
+    " a90"
+  ]
+}

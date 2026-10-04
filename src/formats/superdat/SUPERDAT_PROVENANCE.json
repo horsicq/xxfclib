@@ -1,0 +1,22 @@
+{
+  "implementation": "Independent native reader; no upstream installer code or binaries are executed or linked.",
+  "primary_sources": [
+    "https://download.nai.com/products/licensed/superdat/english/manuals/sdt12wug.pdf",
+    "https://download.nai.com/products/licensed/superdat/engine/intel/4160/4160eng.exe",
+    "https://download.nai.com/products/licensed/superdat/english/intel/11924xdat.exe",
+    "https://download.nai.com/products/commonupdater/avvdat.ini"
+  ],
+  "fixtures": [
+    {"name":"4160eng.exe","size":2980421,"sha256":"332a0baafe73d84bc1f44efc2ca08d4729125a6a8ac2b067a220f90cad214130","members":18},
+    {"name":"11924xdat.exe","size":141615096,"sha256":"943ad2ec4ab61196eabd85997221b3bde77762f3ce1157abe1943a3b053de30b","members":27}
+  ],
+  "container": "One or more DEADBEEF groups, 288-byte __NAILZHUFLIB member headers, original-size prefix then standard adaptive LH1, 17-byte NAISIGN group trailers, 178-byte manifest records, _SUPERDAT_HEADER footer before an optional PE certificate.",
+  "crc32": {"polynomial":"0xEDB88320","init":0,"xorout":0,"reflected":true},
+  "verified_vendor_payload_md5": {
+    "avvclean.dat":"2a0f9805bb382e9068d352ade7ce225d",
+    "avvnames.dat":"5be722220a910ff8ea4c446805a05d29",
+    "avvscan.dat":"7bef38fd9c856122f3a99c7209eb26aa"
+  },
+  "limits": {"members":16384,"groups":8,"footer_search_bytes":65536,"decoder_workspace_bytes":32768},
+  "limitations": "Verified classic engine and modern resource-plus-payload LH1 generations only. Member filenames must be safe ASCII paths. Group NAISIGN checksum semantics have not been identified; per-member manifest CRCs are validated where present. Unsupported layouts and codecs fail explicitly. TEST decodes to a CRC sink without payload staging; extraction validates before creating a destination and streams a second pass."
+}

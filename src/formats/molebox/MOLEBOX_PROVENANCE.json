@@ -1,0 +1,62 @@
+{
+  "reader": "MoleBox SVFS/SPACK Win32 packages",
+  "file_type_id": 2766,
+  "implementation_license": "MIT for the independently implemented reader grammar; retained permissive license with no-endorsement clause for the private Blowfish implementation",
+  "implementation": "Static bounded SVFS package parsing and native stored/zlib/Blowfish-CBC decoding. Packaged executables and installers are never executed. GPL upstream writer/runtime source is used as grammar reference and retained separately as noncompiled test reference, not linked into the runtime reader.",
+  "primary_sources": [
+    {
+      "repository": "https://github.com/sudachen/Molebox",
+      "commit": "f526e8a41bcb7884231154e8e5ccb74c789f188d",
+      "upstream_license": "GPL-3.0",
+      "files": ["MxbPack/src/packager.cpp", "MxbPack/src/pebox.cpp", "MxbPack/makefile.mak", "Include/layout.h", "Core/src/svfs.cpp", "Core/classes/sources/blowfish.h"],
+      "purpose": "Original writer, catalog and runtime grammar; 32-bit serialized pointers, 52-byte nodes, encrypted 48-byte header, tree CRC32, 48-KiB block CRC16, MD5 mount keys and 15-byte Blowfish key schedule."
+    },
+    {
+      "repository": "https://github.com/sudachen/xternal",
+      "commit": "1cfcaacbdeca03cacc8f8d6ed8a51c8942ca277d",
+      "file": "libhash/src/blowfish.c",
+      "sha256_original": "1d235dd1d69d4eb1cdc53958c2a58b69733fab2c8c16b92b26caa6ce9fa18d4b",
+      "copyright": "(C)2010-2011 Alexey Sudachen, alexey@sudachen.name",
+      "license": "Permissive MIT-style grant plus copyright-holder no-endorsement clause; full original notice retained in molebox_blowfish.inc",
+      "adaptations": "Private names and context, runtime memcpy, const constants, explicit little-endian loads/stores instead of unaligned native word casts. Cipher rounds and key schedule retained."
+    }
+  ],
+  "supported": [
+    "Win32 SVFS/SPACK STELPACK package header and original writer tree layout",
+    "Standalone packages and packages referenced by an EOF MoleBox internal mount catalog",
+    "Stored and zlib-compressed 48-KiB blocks, with optional zero-IV Blowfish CBC and CRC16 verification",
+    "Public UTF-16LE filenames, directories, empty files and hidden-file payloads exported under stored MD5 path signatures",
+    "Default password, supplied plaintext password, supplied molebox-md5:<32hex> credential and actual recoverable embedded mount key",
+    "Current-password metadata uses a reusable embedded key credential; original plaintext is not recoverable from MD5",
+    "Cursor-preserving candidate probe and full password-aware detector; no temporary files in TEST"
+  ],
+  "limits": {
+    "packages": 64,
+    "catalog_bytes": 65536,
+    "tree_bytes_per_package": 16777216,
+    "owned_metadata_bytes": 67108864,
+    "members": 65535,
+    "blocks": 1000000,
+    "directory_depth": 64,
+    "block_bytes": 49152,
+    "default_memory_limit_bytes": 134217728,
+    "maximum_memory_limit_bytes": 268435456
+  },
+  "limitations": [
+    "Legacy MoleBox 2.x and other layouts without this verified SVFS/SPACK grammar are unsupported.",
+    "Original hidden names are absent from the format and cannot be reconstructed from path hashes; hidden payloads use stable hash names.",
+    "Standalone custom-password packages require a supplied password/key; header encryption prevents ordinary automatic detection without it.",
+    "Only internal packages present in the input are read. External mount packages and runtime mount-mask behavior are not recreated.",
+    "Original PE image reconstruction, virtual registry state and additional stream/registry blobs are not implemented.",
+    "Packages must end with the verified standalone header or mount catalog; unrelated data appended afterward is not scanned heuristically."
+  ],
+  "independent_proof": {
+    "producer": "Original upstream packager.cpp serialization and pebox.cpp catalog writer body compiled as Win32 with test RAM adapters, original xternal Blowfish and standard zlib compressed vectors",
+    "portable_reference": "CXFileUnpacker/tests/reference/molebox/PROVENANCE.json",
+    "frozen_vectors": "CXFileUnpacker/tests/uniextract_molebox_vectors.json",
+    "runner": "CXFileUnpacker/tests/uniextract_molebox_regression.py --probe <probe> --work <work> [--cli <xfu>]",
+    "runtime_test_dependencies": "Python standard library and the native probe only",
+    "native_result": "149 checks / 35 fixtures; 12 original-writer valid vectors including two differently keyed packages",
+    "proof": "F:/ownCloud_build/cxfileunpacker/uniextract-expansion/molebox-regression/run-1791082197658572500/uniextract-molebox-report.json"
+  }
+}

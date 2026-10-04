@@ -1,0 +1,27 @@
+{
+  "repository": "https://github.com/binref/refinery",
+  "commit": "02e4f655f44416e2212a21d38fc6130ee0c7a263",
+  "commit_date": "2026-10-02T20:08:06Z",
+  "files": [
+    {
+      "path": "refinery/units/formats/archive/xtsim.py",
+      "url": "https://raw.githubusercontent.com/binref/refinery/02e4f655f44416e2212a21d38fc6130ee0c7a263/refinery/units/formats/archive/xtsim.py",
+      "sha256": "46868cb314523ba680f17390358c8515f28b1db51cd3e5d434a44a35659f80cd",
+      "bytes": 10716
+    },
+    {
+      "path": "refinery/lib/cab.py",
+      "url": "https://raw.githubusercontent.com/binref/refinery/02e4f655f44416e2212a21d38fc6130ee0c7a263/refinery/lib/cab.py",
+      "sha256": "bfc1428f043c0c501db78f0fb31e1ce22c7f2b3eff57eeb38baf8674802b47c4",
+      "bytes": 14088
+    },
+    {
+      "path": "LICENSE.md",
+      "url": "https://raw.githubusercontent.com/binref/refinery/02e4f655f44416e2212a21d38fc6130ee0c7a263/LICENSE.md",
+      "sha256": "6f90e87cd2d47d8dbd30a2b927b89d3362c14cef30ed39fbe2362ca988f183e9",
+      "bytes": 1541
+    }
+  ],
+  "production_dependency": false,
+  "reference_package": "binary-refinery 0.11.2"
+}
