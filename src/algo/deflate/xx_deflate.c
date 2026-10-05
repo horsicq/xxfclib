@@ -54,6 +54,41 @@ bool xx_deflate_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t
     return success;
 }
 
+bool xx_deflate_unpack_device_ex(
+    xx_io_device *src_dev, int64_t src_offset, int64_t comp_size,
+    xx_io_device *dst_dev, bool is_deflate64, size_t window_size,
+    const void *dictionary, size_t dictionary_size,
+    int64_t *out_consumed, xx_pd_struct *pd) {
+    xx_bit_reader reader;
+    bool success;
+    int64_t fetched, pending, consumed = 0;
+    size_t window = xx_deflate_resolve_window(is_deflate64, window_size);
+    if (out_consumed) *out_consumed = 0;
+    if (!src_dev || !dst_dev || comp_size <= 0 || window == 0U ||
+        dictionary_size > window || (dictionary_size != 0U && !dictionary)) return false;
+    if (src_offset >= 0 && xx_io_seek64(src_dev, src_offset, SEEK_SET) != 0) return false;
+    if (!xx_br_init(&reader, src_dev, NULL, 0, comp_size)) return false;
+    success = xx_deflate_decompress_stream_with_options(
+        &reader, dst_dev, NULL, 0U, NULL, is_deflate64, window, pd,
+        (const uint8_t *)dictionary, dictionary_size);
+    if (success) {
+        /* Reader buffers and bit look-ahead may include following bytes.
+         * Only full unused bytes are excluded; final padding stays consumed. */
+        if (reader.remaining_input < 0 || reader.remaining_input > comp_size ||
+            reader.buffer_pos > reader.buffer_len || reader.bit_count < 0) {
+            success = false;
+        } else {
+            fetched = comp_size - reader.remaining_input;
+            pending = (int64_t)(reader.buffer_len - reader.buffer_pos) + reader.bit_count / 8;
+            if (pending >= fetched) success = false;
+            else consumed = fetched - pending;
+        }
+    }
+    xx_br_free(&reader);
+    if (success && out_consumed) *out_consumed = consumed;
+    return success;
+}
+
 bool xx_deflate_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size,
                                       const char *dst_file_path, bool is_deflate64, xx_pd_struct *pd) {
     if (!src_dev || !dst_file_path) {
@@ -215,7 +250,16 @@ bool xx_deflate_decompress_memory_with_dictionary(
 
 bool xx_deflate_pack_device(xx_io_device *src_dev, int64_t src_offset, int64_t uncomp_size,
                             xx_io_device *dst_dev, int level, bool is_deflate64, xx_pd_struct *pd) {
-    if (!src_dev || !dst_dev || uncomp_size < 0) {
+    return xx_deflate_pack_device_ex(src_dev, src_offset, uncomp_size,
+                                     dst_dev, level, is_deflate64, 0U, pd);
+}
+
+bool xx_deflate_pack_device_ex(
+    xx_io_device *src_dev, int64_t src_offset, int64_t uncomp_size,
+    xx_io_device *dst_dev, int level, bool is_deflate64,
+    size_t window_size, xx_pd_struct *pd) {
+    if (!src_dev || !dst_dev || uncomp_size < 0 ||
+        xx_deflate_resolve_window(is_deflate64, window_size) == 0U) {
         return false;
     }
 
@@ -228,8 +272,9 @@ bool xx_deflate_pack_device(xx_io_device *src_dev, int64_t src_offset, int64_t u
         return false;
     }
 
-    bool success = xx_deflate_compress_stream(src_dev, NULL, 0, src_offset, uncomp_size,
-                                              &writer, level, is_deflate64, pd);
+    bool success = xx_deflate_compress_stream_with_window(
+        src_dev, NULL, 0, src_offset, uncomp_size, &writer,
+        level, is_deflate64, window_size, pd);
     xx_bw_free(&writer);
     return success;
 }

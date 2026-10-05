@@ -672,14 +672,15 @@ static inline uint32_t xx_calc_hash(const uint8_t *p) {
     return ((((uint32_t)p[0] << 10) ^ ((uint32_t)p[1] << 5) ^ (uint32_t)p[2]) & XX_HASH_MASK);
 }
 
-bool xx_deflate_compress_stream(xx_io_device *src_dev, const uint8_t *mem_src, size_t mem_src_size,
+bool xx_deflate_compress_stream_with_window(xx_io_device *src_dev, const uint8_t *mem_src, size_t mem_src_size,
                                 int64_t src_offset, int64_t uncomp_size,
                                 xx_bit_writer *writer, int level, bool is_deflate64,
-                                xx_pd_struct *pd) {
+                                size_t window_size, xx_pd_struct *pd) {
+    size_t win_size = xx_deflate_resolve_window(is_deflate64, window_size);
+    if (win_size == 0U) return false;
     if (level < 0) level = XX_DEFLATE_LEVEL_DEFAULT;
     if (level > 9) level = XX_DEFLATE_LEVEL_BEST;
 
-    size_t win_size = is_deflate64 ? XX_DEFLATE_WINDOW_SIZE_64K : XX_DEFLATE_WINDOW_SIZE_32K;
     size_t in_buf_cap = xx_get_file_buffer_size();
     if (in_buf_cap < win_size * 2) {
         in_buf_cap = win_size * 2;
@@ -943,4 +944,13 @@ bool xx_deflate_compress_stream(xx_io_device *src_dev, const uint8_t *mem_src, s
     xx_mem_free(tokens);
 
     return success;
+}
+
+bool xx_deflate_compress_stream(
+    xx_io_device *src_dev, const uint8_t *mem_src, size_t mem_src_size,
+    int64_t src_offset, int64_t uncomp_size, xx_bit_writer *writer,
+    int level, bool is_deflate64, xx_pd_struct *pd) {
+    return xx_deflate_compress_stream_with_window(
+        src_dev, mem_src, mem_src_size, src_offset, uncomp_size, writer,
+        level, is_deflate64, 0U, pd);
 }

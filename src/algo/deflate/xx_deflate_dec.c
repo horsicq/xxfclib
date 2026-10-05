@@ -615,17 +615,19 @@ static const uint8_t g_cll_order[XX_DEFLATE_MAX_CLEN_CODES] = {
     16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15
 };
 
-bool xx_deflate_decompress_stream_with_dictionary(xx_bit_reader *reader, xx_io_device *dst_dev,
+bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_device *dst_dev,
                                   uint8_t *mem_dst, size_t mem_cap, size_t *out_written,
-                                  bool is_deflate64, xx_pd_struct *pd,
+                                  bool is_deflate64, size_t window_size, xx_pd_struct *pd,
                                   const uint8_t *dictionary,
                                   size_t dictionary_size) {
+    size_t win_size = xx_deflate_resolve_window(is_deflate64, window_size);
+    if (!reader || win_size == 0U ||
+        (dictionary_size != 0U && !dictionary) || dictionary_size > win_size) return false;
     xx_out_acc out;
     if (!xx_out_init(&out, dst_dev, mem_dst, mem_cap)) {
         return false;
     }
 
-    size_t win_size = is_deflate64 ? XX_DEFLATE_WINDOW_SIZE_64K : XX_DEFLATE_WINDOW_SIZE_32K;
     uint8_t *window = (uint8_t *)xx_mem_alloc(win_size);
     if (!window) {
         xx_out_free(&out);
@@ -893,6 +895,15 @@ bool xx_deflate_decompress_stream_with_dictionary(xx_bit_reader *reader, xx_io_d
     xx_mem_free(window);
     xx_out_free(&out);
     return success;
+}
+
+bool xx_deflate_decompress_stream_with_dictionary(
+    xx_bit_reader *reader, xx_io_device *dst_dev, uint8_t *mem_dst,
+    size_t mem_cap, size_t *out_written, bool is_deflate64, xx_pd_struct *pd,
+    const uint8_t *dictionary, size_t dictionary_size) {
+    return xx_deflate_decompress_stream_with_options(
+        reader, dst_dev, mem_dst, mem_cap, out_written,
+        is_deflate64, 0U, pd, dictionary, dictionary_size);
 }
 
 bool xx_deflate_decompress_stream(xx_bit_reader *reader, xx_io_device *dst_dev,

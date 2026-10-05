@@ -43,6 +43,37 @@ bool xx_bzip2_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t c
     return ok;
 }
 
+bool xx_bzip2_unpack_device_ex(
+    xx_io_device *src_dev, int64_t src_offset, int64_t comp_size,
+    xx_io_device *dst_dev, int64_t *out_consumed, xx_pd_struct *pd)
+{
+    bz2_bit_reader br;
+    bool ok;
+    int64_t fetched, pending, consumed = 0;
+    if (out_consumed) *out_consumed = 0;
+    if (!src_dev || !dst_dev || comp_size <= 0) return false;
+    if (src_offset >= 0 && xx_io_seek64(src_dev, src_offset, SEEK_SET) != 0) return false;
+    if (!bz2_br_init(&br, src_dev, NULL, 0, comp_size)) {
+        bz2_br_free(&br);
+        return false;
+    }
+    ok = xx_bzip2_decompress_stream(&br, dst_dev, NULL, 0, NULL, pd);
+    if (ok) {
+        if (br.remaining < 0 || br.remaining > comp_size ||
+            br.ibuf_pos > br.ibuf_len || br.n_bits < 0) {
+            ok = false;
+        } else {
+            fetched = comp_size - br.remaining;
+            pending = (int64_t)(br.ibuf_len - br.ibuf_pos) + br.n_bits / 8;
+            if (pending >= fetched) ok = false;
+            else consumed = fetched - pending;
+        }
+    }
+    bz2_br_free(&br);
+    if (ok && out_consumed) *out_consumed = consumed;
+    return ok;
+}
+
 bool xx_bzip2_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size,
                                     const char *dst_file_path, xx_pd_struct *pd)
 {

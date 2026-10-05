@@ -42,6 +42,7 @@ option(XXFC_BUILD_SAMPLES "Build xxfclib sample programs" OFF)
 # Defining both is LNK2005. The consumer owns the compiler-support routines;
 # this option only removes the archive's CRT dependency.
 option(XXFC_STATIC_NO_CRT "Build the static archive so it can be linked with /NODEFAULTLIB (MSVC x64)" OFF)
+option(XXFC_BUILD_DIE_ENGINE "Also build die_engine, a static library holding only the DIE signature engine" ON)
 
 set(XXFC_MSVC_X64 FALSE)
 if(MSVC AND CMAKE_C_COMPILER_ARCHITECTURE_ID STREQUAL "x64")
@@ -284,6 +285,7 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/algo/zstd/xx_zstd.h
     include/xxfclib/algo/zipcrypto/xx_zipcrypto.h
     include/xxfclib/algo/aes/xx_aes.h
+    include/xxfclib/algo/aes_winzip/xx_aes_winzip.h
     include/xxfclib/algo/cmpsc/xx_cmpsc.h
     include/xxfclib/algo/packmp3/xx_packmp3.h
     include/xxfclib/algo/wavpack/xx_wavpack.h
@@ -1882,6 +1884,8 @@ set(XXFCLIB_SOURCES
     src/algo/zstd/xx_zstd_dec.c
     src/algo/zipcrypto/xx_zipcrypto.c
     src/algo/aes/xx_aes.c
+    src/algo/aes/xx_aes_internal.h
+    src/algo/aes_winzip/xx_aes_winzip.c
     src/algo/cmpsc/xx_cmpsc.c
     src/algo/cmpsc/xx_cmpsc_enc.c
     src/algo/packmp3/xx_packmp3.c
@@ -4715,6 +4719,7 @@ function(xxfclib_configure_target target is_shared)
             ${CMAKE_CURRENT_SOURCE_DIR}/src/algo/zstd
             ${CMAKE_CURRENT_SOURCE_DIR}/src/algo/zipcrypto
             ${CMAKE_CURRENT_SOURCE_DIR}/src/algo/aes
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/algo/aes_winzip
             ${CMAKE_CURRENT_SOURCE_DIR}/src/algo/sha
             ${CMAKE_CURRENT_SOURCE_DIR}/src/algo/ampk
             ${CMAKE_CURRENT_SOURCE_DIR}/src/algo/arcfs
@@ -5050,6 +5055,7 @@ function(xxfclib_configure_target target is_shared)
             ${CMAKE_CURRENT_SOURCE_DIR}/include/xxfclib/algo/zstd
             ${CMAKE_CURRENT_SOURCE_DIR}/include/xxfclib/algo/zipcrypto
             ${CMAKE_CURRENT_SOURCE_DIR}/include/xxfclib/algo/aes
+            ${CMAKE_CURRENT_SOURCE_DIR}/include/xxfclib/algo/aes_winzip
             ${CMAKE_CURRENT_SOURCE_DIR}/include/xxfclib/algo/sha
             ${CMAKE_CURRENT_SOURCE_DIR}/include/xxfclib/algo/ain
             ${CMAKE_CURRENT_SOURCE_DIR}/include/xxfclib/algo/ampk
@@ -5230,6 +5236,19 @@ else()
     add_library(xxfclib::xxfclib ALIAS xxfclib)
 
     set(XXFCLIB_INSTALL_TARGETS xxfclib)
+endif()
+
+# die_engine: the DIE signature engine alone, as its own static archive
+# (die_engine.lib / libdie_engine.a). die_engine.cmake lists its sources --
+# the engine's exact link closure -- so a consumer that only scans with DIE
+# signatures links ~80 objects instead of the full ~3400-object archive.
+# Configured like the static xxfclib, including XXFC_STATIC_NO_CRT.
+if(XXFC_BUILD_DIE_ENGINE)
+    include("${CMAKE_CURRENT_SOURCE_DIR}/die_engine.cmake")
+    add_library(die_engine STATIC ${XXFC_DIE_ENGINE_SOURCES})
+    xxfclib_configure_target(die_engine FALSE)
+    add_library(xxfclib::die_engine ALIAS die_engine)
+    list(APPEND XXFCLIB_INSTALL_TARGETS die_engine)
 endif()
 
 if(MSVC)

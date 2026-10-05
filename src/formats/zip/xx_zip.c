@@ -46,7 +46,7 @@
 #include "xxfclib/algo/zstd/xx_zstd.h"
 #include "xxfclib/formats/xz/xx_xz.h"
 #include "xxfclib/algo/zipcrypto/xx_zipcrypto.h"
-#include "xxfclib/algo/aes/xx_aes.h"
+#include "xxfclib/algo/aes_winzip/xx_aes_winzip.h"
 #include "xxfclib/algo/cmpsc/xx_cmpsc.h"
 #include "xxfclib/algo/packmp3/xx_packmp3.h"
 #include "xxfclib/algo/wavpack/xx_wavpack.h"
@@ -2638,6 +2638,76 @@ static xx_io_device *xx_zip_open_stage_file(const char *destination,
         xx_str_free(candidate);
     }
     return NULL;
+}
+
+bool xx_zip_unpack_current_archive_record_to_device(
+    Abstractformat *self, xx_archive_record_state *state,
+    xx_io_device *destination, xx_pd_struct *pd) {
+    const xx_archive_record *record;
+    uint64_t declared_size, expected_crc, member_limit;
+    uint16_t method, flags;
+    bool member_limit_present, is_folder, is_encrypted, success;
+    xx_io_device limited_device, verified_device;
+    xx_zip_limit_sink limited_sink;
+    xx_zip_verify_sink verified_sink;
+    if (!self || !self->device || !state || state->format != self ||
+        !state->has_record || !destination || !destination->write ||
+        destination == self->device || xx_pd_is_stopped(pd)) return false;
+    record = &state->current_record;
+    declared_size = xx_archive_record_get_meta_u64(
+        record, XX_META_ID_UNCOMPRESSED_SIZE, UINT64_MAX);
+    expected_crc = xx_archive_record_get_meta_u64(
+        record, XX_META_ID_CRC32, UINT64_MAX);
+    is_folder = xx_archive_record_get_meta_bool(
+        record, XX_META_ID_IS_FOLDER, false);
+    is_encrypted = xx_archive_record_get_meta_bool(
+        record, XX_META_ID_IS_ENCRYPTED, false);
+    if (declared_size > (uint64_t)INT64_MAX ||
+        !xx_zip_get_u64_limit(self, &state->options,
+            XX_META_ID_OPT_MAX_MEMBER_SIZE, &member_limit_present,
+            &member_limit)) {
+        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
+                        "ZIP member size or extraction limit is invalid");
+        return false;
+    }
+    if (member_limit_present && declared_size > member_limit) {
+        xx_pd_set_error(pd, XXFC_ERR_OUT_OF_BOUNDS,
+                        "ZIP member exceeds the configured size limit");
+        return false;
+    }
+    if (!xx_zip_check_unencrypted_allocation_budget(
+            self, &state->options, record, pd)) return false;
+    if (is_folder) {
+        return record->compressed_size == 0 && declared_size == 0U &&
+               expected_crc == 0U && !is_encrypted;
+    }
+    if (record->data_offset < 0 || record->compressed_size < 0) return false;
+    method = (uint16_t)xx_archive_record_get_meta_u64(
+        record, XX_META_ID_COMPRESSION_METHOD, UINT16_MAX);
+    flags = (uint16_t)xx_archive_record_get_meta_u64(
+        record, XX_META_ID_FLAGS, 0);
+    if (is_encrypted) {
+        return xx_zip_unpack_encrypted_to_device(
+            self, state, record, method, flags, destination, pd) &&
+            !xx_pd_is_stopped(pd);
+    }
+    if (expected_crc > UINT32_MAX ||
+        !xx_zip_init_verify_sink(&verified_device, &verified_sink)) return false;
+    xx_zip_init_limit_sink(&limited_device, &limited_sink,
+                           destination, declared_size, pd);
+    verified_sink.target = &limited_device;
+    success = method == 92U ? xx_zip_unpack_reference_to_device(
+        self, state, record, NULL, &verified_device, pd) :
+        xx_zip_unpack_method_to_device(self->device, record->data_offset,
+            record->compressed_size, method, flags, declared_size,
+            &verified_device, pd);
+    if (success && (verified_sink.position != declared_size ||
+                    verified_sink.crc != expected_crc)) {
+        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
+                        "ZIP output CRC or size mismatch");
+        success = false;
+    }
+    return success && !xx_pd_is_stopped(pd);
 }
 
 bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {

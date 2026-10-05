@@ -112,6 +112,19 @@ XXFC_API uint64_t xx_zip_get_number_of_archive_records(Abstractformat *self, xx_
 XXFC_API xx_archive_record_state *xx_zip_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd);
 XXFC_API const xx_archive_record *xx_zip_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state);
 XXFC_API bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
+/**
+ * @brief Decode the selected record to a caller-owned writable device.
+ *
+ * Uses the reading state's password and extraction limits (with format-wide
+ * parameters as fallback), authenticates encrypted entries, and verifies
+ * unencrypted entries' CRC and exact size. No archive-derived path is opened.
+ * Neither device is closed. A valid empty directory record writes no bytes.
+ * A failed operation can have written a prefix; callers must stage output
+ * when they require publication only after successful verification.
+ */
+XXFC_API bool xx_zip_unpack_current_archive_record_to_device(
+    Abstractformat *self, xx_archive_record_state *state,
+    xx_io_device *destination, xx_pd_struct *pd);
 XXFC_API bool xx_zip_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 XXFC_API void xx_zip_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 

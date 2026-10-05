@@ -92,6 +92,11 @@ XXFC_API void *js_compile_to_bytecode(JSCtx *pCtx, const char *pSource, const ch
 /* Evaluates precompiled binary bytecode in nested scope. */
 XXFC_API int js_eval_nested_bytecode(JSCtx *pCtx, const void *pBytecode, size_t nSize, const char *pName);
 
+/* Decompiles precompiled binary bytecode back to JavaScript source text.
+ * Returns an allocated string (free with js_free_decompiled), or NULL on failure. */
+XXFC_API char *js_decompile_bytecode(const void *pBytecode, size_t nSize);
+XXFC_API void js_free_decompiled(char *pStr);
+
 /* Last error string; valid until the next evaluation. */
 XXFC_API const char *js_error(JSCtx *pCtx);
 XXFC_API void js_clear_error(JSCtx *pCtx);

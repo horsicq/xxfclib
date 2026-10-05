@@ -66,6 +66,15 @@ typedef struct xx_scan_options {
     bool verbose;
     const char *file_name;          /**< Optional input name or path. */
     const void *engine_options;     /**< Optional engine-specific options. */
+    /**
+     * Set by the scanner, never by the caller: every scan of a device (the
+     * input itself or one of its overlays) gets a new random nonzero scan_id,
+     * and every callback of that scan sees it. parent_id is 0 for the input
+     * itself and, for an overlay, the scan_id of the scan that found it.
+     * Engines copy both into each record they create.
+     */
+    uint64_t scan_id;
+    uint64_t parent_id;
 } xx_scan_options;
 typedef struct xx_scan_options xx_scan_options_t;
 
@@ -88,6 +97,8 @@ typedef struct xx_scan_record {
     bool is_heuristic;
     bool is_aggressive_heuristic;
     bool is_unknown;
+    uint64_t scan_id;   /**< options.scan_id of the scan that produced this record. */
+    uint64_t parent_id; /**< options.parent_id of that scan: 0 for the input itself. */
 } xx_scan_record;
 typedef struct xx_scan_record xx_scan_record_t;
 
@@ -195,7 +206,9 @@ struct xx_scan_engine {
     /**
      * Append all source records to destination. Required when all_types_scan
      * selects multiple passes or an overlay is scanned. Add source_offset to
-     * each copied record's offset (zero for passes on the same device).
+     * each copied record's offset (zero for passes on the same device), and
+     * keep its scan_id and parent_id: they are how the merged result tells
+     * an overlay's records from the input's.
      * Both handles are borrowed; neither may be freed
      * here. Source is freed immediately after this call, so copy its records
      * and strings into destination-owned storage. Return false on failure and
@@ -264,6 +277,9 @@ XXFC_API bool xx_scan_get_overlay(xx_scan_engine *engine, xx_io_device *device,
  * get_file_types and append_result are required when an overlay exists;
  * merged offsets remain absolute in the original input. Scan callbacks
  * receive overlay_scan cleared.
+ * Each scan of a device draws a new random nonzero options.scan_id; all of
+ * its passes share it. The input's scan has parent_id 0, an overlay's has
+ * the input scan's scan_id. Caller-supplied values are ignored.
  * The device stays open. NULL is returned for invalid arguments, incomplete
  * callback tables, engine failure, or cancellation. Validation errors are
  * reported through pd when supplied.

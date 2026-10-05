@@ -59,6 +59,19 @@ extern "C" {
 XXFC_API bool xx_deflate_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size,
                                        xx_io_device *dst_dev, bool is_deflate64, xx_pd_struct *pd);
 
+/** Decode one finite raw stream with an optional preset history. window_size
+ * is zero for the native window, or a power of two from 256 through 32768
+ * (65536 for Deflate64). Dictionary bytes are prior history, never output;
+ * dictionary_size must not exceed the selected window. out_consumed, when
+ * supplied, receives the exact stream length rounded up to its last byte,
+ * excluding input read-ahead and trailing bytes. It is zero on failure.
+ * comp_size must be nonnegative. The caller owns both devices. */
+XXFC_API bool xx_deflate_unpack_device_ex(
+    xx_io_device *src_dev, int64_t src_offset, int64_t comp_size,
+    xx_io_device *dst_dev, bool is_deflate64, size_t window_size,
+    const void *dictionary, size_t dictionary_size,
+    int64_t *out_consumed, xx_pd_struct *pd);
+
 /**
  * @brief Unpack a Deflate / Deflate64 stream directly to a disk file (UTF-8 path).
  */
@@ -125,6 +138,15 @@ XXFC_API bool xx_deflate_decompress_memory_with_dictionary(
  */
 XXFC_API bool xx_deflate_pack_device(xx_io_device *src_dev, int64_t src_offset, int64_t uncomp_size,
                                      xx_io_device *dst_dev, int level, bool is_deflate64, xx_pd_struct *pd);
+
+/** Compress with a selected LZ77 window. window_size is zero for the native
+ * window, or a power of two from 256 through 32768 (65536 for Deflate64).
+ * Smaller windows limit emitted back-reference distances. uncomp_size must
+ * be nonnegative. The caller owns both devices. */
+XXFC_API bool xx_deflate_pack_device_ex(
+    xx_io_device *src_dev, int64_t src_offset, int64_t uncomp_size,
+    xx_io_device *dst_dev, int level, bool is_deflate64,
+    size_t window_size, xx_pd_struct *pd);
 
 /**
  * @brief Inspect an input source, compute its uncompressed size and CRC32, and compress

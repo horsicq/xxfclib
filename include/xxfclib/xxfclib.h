@@ -1491,6 +1491,7 @@
 #include "xxfclib/algo/zstd/xx_zstd.h"
 #include "xxfclib/algo/zipcrypto/xx_zipcrypto.h"
 #include "xxfclib/algo/aes/xx_aes.h"
+#include "xxfclib/algo/aes_winzip/xx_aes_winzip.h"
 #include "xxfclib/algo/sha/xx_sha.h"
 #include "xxfclib/algo/cmpsc/xx_cmpsc.h"
 #include "xxfclib/algo/packmp3/xx_packmp3.h"

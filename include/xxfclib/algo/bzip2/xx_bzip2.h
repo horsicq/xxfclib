@@ -57,6 +57,13 @@ extern "C" {
 XXFC_API bool xx_bzip2_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size,
                                      xx_io_device *dst_dev, xx_pd_struct *pd);
 
+/** Decode one finite BZip2 stream. out_consumed, when supplied, reports its
+ * exact byte length, excluding buffered read-ahead and trailing bytes, and is
+ * zero on failure. comp_size must be nonnegative. Caller owns both devices. */
+XXFC_API bool xx_bzip2_unpack_device_ex(
+    xx_io_device *src_dev, int64_t src_offset, int64_t comp_size,
+    xx_io_device *dst_dev, int64_t *out_consumed, xx_pd_struct *pd);
+
 XXFC_API bool xx_bzip2_unpack_device_to_file(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size,
                                              const char *dst_file_path, xx_pd_struct *pd);
 

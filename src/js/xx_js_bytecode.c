@@ -333,3 +333,482 @@ int js_eval_nested_bytecode(JSCtx *pCtx, const void *pBytecode, size_t nSize, co
 
     return pCtx->bException ? 0 : 1;
 }
+
+/* ------------------------------------------------------------- decompiler  */
+
+static const char *bc_op_str(JSOp op)
+{
+    switch (op) {
+        case OP_ADD: return "+";
+        case OP_SUB: return "-";
+        case OP_MUL: return "*";
+        case OP_DIV: return "/";
+        case OP_MOD: return "%";
+        case OP_LT: return "<";
+        case OP_GT: return ">";
+        case OP_LE: return "<=";
+        case OP_GE: return ">=";
+        case OP_EQ: return "==";
+        case OP_NE: return "!=";
+        case OP_SEQ: return "===";
+        case OP_SNE: return "!==";
+        case OP_AND: return "&";
+        case OP_OR: return "|";
+        case OP_XOR: return "^";
+        case OP_SHL: return "<<";
+        case OP_SHR: return ">>";
+        case OP_USHR: return ">>>";
+        case OP_LAND: return "&&";
+        case OP_LOR: return "||";
+        case OP_NOT: return "!";
+        case OP_BNOT: return "~";
+        case OP_NEG: return "-";
+        case OP_POS: return "+";
+        case OP_TYPEOF: return "typeof ";
+        case OP_VOID: return "void ";
+        case OP_DELETE: return "delete ";
+        case OP_IN: return " in ";
+        case OP_INSTANCEOF: return " instanceof ";
+        case OP_INC: return "++";
+        case OP_DEC: return "--";
+        case OP_ASSIGN: return "=";
+        default: return "";
+    }
+}
+
+static void bc_print_escaped_str(xx_buf_t *buf, const char *str)
+{
+    xx_buf_append_str(buf, "\"");
+    if (str) {
+        const char *p = str;
+        while (*p) {
+            switch (*p) {
+                case '\"': xx_buf_append_str(buf, "\\\""); break;
+                case '\\': xx_buf_append_str(buf, "\\\\"); break;
+                case '\n': xx_buf_append_str(buf, "\\n"); break;
+                case '\r': xx_buf_append_str(buf, "\\r"); break;
+                case '\t': xx_buf_append_str(buf, "\\t"); break;
+                default: {
+                    unsigned char c = (unsigned char)*p;
+                    if (c < 32) {
+                        char tmp[8];
+                        xx_rt_snprintf(tmp, sizeof(tmp), "\\x%02x", c);
+                        xx_buf_append_str(buf, tmp);
+                    } else {
+                        xx_buf_append(buf, p, 1);
+                    }
+                    break;
+                }
+            }
+            p++;
+        }
+    }
+    xx_buf_append_str(buf, "\"");
+}
+
+static void bc_decompile_node(xx_buf_t *buf, const JSNode *node)
+{
+    if (!node) return;
+
+    switch (node->type) {
+        case N_PROGRAM: {
+            size_t i;
+            for (i = 0; i < node->nList; i++) {
+                bc_decompile_node(buf, node->ppList[i]);
+                if (node->ppList[i] && node->ppList[i]->type != N_FUNCTION &&
+                    node->ppList[i]->type != N_IF && node->ppList[i]->type != N_FOR &&
+                    node->ppList[i]->type != N_WHILE && node->ppList[i]->type != N_BLOCK) {
+                    xx_buf_append_str(buf, ";\n");
+                } else {
+                    xx_buf_append_str(buf, "\n");
+                }
+            }
+            break;
+        }
+        case N_BLOCK: {
+            size_t i;
+            xx_buf_append_str(buf, "{\n");
+            for (i = 0; i < node->nList; i++) {
+                bc_decompile_node(buf, node->ppList[i]);
+                if (node->ppList[i] && node->ppList[i]->type != N_FUNCTION &&
+                    node->ppList[i]->type != N_IF && node->ppList[i]->type != N_FOR &&
+                    node->ppList[i]->type != N_WHILE && node->ppList[i]->type != N_BLOCK) {
+                    xx_buf_append_str(buf, ";\n");
+                } else {
+                    xx_buf_append_str(buf, "\n");
+                }
+            }
+            xx_buf_append_str(buf, "}\n");
+            break;
+        }
+        case N_EMPTY: {
+            xx_buf_append_str(buf, ";");
+            break;
+        }
+        case N_EXPRSTMT: {
+            bc_decompile_node(buf, node->a);
+            break;
+        }
+        case N_NUM: {
+            char num_str[64];
+            if (node->nNum == (double)(int64_t)node->nNum) {
+                xx_rt_snprintf(num_str, sizeof(num_str), "%lld", (long long)node->nNum);
+            } else {
+                xx_rt_snprintf(num_str, sizeof(num_str), "%.14g", node->nNum);
+            }
+            xx_buf_append_str(buf, num_str);
+            break;
+        }
+        case N_STR: {
+            bc_print_escaped_str(buf, node->pStr);
+            break;
+        }
+        case N_REGEXP: {
+            if (node->pStr) {
+                if (node->pStr[0] == '/') {
+                    xx_buf_append_str(buf, node->pStr);
+                } else {
+                    xx_buf_append_str(buf, "/");
+                    xx_buf_append_str(buf, node->pStr);
+                    xx_buf_append_str(buf, "/");
+                    if (node->pStr2) xx_buf_append_str(buf, node->pStr2);
+                }
+            }
+            break;
+        }
+        case N_IDENT: {
+            xx_buf_append_str(buf, node->pStr ? node->pStr : "");
+            break;
+        }
+        case N_THIS: {
+            xx_buf_append_str(buf, "this");
+            break;
+        }
+        case N_NULL: {
+            xx_buf_append_str(buf, "null");
+            break;
+        }
+        case N_BOOL: {
+            xx_buf_append_str(buf, node->nNum != 0.0 ? "true" : "false");
+            break;
+        }
+        case N_ARRAY: {
+            size_t i;
+            xx_buf_append_str(buf, "[");
+            for (i = 0; i < node->nList; i++) {
+                if (i > 0) xx_buf_append_str(buf, ", ");
+                bc_decompile_node(buf, node->ppList[i]);
+            }
+            xx_buf_append_str(buf, "]");
+            break;
+        }
+        case N_OBJECT: {
+            size_t i;
+            xx_buf_append_str(buf, "{");
+            for (i = 0; i < node->nList; i++) {
+                if (i > 0) xx_buf_append_str(buf, ", ");
+                bc_decompile_node(buf, node->ppList[i]);
+            }
+            xx_buf_append_str(buf, "}");
+            break;
+        }
+        case N_PROP: {
+            xx_buf_append_str(buf, node->pStr ? node->pStr : "");
+            xx_buf_append_str(buf, ": ");
+            bc_decompile_node(buf, node->a);
+            break;
+        }
+        case N_FUNCTION: {
+            size_t i;
+            xx_buf_append_str(buf, "function");
+            if (node->pStr && node->pStr[0]) {
+                xx_buf_append_str(buf, " ");
+                xx_buf_append_str(buf, node->pStr);
+            }
+            xx_buf_append_str(buf, "(");
+            if (node->a && node->a->ppList) {
+                for (i = 0; i < node->a->nList; i++) {
+                    if (i > 0) xx_buf_append_str(buf, ", ");
+                    bc_decompile_node(buf, node->a->ppList[i]);
+                }
+            }
+            xx_buf_append_str(buf, ") ");
+            bc_decompile_node(buf, node->b);
+            break;
+        }
+        case N_CALL: {
+            size_t i;
+            bc_decompile_node(buf, node->a);
+            xx_buf_append_str(buf, "(");
+            for (i = 0; i < node->nList; i++) {
+                if (i > 0) xx_buf_append_str(buf, ", ");
+                bc_decompile_node(buf, node->ppList[i]);
+            }
+            xx_buf_append_str(buf, ")");
+            break;
+        }
+        case N_NEW: {
+            size_t i;
+            xx_buf_append_str(buf, "new ");
+            bc_decompile_node(buf, node->a);
+            xx_buf_append_str(buf, "(");
+            for (i = 0; i < node->nList; i++) {
+                if (i > 0) xx_buf_append_str(buf, ", ");
+                bc_decompile_node(buf, node->ppList[i]);
+            }
+            xx_buf_append_str(buf, ")");
+            break;
+        }
+        case N_MEMBER: {
+            bc_decompile_node(buf, node->a);
+            xx_buf_append_str(buf, ".");
+            xx_buf_append_str(buf, node->pStr ? node->pStr : "");
+            break;
+        }
+        case N_INDEX: {
+            bc_decompile_node(buf, node->a);
+            xx_buf_append_str(buf, "[");
+            bc_decompile_node(buf, node->b);
+            xx_buf_append_str(buf, "]");
+            break;
+        }
+        case N_UNARY: {
+            xx_buf_append_str(buf, bc_op_str(node->op));
+            xx_buf_append_str(buf, "(");
+            bc_decompile_node(buf, node->a);
+            xx_buf_append_str(buf, ")");
+            break;
+        }
+        case N_UPDATE: {
+            if (node->nNum == 1.0) {
+                xx_buf_append_str(buf, bc_op_str(node->op));
+                bc_decompile_node(buf, node->a);
+            } else {
+                bc_decompile_node(buf, node->a);
+                xx_buf_append_str(buf, bc_op_str(node->op));
+            }
+            break;
+        }
+        case N_BINARY:
+        case N_LOGICAL: {
+            xx_buf_append_str(buf, "(");
+            bc_decompile_node(buf, node->a);
+            xx_buf_append_str(buf, " ");
+            xx_buf_append_str(buf, bc_op_str(node->op));
+            xx_buf_append_str(buf, " ");
+            bc_decompile_node(buf, node->b);
+            xx_buf_append_str(buf, ")");
+            break;
+        }
+        case N_ASSIGN: {
+            bc_decompile_node(buf, node->a);
+            xx_buf_append_str(buf, " ");
+            if (node->op != OP_ASSIGN && node->op != OP_NONE) {
+                xx_buf_append_str(buf, bc_op_str(node->op));
+            }
+            xx_buf_append_str(buf, "= ");
+            bc_decompile_node(buf, node->b);
+            break;
+        }
+        case N_COND: {
+            xx_buf_append_str(buf, "(");
+            bc_decompile_node(buf, node->a);
+            xx_buf_append_str(buf, " ? ");
+            bc_decompile_node(buf, node->b);
+            xx_buf_append_str(buf, " : ");
+            bc_decompile_node(buf, node->c);
+            xx_buf_append_str(buf, ")");
+            break;
+        }
+        case N_SEQ: {
+            bc_decompile_node(buf, node->a);
+            xx_buf_append_str(buf, ", ");
+            bc_decompile_node(buf, node->b);
+            break;
+        }
+        case N_VAR: {
+            size_t i;
+            xx_buf_append_str(buf, "var ");
+            for (i = 0; i < node->nList; i++) {
+                if (i > 0) xx_buf_append_str(buf, ", ");
+                bc_decompile_node(buf, node->ppList[i]);
+            }
+            break;
+        }
+        case N_VARDECL: {
+            xx_buf_append_str(buf, node->pStr ? node->pStr : "");
+            if (node->a) {
+                xx_buf_append_str(buf, " = ");
+                bc_decompile_node(buf, node->a);
+            }
+            break;
+        }
+        case N_IF: {
+            xx_buf_append_str(buf, "if (");
+            bc_decompile_node(buf, node->a);
+            xx_buf_append_str(buf, ") ");
+            bc_decompile_node(buf, node->b);
+            if (node->c) {
+                xx_buf_append_str(buf, " else ");
+                bc_decompile_node(buf, node->c);
+            }
+            break;
+        }
+        case N_FOR: {
+            xx_buf_append_str(buf, "for (");
+            if (node->a) bc_decompile_node(buf, node->a);
+            xx_buf_append_str(buf, "; ");
+            if (node->b) bc_decompile_node(buf, node->b);
+            xx_buf_append_str(buf, "; ");
+            if (node->c) bc_decompile_node(buf, node->c);
+            xx_buf_append_str(buf, ") ");
+            bc_decompile_node(buf, node->d);
+            break;
+        }
+        case N_FORIN: {
+            xx_buf_append_str(buf, "for (");
+            bc_decompile_node(buf, node->a);
+            xx_buf_append_str(buf, " in ");
+            bc_decompile_node(buf, node->b);
+            xx_buf_append_str(buf, ") ");
+            bc_decompile_node(buf, node->d);
+            break;
+        }
+        case N_WHILE: {
+            xx_buf_append_str(buf, "while (");
+            bc_decompile_node(buf, node->a);
+            xx_buf_append_str(buf, ") ");
+            bc_decompile_node(buf, node->d);
+            break;
+        }
+        case N_DOWHILE: {
+            xx_buf_append_str(buf, "do ");
+            bc_decompile_node(buf, node->d);
+            xx_buf_append_str(buf, " while (");
+            bc_decompile_node(buf, node->a);
+            xx_buf_append_str(buf, ");");
+            break;
+        }
+        case N_RETURN: {
+            xx_buf_append_str(buf, "return");
+            if (node->a) {
+                xx_buf_append_str(buf, " ");
+                bc_decompile_node(buf, node->a);
+            }
+            break;
+        }
+        case N_BREAK: {
+            xx_buf_append_str(buf, "break");
+            if (node->pStr && node->pStr[0]) {
+                xx_buf_append_str(buf, " ");
+                xx_buf_append_str(buf, node->pStr);
+            }
+            break;
+        }
+        case N_CONTINUE: {
+            xx_buf_append_str(buf, "continue");
+            if (node->pStr && node->pStr[0]) {
+                xx_buf_append_str(buf, " ");
+                xx_buf_append_str(buf, node->pStr);
+            }
+            break;
+        }
+        case N_THROW: {
+            xx_buf_append_str(buf, "throw ");
+            bc_decompile_node(buf, node->a);
+            break;
+        }
+        case N_TRY: {
+            xx_buf_append_str(buf, "try ");
+            bc_decompile_node(buf, node->a);
+            if (node->pStr) {
+                xx_buf_append_str(buf, " catch (");
+                xx_buf_append_str(buf, node->pStr);
+                xx_buf_append_str(buf, ") ");
+                bc_decompile_node(buf, node->b);
+            }
+            if (node->c) {
+                xx_buf_append_str(buf, " finally ");
+                bc_decompile_node(buf, node->c);
+            }
+            break;
+        }
+        case N_SWITCH: {
+            size_t i;
+            xx_buf_append_str(buf, "switch (");
+            bc_decompile_node(buf, node->a);
+            xx_buf_append_str(buf, ") {\n");
+            for (i = 0; i < node->nList; i++) {
+                bc_decompile_node(buf, node->ppList[i]);
+            }
+            xx_buf_append_str(buf, "}\n");
+            break;
+        }
+        case N_CASE: {
+            size_t i;
+            if (node->a) {
+                xx_buf_append_str(buf, "case ");
+                bc_decompile_node(buf, node->a);
+                xx_buf_append_str(buf, ":\n");
+            } else {
+                xx_buf_append_str(buf, "default:\n");
+            }
+            for (i = 0; i < node->nList; i++) {
+                bc_decompile_node(buf, node->ppList[i]);
+                xx_buf_append_str(buf, ";\n");
+            }
+            break;
+        }
+        case N_LABELED: {
+            xx_buf_append_str(buf, node->pStr ? node->pStr : "");
+            xx_buf_append_str(buf, ": ");
+            bc_decompile_node(buf, node->a);
+            break;
+        }
+        default: break;
+    }
+}
+
+char *js_decompile_bytecode(const void *pBytecode, size_t nSize)
+{
+    BcReader r;
+    JSNode *pProgram = NULL;
+    xx_buf_t buf;
+    char *pResult = NULL;
+
+    if (!pBytecode || !js_is_bytecode(pBytecode, nSize)) {
+        return NULL;
+    }
+
+    r.pData = (const uint8_t *)pBytecode;
+    r.nSize = nSize;
+    r.nPos = 8;
+    r.bError = 0;
+
+    pProgram = deserialize_node(&r);
+    if (!pProgram || r.bError) {
+        if (pProgram) {
+            js_free_node(pProgram);
+        }
+        return NULL;
+    }
+
+    xx_buf_init(&buf);
+    bc_decompile_node(&buf, pProgram);
+    js_free_node(pProgram);
+
+    if (buf.data) {
+        pResult = xx_js_strdup(buf.data);
+    }
+    xx_buf_free(&buf);
+
+    return pResult;
+}
+
+void js_free_decompiled(char *pStr)
+{
+    if (pStr) {
+        xx_rt_free(pStr);
+    }
+}
+

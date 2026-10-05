@@ -6643,6 +6643,7 @@ static bool xx_format_read_probe_exact(xx_io_device *device, uint8_t *buffer, si
     return true;
 }
 
+#ifndef XXFC_FORMAT_DETECTION_LZMA_XZ_ONLY
 static XX_FORMAT_NOINLINE bool xx_format_probe_sfx_softpaq4(xx_io_device *dev) {
     xx_sfx_softpaq4 reader;
     bool valid;
@@ -6783,7 +6784,6 @@ static bool xx_format_is_installanywhere_unix_device(xx_io_device *device) {
 
 xx_file_type_t xx_format_gap_detect(xx_io_device *device);
 
-#ifndef XXFC_FORMAT_DETECTION_LZMA_XZ_ONLY
 static XX_FORMAT_NOINLINE xx_file_type_t xx_format_get_unpacked_file_type_device(xx_io_device *dev) {
 #else
 xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
@@ -7304,7 +7304,7 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
                     ((magic[0] == 0xc7U && magic[1] == 0x71U) ||
                      (magic[0] == 0x71U && magic[1] == 0xc7U))) ||
                    /* Solaris ships its cpio archives inside a block-compressed
-                    * wrapper whose own header is "ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€¦Ã‚Â¾TL"; the cpio
+                    * wrapper whose own header is 0x19 0x9E 'T' 'L'; the cpio
                     * stream only appears after inflating it. The reader knows
                     * that container, so the prefilter has to let it through. */
                    (magic_size >= 4 &&

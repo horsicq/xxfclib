@@ -22,6 +22,78 @@
 #include "xxfclib/scan/xx_scan.h"
 #include "xxfclib/global/xx_global.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/rt/xx_rt.h"
+
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif
+
+/* Scan ids.
+ *
+ * An id only has to tell the scans of one process apart, and the CRT-free
+ * Windows build has no random source beyond KERNEL32. So each id is a
+ * bijective mix of (per-process seed << 32 | call counter): ids are unique
+ * for 2^32 calls and look random. The seed is drawn once from the clock and
+ * the address-space layout. Both words are updated with 32-bit atomics,
+ * which every supported compiler and target provides without a library. */
+static volatile long xx_scan_id_seed;
+static volatile long xx_scan_id_counter;
+
+static uint32_t xx_scan_atomic_increment(volatile long *value) {
+#if defined(_MSC_VER)
+    return (uint32_t)_InterlockedIncrement(value);
+#elif defined(__GNUC__) || defined(__clang__)
+    return (uint32_t)__atomic_add_fetch(value, 1, __ATOMIC_RELAXED);
+#else
+    return (uint32_t)++*value;
+#endif
+}
+
+/* Stores desired when *value is 0; returns the value now in place. */
+static uint32_t xx_scan_atomic_init(volatile long *value, long desired) {
+#if defined(_MSC_VER)
+    long previous = _InterlockedCompareExchange(value, desired, 0);
+    return (uint32_t)(previous ? previous : desired);
+#elif defined(__GNUC__) || defined(__clang__)
+    long expected = 0;
+    if (__atomic_compare_exchange_n(value, &expected, desired, false,
+                                    __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
+        return (uint32_t)desired;
+    return (uint32_t)expected;
+#else
+    if (!*value) *value = desired;
+    return (uint32_t)*value;
+#endif
+}
+
+/* SplitMix64 finalizer: a bijection on 64-bit values. */
+static uint64_t xx_scan_mix64(uint64_t value) {
+    value ^= value >> 30;
+    value *= 0xbf58476d1ce4e5b9ULL;
+    value ^= value >> 27;
+    value *= 0x94d049bb133111ebULL;
+    value ^= value >> 31;
+    return value;
+}
+
+static uint64_t xx_scan_new_id(void) {
+    uint32_t seed = (uint32_t)xx_scan_id_seed;
+    uint64_t id;
+    if (!seed) {
+        int marker = 0;
+        uint64_t entropy = (uint64_t)xx_rt_clock_ms() ^
+            ((uint64_t)(uintptr_t)&xx_scan_id_counter << 20) ^
+            ((uint64_t)(uintptr_t)&marker << 7);
+        uint32_t candidate = (uint32_t)(xx_scan_mix64(entropy) >> 32);
+        seed = xx_scan_atomic_init(&xx_scan_id_seed, (long)(candidate ? candidate : 1u));
+    }
+    /* The seed is nonzero, so the mixer input is never 0 and, the mixer being
+     * a bijection that fixes 0, neither is the id: 0 stays free for "no
+     * parent". */
+    id = xx_scan_mix64(((uint64_t)seed << 32) |
+                       xx_scan_atomic_increment(&xx_scan_id_counter));
+    return id;
+}
 
 static xx_scan_format_callback xx_scan_select_callback(
     const xx_scan_engine *engine, xx_file_type_t type) {
@@ -231,7 +303,7 @@ static bool xx_scan_resolve_options(xx_scan_engine *engine, xx_io_device *device
 static xx_scan_result *xx_scan_internal(xx_scan_engine *engine, xx_io_device *device,
                                         const xx_scan_options *options,
                                         const xx_scan_result *forbidden_result,
-                                        xx_pd_struct *pd);
+                                        uint64_t parent_id, xx_pd_struct *pd);
 
 static xx_scan_result *xx_scan_run_overlay(xx_scan_engine *engine,
                                             xx_io_device *device,
@@ -301,7 +373,8 @@ static xx_scan_result *xx_scan_run_overlay(xx_scan_engine *engine,
 
     /* Use the same detection, buffering and dispatch path as a normal scan.
        The borrowed outer result must not be returned or freed by the child. */
-    part = xx_scan_internal(engine, overlay_device, &overlay_options, result, pd);
+    part = xx_scan_internal(engine, overlay_device, &overlay_options, result,
+                            options->scan_id, pd);
     if (!part) goto failed;
     if (pd && pd->is_stop) {
         engine->free_result(engine, part);
@@ -322,10 +395,12 @@ failed:
     return NULL;
 }
 
+/* parent_id is 0 for the caller's input and, for an overlay, the scan_id of
+ * the scan that found it. Every call draws its own scan_id. */
 static xx_scan_result *xx_scan_internal(xx_scan_engine *engine, xx_io_device *device,
                                         const xx_scan_options *options,
                                         const xx_scan_result *forbidden_result,
-                                        xx_pd_struct *pd) {
+                                        uint64_t parent_id, xx_pd_struct *pd) {
     xx_scan_options defaults;
     xx_scan_options resolved;
     int64_t device_size;
@@ -399,6 +474,8 @@ static xx_scan_result *xx_scan_internal(xx_scan_engine *engine, xx_io_device *de
     }
 
     resolved = *options;
+    resolved.scan_id = xx_scan_new_id();
+    resolved.parent_id = parent_id;
     if (!xx_scan_resolve_options(engine, scan_device, &resolved, pd)) goto done;
     result = xx_scan_run_plan(engine, scan_device, &resolved, forbidden_result, pd);
     if (result && resolved.overlay_scan)
@@ -412,7 +489,7 @@ done:
 
 xx_scan_result *xx_scan(xx_scan_engine *engine, xx_io_device *device,
                         const xx_scan_options *options, xx_pd_struct *pd) {
-    return xx_scan_internal(engine, device, options, NULL, pd);
+    return xx_scan_internal(engine, device, options, NULL, 0, pd);
 }
 
 xx_scan_result *xx_scan_device(xx_scan_engine *engine, xx_io_device *device,
