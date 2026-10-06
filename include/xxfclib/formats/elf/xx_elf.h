@@ -262,6 +262,8 @@ static inline const Abstractformat *xx_elf_to_format_const(
     return elf ? &elf->format : NULL;
 }
 
+#include "xxfclib/formats/elf/xx_elf_inspect.h"
+
 #ifdef __cplusplus
 }
 #endif

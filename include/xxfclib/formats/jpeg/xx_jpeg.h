@@ -71,7 +71,21 @@ struct xx_jpeg {
     uint16_t height;         /**< Lines from that SOF (0 = defined by DNL) */
     uint16_t width;          /**< Samples per line from that SOF */
     uint8_t components;      /**< Component count from that SOF */
+    void *analysis;          /**< Private inspection metadata; owned by reader */
 };
+
+/* Tolerant metadata inspection is separate from strict archive validation.
+ * The device is borrowed; all const-char results remain owned by the reader.
+ * Comments retain source bytes, stop at NUL, and omit CR/LF (100-byte limit).
+ * DQT hashes cover concatenated quantization payloads, including the empty
+ * digest when a marker walk does not reach EOI. */
+XXFC_API bool xx_jpeg_analyze(xx_jpeg *jpeg, xx_pd_struct *pd);
+XXFC_API const char *xx_jpeg_get_version(const xx_jpeg *jpeg);
+XXFC_API const char *xx_jpeg_get_comment(const xx_jpeg *jpeg);
+XXFC_API const char *xx_jpeg_get_dqt_md5(const xx_jpeg *jpeg);
+XXFC_API const char *xx_jpeg_get_exif_camera_name(const xx_jpeg *jpeg);
+XXFC_API int64_t xx_jpeg_get_exif_size(const xx_jpeg *jpeg);
+XXFC_API bool xx_jpeg_is_chunk_present(const xx_jpeg *jpeg, uint8_t marker);
 
 /* --- Constructors & Lifecycle --- */
 XXFC_API void xx_jpeg_init(xx_jpeg *jpeg, xx_io_device *dev,

@@ -434,6 +434,7 @@ xx_dex *xx_dex_create(xx_io_device *device, int64_t base_address) {
 
 void xx_dex_destroy(xx_dex *dex) {
     if (!dex) return;
+    xx_dex_cleanup_analysis(dex);
     if (dex->format.close) (void)dex->format.close(&dex->format);
     xx_format_cleanup_extra_parameters(&dex->format);
 }

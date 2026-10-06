@@ -37,16 +37,19 @@
 #include "xx_die_engine_bin.h"
 #include "xxfclib/formats/xx_data_signature.h"
 #include "xxfclib/formats/xx_memory_map.h"
-#include "../formats/pe/xpe.h"
-#include "../formats/jpeg/xjpeg.h"
-#include "../formats/png/xpng.h"
-#include "../formats/apk/xapk.h"
-#include "../formats/pdf/xpdf.h"
-#include "../formats/elf/xelf.h"
-#include "../formats/dex/xdex.h"
-#include "../formats/macho/xmach.h"
-#include "../formats/pyc/xpyc.h"
-#include "../formats/zip/xzip.h"
+#include "xxfclib/formats/pe/xx_pe.h"
+#include "xxfclib/formats/jpeg/xx_jpeg.h"
+#include "xxfclib/formats/png/xx_png.h"
+#include "xxfclib/formats/apk/xx_apk.h"
+#include "xxfclib/formats/pdf/xxpdf.h"
+#include "xxfclib/formats/elf/xx_elf.h"
+#include "xxfclib/formats/dex/xx_dex.h"
+#include "xxfclib/formats/macho/xx_macho.h"
+#include "xxfclib/formats/pyc/xx_pyc.h"
+#include "xxfclib/formats/zip/xx_zip.h"
+#include "xxfclib/formats/iso9660/xx_iso9660.h"
+/* Native format compatibility alias conflicts with DIE public member names. */
+#undef fileType
 
 /* ---------------------------------------------------------------- engine  */
 
@@ -73,25 +76,25 @@ struct DieEngine {
     /* Private to this immutable scan buffer; never shared by file readers or
      * concurrent engines. Released before the engine/file buffer is closed. */
     DieLiteralSearchCache *pLiteralSearchCache;
-    XPE pe;
+    xx_pe_inspection pe;
     int bHasPE;
-    XJpeg jpeg;
+    xx_jpeg jpeg;
     int bHasJpeg;
-    XPNG png;
+    xx_png png;
     int bHasPng;
-    XAPK apk;
+    xx_apk apk;
     int bHasApk;
-    XPDF pdf;
+    xx_pdf pdf;
     int bHasPdf;
-    XELF elf;
+    xx_elf_inspection elf;
     int bHasElf;
-    XDEX dex;
+    xx_dex dex;
     int bHasDex;
-    XMACH mach;
+    xx_macho_inspection mach;
     int bHasMach;
-    XPyc pyc;
+    xx_pyc pyc;
     int bHasPyc;
-    XZip zip;
+    xx_zip zip;
     int bHasZip;
     XFileType fileType;
     /* Address width for the disassembler and the is16/is32/is64 accessors.

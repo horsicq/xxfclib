@@ -11,6 +11,7 @@
 #include "xxfclib/formats/xz/xx_xz.h"
 #include "xxfclib/global/xx_global.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/rt/xx_rt.h"
 #include <limits.h>
 #include <string.h>
 
@@ -250,7 +251,7 @@ static bool ss_pack(Abstractformat *self, xx_archive_write_state *state,
     name = xx_archive_record_get_original_name(record);
     if (xx_archive_record_get_meta_bool(record, XX_META_ID_IS_FOLDER, false) ||
         xx_archive_record_find_meta(record, XX_META_ID_LINK_TARGET) ||
-        (name && name[0] && (name[strlen(name)-1] == '/' || name[strlen(name)-1] == '\\')))
+        (name && name[0] && (name[xx_rt_strlen(name)-1] == '/' || name[xx_rt_strlen(name)-1] == '\\')))
         goto invalid;
     size = xx_io_total_size(source);
     saved = xx_io_tell(source);

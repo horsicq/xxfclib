@@ -32,7 +32,6 @@
  *      runs its regex over.
  */
 
-#include "../xio.h"
 #include "../../formats/apk/xapk.h"
 #include "../../die_engine/xx_die_engine_inflate.h"
 #include "../../die_engine/xx_die_engine_compat.h"
@@ -42,6 +41,45 @@
 /* APK_MANIFEST_LIMIT: XAPK::isValid refuses a manifest whose declared sizes
  * are zero or larger than this, and never decompresses more than that. */
 #define XAPK_MANIFEST_LIMIT (16 * 1024 * 1024)
+
+static int zip_match(DieFile *pFile, cd_i64 nOffset, const void *pBytes, size_t nSize)
+{
+    unsigned char block[4];
+    return nSize <= sizeof(block) && nOffset >= 0 && nOffset <= pFile->nSize &&
+        (cd_u64)nSize <= (cd_u64)(pFile->nSize - nOffset) &&
+        xx_io_read_at(pFile->pDevice, nOffset, block, nSize) &&
+        x_memcmp(block, pBytes, nSize) == 0;
+}
+
+static int zip_append(DieFile *pFile, cd_i64 nOffset, size_t nSize, CDBuf *pOut)
+{
+    unsigned char block[8192];
+    size_t done = 0;
+    if (nOffset < 0 || nOffset > pFile->nSize ||
+        (cd_u64)nSize > (cd_u64)(pFile->nSize - nOffset)) return 0;
+    while (done < nSize) {
+        size_t count = nSize - done;
+        if (count > sizeof(block)) count = sizeof(block);
+        if (!xx_io_read_at(pFile->pDevice, nOffset + (cd_i64)done, block, count)) return 0;
+        cdbuf_append(pOut, block, count);
+        done += count;
+    }
+    return 1;
+}
+
+static unsigned char *zip_read_owned(DieFile *pFile, cd_i64 nOffset, size_t nSize)
+{
+    unsigned char *pBytes;
+    if (nOffset < 0 || nOffset > pFile->nSize ||
+        (cd_u64)nSize > (cd_u64)(pFile->nSize - nOffset)) return NULL;
+    pBytes = (unsigned char *)cd_malloc(nSize ? nSize : 1);
+    if (!pBytes) return NULL;
+    if (nSize && !xx_io_read_at(pFile->pDevice, nOffset, pBytes, nSize)) {
+        cd_free(pBytes);
+        return NULL;
+    }
+    return pBytes;
+}
 
 /* Reads the whole ZIP member "AndroidManifest.xml" into pOut. Returns 1 on
  * success. Only STORE (0) and DEFLATE (8) are handled; that is all an APK
@@ -67,7 +105,7 @@ static int zip_read_manifest(DieFile *pFile, CDBuf *pOut)
             break;
         }
 
-        if (xio_match(pFile, i, "\x50\x4B\x05\x06", 4)) {
+        if (zip_match(pFile, i, "\x50\x4B\x05\x06", 4)) {
             nEocd = i;
 
             break;
@@ -96,7 +134,7 @@ static int zip_read_manifest(DieFile *pFile, CDBuf *pOut)
             return 0;
         }
 
-        if (!xio_match(pFile, nCentralOffset, "\x50\x4B\x01\x02", 4)) {
+        if (!zip_match(pFile, nCentralOffset, "\x50\x4B\x01\x02", 4)) {
             return 0;
         }
 
@@ -113,7 +151,7 @@ static int zip_read_manifest(DieFile *pFile, CDBuf *pOut)
             return 0;
         }
 
-        if ((nNameLen == 19) && (xio_match(pFile, nNameOffset, "AndroidManifest.xml", 19))) {
+        if ((nNameLen == 19) && (zip_match(pFile, nNameOffset, "AndroidManifest.xml", 19))) {
             /* Local header: skip its own (possibly different) name and extra
              * field lengths to reach the compressed data.                   */
             cd_u16 nLocalNameLen = 0;
@@ -130,7 +168,7 @@ static int zip_read_manifest(DieFile *pFile, CDBuf *pOut)
                 return 0;
             }
 
-            if (!xio_match(pFile, nLocalOffset, "\x50\x4B\x03\x04", 4)) {
+            if (!zip_match(pFile, nLocalOffset, "\x50\x4B\x03\x04", 4)) {
                 return 0;
             }
 
@@ -152,13 +190,13 @@ static int zip_read_manifest(DieFile *pFile, CDBuf *pOut)
                     return 0;
                 }
 
-                return xio_append(pFile, nDataOffset, nCompSize, pOut);
+                return zip_append(pFile, nDataOffset, nCompSize, pOut);
             }
 
             if (nMethod == 8) {
                 unsigned char *pOwned = NULL;
                 const unsigned char *pCompressed = pFile->pData ? pFile->pData + nDataOffset :
-                    (pOwned = xio_read_owned(pFile, nDataOffset, nCompSize));
+                    (pOwned = zip_read_owned(pFile, nDataOffset, nCompSize));
                 int bResult = pCompressed ? inflate_raw(pCompressed, nCompSize, nUncompSize, XAPK_MANIFEST_LIMIT + 1, pOut) : 0;
                 cd_free(pOwned);
                 return bResult && pOut->nSize == (size_t)nUncompSize;

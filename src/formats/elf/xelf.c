@@ -28,7 +28,6 @@
  * compareEP, and a raw-size/overlay estimate.
  */
 
-#include "../xio.h"
 #include "../../formats/elf/xelf.h"
 #include "../../die_engine/xx_die_engine_compat.h"
 
@@ -565,7 +564,25 @@ static cd_i64 elf_addr_to_offset(XELF *pElf, cd_u64 nAddress)
 /* Reads a NUL-terminated string at nOffset, bounded by the file. */
 static char *elf_read_asciiz(DieFile *pFile, cd_i64 nOffset)
 {
-    return xio_raw_string(pFile, nOffset, -1);
+    CDBuf sText;
+    unsigned char block[4096];
+    cd_i64 done = 0;
+    cdbuf_init(&sText);
+    if (nOffset < 0 || nOffset >= pFile->nSize) return cdbuf_detach(&sText, NULL);
+    while (done < pFile->nSize - nOffset) {
+        cd_i64 left = pFile->nSize - nOffset - done;
+        size_t count = left > (cd_i64)sizeof(block) ? sizeof(block) : (size_t)left;
+        size_t i;
+        if (!xx_io_read_at(pFile->pDevice, nOffset + done, block, count)) {
+            cdbuf_free(&sText);
+            return cd_strdup("");
+        }
+        for (i = 0; i < count && block[i]; ++i) {}
+        cdbuf_append(&sText, block, i);
+        if (i != count) break;
+        done += (cd_i64)count;
+    }
+    return cdbuf_detach(&sText, NULL);
 }
 
 static void elf_parse_dynamic(DieFile *pFile, XELF *pElf)
@@ -967,8 +984,21 @@ int xelf_string_in_table_present(DieFile *pFile, XELF *pElf, const char *pSectio
             nOffset++;
         }
 
-        if (((size_t)(nOffset - nStart) == nQueryLen) && (xio_match(pFile, nStart, pString, nQueryLen))) {
-            return 1;
+        if ((size_t)(nOffset - nStart) == nQueryLen) {
+            char block[4096];
+            size_t done = 0;
+            int bMatch = 1;
+            while (done < nQueryLen) {
+                size_t count = nQueryLen - done;
+                if (count > sizeof(block)) count = sizeof(block);
+                if (!xx_io_read_at(pFile->pDevice, nStart + (cd_i64)done, block, count) ||
+                    x_memcmp(block, pString + done, count) != 0) {
+                    bMatch = 0;
+                    break;
+                }
+                done += count;
+            }
+            if (bMatch) return 1;
         }
 
         nOffset++; /* skip the NUL */

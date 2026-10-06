@@ -25,6 +25,7 @@ option(XXFC_BUILD_TESTS "Build test suite to verify linkage and functionality" O
 option(XXFC_BUILD_DISASM_TESTS "Build the focused DIE disassembly regression test" OFF)
 option(XXFC_BUILD_SCAN_TESTS "Build the focused scan and subdevice regression tests" OFF)
 option(XXFC_BUILD_ZIP_SUPPORT_TESTS "Build the focused ZIP method regression tests" OFF)
+option(XXFC_BUILD_PDF_TESTS "Build the focused native PDF reader and extractor regression tests" OFF)
 option(XXFC_BUILD_FORMAT_EXPANSION_TESTS "Build additional reader registration and extraction tests" OFF)
 option(XXFC_BUILD_SAMPLES "Build xxfclib sample programs" OFF)
 
@@ -72,6 +73,8 @@ endif()
 
 # Source files
 set(XXFCLIB_PUBLIC_HEADERS
+    include/xxfclib/formats/pyc/xx_pyc.h
+    include/xxfclib/formats/pdf/xxpdf.h
     include/xxfclib/formats/mozilla_mar/xx_mozilla_mar.h
     include/xxfclib/formats/westwood_pak/xx_westwood_pak.h
     include/xxfclib/formats/fatx/xx_fatx.h
@@ -259,6 +262,7 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/global/xx_settings_global.h
     include/xxfclib/terminal/xx_terminal.h
     include/xxfclib/settings/xx_settings.h
+    include/xxfclib/formats/xx_executable_inspect.h
     include/xxfclib/formats/xx_format.h
     include/xxfclib/formats/xx_format_extractor.h
     include/xxfclib/algo/crc/xx_crc.h
@@ -684,8 +688,11 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/formats/dos16m/xx_dos16m.h
     include/xxfclib/formats/atarist/xx_atarist.h
     include/xxfclib/formats/amigahunk/xx_amigahunk.h
+    include/xxfclib/formats/pe/xx_pe_inspect.h
     include/xxfclib/formats/pe/xx_pe.h
+    include/xxfclib/formats/elf/xx_elf_inspect.h
     include/xxfclib/formats/elf/xx_elf.h
+    include/xxfclib/formats/macho/xx_macho_inspect.h
     include/xxfclib/formats/macho/xx_macho.h
     include/xxfclib/formats/ne/xx_ne.h
     include/xxfclib/formats/le/xx_le.h
@@ -1787,18 +1794,17 @@ set(XXFCLIB_SOURCES
     # display. The two are not interchangeable; see docs.
     src/die_engine/xx_die_engine_xdisasm.c
     src/die_engine/xx_die_engine_inflate.c
-    src/formats/iso9660/xiso9660.c
-    src/formats/pe/xpe.c
-    src/formats/jpeg/xjpeg.c
-    src/formats/png/xpng.c
-    src/formats/apk/xapk.c
-    src/formats/pdf/xpdf.c
-    src/formats/elf/xelf.c
-    src/formats/dex/xdex.c
-    src/formats/macho/xmach.c
-    src/formats/pyc/xpyc.c
-    src/formats/zip/xzip.c
-    src/formats/xft.c
+    src/formats/pe/xx_pe_inspect.c
+    src/formats/apk/xx_apk_inspect.c
+    src/formats/pdf/xxpdf.c
+    src/formats/pdf/xxpdf_decode.c
+    src/formats/pdf/xxpdf_extractor.c
+    src/formats/elf/xx_elf_inspect.c
+    src/formats/dex/xx_dex_inspect.c
+    src/formats/macho/xx_macho_inspect.c
+    src/formats/pyc/xx_pyc_extractor.c
+    src/formats/pyc/xx_pyc.c
+    src/formats/zip/xx_zip_inspect.c
     src/formats/xx_data_signature.c
     src/global/xx_global.c
     src/global/xx_settings_global.c
@@ -1995,6 +2001,7 @@ set(XXFCLIB_SOURCES
     src/algo/lzx/xx_lzx.c
     src/algo/quantum/xx_quantum.c
     src/formats/xx_format.c
+    src/formats/xx_format_base.c
     src/formats/xx_format_catalog.c
     src/formats/xx_format_detect_fast.c
     src/formats/xx_format_extractor.c
@@ -5262,64 +5269,7 @@ if(MSVC)
 endif()
 
 
-option(XXFC_BUILD_ARCHIVE_CODEC_HELPER "Build separate GPL/LGPL codec executable" ON)
-if(XXFC_BUILD_ARCHIVE_CODEC_HELPER)
-    add_subdirectory(helpers/archive_codecs)
-endif()
-
 # Optional sample programs
-option(XXFC_BUILD_SEVENZIP_ENGINE "Build the separate full 7-Zip reader engine on Windows x64" ON)
-option(XXFC_BUILD_DOCUMENT_ENGINE "Build the separate memory-only PDF reader on Windows x64" ON)
-option(XXFC_BUILD_CONVERTLIT_HELPER "Build the memory-only Microsoft Reader LIT decoder" ON)
-if(XXFC_BUILD_CONVERTLIT_HELPER)
-    add_subdirectory(helpers/convertlit)
-endif()
-option(XXFC_BUILD_GARBRO_ENGINE "Build the RAM-only GARbro reader on Windows x64" ON)
-if(XXFC_BUILD_GARBRO_ENGINE AND WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8)
-    add_subdirectory(helpers/garbro_engine)
-endif()
-option(XXFC_BUILD_UPX_ENGINE "Build the RAM-only UPX unpacker on Windows x64" ON)
-option(XXFC_BUILD_WIM_CODEC_ENGINE "Build the RAM-only wimlib compressor on Windows x64" ON)
-option(XXFC_BUILD_LEGACY_ARCHIVE_ENGINE "Build the RAM-only UnUHARC compatibility helper" ON)
-if(XXFC_BUILD_LEGACY_ARCHIVE_ENGINE AND WIN32 AND MSVC)
-    set(_xxfc_legacy_source "${CMAKE_CURRENT_SOURCE_DIR}/helpers/legacy_archive_engine")
-    set(XXFC_LEGACY_RUNTIME_DIR "${CMAKE_CURRENT_BINARY_DIR}/legacy-runtime/$<CONFIG>")
-    file(GLOB_RECURSE _xxfc_legacy_sources CONFIGURE_DEPENDS "${_xxfc_legacy_source}/*")
-    set(_xxfc_legacy_outputs)
-    foreach(_file xfu_legacy_helper.exe xfu_legacy_io.dll xfu_unuharc06.exe UNUHARC-LICENSE.DOC)
-        list(APPEND _xxfc_legacy_outputs "${XXFC_LEGACY_RUNTIME_DIR}/${_file}")
-    endforeach()
-    add_custom_command(OUTPUT ${_xxfc_legacy_outputs}
-        COMMAND "${CMAKE_COMMAND}" "-DBUILD_DIR=${CMAKE_CURRENT_BINARY_DIR}/helpers/legacy_archive_win32"
-            "-DOUTPUT_DIR=${XXFC_LEGACY_RUNTIME_DIR}" "-DCONFIG=$<CONFIG>" -P "${_xxfc_legacy_source}/build.cmake"
-        DEPENDS ${_xxfc_legacy_sources} VERBATIM)
-    add_custom_target(xxfc_legacy_archive_runtime ALL DEPENDS ${_xxfc_legacy_outputs})
-    install(PROGRAMS "${XXFC_LEGACY_RUNTIME_DIR}/xfu_legacy_helper.exe" "${XXFC_LEGACY_RUNTIME_DIR}/xfu_legacy_io.dll" "${XXFC_LEGACY_RUNTIME_DIR}/xfu_unuharc06.exe" DESTINATION bin)
-    install(FILES "${XXFC_LEGACY_RUNTIME_DIR}/UNUHARC-LICENSE.DOC" DESTINATION bin)
-    install(DIRECTORY "${_xxfc_legacy_source}/" DESTINATION "${CMAKE_INSTALL_DATADIR}/xxfclib/source/legacy_archive_engine")
-endif()
-if(XXFC_BUILD_WIM_CODEC_ENGINE AND WIN32 AND MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
-    enable_language(CXX)
-    add_subdirectory(helpers/wim_codec_engine)
-endif()
-if(XXFC_BUILD_UPX_ENGINE AND WIN32 AND MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
-    enable_language(CXX)
-    add_subdirectory(helpers/upx_engine)
-endif()
-option(XXFC_BUILD_MEDIA_ENGINE "Build the separate memory-only media reader on Windows x64" ON)
-if(XXFC_BUILD_MEDIA_ENGINE AND WIN32 AND MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
-    enable_language(CXX)
-    add_subdirectory(helpers/media_engine)
-endif()
-if(XXFC_BUILD_DOCUMENT_ENGINE AND WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8)
-    enable_language(CXX)
-    add_subdirectory(helpers/document_engine)
-endif()
-if(XXFC_BUILD_SEVENZIP_ENGINE AND WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8)
-    enable_language(CXX)
-    add_subdirectory(helpers/sevenzip_engine)
-endif()
-
 if(XXFC_BUILD_SAMPLES)
     add_subdirectory(samples/console)
     add_subdirectory(samples/unpack)
@@ -5372,6 +5322,27 @@ install(FILES
 )
 
 # Optional tests
+if(XXFC_BUILD_PDF_TESTS)
+    if(TARGET xxfclib_static)
+        set(_xxfc_pdf_test_library xxfclib_static)
+    elseif(TARGET xxfclib AND NOT BUILD_SHARED_LIBS)
+        set(_xxfc_pdf_test_library xxfclib)
+    else()
+        message(FATAL_ERROR "XXFC_BUILD_PDF_TESTS requires a static xxfclib target")
+    endif()
+    enable_testing()
+    add_executable(test_pdf tests/pdf/test_pdf.c)
+    target_link_libraries(test_pdf PRIVATE ${_xxfc_pdf_test_library})
+    if(MSVC)
+        target_compile_definitions(test_pdf PRIVATE _CRT_SECURE_NO_WARNINGS)
+        target_compile_options(test_pdf PRIVATE /UNDEBUG)
+    else()
+        target_compile_options(test_pdf PRIVATE -UNDEBUG)
+    endif()
+    add_test(NAME test_pdf COMMAND test_pdf)
+    unset(_xxfc_pdf_test_library)
+endif()
+
 if(XXFC_BUILD_ZIP_SUPPORT_TESTS)
     set(XXFC_ZIP_TEST_LIBRARY xxfclib::xxfclib)
     include("${CMAKE_CURRENT_SOURCE_DIR}/tests/zip_support/RegisterTests.cmake")

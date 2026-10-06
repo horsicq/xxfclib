@@ -575,6 +575,44 @@ int64_t xx_data_find_unicode_string(const void *data, size_t data_size, size_t s
 }
 
 /* ========================================================================= */
+/* --- Masked pattern search (signatures with wildcard bytes)              --- */
+/* ========================================================================= */
+
+static int64_t xx_data_find_masked_scalar(const uint8_t *data, size_t size,
+                                          const uint8_t *value, const uint8_t *mask,
+                                          size_t pattern_size, size_t idx1, size_t idx2) {
+    size_t last = size - pattern_size;
+    size_t p;
+
+    for (p = 0; p <= last; ++p) {
+        size_t i;
+
+        if (data[p + idx1] != value[idx1] || data[p + idx2] != value[idx2]) continue;
+        for (i = 0; i < pattern_size; ++i) {
+            if ((uint8_t)(data[p + i] & mask[i]) != value[i]) break;
+        }
+        if (i == pattern_size) return (int64_t)p;
+    }
+    return -1;
+}
+
+int64_t xx_data_find_masked(const uint8_t *data, size_t size,
+                            const uint8_t *value, const uint8_t *mask,
+                            size_t pattern_size, size_t idx1, size_t idx2) {
+    if (!data || !value || !mask || pattern_size == 0 || pattern_size > size ||
+        idx1 >= pattern_size || idx2 >= pattern_size) {
+        return -1;
+    }
+    if (xx_is_avx2_enabled() && size - pattern_size >= 31) {
+        return xx_data_find_masked_avx2(data, size, value, mask, pattern_size, idx1, idx2);
+    }
+    if (xx_is_sse2_enabled() && size - pattern_size >= 15) {
+        return xx_data_find_masked_sse2(data, size, value, mask, pattern_size, idx1, idx2);
+    }
+    return xx_data_find_masked_scalar(data, size, value, mask, pattern_size, idx1, idx2);
+}
+
+/* ========================================================================= */
 /* --- Optimized Finding Types in Raw Memory Buffer (Sunday / Fast Word) --- */
 /* ========================================================================= */
 

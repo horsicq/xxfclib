@@ -275,3 +275,69 @@ int64_t xx_data_find_bytes_sse2(const uint8_t *pdata, size_t data_size, size_t s
     return -1;
 #endif
 }
+
+static inline bool xx_masked_equal_sse2(const uint8_t *data, const uint8_t *value,
+                                        const uint8_t *mask, size_t size) {
+    size_t i;
+    for (i = 0; i < size; ++i) {
+        if ((uint8_t)(data[i] & mask[i]) != value[i]) return false;
+    }
+    return true;
+}
+
+/* Callers dispatch here only when xx_is_sse2_enabled(); 32-bit GCC/Clang
+ * builds do not enable SSE2 globally, so enable it for this function. */
+#if (defined(__GNUC__) || defined(__clang__)) && defined(__i386__) && !defined(__SSE2__)
+__attribute__((target("sse2")))
+#endif
+int64_t xx_data_find_masked_sse2(const uint8_t *data, size_t size,
+                                 const uint8_t *value, const uint8_t *mask,
+                                 size_t pattern_size, size_t idx1, size_t idx2) {
+    if (!data || !value || !mask || pattern_size == 0 || pattern_size > size ||
+        idx1 >= pattern_size || idx2 >= pattern_size) {
+        return -1;
+    }
+
+#if (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || \
+    ((defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__)))
+    {
+        size_t last = size - pattern_size;
+        size_t p = 0;
+        __m128i b1 = _mm_set1_epi8((char)value[idx1]);
+        __m128i b2 = _mm_set1_epi8((char)value[idx2]);
+
+        /* 16 starts per step; p + 15 <= last keeps both loads inside the data. */
+        while (last >= 15 && p <= last - 15) {
+            __m128i d1 = _mm_loadu_si128((const __m128i *)(const void *)(data + p + idx1));
+            __m128i d2 = _mm_loadu_si128((const __m128i *)(const void *)(data + p + idx2));
+            uint32_t bits = (uint32_t)_mm_movemask_epi8(
+                _mm_and_si128(_mm_cmpeq_epi8(d1, b1), _mm_cmpeq_epi8(d2, b2)));
+
+            while (bits) {
+                unsigned long bit;
+#if defined(_MSC_VER)
+                _BitScanForward(&bit, (unsigned long)bits);
+#else
+                bit = (unsigned long)__builtin_ctz(bits);
+#endif
+                if (xx_masked_equal_sse2(data + p + bit, value, mask, pattern_size)) {
+                    return (int64_t)(p + bit);
+                }
+                bits &= bits - 1U;
+            }
+            p += 16;
+        }
+
+        for (; p <= last; ++p) {
+            if (data[p + idx1] == value[idx1] && data[p + idx2] == value[idx2] &&
+                xx_masked_equal_sse2(data + p, value, mask, pattern_size)) {
+                return (int64_t)p;
+            }
+        }
+        return -1;
+    }
+#else
+    (void)xx_masked_equal_sse2;
+    return -1;
+#endif
+}

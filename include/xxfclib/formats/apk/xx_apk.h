@@ -28,6 +28,7 @@ typedef struct xx_apk XAPK;
  */
 struct xx_apk {
     xx_zip zip;
+    char *manifest_text;
 };
 
 XXFC_API void xx_apk_init(xx_apk *apk, xx_io_device *dev,
@@ -38,6 +39,9 @@ XXFC_API void xx_apk_destroy(xx_apk *apk);
 
 XXFC_API bool xx_apk_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_apk_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API bool xx_apk_analyze(xx_apk *apk, xx_pd_struct *pd);
+XXFC_API const char *xx_apk_get_manifest(const xx_apk *apk);
+XXFC_API char *xx_apk_manifest_record(const xx_apk *apk, const char *key);
 
 static inline Abstractformat *xx_apk_to_format(xx_apk *apk) {
     return apk ? &apk->zip.format : NULL;

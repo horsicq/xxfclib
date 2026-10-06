@@ -78,6 +78,7 @@ typedef struct xx_dex {
     xx_dex_header header;
     uint32_t version_number;
     bool is_big_endian;
+    void *analysis;
 } xx_dex;
 
 typedef xx_dex xx_dex_t;
@@ -102,6 +103,16 @@ XXFC_API bool xx_dex_get_memory_map(Abstractformat *self,
 XXFC_API const xx_dex_header *xx_dex_get_header(const xx_dex *dex);
 XXFC_API uint32_t xx_dex_get_version_number(const xx_dex *dex);
 XXFC_API bool xx_dex_is_big_endian(const xx_dex *dex);
+/* Cached inspection for signature queries. Strings are borrowed unless
+ * documented as owned; owned strings are released with xx_str_free. */
+XXFC_API bool xx_dex_analyze(xx_dex *dex, xx_pd_struct *pd);
+XXFC_API void xx_dex_cleanup_analysis(xx_dex *dex);
+XXFC_API const char *xx_dex_get_version(const xx_dex *dex);
+XXFC_API uint32_t xx_dex_get_map_hash(const xx_dex *dex);
+XXFC_API char *xx_dex_map_hash_hex(const xx_dex *dex); /* owned */
+XXFC_API bool xx_dex_string_present(const xx_dex *dex, const char *value);
+XXFC_API bool xx_dex_item_string_present(const xx_dex *dex, const char *value);
+XXFC_API const char *xx_dex_android_version(const xx_dex *dex);
 XXFC_API const char *xx_dex_map_item_type_to_string(uint16_t type);
 
 static inline Abstractformat *xx_dex_to_format(xx_dex *dex) {

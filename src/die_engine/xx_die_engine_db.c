@@ -32,7 +32,6 @@
 #include "xxfclib/fs/xx_fs.h"
 #include "xxfclib/list/xx_list.h"
 #include "xxfclib/strings/xx_string.h"
-#include "../formats/xft.h"
 
 static const struct {
     const char *pDirectory;

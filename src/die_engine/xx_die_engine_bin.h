@@ -55,6 +55,7 @@ typedef struct {
     void *pDisasmContext;  /**< Private per-file decoder handles; released on close. */
 } DieFile;
 
+
 /** Clamp [nOffset, nOffset + *pnSize) to the file, so a negative size means
  *  "to the end". @return 0 when the range lies wholly outside the file. */
 int die_range_clamp(DieFile *pFile, cd_i64 nOffset, cd_i64 *pnSize);

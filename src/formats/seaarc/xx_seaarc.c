@@ -75,6 +75,7 @@
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "../../global/xx_tls.h"
 
 #include <stdio.h>
 
@@ -681,11 +682,6 @@ static xx_seaarc_step xx_seaarc_read_record(Abstractformat *self, int64_t span,
  * new device happens to reuse an old one's address. Short walks are not
  * recorded (they are cheap to repeat), and its size is capped. */
 
-#if defined(_MSC_VER)
-#define XX_SEAARC_THREAD_LOCAL __declspec(thread)
-#elif defined(__GNUC__) || defined(__clang__)
-#define XX_SEAARC_THREAD_LOCAL __thread
-#endif
 
 /* Offsets per bitmap page, and its size in bytes. */
 #define XX_SEAARC_MEMO_PAGE_SHIFT 16
@@ -712,9 +708,6 @@ typedef struct xx_seaarc_memo_view_s {
     int64_t origin;       /* device offset of chain offset 0 */
 } xx_seaarc_memo_view;
 
-#ifdef XX_SEAARC_THREAD_LOCAL
-static XX_SEAARC_THREAD_LOCAL xx_seaarc_memo xx_seaarc_search_memo;
-#endif
 
 static void xx_seaarc_memo_clear(xx_seaarc_memo *memo) {
     size_t index;
@@ -728,10 +721,26 @@ static void xx_seaarc_memo_clear(xx_seaarc_memo *memo) {
     xx_mem_zero(memo, sizeof(*memo));
 }
 
+/* One memo per thread, reached through a thread slot rather than a
+ * thread-local variable (see xx_tls.h) and allocated on first use. */
+static xx_tls_key xx_seaarc_memo_key;
+
+static xx_seaarc_memo *xx_seaarc_thread_memo(void) {
+    xx_seaarc_memo *memo = (xx_seaarc_memo *)xx_tls_get(&xx_seaarc_memo_key);
+
+    if (!memo) {
+        memo = (xx_seaarc_memo *)xx_mem_calloc(1U, sizeof(*memo));
+        if (memo && !xx_tls_set(&xx_seaarc_memo_key, memo)) {
+            xx_mem_free(memo);
+            memo = NULL;
+        }
+    }
+    return memo;
+}
+
 static void xx_seaarc_memo_attach(Abstractformat *self,
                                   xx_seaarc_memo_view *view) {
-#ifdef XX_SEAARC_THREAD_LOCAL
-    xx_seaarc_memo *memo = &xx_seaarc_search_memo;
+    xx_seaarc_memo *memo;
     xx_io_volume volume;
     int64_t logical = -1;
     int64_t start;
@@ -744,11 +753,19 @@ static void xx_seaarc_memo_attach(Abstractformat *self,
         logical != 0 || !volume.device || volume.offset < 0 ||
         volume.size < 0 || volume.offset > INT64_MAX - volume.size ||
         self->base_address > INT64_MAX - volume.offset) {
-        /* Not a search view. Whatever an earlier search left is released
-         * here rather than kept for the life of the thread. */
-        if (memo->device) xx_seaarc_memo_clear(memo);
+        /* Not a search view. Whatever an earlier search left, the block
+         * included, is released here rather than kept for the life of the
+         * thread; a plain parse never allocates one. */
+        memo = (xx_seaarc_memo *)xx_tls_get(&xx_seaarc_memo_key);
+        if (memo) {
+            xx_seaarc_memo_clear(memo);
+            xx_mem_free(memo);
+            (void)xx_tls_set(&xx_seaarc_memo_key, NULL);
+        }
         return;
     }
+    memo = xx_seaarc_thread_memo();
+    if (!memo) return; /* no memo: every search walks in full */
     start = volume.offset + self->base_address;
     end = volume.offset + volume.size;
     if (memo->device != volume.device || memo->end != end || start == 0 ||
@@ -760,11 +777,6 @@ static void xx_seaarc_memo_attach(Abstractformat *self,
     memo->last = start;
     view->memo = memo;
     view->origin = start;
-#else
-    (void)self;
-    view->memo = NULL;
-    view->origin = 0;
-#endif
 }
 
 static bool xx_seaarc_memo_is_dead(const xx_seaarc_memo_view *view,

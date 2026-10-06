@@ -26,9 +26,152 @@
 #include "xx_die_engine_xdisasm.h"
 #include "xxfclib/fs/xx_fs.h"
 #include "xxfclib/list/xx_list.h"
+#include "xxfclib/scan/xx_scan.h"
 #include "xxfclib/strings/xx_string.h"
-#include "../formats/xft.h"
 
+
+typedef struct {
+    int bTypes[XFT_COUNT];
+} DieFileTypeSet;
+
+static const char *g_die_file_type_names[XFT_COUNT] = {
+    "Unknown", "Binary", "COM", "MSDOS", "NE", "LE", "LX", "PE",
+    "PE32", "PE64", "ELF", "ELF32", "ELF64", "Mach-O", "Mach-O32",
+    "Mach-O64", "ZIP", "JAR", "APK", "IPA", "DEX", "NPM", "Mach-O FAT",
+    "Archive", "PDF", "CFBF", "Image", "JPEG", "PNG", "RAR", "ISO 9660",
+    "Amiga Hunk", "Atari ST", "Java Class", "Python Bytecode", "DOS/16M",
+    "DOS/4G", ".NET"
+};
+
+const char *xft_to_string(XFileType type)
+{
+    if ((cd_u32)type < (cd_u32)XFT_COUNT) return g_die_file_type_names[type];
+    return "Unknown";
+}
+
+int xft_check(XFileType databaseType, XFileType fileType)
+{
+    if (databaseType == fileType) return 1;
+    if (databaseType == XFT_PE && (fileType == XFT_PE32 || fileType == XFT_PE64)) return 1;
+    if (databaseType == XFT_ELF && (fileType == XFT_ELF32 || fileType == XFT_ELF64)) return 1;
+    if (databaseType == XFT_MACHO && (fileType == XFT_MACHO32 || fileType == XFT_MACHO64)) return 1;
+    return 0;
+}
+
+static void die_file_type_add(DieFileTypeSet *set, XFileType type)
+{
+    if ((cd_u32)type < (cd_u32)XFT_COUNT) set->bTypes[type] = 1;
+}
+
+static int die_file_type_contains(const DieFileTypeSet *set, XFileType type)
+{
+    return set && (cd_u32)type < (cd_u32)XFT_COUNT && set->bTypes[type];
+}
+
+static int die_file_is_cli_assembly(DieFile *file)
+{
+    cd_i64 pe_offset;
+    cd_i64 optional_offset;
+    cd_i64 data_directory;
+    cd_u16 magic;
+    cd_u32 directory_count;
+    if (!file || file->nSize < 0x40) return 0;
+    pe_offset = (cd_i64)xx_io_get_u32(file->pDevice, 0x3c, false);
+    if (pe_offset < 0 || pe_offset > file->nSize - 24 ||
+        xx_io_get_u32(file->pDevice, pe_offset, false) != 0x00004550) return 0;
+    optional_offset = pe_offset + 24;
+    magic = xx_io_get_u16(file->pDevice, optional_offset, false);
+    if (magic == 0x10b) {
+        directory_count = xx_io_get_u32(file->pDevice, optional_offset + 92, false);
+        data_directory = optional_offset + 96;
+    } else if (magic == 0x20b) {
+        directory_count = xx_io_get_u32(file->pDevice, optional_offset + 108, false);
+        data_directory = optional_offset + 112;
+    } else return 0;
+    if (directory_count <= 14 || data_directory > file->nSize - (14 * 8 + 8)) return 0;
+    return xx_io_get_u32(file->pDevice, data_directory + 14 * 8, false) != 0 &&
+           xx_io_get_u32(file->pDevice, data_directory + 14 * 8 + 4, false) != 0;
+}
+
+static int die_file_type_set_detect(DieFile *file, DieFileTypeSet *set)
+{
+    xx_scan_options options;
+    xx_list_t *types;
+    size_t index;
+    uint8_t signature[2];
+    if (!file || !file->pDevice || !set) return 0;
+    x_memset(set, 0, sizeof(*set));
+    die_file_type_add(set, XFT_BINARY);
+    x_memset(&options, 0, sizeof(options));
+    options.size = -1;
+    options.file_name = file->pFileName;
+    types = xx_scan_get_file_types(NULL, file->pDevice, &options, NULL);
+    if (!types) return 0;
+    if (file->nSize >= 2 && xx_io_read_at(file->pDevice, 0, signature, sizeof(signature)) &&
+        ((signature[0] == 'M' && signature[1] == 'Z') ||
+         (signature[0] == 'Z' && signature[1] == 'M')))
+        die_file_type_add(set, XFT_MSDOS);
+    for (index = 0; index < xx_list_count(types); ++index) {
+        xx_file_type_t type = *(xx_file_type_t *)xx_list_at(types, index);
+        switch (type) {
+            case XX_FILE_TYPE_PE32:
+                die_file_type_add(set, XFT_MSDOS); die_file_type_add(set, XFT_PE);
+                die_file_type_add(set, XFT_PE32);
+                if (die_file_is_cli_assembly(file)) die_file_type_add(set, XFT_CLI_ASSEMBLY);
+                break;
+            case XX_FILE_TYPE_PE64:
+                die_file_type_add(set, XFT_MSDOS); die_file_type_add(set, XFT_PE);
+                die_file_type_add(set, XFT_PE64);
+                if (die_file_is_cli_assembly(file)) die_file_type_add(set, XFT_CLI_ASSEMBLY);
+                break;
+            case XX_FILE_TYPE_ELF32:
+                die_file_type_add(set, XFT_ELF); die_file_type_add(set, XFT_ELF32); break;
+            case XX_FILE_TYPE_ELF64:
+                die_file_type_add(set, XFT_ELF); die_file_type_add(set, XFT_ELF64); break;
+            case XX_FILE_TYPE_MACHO32:
+                die_file_type_add(set, XFT_MACHO); die_file_type_add(set, XFT_MACHO32); break;
+            case XX_FILE_TYPE_MACHO64:
+                die_file_type_add(set, XFT_MACHO); die_file_type_add(set, XFT_MACHO64); break;
+            case XX_FILE_TYPE_ZIP:
+                die_file_type_add(set, XFT_ZIP); die_file_type_add(set, XFT_ARCHIVE); break;
+            case XX_FILE_TYPE_JAR:
+                die_file_type_add(set, XFT_ZIP); die_file_type_add(set, XFT_ARCHIVE);
+                die_file_type_add(set, XFT_JAR); break;
+            case XX_FILE_TYPE_APK:
+                die_file_type_add(set, XFT_ZIP); die_file_type_add(set, XFT_ARCHIVE);
+                die_file_type_add(set, XFT_APK); die_file_type_add(set, XFT_JAR); break;
+            case XX_FILE_TYPE_IPA:
+                die_file_type_add(set, XFT_ZIP); die_file_type_add(set, XFT_ARCHIVE);
+                die_file_type_add(set, XFT_IPA); break;
+            case XX_FILE_TYPE_NPM:
+                die_file_type_add(set, XFT_NPM); die_file_type_add(set, XFT_ARCHIVE); break;
+            case XX_FILE_TYPE_DOS16M: die_file_type_add(set, XFT_DOS16M); break;
+            case XX_FILE_TYPE_DOS4G: die_file_type_add(set, XFT_DOS4G); break;
+            case XX_FILE_TYPE_NE: die_file_type_add(set, XFT_NE); break;
+            case XX_FILE_TYPE_LE: die_file_type_add(set, XFT_LE); break;
+            case XX_FILE_TYPE_LX: die_file_type_add(set, XFT_LX); break;
+            case XX_FILE_TYPE_MACHOFAT: die_file_type_add(set, XFT_MACHOFAT); break;
+            case XX_FILE_TYPE_JAVA_CLASS: die_file_type_add(set, XFT_JAVACLASS); break;
+            case XX_FILE_TYPE_DEX: die_file_type_add(set, XFT_DEX); break;
+            case XX_FILE_TYPE_PYC: die_file_type_add(set, XFT_PYC); break;
+            case XX_FILE_TYPE_PDF: die_file_type_add(set, XFT_PDF); break;
+            case XX_FILE_TYPE_CFBF: die_file_type_add(set, XFT_CFBF); break;
+            case XX_FILE_TYPE_JPEG:
+                die_file_type_add(set, XFT_JPEG); die_file_type_add(set, XFT_IMAGE); break;
+            case XX_FILE_TYPE_PNG:
+                die_file_type_add(set, XFT_PNG); die_file_type_add(set, XFT_IMAGE); break;
+            case XX_FILE_TYPE_RAR:
+                die_file_type_add(set, XFT_RAR); die_file_type_add(set, XFT_ARCHIVE); break;
+            case XX_FILE_TYPE_ISO9660: die_file_type_add(set, XFT_ISO9660); break;
+            case XX_FILE_TYPE_AMIGAHUNK: die_file_type_add(set, XFT_AMIGAHUNK); break;
+            case XX_FILE_TYPE_ATARIST: die_file_type_add(set, XFT_ATARIST); break;
+            case XX_FILE_TYPE_COM: die_file_type_add(set, XFT_COM); break;
+            default: break;
+        }
+    }
+    xx_list_destroy(types);
+    return 1;
+}
 
 void scan_options_init(ScanOptions *pOptions)
 {
@@ -564,36 +707,36 @@ static int has_com_suffix(const char *pFileName)
     return bResult;
 }
 
-static XFileType pick_file_type(DieFile *pFile, XFTSet *pSet)
+static XFileType pick_file_type(DieFile *pFile, DieFileTypeSet *pSet)
 {
-    if (xft_contains(pSet, XFT_PE32)) return XFT_PE32;
-    if (xft_contains(pSet, XFT_PE64)) return XFT_PE64;
-    if (xft_contains(pSet, XFT_ELF32)) return XFT_ELF32;
-    if (xft_contains(pSet, XFT_ELF64)) return XFT_ELF64;
-    if (xft_contains(pSet, XFT_MACHO32)) return XFT_MACHO32;
-    if (xft_contains(pSet, XFT_MACHO64)) return XFT_MACHO64;
-    if (xft_contains(pSet, XFT_LX)) return XFT_LX;
-    if (xft_contains(pSet, XFT_LE)) return XFT_LE;
-    if (xft_contains(pSet, XFT_NE)) return XFT_NE;
-    if (xft_contains(pSet, XFT_DOS16M)) return XFT_DOS16M;
-    if (xft_contains(pSet, XFT_DOS4G)) return XFT_DOS4G;
-    if (xft_contains(pSet, XFT_MSDOS)) return XFT_MSDOS;
-    if (xft_contains(pSet, XFT_APK)) return XFT_APK;
-    if (xft_contains(pSet, XFT_IPA)) return XFT_IPA;
-    if (xft_contains(pSet, XFT_JAR)) return XFT_JAR;
-    if (xft_contains(pSet, XFT_ZIP)) return XFT_ZIP;
-    if (xft_contains(pSet, XFT_DEX)) return XFT_DEX;
-    if (xft_contains(pSet, XFT_NPM)) return XFT_NPM;
-    if (xft_contains(pSet, XFT_MACHOFAT)) return XFT_MACHOFAT;
-    if (xft_contains(pSet, XFT_AMIGAHUNK)) return XFT_AMIGAHUNK;
-    if (xft_contains(pSet, XFT_PDF)) return XFT_PDF;
-    if (xft_contains(pSet, XFT_CFBF)) return XFT_CFBF;
-    if (xft_contains(pSet, XFT_RAR)) return XFT_RAR;
-    if (xft_contains(pSet, XFT_ISO9660)) return XFT_ISO9660;
-    if (xft_contains(pSet, XFT_JPEG)) return XFT_JPEG;
-    if (xft_contains(pSet, XFT_PNG)) return XFT_PNG;
-    if (xft_contains(pSet, XFT_JAVACLASS)) return XFT_JAVACLASS;
-    if (xft_contains(pSet, XFT_PYC)) return XFT_PYC;
+    if (die_file_type_contains(pSet, XFT_PE32)) return XFT_PE32;
+    if (die_file_type_contains(pSet, XFT_PE64)) return XFT_PE64;
+    if (die_file_type_contains(pSet, XFT_ELF32)) return XFT_ELF32;
+    if (die_file_type_contains(pSet, XFT_ELF64)) return XFT_ELF64;
+    if (die_file_type_contains(pSet, XFT_MACHO32)) return XFT_MACHO32;
+    if (die_file_type_contains(pSet, XFT_MACHO64)) return XFT_MACHO64;
+    if (die_file_type_contains(pSet, XFT_LX)) return XFT_LX;
+    if (die_file_type_contains(pSet, XFT_LE)) return XFT_LE;
+    if (die_file_type_contains(pSet, XFT_NE)) return XFT_NE;
+    if (die_file_type_contains(pSet, XFT_DOS16M)) return XFT_DOS16M;
+    if (die_file_type_contains(pSet, XFT_DOS4G)) return XFT_DOS4G;
+    if (die_file_type_contains(pSet, XFT_MSDOS)) return XFT_MSDOS;
+    if (die_file_type_contains(pSet, XFT_APK)) return XFT_APK;
+    if (die_file_type_contains(pSet, XFT_IPA)) return XFT_IPA;
+    if (die_file_type_contains(pSet, XFT_JAR)) return XFT_JAR;
+    if (die_file_type_contains(pSet, XFT_ZIP)) return XFT_ZIP;
+    if (die_file_type_contains(pSet, XFT_DEX)) return XFT_DEX;
+    if (die_file_type_contains(pSet, XFT_NPM)) return XFT_NPM;
+    if (die_file_type_contains(pSet, XFT_MACHOFAT)) return XFT_MACHOFAT;
+    if (die_file_type_contains(pSet, XFT_AMIGAHUNK)) return XFT_AMIGAHUNK;
+    if (die_file_type_contains(pSet, XFT_PDF)) return XFT_PDF;
+    if (die_file_type_contains(pSet, XFT_CFBF)) return XFT_CFBF;
+    if (die_file_type_contains(pSet, XFT_RAR)) return XFT_RAR;
+    if (die_file_type_contains(pSet, XFT_ISO9660)) return XFT_ISO9660;
+    if (die_file_type_contains(pSet, XFT_JPEG)) return XFT_JPEG;
+    if (die_file_type_contains(pSet, XFT_PNG)) return XFT_PNG;
+    if (die_file_type_contains(pSet, XFT_JAVACLASS)) return XFT_JAVACLASS;
+    if (die_file_type_contains(pSet, XFT_PYC)) return XFT_PYC;
 
     /* g_arrPrefFileTypeOrder puts FT_COM ahead of FT_TEXT/FT_DATA/FT_BINARY,
      * and XBinary::getFileTypes inserts FT_COM only when nothing else was
@@ -741,23 +884,31 @@ static int scan_run_pass(DieFile *pOpenedFile, XFileType fileType, int bIsCliAss
     pEngine->pResult = pResult;
 
     if ((pEngine->fileType == XFT_PE32) || (pEngine->fileType == XFT_PE64)) {
-        pEngine->bHasPE = xpe_parse(&pEngine->pe, &pEngine->file);
+        pEngine->bHasPE = xx_pe_inspect_analyze_from_device(&pEngine->pe, pEngine->file.pDevice, 0, NULL);
     } else if (pEngine->fileType == XFT_JPEG) {
-        pEngine->bHasJpeg = xjpeg_parse(&pEngine->jpeg, &pEngine->file);
+        xx_jpeg_init(&pEngine->jpeg, pEngine->file.pDevice, 0);
+        pEngine->bHasJpeg = xx_jpeg_analyze(&pEngine->jpeg, NULL);
     } else if (pEngine->fileType == XFT_PNG) {
-        pEngine->bHasPng = xpng_parse(&pEngine->file, &pEngine->png);
+        xx_png_init(&pEngine->png, pEngine->file.pDevice, 0);
+        pEngine->bHasPng = xx_png_analyze(&pEngine->png, NULL);
     } else if (pEngine->fileType == XFT_APK) {
-        pEngine->bHasApk = xapk_parse(&pEngine->file, &pEngine->apk);
+        xx_apk_init(&pEngine->apk, pEngine->file.pDevice, 0);
+        pEngine->bHasApk = xx_apk_analyze(&pEngine->apk, NULL);
     } else if (pEngine->fileType == XFT_PDF) {
-        pEngine->bHasPdf = xpdf_parse(&pEngine->file, &pEngine->pdf);
+        /* The native reader borrows the shared buffered device. Its analysis
+         * accepts inspection-only documents separately from archive validation. */
+        xx_pdf_init(&pEngine->pdf, pEngine->file.pDevice, 0);
+        pEngine->bHasPdf = xx_pdf_analyze(&pEngine->pdf, NULL);
     } else if ((pEngine->fileType == XFT_ELF) || (pEngine->fileType == XFT_ELF32) || (pEngine->fileType == XFT_ELF64)) {
-        pEngine->bHasElf = xelf_parse(&pEngine->file, &pEngine->elf);
+        pEngine->bHasElf = xx_elf_inspect_analyze_from_device(&pEngine->elf, pEngine->file.pDevice, 0, NULL);
     } else if (pEngine->fileType == XFT_DEX) {
-        pEngine->bHasDex = xdex_parse(&pEngine->file, &pEngine->dex);
+        xx_dex_init(&pEngine->dex, pEngine->file.pDevice, 0);
+        pEngine->bHasDex = xx_dex_analyze(&pEngine->dex, NULL);
     } else if ((pEngine->fileType == XFT_MACHO) || (pEngine->fileType == XFT_MACHO32) || (pEngine->fileType == XFT_MACHO64)) {
-        pEngine->bHasMach = xmach_parse(&pEngine->file, &pEngine->mach);
+        pEngine->bHasMach = xx_macho_inspect_analyze_from_device(&pEngine->mach, pEngine->file.pDevice, 0, NULL);
     } else if (pEngine->fileType == XFT_PYC) {
-        pEngine->bHasPyc = xpyc_parse(&pEngine->file, &pEngine->pyc);
+        xx_pyc_init(&pEngine->pyc, pEngine->file.pDevice, 0);
+        pEngine->bHasPyc = xx_pyc_analyze(&pEngine->pyc, NULL);
     }
 
     /* Every ZIP-family container (also an APK, which additionally parses its
@@ -765,7 +916,8 @@ static int scan_run_pass(DieFile *pOpenedFile, XFileType fileType, int bIsCliAss
      * MANIFEST.MF read for the archive-record and manifest predicates. */
     if ((pEngine->fileType == XFT_APK) || (pEngine->fileType == XFT_JAR) || (pEngine->fileType == XFT_ZIP) ||
         (pEngine->fileType == XFT_NPM) || (pEngine->fileType == XFT_IPA)) {
-        pEngine->bHasZip = xzip_parse(&pEngine->file, &pEngine->zip);
+        xx_zip_init(&pEngine->zip, pEngine->file.pDevice, 0);
+        pEngine->bHasZip = xx_zip_analyze(&pEngine->zip, NULL);
     }
 
     if (pEngine->bHasPE) {
@@ -888,43 +1040,28 @@ static int scan_run_pass(DieFile *pOpenedFile, XFileType fileType, int bIsCliAss
     cd_free(pEngine->pCurrentFormatName);
     die_engine_profile_free(pEngine);
 
-    if (pEngine->bHasPE) {
-        xpe_free(&pEngine->pe);
-    } else {
-        xx_memory_map_cleanup(&binaryMap);
+    xx_pe_inspect_free(&pEngine->pe);
+    if (!pEngine->bHasPE) xx_memory_map_cleanup(&binaryMap);
+
+    xx_jpeg_destroy(&pEngine->jpeg);
+    xx_png_destroy(&pEngine->png);
+
+    xx_apk_destroy(&pEngine->apk);
+
+    if (pEngine->fileType == XFT_PDF) {
+        /* Initialization precedes analysis, including a failed analysis. */
+        xx_pdf_destroy(&pEngine->pdf);
     }
 
-    if (pEngine->bHasJpeg) {
-        xjpeg_free(&pEngine->jpeg);
-    }
+    xx_elf_inspect_free(&pEngine->elf);
 
-    if (pEngine->bHasApk) {
-        xapk_free(&pEngine->apk);
-    }
+    xx_dex_destroy(&pEngine->dex);
 
-    if (pEngine->bHasPdf) {
-        xpdf_free(&pEngine->pdf);
-    }
+    xx_macho_inspect_free(&pEngine->mach);
 
-    if (pEngine->bHasElf) {
-        xelf_free(&pEngine->elf);
-    }
+    xx_pyc_destroy(&pEngine->pyc);
 
-    if (pEngine->bHasDex) {
-        xdex_free(&pEngine->dex);
-    }
-
-    if (pEngine->bHasMach) {
-        xmach_free(&pEngine->mach);
-    }
-
-    if (pEngine->bHasPyc) {
-        xpyc_free(&pEngine->pyc);
-    }
-
-    if (pEngine->bHasZip) {
-        xzip_free(&pEngine->zip);
-    }
+    xx_zip_destroy(&pEngine->zip);
 
     xdisasm_close(&pEngine->file);
     cd_free(pEngine);
@@ -1008,7 +1145,7 @@ static int com_has_non_generic(ScanResult *pResult)
 static int scan_engine_run(DieFile *pOpenedFile, DBase *pDb, ScanOptions *pOptions,
                            XFileType selectedType, ScanResult *pResult)
 {
-    XFTSet set;
+    DieFileTypeSet set;
     XFileType fileType = XFT_BINARY;
     int bIsCliAssembly = 0;
     int nResult = 0;
@@ -1025,10 +1162,10 @@ static int scan_engine_run(DieFile *pOpenedFile, DBase *pDb, ScanOptions *pOptio
     int bSoftOom = cd_alloc_begin_soft_oom();
 #endif
 
-    xft_detect(pOpenedFile, &set);
+    if (!die_file_type_set_detect(pOpenedFile, &set)) goto scan_close;
     if (die_file_read_failed(pOpenedFile)) goto scan_close;
     fileType = selectedType == XFT_UNKNOWN ? pick_file_type(pOpenedFile, &set) : selectedType;
-    bIsCliAssembly = xft_contains(&set, XFT_CLI_ASSEMBLY);
+    bIsCliAssembly = die_file_type_contains(&set, XFT_CLI_ASSEMBLY);
 
     if (selectedType != XFT_UNKNOWN) {
         /* Choosing Binary must not silently add a COM pass or .NET scripts.
@@ -1142,13 +1279,16 @@ int die_engine_detect_file_types(const char *pFileName,
                                  die_engine_file_type_fn pTypeFn, void *pUserData)
 {
     DieFile file;
-    XFTSet set;
+    DieFileTypeSet set;
     XFileType preferred;
     int i;
     int failed;
 
     if (!pFileName || !pFileName[0] || !die_file_open(&file, pFileName)) return 0;
-    xft_detect(&file, &set);
+    if (!die_file_type_set_detect(&file, &set)) {
+        die_file_close(&file);
+        return 0;
+    }
     preferred = pick_file_type(&file, &set);
     failed = die_file_read_failed(&file);
     die_file_close(&file);
@@ -1157,7 +1297,7 @@ int die_engine_detect_file_types(const char *pFileName,
     if (pTypeFn) {
         pTypeFn(preferred, pUserData);
         for (i = XFT_COUNT - 1; i > XFT_UNKNOWN; --i) {
-            if (i != (int)preferred && xft_contains(&set, (XFileType)i))
+            if (i != (int)preferred && die_file_type_contains(&set, (XFileType)i))
                 pTypeFn((XFileType)i, pUserData);
         }
     }
@@ -1236,3 +1376,4 @@ int die_engine_scan_memory(const void *pData, cd_i64 nSize, DBase *pDb, ScanOpti
 
     return scan_engine_run(&file, pDb, pOptions, XFT_UNKNOWN, pResult);
 }
+

@@ -10,6 +10,7 @@
 #include "xxfclib/formats/ipa/xx_ipa.h"
 #include "xxfclib/formats/jar/xx_jar.h"
 #include "xxfclib/formats/npm/xx_npm.h"
+#include "xxfclib/formats/pyc/xx_pyc.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -191,7 +192,7 @@ static bool xx_scan_has_com_suffix(const char *file_name) {
            (file_name[length - 1U] == 'm' || file_name[length - 1U] == 'M');
 }
 
-/* XPDF accepts a header after a BOM or other leading bytes, provided the
+/* PDF scan detection accepts a header after a BOM or other leading bytes when the
  * complete "%PDF-" marker begins within the first 1024 bytes. Its byte-zero
  * fast path also accepts "%PDF" with any fifth byte. The scan window already
  * limits reads to options.offset/size. */
@@ -332,6 +333,9 @@ static xx_file_type_t xx_scan_detect_type(xx_io_device *device,
     if ((size < 0 || size >= 0x8006) &&
         xx_scan_read_at(device, 0x8001, head, 5U) &&
         !memcmp(head, "CD001", 5U)) return XX_FILE_TYPE_ISO9660;
+    if (head_size >= 4U && head[2] == 0x0dU && head[3] == 0x0aU &&
+        xx_pyc_is_known_magic((uint16_t)head[0] | ((uint16_t)head[1] << 8U)))
+        return XX_FILE_TYPE_PYC;
     if (size > 0 && size <= 65280 && options &&
         xx_scan_has_com_suffix(options->file_name)) return XX_FILE_TYPE_COM;
     return XX_FILE_TYPE_BINARY;

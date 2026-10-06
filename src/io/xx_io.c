@@ -25,6 +25,32 @@
 /* The xx_rt_* runtime memory primitives that used to live here now sit in
  * src/memory/platforms/, beside the other memory platform code. */
 
+bool xx_io_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t n) {
+    int64_t cursor, size;
+    size_t done = 0;
+    bool ok = true;
+    if (!device || offset < 0 || (n && !buffer)) return false;
+    size = xx_io_size(device);
+    if (size >= 0 && (offset > size || (uint64_t)n > (uint64_t)(size - offset))) return false;
+    if (!n) return true;
+    cursor = xx_io_tell(device);
+    if (cursor < 0) return false;
+    if (xx_io_seek64(device, offset, SEEK_SET) != 0) {
+        (void)xx_io_seek64(device, cursor, SEEK_SET);
+        return false;
+    }
+    while (done < n) {
+        size_t request = n - done;
+        ssize_t got;
+        if (request > (size_t)PTRDIFF_MAX) request = (size_t)PTRDIFF_MAX;
+        got = xx_io_read(device, (uint8_t *)buffer + done, request);
+        if (got <= 0 || (size_t)got > request) { ok = false; break; }
+        done += (size_t)got;
+    }
+    if (xx_io_seek64(device, cursor, SEEK_SET) != 0) ok = false;
+    return ok;
+}
+
 
 /* ------------------------------------------------------------------------ */
 /*  I/O                                                                      */

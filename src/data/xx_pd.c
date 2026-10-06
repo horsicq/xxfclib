@@ -27,32 +27,62 @@
 #include "xxfclib/data/xx_pd.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "../global/xx_tls.h"
 
-#if defined(_MSC_VER)
-#define XX_PD_THREAD_LOCAL __declspec(thread)
-#else
-#define XX_PD_THREAD_LOCAL _Thread_local
-#endif
+/* The observer is per thread. It lives in a small block reached through a
+ * thread slot rather than in thread-local variables (see xx_tls.h); the
+ * block exists only while an observer is set. */
+typedef struct pd_observer_state {
+    xx_pd_observer observer;
+    bool active;
+} pd_observer_state;
 
-static XX_PD_THREAD_LOCAL xx_pd_observer pd_observer;
-static XX_PD_THREAD_LOCAL bool pd_observer_active;
+static xx_tls_key pd_observer_key;
+
+static void pd_observer_release(pd_observer_state *state) {
+    xx_tls_set(&pd_observer_key, NULL);
+    xx_mem_free(state);
+}
 
 xx_pd_observer xx_pd_set_observer(const xx_pd_struct *pd,
                                 xx_pd_observer_fn callback, void *user_data) {
-    xx_pd_observer previous = pd_observer;
-    pd_observer.progress = pd && callback ? pd : NULL;
-    pd_observer.callback = pd && callback ? callback : NULL;
-    pd_observer.user_data = pd && callback ? user_data : NULL;
+    pd_observer_state *state = (pd_observer_state *)xx_tls_get(&pd_observer_key);
+    xx_pd_observer previous;
+
+    xx_mem_zero(&previous, sizeof(previous));
+    if (state) previous = state->observer;
+
+    if (pd && callback) {
+        if (!state) {
+            state = (pd_observer_state *)xx_mem_calloc(1U, sizeof(*state));
+            if (!state || !xx_tls_set(&pd_observer_key, state)) {
+                xx_mem_free(state);
+                return previous;
+            }
+        }
+        state->observer.progress = pd;
+        state->observer.callback = callback;
+        state->observer.user_data = user_data;
+    } else if (state) {
+        if (state->active) {
+            /* Cleared from inside the callback: poll_observer frees it. */
+            xx_mem_zero(&state->observer, sizeof(state->observer));
+        } else {
+            pd_observer_release(state);
+        }
+    }
     return previous;
 }
 
 static bool poll_observer(const xx_pd_struct *pd) {
+    pd_observer_state *state = (pd_observer_state *)xx_tls_get(&pd_observer_key);
     bool stopped;
-    if (!pd || pd != pd_observer.progress || !pd_observer.callback || pd_observer_active)
+    if (!pd || !state || pd != state->observer.progress || !state->observer.callback || state->active)
         return false;
-    pd_observer_active = true;
-    stopped = pd_observer.callback(pd, pd_observer.user_data);
-    pd_observer_active = false;
+    state->active = true;
+    stopped = state->observer.callback(pd, state->observer.user_data);
+    state->active = false;
+    if (!state->observer.callback) pd_observer_release(state);
     return stopped;
 }
 

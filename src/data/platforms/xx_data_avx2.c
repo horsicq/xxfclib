@@ -541,7 +541,72 @@ int64_t xx_data_find_bytes_avx2(const uint8_t *pdata, size_t data_size, size_t s
         return -1;
     }
 }
+
+static inline bool xx_masked_equal_avx2(const uint8_t *data, const uint8_t *value,
+                                        const uint8_t *mask, size_t size) {
+    size_t i;
+    for (i = 0; i < size; ++i) {
+        if ((uint8_t)(data[i] & mask[i]) != value[i]) return false;
+    }
+    return true;
+}
+
+XX_TARGET_AVX2
+int64_t xx_data_find_masked_avx2(const uint8_t *data, size_t size,
+                                 const uint8_t *value, const uint8_t *mask,
+                                 size_t pattern_size, size_t idx1, size_t idx2) {
+    size_t last;
+    size_t p = 0;
+    __m256i b1;
+    __m256i b2;
+
+    if (!data || !value || !mask || pattern_size == 0 || pattern_size > size ||
+        idx1 >= pattern_size || idx2 >= pattern_size) {
+        return -1;
+    }
+
+    last = size - pattern_size;
+    b1 = _mm256_set1_epi8((char)value[idx1]);
+    b2 = _mm256_set1_epi8((char)value[idx2]);
+
+    /* 32 starts per step. p + 31 <= last keeps both loads inside the data:
+     * p + idx + 31 <= size - pattern_size + idx <= size - 1. */
+    while (last >= 31 && p <= last - 31) {
+        __m256i d1 = _mm256_loadu_si256((const __m256i *)(const void *)(data + p + idx1));
+        __m256i d2 = _mm256_loadu_si256((const __m256i *)(const void *)(data + p + idx2));
+        uint32_t bits = (uint32_t)_mm256_movemask_epi8(
+            _mm256_and_si256(_mm256_cmpeq_epi8(d1, b1), _mm256_cmpeq_epi8(d2, b2)));
+
+        while (bits) {
+            unsigned long bit;
+#if defined(_MSC_VER)
+            _BitScanForward(&bit, (unsigned long)bits);
 #else
+            bit = (unsigned long)__builtin_ctz(bits);
+#endif
+            if (xx_masked_equal_avx2(data + p + bit, value, mask, pattern_size)) {
+                return (int64_t)(p + bit);
+            }
+            bits &= bits - 1U;
+        }
+        p += 32;
+    }
+
+    for (; p <= last; ++p) {
+        if (data[p + idx1] == value[idx1] && data[p + idx2] == value[idx2] &&
+            xx_masked_equal_avx2(data + p, value, mask, pattern_size)) {
+            return (int64_t)p;
+        }
+    }
+    return -1;
+}
+#else
+int64_t xx_data_find_masked_avx2(const uint8_t *data, size_t size,
+                                 const uint8_t *value, const uint8_t *mask,
+                                 size_t pattern_size, size_t idx1, size_t idx2) {
+    (void)data; (void)size; (void)value; (void)mask; (void)pattern_size; (void)idx1; (void)idx2;
+    return -1;
+}
 bool xx_data_collect_literal_dual_avx2(const uint8_t *data, size_t size,
                                        size_t start, const uint8_t prefix[2],
                                        XXDataLiteralDualBatch *batch) {

@@ -16,6 +16,7 @@
  */
 
 #include "xxfc_readers.h"
+#include <xxfclib/formats/pdf/xxpdf.h>
 #include <xxfclib/formats/sevenzip_engine/xx_sevenzip_engine.h>
 #include <xxfclib/formats/ue2_documents/xx_ue2_documents.h>
 #include <xxfclib/formats/microsoft_lit/xx_microsoft_lit.h>
@@ -72,7 +73,10 @@ static Abstractformat *mk_media_video(xx_io_device *d,int64_t b) { return xx_med
 static Abstractformat *mk_media_frames(xx_io_device *d,int64_t b) { return xx_media_engine_create(d,b,"frames"); }
 static Abstractformat *mk_sqlite_sql(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_sqlite_sql_create(d,b); }
 static void rm_sqlite_sql(void *r) { xx_sqlite_sql_free((xx_sqlite_sql *)r); }
-static Abstractformat *mk_pdf(xx_io_device *d,int64_t b) { return xx_sevenzip_engine_create_helper(d,b,"PDF","xfu_document_helper.exe",XX_FILE_TYPE_PDF,"pdf"); }
+static Abstractformat *mk_pdf(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_pdf_create(d,b); }
+static void rm_pdf(void *r) { xx_pdf_free((xx_pdf *)r); }
+static Abstractformat *mk_pyc(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_pyc_create(d,b); }
+static void rm_pyc(void *r) { xx_pyc_free((xx_pyc *)r); }
 static Abstractformat *mk_garbro(xx_io_device *d,int64_t b) { return xx_sevenzip_engine_create_helper(d,b,NULL,"xfu_garbro_helper.exe",XX_FILE_TYPE_GAME_ARCHIVE,"dat"); }
 #define UE2_GAME_FACTORY(name,type) static Abstractformat *mk_ue2_##name(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_ue2_games_create(d,b,type); }
 UE2_GAME_FACTORY(bruns,XX_FILE_TYPE_BRUNS_MEDIA)
@@ -4411,7 +4415,7 @@ static Abstractformat *mk_stuffit5(xx_io_device *d, int64_t b) {
 static void rm_stuffit5(void *p) { xx_stuffit5_free((xx_stuffit5 *)p); }
 bool xxfc_reader_uses_helper(const xxfc_opened *opened) {
     const char *name=opened?opened->reader_name:NULL;
-    return name && (!xx_rt_strncmp(name,"sevenzip",8) || !xx_rt_strncmp(name,"media",5) || !xx_rt_strcmp(name,"pdf") || !xx_rt_strncmp(name,"garbro",6) || !xx_rt_strcmp(name,"upx") || !xx_rt_strcmp(name,"uharc"));
+    return name && (!xx_rt_strncmp(name,"sevenzip",8) || !xx_rt_strncmp(name,"media",5) || !xx_rt_strncmp(name,"garbro",6) || !xx_rt_strcmp(name,"upx") || !xx_rt_strcmp(name,"uharc"));
 }
 bool xxfc_is_incomplete(const xxfc_opened *opened) {
     if (xxfc_reader_uses_helper(opened)) return false;
@@ -9272,7 +9276,8 @@ static xxfc_reader_entry g_readers[] = {
     MEDIA_ENTRY(aa,XX_FILE_TYPE_AUDIBLE_AA)
 #undef MEDIA_ENTRY
     { "sqlite_sql", mk_sqlite_sql, rm_sqlite_sql, XX_FILE_TYPE_SQLITE3 },
-    { "pdf", mk_pdf, rm_sevenzip_engine, XX_FILE_TYPE_PDF },
+    { "pdf", mk_pdf, rm_pdf, XX_FILE_TYPE_PDF },
+    { "pyc", mk_pyc, rm_pyc, XX_FILE_TYPE_PYC },
     { "lit", mk_lit, rm_lit, XX_FILE_TYPE_MICROSOFT_LIT },
     { "bitrock", mk_bitrock, rm_bitrock, XX_FILE_TYPE_BITROCK },
     { "smart_install_maker", mk_smart_install_maker, rm_smart_install_maker, XX_FILE_TYPE_SMART_INSTALL_MAKER },

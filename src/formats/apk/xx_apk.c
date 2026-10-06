@@ -55,6 +55,7 @@ xx_apk *xx_apk_create(xx_io_device *dev, int64_t base_address) {
 
 void xx_apk_destroy(xx_apk *apk) {
     if (apk) {
+        xx_mem_free(apk->manifest_text); apk->manifest_text = NULL;
         xx_zip_destroy(&apk->zip);
     }
 }

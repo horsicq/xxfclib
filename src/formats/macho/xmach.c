@@ -27,7 +27,6 @@
  * (Mach-O FAT) and are not handled here.
  */
 
-#include "../xio.h"
 #include "../../formats/macho/xmach.h"
 #include "../../die_engine/xx_die_engine_compat.h"
 
@@ -301,7 +300,25 @@ static void mach_compute_os(XMACH *pMach, int bBuildVer, cd_u32 nPlatform, cd_u3
 
 static char *mach_read_asciiz(DieFile *pFile, cd_i64 nOffset)
 {
-    return xio_raw_string(pFile, nOffset, -1);
+    CDBuf sText;
+    unsigned char block[4096];
+    cd_i64 done = 0;
+    cdbuf_init(&sText);
+    if (nOffset < 0 || nOffset >= pFile->nSize) return cdbuf_detach(&sText, NULL);
+    while (done < pFile->nSize - nOffset) {
+        cd_i64 left = pFile->nSize - nOffset - done;
+        size_t count = left > (cd_i64)sizeof(block) ? sizeof(block) : (size_t)left;
+        size_t i;
+        if (!xx_io_read_at(pFile->pDevice, nOffset + done, block, count)) {
+            cdbuf_free(&sText);
+            return cd_strdup("");
+        }
+        for (i = 0; i < count && block[i]; ++i) {}
+        cdbuf_append(&sText, block, i);
+        if (i != count) break;
+        done += (cd_i64)count;
+    }
+    return cdbuf_detach(&sText, NULL);
 }
 
 /* basename after the last '/'. */

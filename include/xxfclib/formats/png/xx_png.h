@@ -81,7 +81,14 @@ struct xx_png {
     bool is_animated;        /**< An acTL chunk is present (APNG) */
     uint32_t frame_count;    /**< acTL num_frames, 0 when not animated */
     uint32_t play_count;     /**< acTL num_plays (0 = forever) */
+    void *analysis;         /**< Private tolerant inspection metadata */
 };
+
+/* Read IHDR/pHYs/bKGD metadata without requiring strict image validation.
+ * This does not mark the archive valid. The returned description is owned
+ * by the caller and must be released with xx_str_free. */
+XXFC_API bool xx_png_analyze(xx_png *png, xx_pd_struct *pd);
+XXFC_API char *xx_png_get_info(xx_png *png, xx_pd_struct *pd);
 
 /* --- Constructors & Lifecycle --- */
 XXFC_API void xx_png_init(xx_png *png, xx_io_device *dev,

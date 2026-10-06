@@ -898,6 +898,8 @@
 #include "xxfclib/formats/pcapng/xx_pcapng.h"
 #include "xxfclib/formats/pjl/xx_pjl.h"
 #include "xxfclib/formats/png/xx_png.h"
+#include "xxfclib/formats/pdf/xxpdf.h"
+#include "xxfclib/formats/pyc/xx_pyc.h"
 #include "xxfclib/formats/riff/xx_riff.h"
 #include "xxfclib/formats/svg/xx_svg.h"
 #include "xxfclib/formats/quake_pak/xx_quake_pak.h"

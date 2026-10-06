@@ -36,6 +36,7 @@
 #include "xxfclib/buf/xx_buf.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "../data/platforms/xx_data_platform.h"
 
 /* A byte class, expressed once. The predicates below are the whole of what
  * distinguishes the character-class records from one another. */
@@ -118,6 +119,11 @@ typedef struct {
     size_t io_capacity;
     uint8_t *compare_buffer, *find_buffer;
     size_t compare_capacity, find_capacity;
+    /* find_buffer holds the device bytes [find_base, find_base + find_valid).
+     * A search that restarts just after a rejected candidate continues in it,
+     * and short reads that fall inside it are served from it. */
+    int64_t find_base;
+    size_t find_valid;
 } SigInput;
 
 static bool sig_input_buffer(SigInput *input, uint8_t **buffer,
@@ -146,6 +152,12 @@ static bool sig_input_read(SigInput *input, int64_t offset, void *out, size_t si
     if (!size) return true;
     if (input->bytes) {
         xx_rt_memcpy(out, input->bytes + (size_t)offset, size);
+        return true;
+    }
+    if (input->find_valid && offset >= input->find_base &&
+        (uint64_t)(offset - input->find_base) <= input->find_valid &&
+        size <= input->find_valid - (size_t)(offset - input->find_base)) {
+        xx_rt_memcpy(out, input->find_buffer + (size_t)(offset - input->find_base), size);
         return true;
     }
     if (!input->device) return false;
@@ -197,7 +209,12 @@ static bool sig_input_class(SigInput *input, int64_t offset, int64_t window,
 /* Only complete starts are searched. A two-byte anchor overlaps adjacent
  * windows by one byte; a one-byte configured capacity uses a one-byte anchor.
  * Candidate verification has a separate reusable buffer, preserving this
- * window while a long literal is checked in bounded pieces. */
+ * window while a long literal is checked in bounded pieces.
+ *
+ * The window is kept between calls. sig_input_find_text restarts the search
+ * one byte after every rejected candidate; refilling the whole window each
+ * time made a common anchor byte (0x20 in .NET code, say) re-read the same
+ * data once per occurrence, hundreds of times slower than the buffer path. */
 static int64_t sig_input_find(SigInput *input, int64_t offset, int64_t length,
                               const uint8_t *pattern, int64_t pattern_size) {
     int64_t starts;
@@ -213,13 +230,33 @@ static int64_t sig_input_find(SigInput *input, int64_t offset, int64_t length,
     anchor_size = pattern_size >= 2 && input->find_capacity >= 2 ? 2 : 1;
     starts = length - pattern_size + 1;
     while (starts > 0 && !input->failed) {
-        size_t maximum_starts = input->find_capacity - anchor_size + 1;
-        size_t count = (uint64_t)starts < maximum_starts ? (size_t)starts : maximum_starts;
-        size_t read_size = count + anchor_size - 1;
+        size_t available;
+        size_t count;
+        size_t read_size;
         size_t cursor = 0;
-        if (!sig_input_read(input, offset, input->find_buffer, read_size)) return -1;
+        const uint8_t *window;
+        if (input->find_valid && offset >= input->find_base &&
+            (uint64_t)(offset - input->find_base) < input->find_valid &&
+            input->find_valid - (size_t)(offset - input->find_base) >= anchor_size) {
+            available = input->find_valid - (size_t)(offset - input->find_base);
+        } else {
+            /* Read only what this search can use, as before: a short search
+             * must not pull in a whole window. */
+            size_t wanted = input->find_capacity;
+            if ((uint64_t)starts + anchor_size - 1 < (uint64_t)wanted)
+                wanted = (size_t)starts + anchor_size - 1;
+            input->find_valid = 0;
+            if (!sig_input_read(input, offset, input->find_buffer, wanted)) return -1;
+            input->find_base = offset;
+            input->find_valid = wanted;
+            available = wanted;
+        }
+        window = input->find_buffer + (size_t)(offset - input->find_base);
+        count = available - anchor_size + 1;
+        if ((uint64_t)count > (uint64_t)starts) count = (size_t)starts;
+        read_size = count + anchor_size - 1;
         while (cursor < count) {
-            int64_t found = xx_data_find_bytes_buffer_optimize(input->find_buffer, read_size, cursor,
+            int64_t found = xx_data_find_bytes_buffer_optimize(window, read_size, cursor,
                 pattern, anchor_size, NULL);
             int64_t candidate;
             if (found < 0 || (uint64_t)found >= count) break;
@@ -231,6 +268,156 @@ static int64_t sig_input_find(SigInput *input, int64_t offset, int64_t length,
         }
         offset += (int64_t)count;
         starts -= (int64_t)count;
+    }
+    return -1;
+}
+
+/* ---------------------------------------------------------------------------
+ * Masked search for signatures whose leading part mixes literal bytes and
+ * wildcards ("20 .. .. .. .. 8D .. FE 0E"). The literal search below can
+ * anchor only on the first literal run -- here the single, very common byte
+ * 0x20 -- and then verifies every occurrence. Instead the leading BYTES/SKIP
+ * records become one fixed value/mask pattern, searched by its two rarest
+ * literal bytes with SIMD; only starts where the whole pattern fits reach
+ * the full matcher, which still decides every result.
+ * ------------------------------------------------------------------------- */
+
+/* Longest leading pattern used as the filter; later bytes are left to the
+ * full matcher. */
+#define SIG_MASKED_MAX 256
+
+typedef struct {
+    uint8_t value[SIG_MASKED_MAX];
+    uint8_t mask[SIG_MASKED_MAX];
+    size_t size;
+    size_t idx1;
+    size_t idx2;
+} SigMasked;
+
+/* How common a byte is in executable data; lower is rarer. The same scale as
+ * the literal search's filter (xx_data_avx2.c). */
+static uint8_t sig_byte_weight(uint8_t c) {
+    if (c == 0x00) return 255;
+    if (c == 0xFF) return 220;
+    if (c == 0x20) return 180;
+    if (c >= 'a' && c <= 'z') return 100;
+    if (c >= 'A' && c <= 'Z') return 100;
+    if (c >= '0' && c <= '9') return 120;
+    return 50;
+}
+
+/* Builds the filter from the leading BYTES/SKIP records. True only when it
+ * covers the anchor record completely, anchor_idx being the first BYTES
+ * record with nothing but SKIP before it, and adds literal bytes beyond the
+ * anchor; otherwise the plain literal search is already as good. */
+static bool sig_masked_build(const xx_data_signature *signature, int anchor_idx,
+                             SigMasked *out) {
+#if defined(XX_SIG_NO_MASKED_SEARCH)
+    /* Build switch for A/B testing against the literal-anchor path. */
+    (void)signature; (void)anchor_idx;
+    out->size = 0;
+    return false;
+#else
+    size_t literals = 0;
+    size_t anchor_end = 0;
+    size_t i;
+    int j;
+    uint8_t w1 = 0xFF;
+    uint8_t w2 = 0xFF;
+    bool have1 = false;
+    bool have2 = false;
+
+    out->size = 0;
+    for (j = 0; j < signature->count && out->size < SIG_MASKED_MAX; ++j) {
+        const xx_data_sig_record *record = &signature->records[j];
+
+        if (record->kind == XX_DATA_SIG_BYTES) {
+            size_t take;
+            if (record->data_size <= 0 || !record->data) return false;
+            take = (uint64_t)record->data_size < (uint64_t)(SIG_MASKED_MAX - out->size) ?
+                (size_t)record->data_size : SIG_MASKED_MAX - out->size;
+            xx_rt_memcpy(out->value + out->size, record->data, take);
+            xx_rt_memset(out->mask + out->size, 0xFF, take);
+            out->size += take;
+            literals += take;
+            if (j == anchor_idx) {
+                if (take != (size_t)record->data_size) return false;
+                anchor_end = out->size;
+            }
+        } else if (record->kind == XX_DATA_SIG_SKIP) {
+            if (record->window < 0) return false;
+            if ((uint64_t)record->window > (uint64_t)(SIG_MASKED_MAX - out->size)) break;
+            xx_rt_memset(out->value + out->size, 0, (size_t)record->window);
+            xx_rt_memset(out->mask + out->size, 0, (size_t)record->window);
+            out->size += (size_t)record->window;
+        } else {
+            break;
+        }
+    }
+
+    if (!anchor_end || literals <= (size_t)signature->records[anchor_idx].data_size) return false;
+
+    /* The two rarest literal positions, first occurrence on ties. */
+    for (i = 0; i < out->size; ++i) {
+        uint8_t w;
+        if (out->mask[i] != 0xFF) continue;
+        w = sig_byte_weight(out->value[i]);
+        if (!have1 || w < w1) {
+            if (have1) { out->idx2 = out->idx1; w2 = w1; have2 = true; }
+            out->idx1 = i; w1 = w; have1 = true;
+        } else if (!have2 || w < w2) {
+            out->idx2 = i; w2 = w; have2 = true;
+        }
+    }
+    if (!have2) out->idx2 = out->idx1;
+    return have1;
+#endif
+}
+
+/* First start in [first, last] where the masked pattern matches, -1 if none,
+ * -2 when the device window cannot hold the pattern (use the literal path).
+ * The caller guarantees last + pattern size <= input size. Device reads reuse
+ * and refresh find_buffer exactly like sig_input_find. */
+static int64_t sig_input_find_masked(SigInput *input, int64_t first, int64_t last,
+                                     const SigMasked *pattern) {
+    if (first > last) return -1;
+    if (input->bytes) {
+        uint64_t span = (uint64_t)(last - first) + pattern->size;
+        int64_t found;
+        if (span > (uint64_t)SIZE_MAX) return -2;
+        found = xx_data_find_masked(input->bytes + (size_t)first, (size_t)span,
+            pattern->value, pattern->mask, pattern->size, pattern->idx1, pattern->idx2);
+        return found < 0 ? -1 : first + found;
+    }
+    if (!sig_input_buffer(input, &input->find_buffer, &input->find_capacity,
+                          (uint64_t)(last - first) + pattern->size)) {
+        return input->failed ? -1 : -2;
+    }
+    if (input->find_capacity < pattern->size) return -2;
+    while (first <= last && !input->failed) {
+        size_t available;
+        size_t count;
+        int64_t found;
+        if (input->find_valid && first >= input->find_base &&
+            (uint64_t)(first - input->find_base) < input->find_valid &&
+            input->find_valid - (size_t)(first - input->find_base) >= pattern->size) {
+            available = input->find_valid - (size_t)(first - input->find_base);
+        } else {
+            uint64_t needed = (uint64_t)(last - first) + pattern->size;
+            size_t wanted = needed < (uint64_t)input->find_capacity ? (size_t)needed : input->find_capacity;
+            input->find_valid = 0;
+            if (!sig_input_read(input, first, input->find_buffer, wanted)) return -1;
+            input->find_base = first;
+            input->find_valid = wanted;
+            available = wanted;
+        }
+        count = available - pattern->size + 1;
+        if ((uint64_t)count > (uint64_t)(last - first) + 1U) count = (size_t)(last - first) + 1U;
+        found = xx_data_find_masked(input->find_buffer + (size_t)(first - input->find_base),
+            count + pattern->size - 1, pattern->value, pattern->mask, pattern->size,
+            pattern->idx1, pattern->idx2);
+        if (found >= 0) return first + found;
+        first += (int64_t)count;
     }
     return -1;
 }
@@ -932,7 +1119,43 @@ static int64_t sig_input_find_text(SigInput *input,
         if (anchor_idx >= 0) {
             int64_t search;
             int64_t limit;
+            SigMasked masked;
             if (prefix_len > available) goto finished;
+
+            /* Only SKIP before the anchor (prefix_len counts class records
+             * too, which the masked filter cannot express). */
+            if (prefix_len == 0 || signature.records[0].kind == XX_DATA_SIG_SKIP) {
+                bool only_skip = true;
+                for (j = 0; j < anchor_idx; ++j) {
+                    if (signature.records[j].kind != XX_DATA_SIG_SKIP) { only_skip = false; break; }
+                }
+                if (only_skip && sig_masked_build(&signature, anchor_idx, &masked)) {
+                    /* The candidates the literal path below would try: the
+                     * anchor lies inside the window, and the fixed pattern
+                     * inside the data -- a match needs both, as BYTES and
+                     * SKIP never read past the end. */
+                    int64_t anchor_size = signature.records[anchor_idx].data_size;
+                    int64_t first = offset;
+                    int64_t last = offset + length - anchor_size;
+                    bool fallback = false;
+
+                    if ((int64_t)input->size - (int64_t)masked.size < last) {
+                        last = (int64_t)input->size - (int64_t)masked.size;
+                    }
+                    while (first <= last && !input->failed) {
+                        int64_t candidate = sig_input_find_masked(input, first, last, &masked);
+                        if (candidate == -2) { fallback = true; break; }
+                        if (candidate < 0) break;
+                        if (sig_input_match(input, candidate, &signature, context, NULL)) {
+                            result = candidate;
+                            break;
+                        }
+                        first = candidate + 1;
+                    }
+                    if (!fallback) goto finished;
+                }
+            }
+
             search = offset + prefix_len;
             limit = length > (int64_t)input->size - search ?
                 (int64_t)input->size : search + length;

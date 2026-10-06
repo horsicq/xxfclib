@@ -127,6 +127,13 @@ static inline int64_t xx_io_get_size(xx_io_device *d) {
     return xx_io_total_size(d);
 }
 
+/** Read exactly n bytes at an absolute offset and restore the device cursor.
+ * The device must be seekable and report its current cursor. For known-size
+ * devices, out-of-range requests fail before changing the cursor. Short reads
+ * and failed cursor restores also fail. A zero-length read does not move it. */
+XXFC_API bool xx_io_read_at(xx_io_device *device, int64_t offset,
+                            void *buffer, size_t n);
+
 /* Aliases matching user request without prefix */
 static inline ssize_t io_read(xx_io_device *d, void *b, size_t n)  { return xx_io_read(d, b, n); }
 static inline ssize_t io_write(xx_io_device *d, const void *b, size_t n) { return xx_io_write(d, b, n); }

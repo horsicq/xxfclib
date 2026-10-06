@@ -148,6 +148,17 @@ XXFC_API void xx_global_set_avx2_enabled(bool enable);
 XXFC_API void xx_global_enable_avx2(bool enable);
 XXFC_API bool xx_global_is_avx2_enabled(void);
 
+/**
+ * @brief Give back the per-thread storage slots xxfclib has created.
+ *
+ * For a DLL that contains xxfclib, from its DllMain on DLL_PROCESS_DETACH
+ * when lpvReserved is NULL (FreeLibrary, not process exit); xxfclib's own
+ * shared build already does this. On Windows the slots are process-wide
+ * TlsAlloc indices that would otherwise leak on every unload; values other
+ * threads still hold are not freed. A no-op on other systems.
+ */
+XXFC_API void xx_global_release_thread_slots(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -37,10 +37,17 @@
  * that DLL's load-time behaviour. XXFC_BUILD_SHARED is set on the shared
  * target and nowhere else. */
 #if defined(XXFC_BUILD_SHARED)
+#include "xxfclib/global/xx_global.h"
+
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
     (void)hinstDLL;
-    (void)fdwReason;
-    (void)lpvReserved;
+
+    /* Unloaded with FreeLibrary rather than at process exit: give the
+     * process-wide per-thread slots back (xx_tls.h). */
+    if ((fdwReason == DLL_PROCESS_DETACH) && (lpvReserved == NULL)) {
+        xx_global_release_thread_slots();
+    }
+
     return TRUE;
 }
 #endif

@@ -19,7 +19,6 @@
  * SOFTWARE.
  */
 
-#include "../xio.h"
 #include "../../formats/zip/xzip.h"
 #include "../../die_engine/xx_die_engine_inflate.h"
 #include "../../die_engine/xx_die_engine_compat.h"
@@ -33,6 +32,54 @@
 /* XJAR::getFileFormatInfo reads only the head of each *.class candidate:
  * XArchive::decompress(&record, pPdStruct, 0, 0x100). */
 #define XZIP_CLASS_PROBE_SIZE 0x100
+
+static int zip_match(DieFile *pFile, cd_i64 nOffset, const void *pBytes, size_t nSize)
+{
+    unsigned char block[4];
+    return nSize <= sizeof(block) && nOffset >= 0 && nOffset <= pFile->nSize &&
+        (cd_u64)nSize <= (cd_u64)(pFile->nSize - nOffset) &&
+        xx_io_read_at(pFile->pDevice, nOffset, block, nSize) &&
+        x_memcmp(block, pBytes, nSize) == 0;
+}
+
+static int zip_append(DieFile *pFile, cd_i64 nOffset, size_t nSize, CDBuf *pOut)
+{
+    unsigned char block[8192];
+    size_t done = 0;
+    if (nOffset < 0 || nOffset > pFile->nSize ||
+        (cd_u64)nSize > (cd_u64)(pFile->nSize - nOffset)) return 0;
+    while (done < nSize) {
+        size_t count = nSize - done;
+        if (count > sizeof(block)) count = sizeof(block);
+        if (!xx_io_read_at(pFile->pDevice, nOffset + (cd_i64)done, block, count)) return 0;
+        cdbuf_append(pOut, block, count);
+        done += count;
+    }
+    return 1;
+}
+
+static unsigned char *zip_read_owned(DieFile *pFile, cd_i64 nOffset, size_t nSize)
+{
+    unsigned char *pBytes;
+    if (nOffset < 0 || nOffset > pFile->nSize ||
+        (cd_u64)nSize > (cd_u64)(pFile->nSize - nOffset)) return NULL;
+    pBytes = (unsigned char *)cd_malloc(nSize ? nSize : 1);
+    if (!pBytes) return NULL;
+    if (nSize && !xx_io_read_at(pFile->pDevice, nOffset, pBytes, nSize)) {
+        cd_free(pBytes);
+        return NULL;
+    }
+    return pBytes;
+}
+
+static int zip_append_name(DieFile *pFile, cd_i64 nOffset, size_t nSize, CDBuf *pOut)
+{
+    unsigned char *pBytes = zip_read_owned(pFile, nOffset, nSize);
+    if (!pBytes) return 0;
+    cdbuf_append(pOut, pBytes, nSize);
+    cd_free(pBytes);
+    return 1;
+}
 
 /* Decompresses the member described by a central-directory entry (only the
  * STORE and DEFLATE methods, which is all the manifest ever uses). nMaxSize
@@ -49,7 +96,7 @@ static int zip_read_member(DieFile *pFile, cd_u16 nMethod, cd_u32 nCompSize, cd_
         return 0;
     }
 
-    if (!xio_match(pFile, nLocalOffset, "\x50\x4B\x03\x04", 4)) {
+    if (!zip_match(pFile, nLocalOffset, "\x50\x4B\x03\x04", 4)) {
         return 0;
     }
 
@@ -68,13 +115,13 @@ static int zip_read_member(DieFile *pFile, cd_u16 nMethod, cd_u32 nCompSize, cd_
             nCopy = nMaxSize;
         }
 
-        return xio_append(pFile, nDataOffset, nCopy, pOut);
+        return zip_append(pFile, nDataOffset, nCopy, pOut);
     }
 
     if (nMethod == 8) {
         unsigned char *pOwned = NULL;
         const unsigned char *pCompressed = pFile->pData ? pFile->pData + nDataOffset :
-            (pOwned = xio_read_owned(pFile, nDataOffset, nCompSize));
+            (pOwned = zip_read_owned(pFile, nDataOffset, nCompSize));
         int bResult = pCompressed ? inflate_raw(pCompressed, nCompSize, nUncompSize, nMaxSize, pOut) : 0;
         cd_free(pOwned);
         return bResult;
@@ -196,7 +243,7 @@ int xzip_parse(DieFile *pFile, XZip *pZip)
             break;
         }
 
-        if (xio_match(pFile, i, "\x50\x4B\x05\x06", 4)) {
+        if (zip_match(pFile, i, "\x50\x4B\x05\x06", 4)) {
             nEocd = i;
 
             break;
@@ -225,7 +272,7 @@ int xzip_parse(DieFile *pFile, XZip *pZip)
             break;
         }
 
-        if (!xio_match(pFile, nCentralOffset, "\x50\x4B\x01\x02", 4)) {
+        if (!zip_match(pFile, nCentralOffset, "\x50\x4B\x01\x02", 4)) {
             break;
         }
 
@@ -245,12 +292,12 @@ int xzip_parse(DieFile *pFile, XZip *pZip)
         {
             CDBuf sName;
             cdbuf_init(&sName);
-            xio_append(pFile, nNameOffset, nNameLen, &sName);
+            zip_append_name(pFile, nNameOffset, nNameLen, &sName);
             pName = cdbuf_detach(&sName, NULL);
         }
         cdvec_push(&pZip->vecNames, pName);
 
-        if ((pZip->pManifestText == NULL) && (nNameLen == 20) && (xio_match(pFile, nNameOffset, "META-INF/MANIFEST.MF", 20))) {
+        if ((pZip->pManifestText == NULL) && (nNameLen == 20) && (zip_match(pFile, nNameOffset, "META-INF/MANIFEST.MF", 20))) {
             CDBuf manifest;
 
             cdbuf_init(&manifest);
@@ -262,7 +309,7 @@ int xzip_parse(DieFile *pFile, XZip *pZip)
             }
         }
 
-        if ((pZip->pPackageJson == NULL) && (nNameLen == 20) && (xio_match(pFile, nNameOffset, "package/package.json", 20))) {
+        if ((pZip->pPackageJson == NULL) && (nNameLen == 20) && (zip_match(pFile, nNameOffset, "package/package.json", 20))) {
             CDBuf json;
 
             cdbuf_init(&json);

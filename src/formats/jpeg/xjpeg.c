@@ -19,7 +19,6 @@
  * SOFTWARE.
  */
 
-#include "../xio.h"
 #include "../../formats/jpeg/xjpeg.h"
 
 #define JPEG_SIGNATURE_SIZE     2
@@ -315,7 +314,18 @@ static void parse_dqt_md5(XJpeg *pJpeg)
                 nSize = pJpeg->pFile->nSize - nOffset;
             }
 
-            xio_append(pJpeg->pFile, nOffset, (size_t)nSize, &buf);
+            {
+                unsigned char block[8192];
+                size_t done = 0;
+                size_t total = (size_t)nSize;
+                while (done < total) {
+                    size_t count = total - done;
+                    if (count > sizeof(block)) count = sizeof(block);
+                    if (!xx_io_read_at(pJpeg->pFile->pDevice, nOffset + (cd_i64)done, block, count)) break;
+                    cdbuf_append(&buf, block, count);
+                    done += count;
+                }
+            }
         }
     }
 

@@ -26,7 +26,6 @@
  * type-descriptor lists the ProGuard/obfuscator signatures scan.
  */
 
-#include "../xio.h"
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "../../formats/dex/xdex.h"
 #include "../../die_engine/xx_die_engine_compat.h"
@@ -95,7 +94,26 @@ static char *dex_read_string_data(DieFile *pFile, cd_i64 nDataOffset)
         nMax = nAvail;
     }
 
-    return xio_raw_string(pFile, nStart, nMax);
+    {
+        CDBuf sText;
+        unsigned char block[4096];
+        cd_i64 done = 0;
+        cdbuf_init(&sText);
+        while (done < nMax) {
+            cd_i64 left = nMax - done;
+            size_t count = left > (cd_i64)sizeof(block) ? sizeof(block) : (size_t)left;
+            size_t i;
+            if (!xx_io_read_at(pFile->pDevice, nStart + done, block, count)) {
+                cdbuf_free(&sText);
+                return cd_strdup("");
+            }
+            for (i = 0; i < count && block[i]; ++i) {}
+            cdbuf_append(&sText, block, i);
+            if (i != count) break;
+            done += (cd_i64)count;
+        }
+        return cdbuf_detach(&sText, NULL);
+    }
 }
 
 /* CRC-32 (poly 0xEDB88320, init 0xFFFFFFFF, final xor) over the little-endian

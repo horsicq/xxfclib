@@ -133,6 +133,7 @@ xx_zip *xx_zip_create(xx_io_device *dev, int64_t base_address) {
 }
 
 void xx_zip_destroy(xx_zip *zip) {
+    xx_zip_cleanup_analysis(zip);
     if (!zip) {
         return;
     }
@@ -4376,4 +4377,44 @@ bool xx_zip_data_struct_record_move_to_next(Abstractformat *self, xx_data_struct
 void xx_zip_free_data_struct_records_reading(Abstractformat *self, xx_data_struct_record_state *state) {
     (void)self;
     xx_data_struct_record_state_free(state);
+}
+
+bool xx_zip_read_file(xx_zip *zip, const char *name, size_t limit,
+                       uint8_t **data, size_t *size, xx_pd_struct *pd) {
+    xx_zip probe;
+    xx_archive_record_state *state = NULL;
+    uint8_t *decoded = NULL;
+    uint64_t visited = 0;
+    bool ok = false;
+    if (data) *data = NULL;
+    if (size) *size = 0;
+    if (!zip || !data || !size || !name || !zip->format.device || xx_pd_is_stopped(pd)) return false;
+    /* A plain ZIP view prevents derived APK/JAR identity callbacks from
+     * recursively requesting their own required member. */
+    xx_zip_init(&probe, zip->format.device, zip->format.base_address);
+    if (!xx_zip_handle_base_info(&probe.format, pd)) goto done;
+    state = xx_zip_create_archive_records_reading(&probe.format, NULL, NULL);
+    while (state && state->has_record && visited++ < 100000U && !xx_pd_is_stopped(pd)) {
+        const xx_archive_record *record = xx_zip_get_current_archive_record(&probe.format, state);
+        const char *original = xx_archive_record_get_meta_str(record, XX_META_ID_ORIGINAL_NAME);
+        if (original && !xx_rt_strcmp(original, name)) {
+            uint64_t expected = xx_archive_record_get_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, UINT64_MAX);
+            xx_zip_buffer_sink sink; xx_io_device destination;
+            if (expected > limit || expected >= SIZE_MAX || record->compressed_size < 0 ||
+                (uint64_t)record->compressed_size > limit ||
+                xx_archive_record_get_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false)) break;
+            decoded = (uint8_t *)xx_mem_alloc((size_t)expected + 1U); if (!decoded) break;
+            xx_zip_init_buffer_sink(&destination, &sink, decoded, (size_t)expected);
+            if (xx_zip_unpack_current_archive_record_to_device(&probe.format, state, &destination, pd) &&
+                sink.position == (size_t)expected && !xx_pd_is_stopped(pd)) {
+                decoded[(size_t)expected] = 0; *data = decoded; *size = (size_t)expected; decoded = NULL; ok = true;
+            }
+            break;
+        }
+        if (!xx_zip_archive_record_move_to_next(&probe.format, state, NULL)) break;
+    }
+done:
+    xx_mem_free(decoded);
+    if (state) xx_zip_free_archive_records_reading(&probe.format, state);
+    xx_zip_destroy(&probe); return ok;
 }

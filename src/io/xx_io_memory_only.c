@@ -2,16 +2,11 @@
  * There is deliberately no filesystem fallback or virtual path namespace. */
 #include "xx_io_policy.h"
 #include "xxfclib/memory/xx_memory.h"
-
-#if defined(_MSC_VER)
-# define XX_IO_THREAD_LOCAL __declspec(thread)
-#else
-# define XX_IO_THREAD_LOCAL _Thread_local
-#endif
+#include "../global/xx_tls.h"
 
 typedef struct xx_io_policy_context {
     struct xx_io_policy_context *parent;
-    const void *thread_cookie;
+    uintptr_t thread_id;
     uint64_t limit, used, streams;
     size_t refs;
     uint32_t error;
@@ -22,7 +17,10 @@ typedef struct xx_io_ram_temp {
     uint8_t *data;
     size_t capacity, size, position;
 } xx_io_ram_temp;
-static XX_IO_THREAD_LOCAL xx_io_policy_context *xx_io_policy_current;
+/* The calling thread's innermost scope, in a thread slot rather than a
+ * thread-local variable (see xx_tls.h). */
+static xx_tls_key xx_io_policy_key;
+static xx_io_policy_context *xx_io_policy_get(void) {return (xx_io_policy_context *)xx_tls_get(&xx_io_policy_key);}
 
 static void xx_io_policy_fail(xx_io_policy_context *context,uint32_t error) {
     for(;context;context=context->parent) if(!context->error) context->error=error;
@@ -34,43 +32,46 @@ static void xx_io_policy_release(xx_io_policy_context *context) {
     }
 }
 bool xx_io_memory_only_begin(xx_io_memory_only_scope *scope,uint64_t limit) {
-    xx_io_policy_context *context;
+    xx_io_policy_context *context,*current=xx_io_policy_get();
     if(!scope || scope->internal) return false;
     scope->error=XX_IO_MEMORY_ONLY_OK;
     context=(xx_io_policy_context *)xx_mem_calloc(1U,sizeof(*context));
-    if(!context) {scope->error=XX_IO_MEMORY_ONLY_ALLOCATION;xx_io_policy_fail(xx_io_policy_current,scope->error);return false;}
-    context->parent=xx_io_policy_current;context->thread_cookie=&xx_io_policy_current;
+    if(!context || !xx_tls_set(&xx_io_policy_key,context)) {
+        xx_mem_free(context);scope->error=XX_IO_MEMORY_ONLY_ALLOCATION;xx_io_policy_fail(current,scope->error);return false;
+    }
+    context->parent=current;context->thread_id=xx_tls_thread_id();
     context->limit=limit;context->refs=1U;context->active=true;
     if(context->parent) ++context->parent->refs;
-    xx_io_policy_current=context;scope->internal=context;return true;
+    scope->internal=context;return true;
 }
 bool xx_io_memory_only_end(xx_io_memory_only_scope *scope) {
-    xx_io_policy_context *context;
+    xx_io_policy_context *context,*current=xx_io_policy_get();
     if(!scope || !scope->internal) return false;
     context=(xx_io_policy_context *)scope->internal;
-    if(context!=xx_io_policy_current) {
-        xx_io_policy_fail(xx_io_policy_current,XX_IO_MEMORY_ONLY_SCOPE_ORDER);
+    if(context!=current) {
+        xx_io_policy_fail(current,XX_IO_MEMORY_ONLY_SCOPE_ORDER);
         scope->error=XX_IO_MEMORY_ONLY_SCOPE_ORDER;return false;
     }
     if(context->streams) xx_io_policy_fail(context,XX_IO_MEMORY_ONLY_LIVE_TEMP);
     scope->error=context->error;context->active=false;
-    xx_io_policy_current=context->parent;scope->internal=NULL;
+    xx_tls_set(&xx_io_policy_key,context->parent);scope->internal=NULL;
     xx_io_policy_release(context);return scope->error==XX_IO_MEMORY_ONLY_OK;
 }
-bool xx_io_memory_only_active(void) {return xx_io_policy_current!=NULL;}
-uint64_t xx_io_memory_only_used(void) {return xx_io_policy_current?xx_io_policy_current->used:0U;}
+bool xx_io_memory_only_active(void) {return xx_io_policy_get()!=NULL;}
+uint64_t xx_io_memory_only_used(void) {xx_io_policy_context *current=xx_io_policy_get();return current?current->used:0U;}
 xx_io_memory_only_error_t xx_io_memory_only_error(const xx_io_memory_only_scope *scope) {
     if(!scope) return XX_IO_MEMORY_ONLY_SCOPE_ORDER;
     return (xx_io_memory_only_error_t)(scope->internal?
         ((xx_io_policy_context *)scope->internal)->error:scope->error);
 }
 bool xx_io_policy_mutation_allowed(void) {
-    if(!xx_io_policy_current) return true;
-    xx_io_policy_fail(xx_io_policy_current,XX_IO_MEMORY_ONLY_DISK_WRITE);return false;
+    xx_io_policy_context *current=xx_io_policy_get();
+    if(!current) return true;
+    xx_io_policy_fail(current,XX_IO_MEMORY_ONLY_DISK_WRITE);return false;
 }
 bool xx_io_policy_file_open_allowed(const char *mode) {
     const char *p;
-    if(!xx_io_policy_current) return true;
+    if(!xx_io_policy_get()) return true;
     if(mode && mode[0]=='r') {
         for(p=mode+1;*p;++p) if(*p!='b' && *p!='t' && *p!='e') break;
         if(!*p) return true;
@@ -84,8 +85,8 @@ static xx_io_ram_temp *xx_io_ram_state(xx_io_device *device) {
 }
 static bool xx_io_ram_live(xx_io_ram_temp *temp) {
     xx_io_policy_context *context;
-    if(!temp || !temp->owner || temp->owner->thread_cookie!=&xx_io_policy_current || !temp->owner->active) return false;
-    for(context=xx_io_policy_current;context;context=context->parent) if(context==temp->owner) return true;
+    if(!temp || !temp->owner || temp->owner->thread_id!=xx_tls_thread_id() || !temp->owner->active) return false;
+    for(context=xx_io_policy_get();context;context=context->parent) if(context==temp->owner) return true;
     return false;
 }
 static bool xx_io_ram_grow(xx_io_ram_temp *temp,size_t needed) {
@@ -127,8 +128,8 @@ static ssize_t xx_io_ram_write(xx_io_device *device,const void *buffer,size_t n)
     /* An inner policy must never allocate or mutate an outer-owned stream
      * without charging the inner ceiling. Keep reads/seeks usable for source
      * streams, but require writes to belong to the innermost active scope. */
-    if(temp->owner!=xx_io_policy_current) {
-        xx_io_policy_fail(xx_io_policy_current,XX_IO_MEMORY_ONLY_SCOPE_ORDER);return -1;
+    if(temp->owner!=xx_io_policy_get()) {
+        xx_io_policy_fail(xx_io_policy_get(),XX_IO_MEMORY_ONLY_SCOPE_ORDER);return -1;
     }
     if(n>(size_t)PTRDIFF_MAX || n>SIZE_MAX-temp->position ||
         (uint64_t)n>INT64_MAX-(uint64_t)temp->position) {
@@ -157,13 +158,13 @@ static int64_t xx_io_ram_tell(xx_io_device *device) {xx_io_ram_temp *temp=xx_io_
 static int64_t xx_io_ram_size(xx_io_device *device) {xx_io_ram_temp *temp=xx_io_ram_state(device);return xx_io_ram_live(temp)?(int64_t)temp->size:-1;}
 static int xx_io_ram_close(xx_io_device *device) {
     xx_io_ram_temp *temp=xx_io_ram_state(device);xx_io_policy_context *context;
-    if(!temp || !temp->owner || temp->owner->thread_cookie!=&xx_io_policy_current) return -1;
+    if(!temp || !temp->owner || temp->owner->thread_id!=xx_tls_thread_id()) return -1;
     for(context=temp->owner;context;context=context->parent) {context->used-=temp->capacity;--context->streams;}
     if(temp->data) {xx_mem_zero(temp->data,temp->capacity);xx_mem_free(temp->data);}
     xx_io_policy_release(temp->owner);xx_mem_free(temp);xx_mem_free(device);return 0;
 }
 xx_io_device *xx_io_memory_temp_open(void) {
-    xx_io_device *device;xx_io_ram_temp *temp;xx_io_policy_context *context=xx_io_policy_current;
+    xx_io_device *device;xx_io_ram_temp *temp;xx_io_policy_context *context=xx_io_policy_get();
     if(!context) return NULL;
     device=(xx_io_device *)xx_mem_calloc(1U,sizeof(*device));
     temp=(xx_io_ram_temp *)xx_mem_calloc(1U,sizeof(*temp));

@@ -29,7 +29,9 @@ extern xx_format_extractor xx_lego_alp_extractor;
 extern xx_format_extractor xx_audio_pvf_extractor;
 extern xx_format_extractor xx_audio_rifx_wave_extractor;
 extern xx_format_extractor xx_audio_shockwave_swa_extractor;
+#ifndef XXFC_FORMATS_ONLY
 #include "die_music/xx_die_music_extractor_decls.inc"
+#endif
 extern xx_format_extractor xx_apple_disk_copy_6_ndif_image_extractor;
 extern xx_format_extractor xx_solitaire_deluxe_extractor;
 extern xx_format_extractor xx_fss_extractor;
@@ -819,6 +821,8 @@ extern xx_format_extractor xx_linuxzimage_extractor;
 extern xx_format_extractor xx_pcapng_extractor;
 extern xx_format_extractor xx_pjl_extractor;
 extern xx_format_extractor xx_png_extractor;
+extern xx_format_extractor xx_pdf_extractor;
+extern xx_format_extractor xx_pyc_extractor;
 extern xx_format_extractor xx_riff_extractor;
 extern xx_format_extractor xx_svg_extractor;
 extern xx_format_extractor xx_quake_pak_extractor;
@@ -2080,6 +2084,8 @@ static const struct {
     { XX_FILE_TYPE_PCAPNG, &xx_pcapng_extractor },
     { XX_FILE_TYPE_PJL, &xx_pjl_extractor },
     { XX_FILE_TYPE_PNG, &xx_png_extractor },
+    { XX_FILE_TYPE_PDF, &xx_pdf_extractor },
+    { XX_FILE_TYPE_PYC, &xx_pyc_extractor },
     { XX_FILE_TYPE_RIFF, &xx_riff_extractor },
     { XX_FILE_TYPE_SVG, &xx_svg_extractor },
     { XX_FILE_TYPE_QUAKE_PAK, &xx_quake_pak_extractor },
@@ -2638,5 +2644,7 @@ static const struct {
     { XX_FILE_TYPE_AUDIO_PVF, &xx_audio_pvf_extractor },
     { XX_FILE_TYPE_AUDIO_RIFX_WAVE, &xx_audio_rifx_wave_extractor },
     { XX_FILE_TYPE_AUDIO_SHOCKWAVE_SWA, &xx_audio_shockwave_swa_extractor },
+#ifndef XXFC_FORMATS_ONLY
 #include "die_music/xx_die_music_extractor_rows.inc"
+#endif
 };

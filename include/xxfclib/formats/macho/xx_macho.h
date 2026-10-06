@@ -264,6 +264,8 @@ static inline const Abstractformat *xx_macho_to_format_const(
     return macho ? &macho->format : NULL;
 }
 
+#include "xxfclib/formats/macho/xx_macho_inspect.h"
+
 #ifdef __cplusplus
 }
 #endif

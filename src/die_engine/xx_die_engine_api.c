@@ -33,9 +33,8 @@
 #include "xxfclib/fs/xx_fs.h"
 #include "xxfclib/list/xx_list.h"
 #include "xxfclib/strings/xx_string.h"
-#include "../formats/xft.h"
 #include "xx_die_engine_xdisasm.h"
-#include "../formats/iso9660/xiso9660.h"
+
 #include "../js/xx_js_internal.h"
 #include "xxfclib/algo/kpa/xx_kpa.h"
 
@@ -296,6 +295,8 @@ typedef enum {
     A_getValuesByKey,
     A_isValuesHexByKey,
     A_isEncrypted,
+    A_getEncryption,
+    A_getPermissions,
 
     /* ---- DEX ---- */
     A_isDexStringPresent,
@@ -466,6 +467,17 @@ static int arg_bool(JSCtx *pCtx, int nArgc, JSVal *pArgv, int nIndex, int bDefau
     return js_to_bool(pCtx, pArgv[nIndex]);
 }
 
+static JSVal native_str_take(JSCtx *ctx, char *text) {
+    JSVal result = js_str(ctx, text ? text : "");
+    xx_str_free(text); return result;
+}
+static char *native_iso_identifier(DieFile *file, int64_t offset, size_t size) {
+    xx_iso9660 iso; char *text;
+    xx_iso9660_init(&iso, file->pDevice, 0);
+    text = xx_iso9660_get_identifier(&iso, offset, size, NULL);
+    xx_iso9660_destroy(&iso); return text;
+}
+
 static JSVal str_take(JSCtx *pCtx, char *pString)
 {
     JSVal result = js_str(pCtx, pString ? pString : "");
@@ -578,8 +590,8 @@ static int archive_record_present_exp(DieEngine *pEngine, const char *pPattern)
             nDeadline = (cd_i64)x_clock_ms() + ARCHIVE_EXP_BUDGET_MS;
         }
 
-        for (i = 0; (i < pEngine->zip.vecNames.nSize) && (!pEngine->bStop); i++) {
-            const char *pName = (const char *)pEngine->zip.vecNames.ppData[i];
+        for (i = 0; (xx_zip_get_record_names(&pEngine->zip) && i < xx_zip_get_record_names(&pEngine->zip)->count) && (!pEngine->bStop); i++) {
+            const char *pName = *(char **)xx_list_at(xx_zip_get_record_names(&pEngine->zip), i);
             size_t nLength = 0;
 
             if (pName == NULL) {
@@ -635,7 +647,7 @@ static const char *section_name(DieEngine *pEngine, int nNumber, char *pBuffer)
         return pBuffer;
     }
 
-    /* XPE reads the eight-byte field as Latin-1, while JS strings and the
+    /* xx_pe_inspection reads the eight-byte field as Latin-1, while JS strings and the
      * console output use UTF-8. A raw high byte is not a UTF-8 character. */
     for (i = 0; (i < 8) && pEngine->pe.pSections[nNumber].sName[i]; i++) {
         unsigned char nChar = (unsigned char)pEngine->pe.pSections[nNumber].sName[i];
@@ -707,7 +719,7 @@ static int pe_directory_section(DieEngine *pEngine, int nDirectory)
     return pRecord && pRecord->file_part_number > 0 ? pRecord->file_part_number - 1 : 0;
 }
 
-/* PE image types, mirroring XPE::getType() / XPE::typeIdToString(). */
+/* PE image types, mirroring xx_pe_inspection::getType() / xx_pe_inspection::typeIdToString(). */
 typedef enum {
     PETYPE_APPLICATION = 0,
     PETYPE_XBOX_APPLICATION,
@@ -722,7 +734,7 @@ typedef enum {
     PETYPE_EFI_BOOTSERVICEDRIVER
 } PEType;
 
-static int pe_imports_ntdll(XPE *pPE)
+static int pe_imports_ntdll(xx_pe_inspection *pPE)
 {
     int i = 0;
 
@@ -735,7 +747,7 @@ static int pe_imports_ntdll(XPE *pPE)
     return 0;
 }
 
-static PEType pe_type(XPE *pPE)
+static PEType pe_type(xx_pe_inspection *pPE)
 {
     PEType result = PETYPE_APPLICATION;
 
@@ -798,7 +810,7 @@ static const char *version_value(DieEngine *pEngine, const char *pKey)
     return "";
 }
 
-static cd_u64 image_file_header_value(XPE *pPE, const char *pKey)
+static cd_u64 image_file_header_value(xx_pe_inspection *pPE, const char *pKey)
 {
     if (x_strcmp(pKey, "Machine") == 0) return pPE->nMachine;
     if (x_strcmp(pKey, "NumberOfSections") == 0) return pPE->nNumberOfSections;
@@ -811,7 +823,7 @@ static cd_u64 image_file_header_value(XPE *pPE, const char *pKey)
     return 0;
 }
 
-static cd_u64 image_optional_header_value(XPE *pPE, const char *pKey)
+static cd_u64 image_optional_header_value(xx_pe_inspection *pPE, const char *pKey)
 {
     if (x_strcmp(pKey, "Magic") == 0) return pPE->nMagic;
     if (x_strcmp(pKey, "MajorLinkerVersion") == 0) return pPE->nMajorLinkerVersion;
@@ -1135,7 +1147,7 @@ static int unicode_type(DieFile *pFile)
 
 /* --------------------------------------------------- operation system  ---
  *
- * Reproduces XPE::getOperatingSystemVersionsS and the IMAGE_FILE_HEADER
+ * Reproduces xx_pe_inspection::getOperatingSystemVersionsS and the IMAGE_FILE_HEADER
  * machine table, which together make up the "Operation system" line that
  * db/PE/_PE.0.sg prints under --verbose.
  */
@@ -1188,7 +1200,7 @@ static const char *pe_machine_name(unsigned int nMachine)
 {
     size_t i = 0;
 
-    /* XPE::_getMachine folds the Linux native-OS override onto AMD64. */
+    /* xx_pe_inspection::_getMachine folds the Linux native-OS override onto AMD64. */
     if (nMachine == (0xFD1D ^ 0x8664)) {
         nMachine = 0x8664;
     }
@@ -1202,43 +1214,6 @@ static const char *pe_machine_name(unsigned int nMachine)
     return "Unknown";
 }
 
-/* --------------------------------------------------------- PDF encryption -
- *
- * XPDF::isEncrypted is "getEncryption() is not empty", and getEncryption
- * produces a descriptor exactly when XPDF::findEncryptObjectIndex finds an
- * object whose first "/Filter" part is followed by "/Standard". The trailer
- * /Encrypt reference the reference then prefers only picks between such
- * objects - it never decides whether one exists - so the boolean the script
- * asks for needs nothing beyond the token lists. getEncryption reads the
- * objects with getParts(256).
- */
-static int pdf_is_encrypted(XPDF *pPdf)
-{
-    size_t i = 0;
-
-    for (i = 0; i < pPdf->vecObjects.nSize; i++) {
-        CDVec *pParts = (CDVec *)pPdf->vecObjects.ppData[i];
-        size_t nLimit = pParts->nSize;
-        size_t j = 0;
-
-        if (nLimit > 256) {
-            nLimit = 256;
-        }
-
-        for (j = 0; j < nLimit; j++) {
-            if (x_strcmp((const char *)pParts->ppData[j], "/Filter") == 0) {
-                if (((j + 1) < nLimit) && (x_strcmp((const char *)pParts->ppData[j + 1], "/Standard") == 0)) {
-                    return 1;
-                }
-
-                break;
-            }
-        }
-    }
-
-    return 0;
-}
-
 /* ------------------------------------------------------------ dispatcher */
 
 static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, void *pUser)
@@ -1246,7 +1221,7 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
     DieEngine *pEngine = engine_of(pCtx);
     ApiId id = (ApiId)(size_t)pUser;
     DieFile *pFile = &pEngine->file;
-    XPE *pPE = &pEngine->pe;
+    xx_pe_inspection *pPE = &pEngine->pe;
     xx_memory_map *pMap = pEngine->pMap;
 
     (void)thisVal;
@@ -1333,12 +1308,12 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
         case A_isLE: return js_bool(xx_io_get_u16(pFile->pDevice, (cd_i64)xx_io_get_u32(pFile->pDevice, 0x3C, false), false) == 0x454C);
         case A_isLX: return js_bool(xx_io_get_u16(pFile->pDevice, (cd_i64)xx_io_get_u32(pFile->pDevice, 0x3C, false), false) == 0x584C);
 
-        case A_getApplicationIdentifier: return str_take(pCtx, iso9660_identifier(pFile, 574, 128));
-        case A_getDataPreparerIdentifier: return str_take(pCtx, iso9660_identifier(pFile, 446, 128));
+        case A_getApplicationIdentifier: return native_str_take(pCtx, native_iso_identifier(pFile, 574, 128));
+        case A_getDataPreparerIdentifier: return native_str_take(pCtx, native_iso_identifier(pFile, 446, 128));
 
         case A_isArchiveRecordPresent: {
             char *pName = arg_string(pCtx, nArgc, pArgv, 0);
-            int bResult = pEngine->bHasZip ? xzip_record_present(&pEngine->zip, pName) : 0;
+            int bResult = pEngine->bHasZip ? xx_zip_record_present(&pEngine->zip, pName) : 0;
 
             cd_free(pName);
 
@@ -1356,7 +1331,7 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
 
         case A_getManifestRecord: {
             char *pKey = arg_string(pCtx, nArgc, pArgv, 0);
-            JSVal result = str_take(pCtx, pEngine->bHasZip ? xzip_manifest_record(&pEngine->zip, pKey) : cd_strdup(""));
+            JSVal result = native_str_take(pCtx, pEngine->bHasZip ? xx_zip_manifest_record(&pEngine->zip, pKey) : xx_str_create(""));
 
             cd_free(pKey);
 
@@ -1365,7 +1340,7 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
 
         case A_getPackageJsonRecord: {
             char *pKey = arg_string(pCtx, nArgc, pArgv, 0);
-            JSVal result = str_take(pCtx, pEngine->bHasZip ? xzip_packagejson_record(&pEngine->zip, pKey) : cd_strdup(""));
+            JSVal result = native_str_take(pCtx, pEngine->bHasZip ? xx_zip_packagejson_record(&pEngine->zip, pKey) : xx_str_create(""));
 
             cd_free(pKey);
 
@@ -1374,9 +1349,9 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
 
         case A_isConstPresent: {
             char *pValue = arg_string(pCtx, nArgc, pArgv, 0);
-            int bResult = pEngine->bHasPyc ? xpyc_const_present(&pEngine->pyc, pValue) : 0;
+            int bResult = pEngine->bHasPyc ? xx_pyc_const_present(&pEngine->pyc, pValue) : 0;
 
-            cd_free(pValue);
+            xx_str_free(pValue);
 
             return js_bool(bResult);
         }
@@ -1969,7 +1944,7 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
 
             return js_str(pCtx, "Windows");
 
-        /* XPE::getFileFormatInfo: the raw version number is mapped to a
+        /* xx_pe_inspection::getFileFormatInfo: the raw version number is mapped to a
          * marketing name, and a 64-bit image is floored at Server 2003
          * because no earlier Windows had a 64-bit edition. Anything the
          * table does not know falls back to Server 2003 or XP by bitness,
@@ -1980,7 +1955,7 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
             const char *pName = NULL;
 
             if (pEngine->bHasDex) {
-                return js_str(pCtx, xdex_android_version(&pEngine->dex));
+                return js_str(pCtx, xx_dex_android_version(&pEngine->dex));
             }
 
             if (pEngine->bHasMach) {
@@ -1993,7 +1968,7 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
 
             if (pEngine->fileType == XFT_JAR) {
                 /* XJAR: Java release read from the first *.class member. */
-                return js_str(pCtx, pEngine->zip.sJvmVersion);
+                return js_str(pCtx, xx_zip_get_jvm_version(&pEngine->zip));
             }
 
             if (!pEngine->bHasPE) {
@@ -2065,53 +2040,48 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
         case A_getFileFormatName: return js_str(pCtx, xft_to_string(pEngine->fileType));
 
         case A_getFileFormatVersion:
-            if (pEngine->bHasJpeg && pEngine->jpeg.pVersion) {
-                return js_str(pCtx, pEngine->jpeg.pVersion);
+            if (pEngine->bHasJpeg && xx_jpeg_get_version(&pEngine->jpeg)) {
+                return js_str(pCtx, xx_jpeg_get_version(&pEngine->jpeg));
             }
 
             if (pEngine->bHasPdf) {
-                char *pVersion = xpdf_version(&pEngine->pdf);
-                JSVal result = js_str(pCtx, pVersion);
-
-                cd_free(pVersion);
-
-                return result;
+                return js_str(pCtx, xx_pdf_get_version(&pEngine->pdf));
             }
 
             if (pEngine->bHasDex) {
-                return js_str(pCtx, pEngine->dex.sVersion);
+                return js_str(pCtx, xx_dex_get_version(&pEngine->dex));
             }
 
             if (pEngine->bHasPyc) {
-                return js_str(pCtx, pEngine->pyc.sVersion);
+                return js_str(pCtx, pEngine->pyc.version);
             }
 
             return js_str(pCtx, "");
 
         case A_getFileFormatOptions:
             if (pEngine->bHasPng) {
-                char *pInfo = xpng_info_string(&pEngine->png);
+                char *pInfo = xx_png_get_info(&pEngine->png, NULL);
                 JSVal result = js_str(pCtx, pInfo);
 
-                cd_free(pInfo);
+                xx_str_free(pInfo);
 
                 return result;
             }
 
             if (pEngine->bHasPdf) {
-                char *pInfo = xpdf_info(&pEngine->pdf);
-                JSVal result = js_str(pCtx, pInfo);
+                char *pInfo = xx_pdf_get_info(&pEngine->pdf, NULL);
+                JSVal result = js_str(pCtx, pInfo ? pInfo : "");
 
-                cd_free(pInfo);
+                xx_str_free(pInfo);
 
                 return result;
             }
 
             if (pEngine->bHasDex) {
-                char *pHex = xdex_map_hash_hex(&pEngine->dex);
+                char *pHex = xx_dex_map_hash_hex(&pEngine->dex);
                 JSVal result = js_str(pCtx, pHex);
 
-                cd_free(pHex);
+                xx_str_free(pHex);
 
                 return result;
             }
@@ -2119,38 +2089,38 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
             return js_str(pCtx, "");
 
         /* ------------------------------------------------------- JPEG */
-        case A_getComment: return js_str(pCtx, (pEngine->bHasJpeg && pEngine->jpeg.pComment) ? pEngine->jpeg.pComment : "");
-        case A_getDqtMD5: return js_str(pCtx, (pEngine->bHasJpeg && pEngine->jpeg.pDqtMD5) ? pEngine->jpeg.pDqtMD5 : "");
-        case A_isExifPresent: return js_bool(pEngine->bHasJpeg && (pEngine->jpeg.nExifSize > 0));
-        case A_getExifCameraName: return js_str(pCtx, (pEngine->bHasJpeg && pEngine->jpeg.pExifCameraName) ? pEngine->jpeg.pExifCameraName : "");
+        case A_getComment: return js_str(pCtx, (pEngine->bHasJpeg && xx_jpeg_get_comment(&pEngine->jpeg)) ? xx_jpeg_get_comment(&pEngine->jpeg) : "");
+        case A_getDqtMD5: return js_str(pCtx, (pEngine->bHasJpeg && xx_jpeg_get_dqt_md5(&pEngine->jpeg)) ? xx_jpeg_get_dqt_md5(&pEngine->jpeg) : "");
+        case A_isExifPresent: return js_bool(pEngine->bHasJpeg && (xx_jpeg_get_exif_size(&pEngine->jpeg) > 0));
+        case A_getExifCameraName: return js_str(pCtx, (pEngine->bHasJpeg && xx_jpeg_get_exif_camera_name(&pEngine->jpeg)) ? xx_jpeg_get_exif_camera_name(&pEngine->jpeg) : "");
 
         case A_isChunkPresent: {
             cd_i64 nId = arg_i64(pCtx, nArgc, pArgv, 0, 0);
 
-            return js_bool(pEngine->bHasJpeg && xjpeg_is_chunk_present(&pEngine->jpeg, (cd_u8)nId));
+            return js_bool(pEngine->bHasJpeg && xx_jpeg_is_chunk_present(&pEngine->jpeg, (cd_u8)nId));
         }
 
         /* ------------------------------------------------------- APK  */
         case A_getAndroidManifestRecord: {
             char *pKey = arg_string(pCtx, nArgc, pArgv, 0);
-            char *pValue = pEngine->bHasApk ? xapk_manifest_record(&pEngine->apk, pKey) : cd_strdup("");
+            char *pValue = pEngine->bHasApk ? xx_apk_manifest_record(&pEngine->apk, pKey) : xx_str_create("");
             JSVal result = js_str(pCtx, pValue);
 
             cd_free(pKey);
-            cd_free(pValue);
+            xx_str_free(pValue);
 
             return result;
         }
 
         case A_getAndroidManifest:
-            return js_str(pCtx, (pEngine->bHasApk && pEngine->apk.pManifestText) ? pEngine->apk.pManifestText : "");
+            return js_str(pCtx, (pEngine->bHasApk && xx_apk_get_manifest(&pEngine->apk)) ? xx_apk_get_manifest(&pEngine->apk) : "");
 
         /* ------------------------------------------------------- PDF  */
         case A_getHeaderCommentAsHex: {
-            char *pHex = pEngine->bHasPdf ? xpdf_header_comment_hex(&pEngine->pdf) : cd_strdup("");
-            JSVal result = js_str(pCtx, pHex);
+            char *pHex = pEngine->bHasPdf ? xx_pdf_get_header_comment_hex(&pEngine->pdf, NULL) : NULL;
+            JSVal result = js_str(pCtx, pHex ? pHex : "");
 
-            cd_free(pHex);
+            xx_str_free(pHex);
 
             return result;
         }
@@ -2161,19 +2131,22 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
             JSVal result = js_new_array(pCtx);
 
             if (pEngine->bHasPdf) {
-                CDVec values;
+                xx_list_s values;
                 size_t i = 0;
 
-                cdvec_init(&values);
-                /* pdf_script builds its object list with getParts(20). */
-                xpdf_values_by_key(&pEngine->pdf, pKey, (id == A_getStringValuesByKey) ? 1 : 0, 20, &values);
+                if (xx_list_init(&values, sizeof(char *), NULL)) {
+                    /* pdf_script inspects at most 20 parts per object. */
+                    (void)xx_pdf_get_values_by_key(&pEngine->pdf, pKey,
+                        id == A_getStringValuesByKey, 20, &values, NULL);
 
-                for (i = 0; i < values.nSize; i++) {
-                    js_array_push(pCtx, result, js_str(pCtx, (const char *)values.ppData[i]));
-                    cd_free(values.ppData[i]);
+                    for (i = 0; i < values.count; i++) {
+                        char **pValue = (char **)xx_list_at(&values, i);
+                        js_array_push(pCtx, result, js_str(pCtx, *pValue ? *pValue : ""));
+                        xx_str_free(*pValue);
+                    }
+
+                    xx_list_cleanup(&values);
                 }
-
-                cdvec_free(&values);
             }
 
             cd_free(pKey);
@@ -2181,18 +2154,39 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
             return result;
         }
 
-        case A_isValuesHexByKey:
-            /* Would report whether a key's value is a PDF hex string "<...>".
-             * No stock signature calls it, so it is reported as false rather
-             * than threading value-type information through the token list.  */
-            return js_bool(0);
+        case A_isValuesHexByKey: {
+            char *pKey = arg_string(pCtx, nArgc, pArgv, 0);
+            int bResult = pEngine->bHasPdf
+                ? xx_pdf_is_values_hex_by_key(&pEngine->pdf, pKey, 20, NULL) : 0;
 
-        case A_isEncrypted: return js_bool(pEngine->bHasPdf ? pdf_is_encrypted(&pEngine->pdf) : 0);
+            cd_free(pKey);
+
+            return js_bool(bResult);
+        }
+
+        case A_isEncrypted: return js_bool(pEngine->bHasPdf ? xx_pdf_is_encrypted(&pEngine->pdf) : 0);
+
+        case A_getEncryption:
+        case A_getPermissions: {
+            char *pInfo = NULL;
+            JSVal result;
+
+            if (pEngine->bHasPdf) {
+                pInfo = id == A_getEncryption
+                    ? xx_pdf_get_encryption(&pEngine->pdf, NULL)
+                    : xx_pdf_get_permissions(&pEngine->pdf, NULL);
+            }
+
+            result = js_str(pCtx, pInfo ? pInfo : "");
+            xx_str_free(pInfo);
+
+            return result;
+        }
 
         /* ------------------------------------------------------- DEX  */
         case A_isDexStringPresent: {
             char *pString = arg_string(pCtx, nArgc, pArgv, 0);
-            int bResult = pEngine->bHasDex ? xdex_string_present(&pEngine->dex, pString) : 0;
+            int bResult = pEngine->bHasDex ? xx_dex_string_present(&pEngine->dex, pString) : 0;
 
             cd_free(pString);
 
@@ -2201,20 +2195,20 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
 
         case A_isDexItemStringPresent: {
             char *pString = arg_string(pCtx, nArgc, pArgv, 0);
-            int bResult = pEngine->bHasDex ? xdex_item_string_present(&pEngine->dex, pString) : 0;
+            int bResult = pEngine->bHasDex ? xx_dex_item_string_present(&pEngine->dex, pString) : 0;
 
             cd_free(pString);
 
             return js_bool(bResult);
         }
 
-        case A_getMapItemsHash: return js_num((double)(pEngine->bHasDex ? pEngine->dex.nMapHash : 0));
+        case A_getMapItemsHash: return js_num((double)(pEngine->bHasDex ? xx_dex_get_map_hash(&pEngine->dex) : 0));
 
         /* ------------------------------------------------- ELF / Mach-O */
         case A_isStringInTablePresent: {
             char *pSectionName = arg_string(pCtx, nArgc, pArgv, 0);
             char *pString = arg_string(pCtx, nArgc, pArgv, 1);
-            int bResult = pEngine->bHasElf ? xelf_string_in_table_present(pFile, &pEngine->elf, pSectionName, pString) : 0;
+            int bResult = pEngine->bHasElf ? xx_elf_inspect_string_in_table_present(&pEngine->elf, pSectionName, pString) : 0;
 
             cd_free(pSectionName);
             cd_free(pString);
@@ -2225,10 +2219,10 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
         case A_getNumberOfPrograms: return js_num((double)(pEngine->bHasElf ? pEngine->elf.nPhnum : 0));
 
         case A_getProgramFileOffset:
-            return js_num((double)(pEngine->bHasElf ? xelf_program_offset(&pEngine->elf, (int)arg_i64(pCtx, nArgc, pArgv, 0, 0)) : 0));
+            return js_num((double)(pEngine->bHasElf ? xx_elf_inspect_program_offset(&pEngine->elf, (int)arg_i64(pCtx, nArgc, pArgv, 0, 0)) : 0));
 
         case A_getProgramFileSize:
-            return js_num((double)(pEngine->bHasElf ? xelf_program_size(&pEngine->elf, (int)arg_i64(pCtx, nArgc, pArgv, 0, 0)) : 0));
+            return js_num((double)(pEngine->bHasElf ? xx_elf_inspect_program_size(&pEngine->elf, (int)arg_i64(pCtx, nArgc, pArgv, 0, 0)) : 0));
 
         case A_getElfHeader_type: return js_num((double)(pEngine->bHasElf ? pEngine->elf.nType : 0));
         case A_getElfHeader_machine: return js_num((double)(pEngine->bHasElf ? pEngine->elf.nMachine : 0));
@@ -2247,7 +2241,7 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
 
         case A_getLibraryCurrentVersion: {
             char *pName = arg_string(pCtx, nArgc, pArgv, 0);
-            cd_u32 nVersion = pEngine->bHasMach ? xmach_library_current_version(&pEngine->mach, pName) : 0;
+            cd_u32 nVersion = pEngine->bHasMach ? xx_macho_inspect_library_current_version(&pEngine->mach, pName) : 0;
 
             cd_free(pName);
 
@@ -2257,7 +2251,7 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
         case A_isSigned:
         case A_isSignedFile: {
             /* The security directory stores a file offset, not an RVA, and
-             * XPE::isSigned() validates that the range is inside the file.  */
+             * xx_pe_inspection::isSigned() validates that the range is inside the file.  */
             cd_i64 nOffset = 0;
             cd_i64 nSize = 0;
 
@@ -2265,8 +2259,8 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
                 return js_bool(0);
             }
 
-            nOffset = (cd_i64)pPE->pDirRVA[XPE_DIR_SECURITY];
-            nSize = (cd_i64)pPE->pDirSize[XPE_DIR_SECURITY];
+            nOffset = (cd_i64)pPE->pDirRVA[XX_PE_INSPECT_DIR_SECURITY];
+            nSize = (cd_i64)pPE->pDirSize[XX_PE_INSPECT_DIR_SECURITY];
 
             return js_bool((nSize > 0) && (nOffset > 0) && (nOffset < pFile->nSize) && (nSize <= pFile->nSize - nOffset));
         }
@@ -2472,16 +2466,16 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
 
             if (pEngine->bHasElf) {
                 switch (id) {
-                    case A_getSectionFileSize: return js_num((double)xelf_section_size(&pEngine->elf, nNumber));
-                    case A_getSectionFileOffset: return js_num((double)xelf_section_offset(&pEngine->elf, nNumber));
+                    case A_getSectionFileSize: return js_num((double)xx_elf_inspect_section_size(&pEngine->elf, nNumber));
+                    case A_getSectionFileOffset: return js_num((double)xx_elf_inspect_section_offset(&pEngine->elf, nNumber));
                     default: return js_num(0);
                 }
             }
 
             if (pEngine->bHasMach) {
                 switch (id) {
-                    case A_getSectionFileSize: return js_num((double)xmach_section_size(&pEngine->mach, nNumber));
-                    case A_getSectionFileOffset: return js_num((double)xmach_section_offset(&pEngine->mach, nNumber));
+                    case A_getSectionFileSize: return js_num((double)xx_macho_inspect_section_size(&pEngine->mach, nNumber));
+                    case A_getSectionFileOffset: return js_num((double)xx_macho_inspect_section_offset(&pEngine->mach, nNumber));
                     default: return js_num(0);
                 }
             }
@@ -2507,9 +2501,9 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
             int bResult = 0;
 
             if (pEngine->bHasElf) {
-                bResult = xelf_section_present(&pEngine->elf, pName);
+                bResult = xx_elf_inspect_section_present(&pEngine->elf, pName);
             } else if (pEngine->bHasMach) {
-                bResult = xmach_section_present(&pEngine->mach, pName);
+                bResult = xx_macho_inspect_section_present(&pEngine->mach, pName);
             } else if (pEngine->bHasPE) {
                 for (i = 0; i < pPE->nSectionCount; i++) {
                     char sName[17];
@@ -2531,9 +2525,9 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
             int nResult = -1;
 
             if (pEngine->bHasElf) {
-                nResult = xelf_section_number(&pEngine->elf, pName);
+                nResult = xx_elf_inspect_section_number(&pEngine->elf, pName);
             } else if (pEngine->bHasMach) {
-                nResult = xmach_section_number(&pEngine->mach, pName);
+                nResult = xx_macho_inspect_section_number(&pEngine->mach, pName);
             } else if (pEngine->bHasPE) {
                 for (i = 0; i < pPE->nSectionCount; i++) {
                     char sName[17];
@@ -2742,12 +2736,12 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
             return js_bool(bResult);
         }
 
-        case A_isNetGlobalCctorPresent: return js_bool(pEngine->bHasPE && xpe_net_global_cctor_present(pPE));
+        case A_isNetGlobalCctorPresent: return js_bool(pEngine->bHasPE && xx_pe_inspect_net_global_cctor_present(pPE));
 
         case A_isNetTypePresent: {
             char *pNamespace = arg_string(pCtx, nArgc, pArgv, 0);
             char *pTypeName = arg_string(pCtx, nArgc, pArgv, 1);
-            int bResult = pEngine->bHasPE && xpe_net_type_present(pPE, pNamespace, pTypeName);
+            int bResult = pEngine->bHasPE && xx_pe_inspect_net_type_present(pPE, pNamespace, pTypeName);
 
             cd_free(pNamespace);
             cd_free(pTypeName);
@@ -2759,7 +2753,7 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
             char *pNamespace = arg_string(pCtx, nArgc, pArgv, 0);
             char *pTypeName = arg_string(pCtx, nArgc, pArgv, 1);
             char *pMethodName = arg_string(pCtx, nArgc, pArgv, 2);
-            int bResult = pEngine->bHasPE && xpe_net_method_present(pPE, pNamespace, pTypeName, pMethodName);
+            int bResult = pEngine->bHasPE && xx_pe_inspect_net_method_present(pPE, pNamespace, pTypeName, pMethodName);
 
             cd_free(pNamespace);
             cd_free(pTypeName);
@@ -2772,7 +2766,7 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
             char *pNamespace = arg_string(pCtx, nArgc, pArgv, 0);
             char *pTypeName = arg_string(pCtx, nArgc, pArgv, 1);
             char *pFieldName = arg_string(pCtx, nArgc, pArgv, 2);
-            int bResult = pEngine->bHasPE && xpe_net_field_present(pPE, pNamespace, pTypeName, pFieldName);
+            int bResult = pEngine->bHasPE && xx_pe_inspect_net_field_present(pPE, pNamespace, pTypeName, pFieldName);
 
             cd_free(pNamespace);
             cd_free(pTypeName);
@@ -2804,14 +2798,14 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
                 return js_str(pCtx, "");
             }
 
-            return str_take(pCtx, xpe_net_module_name(pPE));
+            return native_str_take(pCtx, xx_pe_inspect_net_module_name(pPE));
 
         case A_getNetAssemblyName:
             if (!pEngine->bHasPE) {
                 return js_str(pCtx, "");
             }
 
-            return str_take(pCtx, xpe_net_assembly_name(pPE));
+            return native_str_take(pCtx, xx_pe_inspect_net_assembly_name(pPE));
 
         case A_getNumberOfImports: return js_num((double)(pEngine->bHasPE ? pPE->nImportCount : 0));
 
@@ -2857,9 +2851,9 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
             int bResult = 0;
 
             if (pEngine->bHasElf) {
-                bResult = xelf_library_present(&pEngine->elf, pName);
+                bResult = xx_elf_inspect_library_present(&pEngine->elf, pName);
             } else if (pEngine->bHasMach) {
-                bResult = xmach_library_present(&pEngine->mach, pName);
+                bResult = xx_macho_inspect_library_present(&pEngine->mach, pName);
             } else if (pEngine->bHasPE) {
                 for (i = 0; i < pPE->nImportCount; i++) {
                     int bMatch = bCheckCase ? (x_strcmp(pPE->pImports[i].pName, pName) == 0) : (cd_stricmp_ascii(pPE->pImports[i].pName, pName) == 0);
@@ -2926,11 +2920,11 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
             return js_bool(bResult);
         }
 
-        case A_getImportSection: return js_num((double)pe_directory_section(pEngine, XPE_DIR_IMPORT));
-        case A_getExportSection: return js_num((double)pe_directory_section(pEngine, XPE_DIR_EXPORT));
-        case A_getResourceSection: return js_num((double)pe_directory_section(pEngine, XPE_DIR_RESOURCE));
-        case A_getRelocsSection: return js_num((double)pe_directory_section(pEngine, XPE_DIR_BASERELOC));
-        case A_getTLSSection: return js_num((double)pe_directory_section(pEngine, XPE_DIR_TLS));
+        case A_getImportSection: return js_num((double)pe_directory_section(pEngine, XX_PE_INSPECT_DIR_IMPORT));
+        case A_getExportSection: return js_num((double)pe_directory_section(pEngine, XX_PE_INSPECT_DIR_EXPORT));
+        case A_getResourceSection: return js_num((double)pe_directory_section(pEngine, XX_PE_INSPECT_DIR_RESOURCE));
+        case A_getRelocsSection: return js_num((double)pe_directory_section(pEngine, XX_PE_INSPECT_DIR_BASERELOC));
+        case A_getTLSSection: return js_num((double)pe_directory_section(pEngine, XX_PE_INSPECT_DIR_TLS));
 
         case A_getEntryPointSection: {
             const xx_memory_record *pRecord;
@@ -2939,7 +2933,7 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
             }
 
             pRecord = xx_memory_map_record_by_address(&pPE->map, pPE->nEntryPointAddress);
-            /* XPE preserves the header/default memory-record number zero;
+            /* xx_pe_inspection preserves the header/default memory-record number zero;
              * only positive section record numbers are decremented. */
             return js_num((double)(pRecord && pRecord->file_part_number > 0 ? pRecord->file_part_number - 1 : 0));
         }
@@ -3003,9 +2997,9 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
             JSVal result = js_str(pCtx, "");
 
             if (die_file_open(&other, pFileName)) {
-                XPE otherPE;
+                xx_pe_inspection otherPE = {0};
 
-                if (xpe_parse(&otherPE, &other)) {
+                if (xx_pe_inspect_analyze_from_device(&otherPE, other.pDevice, 0, NULL)) {
                     int i = 0;
 
                     for (i = 0; i < otherPE.nVersionCount; i++) {
@@ -3016,8 +3010,8 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
                         }
                     }
 
-                    xpe_free(&otherPE);
                 }
+                xx_pe_inspect_free(&otherPE);
 
                 die_file_close(&other);
             }
@@ -3088,10 +3082,10 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
             return js_str(pCtx, pPE->ppExportFunctions[nNumber]);
         }
 
-        case A_isExportPresent: return js_bool(pEngine->bHasPE && (pPE->pDirRVA[XPE_DIR_EXPORT] != 0));
-        case A_isTLSPresent: return js_bool(pEngine->bHasPE && (pPE->pDirRVA[XPE_DIR_TLS] != 0));
-        case A_isImportPresent: return js_bool(pEngine->bHasPE && (pPE->pDirRVA[XPE_DIR_IMPORT] != 0));
-        case A_isResourcesPresent: return js_bool(pEngine->bHasPE && (pPE->pDirRVA[XPE_DIR_RESOURCE] != 0));
+        case A_isExportPresent: return js_bool(pEngine->bHasPE && (pPE->pDirRVA[XX_PE_INSPECT_DIR_EXPORT] != 0));
+        case A_isTLSPresent: return js_bool(pEngine->bHasPE && (pPE->pDirRVA[XX_PE_INSPECT_DIR_TLS] != 0));
+        case A_isImportPresent: return js_bool(pEngine->bHasPE && (pPE->pDirRVA[XX_PE_INSPECT_DIR_IMPORT] != 0));
+        case A_isResourcesPresent: return js_bool(pEngine->bHasPE && (pPE->pDirRVA[XX_PE_INSPECT_DIR_RESOURCE] != 0));
 
         case A_getImportHash32: return js_num((double)(pEngine->bHasPE ? pPE->nImportHash32 : 0));
         case A_getImportHash64: return js_num((double)(pEngine->bHasPE ? pPE->nImportHash64 : 0));
@@ -3149,7 +3143,7 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
                 return js_str(pCtx, "");
             }
 
-            return js_str(pCtx, xpe_debug_type_name(pPE->pDebugRecords[nNumber].nType));
+            return js_str(pCtx, xx_pe_inspect_debug_type_name(pPE->pDebugRecords[nNumber].nType));
         }
 
         case A_getDebugDataOffset:
@@ -3748,6 +3742,8 @@ static const ApiEntry g_apiTable[] = {
     {"getValuesByKey", A_getValuesByKey, 1},
     {"isValuesHexByKey", A_isValuesHexByKey, 1},
     {"isEncrypted", A_isEncrypted, 0},
+    {"getEncryption", A_getEncryption, 0},
+    {"getPermissions", A_getPermissions, 0},
 
     {"isDexStringPresent", A_isDexStringPresent, 1},
     {"isDexItemStringPresent", A_isDexItemStringPresent, 1},

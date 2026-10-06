@@ -61,6 +61,14 @@ XXFC_API uint32_t xx_iso9660_get_logical_block_size(const xx_iso9660 *iso);
 XXFC_API uint32_t xx_iso9660_get_volume_space_size(const xx_iso9660 *iso);
 XXFC_API int64_t xx_iso9660_get_volume_end(const xx_iso9660 *iso);
 
+/* Inspect a bounded field of the primary volume descriptor at sector16.
+ * Stops at NUL, trims Latin-1 whitespace, and returns owned UTF-8 text.
+ * Strict archive validation is unnecessary. Free with xx_str_free. */
+XXFC_API char *xx_iso9660_get_identifier(xx_iso9660 *iso,
+                                         int64_t field_offset,
+                                         size_t field_size,
+                                         xx_pd_struct *pd);
+
 static inline Abstractformat *xx_iso9660_to_format(xx_iso9660 *iso) {
     return iso ? &iso->format : NULL;
 }

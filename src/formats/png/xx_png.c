@@ -56,6 +56,8 @@
 #include "xxfclib/data/xx_pd.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/strings/xx_string.h"
+#include "xxfclib/buf/xx_buf.h"
 
 #include "../bmp/xx_component_archive_impl.h"
 #include "xxfclib/data/xx_data.h"
@@ -355,6 +357,99 @@ static bool xx_png_parse(Abstractformat *self, xx_png_parsed *parsed,
     return true;
 }
 
+/* ---------------------------------------------------------- inspection -- */
+
+typedef struct xx_png_analysis_s {
+    uint32_t width, height, phys_x, phys_y;
+    uint8_t depth, color, unit, background;
+    uint16_t gray, red, green, blue;
+    uint8_t palette;
+    bool valid, has_phys;
+} xx_png_analysis;
+
+bool xx_png_analyze(xx_png *png, xx_pd_struct *pd) {
+    xx_png_analysis local, *info;
+    uint8_t bytes[21];
+    int64_t total, span, pos = 8, saved;
+    bool success = false;
+    if (!png || !png->format.device || xx_pd_is_stopped(pd)) return false;
+    if (png->analysis) return ((xx_png_analysis *)png->analysis)->valid;
+    saved = xx_io_tell(png->format.device);
+    total = xx_io_total_size(png->format.device);
+    xx_mem_zero(&local, sizeof(local));
+    if (png->format.base_address < 0 || total < png->format.base_address) goto done;
+    span = total - png->format.base_address;
+    /* Signature recognition remains tolerant for metadata inspection, while
+     * the native archive callbacks enforce all eight bytes and CRC rules. */
+    if (span < 8 || !xx_png_read_at(png->format.device, png->format.base_address, bytes, 4) ||
+        xx_rt_memcmp(bytes, "\x89PNG", 4) != 0) goto done;
+    while (pos <= span - 12) {
+        uint32_t length;
+        size_t needed = 0;
+        if (xx_pd_is_stopped(pd) || !xx_png_read_at(png->format.device,
+                png->format.base_address + pos, bytes, 8)) goto done;
+        length = xx_data_get_u32(bytes, 8, 0, true);
+        if ((int64_t)length > span - pos - 8) break;
+        if (xx_rt_memcmp(bytes + 4, "IHDR", 4) == 0 && length >= 13) needed = 13;
+        else if (xx_rt_memcmp(bytes + 4, "pHYs", 4) == 0 && length >= 9) needed = 9;
+        else if (xx_rt_memcmp(bytes + 4, "bKGD", 4) == 0 && (length == 1 || length == 2 || length == 6)) needed = length;
+        else if (xx_rt_memcmp(bytes + 4, "IEND", 4) == 0) break;
+        if (needed && !xx_png_read_at(png->format.device,
+                png->format.base_address + pos + 8, bytes + 8, needed)) goto done;
+        if (needed == 13) {
+            local.width = xx_data_get_u32(bytes, sizeof(bytes), 8, true);
+            local.height = xx_data_get_u32(bytes, sizeof(bytes), 12, true);
+            local.depth = bytes[16]; local.color = bytes[17]; local.valid = true;
+        } else if (needed == 9) {
+            local.phys_x = xx_data_get_u32(bytes, sizeof(bytes), 8, true);
+            local.phys_y = xx_data_get_u32(bytes, sizeof(bytes), 12, true);
+            local.unit = bytes[16]; local.has_phys = true;
+        } else if (needed == 1) { local.background = 3; local.palette = bytes[8]; }
+        else if (needed == 2) { local.background = 1; local.gray = xx_data_get_u16(bytes, sizeof(bytes), 8, true); }
+        else if (needed == 6) {
+            local.background = 2;
+            local.red = xx_data_get_u16(bytes, sizeof(bytes), 8, true);
+            local.green = xx_data_get_u16(bytes, sizeof(bytes), 10, true);
+            local.blue = xx_data_get_u16(bytes, sizeof(bytes), 12, true);
+        }
+        pos += (int64_t)length + 12;
+    }
+    if (xx_pd_is_stopped(pd) || !local.valid) goto done;
+    info = (xx_png_analysis *)xx_mem_alloc(sizeof(*info));
+    if (!info) goto done;
+    *info = local; png->analysis = info; success = true;
+done:
+    if (saved >= 0) (void)xx_io_seek64(png->format.device, saved, SEEK_SET);
+    return success;
+}
+
+char *xx_png_get_info(xx_png *png, xx_pd_struct *pd) {
+    xx_png_analysis *info;
+    xx_buf_t text;
+    const char *schema = NULL;
+    if (!xx_png_analyze(png, pd)) return xx_pd_is_stopped(pd) ? NULL : xx_str_create("");
+    info = (xx_png_analysis *)png->analysis;
+    if (!info->width || !info->height) return xx_str_create("");
+    switch (info->color) {
+        case 0: schema = "Grayscale"; break;
+        case 2: schema = "RGB"; break;
+        case 3: schema = "Palette"; break;
+        case 4: schema = "Grayscale+Alpha"; break;
+        case 6: schema = "RGBA"; break;
+    }
+    xx_buf_init(&text);
+    (void)xx_buf_appendf(&text, "%ux%u, %u bits, ", (unsigned)info->width, (unsigned)info->height, (unsigned)info->depth);
+    if (schema) (void)xx_buf_append_str(&text, schema);
+    else (void)xx_buf_appendf(&text, "Unknown(%u)", (unsigned)info->color);
+    if (info->has_phys && (info->phys_x || info->phys_y))
+        (void)xx_buf_appendf(&text, ", pHYs: %ux%u %s", (unsigned)info->phys_x, (unsigned)info->phys_y,
+                              info->unit == 1 ? "meter" : "unknown");
+    if (info->background == 1) (void)xx_buf_appendf(&text, ", bKGD: gray=%u", (unsigned)info->gray);
+    else if (info->background == 2) (void)xx_buf_appendf(&text, ", bKGD: rgb=(%u,%u,%u)", (unsigned)info->red, (unsigned)info->green, (unsigned)info->blue);
+    else if (info->background == 3) (void)xx_buf_appendf(&text, ", bKGD: paletteIndex=%u", (unsigned)info->palette);
+    return xx_buf_detach(&text, NULL);
+}
+
 /* ----------------------------------------------------------- lifecycle -- */
 
 void xx_png_init(xx_png *png, xx_io_device *dev, int64_t base_address) {
@@ -387,6 +482,8 @@ xx_png *xx_png_create(xx_io_device *dev, int64_t base_address) {
 
 void xx_png_destroy(xx_png *png) {
     if (!png) return;
+    xx_mem_free(png->analysis);
+    png->analysis = NULL;
     xx_format_cleanup_extra_parameters(&png->format);
 }
 

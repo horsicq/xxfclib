@@ -19,7 +19,6 @@
  * SOFTWARE.
  */
 
-#include "../xio.h"
 #include "../../formats/pyc/xpyc.h"
 #include "../../die_engine/xx_die_engine_compat.h"
 
@@ -188,7 +187,18 @@ static char *marshal_read_string(DieFile *pFile, cd_i64 *pnOffset)
 
     if ((nActual == PYC_T_UNICODE) || (nActual == PYC_T_STRING)) {
         /* Already UTF-8 bytes (QString::fromUtf8). */
-        xio_append(pFile, nOffset, (size_t)nLength, &buf);
+        {
+            unsigned char block[4096];
+            size_t done = 0;
+            size_t total = (size_t)nLength;
+            while (done < total) {
+                size_t count = total - done;
+                if (count > sizeof(block)) count = sizeof(block);
+                if (!xx_io_read_at(pFile->pDevice, nOffset + (cd_i64)done, block, count)) break;
+                cdbuf_append(&buf, block, count);
+                done += count;
+            }
+        }
     } else {
         /* Latin-1 fixed length -> UTF-8 (read_ansiString). */
         for (i = 0; i < nLength; i++) {

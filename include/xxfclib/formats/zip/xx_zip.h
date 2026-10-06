@@ -87,6 +87,7 @@ struct xx_zip {
     uint32_t       split_marker_size;  /**< Optional initial PK0708/PK00 marker (0 or 4). */
     int64_t        zip64_eocd_offset;   /**< Joined ZIP64 EOCD offset, or -1. */
     int64_t        zip64_eocd_size;     /**< Validated ZIP64 EOCD record size. */
+    void          *analysis;          /**< Owned native signature-query cache. */
 };
 
 /* --- Constructors & Lifecycle --- */
@@ -139,6 +140,20 @@ XXFC_API bool xx_zip_has_valid_file(Abstractformat *self,
                                     const char *record_name,
                                     uint64_t max_size,
                                     xx_pd_struct *pd);
+
+/* Native metadata inspection shared by ZIP-derived formats and DIE.
+ * The input is borrowed. Returned strings use xx_str_free; other getter
+ * results are borrowed until destruction. Selected member reads validate
+ * their decoded size and CRC and never open an archive-derived output path. */
+XXFC_API bool xx_zip_read_file(xx_zip *zip, const char *name, size_t limit,
+                              uint8_t **data, size_t *size, xx_pd_struct *pd);
+XXFC_API bool xx_zip_analyze(xx_zip *zip, xx_pd_struct *pd);
+XXFC_API void xx_zip_cleanup_analysis(xx_zip *zip);
+XXFC_API const xx_list_s *xx_zip_get_record_names(const xx_zip *zip);
+XXFC_API bool xx_zip_record_present(const xx_zip *zip, const char *name);
+XXFC_API char *xx_zip_manifest_record(const xx_zip *zip, const char *key);
+XXFC_API char *xx_zip_packagejson_record(const xx_zip *zip, const char *key);
+XXFC_API const char *xx_zip_get_jvm_version(const xx_zip *zip);
 
 /**
  * @brief Check for a decodable entry whose normalized path matches a pattern.

@@ -22,6 +22,59 @@
 #define XX_ISO9660_MAX_DEPTH 64U
 #define XX_ISO9660_MAX_NAME_SIZE 4096U
 
+char *xx_iso9660_get_identifier(xx_iso9660 *iso, int64_t field_offset,
+                                size_t field_size, xx_pd_struct *pd) {
+    uint8_t *raw = NULL;
+    char *text = NULL;
+    int64_t total, span, saved, position;
+    size_t first = 0, end = 0, i, out = 0;
+    if (!iso || !iso->format.device || field_offset < 0 ||
+        field_offset > XX_ISO9660_SECTOR_SIZE ||
+        field_size > XX_ISO9660_SECTOR_SIZE - (size_t)field_offset ||
+        xx_pd_is_stopped(pd)) return NULL;
+    saved = xx_io_tell(iso->format.device);
+    total = xx_io_total_size(iso->format.device);
+    if (iso->format.base_address < 0 || total < iso->format.base_address) goto empty;
+    span = total - iso->format.base_address;
+    if (span < 32768 || field_offset > span - 32768 ||
+        (uint64_t)field_size > (uint64_t)(span - 32768 - field_offset)) goto empty;
+    if (!field_size) goto empty;
+    raw = (uint8_t *)xx_mem_alloc(field_size);
+    if (!raw) goto done;
+    position = iso->format.base_address + 32768 + field_offset;
+    if (xx_io_seek64(iso->format.device, position, SEEK_SET) != 0) goto done;
+    while (end < field_size) {
+        ssize_t got;
+        if (xx_pd_is_stopped(pd)) goto done;
+        got = xx_io_read(iso->format.device, raw + end, field_size - end);
+        if (got <= 0 || (size_t)got > field_size - end) goto done;
+        end += (size_t)got;
+    }
+    for (end = 0; end < field_size && raw[end]; ++end) {}
+    /* QChar's Latin-1 whitespace includes NEL and non-breaking space. */
+    while (first < end && ((raw[first] >= 9 && raw[first] <= 13) ||
+           raw[first] == 32 || raw[first] == 0x85 || raw[first] == 0xA0)) ++first;
+    while (end > first && ((raw[end - 1] >= 9 && raw[end - 1] <= 13) ||
+           raw[end - 1] == 32 || raw[end - 1] == 0x85 || raw[end - 1] == 0xA0)) --end;
+    text = xx_str_create_len((end - first) * 2);
+    if (!text) goto done;
+    for (i = first; i < end; ++i) {
+        if (raw[i] < 0x80) text[out++] = (char)raw[i];
+        else {
+            text[out++] = (char)(0xC0 | (raw[i] >> 6));
+            text[out++] = (char)(0x80 | (raw[i] & 0x3F));
+        }
+    }
+    text[out] = 0;
+    goto done;
+empty:
+    text = xx_str_create("");
+done:
+    xx_mem_free(raw);
+    if (saved >= 0) (void)xx_io_seek64(iso->format.device, saved, SEEK_SET);
+    return text;
+}
+
 typedef struct xx_iso9660_entry_s {
     char *name;
     int64_t header_offset;
@@ -317,7 +370,7 @@ static bool xx_iso9660_parse_directory(Abstractformat *self,
         xx_iso_zisofs_info zisofs = {0};
         bool is_zisofs = false;
 
-        if (pd && xx_pd_is_stopped(pd) ||
+        if ((pd && xx_pd_is_stopped(pd)) ||
             position > (uint64_t)INT64_MAX ||
             !xx_iso9660_add(directory_offset, position, &record_offset) ||
             !xx_iso9660_read_at(self->device, record_offset, record, 1U)) {

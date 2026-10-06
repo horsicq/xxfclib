@@ -228,6 +228,8 @@ static inline const Abstractformat *xx_pe_to_format_const(const xx_pe *pe) {
     return pe ? &pe->format : NULL;
 }
 
+#include "xxfclib/formats/pe/xx_pe_inspect.h"
+
 #ifdef __cplusplus
 }
 #endif
