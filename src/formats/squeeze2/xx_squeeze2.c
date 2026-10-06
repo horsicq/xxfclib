@@ -76,7 +76,7 @@ static uint32_t squeeze2_le32(const uint8_t *b) {
     return (uint32_t)squeeze2_le16(b) | ((uint32_t)squeeze2_le16(b + 2U) << 16U);
 }
 
-static uint64_t squeeze2_le64(const uint8_t *b) {
+static XXFC_MAYBE_UNUSED uint64_t squeeze2_le64(const uint8_t *b) {
     return (uint64_t)squeeze2_le32(b) | ((uint64_t)squeeze2_le32(b + 4U) << 32U);
 }
 
@@ -85,7 +85,7 @@ static uint32_t squeeze2_be32(const uint8_t *b) {
            ((uint32_t)b[2] << 8U) | (uint32_t)b[3];
 }
 
-static uint64_t squeeze2_be64(const uint8_t *b) {
+static XXFC_MAYBE_UNUSED uint64_t squeeze2_be64(const uint8_t *b) {
     return ((uint64_t)squeeze2_be32(b) << 32U) | (uint64_t)squeeze2_be32(b + 4U);
 }
 
@@ -121,7 +121,7 @@ static bool squeeze2_write_all(xx_io_device *device, const void *data, size_t si
 }
 
 /* Copy a run of source bytes straight through to the destination. */
-static bool squeeze2_copy_range(xx_io_device *source, int64_t offset, uint64_t size,
+static XXFC_MAYBE_UNUSED bool squeeze2_copy_range(xx_io_device *source, int64_t offset, uint64_t size,
                            xx_io_device *destination, xx_pd_struct *pd) {
     size_t capacity = xx_get_file_buffer_size();
     uint8_t *buffer = NULL;
@@ -152,7 +152,7 @@ buffer_done:
 }
 
 /* Emit `size` zero bytes: the filler every sparse disk image needs. */
-static bool squeeze2_write_zeros(xx_io_device *destination, uint64_t size,
+static XXFC_MAYBE_UNUSED bool squeeze2_write_zeros(xx_io_device *destination, uint64_t size,
                             xx_pd_struct *pd) {
     size_t capacity = xx_get_file_buffer_size();
     uint8_t *buffer = NULL;
@@ -177,7 +177,7 @@ buffer_done:
 
 /* Reader-owned names are built here, never taken from the container, so they
  * are safe by construction. */
-static char *squeeze2_make_name(const char *prefix, int64_t index,
+static XXFC_MAYBE_UNUSED char *squeeze2_make_name(const char *prefix, int64_t index,
                            const char *suffix) {
     char buffer[96];
     size_t used = 0U;

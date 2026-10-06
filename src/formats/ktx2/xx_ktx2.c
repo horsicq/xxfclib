@@ -6,8 +6,8 @@
 #include "xxfclib/formats/ktx2/xx_ktx2.h"
 #include "../xx_payload_members.h"
 
-static uint16_t r16(const uint8_t *p,bool be) { return be ? pm_be16(p) : pm_le16(p); }
-static uint32_t r32(const uint8_t *p,bool be) { return be ? pm_be32(p) : pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint16_t r16(const uint8_t *p,bool be) { return be ? pm_be16(p) : pm_le16(p); }
+static XXFC_MAYBE_UNUSED uint32_t r32(const uint8_t *p,bool be) { return be ? pm_be32(p) : pm_le32(p); }
 static uint64_t r64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
@@ -37,7 +37,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             uint32_t n,j; uint8_t c; bool ended=false;
             if(kend-at<4 || !pm_read(f,(int64_t)at,b,4) || !(n=pm_le32(b)) || n>kend-at-4 || 4+((n+3ULL)&~3ULL)>kend-at) return false;
             for(j=0;j<n;++j) { if(!pm_read(f,(int64_t)at+4+j,&c,1)) return false; if(!c) { ended=true; break; } }
-            if(!ended) return false; at+=4+((n+3ULL)&~3ULL);
+            if(!ended) { return false; } at+=4+((n+3ULL)&~3ULL);
         }
         end=(uint64_t)kvd+kvdsize;
     } else if(kvd) return false;

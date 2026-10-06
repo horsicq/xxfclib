@@ -16,7 +16,7 @@ static bool vr_aff_cache(Abstractformat *f,vr_aff_image *a,size_t index,xx_pd_st
     if(a->cached && a->cached_page==page->index) return true;
     if(!a->cache) { a->cache=(uint8_t *)xx_mem_alloc(a->page_size); if(!a->cache) return false; }
     if(!(page->flags&1)) {
-        if(page->packed!=expected || !pm_read(f,(int64_t)page->offset,a->cache,expected)) return false; ok=true;
+        if(page->packed!=expected || !pm_read(f,(int64_t)page->offset,a->cache,expected)) { return false; } ok=true;
     } else if((page->flags&0xF0)==0x30) {
         uint8_t count[4]; if(page->packed!=4 || !pm_read(f,(int64_t)page->offset,count,4) || pm_be32(count)!=expected) return false;
         xx_mem_zero(a->cache,expected); ok=true;
@@ -32,7 +32,7 @@ static bool vr_aff_cache(Abstractformat *f,vr_aff_image *a,size_t index,xx_pd_st
         ok=ok && xx_io_tell(dst)==expected;
     }
 done:
-    if(src) xx_io_close(src); if(dst) xx_io_close(dst); xx_mem_free(packed);
+    if(src) { xx_io_close(src); } if(dst) xx_io_close(dst); xx_mem_free(packed);
     a->cached=ok; if(ok) a->cached_page=page->index; return ok && vr_poll(pd);
 }
 static bool vr_aff_read(Abstractformat *f,pm_member *member,uint64_t at,void *data,size_t size,xx_pd_struct *pd) {

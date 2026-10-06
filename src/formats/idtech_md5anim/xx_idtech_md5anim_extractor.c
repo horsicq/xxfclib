@@ -31,7 +31,7 @@ static const xx_format_search_anchor anchors[] = { { anchor_0,sizeof(anchor_0),0
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     anchors, 1U,
-    xx_idtech_md5anim_search_open, xx_idtech_md5anim_search_close
+    xx_idtech_md5anim_search_open, xx_idtech_md5anim_search_close, false
 };
 
 static xx_format_search_state *xx_idtech_md5anim_create_format_search(

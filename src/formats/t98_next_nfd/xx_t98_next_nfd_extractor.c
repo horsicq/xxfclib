@@ -35,7 +35,7 @@ static void xx_t98_next_nfd_search_close(Abstractformat *format) {
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
-    xx_t98_next_nfd_search_open, xx_t98_next_nfd_search_close
+    xx_t98_next_nfd_search_open, xx_t98_next_nfd_search_close, false
 };
 
 static xx_format_search_state *xx_t98_next_nfd_create_format_search(

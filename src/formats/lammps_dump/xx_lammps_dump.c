@@ -13,12 +13,12 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         NH_NEED(th_words(&c,&line,t,80,&nt,"#") && (nt==6 || nt==9) && el_eq(&b,t[0],"ITEM:") && el_eq(&b,t[1],"BOX") && el_eq(&b,t[2],"BOUNDS"));bounds=nt==9 ? 3:2;
         if(bounds==3) NH_NEED(el_eq(&b,t[3],"xy") && el_eq(&b,t[4],"xz") && el_eq(&b,t[5],"yz"));
         for(j=nt-3;j<nt;++j) NH_NEED(t[j].n==2 && el_chars(&b,t[j],"pfsm",true) && ((b.p[(size_t)t[j].at]=='p')==(b.p[(size_t)t[j].at+1]=='p')));
-        for(j=0;j<3;++j) NH_NEED(th_words(&c,&line,t,80,&nt,"#") && nt==bounds && th_floats(&b,t,bounds) && tw_value(&b,t[0])<tw_value(&b,t[1]));box=c.at;
+        for(j=0;j<3;++j) { NH_NEED(th_words(&c,&line,t,80,&nt,"#") && nt==bounds && th_floats(&b,t,bounds) && tw_value(&b,t[0])<tw_value(&b,t[1])); } box=c.at;
         NH_NEED(th_words(&c,&line,t,80,&nt,"#") && nt>=7 && nt<=66 && el_eq(&b,t[0],"ITEM:") && el_eq(&b,t[1],"ATOMS"));ncol=nt-2;idcol=typecol=elementcol=64;mode=0;budget=1000000;
         for(j=0;j<ncol;++j) {NH_NEED(tw_name(&b,t[j+2]) && el_unique(&b,t[j+2],columns,j,&budget));columns[j]=t[j+2];if(el_eq(&b,columns[j],"id")) idcol=j;if(el_eq(&b,columns[j],"type")) typecol=j;if(el_eq(&b,columns[j],"element")) elementcol=j;
-            if(el_eq(&b,columns[j],"x")) mode|=1;if(el_eq(&b,columns[j],"y")) mode|=2;if(el_eq(&b,columns[j],"z")) mode|=4;
-            if(el_eq(&b,columns[j],"xs")) mode|=8;if(el_eq(&b,columns[j],"ys")) mode|=16;if(el_eq(&b,columns[j],"zs")) mode|=32;
-            if(el_eq(&b,columns[j],"xu")) mode|=64;if(el_eq(&b,columns[j],"yu")) mode|=128;if(el_eq(&b,columns[j],"zu")) mode|=256;}
+            if(el_eq(&b,columns[j],"x")) { mode|=1; } if(el_eq(&b,columns[j],"y")) mode|=2;if(el_eq(&b,columns[j],"z")) mode|=4;
+            if(el_eq(&b,columns[j],"xs")) { mode|=8; } if(el_eq(&b,columns[j],"ys")) mode|=16;if(el_eq(&b,columns[j],"zs")) mode|=32;
+            if(el_eq(&b,columns[j],"xu")) { mode|=64; } if(el_eq(&b,columns[j],"yu")) mode|=128;if(el_eq(&b,columns[j],"zu")) mode|=256;}
         NH_NEED(idcol<ncol && typecol<ncol && (mode==7 || mode==56 || mode==448));values=c.at;ids=(uint8_t *)xx_mem_alloc((size_t)count);NH_NEED(ids);xx_rt_memset(ids,0,(size_t)count);
         for(i=0;i<count;++i) {NH_NEED(th_words(&c,&line,t,80,&nt,"#") && nt==ncol && el_uint(&b,t[idcol],&id) && id && id<=count && !ids[(size_t)id-1] && el_uint(&b,t[typecol],&type) && type && type<=100000);ids[(size_t)id-1]=1;
             for(j=0;j<ncol;++j) NH_NEED(j==elementcol ? tw_element(&b,t[j]):el_float(&b,t[j]));}

@@ -17,7 +17,7 @@ static bool vc_member_range(Abstractformat *f,pm_member *m,uint64_t at,void *out
 }
 static bool vc_member_unpack(Abstractformat *f,pm_member *m,xx_io_device *output,xx_pd_struct *pd) {
     vc_member_context *c=(vc_member_context *)m->context;const xx_var *v;uint64_t limit,at=0;size_t capacity=xx_get_file_buffer_size();uint8_t *b=NULL;
-    if(!c || !vr_poll(pd))return false;limit=c->limit;
+    if(!c || !vr_poll(pd)) {return false; } limit=c->limit;
     v=xx_format_resolve_extra_parameter(f,((xx_volume *)f)->parse_options,XX_META_ID_OPT_MEMORY_LIMIT);if(v)limit=xx_var_get_u64(v);
     if(limit<c->retained || (c->map && m->size && capacity>limit-c->retained))return false;
     if(c->map && m->size) {b=(uint8_t *)xx_mem_alloc(capacity);if(!b)return false;}
@@ -53,7 +53,7 @@ static bool vr_classic_v7_identity(xx_volume *r,const uint8_t *super,int64_t sou
 }
 static bool vc_take(vr_classic *c,uint64_t n) { if(c->used>c->limit || n>c->limit-c->used) return false; c->used+=n; return true; }
 static bool vc_block(vr_classic *c,uint64_t block,void *b) {
-    return vr_poll(c->pd) && block<c->blocks && block<=INT64_MAX/c->block && pm_read(c->f,(int64_t)(block*c->block),b,c->block);
+    return vr_poll(c->pd) && block<c->blocks && block<=(uint64_t)(INT64_MAX/c->block) && pm_read(c->f,(int64_t)(block*c->block),b,c->block);
 }
 static bool vc_extent(vr_classic *c,mm_map *m,int64_t source,uint64_t size) {
     size_t old=m->capacity; uint64_t allocation;
@@ -80,8 +80,8 @@ static bool vc_pointer(vr_classic *c,mm_map *m,uint32_t block,unsigned height,ui
     if(block<c->firstdata || block>=c->blocks || depth>=4) return false;
     for(i=0;i<depth;++i) if(stack[i]==block) return false;
     if(!height) { if(!vc_extent(c,m,(int64_t)((uint64_t)block*c->block),bytes)) return false; *left-=bytes; return true; }
-    if(!vc_take(c,c->block)) return false; b=(uint8_t *)xx_mem_alloc(c->block);
-    if(!b || !vc_block(c,block,b)) goto done; stack[depth]=block; ok=true;
+    if(!vc_take(c,c->block)) { return false; } b=(uint8_t *)xx_mem_alloc(c->block);
+    if(!b || !vc_block(c,block,b)) { goto done; } stack[depth]=block; ok=true;
     for(i=0;ok && i<c->block/4 && *left;++i) { uint32_t p=vc32(c,b+4*i); if(c->kind==VC_XIA)p&=0xffffff; ok=vr_poll(c->pd) && vc_pointer(c,m,p,height-1,left,stack,depth+1); }
 done: xx_mem_free(b); c->used-=c->block; return ok;
 }
@@ -90,7 +90,7 @@ static bool vc_efs_extent(vr_classic *c,mm_map *m,const uint8_t *e,uint64_t size
     uint64_t at=(((uint32_t)e[5]<<16)|((uint32_t)e[6]<<8)|e[7])*UINT64_C(512),bytes=(uint64_t)e[4]*512;
     if(e[0] || !e[4] || !block || block>=c->blocks || e[4]>c->blocks-block || at<*logical || at>=size) return false;
     if(at>*logical && !vc_extent(c,m,-1,at-*logical)) return false;
-    if(bytes>size-at)bytes=size-at; if(!vc_extent(c,m,(int64_t)block*512,bytes)) return false; *logical=at+bytes; return true;
+    if(bytes>size-at) {bytes=size-at; } if(!vc_extent(c,m,(int64_t)block*512,bytes)) return false; *logical=at+bytes; return true;
 }
 static mm_map *vc_map(vr_classic *c,const uint8_t *raw,uint64_t size) {
     mm_map *m=vc_new_map(c); uint64_t left=size,stack[4],logical=0; unsigned i; bool ok=true;
@@ -151,15 +151,15 @@ static bool vc_emit(vr_classic *c,const char *path,mm_map *m,bool directory) {
 static bool vc_walk(vr_classic *,uint64_t,const char *);
 static bool vc_child(vr_classic *c,uint64_t key,const uint8_t *name,size_t n,const char *parent) {
     char leaf[256],path[4096];size_t len=xx_rt_strlen(parent);
-    if(!vc_name(name,n,leaf))return false;if(!xx_rt_strcmp(leaf,".") || !xx_rt_strcmp(leaf,".."))return true;
-    if(len+n+(len?1:0)>=sizeof(path))return false;xx_rt_snprintf(path,sizeof(path),"%s%s%s",parent,len?"/":"",leaf);return vc_walk(c,key,path);
+    if(!vc_name(name,n,leaf)) {return false; } if(!xx_rt_strcmp(leaf,".") || !xx_rt_strcmp(leaf,".."))return true;
+    if(len+n+(len?1:0)>=sizeof(path)) {return false; } xx_rt_snprintf(path,sizeof(path),"%s%s%s",parent,len?"/":"",leaf);return vc_walk(c,key,path);
 }
 static int64_t vc_source(mm_map *m,uint64_t logical) { size_t i;for(i=0;i<m->count;++i) {if(logical<m->extents[i].length)return m->extents[i].source<0?-1:m->extents[i].source+(int64_t)logical;logical-=m->extents[i].length;}return -1;}
 static bool vc_directory(vr_classic *c,mm_map *m,uint64_t size,const char *path) {
     uint8_t *b=NULL;pm_member member;uint64_t at=0;bool ok=false;
     if(size>32U*1024U*1024U || size>SIZE_MAX || !vc_take(c,size?size:1))return false;
     b=(uint8_t *)xx_mem_alloc(size?(size_t)size:1);if(!b)goto done;xx_mem_zero(&member,sizeof(member));member.context=m;
-    if(!mm_read(c->f,&member,0,b,(size_t)size,c->pd))goto done;ok=true;
+    if(!mm_read(c->f,&member,0,b,(size_t)size,c->pd)) {goto done; } ok=true;
     while(ok && at<size) {uint64_t key=0;size_t record=0,n=0;const uint8_t *name=NULL;unsigned i;
         if(!vr_poll(c->pd)){ok=false;break;}
         if(c->kind==VC_EXT || c->kind==VC_XIA) {size_t head=c->kind==VC_EXT?8:7;
@@ -179,7 +179,7 @@ static bool vc_directory(vr_classic *c,mm_map *m,uint64_t size,const char *path)
             if(status&8) {uint32_t block=pm_le32(b+at+48);if(!block || block-1>=c->blocks || b[at+52]>=8){ok=false;break;}key=(uint64_t)(block-1)*512+b[at+52]*64;}
             else {int64_t source=vc_source(m,at);if(source<0){ok=false;break;}key=(uint64_t)source;}
         } else {if(size-at<16){ok=false;break;}record=16;key=vc16(c,b+at);name=b+at+2;n=14;for(i=0;i<n && name[i];++i){}n=i;}
-        if(key)ok=vc_child(c,key,name,n,path);at+=record;
+        if(key) {ok=vc_child(c,key,name,n,path); } at+=record;
     }
 done:xx_mem_free(b);c->used-=size?size:1;return ok;
 }
@@ -217,21 +217,21 @@ static bool vr_classic_files(Abstractformat *f,pm_stream *s,xx_pd_struct *pd,con
     switch(f->file_type) {
     case XX_FILE_TYPE_LINUX_EXT:
         c.kind=VC_EXT;c.block=1024;c.blocks=pm_le32(sb+4);c.inodes=pm_le32(sb);c.table=2048;c.firstdata=pm_le32(sb+24);root=1;
-        if(pm_le32(sb+28) || c.firstdata<2 || c.inodes>(c.firstdata*1024-2048)/64)return false;break;
+        if(pm_le32(sb+28) || c.firstdata<2 || c.inodes>(c.firstdata*1024-2048)/64) {return false; } break;
     case XX_FILE_TYPE_XIA_FS:
-        if(!pm_read(f,0,sb,1024))return false;c.kind=VC_XIA;c.block=pm_le32(sb+512);c.blocks=pm_le32(sb+516);c.inodes=pm_le32(sb+520);
+        if(!pm_read(f,0,sb,1024)) {return false; } c.kind=VC_XIA;c.block=pm_le32(sb+512);c.blocks=pm_le32(sb+516);c.inodes=pm_le32(sb+520);
         c.firstdata=pm_le32(sb+536);c.table=((uint64_t)1+pm_le32(sb+528)+pm_le32(sb+532))*c.block;root=1;
-        if(c.block<1024 || c.block>4096 || pm_le32(sb+540)>2 || c.block!=(UINT64_C(1024)<<pm_le32(sb+540)) || c.table>c.firstdata*c.block || c.inodes>(c.firstdata*c.block-c.table)/64)return false;break;
+        if(c.block<1024 || c.block>4096 || pm_le32(sb+540)>2 || c.block!=(UINT64_C(1024)<<pm_le32(sb+540)) || c.table>c.firstdata*c.block || c.inodes>(c.firstdata*c.block-c.table)/64) {return false; } break;
     case XX_FILE_TYPE_QNX4:c.kind=VC_QNX;c.firstdata=0;root=512;break;
     case XX_FILE_TYPE_SGI_EFS:
         c.kind=VC_EFS;c.order=1;c.blocks=pm_be32(sb);c.cgfirst=pm_be32(sb+4);c.cgsize=pm_be32(sb+8);c.cginodes=pm_be16(sb+12);c.cgcount=pm_be16(sb+18);
-        if(!c.cginodes || c.cginodes>=c.cgsize || !c.cgcount || c.cgfirst>=c.blocks || (uint64_t)c.cgcount*c.cgsize>c.blocks-c.cgfirst)return false;break;
+        if(!c.cginodes || c.cginodes>=c.cgsize || !c.cgcount || c.cgfirst>=c.blocks || (uint64_t)c.cgcount*c.cgsize>c.blocks-c.cgfirst) {return false; } break;
     case XX_FILE_TYPE_UNIX_BFS:
         c.kind=VC_BFS;c.firstdata=pm_le32(sb+4)/512;c.blocks=((uint64_t)pm_le32(sb+8)+1)/512;c.inodes=(pm_le32(sb+4)-512)/64;
-        if(pm_le32(sb+4)%512 || (pm_le32(sb+8)&511)!=511 || !c.inodes || c.inodes>512)return false;break;
+        if(pm_le32(sb+4)%512 || (pm_le32(sb+8)&511)!=511 || !c.inodes || c.inodes>512) {return false; } break;
     case XX_FILE_TYPE_COHERENT_FS:c.order=2;c.blocks=vc32(&c,sb+2);c.firstdata=pm_le16(sb);c.table=1024;c.inodes=(c.firstdata-2)*8;break;
     case XX_FILE_TYPE_UNIX_V7:
-        if(!vr_classic_v7_identity(r,sb,pm_available(f),&c.order))return false;c.blocks=vc32(&c,sb+2);c.firstdata=vc16(&c,sb);c.table=1024;c.inodes=(c.firstdata-2)*8;break;
+        if(!vr_classic_v7_identity(r,sb,pm_available(f),&c.order)) {return false; } c.blocks=vc32(&c,sb+2);c.firstdata=vc16(&c,sb);c.table=1024;c.inodes=(c.firstdata-2)*8;break;
     case XX_FILE_TYPE_SYSV_FS:
     case XX_FILE_TYPE_XENIX_FS: {
         bool xenix=f->file_type==XX_FILE_TYPE_XENIX_FS;size_t magic_at=xenix?1016:504,base=0;uint32_t magic=xenix?0x002b5544:0xfd187e20,type;

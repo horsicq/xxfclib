@@ -15,7 +15,7 @@ static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  for(i=0;i<=count;++i){uint64_t q=header+(uint64_t)i*entry;uint32_t width=pm_le16(b+q),off=entry==4?pm_le16(b+q+2):pm_le32(b+q+2);uint64_t bytes=(uint64_t)((width+7)/8)*height;if(tg_stop(pd)||width>4096||width>pm_le16(b+93)||off!=p||!tg_span(off,bytes,n))return false;if(bytes){xx_rt_snprintf(label,sizeof(label),i==count?"sentinel.bitmap":"glyph-%u.bitmap",i+b[95]);if(!tg_emit(f,s,label,off,bytes,n))return false;}p+=bytes;}
  end=p;if(face<end||!tg_nul(b,face,n,&after)||after-face>256)return false;if(device&&(device<end||!tg_nul(b,device,n,&after)||after-device>256))return false;
  /* Producer string tables and their zero alignment bytes remain encoded. */
- if(end>=n||!tg_emit(f,s,"fnt-name-metadata.bin",end,n-end,n))return false;s->size=(int64_t)n;return true;
+ if(end>=n||!tg_emit(f,s,"fnt-name-metadata.bin",end,n-end,n)) {return false; } s->size=(int64_t)n;return true;
 }
 
 void xx_font_windows_fnt_init(xx_font_windows_fnt *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_FONT_WINDOWS_FNT,"fnt");}}

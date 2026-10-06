@@ -13,7 +13,7 @@ static bool gf_special(const uint8_t *b,uint64_t *p,uint64_t n,uint8_t op) {
 }
 static bool eg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  int32_t boc[256],prefix[256],gm0=1048577,gm1=-1048577,gn0=1048577,gn1=-1048577;bool loc[256],painted=false;uint64_t p,section,after,post=0,budget=0;uint32_t i,glyphs=0,ops=0,locs=0;char label[64];
- if(b[0]!=247||b[1]!=131||!eg_span(3,b[2],n))return false;p=3+b[2];section=after=p;
+ if(b[0]!=247||b[1]!=131||!eg_span(3,b[2],n)) {return false; } p=3+b[2];section=after=p;
  for(i=0;i<256;++i){boc[i]=prefix[i]=-1;loc[i]=false;}if(!eg_emit(f,s,"preamble.gf",0,p,n))return false;
  while(p<n){uint64_t start=p;uint8_t op=b[p++];int32_t code,minm,maxm,minn,maxn;int64_t m,row;bool black=false;
   if(eg_stop(pd)||++ops>2000000)return false;
@@ -41,11 +41,11 @@ static bool eg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  while(p<n){uint64_t start=p;uint8_t op=b[p++];uint32_t code;int32_t ref;
   if(eg_stop(pd))return false;
   if(op==249){if(!eg_span(p,5,n)||pm_be32(b+p)!=(uint32_t)post||b[p+4]!=131)return false;p+=5;
-   if(n-p<4||(n&3))return false;for(i=0;i<n-p;++i)if(b[p+i]!=223)return false;
-   for(i=0;i<256;++i)if(boc[i]>=0&&!loc[i])return false;if(!locs||!eg_emit(f,s,"postpost.gf",start,n-start,n))return false;s->size=(int64_t)n;return true;}
+   if(n-p<4||(n&3)) {return false; } for(i=0;i<n-p;++i)if(b[p+i]!=223)return false;
+   for(i=0;i<256;++i) {if(boc[i]>=0&&!loc[i])return false; } if(!locs||!eg_emit(f,s,"postpost.gf",start,n-start,n))return false;s->size=(int64_t)n;return true;}
   if(op==244){if(!eg_emit(f,s,"postamble-nop.gf",start,1,n))return false;continue;}
-  if(op!=245&&op!=246)return false;if(!eg_span(p,op==245?17:10,n))return false;code=b[p];ref=(int32_t)pm_be32(b+p+(op==245?13:6));p+=op==245?17:10;
-  if(loc[code]||(ref!=boc[code]&&ref!=prefix[code])||(ref==-1&&boc[code]!=-1))return false;loc[code]=true;++locs;
+  if(op!=245&&op!=246) {return false; } if(!eg_span(p,op==245?17:10,n))return false;code=b[p];ref=(int32_t)pm_be32(b+p+(op==245?13:6));p+=op==245?17:10;
+  if(loc[code]||(ref!=boc[code]&&ref!=prefix[code])||(ref==-1&&boc[code]!=-1)) {return false; } loc[code]=true;++locs;
   if(!eg_emit(f,s,"character-locator.gf",start,p-start,n))return false;
  }
  return false;

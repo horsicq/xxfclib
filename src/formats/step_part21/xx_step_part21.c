@@ -31,11 +31,11 @@ static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
   if(++count>4093||!tg_char(q,'#')||!tg_integer(q,&id)||id<1||!tg_id(&v.ids,(uint32_t)id,true,pd)||!tg_char(q,'='))goto done;
   if(tg_char(q,'(')){unsigned types=0;do {if(++types>1024||!tg_ident(q,&at,&z)||!step_params(&v,0,false))goto done;}while(!tg_char(q,')'));}
   else if(!tg_ident(q,&at,&z)||!step_params(&v,0,false))goto done;
-  if(!tg_char(q,';'))goto done;xx_rt_snprintf(label,sizeof(label),"entity-%u.step",(unsigned)id);if(!tg_emit(f,s,label,start,q->p-start,n))goto done;
+  if(!tg_char(q,';')) {goto done; } xx_rt_snprintf(label,sizeof(label),"entity-%u.step",(unsigned)id);if(!tg_emit(f,s,label,start,q->p-start,n))goto done;
  }
  if(!count||!tg_char(q,';')||!tg_kw(q,"END-ISO-10303-21")||!tg_char(q,';')||!tg_end(q))goto done;
  for(i=0;i<v.refcount;++i)if(!tg_id(&v.ids,v.refs[i],false,pd))goto done;
- if(!tg_cover(f,s,"syntax.step",n))goto done;s->size=(int64_t)n;ok=true;
+ if(!tg_cover(f,s,"syntax.step",n)) {goto done; } s->size=(int64_t)n;ok=true;
 done:if(v.ids.values)xx_mem_free(v.ids.values);if(v.refs)xx_mem_free(v.refs);return ok;
 }
 

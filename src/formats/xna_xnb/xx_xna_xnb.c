@@ -31,7 +31,7 @@ static bool parse_data(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t 
  if(kind==0){uint32_t format,w,h,mips;if(!span(p,16,end)||(format=pm_le32(b+p))>3||!(w=pm_le32(b+p+4))||w>8192||!(h=pm_le32(b+p+8))||h>8192||(uint64_t)w*h>16777216||!(mips=pm_le32(b+p+12))||mips>16)return false;p+=16;
  for(i=0;i<mips;++i){uint64_t bytes=(uint64_t)w*h*(format?2:4);if(stop(pd)||!span(p,4,end)||pm_le32(b+p)!=bytes||!span(p+4,bytes,end))return false;p+=4;xx_rt_snprintf(label,sizeof(label),"mip-%u.bin",i);if(!emit(f,s,label,p,bytes,end))return false;p+=bytes;if(w==1&&h==1&&i+1<mips)return false;w=w>1?w/2:1;h=h>1?h/2:1;}}
  else {if(kind==1){if(!var7(b,&p,end,&len)||!span(p,len,end))return false;data=p;p+=len;}else{len=kind==2?1:4;if(!span(p,len,end)||(kind==4&&!finite32(b+p,false)))return false;p+=len;}if(!emit(f,s,"value.bin",data,len,end))return false;}
- if(p!=end)return false;s->size=(int64_t)end;return true;
+ if(p!=end) {return false; } s->size=(int64_t)end;return true;
 
 }
 

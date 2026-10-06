@@ -20,7 +20,7 @@ static bool finite32(const uint8_t *p,bool be) { return (g32(p,be)&0x7f800000U)!
 static bool cstring(Abstractformat *f,uint64_t *at,uint64_t end,unsigned maximum,bool empty,xx_pd_struct *pd) { uint8_t c; unsigned i; for(i=0;i<maximum;++i) { if(!take(f,at,end,&c,1,pd)) return false; if(!c) return empty || i!=0; } return false; }
 typedef struct rg { uint64_t at,n; } rg;
 static bool nw_header(Abstractformat *f,const char *magic,uint16_t version,uint32_t *total,uint16_t *count,xx_pd_struct *pd) { uint8_t h[16]; if(stop(pd) || !pm_read(f,0,h,16) || xx_rt_memcmp(h,magic,4) || pm_be16(h+4)!=0xfeff || pm_be16(h+6)!=version || pm_be16(h+12)!=16 || !(*count=pm_be16(h+14)) || *count>1024 || (*total=pm_be32(h+8))<16 || *total>(uint64_t)pm_available(f)) return false; return true; }
-static bool section(Abstractformat *f,uint64_t at,uint64_t total,const char *magic,uint32_t n,xx_pd_struct *pd) { uint8_t h[8]; return !stop(pd) && n>=8 && span(at,n,total) && pm_read(f,(int64_t)at,h,8) && !xx_rt_memcmp(h,magic,4) && pm_be32(h+4)==n; }
+static XXFC_MAYBE_UNUSED bool section(Abstractformat *f,uint64_t at,uint64_t total,const char *magic,uint32_t n,xx_pd_struct *pd) { uint8_t h[8]; return !stop(pd) && n>=8 && span(at,n,total) && pm_read(f,(int64_t)at,h,8) && !xx_rt_memcmp(h,magic,4) && pm_be32(h+4)==n; }
 
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
@@ -36,8 +36,8 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
       else if(!xx_rt_memcmp(h,"grp1",4)) { uint32_t num,j; if(n<28 || !pm_read(f,(int64_t)at,h,28) || !xx_rt_memchr(h+8,0,16) || !span(28,(uint64_t)(num=pm_be16(h+24))*16,n) || num>256) return false; for(j=0;j<num;++j) if(!pm_read(f,(int64_t)(at+28+j*16),h,16) || !xx_rt_memchr(h,0,16)) return false; }
       else if(!xx_rt_memcmp(h,"grs1",4)) { if(n!=8 || ++gdepth>32) return false; }
       else if(!xx_rt_memcmp(h,"gre1",4)) { if(n!=8 || !gdepth) return false; --gdepth; }
-      else return false; if(!pm_read(f,(int64_t)at,h,4)) return false; xx_rt_snprintf(label,sizeof(label),"section-%c%c%c%c.bin",h[0],h[1],h[2],h[3]); if(!emit(f,s,label,at,n,total)) return false; at+=n; }
-    if(!layout || !panes || depth || gdepth || at!=total) return false; s->size=total; return true;
+      else { return false; } if(!pm_read(f,(int64_t)at,h,4)) return false; xx_rt_snprintf(label,sizeof(label),"section-%c%c%c%c.bin",h[0],h[1],h[2],h[3]); if(!emit(f,s,label,at,n,total)) return false; at+=n; }
+    if(!layout || !panes || depth || gdepth || at!=total) { return false; } s->size=total; return true;
 
 }
 

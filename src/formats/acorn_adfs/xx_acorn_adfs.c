@@ -128,8 +128,8 @@ static bool ad_device_name(const char *name) {
     if (name[i] && name[i] != '.') return false;
     for (j = 0U; j < sizeof(devices) / sizeof(devices[0]); ++j) if (ad_equal(stem, devices[j])) return true;
     return i == 4U && stem[3] >= '0' && stem[3] <= '9' &&
-        ((stem[0] == 'C' || stem[0] == 'c') && (stem[1] == 'O' || stem[1] == 'o') && (stem[2] == 'M' || stem[2] == 'm') ||
-         (stem[0] == 'L' || stem[0] == 'l') && (stem[1] == 'P' || stem[1] == 'p') && (stem[2] == 'T' || stem[2] == 't'));
+        (((stem[0] == 'C' || stem[0] == 'c') && (stem[1] == 'O' || stem[1] == 'o') && (stem[2] == 'M' || stem[2] == 'm')) ||
+         ((stem[0] == 'L' || stem[0] == 'l') && (stem[1] == 'P' || stem[1] == 'p') && (stem[2] == 'T' || stem[2] == 't')));
 }
 static void ad_safe_name(const char *raw, char out[32]) {
     size_t i, n = 0U;
@@ -141,7 +141,7 @@ static void ad_safe_name(const char *raw, char out[32]) {
     while (n && (out[n - 1U] == '.' || out[n - 1U] == ' ')) out[n - 1U] = '_';
     out[n] = 0;
     if ((n == 1U && out[0] == '.') || (n == 2U && out[0] == '.' && out[1] == '.') || ad_device_name(out)) {
-        for (i = n + 1U; i; --i) out[i] = out[i - 1U]; out[0] = '_';
+        for (i = n + 1U; i; --i) { out[i] = out[i - 1U]; } out[0] = '_';
     }
 }
 static bool ad_append(ad_view *v, const char *parent, const char *component, uint32_t first,
@@ -264,7 +264,7 @@ fail:
 static void ad_vtable_destroy(Abstractformat *self) { xx_acorn_adfs_destroy((xx_acorn_adfs *)self); }
 void xx_acorn_adfs_init_ex(xx_acorn_adfs *v, xx_io_device *device, int64_t base,
     xx_acorn_adfs_variant variant, xx_acorn_adfs_order order) {
-    if (!v) return; xx_mem_zero(v, sizeof(*v)); xx_format_init(&v->format, device, base);
+    if (!v) { return; } xx_mem_zero(v, sizeof(*v)); xx_format_init(&v->format, device, base);
     v->variant = variant; v->order = order; v->format.endian = XX_ENDIAN_LITTLE; v->format.file_type = AD_TYPE;
     v->format.format_type = XX_TYPE_ARCHIVE; v->format.is_archive = true;
     xx_format_set_mime_type(&v->format, "application/x-acorn-adfs"); xx_format_set_extension(&v->format, "adf");
@@ -316,7 +316,7 @@ static bool ad_options(xx_list_s *destination, const xx_list_s *source) {
     size_t i; if (!source) return true;
     for (i = 0U; i < source->count; ++i) {
         const xx_meta *item = (const xx_meta *)xx_list_at(source, i); xx_meta copy;
-        if (!item) continue; xx_meta_init(&copy, item->meta_id);
+        if (!item) { continue; } xx_meta_init(&copy, item->meta_id);
         if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) { xx_meta_cleanup(&copy); return false; }
     }
     return true;

@@ -26,17 +26,17 @@ static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
    if(form==7){if(!tg_span(p,8,n))return false;packet=pm_be32(b+p);id=pm_be32(b+p+4);p+=8;metricBytes=4;offsetBytes=4;header=28;}
    else if(form>=4){if(!tg_span(p,3,n))return false;packet=(form-4)*65536+pm_be16(b+p);id=b[p+2];p+=3;metricBytes=3;offsetBytes=2;header=13;}
    else{if(!tg_span(p,2,n))return false;packet=form*256+b[p];id=b[p+1];p+=2;metricBytes=3;offsetBytes=1;header=8;}
-   if(packet<header||!tg_span(p,packet,n)||id>0x7fffffffU)return false;end=p+packet;
-   for(i=0;i<count;++i)if(ids[i]==id)return false;ids[count++]=id;
+   if(packet<header||!tg_span(p,packet,n)||id>0x7fffffffU) {return false; } end=p+packet;
+   for(i=0;i<count;++i) {if(ids[i]==id)return false; } ids[count++]=id;
    p+=metricBytes;if(form==7){p+=8;w=pm_be32(b+p);h=pm_be32(b+p+4);p+=16;}else{p+=offsetBytes;w=tg_uint(b+p,offsetBytes);h=tg_uint(b+p+offsetBytes,offsetBytes);p+=4*offsetBytes;}
-   if(w>4096||h>4096||!pk_raster(b,p,end,w,h,dyn,(op&8)!=0,pd))return false;p=end;xx_rt_snprintf(label,sizeof(label),"glyph-%u.pk",id);
+   if(w>4096||h>4096||!pk_raster(b,p,end,w,h,dyn,(op&8)!=0,pd)) {return false; } p=end;xx_rt_snprintf(label,sizeof(label),"glyph-%u.pk",id);
   }else if(op>=240&&op<=243){unsigned bytes=op-239;uint32_t size;if(!tg_span(p,bytes,n))return false;size=tg_uint(b+p,bytes);p+=bytes;if(!tg_span(p,size,n))return false;p+=size;xx_rt_snprintf(label,sizeof(label),"special-%u.pk",(unsigned)s->count);}
   else if(op==244){if(!tg_span(p,4,n))return false;p+=4;xx_rt_snprintf(label,sizeof(label),"numeric-special-%u.pk",(unsigned)s->count);}
   else if(op==245){post=true;header=start;continue;}
   else if(op==246){xx_rt_snprintf(label,sizeof(label),"nop-%u.pk",(unsigned)s->count);}else return false;
   if(!tg_emit(f,s,label,start,p-start,n))return false;
  }
- if(!post||!count||!tg_emit(f,s,"pk-post-padding.bin",header,n-header,n))return false;s->size=(int64_t)n;return true;
+ if(!post||!count||!tg_emit(f,s,"pk-post-padding.bin",header,n-header,n)) {return false; } s->size=(int64_t)n;return true;
 }
 
 void xx_tex_pk_init(xx_tex_pk *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_TEX_PK,"pk");}}

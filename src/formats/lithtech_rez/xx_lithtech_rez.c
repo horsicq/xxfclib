@@ -13,10 +13,10 @@ static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     queue[0].offset=pm_le32(h+131); queue[0].size=pm_le32(h+135);
     while(used<count) { rz_dir dir=queue[used++]; int64_t at=dir.offset,end; if(dir.offset<boundary || !dir.size || !wg_range(limit,dir.offset,dir.size)) return false; end=at+dir.size; if(end>extent) extent=end;
         while(at<end) { uint32_t kind,offset,bytes; char name[4097],comment[4097],label[64];
-            if(wg_stop(pd) || end-at<16 || !pm_read(f,at,h,16) || (kind=pm_le32(h))>1) return false; offset=pm_le32(h+4); bytes=pm_le32(h+8);
+            if(wg_stop(pd) || end-at<16 || !pm_read(f,at,h,16) || (kind=pm_le32(h))>1) { return false; } offset=pm_le32(h+4); bytes=pm_le32(h+8);
             if(kind==1) { unsigned i; at+=16; if(count==1024 || !wg_string(f,&at,end,name,sizeof(name)) || !name[0] || offset<boundary || !bytes || !wg_range(limit,offset,bytes)) return false; for(i=0;i<count;++i) if((uint64_t)offset<queue[i].offset+(uint64_t)queue[i].size && (uint64_t)queue[i].offset<offset+(uint64_t)bytes) return false; queue[count].offset=offset; queue[count++].size=bytes; }
             else { uint32_t id,type,keys; if(end-at<28 || !pm_read(f,at,h,28)) return false; id=pm_le32(h+16); type=pm_le32(h+20); keys=pm_le32(h+24); at+=28;
-                if(keys>4096 || !wg_string(f,&at,end,name,sizeof(name)) || !name[0] || !wg_string(f,&at,end,comment,sizeof(comment)) || (uint64_t)keys*4>(uint64_t)(end-at) || offset<168 || !wg_range(boundary,offset,bytes)) return false; at+=(int64_t)keys*4;
+                if(keys>4096 || !wg_string(f,&at,end,name,sizeof(name)) || !name[0] || !wg_string(f,&at,end,comment,sizeof(comment)) || (uint64_t)keys*4>(uint64_t)(end-at) || offset<168 || !wg_range(boundary,offset,bytes)) { return false; } at+=(int64_t)keys*4;
                 xx_rt_snprintf(label,sizeof(label),"resource-%u-type-%08X.bin",id,type); if(!pm_add(f,s,label,offset,bytes)) return false;
             }
         }

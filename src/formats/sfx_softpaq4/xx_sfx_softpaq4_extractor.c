@@ -18,7 +18,7 @@ static void close_reader(Abstractformat *format) {
 }
 
 static const xx_format_search_desc desc = {
-    types, 1U, anchors, 1U, open_reader, close_reader
+    types, 1U, anchors, 1U, open_reader, close_reader, false
 };
 
 static xx_format_search_state *create_search(xx_format_extractor *self,

@@ -33,7 +33,7 @@ static const xx_format_search_anchor anchors[] = {
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     anchors, sizeof(anchors)/sizeof(anchors[0]),
-    xx_btsnoop_search_open, xx_btsnoop_search_close
+    xx_btsnoop_search_open, xx_btsnoop_search_close, false
 };
 
 static xx_format_search_state *xx_btsnoop_create_format_search(

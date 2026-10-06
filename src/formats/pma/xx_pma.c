@@ -428,7 +428,7 @@ static int xx_pma_tree_read(xx_pma_bits *reader, const uint8_t *tree) {
         if (bit < 0) return -1;
         code = tree[code + (unsigned int)bit];
     }
-    return (int)(code & (uint8_t)~XX_PMA_TREE_LEAF);
+    return (int)(code & ~XX_PMA_TREE_LEAF);
 }
 
 /* ------------------------------------------------------- -pm2- decoder -- */

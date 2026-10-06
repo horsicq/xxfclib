@@ -246,15 +246,15 @@ static const int slength_table[ 16 ][ 2 ] =
 };
 static const int scf_bounds[ 4 ] = { 6, 11, 16, 21 };
 static const int scf_width[ 4 ] = { 6, 5, 5, 5 };
-static const int scf_bounds_short[ 4 ] = { 6, 11, 12 };
-static const int scf_width_short[ 4 ] = { 6, 5, 1 };
-static const int scf_lh_bounds[ 2 ] = { 11, 21 };
-static const int scf_lh_width[ 2 ] = { 11, 10 };
+static XXFC_MAYBE_UNUSED const int scf_bounds_short[ 4 ] = { 6, 11, 12 };
+static XXFC_MAYBE_UNUSED const int scf_width_short[ 4 ] = { 6, 5, 1 };
+static XXFC_MAYBE_UNUSED const int scf_lh_bounds[ 2 ] = { 11, 21 };
+static XXFC_MAYBE_UNUSED const int scf_lh_width[ 2 ] = { 11, 10 };
 static const int scf_lh_bounds_short[ 2 ] = { 6, 12 };
 static const int scf_lh_width_short[ 2 ] = { 6, 6 };
-static const int preemphasis_table[ 21 ] = {
+static XXFC_MAYBE_UNUSED const int preemphasis_table[ 21 ] = {
  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 3, 2, 0 };
-static const int bandwidth_table[4][4][22] =
+static XXFC_MAYBE_UNUSED const int bandwidth_table[4][4][22] =
 {
  {
    { 6,6,6,6,6,6,8,10,12,14,16,20,24,28,32,38,46,52,60,68,58,54 },
@@ -281,7 +281,7 @@ static const int bandwidth_table[4][4][22] =
    { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 }
  }
 };
-static const int bandwidth_table_short[4][4][13] =
+static XXFC_MAYBE_UNUSED const int bandwidth_table_short[4][4][13] =
 {
  {
    { 4,4,4,6,8,10,12,14,18,24,30,40,18 },
@@ -681,20 +681,20 @@ static const int mp3_bitrate_pred[3][2049] =
    15,
  }
 };
-static const char* filetype_description[16] = {
+static XXFC_MAYBE_UNUSED const char* filetype_description[16] = {
  "not an MPEG audio file", "MPEG-2.5 LAYER III", "MPEG-2.5 LAYER II", "MPEG-2.5 LAYER I",
  "not an MPEG audio file", "not an MPEG audio file", "not an MPEG audio file", "not an MPEG audio file",
  "not an MPEG audio file", "MPEG-2 LAYER III", "MPEG-2 LAYER II", "MPEG-2 LAYER I",
  "not an MPEG audio file", "MPEG-1 LAYER III", "MPEG-1 LAYER II", "MPEG-1 LAYER I"
 };
-static const int pbitmax_16[] =
+static XXFC_MAYBE_UNUSED const int pbitmax_16[] =
 {
      0, 1, 3, 7,
     15, 31, 63, 127,
    255, 511, 1023, 2047,
   4095, 8191, 16383, 32767
 };
-static const unsigned char pbitlen_p8192[] =
+static XXFC_MAYBE_UNUSED const unsigned char pbitlen_p8192[] =
 {
   0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
   6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
@@ -954,7 +954,7 @@ static const unsigned char pbitlen_p8192[] =
  13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,
  14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14
 };
-static const unsigned char pbitlen_n8224_8223[] =
+static XXFC_MAYBE_UNUSED const unsigned char pbitlen_n8224_8223[] =
 {
  14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,
  14,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,
@@ -3265,7 +3265,7 @@ static huffman_conv htabA_dec_raw[ 64 ] = {
  { 1, 0x0, 0, -1 },
  { 1, 0x0, 0, -1 }
 };
-static huffman_conv_set htabA_dec = { htabA_dec_raw, 6 };
+static XXFC_MAYBE_UNUSED huffman_conv_set htabA_dec = { htabA_dec_raw, 6 };
 static huffman_conv htabB_dec_raw[ 16 ] = {
  { 4, 0xF, 4, -1 },
  { 4, 0xE, 3, -1 },
@@ -3284,8 +3284,8 @@ static huffman_conv htabB_dec_raw[ 16 ] = {
  { 4, 0x1, 1, -1 },
  { 4, 0x0, 0, -1 }
 };
-static huffman_conv_set htabB_dec = { htabB_dec_raw, 4 };
-static const signed short sv_qconv[ 256 ][ 5 ] = {
+static XXFC_MAYBE_UNUSED huffman_conv_set htabB_dec = { htabB_dec_raw, 4 };
+static XXFC_MAYBE_UNUSED const signed short sv_qconv[ 256 ][ 5 ] = {
  { 0, 0, 0, 0, 0 },
  { 0, 0, 0, 0, 0 },
  { 0, 0, 0, 0, 0 },
@@ -8984,7 +8984,7 @@ static huffman_enc_table bv_enc_table[ 32 ] = {
  { htab24_enc, 11, 15 + 2047 },
  { htab24_enc, 13, 15 + 8191 }
 };
-static huffman_dec_table bv_dec_table[ 32 ] = {
+static XXFC_MAYBE_UNUSED huffman_dec_table bv_dec_table[ 32 ] = {
  { htab0_dec, 0, 0 + 0 },
  { htab1_dec, 0, 1 + 0 },
  { htab2_dec, 0, 2 + 0 },
@@ -9019,12 +9019,12 @@ static huffman_dec_table bv_dec_table[ 32 ] = {
  { htab24_dec, 13, 15 + 8191 }
 };
 static const unsigned char appversion = 10;
-static const char* subversion = "g";
-static const char* apptitle = "packMP3";
-static const char* appname = "packMP3";
-static const char* versiondate = "01/22/2016";
-static const char* author = "Matthias Stirner";
-static const char pmp_magic[] = { 'M', 'S' };
+static XXFC_MAYBE_UNUSED const char* subversion = "g";
+static XXFC_MAYBE_UNUSED const char* apptitle = "packMP3";
+static XXFC_MAYBE_UNUSED const char* appname = "packMP3";
+static XXFC_MAYBE_UNUSED const char* versiondate = "01/22/2016";
+static XXFC_MAYBE_UNUSED const char* author = "Matthias Stirner";
+static XXFC_MAYBE_UNUSED const char pmp_magic[] = { 'M', 'S' };
 typedef struct xx_pm_allocation xx_pm_allocation;
 struct xx_mp3_context { bool failed; const char *phase; size_t output_limit; const uint8_t *input; size_t input_size,input_position; uint8_t *output; size_t output_position; size_t allocated; xx_pm_allocation *allocations;
 int lib_in_type;
@@ -9159,7 +9159,7 @@ static int xx_pm_iostream_write(iostream *self, void *from, int width, int count
     self->ctx->output_position+=amount;
     return count;
 }
-static int xx_pm_iostream_getpos(iostream *self) { return (int)self->ctx->input_position; }
+static XXFC_MAYBE_UNUSED int xx_pm_iostream_getpos(iostream *self) { return (int)self->ctx->input_position; }
 static int xx_pm_iostream_getsize(iostream *self) { return self->mode ? (int)self->ctx->output_position : (int)self->ctx->input_size; }
 static bool xx_pm_iostream_chkerr(iostream *self) { return self->ctx->failed; }
 static bool xx_pm_iostream_chkeof(iostream *self) { return self->ctx->failed; }
@@ -9287,7 +9287,7 @@ static void xx_pm_abitreader_init(abitreader *self, unsigned char* array, int si
  self->lbyte = size;
 }
 
-static abitreader *xx_pm_abitreader_new(xx_mp3_context *ctx, unsigned char* array, int size) {abitreader *self = (abitreader *)xx_pm_calloc(ctx, 1, sizeof(*self));
+static XXFC_MAYBE_UNUSED abitreader *xx_pm_abitreader_new(xx_mp3_context *ctx, unsigned char* array, int size) {abitreader *self = (abitreader *)xx_pm_calloc(ctx, 1, sizeof(*self));
  if (!self) return NULL;
  self->ctx = ctx;
  xx_pm_abitreader_init(self, array, size);
@@ -9297,7 +9297,7 @@ static void xx_pm_abitreader_destroy(abitreader *self) {if (self->ctx->failed) r
 
 }
 
-static void xx_pm_abitreader_delete(abitreader *self) {if (self && !self->ctx->failed) { xx_pm_abitreader_destroy(self); xx_pm_free(self->ctx, self); }}
+static XXFC_MAYBE_UNUSED void xx_pm_abitreader_delete(abitreader *self) {if (self && !self->ctx->failed) { xx_pm_abitreader_destroy(self); xx_pm_free(self->ctx, self); }}
 
 static unsigned int xx_pm_abitreader_read(abitreader *self, int nbits) {if (self->ctx->failed) return 0;
 
@@ -9323,7 +9323,7 @@ static unsigned int xx_pm_abitreader_read(abitreader *self, int nbits) {if (self
  return retval;
 }
 
-static unsigned char xx_pm_abitreader_read_bit(abitreader *self) {if (self->ctx->failed) return 0;
+static XXFC_MAYBE_UNUSED unsigned char xx_pm_abitreader_read_bit(abitreader *self) {if (self->ctx->failed) return 0;
 
  unsigned char bit;
  if (self->eof) {
@@ -9338,27 +9338,27 @@ static unsigned char xx_pm_abitreader_read_bit(abitreader *self) {if (self->ctx-
  return bit;
 }
 
-static unsigned char xx_pm_abitreader_unpad(abitreader *self, unsigned char fillbit) {if (self->ctx->failed) return 0;
+static XXFC_MAYBE_UNUSED unsigned char xx_pm_abitreader_unpad(abitreader *self, unsigned char fillbit) {if (self->ctx->failed) return 0;
 
  if ( ( self->cbit == 8 ) || self->eof ) return fillbit;
  else {
-  fillbit = xx_pm_abitreader_read(self, 1 );
+  fillbit = (unsigned char)xx_pm_abitreader_read(self, 1 );
   while ( self->cbit != 8 ) xx_pm_abitreader_read(self, 1 );
  }
  return fillbit;
 }
 
-static int xx_pm_abitreader_getpos(abitreader *self) {if (self->ctx->failed) return 0;
+static XXFC_MAYBE_UNUSED int xx_pm_abitreader_getpos(abitreader *self) {if (self->ctx->failed) return 0;
 
  return self->cbyte;
 }
 
-static int xx_pm_abitreader_getbitp(abitreader *self) {if (self->ctx->failed) return 0;
+static XXFC_MAYBE_UNUSED int xx_pm_abitreader_getbitp(abitreader *self) {if (self->ctx->failed) return 0;
 
  return self->cbit;
 }
 
-static void xx_pm_abitreader_setpos(abitreader *self, int pbyte, int pbit) {if (self->ctx->failed) return ;
+static XXFC_MAYBE_UNUSED void xx_pm_abitreader_setpos(abitreader *self, int pbyte, int pbit) {if (self->ctx->failed) return ;
 
  if ( pbyte < self->lbyte ) {
   self->eof = false;
@@ -9372,7 +9372,7 @@ static void xx_pm_abitreader_setpos(abitreader *self, int pbyte, int pbit) {if (
  }
 }
 
-static void xx_pm_abitreader_rewind_bits(abitreader *self, int nbits) {if (self->ctx->failed) return ;
+static XXFC_MAYBE_UNUSED void xx_pm_abitreader_rewind_bits(abitreader *self, int nbits) {if (self->ctx->failed) return ;
 
  if ( self->eof ) {
   if ( nbits > self->peof ) nbits -= self->peof;
@@ -9482,7 +9482,7 @@ static int xx_pm_abitwriter_getpos(abitwriter *self) {if (self->ctx->failed) ret
  return self->cbyte;
 }
 
-static int xx_pm_abitwriter_getbitp(abitwriter *self) {if (self->ctx->failed) return 0;
+static XXFC_MAYBE_UNUSED int xx_pm_abitwriter_getbitp(abitwriter *self) {if (self->ctx->failed) return 0;
 
  return self->cbit;
 }
@@ -9497,7 +9497,7 @@ static void xx_pm_abytereader_init(abytereader *self, unsigned char* array, int 
   self->eof = true;
 }
 
-static abytereader *xx_pm_abytereader_new(xx_mp3_context *ctx, unsigned char* array, int size) {abytereader *self = (abytereader *)xx_pm_calloc(ctx, 1, sizeof(*self));
+static XXFC_MAYBE_UNUSED abytereader *xx_pm_abytereader_new(xx_mp3_context *ctx, unsigned char* array, int size) {abytereader *self = (abytereader *)xx_pm_calloc(ctx, 1, sizeof(*self));
  if (!self) return NULL;
  self->ctx = ctx;
  xx_pm_abytereader_init(self, array, size);
@@ -9507,9 +9507,9 @@ static void xx_pm_abytereader_destroy(abytereader *self) {if (self->ctx->failed)
 
 }
 
-static void xx_pm_abytereader_delete(abytereader *self) {if (self && !self->ctx->failed) { xx_pm_abytereader_destroy(self); xx_pm_free(self->ctx, self); }}
+static XXFC_MAYBE_UNUSED void xx_pm_abytereader_delete(abytereader *self) {if (self && !self->ctx->failed) { xx_pm_abytereader_destroy(self); xx_pm_free(self->ctx, self); }}
 
-static int xx_pm_abytereader_read(abytereader *self, unsigned char* byte) {if (self->ctx->failed) return 0;
+static XXFC_MAYBE_UNUSED int xx_pm_abytereader_read(abytereader *self, unsigned char* byte) {if (self->ctx->failed) return 0;
 
  if ( self->cbyte >= self->lbyte ) {
   self->cbyte = self->lbyte;
@@ -9522,7 +9522,7 @@ static int xx_pm_abytereader_read(abytereader *self, unsigned char* byte) {if (s
  }
 }
 
-static int xx_pm_abytereader_read_n(abytereader *self, unsigned char* byte, int n) {if (self->ctx->failed) return 0;
+static XXFC_MAYBE_UNUSED int xx_pm_abytereader_read_n(abytereader *self, unsigned char* byte, int n) {if (self->ctx->failed) return 0;
 
  int nl = self->lbyte - self->cbyte;
  int i;
@@ -9541,7 +9541,7 @@ static int xx_pm_abytereader_read_n(abytereader *self, unsigned char* byte, int 
  }
 }
 
-static void xx_pm_abytereader_seek(abytereader *self, int pos) {if (self->ctx->failed) return ;
+static XXFC_MAYBE_UNUSED void xx_pm_abytereader_seek(abytereader *self, int pos) {if (self->ctx->failed) return ;
 
  if ( pos >= self->lbyte ) {
   self->cbyte = self->lbyte;
@@ -9553,12 +9553,12 @@ static void xx_pm_abytereader_seek(abytereader *self, int pos) {if (self->ctx->f
  }
 }
 
-static int xx_pm_abytereader_getsize(abytereader *self) {if (self->ctx->failed) return 0;
+static XXFC_MAYBE_UNUSED int xx_pm_abytereader_getsize(abytereader *self) {if (self->ctx->failed) return 0;
 
  return self->lbyte;
 }
 
-static int xx_pm_abytereader_getpos(abytereader *self) {if (self->ctx->failed) return 0;
+static XXFC_MAYBE_UNUSED int xx_pm_abytereader_getpos(abytereader *self) {if (self->ctx->failed) return 0;
 
  return self->cbyte;
 }
@@ -9604,7 +9604,7 @@ static void xx_pm_abytewriter_write(abytewriter *self, unsigned char byte) {if (
  self->data[ self->cbyte++ ] = byte;
 }
 
-static void xx_pm_abytewriter_write_n(abytewriter *self, unsigned char* byte, int n) {if (self->ctx->failed) return ;
+static XXFC_MAYBE_UNUSED void xx_pm_abytewriter_write_n(abytewriter *self, unsigned char* byte, int n) {if (self->ctx->failed) return ;
 
  if ( self->error ) return;
  while ( ( self->cbyte + n ) >= ( self->dsize - 2 ) ) {
@@ -9627,7 +9627,7 @@ static unsigned char* xx_pm_abytewriter_getptr(abytewriter *self) {if (self->ctx
  return self->data;
 }
 
-static unsigned char* xx_pm_abytewriter_peekptr(abytewriter *self) {if (self->ctx->failed) return NULL;
+static XXFC_MAYBE_UNUSED unsigned char* xx_pm_abytewriter_peekptr(abytewriter *self) {if (self->ctx->failed) return NULL;
 
  return self->data;
 }
@@ -9637,7 +9637,7 @@ static int xx_pm_abytewriter_getpos(abytewriter *self) {if (self->ctx->failed) r
  return self->cbyte;
 }
 
-static void xx_pm_abytewriter_reset(abytewriter *self) {if (self->ctx->failed) return ;
+static XXFC_MAYBE_UNUSED void xx_pm_abytewriter_reset(abytewriter *self) {if (self->ctx->failed) return ;
 
  self->cbyte = 0;
 }
@@ -9873,7 +9873,7 @@ static mp3Frame* xx_pm_mp3_build_frame(xx_mp3_context *ctx) {
   { frame->granules[ch] = (granuleInfo**) xx_pm_calloc(ctx,  2, sizeof( granuleInfo* ) ); if (!frame->granules[ch]) { ctx->failed=true; return NULL; } }
   for ( gr = 0; gr < 2; gr++ )
    {
-  if (ctx->failed) return NULL; frame->granules[ch][gr] = (granuleInfo*) xx_pm_calloc(ctx,  1, sizeof( granuleInfo ) ); if (!frame->granules[ch][gr]) { ctx->failed=true; return NULL; } }
+  if (ctx->failed) { return NULL; } frame->granules[ch][gr] = (granuleInfo*) xx_pm_calloc(ctx,  1, sizeof( granuleInfo ) ); if (!frame->granules[ch][gr]) { ctx->failed=true; return NULL; } }
  }
  for ( ch = 0; ch < nch; ch++ ) {
   if (ctx->failed) return NULL;
@@ -9896,6 +9896,7 @@ static mp3Frame* xx_pm_mp3_build_frame(xx_mp3_context *ctx) {
 
 static unsigned short xx_pm_mp3_calc_layer3_crc(xx_mp3_context *ctx, unsigned char* header, unsigned char* sideinfo, int sidesize) {
  unsigned short crc = 0xFFFF;
+ (void)ctx;
  crc = (crc << 8) ^ crc_table[(crc>>8) ^ header[2]];
  crc = (crc << 8) ^ crc_table[(crc>>8) ^ header[3]];
  for ( int i = 0; i < sidesize; i++ )
@@ -9957,7 +9958,7 @@ static bool xx_pm_pmp_build_context(xx_mp3_context *ctx) {
  gg0 = ctx->gg_context[0];
  for ( granule = ctx->firstframe->granules[0][0]; granule != NULL; granule = granule->next ) {
   if (ctx->failed) return false;
-  *gg0 = granule->global_gain;
+  *gg0 = (unsigned char)granule->global_gain;
   count_gg[0][*(gg0++)]++;
  }
  for ( i = 1; i < 256; i++ )
@@ -9967,7 +9968,7 @@ static bool xx_pm_pmp_build_context(xx_mp3_context *ctx) {
   gg1 = ctx->gg_context[1];
   for ( granule = ctx->firstframe->granules[1][0]; granule != NULL; granule = granule->next ) {
   if (ctx->failed) return false;
-   *gg1 = granule->global_gain;
+   *gg1 = (unsigned char)granule->global_gain;
    count_gg[1][*(gg1++)]++;
    gg0++;
   }
@@ -9987,7 +9988,7 @@ static bool xx_pm_pmp_build_context(xx_mp3_context *ctx) {
   for ( i = 0, gg0 = ctx->gg_context[ch]; i < ngr; i++, gg0++ ) {
   if (ctx->failed) return false;
    if ( *gg0 >= lbound ) {
-    *gg0 -= lbound;
+    *gg0 = (unsigned char)( *gg0 - lbound );
     if ( *gg0 >= 16 ) *gg0 = 16 - 1;
    } else *gg0 = 0;
   }
@@ -10033,7 +10034,7 @@ static bool xx_pm_pmp_decode_block_types(xx_mp3_context *ctx, aricoder* dec) {
     else context_index = 3;
     xx_pm_model_s_shift_context(mod_bt,  context_index );
     c = xx_pm_decode_ari_model_s(dec, mod_bt );
-    granule0->block_type = c;
+    granule0->block_type = (int8_t)c;
    } else granule0->block_type = 0;
   }
  }
@@ -10066,7 +10067,7 @@ static bool xx_pm_pmp_decode_coarse_sf(xx_mp3_context *ctx, aricoder* dec) {
   if (ctx->failed) return false;
    xx_pm_model_b_shift_context(model,  context_index );
    c = xx_pm_decode_ari_model_b(dec, model );
-   granule->coarse_scalefactors = c;
+   granule->coarse_scalefactors = (int8_t)c;
    context_index = ( ( context_index << 1 ) | c ) & 0xF;
   }
  }
@@ -10085,7 +10086,7 @@ static bool xx_pm_pmp_decode_global_gain(xx_mp3_context *ctx, aricoder* dec) {
   if (ctx->failed) return false;
   c = xx_pm_decode_ari_model_s(dec, model );
   last = ( c + last ) & 0xFF;
-  granule0->global_gain = last;
+  granule0->global_gain = (short)last;
  }
  if ( ctx->g_nchannels == 2 ) {
   granule0 = ctx->firstframe->granules[0][0];
@@ -10282,7 +10283,7 @@ static bool xx_pm_pmp_decode_main_data(xx_mp3_context *ctx, aricoder* dec) {
   mod_len[ch][0] = NULL;
   for ( i = 1; i <= 13; i++ )
    {
-  if (ctx->failed) return false; mod_len[ch][i] = xx_pm_model_s_new(ctx,  i + 1, 13 + 1, 1, 511 ); if (!mod_len[ch][i]) { ctx->failed=true; return false; } }
+  if (ctx->failed) { return false; } mod_len[ch][i] = xx_pm_model_s_new(ctx,  i + 1, 13 + 1, 1, 511 ); if (!mod_len[ch][i]) { ctx->failed=true; return false; } }
  }
  for ( ch = 0; ch < ctx->g_nchannels; ch++ ) {
   if (ctx->failed) return false;
@@ -10336,7 +10337,7 @@ static bool xx_pm_pmp_decode_main_data(xx_mp3_context *ctx, aricoder* dec) {
      shared[ch][3] = ( granule->share >> 0 ) & 0x1;
     }
     xx_pm_huffman_writer_reset_counter(huffman);
-    frame->bit_reservoir = bitres;
+    frame->bit_reservoir = (short)bitres;
     if ( !sbl ) {
      scf = scf_c[ch];
      scf_prev = scf_l_long[ch];
@@ -10356,8 +10357,8 @@ static bool xx_pm_pmp_decode_main_data(xx_mp3_context *ctx, aricoder* dec) {
        mod_sfc = mod_scf[ch][sl-1][(shared[ch][g])?g|0x4:g];
        for ( ; p < scf_bounds[ g ]; p++ ) {
   if (ctx->failed) return false;
-        xx_pm_shift_model_model_s(mod_sfc, ctx_scf, scf_prev[p] );
-        scf[p] = xx_pm_decode_ari_model_s(dec, mod_sfc );
+        xx_pm_shift_model_model_s_3(mod_sfc, ctx_scf, scf_prev[p] );
+        scf[p] = (unsigned char)xx_pm_decode_ari_model_s(dec, mod_sfc );
         xx_pm_huffman_writer_write_bits(huffman,  scf[p], sl );
         ctx_scf = scf[p];
        }
@@ -10380,8 +10381,8 @@ static bool xx_pm_pmp_decode_main_data(xx_mp3_context *ctx, aricoder* dec) {
         mod_sfc = mod_scf[ch][sl-1][g|0x8];
         for ( ; p < scf_lh_bounds_short[ g ]; p++ ) {
   if (ctx->failed) return false;
-         xx_pm_shift_model_model_s(mod_sfc, ctx_scf, scf_prev[p] );
-         scf[p] = xx_pm_decode_ari_model_s(dec, mod_sfc );
+         xx_pm_shift_model_model_s_3(mod_sfc, ctx_scf, scf_prev[p] );
+         scf[p] = (unsigned char)xx_pm_decode_ari_model_s(dec, mod_sfc );
          xx_pm_huffman_writer_write_bits(huffman,  scf[p], sl );
          ctx_scf = scf[p];
         }
@@ -10395,13 +10396,13 @@ static bool xx_pm_pmp_decode_main_data(xx_mp3_context *ctx, aricoder* dec) {
     } else xx_pm_model_s_shift_context(mod_svb,  144 + 1 );
     c = xx_pm_decode_ari_model_s(dec, mod_svb );
     if ( c <= 144 ) {
-     granule->sv_bound = c << 2;
+     granule->sv_bound = (short)( c << 2 );
      if ( granule->region_bound[ 2 ] % 4 == 2 )
       granule->sv_bound += 2;
-     if ( !sbl ) ctx_svb[ch] = c;
+     if ( !sbl ) ctx_svb[ch] = (unsigned char)c;
     } else {
      c = xx_pm_decode_ari_model_s(dec, mod_bvf );
-     granule->sv_bound = granule->region_bound[ 2 ] - ( c << 1 );
+     granule->sv_bound = (short)( granule->region_bound[ 2 ] - ( c << 1 ) );
      granule->region_bound[ 2 ] = granule->sv_bound;
      for ( i = 1; i >= 0; i-- ) if ( granule->sv_bound < granule->region_bound[i] )
       granule->region_bound[i] = granule->sv_bound;
@@ -10425,13 +10426,13 @@ static bool xx_pm_pmp_decode_main_data(xx_mp3_context *ctx, aricoder* dec) {
     mod_asc = mod_asv[ch][flags][(int) granule->select_htabB];
     for ( p = granule->sv_bound-1; p >= rlb; p-- ) {
   if (ctx->failed) return false;
-     xx_pm_shift_model_model_b(mod_asc, ctx_pat, ctx_h_abs[p] );
-     abs[p] = xx_pm_decode_ari_model_b(dec, mod_asc );
+     xx_pm_shift_model_model_b_3(mod_asc, ctx_pat, ctx_h_abs[p] );
+     abs[p] = (unsigned char)xx_pm_decode_ari_model_b(dec, mod_asc );
      ctx_pat = ( (ctx_pat<<1) | abs[p] ) & 0xF;
      ctx_abs = ( 2 * abs[p] + ctx_abs + 2 ) / 3;
      if ( abs[p] == 1 ) {
-      xx_pm_shift_model_model_b(mod_sgc, ctx_h_abs[p], ctx_h_sgn[p] );
-      sgn[p] = xx_pm_decode_ari_model_b(dec, mod_sgc );
+      xx_pm_shift_model_model_b_3(mod_sgc, ctx_h_abs[p], ctx_h_sgn[p] );
+      sgn[p] = (unsigned char)xx_pm_decode_ari_model_b(dec, mod_sgc );
      }
     }
     for ( r = 2; r >= 0; r-- ) {
@@ -10450,20 +10451,20 @@ static bool xx_pm_pmp_decode_main_data(xx_mp3_context *ctx, aricoder* dec) {
      mod_lnc = mod_len[ch][linbits];
      for ( ; p >= rlb; p-- ) {
   if (ctx->failed) return false;
-      xx_pm_shift_model_model_s(mod_abc, ctx_abs, ctx_h_abs[p] );
-      abs[p] = xx_pm_decode_ari_model_s(dec, mod_abc );
+      xx_pm_shift_model_model_s_3(mod_abc, ctx_abs, ctx_h_abs[p] );
+      abs[p] = (unsigned char)xx_pm_decode_ari_model_s(dec, mod_abc );
       ctx_abs = ( 2 * abs[p] + ctx_abs + 2 ) / 3;
       if ( abs[p] > 0 ) {
-       xx_pm_shift_model_model_b(mod_sgc, ctx_h_abs[p], ctx_h_sgn[p] );
-       sgn[p] = xx_pm_decode_ari_model_b(dec, mod_sgc );
+       xx_pm_shift_model_model_b_3(mod_sgc, ctx_h_abs[p], ctx_h_sgn[p] );
+       sgn[p] = (unsigned char)xx_pm_decode_ari_model_b(dec, mod_sgc );
        if ( linbits > 0 ) if ( abs[p] == 15 ) {
         xx_pm_model_s_shift_context(mod_lnc,  ctx_h_len[p] );
-        len[p] = xx_pm_decode_ari_model_s(dec, mod_lnc );
+        len[p] = (unsigned char)xx_pm_decode_ari_model_s(dec, mod_lnc );
         if ( len[p] > 0 ) {
          for ( lbt[p] = 1, i = len[p] - 2; i >= 0; i-- ) {
   if (ctx->failed) return false;
-          xx_pm_shift_model_model_b(mod_res, len[p], i );
-          lbt[p] = ( lbt[p] << 1 ) | xx_pm_decode_ari_model_b(dec, mod_res );
+          xx_pm_shift_model_model_b_3(mod_res, len[p], i );
+          lbt[p] = (unsigned short)( ( lbt[p] << 1 ) | xx_pm_decode_ari_model_b(dec, mod_res ) );
          }
         } else lbt[p] = 0;
        }
@@ -10546,17 +10547,17 @@ static bool xx_pm_pmp_decode_main_data(xx_mp3_context *ctx, aricoder* dec) {
    if (n < 0 || n > 4095) return false;
      xx_pm_model_s_shift_context(mod_nst,  ctx_nst );
      c = xx_pm_decode_ari_model_s(dec, mod_nst );
-     ctx_nst = c;
+     ctx_nst = (unsigned char)c;
     }
     for ( ; n > 0; n-- ) {
   if (ctx->failed) return false;
      xx_pm_model_b_shift_context(mod_bst,  ctx_bst );
      c = xx_pm_decode_ari_model_b(dec, mod_bst );
-     xx_pm_huffman_writer_write_bit(huffman,  c );
+     xx_pm_huffman_writer_write_bit(huffman,  (unsigned char)c );
      ctx_bst = ( (ctx_bst<<1) | c ) & 0xF;
     }
     if (xx_pm_huffman_writer_get_count(huffman) < 0 || xx_pm_huffman_writer_get_count(huffman) > 4095) return false;
-    granule->main_data_bit = xx_pm_huffman_writer_get_count(huffman);
+    granule->main_data_bit = (short)xx_pm_huffman_writer_get_count(huffman);
     bitp += granule->main_data_bit;
    }
   }
@@ -10565,7 +10566,7 @@ static bool xx_pm_pmp_decode_main_data(xx_mp3_context *ctx, aricoder* dec) {
   if (frame->main_size < 0 || frame->main_size > 2048) return false;
   if ( ctx->i_bitrate == -1 ) {
    xx_pm_model_s_shift_context(mod_btr,  bitrate_pred[ frame->main_size ] );
-   frame->bits = xx_pm_decode_ari_model_s(dec, mod_btr );
+   frame->bits = (int8_t)xx_pm_decode_ari_model_s(dec, mod_btr );
   }
   if (frame->bits < 1 || frame->bits > 14) return false;
   frame->frame_size = frame_size[(int)frame->bits];
@@ -10583,7 +10584,7 @@ static bool xx_pm_pmp_decode_main_data(xx_mp3_context *ctx, aricoder* dec) {
    if (n < 0 || n > 2048) return false;
      xx_pm_model_s_shift_context(mod_aux,  ctx_aux );
      c = xx_pm_decode_ari_model_s(dec, mod_aux );
-     ctx_aux = c;
+     ctx_aux = (unsigned char)c;
     }
     frame->aux_size = n;
    } else frame->aux_size = bitres;
@@ -10609,9 +10610,9 @@ static bool xx_pm_pmp_decode_main_data(xx_mp3_context *ctx, aricoder* dec) {
   if (ctx->failed) return false;
     xx_pm_model_b_shift_context(mod_pad,  ctx_pad );
     c = xx_pm_decode_ari_model_b(dec, mod_pad );
-    xx_pm_huffman_writer_write_bit(huffman,  c );
+    xx_pm_huffman_writer_write_bit(huffman,  (unsigned char)c );
     ctx_pad = ( (ctx_pad<<1) | c ) & 0xFF;
-    *pna_c = (*pna_c<<1)|c;
+    *pna_c = (unsigned char)((*pna_c<<1)|c);
     if ( i % 8 == 0 ) *(++pna_c) = 0;
    }
    if ( xx_pm_pmp_predict_lame_anc(ctx, n, pad_and_aux ) == NULL ) {
@@ -10715,7 +10716,7 @@ static bool xx_pm_pmp_decode_preemphasis(xx_mp3_context *ctx, aricoder* dec) {
   if (ctx->failed) return false;
    xx_pm_model_b_shift_context(model,  context_index );
    c = xx_pm_decode_ari_model_b(dec, model );
-   granule->preemphasis = c;
+   granule->preemphasis = (int8_t)c;
    context_index = ( ( context_index << 1 ) | c ) & 0xF;
   }
  }
@@ -10757,18 +10758,18 @@ static bool xx_pm_pmp_decode_region_data(xx_mp3_context *ctx, aricoder* dec) {
   if (ctx->failed) return false;
    if ( !granule->window_switching ) {
     xx_pm_model_s_shift_context(mod_bv,  0 );
-    granule->big_val_pairs = xx_pm_decode_ari_model_s(dec, mod_bv );
+    granule->big_val_pairs = (short)xx_pm_decode_ari_model_s(dec, mod_bv );
     s_r2 = bw_conv[ granule->big_val_pairs << 1 ];
-    xx_pm_shift_model_model_s(mod_s0, s_r0, s_r2 );
+    xx_pm_shift_model_model_s_3(mod_s0, s_r0, s_r2 );
     s_r0 = xx_pm_decode_ari_model_s(dec, mod_s0 );
-    granule->region0_size = s_r0;
-    xx_pm_shift_model_model_s(mod_s1, s_r0, s_r2 );
-    granule->region1_size = xx_pm_decode_ari_model_s(dec, mod_s1 );
+    granule->region0_size = (int8_t)s_r0;
+    xx_pm_shift_model_model_s_3(mod_s1, s_r0, s_r2 );
+    granule->region1_size = (int8_t)xx_pm_decode_ari_model_s(dec, mod_s1 );
     if (s_r0+granule->region1_size+2>22) return false;
     granule->region_bound[0] =
-     mp3_bandwidth_bounds[(int)ctx->i_samplerate][s_r0+1];
+     (short)mp3_bandwidth_bounds[(int)ctx->i_samplerate][s_r0+1];
     granule->region_bound[1] =
-     mp3_bandwidth_bounds[(int)ctx->i_samplerate][s_r0+granule->region1_size+2];
+     (short)mp3_bandwidth_bounds[(int)ctx->i_samplerate][s_r0+granule->region1_size+2];
     granule->region_bound[2] = granule->big_val_pairs << 1;
     if ( granule->region_bound[0] > granule->region_bound[2] ) {
      granule->region_bound[0] = granule->region_bound[2];
@@ -10780,9 +10781,9 @@ static bool xx_pm_pmp_decode_region_data(xx_mp3_context *ctx, aricoder* dec) {
     granule->region0_size = 8;
     granule->region1_size = 0;
     granule->region_bound[0] =
-     mp3_bandwidth_bounds[(int)ctx->i_samplerate][8];
+     (short)mp3_bandwidth_bounds[(int)ctx->i_samplerate][8];
     xx_pm_model_s_shift_context(mod_bv,  0 );
-    granule->big_val_pairs = xx_pm_decode_ari_model_s(dec, mod_bv );
+    granule->big_val_pairs = (short)xx_pm_decode_ari_model_s(dec, mod_bv );
     granule->region_bound[1] = granule->big_val_pairs << 1;
     if ( granule->region_bound[0] > granule->region_bound[1] )
      granule->region_bound[0] = granule->region_bound[1];
@@ -10792,29 +10793,29 @@ static bool xx_pm_pmp_decode_region_data(xx_mp3_context *ctx, aricoder* dec) {
     granule->region0_size = 9;
     granule->region1_size = 0;
     granule->region_bound[0] =
-     mp3_bandwidth_bounds_short[(int)ctx->i_samplerate][9/3] * 3;
+     (short)( mp3_bandwidth_bounds_short[(int)ctx->i_samplerate][9/3] * 3 );
     xx_pm_model_s_shift_context(mod_bv,  1 );
-    granule->big_val_pairs = xx_pm_decode_ari_model_s(dec, mod_bv );
+    granule->big_val_pairs = (short)xx_pm_decode_ari_model_s(dec, mod_bv );
     granule->region_bound[1] = granule->big_val_pairs << 1;
     if ( granule->region_bound[0] > granule->region_bound[1] )
      granule->region_bound[0] = granule->region_bound[1];
     granule->region_bound[2] = granule->region_bound[1];
     s_r0 = 0;
    }
-   xx_pm_shift_model_model_s(mod_t0, *gg_ctx, t_r0 );
+   xx_pm_shift_model_model_s_3(mod_t0, *gg_ctx, t_r0 );
    t_r0 = xx_pm_decode_ari_model_s(dec, mod_t0 );
-   granule->region_table[0] = t_r0;
-   xx_pm_shift_model_model_s(mod_t1, t_r0, s_r0 );
+   granule->region_table[0] = (int8_t)t_r0;
+   xx_pm_shift_model_model_s_3(mod_t1, t_r0, s_r0 );
    t_r1 = xx_pm_decode_ari_model_s(dec, mod_t1 );
-   granule->region_table[1] = t_r1;
+   granule->region_table[1] = (int8_t)t_r1;
    if ( !granule->window_switching ) {
-    xx_pm_shift_model_model_s(mod_t2, t_r0, t_r1 );
+    xx_pm_shift_model_model_s_3(mod_t2, t_r0, t_r1 );
     t_r2 = xx_pm_decode_ari_model_s(dec, mod_t2 );
-    granule->region_table[2] = t_r2;
+    granule->region_table[2] = (int8_t)t_r2;
    } else granule->region_table[2] = 0;
    xx_pm_model_b_shift_context(mod_ts,  ctx_sv );
    t_sv = xx_pm_decode_ari_model_b(dec, mod_ts );
-   granule->select_htabB = t_sv;
+   granule->select_htabB = (int8_t)t_sv;
    ctx_sv = ( ( ctx_sv << 1 ) | t_sv ) & 0xF;
    gg_ctx++;
   }
@@ -10843,7 +10844,7 @@ static bool xx_pm_pmp_decode_sharing(xx_mp3_context *ctx, aricoder* dec) {
   if (ctx->failed) return false;
    xx_pm_shift_model_model_s(model, c, granule->slength, granule->next->slength );
    c = xx_pm_decode_ari_model_s(dec, model );
-   granule->share = c;
+   granule->share = (int8_t)c;
   }
  }
  xx_pm_model_s_delete(model);
@@ -10863,9 +10864,9 @@ static bool xx_pm_pmp_decode_slength(xx_mp3_context *ctx, aricoder* dec) {
   gg_ctx = ctx->gg_context[ ch ]; c = 0;
   for ( granule = ctx->firstframe->granules[ch][0]; granule != NULL; granule = granule->next ) {
   if (ctx->failed) return false;
-   xx_pm_shift_model_model_s(model, *(gg_ctx++), c );
+   xx_pm_shift_model_model_s_3(model, *(gg_ctx++), c );
    c = xx_pm_decode_ari_model_s(dec, model );
-   granule->slength = c;
+   granule->slength = (int8_t)c;
   }
  }
  xx_pm_model_s_delete(model);
@@ -10879,7 +10880,7 @@ static bool xx_pm_pmp_decode_stereo_ms(xx_mp3_context *ctx, aricoder* dec) {
  for ( mp3Frame* frame = ctx->firstframe; frame != NULL; frame = frame->next ) {
   if (ctx->failed) return false;
   xx_pm_model_b_shift_context(model,  context_index );
-  frame->stereo_ms = xx_pm_decode_ari_model_b(dec, model );
+  frame->stereo_ms = (int8_t)xx_pm_decode_ari_model_b(dec, model );
   context_index = ( ( context_index << 1 ) | frame->stereo_ms ) & 0xF;
  }
  xx_pm_model_b_delete(model);
@@ -10899,7 +10900,7 @@ static bool xx_pm_pmp_decode_subblock_gain(xx_mp3_context *ctx, aricoder* dec) {
    if ( granule->window_switching ) {
     for ( sb = 0; sb < 3; sb++ ) {
   if (ctx->failed) return false;
-     granule->sb_gain[sb] = xx_pm_decode_ari_model_s(dec, model );
+     granule->sb_gain[sb] = (int8_t)xx_pm_decode_ari_model_s(dec, model );
      xx_pm_model_s_shift_context(model,  granule->sb_gain[sb] );
     }
    } else xx_pm_set( granule->sb_gain, 0, sizeof( char ) * 3 );

@@ -11,7 +11,7 @@ static bool ps_rle(const uint8_t *b,uint64_t n,uint64_t size,xx_pd_struct *pd) {
 static bool ps_rect(const uint8_t *b,uint32_t *w,uint32_t *h) {int32_t x=(int32_t)pm_le32(b),y=(int32_t)pm_le32(b+4),r=(int32_t)pm_le32(b+8),d=(int32_t)pm_le32(b+12);int64_t width=(int64_t)r-x,height=(int64_t)d-y;if(width<0||height<0||width>16384||height>16384)return false;*w=(uint32_t)width;*h=(uint32_t)height;return true;}
 static bool tb_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  uint64_t p=36,end,bank,lend,head,start;uint32_t init,w,h,iw,ih,compression,layers,active,depth,seen=0,i,j;
- if(!ps_block(b,&p,n,0,&init,&end)||init!=38||end!=p+38)return false;w=pm_le32(b+p);h=pm_le32(b+p+4);compression=pm_le16(b+p+17);depth=pm_le16(b+p+19);active=pm_le32(b+p+32);layers=pm_le16(b+p+36);
+ if(!ps_block(b,&p,n,0,&init,&end)||init!=38||end!=p+38) {return false; } w=pm_le32(b+p);h=pm_le32(b+p+4);compression=pm_le16(b+p+17);depth=pm_le16(b+p+19);active=pm_le32(b+p+32);layers=pm_le16(b+p+36);
  if(!w||!h||w>16384||h>16384||(uint64_t)w*h>8388608||compression>1||b[p+16]>2||(depth!=24&&depth!=8)||pm_le16(b+p+21)!=(depth==24?3U:1U)||b[p+27]!=(depth==8)||!layers||layers>1024||active>=layers)return false;
  {uint32_t hi=pm_le32(b+p+12);if((hi&0x7ff00000U)==0x7ff00000U||(hi&0x80000000U)||!(hi&0x7fffffffU))return false;}
  p=end;if(!tb_emit(f,s,"descriptor.psp",0,p,n)||!ps_block(b,&p,n,3,&init,&bank)||init)return false;head=p-14;if(!tb_emit(f,s,"layer-bank.psp",head,14,n))return false;

@@ -19,17 +19,17 @@ static bool ng_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  if(!word(&q,"MD5Version")||!integer(&q,&value)||value!=10||!word(&q,"commandline")||!tok(&q)||!q.quoted||!word(&q,"numFrames")||!integer(&q,&frames)||frames<1||frames>1024||!word(&q,"numJoints")||!integer(&q,&joints)||joints<1||joints>256||!word(&q,"frameRate")||!integer(&q,&rate)||rate<1||rate>1000||!word(&q,"numAnimatedComponents")||!integer(&q,&components)||components<0||components>joints*6||!word(&q,"hierarchy"))return false;
  at=q.start;if(!ng_emit(f,s,"directives.md5text",0,at,n)||!word(&q,"{"))return false;
  for(i=0;i<joints;++i){int32_t count=0,k;if(!tok(&q)||!q.quoted||!q.token[0]||!integer(&q,&value)||(i==0?value!=-1:value<0||value>=i)||!integer(&q,&flags[i])||flags[i]<0||flags[i]>63||!integer(&q,&starts[i])||starts[i]<0||starts[i]>components)return false;
-  for(k=0;k<6;++k)if(flags[i]&(1<<k))++count;if(count>components-starts[i])return false;for(k=0;k<count;++k){if(used[starts[i]+k])return false;used[starts[i]+k]=1;}
+  for(k=0;k<6;++k) {if(flags[i]&(1<<k))++count; } if(count>components-starts[i])return false;for(k=0;k<count;++k){if(used[starts[i]+k])return false;used[starts[i]+k]=1;}
  }
  for(i=0;i<components;++i)if(!used[i])return false;
- if(!word(&q,"}")||!ng_emit(f,s,"hierarchy.md5text",at,q.end-at,n)||!word(&q,"bounds"))return false;at=q.start;if(!word(&q,"{"))return false;
+ if(!word(&q,"}")||!ng_emit(f,s,"hierarchy.md5text",at,q.end-at,n)||!word(&q,"bounds")) {return false; } at=q.start;if(!word(&q,"{"))return false;
  for(i=0;i<frames;++i){double lower[3];if(!word(&q,"("))return false;for(j=0;j<3;++j)if(!number(&q,&lower[j]))return false;if(!word(&q,")")||!word(&q,"("))return false;for(j=0;j<3;++j)if(!number(&q,&a)||a<lower[j])return false;if(!word(&q,")"))return false;}
- if(!word(&q,"}")||!ng_emit(f,s,"bounds.md5text",at,q.end-at,n)||!word(&q,"baseframe"))return false;at=q.start;if(!word(&q,"{"))return false;
+ if(!word(&q,"}")||!ng_emit(f,s,"bounds.md5text",at,q.end-at,n)||!word(&q,"baseframe")) {return false; } at=q.start;if(!word(&q,"{"))return false;
  for(i=0;i<joints;++i){if(!vector3(&q,NULL)||!word(&q,"("))return false;for(j=0;j<3;++j)if(!number(&q,&base[i][j]))return false;if(!word(&q,")")||base[i][0]*base[i][0]+base[i][1]*base[i][1]+base[i][2]*base[i][2]>1.000001)return false;}
  if(!word(&q,"}")||!ng_emit(f,s,"baseframe.md5text",at,q.end-at,n))return false;
  for(i=0;i<frames;++i){if(!word(&q,"frame"))return false;at=q.start;if(!integer(&q,&value)||value!=i||!word(&q,"{"))return false;for(j=0;j<components;++j)if(!number(&q,&values[j]))return false;
   for(j=0;j<joints;++j){int32_t k=starts[j];if(flags[j]&1)++k;if(flags[j]&2)++k;if(flags[j]&4)++k;a=flags[j]&8?values[k++]:base[j][0];d=flags[j]&16?values[k++]:base[j][1];z=flags[j]&32?values[k++]:base[j][2];if(a*a+d*d+z*z>1.000001)return false;}
-  if(!word(&q,"}"))return false;xx_rt_snprintf(label,sizeof(label),"frame-%u.md5text",(unsigned)i);if(!ng_emit(f,s,label,at,q.end-at,n))return false;
+  if(!word(&q,"}")) {return false; } xx_rt_snprintf(label,sizeof(label),"frame-%u.md5text",(unsigned)i);if(!ng_emit(f,s,label,at,q.end-at,n))return false;
  }
  end=q.end;while(q.p<n){uint8_t c=b[q.p++];if(c!=' '&&c!='\t'&&c!='\r'&&c!='\n')return false;}s->size=(int64_t)end;return true;
 }

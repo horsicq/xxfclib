@@ -24,8 +24,8 @@ static __inline bool reserve(range *r,unsigned *nr,unsigned max,uint64_t at,uint
 static bool parse_data(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
 
  uint32_t offsets[9],i,count;uint64_t sf,end;char label[40];static const char *names[]={"PARAM.SFO","ICON0.PNG","ICON1.PMF","PIC0.PNG","PIC1.PNG","SND0.AT3","DATA.PSP","DATA.PSAR"};
- if(n<40||xx_rt_memcmp(b,"\0PBP",4)||pm_le32(b+4)!=0x10000)return false;for(i=0;i<8;++i){offsets[i]=pm_le32(b+8+i*4);if(offsets[i]<40||offsets[i]>n||(i&&offsets[i]<offsets[i-1]))return false;}offsets[8]=(uint32_t)n;if(offsets[0]!=40||offsets[1]-offsets[0]<20||offsets[7]==offsets[6])return false;
- if(offsets[7]!=n)return false;sf=offsets[0];end=offsets[1];if(xx_rt_memcmp(b+sf,"\0PSF",4)||pm_le32(b+sf+4)!=0x101||!(count=pm_le32(b+sf+16))||count>256||!span(sf+20,(uint64_t)count*16,end))return false;
+ if(n<40||xx_rt_memcmp(b,"\0PBP",4)||pm_le32(b+4)!=0x10000) {return false; } for(i=0;i<8;++i){offsets[i]=pm_le32(b+8+i*4);if(offsets[i]<40||offsets[i]>n||(i&&offsets[i]<offsets[i-1]))return false;}offsets[8]=(uint32_t)n;if(offsets[0]!=40||offsets[1]-offsets[0]<20||offsets[7]==offsets[6])return false;
+ if(offsets[7]!=n) {return false; } sf=offsets[0];end=offsets[1];if(xx_rt_memcmp(b+sf,"\0PSF",4)||pm_le32(b+sf+4)!=0x101||!(count=pm_le32(b+sf+16))||count>256||!span(sf+20,(uint64_t)count*16,end))return false;
  {uint32_t keys=pm_le32(b+sf+8),data=pm_le32(b+sf+12);range r[256];unsigned nr=0;if(keys<20+count*16||data<=keys||sf+data>end)return false;
  for(i=0;i<count;++i){const uint8_t *e=b+sf+20+i*16;uint16_t type=pm_le16(e+2);uint32_t len=pm_le32(e+4),max=pm_le32(e+8),off=pm_le32(e+12);uint64_t key=sf+keys+pm_le16(e);
  if(stop(pd)||key>=sf+data||!cstr(b,&key,sf+data,1024,false)||!len||len>max||!reserve(r,&nr,256,sf+data+off,max,sf+data,end)||(type!=0x4&&type!=0x204&&type!=0x404)||(type==0x404&&len!=4)||(type==0x204&&b[sf+data+off+len-1]))return false;}}
@@ -34,7 +34,7 @@ static bool parse_data(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t 
  entry=pm_le32(e+24);ph=pm_le32(e+28);sh=pm_le32(e+32);if(ph<52||!span(ph,(uint64_t)pn*32,size)||(sn&&(pm_le16(e+46)!=40||sh<52||!span(sh,(uint64_t)sn*40,size))))return false;extent=ph+(uint64_t)pn*32;if(sn&&sh+(uint64_t)sn*40>extent)extent=sh+(uint64_t)sn*40;
  for(i=0;i<pn;++i){const uint8_t *p=e+ph+i*32;uint32_t off=pm_le32(p+4),addr=pm_le32(p+8),len=pm_le32(p+16),mem=pm_le32(p+20);if(!span(off,len,size)||len>mem)return false;if(off+(uint64_t)len>extent)extent=off+(uint64_t)len;if(pm_le32(p)==1&&entry>=addr&&(uint64_t)entry-addr<len)found=true;}
  for(i=0;i<sn;++i){const uint8_t *p=e+sh+i*40;if(pm_le32(p+4)!=8){uint32_t off=pm_le32(p+16),len=pm_le32(p+20);if(!span(off,len,size))return false;if(off+(uint64_t)len>extent)extent=off+(uint64_t)len;}}if(!found||extent!=size)return false;}
- for(i=0;i<8;++i)if(offsets[i+1]>offsets[i]){xx_rt_snprintf(label,sizeof(label),"%s",names[i]);if(!emit(f,s,label,offsets[i],offsets[i+1]-offsets[i],n))return false;}s->size=(int64_t)n;return true;
+ for(i=0;i<8;++i) {if(offsets[i+1]>offsets[i]){xx_rt_snprintf(label,sizeof(label),"%s",names[i]);if(!emit(f,s,label,offsets[i],offsets[i+1]-offsets[i],n))return false;} } s->size=(int64_t)n;return true;
 
 }
 

@@ -7,7 +7,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  TM_NEED(tm_load(f,&b,pd)&&tm_span(&b,0,2449)&&tm_tag(&b,0,"Funk",4)&&pm_le32(b.p+8)==b.n&&(b.p[5]>>1)>=10&&(b.p[6]>>4)<=7&&(b.p[6]&15)<=9);
  TM_NEED(b.p[12]=='F'&&(b.p[13]=='k'||b.p[13]=='v'||(b.p[13]=='2'&&!(b.p[7]&1)))&&b.p[14]>='0'&&b.p[14]<='9'&&b.p[15]>='0'&&b.p[15]<='9');ch=(b.p[14]-'0')*10+b.p[15]-'0';TM_NEED(ch&&ch<=32);
  while(no<256&&b.p[17+no]!=255){uint32_t v=b.p[17+no++];TM_NEED(v<128);if(v>=np)np=v+1;}TM_NEED(no&&no<256&&b.p[16]<no);
- for(i=0;i<128;++i)TM_NEED(b.p[273+i]<64);for(i=0;i<64;++i){const uint8_t *q=b.p+401+i*32;uint32_t a=pm_le32(q+19);lens[i]=pm_le32(q+23);TM_NEED(lens[i]<=16777216&&(a==UINT32_MAX||a<=lens[i]));}
+ for(i=0;i<128;++i) {TM_NEED(b.p[273+i]<64); } for(i=0;i<64;++i){const uint8_t *q=b.p+401+i*32;uint32_t a=pm_le32(q+19);lens[i]=pm_le32(q+23);TM_NEED(lens[i]<=16777216&&(a==UINT32_MAX||a<=lens[i]));}
  TM_NEED(tm_emit(f,s,&b,"descriptor.fnk",0,17)&&tm_emit(f,s,&b,"orders.fnk",17,256)&&tm_emit(f,s,&b,"pattern-breaks.fnk",273,128)&&tm_emit(f,s,&b,"instruments.fnk",401,2048));
  for(i=0;i<np;++i){uint64_t size=(uint64_t)ch*64*3;TM_NEED(tm_span(&b,at,size));for(j=0;j<ch*64;++j)TM_NEED(tm_work(&b,1));TM_NEED(tm_emit(f,s,&b,"pattern.fnk",at,size));at+=size;}
  for(i=0;i<64;++i)if(lens[i]>2){TM_NEED(tm_emit(f,s,&b,"sample.pcm8",at,lens[i]));at+=lens[i];}

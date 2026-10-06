@@ -346,7 +346,7 @@ void xx_nitroplus_npk2_init(xx_nitroplus_npk2 *archive, xx_io_device *device, in
 }
 xx_nitroplus_npk2 *xx_nitroplus_npk2_create(xx_io_device *device, int64_t base) {
     xx_nitroplus_npk2 *archive = (xx_nitroplus_npk2 *)xx_mem_alloc(sizeof(*archive));
-    if (archive) xx_nitroplus_npk2_init(archive, device, base); return archive;
+    if (archive) { xx_nitroplus_npk2_init(archive, device, base); } return archive;
 }
 bool xx_nitroplus_npk2_set_key(xx_nitroplus_npk2 *archive, const uint8_t *key, size_t size) {
     uint8_t copy[32] = {0};
@@ -364,7 +364,7 @@ void xx_nitroplus_npk2_destroy(xx_nitroplus_npk2 *archive) {
     xx_format_cleanup_extra_parameters(&archive->format);
 }
 void xx_nitroplus_npk2_free(xx_nitroplus_npk2 *archive) {
-    if (!archive) return; xx_nitroplus_npk2_destroy(archive); xx_mem_free(archive);
+    if (!archive) { return; } xx_nitroplus_npk2_destroy(archive); xx_mem_free(archive);
 }
 bool xx_nitroplus_npk2_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     uint8_t header[32];

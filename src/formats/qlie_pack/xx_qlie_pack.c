@@ -95,9 +95,9 @@ static bool qp_read(xx_io_device *device, int64_t at, void *buffer, size_t size,
     if (!device || at < 0 || qp_stopped(pd) || xx_io_seek64(device, at, XX_RT_SEEK_SET)) return false;
     while (done < size) {
         ssize_t got; size_t take = size - done;
-        if (qp_stopped(pd)) return false; if (take > 65536U) take = 65536U;
+        if (qp_stopped(pd)) { return false; } if (take > 65536U) take = 65536U;
         got = xx_io_read(device, (uint8_t *)buffer + done, take);
-        if (got <= 0 || (size_t)got > take) return false; done += (size_t)got;
+        if (got <= 0 || (size_t)got > take) { return false; } done += (size_t)got;
     }
     return !qp_stopped(pd);
 }
@@ -349,7 +349,7 @@ static bool qp_decrypt(qp_layout *layout, const qp_member *member, uint8_t *byte
         if (member->encryption == 2U) {
             for (i = 0U; i < 256U; ++i) {
                 int32_t value = (int32_t)((i + 7U) * (i + 3U));
-                if (i % 3U) value = -value; qp_put32(key_data + i * 4U, (uint32_t)value);
+                if (i % 3U) { value = -value; } qp_put32(key_data + i * 4U, (uint32_t)value);
             }
             if (key_size >= 128U) {
                 size_t k = key[49] % 73U + 128U, step = key[79] % 7U + 7U;
@@ -401,7 +401,7 @@ static bool qp_bpe_lengths(const uint8_t left[256], const uint8_t right[256],
                 uint64_t length = lengths[left[n]] + lengths[right[n]];
                 lengths[n] = length > cap ? cap : length; color[n] = 2U;
             }
-            if (!depth) break; --depth;
+            if (!depth) { break; } --depth;
         }
     }
     return true;
@@ -653,7 +653,7 @@ void xx_qlie_pack_init(xx_qlie_pack *archive, xx_io_device *device, int64_t base
 }
 xx_qlie_pack *xx_qlie_pack_create(xx_io_device *device, int64_t base) {
     xx_qlie_pack *archive = (xx_qlie_pack *)xx_mem_alloc(sizeof(*archive));
-    if (archive) xx_qlie_pack_init(archive, device, base); return archive;
+    if (archive) { xx_qlie_pack_init(archive, device, base); } return archive;
 }
 void xx_qlie_pack_clear_key_file(xx_qlie_pack *archive) {
     if (!archive) return;
@@ -672,7 +672,7 @@ void xx_qlie_pack_destroy(xx_qlie_pack *archive) {
     xx_format_cleanup_extra_parameters(&archive->format);
 }
 void xx_qlie_pack_free(xx_qlie_pack *archive) {
-    if (!archive) return; xx_qlie_pack_destroy(archive); xx_mem_free(archive);
+    if (!archive) { return; } xx_qlie_pack_destroy(archive); xx_mem_free(archive);
 }
 bool xx_qlie_pack_set_legacy_profile(xx_qlie_pack *archive, xx_qlie_pack_legacy_profile profile) {
     if (!archive || profile > XX_QLIE_PACK_LEGACY_V2_WITH_HASH) return false;

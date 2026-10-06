@@ -13,7 +13,7 @@ static bool cbm_put(cbm_sink *s,uint8_t c) {
         if(s->state==2U) { n=s->count?s->count:(s->old?255U:256U); s->state=0; }
         else if(c==s->marker) { s->state=1; return true; }
     }
-    if(n>s->n-s->at) return false; while(n--) s->p[s->at++]=c; return true;
+    if(n>s->n-s->at) { return false; } while(n--) s->p[s->at++]=c; return true;
 }
 static uint32_t cbm_reverse(uint32_t x,unsigned n) { uint32_t v=0; while(n--) { v=(v<<1U)|(x&1U); x>>=1; } return v; }
 static bool cbm_decode(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *out,uint32_t n,unsigned version,unsigned method) {
@@ -26,7 +26,7 @@ static bool cbm_decode(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *out
     } else if(method==2U || method==4U) {
         uint32_t codes[256]; uint8_t lengths[256];
         for(i=0;i<256U;++i) { lengths[i]=(uint8_t)ac_bits_get(&bits,5);
-            if(lengths[i]>24U) return false; codes[i]=ac_bits_get(&bits,lengths[i]); }
+            if(lengths[i]>24U) { return false; } codes[i]=ac_bits_get(&bits,lengths[i]); }
         while(sink.at<n) { uint32_t code=0; unsigned width; bool found=false;
             for(width=1U;width<=24U && !found;++width) {
                 code|=ac_bits_get(&bits,1)<<(width-1U); if(bits.failed) return false;
@@ -37,11 +37,11 @@ static bool cbm_decode(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *out
     } else if(method==3U) {
         uint16_t prefix[4096]; uint8_t suffix[4096],stack[4096],first=0; uint32_t next=258,previous,code,token,top,width=9,before_bump=253,interval=256;
         previous=cbm_reverse(ac_bits_get(&bits,width),width);
-        if(previous==256U) return n==0; if(previous>255U || bits.failed || !cbm_put(&sink,(uint8_t)previous)) return false; first=(uint8_t)previous;
+        if(previous==256U) { return n==0; } if(previous>255U || bits.failed || !cbm_put(&sink,(uint8_t)previous)) return false; first=(uint8_t)previous;
         for(;;) {
             token=code=cbm_reverse(ac_bits_get(&bits,width),width); if(bits.failed) return false;
             if(width<12U && --before_bump==0U) { ++width; interval*=2U; before_bump=interval; }
-            if(code==256U) break; if(code==257U || code>next || code>=4096U) return false; top=0;
+            if(code==256U) { break; } if(code==257U || code>next || code>=4096U) return false; top=0;
             if(code==next) { stack[top++]=first; code=previous; }
             while(code>255U) { if(code<258U || code>=next || top>=4095U || prefix[code]>=code) return false; stack[top++]=suffix[code]; code=prefix[code]; }
             first=(uint8_t)code; stack[top++]=first;

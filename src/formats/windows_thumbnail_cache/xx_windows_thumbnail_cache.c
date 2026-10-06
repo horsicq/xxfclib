@@ -121,14 +121,14 @@ cleanup:
     return valid && ue2_unpack(f, state, pd);
 }
 void xx_windows_thumbnail_cache_init(xx_windows_thumbnail_cache *a, xx_io_device *device, int64_t base) {
-    if (!a) return; xx_mem_zero(a, sizeof(*a));
+    if (!a) { return; } xx_mem_zero(a, sizeof(*a));
     ue2_init_format(&a->format, device, base, UE2_THUMBCACHE_TYPE, "db", "application/x-windows-thumbnail-cache");
     a->format.check_is_valid = thumb_valid; a->format.handle_base_info = thumb_info;
     a->format.unpack_current_archive_record = thumb_unpack;
 }
 xx_windows_thumbnail_cache *xx_windows_thumbnail_cache_create(xx_io_device *device, int64_t base) {
     xx_windows_thumbnail_cache *a = (xx_windows_thumbnail_cache *)xx_mem_alloc(sizeof(*a));
-    if (a) xx_windows_thumbnail_cache_init(a, device, base); return a;
+    if (a) { xx_windows_thumbnail_cache_init(a, device, base); } return a;
 }
 void xx_windows_thumbnail_cache_destroy(xx_windows_thumbnail_cache *a) { if (a) ue2_destroy_format(&a->format); }
 void xx_windows_thumbnail_cache_free(xx_windows_thumbnail_cache *a) { if (a) { xx_windows_thumbnail_cache_destroy(a); xx_mem_free(a); } }

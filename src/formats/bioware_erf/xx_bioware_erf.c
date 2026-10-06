@@ -13,7 +13,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     langs=pm_le32(h+8); descs=pm_le32(h+12); count=pm_le32(h+16); dt=pm_le32(h+20); kt=pm_le32(h+24); rt=pm_le32(h+28);
     if(count>65536 || langs>32 || kt<160 || rt<160 || !gm_range(total,kt,(uint64_t)count*step) || !gm_range(total,rt,(uint64_t)count*8) || (descs && (dt<160 || !gm_range(total,dt,descs)))) return false;
     floor=kt+(uint64_t)count*step; if(rt+(uint64_t)count*8>floor) floor=rt+(uint64_t)count*8;
-    if(descs && (uint64_t)dt+descs>floor) floor=(uint64_t)dt+descs; s->size=(int64_t)floor;
+    if(descs && (uint64_t)dt+descs>floor) { floor=(uint64_t)dt+descs; } s->size=(int64_t)floor;
     for(i=0;i<count;++i) {
         uint32_t id; if(gm_stopped(pd) || !gm_read(f,total,kt+(uint64_t)i*step,key,step)) return false;
         id=pm_le32(key+step-8); if(id>=count || !gm_read(f,total,rt+(uint64_t)id*8,r,8)) return false;

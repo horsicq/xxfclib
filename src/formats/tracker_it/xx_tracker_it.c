@@ -8,7 +8,7 @@
 
 static bool sm_emit(Abstractformat *f,pm_stream *s,const char *label,uint64_t at,uint64_t n,uint64_t *measured) {
     if(s->count>=4096 || !fd_range(at,n,(uint64_t)pm_available(f)) || at+n>268435456 || !pm_add(f,s,label,(int64_t)at,(int64_t)n)) return false;
-    if(at+n>*measured) *measured=at+n; return true;
+    if(at+n>*measured) { *measured=at+n; } return true;
 }
 static bool sm_zero(const uint8_t *p,size_t n) { size_t i; for(i=0;i<n;++i) if(p[i]) return false; return true; }
 static bool sm_loop(uint32_t begin,uint32_t end,uint32_t length,bool enabled) { return !enabled || (begin<end && end<=length); }
@@ -45,7 +45,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if(fd_stop(pd) || at<metadata || !fd_range(at,8,(uint64_t)pm_available(f)) || !pm_read(f,(int64_t)at,b,8) || !(rows=pm_le16(b+2)) || rows>256 || !sm_zero(b+4,4) || !(n=pm_le16(b)) || !fd_range(at+8,n,(uint64_t)pm_available(f)) || !sm_it_pattern(f,at+8,n,rows,samples,pd)) return false;
         xx_rt_snprintf(label,sizeof(label),"pattern-%u.bin",i); if(!sm_emit(f,s,label,at,8+n,&measured)) return false;
     }
-    if(!fd_disjoint(s,(uint64_t)f->base_address)) return false; s->size=(int64_t)measured; return true;
+    if(!fd_disjoint(s,(uint64_t)f->base_address)) { return false; } s->size=(int64_t)measured; return true;
 }
 
 void xx_tracker_it_init(xx_tracker_it *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_TRACKER_IT,"it"); } }

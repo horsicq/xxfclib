@@ -158,7 +158,7 @@ static bool gxl_parse(Abstractformat *format, gxl_stream **result,
         return false;
 
     count = gxl_le16(header + 94);
-    if (count == 0U || count > GXL_MAX_MEMBERS) return false;
+    if (count == 0U) return false;
     table_size = (int64_t)count * (int64_t)GXL_RECORD_SIZE;
     /* The declared member count must fit in the real file before it is used
      * to allocate or loop. */

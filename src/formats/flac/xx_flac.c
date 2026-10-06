@@ -114,9 +114,9 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     while(at<limit && (!total || samples<total)) { uint32_t block; int64_t end; char name[40];
         if(!fl_frame(f,at,limit,rate,channels,depth,frames,samples,&block,&end,pd) || block>maxblock || (block<minblock && (!total || samples+block!=total))) return false;
         xx_rt_snprintf(name,sizeof(name),"frame-%u.flac-frame",(unsigned)frames);
-        if(!pm_add(f,s,name,at,end-at)) return false; samples+=block; ++frames; at=end;
+        if(!pm_add(f,s,name,at,end-at)) { return false; } samples+=block; ++frames; at=end;
     }
-    if((total && samples!=total) || (!frames && total)) return false; s->size=at; return true;
+    if((total && samples!=total) || (!frames && total)) { return false; } s->size=at; return true;
 }
 
 void xx_flac_init(xx_flac *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_FLAC,"flac"); } }

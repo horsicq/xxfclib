@@ -16,11 +16,11 @@ static bool tb_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
    for(i=0;i<count;++i){int32_t dim;GM(tb_next(&q)&&tb_i(&q,&dim)&&dim>=0&&dim<=3&&tb_i(&q,&tag)&&tag>0&&tb_string(&q)&&tb_done(&q));}GM(tb_next(&q)&&tb_word(&q,"$EndPhysicalNames")&&tb_done(&q));GM(tb_emit(f,s,"physical-names.msh",start,q.p-start,n));
   }
   else if(tb_word(&q,"$Nodes")){GM(!(seen&2)&&!(seen&4)&&tb_done(&q)&&tb_next(&q)&&tb_i(&q,&count)&&count>=3&&count<=1000000&&tb_done(&q)&&tb_ids_init(&nodes,(uint32_t)count));seen|=2;nodecount=(uint32_t)count;
-   for(i=0;i<count;++i)GM(tb_next(&q)&&tb_i(&q,&tag)&&tag>0&&tb_id(&nodes,(uint32_t)tag,true,pd)&&tb_nums(&q,3));GM(tb_next(&q)&&tb_word(&q,"$EndNodes")&&tb_done(&q)&&tb_emit(f,s,"nodes.msh",start,q.p-start,n));
+   for(i=0;i<count;++i) {GM(tb_next(&q)&&tb_i(&q,&tag)&&tag>0&&tb_id(&nodes,(uint32_t)tag,true,pd)&&tb_nums(&q,3)); } GM(tb_next(&q)&&tb_word(&q,"$EndNodes")&&tb_done(&q)&&tb_emit(f,s,"nodes.msh",start,q.p-start,n));
   }
   else if(tb_word(&q,"$Elements")){GM((seen&2)&&!(seen&4)&&tb_done(&q)&&tb_next(&q)&&tb_i(&q,&count)&&count>0&&count<=1000000&&tb_done(&q)&&tb_ids_init(&elements,(uint32_t)count));seen|=4;elementcount=(uint32_t)count;
    for(i=0;i<count;++i){int32_t type,tags;GM(tb_next(&q)&&tb_i(&q,&tag)&&tag>0&&tb_id(&elements,(uint32_t)tag,true,pd)&&tb_i(&q,&type)&&type>0&&type<32&&tb_i(&q,&tags)&&tags>=0&&tags<=16);
-    for(j=0;j<tags;++j)GM(tb_i(&q,&tag));for(j=0;j<nodes_per_type[type];++j)GM(tb_i(&q,&tag)&&tag>0&&tb_id(&nodes,(uint32_t)tag,false,pd));GM(tb_done(&q));
+    for(j=0;j<tags;++j) {GM(tb_i(&q,&tag)); } for(j=0;j<nodes_per_type[type];++j)GM(tb_i(&q,&tag)&&tag>0&&tb_id(&nodes,(uint32_t)tag,false,pd));GM(tb_done(&q));
    }GM(tb_next(&q)&&tb_word(&q,"$EndElements")&&tb_done(&q)&&tb_emit(f,s,"elements.msh",start,q.p-start,n));
   }
   else if(tb_word(&q,"$NodeData")||tb_word(&q,"$ElementData")){bool node=tb_tag(b+q.t-9,"$NodeData",9);int32_t stringtags,realtags,inttags,components=0,entries=0,k;tb_ids data_ids={0};uint32_t limit=node?nodecount:elementcount;const char *end=node?"$EndNodeData":"$EndElementData";

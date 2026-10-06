@@ -4,7 +4,7 @@
  */
 #ifndef XX_FOURTH_UTF8_H
 #define XX_FOURTH_UTF8_H
-static bool fourth_utf8(const uint8_t *p,size_t size,xx_pd_struct *pd) {
+static XXFC_MAYBE_UNUSED bool fourth_utf8(const uint8_t *p,size_t size,xx_pd_struct *pd) {
     size_t at=0,tick=0;
     while(at<size) {
         uint8_t first=p[at++],low=0x80,high=0xbf; unsigned extra,i;

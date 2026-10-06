@@ -98,11 +98,11 @@ done:
 
 static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[16]; uint32_t count,i; int64_t limit=pm_available(f),table=13; bool bitmap;
-    if(!pm_read(f,0,h,13) || h[0]!=8 || (xx_rt_memcmp(h+1,"LMDSLL30",8) && xx_rt_memcmp(h+1,"LMDBML30",8)) || !(count=pm_le32(h+9)) || count>4096 || (uint64_t)count*4>(uint64_t)(limit-table)) return false; bitmap=!xx_rt_memcmp(h+1,"LMDBML30",8);
+    if(!pm_read(f,0,h,13) || h[0]!=8 || (xx_rt_memcmp(h+1,"LMDSLL30",8) && xx_rt_memcmp(h+1,"LMDBML30",8)) || !(count=pm_le32(h+9)) || count>4096 || (uint64_t)count*4>(uint64_t)(limit-table)) { return false; } bitmap=!xx_rt_memcmp(h+1,"LMDBML30",8);
     for(i=0;i<count;++i) { uint32_t begin,stop; int64_t data; char name[48];
-        if(wg_stop(pd) || !pm_read(f,table+(int64_t)i*4,h,4)) return false; begin=pm_le32(h);
+        if(wg_stop(pd) || !pm_read(f,table+(int64_t)i*4,h,4)) { return false; } begin=pm_le32(h);
         if(i+1<count) { if(!pm_read(f,table+(int64_t)(i+1)*4,h,4)) return false; stop=pm_le32(h); } else { if(limit>UINT32_MAX) return false; stop=(uint32_t)limit; }
-        if(begin<table+(uint64_t)count*4 || stop<=begin || !wg_range(limit,begin,stop-begin)) return false; data=begin;
+        if(begin<table+(uint64_t)count*4 || stop<=begin || !wg_range(limit,begin,stop-begin)) { return false; } data=begin;
         { uint8_t flags,n; uint32_t bytes; if(!pm_read(f,data++,&flags,1) || (flags&~15U) || !!(flags&8)!=bitmap || (!bitmap && !(flags&2))) return false;
           if(flags&2) { if(data>=stop || !pm_read(f,data++,&n,1) || !n || !wg_range(stop,data,n)) return false; data+=n; }
           if(flags&4) { if(!wg_range(stop,data,4)) return false; data+=4; }

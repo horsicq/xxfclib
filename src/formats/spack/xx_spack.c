@@ -14,7 +14,7 @@ static bool spack_parse(Abstractformat *f,pm_stream *s,ac_blob *b) {
     if(!xx_rt_memcmp(b->p+b->n-12U,"INDX",4)) { footer=b->n-12U; index_size=pm_be32(b->p+footer+4U); }
     else if(!xx_rt_memcmp(b->p+b->n-8U,"INDX",4)) { footer=b->n-8U; index_size=pm_be32(b->p+footer+4U); }
     else return false;
-    if(index_size>footer-start-4U || index_size<14U) return false; index=footer-index_size;
+    if(index_size>footer-start-4U || index_size<14U) { return false; } index=footer-index_size;
     if(!ac_span(b,index,14U) || pm_be16(b->p+index)!=0x4649U) return false;
     n=pm_be32(b->p+index+4U); packed=pm_be32(b->p+index+8U);
     if(packed!=index_size-14U || n<12U) return false;
@@ -30,12 +30,12 @@ static bool spack_parse(Abstractformat *f,pm_stream *s,ac_blob *b) {
         number=pm_be16(b->p+at+2U);
         if(pm_be16(b->p+at)!=0x4649U || (number&0x7FFFU)!=id || pm_be32(b->p+at+4U)!=size) goto fail;
         if(number&0x8000U) {
-            if(size>index-at-8U || !ac_emit(f,s,b,name,at+8U,size)) goto fail; record=8U+size;
+            if(size>index-at-8U || !ac_emit(f,s,b,name,at+8U,size)) { goto fail; } record=8U+size;
         } else {
-            if(index-at<14U) goto fail; stored=pm_be32(b->p+at+8U);
-            if(stored>index-at-14U) goto fail; out=ac_alloc(b,size); if(!out) goto fail;
+            if(index-at<14U) { goto fail; } stored=pm_be32(b->p+at+8U);
+            if(stored>index-at-14U) { goto fail; } out=ac_alloc(b,size); if(!out) goto fail;
             if(!sc_decode(b,b->p+at+14U,stored,out,size,7U) || ac_crc16(out,size)!=pm_be16(b->p+at+12U)) { ac_release(b,out,size); goto fail; }
-            if(!ac_memory(f,s,b,name,out,size,stored,7U)) goto fail; record=14U+stored;
+            if(!ac_memory(f,s,b,name,out,size,stored,7U)) { goto fail; } record=14U+stored;
         }
         at+=record; pos+=13U+name_n;
     }

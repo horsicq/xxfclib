@@ -8,7 +8,7 @@
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     nh_blob b;uint8_t *out=NULL;uint64_t at=0,n,raw,h,total=0;unsigned count=0;bool ok=false;
-    if(!nh_load(f,&b,pd)) return false;NH_NEED(nh_span(&b,0,5) && !xx_rt_memcmp(b.p,"ZV",2));out=(uint8_t *)xx_mem_alloc(67108864);NH_NEED(out);
+    if(!nh_load(f,&b,pd)) { return false; } NH_NEED(nh_span(&b,0,5) && !xx_rt_memcmp(b.p,"ZV",2));out=(uint8_t *)xx_mem_alloc(67108864);NH_NEED(out);
     while(at<b.n) {if(!b.p[(size_t)at]) {NH_NEED(at+1==b.n);++at;break;}NH_NEED(nh_span(&b,at,5) && !xx_rt_memcmp(b.p+(size_t)at,"ZV",2) && ++count<=4094);h=b.p[(size_t)at+2];NH_NEED(h<2);n=pm_be16(b.p+(size_t)at+3);raw=n;
         if(h) {NH_NEED(nh_span(&b,at,7));raw=pm_be16(b.p+(size_t)at+5);}h=h ? 7:5;NH_NEED(n && raw && nh_span(&b,at+h,n) && raw<=67108864-total);
         if(h==5) xx_rt_memcpy(out+(size_t)total,b.p+(size_t)(at+h),(size_t)raw);else NH_NEED(th_lz(b.p+(size_t)(at+h),n,out+(size_t)total,raw,pd,0));total+=raw;at+=h+n;

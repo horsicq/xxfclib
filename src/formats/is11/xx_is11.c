@@ -428,7 +428,7 @@ static bool is11_add_member(is11_stream *stream, const is11_member *member) {
 static uint8_t *is11_read_packed(Abstractformat *format,
                                  const is11_member *member) {
     uint8_t *packed;
-    if (member->packed_size <= 0 || member->packed_size > SIZE_MAX) return NULL;
+    if (member->packed_size <= 0 || (uint64_t)member->packed_size > (uint64_t)SIZE_MAX) return NULL;
     packed = (uint8_t *)xx_mem_alloc((size_t)member->packed_size);
     if (!packed) return NULL;
     if (!is11_read_at(format->device, member->data_offset, packed,

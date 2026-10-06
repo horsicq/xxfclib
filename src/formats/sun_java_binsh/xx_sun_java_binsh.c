@@ -12,8 +12,8 @@ static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(!xx_rt_strstr(text,"Java") || (!xx_rt_strstr(text,"SUN MICROSYSTEMS") && !xx_rt_strstr(text,"Sun Microsystems")) || xx_rt_strstr(text,"InstallAnywhere") || xx_rt_strstr(text,"Makeself")) goto done;
     p=xx_rt_strstr(text,"tail "); if(!p) goto done; p+=5; while(*p==' ' || *p=='\t') ++p;
     if(p[0]=='-' && p[1]=='n') { p+=2; while(*p==' ' || *p=='\t') ++p; }
-    if(*p++!='+') goto done; { size_t n=0; while(p[n]>='0' && p[n]<='9') ++n; if(!wg_decimal(p,n,&line) || line<2) goto done; p+=n; }
-    if(*p!=' ' && *p!='\t') goto done; while(*p==' ' || *p=='\t') ++p;
+    if(*p++!='+') { goto done; } { size_t n=0; while(p[n]>='0' && p[n]<='9') ++n; if(!wg_decimal(p,n,&line) || line<2) goto done; p+=n; }
+    if(*p!=' ' && *p!='\t') { goto done; } while(*p==' ' || *p=='\t') ++p;
     if(xx_rt_strncmp(p,"$0",2) && xx_rt_strncmp(p,"\"$0\"",4) && xx_rt_strncmp(p,"${0}",4)) goto done;
     if(!wg_lines(f,line-1,&offset,pd) || offset<=(int64_t)(p-text) || limit-offset<512 || !pm_read(f,offset,h,3)) goto done;
     if(h[0]==31 && h[1]==157 && !(h[2]&96) && (h[2]&31)>=9 && (h[2]&31)<=16) ok=pm_add(f,s,"archive.tar.Z",offset,limit-offset);

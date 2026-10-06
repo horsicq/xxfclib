@@ -9,7 +9,7 @@ static bool cf_reserved(nh_blob *b,el_token v,bool quoted) {return !quoted && (b
 static bool cf_next(cf_lex *l,el_token *v,bool *quoted,bool *have) {
     nh_blob *b=l->b;uint64_t begin;uint8_t ch;*have=false;*quoted=false;
     while(l->at<b->n) {ch=b->p[(size_t)l->at];if(ch==' ' || ch=='\t' || ch=='\r' || ch=='\n') {++l->at;continue;}if(ch=='#') {while(l->at<b->n && b->p[(size_t)l->at]!='\n') ++l->at;continue;}break;}
-    if(l->at==b->n) return !fd_stop(b->pd);if(fd_stop(b->pd) || ++l->tokens>1000000) return false;
+    if(l->at==b->n) { return !fd_stop(b->pd); } if(fd_stop(b->pd) || ++l->tokens>1000000) return false;
     l->start=l->at;begin=l->at;ch=b->p[(size_t)l->at];
     if(ch=='\'' || ch=='"') {
         uint8_t delimiter=ch;*quoted=true;begin=++l->at;
@@ -32,12 +32,12 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     NH_NEED(cf_next(&lex,&token,&quoted,&have));
     while(have) {
         if(!quoted && cf_ieq(&b,token,"loop_")) {
-            uint64_t begin=lex.start,values=0;el_token columns[128],row[128];unsigned nc=0;int index[8]={-1,-1,-1,-1,-1,-1,-1,-1};bool atom=false;
+            uint64_t begin=lex.start,values=0;el_token row[128];unsigned nc=0;int index[8]={-1,-1,-1,-1,-1,-1,-1,-1};bool atom=false;
             static const char *required[]={"_atom_site.group_PDB","_atom_site.id","_atom_site.type_symbol","_atom_site.label_atom_id","_atom_site.label_comp_id","_atom_site.Cartn_x","_atom_site.Cartn_y","_atom_site.Cartn_z"};
             NH_NEED(cf_next(&lex,&token,&quoted,&have));
             while(have && !quoted && b.p[(size_t)token.at]=='_') {
-                unsigned i;NH_NEED(nc<128 && nk<4096 && cf_name(&b,token) && cf_unique(&b,token,known,nk,&budget));known[nk++]=token;columns[nc]=token;if(cf_prefix(&b,token,"_atom_site.")) atom=true;
-                for(i=0;i<8;++i) if(cf_ieq(&b,token,required[i])) index[i]=(int)nc;++nc;NH_NEED(cf_next(&lex,&token,&quoted,&have));
+                unsigned i;NH_NEED(nc<128 && nk<4096 && cf_name(&b,token) && cf_unique(&b,token,known,nk,&budget));known[nk++]=token;if(cf_prefix(&b,token,"_atom_site.")) atom=true;
+                for(i=0;i<8;++i) { if(cf_ieq(&b,token,required[i])) index[i]=(int)nc; } ++nc;NH_NEED(cf_next(&lex,&token,&quoted,&have));
             }
             NH_NEED(nc && have && !cf_reserved(&b,token,quoted));
             if(atom) {unsigned i;NH_NEED(!atom_start);atom_start=begin;for(i=0;i<8;++i) NH_NEED(index[i]>=0);}

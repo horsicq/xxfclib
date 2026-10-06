@@ -8,7 +8,7 @@ static bool xx_apple_addition_read(xx_io_device *d,int64_t at,void *p,size_t n) 
     int64_t saved=xx_io_tell(d);bool ok=false;
     if(saved<0)return false;
     if(at>=0 && xx_io_seek64(d,at,SEEK_SET)==0 && xx_io_read(d,p,n)==(ssize_t)n)ok=true;
-    if(xx_io_seek64(d,saved,SEEK_SET)!=0)ok=false;return ok;
+    if(xx_io_seek64(d,saved,SEEK_SET)!=0) {ok=false; } return ok;
 }
 static bool xx_apple_addition_candidate(uint32_t type,xx_io_device *d,const uint8_t *first512,int64_t first_size,int64_t source_total) {
     uint8_t h[660];const uint8_t *p=first512;int64_t base=0,size=source_total;uint32_t i;
@@ -44,7 +44,7 @@ static bool xx_apple_addition_candidate(uint32_t type,xx_io_device *d,const uint
         return size>=17*2352 && xx_apple_addition_read(d,base+16*2352+24,h,512) && h[0]==1 && !xx_rt_memcmp(h+1,"CD-I ",5) && h[6]==1;
     case XX_FILE_TYPE_BSD_DISKLABEL:
         for(i=0;i<8192 && (int64_t)i+148<=size;i+=512){uint32_t j,n=(uint32_t)(size-i>660?660:size-i);
-            if(n>8192U-i)n=8192U-i;if(!xx_apple_addition_read(d,base+i,h,n))break;
+            if(n>8192U-i) {n=8192U-i; } if(!xx_apple_addition_read(d,base+i,h,n))break;
             for(j=0;j<512 && j+148<=n;j+=4)if((h[j]==0x57 && h[j+1]==0x45 && h[j+2]==0x56 && h[j+3]==0x82 && !xx_rt_memcmp(h+j,h+j+132,4)) ||
                 (h[j]==0x82 && h[j+1]==0x56 && h[j+2]==0x45 && h[j+3]==0x57 && !xx_rt_memcmp(h+j,h+j+132,4)))return true;}return false;
     case XX_FILE_TYPE_LISA_FS:return first_size>=84 && size>=84+512 && p[0]<=63 && p[82]==1 && !p[83] &&

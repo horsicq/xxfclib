@@ -14,7 +14,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     dim=fd_u16(h+40,be);bits=voxel_bits(fd_u16(h+70,be));
     if(dim<1 || dim>7 || !bits || bits!=fd_u16(h+72,be) || !sd_float32_uint(fd_u32(h+108,be),&at) || at<352) return false;
     for(i=0;i<dim;++i) {uint16_t d=fd_u16(h+42+i*2,be);if(!d || d>32767 || !fd_mul(count,d,&count)) return false;}
-    if(!fd_mul(count,bits/8,&n) || !fd_range(at,n,(uint64_t)available)) return false;end=at+n;
+    if(!fd_mul(count,bits/8,&n) || !fd_range(at,n,(uint64_t)available)) { return false; } end=at+n;
     if(h[348]>1 || h[349] || h[350] || h[351] || !pm_add(f,s,"nifti-header.bin",0,h[348]?352:(int64_t)at)) return false;
     if(h[348]) {uint64_t p=352;unsigned extensions=0;
         while(p<at) {uint32_t z,code;char label[64];if(fd_stop(pd) || ++extensions>4096 || !fd_range(p,8,at) || !pm_read(f,(int64_t)p,b,8)) return false;
@@ -22,7 +22,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             xx_rt_snprintf(label,sizeof(label),"extension-%u-code-%u.bin",extensions-1,code);if(!pm_add(f,s,label,(int64_t)p,z)) return false;p+=z;
         }
     }
-    if(!pm_add(f,s,"voxels.bin",(int64_t)at,(int64_t)n)) return false;s->size=(int64_t)end;return true;
+    if(!pm_add(f,s,"voxels.bin",(int64_t)at,(int64_t)n)) { return false; } s->size=(int64_t)end;return true;
 }
 
 void xx_nifti1_init(xx_nifti1 *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_NIFTI1,"nifti1"); } }

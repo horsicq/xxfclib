@@ -17,7 +17,7 @@ static bool fei_id(hx_blob *b,uint64_t a,uint32_t n,uint32_t cylinder,uint32_t h
  }return found;
 }
 static bool fei_geometry(hx_blob *b,uint32_t bytes,uint32_t *tracks){uint32_t n;
- if(b->n%(2U*bytes))return false;n=(uint32_t)(b->n/(2U*bytes));if(!n||n>170U)return false;
+ if(b->n%(2U*bytes)) {return false; } n=(uint32_t)(b->n/(2U*bytes));if(!n||n>170U)return false;
  if(!hx_work(b,(uint64_t)bytes*32U))return false;
  if(!fei_id(b,0,bytes,0,0)||!fei_id(b,(uint64_t)n*bytes,bytes,0,1)||
     !fei_id(b,(uint64_t)(n-1)*bytes,bytes,n-1,0)||!fei_id(b,(uint64_t)(2*n-1)*bytes,bytes,n-1,1))return false;

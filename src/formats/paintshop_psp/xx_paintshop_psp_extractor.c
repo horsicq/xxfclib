@@ -31,7 +31,7 @@ static const xx_format_search_anchor anchors[] = { {anchor_bytes,sizeof(anchor_b
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     anchors, 1U,
-    xx_paintshop_psp_search_open, xx_paintshop_psp_search_close
+    xx_paintshop_psp_search_open, xx_paintshop_psp_search_close, false
 };
 
 static xx_format_search_state *xx_paintshop_psp_create_format_search(

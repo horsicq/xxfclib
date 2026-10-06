@@ -192,7 +192,7 @@ done:
     if(out && xx_io_close(out)!=0) ok=false;
     if(ok && stage) ok=!(pd && xx_pd_is_stopped(pd)) && xx_io_file_replace_a(stage,path,overwrite);
     if(stage) { if(!ok) (void)xx_io_file_remove_a(stage); xx_str_free(stage); }
-    if(buffer) xx_mem_free(buffer); if(path) xx_str_free(path); if(owned) xx_str_free(owned); return ok;
+    if(buffer) { xx_mem_free(buffer); } if(path) xx_str_free(path); if(owned) xx_str_free(owned); return ok;
 }
 size_t xx_hxc_raw_floppy_profile_count(void) { return sizeof(hx_profiles)/sizeof(hx_profiles[0]); }
 const xx_hxc_raw_profile *xx_hxc_raw_floppy_profile_at(size_t n) { return n<xx_hxc_raw_floppy_profile_count() ? &hx_profiles[n] : NULL; }
@@ -202,7 +202,7 @@ const xx_hxc_raw_profile *xx_hxc_raw_floppy_profile_by_name(const char *name) {
     return NULL;
 }
 void xx_hxc_raw_floppy_init(xx_hxc_raw_floppy *r,xx_io_device *d,int64_t b) {
-    if(!r) return; xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_HXC_RAW_FLOPPY,"raw");
+    if(!r) { return; } xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_HXC_RAW_FLOPPY,"raw");
     r->format.create_archive_records_reading=hx_create_records;
     r->format.archive_record_move_to_next=hx_next; r->format.unpack_current_archive_record=hx_unpack;
 }
@@ -211,16 +211,16 @@ xx_hxc_raw_floppy *xx_hxc_raw_floppy_create(xx_io_device *d,int64_t b) {
 }
 xx_hxc_raw_floppy *xx_hxc_raw_floppy_create_profile(xx_io_device *d,int64_t b,const char *name) {
     const xx_hxc_raw_profile *p=xx_hxc_raw_floppy_profile_by_name(name); xx_hxc_raw_floppy *r;
-    if(!p) return NULL; r=xx_hxc_raw_floppy_create(d,b); if(r) r->profile=p; return r;
+    if(!p) { return NULL; } r=xx_hxc_raw_floppy_create(d,b); if(r) r->profile=p; return r;
 }
 xx_hxc_raw_floppy *xx_hxc_raw_floppy_create_layout(xx_io_device *d,int64_t b,const xx_hxc_raw_profile *p) {
     hx_plan *q=hx_clone(p,NULL,NULL); xx_hxc_raw_floppy *r;
-    if(!q) return NULL; r=xx_hxc_raw_floppy_create(d,b); if(!r) { xx_mem_free(q); return NULL; }
+    if(!q) { return NULL; } r=xx_hxc_raw_floppy_create(d,b); if(!r) { xx_mem_free(q); return NULL; }
     r->owned_profile=q; r->profile=&q->profile; return r;
 }
 xx_hxc_raw_floppy *xx_hxc_raw_floppy_create_layout_xml(xx_io_device *d,int64_t b,const void *xml,size_t size) {
     hx_plan *q=hx_xml_plan(xml,size,true,NULL,NULL,NULL); xx_hxc_raw_floppy *r;
-    if(!q) return NULL; r=xx_hxc_raw_floppy_create(d,b); if(!r) { xx_mem_free(q); return NULL; }
+    if(!q) { return NULL; } r=xx_hxc_raw_floppy_create(d,b); if(!r) { xx_mem_free(q); return NULL; }
     r->owned_profile=q; r->profile=&q->profile; return r;
 }
 void xx_hxc_raw_floppy_destroy(xx_hxc_raw_floppy *r) {

@@ -17,7 +17,7 @@ static bool read_components(Abstractformat *f,pm_stream *s,th_blob *b) {
   else if(!xx_rt_memcmp(p+a,"STOP",4)) {if(z!=2) return false;}
   xx_rt_snprintf(name,sizeof(name),"chunk-%u-%c%c%c%c.pzx",count-1,p[a],p[a+1],p[a+2],p[a+3]);if(!th_emit(f,s,b,name,a,8+z)) return false;a=end;
  }
- if(!signal) return false;s->size=b->n;return true;
+ if(!signal) { return false; } s->size=b->n;return true;
 }
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {

@@ -198,7 +198,7 @@ fail:pi_release(v);return NULL;
 }
 static void pi_destroy_format(Abstractformat *f) {xx_partimage_destroy((xx_partimage *)f);}
 void xx_partimage_init(xx_partimage *v,xx_io_device *d,int64_t offset) {
-    if(!v)return;xx_mem_zero(v,sizeof(*v));xx_format_init(&v->format,d,offset);
+    if(!v) {return; } xx_mem_zero(v,sizeof(*v));xx_format_init(&v->format,d,offset);
     v->format.file_type=PI_TYPE;v->format.format_type=XX_TYPE_ARCHIVE;v->format.is_archive=true;
     xx_format_set_mime_type(&v->format,"application/x-partimage");
     xx_format_set_extension(&v->format,"partimg");
@@ -217,7 +217,7 @@ xx_partimage *xx_partimage_create(xx_io_device *d,int64_t offset) {
     xx_partimage *v=(xx_partimage *)xx_mem_alloc(sizeof(*v));if(v)xx_partimage_init(v,d,offset);return v;
 }
 void xx_partimage_destroy(xx_partimage *v) {
-    if(!v)return;pi_release((pi_view *)v->internal);v->internal=NULL;
+    if(!v) {return; } pi_release((pi_view *)v->internal);v->internal=NULL;
     xx_format_cleanup_extra_parameters(&v->format);
 }
 void xx_partimage_free(xx_partimage *v){if(v){xx_partimage_destroy(v);xx_mem_free(v);}}
@@ -249,14 +249,14 @@ static bool pi_record(xx_archive_record *r,const pi_view *v){
 static void pi_cursor_free(void *ptr){pi_cursor *c=(pi_cursor *)ptr;if(c){pi_release(c->view);xx_mem_free(c);}}
 xx_archive_record_state *xx_partimage_create_archive_records_reading(Abstractformat *f,const xx_list_s *options,xx_pd_struct *pd){
     xx_archive_record_state *s;pi_cursor *c;pi_view *v;size_t i;
-    if(!xx_partimage_handle_base_info(f,pd))return NULL;v=(pi_view *)((xx_partimage *)f)->internal;
+    if(!xx_partimage_handle_base_info(f,pd)) {return NULL; } v=(pi_view *)((xx_partimage *)f)->internal;
     s=(xx_archive_record_state *)xx_mem_alloc(sizeof(*s));c=(pi_cursor *)xx_mem_calloc(1U,sizeof(*c));
     if(!s||!c){xx_mem_free(s);xx_mem_free(c);return NULL;}
     ++v->refs;c->view=v;xx_archive_record_state_init(s,f);s->internal_state=c;s->free_internal=pi_cursor_free;
     s->total_records=1;
     if(options)for(i=0;i<options->count;++i){
         const xx_meta *m=(const xx_meta *)xx_list_at(options,i);xx_meta copy;
-        if(!m)continue;xx_meta_init(&copy,m->meta_id);
+        if(!m) {continue; } xx_meta_init(&copy,m->meta_id);
         if(!xx_var_copy(&copy.var,&m->var)||!xx_list_append(&s->options,&copy)){
             xx_meta_cleanup(&copy);xx_archive_record_state_free(s);return NULL;
         }
@@ -289,7 +289,7 @@ static char pi_fold(char c){return c>='A'&&c<='Z'?(char)(c+32):c;}
 static bool pi_equal(const char *a,const char *b){while(*a&&pi_fold(*a)==pi_fold(*b)){++a;++b;}return *a==*b;}
 static xx_io_device *pi_stage(const char *dest,char **path){
     size_t i,parent=0;unsigned attempt;char *dir=xx_str_dup(dest);*path=NULL;if(!dir)return NULL;
-    for(i=0;dir[i];++i)if(dir[i]=='/'||dir[i]=='\\')parent=i+1U;dir[parent]=0;
+    for(i=0;dir[i];++i) {if(dir[i]=='/'||dir[i]=='\\')parent=i+1U; } dir[parent]=0;
     for(attempt=0;attempt<128U;++attempt){
         char suffix[48];char *candidate;xx_io_device *d;
         (void)xx_rt_snprintf(suffix,sizeof(suffix),".xx_partimage.tmp.%u",attempt);

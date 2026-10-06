@@ -9,15 +9,15 @@
 
 static bool in_rle(Abstractformat *f,int64_t at,int64_t end,uint32_t pixels) {
     unsigned channel; for(channel=0;channel<3;++channel) { uint32_t done=0; while(done<pixels) { uint8_t b; uint32_t n;
-        if(at>=end || !pm_read(f,at++,&b,1)) return false; n=b>=128 ? (uint32_t)b-125U : (uint32_t)b+1U;
-        if(n>pixels-done || (b>=128 ? 1U : n)>(uint64_t)(end-at)) return false; at+=b>=128 ? 1 : n; done+=n;
+        if(at>=end || !pm_read(f,at++,&b,1)) { return false; } n=b>=128 ? (uint32_t)b-125U : (uint32_t)b+1U;
+        if(n>pixels-done || (b>=128 ? 1U : n)>(uint64_t)(end-at)) { return false; } at+=b>=128 ? 1 : n; done+=n;
     }} return at==end;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[8]; int64_t at=8,end; unsigned count=0,icons=0;
     if(!pm_read(f,0,h,8) || xx_rt_memcmp(h,"icns",4) || (end=pm_be32(h+4))<16 || end>pm_available(f)) return false;
     while(at<end) { uint32_t n,pixels=0,raw=0; int64_t data; char name[40];
-        if((pd && xx_pd_is_stopped(pd)) || ++count>4096 || end-at<8 || !pm_read(f,at,h,8) || (n=pm_be32(h+4))<8 || n>(uint64_t)(end-at)) return false; data=at+8;
+        if((pd && xx_pd_is_stopped(pd)) || ++count>4096 || end-at<8 || !pm_read(f,at,h,8) || (n=pm_be32(h+4))<8 || n>(uint64_t)(end-at)) { return false; } data=at+8;
         if(!xx_rt_memcmp(h,"is32",4)) pixels=256; else if(!xx_rt_memcmp(h,"il32",4)) pixels=1024; else if(!xx_rt_memcmp(h,"ih32",4)) pixels=2304; else if(!xx_rt_memcmp(h,"it32",4)) pixels=16384;
         if(!xx_rt_memcmp(h,"s8mk",4)) raw=256; else if(!xx_rt_memcmp(h,"l8mk",4)) raw=1024; else if(!xx_rt_memcmp(h,"h8mk",4)) raw=2304; else if(!xx_rt_memcmp(h,"t8mk",4)) raw=16384;
         else if(!xx_rt_memcmp(h,"ICN#",4)) raw=256; else if(!xx_rt_memcmp(h,"icn4",4)) raw=512; else if(!xx_rt_memcmp(h,"icn8",4)) raw=1024;

@@ -73,7 +73,7 @@ static ssize_t ug_buffer_write(xx_io_device *d,const void *p,size_t n) {
  ug_buffer *b=(ug_buffer *)d->priv;size_t capacity;void *next;if(ug_stop(b->pd)||n>b->maximum-b->n)return -1;
  if(b->n+n>b->capacity){capacity=b->capacity?b->capacity:4096;while(capacity<b->n+n){if(capacity>b->maximum/2){capacity=b->maximum;break;}capacity*=2;}
   next=xx_mem_realloc(b->p,capacity);if(!next)return -1;b->p=(uint8_t *)next;b->capacity=capacity;}
- if(n)xx_rt_memcpy(b->p+b->n,p,n);b->n+=n;return (ssize_t)n;
+ if(n) {xx_rt_memcpy(b->p+b->n,p,n); } b->n+=n;return (ssize_t)n;
 }
 static bool ug_zlib(const uint8_t *p,size_t n,size_t maximum,uint8_t **out,size_t *size,xx_pd_struct *pd) {
  ug_buffer b;xx_io_device d;size_t used=0;bool ok;xx_mem_zero(&b,sizeof(b));xx_mem_zero(&d,sizeof(d));b.maximum=maximum;b.pd=pd;d.priv=&b;d.write=ug_buffer_write;
@@ -88,7 +88,7 @@ static bool ug_bruns(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  uint8_t h[40],key[4];uint64_t n=(uint64_t)pm_available(f);unsigned i;const char *name;uint32_t k;
  if(n<24||!pm_read(f,0,h,sizeof(h)<n?sizeof(h):(size_t)n))return false;
  if(pm_le32(h)==0xac9898b0U){uint8_t ff=255;for(i=0;i<32&&i<n;++i)h[i]^=255;if(!ug_media(h,32))return false;return ug_xor_add(f,s,"payload.ogg",0,n,&ff,1,0x800,false,NULL);}
- if(xx_rt_memcmp(h,"EENC",4)&&xx_rt_memcmp(h,"EENZ",4))return false;k=pm_le32(h+4)^0xdeadbeefU;ug_put32(key,k);
+ if(xx_rt_memcmp(h,"EENC",4)&&xx_rt_memcmp(h,"EENZ",4)) {return false; } k=pm_le32(h+4)^0xdeadbeefU;ug_put32(key,k);
  for(i=8;i<sizeof(h)&&i<n;++i)h[i]^=key[(i-8)%4];
  if(h[3]=='C'){name=ug_media(h+8,(size_t)(n-8<32?n-8:32));if(!name)return false;return ug_xor_add(f,s,name,8,n-8,key,4,UINT64_MAX,false,NULL);}
  else{uint8_t *p,*plain=NULL;size_t size=0,limit=ug_limit(f);bool ok;if(n-8>limit)return false;p=(uint8_t *)xx_mem_alloc((size_t)n-8);if(!p||!pm_read(f,8,p,(size_t)n-8)){xx_mem_free(p);return false;}for(i=0;i<n-8;++i)p[i]^=(uint8_t)(k>>((i&3)*8));
@@ -108,25 +108,25 @@ static bool ug_rpgmv(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 }
 static bool ug_utage(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  const char *password=ug_password(f),*name;uint8_t h[32];uint64_t n=(uint64_t)pm_available(f);size_t k,i;
- if(!password||!password[0])password="InputOriginalKey";k=xx_rt_strlen(password);if(!k||k>256||n<32||ug_stop(pd)||!pm_read(f,0,h,32))return false;
- for(i=0;i<32;++i)if(h[i]&&h[i]!=(uint8_t)password[i%k])h[i]^=(uint8_t)password[i%k];name=ug_media(h,32);if(!name)return false;
+ if(!password||!password[0]) {password="InputOriginalKey"; } k=xx_rt_strlen(password);if(!k||k>256||n<32||ug_stop(pd)||!pm_read(f,0,h,32))return false;
+ for(i=0;i<32;++i) {if(h[i]&&h[i]!=(uint8_t)password[i%k])h[i]^=(uint8_t)password[i%k]; } name=ug_media(h,32);if(!name)return false;
  return ug_xor_add(f,s,name,0,n,(const uint8_t *)password,k,UINT64_MAX,true,password);
 }
 static bool ug_ycg(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  uint8_t h[56],*p=NULL,*a=NULL,*b=NULL,*bmp=NULL;uint64_t n=(uint64_t)pm_available(f),pixels;uint32_t w,height,packed1,packed2,size1,size2;size_t z1=0,z2=0,limit=ug_limit(f);bool ok=false;
- if(n<56||!pm_read(f,0,h,56)||pm_le32(h)!=0x00474359U||pm_le32(h+16)!=1)return false;w=pm_le32(h+4);height=pm_le32(h+8);pixels=(uint64_t)w*height*4;
+ if(n<56||!pm_read(f,0,h,56)||pm_le32(h)!=0x00474359U||pm_le32(h+16)!=1) {return false; } w=pm_le32(h+4);height=pm_le32(h+8);pixels=(uint64_t)w*height*4;
  size1=pm_le32(h+32);packed1=pm_le32(h+36);size2=pm_le32(h+48);packed2=pm_le32(h+52);
  if(!w||!height||w>65535||height>65535||pm_le32(h+12)!=32||pixels>limit||pixels+54>UINT32_MAX||(uint64_t)size1+size2!=pixels||(uint64_t)packed1+packed2!=n-56||packed1<6||packed2<6||n-56>limit)return false;
  p=(uint8_t *)xx_mem_alloc((size_t)n-56);if(!p||!pm_read(f,56,p,(size_t)n-56)||!ug_zlib(p,packed1,size1,&a,&z1,pd)||z1!=size1||!ug_zlib(p+packed1,packed2,size2,&b,&z2,pd)||z2!=size2)goto done;
  bmp=(uint8_t *)xx_mem_alloc((size_t)pixels+54);if(!bmp)goto done;xx_mem_zero(bmp,54);bmp[0]='B';bmp[1]='M';ug_put32(bmp+2,(uint32_t)pixels+54);ug_put32(bmp+10,54);ug_put32(bmp+14,40);ug_put32(bmp+18,w);ug_put32(bmp+22,(uint32_t)(-(int32_t)height));bmp[26]=1;bmp[28]=32;ug_put32(bmp+34,(uint32_t)pixels);
- if(z1)xx_rt_memcpy(bmp+54,a,z1);if(z2)xx_rt_memcpy(bmp+54+z1,b,z2);
- if(!ug_memory(f,s,"image.bmp",bmp,(size_t)pixels+54,56,n-56,false))goto done;bmp=NULL;s->items[s->count-1].compression_method=8;ok=true;
+ if(z1) {xx_rt_memcpy(bmp+54,a,z1); } if(z2)xx_rt_memcpy(bmp+54+z1,b,z2);
+ if(!ug_memory(f,s,"image.bmp",bmp,(size_t)pixels+54,56,n-56,false)) {goto done; } bmp=NULL;s->items[s->count-1].compression_method=8;ok=true;
 done:xx_mem_free(p);xx_mem_free(a);xx_mem_free(b);xx_mem_free(bmp);return ok;
 }
 typedef struct ug_compressed { uint64_t packed;bool sha;uint8_t hash[20]; } ug_compressed;
 static bool ug_compressed_read(Abstractformat *f,pm_member *m,xx_io_device *d,xx_pd_struct *pd) {
  ug_compressed *c=(ug_compressed *)m->context;uint8_t *p=NULL,*out=NULL,hash[20];size_t size=0,limit=ug_limit(f);bool ok=false;
- if(c->packed>limit||(uint64_t)m->size>limit||ug_stop(pd))return false;p=(uint8_t *)xx_mem_alloc(c->packed? (size_t)c->packed:1);if(!p||!pm_read(f,m->offset-f->base_address,p,(size_t)c->packed))goto done;
+ if(c->packed>limit||(uint64_t)m->size>limit||ug_stop(pd)) {return false; } p=(uint8_t *)xx_mem_alloc(c->packed? (size_t)c->packed:1);if(!p||!pm_read(f,m->offset-f->base_address,p,(size_t)c->packed))goto done;
  if(c->sha&&(!xx_sha1_memory(p,(size_t)c->packed,hash)||xx_rt_memcmp(hash,c->hash,20)))goto done;
  if(m->compression_method==8){if(!ug_zlib(p,(size_t)c->packed,(size_t)m->size,&out,&size,pd)||size!=(size_t)m->size)goto done;}
  else{out=p;p=NULL;size=(size_t)c->packed;if(size!=(size_t)m->size)goto done;}
@@ -139,13 +139,13 @@ static bool ug_compressed_add(Abstractformat *f,pm_stream *s,const char *name,ui
 }
 static bool ug_fallout(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  uint64_t n=(uint64_t)pm_available(f),start,pos;uint8_t tail[8],*index=NULL;uint32_t tree,count,i;bool ok=false;
- if(n<12||n>UINT32_MAX||!pm_read(f,(int64_t)n-8,tail,8)||pm_le32(tail+4)!=n)return false;tree=pm_le32(tail);if(tree<4||tree>UG_INDEX_LIMIT||tree>n-8)return false;start=n-8-tree;
+ if(n<12||n>UINT32_MAX||!pm_read(f,(int64_t)n-8,tail,8)||pm_le32(tail+4)!=n) {return false; } tree=pm_le32(tail);if(tree<4||tree>UG_INDEX_LIMIT||tree>n-8)return false;start=n-8-tree;
  index=(uint8_t *)xx_mem_alloc(tree);if(!index||!pm_read(f,(int64_t)start,index,tree))goto done;count=pm_le32(index);if(!count||count>UG_COUNT_LIMIT)goto done;pos=4;
  for(i=0;i<count;++i){uint32_t length,size,packed,at;uint8_t codec;char name[4097];if(ug_stop(pd)||!ug_span(pos,4,tree))goto done;length=pm_le32(index+pos);pos+=4;
-  if(!length||length>4096||!ug_span(pos,(uint64_t)length+13,tree)||xx_rt_memchr(index+pos,0,length))goto done;xx_rt_memcpy(name,index+pos,length);name[length]=0;pos+=length;codec=index[pos++];size=pm_le32(index+pos);packed=pm_le32(index+pos+4);at=pm_le32(index+pos+8);pos+=12;
+  if(!length||length>4096||!ug_span(pos,(uint64_t)length+13,tree)||xx_rt_memchr(index+pos,0,length)) {goto done; } xx_rt_memcpy(name,index+pos,length);name[length]=0;pos+=length;codec=index[pos++];size=pm_le32(index+pos);packed=pm_le32(index+pos+4);at=pm_le32(index+pos+8);pos+=12;
   if(codec>1||(!codec&&packed!=size)||!ug_span(at,packed,start)||!ug_compressed_add(f,s,name,at,packed,size,codec!=0,NULL))goto done;
  }
- if(pos!=tree)goto done;ok=true;
+ if(pos!=tree) {goto done; } ok=true;
 done:xx_mem_free(index);return ok;
 }
 typedef struct ug_pak_entry { uint64_t offset,packed,size;uint32_t method,block_size,count;uint8_t hash[20],flags;uint64_t *blocks;size_t header_size; } ug_pak_entry;
@@ -156,7 +156,7 @@ static bool ug_pak_entry_parse(const uint8_t *p,uint64_t n,uint64_t *at,uint32_t
  if(e->method>1||e->packed>INT64_MAX||e->size>INT64_MAX)return false;
  if(version>=3){if(e->method){if(!ug_span(*at,4,n))return false;e->count=pm_le32(p+*at);*at+=4;if(!e->count||e->count>65536||!ug_span(*at,(uint64_t)e->count*16,n))return false;
   e->blocks=(uint64_t *)xx_mem_alloc((size_t)e->count*16);if(!e->blocks)return false;for(i=0;i<e->count*2;++i)e->blocks[i]=ug_u64(p+*at+(uint64_t)i*8);*at+=(uint64_t)e->count*16;}
-  if(!ug_span(*at,5,n))return false;e->flags=p[*at];e->block_size=pm_le32(p+*at+1);*at+=5;if(e->flags)return false;
+  if(!ug_span(*at,5,n)) {return false; } e->flags=p[*at];e->block_size=pm_le32(p+*at+1);*at+=5;if(e->flags)return false;
  }
  e->header_size=(size_t)(*at-start);return e->method!=0||e->packed==e->size;
 }
@@ -170,15 +170,15 @@ static bool ug_pak_string(const uint8_t *p,uint64_t n,uint64_t *at,char **out) {
 }
 static bool ug_pak_read(Abstractformat *f,pm_member *m,xx_io_device *d,xx_pd_struct *pd) {
  ug_pak_entry *e=(ug_pak_entry *)m->context;uint8_t *p=NULL,*out=NULL,hash[20];size_t total=0,limit=ug_limit(f);unsigned i;bool ok=false;
- if(e->packed>limit||e->size>limit||ug_stop(pd))return false;p=(uint8_t *)xx_mem_alloc(e->packed?(size_t)e->packed:1);if(!p||!pm_read(f,m->offset-f->base_address,p,(size_t)e->packed))goto done;
+ if(e->packed>limit||e->size>limit||ug_stop(pd)) {return false; } p=(uint8_t *)xx_mem_alloc(e->packed?(size_t)e->packed:1);if(!p||!pm_read(f,m->offset-f->base_address,p,(size_t)e->packed))goto done;
  /* Engine releases have used both pre- and post-compression member hashes. */
  if(!e->method){if(!xx_sha1_memory(p,(size_t)e->packed,hash)||xx_rt_memcmp(hash,e->hash,20))goto done;ok=ug_write(d,p,(size_t)e->size,pd);goto done;}
  out=(uint8_t *)xx_mem_alloc(e->size?(size_t)e->size:1);if(!out)goto done;
  for(i=0;i<(e->count?e->count:1);++i){uint64_t begin=e->count?e->blocks[2*i]:0,end=e->count?e->blocks[2*i+1]:e->packed;uint8_t *chunk=NULL;size_t size=0,expected=e->count&&i+1<e->count?e->block_size:(size_t)e->size-total;
   if(!ug_span(begin,end-begin,e->packed)||end<begin||!ug_zlib(p+(size_t)begin,(size_t)(end-begin),expected,&chunk,&size,pd)||size!=expected){xx_mem_free(chunk);goto done;}
-  if(size)xx_rt_memcpy(out+total,chunk,size);total+=size;xx_mem_free(chunk);
+  if(size) {xx_rt_memcpy(out+total,chunk,size); } total+=size;xx_mem_free(chunk);
  }
- if(total!=(size_t)e->size)goto done;if(!xx_sha1_memory(p,(size_t)e->packed,hash))goto done;
+ if(total!=(size_t)e->size) {goto done; } if(!xx_sha1_memory(p,(size_t)e->packed,hash))goto done;
  if(xx_rt_memcmp(hash,e->hash,20)&&(!xx_sha1_memory(out,total,hash)||xx_rt_memcmp(hash,e->hash,20)))goto done;
  ok=ug_write(d,out,total,pd);
 done:xx_mem_free(p);xx_mem_free(out);return ok;
@@ -186,10 +186,10 @@ done:xx_mem_free(p);xx_mem_free(out);return ok;
 static bool ug_pak(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  uint64_t n=(uint64_t)pm_available(f),offset=0,size=0,footer=0,pos=0;uint8_t tail[61],*index=NULL,hash[20];uint32_t version=0,count=0,i;unsigned candidate;char *mount=NULL,*name=NULL;bool ok=false;
  for(candidate=44;candidate<=61;candidate+=candidate==44?1:16){unsigned pre=candidate-44;uint32_t v;if(n<candidate||!pm_read(f,(int64_t)n-candidate,tail,candidate)||pm_le32(tail+pre)!=0x5a6f12e1U)continue;v=pm_le32(tail+pre+4);
-  if(v<1||v>7||candidate!=(v>=7?61U:v>=4?45U:44U)||(pre&&tail[pre-1]))continue;version=v;footer=n-candidate;offset=ug_u64(tail+pre+8);size=ug_u64(tail+pre+16);xx_rt_memcpy(hash,tail+pre+24,20);break;}
- if(!version||size>UG_INDEX_LIMIT||size<8||!ug_span(offset,size,footer))return false;index=(uint8_t *)xx_mem_alloc((size_t)size);if(!index||!pm_read(f,(int64_t)offset,index,(size_t)size))goto done;
+  if(v<1||v>7||candidate!=(v>=7?61U:v>=4?45U:44U)||(pre&&tail[pre-1])) {continue; } version=v;footer=n-candidate;offset=ug_u64(tail+pre+8);size=ug_u64(tail+pre+16);xx_rt_memcpy(hash,tail+pre+24,20);break;}
+ if(!version||size>UG_INDEX_LIMIT||size<8||!ug_span(offset,size,footer)) {return false; } index=(uint8_t *)xx_mem_alloc((size_t)size);if(!index||!pm_read(f,(int64_t)offset,index,(size_t)size))goto done;
  {uint8_t actual[20];if(!xx_sha1_memory(index,(size_t)size,actual)||xx_rt_memcmp(actual,hash,20))goto done;}
- if(!ug_pak_string(index,size,&pos,&mount)||!ug_span(pos,4,size))goto done;count=pm_le32(index+pos);pos+=4;if(!count||count>UG_COUNT_LIMIT)goto done;
+ if(!ug_pak_string(index,size,&pos,&mount)||!ug_span(pos,4,size)) {goto done; } count=pm_le32(index+pos);pos+=4;if(!count||count>UG_COUNT_LIMIT)goto done;
  for(i=0;i<count;++i){ug_pak_entry *e,*header=NULL;uint64_t header_at=0,data;uint8_t *bytes=NULL;pm_member *m;unsigned j;if(ug_stop(pd)||!ug_pak_string(index,size,&pos,&name))goto done;
   e=(ug_pak_entry *)xx_mem_alloc(sizeof(*e));if(!e)goto done;if(!ug_pak_entry_parse(index,size,&pos,version,e)){ug_pak_entry_free(e);goto done;}
   if(!ug_span(e->offset,(uint64_t)e->header_size+e->packed,offset)){ug_pak_entry_free(e);goto done;}data=e->offset+e->header_size;
@@ -202,24 +202,24 @@ static bool ug_pak(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
   if(e->count&&(e->blocks[0]||e->blocks[2*e->count-1]!=e->packed||!e->block_size||(uint64_t)(e->count-1)*e->block_size>=e->size||(uint64_t)e->count*e->block_size<e->size)){ug_pak_entry_free(e);goto done;}
   if(!ug_add(f,s,name,data,e->packed,e->size)){ug_pak_entry_free(e);goto done;}m=&s->items[s->count-1];m->context=e;m->free_context=ug_pak_entry_free;m->read_all=ug_pak_read;m->compression_method=e->method?8:0;xx_str_free(name);name=NULL;
  }
- if(pos!=size)goto done;ok=true;
+ if(pos!=size) {goto done; } ok=true;
 done:xx_str_free(name);xx_str_free(mount);xx_mem_free(index);return ok;
 }
 /* Classic Gale103..107, all frames/layers. Export unshuffled raw/zlib
  * pixels as BGRA BMPs, preserving separate layers instead of flattening. */
 static bool ug_gal(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  uint64_t n=(uint64_t)pm_available(f),at,total=0;uint8_t *p=NULL;uint32_t version,header,frames,compression,frame;size_t limit=ug_limit(f);bool ok=false;
- if(n<51||n>limit)return false;p=(uint8_t *)xx_mem_alloc((size_t)n);if(!p||!pm_read(f,0,p,(size_t)n)||xx_rt_memcmp(p,"Gale",4))goto done;
- if(p[4]!='1'||p[5]!='0'||p[6]<'3'||p[6]>'7')goto done;version=100U+(p[6]-'0');header=pm_le32(p+7);
+ if(n<51||n>limit) {return false; } p=(uint8_t *)xx_mem_alloc((size_t)n);if(!p||!pm_read(f,0,p,(size_t)n)||xx_rt_memcmp(p,"Gale",4))goto done;
+ if(p[4]!='1'||p[5]!='0'||p[6]<'3'||p[6]>'7') {goto done; } version=100U+(p[6]-'0');header=pm_le32(p+7);
  if(header<40||header>256||!ug_span(11,header,n)||pm_le32(p+11)!=version||p[11+21]||pm_le32(p+11+28)||pm_le32(p+11+32))goto done;
  frames=pm_le32(p+11+16);compression=p[11+22];if(!frames||frames>1024||compression>1)goto done;at=11U+header;
  for(frame=0;frame<frames;++frame){uint32_t name,layers,width,height,bpp,layer,palette_bytes=0;uint64_t stride,alpha_stride,pixels;const uint8_t *palette=NULL;
-  if(ug_stop(pd)||!ug_span(at,4,n))goto done;name=pm_le32(p+at);at+=4;if(name>4096||!ug_span(at,(uint64_t)name+29,n))goto done;at+=name+13;layers=pm_le32(p+at);at+=4;width=pm_le32(p+at);height=pm_le32(p+at+4);bpp=pm_le32(p+at+8);at+=12;
+  if(ug_stop(pd)||!ug_span(at,4,n)) {goto done; } name=pm_le32(p+at);at+=4;if(name>4096||!ug_span(at,(uint64_t)name+29,n))goto done;at+=name+13;layers=pm_le32(p+at);at+=4;width=pm_le32(p+at);height=pm_le32(p+at+4);bpp=pm_le32(p+at+8);at+=12;
   if(!layers||layers>1024||!width||!height||width>65535||height>65535||(bpp!=4&&bpp!=8&&bpp!=16&&bpp!=24&&bpp!=32))goto done;
   stride=((uint64_t)width*bpp+7)/8;if(bpp>=8)stride=(stride+3)&~UINT64_C(3);alpha_stride=((uint64_t)width+3)&~UINT64_C(3);pixels=(uint64_t)width*height*4;if(pixels>limit||pixels+54>limit-total)goto done;
   if(bpp<=8){palette_bytes=(1U<<bpp)*4;if(!ug_span(at,palette_bytes,n))goto done;palette=p+at;at+=palette_bytes;}
   for(layer=0;layer<layers;++layer){uint32_t packed,alpha_packed;uint8_t *color=NULL,*alpha=NULL,*bmp=NULL;size_t color_size=0,alpha_size=0;uint64_t payload_at,x,y;char name_out[64];bool emitted=false;
-   if(ug_stop(pd)||!ug_span(at,22,n))goto done;name=pm_le32(p+at+18);at+=22;if(name>4096||!ug_span(at,(uint64_t)name+(version>=107?1:0)+4,n))goto done;at+=name+(version>=107?1:0);packed=pm_le32(p+at);at+=4;payload_at=at;
+   if(ug_stop(pd)||!ug_span(at,22,n)) {goto done; } name=pm_le32(p+at+18);at+=22;if(name>4096||!ug_span(at,(uint64_t)name+(version>=107?1:0)+4,n))goto done;at+=name+(version>=107?1:0);packed=pm_le32(p+at);at+=4;payload_at=at;
    if(!ug_span(at,(uint64_t)packed+4,n)||stride*height>limit)goto done;
    if(compression==0){if(!ug_zlib(p+at,packed,(size_t)(stride*height),&color,&color_size,pd)||color_size!=stride*height)goto layer_done;}
    else{if(packed!=stride*height)goto layer_done;color=(uint8_t *)xx_mem_alloc(packed?packed:1);if(!color)goto layer_done;xx_rt_memcpy(color,p+at,packed);color_size=packed;}
@@ -230,13 +230,13 @@ static bool ug_gal(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
    for(y=0;y<height;++y){if(ug_stop(pd))goto layer_done;for(x=0;x<width;++x){uint8_t *out=bmp+54+(size_t)((y*width+x)*4);const uint8_t *row=color+(size_t)(y*stride);
     if(bpp<=8){unsigned v=bpp==8?row[x]:(x&1?row[x/2]>>4:row[x/2]&15);xx_rt_memcpy(out,palette+v*4,3);}
     else if(bpp==16){uint16_t v=pm_le16(row+x*2);out[0]=(uint8_t)((v&31)*255/31);out[1]=(uint8_t)(((v>>5)&63)*255/63);out[2]=(uint8_t)((v>>11)*255/31);}
-    else xx_rt_memcpy(out,row+x*(bpp/8),3);out[3]=alpha?alpha[(size_t)(y*alpha_stride+x)]:255;
+    else { xx_rt_memcpy(out,row+x*(bpp/8),3); } out[3]=alpha?alpha[(size_t)(y*alpha_stride+x)]:255;
    }}
    xx_rt_snprintf(name_out,sizeof(name_out),"frame-%04u-layer-%04u.bmp",frame,layer);if(!ug_memory(f,s,name_out,bmp,(size_t)pixels+54,payload_at,(uint64_t)packed+alpha_packed,false))goto layer_done;bmp=NULL;total+=pixels+54;emitted=true;s->items[s->count-1].compression_method=compression==0?8:0;
 layer_done:xx_mem_free(color);xx_mem_free(alpha);xx_mem_free(bmp);if(!emitted)goto done;
   }
  }
- if(at!=n)goto done;ok=true;
+ if(at!=n) {goto done; } ok=true;
 done:xx_mem_free(p);return ok;
 }
 static const uint8_t ug_sgb_outer[]={72,9,20,154,48,169,84,225,0,8,14,9,20,60,66,70};
@@ -247,11 +247,11 @@ static bool ug_sgb_read_at(Abstractformat *f,uint64_t at,void *p,size_t n) {
 typedef struct ug_sgb_member { uint32_t crc; } ug_sgb_member;
 static bool ug_sgb_read(Abstractformat *f,pm_member *m,xx_io_device *d,xx_pd_struct *pd) {
  uint8_t *p=NULL,*plain=NULL;ug_buffer buffer;xx_io_device out;size_t used=0,size,i,limit=ug_limit(f);bool ok=false;ug_sgb_member *c=(ug_sgb_member *)m->context;
- if((uint64_t)m->packed_size>limit||(uint64_t)m->size>limit||ug_stop(pd))return false;p=(uint8_t *)xx_mem_calloc((size_t)m->packed_size+4,1);if(!p||!ug_sgb_read_at(f,(uint64_t)(m->offset-f->base_address),p,(size_t)m->packed_size))goto done;
+ if((uint64_t)m->packed_size>limit||(uint64_t)m->size>limit||ug_stop(pd)) {return false; } p=(uint8_t *)xx_mem_calloc((size_t)m->packed_size+4,1);if(!p||!ug_sgb_read_at(f,(uint64_t)(m->offset-f->base_address),p,(size_t)m->packed_size))goto done;
  if(m->compression_method==8){xx_mem_zero(&buffer,sizeof(buffer));xx_mem_zero(&out,sizeof(out));buffer.maximum=(size_t)m->size;buffer.pd=pd;out.priv=&buffer;out.write=ug_buffer_write;
   ok=xx_deflate_unpack_memory_to_device_ex(p,(size_t)m->packed_size+4,&out,&used,false,pd)&&used==(size_t)m->packed_size&&buffer.n==(size_t)m->size;plain=buffer.p;size=buffer.n;if(!ok)goto done;}
  else{plain=p;p=NULL;size=(size_t)m->size;}
- if(xx_crc32_calc(0,plain,size)!=c->crc)goto done;for(i=0;i<size;++i)plain[i]=(uint8_t)(plain[i]+ug_sgb_inner[i%16]);ok=ug_write(d,plain,size,pd);
+ if(xx_crc32_calc(0,plain,size)!=c->crc) {goto done; } for(i=0;i<size;++i)plain[i]=(uint8_t)(plain[i]+ug_sgb_inner[i%16]);ok=ug_write(d,plain,size,pd);
 done:xx_mem_free(p);xx_mem_free(plain);return ok;
 }
 static bool ug_sgb(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
@@ -259,9 +259,9 @@ static bool ug_sgb(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  if(n<38||!pm_read(f,0,h,8)||xx_rt_memcmp(h,"SGBDAT",6)||!pm_be16(h+6)||!ug_sgb_read_at(f,n-22,tail,22)||pm_le32(tail)!=0x06054b50U||pm_le16(tail+4)||pm_le16(tail+6)||pm_le16(tail+8)!=pm_le16(tail+10)||pm_le16(tail+20))return false;
  count=pm_le16(tail+10);central_size=pm_le32(tail+12);central=pm_le32(tail+16);if(!count||count>UG_COUNT_LIMIT||central_size>UG_INDEX_LIMIT||!ug_span(central,central_size,n-22)||central+central_size!=n-22)return false;pos=central;
  for(i=0;i<count;++i){uint32_t local,packed,size,crc;uint16_t name_size,extra,comment,method,flags;char name[4097],local_name[4097];uint8_t l[30];uint64_t at;ug_sgb_member *c;pm_member *m;
-  if(ug_stop(pd)||!ug_span(pos,46,n-22)||!ug_sgb_read_at(f,pos,h,46)||pm_le32(h)!=0x02014b50U)return false;flags=pm_le16(h+8);method=pm_le16(h+10);crc=pm_le32(h+16);packed=pm_le32(h+20);size=pm_le32(h+24);name_size=pm_le16(h+28);extra=pm_le16(h+30);comment=pm_le16(h+32);local=pm_le32(h+42);
-  if(flags&~0x0800U||method!=0&&method!=8||!name_size||name_size>4096||pm_le16(h+34)||!ug_span(pos+46,(uint64_t)name_size+extra+comment,n-22)||!ug_sgb_read_at(f,pos+46,name,name_size))return false;name[name_size]=0;if(xx_rt_strlen(name)!=name_size)return false;pos+=46U+name_size+extra+comment;
-  if(!ug_span(local,30,central)||!ug_sgb_read_at(f,local,l,30))return false;if(local==0){xx_rt_memcpy(l,"PK\3\4\x20\0\0\0",8);}if(pm_le32(l)!=0x04034b50U||pm_le16(l+6)!=flags||pm_le16(l+8)!=method||pm_le32(l+14)!=crc||pm_le32(l+18)!=packed||pm_le32(l+22)!=size||pm_le16(l+26)!=name_size)return false;
+  if(ug_stop(pd)||!ug_span(pos,46,n-22)||!ug_sgb_read_at(f,pos,h,46)||pm_le32(h)!=0x02014b50U) {return false; } flags=pm_le16(h+8);method=pm_le16(h+10);crc=pm_le32(h+16);packed=pm_le32(h+20);size=pm_le32(h+24);name_size=pm_le16(h+28);extra=pm_le16(h+30);comment=pm_le16(h+32);local=pm_le32(h+42);
+  if(flags&~0x0800U||(method!=0&&method!=8)||!name_size||name_size>4096||pm_le16(h+34)||!ug_span(pos+46,(uint64_t)name_size+extra+comment,n-22)||!ug_sgb_read_at(f,pos+46,name,name_size)) {return false; } name[name_size]=0;if(xx_rt_strlen(name)!=name_size)return false;pos+=46U+name_size+extra+comment;
+  if(!ug_span(local,30,central)||!ug_sgb_read_at(f,local,l,30)) {return false; } if(local==0){xx_rt_memcpy(l,"PK\3\4\x20\0\0\0",8);}if(pm_le32(l)!=0x04034b50U||pm_le16(l+6)!=flags||pm_le16(l+8)!=method||pm_le32(l+14)!=crc||pm_le32(l+18)!=packed||pm_le32(l+22)!=size||pm_le16(l+26)!=name_size)return false;
   at=(uint64_t)local+30+name_size+pm_le16(l+28);if(!ug_span(at,packed,central)||(!method&&packed!=size)||!ug_sgb_read_at(f,(uint64_t)local+30,local_name,name_size)||xx_rt_memcmp(name,local_name,name_size)||!ug_add(f,s,name,at,packed,size))return false;
   m=&s->items[s->count-1];c=(ug_sgb_member *)xx_mem_alloc(sizeof(*c));if(!c)return false;c->crc=crc;m->context=c;m->free_context=xx_mem_free;m->read_all=ug_sgb_read;m->compression_method=method;m->source_encrypted=true;
  }
@@ -270,7 +270,7 @@ static bool ug_sgb(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  bool ok=false;int64_t n=pm_available(f);if(n<0)return false;
  switch((unsigned)f->file_type){case XX_UE2_GAME_BRUNS:ok=ug_bruns(f,s,pd);break;case XX_UE2_GAME_RPGMV:ok=ug_rpgmv(f,s,pd);break;case XX_UE2_GAME_UTAGE:ok=ug_utage(f,s,pd);break;case XX_UE2_GAME_YCG:ok=ug_ycg(f,s,pd);break;case XX_UE2_GAME_FALLOUT_DAT:ok=ug_fallout(f,s,pd);break;case XX_UE2_GAME_UNREAL_PAK:ok=ug_pak(f,s,pd);break;case XX_UE2_GAME_LIVEMAKER_GAL:ok=ug_gal(f,s,pd);break;case XX_UE2_GAME_SMILE_PACK:ok=ug_sgb(f,s,pd);break;default:return false;}
- if(ok)s->size=n;return ok&&!ug_stop(pd)&&ug_names_unique(s);
+ if(ok) {s->size=n; } return ok&&!ug_stop(pd)&&ug_names_unique(s);
 }
 xx_ue2_games *xx_ue2_games_create(xx_io_device *d,int64_t b,xx_file_type_t type) {
  const char *ext;xx_ue2_games *r;switch((unsigned)type){case XX_UE2_GAME_BRUNS:ext="um3;png;bmp;brs";break;case XX_UE2_GAME_RPGMV:ext="rpgmvp;rpgmvo;rpgmvm;png_;ogg_;m4a_";break;case XX_UE2_GAME_UTAGE:ext="utage";break;case XX_UE2_GAME_YCG:ext="ycg";break;case XX_UE2_GAME_UNREAL_PAK:ext="pak";break;case XX_UE2_GAME_FALLOUT_DAT:ext="dat";break;case XX_UE2_GAME_LIVEMAKER_GAL:ext="gal";break;case XX_UE2_GAME_SMILE_PACK:ext="sgbpack";break;default:return NULL;}

@@ -17,11 +17,11 @@ static bool tb_block(tb_context *t,const uint8_t *p,uint64_t size,tb_bounds *r,x
         while(at<size && p[(size_t)at]) {if(p[(size_t)at]=='\t') ++tabs;else if(p[(size_t)at]<32) return false;if(at-text>65536) return false;++at;}if(at==size || !fourth_utf8(p+(size_t)text,(size_t)(at-text),pd) || (t->fields==3 ? at!=text:tabs!=t->fields-4)) return false;++at;if(!tb_range(t,r,c,start,end)) return false;prevc=c;prevpos=start;first=false;
 #else
         uint32_t c,start,end,step,span;uint16_t count;uint8_t type;unsigned width,i;uint64_t bytes;uint32_t last=0;
-        if(!eh_span(at,24,size)) return false;c=tb_u32(t,p+(size_t)at);start=tb_u32(t,p+(size_t)at+4);end=tb_u32(t,p+(size_t)at+8);step=tb_u32(t,p+(size_t)at+12);span=tb_u32(t,p+(size_t)at+16);type=p[(size_t)at+20];count=fd_u16(p+(size_t)at+22,t->be);width=type==1 ? 12:type==2 ? 8:type==3 ? 4:0;
-        if(!width || p[(size_t)at+21] || !count || !tb_interval(t,c,start,end) || (type==1 ? (step || span):(span==0 || (type==2 ? step!=0:step==0)))) return false;at+=24;bytes=(uint64_t)count*width;if(!eh_span(at,bytes,size)) return false;
+        if(!eh_span(at,24,size)) { return false; } c=tb_u32(t,p+(size_t)at);start=tb_u32(t,p+(size_t)at+4);end=tb_u32(t,p+(size_t)at+8);step=tb_u32(t,p+(size_t)at+12);span=tb_u32(t,p+(size_t)at+16);type=p[(size_t)at+20];count=fd_u16(p+(size_t)at+22,t->be);width=type==1 ? 12:type==2 ? 8:type==3 ? 4:0;
+        if(!width || p[(size_t)at+21] || !count || !tb_interval(t,c,start,end) || (type==1 ? (step || span):(span==0 || (type==2 ? step!=0:step==0)))) { return false; } at+=24;bytes=(uint64_t)count*width;if(!eh_span(at,bytes,size)) return false;
         for(i=0;i<count;++i) {uint64_t pos=at+(uint64_t)i*width;uint32_t a,z;uint64_t wide;
             if(type==1) {a=tb_u32(t,p+(size_t)pos);z=tb_u32(t,p+(size_t)pos+4);}else if(type==2) {a=tb_u32(t,p+(size_t)pos);wide=(uint64_t)a+span;if(wide>UINT32_MAX) return false;z=(uint32_t)wide;}else {wide=(uint64_t)start+(uint64_t)i*step;if(wide+span>UINT32_MAX) return false;a=(uint32_t)wide;z=(uint32_t)(wide+span);}
-            if(a<start || z>end || !tb_interval(t,c,a,z) || (i && a<last) || (!first && tb_before(c,a,prevc,prevpos)) || !tb_float32(t,p+(size_t)pos+width-4)) return false;last=a;if(!tb_range(t,r,c,a,z)) return false;prevc=c;prevpos=a;first=false;
+            if(a<start || z>end || !tb_interval(t,c,a,z) || (i && a<last) || (!first && tb_before(c,a,prevc,prevpos)) || !tb_float32(t,p+(size_t)pos+width-4)) { return false; } last=a;if(!tb_range(t,r,c,a,z)) return false;prevc=c;prevpos=a;first=false;
         }at+=bytes;
 #endif
         if(r->count>1000000 || fd_stop(pd)) return false;
@@ -30,7 +30,7 @@ static bool tb_block(tb_context *t,const uint8_t *p,uint64_t size,tb_bounds *r,x
 static bool tb_zoom_block(tb_context *t,const uint8_t *p,uint64_t size,tb_bounds *r,xx_pd_struct *pd) {
     uint64_t at;unsigned i;uint32_t lastc=0,lastp=0;xx_mem_zero(r,sizeof(*r));if(!size || size%32) return false;
     for(at=0;at<size;at+=32) {uint32_t c=tb_u32(t,p+(size_t)at),start=tb_u32(t,p+(size_t)at+4),end=tb_u32(t,p+(size_t)at+8),valid=tb_u32(t,p+(size_t)at+12);
-        if(!tb_interval(t,c,start,end) || !valid || valid>end-start || (at && tb_before(c,start,lastc,lastp)) || fd_stop(pd)) return false;for(i=0;i<4;++i) if(!tb_float32(t,p+(size_t)at+16+i*4)) return false;if(!tb_range(t,r,c,start,end)) return false;lastc=c;lastp=start;
+        if(!tb_interval(t,c,start,end) || !valid || valid>end-start || (at && tb_before(c,start,lastc,lastp)) || fd_stop(pd)) { return false; } for(i=0;i<4;++i) if(!tb_float32(t,p+(size_t)at+16+i*4)) return false;if(!tb_range(t,r,c,start,end)) return false;lastc=c;lastp=start;
     }return true;
 }
 static bool tb_decode(nh_blob *b,uint64_t at,uint64_t size,uint32_t cap,tb_context *t,tb_bounds *range,bool zoom) {
@@ -38,10 +38,10 @@ static bool tb_decode(nh_blob *b,uint64_t at,uint64_t size,uint32_t cap,tb_conte
     if(!cap) {if(size>t->decoded_left) return false;t->decoded_left-=size;return nh_span(b,at,size) && (zoom ? tb_zoom_block(t,b->p+(size_t)at,size,range,b->pd):tb_block(t,b->p+(size_t)at,size,range,b->pd));}
     if(cap>8388608 || size<6 || !nh_span(b,at,size)) return false;
     if((b->p[(size_t)at]&15)!=8 || (b->p[(size_t)at]>>4)>7 || (((unsigned)b->p[(size_t)at]<<8)|b->p[(size_t)at+1])%31 || (b->p[(size_t)at+1]&32)) return false;
-    if(!t->decoded_left) return false;if(cap>t->decoded_left) cap=(uint32_t)t->decoded_left;buffer=(uint8_t *)xx_mem_alloc(cap);if(!buffer) goto done;out=xx_io_mem_open(buffer,cap);if(!out) goto done;
-    if(!xx_deflate_unpack_memory_to_device_ex(b->p+(size_t)at+2,(size_t)size-6,out,&used,false,b->pd) || used!=size-6 || xx_io_tell(out)<0) goto done;n=(uint64_t)xx_io_tell(out);
-    if(!n || n>cap || n>t->decoded_left) goto done;t->decoded_left-=n;for(i=0;i<n;++i) {a=(a+buffer[(size_t)i])%65521;c=(c+a)%65521;if(!(i&65535U) && fd_stop(b->pd)) goto done;}adler=(c<<16)|a;
-    if(adler!=pm_be32(b->p+(size_t)(at+size-4))) goto done;ok=zoom ? tb_zoom_block(t,buffer,n,range,b->pd):tb_block(t,buffer,n,range,b->pd);
+    if(!t->decoded_left) { return false; } if(cap>t->decoded_left) cap=(uint32_t)t->decoded_left;buffer=(uint8_t *)xx_mem_alloc(cap);if(!buffer) goto done;out=xx_io_mem_open(buffer,cap);if(!out) goto done;
+    if(!xx_deflate_unpack_memory_to_device_ex(b->p+(size_t)at+2,(size_t)size-6,out,&used,false,b->pd) || used!=size-6 || xx_io_tell(out)<0) { goto done; } n=(uint64_t)xx_io_tell(out);
+    if(!n || n>cap || n>t->decoded_left) { goto done; } t->decoded_left-=n;for(i=0;i<n;++i) {a=(a+buffer[(size_t)i])%65521;c=(c+a)%65521;if(!(i&65535U) && fd_stop(b->pd)) goto done;}adler=(c<<16)|a;
+    if(adler!=pm_be32(b->p+(size_t)(at+size-4))) { goto done; } ok=zoom ? tb_zoom_block(t,buffer,n,range,b->pd):tb_block(t,buffer,n,range,b->pd);
 done:if(out) xx_io_close(out);xx_mem_free(buffer);return ok;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {

@@ -37,10 +37,10 @@ static bool mb_catalog_header(Abstractformat *f,uint8_t h[8],mb_cipher *cipher){
     mb_cipher_init(cipher,key,15);mb_decrypt8(cipher,h);return ue2_u32(h)>=24&&ue2_u32(h)<=65536&&!(ue2_u32(h)&7)&&ue2_u32(h)<(uint64_t)(size-f->base_address-8);
 }
 bool xx_molebox_has_candidate_device(xx_io_device *io,int64_t base){Abstractformat f;mb_cipher cipher;uint8_t h[48],key[16];int64_t saved,size;bool found=false;
-    if(!io||base<0)return false;xx_rt_memset(&f,0,sizeof(f));f.device=io;f.base_address=base;saved=xx_io_tell(io);size=xx_io_total_size(io);
+    if(!io||base<0) {return false; } xx_rt_memset(&f,0,sizeof(f));f.device=io;f.base_address=base;saved=xx_io_tell(io);size=xx_io_total_size(io);
     found=mb_catalog_header(&f,h,&cipher);
     if(!found&&size-base>=64&&mb_key(NULL,key)&&ue2_read(&f,size-48,h,48)){mb_cipher_init(&cipher,key,15);mb_cbc(&cipher,h,48);found=!xx_rt_memcmp(h+40,"STELPACK",8);}
-    if(saved>=0)xx_io_seek64(io,saved,XX_RT_SEEK_SET);return found;
+    if(saved>=0) {xx_io_seek64(io,saved,XX_RT_SEEK_SET); } return found;
 }
 static void mb_free_index(mb_index *ix){uint32_t i;if(!ix)return;for(i=0;i<ix->count;++i)xx_mem_free(ix->packages[i].tree);xx_mem_zero(ix->packages,(size_t)ix->capacity*sizeof(mb_package));xx_mem_free(ix->packages);ue2_index_free(&ix->records);}
 static bool mb_range(uint32_t size,uint32_t at,uint64_t n){return at<=size&&n<=size-at;}
@@ -57,18 +57,18 @@ static char *mb_name(const mb_package *p,uint32_t at,uint32_t length){char *out;
 failed:xx_mem_free(out);return NULL;
 }
 static bool mb_add(mb_index *ix,const char *name,uint32_t pkg,uint32_t node,uint32_t size,uint64_t stored,bool folder){uint64_t add=xx_rt_strlen(name)+1;size_t capacity=ix->records.capacity;
-    if(ix->records.count>=65535||stored>INT64_MAX)return false;if(ix->records.count==capacity)add+=(capacity?capacity:32)*sizeof(ue2_member);
+    if(ix->records.count>=65535||stored>INT64_MAX) {return false; } if(ix->records.count==capacity)add+=(capacity?capacity:32)*sizeof(ue2_member);
     if(ix->owned>MB_META||add>MB_META-ix->owned||!ue2_add(&ix->records,name,-1,(int64_t)stored,((uint64_t)pkg<<32)|node))return false;
     ix->owned+=add;ix->records.members[ix->records.count-1].original_size=size;ix->records.members[ix->records.count-1].is_folder=folder;return true;
 }
 static bool mb_node(Abstractformat *f,mb_index *ix,uint32_t pkg,uint32_t at,const char *prefix,unsigned depth,uint8_t *seen,bool root,xx_pd_struct *pd){mb_package *p=&ix->packages[pkg];const uint8_t *n;uint32_t flags,count,size,i;char *name=NULL,*path=NULL;bool ok=false;uint64_t sum=0,stored=0;
-    if(depth>64||!mb_range(p->size,at,52)||(pd&&xx_pd_is_stopped(pd))||(seen[at>>3]&(1<<(at&7))))return false;seen[at>>3]|=(uint8_t)(1<<(at&7));n=p->tree+at;
+    if(depth>64||!mb_range(p->size,at,52)||(pd&&xx_pd_is_stopped(pd))||(seen[at>>3]&(1<<(at&7)))) {return false; } seen[at>>3]|=(uint8_t)(1<<(at&7));n=p->tree+at;
     flags=ue2_u32(n+40);size=ue2_u32(n+44);count=ue2_u32(n+48);
     if(flags&~(MB_DIRECTORY|127U)||count>1000000||!mb_range(p->size,at+52,(uint64_t)count*((flags&MB_DIRECTORY)?4:12)))return false;
     if(root){if(!(flags&MB_DIRECTORY))return false;path=xx_str_dup(prefix?prefix:"");}
     else{if(ue2_u32(n+8))name=mb_name(p,ue2_u32(n+8),ue2_u32(n+12));
         else if(!(flags&MB_DIRECTORY)&&(flags&1)){static const char hex[]="0123456789abcdef";char hidden[44];xx_rt_memcpy(hidden,"hidden-",7);for(i=0;i<16;++i){hidden[7+i*2]=hex[n[20+i]>>4];hidden[8+i*2]=hex[n[20+i]&15];}xx_rt_memcpy(hidden+39,".bin",5);name=xx_str_dup(hidden);}
-        if(!name)goto done;path=prefix&&prefix[0]?xx_str_concat3(prefix,"/",name):xx_str_dup(name);}
+        if(!name) {goto done; } path=prefix&&prefix[0]?xx_str_concat3(prefix,"/",name):xx_str_dup(name);}
     if(!path||xx_rt_strlen(path)>16384)goto done;
     if(flags&MB_DIRECTORY){if(!mb_range(p->size,at+52+(uint32_t)count*4,4)||ue2_u32(n+52+count*4)!=UINT32_C(0xdeadbeaf))goto done;
         if(!root&&!mb_add(ix,path,pkg,at,0,0,true))goto done;
@@ -76,7 +76,7 @@ static bool mb_node(Abstractformat *f,mb_index *ix,uint32_t pkg,uint32_t at,cons
     }else{if(count>1000000-ix->blocks)goto done;ix->blocks+=count;
         for(i=0;i<count;++i){const uint8_t *b=n+52+i*12;uint32_t packed=ue2_u16(b),real=ue2_u16(b+2),bf=ue2_u16(b+4),off=ue2_u32(b+8);
             if(!packed||!real||real>MB_BLOCK||packed>MB_BLOCK||bf&~6U||(bf&4&&packed%8)||off<12||p->base<0||p->tree_at<p->base||off>(uint64_t)(p->tree_at-p->base)||packed>(uint64_t)(p->tree_at-p->base)-off)goto done;
-            if(!(bf&2)&&(packed<real||packed-real>(bf&4?7U:0U)))goto done;sum+=real;stored+=packed;}
+            if(!(bf&2)&&(packed<real||packed-real>(bf&4?7U:0U))) {goto done; } sum+=real;stored+=packed;}
         if(sum!=size||!mb_add(ix,path,pkg,at,size,stored,false))goto done;}
     ok=true;
 done:xx_str_free(name);xx_str_free(path);return ok;
@@ -101,22 +101,22 @@ done:
 typedef struct mb_sort_name {const char *name;}mb_sort_name;
 static int mb_compare(const void*a,const void*b){const char*x=((const mb_sort_name*)a)->name,*y=((const mb_sort_name*)b)->name;while(*x&&*y){int c=xx_rt_ascii_tolower((unsigned char)*x++),d=xx_rt_ascii_tolower((unsigned char)*y++);if(c!=d)return c<d?-1:1;}return *x?1:*y?-1:0;}
 static bool mb_unique(mb_index *ix){mb_sort_name *names;size_t i;bool ok=true;if(!ix->records.count)return true;names=xx_mem_alloc(ix->records.count*sizeof(*names));if(!names)return false;
-    for(i=0;i<ix->records.count;++i)names[i].name=ix->records.members[i].name;xx_rt_qsort(names,ix->records.count,sizeof(*names),mb_compare);for(i=1;i<ix->records.count;++i)if(!mb_compare(names+i-1,names+i)){ok=false;break;}xx_mem_free(names);return ok;}
+    for(i=0;i<ix->records.count;++i) {names[i].name=ix->records.members[i].name; } xx_rt_qsort(names,ix->records.count,sizeof(*names),mb_compare);for(i=1;i<ix->records.count;++i)if(!mb_compare(names+i-1,names+i)){ok=false;break;}xx_mem_free(names);return ok;}
 static mb_index *mb_parse(Abstractformat *f,xx_pd_struct *pd){mb_index *ix=NULL;mb_cipher cipher;uint8_t h[48],key[16],*catalog=NULL;uint32_t bytes,pkgs,mounts,pt,mt,i,j;int64_t total;bool ok=false;
-    if(!f||!f->device||f->base_address<0||(pd&&xx_pd_is_stopped(pd))||!mb_key(xx_format_get_password(f),key))return NULL;total=xx_io_total_size(f->device);
+    if(!f||!f->device||f->base_address<0||(pd&&xx_pd_is_stopped(pd))||!mb_key(xx_format_get_password(f),key)) {return NULL; } total=xx_io_total_size(f->device);
     ix=xx_mem_calloc(1,sizeof(*ix));if(!ix)return NULL;ix->owned=sizeof(*ix);
     if(mb_catalog_header(f,h,&cipher)){bytes=ue2_u32(h);catalog=xx_mem_alloc(bytes);if(!catalog||!ue2_read(f,total-8-bytes,catalog,bytes))goto done;mb_cbc(&cipher,catalog,bytes);
-        if(xx_crc32_calc(0,catalog,bytes)!=ue2_u32(h+4))goto done;pt=ue2_u32(catalog);pkgs=ue2_u32(catalog+4);mt=ue2_u32(catalog+8);mounts=ue2_u32(catalog+12);
+        if(xx_crc32_calc(0,catalog,bytes)!=ue2_u32(h+4)) {goto done; } pt=ue2_u32(catalog);pkgs=ue2_u32(catalog+4);mt=ue2_u32(catalog+8);mounts=ue2_u32(catalog+12);
         if(!pkgs||pkgs>64||mounts>64||!mb_range(bytes,pt,(uint64_t)pkgs*8)||!mb_range(bytes,mt,(uint64_t)mounts*24))goto done;
         for(i=0;i<pkgs;++i){int64_t at=ue2_u32(catalog+pt+i*8);uint32_t no=ue2_u32(catalog+pt+i*8+4);const char *prefix="";bool embedded=false;uint8_t use[16];
-            if(no>=bytes||!xx_rt_memchr(catalog+no,0,bytes-no))goto done;if(pkgs>1){prefix=(const char*)catalog+no;if(!ue2_safe_name(prefix)||xx_rt_strchr(prefix,'/'))goto done;}
+            if(no>=bytes||!xx_rt_memchr(catalog+no,0,bytes-no)) {goto done; } if(pkgs>1){prefix=(const char*)catalog+no;if(!ue2_safe_name(prefix)||xx_rt_strchr(prefix,'/'))goto done;}
             xx_rt_memcpy(use,key,16);
             if(!mb_header(f,at,use,h,&cipher)){for(j=0;j<mounts;++j){const uint8_t *m=catalog+mt+j*24;if(!(ue2_u32(m)&1))continue;
                     if(mb_header(f,at,m+8,h,&cipher)){xx_rt_memcpy(use,m+8,16);embedded=true;break;}}
                 if(j==mounts)goto done;}
             if(!mb_load_package(f,ix,at,use,embedded,prefix,pd))goto done;}
     }else if(total-f->base_address>=64){if(!mb_load_package(f,ix,total-48,key,false,"",pd))goto done;}else goto done;
-    if(!mb_unique(ix))goto done;ix->records.size=total-f->base_address;ok=true;
+    if(!mb_unique(ix)) {goto done; } ix->records.size=total-f->base_address;ok=true;
 done:xx_mem_free(catalog);if(!ok){mb_free_index(ix);return NULL;}return ix;
 }
 static bool mb_valid(Abstractformat*f,xx_pd_struct*pd){mb_index *ix=mb_parse(f,pd);bool ok=ix!=NULL;mb_free_index(ix);return ok;}
@@ -137,7 +137,7 @@ static xx_archive_record_state *mb_records(Abstractformat*f,const xx_list_s*opts
             if(!password){xx_str_free(converted);return NULL;}
             if(!xx_format_get_password(f)||xx_rt_strcmp(xx_format_get_password(f),password)){if(!xx_format_set_password(f,password)){xx_str_free(converted);return NULL;}}
             xx_str_free(converted);}}
-    if(!f->base_info_handled&&!mb_info(f,pd))return NULL;ix=((xx_molebox*)f)->index;if(limit>MB_MAX_MEMORY)limit=MB_MAX_MEMORY;
+    if(!f->base_info_handled&&!mb_info(f,pd)) {return NULL; } ix=((xx_molebox*)f)->index;if(limit>MB_MAX_MEMORY)limit=MB_MAX_MEMORY;
     if(ix->owned+2*MB_BLOCK+1024*1024>limit){mb_fail(pd,"MoleBox decoder exceeds archive memory limit");return NULL;}
     {xx_archive_record_state*s=ue2_records(f,opts,pd);mb_state*state;if(!s)return NULL;state=xx_mem_realloc(s->internal_state,sizeof(*state));
         if(!state){ue2_free_records(f,s);return NULL;}s->internal_state=state;state->generation=((xx_molebox*)f)->generation;return s;}
@@ -153,7 +153,7 @@ static bool mb_next(Abstractformat*f,xx_archive_record_state*s,xx_pd_struct*pd){
 static ssize_t mb_write_sink(xx_io_device*d,const void*p,size_t n){mb_sink*s=d->priv;if(s->size>s->limit||n>s->limit-s->size)return -1;if(n)xx_rt_memcpy(s->bytes+s->size,p,n);s->size+=n;return (ssize_t)n;}
 static bool mb_decode_block(Abstractformat*f,const mb_package*p,const uint8_t*b,uint8_t*raw,uint8_t*decoded,xx_pd_struct*pd){uint32_t packed=ue2_u16(b),real=ue2_u16(b+2),flags=ue2_u16(b+4);uint64_t off=ue2_u32(b+8);
     if(p->base<0||p->tree_at<p->base||off>(uint64_t)(p->tree_at-p->base)||packed>(uint64_t)(p->tree_at-p->base)-off)return false;
-    if(!ue2_read(f,p->base+(int64_t)off,raw,packed))return false;if(flags&4)mb_cbc(&p->cipher,raw,packed);
+    if(!ue2_read(f,p->base+(int64_t)off,raw,packed)) {return false; } if(flags&4)mb_cbc(&p->cipher,raw,packed);
     if(flags&2){xx_io_device sink;mb_sink state={decoded,0,real};size_t consumed=0,remaining;uint32_t adler=1,s1=1,s2=0,j;
         if(packed<6||(raw[0]&15)!=8||(raw[0]>>4)>7||(((unsigned)raw[0]*256+raw[1])%31)||raw[1]&32)return false;
         xx_mem_zero(&sink,sizeof(sink));sink.priv=&state;sink.write=mb_write_sink;
@@ -165,7 +165,7 @@ static bool mb_decode_block(Abstractformat*f,const mb_package*p,const uint8_t*b,
     return xx_crc16_arc_calc(0,decoded,real)==ue2_u16(b+6)&&!(pd&&xx_pd_is_stopped(pd));
 }
 static bool mb_unpack(Abstractformat*f,xx_archive_record_state*s,xx_pd_struct*pd){const xx_archive_record*r=mb_current(f,s);ue2_state*state=s?s->internal_state:NULL;mb_index*ix=((xx_molebox*)f)->index;const ue2_member*m;const mb_package*p;const uint8_t*n;uint32_t count,i;uint8_t*raw=NULL,*data=NULL;const xx_var*option=NULL;const char*base=NULL;char*owned=NULL,*path=NULL;xx_io_device*out=NULL;bool ok=false;uint64_t done=0;int level=-1;
-    if(!r||!state||(pd&&xx_pd_is_stopped(pd)))return false;m=&ix->records.members[state->cursor];p=&ix->packages[m->tag>>32];n=p->tree+(uint32_t)m->tag;count=m->is_folder?0:ue2_u32(n+48);
+    if(!r||!state||(pd&&xx_pd_is_stopped(pd))) {return false; } m=&ix->records.members[state->cursor];p=&ix->packages[m->tag>>32];n=p->tree+(uint32_t)m->tag;count=m->is_folder?0:ue2_u32(n+48);
     for(i=0;i<s->options.count;++i){const xx_meta*meta=xx_list_at((const xx_list_t*)&s->options,i);if(!meta)continue;if(meta->meta_id==XX_META_ID_OPT_UNPACK_PATH)option=&meta->var;
         if(meta->meta_id==XX_META_ID_OPT_MAX_MEMBER_SIZE&&(uint64_t)m->original_size>xx_var_get_u64(&meta->var))return mb_fail(pd,"MoleBox member exceeds configured size limit");}
     raw=xx_mem_alloc(MB_BLOCK);data=xx_mem_alloc(MB_BLOCK);if(!raw||!data)goto done;
@@ -173,7 +173,7 @@ static bool mb_unpack(Abstractformat*f,xx_archive_record_state*s,xx_pd_struct*pd
     for(i=0;i<count;++i){const uint8_t*b=n+52+i*12;if(!mb_decode_block(f,p,b,raw,data,pd))goto done;done+=ue2_u16(b+2);xx_pd_set_current(pd,level,done);}
     if(!option){ok=done==(uint64_t)m->original_size;goto done;}
     if(option->type==XX_VAR_TYPE_STRING||option->type==XX_VAR_TYPE_STRING_VIEW)base=xx_var_get_str(option);else if(option->type==XX_VAR_TYPE_WSTRING||option->type==XX_VAR_TYPE_WSTRING_VIEW){owned=xx_str_unicode_to_utf8(xx_var_get_wstr(option));base=owned;}
-    if(base&&ue2_safe_name(m->name))path=xx_str_concat3(base,"/",m->name);if(!path||!xx_store_create_dirs_a(path,m->is_folder))goto done;
+    if(base&&ue2_safe_name(m->name)) {path=xx_str_concat3(base,"/",m->name); } if(!path||!xx_store_create_dirs_a(path,m->is_folder))goto done;
     if(m->is_folder){ok=true;goto done;}out=xx_io_file_open(path,"wb");if(!out)goto done;done=0;
     for(i=0;i<count;++i){const uint8_t*b=n+52+i*12;uint32_t real=ue2_u16(b+2);if(!mb_decode_block(f,p,b,raw,data,pd)||xx_io_write(out,data,real)!=(ssize_t)real)goto done;done+=real;xx_pd_set_current(pd,level,done);}
     ok=done==(uint64_t)m->original_size&&!(pd&&xx_pd_is_stopped(pd));
@@ -184,6 +184,6 @@ void xx_molebox_init(xx_molebox*a,xx_io_device*d,int64_t b){if(!a)return;xx_mem_
 xx_molebox*xx_molebox_create(xx_io_device*d,int64_t b){xx_molebox*a=xx_mem_alloc(sizeof(*a));if(a)xx_molebox_init(a,d,b);return a;}
 void xx_molebox_destroy(xx_molebox*a){if(a)mb_destroy(&a->format);}void xx_molebox_free(xx_molebox*a){if(a){xx_molebox_destroy(a);xx_mem_free(a);}}
 xx_file_type_t xx_molebox_detect_device(xx_io_device*d,const char*password,xx_pd_struct*pd){xx_molebox*a;int64_t saved;xx_file_type_t type=XX_FILE_TYPE_UNKNOWN;
-    if(!d||!password||(pd&&xx_pd_is_stopped(pd)))return type;saved=xx_io_tell(d);a=xx_molebox_create(d,0);
+    if(!d||!password||(pd&&xx_pd_is_stopped(pd))) {return type; } saved=xx_io_tell(d);a=xx_molebox_create(d,0);
     if(a&&xx_format_set_password(&a->format,password)&&mb_valid(&a->format,pd)&&mb_info(&a->format,pd))type=MB_TYPE;
     xx_molebox_free(a);if(saved>=0)xx_io_seek64(d,saved,XX_RT_SEEK_SET);return type;}

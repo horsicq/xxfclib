@@ -14,7 +14,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if((a!=256 && a!=512 && a!=1024 && a!=2048) || (b!=0 && b!=256 && b!=512 && b!=1024 && b!=2048)) return false;
     /* AUDIN doubles the banks in newer headers; support ordinary banks only. */
     if(h[59]&1) return false;
-    if(!pm_add(f,s,"bank0.bin",at,(int64_t)a*256)) return false; at+=(int64_t)a*256;
+    if(!pm_add(f,s,"bank0.bin",at,(int64_t)a*256)) { return false; } at+=(int64_t)a*256;
     if(b) { if(!pm_add(f,s,"bank1.bin",at,(int64_t)b*256)) return false; at+=(int64_t)b*256; }
     s->size=at; return true;
 

@@ -17,15 +17,15 @@ static bool th_load(Abstractformat *f,th_blob *b,xx_pd_struct *pd) {
 static bool th_emit(Abstractformat *f,pm_stream *s,const th_blob *b,const char *name,uint32_t a,uint32_t z) {
  return z && s->count<4096 && th_poll(b) && th_range(b,a,z) && pm_add(f,s,name,a,z);
 }
-static bool th_zero(const uint8_t *p,uint32_t z) { uint32_t i;for(i=0;i<z;++i) if(p[i]) return false;return true; }
-static bool th_match(const uint8_t *p,uint32_t n,const char *text) { size_t z=xx_rt_strlen(text);return n==z && !xx_rt_memcmp(p,text,z); }
-static bool th_decimal(const uint8_t *p,uint32_t z,uint32_t cap,uint32_t *value) {
+static XXFC_MAYBE_UNUSED bool th_zero(const uint8_t *p,uint32_t z) { uint32_t i;for(i=0;i<z;++i) if(p[i]) return false;return true; }
+static XXFC_MAYBE_UNUSED bool th_match(const uint8_t *p,uint32_t n,const char *text) { size_t z=xx_rt_strlen(text);return n==z && !xx_rt_memcmp(p,text,z); }
+static XXFC_MAYBE_UNUSED bool th_decimal(const uint8_t *p,uint32_t z,uint32_t cap,uint32_t *value) {
  uint32_t i,v=0;if(!z) return false;for(i=0;i<z;++i) {uint32_t d=(uint32_t)p[i]-'0';if(d>9 || v>cap/10 || (v==cap/10 && d>cap%10)) return false;v=v*10+d;}*value=v;return true;
 }
-static bool th_hex16(const uint8_t *p,uint32_t z,uint32_t *value) {
+static XXFC_MAYBE_UNUSED bool th_hex16(const uint8_t *p,uint32_t z,uint32_t *value) {
  uint32_t i,v=0;if(!z || z>4) return false;for(i=0;i<z;++i) {unsigned d=p[i];if(d>='0' && d<='9') d-='0';else if(d>='A' && d<='F') d=d-'A'+10;else if(d>='a' && d<='f') d=d-'a'+10;else return false;v=(v<<4)|d;}*value=v;return true;
 }
-static uint32_t th_crc(th_blob *b,uint32_t a,uint32_t z,bool *ok) {
+static XXFC_MAYBE_UNUSED uint32_t th_crc(th_blob *b,uint32_t a,uint32_t z,bool *ok) {
  uint32_t c=0,i;*ok=false;if(!th_range(b,a,z) || z>b->crc_budget) return 0;b->crc_budget-=z;
  for(i=0;i<z;) {uint32_t part=z-i;if(part>4096) part=4096;if(!th_poll(b)) return 0;c=xx_crc32_calc(c,b->p+a+i,part);i+=part;}*ok=true;return c;
 }

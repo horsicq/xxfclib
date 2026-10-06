@@ -18,7 +18,7 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
  at=data;
  while(at<end) {
   uint32_t start=at,z=0; uint8_t op=b->p[at++];
-  if(++commands>2000000U || !nh_poll(b)) return false; if(start==loop) { loopseen=true; loopstart=samples; }
+  if(++commands>2000000U || !nh_poll(b)) { return false; } if(start==loop) { loopseen=true; loopstart=samples; }
   if(op==0x66) { streamend=at; break; }
   if(op==0x4f || op==0x50) z=1;
   else if(op>=0x51 && op<=0x5f) z=2;
@@ -31,7 +31,7 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
   else if(op==0xe0) { if(version<0x150 || end-at<4 || pm_le32(b->p+at)>pcmlen) return false; z=4; }
   else if(op>=0x90 && op<=0x95) {
    static const uint8_t lengths[6]={4,4,5,10,1,4}; uint32_t id; z=lengths[op-0x90];
-   if(version<0x160 || z>end-at) return false; id=b->p[at];
+   if(version<0x160 || z>end-at) { return false; } id=b->p[at];
    if(id==255U) { if(op!=0x94) return false; }
    else if(op==0x90) { if(b->p[at+1]!=2 || b->p[at+2]>1) return false; streams[id]=1; }
    else if(op==0x91) { if(!(streams[id]&1U) || b->p[at+1] || !(steps[id]=b->p[at+2]) || (bases[id]=b->p[at+3])>=steps[id]) return false; streams[id]|=2; }
@@ -42,14 +42,14 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
    else if(streams[id]!=7 || pm_le16(b->p+at+1)>=blocks || (b->p[at+3]&~0x11U)) return false;
   }
   else return false;
-  if(z>end-at || (gd3 && (at>gd3 || z>gd3-at)) || samples>UINT32_MAX) return false; at+=z;
+  if(z>end-at || (gd3 && (at>gd3 || z>gd3-at)) || samples>UINT32_MAX) { return false; } at+=z;
  }
  if(!streamend || (loop && !loopseen) || (pm_le32(b->p+24) && samples!=pm_le32(b->p+24)) || (!loop && pm_le32(b->p+32)) || (loop && pm_le32(b->p+32) && samples-loopstart!=pm_le32(b->p+32)) || !nh_emit(f,s,b,"commands.vgmdata",data,streamend-data)) return false;
  if(gd3) {
   uint32_t z,p,strings=0; uint16_t high=0;
   if(gd3!=streamend || end-gd3<12 || xx_rt_memcmp(b->p+gd3,"Gd3 ",4) || pm_le32(b->p+gd3+4)!=0x100 || (z=pm_le32(b->p+gd3+8))!=end-gd3-12 || (z&1U) || z>1048576U) return false;
   for(p=0;p<z;p+=2) { uint16_t c=pm_le16(b->p+gd3+12+p); if(!(p&4095U) && !nh_poll(b)) return false; if(high) { if(c<0xdc00 || c>0xdfff) return false; high=0; } else if(c>=0xd800 && c<=0xdbff) high=c; else if(c>=0xdc00 && c<=0xdfff) return false; else if(!c) ++strings; }
-  if(high || strings!=11 || !z || pm_le16(b->p+end-2)) return false; xx_rt_snprintf(name,sizeof(name),"metadata.gd3"); if(!nh_emit(f,s,b,name,gd3,end-gd3)) return false;
+  if(high || strings!=11 || !z || pm_le16(b->p+end-2)) { return false; } xx_rt_snprintf(name,sizeof(name),"metadata.gd3"); if(!nh_emit(f,s,b,name,gd3,end-gd3)) return false;
  } else if(streamend!=end) return false;
  s->size=end; return true;
 }

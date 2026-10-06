@@ -21,7 +21,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             if(!pm_read(f,44+(int64_t)i*20,e,20) || !font_tag(e)) return false;
             tag=pm_be32(e); if(i && tag<=previous) return false; previous=tag;
             off=pm_be32(e+4); size=pm_be32(e+8); original=pm_be32(e+12); checksum=pm_be32(e+16);
-            if(size>original) return false; mode=size<original; sfntsize+=((uint64_t)original+3)&~UINT64_C(3);
+            if(size>original) { return false; } mode=size<original; sfntsize+=((uint64_t)original+3)&~UINT64_C(3);
             if(sfntsize>64U*1024U*1024U) return false;
             xx_rt_snprintf(name,sizeof(name),"table-%08x.bin",pm_be32(e));
         } else {

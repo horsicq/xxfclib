@@ -102,7 +102,7 @@
 
 /* The folder-marker value of a method byte, flags stripped. */
 static uint8_t sit_marker(uint8_t method) {
-    return (uint8_t)(method & (uint8_t)~SIT_FLAG_ENCRYPTED_ANY);
+    return (uint8_t)(method & ~SIT_FLAG_ENCRYPTED_ANY);
 }
 
 /* "SIT!" is StuffIt 1.x-4.x; later StuffIt and its installer maker kept the

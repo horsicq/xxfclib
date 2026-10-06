@@ -8,11 +8,11 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[256],b[80];uint64_t ns,records,header,samples[512],row=0,n;unsigned i,j;int64_t available=pm_available(f);
     if(fd_stop(pd) || available<256 || !pm_read(f,0,h,sizeof(h)) || xx_rt_memcmp(h,"\xff" "BIOSEMI",8) || !sd_fixed_uint(h+252,4,&ns) || !ns || ns>512 || !sd_fixed_uint(h+236,8,&records) || !records || records>4096 || !sd_fixed_uint(h+184,8,&header) || header!=256*(ns+1) || !bdf_float(h+244,8,true)) return false;
     for(i=1;i<sizeof(h);++i) if(h[i]<32 || h[i]>126) return false;
-    if(xx_rt_memcmp(h+192,"24BIT",5)) return false;for(i=197;i<236;++i) if(h[i]!=' ') return false;
+    if(xx_rt_memcmp(h+192,"24BIT",5)) { return false; } for(i=197;i<236;++i) if(h[i]!=' ') return false;
     for(i=0;i<16;++i) {uint8_t ch=h[168+i];if(i==2 || i==5 || i==10 || i==13) {if(ch!='.') return false;} else if(ch<'0' || ch>'9') return false;}
     if(header>(uint64_t)available || records*ns>4096) return false;
     for(i=0;i<ns;++i) {int64_t lo,hi;uint64_t at;
-        if(fd_stop(pd) || !pm_read(f,(int64_t)(256+216*ns+8*i),b,8) || !sd_fixed_uint(b,8,&samples[i]) || !samples[i] || samples[i]>1000000 || !fd_mul(samples[i],3,&n) || row>(uint64_t)INT64_MAX-n) return false;row+=n;
+        if(fd_stop(pd) || !pm_read(f,(int64_t)(256+216*ns+8*i),b,8) || !sd_fixed_uint(b,8,&samples[i]) || !samples[i] || samples[i]>1000000 || !fd_mul(samples[i],3,&n) || row>(uint64_t)INT64_MAX-n) { return false; } row+=n;
         at=256+104*ns+8*i;if(!pm_read(f,(int64_t)at,b,8) || !bdf_float(b,8,false) || !pm_read(f,(int64_t)(at+8*ns),b,8) || !bdf_float(b,8,false)) return false;
         at=256+120*ns+8*i;if(!pm_read(f,(int64_t)at,b,8) || !bdf_signed(b,8,&lo) || !pm_read(f,(int64_t)(at+8*ns),b,8) || !bdf_signed(b,8,&hi) || hi<=lo) return false;
     }

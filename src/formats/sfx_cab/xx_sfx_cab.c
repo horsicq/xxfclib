@@ -19,7 +19,7 @@ static bool w6_cab_at(Abstractformat *f,pm_stream *s,int64_t base,xx_pd_struct *
     payload=(uint8_t *)xx_mem_alloc(io_capacity);
     folders=(w6_cab_folder *)xx_mem_calloc(nf,sizeof(*folders));files=(w6_cab_file *)xx_mem_calloc(nn,sizeof(*files));ranges=(wg_extent *)xx_mem_alloc(nf*sizeof(*ranges));if(!payload || !folders || !files || !ranges) goto done;
     for(i=0;i<nf;++i) { if(wg_stop(pd) || !wg_range(end,cursor,8U+fr) || !pm_read(f,cursor,h,8)) goto done;folders[i].at=pm_le32(h);folders[i].blocks=pm_le16(h+4);folders[i].type=pm_le16(h+6);if(!folders[i].blocks || (folders[i].type&15)>3 || ((folders[i].type&15)<2 && folders[i].type>1) || (blocks+=folders[i].blocks)>65536) goto done;cursor+=8+fr; }
-    if(base+files_at<cursor) goto done;cursor=base+files_at;
+    if(base+files_at<cursor) { goto done; } cursor=base+files_at;
     for(i=0;i<nn;++i) { bool nul=false;unsigned length=0;if(wg_stop(pd) || end-cursor<16 || !pm_read(f,cursor,h,16)) goto done;files[i].size=pm_le32(h);files[i].at=pm_le32(h+4);files[i].folder=pm_le16(h+8);if(files[i].folder>=nf) goto done;cursor+=16;
         while(cursor<end && !nul) { uint8_t *buf=payload;size_t n=(uint64_t)(end-cursor)>io_capacity ? io_capacity:(size_t)(end-cursor),j;if(wg_stop(pd) || !pm_read(f,cursor,buf,n)) goto done;for(j=0;j<n;++j) { ++cursor;if(!buf[j]) { nul=true;break; }if(buf[j]<32 || ++length>4096 || ++namebytes>1048576) goto done; } }
         if(!nul || !length) goto done;
@@ -28,7 +28,7 @@ static bool w6_cab_at(Abstractformat *f,pm_stream *s,int64_t base,xx_pd_struct *
         for(j=0;j<folders[i].blocks;++j) { uint16_t packed,raw;uint32_t checksum;if(wg_stop(pd) || !wg_range(end,p,8U+dr) || !pm_read(f,p,h,8)) goto done;checksum=pm_le32(h);packed=pm_le16(h+4);raw=pm_le16(h+6);if(!packed || !raw || raw>32768 || ((folders[i].type&15)==0 && packed!=raw) || !wg_range(end,p+8,(uint64_t)dr+packed) || (folders[i].raw+=raw)>UINT32_MAX) goto done;
             if(checksum) {
                 size_t n=packed,done=0,held=0;uint8_t word[4];uint32_t value=w6_cab_xor(h+4,4,0),tail=0;
-                if(n>67108864-checks) goto done;checks+=n;
+                if(n>67108864-checks) { goto done; } checks+=n;
                 while(done<n) {
                     size_t amount=n-done,k;if(amount>io_capacity) amount=io_capacity;
                     if(wg_stop(pd) || !pm_read(f,p+8+dr+(int64_t)done,payload,amount)) goto done;

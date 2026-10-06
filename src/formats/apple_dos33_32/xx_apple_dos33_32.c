@@ -107,7 +107,7 @@ static bool dos33_32_name(dos33_32_view *view, dos33_32_member *member, const ui
     for (i = n; i && (original[i - 1U] == '.' || original[i - 1U] == ' '); --i) original[i - 1U] = '_';
     original[n] = 0;
     if (dos33_32_device_name(original)) {
-        for (i = n + 1U; i; --i) original[i] = original[i - 1U]; original[0] = '_';
+        for (i = n + 1U; i; --i) { original[i] = original[i - 1U]; } original[0] = '_';
     }
     for (attempt = 0U; attempt <= view->count; ++attempt) {
         bool taken = false;
@@ -270,7 +270,7 @@ void xx_apple_dos33_32_init(xx_apple_dos33_32 *volume, xx_io_device *device, int
 }
 xx_apple_dos33_32 *xx_apple_dos33_32_create(xx_io_device *device, int64_t base_address) {
     xx_apple_dos33_32 *volume = (xx_apple_dos33_32 *)xx_mem_alloc(sizeof(*volume));
-    if (volume) xx_apple_dos33_32_init(volume, device, base_address); return volume;
+    if (volume) { xx_apple_dos33_32_init(volume, device, base_address); } return volume;
 }
 void xx_apple_dos33_32_destroy(xx_apple_dos33_32 *volume) { if (volume) xx_format_cleanup_extra_parameters(&volume->format); }
 void xx_apple_dos33_32_free(xx_apple_dos33_32 *volume) { if (volume) { xx_apple_dos33_32_destroy(volume); xx_mem_free(volume); } }
@@ -311,7 +311,7 @@ static bool dos33_32_options(xx_list_s *destination, const xx_list_s *source) {
     if (!source) return true;
     for (i = 0U; i < source->count; ++i) {
         const xx_meta *item = (const xx_meta *)xx_list_at(source, i); xx_meta copy;
-        if (!item) continue; xx_meta_init(&copy, item->meta_id);
+        if (!item) { continue; } xx_meta_init(&copy, item->meta_id);
         if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) { xx_meta_cleanup(&copy); return false; }
     }
     return true;
@@ -323,7 +323,7 @@ xx_archive_record_state *xx_apple_dos33_32_create_archive_records_reading(Abstra
     if (!self || !dos33_32_limit(self, options, XX_META_ID_OPT_MEMORY_LIMIT,
         sizeof(dos33_32_view) + sizeof(*state))) return NULL;
     view = dos33_32_parse(self, options, pd);
-    if (!view) return NULL; state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
+    if (!view) { return NULL; } state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
     if (!state) { xx_mem_free(view); return NULL; }
     xx_archive_record_state_init(state, self); state->internal_state = view; state->free_internal = dos33_32_view_free;
     state->total_records = (int64_t)view->count;
@@ -415,7 +415,7 @@ bool xx_apple_dos33_32_unpack_current_archive_record(Abstractformat *self, xx_ar
         xx_io_device *output = dos33_32_stage(path, &staged); if (!output) goto done;
         ok = xx_apple_dos33_32_extract_record_to_device(self, state, output, pd); if (xx_io_close(output)) ok = false;
     }
-    if (pd && xx_pd_is_stopped(pd)) ok = false; if (ok) ok = xx_io_file_replace_a(staged, path, overwrite);
+    if (pd && xx_pd_is_stopped(pd)) { ok = false; } if (ok) ok = xx_io_file_replace_a(staged, path, overwrite);
 done:
     if (!ok && staged) xx_io_file_remove_a(staged);
     xx_str_free(staged); xx_str_free(path); xx_str_free(owned); return ok;

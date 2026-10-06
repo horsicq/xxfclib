@@ -11,7 +11,7 @@
 static bool em_psmid(const uint8_t *b,uint32_t *id) {unsigned i;bool digit=false;*id=0;if(b[0]!='P') return false;for(i=1;i<4;++i) {if(b[i]>='0' && b[i]<='9') {if(digit && b[i-1]==' ') return false;digit=true;*id=*id*10+b[i]-'0';} else if(b[i]!=' ') return false;}return digit && *id<256;}
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  uint8_t h[12],b[96],q[8],patids[256]={0},smids[256]={0},samplerefs[256]={0};uint32_t total,count=0,patterns=0,samples=0,ch=0,used=0,orders[256],no=0,i,j;fd_cursor c={f,0,(uint64_t)pm_available(f),pd,0};char label[40];
- if(!fd_get(&c,h,12) || xx_rt_memcmp(h,"PSM ",4) || xx_rt_memcmp(h+8,"FILE",4) || (uint64_t)pm_le32(h+4)+12>c.end || (uint64_t)pm_le32(h+4)+12>268435456) return false;total=pm_le32(h+4)+12;c.end=total;if(!em_emit(f,s,"descriptor.bin",0,12,total)) return false;
+ if(!fd_get(&c,h,12) || xx_rt_memcmp(h,"PSM ",4) || xx_rt_memcmp(h+8,"FILE",4) || (uint64_t)pm_le32(h+4)+12>c.end || (uint64_t)pm_le32(h+4)+12>268435456) { return false; } total=pm_le32(h+4)+12;c.end=total;if(!em_emit(f,s,"descriptor.bin",0,12,total)) return false;
  while(c.at<c.end) {uint64_t start=c.at;uint32_t n;fd_cursor d;if(++count>1024 || !fd_get(&c,h,8) || !fd_range(c.at,n=pm_le32(h+4),c.end)) return false;d=c;d.end=c.at+n;
   if(!xx_rt_memcmp(h,"SDFT",4)) {if(used&1 || n!=8 || !fd_get(&d,b,8) || xx_rt_memcmp(b,"MAINSONG",8)) return false;used|=1;}
   else if(!xx_rt_memcmp(h,"TITL",4)) {if(used&2 || n>1024 || !fd_skip(&d,n)) return false;used|=2;}
@@ -26,7 +26,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
    }if(!playlist || !no) return false;
   }else return false;if(d.at!=d.end) return false;xx_rt_snprintf(label,sizeof(label),"chunk-%c%c%c%c.bin",h[0],h[1],h[2],h[3]);if(!em_emit(f,s,label,start,8U+(uint64_t)n,c.end)) return false;c.at=d.end;
  }
- if((used&5)!=5 || !patterns || !samples ) return false;for(j=0;j<256;++j) if(samplerefs[j] && !smids[j]) return false;for(j=0;j<no;++j) if(!patids[orders[j]]) return false;s->size=total;return true;
+ if((used&5)!=5 || !patterns || !samples ) { return false; } for(j=0;j<256;++j) if(samplerefs[j] && !smids[j]) return false;for(j=0;j<no;++j) if(!patids[orders[j]]) return false;s->size=total;return true;
 }
 
 void xx_tracker_psm_init(xx_tracker_psm *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_TRACKER_PSM,"psm"); } }

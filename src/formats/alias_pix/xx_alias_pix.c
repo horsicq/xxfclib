@@ -14,7 +14,7 @@ static bool eg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
   while(x<w){uint32_t z;if(eg_stop(pd)||!eg_span(p,1+bits/8,n)||(z=b[p])==0||z>w-x)return false;p+=1+bits/8;x+=z;}
   xx_rt_snprintf(label,sizeof(label),"scanline-%u.pix",y);if(!eg_emit(f,s,label,start,p-start,n))return false;
  }
- if(p!=n)return false;s->size=(int64_t)n;return true;
+ if(p!=n) {return false; } s->size=(int64_t)n;return true;
 }
 
 void xx_alias_pix_init(xx_alias_pix *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_ALIAS_PIX,"pix");}}

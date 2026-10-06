@@ -10,7 +10,7 @@
 
 static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
  uint32_t version,header,data,load,size,songs,start,flags=0; bool rsid;
- if(!nh_range(b,0,118)) return false; rsid=!xx_rt_memcmp(b->p,"RSID",4);
+ if(!nh_range(b,0,118)) { return false; } rsid=!xx_rt_memcmp(b->p,"RSID",4);
  if((!rsid && xx_rt_memcmp(b->p,"PSID",4)) || !(version=pm_be16(b->p+4)) || version>2 || (rsid && version!=2)) return false;
  header=version==1 ? 118U : 124U; if(!nh_range(b,0,header) || (data=pm_be16(b->p+6))<header || data>=b->n || !(songs=pm_be16(b->p+14)) || songs>256 || !(start=pm_be16(b->p+16)) || start>songs) return false;
  if(version==2) { flags=pm_be16(b->p+118); if(flags&~63U || b->p[122] || b->p[123] || (!b->p[120] && b->p[121]) || (b->p[120]==255 && b->p[121]) || (b->p[120]>0 && b->p[120]<255 && ((uint32_t)b->p[120]+b->p[121]>256U))) return false; }

@@ -30,7 +30,7 @@ static void xx_ogc_wkt_search_close(Abstractformat *format) {
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     NULL, 0U,
-    xx_ogc_wkt_search_open, xx_ogc_wkt_search_close
+    xx_ogc_wkt_search_open, xx_ogc_wkt_search_close, false
 };
 
 static xx_format_search_state *xx_ogc_wkt_create_format_search(

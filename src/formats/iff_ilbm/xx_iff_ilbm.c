@@ -22,7 +22,7 @@ static bool fm_byte(fm_bytes *r,uint8_t *b) {
     if(r->pos>=r->end) return false;
     if(r->begin<0 || r->pos<r->begin || r->pos-r->begin>=(int64_t)r->count) {
         int64_t left=r->end-r->pos; r->count=(uint64_t)left>r->capacity ? r->capacity : (size_t)left;
-        if((r->pd && xx_pd_is_stopped(r->pd)) || !pm_read(r->f,r->pos,r->buffer,r->count)) return false; r->begin=r->pos;
+        if((r->pd && xx_pd_is_stopped(r->pd)) || !pm_read(r->f,r->pos,r->buffer,r->count)) { return false; } r->begin=r->pos;
     }
     *b=r->buffer[(size_t)(r->pos-r->begin)]; ++r->pos; return true;
 }
@@ -39,7 +39,7 @@ static bool il_body(Abstractformat *f,xx_pd_struct *pd,int64_t at,uint32_t size,
             if(!fm_byte(&r,&op)) return fm_finish(&r,false);
             if(op==128) continue;
             n=op<128 ? (unsigned)op+1U : 257U-op;
-            if(n>row-done || !fm_skip(&r,op<128 ? n : 1U)) return fm_finish(&r,false); done+=n;
+            if(n>row-done || !fm_skip(&r,op<128 ? n : 1U)) { return fm_finish(&r,false); } done+=n;
         }
     }
     return fm_finish(&r,r.pos==r.end);
@@ -58,15 +58,15 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             w=pm_be16(h); height=pm_be16(h+2); planes=h[8]; mask=h[9];
             if(!w || !height || !planes || planes>32 || mask>2 || h[10]>1 || h[11]) return false;
             row=((w+15U)/16U)*2U; rows=height*(planes+(mask==1 ? 1U : 0U));
-            if((uint64_t)row*rows>134217728U) return false; compressed=h[10]!=0; bmhd=true;
+            if((uint64_t)row*rows>134217728U) { return false; } compressed=h[10]!=0; bmhd=true;
         } else if(tag==0x424F4459U) {
-            if(!bmhd || body || !n || !il_body(f,pd,pos,n,row,rows,compressed)) return false; body=true;
+            if(!bmhd || body || !n || !il_body(f,pd,pos,n,row,rows,compressed)) { return false; } body=true;
         } else if(tag==0x434D4150U) { if(body || !n || n%3 || n>768) return false; }
         else if(tag==0x43414D47U && (body || n!=4)) return false;
         xx_rt_snprintf(label,sizeof(label),"chunk-%08X.bin",(unsigned)tag);
-        if(!pm_add(f,s,label,pos,n)) return false; pos+=n+(n&1U);
+        if(!pm_add(f,s,label,pos,n)) { return false; } pos+=n+(n&1U);
     }
-    if(!bmhd || !body || pos!=end) return false; s->size=end; return true;
+    if(!bmhd || !body || pos!=end) { return false; } s->size=end; return true;
 }
 
 void xx_iff_ilbm_init(xx_iff_ilbm *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_IFF_ILBM,"ilbm"); } }

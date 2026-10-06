@@ -154,7 +154,7 @@ void xx_apridisk_init(xx_apridisk *a,xx_io_device *d,int64_t base) {
 }
 xx_apridisk *xx_apridisk_create(xx_io_device *d,int64_t base) {
     xx_apridisk *a=(xx_apridisk *)xx_mem_alloc(sizeof(*a));
-    if (a) xx_apridisk_init(a,d,base); return a;
+    if (a) { xx_apridisk_init(a,d,base); } return a;
 }
 void xx_apridisk_destroy(xx_apridisk *a) {
     if (!a) return;
@@ -287,7 +287,7 @@ done:
 static bool apri_equal_path(const char *a,const char *b) {
     while (*a && *b) {
         char x=*a++,y=*b++;
-        if (x=='\\') x='/'; if (y=='\\') y='/';
+        if (x=='\\') { x='/'; } if (y=='\\') y='/';
         if (x>='A' && x<='Z') x=(char)(x+32);
         if (y>='A' && y<='Z') y=(char)(y+32);
         if (x!=y) return false;

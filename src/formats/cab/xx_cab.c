@@ -41,7 +41,7 @@ static bool cab_cstring(Abstractformat*f,int64_t end,int64_t *at,char **value){s
 
 static bool cab_parse(Abstractformat*f,cab_context **out){
     uint8_t h[36];uint32_t cabinet,files_at;uint16_t flags,nfolders,nfiles;int64_t at,end,total;cab_context*c;size_t i;
-    if(!f||!f->device||!out||f->base_address<0)return false;total=xx_io_total_size(f->device);if(total-f->base_address<36||!cab_read(f->device,f->base_address,h,36)||xx_rt_memcmp(h,"MSCF",4))return false;
+    if(!f||!f->device||!out||f->base_address<0) {return false; } total=xx_io_total_size(f->device);if(total-f->base_address<36||!cab_read(f->device,f->base_address,h,36)||xx_rt_memcmp(h,"MSCF",4))return false;
     cabinet=cab_u32(h+8);files_at=cab_u32(h+16);nfolders=cab_u16(h+26);nfiles=cab_u16(h+28);flags=cab_u16(h+30);if(cabinet<36U||cabinet>(uint64_t)(total-f->base_address)||!nfolders||!nfiles||files_at>=cabinet)return false;end=f->base_address+cabinet;at=f->base_address+36;
     c=(cab_context*)xx_mem_calloc(1,sizeof(*c));if(!c)return false;c->cabinet_size=cabinet;c->folder_count=nfolders;c->file_count=nfiles;c->folders=(cab_folder*)xx_mem_calloc(nfolders,sizeof(*c->folders));c->files=(cab_file*)xx_mem_calloc(nfiles,sizeof(*c->files));if(!c->folders||!c->files)goto fail;
     if(flags&CAB_FLAG_RESERVE){uint8_t r[4];uint16_t hr;if(!cab_read(f->device,at,r,4))goto fail;hr=cab_u16(r);c->folder_reserve=r[2];c->data_reserve=r[3];at+=4;if(at>end||hr>(uint64_t)(end-at))goto fail;at+=hr;}
@@ -108,8 +108,8 @@ static bool cab_decode_folder(Abstractformat*f,const cab_context*c,uint16_t fi,u
     if(method!=CAB_METHOD_STORE&&method!=CAB_METHOD_MSZIP)return false;
     for(j=0;j<folder->blocks;j++){
         uint8_t h[8];uint16_t packed,plain;uint8_t*in=NULL,*grown;size_t wrote=0;
-        if(!cab_read(f->device,p,h,8))goto fail;packed=cab_u16(h+4);plain=cab_u16(h+6);p+=8+c->data_reserve;
-        if(!packed||!plain)goto fail;in=(uint8_t*)xx_mem_alloc(packed);
+        if(!cab_read(f->device,p,h,8)) {goto fail; } packed=cab_u16(h+4);plain=cab_u16(h+6);p+=8+c->data_reserve;
+        if(!packed||!plain) {goto fail; } in=(uint8_t*)xx_mem_alloc(packed);
         if(!in||!cab_read(f->device,p,in,packed)){if(in)xx_mem_free(in);goto fail;}p+=packed;
         if(used>SIZE_MAX-plain){xx_mem_free(in);goto fail;}
         if(used+plain>cap){grown=(uint8_t*)xx_mem_realloc(result,used+plain);if(!grown){xx_mem_free(in);goto fail;}result=grown;cap=used+plain;}

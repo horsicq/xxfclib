@@ -42,7 +42,7 @@ static bool parse_data(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t 
  else if(type==9){uint8_t first=b[at+11],codec=first&15,frame=first>>4;if(!(b[4]&1)||codec<2||codec>7||frame<1||frame>5||len<2||(codec==7&&(len<5||b[at+12]>2)))return false;video=true;}
  else if(type==18){uint64_t p=at+11,e=p+len;unsigned items=0;if(b[p]!=2||!amf(b,&p,e,0,&items,pd)||!amf(b,&p,e,0,&items,pd)||p!=e)return false;}else return false;
  xx_rt_snprintf(label,sizeof(label),"tag-%u-%s.bin",tags-1,type==8?"audio":type==9?"video":"script");if(!emit(f,s,label,at+11,len,n))return false;at+=15+len;}
- if(!tags||((b[4]&4)&&!audio)||((b[4]&1)&&!video))return false;s->size=(int64_t)n;return true;
+ if(!tags||((b[4]&4)&&!audio)||((b[4]&1)&&!video)) {return false; } s->size=(int64_t)n;return true;
 
 }
 

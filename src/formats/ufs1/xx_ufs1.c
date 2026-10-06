@@ -664,7 +664,7 @@ bad:u1_release(v);return NULL;
 }
 static void u1_destroy_format(Abstractformat *f) { xx_ufs1_destroy((xx_ufs1 *)f); }
 void xx_ufs1_init(xx_ufs1 *v,xx_io_device *d,int64_t base) {
-    if(!v) return;xx_mem_zero(v,sizeof(*v));xx_format_init(&v->format,d,base);
+    if(!v) { return; } xx_mem_zero(v,sizeof(*v));xx_format_init(&v->format,d,base);
     v->format.file_type=U1_TYPE;v->format.format_type=XX_TYPE_ARCHIVE;
     v->format.is_archive=true;xx_format_set_mime_type(&v->format,"application/x-ufs1-fs");
     xx_format_set_extension(&v->format,"img");
@@ -683,7 +683,7 @@ xx_ufs1 *xx_ufs1_create(xx_io_device *d,int64_t base) {
     xx_ufs1 *v=(xx_ufs1 *)xx_mem_alloc(sizeof(*v));if(v) xx_ufs1_init(v,d,base);return v;
 }
 void xx_ufs1_destroy(xx_ufs1 *v) {
-    if(!v) return;u1_release((u1_view *)v->internal);v->internal=NULL;
+    if(!v) { return; } u1_release((u1_view *)v->internal);v->internal=NULL;
     xx_format_cleanup_extra_parameters(&v->format);
 }
 void xx_ufs1_free(xx_ufs1 *v) { if(v) { xx_ufs1_destroy(v);xx_mem_free(v); } }
@@ -742,7 +742,7 @@ xx_archive_record_state *xx_ufs1_create_archive_records_reading(
     s->internal_state=c;s->free_internal=u1_cursor_free;s->total_records=(int64_t)v->count;
     if(options) for(i=0;i<options->count;++i) {
         const xx_meta *m=(const xx_meta *)xx_list_at(options,i);xx_meta copy;
-        if(!m) continue;xx_meta_init(&copy,m->meta_id);
+        if(!m) { continue; } xx_meta_init(&copy,m->meta_id);
         if(!xx_var_copy(&copy.var,&m->var) || !xx_list_append(&s->options,&copy)) {
             xx_meta_cleanup(&copy);xx_archive_record_state_free(s);return NULL;
         }

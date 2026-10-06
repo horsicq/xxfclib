@@ -96,7 +96,7 @@ static uint32_t phar_le32(const uint8_t *b) {
     return (uint32_t)phar_le16(b) | ((uint32_t)phar_le16(b + 2U) << 16U);
 }
 
-static uint64_t phar_le64(const uint8_t *b) {
+static XXFC_MAYBE_UNUSED uint64_t phar_le64(const uint8_t *b) {
     return (uint64_t)phar_le32(b) | ((uint64_t)phar_le32(b + 4U) << 32U);
 }
 
@@ -105,7 +105,7 @@ static uint32_t phar_be32(const uint8_t *b) {
            ((uint32_t)b[2] << 8U) | (uint32_t)b[3];
 }
 
-static uint64_t phar_be64(const uint8_t *b) {
+static XXFC_MAYBE_UNUSED uint64_t phar_be64(const uint8_t *b) {
     return ((uint64_t)phar_be32(b) << 32U) | (uint64_t)phar_be32(b + 4U);
 }
 
@@ -172,7 +172,7 @@ buffer_done:
 }
 
 /* Emit `size` zero bytes: the filler every sparse disk image needs. */
-static bool phar_write_zeros(xx_io_device *destination, uint64_t size,
+static XXFC_MAYBE_UNUSED bool phar_write_zeros(xx_io_device *destination, uint64_t size,
                             xx_pd_struct *pd) {
     size_t capacity = xx_get_file_buffer_size();
     uint8_t *buffer = NULL;
@@ -197,7 +197,7 @@ buffer_done:
 
 /* Reader-owned names are built here, never taken from the container, so they
  * are safe by construction. */
-static char *phar_make_name(const char *prefix, int64_t index,
+static XXFC_MAYBE_UNUSED char *phar_make_name(const char *prefix, int64_t index,
                            const char *suffix) {
     char buffer[96];
     size_t used = 0U;
@@ -347,7 +347,7 @@ static bool phar_find_manifest(xx_io_device *device,int64_t base,int64_t size,in
     const size_t capacity=xx_get_file_buffer_size();
     if(limit<(int64_t)PHAR_TOKEN_SIZE) return false;
     found=xx_io_find_bytes_buffer_optimize_ex(device,base,limit,PHAR_TOKEN,PHAR_TOKEN_SIZE,capacity,NULL);
-    if(found<0) return false;after=found-base+(int64_t)PHAR_TOKEN_SIZE;
+    if(found<0) { return false; } after=found-base+(int64_t)PHAR_TOKEN_SIZE;
     left=(size_t)(size-after);if(left>sizeof(tail)) left=sizeof(tail);
     xx_mem_zero(tail,sizeof(tail));
     if(left && !phar_read_at(device,base+after,tail,left)) return false;

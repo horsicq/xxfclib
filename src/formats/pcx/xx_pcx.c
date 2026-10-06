@@ -22,7 +22,7 @@ static bool fm_byte(fm_bytes *r,uint8_t *b) {
     if(r->pos>=r->end) return false;
     if(r->begin<0 || r->pos<r->begin || r->pos-r->begin>=(int64_t)r->count) {
         int64_t left=r->end-r->pos; r->count=(uint64_t)left>r->capacity ? r->capacity : (size_t)left;
-        if((r->pd && xx_pd_is_stopped(r->pd)) || !pm_read(r->f,r->pos,r->buffer,r->count)) return false; r->begin=r->pos;
+        if((r->pd && xx_pd_is_stopped(r->pd)) || !pm_read(r->f,r->pos,r->buffer,r->count)) { return false; } r->begin=r->pos;
     }
     *b=r->buffer[(size_t)(r->pos-r->begin)]; ++r->pos; return true;
 }
@@ -46,7 +46,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         while(done<row) { unsigned n=1;
             if(!fm_byte(&r,&b)) return fm_finish(&r,false);
             if((b&192)==192) { n=b&63; if(!n || !fm_byte(&r,&b)) return fm_finish(&r,false); }
-            if(n>row-done) return fm_finish(&r,false); done+=n;
+            if(n>row-done) { return fm_finish(&r,false); } done+=n;
         }
     }
     raster_end=r.pos;

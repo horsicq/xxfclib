@@ -21,7 +21,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[84],e[28],p[4]; uint32_t skins,w,height,verts,tris,frames,i,j; uint64_t at=84,total=(uint64_t)pm_available(f),start,n; char label[40];
     if(!pm_read(f,0,h,84) || xx_rt_memcmp(h,"IDPO",4) || pm_le32(h+4)!=6) return false;
-    for(i=8;i<48;i+=4) if(!finite32(h+i,false)) return false; if(!finite32(h+80,false)) return false;
+    for(i=8;i<48;i+=4) { if(!finite32(h+i,false)) return false; } if(!finite32(h+80,false)) return false;
     skins=pm_le32(h+48); w=pm_le32(h+52); height=pm_le32(h+56); verts=pm_le32(h+60); tris=pm_le32(h+64); frames=pm_le32(h+68);
     if(!skins || skins>64 || !w || w>4096 || !height || height>4096 || !verts || verts>4096 || !tris || tris>65536 || !frames || frames>1024 || pm_le32(h+72)>1) return false;
     for(i=0;i<skins;++i) { if(!take(f,&at,total,p,4,pd) || pm_le32(p)) return false; n=(uint64_t)w*height; xx_rt_snprintf(label,sizeof(label),"skin-%u.indices",i); if(!emit(f,s,label,at,n,total)) return false; at+=n; }
@@ -30,7 +30,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     start=at; for(i=0;i<tris;++i) { if(!take(f,&at,total,e,16,pd) || (pm_le32(e)!=0 && pm_le32(e)!=1 && pm_le32(e)!=16)) return false; for(j=1;j<4;++j) if(pm_le32(e+j*4)>=verts) return false; }
     if(!emit(f,s,"triangles.bin",start,at-start,total)) return false;
     for(i=0;i<frames;++i) { start=at; if(!take(f,&at,total,e,28,pd) || pm_le32(e) || !xx_rt_memchr(e+12,0,16)) return false;
-      for(j=0;j<verts;++j) if(!take(f,&at,total,p,4,pd) || p[3]>=162) return false; xx_rt_snprintf(label,sizeof(label),"frame-%u.bin",i); if(!emit(f,s,label,start+4,at-start-4,total)) return false; }
+      for(j=0;j<verts;++j) { if(!take(f,&at,total,p,4,pd) || p[3]>=162) return false; } xx_rt_snprintf(label,sizeof(label),"frame-%u.bin",i); if(!emit(f,s,label,start+4,at-start-4,total)) return false; }
     s->size=(int64_t)at; return true;
 
 }

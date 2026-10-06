@@ -12,8 +12,8 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd){xx_disk_ad
  xx_mem_zero(&blob,sizeof(blob));blob.pd=pd;if(!n||n>64U*1024U*1024U||r->sample_hz<1000U||r->sample_hz>1000000000U||r->data_bit>7U||r->index_bit>7U||r->data_bit==r->index_bit||!hx_limit(f,XX_META_ID_OPT_MEMORY_LIMIT,16384U))return false;
  if(!la_scan(f,pd,NULL,NULL,&pc,&ic)||(uint64_t)(pc+ic)*4U>64U*1024U*1024U||!hx_limit(f,XX_META_ID_OPT_MAX_MEMBER_SIZE,(uint64_t)pc*4U)||!hx_limit(f,XX_META_ID_OPT_MAX_MEMBER_SIZE,(uint64_t)ic*4U)||!hx_limit(f,XX_META_ID_OPT_MEMORY_LIMIT,(uint64_t)(pc+ic)*4U+65536U+8U*sizeof(pm_member)+sizeof(pm_stream)+sizeof(info)))return false;
  pulse=hx_alloc(f,&blob,(size_t)pc*4U);if(!pulse)goto done;index=(uint8_t *)xx_mem_alloc(ic?(size_t)ic*4U:1U);if(!index)goto done;
- if(!la_scan(f,pd,pulse,index,&a,&b)||a!=pc||b!=ic||!da_add(f,s,"original-samples.logicbin8bits",0,n)||!hx_owned(f,s,&blob,"flux-deltas-samples.le32",pulse,(size_t)pc*4U))goto done;pulse=NULL;
- if(!hx_owned(f,s,&blob,"index-positions-samples.le32",index,(size_t)ic*4U))goto done;index=NULL;
+ if(!la_scan(f,pd,pulse,index,&a,&b)||a!=pc||b!=ic||!da_add(f,s,"original-samples.logicbin8bits",0,n)||!hx_owned(f,s,&blob,"flux-deltas-samples.le32",pulse,(size_t)pc*4U)) {goto done; } pulse=NULL;
+ if(!hx_owned(f,s,&blob,"index-positions-samples.le32",index,(size_t)ic*4U)) {goto done; } index=NULL;
  xx_rt_snprintf(info,sizeof(info),"Format: configured8-bit logic capture\nSample frequency: %u Hz\nData signal bit: %u\nIndex signal bit: %u\nData pulses: %u\nIndex edges: %u\nUnits: sample ticks, LE32\n",r->sample_hz,r->data_bit,r->index_bit,pc,ic);if(!hx_text(f,s,&blob,info))goto done;s->size=(int64_t)n;ok=true;
 done:if(pulse)xx_mem_free(pulse);if(index)xx_mem_free(index);return ok;
 }

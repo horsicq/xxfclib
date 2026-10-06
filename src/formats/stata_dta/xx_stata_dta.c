@@ -26,9 +26,9 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         else if(i==6 || i==8 || i==9) expected=0;
         if(!dt_section(f,map[i+2],map[i+3],opens[i],closes[i],expected,&at,&size)) return false;
         if(i==0) { unsigned j; for(j=0;j<vars;++j) { uint8_t b[2]; uint16_t t; unsigned w;
-            if(!pm_read(f,(int64_t)at+j*2,b,2)) return false; t=fd_u16(b,be);
+            if(!pm_read(f,(int64_t)at+j*2,b,2)) { return false; } t=fd_u16(b,be);
             if(t>=1 && t<=2045) w=t; else w=t==65526 ? 8:t==65527 || t==65528 ? 4:t==65529 ? 2:t==65530 ? 1:0;
-            if(!w) return false; width+=w;
+            if(!w) { return false; } width+=w;
         }}
         if(i==2) { unsigned j; for(j=0;j<=vars;++j) { uint8_t b[2]; if(!pm_read(f,(int64_t)at+j*2,b,2) || fd_u16(b,be)>vars) return false; } }
         if(i==7) { uint64_t wanted; if(!fd_mul(width,rows,&wanted) || wanted!=size) return false; data_at=at; data_size=size; }

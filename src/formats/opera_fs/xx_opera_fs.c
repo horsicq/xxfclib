@@ -26,7 +26,7 @@ static bool op_block(op_ctx *c,const op_file *f,uint32_t i,uint8_t *out) {
 static bool op_walk(op_ctx *c,const op_file *dir,const char *parent,unsigned depth) {
     uint8_t *block=NULL;uint32_t current=0,previous=UINT32_MAX,walked=0,i;bool ok=false;uint64_t id=(uint64_t)dir->avatar*c->volume_block;
     if(depth>32U || c->directories>=8192U || !dir->blocks || !op_bounds(c,dir,dir->avatar))return false;
-    for(i=0;i<c->directories;++i)if(c->seen[i]==id)return false;c->seen[c->directories++]=id;
+    for(i=0;i<c->directories;++i) {if(c->seen[i]==id)return false; } c->seen[c->directories++]=id;
     block=af_alloc(c->w,dir->block,false);if(!block)return false;
     while(current!=UINT32_MAX){uint32_t next,first,free_at,at;bool end=false;
         if(++walked>dir->blocks || !op_block(c,dir,current,block))goto done;
@@ -42,14 +42,14 @@ static bool op_walk(op_ctx *c,const op_file *dir,const char *parent,unsigned dep
             if(parent && *parent){if(xx_rt_strlen(parent)+xx_rt_strlen(leaf)+2U>=sizeof(name))goto done;xx_rt_snprintf(name,sizeof(name),"%s/%s",parent,leaf);}else xx_rt_strncpy(name,leaf,sizeof(name));
             for(j=0;j<=avatars;++j)if(!op_bounds(c,&file,pm_be32(e+68+j*4U)))goto done;
             if(flags&1U){if(file.bytes && file.bytes<(uint64_t)file.blocks*file.block)goto done;
-                if(!af_add(c->w,name,0,0,NULL))goto done;c->w->s->items[c->w->s->count-1U].compression_method=65535U;
+                if(!af_add(c->w,name,0,0,NULL)) {goto done; } c->w->s->items[c->w->s->count-1U].compression_method=65535U;
                 if(!op_walk(c,&file,name,depth+1U))goto done;
             }else{uint32_t copied=0;
                 out=af_alloc(c->w,file.bytes,true);buf=af_alloc(c->w,file.block,false);
                 if(!out || !buf){af_release(c->w,out,file.bytes);af_release(c->w,buf,file.block);goto done;}
                 for(j=0;j<file.blocks;++j){uint32_t z=file.bytes-copied;if(z>file.block)z=file.block;
                     if(!op_block(c,&file,j,buf)){af_release(c->w,out,file.bytes);af_release(c->w,buf,file.block);goto done;}
-                    if(z)xx_rt_memcpy(out+copied,buf,z);copied+=z;}
+                    if(z) {xx_rt_memcpy(out+copied,buf,z); } copied+=z;}
                 af_release(c->w,buf,file.block);
                 if(!af_add(c->w,name,0,file.bytes,out)){af_release(c->w,out,file.bytes);goto done;}
             }

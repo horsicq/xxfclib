@@ -27,13 +27,13 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(!emit(f,s,"triangles.bin",start,at-start,total) || !take(f,&at,total,p,2,pd) || !(groups=pm_le16(p)) || groups>128) return false;
     for(i=0;i<groups;++i) { uint32_t n; start=at; if(!take(f,&at,total,p,35,pd) || !xx_rt_memchr(p+1,0,32) || !(n=pm_le16(p+33))) return false;
       for(j=0;j<n;++j) { uint32_t index; uint8_t group; if(!take(f,&at,total,p,2,pd) || (index=pm_le16(p))>=tris || (used[index/8]&(1U<<(index%8))) || !pm_read(f,(int64_t)(triangle_at+index*70+69),&group,1) || group!=i) return false; used[index/8]|=(uint8_t)(1U<<(index%8)); }
-      if(!take(f,&at,total,&material[i],1,pd)) return false; xx_rt_snprintf(label,sizeof(label),"group-%u.bin",i); if(!emit(f,s,label,start,at-start,total)) return false; }
+      if(!take(f,&at,total,&material[i],1,pd)) { return false; } xx_rt_snprintf(label,sizeof(label),"group-%u.bin",i); if(!emit(f,s,label,start,at-start,total)) return false; }
     for(i=0;i<tris;++i) if(!(used[i/8]&(1U<<(i%8)))) return false;
-    if(!take(f,&at,total,p,2,pd) || (mats=pm_le16(p))>128) return false; for(i=0;i<groups;++i) if(material[i]!=255 && material[i]>=mats) return false;
+    if(!take(f,&at,total,p,2,pd) || (mats=pm_le16(p))>128) { return false; } for(i=0;i<groups;++i) if(material[i]!=255 && material[i]>=mats) return false;
     for(i=0;i<mats;++i) { start=at; if(!take(f,&at,total,p,361,pd) || !xx_rt_memchr(p,0,32) || !xx_rt_memchr(p+105,0,128) || !xx_rt_memchr(p+233,0,128)) return false; for(j=32;j<104;j+=4) if(!finite32(p+j,false)) return false;
       { uint32_t shine=pm_le32(p+96),alpha=pm_le32(p+100); if(((shine&0x80000000U) && (shine&0x7fffffffU)) || (shine&0x7fffffffU)>0x43000000U || ((alpha&0x80000000U) && (alpha&0x7fffffffU)) || (alpha&0x7fffffffU)>0x3f800000U) return false; }
       xx_rt_snprintf(label,sizeof(label),"material-%u.bin",i); if(!emit(f,s,label,start,361,total)) return false; }
-    if(!take(f,&at,total,p,14,pd) || !finite32(p,false) || !finite32(p+4,false) || (pm_le32(p)&0x80000000U) || !pm_le32(p) || pm_le16(p+12) || at!=total) return false; s->size=(int64_t)at; return true;
+    if(!take(f,&at,total,p,14,pd) || !finite32(p,false) || !finite32(p+4,false) || (pm_le32(p)&0x80000000U) || !pm_le32(p) || pm_le16(p+12) || at!=total) { return false; } s->size=(int64_t)at; return true;
 
 }
 

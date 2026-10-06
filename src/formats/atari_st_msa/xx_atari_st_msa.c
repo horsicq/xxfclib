@@ -14,7 +14,7 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
  heads=pm_be16(b->p+4)+1U; raw=sectors*512U;
  for(t=start;t<=end;++t) for(h=0;h<heads;++h) {
   uint32_t packed,p=0,w=0; uint8_t *data;
-  if(!nh_range(b,at,2) || !(packed=pm_be16(b->p+at)) || packed>raw || !nh_range(b,at+2,packed)) return false; at+=2;
+  if(!nh_range(b,at,2) || !(packed=pm_be16(b->p+at)) || packed>raw || !nh_range(b,at+2,packed)) { return false; } at+=2;
   xx_rt_snprintf(name,sizeof(name),"track-%u-side-%u.bin",t,h);
   if(packed==raw) { if(!nh_emit(f,s,b,name,at,raw)) return false; }
   else {

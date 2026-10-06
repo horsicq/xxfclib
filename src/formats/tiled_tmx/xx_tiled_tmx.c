@@ -20,7 +20,7 @@ static bool tm_matrix(const char *str,bool base64,uint8_t *out,uint32_t count,xx
 }
 static bool tb_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  xx_xml x;uint32_t width=0,height=0,tw=0,th=0,layers=0,sets=0,total=0,first[256],last[256],ids[1024],iw=0,ih=0,columns=0,tiles=0,tsw=0,tsh=0,lw=0,lh=0;unsigned state=0;bool done=false,image=false,data=false,base64=false,result=false,decl=false;uint8_t *pixels=NULL;
- if(!tb_utf(b,n,false,pd)||!tb_emit(f,s,"document.tmx",0,n,n))return false;xx_xml_init(&x,b,(size_t)n);
+ if(!tb_utf(b,n,false,pd)||!tb_emit(f,s,"document.tmx",0,n,n)) {return false; } xx_xml_init(&x,b,(size_t)n);
 #define TM(v) do{if(!(v))goto finish;}while(0)
  while(xx_xml_next(&x)){const char *name=x.name;uint32_t v=0;TM(!tb_stop(pd)&&x.depth<=4);
   if(x.type==XX_XML_COMMENT)continue;

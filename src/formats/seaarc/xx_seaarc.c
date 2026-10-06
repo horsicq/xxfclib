@@ -1429,7 +1429,7 @@ static bool xx_seaarc_code_read(xx_seaarc_code_reader *reader,
         if (reader->bits < 1U || reader->bits > XX_SEAARC_LZW_MAX_BITS) {
             return false;
         }
-        while (got < reader->bits) {
+        while (got < sizeof(reader->group) && got < reader->bits) {
             uint8_t byte;
             if (!xx_seaarc_source_byte(reader->source, &byte)) break;
             reader->group[got++] = byte;

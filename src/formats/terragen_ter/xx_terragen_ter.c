@@ -22,7 +22,7 @@ static bool eg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
   else if(eg_tag(b+p,"CRVM",4)){bit=32;z=8;label="curve-mode.ter";if(!eg_span(p,z,n)||pm_le32(b+p+4)>1)return false;}
   else if(eg_tag(b+p,"ALTW",4)){uint64_t cells;if(!(seen&1))return false;if(!w)w=size;if(!h)h=size;if((w<h?w:h)!=size)return false;cells=(uint64_t)w*h;if(!cells||cells>16777216)return false;z=8+cells*2;z=(z+3)&~3ULL;label="heightfield.ter";bit=64;height=true;if(!eg_span(p,z,n)||!eg_zero(b+p+8+cells*2,z-8-cells*2))return false;}
   else return false;
-  if((seen&bit)||!eg_span(p,z,n)||!eg_emit(f,s,label,start,z,n))return false;seen|=bit;p+=z;
+  if((seen&bit)||!eg_span(p,z,n)||!eg_emit(f,s,label,start,z,n)) {return false; } seen|=bit;p+=z;
  }
  return false;
 }

@@ -535,8 +535,6 @@ static xx_rarx_status_t xx_rar29_ppm_begin(xx_rarx29_state *state,
         size_t memory_size;
         if (memory_mb == 0 || memory_mb > XX_PPMD7_MAX_MEM_MB)
             return XX_RARX_STATUS_LIMIT;
-        if ((size_t)memory_mb > SIZE_MAX / (1024u * 1024u))
-            return XX_RARX_STATUS_LIMIT;
         memory_size = (size_t)memory_mb * (1024u * 1024u);
         if (memory_size > allocation_limit || memory_size > UINT32_MAX)
             return XX_RARX_STATUS_LIMIT;

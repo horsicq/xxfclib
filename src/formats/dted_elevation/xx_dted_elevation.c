@@ -12,7 +12,7 @@ static bool fg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  uint32_t nx,ny,dx,dy,x;uint64_t p=3428,z,i;char label[48];
  if(n<3428||!fg_tag(b,"UHL1",4)||!fg_tag(b+80,"DSI",3)||!fg_tag(b+728,"ACC",3)||!fg_dted_origin(b+4,false)||!fg_dted_origin(b+12,true)||!fg_dted_digits(b+20,4,&dx)||!dx||!fg_dted_digits(b+24,4,&dy)||!dy||!fg_dted_digits(b+47,4,&nx)||nx<2||nx>3601||!fg_dted_digits(b+51,4,&ny)||ny<2||ny>3601)return false;
  for(i=0;i<3428;++i)if(b[i]<32||b[i]>126)return false;
- if((ny!=121&&ny!=1201&&ny!=3601)||(uint64_t)(nx-1)*dx!=36000||(uint64_t)(ny-1)*dy!=36000)return false;z=12+(uint64_t)ny*2;if((uint64_t)nx*z!=n-3428||!fg_emit(f,s,"descriptor.dt0",0,3428,n))return false;
+ if((ny!=121&&ny!=1201&&ny!=3601)||(uint64_t)(nx-1)*dx!=36000||(uint64_t)(ny-1)*dy!=36000) {return false; } z=12+(uint64_t)ny*2;if((uint64_t)nx*z!=n-3428||!fg_emit(f,s,"descriptor.dt0",0,3428,n))return false;
  for(x=0;x<nx;++x){uint32_t sum=0;if(fg_stop(pd)||b[p]!=0xaa||fg_uint(b+p+1,3)!=x||pm_be16(b+p+4)!=x||pm_be16(b+p+6))return false;for(i=0;i<z-4;++i){if((i&4095)==0&&fg_stop(pd))return false;sum+=b[p+i];}if(sum!=pm_be32(b+p+z-4))return false;xx_rt_snprintf(label,sizeof(label),"elevation-column-%u.dt0",x);if(!fg_emit(f,s,label,p,z,n))return false;p+=z;}
  return p==n;
 }

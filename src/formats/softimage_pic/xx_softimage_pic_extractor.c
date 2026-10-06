@@ -31,7 +31,7 @@ static const xx_format_search_anchor anchors[] = { { anchor_0,sizeof(anchor_0),0
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     anchors, 1U,
-    xx_softimage_pic_search_open, xx_softimage_pic_search_close
+    xx_softimage_pic_search_open, xx_softimage_pic_search_close, false
 };
 
 static xx_format_search_state *xx_softimage_pic_create_format_search(

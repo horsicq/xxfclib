@@ -189,7 +189,7 @@ void xx_mds_init(xx_mds *m, xx_io_device *device, int64_t base) {
 }
 xx_mds *xx_mds_create(xx_io_device *device, int64_t base) {
     xx_mds *m = (xx_mds *)xx_mem_alloc(sizeof(*m));
-    if (m) xx_mds_init(m, device, base); return m;
+    if (m) { xx_mds_init(m, device, base); } return m;
 }
 void xx_mds_destroy(xx_mds *m) {
     if (!m) return;
@@ -199,7 +199,7 @@ void xx_mds_destroy(xx_mds *m) {
 void xx_mds_free(xx_mds *m) { if (m) { xx_mds_destroy(m); xx_mem_free(m); } }
 bool xx_mds_check_is_valid(Abstractformat *f, xx_pd_struct *pd) {
     mds_view *v = mds_parse(f, pd);
-    if (!v) return false; mds_release(v); return true;
+    if (!v) { return false; } mds_release(v); return true;
 }
 bool xx_mds_handle_base_info(Abstractformat *f, xx_pd_struct *pd) {
     xx_mds *m = (xx_mds *)f; mds_view *v;

@@ -21,7 +21,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         while(c.at<b.n) {NH_NEED(el_line(&c,&line));if(el_eq(&b,el_trim(&b,line),"ORIGIN")) {origin=true;break;}NH_NEED(genbank_header(&b,line,&features,&accession));}
         NH_NEED(origin && accession && features && nh_add(f,s,&b,"genbank-header",start,c.at-start));
         while(c.at<b.n) {uint64_t position;unsigned i;NH_NEED(el_line(&c,&line));if(el_eq(&b,line,"//")) break;NH_NEED(el_split(&b,line,t,64,&nt,false) && nt>=2 && nt<=7 && el_uint(&b,t[0],&position) && position==q.n+1);
-            for(i=1;i<nt;++i) NH_NEED(t[i].n<=10 && (i==nt-1 || t[i].n==10) && f14_append(&b,&q,t[i],false,true,true));NH_NEED(q.n<=length);
+            for(i=1;i<nt;++i) { NH_NEED(t[i].n<=10 && (i==nt-1 || t[i].n==10) && f14_append(&b,&q,t[i],false,true,true)); } NH_NEED(q.n<=length);
         }
         NH_NEED(el_eq(&b,line,"//") && q.n==length && f14_export(f,s,&q,"nucleotides",&total));
     }NH_NEED(count && c.at==b.n);s->size=(int64_t)b.n;ok=true;

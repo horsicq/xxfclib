@@ -25,13 +25,13 @@ static __inline uint32_t crc32_bytes(const uint8_t *b,uint64_t n) { return xx_cr
 
 static bool dna(const uint8_t *b,uint64_t at,uint64_t end,bool be,uint32_t *structures,xx_pd_struct *pd) {
  uint32_t names,types,ns,i,j; uint64_t p=at; if(!span(p,12,end) || xx_rt_memcmp(b+p,"SDNANAME",8)) return false; names=u32(b+p+8,be);p+=12;if(!names || names>65536) return false;
- for(i=0;i<names;++i) if(stop(pd)||!cstr(b,&p,end,256,false)) return false;p=(p+3)&~3ULL;
- if(!span(p,8,end)||xx_rt_memcmp(b+p,"TYPE",4))return false;types=u32(b+p+4,be);p+=8;if(!types||types>65536)return false;
- for(i=0;i<types;++i)if(!cstr(b,&p,end,256,false))return false;p=(p+3)&~3ULL;
- if(!span(p,4+(uint64_t)types*2,end)||xx_rt_memcmp(b+p,"TLEN",4))return false;p=(p+4+(uint64_t)types*2+3)&~3ULL;
- if(!span(p,8,end)||xx_rt_memcmp(b+p,"STRC",4))return false;ns=u32(b+p+4,be);p+=8;if(!ns||ns>65536)return false;
+ for(i=0;i<names;++i) { if(stop(pd)||!cstr(b,&p,end,256,false)) return false; } p=(p+3)&~3ULL;
+ if(!span(p,8,end)||xx_rt_memcmp(b+p,"TYPE",4)) {return false; } types=u32(b+p+4,be);p+=8;if(!types||types>65536)return false;
+ for(i=0;i<types;++i) {if(!cstr(b,&p,end,256,false))return false; } p=(p+3)&~3ULL;
+ if(!span(p,4+(uint64_t)types*2,end)||xx_rt_memcmp(b+p,"TLEN",4)) {return false; } p=(p+4+(uint64_t)types*2+3)&~3ULL;
+ if(!span(p,8,end)||xx_rt_memcmp(b+p,"STRC",4)) {return false; } ns=u32(b+p+4,be);p+=8;if(!ns||ns>65536)return false;
  for(i=0;i<ns;++i) { uint32_t count;if(stop(pd)||!span(p,4,end)||u16(b+p,be)>=types)return false;count=u16(b+p+2,be);p+=4;if(!span(p,(uint64_t)count*4,end))return false;for(j=0;j<count;++j)if(u16(b+p+j*4,be)>=types||u16(b+p+j*4+2,be)>=names)return false;p+=(uint64_t)count*4; }
- if(p!=end)return false;*structures=ns;return true;
+ if(p!=end) {return false; } *structures=ns;return true;
 }
 
 static bool parse_data(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
@@ -42,10 +42,10 @@ static bool parse_data(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t 
  while(span(at,hs,n)) {uint32_t len=u32(b+at+4,be),count=u32(b+at+12+ptr,be);if(stop(pd)||++blocks>4096||!span(at+hs,len,n))return false;
    if(!xx_rt_memcmp(b+at,"ENDB",4)) {if(len||!zero(b+at+8,hs-8)||!dna_at||!dna(b,dna_at,dna_at+dna_n,be,&ns,pd))return false;s->size=(int64_t)(at+hs);break;}
    for(i=0;i<4;++i)if(b[at+i] && (b[at+i]<32||b[at+i]>126))return false;
-   if(!len||!count||count>1000000)return false;if(!xx_rt_memcmp(b+at,"DNA1",4)) {if(dna_at||count!=1)return false;dna_at=at+hs;dna_n=len;}
+   if(!len||!count||count>1000000) {return false; } if(!xx_rt_memcmp(b+at,"DNA1",4)) {if(dna_at||count!=1)return false;dna_at=at+hs;dna_n=len;}
    xx_rt_snprintf(label,sizeof(label),"block-%u.bin",blocks-1);if(!emit(f,s,label,at,hs+len,n))return false;at+=hs+len;
  }
- if(!s->size)return false;at=12;while(at+hs<(uint64_t)s->size) {uint32_t len=u32(b+at+4,be);if(xx_rt_memcmp(b+at,"DNA1",4)&&u32(b+at+8+ptr,be)>=ns)return false;at+=hs+len;}return s->count>1;
+ if(!s->size) {return false; } at=12;while(at+hs<(uint64_t)s->size) {uint32_t len=u32(b+at+4,be);if(xx_rt_memcmp(b+at,"DNA1",4)&&u32(b+at+8+ptr,be)>=ns)return false;at+=hs+len;}return s->count>1;
 
 }
 

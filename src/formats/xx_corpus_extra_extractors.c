@@ -21,7 +21,7 @@
         xx_##tag##_free((xx_##tag *)format);                                \
     }                                                                        \
     static const xx_format_search_desc tag##_search = {                    \
-        tag##_types, 1U, anchor_list, 1U, tag##_open, tag##_close           \
+        tag##_types, 1U, anchor_list, 1U, tag##_open, tag##_close, false    \
     };                                                                       \
     static xx_format_search_state *tag##_create_search(                    \
         xx_format_extractor *self, xx_io_device *device,                    \

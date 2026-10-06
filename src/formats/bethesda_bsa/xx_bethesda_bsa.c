@@ -20,20 +20,20 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if(declared!=at+nlens) return false;
         count=pm_le32(r+8); if(count>files-seen) return false;
         if(flags&1) { if(!gm_read(f,total,at,&z,1) || !z || z>folderleft) return false; ++at;
-            if(!gm_string(f,total,at,z,&used) || used!=z) return false; at+=z; folderleft-=z; }
+            if(!gm_string(f,total,at,z,&used) || used!=z) { return false; } at+=z; folderleft-=z; }
         for(j=0;j<count;++j) { uint32_t packed,n; uint64_t off;
-            if(gm_stopped(pd) || !gm_read(f,total,at,r,16)) return false; at+=16;
+            if(gm_stopped(pd) || !gm_read(f,total,at,r,16)) { return false; } at+=16;
             packed=pm_le32(r+8); n=packed&0x3fffffffU; off=pm_le32(r+12);
             if((packed&0x80000000U) || (((flags&4)!=0)!=((packed&0x40000000U)!=0)) || !gm_range(total,off,n)) return false;
             if(ver!=103 && (flags&0x100)) { if(!gm_read(f,total,off,&z,1) || (uint32_t)z+1>n) return false; off+=(uint32_t)z+1; n-=(uint32_t)z+1; }
-            if(!gm_add(f,s,"member.bin",off,n,recend,total)) return false; ++seen;
+            if(!gm_add(f,s,"member.bin",off,n,recend,total)) { return false; } ++seen;
         }
     }
-    if(seen!=files || folderleft!=0) return false; namesleft=nlens;
+    if(seen!=files || folderleft!=0) { return false; } namesleft=nlens;
     if(flags&2) for(i=0;i<files;++i) { if(gm_stopped(pd) || !gm_string(f,total,at,namesleft,&used) || used==1) return false; at+=used; namesleft-=used; }
     if(namesleft || !gm_range(total,0,at)) return false;
     for(i=0;i<s->count;++i) if((uint64_t)(s->items[i].offset-f->base_address)<at) return false;
-    if(at>(uint64_t)s->size) s->size=(int64_t)at; return true;
+    if(at>(uint64_t)s->size) { s->size=(int64_t)at; } return true;
 }
 void xx_bethesda_bsa_init(xx_bethesda_bsa *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_BETHESDA_BSA,"bin"); } }
 xx_bethesda_bsa *xx_bethesda_bsa_create(xx_io_device *d,int64_t b) { xx_bethesda_bsa *r=(xx_bethesda_bsa *)xx_mem_alloc(sizeof(*r)); if(r) xx_bethesda_bsa_init(r,d,b); return r; }

@@ -16,7 +16,7 @@ static bool mp_tables(Abstractformat *f,const uint8_t *type,int64_t at,int64_t s
     if(!xx_rt_memcmp(type,"stsz",4)) { if(size<12 || !pm_read(f,at,h,12)) return false; return pm_be32(h+4) ? size==12 : (uint64_t)pm_be32(h+8)*4==(uint64_t)size-12; }
     if(!xx_rt_memcmp(type,"stsd",4) || !xx_rt_memcmp(type,"dref",4)) {
         uint32_t i; int64_t pos=at+8;
-        if(size<8 || !pm_read(f,at,h,8)) return false; count=pm_be32(h+4);
+        if(size<8 || !pm_read(f,at,h,8)) { return false; } count=pm_be32(h+4);
         if(count>65536) return false;
         for(i=0;i<count;++i) { uint32_t n; if(pos>at+size-8 || !pm_read(f,pos,h,8) || (n=pm_be32(h))<8 || n>(uint64_t)(at+size-pos)) return false; pos+=n; }
         return pos==at+size;
@@ -30,7 +30,7 @@ static bool mp_boxes(Abstractformat *f,pm_stream *s,int64_t at,int64_t end,unsig
         if(size==1) { if(end-at<16 || !pm_read(f,at+8,h+8,8)) return false; size=mp_be64(h+8); head=16; }
         if(!size) size=(uint64_t)(end-at);
         if(!xx_rt_memcmp(h+4,"uuid",4)) head+=16;
-        if(size<(uint64_t)head || size>(uint64_t)(end-at)) return false; body=at+head;
+        if(size<(uint64_t)head || size>(uint64_t)(end-at)) { return false; } body=at+head;
         if(!depth && !xx_rt_memcmp(h+4,"moov",4)) ++*moov;
         if(!depth && !xx_rt_memcmp(h+4,"mdat",4)) { if(size==(uint64_t)head) return false; ++*mdat; }
         container=!xx_rt_memcmp(h+4,"moov",4) || !xx_rt_memcmp(h+4,"trak",4) || !xx_rt_memcmp(h+4,"mdia",4) || !xx_rt_memcmp(h+4,"minf",4) || !xx_rt_memcmp(h+4,"stbl",4) || !xx_rt_memcmp(h+4,"edts",4) || !xx_rt_memcmp(h+4,"dinf",4) || !xx_rt_memcmp(h+4,"mvex",4) || !xx_rt_memcmp(h+4,"moof",4) || !xx_rt_memcmp(h+4,"traf",4) || !xx_rt_memcmp(h+4,"mfra",4) || !xx_rt_memcmp(h+4,"udta",4);
@@ -45,7 +45,7 @@ static bool mp_boxes(Abstractformat *f,pm_stream *s,int64_t at,int64_t end,unsig
         if(!xx_rt_memcmp(h+4,"stsd",4)) { if(have&256) return false; have|=256; }
         if(container) { if(!mp_boxes(f,s,body,at+(int64_t)size,depth+1,pm_be32(h+4),moov,mdat,pd)) return false; }
         else { if(!mp_tables(f,h+4,body,(int64_t)size-head)) return false;
-            for(i=0;i<4;++i) name[i]=h[4+i]>=32 && h[4+i]<=126 ? (char)h[4+i] : '_'; name[4]=0;
+            for(i=0;i<4;++i) { name[i]=h[4+i]>=32 && h[4+i]<=126 ? (char)h[4+i] : '_'; } name[4]=0;
             xx_rt_memcpy(name+4,".bin",5); if(!pm_add(f,s,name,body,(int64_t)size-head)) return false;
         }
         at+=(int64_t)size;

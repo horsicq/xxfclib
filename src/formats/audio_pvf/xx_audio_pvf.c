@@ -64,7 +64,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd)
     bool ascii;
     int64_t available=pm_available(f);
     if (available<10) return false;
-    n=(size_t)(available<(int64_t)sizeof(h) ? available:sizeof(h));
+    n=(size_t)(available<(int64_t)sizeof(h) ? available:(int64_t)sizeof(h));
     if (!pm_read(f,0,h,n) || xx_rt_memcmp(h,"PVF",3) ||
         (h[3]!='1' && h[3]!='2') || h[4]!='\n') return false;
     ascii=h[3]=='2';

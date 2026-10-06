@@ -11,13 +11,13 @@ static bool gerber_aperture(tg_lex *q,uint8_t *tools) {int32_t id,vertices;uint8
  if(shape=='R'||shape=='O'){if(!tg_char(q,'X')||!tg_number(q,&b)||b<=0||b>1000000)return false;if(tg_char(q,'X')&&(!tg_number(q,&hole)||hole<0||hole>=a||hole>=b))return false;}
  else if(shape=='P'){if(!tg_char(q,'X')||!tg_integer(q,&vertices)||vertices<3||vertices>12)return false;if(tg_char(q,'X')){if(!tg_number(q,&rotation)||rotation<-360000||rotation>360000)return false;if(tg_char(q,'X')&&(!tg_number(q,&hole)||hole<0||hole>=a))return false;}}
  else if(shape=='C'){if(tg_char(q,'X')&&(!tg_number(q,&hole)||hole<0||hole>=a))return false;}else return false;
- if(!tg_end(q))return false;tools[id]=1;return true;
+ if(!tg_end(q)) {return false; } tools[id]=1;return true;
 }
 static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  uint64_t p=0;uint8_t tools[1000];unsigned digits=0,ops=0,regionpoints=0;int32_t tool=0,x=0,y=0,firstx=0,firsty=0,operation=2;double area=0;bool format=false,units=false,trailing=false,pos=false,region=false,ended=false;xx_mem_zero(tools,sizeof(tools));
  if(!tg_utf(b,n,true,pd))return false;
  while(p<n){uint64_t start=p,at,end;bool extended;tg_lex q;int32_t code=0,nx=x,ny=y;bool cx=false,cy=false;
-  if(tg_stop(pd))return false;while(p<n&&(b[p]==32||b[p]==9||b[p]==10||b[p]==13))++p;if(p==n)break;if(ended)return false;
+  if(tg_stop(pd)) {return false; } while(p<n&&(b[p]==32||b[p]==9||b[p]==10||b[p]==13))++p;if(p==n)break;if(ended)return false;
   extended=b[p]=='%';if(extended)++p;at=p;while(p<n&&b[p]!='*'){if(p-at>8192)return false;++p;}if(p==n)return false;end=p++;if(extended&&(p==n||b[p++]!='%'))return false;
   q.b=b;q.p=at;q.n=end;q.pd=pd;q.work=0;q.hash=false;q.commas=false;q.comments=false;
   if(extended){
@@ -50,7 +50,7 @@ static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
   }
   if(!tg_emit(f,s,"command.gbr",start,p-start,n))return false;
  }
- if(!ended||!format||!units||!ops||!tg_cover(f,s,"whitespace.gbr",n))return false;s->size=(int64_t)n;return true;
+ if(!ended||!format||!units||!ops||!tg_cover(f,s,"whitespace.gbr",n)) {return false; } s->size=(int64_t)n;return true;
 }
 
 void xx_gerber_rs274x_init(xx_gerber_rs274x *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_GERBER_RS274X,"gbr");}}

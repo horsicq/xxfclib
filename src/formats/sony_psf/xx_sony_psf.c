@@ -30,14 +30,14 @@ buffer_done:
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[16],z[2],c; uint32_t reserved,n,crc; uint64_t at,total,left,i; bool equals=false,line=false; unsigned length=0;
-    if(!pm_read(f,0,h,16) || xx_rt_memcmp(h,"PSF\x01",4)) return false; reserved=pm_le32(h+4); n=pm_le32(h+8); crc=pm_le32(h+12); at=16U+(uint64_t)reserved; total=at+n; left=(uint64_t)pm_available(f);
+    if(!pm_read(f,0,h,16) || xx_rt_memcmp(h,"PSF\x01",4)) { return false; } reserved=pm_le32(h+4); n=pm_le32(h+8); crc=pm_le32(h+12); at=16U+(uint64_t)reserved; total=at+n; left=(uint64_t)pm_available(f);
     if(reserved>16777216 || n<6 || n>67108864 || total>left || !pm_read(f,(int64_t)at,z,2) || (z[0]&15)!=8 || (z[0]>>4)>7 || (((unsigned)z[0]<<8)|z[1])%31 || (z[1]&32) || !crc_range(f,at,n,crc,pd)) return false;
-    if(reserved && !emit(f,s,"reserved.bin",16,reserved,left)) return false; if(!emit(f,s,"program.zlib",at,n,left)) return false;
+    if(reserved && !emit(f,s,"reserved.bin",16,reserved,left)) { return false; } if(!emit(f,s,"program.zlib",at,n,left)) return false;
     if(left>total) { uint8_t tag[5]; if(left-total<5 || left-total>1048576 || !pm_read(f,(int64_t)total,tag,5) || xx_rt_memcmp(tag,"[TAG]",5)) return false;
       for(i=total+5;i<left;++i) { if(stop(pd) || !pm_read(f,(int64_t)i,&c,1) || !c || (c<32 && c!=10 && c!=13 && c!=9)) return false;
         if(c==10) { if(line && !equals) return false; line=equals=false; length=0; }
         else if(c!=13) { if(++length>4096) return false; if(c=='=' && line) equals=true; line=true; } }
-      if(line && !equals) return false; if(left>total+5 && !emit(f,s,"tags.txt",total+5,left-total-5,left)) return false; total=left; }
+      if(line && !equals) { return false; } if(left>total+5 && !emit(f,s,"tags.txt",total+5,left-total-5,left)) return false; total=left; }
     s->size=(int64_t)total; return true;
 
 }

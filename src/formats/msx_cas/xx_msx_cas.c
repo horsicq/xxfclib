@@ -7,9 +7,9 @@
 static bool read_components(Abstractformat *f,pm_stream *s,er_blob *b) {
  static const uint8_t sig[]={0x1f,0xa6,0xde,0xba,0xcc,0x13,0x7d,0x74};uint32_t a=0,count=0;const uint8_t *p=b->p;
  while(a<b->n) {uint32_t i,start,end,run,z,after;char name[16];if(!er_poll(b) || ++count>1024 || !er_range(b,a,38) || xx_rt_memcmp(p+a,sig,8)) return false;
-  for(i=0;i<10;++i) if(p[a+8+i]!=0xd0) return false;if(!er_name(p+a+18,6,name,false) || xx_rt_memcmp(p+a+24,sig,8)) return false;
+  for(i=0;i<10;++i) { if(p[a+8+i]!=0xd0) return false; } if(!er_name(p+a+18,6,name,false) || xx_rt_memcmp(p+a+24,sig,8)) return false;
   start=pm_le16(p+a+32);end=pm_le16(p+a+34);run=pm_le16(p+a+36);if(end<start || (run && (run<start || run>end))) return false;z=end-start+1;if(!er_range(b,a+38,z)) return false;
-  if(!er_emit(f,s,b,"binary-descriptor.bin",a,38) || !er_emit(f,s,b,name,a+38,z)) return false;after=a+38+z;
+  if(!er_emit(f,s,b,"binary-descriptor.bin",a,38) || !er_emit(f,s,b,name,a+38,z)) { return false; } after=a+38+z;
   if(after<b->n && p[after]==0) {uint32_t rounded=(after+7U)&~7U;if(rounded>b->n || !er_zero(p+after,rounded-after)) return false;after=rounded;}
   a=after;
  }s->size=b->n;return count!=0;

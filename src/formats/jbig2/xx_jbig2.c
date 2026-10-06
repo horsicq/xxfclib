@@ -19,16 +19,16 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if(id==UINT32_MAX || (count && id<=last) || refs>4 || !sm_jb_type(type) || (b[5]&((uint8_t)(0x1fU & ~((1U<<(refs+1))-1U))))) return false;
         width=id<=256 ? 1:id<=65536 ? 2:4; at+=6;
         for(j=0;j<refs;++j) { uint32_t target; unsigned lo=0,hi=count;
-            if(!fd_range(at,width,end) || !pm_read(f,(int64_t)at,b,width)) return false; target=width==1 ? b[0]:width==2 ? pm_be16(b):pm_be32(b); at+=width;
+            if(!fd_range(at,width,end) || !pm_read(f,(int64_t)at,b,width)) { return false; } target=width==1 ? b[0]:width==2 ? pm_be16(b):pm_be32(b); at+=width;
             while(lo<hi) { unsigned mid=lo+(hi-lo)/2; if(ids[mid]<target) lo=mid+1; else hi=mid; } if(lo==count || ids[lo]!=target) return false;
         }
         width=(flags&64) ? 4:1; if(!fd_range(at,width+4,end) || !pm_read(f,(int64_t)at,b,width+4)) return false;
         page=width==1 ? b[0]:pm_be32(b); length=pm_be32(b+width); data=at+width+4;
-        if(length==UINT32_MAX || !fd_range(data,length,end)) return false; stop=data+length;
+        if(length==UINT32_MAX || !fd_range(data,length,end)) { return false; } stop=data+length;
         if(type==48) { uint64_t pixels;
             if(active || !page || page>4096 || (!unknown && page>pages) || page!=completed+1 || refs || length!=19 || !pm_read(f,(int64_t)data,b,19)) return false;
             w=pm_be32(b); height=pm_be32(b+4);
-            if(!w || !height || height==UINT32_MAX || !fd_mul(w,height,&pixels) || pixels>67108864 || (b[16]&0x80) || pm_be16(b+17)) return false; active=page;
+            if(!w || !height || height==UINT32_MAX || !fd_mul(w,height,&pixels) || pixels>67108864 || (b[16]&0x80) || pm_be16(b+17)) { return false; } active=page;
         } else if(type==49) { if(!active || page!=active || length || refs) return false; active=0; ++completed; }
         else if(type==51) { if(page || length || refs || active || !completed || (!unknown && completed!=pages)) return false; }
         else { if(type==50 || (page && page!=active)) return false;
@@ -40,7 +40,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             else if(!length) return false;
         }
         ids[count]=id; last=id; xx_rt_snprintf(label,sizeof(label),"segment-%u-type-%u.bin",id,type);
-        if(!pm_add(f,s,label,(int64_t)begin,(int64_t)(stop-begin))) return false; ++count; at=stop;
+        if(!pm_add(f,s,label,(int64_t)begin,(int64_t)(stop-begin))) { return false; } ++count; at=stop;
         if(type==51) { s->size=(int64_t)at; return true; }
     } return false;
 }

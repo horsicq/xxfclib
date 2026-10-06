@@ -31,7 +31,7 @@ static void sd_close(Abstractformat *format) {
 static const xx_format_search_desc sd_search = {
     sd_types, sizeof(sd_types) / sizeof(sd_types[0]),
     sd_anchors, sizeof(sd_anchors) / sizeof(sd_anchors[0]),
-    sd_open, sd_close
+    sd_open, sd_close, false
 };
 static xx_format_search_state *sd_create_search(
     xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,

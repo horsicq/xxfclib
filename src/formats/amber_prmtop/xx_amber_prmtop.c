@@ -15,7 +15,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             for(j=0;j<words;++j) {el_token v=el_trim(&b,el_slice(line,j*width,width));uint64_t u=0;if(!v.n) {uint64_t rest;for(rest=j+1;rest<words;++rest) NH_NEED(!el_trim(&b,el_slice(line,rest*width,width)).n);break;}
                 NH_NEED(++items<=1000000);if(chars) NH_NEED(nh_ascii(b.p+(size_t)v.at,(size_t)v.n,false));else if(real) {NH_NEED(el_float(&b,v));if(coreid==2) NH_NEED(tw_value(&b,v)>=0);}else {NH_NEED(el_integer(&b,v));if(ptr || coreid==3 || coreid==4 || coreid==6 || coreid==7) NH_NEED(el_uint(&b,v,&u));}
                 if(ptr) {NH_NEED(np<32 && u<=INT32_MAX);pointers[np++]=u;}
-                if(coreid==3) NH_NEED(np>=31 && u>=1 && u<=pointers[1]);if(coreid==4) NH_NEED(np>=31 && u<=pointers[0]);
+                if(coreid==3) { NH_NEED(np>=31 && u>=1 && u<=pointers[1]); } if(coreid==4) NH_NEED(np>=31 && u<=pointers[0]);
                 if(coreid==6) {NH_NEED(np>=31 && u>=1 && u<=pointers[0] && u>last_res && (items!=1 || u==1));last_res=u;}
                 if(coreid==7) NH_NEED(u>=1 && u<=118);
             }

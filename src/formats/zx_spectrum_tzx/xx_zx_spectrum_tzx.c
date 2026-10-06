@@ -28,9 +28,9 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
    case 0x35: if(!nh_range(b,at,20) || !nh_ascii(b->p+at,16,true) || (z=pm_le32(b->p+at+16))>NH_LIMIT-20) return false; z+=20; break;
    default: return false;
   }
-  if(!nh_range(b,at,z)) return false; at+=z; xx_rt_snprintf(name,sizeof(name),"block-%u-%02x.bin",blocks-1,id); if(!nh_emit(f,s,b,name,start,at-start)) return false;
+  if(!nh_range(b,at,z)) { return false; } at+=z; xx_rt_snprintf(name,sizeof(name),"block-%u-%02x.bin",blocks-1,id); if(!nh_emit(f,s,b,name,start,at-start)) return false;
  }
- if(!blocks || groups) return false; s->size=at; return true;
+ if(!blocks || groups) { return false; } s->size=at; return true;
 }
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { nh_blob b; bool ok; if(!nh_load(f,&b,pd)) return false; ok=parse_blob(f,s,&b); xx_mem_free(b.p); return ok; }

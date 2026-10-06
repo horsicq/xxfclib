@@ -20,14 +20,14 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     static const uint8_t sections[]={0,1,2,2,3,3,3,3,3,4,4,4,4,4};
     if(!pm_read(f,0,h,68) || xx_rt_memcmp(h,"BCH\0",4) || h[4]!=0x21 || h[5]!=0x21 || (h[64]&~5U) || h[65] || pm_le32(h+56)!=(uint32_t)pm_le16(h+66)*4 || (pm_le32(h+60)&3)) return false;
     for(i=0;i<6;++i) { offs[i]=pm_le32(h+8+i*4); lens[i]=pm_le32(h+32+i*4); if(!lens[i]) { if(offs[i] && (offs[i]<68 || offs[i]>(uint64_t)pm_available(f))) return false; continue; }
-      if(offs[i]<68 || (offs[i]&3) || !span(offs[i],lens[i],(uint64_t)pm_available(f))) return false; for(j=0;j<i;++j) if(overlap(offs[i],lens[i],offs[j],lens[j])) return false; if((uint64_t)offs[i]+lens[i]>total) total=(uint64_t)offs[i]+lens[i]; }
+      if(offs[i]<68 || (offs[i]&3) || !span(offs[i],lens[i],(uint64_t)pm_available(f))) { return false; } for(j=0;j<i;++j) if(overlap(offs[i],lens[i],offs[j],lens[j])) return false; if((uint64_t)offs[i]+lens[i]>total) total=(uint64_t)offs[i]+lens[i]; }
     if(!lens[0] || !lens[3] || (lens[5]&3) || lens[5]>16384) return false;
     for(i=0;i<lens[5]/4;++i) { uint32_t entry,source,target,ptr,relative,location;
-      if(stop(pd) || !pm_read(f,offs[5]+(int64_t)i*4,p,4)) return false; entry=pm_le32(p); source=entry>>29; target=(entry>>25)&15; ptr=entry&0x1ffffffU;
-      if(source>7 || target>=14) return false; if(target!=1) ptr*=4; source=sections[source]; target=sections[target];
-      if(!span(ptr,4,lens[source]) || !pm_read(f,offs[source]+(int64_t)ptr,p,4)) return false; relative=pm_le32(p); if(relative>=lens[target]) return false; location=offs[source]+ptr;
-      for(j=0;j<i;++j) if(locations[j]==location) return false; locations[i]=location; }
-    for(i=0;i<6;++i) if(lens[i] && (stop(pd) || !emit(f,s,names[i],offs[i],lens[i],total))) return false; s->size=(int64_t)total; return true;
+      if(stop(pd) || !pm_read(f,offs[5]+(int64_t)i*4,p,4)) { return false; } entry=pm_le32(p); source=entry>>29; target=(entry>>25)&15; ptr=entry&0x1ffffffU;
+      if(source>7 || target>=14) { return false; } if(target!=1) ptr*=4; source=sections[source]; target=sections[target];
+      if(!span(ptr,4,lens[source]) || !pm_read(f,offs[source]+(int64_t)ptr,p,4)) { return false; } relative=pm_le32(p); if(relative>=lens[target]) return false; location=offs[source]+ptr;
+      for(j=0;j<i;++j) { if(locations[j]==location) return false; } locations[i]=location; }
+    for(i=0;i<6;++i) { if(lens[i] && (stop(pd) || !emit(f,s,names[i],offs[i],lens[i],total))) return false; } s->size=(int64_t)total; return true;
 
 }
 

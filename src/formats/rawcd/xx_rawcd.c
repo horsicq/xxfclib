@@ -164,7 +164,7 @@ static bool rawcd_read_at(xx_io_device *device, int64_t offset, void *buffer,
     return true;
 }
 
-static bool rawcd_write_all(xx_io_device *device, const void *data,
+static XXFC_MAYBE_UNUSED bool rawcd_write_all(xx_io_device *device, const void *data,
                             size_t size) {
     const size_t file_io_capacity = gb_rawcd_capacity();
     size_t done = 0U;

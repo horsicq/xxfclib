@@ -23,7 +23,7 @@ static bool sql_bytes(sql_text *b,const void *p,size_t n) {
     if(n>b->limit-b->n) return false;
     if(b->n+n>b->cap) { cap=b->cap?b->cap:1024;while(cap<b->n+n) { if(cap>b->limit/2) { cap=b->limit;break; } cap*=2; }
         next=xx_mem_realloc(b->p,cap);if(!next)return false;b->p=(uint8_t *)next;b->cap=cap; }
-    if(n)xx_rt_memcpy(b->p+b->n,p,n);b->n+=n;return true;
+    if(n) {xx_rt_memcpy(b->p+b->n,p,n); } b->n+=n;return true;
 }
 static bool sql_str(sql_text *b,const char *p) { return sql_bytes(b,p,xx_rt_strlen(p)); }
 static bool sql_ident(sql_text *b,const char *p) {
@@ -77,7 +77,7 @@ static bool sql_table(sqlite3 *db,const char *name,sql_text *out,xx_pd_struct *p
     ok=rc==SQLITE_DONE;
 done:
     sqlite3_finalize(rows);sqlite3_finalize(columns);sqlite3_free(pragma);xx_mem_free(query.p);
-    for(i=0;i<count;++i)xx_str_free(names[i]);xx_mem_free(names);return ok;
+    for(i=0;i<count;++i) {xx_str_free(names[i]); } xx_mem_free(names);return ok;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     sqlite3 *db=NULL;sqlite3_stmt *schema=NULL,*check=NULL;uint8_t *image=NULL;int64_t n=pm_available(f);size_t limit=64U*1024U*1024U;const xx_var *v;
@@ -110,7 +110,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if(!name || !ddl || !kind || xx_rt_strcmp(kind,"table") || ++tables>10000 || sql_stopped(pd) ||
            !sql_str(&out,ddl) || !sql_str(&out,";\n") || !sql_table(db,name,&out,pd))goto done;
     }
-    if(rc!=SQLITE_DONE)goto done;sqlite3_finalize(schema);schema=NULL;
+    if(rc!=SQLITE_DONE) {goto done; } sqlite3_finalize(schema);schema=NULL;
     /* AUTOINCREMENT's history can exceed the maximum remaining row. Preserve
      * the sequence after CREATE/INSERT have recreated its system table. */
     if(sqlite3_prepare_v2(db,"SELECT name FROM sqlite_schema WHERE type='table' AND name='sqlite_sequence'",-1,&schema,NULL)!=SQLITE_OK)goto done;

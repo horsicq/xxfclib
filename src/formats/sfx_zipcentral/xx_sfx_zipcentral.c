@@ -19,7 +19,7 @@ static bool w5_zip_carrier(Abstractformat *f, int64_t *low, xx_pd_struct *pd) {
 
 static bool w5_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     int64_t limit=pm_available(f),low,begin,ecd,dir;size_t n,i;uint8_t *b;bool ok=false;
-    if(!w5_zip_carrier(f,&low,pd) || limit<22) return false;begin=limit>65557 ? limit-65557:0;n=(size_t)(limit-begin);b=(uint8_t *)xx_mem_alloc(n);if(!b || !pm_read(f,begin,b,n)) { if(b) xx_mem_free(b);return false; }
+    if(!w5_zip_carrier(f,&low,pd) || limit<22) { return false; } begin=limit>65557 ? limit-65557:0;n=(size_t)(limit-begin);b=(uint8_t *)xx_mem_alloc(n);if(!b || !pm_read(f,begin,b,n)) { if(b) xx_mem_free(b);return false; }
     for(i=n-21;i>0;--i) { size_t p=i-1;uint32_t bytes,offset;int64_t at;if(wg_stop(pd)) break;
         if(xx_rt_memcmp(b+p,"PK\5\6",4) || p+22+pm_le16(b+p+20)!=n || pm_le16(b+p+4) || pm_le16(b+p+6) || !pm_le16(b+p+10) || pm_le16(b+p+10)==65535 || pm_le16(b+p+8)!=pm_le16(b+p+10)) continue;
         ecd=begin+(int64_t)p;bytes=pm_le32(b+p+12);offset=pm_le32(b+p+16);if(bytes>(uint64_t)ecd || offset==UINT32_MAX) continue;dir=ecd-bytes;at=dir-offset;

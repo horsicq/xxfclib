@@ -5,13 +5,13 @@
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t p[48];uint64_t at=12,total=(uint64_t)pm_available(f),counts[32],points=0,header;uint32_t vars,zones=0,word,i,j;bool be;char label[64];
-    if(total>67108864 || !pm_read(f,0,p,12) || xx_rt_memcmp(p,"#!TDV112",8)) return false;be=pm_be32(p+8)==1;
+    if(total>67108864 || !pm_read(f,0,p,12) || xx_rt_memcmp(p,"#!TDV112",8)) { return false; } be=pm_be32(p+8)==1;
     if(fd_u32(p+8,be)!=1 || !eh_word(f,&at,total,be,&word,pd) || word || !eh_i32_string(f,&at,total,be,true,pd) || !eh_word(f,&at,total,be,&vars,pd) || !vars || vars>64) return false;
     for(i=0;i<vars;++i) if(!eh_i32_string(f,&at,total,be,false,pd)) return false;
     while(true) {uint64_t count=1;if(!eh_word(f,&at,total,be,&word,pd)) return false;if(word==0x43b28000U) break;
         if(word!=0x43958000U || zones>=32 || !eh_i32_string(f,&at,total,be,false,pd) || !eh_take(f,&at,total,p,48,pd) || fd_u32(p,be)!=UINT32_MAX || (int32_t)fd_u32(p+4,be)< -2 || !sv_finite64(sv_u64(p+8,be)) || fd_u32(p+16,be)!=UINT32_MAX || fd_u32(p+20,be) || fd_u32(p+24,be) || fd_u32(p+28,be) || fd_u32(p+32,be)) return false;
         for(i=36;i<48;i+=4) if(!fd_u32(p+i,be) || !fd_mul(count,fd_u32(p+i,be),&count) || count>1048576) return false;
-        if(!eh_word(f,&at,total,be,&word,pd) || word || points>1048576-count) return false;points+=count;counts[zones++]=count;
+        if(!eh_word(f,&at,total,be,&word,pd) || word || points>1048576-count) { return false; } points+=count;counts[zones++]=count;
     }header=at;if(!zones || !pm_add(f,s,"tecplot-header.bin",0,(int64_t)header)) return false;
     for(i=0;i<zones;++i) {uint32_t types[64];uint64_t start=at,data_header;
         if(!eh_word(f,&at,total,be,&word,pd) || word!=0x43958000U) return false;

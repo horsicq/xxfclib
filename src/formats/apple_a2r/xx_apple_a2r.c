@@ -97,7 +97,7 @@ static bool read_v3_components(Abstractformat *f,pm_stream *s,tc_blob *b) {
     for(i=0;i<size;++i) {if(!(i&4095U) && !tc_poll(b)) return false;ticks+=p[entry+i];}
     if(!ticks || p[entry+size-1U]==255U) return false;
     for(i=0;i<indexes;++i) {uint32_t current=pm_le32(p+at+12U+i*4U);
-     if((i && current<=previous) || current>ticks) return false;previous=current;
+     if((i && current<=previous) || current>ticks) { return false; } previous=current;
     }
     xx_rt_snprintf(label,sizeof(label),"solved-%04u-%03u.descriptor.bin",solved,loc);
     if(!tc_emit(f,s,b,label,at,16U+idx_bytes)) return false;
@@ -136,7 +136,7 @@ static bool read_components(Abstractformat *f,pm_stream *s,tc_blob *b) {
     xx_rt_snprintf(label,sizeof(label),"capture-%04u-%03u.%s",count,p[at],type==2?"bits":"flux");if(!tc_emit(f,s,b,label,at+10,n)) return false;++count;at+=10+n;
    }if(at!=end-1 || p[at]!=255) return false;
   }else if(!xx_rt_memcmp(p+a,"META",4)) {if(!strm || meta++ || !a2_meta(b,start,z) || !tc_emit(f,s,b,"capture-metadata.txt",start,z)) return false;}
-  else return false;a=start+z;
+  else { return false; } a=start+z;
  }if(!info || !strm || !count) return false;s->size=b->n;return true;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { tc_blob b;bool ok;if(!tc_load(f,&b,pd)) return false;/* Work counts flux bytes too; a multi-track image routinely exceeds 1MiB. */b.work=TC_LIMIT*4U;ok=read_components(f,s,&b);xx_mem_free(b.p);return ok; }

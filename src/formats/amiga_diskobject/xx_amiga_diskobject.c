@@ -19,7 +19,7 @@ static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  if(pm_be32(b+54)){uint64_t start=q.p;if(!tg_take(&q,4,&p)||(types=pm_be32(p))<4||types>4*2048||(types&3)||!tg_emit(f,s,"tooltypes-count.info",start,4,n))return false;types=types/4-1;for(i=0;i<types;++i)if(!icon_string(f,s,&q,"tooltype.info"))return false;}
  if(pm_be32(b+70)&&!icon_string(f,s,&q,"tool-window.info"))return false;
  if(drawer&&(pm_be32(b+44)&255)){uint64_t start=q.p;if((pm_be32(b+44)&255)!=1||!tg_take(&q,6,&p)||pm_be32(p)>2||pm_be16(p+4)>5||!tg_emit(f,s,"new-drawer.info",start,6,n))return false;}
- if(q.p!=n)return false;s->size=(int64_t)n;return true;
+ if(q.p!=n) {return false; } s->size=(int64_t)n;return true;
 }
 
 void xx_amiga_diskobject_init(xx_amiga_diskobject *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_AMIGA_DISKOBJECT,"info");}}

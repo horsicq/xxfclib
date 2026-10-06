@@ -12,7 +12,7 @@ static Abstractformat *open_reader(xx_io_device *d) {
 }
 static void close_reader(Abstractformat *f) { xx_sfx_rsfx_free((xx_sfx_rsfx *)f); }
 static const xx_format_search_desc desc = {
-    types, 1U, anchors, 1U, open_reader, close_reader
+    types, 1U, anchors, 1U, open_reader, close_reader, false
 };
 static xx_format_search_state *create_search(xx_format_extractor *self,
         xx_io_device *d, const xx_list_s *o, xx_pd_struct *pd) {

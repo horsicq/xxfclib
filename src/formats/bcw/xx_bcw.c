@@ -79,7 +79,7 @@ static uint16_t bcw_le16(const uint8_t *bytes) {
     return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
 }
 
-static uint32_t bcw_le32(const uint8_t *bytes) {
+static XXFC_MAYBE_UNUSED uint32_t bcw_le32(const uint8_t *bytes) {
     return (uint32_t)bcw_le16(bytes) | ((uint32_t)bcw_le16(bytes + 2U) << 16U);
 }
 
@@ -178,7 +178,7 @@ static bool bcw_safe_output_name(const char *name) {
 /* The raw 8.3 fields of these DOS-era containers are the only evidence that a
  * candidate offset really is a header, so a byte that cannot appear in a name
  * rejects the file instead of being scrubbed. */
-static bool bcw_plausible_raw_name(const uint8_t *bytes, size_t size) {
+static XXFC_MAYBE_UNUSED bool bcw_plausible_raw_name(const uint8_t *bytes, size_t size) {
     size_t index;
     if (!bytes || size == 0U || bytes[0] == 0U) return false;
     for (index = 0U; index < size; ++index) {

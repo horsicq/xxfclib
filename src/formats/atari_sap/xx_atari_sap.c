@@ -18,15 +18,15 @@ static bool read_components(Abstractformat *f,pm_stream *s,th_blob *b) {
   else if(th_match(p+line,key-line,"FASTPLAY")) {uint32_t speed;if(!th_decimal(p+value,z,32767,&speed) || !speed) return false;}
   a+=2;
  }
- if(!type || !haveinit || !haveplayer || first>=songs || !th_range(b,a,2) || pm_le16(p+a)!=65535 || !th_emit(f,s,b,"music-descriptor.sap",0,a+2)) return false;a+=2;
+ if(!type || !haveinit || !haveplayer || first>=songs || !th_range(b,a,2) || pm_le16(p+a)!=65535 || !th_emit(f,s,b,"music-descriptor.sap",0,a+2)) { return false; } a+=2;
  while(a<b->n) {
   uint32_t start,end,z;char name[48];if(!th_poll(b) || ++count>64 || !th_range(b,a,4)) return false;
   if(pm_le16(p+a)==65535) {a+=2;if(!th_range(b,a,4)) return false;}
   start=pm_le16(p+a);end=pm_le16(p+a+2);if(end<start) return false;z=end-start+1;if(!th_range(b,a+4,z)) return false;
-  if(init>=start && init<=end) mappedinit=true;if(player>=start && player<=end) mappedplayer=true;
+  if(init>=start && init<=end) { mappedinit=true; } if(player>=start && player<=end) mappedplayer=true;
   xx_rt_snprintf(name,sizeof(name),"segment-%u.atari",count-1);if(!th_emit(f,s,b,name,a,4+z)) return false;a+=4+z;
  }
- if(!count || !mappedinit || !mappedplayer) return false;s->size=b->n;return true;
+ if(!count || !mappedinit || !mappedplayer) { return false; } s->size=b->n;return true;
 }
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {

@@ -169,7 +169,7 @@ static bool xx_bff_parse(Abstractformat *format, xx_bff_stream **result) {
          * no 40-byte trailer. Most type 0x0b records retain that trailer. */
         header_size = name_area +
                       (type == XX_BFF_RECORD_MEMBER ? XX_BFF_TRAILER_SIZE : 0U);
-        if (name_area > SIZE_MAX || offset > relative_size ||
+        if ((uint64_t)name_area > SIZE_MAX || offset > relative_size ||
             name_area > relative_size - offset) goto fail;
         header = (uint8_t *)xx_mem_alloc((size_t)name_area);
         if (!header ||

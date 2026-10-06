@@ -5,7 +5,7 @@
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[12];nh_blob b={0};bool ok=false,wide,ended=false;uint32_t type,width,nd;uint64_t at=12,total=1,i,n;
-    if(!pm_read(f,0,h,12)) return false;type=0U-pm_le32(h);width=pm_le32(h+4);nd=pm_le32(h+8);wide=(nd>>31)!=0;if(wide) nd=0U-nd;
+    if(!pm_read(f,0,h,12)) { return false; } type=0U-pm_le32(h);width=pm_le32(h+4);nd=pm_le32(h+8);wide=(nd>>31)!=0;if(wide) nd=0U-nd;
     if(type<2 || type>8 || (type==2 ? width!=1:type==3 || type==5 || type==8 ? width!=4:type==4 || type==6 ? width!=2:width!=8) || nd<2 || nd>6) return false;
     NH_NEED(nh_load(f,&b,pd));
     for(i=0;i<nd;++i) {unsigned k=wide ? 8:4;NH_NEED(nh_span(&b,at,k));n=wide ? fd_le64(b.p+(size_t)at):pm_le32(b.p+(size_t)at);at+=k;NH_NEED(n && n<=16000000 && !ended && fd_mul(total,n,&total));}

@@ -16,7 +16,7 @@ static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uin
     for(i=0;i<s->count;++i) if(overlap(at,n,(uint64_t)(s->items[i].offset-f->base_address),(uint64_t)s->items[i].size)) return false;
     return pm_add(f,s,name,(int64_t)at,(int64_t)n);
 }
-static bool zname(Abstractformat *f,uint64_t at,uint64_t end,bool empty) {
+static XXFC_MAYBE_UNUSED bool zname(Abstractformat *f,uint64_t at,uint64_t end,bool empty) {
     uint8_t c; uint64_t i; if(at>=end || end>(uint64_t)pm_available(f)) return false;
     for(i=0;i<4096 && at+i<end;++i) { if(!pm_read(f,(int64_t)(at+i),&c,1)) return false; if(!c) return empty || i!=0; } return false;
 }
@@ -31,7 +31,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     total=g32(h+12,be); count=g32(h+16,be); if(count<4 || count>1024 || total>(uint64_t)pm_available(f)) return false;
     for(i=0;i<count;++i) {
         uint32_t n; uint8_t kind;
-        if((pd && xx_pd_is_stopped(pd)) || !span(at,8,total) || !pm_read(f,(int64_t)at,p,8)) return false; n=g32(p+4,be);
+        if((pd && xx_pd_is_stopped(pd)) || !span(at,8,total) || !pm_read(f,(int64_t)at,p,8)) { return false; } n=g32(p+4,be);
         if(n<8 || !span(at,n,total)) return false;
         if(!xx_rt_memcmp(p,"FINF",4)) { if(finf!=UINT32_MAX || i || n!=32) return false; kind=0; finf=i; }
         else if(!xx_rt_memcmp(p,"TGLP",4)) { if(tglp!=UINT32_MAX || n<32) return false; kind=1; tglp=i; }
@@ -63,9 +63,9 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
                     for(k=0;k<=end-begin;++k) { uint16_t glyph; if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,(int64_t)offsets[i]+20+k*2,v,2)) return false; glyph=g16(v,be); if(glyph!=65535 && glyph>=capacity) return false; }
                 } else {
                     uint32_t entries,previous=0;
-                    if(!pm_read(f,(int64_t)offsets[i]+20,v,2)) return false; entries=g16(v,be); if(!span(22,(uint64_t)entries*4,sizes[i])) return false;
+                    if(!pm_read(f,(int64_t)offsets[i]+20,v,2)) { return false; } entries=g16(v,be); if(!span(22,(uint64_t)entries*4,sizes[i])) return false;
                     for(k=0;k<entries;++k) { uint32_t code; if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,(int64_t)offsets[i]+22+k*4,v,4)) return false; code=g16(v,be);
-                        if(code<begin || code>end || (k && code<=previous) || g16(v+2,be)>=capacity) return false; previous=code; }
+                        if(code<begin || code>end || (k && code<=previous) || g16(v+2,be)>=capacity) { return false; } previous=code; }
                 }
             }
         }

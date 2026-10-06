@@ -770,7 +770,7 @@ static char *pdf_attachment_name(pdf_document *d, pdf_value *v, uint32_t id) {
     }
     if (!wide && v->size >= 3U && !xx_rt_memcmp(v->text, "\xEF\xBB\xBF", 3)) {
         i = 3; if (v->size - i >= sizeof(text)) return NULL;
-        for (; i < v->size; ++i) text[n++] = (char)v->text[i]; text[n] = 0;
+        for (; i < v->size; ++i) { text[n++] = (char)v->text[i]; } text[n] = 0;
     } else {
         for (; i < v->size; ++i) {
             uint32_t cp = v->text[i];

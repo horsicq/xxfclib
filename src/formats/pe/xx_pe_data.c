@@ -256,7 +256,7 @@ static uint32_t pe_u32(const xx_pe *pe, int64_t offset) {
     return xx_io_get_u32(pe->format.device, offset, false);
 }
 
-static uint64_t pe_pointer(const xx_pe *pe, int64_t offset) {
+static XXFC_MAYBE_UNUSED uint64_t pe_pointer(const xx_pe *pe, int64_t offset) {
     return pe->optional_magic == XX_PE_MAGIC_64
                ? xx_io_get_u64(pe->format.device, offset, false)
                : pe_u32(pe, offset);
@@ -3075,8 +3075,7 @@ static bool pe_append_dynamic_relocations_at(xx_pe *pe,
     if (!pe_device_range(pe, offset, 8U)) return true;
     version = pe_u32(pe, offset);
     size = pe_u32(pe, offset + 4);
-    if (size > INT64_MAX - 8 ||
-        !pe_device_range(pe, offset, (uint64_t)size + 8U))
+    if (!pe_device_range(pe, offset, (uint64_t)size + 8U))
         return true;
     if (!pe_append_absolute(pe, stream,
                             XX_PE_DATA_STRUCT_DYNAMIC_RELOCATION_TABLE,
@@ -3711,7 +3710,6 @@ static bool pe_append_clr_metadata(xx_pe *pe, pe_data_stream *stream,
     streams = xx_io_get_u16(pe->format.device,
                             offset + (int64_t)storage_relative + 2, false);
     cursor = storage_relative + 4U;
-    if (streams > PE_DATA_MAX_LINKED_ENTRIES) streams = 0U;
     for (uint16_t index = 0U; index < streams; ++index) {
         uint64_t name_length;
         uint64_t next;
@@ -3805,8 +3803,7 @@ static bool pe_append_clr(xx_pe *pe, pe_data_stream *stream,
         uint16_t type = xx_io_get_u16(pe->format.device, entry + 6, false);
         uint64_t stride = (type & 2U) ? 8U : 4U;
         uint64_t bytes;
-        if (table_count <= PE_DATA_MAX_TABLE_ENTRIES &&
-            pe_u64_product(table_count, stride, &bytes) &&
+        if (pe_u64_product(table_count, stride, &bytes) &&
             pe_rva_range(pe, map, table_rva, bytes, NULL) &&
             !pe_append_raw_rva(pe, stream, map,
                                XX_PE_DATA_STRUCT_CLR_RAW,

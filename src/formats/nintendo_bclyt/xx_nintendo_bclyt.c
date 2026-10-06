@@ -31,7 +31,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(!(version==0x2020200) || total<20 || total>(uint64_t)pm_available(f) || !count || count>4096) return false;
     for(i=0;i<count;++i) {
         uint32_t n,j; char label[40];
-        if((pd && xx_pd_is_stopped(pd)) || !span(at,8,total) || !pm_read(f,(int64_t)at,b,8)) return false; n=g32(b+4,be);
+        if((pd && xx_pd_is_stopped(pd)) || !span(at,8,total) || !pm_read(f,(int64_t)at,b,8)) { return false; } n=g32(b+4,be);
         if(n<8 || !span(at,n,total)) return false;
         for(j=0;j<4;++j) if(b[j]<33 || b[j]>126) return false;
         if(!xx_rt_memcmp(b,"lyt1",4)) { if(layout || i || n<20) return false; layout=true; }

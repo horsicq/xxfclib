@@ -17,7 +17,7 @@ static bool f16_line(el_lines *c,el_token *v) {
 }
 static bool f16_words(el_lines *c,el_token *line,el_token *t,unsigned cap,unsigned *n,const char *comments) {
     while(c->at<c->b->n) {
-        if(!f16_line(c,line)) return false;*line=th_comment(c->b,*line,comments);
+        if(!f16_line(c,line)) { return false; } *line=th_comment(c->b,*line,comments);
         if(!line->n) continue;
         if(!el_split(c->b,*line,t,cap,n,false)) {c->at=c->b->n+1;return false;}return true;
     }return false;
@@ -71,7 +71,7 @@ static bool f16_vasp(Abstractformat *f,pm_stream *s,nh_blob *b) {
     if(!f16_words(&c,&row,t,128,&n,"#") || !n) return false;
     if(th_eq(b,t[0],"Selective")) {if(n>2 || (n==2 && !th_eq(b,t[1],"dynamics"))) return false;selective=true;if(!f16_words(&c,&row,t,128,&n,"#") || n!=1) return false;}
     else if(n!=1) return false;
-    if(!th_eq(b,t[0],"Direct") && !th_eq(b,t[0],"Cartesian")) return false;coords=c.at;
+    if(!th_eq(b,t[0],"Direct") && !th_eq(b,t[0],"Cartesian")) { return false; } coords=c.at;
     if(!nh_add(f,s,b,"structure-header",0,coords)) return false;
     for(k=0;k<count;++k) {
         if(!f16_words(&c,&row,t,128,&n,"#") || n!=(selective?6U:3U) || !th_floats(b,t,3)) return false;
@@ -85,7 +85,7 @@ static bool f16_aims(Abstractformat *f,pm_stream *s,nh_blob *b) {
         const char *label;
         if(th_eq(b,t[0],"lattice_vector")) {
             unsigned j;if(atoms || vectors==3 || n!=4 || !th_floats(b,t+1,3)) return false;
-            for(j=0;j<3;++j) cell[vectors][j]=t[j+1];++vectors;label="lattice-vector";
+            for(j=0;j<3;++j) { cell[vectors][j]=t[j+1]; } ++vectors;label="lattice-vector";
         }else if(th_eq(b,t[0],"atom") || th_eq(b,t[0],"atom_frac")) {
             unsigned m=th_eq(b,t[0],"atom_frac")?2U:1U;
             if(n!=5 || ++atoms>4090 || (mode && mode!=m) || (m==2 && vectors!=3) || !f16_atom(b,t,n,4,1)) return false;
@@ -107,7 +107,7 @@ static bool f16_orca(Abstractformat *f,pm_stream *s,nh_blob *b) {
     while(f16_words(&c,&row,t,64,&n,"#")) {
         if(th_eq(b,t[0],"%maxcore")) {uint64_t x;if((options&1) || n!=2 || !el_uint(b,t[1],&x) || !x || x>1048576) return false;options|=1;}
         else if(th_eq(b,t[0],"%pal")) {
-            if((options&2) || n!=1 || !f16_words(&c,&row,t,64,&n,"#") || n!=2 || !th_eq(b,t[0],"nprocs") || !el_uint(b,t[1],&mult) || !mult || mult>65536 || !f16_words(&c,&row,t,64,&n,"#") || n!=1 || !th_eq(b,t[0],"end")) return false;options|=2;
+            if((options&2) || n!=1 || !f16_words(&c,&row,t,64,&n,"#") || n!=2 || !th_eq(b,t[0],"nprocs") || !el_uint(b,t[1],&mult) || !mult || mult>65536 || !f16_words(&c,&row,t,64,&n,"#") || n!=1 || !th_eq(b,t[0],"end")) { return false; } options|=2;
         }else break;
     }
     if(n!=3 || !th_eq(b,t[0],"*xyz") || !el_range(b,t[1],1000,1000) || !el_uint(b,t[2],&mult) || !mult || mult>1000) return false;
@@ -141,7 +141,7 @@ static bool f16_gaussian(Abstractformat *f,pm_stream *s,nh_blob *b) {
             if(k<2 || k==row.n) return false;
             if(!f16_gaussian_link0(b,el_slice(row,1,k-1),el_slice(row,k+1,row.n-k-1))) return false;
         }else {
-            if(!route && b->p[(size_t)row.at]!='#') return false;route=true;
+            if(!route && b->p[(size_t)row.at]!='#') { return false; } route=true;
             if(row.n>1024 || !el_chars(b,row,"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 \t#!=/()_,.+-*",true)) return false;
         }
     }if(!route || !row.n) {if(!route) return false;}
@@ -168,7 +168,7 @@ static bool f16_demon(Abstractformat *f,pm_stream *s,nh_blob *b) {
         else if(th_eq(b,t[0],"PRINT")) {if(n<2) return false;bit=16;}
         else if(th_eq(b,t[0],"BASIS")) {if(n!=2 || t[1].n<3 || b->p[(size_t)t[1].at]!='(' || b->p[(size_t)(t[1].at+t[1].n-1)]!=')' || !f16_identifier(b,el_slice(t[1],1,t[1].n-2))) return false;bit=32;}
         else return false;
-        if(seen&bit) return false;seen|=bit;
+        if(seen&bit) { return false; } seen|=bit;
     }
     if((seen&47)!=47 || n!=3 || !th_eq(b,t[0],"GEOMETRY") || !th_eq(b,t[1],"CARTESIAN") || !th_eq(b,t[2],"ANGSTROM")) return false;
     begin=c.at;if(!nh_add(f,s,b,"calculation-header",0,begin)) return false;
@@ -203,7 +203,7 @@ static bool f16_qe(Abstractformat *f,pm_stream *s,nh_blob *b) {
             if(n==1 && el_eq(b,t[0],"/")) {if(!nh_add(f,s,b,"namelist",start,c.at-start)) return false;in=false;continue;}
             {el_token key,value;unsigned j;
                 if(!f16_assignment(b,row,&key,&value) || keycount==32) return false;
-                for(j=0;j<keycount;++j) if(f16_same_key(b,key,keys[j])) return false;keys[keycount++]=key;
+                for(j=0;j<keycount;++j) { if(f16_same_key(b,key,keys[j])) return false; } keys[keycount++]=key;
                 if(block==1) {
                     if(th_eq(b,key,"calculation")) {if(!th_eq(b,value,"scf")) return false;calculation=true;}
                     else if(!th_eq(b,key,"prefix") && !th_eq(b,key,"outdir") && !th_eq(b,key,"pseudo_dir") && !th_eq(b,key,"verbosity") && !th_eq(b,key,"disk_io")) return false;
@@ -233,24 +233,24 @@ static bool f16_qe(Abstractformat *f,pm_stream *s,nh_blob *b) {
     for(k=0;k<types;++k) {
         unsigned j;
         if(!f16_words(&c,&row,t,16,&n,"!#") || n!=3 || !f16_atomic_number(b,t[0]) || !th_positive(b,t[1]) || !el_ident(b,t[2])) return false;
-        for(j=0;j<k;++j) if(th_same(b,t[0],species[j])) return false;species[k]=t[0];
+        for(j=0;j<k;++j) { if(th_same(b,t[0],species[j])) return false; } species[k]=t[0];
         if(!f16_add_row(f,s,b,"atomic-species",row,c.at)) return false;
     }
     while(f16_words(&c,&row,t,16,&n,"!#")) {
         if(th_eq(b,t[0],"K_POINTS")) {
-            if((cards&1) || n!=2 || (!th_eq(b,t[1],"gamma") && !th_eq(b,t[1],"automatic"))) return false;cards|=1;start=f16_row_start(b,row);
+            if((cards&1) || n!=2 || (!th_eq(b,t[1],"gamma") && !th_eq(b,t[1],"automatic"))) { return false; } cards|=1;start=f16_row_start(b,row);
             if(th_eq(b,t[1],"automatic")) {unsigned j;if(!f16_words(&c,&row,t,16,&n,"!#") || n!=6) return false;for(j=0;j<6;++j) if(!el_uint(b,t[j],&count) || (j<3?(!count || count>1024):count>1)) return false;}
             if(!nh_add(f,s,b,"k-point-grid",start,c.at-start)) return false;
         }else if(th_eq(b,t[0],"CELL_PARAMETERS")) {
-            if((cards&2) || n!=2 || (!th_eq(b,t[1],"angstrom") && !th_eq(b,t[1],"bohr"))) return false;cards|=2;start=f16_row_start(b,row);
+            if((cards&2) || n!=2 || (!th_eq(b,t[1],"angstrom") && !th_eq(b,t[1],"bohr"))) { return false; } cards|=2;start=f16_row_start(b,row);
             if(!f16_cell_comments(&c,"!#") || !nh_add(f,s,b,"lattice-vectors",start,c.at-start)) return false;
         }else if(th_eq(b,t[0],"ATOMIC_POSITIONS")) {
-            if((cards&4) || n!=2 || (!th_eq(b,t[1],"angstrom") && !th_eq(b,t[1],"bohr") && !th_eq(b,t[1],"crystal"))) return false;cards|=4;
+            if((cards&4) || n!=2 || (!th_eq(b,t[1],"angstrom") && !th_eq(b,t[1],"bohr") && !th_eq(b,t[1],"crystal"))) { return false; } cards|=4;
             if(!f16_add_row(f,s,b,"coordinate-declaration",row,c.at)) return false;
             for(k=0;k<atoms;++k) {
                 unsigned j;
                 if(!f16_words(&c,&row,t,16,&n,"!#") || (n!=4 && n!=7) || !th_floats(b,t+1,3)) return false;
-                for(j=0;j<types;++j) if(th_same(b,t[0],species[j])) break;if(j==types) return false;
+                for(j=0;j<types;++j) { if(th_same(b,t[0],species[j])) break; } if(j==types) return false;
                 if(n==7) for(j=4;j<7;++j) if(!el_uint(b,t[j],&count) || count>1) return false;
                 if(!f16_add_row(f,s,b,"atomic-position",row,c.at)) return false;
             }
@@ -328,7 +328,7 @@ static bool f16_nwchem(Abstractformat *f,pm_stream *s,nh_blob *b) {
                 else if(th_eq(b,t[j],"nocenter")) bit=2;
                 else if(th_eq(b,t[j],"noautosym")) bit=4;
                 else if(th_eq(b,t[j],"noautoz")) bit=8;
-                else return false;if(seen&bit) return false;seen|=bit;
+                else { return false; } if(seen&bit) return false;seen|=bit;
             }}
             begin=f16_row_start(b,row);
             while(f16_words(&c,&row,t,16,&n,"#")) {
@@ -340,11 +340,11 @@ static bool f16_nwchem(Abstractformat *f,pm_stream *s,nh_blob *b) {
                 }else if(n!=4 || ++atoms>4090 || !f16_atom(b,t,n,0,1) || !f16_add_row(f,s,b,"atomic-position",row,c.at)) return false;
             }if(!atoms || n!=1 || !th_eq(b,t[0],"end") || !nh_add(f,s,b,"geometry-section",begin,c.at-begin)) return false;
         }else if(th_eq(b,t[0],"basis")) {
-            if(basis++ || (n!=1 && (n!=2 || !th_eq(b,t[1],"noprint")))) return false;begin=f16_row_start(b,row);
+            if(basis++ || (n!=1 && (n!=2 || !th_eq(b,t[1],"noprint")))) { return false; } begin=f16_row_start(b,row);
             if(!f16_words(&c,&row,t,16,&n,"#") || n!=3 || !el_eq(b,t[0],"*") || !th_eq(b,t[1],"library") || !el_ident(b,t[2]) || !f16_words(&c,&row,t,16,&n,"#") || n!=1 || !th_eq(b,t[0],"end") || !nh_add(f,s,b,"basis-section",begin,c.at-begin)) return false;
         }else if(th_eq(b,t[0],"scf") || th_eq(b,t[0],"dft")) {
             bool isscf=th_eq(b,t[0],"scf");unsigned seen=0;
-            if(n!=1 || (isscf?scf++:dft++)) return false;begin=f16_row_start(b,row);
+            if(n!=1 || (isscf?scf++:dft++)) { return false; } begin=f16_row_start(b,row);
             while(f16_words(&c,&row,t,16,&n,"#")) {
                 unsigned bit;if(n==1 && th_eq(b,t[0],"end")) break;
                 if(n!=2) return false;
@@ -352,7 +352,7 @@ static bool f16_nwchem(Abstractformat *f,pm_stream *s,nh_blob *b) {
                 else if(!isscf && th_eq(b,t[0],"xc")) {if(!f16_identifier(b,t[1])) return false;bit=2;}
                 else if(!isscf && (th_eq(b,t[0],"mult") || th_eq(b,t[0],"maxiter"))) {if(!el_uint(b,t[1],&x) || !x || x>100000) return false;bit=th_eq(b,t[0],"mult")?4U:8U;}
                 else if(isscf && th_eq(b,t[0],"thresh")) {if(!th_positive(b,t[1])) return false;bit=16;}
-                else return false;if(seen&bit) return false;seen|=bit;
+                else { return false; } if(seen&bit) return false;seen|=bit;
             }if(n!=1 || !th_eq(b,t[0],"end") || !nh_add(f,s,b,"method-section",begin,c.at-begin)) return false;
         }else if(th_eq(b,t[0],"task")) {
             if(n!=3 || geometry!=1 || basis!=1 || (!th_eq(b,t[1],"scf") && !th_eq(b,t[1],"dft")) || (th_eq(b,t[1],"scf")?(!scf || dft):(!dft || scf)) || (!th_eq(b,t[2],"energy") && !th_eq(b,t[2],"gradient") && !th_eq(b,t[2],"optimize"))) return false;
@@ -373,13 +373,13 @@ static bool f16_gamess(Abstractformat *f,pm_stream *s,nh_blob *b) {
     el_lines c={0};el_token row,t[16],keys[16];unsigned n,group,atoms=0;c.b=b;
     for(group=0;group<2;++group) {
         unsigned count=0,seen=0;uint64_t begin;
-        if(!f16_words(&c,&row,t,16,&n,"!") || n!=1 || !th_eq(b,t[0],group?"$BASIS":"$CONTRL")) return false;begin=f16_row_start(b,row);
+        if(!f16_words(&c,&row,t,16,&n,"!") || n!=1 || !th_eq(b,t[0],group?"$BASIS":"$CONTRL")) { return false; } begin=f16_row_start(b,row);
         while(f16_words(&c,&row,t,16,&n,"!")) {
             unsigned j;if(n==1 && th_eq(b,t[0],"$END")) break;
             for(j=0;j<n;++j) {
                 el_token key,value;unsigned k;
                 if(!f16_assignment(b,t[j],&key,&value) || count==16 || !f16_in(b,key,group?basis:contrl,group?5U:6U)) return false;
-                for(k=0;k<count;++k) if(f16_same_key(b,key,keys[k])) return false;keys[count++]=key;
+                for(k=0;k<count;++k) { if(f16_same_key(b,key,keys[k])) return false; } keys[count++]=key;
                 if(th_eq(b,key,"RUNTYP")) {if(!th_eq(b,value,"ENERGY") && !th_eq(b,value,"GRADIENT") && !th_eq(b,value,"OPTIMIZE")) return false;seen|=1;}
                 else if(th_eq(b,key,"SCFTYP")) {if(!th_eq(b,value,"RHF") && !th_eq(b,value,"UHF") && !th_eq(b,value,"ROHF")) return false;seen|=2;}
                 else if(th_eq(b,key,"MULT")) {uint64_t x;if(!el_uint(b,value,&x) || !x || x>1000) return false;seen|=4;}
@@ -410,17 +410,17 @@ static bool f16_abinit(Abstractformat *f,pm_stream *s,nh_blob *b) {
             unsigned j;bit=4;if(n!=1 || (seen&bit)) return false;begin=f16_row_start(b,row);
             if(!f16_words(&c,&row,t,128,&n,"#") || (n!=3 && n!=4) || (n==4 && !th_eq(b,t[3],"Angstrom") && !th_eq(b,t[3],"Bohr"))) return false;
             for(j=0;j<3;++j) if(!th_positive(b,t[j])) return false;
-            if(!nh_add(f,s,b,"cell-scale",begin,c.at-begin)) return false;seen|=bit;continue;
+            if(!nh_add(f,s,b,"cell-scale",begin,c.at-begin)) { return false; } seen|=bit;continue;
         }else if(th_eq(b,t[0],"rprim")) {
             bit=8;if(n!=1 || (seen&bit) || !(seen&4)) return false;begin=f16_row_start(b,row);
-            if(!f16_cell(&c) || !nh_add(f,s,b,"lattice-vectors",begin,c.at-begin)) return false;seen|=bit;continue;
+            if(!f16_cell(&c) || !nh_add(f,s,b,"lattice-vectors",begin,c.at-begin)) { return false; } seen|=bit;continue;
         }else if(th_eq(b,t[0],"znucl")) {
             unsigned j,k;uint64_t elements[118];bit=16;if((seen&bit) || !types || n!=types+1) return false;
             for(j=0;j<types;++j) {if(!el_uint(b,t[j+1],&x) || !x || x>118) return false;for(k=0;k<j;++k) if(elements[k]==x) return false;elements[j]=x;}
         }else if(th_eq(b,t[0],"typat")) {
             unsigned count=0;bit=32;if(n!=1 || !atoms || !types || !(seen&16) || (seen&bit)) return false;begin=f16_row_start(b,row);
             while(count<atoms) {unsigned j;if(!f16_words(&c,&row,t,128,&n,"#") || !n || n>atoms-count) return false;for(j=0;j<n;++j) if(!el_uint(b,t[j],&x) || !x || x>types) return false;count+=n;}
-            if(!nh_add(f,s,b,"atom-type-indices",begin,c.at-begin)) return false;seen|=bit;continue;
+            if(!nh_add(f,s,b,"atom-type-indices",begin,c.at-begin)) { return false; } seen|=bit;continue;
         }else if(th_eq(b,t[0],"xcart")) {
             unsigned j;bit=64;if(n!=1 || !atoms || (seen&63)!=63 || (seen&bit) || !f16_add_row(f,s,b,"coordinate-declaration",row,c.at)) return false;
             for(j=0;j<atoms;++j) if(!f16_words(&c,&row,t,128,&n,"#") || n!=3 || !th_floats(b,t,3) || !f16_add_row(f,s,b,"atomic-position",row,c.at)) return false;

@@ -12,7 +12,7 @@ static bool pl_count(nh_blob *b,uint64_t *at,uint64_t end,unsigned low,uint64_t 
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     nh_blob b;uint64_t n,table,root,i,j,at,end,len,bytes,ref,*offsets=NULL;unsigned ow,rw,kind,low,width;bool ok=false;
-    if(!nh_load(f,&b,pd)) return false;NH_NEED(nh_span(&b,0,40) && !xx_rt_memcmp(b.p,"bplist00",8));at=b.n-32;NH_NEED(nh_zero(&b,at,6));ow=b.p[(size_t)at+6];rw=b.p[(size_t)at+7];n=fd_be64(b.p+(size_t)at+8);root=fd_be64(b.p+(size_t)at+16);table=fd_be64(b.p+(size_t)at+24);
+    if(!nh_load(f,&b,pd)) { return false; } NH_NEED(nh_span(&b,0,40) && !xx_rt_memcmp(b.p,"bplist00",8));at=b.n-32;NH_NEED(nh_zero(&b,at,6));ow=b.p[(size_t)at+6];rw=b.p[(size_t)at+7];n=fd_be64(b.p+(size_t)at+8);root=fd_be64(b.p+(size_t)at+16);table=fd_be64(b.p+(size_t)at+24);
     NH_NEED((ow==1 || ow==2 || ow==4 || ow==8) && (rw==1 || rw==2 || rw==4 || rw==8) && n && n<=4093 && root<n && table>=8 && table<=b.n-32 && n*ow==b.n-32-table);
     offsets=(uint64_t *)xx_mem_alloc((size_t)n*sizeof(*offsets));NH_NEED(offsets);
     for(i=0;i<n;++i) {offsets[i]=pl_int(b.p+(size_t)(table+i*ow),ow);NH_NEED(offsets[i]>=8 && offsets[i]<table);for(j=0;j<i;++j) NH_NEED(offsets[j]!=offsets[i]);}

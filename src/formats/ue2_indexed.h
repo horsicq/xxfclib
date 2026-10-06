@@ -26,14 +26,14 @@ typedef struct ue2_index {
 typedef struct ue2_format { Abstractformat format; ue2_index *index; } ue2_format;
 typedef struct ue2_state { const ue2_index *index; size_t cursor; } ue2_state;
 
-static uint16_t ue2_u16(const uint8_t *p) {
+static XXFC_MAYBE_UNUSED uint16_t ue2_u16(const uint8_t *p) {
     return (uint16_t)((uint16_t)p[0] | (uint16_t)p[1] << 8);
 }
 static uint32_t ue2_u32(const uint8_t *p) {
     return (uint32_t)p[0] | (uint32_t)p[1] << 8 |
            (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24;
 }
-static uint64_t ue2_u64(const uint8_t *p) {
+static XXFC_MAYBE_UNUSED uint64_t ue2_u64(const uint8_t *p) {
     return (uint64_t)ue2_u32(p) | (uint64_t)ue2_u32(p + 4) << 32;
 }
 static bool ue2_range(int64_t total, int64_t offset, int64_t size) {
@@ -60,7 +60,7 @@ static void ue2_index_free(ue2_index *index) {
     xx_mem_free(index->members);
     xx_mem_free(index);
 }
-static bool ue2_add(ue2_index *index, const char *name, int64_t offset, int64_t size, uint64_t tag) {
+static XXFC_MAYBE_UNUSED bool ue2_add(ue2_index *index, const char *name, int64_t offset, int64_t size, uint64_t tag) {
     ue2_member *member;
     char *owned;
     if (!index || !name || !name[0] || index->count >= UE2_INDEX_LIMIT) return false;
@@ -214,7 +214,7 @@ static void ue2_destroy_format(Abstractformat *f) {
     ue2_index_free(((ue2_format *)f)->index); ((ue2_format *)f)->index = NULL;
     xx_format_cleanup_extra_parameters(f);
 }
-static bool ue2_accept(Abstractformat *f, ue2_index *index) {
+static XXFC_MAYBE_UNUSED bool ue2_accept(Abstractformat *f, ue2_index *index) {
     if (!index) return false;
     ue2_index_free(((ue2_format *)f)->index); ((ue2_format *)f)->index = index;
     f->format_size = index->size; f->number_of_archive_records = index->count;

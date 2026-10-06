@@ -11,12 +11,12 @@ static bool pa_unicode(const uint8_t *b,uint32_t z) {uint32_t i;for(i=0;i<z;++i)
 static bool tb_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  uint64_t p=10,start,vm,end,total=0;uint32_t count,i,j,k;count=pm_be32(b+6);if(!count||count>4094||!tb_emit(f,s,"descriptor.pat",0,10,n))return false;
  for(i=0;i<count;++i){uint32_t mode,chars,channels;uint16_t h,w;unsigned colors,written=0;uint8_t id;start=p;
-  if(tb_stop(pd)||!tb_span(p,16,n)||pm_be32(b+p)!=1)return false;mode=pm_be32(b+p+4);h=pm_be16(b+p+8);w=pm_be16(b+p+10);chars=pm_be32(b+p+12);p+=16;
-  if((mode!=1&&mode!=3)||!h||!w||w>16384||h>16384||chars>4096||(uint64_t)w*h>8388608||total+(uint64_t)w*h>16777216||!tb_span(p,(uint64_t)chars*2+1,n)||!pa_unicode(b+p,chars))return false;total+=(uint64_t)w*h;p+=(uint64_t)chars*2;id=b[p++];if(!id||!tb_span(p,id+8U,n)||!tb_utf(b+p,id-(b[p+id-1]==0),false,pd))return false;p+=id;
+  if(tb_stop(pd)||!tb_span(p,16,n)||pm_be32(b+p)!=1) {return false; } mode=pm_be32(b+p+4);h=pm_be16(b+p+8);w=pm_be16(b+p+10);chars=pm_be32(b+p+12);p+=16;
+  if((mode!=1&&mode!=3)||!h||!w||w>16384||h>16384||chars>4096||(uint64_t)w*h>8388608||total+(uint64_t)w*h>16777216||!tb_span(p,(uint64_t)chars*2+1,n)||!pa_unicode(b+p,chars)) {return false; } total+=(uint64_t)w*h;p+=(uint64_t)chars*2;id=b[p++];if(!id||!tb_span(p,id+8U,n)||!tb_utf(b+p,id-(b[p+id-1]==0),false,pd))return false;p+=id;
   vm=p;if(pm_be32(b+p)!=3||!tb_span(p+8,pm_be32(b+p+4),n)||pm_be32(b+p+4)<20)return false;end=p+8+pm_be32(b+p+4);p+=8;
-  if(pm_be32(b+p)||pm_be32(b+p+4)||pm_be32(b+p+8)!=h||pm_be32(b+p+12)!=w)return false;channels=pm_be32(b+p+16);p+=20;if(channels>64)return false;colors=mode==3?3:1;
+  if(pm_be32(b+p)||pm_be32(b+p+4)||pm_be32(b+p+8)!=h||pm_be32(b+p+12)!=w) {return false; } channels=pm_be32(b+p+16);p+=20;if(channels>64)return false;colors=mode==3?3:1;
   for(j=0;j<channels+2;++j){uint32_t present,z;uint64_t finish;if(!tb_span(p,4,end))return false;present=pm_be32(b+p);p+=4;if(present>1)return false;if(!present){if(j<colors)return false;continue;}
-   if(!tb_span(p,4,end))return false;z=pm_be32(b+p);p+=4;finish=p+z;if(z<23||!tb_span(p,z,end)||pm_be32(b+p)!=8||pm_be32(b+p+4)||pm_be32(b+p+8)||pm_be32(b+p+12)!=h||pm_be32(b+p+16)!=w||pm_be16(b+p+20)!=8||b[p+22]>1)return false;
+   if(!tb_span(p,4,end)) {return false; } z=pm_be32(b+p);p+=4;finish=p+z;if(z<23||!tb_span(p,z,end)||pm_be32(b+p)!=8||pm_be32(b+p+4)||pm_be32(b+p+8)||pm_be32(b+p+12)!=h||pm_be32(b+p+16)!=w||pm_be16(b+p+20)!=8||b[p+22]>1)return false;
    if(b[p+22]==0){if(z-23!=(uint64_t)w*h)return false;p=finish;}
    else{uint64_t rows=p+23,data=rows+(uint64_t)h*2;if(!tb_span(rows,(uint64_t)h*2,finish))return false;for(k=0;k<h;++k){uint32_t row=pm_be16(b+rows+k*2);if(!tb_span(data,row,finish)||!pa_pack(b+data,row,w,pd))return false;data+=row;}if(data!=finish)return false;p=finish;}++written;
   }if(p!=end||written<colors||!tb_emit(f,s,"pattern.pat",start,p-start,n))return false;(void)vm;

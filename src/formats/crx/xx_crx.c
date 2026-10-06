@@ -39,7 +39,7 @@ static bool crx_proto(const uint8_t *p,size_t n,unsigned mode,xx_pd_struct *pd) 
         else if(wire==1) { if(n-at<8) return false; at+=8; }
         else if(wire==5) { if(n-at<4) return false; at+=4; }
         else if(wire==2) {
-            if(!crx_varint(p,n,&at,&length) || length>n-at) return false; data=at; at+=(size_t)length;
+            if(!crx_varint(p,n,&at,&length) || length>n-at) { return false; } data=at; at+=(size_t)length;
             if(mode==0 && (field==2 || field==3)) { if(!crx_proto(p+data,(size_t)length,1,pd)) return false; first=true; }
             else if(mode==0 && field==10000) { if(second || !crx_proto(p+data,(size_t)length,2,pd)) return false; second=true; }
             else if(mode==1 && field==1) { if(first || !length) return false; first=true; }
@@ -83,7 +83,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     s->size=at+length; ok=true;
 done:
     if(records) xx_zip_free_archive_records_reading(xx_zip_to_format(zip),records);
-    if(zip) xx_zip_free(zip); if(view) xx_io_close(view); if(header) xx_mem_free(header);
+    if(zip) { xx_zip_free(zip); } if(view) xx_io_close(view); if(header) xx_mem_free(header);
     return ok && (!pd || !xx_pd_is_stopped(pd));
 }
 

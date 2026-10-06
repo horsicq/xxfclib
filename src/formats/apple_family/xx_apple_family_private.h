@@ -37,15 +37,15 @@ static bool af_read(af_work *w,int64_t at,void *p,size_t n) {
         done+=part; }
     return af_poll(w);
 }
-static bool af_load(af_work *w,af_blob *b) {
+static XXFC_MAYBE_UNUSED bool af_load(af_work *w,af_blob *b) {
     int64_t n=pm_available(w->f); xx_mem_zero(b,sizeof(*b));
     if(n<0 || n>AF_INPUT_MAX || !(b->p=af_alloc(w,(uint64_t)n,false))) return false;
     b->n=(uint32_t)n;
     if(!af_read(w,0,b->p,b->n)) { af_release(w,b->p,b->n); b->p=NULL; return false; } return true;
 }
-static bool af_range(const af_blob *b,uint64_t at,uint64_t n) { return at<=b->n && n<=b->n-at; }
-static bool af_zero(const uint8_t *p,size_t n) { size_t i; for(i=0;i<n;++i)if(p[i])return false;return true; }
-static uint16_t af_crc16(af_work *w,const uint8_t *p,size_t n,uint16_t crc) {
+static XXFC_MAYBE_UNUSED bool af_range(const af_blob *b,uint64_t at,uint64_t n) { return at<=b->n && n<=b->n-at; }
+static XXFC_MAYBE_UNUSED bool af_zero(const uint8_t *p,size_t n) { size_t i; for(i=0;i<n;++i)if(p[i])return false;return true; }
+static XXFC_MAYBE_UNUSED uint16_t af_crc16(af_work *w,const uint8_t *p,size_t n,uint16_t crc) {
     size_t i;unsigned bit;
     for(i=0;i<n;++i) { if(!(i&4095U) && !af_poll(w))return 0U;
         crc^=(uint16_t)p[i]<<8U; for(bit=0;bit<8;++bit)crc=(uint16_t)((crc<<1U)^((crc&0x8000U)?0x1021U:0U)); }
@@ -64,25 +64,25 @@ static bool af_safe(const char *name) {
             upper[i]=0;
             if(!xx_rt_strcmp(upper,"CON") || !xx_rt_strcmp(upper,"PRN") || !xx_rt_strcmp(upper,"AUX") || !xx_rt_strcmp(upper,"NUL") ||
                (i==4U && (!xx_rt_memcmp(upper,"COM",3) || !xx_rt_memcmp(upper,"LPT",3)) && upper[3]>='1' && upper[3]<='9'))return false;
-            if(!c)return true;part=p+1;
+            if(!c) {return true; } part=p+1;
         } else if(c<32U || c>126U || c=='\\' || c==':' || c=='<' || c=='>' || c=='"' || c=='|' || c=='?' || c=='*')return false;
     }
 }
-static bool af_name(char *name,size_t capacity,const uint8_t *bytes,size_t n,bool high) {
+static XXFC_MAYBE_UNUSED bool af_name(char *name,size_t capacity,const uint8_t *bytes,size_t n,bool high) {
     size_t i;while(n && (!bytes[n-1U] || (bytes[n-1U]&0x7fU)==' '))--n;
     if(!n || n>=capacity)return false;
     for(i=0;i<n;++i) { uint8_t c=high ? bytes[i]&0x7fU:bytes[i];
-        if(c<32U || c>126U)return false;name[i]=(char)c; }
+        if(c<32U || c>126U) {return false; } name[i]=(char)c; }
     name[n]=0;return af_safe(name);
 }
 /* Reversible leaf encoding: a source slash is a filename byte, never a host
  * path separator. Tilde itself is quoted, so encodings cannot collide. */
-static bool af_leaf(char *out,size_t cap,const uint8_t *p,size_t n) {
+static XXFC_MAYBE_UNUSED bool af_leaf(char *out,size_t cap,const uint8_t *p,size_t n) {
     static const char hex[]="0123456789ABCDEF";size_t i,at=0;
     if(!n)return false;
     for(i=0;i<n;++i){uint8_t c=p[i];if(!c)return false;
         if(c>=33U && c<=126U && c!='~' && c!='/' && c!='\\' && c!=':' && c!='<' && c!='>' && c!='"' && c!='|' && c!='?' && c!='*' && c!='.'){
-            if(at+1U>=cap)return false;out[at++]=(char)c;
+            if(at+1U>=cap) {return false; } out[at++]=(char)c;
         }else{if(at+3U>=cap)return false;out[at++]='~';out[at++]=hex[c>>4];out[at++]=hex[c&15];}}
     out[at]=0;
     if(!af_safe(out)){uint8_t c=(uint8_t)out[0];if(at+2U>=cap)return false;xx_rt_memmove(out+3,out+1,at);out[0]='~';out[1]=hex[c>>4];out[2]=hex[c&15];}
@@ -101,7 +101,7 @@ static bool af_add(af_work *w,const char *name,int64_t at,uint64_t n,uint8_t *ow
     if(owned) { m->memory=owned;m->size=(int64_t)n;m->packed_size=0;m->offset=-1; }
     return true;
 }
-static bool af_copy(af_work *w,const char *name,const uint8_t *p,uint64_t n) {
+static XXFC_MAYBE_UNUSED bool af_copy(af_work *w,const char *name,const uint8_t *p,uint64_t n) {
     uint8_t *out=af_alloc(w,n,true); if(!out)return false;if(n)xx_rt_memcpy(out,p,(size_t)n);
     if(!af_add(w,name,0,n,out)) { af_release(w,out,n);return false; }return true;
 }
@@ -126,7 +126,7 @@ done:if(xx_io_seek64(f->device,saved,SEEK_SET)!=0)ok=false;return ok;
 }
 static xx_archive_record_state *af_records(Abstractformat *f,const xx_list_s *options,xx_pd_struct *pd) {
     xx_apple_family_info *r=(xx_apple_family_info *)f;const xx_list_s *old;xx_archive_record_state *st;
-    if(!f)return NULL;old=r->parse_options;r->parse_options=options;st=pm_create_records(f,options,pd);r->parse_options=old;return st;
+    if(!f) {return NULL; } old=r->parse_options;r->parse_options=options;st=pm_create_records(f,options,pd);r->parse_options=old;return st;
 }
 static const xx_archive_record *af_current(Abstractformat *f,xx_archive_record_state *st) {
     const xx_archive_record *r=pm_current(f,st);xx_apple_family_info *info=(xx_apple_family_info *)f;
@@ -134,7 +134,7 @@ static const xx_archive_record *af_current(Abstractformat *f,xx_archive_record_s
         if(!xx_archive_record_set_meta_bool(&st->current_record,XX_META_ID_IS_FOLDER,true) ||
            !xx_archive_record_set_meta_u64(&st->current_record,XX_META_ID_COMPRESSION_METHOD,0U))return NULL;
     }
-    if(r && info->note && !xx_archive_record_set_meta_str(&st->current_record,XX_META_ID_COMMENT,info->note))return NULL;return r;
+    if(r && info->note && !xx_archive_record_set_meta_str(&st->current_record,XX_META_ID_COMMENT,info->note)) {return NULL; } return r;
 }
 static bool af_unpack(Abstractformat *f,xx_archive_record_state *st,xx_pd_struct *pd) {
     const xx_var *v;pm_stream *s;pm_member *m;

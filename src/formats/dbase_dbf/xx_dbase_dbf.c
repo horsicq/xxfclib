@@ -8,7 +8,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(!pm_read(f,0,h,32) || h[0]!=3 || h[2]<1 || h[2]>12 || h[3]<1 || h[3]>31 || h[14] || h[15] || (records=pm_le32(h+4))>65534 || !(row=pm_le16(h+10)) || (header=pm_le16(h+8))<65 || (header-33)%32) return false;
     fields=(header-33)/32; if(fields>1024) return false;
     for(i=0;i<fields;++i) { unsigned j,k; if(fd_stop(pd) || !pm_read(f,32+i*32,d,32) || !d[0] || !d[16] || d[17]>=d[16]) return false;
-        for(j=0;j<11 && d[j];++j) if(d[j]<32 || d[j]>126) return false; if(j==11) return false;
+        for(j=0;j<11 && d[j];++j) { if(d[j]<32 || d[j]>126) return false; } if(j==11) return false;
         xx_mem_zero(names[i],12); xx_rt_memcpy(names[i],d,j);
         for(k=0;k<i;++k) if(!xx_rt_strcmp(names[k],names[i])) return false;
         if(d[11]!='C' && d[11]!='N' && d[11]!='F' && d[11]!='D' && d[11]!='L') return false;

@@ -81,12 +81,12 @@ static bool es_at(Abstractformat *f,pm_stream *s,int64_t base,xx_pd_struct *pd) 
         if(!pm_add(f,s,label,base,0)){xx_mem_free(data);goto done;}
         s->items[s->count-1].size=bytes;s->items[s->count-1].memory=data;
     }
-    if(position!=stream_size)goto done;s->size=limit;ok=true;
+    if(position!=stream_size) {goto done; } s->size=limit;ok=true;
 done:xx_mem_free(packed);xx_mem_free(dir);xx_mem_free(body);xx_mem_free(plain);xx_mem_free(prefix);xx_mem_free(paths);return ok;
 }
 static bool w5_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { uint8_t h[4],*scan; size_t n,i; int64_t low,limit=pm_available(f); unsigned tries=0;
-    if(!pm_read(f,0,h,4)) return false; if(!xx_rt_memcmp(h,"ESP>",4)) return es_at(f,s,0,pd);
-    if(!w5_carrier(f,false,&low,pd) || h[0]!='M') return false; n=limit-low>16777216 ? 16777216U : (size_t)(limit-low); scan=(uint8_t *)xx_mem_alloc(n);
+    if(!pm_read(f,0,h,4)) { return false; } if(!xx_rt_memcmp(h,"ESP>",4)) return es_at(f,s,0,pd);
+    if(!w5_carrier(f,false,&low,pd) || h[0]!='M') { return false; } n=limit-low>16777216 ? 16777216U : (size_t)(limit-low); scan=(uint8_t *)xx_mem_alloc(n);
     if(!scan || !pm_read(f,low,scan,n)) { if(scan) xx_mem_free(scan); return false; }
     for(i=0;i+10<=n;++i) { if((i&4095U)==0 && wg_stop(pd)) break; if(xx_rt_memcmp(scan+i,"ESP>",4)) continue; if(++tries>128) break;
         if(es_at(f,s,low+(int64_t)i,pd)) { xx_mem_free(scan); return true; } if(s->count) break;

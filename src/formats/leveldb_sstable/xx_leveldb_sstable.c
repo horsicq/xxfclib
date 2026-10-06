@@ -20,7 +20,7 @@ static bool tb_block(Abstractformat *f,pm_stream *s,nh_blob *b,tb_handle h,unsig
         if(mode==1) {uint64_t p=start;if(*count>=1024 || !th_var(b,&p,at,&handles[*count].at) || !th_var(b,&p,at,&handles[*count].n) || p!=at) goto done;++*count;}
         else {owned=(uint8_t *)xx_mem_alloc((size_t)(keylen ? keylen:1));if(!owned) goto done;xx_rt_memcpy(owned,key,(size_t)keylen);if(!th_mem(f,s,"key",&owned,keylen) || !nh_add(f,s,b,"value",start,value)) goto done;}
     }
-    if(at!=restart || (at==h.at ? nr!=1 || pm_le32(b->p+(size_t)restart)!=0:r!=nr)) goto done;ok=true;
+    if(at!=restart || (at==h.at ? nr!=1 || pm_le32(b->p+(size_t)restart)!=0:r!=nr)) { goto done; } ok=true;
 done:if(key) xx_mem_free(key);if(owned) xx_mem_free(owned);return ok;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {

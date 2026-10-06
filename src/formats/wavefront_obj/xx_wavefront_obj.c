@@ -27,13 +27,13 @@ static bool eg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
      if(q.t<q.stop&&b[q.t]=='/'){++q.t;if(!obj_ref(&q,normals,&ti))return false;st+=2;}else if(st==1)return false;}
     if(q.t<q.stop&&b[q.t]!=32&&b[q.t]!=9&&b[q.t]!='#')return false;
     if(style<0)style=st;else if(style!=st)return false;for(i=0;i<count;++i)if(used[i]==vi)return false;used[count++]=vi;}
-   if(count<3||++faces>1000000)return false;kind=4;}
+   if(count<3||++faces>1000000) {return false; } kind=4;}
   else if(eg_word(&q,"s")){int32_t smooth;if(eg_word(&q,"off")){if(!eg_done(&q))return false;}else if(!eg_i(&q,&smooth)||smooth<0||!eg_done(&q))return false;}
   else if(eg_word(&q,"o")||eg_word(&q,"g")||eg_word(&q,"usemtl")||eg_word(&q,"mtllib")){eg_space(&q);if(q.stop-q.t>4096)return false;q.t=q.stop;}
   else return false;
   if(!first&&kind!=last){if(!eg_emit(f,s,names[last],section,q.start-section,n))return false;section=q.start;}first=false;last=kind;
  }
- if(vertices<3||!faces||!eg_emit(f,s,names[last],section,n-section,n))return false;s->size=(int64_t)n;return true;
+ if(vertices<3||!faces||!eg_emit(f,s,names[last],section,n-section,n)) {return false; } s->size=(int64_t)n;return true;
 }
 
 void xx_wavefront_obj_init(xx_wavefront_obj *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_WAVEFRONT_OBJ,"obj");}}

@@ -86,8 +86,7 @@ static bool xx_gashuff_decode_stream(Abstractformat *self,
     input = (uint8_t *)xx_mem_alloc((size_t)input_size);
     if (!input || !xx_gashuff_read_exact_at(self->device, self->base_address,
                                              input, (size_t)input_size) ||
-        !xx_gashuff_parse_memory(input, (size_t)input_size, &info) ||
-        (uint64_t)info.uncompressed_size > (uint64_t)SIZE_MAX) {
+        !xx_gashuff_parse_memory(input, (size_t)input_size, &info)) {
         goto cleanup;
     }
     output = (uint8_t *)xx_mem_alloc((size_t)info.uncompressed_size);

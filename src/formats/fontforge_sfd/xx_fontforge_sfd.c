@@ -22,7 +22,7 @@ static bool fg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  }
  if(!header||required!=7||!fg_emit(f,s,"font-descriptor.sfd",0,header,n)||!fg_ids_init(&ids,(uint32_t)count))return false;
  for(i=0;i<count;++i){uint64_t start;bool encoding=false,width=false,program=false,move=false,explicit_open=false;char label[48];
- if(!fg_next(&q)||!fg_sfd_field(&q,"StartChar")||!fg_sfd_string(&q))goto done;start=q.start;
+ if(!fg_next(&q)||!fg_sfd_field(&q,"StartChar")||!fg_sfd_string(&q)) {goto done; } start=q.start;
  while(fg_next(&q)){if(fg_stop(pd))goto done;
  if(fg_word(&q,"EndChar")){if(!fg_done(&q)||!encoding||!width||program)goto done;break;}
  if(fg_sfd_field(&q,"Encoding")){int32_t unicode;if(encoding||!fg_i(&q,&value)||value<0||value>=slots||!fg_id(&ids,(uint32_t)value+1,true,pd)||!fg_i(&q,&unicode)||unicode<-1||unicode>1114111||!fg_done(&q))goto done;encoding=true;}
@@ -33,9 +33,9 @@ static bool fg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  else if(fg_word(&q,"EndSplineSet")){if(!program||!move||!fg_done(&q))goto done;program=false;any=true;}
  else {double xy[6];unsigned k=0;uint8_t command;if(!program)goto done;while(k<6&&fg_num(&q,&xy[k]))++k;fg_space(&q);if(q.t==q.stop)goto done;command=b[q.t++];if((command=='m'||command=='l')&&k!=2)goto done;if(command=='c'&&k!=6)goto done;if(command!='m'&&command!='l'&&command!='c')goto done;if(command!='m'&&!move)goto done;if(command=='m')move=true;if(!fg_i(&q,&value)||value<0||value>65535||!fg_done(&q))goto done;}
  }
- if(program)goto done;xx_rt_snprintf(label,sizeof(label),"glyph-%u.sfd",(unsigned)i);if(!fg_emit(f,s,label,start,q.p-start,n))goto done;
+ if(program) {goto done; } xx_rt_snprintf(label,sizeof(label),"glyph-%u.sfd",(unsigned)i);if(!fg_emit(f,s,label,start,q.p-start,n))goto done;
  }
- if(!any||!fg_next(&q)||!fg_word(&q,"EndChars")||!fg_done(&q)||!fg_next(&q)||!fg_word(&q,"EndSplineFont")||!fg_done(&q)||!fg_emit(f,s,"terminator.sfd",q.start,q.p-q.start,n)||fg_next(&q)||q.p!=q.end||!fg_cover(f,s,"whitespace.sfd",n))goto done;ok=true;
+ if(!any||!fg_next(&q)||!fg_word(&q,"EndChars")||!fg_done(&q)||!fg_next(&q)||!fg_word(&q,"EndSplineFont")||!fg_done(&q)||!fg_emit(f,s,"terminator.sfd",q.start,q.p-q.start,n)||fg_next(&q)||q.p!=q.end||!fg_cover(f,s,"whitespace.sfd",n)) {goto done; } ok=true;
 done:xx_mem_free(ids.values);return ok;
 }
 

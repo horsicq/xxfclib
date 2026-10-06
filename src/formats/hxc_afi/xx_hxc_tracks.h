@@ -21,7 +21,7 @@ static bool hx_limit(Abstractformat *f,uint32_t id,uint64_t n){const xx_var *v=x
  return n<=limit;
 }
 static uint8_t *hx_alloc(Abstractformat *f,hx_blob *b,size_t n){if(!hx_poll(b)||n>HX_MAX_OUTPUT-b->output||!hx_limit(f,XX_META_ID_OPT_MAX_MEMBER_SIZE,n)||!hx_limit(f,XX_META_ID_OPT_MEMORY_LIMIT,b->n+b->output+(n?n:1U)))return NULL;return (uint8_t *)xx_mem_alloc(n?n:1U);}
-static bool hx_load(Abstractformat *f,hx_blob *b,xx_pd_struct *pd) {
+static XXFC_MAYBE_UNUSED bool hx_load(Abstractformat *f,hx_blob *b,xx_pd_struct *pd) {
  int64_t n=pm_available(f);uint64_t a=0;
  xx_mem_zero(b,sizeof(*b));b->pd=pd;
  if(n<1 || n>HX_MAX_FILE || !hx_poll(b))return false;
@@ -33,24 +33,24 @@ static bool hx_load(Abstractformat *f,hx_blob *b,xx_pd_struct *pd) {
  while(a<b->n){size_t z=(size_t)(b->n-a>65536U?65536U:b->n-a);if(!hx_poll(b)||!pm_read(f,(int64_t)a,b->p+a,z)){xx_mem_free(b->p);b->p=NULL;return false;}a+=z;}
  return true;
 }
-static bool hx_tag(hx_blob *b,uint64_t a,const char *p,size_t n) {return hx_span(b,a,n)&&!xx_rt_memcmp(b->p+a,p,n);}
-static bool hx_zero(hx_blob *b,uint64_t a,uint64_t n) {uint64_t i;if(!hx_span(b,a,n)||!hx_work(b,n))return false;for(i=0;i<n;++i){if(!(i&4095U)&&!hx_poll(b))return false;if(b->p[a+i])return false;}return true;}
-static bool hx_emit(Abstractformat *f,pm_stream *s,hx_blob *b,const char *name,uint64_t a,uint64_t n) {return s->count<4096U&&hx_span(b,a,n)&&hx_limit(f,XX_META_ID_OPT_MAX_MEMBER_SIZE,n)&&pm_add(f,s,name,(int64_t)a,(int64_t)n);}
+static XXFC_MAYBE_UNUSED bool hx_tag(hx_blob *b,uint64_t a,const char *p,size_t n) {return hx_span(b,a,n)&&!xx_rt_memcmp(b->p+a,p,n);}
+static XXFC_MAYBE_UNUSED bool hx_zero(hx_blob *b,uint64_t a,uint64_t n) {uint64_t i;if(!hx_span(b,a,n)||!hx_work(b,n))return false;for(i=0;i<n;++i){if(!(i&4095U)&&!hx_poll(b))return false;if(b->p[a+i])return false;}return true;}
+static XXFC_MAYBE_UNUSED bool hx_emit(Abstractformat *f,pm_stream *s,hx_blob *b,const char *name,uint64_t a,uint64_t n) {return s->count<4096U&&hx_span(b,a,n)&&hx_limit(f,XX_META_ID_OPT_MAX_MEMBER_SIZE,n)&&pm_add(f,s,name,(int64_t)a,(int64_t)n);}
 static bool hx_owned(Abstractformat *f,pm_stream *s,hx_blob *b,const char *name,uint8_t *p,size_t n) {
  if(!p||!hx_poll(b)||n>HX_MAX_OUTPUT-b->output||!hx_limit(f,XX_META_ID_OPT_MAX_MEMBER_SIZE,n)||!hx_limit(f,XX_META_ID_OPT_MEMORY_LIMIT,b->n+b->output+(n?n:1U))||s->count>=4096U||!pm_add(f,s,name,0,0))return false;
  b->output+=n;s->items[s->count-1U].memory=p;s->items[s->count-1U].size=(int64_t)n;return true;
 }
-static bool hx_text(Abstractformat *f,pm_stream *s,hx_blob *b,const char *text) {size_t n=xx_rt_strlen(text);uint8_t *p=hx_alloc(f,b,n);if(!p)return false;xx_rt_memcpy(p,text,n);if(!hx_owned(f,s,b,"container-info.txt",p,n)){xx_mem_free(p);return false;}return true;}
-static bool hx_claim(hx_blob *b,hx_range *r,unsigned *count,uint64_t at,uint64_t n) {
+static XXFC_MAYBE_UNUSED bool hx_text(Abstractformat *f,pm_stream *s,hx_blob *b,const char *text) {size_t n=xx_rt_strlen(text);uint8_t *p=hx_alloc(f,b,n);if(!p)return false;xx_rt_memcpy(p,text,n);if(!hx_owned(f,s,b,"container-info.txt",p,n)){xx_mem_free(p);return false;}return true;}
+static XXFC_MAYBE_UNUSED bool hx_claim(hx_blob *b,hx_range *r,unsigned *count,uint64_t at,uint64_t n) {
  unsigned i;if(!n||*count>=4096U||!hx_span(b,at,n))return false;
  for(i=0;i<*count;++i){if(!hx_work(b,1)|| (at<r[i].at+r[i].n&&r[i].at<at+n))return false;}
  r[*count].at=at;r[(*count)++].n=n;return true;
 }
-static uint16_t hx_crc16(const uint8_t *p,size_t n) {uint16_t c=0xffffU;size_t i;unsigned k;for(i=0;i<n;++i){c^=(uint16_t)p[i]<<8;for(k=0;k<8;++k)c=(uint16_t)((c<<1)^((c&0x8000U)?0x1021U:0));}return c;}
-static bool hx_ccitt(hx_blob *b,uint64_t a,uint64_t n) {uint64_t i;uint16_t c=0xffffU;unsigned k;if(!hx_span(b,a,n)||!hx_work(b,n))return false;for(i=0;i<n;++i){if(!(i&4095U)&&!hx_poll(b))return false;c^=(uint16_t)b->p[a+i]<<8;for(k=0;k<8;++k)c=(uint16_t)((c<<1)^((c&0x8000U)?0x1021U:0));}return c==0;}
+static XXFC_MAYBE_UNUSED uint16_t hx_crc16(const uint8_t *p,size_t n) {uint16_t c=0xffffU;size_t i;unsigned k;for(i=0;i<n;++i){c^=(uint16_t)p[i]<<8;for(k=0;k<8;++k)c=(uint16_t)((c<<1)^((c&0x8000U)?0x1021U:0));}return c;}
+static XXFC_MAYBE_UNUSED bool hx_ccitt(hx_blob *b,uint64_t a,uint64_t n) {uint64_t i;uint16_t c=0xffffU;unsigned k;if(!hx_span(b,a,n)||!hx_work(b,n))return false;for(i=0;i<n;++i){if(!(i&4095U)&&!hx_poll(b))return false;c^=(uint16_t)b->p[a+i]<<8;for(k=0;k<8;++k)c=(uint16_t)((c<<1)^((c&0x8000U)?0x1021U:0));}return c==0;}
 /* Pauline calls IEEE CRC-32 with the public initial value 0xffffffff.
  * Its complemented API therefore starts the internal remainder at zero. */
-static bool hx_pauline_crc(hx_blob *b,uint64_t a,uint64_t n,uint32_t expected) {uint64_t i;uint32_t c=0;unsigned k;if(!hx_span(b,a,n)||!hx_work(b,n))return false;for(i=0;i<n;++i){if(!(i&4095U)&&!hx_poll(b))return false;c^=b->p[a+i];for(k=0;k<8;++k)c=(c>>1)^((c&1U)?0xedb88320U:0);}return (c^0xffffffffU)==expected;}
+static XXFC_MAYBE_UNUSED bool hx_pauline_crc(hx_blob *b,uint64_t a,uint64_t n,uint32_t expected) {uint64_t i;uint32_t c=0;unsigned k;if(!hx_span(b,a,n)||!hx_work(b,n))return false;for(i=0;i<n;++i){if(!(i&4095U)&&!hx_poll(b))return false;c^=b->p[a+i];for(k=0;k<8;++k)c=(c>>1)^((c&1U)?0xedb88320U:0);}return (c^0xffffffffU)==expected;}
 typedef struct hx_sink {uint8_t *p;size_t n,cap;xx_pd_struct *pd;} hx_sink;
 static ssize_t hx_sink_write(xx_io_device *d,const void *p,size_t n) {hx_sink *s=(hx_sink *)d->priv;if(!s||(s->pd&&xx_pd_is_stopped(s->pd))||n>s->cap-s->n)return -1;xx_rt_memcpy(s->p+s->n,p,n);s->n+=n;return (ssize_t)n;}
 static bool hx_zlib(hx_blob *b,const uint8_t *p,size_t n,uint8_t *out,size_t plain) {
@@ -61,20 +61,20 @@ static bool hx_zlib(hx_blob *b,const uint8_t *p,size_t n,uint8_t *out,size_t pla
  for(i=0;i<plain;++i){if(!(i&4095U)&&!hx_poll(b))return false;a=(a+out[i])%65521U;c=(c+a)%65521U;}
  return ((c<<16)|a)==pm_be32(p+n-4U);
 }
-static bool hx_decode(Abstractformat *f,pm_stream *s,hx_blob *b,const char *name,uint64_t a,uint32_t packed,uint32_t plain,bool lz4) {
+static XXFC_MAYBE_UNUSED bool hx_decode(Abstractformat *f,pm_stream *s,hx_blob *b,const char *name,uint64_t a,uint32_t packed,uint32_t plain,bool lz4) {
  uint8_t *out;size_t written=0;bool ok;
  if(!packed||!hx_span(b,a,packed)||plain>HX_MAX_OUTPUT-b->output||(uint64_t)plain>(uint64_t)packed*1024U||!hx_work(b,plain))return false;
  out=hx_alloc(f,b,plain);if(!out)return false;
  ok=lz4?(xx_lz4_decompress_block(b->p+a,packed,out,plain,&written)&&written==plain):hx_zlib(b,b->p+a,packed,out,plain);
  if(!ok||!hx_owned(f,s,b,name,out,plain)){xx_mem_free(out);return false;}return true;
 }
-static void hx_put32(uint8_t *p,uint32_t n){p[0]=(uint8_t)n;p[1]=(uint8_t)(n>>8);p[2]=(uint8_t)(n>>16);p[3]=(uint8_t)(n>>24);}
+static XXFC_MAYBE_UNUSED void hx_put32(uint8_t *p,uint32_t n){p[0]=(uint8_t)n;p[1]=(uint8_t)(n>>8);p[2]=(uint8_t)(n>>16);p[3]=(uint8_t)(n>>24);}
 /* Parsing operation limits never mutates the persistent reader. The parsers
  * use only device/base and resolved budgets, so a private format snapshot can
  * safely carry the two effective options into pm_open. Published iterator
  * dispatch always points back to the caller's original format. */
-static xx_archive_record_state *hx_records(Abstractformat *f,const xx_list_s *opts,xx_pd_struct *pd){Abstractformat parse;xx_archive_record_state *st=NULL;unsigned i;const uint32_t ids[]={XX_META_ID_OPT_MEMORY_LIMIT,XX_META_ID_OPT_MAX_MEMBER_SIZE};
- if(!f)return NULL;xx_format_init(&parse,f->device,f->base_address);parse.file_type=f->file_type;
+static XXFC_MAYBE_UNUSED xx_archive_record_state *hx_records(Abstractformat *f,const xx_list_s *opts,xx_pd_struct *pd){Abstractformat parse;xx_archive_record_state *st=NULL;unsigned i;const uint32_t ids[]={XX_META_ID_OPT_MEMORY_LIMIT,XX_META_ID_OPT_MAX_MEMBER_SIZE};
+ if(!f) {return NULL; } xx_format_init(&parse,f->device,f->base_address);parse.file_type=f->file_type;
  for(i=0;i<2;++i){const xx_var *v=xx_format_resolve_extra_parameter(f,opts,ids[i]);if(v&&!xx_format_set_extra_parameter(&parse,ids[i],v))goto done;}
  st=pm_create_records(&parse,opts,pd);if(st)st->format=f;
 done:xx_format_cleanup_extra_parameters(&parse);return st;

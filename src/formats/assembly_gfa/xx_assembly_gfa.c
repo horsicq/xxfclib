@@ -6,9 +6,9 @@ typedef struct gfa_edge {el_token from,to;uint64_t overlap;} gfa_edge;
 static bool gfa_overlap(nh_blob *b,el_token t,uint64_t *overlap) {if(t.n<2 || b->p[(size_t)(t.at+t.n-1)]!='M') return false;return el_uint(b,el_slice(t,0,t.n-1),overlap) && *overlap<=F14_MAX_SEQUENCE;}
 static bool gfa_tags(nh_blob *b,el_token *t,unsigned begin,unsigned n,uint64_t sequence) {
     unsigned i,j;for(i=begin;i<n;++i) {el_token value;unsigned a,z,type;uint64_t k;
-        if(t[i].n<6 || b->p[(size_t)(t[i].at+2)]!=':' || b->p[(size_t)(t[i].at+4)]!=':') return false;a=b->p[(size_t)t[i].at];z=b->p[(size_t)(t[i].at+1)];type=b->p[(size_t)(t[i].at+3)];
+        if(t[i].n<6 || b->p[(size_t)(t[i].at+2)]!=':' || b->p[(size_t)(t[i].at+4)]!=':') { return false; } a=b->p[(size_t)t[i].at];z=b->p[(size_t)(t[i].at+1)];type=b->p[(size_t)(t[i].at+3)];
         if(!((a>='A' && a<='Z') || (a>='a' && a<='z')) || !((z>='A' && z<='Z') || (z>='a' && z<='z') || (z>='0' && z<='9'))) return false;
-        for(j=begin;j<i;++j) if(b->p[(size_t)t[j].at]==a && b->p[(size_t)(t[j].at+1)]==z) return false;value=el_slice(t[i],5,t[i].n-5);
+        for(j=begin;j<i;++j) { if(b->p[(size_t)t[j].at]==a && b->p[(size_t)(t[j].at+1)]==z) return false; } value=el_slice(t[i],5,t[i].n-5);
         if(a=='S' && z=='H') return false;
         if(a=='L' && z=='N') {uint64_t length;if(type!='i' || !el_uint(b,value,&length) || length!=sequence || !sequence) return false;}
         else if(type=='i') {if(!el_range(b,value,INT32_MAX+UINT64_C(1),INT32_MAX)) return false;}

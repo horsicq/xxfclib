@@ -214,7 +214,7 @@ static bool lh5_decode(const uint8_t *input, size_t input_size,
                 int distance_code = lh5_symbol(&reader, &position_tree);
                 unsigned base, extra = 0U;
                 size_t distance, index;
-                if (distance_code < 0 || distance_code > LH5_MAX_CODE_BITS ||
+                if (distance_code < 0 || (unsigned)distance_code > LH5_MAX_CODE_BITS ||
                     (distance_code > 0 &&
                      !lh5_get(&reader, (unsigned)distance_code - 1U, &extra)))
                     return false;
@@ -223,8 +223,8 @@ static bool lh5_decode(const uint8_t *input, size_t input_size,
                 distance = (size_t)base + extra + 1U;
                 if (distance > output_at || length > output_size - output_at)
                     return false;
-                for (index = 0U; index < length; ++index)
-                    output[output_at++] = output[output_at - distance];
+                for (index = 0U; index < length; ++index, ++output_at)
+                    output[output_at] = output[output_at - distance];
             }
         }
     }

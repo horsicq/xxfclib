@@ -11,7 +11,7 @@ static bool vg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  while(p<n-2){uint8_t c=b[p++];if(vg_stop(pd))goto done;if(c=='#'){if(!vg_six_num(b,&p,n-2,&color)||color>255)goto done;if(p<n-2&&b[p]==';'){uint32_t mode;++p;if(!vg_six_num(b,&p,n-2,&mode)||mode!=2)goto done;for(i=0;i<3;++i){if(p==n-2||b[p++]!=';'||!vg_six_num(b,&p,n-2,&values[i])||values[i]>100)goto done;palette[color][i]=(uint8_t)((values[i]*255+50)/100);}defined[color]=1;}}
  else if(c=='$')x=0;else if(c=='-'){if(y+6>=height)goto done;y+=6;x=0;}
  else {uint32_t repeat=1;unsigned mask,k;if(c=='!'){if(!vg_six_num(b,&p,n-2,&repeat)||!repeat||p==n-2)goto done;c=b[p++];}if(c<'?'||c>'~'||!defined[color]||repeat>width-x||(paint+=(uint64_t)repeat*6)>67108864)goto done;mask=c-'?';for(k=0;k<6;++k)if(mask&(1U<<k)){uint32_t j;if(y+k>=height)goto done;for(j=0;j<repeat;++j){uint64_t at=((y+k)*width+x+j)*3;xx_mem_copy(pixels+at,palette[color],3);}}x+=repeat;}}
- if(!paint||p!=n-2||!vg_emit(f,s,"descriptor.six",0,header,n)||!vg_emit(f,s,"raster-program.six",header,n-2-header,n)||!vg_emit(f,s,"terminator.six",n-2,2,n)||!vg_memory(f,s,"raster.rgb",pixels,z))goto done;pixels=NULL;ok=true;
+ if(!paint||p!=n-2||!vg_emit(f,s,"descriptor.six",0,header,n)||!vg_emit(f,s,"raster-program.six",header,n-2-header,n)||!vg_emit(f,s,"terminator.six",n-2,2,n)||!vg_memory(f,s,"raster.rgb",pixels,z)) {goto done; } pixels=NULL;ok=true;
 done:if(pixels)xx_mem_free(pixels);return ok;}
 
 void xx_dec_sixel_init(xx_dec_sixel *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_DEC_SIXEL,"six");}}

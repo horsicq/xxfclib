@@ -209,7 +209,7 @@ static bool xx_ftcomp_build(xx_ftcomp_huff *huff) {
     int32_t free_node, head = 0, alive, slot;
     uint32_t pattern;
 
-    while (index < XX_FTCOMP_LEAF_END) {
+    while (index < (int32_t)XX_FTCOMP_LEAF_END) {
         node[index + 1] = 0U;
         if (node[index] != 0U) {
             if (node[index] == 1U) {
@@ -259,7 +259,7 @@ static bool xx_ftcomp_build(xx_ftcomp_huff *huff) {
         }
         moved = insert - head - 1;
         if (insert < 1 || insert > count ||
-            free_node + 3 >= XX_FTCOMP_NODE_WORDS)
+            free_node + 3 >= (int32_t)XX_FTCOMP_NODE_WORDS)
             return false;
         if (moved > 0) {
             int32_t k;
@@ -274,7 +274,7 @@ static bool xx_ftcomp_build(xx_ftcomp_huff *huff) {
         node[second + 1] = (uint16_t)free_node;
         free_node += 4;
     }
-    if (free_node + 3 >= XX_FTCOMP_NODE_WORDS) return false;
+    if (free_node + 3 >= (int32_t)XX_FTCOMP_NODE_WORDS) return false;
     {
         uint16_t first = lut[head];
         uint16_t second = lut[head + 1];
@@ -288,7 +288,7 @@ static bool xx_ftcomp_build(xx_ftcomp_huff *huff) {
     }
     huff->root = (uint32_t)free_node;
     pattern = 0U;
-    for (slot = 0; slot < XX_FTCOMP_LUT_SIZE; ++slot) {
+    for (slot = 0; slot < (int32_t)XX_FTCOMP_LUT_SIZE; ++slot) {
         uint32_t walk = pattern, current = huff->root, reached = 0U;
         int32_t used = 0;
         for (;;) {

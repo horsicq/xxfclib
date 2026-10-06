@@ -29,7 +29,7 @@ static bool vh_read(vh_state *v,uint32_t sector,void *p,size_t n) {
     if(sector>=v->sectors || n>v->sectors*512-(uint64_t)sector*512) return false;
     while(done<n) { unsigned i; uint32_t physical=sector+(uint32_t)(done/512); size_t take=n-done<512?n-done:512;
         for(i=0;i<v->hot_count;++i) if(v->hot_from[i]==physical) { physical=v->hot_to[i]; break; }
-        if(!vr_poll(v->pd) || !pm_read(v->f,(int64_t)physical*512,(uint8_t *)p+done,take)) return false; done+=take;
+        if(!vr_poll(v->pd) || !pm_read(v->f,(int64_t)physical*512,(uint8_t *)p+done,take)) { return false; } done+=take;
     }
     return true;
 }
@@ -77,7 +77,7 @@ static bool vh_tree(vh_state *v,const uint8_t *b,size_t bt,size_t array,unsigned
     unsigned i,n=b[bt+5]; bool internal=(b[bt]&0x80)!=0; uint32_t previous=0;
     if(depth>32 || n>(internal?maxnode:maxleaf) || !n || b[bt+4]+n!=(internal?maxnode:maxleaf) || pm_le16(b+bt+6)!=8+n*(internal?8:12)) return false;
     for(i=0;i<n;++i) { const uint8_t *e=b+array+i*(internal?8:12); uint32_t file=pm_le32(e);
-        if(!vr_poll(v->pd) || (i && file<=previous)) return false; previous=file;
+        if(!vr_poll(v->pd) || (i && file<=previous)) { return false; } previous=file;
         if(internal) {
             uint8_t a[512]; uint32_t child=pm_le32(e+4);
             if(!vh_seen(v,child) || !vh_read(v,child,a,sizeof(a)) || pm_le32(a)!=UINT32_C(0x37E40AAE) || pm_le32(a+4)!=child) return false;
@@ -124,14 +124,14 @@ static mm_map *vh_slice(vh_state *v,mm_map *source,uint64_t at,uint64_t size) {
         if(e->source<0 || !vh_add(v,m,e->source+(int64_t)skip,take)) goto fail;
         left-=take; at+=take; start+=e->length;
     }
-    if(left) goto fail; return m;
+    if(left) { goto fail; } return m;
 fail: vh_drop(v,m); return NULL;
 }
 static bool vh_ea_scan(vh_state *v,mm_map *source,uint64_t at,uint64_t size,mm_map **target) {
     uint64_t end; uint8_t b[268];
-    if(at>source->size || size>source->size-at) return false; end=at+size;
+    if(at>source->size || size>source->size-at) { return false; } end=at+size;
     while(at<end) { unsigned n,value,i; size_t header; uint64_t stride;
-        if(end-at<4 || !vh_map_read(v,source,at,b,4)) return false; n=b[1]; value=pm_le16(b+2); stride=5U+n+value;
+        if(end-at<4 || !vh_map_read(v,source,at,b,4)) { return false; } n=b[1]; value=pm_le16(b+2); stride=5U+n+value;
         if(!n || stride>end-at || (b[0]&~0x83U) || ((b[0]&2) && !(b[0]&1)) || ((b[0]&1) && value!=8)) return false;
         header=5U+n+((b[0]&1)?8U:0U); if(!vh_map_read(v,source,at+4,b+4,header-4) || b[4+n]) return false;
         for(i=0;i<n;++i) if(!b[4+i]) return false;
@@ -216,7 +216,7 @@ static bool vr_hpfs_files(Abstractformat *f,pm_stream *s,xx_pd_struct *pd,const 
     r->capability="HPFS directory and file extraction";
     if(!vh_budget(&v,4096+2*sizeof(pm_member)+sizeof(vc_member_context)) || !vr_info(f,s,"Integrity scope: directory and allocation trees are validated; TEST reads all listed file bytes.\nSYMLINK EA targets are exported as ordinary bytes; resident, external and indirect EA allocations are mapped.\nLegacy name bytes use Latin-1 conversion. EA lists/targets are bounded to 16 MiB.\n")) return false;
     { size_t i; pm_member *info=&s->items[s->count-1]; vc_member_context *context=(vc_member_context *)xx_mem_alloc(sizeof(*context));
-      if(!context) return false; context->map=NULL; context->retained=0; context->limit=v.limit; info->context=context; info->free_context=vc_member_free; info->read_all=vc_member_unpack;
+      if(!context) { return false; } context->map=NULL; context->retained=0; context->limit=v.limit; info->context=context; info->free_context=vc_member_free; info->read_all=vc_member_unpack;
       for(i=0;i<s->count;++i) if(s->items[i].free_context==vc_member_free) ((vc_member_context *)s->items[i].context)->retained=v.used-xx_get_file_buffer_size(); }
     return true;
 }

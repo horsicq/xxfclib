@@ -18,9 +18,9 @@ static bool ac_material(ac_state *a) {
 }
 static bool ac_hex(eg_text *q,uint32_t *v) {
  uint64_t p;uint32_t u=0;unsigned digits=0;eg_space(q);p=q->t;
- if(!eg_span(p,2,q->stop)||q->b[p]!='0'||q->b[p+1]!='x')return false;p+=2;
+ if(!eg_span(p,2,q->stop)||q->b[p]!='0'||q->b[p+1]!='x') {return false; } p+=2;
  while(p<q->stop){uint8_t c=q->b[p];unsigned d;if(c>='0'&&c<='9')d=c-'0';else if(c>='a'&&c<='f')d=c-'a'+10;else if(c>='A'&&c<='F')d=c-'A'+10;else break;if(++digits>8)return false;u=(u<<4)|d;++p;}
- if(!digits)return false;q->t=p;*v=u;return true;
+ if(!digits) {return false; } q->t=p;*v=u;return true;
 }
 static bool ac_object(ac_state *a,unsigned depth) {
  eg_text *q=&a->q;uint64_t start=q->start;uint32_t seen=0;int32_t vertices=0,surfaces=0,kids=0;bool poly=false;char label[64];uint32_t id=a->objects++;
@@ -42,9 +42,9 @@ static bool ac_object(ac_state *a,unsigned depth) {
     for(j=0;j<count;++j){int32_t k;if(!ac_next(q)||!eg_i(q,&used[j])||used[j]<0||used[j]>=vertices||!eg_num(q,&uv)||!eg_num(q,&uv)||!eg_done(q))return false;for(k=0;k<j;++k)if(used[k]==used[j])return false;}
    }}
   else return false;
-  if(bit&&(seen&bit))return false;seen|=bit;
+  if(bit&&(seen&bit)) {return false; } seen|=bit;
  }
- if(poly&&(vertices<3||surfaces<1||!(seen&32)))return false;if(!poly&&(vertices||surfaces))return false;a->polygons+=(uint32_t)surfaces;
+ if(poly&&(vertices<3||surfaces<1||!(seen&32))) {return false; } if(!poly&&(vertices||surfaces))return false;a->polygons+=(uint32_t)surfaces;
  xx_rt_snprintf(label,sizeof(label),"object-%u.ac",id);if(!eg_emit(a->f,a->s,label,start,q->p-start,q->end))return false;
  while(kids--){if(!ac_next(q)||!ac_object(a,depth+1))return false;}return true;
 }

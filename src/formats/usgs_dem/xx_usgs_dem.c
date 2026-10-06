@@ -13,8 +13,8 @@ static bool fg_dem_real(fg_dem *q,uint64_t at,unsigned z,double *v,bool blank) {
 static bool fg_dem_pad(fg_dem *q,uint64_t p,uint64_t end) {for(;p<end;++p)if(fg_dem_byte(q,p)!=32||((p&4095)==0&&fg_stop(q->pd)))return false;return true;}
 static bool fg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  fg_dem q={b,0,n,1024,pd};uint64_t p=1024,i;unsigned x;int32_t value,profiles;double v,min,max,resx,resy,resz;char label[64];
- if(n<2048)return false;if(n>1024&&b[1024]==10)q.stride=1025;else if(n>1025&&b[1024]==13&&b[1025]==10)q.stride=1026;
- if(n%q.stride||n/q.stride<2)return false;q.logical=n/q.stride*1024;
+ if(n<2048) {return false; } if(n>1024&&b[1024]==10)q.stride=1025;else if(n>1025&&b[1024]==13&&b[1025]==10)q.stride=1026;
+ if(n%q.stride||n/q.stride<2) {return false; } q.logical=n/q.stride*1024;
  for(i=0;i<n;++i){unsigned at=(unsigned)(i%q.stride);if(at<1024){if(b[i]<32||b[i]>126)return false;}else if((q.stride==1025&&b[i]!=10)||(q.stride==1026&&b[i]!=(at==1024?13:10)))return false;if((i&4095)==0&&fg_stop(pd))return false;}
  if(!fg_dem_int(&q,144,6,&value)||value<1||value>3||!fg_dem_int(&q,150,6,&value)||value!=1||!fg_dem_int(&q,156,6,&value)||value<0||value>2||!fg_dem_int(&q,162,6,&value)||value<-60||value>60)return false;
  for(i=0;i<15;++i)if(!fg_dem_real(&q,168+i*24,24,&v,true))return false;
@@ -22,9 +22,9 @@ static bool fg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  for(i=0;i<8;++i)if(!fg_dem_real(&q,546+i*24,24,&v,false))return false;
  if(!fg_dem_real(&q,738,24,&min,false)||!fg_dem_real(&q,762,24,&max,false)||min>max||!fg_dem_real(&q,786,24,&v,false)||v!=0||!fg_dem_int(&q,810,6,&value)||value!=0||!fg_dem_real(&q,816,12,&resx,false)||resx<=0||!fg_dem_real(&q,828,12,&resy,false)||resy<=0||!fg_dem_real(&q,840,12,&resz,false)||resz<=0||!fg_dem_int(&q,852,6,&value)||value!=1||!fg_dem_int(&q,858,6,&profiles)||profiles<1||profiles>4000||!fg_emit(f,s,"descriptor.dem",0,q.stride,n))return false;
  for(x=0;x<(unsigned)profiles;++x){uint64_t start=p,stop;int32_t rows,column;double offset,lo,hi,actualmin=0,actualmax=0;bool samples=false;if(fg_stop(pd)||!fg_dem_int(&q,p,6,&value)||value!=1||!fg_dem_int(&q,p+6,6,&column)||column!=(int32_t)x+1||!fg_dem_int(&q,p+12,6,&rows)||rows<1||rows>1000000||!fg_dem_int(&q,p+18,6,&value)||value!=1)return false;
- if(!fg_dem_real(&q,p+24,24,&v,false)||!fg_dem_real(&q,p+48,24,&v,false)||!fg_dem_real(&q,p+72,24,&offset,false)||!fg_dem_real(&q,p+96,24,&lo,false)||!fg_dem_real(&q,p+120,24,&hi,false)||lo>hi)return false;p+=144;
+ if(!fg_dem_real(&q,p+24,24,&v,false)||!fg_dem_real(&q,p+48,24,&v,false)||!fg_dem_real(&q,p+72,24,&offset,false)||!fg_dem_real(&q,p+96,24,&lo,false)||!fg_dem_real(&q,p+120,24,&hi,false)||lo>hi) {return false; } p+=144;
  for(i=0;i<(uint64_t)rows;++i){if(p%1024>1018){stop=(p+1023)/1024*1024;if(stop>q.logical||!fg_dem_pad(&q,p,stop))return false;p=stop;}if(!fg_dem_int(&q,p,6,&value))return false;p+=6;if(value!=-32767){v=value*resz+offset;if(!samples){actualmin=actualmax=v;samples=true;}else {if(v<actualmin)actualmin=v;if(v>actualmax)actualmax=v;}}}
- if(!samples||!fg_near(lo,actualmin)||!fg_near(hi,actualmax))return false;stop=(p+1023)/1024*1024;if(stop>q.logical||!fg_dem_pad(&q,p,stop))return false;p=stop;xx_rt_snprintf(label,sizeof(label),"elevation-profile-%u.dem",x);if(!fg_emit(f,s,label,start/1024*q.stride,(p-start)/1024*q.stride,n))return false;
+ if(!samples||!fg_near(lo,actualmin)||!fg_near(hi,actualmax)) {return false; } stop=(p+1023)/1024*1024;if(stop>q.logical||!fg_dem_pad(&q,p,stop))return false;p=stop;xx_rt_snprintf(label,sizeof(label),"elevation-profile-%u.dem",x);if(!fg_emit(f,s,label,start/1024*q.stride,(p-start)/1024*q.stride,n))return false;
  }
  return p==q.logical;
 }

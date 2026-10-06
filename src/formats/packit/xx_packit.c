@@ -78,7 +78,7 @@ static bool xx_packit_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static bool xx_packit_range_within(int64_t total, int64_t offset,
+static XXFC_MAYBE_UNUSED bool xx_packit_range_within(int64_t total, int64_t offset,
                                    int64_t size) {
     return offset >= 0 && size >= 0 && offset <= total &&
            size <= total - offset;

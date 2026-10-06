@@ -29,7 +29,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if(pm_le32(probe+at)==UINT32_C(0x82564557))endian=false;
         else if(pm_be32(probe+at)==UINT32_C(0x82564557))endian=true;else continue;
         if(!dl_header(&w,probe+at,n-at,endian,&ss,&pp))continue;
-        if(found!=UINT32_MAX)return false;found=at;sec=ss;parts=pp;big=endian;
+        if(found!=UINT32_MAX) {return false; } found=at;sec=ss;parts=pp;big=endian;
     }
     if(found==UINT32_MAX)return false;
     for(i=0;i<parts;++i) {const uint8_t *t=probe+found+148U+i*16U;uint32_t z=dl32(t,big),a=dl32(t+4,big);char name[48];

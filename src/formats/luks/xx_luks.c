@@ -362,7 +362,7 @@ static bool xx_luks_parse_impl(Abstractformat *self, xx_luks_private *parsed,
 
 static bool xx_luks_parse(Abstractformat *self, xx_luks_private *parsed, xx_pd_struct *pd) {
     int64_t cursor=self&&self->device?xx_io_tell(self->device):-1; bool ok=xx_luks_parse_impl(self,parsed,pd);
-    if(cursor>=0&&xx_io_seek64(self->device,cursor,SEEK_SET)!=0) ok=false; return ok;
+    if(cursor>=0&&xx_io_seek64(self->device,cursor,SEEK_SET)!=0) { ok=false; } return ok;
 }
 
 /* ------------------------------------------------------------ lifecycle -- */
@@ -624,7 +624,7 @@ bool xx_luks_archive_record_move_to_next(Abstractformat *self,
 
 static bool xx_luks_decode(Abstractformat *self, const xx_luks_private *parsed, dc_crypto *crypto, xx_io_device *output, xx_pd_struct *pd) {
     uint8_t *buffer=(uint8_t*)xx_mem_alloc(65536); uint64_t done=0; bool result=false; int level;
-    if(!buffer) return false; level=xx_pd_enter_level(pd,parsed->payload_size,"Decoding LUKS1 payload");
+    if(!buffer) { return false; } level=xx_pd_enter_level(pd,parsed->payload_size,"Decoding LUKS1 payload");
     while(done<parsed->payload_size) {
         size_t n=(size_t)(parsed->payload_size-done),sent=0; if(n>65536) n=65536;
         if(xx_pd_is_stopped(pd) || !dc_read_at(self->device,parsed->payload_offset+done,buffer,n) || !dc_decrypt(crypto,done/512,buffer,n,pd)) goto end;
@@ -645,7 +645,7 @@ bool xx_luks_unpack_current_archive_record(Abstractformat *self, xx_archive_reco
        !dc_limit(self,&state->options,XX_META_ID_OPT_MAX_MEMBER_SIZE,UINT64_MAX,&member) || memory<65536+16384U || parsed->payload_size>member) goto done;
     if(!dc_password(self,&state->options,&pw,&pwn,&owned,memory-(65536+16384U))) { xx_pd_set_error(pd,XXFC_ERR_INVALID_ARG,"LUKS1 password required"); goto done; }
     if(!dc_luks_unlock(self->device,(uint64_t)parsed->base_address,(uint64_t)(parsed->input_size-parsed->base_address),false,pw,pwn,&crypto,pd)) {
-        if(!xx_pd_is_stopped(pd)) xx_pd_set_error(pd,XXFC_ERR_GENERIC,"LUKS1 keyslot could not be unlocked (wrong password or unsupported parameters)"); goto done;
+        if(!xx_pd_is_stopped(pd)) { xx_pd_set_error(pd,XXFC_ERR_GENERIC,"LUKS1 keyslot could not be unlocked (wrong password or unsupported parameters)"); } goto done;
     }
     value=xx_format_resolve_extra_parameter(self,&state->options,XX_META_ID_OPT_UNPACK_PATH);
     if(!value) { result=xx_luks_decode(self,parsed,&crypto,NULL,pd); goto done; }
@@ -661,10 +661,10 @@ bool xx_luks_unpack_current_archive_record(Abstractformat *self, xx_archive_reco
     if(output) { if(xx_io_close(output)!=0) result=false; output=NULL; }
     if(result&&stage) result=!xx_pd_is_stopped(pd)&&xx_io_file_replace_a(stage,path,overwrite);
 done:
-    if(output) xx_io_close(output); if(owned) { dc_clear(owned,xx_str_len(owned)); xx_str_free(owned); }
+    if(output) { xx_io_close(output); } if(owned) { dc_clear(owned,xx_str_len(owned)); xx_str_free(owned); }
     if(stage) { if(!result) xx_io_file_remove_a(stage); xx_str_free(stage); }
-    if(wide) xx_str_free(wide); if(path) xx_str_free(path); dc_clear(&crypto,sizeof(crypto));
-    if(cursor>=0&&xx_io_seek64(self->device,cursor,SEEK_SET)!=0) result=false; return result;
+    if(wide) { xx_str_free(wide); } if(path) xx_str_free(path); dc_clear(&crypto,sizeof(crypto));
+    if(cursor>=0&&xx_io_seek64(self->device,cursor,SEEK_SET)!=0) { result=false; } return result;
 }
 
 void xx_luks_free_archive_records_reading(Abstractformat *self,

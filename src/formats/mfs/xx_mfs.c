@@ -128,10 +128,10 @@ static bool mfs_device_name(const char *name) {
     for (i = 0U; i < sizeof(devices) / sizeof(devices[0]); ++i)
         if (mfs_equal(stem, devices[i])) return true;
     return n == 4U && stem[3] >= '0' && stem[3] <= '9' &&
-           ((stem[0] == 'C' || stem[0] == 'c') && (stem[1] == 'O' || stem[1] == 'o') &&
-            (stem[2] == 'M' || stem[2] == 'm') ||
-            (stem[0] == 'L' || stem[0] == 'l') && (stem[1] == 'P' || stem[1] == 'p') &&
-            (stem[2] == 'T' || stem[2] == 't'));
+           (((stem[0] == 'C' || stem[0] == 'c') && (stem[1] == 'O' || stem[1] == 'o') &&
+             (stem[2] == 'M' || stem[2] == 'm')) ||
+            ((stem[0] == 'L' || stem[0] == 'l') && (stem[1] == 'P' || stem[1] == 'p') &&
+             (stem[2] == 'T' || stem[2] == 't')));
 }
 static bool mfs_name(const uint8_t *raw, size_t n, char *output, bool host) {
     size_t i, at = 0U;
@@ -329,7 +329,7 @@ void xx_mfs_init(xx_mfs *volume, xx_io_device *device, int64_t base_address) {
 }
 xx_mfs *xx_mfs_create(xx_io_device *device, int64_t base_address) {
     xx_mfs *volume = (xx_mfs *)xx_mem_alloc(sizeof(*volume));
-    if (volume) xx_mfs_init(volume, device, base_address); return volume;
+    if (volume) { xx_mfs_init(volume, device, base_address); } return volume;
 }
 void xx_mfs_destroy(xx_mfs *volume) { if (volume) xx_format_cleanup_extra_parameters(&volume->format); }
 void xx_mfs_free(xx_mfs *volume) { if (volume) { xx_mfs_destroy(volume); xx_mem_free(volume); } }

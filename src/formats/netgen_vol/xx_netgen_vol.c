@@ -14,7 +14,7 @@ static bool tb_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
   if(tb_word(&q,"dimension"))kind=1;else if(tb_word(&q,"geomtype"))kind=2;else if(tb_word(&q,"points"))kind=3;
   else if(tb_word(&q,"surfaceelements"))kind=4;else if(tb_word(&q,"volumeelements"))kind=5;
   else if(tb_word(&q,"edgesegmentsgi2"))kind=6;else if(tb_word(&q,"edgesegments"))kind=7;else if(tb_word(&q,"face_colours"))kind=8;else return false;
-  if((seen&(1U<<kind))||!tb_done(&q)||!tb_next(&q)||!tb_i(&q,&count)||!tb_done(&q))return false;seen|=1U<<kind;
+  if((seen&(1U<<kind))||!tb_done(&q)||!tb_next(&q)||!tb_i(&q,&count)||!tb_done(&q)) {return false; } seen|=1U<<kind;
   if(kind<=2){if(kind==1){if(count<2||count>3)return false;dimension=count;}else if(count<0||count>2)return false;}
   else{if(!dimension||count<0||count>1000000)return false;if(kind==3)np=(uint32_t)count;if(kind==4)surfaces=(uint32_t)count;if(kind==5)volumes=(uint32_t)count;
    for(i=0;i<count;++i){int32_t v,points=0;double value;if(tb_stop(pd)||!tb_next(&q))return false;
@@ -29,7 +29,7 @@ static bool tb_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
   }
   xx_rt_snprintf(label,sizeof(label),"section-%u.vol",kind);if(!tb_emit(f,s,label,start,q.p-start,n))return false;
  }
- if(!(seen&2)||np<3||maxpoint>np||(!surfaces&&!volumes))return false;if(!tb_cover(f,s,"comments.vol",n))return false;s->size=(int64_t)n;return true;
+ if(!(seen&2)||np<3||maxpoint>np||(!surfaces&&!volumes)) {return false; } if(!tb_cover(f,s,"comments.vol",n))return false;s->size=(int64_t)n;return true;
 }
 
 void xx_netgen_vol_init(xx_netgen_vol *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_NETGEN_VOL,"vol");}}

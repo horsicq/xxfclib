@@ -9,7 +9,7 @@
 static bool sm_emit(Abstractformat *f,pm_stream *s,const char *label,uint64_t at,uint64_t n,uint64_t *measured) {
     if(s->count>=4096 || !fd_range(at,n,(uint64_t)pm_available(f)) ||
        !pm_add(f,s,label,(int64_t)at,(int64_t)n)) return false;
-    if(at+n>*measured) *measured=at+n; return true;
+    if(at+n>*measured) { *measured=at+n; } return true;
 }
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {

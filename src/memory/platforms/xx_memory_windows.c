@@ -28,7 +28,9 @@
 
 #include "xx_memory_platform.h"
 #include "xxfclib/rt/xx_rt.h"
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 
 void* xx_memory_platform_alloc(size_t size) {

@@ -6,8 +6,8 @@
 #include "xxfclib/formats/nintendo_pfs0/xx_nintendo_pfs0.h"
 #include "../xx_payload_members.h"
 
-static uint16_t r16(const uint8_t *p,bool be) { return be ? pm_be16(p) : pm_le16(p); }
-static uint32_t r32(const uint8_t *p,bool be) { return be ? pm_be32(p) : pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint16_t r16(const uint8_t *p,bool be) { return be ? pm_be16(p) : pm_le16(p); }
+static XXFC_MAYBE_UNUSED uint32_t r32(const uint8_t *p,bool be) { return be ? pm_be32(p) : pm_le32(p); }
 static uint64_t r64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
@@ -15,7 +15,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(!pm_read(f,0,h,16) || xx_rt_memcmp(h,"PFS0",4) || pm_le32(h+12)) return false;
     count=pm_le32(h+4); strings=pm_le32(h+8); if(count>65536 || strings>16U*1024U*1024U) return false;
     table=16+(uint64_t)count*24; data=table+strings;
-    if(data>(uint64_t)pm_available(f) || (count && !strings)) return false; end=data;
+    if(data>(uint64_t)pm_available(f) || (count && !strings)) { return false; } end=data;
     for(i=0;i<count;++i) {
         uint64_t off,size,j; uint32_t n; bool ended=false; char label[40];
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,16+(int64_t)i*24,e,24)) return false;

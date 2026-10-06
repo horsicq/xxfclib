@@ -72,13 +72,13 @@ static bool chromium_info(Abstractformat *f, xx_pd_struct *pd) {
     return ue2_accept(f, chromium_parse(f, &a->version, &a->encoding, pd));
 }
 void xx_chromium_pak_init(xx_chromium_pak *a, xx_io_device *device, int64_t base) {
-    if (!a) return; xx_mem_zero(a, sizeof(*a));
+    if (!a) { return; } xx_mem_zero(a, sizeof(*a));
     ue2_init_format(&a->format, device, base, UE2_CHROMIUM_TYPE, "pak", "application/x-chromium-pak");
     a->format.check_is_valid = chromium_valid; a->format.handle_base_info = chromium_info;
 }
 xx_chromium_pak *xx_chromium_pak_create(xx_io_device *device, int64_t base) {
     xx_chromium_pak *a = (xx_chromium_pak *)xx_mem_alloc(sizeof(*a));
-    if (a) xx_chromium_pak_init(a, device, base); return a;
+    if (a) { xx_chromium_pak_init(a, device, base); } return a;
 }
 void xx_chromium_pak_destroy(xx_chromium_pak *a) { if (a) ue2_destroy_format(&a->format); }
 void xx_chromium_pak_free(xx_chromium_pak *a) { if (a) { xx_chromium_pak_destroy(a); xx_mem_free(a); } }

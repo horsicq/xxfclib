@@ -121,7 +121,7 @@ static bool ppd_decode(const uint8_t *input, size_t input_size,
                 length = (size_t)gamma;
             } else {
                 if (!ppd_byte(&bits, &byte)) return false;
-                if ((size_t)(gamma - 1U) > (SIZE_MAX >> 8U))
+                if (((uint64_t)(gamma - 1U) << 8U) > SIZE_MAX)
                     return false;
                 distance = (((size_t)gamma - 1U) << 8U) | (size_t)byte;
                 if (!ppd_gamma(&bits, &gamma)) return false;

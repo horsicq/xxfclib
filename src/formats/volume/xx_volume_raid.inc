@@ -2,7 +2,7 @@
  * Facts: Linux md_p.h and public LDM on-disk field definitions. */
 static bool vr_md90(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t b[4096]; uint64_t source=(uint64_t)pm_available(f),at,size,sum=0; uint32_t expected,level,disks,role,state; unsigned i; bool be; xx_volume *r=(xx_volume *)f;
-    if(source<131072) return false; at=(source&~UINT64_C(65535))-65536;
+    if(source<131072) { return false; } at=(source&~UINT64_C(65535))-65536;
     if(!pm_read(f,(int64_t)at,b,sizeof(b))) return false;
     be=pm_be32(b)==UINT32_C(0xA92B4EFC);
     if(vr_u32(b,be)!=UINT32_C(0xA92B4EFC) || vr_u32(b+4,be)!=0 || vr_u32(b+8,be)!=90) return false;
@@ -21,7 +21,7 @@ static bool vr_md90(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 }
 static bool vr_md(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t b[8192]; uint64_t sectors=(uint64_t)pm_available(f)/512,locations[3]={0,8,0}; unsigned i; xx_volume *r=(xx_volume *)f;
-    if(sectors<32) return false; locations[2]=(sectors-16)&~UINT64_C(7);
+    if(sectors<32) { return false; } locations[2]=(sectors-16)&~UINT64_C(7);
     for(i=0;i<3;++i) if(pm_read(f,(int64_t)(locations[i]*512),b,256) && pm_le32(b)==UINT32_C(0xA92B4EFC) && pm_le32(b+4)==1) break;
     if(i==3) return vr_md90(f,s,pd);
     { uint32_t maxdev=pm_le32(b+220),device=pm_le32(b+160),disks=pm_le32(b+92),level=pm_le32(b+72),csum=pm_le32(b+216),features=pm_le32(b+8); uint64_t sum=0,data=mm_le64(b+128),size=mm_le64(b+80); size_t n,j;
@@ -42,12 +42,12 @@ static bool vr_ldm_var(const uint8_t *p,size_t n,size_t at,size_t *next,uint64_t
     size_t bytes,i; uint64_t value=0; if(at>=n || (bytes=p[at])>n-at-1) return false;
     if(number) { if(!bytes || bytes>8) return false; for(i=0;i<bytes;++i) value=(value<<8)|p[at+1+i]; *number=value; }
     if(text) { if(!cap || bytes>=cap) return false; for(i=0;i<bytes;++i) { if(p[at+1+i]<32 || p[at+1+i]>=127) return false; text[i]=(char)p[at+1+i]; } text[bytes]=0; }
-    if(next) *next=at+1+bytes; return true;
+    if(next) { *next=at+1+bytes; } return true;
 }
 static bool vr_ldm_uuid(uint8_t out[16],const char *text) {
     unsigned n=0,value=0; while(*text) { unsigned d; char c=*text++; if(c=='-') continue;
         if(c>='0' && c<='9') d=(unsigned)(c-'0'); else if(c>='a' && c<='f') d=(unsigned)(c-'a'+10); else if(c>='A' && c<='F') d=(unsigned)(c-'A'+10); else return false;
-        if(n>=32) return false; value=(value<<4)|d; if(n&1) out[n/2]=(uint8_t)value; ++n;
+        if(n>=32) { return false; } value=(value<<4)|d; if(n&1) out[n/2]=(uint8_t)value; ++n;
     } return n==32;
 }
 static bool vr_ldm_record_parse(const uint8_t *p,size_t n,vr_ldm_record *r) {
@@ -73,7 +73,7 @@ static bool vr_ldm_record_parse(const uint8_t *p,size_t n,vr_ldm_record *r) {
         return declared>=28+next-52;
     }
     if(r->type==0x32) { size_t delta,after_children;
-        if(!vr_ldm_var(p,n,aftername,&next,NULL,state,sizeof(state))) return false; delta=next-24; if(24+delta>=n) return false;
+        if(!vr_ldm_var(p,n,aftername,&next,NULL,state,sizeof(state))) { return false; } delta=next-24; if(24+delta>=n) return false;
         r->component_type=p[24+delta];
         if(!vr_ldm_var(p,n,29+delta,&after_children,&r->children,NULL,0) || !r->children || r->children>16384 ||
            !vr_ldm_var(p,n,45+after_children-29,&next,&r->parent,NULL,0)) return false;
@@ -98,7 +98,7 @@ static bool vr_ldm_record_parse(const uint8_t *p,size_t n,vr_ldm_record *r) {
     }
     if(r->type==0x35) {
         size_t delta;
-        if(!vr_ldm_var(p,n,aftername,&next,NULL,NULL,0)) return false; delta=next-24;
+        if(!vr_ldm_var(p,n,aftername,&next,NULL,NULL,0)) { return false; } delta=next-24;
         if(flags&8) {
             if(!vr_ldm_var(p,n,36+delta,&next,NULL,NULL,0) || !vr_ldm_var(p,n,next,&next,NULL,NULL,0)) return false;
             delta=next-36;
@@ -138,14 +138,14 @@ static bool vr_ldm(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     { const uint8_t *vm=database+17*512; if(xx_rt_memcmp(vm,"VMDB",4) || pm_be16(vm+16)!=1 || pm_be16(vm+18)!=4 || pm_be16(vm+20)!=10) goto done; block_size=pm_be32(vm+8); offset=pm_be32(vm+12); last=pm_be32(vm+4);
       if(block_size<32 || block_size>4096 || !vr_power(block_size) || offset<512 || offset%block_size || offset>(uint64_t)last*block_size || (uint64_t)last*block_size>config_size*512-17*512 || last-offset/block_size>65536U) goto done;
       for(i=offset;i<(uint64_t)last*block_size;i+=block_size) { const uint8_t *p=vm+i; uint16_t total,part; uint8_t *assembled=NULL; size_t n=block_size,j;
-          if(block_size>(uint64_t)last*block_size-i || !vr_poll(pd) || xx_rt_memcmp(p,"VBLK",4)) goto done; total=pm_be16(p+14); part=pm_be16(p+12); if(!total) { if(part) goto done; continue; }
+          if(block_size>(uint64_t)last*block_size-i || !vr_poll(pd) || xx_rt_memcmp(p,"VBLK",4)) { goto done; } total=pm_be16(p+14); part=pm_be16(p+12); if(!total) { if(part) goto done; continue; }
           if(total>64 || part>=total || count>=16384) goto done;
           if(part) { size_t roots=0;
               for(j=offset;j<(uint64_t)last*block_size;j+=block_size) { const uint8_t *q=vm+j;
                   if(block_size>(uint64_t)last*block_size-j || !vr_poll(pd)) goto done;
                   if(pm_be32(q+8)==pm_be32(p+8) && !pm_be16(q+12) && pm_be16(q+14)==total && !xx_rt_memcmp(q,"VBLK",4)) ++roots;
               }
-              if(roots!=1) goto done; continue;
+              if(roots!=1) { goto done; } continue;
           }
           if(total>1) { uint64_t group=pm_be32(p+8); uint64_t mask=0; n=16+(size_t)total*(block_size-16); assembled=(uint8_t *)xx_mem_alloc(n); if(!assembled) goto done; xx_rt_memcpy(assembled,p,16);
               for(j=offset;j<(uint64_t)last*block_size;j+=block_size) { const uint8_t *q=vm+j; uint16_t piece;

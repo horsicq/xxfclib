@@ -11247,7 +11247,7 @@ static bool xxfc_profile_numbers(const char *text,uint32_t *a,uint32_t *b,uint32
 static bool xxfc_profile_number(const char *text,uint32_t *out) {
     uint64_t value=0; unsigned digits=0;
     while(*text>='0' && *text<='9') { value=value*10U+(unsigned)(*text++-'0'); if(value>UINT32_MAX) return false; ++digits; }
-    if(!digits || *text) return false; *out=(uint32_t)value; return true;
+    if(!digits || *text) { return false; } *out=(uint32_t)value; return true;
 }
 bool xxfc_open_named(xxfc_opened *out, xx_io_device *device,
                      int64_t base_address, const char *name) {
@@ -11263,7 +11263,7 @@ bool xxfc_open_named(xxfc_opened *out, xx_io_device *device,
         if(cffa ? (profile!=4 && profile!=6 && profile!=8) :
             (profile!=143360 && profile!=163840 && profile!=204800 && profile!=409600)) return false;
         reader=cffa?(xx_apple_family_info *)xx_cffa_create(device,base_address):(xx_apple_family_info *)xx_dos_master_create(device,base_address);
-        if(!reader) return false; reader->profile=profile;
+        if(!reader) { return false; } reader->profile=profile;
         out->format=&reader->format; out->release=cffa?rm_cffa:rm_dos_master;
         out->reader_name=cffa?"cffa":"dos_master"; out->type=cffa?XX_FILE_TYPE_CFFA:XX_FILE_TYPE_DOS_MASTER; return true;
     }

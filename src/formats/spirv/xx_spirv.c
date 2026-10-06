@@ -24,7 +24,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             uint32_t addressing,memory;
             if(model || !capability || words!=3 || !pm_read(f,at,e,12)) return false;
             addressing=be?pm_be32(e+4):pm_le32(e+4); memory=be?pm_be32(e+8):pm_le32(e+8);
-            if(addressing>2 || memory>3) return false; model=true;
+            if(addressing>2 || memory>3) { return false; } model=true;
         }
         xx_rt_snprintf(name,sizeof(name),"instruction-%u.spvwords",(unsigned)opcode);
         if(!pm_add(f,s,name,at,(int64_t)words*4)) return false;

@@ -7,7 +7,7 @@
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "../xx_payload_members.h"
 
-static uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uint64_t n,uint64_t total) {
     size_t i;
@@ -16,18 +16,18 @@ static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uin
         if(n && b && at<a+b && a<at+n) return false; }
     return pm_add(f,s,name,(int64_t)at,(int64_t)n);
 }
-static bool zname(Abstractformat *f,uint64_t at,uint64_t end) {
+static XXFC_MAYBE_UNUSED bool zname(Abstractformat *f,uint64_t at,uint64_t end) {
     uint8_t c; uint64_t i; if(at>=end || end>(uint64_t)pm_available(f)) return false;
     for(i=0;i<4096 && at+i<end;++i) { if(!pm_read(f,(int64_t)(at+i),&c,1)) return false; if(!c) return i!=0; } return false;
 }
-static uint16_t crc16(const uint8_t *p,size_t n) { return xx_crc16_modbus_calc(UINT16_MAX,p,n); }
+static XXFC_MAYBE_UNUSED uint16_t crc16(const uint8_t *p,size_t n) { return xx_crc16_modbus_calc(UINT16_MAX,p,n); }
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[24],e[280]; uint32_t data,list,count,i; uint64_t total=(uint64_t)pm_available(f),end;
     if(!pm_read(f,0,h,24) || xx_rt_memcmp(h,"LSPK",4) || pm_le32(h+4)!=10 || pm_le16(h+16)!=1 || h[18]) return false;
     data=pm_le32(h+8); list=pm_le32(h+12); count=pm_le32(h+20);
-    if(!count || count>4096 || list!=(uint64_t)count*280 || data<24+(uint64_t)list || data>total) return false; end=data;
+    if(!count || count>4096 || list!=(uint64_t)count*280 || data<24+(uint64_t)list || data>total) { return false; } end=data;
     for(i=0;i<count;++i) { uint64_t at,n,crc; uint32_t j; char label[40];
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,24+(int64_t)i*280,e,280)) return false;
         for(j=0;j<256 && e[j];++j) {} if(!j || j==256 || pm_le32(e+264) || pm_le32(e+268) || pm_le32(e+272)) return false;

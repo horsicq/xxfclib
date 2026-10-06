@@ -24,7 +24,7 @@ static void epf_close(Abstractformat *format) {
     xx_epf_free((xx_epf *)format);
 }
 static const xx_format_search_desc epf_desc = {
-    epf_types, 1U, epf_anchors, 1U, epf_open, epf_close
+    epf_types, 1U, epf_anchors, 1U, epf_open, epf_close, false
 };
 static xx_format_search_state *epf_create_search(xx_format_extractor *self,
     xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd) {

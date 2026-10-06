@@ -17,7 +17,7 @@ static bool read_components(Abstractformat *f,pm_stream *s,th_blob *b) {
   }
   xx_rt_snprintf(name,sizeof(name),"chunk-%u-%04x.uef",count-1,type);if(!th_emit(f,s,b,name,a,6+z)) return false;a+=6+z;
  }
- if(!data) return false;s->size=b->n;return true;
+ if(!data) { return false; } s->size=b->n;return true;
 }
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {

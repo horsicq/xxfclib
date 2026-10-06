@@ -13,7 +13,7 @@ static bool rib_parameters(tg_lex *q,bool geometry,uint32_t *vertices) {
  unsigned fields=0;while(tg_skip(q)&&q->p<q->n&&q->b[q->p]=='"'){uint64_t p,z;unsigned kind;uint32_t count=0;double value;
   if(!tg_quoted(q,'"',&p,&z))return false;
   if(geometry){if(z==1&&q->b[p]=='P')kind=0;else if(z==1&&q->b[p]=='N')kind=1;else if(z==2&&tg_tag(q->b+p,"Cs",2))kind=2;else if(z==2&&tg_tag(q->b+p,"Os",2))kind=3;else if(z==2&&tg_tag(q->b+p,"st",2))kind=4;else return false;
-   if(fields&(1U<<kind)||!rib_array(q,&count,false,NULL,NULL,kind==2||kind==3))return false;fields|=1U<<kind;
+   if(fields&(1U<<kind)||!rib_array(q,&count,false,NULL,NULL,kind==2||kind==3)) {return false; } fields|=1U<<kind;
    if(!kind){if(count%3||count<9)return false;*vertices=count/3;}else if(!*vertices||count!=*vertices*(kind==4?2:3))return false;
   }else {if((z==2&&(tg_tag(q->b+p,"Ka",2)||tg_tag(q->b+p,"Kd",2)||tg_tag(q->b+p,"Ks",2)))||(z==9&&tg_tag(q->b+p,"roughness",9))||(z==6&&tg_tag(q->b+p,"sphere",6))){if(!rib_scalar(q,&value)||value<0||value>1000000)return false;}
    else if(z==11&&tg_tag(q->b+p,"compression",11)){if(!tg_quoted(q,'"',NULL,NULL))return false;}else return false;
@@ -50,15 +50,15 @@ static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
   else if(tg_kw(&q,"Attribute")){if(!world||!tg_quoted(&q,'"',&p,&z)||z!=17||!tg_tag(b+p,"displacementbound",17)||!rib_parameters(&q,false,&vertices))return false;}
   else if(tg_kw(&q,"Polygon")){if(!world||!rib_parameters(&q,true,&vertices))return false;++geometry;}
   else if(tg_kw(&q,"PointsPolygons")){uint32_t count,maxindex=0,indexcount;uint64_t sum=0;uint64_t begin;
-   if(!world)return false;begin=q.p;if(!rib_array(&q,&count,true,NULL,&sum,false)||count>100000||sum>300000)return false;
+   if(!world) {return false; } begin=q.p;if(!rib_array(&q,&count,true,NULL,&sum,false)||count>100000||sum>300000)return false;
    {tg_lex check=q;check.p=begin;if(!tg_char(&check,'['))return false;while(!tg_char(&check,']'))if(!tg_integer(&check,&integer)||integer<3||integer>100000)return false;}
-   if(!rib_array(&q,&indexcount,true,&maxindex,NULL,false)||indexcount!=sum||!rib_parameters(&q,true,&vertices)||maxindex>=vertices)return false;++geometry;
+   if(!rib_array(&q,&indexcount,true,&maxindex,NULL,false)||indexcount!=sum||!rib_parameters(&q,true,&vertices)||maxindex>=vertices) {return false; } ++geometry;
   }
   else if(tg_kw(&q,"Sphere")){double radius,zmin,zmax,theta;if(!world||!tg_number(&q,&radius)||radius<=0||!tg_number(&q,&zmin)||!tg_number(&q,&zmax)||zmin<-radius||zmax>radius||zmin>=zmax||!tg_number(&q,&theta)||theta<=0||theta>360)return false;++geometry;}
   else return false;
   if(!tg_emit(f,s,"command.rib",start,q.p-start,n))return false;
  }
- if(depth||world||frame||!worlds||!geometry||!tg_cover(f,s,"comments.rib",n))return false;s->size=(int64_t)n;return true;
+ if(depth||world||frame||!worlds||!geometry||!tg_cover(f,s,"comments.rib",n)) {return false; } s->size=(int64_t)n;return true;
 }
 
 void xx_renderman_rib_init(xx_renderman_rib *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_RENDERMAN_RIB,"rib");}}

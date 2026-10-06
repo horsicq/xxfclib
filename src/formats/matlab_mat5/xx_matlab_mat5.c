@@ -5,14 +5,14 @@
 
 typedef struct mt_tag { uint32_t type,size; uint64_t data,next; } mt_tag;
 static bool mt_read(Abstractformat *f,uint64_t at,uint64_t end,bool be,mt_tag *t) { uint8_t b[8]; uint32_t first;
-    if(!fd_range(at,8,end) || !pm_read(f,(int64_t)at,b,8)) return false; first=fd_u32(b,be);
+    if(!fd_range(at,8,end) || !pm_read(f,(int64_t)at,b,8)) { return false; } first=fd_u32(b,be);
     if(first>>16) { t->type=first&65535; t->size=first>>16; if(t->size>4) return false; t->data=at+4; t->next=at+8; }
     else { uint64_t padded; t->type=first; t->size=fd_u32(b+4,be); padded=((uint64_t)t->size+7)&~7ULL; if(!fd_range(at+8,padded,end)) return false; t->data=at+8; t->next=at+8+padded; }
     return t->type>=1 && t->type<=18 && t->type!=8 && t->type!=10 && t->type!=11;
 }
 static bool mt_utf8(Abstractformat *f,mt_tag *t,uint64_t elements,xx_pd_struct *pd) {
     uint8_t *text; uint32_t i; uint64_t count=0; bool result=false;
-    if(t->size>1048576) return false; if(!t->size) return elements==0;
+    if(t->size>1048576) { return false; } if(!t->size) return elements==0;
     text=(uint8_t *)xx_mem_alloc(t->size); if(!text) return false;
     if(pm_read(f,(int64_t)t->data,text,t->size) && fourth_utf8(text,t->size,pd)) {
         for(i=0;i<t->size;++i) { if(!(i&4095) && fd_stop(pd)) goto done; if((text[i]&0xc0)!=0x80) ++count; }

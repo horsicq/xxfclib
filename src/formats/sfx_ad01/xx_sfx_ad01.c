@@ -359,7 +359,7 @@ static bool pm_parse(Abstractformat *f, pm_stream *stream, xx_pd_struct *pd) {
     uint8_t *decoded[AD_MAX_COUNT];
     uint8_t header[12], password[65], cab_password[65];
     int64_t data_at, ad_at, zip_at, zip_end, limit = pm_available(f);
-    uint32_t data_size, ad_size, zip_size;
+    uint32_t data_size = 0U, ad_size, zip_size;
     size_t password_size = 0U, cab_password_size = 0U;
     unsigned i, count = 0U, stored = 0U, adx_index = AD_MAX_COUNT;
     unsigned control_index = AD_MAX_COUNT;

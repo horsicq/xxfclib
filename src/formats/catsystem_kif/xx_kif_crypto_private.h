@@ -246,7 +246,7 @@ static bool ki_bf_init(ki_blowfish *cipher, const uint8_t *key, size_t size) {
  * or updating the unused 624-word state. This is the exact legacy seeder,
  * not the incompatible modern MT19937 initialization algorithm.
  */
-static uint32_t ki_mt_first(uint32_t seed) {
+static XXFC_MAYBE_UNUSED uint32_t ki_mt_first(uint32_t seed) {
     uint32_t first = 0U, second = 0U, middle = 0U, value;
     unsigned i;
     for (i = 0U; i <= 397U; ++i) {

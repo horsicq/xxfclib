@@ -12,7 +12,7 @@ static bool crunchdisk_parse(Abstractformat *f,pm_stream *s,ac_blob *b) {
     if(bytes<128U || bytes>8192U || (bytes&(bytes-1U)) || !sectors || sectors>64U || !heads || heads>2U || low>high || high>255U || method>2U || eff>4U || b->p[25]) return false;
     if(b->p[24]) return ac_error(b,"password-protected CrunchDisk requires unsupported PX20 decryption");
     per=bytes*sectors*heads;
-    if((uint64_t)per*(high-low+1U)>AC_MAX_BYTES) return false; total=per*(high-low+1U);
+    if((uint64_t)per*(high-low+1U)>AC_MAX_BYTES) { return false; } total=per*(high-low+1U);
     image=ac_alloc(b,total); if(!image) return false;
     for(c=low;c<=high;++c) { uint32_t size,stored; uint8_t *plain=NULL; const uint8_t *source;
         if(!ac_poll(b) || !ac_span(b,at,8U) || (xx_rt_memcmp(b->p+at,"CYL0",4) && xx_rt_memcmp(b->p+at,"CYL1",4))) goto fail;

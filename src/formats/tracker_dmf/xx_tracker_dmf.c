@@ -13,11 +13,11 @@ static bool e8_parse(e8_blob*c) {
   else if(e8_eq(c,p,"SMPI",4)){bit=4;si=at;siz=z;}
   else if(e8_eq(c,p,"SMPD",4)){bit=8;sd=at;sdz=z;}
   else if(!e8_eq(c,p,"CMSG",4) && !e8_eq(c,p,"SETT",4))return false;
-  if(bit && (seen&bit))return false;seen|=bit;xx_rt_snprintf(name,sizeof(name),"%.4s.bin",c->b+p);if(!e8_add(c,name,p,8U+z))return false;p=at+z;
+  if(bit && (seen&bit)) {return false; } seen|=bit;xx_rt_snprintf(name,sizeof(name),"%.4s.bin",c->b+p);if(!e8_add(c,name,p,8U+z))return false;p=at+z;
  }
  if(p!=c->n || seen!=15 || !e8_eq(c,c->n-4,"ENDE",4) || seqz<6 || (seqz&1) || pm_le16(c->b+seq)>pm_le16(c->b+seq+2) || pm_le16(c->b+seq+2)>=(seqz-4)/2)return false;
  for(i=4;i<seqz;i+=2)if(pm_le16(c->b+seq+i)>=patterns)return false;
- if(!siz)return false;{size_t q=si+1,r=sd;unsigned count=c->b[si];for(i=0;i<count;++i){unsigned len;uint32_t raw,stored;uint8_t flags;if(q>=si+siz)return false;len=c->b[q++];if(len>si+siz-q || si+siz-q-len<30)return false;q+=len;raw=pm_le32(c->b+q);flags=c->b[q+15];if(flags&~15U || pm_le32(c->b+q+4)>pm_le32(c->b+q+8) || pm_le32(c->b+q+8)>raw || ((flags&2) && (raw&1)))return false;q+=30;if(sd+sdz-r<4)return false;stored=pm_le32(c->b+r);r+=4;if(stored>sd+sdz-r || (!(flags&12) && stored!=raw))return false;r+=stored;}if(q!=si+siz || r!=sd+sdz)return false;}
+ if(!siz) {return false; } {size_t q=si+1,r=sd;unsigned count=c->b[si];for(i=0;i<count;++i){unsigned len;uint32_t raw,stored;uint8_t flags;if(q>=si+siz)return false;len=c->b[q++];if(len>si+siz-q || si+siz-q-len<30)return false;q+=len;raw=pm_le32(c->b+q);flags=c->b[q+15];if(flags&~15U || pm_le32(c->b+q+4)>pm_le32(c->b+q+8) || pm_le32(c->b+q+8)>raw || ((flags&2) && (raw&1)))return false;q+=30;if(sd+sdz-r<4)return false;stored=pm_le32(c->b+r);r+=4;if(stored>sd+sdz-r || (!(flags&12) && stored!=raw))return false;r+=stored;}if(q!=si+siz || r!=sd+sdz)return false;}
  return true;
 }
 static bool pm_parse(Abstractformat*f,pm_stream*s,xx_pd_struct*pd) {return e8_loaded(f,s,pd,e8_parse);}

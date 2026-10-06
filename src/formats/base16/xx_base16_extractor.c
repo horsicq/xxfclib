@@ -22,7 +22,7 @@ static void xx_base16_search_close(Abstractformat *format) {
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     NULL, 0U,
-    xx_base16_search_open, xx_base16_search_close
+    xx_base16_search_open, xx_base16_search_close, false
 };
 static xx_format_search_state *xx_base16_search_create(
     xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,

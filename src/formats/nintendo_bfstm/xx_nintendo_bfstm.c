@@ -16,7 +16,7 @@ static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uin
     for(i=0;i<s->count;++i) if(overlap(at,n,(uint64_t)(s->items[i].offset-f->base_address),(uint64_t)s->items[i].size)) return false;
     return pm_add(f,s,name,(int64_t)at,(int64_t)n);
 }
-static bool zname(Abstractformat *f,uint64_t at,uint64_t end,bool empty) {
+static XXFC_MAYBE_UNUSED bool zname(Abstractformat *f,uint64_t at,uint64_t end,bool empty) {
     uint8_t c; uint64_t i; if(at>=end || end>(uint64_t)pm_available(f)) return false;
     for(i=0;i<4096 && at+i<end;++i) { if(!pm_read(f,(int64_t)(at+i),&c,1)) return false; if(!c) return empty || i!=0; } return false;
 }
@@ -33,7 +33,7 @@ static bool audio_blocks(Abstractformat *f,const char *magic,uint32_t version1,u
         uint32_t k,at,n; const char *sig;
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,20+(int64_t)i*12,e,12)) return false;
         k=g16(e,*be); at=g32(e+4,*be); n=g32(e+8,*be);
-        if(k<first || k>first+(first==0x4000 ? 3U : 1U)) return false; k-=first;
+        if(k<first || k>first+(first==0x4000 ? 3U : 1U)) { return false; } k-=first;
         sig=k==0 ? "INFO" : first==0x7000 ? "DATA" : k==1 ? "SEEK" : k==2 ? "DATA" : "REGN";
         if((seen&(1U<<k)) || g16(e+2,*be) || at<header || (at&31) || n<8 || !span(at,n,*total) || !pm_read(f,at,b,8) || xx_rt_memcmp(b,sig,4) || g32(b+4,*be)!=n) return false;
         for(j=0;j<4;++j) if((seen&(1U<<j)) && overlap(at,n,offsets[j],sizes[j])) return false;

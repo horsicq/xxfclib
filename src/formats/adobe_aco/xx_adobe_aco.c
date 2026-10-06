@@ -30,7 +30,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     at=4;
     for(i=0;i<count;++i) { if(fd_stop(pd) || !pm_read(f,(int64_t)at,b,10) || !sm_color(b)) return false;
         xx_rt_snprintf(label,sizeof(label),"aco-v1-color-%u.bin",i); if(!pm_add(f,s,label,(int64_t)at,10)) return false; at+=10; }
-    if(!pm_read(f,(int64_t)at,h,4) || pm_be16(h)!=2 || pm_be16(h+2)!=count || !pm_add(f,s,"aco-v2-header.bin",(int64_t)at,4)) return false; at+=4;
+    if(!pm_read(f,(int64_t)at,h,4) || pm_be16(h)!=2 || pm_be16(h+2)!=count || !pm_add(f,s,"aco-v2-header.bin",(int64_t)at,4)) { return false; } at+=4;
     for(i=0;i<count;++i) { uint64_t stop;
         if(fd_stop(pd) || !fd_range(at,14,end) || !pm_read(f,(int64_t)at,b,14) || !pm_read(f,4+(int64_t)i*10,old,10) || xx_rt_memcmp(old,b,10)) return false;
         units=pm_be32(b+10); if(!sm_utf16(f,at+14,units,end,true,pd)) return false; stop=at+14+(uint64_t)units*2;

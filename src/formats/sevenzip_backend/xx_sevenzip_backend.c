@@ -80,9 +80,9 @@ static void sb_put32(uint8_t *p,uint32_t v){p[0]=(uint8_t)v;p[1]=(uint8_t)(v>>8)
 static void sb_put64(uint8_t *p,uint64_t v){sb_put32(p,(uint32_t)v);sb_put32(p+4,(uint32_t)(v>>32));}
 static void sb_close(sb_process *p){
 #ifdef _WIN32
- if(p->input)CloseHandle(p->input);if(p->output)CloseHandle(p->output);if(p->write_event)CloseHandle(p->write_event);if(p->process){if(WaitForSingleObject(p->process,100)!=WAIT_OBJECT_0){TerminateProcess(p->process,2);WaitForSingleObject(p->process,1000);}CloseHandle(p->process);}if(p->job)CloseHandle(p->job);
+ if(p->input) {CloseHandle(p->input); } if(p->output)CloseHandle(p->output);if(p->write_event)CloseHandle(p->write_event);if(p->process){if(WaitForSingleObject(p->process,100)!=WAIT_OBJECT_0){TerminateProcess(p->process,2);WaitForSingleObject(p->process,1000);}CloseHandle(p->process);}if(p->job)CloseHandle(p->job);
 #else
- if(p->input>=0)close(p->input);if(p->output>=0)close(p->output);if(p->process>0){int status;if(waitpid(p->process,&status,WNOHANG)==0){kill(p->process,SIGKILL);while(waitpid(p->process,&status,0)<0&&errno==EINTR){}}}
+ if(p->input>=0) {close(p->input); } if(p->output>=0)close(p->output);if(p->process>0){int status;if(waitpid(p->process,&status,WNOHANG)==0){kill(p->process,SIGKILL);while(waitpid(p->process,&status,0)<0&&errno==EINTR){}}}
 #endif
 }
 static bool sb_start(sb_process *p,const char *helper,uint64_t memory){
@@ -105,7 +105,7 @@ static bool sb_start(sb_process *p,const char *helper,uint64_t memory){
  InitializeProcThreadAttributeList(NULL,1,0,&attribute_size);si.lpAttributeList=HeapAlloc(GetProcessHeap(),0,attribute_size);if(!si.lpAttributeList||!InitializeProcThreadAttributeList(si.lpAttributeList,1,0,&attribute_size))goto done;attributes_live=true;handles[0]=child_read;handles[1]=child_write;if(!UpdateProcThreadAttribute(si.lpAttributeList,0,PROC_THREAD_ATTRIBUTE_HANDLE_LIST,handles,sizeof(handles),NULL,NULL))goto done;
  si.StartupInfo.dwFlags=STARTF_USESTDHANDLES;si.StartupInfo.hStdInput=child_read;si.StartupInfo.hStdOutput=child_write;si.StartupInfo.hStdError=child_write;
  p->job=CreateJobObjectW(NULL,NULL);if(!p->job)goto done;xx_rt_memset(&limits,0,sizeof(limits));limits.BasicLimitInformation.LimitFlags=JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE|JOB_OBJECT_LIMIT_PROCESS_MEMORY;limits.ProcessMemoryLimit=(SIZE_T)(memory+32U*1024U*1024U);if(!SetInformationJobObject(p->job,JobObjectExtendedLimitInformation,&limits,sizeof(limits)))goto done;
- if(!CreateProcessW(converted?converted:path,command,NULL,NULL,TRUE,EXTENDED_STARTUPINFO_PRESENT|CREATE_NO_WINDOW|CREATE_SUSPENDED,NULL,NULL,&si.StartupInfo,&pi))goto done;p->process=pi.hProcess;if(!AssignProcessToJobObject(p->job,pi.hProcess)){TerminateProcess(pi.hProcess,2);CloseHandle(pi.hThread);goto done;}if(ResumeThread(pi.hThread)==(DWORD)-1){CloseHandle(pi.hThread);goto done;}CloseHandle(pi.hThread);ok=true;
+ if(!CreateProcessW(converted?converted:path,command,NULL,NULL,TRUE,EXTENDED_STARTUPINFO_PRESENT|CREATE_NO_WINDOW|CREATE_SUSPENDED,NULL,NULL,&si.StartupInfo,&pi)) {goto done; } p->process=pi.hProcess;if(!AssignProcessToJobObject(p->job,pi.hProcess)){TerminateProcess(pi.hProcess,2);CloseHandle(pi.hThread);goto done;}if(ResumeThread(pi.hThread)==(DWORD)-1){CloseHandle(pi.hThread);goto done;}CloseHandle(pi.hThread);ok=true;
 done:if(child_read)CloseHandle(child_read);if(child_write)CloseHandle(child_write);if(si.lpAttributeList){if(attributes_live)DeleteProcThreadAttributeList(si.lpAttributeList);HeapFree(GetProcessHeap(),0,si.lpAttributeList);}if(command)HeapFree(GetProcessHeap(),0,command);if(converted)xx_str_wfree(converted);return ok;
 #else
  int in[2]={-1,-1},out[2]={-1,-1};char path[4096];pid_t pid;(void)memory;p->input=p->output=-1;if(!helper){ssize_t n=readlink("/proc/self/exe",path,sizeof(path)-1);if(n<=0||n>=(ssize_t)sizeof(path)-24)return false;while(n&&path[n-1]!='/')--n;if(!n)return false;xx_rt_memcpy(path+n,"xfu_sevenzip_helper",sizeof("xfu_sevenzip_helper"));helper=path;}if(socketpair(AF_UNIX,SOCK_STREAM,0,in)||socketpair(AF_UNIX,SOCK_STREAM,0,out))goto failed;pid=fork();if(pid<0)goto failed;if(!pid){dup2(in[0],STDIN_FILENO);dup2(out[1],STDOUT_FILENO);dup2(out[1],STDERR_FILENO);close(in[0]);close(in[1]);close(out[0]);close(out[1]);execl(helper,helper,(char *)NULL);_exit(127);}close(in[0]);close(out[1]);p->input=in[1];p->output=out[0];p->process=pid;fcntl(p->input,F_SETFL,fcntl(p->input,F_GETFL)|O_NONBLOCK);return true;
@@ -136,11 +136,11 @@ static bool sb_run(xx_io_device *source,int64_t base,int64_t length,const char *
  p.input=p.output=-1;
 #endif
  if(!source||dest==source||hn>64||pn>65536||(total=xx_io_size(source))<0||base<0||base>total)goto done;
- if(length<0)length=total-base;if(length>total-base)goto done;
+ if(length<0) {length=total-base; } if(length>total-base)goto done;
  if(memory>UINT64_C(256)*1024*1024)memory=UINT64_C(256)*1024*1024;
  if(memory<262144||(expected!=UINT64_MAX&&expected>max)){p.status=XX_SEVENZIP_BACKEND_LIMIT;goto done;}
  if(source_path){source_name=source_path;for(part=source_path;*part;++part)if(*part=='/'||*part=='\\')source_name=part+1;sn=xx_rt_strlen(source_name);if(sn>65536)goto done;}
- if(!sb_live(&p))goto done;saved=xx_io_tell(source);
+ if(!sb_live(&p)) {goto done; } saved=xx_io_tell(source);
  /* Decoded DATA bytes measure progress for a single selected member.
   * Source offsets are not monotonic for solid archives or random readers;
   * unknown output sizes stay indeterminate until the caller completes TEST. */
@@ -158,7 +158,7 @@ static bool sb_run(xx_io_device *source,int64_t base,int64_t length,const char *
  type=sb_le32(h+4);count=sb_le32(h+8);if(count>1048576){p.status=XX_SEVENZIP_BACKEND_FORMAT;goto done;}
  if(type==2){uint64_t at,extent;uint32_t want,id=0;size_t read=0;xx_io_device *input;
   if((count!=12&&count!=16)||!sb_input(&p,body,count))goto done;
-  if(count==16)id=sb_le32(body);at=sb_le64(body+(count==16?4:0));want=sb_le32(body+(count==16?12:8));
+  if(count==16) {id=sb_le32(body); } at=sb_le64(body+(count==16?4:0));want=sb_le32(body+(count==16?12:8));
   if(id>volume_count){p.status=XX_SEVENZIP_BACKEND_FORMAT;goto done;}
   input=id?volumes[id-1]:source;extent=id?(uint64_t)xx_io_size(input):(uint64_t)length;
   if(!want||want>65536||at>extent||want>extent-at){p.status=XX_SEVENZIP_BACKEND_FORMAT;goto done;}
@@ -170,7 +170,7 @@ static bool sb_run(xx_io_device *source,int64_t base,int64_t length,const char *
   if(operation!=1||count<36||!sb_input(&p,body,36))goto done;
   e.index=sb_le32(body);flags=sb_le32(body+4);e.size=sb_le64(body+8);e.packed_size=sb_le64(body+16);e.mtime=(int64_t)sb_le64(body+24);n=sb_le32(body+32);
   if(!n||n>65536||count!=36+n||flags>7||++listed>1000000||(e.size!=UINT64_MAX&&e.size>max)){p.status=XX_SEVENZIP_BACKEND_LIMIT;goto done;}
-  if(!sb_input(&p,name,n))goto done;name[n]=0;if(xx_rt_strlen(name)!=n){p.status=XX_SEVENZIP_BACKEND_FORMAT;goto done;}
+  if(!sb_input(&p,name,n)) {goto done; } name[n]=0;if(xx_rt_strlen(name)!=n){p.status=XX_SEVENZIP_BACKEND_FORMAT;goto done;}
   e.path=name;e.directory=(flags&1)!=0;e.encrypted=(flags&2)!=0;
   if(!callback(user,&e)){if(p.status==XX_SEVENZIP_BACKEND_FORMAT)p.status=XX_SEVENZIP_BACKEND_LIMIT;goto done;}
  }else if(type==5){size_t wrote=0;
@@ -181,11 +181,11 @@ static bool sb_run(xx_io_device *source,int64_t base,int64_t length,const char *
   received+=count;xx_pd_set_current(p.pd,decode_level,received);
   if(!sb_live(&p))goto done;
  }else if(type==8){
-  if(!count||count>64||!sb_input(&p,name,count))goto done;name[count]=0;
+  if(!count||count>64||!sb_input(&p,name,count)) {goto done; } name[count]=0;
   if(xx_rt_strlen(name)!=count){p.status=XX_SEVENZIP_BACKEND_FORMAT;goto done;}
   if(opts&&opts->detected_handler&&opts->detected_handler_capacity>count)xx_rt_memcpy(opts->detected_handler,name,count+1);
  }else if(type==9){uint32_t id=UINT32_MAX,j;uint64_t extent=0;
-  if(!count||count>1024||!sb_input(&p,name,count))goto done;name[count]=0;
+  if(!count||count>1024||!sb_input(&p,name,count)) {goto done; } name[count]=0;
   if(xx_rt_strlen(name)!=count||xx_rt_strchr(name,'/')||xx_rt_strchr(name,'\\')||xx_rt_strchr(name,':')||!xx_rt_strcmp(name,".")||!xx_rt_strcmp(name,"..")){p.status=XX_SEVENZIP_BACKEND_FORMAT;goto done;}
   if(source_name&&!xx_rt_strcmp(name,source_name)){id=0;extent=(uint64_t)length;}
   else if(source_path){
@@ -205,7 +205,7 @@ static bool sb_run(xx_io_device *source,int64_t base,int64_t length,const char *
   }
   sb_put32(body,id);sb_put64(body+4,extent);if(!sb_frame(&p,10,body,12))goto done;
  }else if(type==6){uint32_t code;uint32_t remain;
-  if(count<4||!sb_input(&p,body,4))goto done;code=sb_le32(body);remain=count-4;
+  if(count<4||!sb_input(&p,body,4)) {goto done; } code=sb_le32(body);remain=count-4;
   while(remain){uint32_t chunk=remain>65536?65536:remain;if(!sb_input(&p,buffer,chunk))goto done;remain-=chunk;}
   p.status=code==0?XX_SEVENZIP_BACKEND_OK:code==2?XX_SEVENZIP_BACKEND_UNSUPPORTED:code==3?XX_SEVENZIP_BACKEND_PASSWORD:code==4?XX_SEVENZIP_BACKEND_LIMIT:code==5?XX_SEVENZIP_BACKEND_CANCELLED:code==6?XX_SEVENZIP_BACKEND_IO:XX_SEVENZIP_BACKEND_FORMAT;
   if(code==0&&operation==2&&expected!=UINT64_MAX&&received!=expected)p.status=XX_SEVENZIP_BACKEND_FORMAT;
@@ -218,7 +218,7 @@ done:sb_close(&p);while(volume_count){--volume_count;xx_io_close(volumes[volume_
  /* The final notification can request cancellation, too. Do not report a
   * successful decode after the observer has stopped the operation. */
  if(p.pd&&xx_pd_is_stopped(p.pd)){p.status=XX_SEVENZIP_BACKEND_CANCELLED;ok=false;}
- if(opts&&opts->status)*opts->status=p.status;return ok;
+ if(opts&&opts->status) {*opts->status=p.status; } return ok;
 }
 bool xx_sevenzip_backend_list(xx_io_device *s,int64_t b,int64_t n,const char *h,const xx_sevenzip_backend_options *o,xx_sevenzip_backend_entry_fn cb,void *u){if(!cb)return false;return sb_run(s,b,n,h,0,UINT64_MAX,NULL,o,cb,u);}
 bool xx_sevenzip_backend_read(xx_io_device *s,int64_t b,int64_t n,const char *h,uint32_t i,uint64_t size,xx_io_device *out,const xx_sevenzip_backend_options *o){return sb_run(s,b,n,h,i,size,out,o,NULL,NULL);}

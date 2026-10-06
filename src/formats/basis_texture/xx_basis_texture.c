@@ -22,7 +22,7 @@ static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
   xx_rt_snprintf(label,sizeof(label),"image-%u-level-%u-%s.basis",image,level,alpha?"alpha":"color");if(!tg_emit(f,s,label,off,size,n))goto done;lastImage=image;lastLevel=level;lastW=w;lastH=h;
  }
  if((format==1&&((flags&4)!=0)!=anyAlpha)||lastImage+1!=images||(format==0&&(flags&4)&&(slices&1)))goto done;
- for(j=0;j<regions;++j)total+=r[j].size;if(total!=n)goto done;s->size=(int64_t)n;result=true;
+ for(j=0;j<regions;++j) {total+=r[j].size; } if(total!=n)goto done;s->size=(int64_t)n;result=true;
 done:xx_mem_free(r);return result;
 }
 

@@ -5,7 +5,7 @@
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[8];nh_blob b={0};char text[32769],v[1024];bool ok=false,quote=false;uint64_t at=0,n,width,bits,count;unsigned i,digits;
-    if(!pm_read(f,0,h,8) || xx_rt_memcmp(h,":WFMPRE:",8)) return false;NH_NEED(nh_load(f,&b,pd));
+    if(!pm_read(f,0,h,8) || xx_rt_memcmp(h,":WFMPRE:",8)) { return false; } NH_NEED(nh_load(f,&b,pd));
     while(at<b.n && at<32768) {uint8_t c=b.p[(size_t)at];if(c=='\"') quote=!quote;if(!quote && c==':' && nh_span(&b,at,7) && !xx_rt_memcmp(b.p+(size_t)at,":CURVE",6)) break;NH_NEED(c>=32 && c<=126);text[(size_t)at++]=(char)c;}
     NH_NEED(!quote && at<32768 && at>8 && text[(size_t)at-1]==';');text[(size_t)at]=0;
     NH_NEED(nh_field(text+8,"BYT_NR",v,sizeof(v)) && sd_uint(v,&width) && (width==1 || width==2));NH_NEED(nh_field(text+8,"BIT_NR",v,sizeof(v)) && sd_uint(v,&bits) && bits==width*8);

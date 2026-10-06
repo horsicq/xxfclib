@@ -6,7 +6,7 @@
 #include "../hxc_afi/xx_hxc_tracks.h"
 static bool hs_pulses(hx_blob *b,const uint8_t *p,uint32_t z,uint32_t expected){uint32_t a=0,count=0,iterations=0;while(a<z){uint8_t c=p[a++];uint32_t n,value;unsigned k;if(!(iterations++&4095U)&&!hx_poll(b))return false;
  if(c<128U){if(c)++count;continue;}if(c<192U){n=1;value=c&63U;}else if(c<224U){n=2;value=c&31U;}else if(c<240U){n=3;value=c&15U;}else return false;
- if(n>z-a)return false;for(k=0;k<n;++k)value=(value<<8)|p[a++];if(!value)return false;++count;
+ if(n>z-a) {return false; } for(k=0;k<n;++k)value=(value<<8)|p[a++];if(!value)return false;++count;
  }return count==expected;}
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd){hx_blob b;uint64_t at=0;uint32_t packets=0,previous=0,streams=0;bool ok=false;char name[96],info[384];
  if(!hx_load(f,&b,pd))return false;

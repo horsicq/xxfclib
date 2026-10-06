@@ -264,7 +264,7 @@ static bool ses_write_disk(Abstractformat *format, const ses_info *info,
             switch (value & SES_TAG_MASK) {
             case UINT64_C(0x0000000000000000):
                 if (value != 0U) goto done;
-                /* fall through: unallocated reads as zero */
+                /* fall through - unallocated reads as zero */
             case UINT64_C(0x1000000000000000):
             case UINT64_C(0x2000000000000000):
                 if (!ses_write_zeros(destination, zeros, output, pd))

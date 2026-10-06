@@ -16,7 +16,7 @@ static void ppd_close(Abstractformat *format) {
     xx_ppd_free((xx_ppd *)format);
 }
 static const xx_format_search_desc ppd_search = {
-    ppd_types, 1U, NULL, 0U, ppd_open, ppd_close
+    ppd_types, 1U, NULL, 0U, ppd_open, ppd_close, false
 };
 static xx_format_search_state *ppd_create_search(
     xx_format_extractor *self, xx_io_device *device,

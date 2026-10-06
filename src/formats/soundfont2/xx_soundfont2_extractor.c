@@ -15,7 +15,7 @@ static void close_reader(Abstractformat *f)
     xx_soundfont2_free((xx_soundfont2 *)f);
 }
 static const xx_format_search_desc desc = {types, 1U, NULL, 0U,
-                                            open_reader, close_reader};
+                                            open_reader, close_reader, false};
 static xx_format_search_state *create_search(xx_format_extractor *x,
                                                xx_io_device *d,
                                                const xx_list_s *o,

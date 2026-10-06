@@ -25,13 +25,13 @@ static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
   else if(tg_word_ci(&q,"#title")||tg_word_ci(&q,"#titl"))kind=11;
   else if(tg_word_ci(&q,"#rotation")||tg_word_ci(&q,"#rota"))kind=12;
   else return false;
-  if(!z||fields&(1U<<kind)||!tg_done(&q)||!tg_line(&q))return false;fields|=1U<<kind;
+  if(!z||fields&(1U<<kind)||!tg_done(&q)||!tg_line(&q)) {return false; } fields|=1U<<kind;
   if(kind==11){if(q.stop-q.start>4096) return false;continue;}
   if(kind==0||kind==1||kind==7||kind==8){if(!tg_i(&q,&value)||!tg_done(&q))return false;if(kind<2){if(value<1||value>65536)return false;if(!kind)w=value;else h=value;}else if(kind==7){if(!value||value<-4||value>4)return false;}else if(value)return false;}
   else {if(!tg_num(&q,&v)||!tg_done(&q)||((kind==2||kind==3)&&v<=0))return false;if(kind==6)nodata=v;if(kind==9)zlo=v;if(kind==10)zhi=v;}
  }
  if(!grid||(fields&3)!=3||(uint64_t)w*h>16000000||!tg_emit(f,s,"descriptor.gxf",0,q.p,n)||!tg_grid_rows(f,s,b,n,q.p,(uint64_t)w*h,nodata,&lo,&hi,pd,true))return false;
- if((fields&(1<<9))&&lo<zlo)return false;if((fields&(1<<10))&&hi>zhi)return false;s->size=(int64_t)n;return true;
+ if((fields&(1<<9))&&lo<zlo) {return false; } if((fields&(1<<10))&&hi>zhi)return false;s->size=(int64_t)n;return true;
 }
 
 void xx_gxf_grid_init(xx_gxf_grid *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_GXF_GRID,"gxf");}}

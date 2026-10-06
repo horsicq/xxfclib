@@ -3,7 +3,7 @@
 typedef struct vr_gfs { Abstractformat *f; pm_stream *s; xx_pd_struct *pd; uint32_t block; uint64_t limit,used,ancestors[64]; unsigned depth; } vr_gfs;
 static bool vr_gfs_take(vr_gfs *g,uint64_t bytes) { if(g->used>g->limit || bytes>g->limit-g->used) return false; g->used+=bytes; return true; }
 static bool vr_gfs_header(const uint8_t *b,uint32_t type) { return pm_be32(b)==UINT32_C(0x01161970) && pm_be32(b+4)==type; }
-static bool vr_gfs_block(vr_gfs *g,uint64_t block,uint8_t *b) { return vr_poll(g->pd) && block && block<=(uint64_t)pm_available(g->f)/g->block && block<=INT64_MAX/g->block && pm_read(g->f,(int64_t)(block*g->block),b,g->block); }
+static bool vr_gfs_block(vr_gfs *g,uint64_t block,uint8_t *b) { return vr_poll(g->pd) && block && block<=(uint64_t)pm_available(g->f)/g->block && block<=(uint64_t)(INT64_MAX/g->block) && pm_read(g->f,(int64_t)(block*g->block),b,g->block); }
 static bool vr_gfs_tree(vr_gfs *g,mm_map *map,const uint8_t *p,size_t count,unsigned height,uint64_t *left,bool journal,unsigned depth) {
     size_t i; uint64_t leaf=g->block-(journal?24U:0U); uint8_t *indirect=NULL;
     if(!height || height>10 || depth>10) return false;
@@ -11,8 +11,8 @@ static bool vr_gfs_tree(vr_gfs *g,mm_map *map,const uint8_t *p,size_t count,unsi
         if(!vr_poll(g->pd) || g->used>g->limit || map->count>=(g->limit-g->used)/(2*sizeof(mm_extent))) goto fail;
         if(height==1) {
             if(block>(uint64_t)(INT64_MAX-24)/g->block) goto fail;
-            if(journal && block) { uint8_t header[24]; if(block>INT64_MAX/g->block || !pm_read(g->f,(int64_t)(block*g->block),header,24) || !vr_gfs_header(header,7)) goto fail; }
-            if(!mm_add(g->f,map,block?(int64_t)(block*g->block)+(journal?24:0):-1,bytes)) goto fail; *left-=bytes;
+            if(journal && block) { uint8_t header[24]; if(block>(uint64_t)(INT64_MAX/g->block) || !pm_read(g->f,(int64_t)(block*g->block),header,24) || !vr_gfs_header(header,7)) goto fail; }
+            if(!mm_add(g->f,map,block?(int64_t)(block*g->block)+(journal?24:0):-1,bytes)) { goto fail; } *left-=bytes;
         } else if(!block) {
             unsigned h; uint64_t capacity=leaf; for(h=1;h<height;++h) { uint64_t slots=(g->block-24)/8; if(capacity>UINT64_MAX/slots) { capacity=UINT64_MAX; break; } capacity*=slots; }
             bytes=*left<capacity?*left:capacity; if(!mm_add(g->f,map,-1,bytes)) goto fail; *left-=bytes;
@@ -34,7 +34,7 @@ static mm_map *vr_gfs_map(vr_gfs *g,uint64_t block,const uint8_t *inode,bool dir
 static bool vr_gfs_walk(vr_gfs *,uint64_t,const char *);
 static bool vr_gfs_dirents(vr_gfs *g,const uint8_t *b,size_t at,size_t bytes,const char *parent) {
     while(at<bytes) { uint64_t inode; uint16_t record,name_size; char name[96],path[96]; size_t i;
-        if(!vr_poll(g->pd) || bytes-at<40) return false; inode=mm_be64(b+at+8); record=pm_be16(b+at+20); name_size=pm_be16(b+at+22);
+        if(!vr_poll(g->pd) || bytes-at<40) { return false; } inode=mm_be64(b+at+8); record=pm_be16(b+at+20); name_size=pm_be16(b+at+22);
         if(record<40 || (record&7) || record>bytes-at || name_size>record-40 || name_size>=sizeof(name)) return false;
         if(inode) { if(!name_size) return false;
             for(i=0;i<name_size;++i) { uint8_t c=b[at+40+i]; if(c<32 || c>=127 || c=='/' || c=='\\' || c==':' || c=='"' || c=='<' || c=='>' || c=='|' || c=='?' || c=='*') return false; name[i]=(char)c; } name[name_size]=0;
@@ -53,7 +53,7 @@ static bool vr_gfs_walk(vr_gfs *g,uint64_t block,const char *path) {
     inode=(uint8_t *)xx_mem_alloc(g->block); if(!inode || !vr_gfs_block(g,block,inode) || !vr_gfs_header(inode,4) || mm_be64(inode+32)!=block) goto done;
     mode=pm_be32(inode+40)&0xF000; flags=pm_be32(inode+128); size=mm_be64(inode+56);
     if(mode==0x8000 || mode==0xA000) { const xx_var *v=xx_format_resolve_extra_parameter(g->f,((xx_volume *)g->f)->parse_options,XX_META_ID_OPT_MAX_MEMBER_SIZE);
-        if(v && size>xx_var_get_u64(v)) goto done; map=vr_gfs_map(g,block,inode,false); if(!map) goto done;
+        if(v && size>xx_var_get_u64(v)) { goto done; } map=vr_gfs_map(g,block,inode,false); if(!map) goto done;
         if(!vr_gfs_take(g,sizeof(*map)+map->capacity*sizeof(mm_extent)+2*sizeof(pm_member))) goto done;
         if(!mm_emit(g->f,g->s,path,map)) { map=NULL; goto done; } map=NULL;
         xx_rt_snprintf(g->s->items[g->s->count-1].name,sizeof(g->s->items[g->s->count-1].name),"%s",path); ok=true;

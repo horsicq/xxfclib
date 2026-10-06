@@ -8,15 +8,15 @@
 
 static bool as_string(Abstractformat *f,int64_t *pos,int64_t end) {
     uint8_t h[2]; unsigned len;
-    if(end-*pos<2 || !pm_read(f,*pos,h,2)) return false; len=pm_le16(h); *pos+=2;
-    if(len>(uint64_t)(end-*pos)) return false; *pos+=len; return true;
+    if(end-*pos<2 || !pm_read(f,*pos,h,2)) { return false; } len=pm_le16(h); *pos+=2;
+    if(len>(uint64_t)(end-*pos)) { return false; } *pos+=len; return true;
 }
 static bool as_palette(Abstractformat *f,int64_t pos,int64_t end,xx_pd_struct *pd) {
     uint8_t h[20]; uint32_t total,first,last,i;
-    if(end-pos<20 || !pm_read(f,pos,h,20)) return false; total=pm_le32(h); first=pm_le32(h+4); last=pm_le32(h+8); pos+=20;
+    if(end-pos<20 || !pm_read(f,pos,h,20)) { return false; } total=pm_le32(h); first=pm_le32(h+4); last=pm_le32(h+8); pos+=20;
     if(!total || total>65536 || first>last || last>=total) return false;
     for(i=first;i<=last;++i) { uint8_t e[6]; unsigned flags;
-        if((pd && xx_pd_is_stopped(pd)) || end-pos<6 || !pm_read(f,pos,e,6)) return false; flags=pm_le16(e); pos+=6;
+        if((pd && xx_pd_is_stopped(pd)) || end-pos<6 || !pm_read(f,pos,e,6)) { return false; } flags=pm_le16(e); pos+=6;
         if(flags>1 || (flags && !as_string(f,&pos,end))) return false;
     }
     return pos==end;
@@ -34,11 +34,11 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         for(i=0;i<count;++i) { uint32_t size; unsigned type; int64_t payload,chunk_end;
             if((pd && xx_pd_is_stopped(pd)) || end-pos<6 || !pm_read(f,pos,chunk,6)) return false;
             size=pm_le32(chunk); type=pm_le16(chunk+4);
-            if(size<6 || size>(uint64_t)(end-pos)) return false; payload=pos+6; chunk_end=pos+size;
+            if(size<6 || size>(uint64_t)(end-pos)) { return false; } payload=pos+6; chunk_end=pos+size;
             if(type==0x2004) { int64_t q; unsigned n;
                 if(frame_i || layers==4096 || size<24 || !pm_read(f,payload,chunk,18) || pm_le16(chunk+2) || pm_le16(chunk+4) || pm_le16(chunk+10)>18 || chunk[13] || chunk[14] || chunk[15]) return false;
                 n=pm_le16(chunk+16); q=payload+18+n;
-                if(!n || q>chunk_end || q+((pm_le32(h+14)&4) ? 16 : 0)!=chunk_end) return false; ++layers;
+                if(!n || q>chunk_end || q+((pm_le32(h+14)&4) ? 16 : 0)!=chunk_end) { return false; } ++layers;
             } else if(type==0x2005) { unsigned kind,w,height; uint64_t bytes;
                 if(size<22 || !pm_read(f,payload,chunk,16) || pm_le16(chunk)>=layers) return false;
                 kind=pm_le16(chunk+7);
@@ -49,18 +49,18 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
                     if(kind==0) { if(bytes!=size-26U) return false; }
                     else { uint8_t z[2]; if(size<32 || !pm_read(f,payload+20,z,2) || (z[0]&15)!=8 || (z[0]>>4)>7 || (z[1]&32) || (((unsigned)z[0]*256U+z[1])%31U)) return false; }
                 } else if(kind==1) { if(size!=24 || !pm_read(f,payload+16,chunk+16,2) || pm_le16(chunk+16)>=frame_i) return false; }
-                else return false; cel=true;
+                else { return false; } cel=true;
             } else if(type==0x2019) { if(!as_palette(f,payload,chunk_end,pd)) return false; }
             else if(type==0x2020) { uint32_t flags; int64_t q=payload+4;
-                if(size<10 || !pm_read(f,payload,chunk,4)) return false; flags=pm_le32(chunk);
+                if(size<10 || !pm_read(f,payload,chunk,4)) { return false; } flags=pm_le32(chunk);
                 if(flags>3 || ((flags&1) && !as_string(f,&q,chunk_end))) return false;
-                if(flags&2) q+=4; if(q!=chunk_end) return false;
+                if(flags&2) { q+=4; } if(q!=chunk_end) return false;
             }
             xx_rt_snprintf(label,sizeof(label),"frame-%u-chunk-%04X.bin",frame_i,type); if(!pm_add(f,s,label,payload,size-6)) return false; pos=chunk_end;
         }
         if(pos!=end) return false;
     }
-    if(pos!=total || !layers || !cel) return false; s->size=total; return true;
+    if(pos!=total || !layers || !cel) { return false; } s->size=total; return true;
 }
 
 void xx_aseprite_init(xx_aseprite *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_ASEPRITE,"aseprite"); } }

@@ -22,7 +22,7 @@ static bool fm_byte(fm_bytes *r,uint8_t *b) {
     if(r->pos>=r->end) return false;
     if(r->begin<0 || r->pos<r->begin || r->pos-r->begin>=(int64_t)r->count) {
         int64_t left=r->end-r->pos; r->count=(uint64_t)left>r->capacity ? r->capacity : (size_t)left;
-        if((r->pd && xx_pd_is_stopped(r->pd)) || !pm_read(r->f,r->pos,r->buffer,r->count)) return false; r->begin=r->pos;
+        if((r->pd && xx_pd_is_stopped(r->pd)) || !pm_read(r->f,r->pos,r->buffer,r->count)) { return false; } r->begin=r->pos;
     }
     *b=r->buffer[(size_t)(r->pos-r->begin)]; ++r->pos; return true;
 }
@@ -35,9 +35,9 @@ static bool sg_row(Abstractformat *f,xx_pd_struct *pd,uint32_t at,uint32_t size,
     fm_bytes r; unsigned done=0; if(!fm_start(&r,f,pd,at,(int64_t)at+size)) return false;
     for(;;) { uint8_t op,high=0; unsigned n;
         if(bpc==2 && (!fm_byte(&r,&high) || high)) return fm_finish(&r,false);
-        if(!fm_byte(&r,&op)) return fm_finish(&r,false); n=op&127;
+        if(!fm_byte(&r,&op)) { return fm_finish(&r,false); } n=op&127;
         if(!n) return fm_finish(&r,done==width && r.pos==r.end);
-        if(n>width-done || !fm_skip(&r,(uint64_t)((op&128) ? n : 1U)*bpc)) return fm_finish(&r,false); done+=n;
+        if(n>width-done || !fm_skip(&r,(uint64_t)((op&128) ? n : 1U)*bpc)) { return fm_finish(&r,false); } done+=n;
     }
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
@@ -55,8 +55,8 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         count=y*z; if(count>1024) return false; end=512+8*(int64_t)count;
         if(end>pm_available(f)) return false;
         for(i=0;i<count;++i) {
-            if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,512+4*(int64_t)i,word,4)) return false; starts[i]=pm_be32(word);
-            if(!pm_read(f,512+4*(int64_t)(count+i),word,4)) return false; sizes[i]=pm_be32(word);
+            if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,512+4*(int64_t)i,word,4)) { return false; } starts[i]=pm_be32(word);
+            if(!pm_read(f,512+4*(int64_t)(count+i),word,4)) { return false; } sizes[i]=pm_be32(word);
             if(starts[i]<512U+8U*count || !sizes[i] || sizes[i]>(2U*x+1U)*bpc || (uint64_t)starts[i]+sizes[i]>(uint64_t)pm_available(f)) return false;
             for(j=0;j<i;++j) {
                 if((uint64_t)starts[i]<(uint64_t)starts[j]+sizes[j] && (uint64_t)starts[j]<(uint64_t)starts[i]+sizes[i] && !(starts[i]==starts[j] && sizes[i]==sizes[j])) return false;

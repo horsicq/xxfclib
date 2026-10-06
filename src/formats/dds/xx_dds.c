@@ -6,9 +6,9 @@
 #include "xxfclib/formats/dds/xx_dds.h"
 #include "../xx_payload_members.h"
 
-static uint16_t r16(const uint8_t *p,bool be) { return be ? pm_be16(p) : pm_le16(p); }
-static uint32_t r32(const uint8_t *p,bool be) { return be ? pm_be32(p) : pm_le32(p); }
-static uint64_t r64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint16_t r16(const uint8_t *p,bool be) { return be ? pm_be16(p) : pm_le16(p); }
+static XXFC_MAYBE_UNUSED uint32_t r32(const uint8_t *p,bool be) { return be ? pm_be32(p) : pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint64_t r64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[128],x[20]; uint32_t w,height,depth,levels,faces=1,layers=1,bpp=0,block=0,fmt,caps,i,j; int64_t at=128;
@@ -43,10 +43,10 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if((uint64_t)layers*faces*levels>65536) return false;
     for(j=0;j<layers*faces;++j) for(i=0;i<levels;++i) {
         uint32_t mw=w>>i,mh=height>>i,md=depth>>i; uint64_t size; char label[40];
-        if(pd && xx_pd_is_stopped(pd)) return false; if(!mw) mw=1; if(!mh) mh=1; if(!md) md=1;
+        if(pd && xx_pd_is_stopped(pd)) { return false; } if(!mw) mw=1; if(!mh) mh=1; if(!md) md=1;
         size=block ? ((mw+3ULL)/4)*((mh+3ULL)/4)*md*block : (uint64_t)mw*mh*md*(bpp/8);
         xx_rt_snprintf(label,sizeof(label),"surface-%u-mip-%u.bin",(unsigned)j,(unsigned)i);
-        if(size>INT64_MAX || !pm_add(f,s,label,at,(int64_t)size)) return false; at+=(int64_t)size;
+        if(size>INT64_MAX || !pm_add(f,s,label,at,(int64_t)size)) { return false; } at+=(int64_t)size;
     }
     s->size=at; return true;
 }

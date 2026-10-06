@@ -13,7 +13,7 @@ static bool hb_format(nh_blob *b,el_token t,bool real,hb_desc *d) {
 static bool hb_array(el_lines *c,uint64_t count,hb_desc d,uint64_t *values,bool real) {
     el_token line,t;uint64_t seen=0;bool first=true;while(seen<count) {unsigned i,n=(unsigned)((count-seen)<d.repeat ? count-seen:d.repeat);if(!el_line(c,&line)) return false;
         /* SciPy's retained primary writer declares E(width) but emits width-1. */
-        if(first && real && d.width>1 && line.n==(uint64_t)n*(d.width-1)) --d.width;first=false;
+        if(first && real && d.width>1 && line.n==(uint64_t)n*(d.width-1)) { --d.width; } first=false;
         if(line.n!=(uint64_t)n*d.width) return false;
         for(i=0;i<n;++i) {t=el_trim(c->b,el_slice(line,(uint64_t)i*d.width,d.width));if(real ? !el_float(c->b,t):!el_uint(c->b,t,&values[(size_t)seen])) return false;++seen;}}
     return true;

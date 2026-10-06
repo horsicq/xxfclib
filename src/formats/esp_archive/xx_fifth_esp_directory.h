@@ -24,7 +24,7 @@ static bool es_build_tree(const int *length,unsigned n,es_tree *t) {
     es_build s; uint32_t total=0; unsigned i,d; xx_rt_memset(&s,0,sizeof(s)); xx_rt_memset(t,0,sizeof(*t));
     for(d=0;d<=16;++d) s.head[d]=-1;
     for(i=0;i<n;++i) { if(length[i]<0 || length[i]>16) return false; ++s.count[length[i]]; s.next[i]=s.head[length[i]]; s.head[length[i]]=(int)i; }
-    for(d=1;d<=16;++d) total+=(uint32_t)s.count[d]<<(16-d); if(total!=65536U) return false;
+    for(d=1;d<=16;++d) { total+=(uint32_t)s.count[d]<<(16-d); } if(total!=65536U) return false;
     for(d=1;d<=16;++d) { int p=s.head[d]; while(p>=0) { s.order[s.used++]=p; p=s.next[p]; } }
     s.count[0]=0; es_walk(&s,t,0,0,0); return !s.bad;
 }
@@ -38,11 +38,11 @@ static bool es_table(es_bits *b,unsigned symbols,es_tree *t) {
     int pre[19]={0},lengths[272]={0}; es_tree pt; int64_t v; unsigned i,count,at=0;
     v=es_get(b,5); if(v<0 || v>19) return false; count=19U-(unsigned)v;
     for(i=0;i<count;++i) { v=es_get(b,3); if(v<0) return false; pre[i]=(int)v; if(pre[i]==7) for(;;) { v=es_get(b,1); if(v<0) return false; if(!v) break; if(++pre[i]>16) return false; } }
-    if(!es_build_tree(pre,19,&pt)) return false; v=es_get(b,9); if(v<0 || (uint64_t)v>symbols) return false; count=symbols-(unsigned)v;
+    if(!es_build_tree(pre,19,&pt)) { return false; } v=es_get(b,9); if(v<0 || (uint64_t)v>symbols) return false; count=symbols-(unsigned)v;
     while(at<count) { int sym=es_symbol(b,&pt); if(sym<0) return false;
         if(sym>=3) { if(sym>18) return false; lengths[at++]=sym-2; }
         else { unsigned run=1; if(sym==1) { v=es_get(b,4); if(v<0) return false; run=(unsigned)v+3; } else if(sym==2) { v=es_get(b,9); if(v<0) return false; run=(unsigned)v+20; }
-            if(run>count-at) return false; while(run--) lengths[at++]=0;
+            if(run>count-at) { return false; } while(run--) lengths[at++]=0;
         }
     } return es_build_tree(lengths,symbols,t);
 }
@@ -58,7 +58,7 @@ static bool es_decode(const uint8_t *input,size_t input_size,uint8_t *output,siz
                 distance=(unsigned)extra|(1U<<(distance-1));
             }
             rp=(wp-(distance+1))&32767U; ls=es_symbol(&b,&length_tree); if(ls<0) return false; length=(unsigned)ls+3;
-            if(length>capacity-out) return false; while(length--) { uint8_t c=window[rp]; window[wp]=c; wp=(wp+1)&32767U; rp=(rp+1)&32767U; output[out++]=c; }
+            if(length>capacity-out) { return false; } while(length--) { uint8_t c=window[rp]; window[wp]=c; wp=(wp+1)&32767U; rp=(rp+1)&32767U; output[out++]=c; }
         }
     }
 }

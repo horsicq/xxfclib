@@ -5,13 +5,13 @@
 
 static bool runs(nh_blob *b,uint64_t *at,uint64_t end,uint32_t dna,bool be) {
     uint32_t count,i;uint64_t starts,sizes,last=0;if(!eh_span(*at,4,end)) return false;count=fd_u32(b->p+(size_t)*at,be);*at+=4;
-    if(count>65536 || !eh_span(*at,(uint64_t)count*8,end)) return false;starts=*at;sizes=starts+(uint64_t)count*4;
+    if(count>65536 || !eh_span(*at,(uint64_t)count*8,end)) { return false; } starts=*at;sizes=starts+(uint64_t)count*4;
     for(i=0;i<count;++i) {uint32_t start=fd_u32(b->p+(size_t)starts+i*4,be),n=fd_u32(b->p+(size_t)sizes+i*4,be);if(!n || start<last || start>dna || n>dna-start) return false;last=(uint64_t)start+n;}
     *at+=(uint64_t)count*8;return true;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[16];nh_blob b={0};bool be,ok=false;uint64_t at=16,next;uint32_t count,i,*offsets=NULL;char (*names)[256]=NULL;
-    if(!pm_read(f,0,h,16)) return false;if(pm_le32(h)==0x1a412743U) be=false;else if(pm_be32(h)==0x1a412743U) be=true;else return false;
+    if(!pm_read(f,0,h,16)) { return false; } if(pm_le32(h)==0x1a412743U) be=false;else if(pm_be32(h)==0x1a412743U) be=true;else return false;
     count=fd_u32(h+8,be);NH_NEED(!fd_u32(h+4,be) && !fd_u32(h+12,be) && count && count<=1024 && nh_load(f,&b,pd));
     /* Allocate only the validated index size; detection has a small stack. */
     offsets=(uint32_t *)xx_mem_alloc((size_t)count*sizeof(*offsets));

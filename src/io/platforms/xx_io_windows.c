@@ -697,7 +697,7 @@ bool xx_io_platform_secure_random(uint8_t *output, size_t size) {
         if (!module) {
             return false;
         }
-        generate = (xx_bcrypt_gen_random_fn)(void *)GetProcAddress(
+        generate = (xx_bcrypt_gen_random_fn)(void (*)(void))GetProcAddress(
             module, "BCryptGenRandom");
         if (!generate) {
             FreeLibrary(module);

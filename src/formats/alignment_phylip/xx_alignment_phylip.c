@@ -5,7 +5,7 @@
 static bool phylip_fragment(nh_blob *b,f14_sequence *q,el_token line,uint64_t *width) {
     el_token t[128];unsigned n,i;uint64_t count=0;if(!el_split(b,line,t,128,&n,false) || !n) return false;
     for(i=0;i<n;++i) {if(!t[i].n || t[i].n>10 || !f14_append(b,q,t[i],true,false,false) || !el_chars(b,t[i],"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-",true)) return false;count+=t[i].n;}
-    if(*width && *width!=count) return false;*width=count;return true;
+    if(*width && *width!=count) { return false; } *width=count;return true;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     nh_blob b={0};el_lines c={0};el_token line,t[3];f14_sequence *q=NULL;unsigned n=0,nt,i;uint64_t rows,columns,total=0,budget=10000000,width=0;bool ok=false;

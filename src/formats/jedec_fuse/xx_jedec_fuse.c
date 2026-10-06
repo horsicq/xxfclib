@@ -17,8 +17,8 @@ static bool vg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  else if(b[q.t]=='L'){uint32_t offset,count=0;++q.t;if(!vg_i(&q,&v)||v<0||(pass&&(!(seen&2)||(uint32_t)v>=qf)))goto done;offset=(uint32_t)v;while(q.t<q.stop){uint8_t c=b[q.t++];if(c==32||c==9||c==10||c==13)continue;if(c!='0'&&c!='1')goto done;if(pass){uint32_t at=offset+count;if(at>=qf||(assigned[at/8]&(1U<<(at%8))))goto done;assigned[at/8]|=(uint8_t)(1U<<(at%8));if(c=='1')bits[at/8]|=(uint8_t)(1U<<(at%8));else bits[at/8]&=(uint8_t)~(1U<<(at%8));}if(++count>1048576)goto done;}if(!count)goto done;}
  else if(b[q.t]=='C'){++q.t;if((seen&16)||!vg_jhex(&q,&expected))goto done;seen|=16;}
  else if(b[q.t]=='N'){++q.t;if(q.t==q.stop)goto done;}
- else goto done;if(pass){xx_rt_snprintf(label,sizeof(label),"fuse-field-%u.jed",fields-1);if(!vg_emit(f,s,label,start,stop-start,n))goto done;}p=stop;}
- if(p!=etx||(seen&23)!=23)goto done;if(!pass){bits=(uint8_t *)xx_mem_alloc((qf+7)/8);assigned=(uint8_t *)xx_mem_alloc((qf+7)/8);if(!bits||!assigned)goto done;xx_mem_zero(assigned,(qf+7)/8);if(!vg_emit(f,s,"device-notes.jed",0,first,n))goto done;}}
+ else { goto done; } if(pass){xx_rt_snprintf(label,sizeof(label),"fuse-field-%u.jed",fields-1);if(!vg_emit(f,s,label,start,stop-start,n))goto done;}p=stop;}
+ if(p!=etx||(seen&23)!=23) {goto done; } if(!pass){bits=(uint8_t *)xx_mem_alloc((qf+7)/8);assigned=(uint8_t *)xx_mem_alloc((qf+7)/8);if(!bits||!assigned)goto done;xx_mem_zero(assigned,(qf+7)/8);if(!vg_emit(f,s,"device-notes.jed",0,first,n))goto done;}}
  checksum=0;for(j=0;j<(qf+7)/8;++j)checksum=(checksum+bits[j])&65535;if(checksum!=expected||!vg_cover(f,s,"framing.jed",n)||!vg_memory(f,s,"fuses.bits",bits,(qf+7)/8))goto done;bits=NULL;ok=true;done:if(bits)xx_mem_free(bits);if(assigned)xx_mem_free(assigned);return ok;}
 
 void xx_jedec_fuse_init(xx_jedec_fuse *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_JEDEC_FUSE,"jed");}}

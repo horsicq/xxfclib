@@ -53,10 +53,10 @@ static bool af_read(xx_io_device *d,int64_t at,void *out,size_t n,xx_pd_struct *
     if(xx_io_seek64(d,at,SEEK_SET)==0){
         while(done<n&&!af_stop(pd)){
             ssize_t got=xx_io_read(d,(uint8_t *)out+done,n-done);
-            if(got<=0||(size_t)got>n-done||af_stop(pd))break;done+=(size_t)got;
+            if(got<=0||(size_t)got>n-done||af_stop(pd)) {break; } done+=(size_t)got;
         }ok=done==n&&!af_stop(pd);
     }
-    if(xx_io_seek64(d,saved,SEEK_SET)!=0)ok=false;return ok;
+    if(xx_io_seek64(d,saved,SEEK_SET)!=0) {ok=false; } return ok;
 }
 static bool af_rel(xx_io_device *d,const af_view *v,uint64_t at,void *out,size_t n,xx_pd_struct *pd){
     return at<=v->size&&n<=v->size-at&&at<=(uint64_t)(INT64_MAX-v->base)&&
@@ -76,7 +76,7 @@ static bool af_write(xx_io_device *d,const uint8_t *p,size_t n,xx_pd_struct *pd)
     size_t done=0;
     while(done<n&&!af_stop(pd)){
         ssize_t got=xx_io_write(d,p+done,n-done);
-        if(got<=0||(size_t)got>n-done||af_stop(pd))return false;done+=(size_t)got;
+        if(got<=0||(size_t)got>n-done||af_stop(pd)) {return false; } done+=(size_t)got;
     }
     return done==n&&!af_stop(pd);
 }
@@ -91,7 +91,7 @@ static const af_block *af_find(const af_view *v,uint64_t at){
     return lo<v->block_count&&v->blocks[lo].offset==at?&v->blocks[lo]:NULL;
 }
 static void af_release(af_view *v){
-    if(!v||--v->refs)return;xx_mem_free(v->ddt);xx_mem_free(v->blocks);xx_mem_free(v);
+    if(!v||--v->refs) {return; } xx_mem_free(v->ddt);xx_mem_free(v->blocks);xx_mem_free(v);
 }
 static af_view *af_parse(Abstractformat *f,xx_pd_struct *pd){
     af_view *v=NULL;uint8_t head[AF_HEADER],idx[AF_INDEX_HEAD],ddt[AF_DDT_HEAD],bh[AF_BLOCK_HEAD];
@@ -176,7 +176,7 @@ static af_view *af_parse(Abstractformat *f,xx_pd_struct *pd){
         encoded&=UINT64_C(0x0fffffffffffffff);
         ordinal=encoded&((UINT64_C(1)<<v->data_shift)-1U);
         address=(encoded>>v->data_shift);
-        if(address>UINT64_MAX/align)goto fail;address*=align;
+        if(address>UINT64_MAX/align) {goto fail; } address*=align;
         b=af_find(v,address);
         if(!b||ordinal>=b->length/v->sector_size)goto fail;
     }
@@ -185,7 +185,7 @@ fail:xx_mem_free(entries);af_release(v);return NULL;
 }
 static void af_destroy_format(Abstractformat *f){xx_aaruformat_destroy((xx_aaruformat *)f);}
 void xx_aaruformat_init(xx_aaruformat *v,xx_io_device *d,int64_t base){
-    if(!v)return;xx_mem_zero(v,sizeof(*v));xx_format_init(&v->format,d,base);
+    if(!v) {return; } xx_mem_zero(v,sizeof(*v));xx_format_init(&v->format,d,base);
     v->format.file_type=AF_TYPE;v->format.format_type=XX_TYPE_ARCHIVE;v->format.is_archive=true;
     xx_format_set_mime_type(&v->format,"application/x-aaruformat");
     xx_format_set_extension(&v->format,"aif");
@@ -204,7 +204,7 @@ xx_aaruformat *xx_aaruformat_create(xx_io_device *d,int64_t base){
     xx_aaruformat *v=(xx_aaruformat *)xx_mem_alloc(sizeof(*v));if(v)xx_aaruformat_init(v,d,base);return v;
 }
 void xx_aaruformat_destroy(xx_aaruformat *v){
-    if(!v)return;af_release((af_view *)v->internal);v->internal=NULL;
+    if(!v) {return; } af_release((af_view *)v->internal);v->internal=NULL;
     xx_format_cleanup_extra_parameters(&v->format);
 }
 void xx_aaruformat_free(xx_aaruformat *v){if(v){xx_aaruformat_destroy(v);xx_mem_free(v);}}
@@ -235,14 +235,14 @@ static bool af_record(xx_archive_record *r,const af_view *v){
 static void af_cursor_free(void *ptr){af_cursor *c=(af_cursor *)ptr;if(c){af_release(c->view);xx_mem_free(c);}}
 xx_archive_record_state *xx_aaruformat_create_archive_records_reading(Abstractformat *f,const xx_list_s *options,xx_pd_struct *pd){
     xx_archive_record_state *s;af_cursor *c;af_view *v;size_t i;
-    if(!xx_aaruformat_handle_base_info(f,pd))return NULL;v=(af_view *)((xx_aaruformat *)f)->internal;
+    if(!xx_aaruformat_handle_base_info(f,pd)) {return NULL; } v=(af_view *)((xx_aaruformat *)f)->internal;
     s=(xx_archive_record_state *)xx_mem_alloc(sizeof(*s));c=(af_cursor *)xx_mem_calloc(1U,sizeof(*c));
     if(!s||!c){xx_mem_free(s);xx_mem_free(c);return NULL;}
     ++v->refs;c->view=v;xx_archive_record_state_init(s,f);s->internal_state=c;s->free_internal=af_cursor_free;
     s->total_records=1;
     if(options)for(i=0;i<options->count;++i){
         const xx_meta *m=(const xx_meta *)xx_list_at(options,i);xx_meta copy;
-        if(!m)continue;xx_meta_init(&copy,m->meta_id);
+        if(!m) {continue; } xx_meta_init(&copy,m->meta_id);
         if(!xx_var_copy(&copy.var,&m->var)||!xx_list_append(&s->options,&copy)){
             xx_meta_cleanup(&copy);xx_archive_record_state_free(s);return NULL;
         }
@@ -284,7 +284,7 @@ static char af_fold(char c){return c>='A'&&c<='Z'?(char)(c+32):c;}
 static bool af_equal(const char *a,const char *b){while(*a&&af_fold(*a)==af_fold(*b)){++a;++b;}return *a==*b;}
 static xx_io_device *af_stage(const char *dest,char **path){
     size_t i,parent=0;unsigned attempt;char *dir=xx_str_dup(dest);*path=NULL;if(!dir)return NULL;
-    for(i=0;dir[i];++i)if(dir[i]=='/'||dir[i]=='\\')parent=i+1U;dir[parent]=0;
+    for(i=0;dir[i];++i) {if(dir[i]=='/'||dir[i]=='\\')parent=i+1U; } dir[parent]=0;
     for(attempt=0;attempt<128U;++attempt){
         char suffix[44];char *candidate;xx_io_device *d;
         (void)xx_rt_snprintf(suffix,sizeof(suffix),".xx_aaruformat.tmp.%u",attempt);

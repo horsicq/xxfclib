@@ -9,7 +9,7 @@
 static bool bs_doc(nh_blob *,uint64_t *,uint64_t,unsigned,unsigned *,bool);
 static bool bs_string(nh_blob *b,uint64_t *at,uint64_t end) {
     uint64_t n;if(!eh_span(*at,4,end) || !nh_span(b,*at,4)) return false;n=pm_le32(b->p+(size_t)*at);*at+=4;
-    if(!n || n>65536 || !eh_span(*at,n,end) || !nh_span(b,*at,n) || b->p[(size_t)(*at+n-1)] || !fourth_utf8(b->p+(size_t)*at,(size_t)n-1,b->pd)) return false;*at+=n;return true;
+    if(!n || n>65536 || !eh_span(*at,n,end) || !nh_span(b,*at,n) || b->p[(size_t)(*at+n-1)] || !fourth_utf8(b->p+(size_t)*at,(size_t)n-1,b->pd)) { return false; } *at+=n;return true;
 }
 static bool bs_element(nh_blob *b,uint64_t *at,uint64_t end,unsigned depth,unsigned *nodes,bool array,unsigned index) {
     unsigned type;uint64_t n=0,start,key;char want[24];if(*at>=end || !nh_span(b,*at,1) || ++*nodes>1000000) return false;type=b->p[(size_t)(*at)++];key=*at;if(!th_z(b,at,end,true)) return false;
@@ -31,12 +31,12 @@ static bool bs_element(nh_blob *b,uint64_t *at,uint64_t end,unsigned depth,unsig
 static bool bs_doc(nh_blob *b,uint64_t *at,uint64_t limit,unsigned depth,unsigned *nodes,bool array) {
     uint64_t start=*at,end,n;unsigned index=0;if(depth>32 || !eh_span(*at,5,limit) || !nh_span(b,*at,5)) return false;n=pm_le32(b->p+(size_t)*at);if(n<5 || !eh_span(*at,n,limit)) return false;end=start+n;*at+=4;
     while(*at<end-1) if(!bs_element(b,at,end-1,depth,nodes,array,index++)) return false;
-    if(*at!=end-1 || b->p[(size_t)*at]) return false;++*at;return true;
+    if(*at!=end-1 || b->p[(size_t)*at]) { return false; } ++*at;return true;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
-    nh_blob b;uint64_t at=0,end,n,start,check;unsigned nodes=0,index;bool ok=false;
+    nh_blob b;uint64_t at=0,end,start,check;unsigned nodes=0,index;bool ok=false;
     if(!nh_load(f,&b,pd)) return false;
-    while(at<b.n) {check=at;NH_NEED(bs_doc(&b,&check,b.n,0,&nodes,false));n=check-at;end=check;NH_NEED(nh_add(f,s,&b,"document-header",at,4));at+=4;index=0;
+    while(at<b.n) {check=at;NH_NEED(bs_doc(&b,&check,b.n,0,&nodes,false));end=check;NH_NEED(nh_add(f,s,&b,"document-header",at,4));at+=4;index=0;
         while(at<end-1) {start=at;NH_NEED(bs_element(&b,&at,end-1,0,&nodes,false,index++));NH_NEED(nh_add(f,s,&b,"field",start,at-start));}
         NH_NEED(nh_add(f,s,&b,"document-terminator",at,1));at=end;
     }NH_NEED(s->count);s->size=(int64_t)b.n;ok=true;

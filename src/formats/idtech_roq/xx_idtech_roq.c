@@ -13,7 +13,7 @@ static bool roq_block(roq_scan *q,unsigned size) {
  if(code==1){if(q->first||q->p>=q->end)return false;++q->p;return true;}
  if(code==2){if(q->p>=q->end||!q->quads[q->b[q->p++]])return false;return true;}
  if(size==8){for(j=0;j<4;++j)if(!roq_block(q,4))return false;return true;}
- for(j=0;j<4;++j)if(q->p>=q->end||!q->cells[q->b[q->p++]])return false;return true;
+ for(j=0;j<4;++j) {if(q->p>=q->end||!q->cells[q->b[q->p++]])return false; } return true;
 }
 static bool ng_quick(Abstractformat *f,uint64_t n) { uint8_t h[8];return ng_probe(f,n,h,8)&&pm_le16(h)==0x1084&&pm_le32(h+2)==0xffffffffU&&pm_le16(h+6)>0&&pm_le16(h+6)<=120; }
 static bool ng_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {

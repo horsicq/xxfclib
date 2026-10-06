@@ -170,7 +170,7 @@ static bool artipack_parse(Abstractformat *format, artipack_stream **result,
         artipack_member member;
         int64_t record_offset = directory_offset +
                                 (int64_t)index * ARTIPACK_RECORD_SIZE;
-        if (pd && xx_pd_is_stopped(pd) ||
+        if ((pd && xx_pd_is_stopped(pd)) ||
             !artipack_read_at(format->device, format->base_address + record_offset,
                                record, sizeof(record)))
             goto done;

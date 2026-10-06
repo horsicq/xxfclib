@@ -28,9 +28,9 @@ static bool fb_columns(fb_table *t,unsigned slot,uint8_t *types,uint64_t *count)
 }
 static bool fb_geometry(nh_blob *b,uint64_t at,uint64_t end,unsigned depth,unsigned dims) {
     fb_table t;uint64_t p,n,points=0,v,parts=0,i,ends=0,prev=0;unsigned j;if(depth>16 || !fb_table_at(b,at,end,8,&t) || !fb_scalar(&t,6,1,0,&v) || v>17 || !fb_vector(&t,1,8,&p,&n) || n%2 || n>1000000 || !nh_floats(b,p,n*8,8,false)) return false;points=n/2;
-    if(!fb_vector(&t,0,4,&p,&n)) return false;ends=n;for(i=0;i<n;++i) {v=pm_le32(b->p+(size_t)(p+i*4));if(v<=prev || v>points) return false;prev=v;}if(ends && prev!=points) return false;
+    if(!fb_vector(&t,0,4,&p,&n)) { return false; } ends=n;for(i=0;i<n;++i) {v=pm_le32(b->p+(size_t)(p+i*4));if(v<=prev || v>points) return false;prev=v;}if(ends && prev!=points) return false;
     for(j=2;j<=5;++j) {if(!fb_vector(&t,j,8,&p,&n) || (n && n!=points) || ((dims&(1U<<(j-2))) && points && n!=points) || (j!=5 && !nh_floats(b,p,n*8,8,false))) return false;}
-    if(!fb_vector(&t,7,4,&p,&parts) || parts>1024) return false;for(i=0;i<parts;++i) {uint64_t q=p+i*4,off=pm_le32(b->p+(size_t)q);if(!off || !fb_geometry(b,q+off,end,depth+1,dims)) return false;}
+    if(!fb_vector(&t,7,4,&p,&parts) || parts>1024) { return false; } for(i=0;i<parts;++i) {uint64_t q=p+i*4,off=pm_le32(b->p+(size_t)q);if(!off || !fb_geometry(b,q+off,end,depth+1,dims)) return false;}
     return points || parts;
 }
 static bool fb_properties(fb_table *t,uint8_t *types,uint64_t columns) {
@@ -50,7 +50,7 @@ static bool fb_contains(nh_blob *b,uint64_t parent,uint64_t child) {
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     nh_blob b,hb,fb;fb_table t,c;uint8_t types[256];uint64_t h,at,n,p,v,count,columns,index=0,nodes=0,levels[16],starts[16],depth=0,featurebase,offsets[1024],i,j;unsigned dims=0;bool ok=false;
-    if(!nh_load(f,&b,pd)) return false;NH_NEED(nh_span(&b,0,16) && !xx_rt_memcmp(b.p,"fgb\x03" "fgb\0",8));h=pm_le32(b.p+8);NH_NEED(h>=8 && h<=1048576 && nh_span(&b,12,h));hb.p=b.p+12;hb.n=h;hb.pd=pd;at=pm_le32(hb.p);NH_NEED(at>=4 && fb_table_at(&hb,at,h,14,&t));
+    if(!nh_load(f,&b,pd)) { return false; } NH_NEED(nh_span(&b,0,16) && !xx_rt_memcmp(b.p,"fgb\x03" "fgb\0",8));h=pm_le32(b.p+8);NH_NEED(h>=8 && h<=1048576 && nh_span(&b,12,h));hb.p=b.p+12;hb.n=h;hb.pd=pd;at=pm_le32(hb.p);NH_NEED(at>=4 && fb_table_at(&hb,at,h,14,&t));
     NH_NEED(fb_string(&t,0,false) && fb_string(&t,11,false) && fb_string(&t,12,false) && fb_string(&t,13,false) && fb_vector(&t,1,8,&p,&n) && (!n || n==4 || n==6 || n==8) && nh_floats(t.b,p,n*8,8,false) && fb_scalar(&t,2,1,0,&v) && v<=17);
     for(i=3;i<=6;++i) {NH_NEED(fb_scalar(&t,(unsigned)i,1,0,&v) && v<=1);if(v) dims|=1U<<(unsigned)(i-3);}
     NH_NEED(fb_columns(&t,7,types,&columns) && fb_scalar(&t,8,8,0,&count) && count && count<=1024 && fb_scalar(&t,9,2,16,&n) && (n==0 || n>=2));

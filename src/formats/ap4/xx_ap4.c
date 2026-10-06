@@ -335,7 +335,7 @@ static int64_t xx_ap4_find_toc(Abstractformat *self, int64_t from, int64_t end,
             position + XX_AP4_TOC_HEADER_SIZE > cached_end) {
             int64_t available = input_size - position;
             size_t chunk = (size_t)((uint64_t)available < cache_capacity
-                                        ? available
+                                        ? (size_t)available
                                         : cache_capacity);
             if (chunk < (size_t)XX_AP4_TOC_HEADER_SIZE) return -1;
             if (!xx_ap4_read_at(self, position, cache, chunk)) return -1;
@@ -567,7 +567,7 @@ static xx_ap4_stream *xx_ap4_parse(Abstractformat *self, bool gate_only,
             if (!chunk) goto fail;
             while (position < end) {
                 size_t take = (size_t)((uint64_t)(end - position) < capacity
-                                           ? end - position
+                                           ? (size_t)(end - position)
                                            : capacity);
                 if (pd && xx_pd_is_stopped(pd)) {
                     xx_mem_free(chunk);
@@ -895,7 +895,7 @@ static bool xx_ap4_write_member(Abstractformat *self,
     if (!buffer) return false;
     while (position < end) {
         size_t take = (size_t)((uint64_t)(end - position) < capacity
-                                   ? end - position
+                                   ? (size_t)(end - position)
                                    : capacity);
         size_t written = 0U;
 
@@ -958,7 +958,7 @@ bool xx_ap4_unpack_current_archive_record(Abstractformat *self,
         result = buffer != NULL;
         while (result && position < end) {
             size_t take = (size_t)((uint64_t)(end - position) < capacity
-                                       ? end - position
+                                       ? (size_t)(end - position)
                                        : capacity);
             result = !(pd && xx_pd_is_stopped(pd)) &&
                      xx_ap4_read_at(self, position, buffer, take);

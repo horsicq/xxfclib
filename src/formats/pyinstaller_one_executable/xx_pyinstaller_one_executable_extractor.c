@@ -30,7 +30,7 @@ static void xx_pyinstaller_one_executable_search_close(Abstractformat *format) {
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     NULL, 0U,
-    xx_pyinstaller_one_executable_search_open, xx_pyinstaller_one_executable_search_close
+    xx_pyinstaller_one_executable_search_open, xx_pyinstaller_one_executable_search_close, false
 };
 
 static xx_format_search_state *xx_pyinstaller_one_executable_create_format_search(

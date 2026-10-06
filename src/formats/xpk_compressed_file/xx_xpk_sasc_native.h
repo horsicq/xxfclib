@@ -136,7 +136,7 @@ static bool xpk_sasc_two_step(xpk_sasc_coder *c,xpk_sasc_table *initial,
         } else *threshold=0U;
         end=(unsigned)symbol+vicinity;
         if(end>=initial->length)end=initial->length-1U;
-        for(i=symbol>vicinity?symbol-vicinity:0U;i<end;++i)
+        for(i=symbol>vicinity?(unsigned)(symbol-vicinity):0U;i<end;++i)
             if(initial->values[i])xpk_sasc_update(initial,max,i,1);
     }
     xpk_sasc_update(dynamic,max,symbol,(int16_t)step);

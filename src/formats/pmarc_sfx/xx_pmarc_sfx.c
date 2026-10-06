@@ -9,17 +9,17 @@
 static bool w6_pma_at(Abstractformat *f,pm_stream *s,int64_t base,xx_pd_struct *pd) {
     uint8_t h[257];int64_t at=base,limit=pm_available(f);unsigned records=0;
     for(;;) { unsigned size,name,j,sum=0;uint32_t packed,raw;
-        if(wg_stop(pd) || !pm_read(f,at,h,1)) return false;if(!h[0]) { ++at;break; }
+        if(wg_stop(pd) || !pm_read(f,at,h,1)) { return false; } if(!h[0]) { ++at;break; }
         if(++records>4096 || (size=h[0]+2)<24 || !pm_read(f,at,h,size) || xx_rt_memcmp(h+2,"-pm",3) || h[5]<'0' || h[5]>'2' || h[6]!='-' || h[20] || !(name=h[21]) || size<24+name) return false;
-        for(j=2;j<size;++j) sum+=h[j];if((sum&255)!=h[1]) return false;for(j=0;j<name;++j) if(h[22+j]<32 || h[22+j]==127) return false;
+        for(j=2;j<size;++j) { sum+=h[j]; } if((sum&255)!=h[1]) return false;for(j=0;j<name;++j) if(h[22+j]<32 || h[22+j]==127) return false;
         packed=pm_le32(h+7);raw=pm_le32(h+11);if(packed>INT32_MAX || raw>INT32_MAX || (h[5]=='0' && packed!=raw) || !wg_range(limit,at+size,packed)) return false;at+=size+packed;
     }
-    if(!records || limit-at>127) return false;while(at<limit) { uint8_t b;if(!pm_read(f,at++,&b,1) || b!=26) return false; }
+    if(!records || limit-at>127) { return false; } while(at<limit) { uint8_t b;if(!pm_read(f,at++,&b,1) || b!=26) return false; }
     return w6_component(f,s,base,limit-base,"payload.pma");
 }
 static bool w5_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[7],p[4];unsigned locations[2],count=0,i;uint16_t first;
-    if(!pm_read(f,0,h,7) || xx_rt_memcmp(h+2,"-pms-",5)) return false;first=pm_be16(h);
+    if(!pm_read(f,0,h,7) || xx_rt_memcmp(h+2,"-pms-",5)) { return false; } first=pm_be16(h);
     if(first==0x180a) { locations[count++]=75;locations[count++]=87; } else if(first==0x1879) locations[count++]=198;else if(first==0xeb18) { locations[count++]=2663;locations[count++]=2626; } else return false;
     for(i=0;i<count;++i) { int64_t base;if(!pm_read(f,locations[i]-1,p,4) || p[0]!=0x21 || p[3]!=0x22 || pm_le16(p+1)<256) continue;base=pm_le16(p+1)-256;if(base>(int64_t)locations[i]+2 && w6_pma_at(f,s,base,pd)) return true;if(s->count) break; }return false;
 }

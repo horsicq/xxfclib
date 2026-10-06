@@ -15,7 +15,7 @@ static bool sam_tag(nh_blob *b,el_token tag) {
     if(type=='H') return !(v.n&1) && el_chars(b,v,"0123456789ABCDEF",false);
     if(type=='B') {
         el_token values[512];unsigned n,j;uint8_t kind;
-        if(v.n<3 || b->p[(size_t)v.at+1]!=',') return false;kind=b->p[(size_t)v.at];
+        if(v.n<3 || b->p[(size_t)v.at+1]!=',') { return false; } kind=b->p[(size_t)v.at];
         if(!el_sep(b,el_slice(v,2,v.n-2),',',values,512,&n)) return false;
         for(j=0;j<n;++j) {bool valid=kind=='f' ? el_f32(b,values[j]):kind=='c' ? el_range(b,values[j],128,127):kind=='C' ? el_range(b,values[j],0,255):kind=='s' ? el_range(b,values[j],32768,32767):kind=='S' ? el_range(b,values[j],0,65535):kind=='i' ? el_range(b,values[j],2147483648U,2147483647U):kind=='I' ? el_range(b,values[j],0,4294967295U):false;if(!valid) return false;}return true;
     }return false;
@@ -24,7 +24,7 @@ static bool sam_cigar(nh_blob *b,el_token cigar,uint64_t *query,uint64_t *refere
     uint64_t i=0,q=0,r=0;unsigned ops=0;uint8_t first=0;bool core=false,tail=false;if(el_eq(b,cigar,"*")) {*query=*reference=0;return true;}
     while(i<cigar.n) {
         uint64_t n=0,start=i;uint8_t op;while(i<cigar.n && b->p[(size_t)(cigar.at+i)]>='0' && b->p[(size_t)(cigar.at+i)]<='9') {n=n*10+b->p[(size_t)(cigar.at+i++)]-'0';if(n>1000000000) return false;}
-        if(i==start || !n || i==cigar.n || ++ops>65535) return false;op=b->p[(size_t)(cigar.at+i++)];
+        if(i==start || !n || i==cigar.n || ++ops>65535) { return false; } op=b->p[(size_t)(cigar.at+i++)];
         if(ops==1) first=op;
         if(op=='H') {if(ops!=1 && i!=cigar.n) return false;}
         else if(op=='S') {if(core) tail=true;else if(ops!=1 && !(ops==2 && first=='H')) return false;q+=n;}

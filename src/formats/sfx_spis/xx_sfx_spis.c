@@ -306,7 +306,7 @@ static bool sp_blob(Abstractformat *f,int64_t at,int64_t end,xx_pd_struct *pd) {
     if(single) { if(!xx_rt_memcmp(h+5,"NON",3) && !pm_le32(h+17) && (declared!=(uint64_t)(end-p) || (pm_le32(h+13) && !wg_sum(f,p,end-p,pm_le32(h+13),pd)))) return false; return p<end || !declared; }
     while(p<end) { uint16_t name; uint32_t packed,raw; if(wg_stop(pd) || end-p<25 || !pm_read(f,p,h,25)) return false;
         name=pm_le16(h); raw=pm_le32(h+8); packed=pm_le32(h+12); if(!name || name>4096 || h[16]>4 || pm_le32(h+21)>2 || (uint64_t)25+name+packed>(uint64_t)(end-p) || (!h[16] && raw!=packed)) return false;
-        if(!h[16] && !pm_le32(h+21) && pm_le32(h+17) && !wg_sum(f,p+25+name,packed,pm_le32(h+17),pd)) return false; total+=raw; if(total>declared) return false; p+=25+name+packed;
+        if(!h[16] && !pm_le32(h+21) && pm_le32(h+17) && !wg_sum(f,p+25+name,packed,pm_le32(h+17),pd)) { return false; } total+=raw; if(total>declared) return false; p+=25+name+packed;
     } return p==end && total==declared;
 }
 

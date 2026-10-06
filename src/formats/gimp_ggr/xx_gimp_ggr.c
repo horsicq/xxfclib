@@ -13,13 +13,13 @@ static bool tb_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  if(!tb_i(&q,&count)||count<1||count>4093||!tb_done(&q)||!tb_emit(f,s,"descriptor.ggr",0,q.p,n))return false;
  for(i=0;i<count;++i){double x[11];int32_t modes[4]={0,0,0,0};unsigned j;if(tb_stop(pd)||!tb_line(&q))return false;start=q.start;
   for(j=0;j<11;++j)if(!tb_num(&q,&x[j])||x[j]<0||x[j]>1)return false;
-  if(x[0]!=last||x[0]>=x[2]||x[1]<x[0]||x[1]>x[2])return false;last=x[2];
+  if(x[0]!=last||x[0]>=x[2]||x[1]<x[0]||x[1]>x[2]) {return false; } last=x[2];
   if(!tb_i(&q,&modes[0])||!tb_i(&q,&modes[1])||modes[0]<0||modes[0]>5||modes[1]<0||modes[1]>2)return false;
   if(!tb_done(&q)){if(!tb_i(&q,&modes[2])||!tb_i(&q,&modes[3])||modes[2]<0||modes[2]>4||modes[3]<0||modes[3]>4)return false;}
-  if(!tb_done(&q))return false;xx_rt_snprintf(label,sizeof(label),"segment-%u.ggr",(unsigned)i);if(!tb_emit(f,s,label,start,q.p-start,n))return false;
+  if(!tb_done(&q)) {return false; } xx_rt_snprintf(label,sizeof(label),"segment-%u.ggr",(unsigned)i);if(!tb_emit(f,s,label,start,q.p-start,n))return false;
  }
  start=q.p;while(q.p<n){if(!tb_line(&q)||!tb_done(&q))return false;}
- if(last!=1||(q.p>start&&!tb_emit(f,s,"trailing.ggr",start,q.p-start,n)))return false;s->size=(int64_t)n;return true;
+ if(last!=1||(q.p>start&&!tb_emit(f,s,"trailing.ggr",start,q.p-start,n))) {return false; } s->size=(int64_t)n;return true;
 }
 
 void xx_gimp_ggr_init(xx_gimp_ggr *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_GIMP_GGR,"ggr");}}

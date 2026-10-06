@@ -8,13 +8,13 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(total>67108864) return false;
     while(at<total) {uint8_t p[64];uint64_t start=at,arraybytes;uint32_t len,atoms,width=0,sizes[10],i;
         if(frame>=512 || !eh_take(f,&at,total,p,12,pd) || pm_be32(p)!=1993 || pm_be32(p+4)!=13 || (len=pm_be32(p+8))!=12 || !eh_take(f,&at,total,p,len,pd) || xx_rt_memcmp(p,"GMX_trn_file\0",12) || !eh_take(f,&at,total,p,52,pd)) return false;
-        for(i=0;i<10;++i) sizes[i]=pm_be32(p+i*4);atoms=pm_be32(p+40);
-        if(!atoms || atoms>1048576 || (frame && atoms!=first_atoms) || sizes[0] || sizes[1] || sizes[5] || sizes[6] || (int32_t)pm_be32(p+44)<0 || pm_be32(p+48)) return false;first_atoms=atoms;
+        for(i=0;i<10;++i) { sizes[i]=pm_be32(p+i*4); } atoms=pm_be32(p+40);
+        if(!atoms || atoms>1048576 || (frame && atoms!=first_atoms) || sizes[0] || sizes[1] || sizes[5] || sizes[6] || (int32_t)pm_be32(p+44)<0 || pm_be32(p+48)) { return false; } first_atoms=atoms;
         if(sizes[2]) width=sizes[2]/9;else for(i=7;i<10 && !width;++i) if(sizes[i]) width=sizes[i]/(atoms*3);
         if((width!=4 && width!=8) || !fd_mul(atoms,(uint64_t)width*3,&arraybytes)) return false;
         for(i=2;i<=4;++i) if(sizes[i] && sizes[i]!=width*9) return false;
         for(i=7;i<10;++i) if(sizes[i] && sizes[i]!=arraybytes) return false;
-        if(!eh_span(at,width*2,total) || !eh_float_array(f,at,width*2,width,true,pd)) return false;at+=width*2;
+        if(!eh_span(at,width*2,total) || !eh_float_array(f,at,width*2,width,true,pd)) { return false; } at+=width*2;
         xx_rt_snprintf(label,sizeof(label),"frame-%u-header.bin",frame);if(!pm_add(f,s,label,(int64_t)start,(int64_t)(at-start))) return false;
         for(i=0;i<10;++i) if(sizes[i]) {if(!eh_span(at,sizes[i],total) || !eh_float_array(f,at,sizes[i],width,true,pd)) return false;xx_rt_snprintf(label,sizeof(label),"frame-%u-block-%u.bin",frame,i);if(!pm_add(f,s,label,(int64_t)at,sizes[i])) return false;at+=sizes[i];}
         ++frame;

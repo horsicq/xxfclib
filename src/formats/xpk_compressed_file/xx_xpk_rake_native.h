@@ -102,7 +102,7 @@ static bool xpk_rake_symbol(xpk_rake_bits *bits, const xpk_rake_node *nodes,
 
 static bool xpk_rake_native(const uint8_t *packed, size_t size,
                             uint8_t *output, size_t wanted, xx_pd_struct *pd) {
-    xpk_rake_node nodes[512] = {{0}};
+    xpk_rake_node nodes[512] = {0};
     xpk_rake_bits bits;
     size_t middle, back, position = wanted, operations = 0U;
     uint32_t pad, value;

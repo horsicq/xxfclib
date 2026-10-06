@@ -24,7 +24,7 @@ static bool ng_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  if(!ng_emit(f,s,"descriptor-header-seek.bin",0,76+(uint64_t)seek,n))return false;
  if(wav&&!ng_emit(f,s,"wave-header.bin",76+(uint64_t)seek,wav,n))return false;
  last=first;for(i=0;i<frames;++i){uint64_t next=i+1<frames?pm_le32(b+76+(uint64_t)(i+1)*4):end;if(ng_stop(pd)||next<last+4||next>end)return false;xx_rt_snprintf(label,sizeof(label),"frame-%u.ape",i);if(!ng_emit(f,s,label,last,next-last,n))return false;last=next;}
- if(tail&&!ng_emit(f,s,"wave-tail.bin",end,tail,n))return false;end+=tail;if(end<n){if(!ape_tag(b,end,n)||!ng_emit(f,s,"apev2-tag.bin",end,n-end,n))return false;end=n;}s->size=(int64_t)end;return true;
+ if(tail&&!ng_emit(f,s,"wave-tail.bin",end,tail,n)) {return false; } end+=tail;if(end<n){if(!ape_tag(b,end,n)||!ng_emit(f,s,"apev2-tag.bin",end,n-end,n))return false;end=n;}s->size=(int64_t)end;return true;
 }
 
 void xx_audio_monkeys_ape_init(xx_audio_monkeys_ape *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_AUDIO_MONKEYS_APE,"ape");}}

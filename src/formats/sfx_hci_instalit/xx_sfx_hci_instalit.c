@@ -780,7 +780,7 @@ static bool sh_ne_load(Abstractformat *self, int64_t image_size, sh_ne *ne,
     ne->ne_offset = lfanew;
     table_rel = sh_u16(header + 0x24);
     names_rel = sh_u16(header + 0x26);
-    if (names_rel <= table_rel || names_rel - table_rel < 4U) return false;
+    if (names_rel <= table_rel || names_rel - table_rel < 4) return false;
     ne->table_offset = (int64_t)lfanew + table_rel;
     ne->table_size = (size_t)(names_rel - table_rel);
     if (!sh_within(image_size, ne->table_offset, (int64_t)ne->table_size)) {

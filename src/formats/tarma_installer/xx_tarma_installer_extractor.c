@@ -35,7 +35,7 @@ static void xx_tarma_installer_search_close(Abstractformat *format) {
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
-    xx_tarma_installer_search_open, xx_tarma_installer_search_close
+    xx_tarma_installer_search_open, xx_tarma_installer_search_close, false
 };
 
 static xx_format_search_state *xx_tarma_installer_create_format_search(

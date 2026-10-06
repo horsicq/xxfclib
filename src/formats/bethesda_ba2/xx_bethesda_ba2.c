@@ -25,7 +25,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if(codec!=0U && codec!=3U) return false;
     }
     count=pm_le32(h+12); names=gm_le64(h+16); floor=header_size+(uint64_t)count*36U;
-    if(count>65536 || names<floor || !gm_range(total,0,floor) || names>(uint64_t)total) return false; at=names;
+    if(count>65536 || names<floor || !gm_range(total,0,floor) || names>(uint64_t)total) { return false; } at=names;
     for(i=0;i<count;++i) { uint32_t n; if(gm_stopped(pd) || !gm_read(f,total,at,b,2)) return false; at+=2; n=pm_le16(b); if(!n || !gm_range(total,at,n)) return false; at+=n; }
     end=at; s->size=(int64_t)end;
     for(i=0;i<count;++i) {

@@ -23,9 +23,9 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
   else if(!xx_rt_memcmp(head,"VE",2) || !xx_rt_memcmp(head,"PE",2) || !xx_rt_memcmp(head,"FE",2)) { uint32_t ne; uint8_t ids[64]={0};flag=!xx_rt_memcmp(head,"VE",2) ? 64:!xx_rt_memcmp(head,"PE",2) ? 128:256; if(!fd_get(&d,b,1) || (ne=b[0])>64 || n!=1U+(uint64_t)ne*33) return false; for(i=0;i<ne;++i) { if(!fd_get(&d,b,33) || b[0]>=64 || ids[b[0]] || (b[31]&15U)>14 || (b[32]&15U)>14 || (b[32]>>4)>14) return false;ids[b[0]]=1; } }
   else if(!xx_rt_memcmp(head,"ME",2)) { flag=512; if(n>1048576 || !fd_skip(&d,n)) return false; }
   else return false;
-  if(used&flag) return false; used|=flag; if(flag!=1 && d.at!=d.end) return false; xx_rt_snprintf(label,sizeof(label),"chunk-%c%c.bin",head[0],head[1]); if(!em_emit(f,s,label,start,6U+(uint64_t)n,c.end)) return false; c.at=d.end;
+  if(used&flag) { return false; } used|=flag; if(flag!=1 && d.at!=d.end) return false; xx_rt_snprintf(label,sizeof(label),"chunk-%c%c.bin",head[0],head[1]); if(!em_emit(f,s,label,start,6U+(uint64_t)n,c.end)) return false; c.at=d.end;
  }
- if((used&63)!=63 || !patterns || !channels) return false; for(i=1;i<256;++i) if((insrefs[i] && !instrumentids[i]) || (samplerefs[i] && !sampleids[i])) return false; s->size=(int64_t)c.at; return true;
+ if((used&63)!=63 || !patterns || !channels) { return false; } for(i=1;i<256;++i) if((insrefs[i] && !instrumentids[i]) || (samplerefs[i] && !sampleids[i])) return false; s->size=(int64_t)c.at; return true;
 }
 
 void xx_tracker_mdl_init(xx_tracker_mdl *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_TRACKER_MDL,"mdl"); } }

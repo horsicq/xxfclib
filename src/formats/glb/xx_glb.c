@@ -28,7 +28,7 @@ static bool glb_asset(xx_json *j) {
         if(!xx_json_object_key(j,&key)) return false;
         if(glb_matches(j,begin,key,"version")) { begin=j->position; ok=!version && xx_json_string(j,&value) && glb_matches(j,begin,value,"2.0"); version=true; }
         else ok=xx_json_skip(j);
-        if(value) xx_str_free(value); xx_str_free(key); if(!ok) return false;
+        if(value) { xx_str_free(value); } xx_str_free(key); if(!ok) return false;
         if(!xx_json_more(j)) break;
     }
     return xx_json_object_end(j) && version;

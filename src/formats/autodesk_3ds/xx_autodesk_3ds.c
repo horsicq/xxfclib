@@ -30,16 +30,16 @@ static bool mesh3ds(const uint8_t *b,uint64_t at,uint64_t end,xx_pd_struct *pd) 
  case 0x4140:if(uv||!span(p,2,e)||!(count=u16(b+p,false))||e-p!=2+(uint64_t)count*8||!floats(b,p+2,(uint64_t)count*2,false,e))return false;uv=true;uv_count=count;break;
  case 0x4160:if(matrix||e-p!=48||!floats(b,p,12,false,e))return false;matrix=true;break;
  default:return false; }at=e; }
- if(!vertices||!faces||(uv&&uv_count!=nv))return false;for(at=0;at<nf;++at) {unsigned j;for(j=0;j<3;++j)if(u16(b+faces+at*8+j*2,false)>=nv)return false;}return true;
+ if(!vertices||!faces||(uv&&uv_count!=nv)) {return false; } for(at=0;at<nf;++at) {unsigned j;for(j=0;j<3;++j)if(u16(b+faces+at*8+j*2,false)>=nv)return false;}return true;
 }
 
 static bool parse_data(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
 
  uint64_t end,at=6,edit=0,edit_end=0;bool version=false,mesh_version=false;unsigned objects=0;char label[40];if(n<6||u16(b,false)!=0x4d4d||(end=u32(b+2,false))<6||end>n)return false;
  while(at<end){uint16_t id;uint32_t len;if(!span(at,6,end)||(len=u32(b+at+2,false))<6||!span(at,len,end))return false;id=u16(b+at,false);if(id==2){if(version||len!=10||u32(b+at+6,false)!=3)return false;version=true;}else if(id==0x3d3d){if(edit)return false;edit=at+6;edit_end=at+len;}else return false;at+=len;}
- if(!version||!edit)return false;at=edit;while(at<edit_end){uint32_t len;uint16_t id;uint64_t p,e;if(stop(pd)||!span(at,6,edit_end)||(len=u32(b+at+2,false))<6||!span(at,len,edit_end))return false;id=u16(b+at,false);p=at+6;e=at+len;
+ if(!version||!edit) {return false; } at=edit;while(at<edit_end){uint32_t len;uint16_t id;uint64_t p,e;if(stop(pd)||!span(at,6,edit_end)||(len=u32(b+at+2,false))<6||!span(at,len,edit_end))return false;id=u16(b+at,false);p=at+6;e=at+len;
  if(id==0x3d3e){if(mesh_version||len!=10||u32(b+p,false)!=3)return false;mesh_version=true;}else if(id==0x4000){if(++objects>1024||!cstr(b,&p,e,256,false)||!span(p,6,e)||u16(b+p,false)!=0x4100||u32(b+p+2,false)!=e-p||!mesh3ds(b,p+6,e,pd))return false;xx_rt_snprintf(label,sizeof(label),"object-%u.3dschunk",objects-1);if(!emit(f,s,label,at,len,end))return false;}else return false;at=e;}
- if(!mesh_version||!objects)return false;s->size=(int64_t)end;return true;
+ if(!mesh_version||!objects) {return false; } s->size=(int64_t)end;return true;
 
 }
 

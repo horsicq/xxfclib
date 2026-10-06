@@ -6,7 +6,7 @@
 #include "xxfclib/formats/valve_hpak/xx_valve_hpak.h"
 #include "../xx_payload_members.h"
 
-static uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uint64_t n,uint64_t total) {
     size_t i;
@@ -15,7 +15,7 @@ static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uin
         if(n && b && at<a+b && a<at+n) return false; }
     return pm_add(f,s,name,(int64_t)at,(int64_t)n);
 }
-static bool zname(Abstractformat *f,uint64_t at,uint64_t end) {
+static XXFC_MAYBE_UNUSED bool zname(Abstractformat *f,uint64_t at,uint64_t end) {
     uint8_t c; uint64_t i; if(at>=end || end>(uint64_t)pm_available(f)) return false;
     for(i=0;i<4096 && at+i<end;++i) { if(!pm_read(f,(int64_t)(at+i),&c,1)) return false; if(!c) return i!=0; } return false;
 }
@@ -26,7 +26,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[12],b[4],e[144],digest[16]; uint32_t dir,count,i; uint64_t total=(uint64_t)pm_available(f),end;
     if(!pm_read(f,0,h,12) || xx_rt_memcmp(h,"HPAK",4) || pm_le32(h+4)!=1) return false;
     dir=pm_le32(h+8); if(dir<12 || !pm_read(f,dir,b,4)) return false; count=pm_le32(b);
-    if(!count || count>4096 || !span((uint64_t)dir+4,(uint64_t)count*144,total)) return false; end=(uint64_t)dir+4+(uint64_t)count*144;
+    if(!count || count>4096 || !span((uint64_t)dir+4,(uint64_t)count*144,total)) { return false; } end=(uint64_t)dir+4+(uint64_t)count*144;
     for(i=0;i<count;++i) { uint64_t at,n; unsigned j; char label[40];
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,(int64_t)dir+4+(int64_t)i*144,e,144)) return false;
         for(j=0;j<64 && e[j];++j) {} if(!j || j==64 || pm_le32(e+64)>6) return false;

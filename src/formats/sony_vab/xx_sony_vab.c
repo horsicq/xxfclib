@@ -17,7 +17,7 @@ static bool read_components(Abstractformat *f,pm_stream *s,tc_blob *b) {
  }if(active!=programs || total!=tones || !tc_emit(f,s,b,"vab-bank-tables.bin",0,a)) return false;
  for(i=1;i<=samples;++i) {uint32_t z=(uint32_t)pm_le16(p+table+2*i)*8,k;if(!z || z%16 || !tc_span(b,a,z)) return false;
   for(k=0;k<z;k+=16) {if(!tc_work(b,1) || (p[a+k]>>4)>4 || (p[a+k]&15)>12 || p[a+k+1]>7) return false;}
-  if(!(p[a+z-15]&1)) return false;xx_rt_snprintf(label,sizeof(label),"sample-%03u.spu-adpcm",i);if(!tc_emit(f,s,b,label,a,z)) return false;a+=z;
+  if(!(p[a+z-15]&1)) { return false; } xx_rt_snprintf(label,sizeof(label),"sample-%03u.spu-adpcm",i);if(!tc_emit(f,s,b,label,a,z)) return false;a+=z;
  }for(i=samples+1;i<256;++i) if(pm_le16(p+table+i*2)) return false;if(a!=b->n) return false;s->size=b->n;return true;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { tc_blob b;bool ok;if(!tc_load(f,&b,pd)) return false;ok=read_components(f,s,&b);xx_mem_free(b.p);return ok; }

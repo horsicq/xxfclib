@@ -17,7 +17,7 @@ static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  start=p;if(!tg_span(p,4,n)||!pm_tag(b+p,"VERT",4)||!tg_float_array(b,p+4,(uint64_t)v*3,n,pd))return false;p+=4+(uint64_t)v*12;if(!tg_emit(f,s,"vertices.bin",start,p-start,n))return false;
  if(flags){start=p;if(!tg_span(p,4,n)||!pm_tag(b+p,"NORM",4)||!tg_float_array(b,p+4,(uint64_t)v*3,n,pd))return false;p+=4+(uint64_t)v*12;if(!tg_emit(f,s,"normals.bin",start,p-start,n))return false;}
  for(i=0;i<uv+a;++i){uint64_t values=(uint64_t)v*(i<uv?2U:4U);start=p;if(!tg_span(p,4,n)||!pm_tag(b+p,i<uv?"TEXC":"ATTR",4))return false;p+=4;if(!ct_string(b,&p,n)||(i<uv&&!ct_string(b,&p,n))||!tg_float_array(b,p,values,n,pd))return false;p+=values*4;xx_rt_snprintf(label,sizeof(label),"%s-%u.bin",i<uv?"uv-map":"attribute",i<uv?i:i-uv);if(!tg_emit(f,s,label,start,p-start,n))return false;}
- if(p!=n)return false;s->size=(int64_t)n;return true;
+ if(p!=n) {return false; } s->size=(int64_t)n;return true;
 }
 
 void xx_openctm_mesh_init(xx_openctm_mesh *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_OPENCTM_MESH,"ctm");}}

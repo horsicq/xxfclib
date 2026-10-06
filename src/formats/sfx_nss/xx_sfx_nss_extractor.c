@@ -16,7 +16,7 @@ static void close_reader(Abstractformat *format) {
     xx_sfx_nss_free((xx_sfx_nss *)format);
 }
 static const xx_format_search_desc search = {
-    types, 1U, anchors, 1U, open_reader, close_reader
+    types, 1U, anchors, 1U, open_reader, close_reader, false
 };
 static xx_format_search_state *create_search(xx_format_extractor *self,
         xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd) {

@@ -29,7 +29,7 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
  for(i=0;i<tracks*sides;++i) {
   uint32_t z=ext ? (uint32_t)b->p[52+i]*256U : pm_le16(b->p+50),j,pos,ns; const uint8_t *p; uint8_t ids[256]={0};
   if(!z) continue;
-  if(z<256 || !nh_range(b,at,z) || xx_rt_memcmp(b->p+at,"Track-Info\r\n",12)) return false; p=b->p+at;
+  if(z<256 || !nh_range(b,at,z) || xx_rt_memcmp(b->p+at,"Track-Info\r\n",12)) { return false; } p=b->p+at;
   if(p[16]!=i/sides || p[17]!=i%sides || p[20]>7 || (ns=p[21])>29) return false;
   if(ext) offset_entries+=1U+ns;
   xx_rt_snprintf(name,sizeof(name),"track-%u-descriptor.bin",i); if(!cpc_emit(f,s,b,name,at,256)) return false; pos=256;
@@ -43,7 +43,7 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
    if(!len || len>z-pos) return false;
    if(ids[e[2]]==1U) xx_rt_snprintf(name,sizeof(name),"track-%u-sector-%u.bin",i,e[2]);
    else xx_rt_snprintf(name,sizeof(name),"track-%u-sector-%u-instance-%u.bin",i,e[2],ids[e[2]]);
-   if(!cpc_emit(f,s,b,name,at+pos,len)) return false; pos+=len; ++nonempty;
+   if(!cpc_emit(f,s,b,name,at+pos,len)) { return false; } pos+=len; ++nonempty;
   }
   at+=z;
  }

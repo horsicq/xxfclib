@@ -296,8 +296,7 @@ static bool decode_member(Abstractformat *format, const aldus_stream *stream,
     if (!format || !stream || !plain || !plain_size ||
         (stream->generation != ALDUS_GENERATION_LZW &&
          stream->generation != ALDUS_GENERATION_PKZP &&
-         stream->generation != ALDUS_GENERATION_LZSH) ||
-        (uint64_t)stream->original_size > SIZE_MAX) return false;
+         stream->generation != ALDUS_GENERATION_LZSH)) return false;
     output = (uint8_t *)xx_mem_alloc(stream->original_size);
     if (!output) return false;
     offset = format->base_address + stream->data_offset;

@@ -18,7 +18,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         while(at<end) { uint8_t b,n; uint64_t run=1;
             if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,at++,&b,1)) return false;
             if(b==128) { if(at>=end || !pm_read(f,at++,&n,1)) return false; if(n) { if(at>=end || !pm_read(f,at++,&b,1)) return false; run=(uint64_t)n+1; } }
-            if(run>raw-done) return false; done+=run;
+            if(run>raw-done) { return false; } done+=run;
         } if(done!=raw) return false;
     }
     if(!pm_add(f,s,"descriptor.bin",4,28) || (map && !pm_add(f,s,"colormap.bin",32,map)) || !pm_add(f,s,type==2 ? "pixels-rle.bin" : "pixels-raw.bin",body,end-body)) return false;

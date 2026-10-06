@@ -32,7 +32,7 @@ static void xx_advanced_installer_bootstrapper_search_close(Abstractformat *form
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
-    xx_advanced_installer_bootstrapper_search_open, xx_advanced_installer_bootstrapper_search_close
+    xx_advanced_installer_bootstrapper_search_open, xx_advanced_installer_bootstrapper_search_close, false
 };
 
 static xx_format_search_state *xx_advanced_installer_bootstrapper_create_format_search(

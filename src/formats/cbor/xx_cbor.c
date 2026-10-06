@@ -19,7 +19,7 @@ static bool cb_item(nh_blob *b,uint64_t *at,unsigned depth,unsigned *nodes) {
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     nh_blob b;uint64_t at=3,n,i,start,check;unsigned nodes=0,major,ai;bool ok=false;
-    if(!nh_load(f,&b,pd)) return false;NH_NEED(nh_span(&b,0,4) && !xx_rt_memcmp(b.p,"\xd9\xd9\xf7",3));check=at;NH_NEED(cb_item(&b,&check,0,&nodes) && check==b.n);major=b.p[3]>>5;ai=b.p[3]&31;++at;NH_NEED((major==4 || major==5) && cb_arg(&b,&at,ai,&n));NH_NEED(nh_add(f,s,&b,"cbor-container-header",0,at));
+    if(!nh_load(f,&b,pd)) { return false; } NH_NEED(nh_span(&b,0,4) && !xx_rt_memcmp(b.p,"\xd9\xd9\xf7",3));check=at;NH_NEED(cb_item(&b,&check,0,&nodes) && check==b.n);major=b.p[3]>>5;ai=b.p[3]&31;++at;NH_NEED((major==4 || major==5) && cb_arg(&b,&at,ai,&n));NH_NEED(nh_add(f,s,&b,"cbor-container-header",0,at));
     for(i=0;i<n;++i) {start=at;NH_NEED(cb_item(&b,&at,0,&nodes));if(major==5) NH_NEED(cb_item(&b,&at,0,&nodes));NH_NEED(nh_add(f,s,&b,"entry",start,at-start));}NH_NEED(at==b.n);s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }

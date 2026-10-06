@@ -160,7 +160,7 @@ static bool bnd_safe_output_name(const char *name) {
 /* The raw 8.3 fields of these DOS-era containers are the only evidence that a
  * candidate offset really is a header, so a byte that cannot appear in a name
  * rejects the file instead of being scrubbed. */
-static bool bnd_plausible_raw_name(const uint8_t *bytes, size_t size) {
+static XXFC_MAYBE_UNUSED bool bnd_plausible_raw_name(const uint8_t *bytes, size_t size) {
     size_t index;
     if (!bytes || size == 0U || bytes[0] == 0U) return false;
     for (index = 0U; index < size; ++index) {

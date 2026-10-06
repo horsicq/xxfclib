@@ -19,7 +19,7 @@ static void nd_close(Abstractformat *format) {
 }
 static const xx_format_search_desc nd_search = {
     nd_types, sizeof(nd_types) / sizeof(nd_types[0]),
-    NULL, 0U, nd_open, nd_close
+    NULL, 0U, nd_open, nd_close, false
 };
 static xx_format_search_state *nd_create_search(
     xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,

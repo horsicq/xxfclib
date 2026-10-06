@@ -18,7 +18,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             count=b.p[(size_t)at+4];at+=5;stamp[local]=false;NH_NEED(count && eh_span(at,(uint64_t)count*3,end));
             for(i=0;i<count;++i) {uint8_t field=b.p[(size_t)at],n=b.p[(size_t)at+1],type=b.p[(size_t)at+2]&31;
                 NH_NEED(!used[field] && n && type<sizeof(widths) && !(b.p[(size_t)at+2]&96) && n%widths[type]==0);used[field]=1;bytes+=n;
-                if(!i && field==253 && n==4 && type==6) stamp[local]=true;at+=3;
+                if(!i && field==253 && n==4 && type==6) { stamp[local]=true; } at+=3;
             }
             if(code&32) {NH_NEED(at<end);count=b.p[(size_t)at++];NH_NEED(eh_span(at,(uint64_t)count*3,end));for(i=0;i<count;++i) {NH_NEED(b.p[(size_t)at+1]);bytes+=b.p[(size_t)at+1];at+=3;}}
             sizes[local]=bytes;

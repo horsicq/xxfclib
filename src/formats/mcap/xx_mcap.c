@@ -6,13 +6,13 @@
 static bool mc_map(nh_blob *b,uint64_t *at,uint64_t end) {
     uint64_t stop,keys[128];uint32_t sizes[128];unsigned count=0,i;if(!eh_span(*at,4,end)) return false;stop=*at+4+pm_le32(b->p+(size_t)*at);*at+=4;if(stop>end) return false;
     while(*at<stop) {uint64_t key=*at+4;uint32_t n;if(!eh_span(*at,4,stop) || count==128) return false;n=pm_le32(b->p+(size_t)*at);if(!nh_string(b,at,stop,4,false,false)) return false;
-        for(i=0;i<count;++i) if(n==sizes[i] && !xx_rt_memcmp(b->p+(size_t)key,b->p+(size_t)keys[i],n)) return false;keys[count]=key;sizes[count++]=n;
+        for(i=0;i<count;++i) { if(n==sizes[i] && !xx_rt_memcmp(b->p+(size_t)key,b->p+(size_t)keys[i],n)) return false; } keys[count]=key;sizes[count++]=n;
         if(!nh_string(b,at,stop,4,false,true)) return false;
     }return *at==stop;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[8];nh_blob b={0};bool ok=false,data_end=false,footer=false;uint64_t at=8;unsigned records=0,sc=0,ch=0,payloads=0;uint16_t schema[256],channels[256];
-    if(!pm_read(f,0,h,8) || xx_rt_memcmp(h,"\x89MCAP0\r\n",8)) return false;NH_NEED(nh_load(f,&b,pd) && b.n>=58 && !xx_rt_memcmp(b.p+(size_t)b.n-8,h,8));
+    if(!pm_read(f,0,h,8) || xx_rt_memcmp(h,"\x89MCAP0\r\n",8)) { return false; } NH_NEED(nh_load(f,&b,pd) && b.n>=58 && !xx_rt_memcmp(b.p+(size_t)b.n-8,h,8));
     while(at<b.n-8) {uint64_t start=at,n,end,cursor;uint8_t op;unsigned i;NH_NEED(++records<=4094 && nh_span(&b,at,9));op=b.p[(size_t)at];n=fd_le64(b.p+(size_t)at+1);at+=9;end=at+n;cursor=at;NH_NEED(end>=at && end<=b.n-8 && !footer);
         if(records==1) {NH_NEED(op==1 && nh_string(&b,&cursor,end,4,false,true) && nh_string(&b,&cursor,end,4,false,true) && cursor==end && nh_add(f,s,&b,"header",0,end));}
         else if(op==2) {uint32_t crc;NH_NEED(data_end && n==20 && nh_zero(&b,at,16) && end==b.n-8);crc=pm_le32(b.p+(size_t)at+16);NH_NEED((!crc || crc==nh_crc32(b.p+(size_t)start,25)) && nh_add(f,s,&b,"footer",start,n+9));footer=true;}

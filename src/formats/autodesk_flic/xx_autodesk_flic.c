@@ -31,9 +31,9 @@ static bool ng_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
   else if(type==0xf1fa){uint32_t count,i;if(size<16||seen>frames)return false;if(!seen)first=at;if(seen==1)second=at;++seen;count=pm_le16(b+at+6);q=at+16;
    for(i=0;i<count;++i){uint32_t len,kind;if(!ng_span(q,6,end))return false;len=pm_le32(b+q);kind=pm_le16(b+q+4);if(len<6||!ng_span(q,len,end)||!flc_image(b,q+6,q+len,kind,width,height,pd))return false;q+=len;}if(q!=end)return false;
   }else return false;
-  if(!ng_emit(f,s,type==0xf100?"flic_prefix.bin":"flic_encoded_frame.bin",at,size,n))return false;at=end;
+  if(!ng_emit(f,s,type==0xf100?"flic_prefix.bin":"flic_encoded_frame.bin",at,size,n)) {return false; } at=end;
  }
- if(seen!=frames&&seen!=frames+1)return false;if(pm_le16(b+4)==0xaf12&&((pm_le32(b+80)&&pm_le32(b+80)!=first)||(pm_le32(b+84)&&pm_le32(b+84)!=second)))return false;s->size=(int64_t)n;return true;
+ if(seen!=frames&&seen!=frames+1) {return false; } if(pm_le16(b+4)==0xaf12&&((pm_le32(b+80)&&pm_le32(b+80)!=first)||(pm_le32(b+84)&&pm_le32(b+84)!=second)))return false;s->size=(int64_t)n;return true;
 }
 
 void xx_autodesk_flic_init(xx_autodesk_flic *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_AUTODESK_FLIC,"flc");}}

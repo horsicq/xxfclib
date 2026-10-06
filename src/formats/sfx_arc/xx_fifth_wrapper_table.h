@@ -12,11 +12,11 @@ typedef void (*w5_close)(Abstractformat *);
 /* The GEMDOS executable grammar is 28 bytes, six big-endian size/flag
  * words and an absolute/relocatable word. Symbol tables and relocations
  * stay in the outer carrier; its embedded member table is validated below. */
-static bool w5_carrier(Abstractformat *f,bool atari_only,int64_t *low,xx_pd_struct *pd) {
+static XXFC_MAYBE_UNUSED bool w5_carrier(Abstractformat *f,bool atari_only,int64_t *low,xx_pd_struct *pd) {
     uint8_t h[64]; int64_t limit=pm_available(f),overlay,cab,cabend; uint64_t image,headers;
     if(limit<28 || !pm_read(f,0,h,28)) return false;
     if(h[0]==0x60 && h[1]==0x1a) { uint64_t text=pm_be32(h+2),data=pm_be32(h+6),symbols=pm_be32(h+14); uint16_t absolute=pm_be16(h+26);
-        if(!text || absolute>1 || !wg_range(limit,28,text+data+symbols)) return false; *low=28; return true;
+        if(!text || absolute>1 || !wg_range(limit,28,text+data+symbols)) { return false; } *low=28; return true;
     }
     if(atari_only || xx_rt_memcmp(h,"MZ",2) || limit<64 || !pm_read(f,0,h,64)) return false;
     headers=(uint64_t)pm_le16(h+8)*16; image=pm_le16(h+4); if(!image || pm_le16(h+2)>511 || headers<28) return false;
@@ -28,9 +28,9 @@ static bool w5_carrier(Abstractformat *f,bool atari_only,int64_t *low,xx_pd_stru
 /* Buffered, cancellable signature location is only a candidate locator.
  * The original complete archive grammar must accept the candidate, report
  * a physical logical extent, and enumerate its member table before export. */
-static bool w5_embedded(Abstractformat *f,pm_stream *s,int64_t low,const uint8_t *sig,size_t siglen,int adjust,w5_open open,w5_close close,const char *label,xx_pd_struct *pd) {
+static XXFC_MAYBE_UNUSED bool w5_embedded(Abstractformat *f,pm_stream *s,int64_t low,const uint8_t *sig,size_t siglen,int adjust,w5_open open,w5_close close,const char *label,xx_pd_struct *pd) {
     int64_t limit=pm_available(f),at; size_t n,i,capacity=xx_get_file_buffer_size(),completed=0; unsigned candidates=0; uint8_t *scan;
-    if(low<0 || low>=limit || !siglen || siglen>32) return false; n=limit-low>16777216 ? 16777216U : (size_t)(limit-low);
+    if(low<0 || low>=limit || !siglen || siglen>32) { return false; } n=limit-low>16777216 ? 16777216U : (size_t)(limit-low);
     if(capacity>n) capacity=n;
     scan=(uint8_t *)xx_mem_alloc(capacity);if(!scan) return false;
     /* Retain the complete original scan-range I/O check before candidates. */
@@ -44,7 +44,7 @@ static bool w5_embedded(Abstractformat *f,pm_stream *s,int64_t low,const uint8_t
         if((i&4095U)==0 && wg_stop(pd)) { xx_mem_free(scan); return false; }
         {
             int64_t found=xx_io_find_bytes_buffer_optimize_ex(f->device,f->base_address+low+(int64_t)i,(int64_t)(n-i),sig,siglen,capacity,pd);
-            if(found<0) break;i=(size_t)(found-f->base_address-low);
+            if(found<0) { break; } i=(size_t)(found-f->base_address-low);
         } if(++candidates>128) break; at=low+(int64_t)i+adjust; if(at<low) continue;
         reader=open(f->device,f->base_address+at); if(!reader) { xx_mem_free(scan); return false; }
         valid=xx_format_handle_base_info(reader,pd); size=reader->format_size;
@@ -63,7 +63,7 @@ static bool w5_embedded(Abstractformat *f,pm_stream *s,int64_t low,const uint8_t
         close(reader);
     } xx_mem_free(scan); return false;
 }
-static bool w5_crc(Abstractformat *f,int64_t at,int64_t bytes,uint32_t expected,xx_pd_struct *pd) { size_t capacity=xx_get_file_buffer_size();uint8_t *b=NULL;bool buffer_result=false; uint32_t c=0;
+static XXFC_MAYBE_UNUSED bool w5_crc(Abstractformat *f,int64_t at,int64_t bytes,uint32_t expected,xx_pd_struct *pd) { size_t capacity=xx_get_file_buffer_size();uint8_t *b=NULL;bool buffer_result=false; uint32_t c=0;
     while(bytes) { if(!b) { if((uint64_t)(bytes)<capacity) capacity=(size_t)(bytes); b=(uint8_t *)xx_mem_alloc(capacity);if(!b) { buffer_result = (false); goto buffer_done; } } size_t n=(uint64_t)(uint64_t)(bytes)>capacity ? capacity : (size_t)bytes; if(wg_stop(pd) || !pm_read(f,at,b,n)) { buffer_result = (false); goto buffer_done; }
         c=xx_crc32_calc(c,b,n); at+=n; bytes-=n;
     } { buffer_result = (c==expected); goto buffer_done; }

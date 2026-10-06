@@ -4,8 +4,8 @@
 #include "../xx_fourteenth_root.h"
 static bool swiss_header(nh_blob *b,el_token line,bool *accession) {
     static const char *const keys[]={"AC","DT","DE","GN","OS","OG","OC","OX","OH","RN","RP","RC","RX","RG","RA","RT","RL","CC","DR","PE","KW","FT"};unsigned i;el_token key;
-    if(line.n<5 || b->p[(size_t)(line.at+2)]!=' ' || b->p[(size_t)(line.at+3)]!=' ' || b->p[(size_t)(line.at+4)]!=' ') return false;key=el_slice(line,0,2);
-    for(i=0;i<sizeof(keys)/sizeof(keys[0]);++i) if(el_eq(b,key,keys[i])) {if(i==0) {if(line.n<=5) return false;*accession=true;}return true;}return false;
+    if(line.n<5 || b->p[(size_t)(line.at+2)]!=' ' || b->p[(size_t)(line.at+3)]!=' ' || b->p[(size_t)(line.at+4)]!=' ') { return false; } key=el_slice(line,0,2);
+    for(i=0;i<sizeof(keys)/sizeof(keys[0]);++i) { if(el_eq(b,key,keys[i])) {if(i==0) {if(line.n<=5) return false;*accession=true;}return true;} } return false;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     nh_blob b={0};el_lines c={0};el_token line,t[32],*names=NULL;f14_sequence q={0};unsigned nt,count=0;uint64_t total=0,budget=10000000;bool ok=false;

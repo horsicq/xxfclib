@@ -258,7 +258,7 @@ static void ei_destroy(Abstractformat *f) {
 }
 Abstractformat *xx_excelsior_create(xx_io_device *device, int64_t base) {
     ei_format *f = (ei_format *)xx_mem_calloc(1, sizeof(*f));
-    if (!f) return NULL;f->generation=1;
+    if (!f) { return NULL; } f->generation=1;
     ue2_init_format(&f->format, device, base, EI_TYPE, "exe", "application/x-excelsior-installer");
     f->format.check_is_valid = ei_info; f->format.handle_base_info = ei_info; f->format.create_archive_records_reading = ei_records;
     f->format.get_format_size=ei_size;f->format.get_number_of_archive_records=ei_count;

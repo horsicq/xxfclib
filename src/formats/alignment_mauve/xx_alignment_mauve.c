@@ -15,7 +15,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if(el_eq(&b,trim,"=")) {unsigned i;NH_NEED(n>=2 && blocks<1024);for(i=0;i<n;++i) NH_NEED(!expected[i] || expected[i]==q[i].real);NH_NEED(f14_alignment_export(f,s,q,n,&total));n=0;++blocks;continue;}
         if(b.p[(size_t)trim.at]=='>') {el_token id;unsigned index;uint64_t start,end;
             NH_NEED(el_split(&b,trim,t,16,&nt,false) && nt>=4 && nt<=8 && el_eq(&b,t[0],">") && mauve_coords(&b,t[1],&id,&start,&end) && (el_eq(&b,t[2],"+") || el_eq(&b,t[2],"-")) && el_ident(&b,t[3]) && n<1024 && f14_find(&b,id,q,n,&index,&budget) && index==n);
-            if(nt>4) NH_NEED(el_eq(&b,t[4],"#") && nt>=6);if(n) NH_NEED(q[n-1].n && (!expected[n-1] || expected[n-1]==q[n-1].real));q[n].id=id;expected[n]=start ? end-start+1:0;++n;continue;
+            if(nt>4) { NH_NEED(el_eq(&b,t[4],"#") && nt>=6); } if(n) NH_NEED(q[n-1].n && (!expected[n-1] || expected[n-1]==q[n-1].real));q[n].id=id;expected[n]=start ? end-start+1:0;++n;continue;
         }
         NH_NEED(n && f14_append(&b,&q[n-1],trim,true,true,false));
     }

@@ -10,7 +10,7 @@ static bool read_components(Abstractformat *f,pm_stream *s,er_blob *b) {
   if(!a) {uint32_t i;if(xx_rt_memcmp(p,"FUJI",4) || aux || z>4096) return false;for(i=0;i<z;++i) if(p[8+i]<32 || p[8+i]>126) return false;if(!er_emit(f,s,b,"cassette-description.bin",0,8+z)) return false;}
   else if(!xx_rt_memcmp(p+a,"baud",4)) {if(z || !aux) return false;}
   else if(!xx_rt_memcmp(p+a,"data",4) || !xx_rt_memcmp(p+a,"fsk ",4)) {bool fsk=p[a]=='f';if(!z || (fsk && (z&1U))) return false;xx_rt_snprintf(label,sizeof(label),"record-%04u.%s",records++,fsk ? "fsk":"bin");if(!er_emit(f,s,b,label,a+8,z)) return false;}
-  else return false;a+=8+z;
+  else { return false; } a+=8+z;
  }s->size=b->n;return records!=0;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { er_blob b;bool ok;if(!er_load(f,&b,pd)) return false;ok=read_components(f,s,&b);xx_mem_free(b.p);return ok; }

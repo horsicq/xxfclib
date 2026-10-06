@@ -6,9 +6,9 @@
 #include "xxfclib/formats/ktx/xx_ktx.h"
 #include "../xx_payload_members.h"
 
-static uint16_t r16(const uint8_t *p,bool be) { return be ? pm_be16(p) : pm_le16(p); }
+static XXFC_MAYBE_UNUSED uint16_t r16(const uint8_t *p,bool be) { return be ? pm_be16(p) : pm_le16(p); }
 static uint32_t r32(const uint8_t *p,bool be) { return be ? pm_be32(p) : pm_le32(p); }
-static uint64_t r64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint64_t r64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[64],b[4],c; bool be; uint32_t faces,layers,levels,meta,i; int64_t at,metaend;
@@ -24,16 +24,16 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         uint32_t n,j; bool ended=false;
         if(!pm_read(f,at,b,4) || (n=r32(b,be))==0 || n>metaend-at-4) return false;
         for(j=0;j<n;++j) { if(!pm_read(f,at+4+j,&c,1)) return false; if(!c) { ended=true; break; } }
-        if(!ended || at+4+((n+3ULL)&~3ULL)>metaend) return false;
-        if(!pm_add(f,s,"keyvalue.bin",at+4,n)) return false; at+=4+((n+3ULL)&~3ULL);
+        if(!ended || at+4+((n+3ULL)&~3ULL)>(uint64_t)metaend) return false;
+        if(!pm_add(f,s,"keyvalue.bin",at+4,n)) { return false; } at+=4+((n+3ULL)&~3ULL);
     }
     if(!levels) levels=1;
     for(i=0;i<levels;++i) {
         uint32_t n,j,parts=faces==6 && !layers ? 6 : 1;
-        if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,at,b,4) || (n=r32(b,be))==0) return false; at+=4;
+        if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,at,b,4) || (n=r32(b,be))==0) { return false; } at+=4;
         for(j=0;j<parts;++j) {
             char label[40]; xx_rt_snprintf(label,sizeof(label),"mip-%u-face-%u.bin",(unsigned)i,(unsigned)j);
-            if(!pm_add(f,s,label,at,n)) return false; at+=(n+3ULL)&~3ULL;
+            if(!pm_add(f,s,label,at,n)) { return false; } at+=(n+3ULL)&~3ULL;
         }
         if(at>pm_available(f)) return false;
     }

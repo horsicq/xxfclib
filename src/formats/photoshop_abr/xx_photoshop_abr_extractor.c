@@ -32,7 +32,7 @@ static const xx_format_search_anchor anchors[] = { { anchor_0,sizeof(anchor_0),0
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     anchors, 2U,
-    xx_photoshop_abr_search_open, xx_photoshop_abr_search_close
+    xx_photoshop_abr_search_open, xx_photoshop_abr_search_close, false
 };
 
 static xx_format_search_state *xx_photoshop_abr_create_format_search(

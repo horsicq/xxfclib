@@ -20,7 +20,7 @@ static void fatx_search_close(Abstractformat *format) {
 static const xx_format_search_desc fatx_desc = {
     fatx_types, sizeof(fatx_types) / sizeof(fatx_types[0]),
     fatx_anchors, sizeof(fatx_anchors) / sizeof(fatx_anchors[0]),
-    fatx_search_open, fatx_search_close
+    fatx_search_open, fatx_search_close, false
 };
 static xx_format_search_state *fatx_search_create(
     xx_format_extractor *self, xx_io_device *device,

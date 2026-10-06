@@ -10,12 +10,12 @@ static bool pw_cab(Abstractformat *f,int64_t at,int64_t end,int64_t *stop,xx_pd_
     uint8_t h[36]; uint32_t bytes,filesat; uint16_t folders,files,flags,i; int64_t table,first_data; uint8_t reserve=0,data_reserve=0; uint16_t header_reserve=0;
     if(end-at<36 || !pm_read(f,at,h,36) || xx_rt_memcmp(h,"MSCF",4) || pm_le32(h+4) || pm_le32(h+12) || pm_le32(h+20) || h[24]!=3 || h[25]!=1) return false;
     bytes=pm_le32(h+8); filesat=pm_le32(h+16); folders=pm_le16(h+26); files=pm_le16(h+28); flags=pm_le16(h+30);
-    if(bytes<36 || !wg_range(end,at,bytes) || !folders || folders>4096 || !files || (flags&~4U)) return false; *stop=at+bytes; table=at+36;
+    if(bytes<36 || !wg_range(end,at,bytes) || !folders || folders>4096 || !files || (flags&~4U)) { return false; } *stop=at+bytes; table=at+36;
     first_data=*stop;
     if(flags&4) { if(!wg_range(*stop,table,4) || !pm_read(f,table,h,4)) return false; header_reserve=pm_le16(h); reserve=h[2]; data_reserve=h[3]; table+=4+header_reserve; }
     if(table>*stop || (uint64_t)folders*(8U+reserve)>(uint64_t)(*stop-table) || filesat<(uint64_t)(table-at)+(uint64_t)folders*(8U+reserve) || filesat>=bytes) return false;
     for(i=0;i<folders;++i) { uint32_t off; uint16_t chunks,j; int64_t p;
-        if(wg_stop(pd) || !pm_read(f,table+(int64_t)i*(8+reserve),h,8)) return false; off=pm_le32(h); chunks=pm_le16(h+4); if(off>=bytes || !chunks || (pm_le16(h+6)&15)>3) return false; p=at+off; if(p<first_data) first_data=p;
+        if(wg_stop(pd) || !pm_read(f,table+(int64_t)i*(8+reserve),h,8)) { return false; } off=pm_le32(h); chunks=pm_le16(h+4); if(off>=bytes || !chunks || (pm_le16(h+6)&15)>3) return false; p=at+off; if(p<first_data) first_data=p;
         for(j=0;j<chunks;++j) { uint16_t packed; if(*stop-p<8+data_reserve || !pm_read(f,p,h,8) || !(packed=pm_le16(h+4)) || packed>(uint64_t)(*stop-p-8-data_reserve)) return false; p+=8+data_reserve+packed; }
     }
     table=at+filesat; for(i=0;i<files;++i) { char name[4097]; if(wg_stop(pd) || first_data-table<16 || !pm_read(f,table,h,16) || pm_le16(h+8)>=folders) return false; table+=16; if(!wg_string(f,&table,first_data,name,sizeof(name)) || !name[0]) return false; }
@@ -28,8 +28,8 @@ static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if(!pm_read(f,start,h,4) || (size=pm_le32(h))<16 || size>1048576 || !wg_range(region_end,start+4,(uint64_t)size+36)) continue;
         settings=(uint8_t *)xx_mem_alloc(size); if(!settings || !pm_read(f,start+4,settings,size)) goto done; for(i=0;i<size;++i) settings[i]^=(uint8_t)(0x61+i%26);
         if(xx_rt_memcmp(settings,"SCG",3) || !pw_cab(f,start+4+size,region_end,&end,pd) || pm_le32(settings+4)!=(uint64_t)(end-start-4-size)) { xx_mem_free(settings); settings=NULL; continue; }
-        if(!pm_add(f,s,"settings.scg",start+4,size)) goto done; s->items[s->count-1].memory=settings; settings=NULL;
-        if(!pm_add(f,s,"payload.cab",start+4+size,end-start-4-size)) goto done; s->size=cab>=0 && overlay>end ? overlay : end; ok=true; break;
+        if(!pm_add(f,s,"settings.scg",start+4,size)) { goto done; } s->items[s->count-1].memory=settings; settings=NULL;
+        if(!pm_add(f,s,"payload.cab",start+4+size,end-start-4-size)) { goto done; } s->size=cab>=0 && overlay>end ? overlay : end; ok=true; break;
     }
 done: if(settings) xx_mem_free(settings); return ok;
 }

@@ -15,7 +15,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     for(i=0;i<count;++i) { uint32_t j; uint16_t type,len; if(fd_stop(pd) || !pm_read(f,640+(int64_t)i*140,h,140) || ((type=pm_be16(h))!=1 && type!=2) || pm_be16(h+2) || !(len=pm_be16(h+4)) || pm_be16(h+6)!=i+1 || pm_be32(h+84)!=width || !h[8] || h[8]==' ') return false;
         if(type==1 && (len<2 || len>8)) return false;
         for(j=0;j<8;++j) if(h[8+j]<32 || h[8+j]>126) return false;
-        for(j=0;j<i;++j) if(!xx_rt_memcmp(names[j],h+8,8)) return false; xx_rt_memcpy(names[i],h+8,8); width+=len;
+        for(j=0;j<i;++j) { if(!xx_rt_memcmp(names[j],h+8,8)) return false; } xx_rt_memcpy(names[i],h+8,8); width+=len;
     }
     if(!width || obs+80>=available) return false;
     /* XPORT lacks an explicit observation count. Preserve its padded region,

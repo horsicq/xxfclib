@@ -13,14 +13,14 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     for(i=0;i<count;++i) {
         uint32_t type; if(gm_stopped(pd) || !gm_read(f,total,at,b,4)) return false; type=pm_le32(b); at+=4; frames=1;
         if(type==1) {
-            if(!gm_read(f,total,at,b,4) || !(frames=pm_le32(b)) || frames>1024) return false; at+=4; prev=0;
+            if(!gm_read(f,total,at,b,4) || !(frames=pm_le32(b)) || frames>1024) { return false; } at+=4; prev=0;
             for(j=0;j<frames;++j) { if(!gm_read(f,total,at+(uint64_t)j*4,b,4)) return false; interval=pm_le32(b); if(!interval || interval>=0x7f800000 || interval<=prev) return false; prev=interval; }
-            if(!gm_add(f,s,"intervals.bin",at,(uint64_t)frames*4,36,total)) return false; at+=(uint64_t)frames*4;
+            if(!gm_add(f,s,"intervals.bin",at,(uint64_t)frames*4,36,total)) { return false; } at+=(uint64_t)frames*4;
         } else if(type!=0) return false;
         for(j=0;j<frames;++j) { uint32_t w,hh;
-            if(gm_stopped(pd) || !gm_read(f,total,at,r,16)) return false; w=pm_le32(r+8); hh=pm_le32(r+12);
-            if(!w || !hh || w>16384 || hh>16384) return false; n=(uint64_t)w*hh; at+=16;
-            if(!gm_add(f,s,"indexed-pixels.bin",at,n,36,total)) return false; at+=n;
+            if(gm_stopped(pd) || !gm_read(f,total,at,r,16)) { return false; } w=pm_le32(r+8); hh=pm_le32(r+12);
+            if(!w || !hh || w>16384 || hh>16384) { return false; } n=(uint64_t)w*hh; at+=16;
+            if(!gm_add(f,s,"indexed-pixels.bin",at,n,36,total)) { return false; } at+=n;
         }
     }
     s->size=(int64_t)at; return true;

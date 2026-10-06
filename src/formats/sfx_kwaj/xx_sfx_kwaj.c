@@ -10,7 +10,7 @@
 static Abstractformat *nested_open(xx_io_device *d,int64_t at) { xx_kwaj *r=xx_kwaj_create(d,at); return r ? &r->format : NULL; }
 static void nested_close(Abstractformat *f) { xx_kwaj_free((xx_kwaj *)f); }
 static bool w5_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { static const uint8_t sig[]={0x4b,0x57,0x41,0x4a,0x88,0xf0,0x27,0xd1}; int64_t low;
-    if(!w5_carrier(f,false,&low,pd)) return false; low=64;
+    if(!w5_carrier(f,false,&low,pd)) { return false; } low=64;
     return w5_embedded(f,s,low,sig,sizeof(sig),0,nested_open,nested_close,"payload.kwaj",pd);
 }
 

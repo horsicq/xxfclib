@@ -16,7 +16,7 @@ static bool tb_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
   for(i=0;i<3;++i)if(!tb_i(&q,&rgb[i])||rgb[i]<0||rgb[i]>255)return false;
   tb_space(&q);if(q.stop-q.t>4096||++colors>4094)return false;
   xx_rt_snprintf(label,sizeof(label),"color-%u.gpl",colors-1);
-  if(!tb_emit(f,s,label,q.start,q.p-q.start,n))return false;section=q.p;
+  if(!tb_emit(f,s,label,q.start,q.p-q.start,n)) {return false; } section=q.p;
  }
  if(!data||!name||!colors)return false;
  /* Retain intervening comments as metadata as well as every color row. */

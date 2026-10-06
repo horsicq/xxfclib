@@ -94,7 +94,7 @@ static bool xx_svg_read_at_sized(xx_io_device *device, int64_t offset, void *dat
     return true;
 }
 
-static bool xx_svg_read_at(xx_io_device *device, int64_t offset, void *data,
+static XXFC_MAYBE_UNUSED bool xx_svg_read_at(xx_io_device *device, int64_t offset, void *data,
                            size_t size) {
     return xx_svg_read_at_sized(device, offset, data, size, xx_get_file_buffer_size());
 }

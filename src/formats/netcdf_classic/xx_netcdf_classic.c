@@ -6,8 +6,8 @@
 typedef struct nc_var { char name[256]; uint64_t at,bytes; uint32_t padded; bool record; } nc_var;
 static bool nc_name(fd_cursor *c,char *name) { uint32_t n; uint8_t pad[3]; size_t i;
     if(!fd_be(c,&n) || !n || n>255 || !fd_get(c,name,n) || !fourth_utf8((uint8_t *)name,n,c->pd)) return false;
-    for(i=0;i<n;++i) if((uint8_t)name[i]<32 || name[i]=='/') return false; name[n]=0;
-    if(!fd_get(c,pad,(4U-(n&3U))&3U)) return false; for(i=0;i<((4U-(n&3U))&3U);++i) if(pad[i]) return false; return true;
+    for(i=0;i<n;++i) { if((uint8_t)name[i]<32 || name[i]=='/') return false; } name[n]=0;
+    if(!fd_get(c,pad,(4U-(n&3U))&3U)) { return false; } for(i=0;i<((4U-(n&3U))&3U);++i) if(pad[i]) return false; return true;
 }
 static uint32_t nc_width(uint32_t type) { return type==1 || type==2 ? 1:type==3 ? 2:type==4 || type==5 ? 4:type==6 ? 8:0; }
 static bool nc_list(fd_cursor *c,uint32_t wanted,uint32_t limit,uint32_t *n) { uint32_t tag; return fd_be(c,&tag) && fd_be(c,n) && *n<=limit && ((tag==0 && *n==0) || tag==wanted); }
@@ -28,7 +28,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         }
         if(!nc_attrs(&c) || !fd_be(&c,&type) || !(width=nc_width(type)) || !fd_be(&c,&padded) || !fd_mul(elems,width,&v[i].bytes) || v[i].bytes>UINT32_MAX-3 || (padded!=((v[i].bytes+3)&~3ULL) && (!v[i].record || padded!=v[i].bytes)) || !fd_get(&c,begin,h[3]==1 ? 4:8)) goto done;
         v[i].at=h[3]==1 ? pm_be32(begin):fd_be64(begin); v[i].padded=padded;
-        if(v[i].at&3) goto done; if(v[i].record) { ++recordvars; stride+=padded; }
+        if(v[i].at&3) { goto done; } if(v[i].record) { ++recordvars; stride+=padded; }
         for(j=0;j<i;++j) if(!xx_rt_strcmp(v[i].name,v[j].name)) goto done;
     }
     if((uint64_t)recordvars*records+vars>4095) goto done;
@@ -40,8 +40,8 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if(v[i].record) { uint32_t k;
             extent=recordvars==1 ? v[i].bytes:v[i].padded;
             for(k=0;k<records;++k) { char name[320]; uint64_t displacement,at;
-                if(fd_stop(pd) || !fd_mul(k,stride,&displacement) || v[i].at>(uint64_t)INT64_MAX-displacement) goto done; at=v[i].at+displacement;
-                if(!fd_range(at,extent,c.end)) goto done; if(at+extent>end) end=at+extent;
+                if(fd_stop(pd) || !fd_mul(k,stride,&displacement) || v[i].at>(uint64_t)INT64_MAX-displacement) { goto done; } at=v[i].at+displacement;
+                if(!fd_range(at,extent,c.end)) { goto done; } if(at+extent>end) end=at+extent;
                 xx_rt_snprintf(name,sizeof(name),"%s-record-%u.bin",v[i].name,k); if(!pm_add(f,s,name,(int64_t)at,(int64_t)v[i].bytes)) goto done; s->items[s->count-1].packed_size=(int64_t)extent;
             }
         } else { extent=v[i].padded; if(!fd_range(v[i].at,extent,c.end)) goto done; if(v[i].at+extent>end) end=v[i].at+extent;

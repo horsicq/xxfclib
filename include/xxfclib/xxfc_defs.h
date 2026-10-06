@@ -6320,6 +6320,15 @@ typedef xx_endian_t FORMAT_ENDIAN;
 #ifndef XXFC_UNUSED
 #define XXFC_UNUSED(x) ((void)(x))
 #endif
+/* A static function that some translation units leave unused, typically a
+ * helper defined in a shared header. */
+#ifndef XXFC_MAYBE_UNUSED
+#  if defined(__GNUC__) || defined(__clang__)
+#    define XXFC_MAYBE_UNUSED __attribute__((unused))
+#  else
+#    define XXFC_MAYBE_UNUSED
+#  endif
+#endif
 
 /* Export / Import decorations */
 #if defined(_WIN32) && defined(__TINYC__)

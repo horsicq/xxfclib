@@ -21,7 +21,7 @@ static bool floats(Abstractformat *f,uint64_t at,uint64_t count,bool be,xx_pd_st
 typedef struct rg { uint64_t at,n; } rg;
 static bool psx_chunk(Abstractformat *f,uint64_t *at,uint64_t total,const char *name,uint32_t stride,uint32_t maximum,uint32_t *count,xx_pd_struct *pd) { uint8_t h[32]; size_t n=xx_rt_strlen(name); if(!take(f,at,total,h,32,pd) || xx_rt_memcmp(h,name,n) || !xx_rt_memchr(h+n,0,20-n) || pm_le32(h+20)!=1999801 || pm_le32(h+24)!=stride || (*count=pm_le32(h+28))>maximum || !span(*at,(uint64_t)*count*stride,total)) return false; return true; }
 static bool psx_bones(Abstractformat *f,uint64_t at,uint32_t count,xx_pd_struct *pd) { uint8_t b[120]; uint32_t i,j,children[256]={0},declared[256]; if(!count || count>256) return false; for(i=0;i<count;++i) { int32_t parent; if(stop(pd) || !pm_read(f,(int64_t)(at+(uint64_t)i*120),b,120) || !xx_rt_memchr(b,0,64) || (declared[i]=pm_le32(b+68))>count) return false; parent=(int32_t)pm_le32(b+72); if(!i) { if(parent!=0 && parent!=-1) return false; } else { if(parent<0 || (uint32_t)parent>=i) return false; ++children[parent]; } for(j=76;j<120;j+=4) if(!finite32(b+j,false)) return false; }
-    for(i=0;i<count;++i) if(children[i]!=declared[i]) return false; return true; }
+    for(i=0;i<count;++i) { if(children[i]!=declared[i]) return false; } return true; }
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 

@@ -154,7 +154,7 @@ bool xx_arcfs_lzw_decode_memory(const uint8_t *input, size_t input_size,
         return false;
     if (output_size == 0U) return input_size == 0U;
     capacity = UINT32_C(1) << max_bits;
-    if ((size_t)capacity > SIZE_MAX / sizeof(*prefix)) return false;
+    if ((uint64_t)capacity * sizeof(*prefix) > SIZE_MAX) return false;
     prefix = (uint16_t *)xx_mem_alloc((size_t)capacity * sizeof(*prefix));
     suffix = (uint8_t *)xx_mem_alloc((size_t)capacity);
     stack = (uint8_t *)xx_mem_alloc((size_t)capacity);

@@ -23,11 +23,11 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[512],copy[256],disc[256],e[2]; uint32_t shift,i,nused=0,seen[4096]; uint64_t cluster,total,blocks,info_end; char label[48];
     if(!pm_read(f,0,h,512) || xx_rt_memcmp(h,"WBFS",4) || h[8]!=9 || h[9]<19 || h[9]>24 || h[10] || h[11] || h[12]!=1) return false;
-    for(i=13;i<512;++i) if(h[i]) return false; shift=h[9]; cluster=1ULL<<shift; total=(uint64_t)pm_be32(h+4)*512;
+    for(i=13;i<512;++i) { if(h[i]) return false; } shift=h[9]; cluster=1ULL<<shift; total=(uint64_t)pm_be32(h+4)*512;
     blocks=(143432ULL*2*32768+cluster-1)/cluster; info_end=(512+256+blocks*2+511)&~511ULL;
     if(total<2*cluster || total%cluster || total>(uint64_t)pm_available(f) || info_end>cluster || !pm_read(f,512,copy,256) || pm_be32(copy+24)!=0x5d1c9ea3U) return false;
     for(i=0;i<blocks;++i) { uint32_t physical,j; if(stop(pd) || !pm_read(f,768+(int64_t)i*2,e,2)) return false; physical=pm_be16(e); if(!physical) continue;
-      if(nused>=4096 || physical>=total/cluster) return false; for(j=0;j<nused;++j) if(seen[j]==physical) return false; seen[nused++]=physical;
+      if(nused>=4096 || physical>=total/cluster) { return false; } for(j=0;j<nused;++j) if(seen[j]==physical) return false; seen[nused++]=physical;
       if(!i) {
           if(!pm_read(f,(int64_t)((uint64_t)physical*cluster),disc,sizeof(disc)) ||
              xx_rt_memcmp(copy,disc,WBFS_MD5_RECORD_OFFSET) ||
@@ -39,7 +39,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
       }
       xx_rt_snprintf(label,sizeof(label),"disc-block-%u.bin",i); if(!emit(f,s,label,(uint64_t)physical*cluster,cluster,total)) return false;
     }
-    if(!nused || !pm_read(f,768,e,2) || !pm_be16(e)) return false; s->size=(int64_t)total; return true;
+    if(!nused || !pm_read(f,768,e,2) || !pm_be16(e)) { return false; } s->size=(int64_t)total; return true;
 
 }
 

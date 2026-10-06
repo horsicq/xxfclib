@@ -16,7 +16,7 @@ static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         at=pm_le32(h+16); bytes=pm_le32(h+20); if(at<32 || !wg_range(limit,at,bytes) || ((uint64_t)at< (uint64_t)table+count*48ULL && (uint64_t)at+bytes>table) || (h[32]&~29U) || !h[36]) return false;
         xx_rt_snprintf(name,sizeof(name),"resource-%u.bin",i); if(!pm_add(f,s,name,at,bytes)) return false;
         if(h[32]&16) { uint8_t *data; if(bytes>16777216 || memory+bytes>67108864) return false; memory+=bytes; data=(uint8_t *)xx_mem_alloc(bytes ? bytes : 1); if(!data || !pm_read(f,at,data,bytes)) { if(data) xx_mem_free(data); return false; }
-            for(j=0;j<bytes && j<256;++j) data[j]^=(uint8_t)(j>>1); s->items[s->count-1].memory=data; }
+            for(j=0;j<bytes && j<256;++j) { data[j]^=(uint8_t)(j>>1); } s->items[s->count-1].memory=data; }
         if((int64_t)at+bytes>end) end=(int64_t)at+bytes;
     } s->size=end; return true;
 }

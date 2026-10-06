@@ -12,7 +12,7 @@ static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  if(tg_word_ci(&q,"xllcenter"))center=true;else if(!tg_word_ci(&q,"xllcorner"))return false;
  if(!tg_num(&q,&x)||!tg_done(&q)||!tg_line(&q)||!tg_word_ci(&q,center?"yllcenter":"yllcorner")||!tg_num(&q,&y)||!tg_done(&q)||!tg_line(&q)||!tg_word_ci(&q,"cellsize")||!tg_num(&q,&cell)||cell<=0||!tg_done(&q))return false;
  at=q.p;if(!tg_line(&q))return false;if(tg_word_ci(&q,"nodata_value")){if(!tg_num(&q,&nodata)||!tg_done(&q))return false;at=q.p;}
- if(!tg_emit(f,s,"descriptor.asc",0,at,n)||!tg_grid_rows(f,s,b,n,at,(uint64_t)w*h,nodata,&lo,&hi,pd,false))return false;s->size=(int64_t)n;return true;
+ if(!tg_emit(f,s,"descriptor.asc",0,at,n)||!tg_grid_rows(f,s,b,n,at,(uint64_t)w*h,nodata,&lo,&hi,pd,false)) {return false; } s->size=(int64_t)n;return true;
 }
 
 void xx_esri_ascii_grid_init(xx_esri_ascii_grid *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_ESRI_ASCII_GRID,"asc");}}

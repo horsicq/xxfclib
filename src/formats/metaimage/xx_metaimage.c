@@ -7,7 +7,7 @@ static unsigned meta_width(const char *p) {
     if(!xx_rt_strcmp(p,"MET_CHAR") || !xx_rt_strcmp(p,"MET_UCHAR")) return 1;
     if(!xx_rt_strcmp(p,"MET_SHORT") || !xx_rt_strcmp(p,"MET_USHORT")) return 2;
     if(!xx_rt_strcmp(p,"MET_INT") || !xx_rt_strcmp(p,"MET_UINT") || !xx_rt_strcmp(p,"MET_FLOAT")) return 4;
-    if(!xx_rt_strcmp(p,"MET_LONG_LONG") || !xx_rt_strcmp(p,"MET_ULONG_LONG") || !xx_rt_strcmp(p,"MET_DOUBLE")) return 8;return 0;
+    if(!xx_rt_strcmp(p,"MET_LONG_LONG") || !xx_rt_strcmp(p,"MET_ULONG_LONG") || !xx_rt_strcmp(p,"MET_DOUBLE")) { return 8; } return 0;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     char line[4096],sizes[2048]={0},seen[64][96];unsigned lines=0,fields=0,width=0;uint64_t dim=0,channels=1,n;bool binary=true,object=false,ended=false;int64_t available=pm_available(f);
@@ -15,7 +15,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     while(++lines<=128 && sd_line(&c,line,sizeof(line))) {char *eq,*key,*value;unsigned i;if(!line[0] || line[0]=='#') continue;
         eq=xx_rt_strchr(line,'=');if(!eq) return false;*eq=0;key=sd_trim(line);value=sd_trim(eq+1);
         if(!*key || xx_rt_strlen(key)>=96 || fields>=64) return false;
-        for(i=0;i<fields;++i) if(!xx_rt_strcmp(seen[i],key)) return false;xx_rt_memcpy(seen[fields++],key,xx_rt_strlen(key)+1);
+        for(i=0;i<fields;++i) { if(!xx_rt_strcmp(seen[i],key)) return false; } xx_rt_memcpy(seen[fields++],key,xx_rt_strlen(key)+1);
         if(!object) {if(xx_rt_strcmp(key,"ObjectType") || xx_rt_strcmp(value,"Image")) return false;object=true;continue;}
         if(!xx_rt_strcmp(key,"NDims")) {if(!sd_uint(value,&dim) || !dim || dim>16) return false;}
         else if(!xx_rt_strcmp(key,"DimSize")) {if(xx_rt_strlen(value)>=sizeof(sizes)) return false;xx_rt_memcpy(sizes,value,xx_rt_strlen(value)+1);}
@@ -28,7 +28,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         else if(!xx_rt_strcmp(key,"ElementDataFile")) {if(xx_rt_strcmp(value,"LOCAL")) return false;ended=true;break;}
     }
     if(!ended || !object || !dim || !width || !binary || !sd_dims(sizes,(unsigned)dim,&n) || !fd_mul(n,width,&n) || !fd_mul(n,channels,&n) || !fd_range(c.at,n,(uint64_t)available)) return false;
-    if(!pm_add(f,s,"metaimage-header.txt",0,(int64_t)c.at) || !pm_add(f,s,"image-data.bin",(int64_t)c.at,(int64_t)n)) return false;s->size=(int64_t)(c.at+n);return true;
+    if(!pm_add(f,s,"metaimage-header.txt",0,(int64_t)c.at) || !pm_add(f,s,"image-data.bin",(int64_t)c.at,(int64_t)n)) { return false; } s->size=(int64_t)(c.at+n);return true;
 }
 
 void xx_metaimage_init(xx_metaimage *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_METAIMAGE,"metaimage"); } }

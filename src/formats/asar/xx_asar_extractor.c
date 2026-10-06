@@ -31,7 +31,7 @@ static void xx_asar_search_close(Abstractformat *format) {
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     NULL, 0U,
-    xx_asar_search_open, xx_asar_search_close
+    xx_asar_search_open, xx_asar_search_close, false
 };
 
 static xx_format_search_state *xx_asar_create_format_search(

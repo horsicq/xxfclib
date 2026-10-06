@@ -23,6 +23,8 @@ static char *xx_wv_strcpy(char *d, const char *s) {
 #define memset xx_wv_set
 #define strcpy xx_wv_strcpy
 #define strncmp(a,b,n) xx_mem_compare((a),(b),(n))
+#undef isdigit
+#undef isalnum
 #define isdigit(c) ((c) >= '0' && (c) <= '9')
 #define isalnum(c) (isdigit(c) || ((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z'))
 #define NO_TAGS 1
@@ -1026,7 +1028,7 @@ xx_wv_Context *xx_wv_OpenFileInputEx64 (xx_wv_StreamReader64 *reader, void *wv_i
         }
         memcpy (wps->blockbuff, &wps->wphdr, 32);
 
-        if (wpc->reader->read_bytes (wpc->wv_in, wps->blockbuff + 32, wps->wphdr.ckSize - 24) != wps->wphdr.ckSize - 24) {
+        if ((uint32_t) wpc->reader->read_bytes (wpc->wv_in, wps->blockbuff + 32, wps->wphdr.ckSize - 24) != wps->wphdr.ckSize - 24) {
             if (error) strcpy (error, "can't read all of WavPack file!");
             return xx_wv_CloseFile (wpc);
         }
@@ -1339,15 +1341,17 @@ static int init_wvx_bitstream (xx_wv_Stream *wps, xx_wv_Metadata *wpmd)
     // the new WVX bitstream format starts with one or two new 5-bit fields
 
     if (wpmd->id == ID_WVX_NEW_BITSTREAM) {
+        uint32_t temp;
+
         if (wps->wphdr.flags & FLOAT_DATA) {
-            getbits (&wps->float_min_shifted_zeros, 5, &wps->wvxbits);
-            wps->float_min_shifted_zeros &= 0x1f;
-            getbits (&wps->float_max_shifted_ones, 5, &wps->wvxbits);
-            wps->float_max_shifted_ones &= 0x1f;
+            getbits (&temp, 5, &wps->wvxbits);
+            wps->float_min_shifted_zeros = (unsigned char) (temp & 0x1f);
+            getbits (&temp, 5, &wps->wvxbits);
+            wps->float_max_shifted_ones = (unsigned char) (temp & 0x1f);
         }
         else {
-            getbits (&wps->int32_max_width, 5, &wps->wvxbits);
-            wps->int32_max_width &= 0x1f;
+            getbits (&temp, 5, &wps->wvxbits);
+            wps->int32_max_width = (unsigned char) (temp & 0x1f);
         }
     }
 
@@ -1520,7 +1524,9 @@ static int read_new_config_info (xx_wv_Context *wpc, xx_wv_Metadata *wpmd)
 
     wpc->version_five = 1;      // just having this block signals version 5.0
 
-    wpc->file_format = wpc->config.qmode = wpc->channel_layout = 0;
+    wpc->channel_layout = 0;
+    wpc->config.qmode = 0;
+    wpc->file_format = 0;
 
     if (wpc->channel_reordering) {
         free (wpc->channel_reordering);
@@ -1569,7 +1575,7 @@ static int read_new_config_info (xx_wv_Context *wpc, xx_wv_Metadata *wpmd)
                                 bytecnt--;
                             }
                             else
-                                wpc->channel_reordering [i] = i;
+                                wpc->channel_reordering [i] = (unsigned char) i;
                     }
                 }
             }
@@ -1757,7 +1763,7 @@ static int process_metadata (xx_wv_Context *wpc, xx_wv_Metadata *wpmd, int strea
             return TRUE;
 
         case ID_ALT_EXTENSION:
-            if (wpmd->byte_length && wpmd->byte_length < sizeof (wpc->file_extension)) {
+            if (wpmd->byte_length && (size_t) wpmd->byte_length < sizeof (wpc->file_extension)) {
                 int i, j;
 
                 for (i = j = 0; i < wpmd->byte_length; ++i)
@@ -1813,7 +1819,7 @@ uint32_t bs_close_read (Bitstream *bs)
 {
     uint32_t bytes_read;
 
-    if (bs->bc < sizeof (*(bs->ptr)) * 8)
+    if ((size_t) bs->bc < sizeof (*(bs->ptr)) * 8)
         bs->ptr++;
 
     bytes_read = (uint32_t)(bs->ptr - bs->buf) * sizeof (*(bs->ptr));
@@ -1878,8 +1884,8 @@ uint32_t read_next_header (xx_wv_StreamReader64 *reader, void *id, xx_wv_Header 
         else
             bleft = 0;
 
-        if (reader->read_bytes (id, buffer + bleft, sizeof (*wphdr) - bleft) != sizeof (*wphdr) - bleft)
-            return -1;
+        if ((size_t) reader->read_bytes (id, buffer + bleft, sizeof (*wphdr) - bleft) != sizeof (*wphdr) - bleft)
+            return (uint32_t) -1;
 
         sp = buffer;
 
@@ -1895,7 +1901,7 @@ uint32_t read_next_header (xx_wv_StreamReader64 *reader, void *id, xx_wv_Header 
             sp++;
 
         if ((bytes_skipped += (uint32_t)(sp - buffer)) > 1024 * 1024)
-            return -1;
+            return (uint32_t) -1;
     }
 }
 
@@ -1980,7 +1986,7 @@ int read_wvc_block (xx_wv_Context *wpc, int stream)
 	    if (!wps->block2buff)
 	        return FALSE;
 
-            if (wpc->reader->read_bytes (wpc->wvc_in, wps->block2buff + 32, wphdr.ckSize - 24) !=
+            if ((uint32_t) wpc->reader->read_bytes (wpc->wvc_in, wps->block2buff + 32, wphdr.ckSize - 24) !=
                 wphdr.ckSize - 24) {
                     free (wps->block2buff);
                     wps->block2buff = NULL;
@@ -2153,7 +2159,7 @@ static int seek_eof_information (xx_wv_Context *wpc, int64_t *final_index, int g
                 }
                 wpc->wrapper_data = replacement;
 
-                if (reader->read_bytes (id, wpc->wrapper_data + wpc->wrapper_bytes, meta_bc) == meta_bc)
+                if ((uint32_t) reader->read_bytes (id, wpc->wrapper_data + wpc->wrapper_bytes, meta_bc) == meta_bc)
                     wpc->wrapper_bytes += meta_size;
                 else {
                     reader->set_pos_abs (id, restore_pos);
@@ -2478,7 +2484,7 @@ int64_t xx_wv_GetFileSize64 (xx_wv_Context *wpc)
 // samples written so far. This allows xx_wv_GetRatio() and xx_wv_GetAverageBitrate() to
 // work during writing and specifically in cases where the initial length was unknown.
 
-static int64_t actual_total_samples (xx_wv_Context *wpc)
+static XXFC_MAYBE_UNUSED int64_t actual_total_samples (xx_wv_Context *wpc)
 {
     int64_t total_samples = wpc->total_samples;
 
@@ -2560,7 +2566,7 @@ void xx_wv_GetChannelIdentities (xx_wv_Context *wpc, unsigned char *identities)
                 index++;
             }
 
-            *identities++ = index++;
+            *identities++ = (unsigned char) index++;
             channel_mask >>= 1;
         }
         else if (src && *src)
@@ -2697,7 +2703,7 @@ void xx_wv_FreeWrapper (xx_wv_Context *wpc)
 
 uint32_t xx_wv_GetSampleRate (xx_wv_Context *wpc)
 {
-    return wpc ? (wpc->dsd_multiplier ? wpc->config.sample_rate * wpc->dsd_multiplier : wpc->config.sample_rate) : 44100;
+    return wpc ? (wpc->dsd_multiplier ? wpc->config.sample_rate * wpc->dsd_multiplier : (uint32_t) wpc->config.sample_rate) : 44100;
 }
 
 // Returns the native sample rate of the specified WavPack file
@@ -2706,7 +2712,7 @@ uint32_t xx_wv_GetSampleRate (xx_wv_Context *wpc)
 
 uint32_t xx_wv_GetNativeSampleRate (xx_wv_Context *wpc)
 {
-    return wpc ? (wpc->dsd_multiplier ? wpc->config.sample_rate * wpc->dsd_multiplier * 8 : wpc->config.sample_rate) : 44100;
+    return wpc ? (wpc->dsd_multiplier ? wpc->config.sample_rate * wpc->dsd_multiplier * 8 : (uint32_t) wpc->config.sample_rate) : 44100;
 }
 
 // Returns the number of channels of the specified WavPack file. Note that
@@ -4051,7 +4057,7 @@ uint32_t xx_wv_UnpackSamples (xx_wv_Context *wpc, int32_t *buffer, uint32_t samp
 
                 memcpy (wps->blockbuff, &wps->wphdr, 32);
 
-                if (wpc->reader->read_bytes (wpc->wv_in, wps->blockbuff + 32, wps->wphdr.ckSize - 24) !=
+                if ((uint32_t) wpc->reader->read_bytes (wpc->wv_in, wps->blockbuff + 32, wps->wphdr.ckSize - 24) !=
                     wps->wphdr.ckSize - 24) {
                         strcpy (wpc->error_message, "can't read all of last block!");
                         wps->wphdr.block_samples = 0;
@@ -4152,7 +4158,7 @@ uint32_t xx_wv_UnpackSamples (xx_wv_Context *wpc, int32_t *buffer, uint32_t samp
 
         if (!wpc->reduced_channels && !(wps->wphdr.flags & FINAL_BLOCK)) {
             int32_t *temp_buffer = (int32_t *)calloc (1, samples_to_unpack * 8);
-            uint32_t offset = 0;     // offset to next channel in sequence (0 to num_channels - 1)
+            int offset = 0;          // offset to next channel in sequence (0 to num_channels - 1)
             if (!temp_buffer) {
                 wpc->crc_errors++;
                 strcpy (wpc->error_message, "can't allocate memory");
@@ -4201,7 +4207,7 @@ uint32_t xx_wv_UnpackSamples (xx_wv_Context *wpc, int32_t *buffer, uint32_t samp
 
                     memcpy (wps->blockbuff, &wps->wphdr, 32);
 
-                    if (wpc->reader->read_bytes (wpc->wv_in, wps->blockbuff + 32, wps->wphdr.ckSize - 24) !=
+                    if ((uint32_t) wpc->reader->read_bytes (wpc->wv_in, wps->blockbuff + 32, wps->wphdr.ckSize - 24) !=
                         wps->wphdr.ckSize - 24) {
                             wpc->streams [0]->wphdr.block_samples = 0;
                             wpc->streams [0]->wphdr.ckSize = 24;
@@ -4611,7 +4617,7 @@ static const char ones_count_table [] = {
 
 ///////////////////////////// executable code ////////////////////////////////
 
-static uint32_t __inline read_code (Bitstream *bs, uint32_t maxcode);
+static __inline uint32_t read_code (Bitstream *bs, uint32_t maxcode);
 
 // Read the next word from the bitstream "wvbits" and return the value. This
 // function can be used for hybrid or lossless streams, but since an
@@ -5127,7 +5133,7 @@ int32_t get_words_lossless (xx_wv_Stream *wps, int32_t *buffer, int32_t nsamples
 // minimum number of bits and then determines whether another bit is needed
 // to define the code.
 
-static uint32_t __inline read_code (Bitstream *bs, uint32_t maxcode)
+static __inline uint32_t read_code (Bitstream *bs, uint32_t maxcode)
 {
     unsigned long local_sr;
     uint32_t extras, code;
@@ -5162,7 +5168,7 @@ static uint32_t __inline read_code (Bitstream *bs, uint32_t maxcode)
     else
         bitcount--;
 
-    if (sizeof (local_sr) < 8 && bs->bc > sizeof (local_sr) * 8) {
+    if (sizeof (local_sr) < 8 && (unsigned int) bs->bc > sizeof (local_sr) * 8) {
         bs->bc -= bitcount;
         bs->sr = *(bs->ptr) >> (sizeof (*(bs->ptr)) * 8 - bs->bc);
     }
@@ -5538,7 +5544,7 @@ signed char store_weight (int weight)
     if (weight > 0)
         weight -= (weight + 64) >> 7;
 
-    return (weight + 4) >> 3;
+    return (signed char) ((weight + 4) >> 3);
 }
 
 int restore_weight (signed char weight)

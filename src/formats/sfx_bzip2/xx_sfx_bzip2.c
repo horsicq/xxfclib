@@ -8,10 +8,10 @@
 
 static bool w6_bz_at(Abstractformat *f,pm_stream *s,int64_t at,xx_pd_struct *pd) {
     int64_t available=pm_available(f)-at;uint8_t *input=NULL,*output=NULL;size_t n,i,written;unsigned tries=0;bool ok=false;
-    if(available<14) return false;n=available>16777216 ? 16777216U:(size_t)available;input=(uint8_t *)xx_mem_alloc(n);if(!input || !pm_read(f,at,input,n) || input[3]<'1' || input[3]>'9') goto done;
+    if(available<14) { return false; } n=available>16777216 ? 16777216U:(size_t)available;input=(uint8_t *)xx_mem_alloc(n);if(!input || !pm_read(f,at,input,n) || input[3]<'1' || input[3]>'9') goto done;
     for(i=4;i+10<=n;++i) { uint64_t v=0;unsigned j,shift;if((i&4095U)==0 && wg_stop(pd)) goto done;for(j=0;j<7;++j) v=(v<<8)|input[i+j];
         for(shift=0;shift<8;++shift) if(((v>>(8-shift))&UINT64_C(0xffffffffffff))==UINT64_C(0x177245385090)) { size_t bytes=i+(80+shift+7)/8;unsigned unused=(8-shift)&7;
-            if(bytes>n || (unused && (input[bytes-1]&((1U<<unused)-1)))) continue;if(++tries>16) goto done;if(!output) output=(uint8_t *)xx_mem_alloc(67108864);if(!output) goto done;
+            if(bytes>n || (unused && (input[bytes-1]&((1U<<unused)-1)))) { continue; } if(++tries>16) goto done;if(!output) output=(uint8_t *)xx_mem_alloc(67108864);if(!output) goto done;
             { xx_io_device *source=xx_io_mem_open_ro(input,bytes);bool decoded=source && xx_bzip2_unpack_device_to_memory(source,0,(int64_t)bytes,output,67108864,&written,pd);if(source) xx_io_close(source);if(decoded && !wg_stop(pd)) { ok=w6_component(f,s,at,(int64_t)bytes,"payload.bz2");goto done; } }
         }
     }

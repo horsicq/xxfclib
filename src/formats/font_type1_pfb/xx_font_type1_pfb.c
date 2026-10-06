@@ -11,14 +11,14 @@ static bool pf_find(const uint8_t *b,uint64_t z,const char *text) {uint64_t p;si
 static bool eg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  uint64_t p=0;unsigned phase=0,segments=0;bool binary=false,trailer=false;
  while(p<n){uint64_t start=p;uint32_t z;uint8_t type;const char *label;
-  if(eg_stop(pd)||!eg_span(p,2,n)||b[p++]!=128)return false;type=b[p++];
+  if(eg_stop(pd)||!eg_span(p,2,n)||b[p++]!=128) {return false; } type=b[p++];
   if(type==3){if(p!=n||!binary||!trailer||!eg_emit(f,s,"terminator.pfb",start,2,n))return false;s->size=(int64_t)n;return true;}
-  if(type<1||type>2||++segments>1024||!eg_span(p,4,n))return false;z=pm_le32(b+p);p+=4;if(!z||!eg_span(p,z,n))return false;
+  if(type<1||type>2||++segments>1024||!eg_span(p,4,n)) {return false; } z=pm_le32(b+p);p+=4;if(!z||!eg_span(p,z,n))return false;
   if(type==2){if(phase==0||phase==3||z<4)return false;phase=2;binary=true;label="encrypted-font-program.pfb";}
   else{uint64_t i;if(!phase){if(z<15||!eg_tag(b+p,"%!PS-AdobeFont-",14)||!pf_find(b+p,z,"currentfile eexec"))return false;phase=1;label="font-definition.pfb";}
    else{if(!binary)return false;phase=3;trailer=pf_find(b+p,z,"cleartomark");label="closing-program.pfb";}
    for(i=0;i<z;++i)if(b[p+i]>126||(b[p+i]<32&&b[p+i]!=9&&b[p+i]!=10&&b[p+i]!=13&&b[p+i]!=12))return false;}
-  if(!eg_emit(f,s,label,start,(uint64_t)z+6,n))return false;p+=z;
+  if(!eg_emit(f,s,label,start,(uint64_t)z+6,n)) {return false; } p+=z;
  }
  return false;
 }

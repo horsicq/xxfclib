@@ -31,7 +31,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[32],b[52],e[18],p[2]; uint32_t total,block,n,counts[3],offsets[8],lengths[8],i,j,nranges=0; rg ranges[8]; char label[40];
     if(!pm_read(f,0,h,32) || xx_rt_memcmp(h,"J3D1btk1",8) || pm_be32(h+12)!=1 || (total=pm_be32(h+8))>(uint64_t)pm_available(f) || !pm_read(f,32,b,52) || !section(f,32,total,"TTK1",block=pm_be32(b+4),pd) || block<52 || b[8]>4 || b[9]>15 || !pm_be16(b+10)) return false;
     n=pm_be16(b+12); if(!n || n%3 || n>768) return false; for(i=0;i<3;++i) counts[i]=pm_be16(b+14+i*2);
-    for(i=0;i<8;++i) offsets[i]=pm_be32(b+20+i*4); lengths[0]=n*18; lengths[1]=n/3*2; lengths[2]=0; lengths[3]=n/3; lengths[4]=n*4; lengths[5]=counts[0]*4; lengths[6]=counts[1]*2; lengths[7]=counts[2]*4;
+    for(i=0;i<8;++i) { offsets[i]=pm_be32(b+20+i*4); } lengths[0]=n*18; lengths[1]=n/3*2; lengths[2]=0; lengths[3]=n/3; lengths[4]=n*4; lengths[5]=counts[0]*4; lengths[6]=counts[1]*2; lengths[7]=counts[2]*4;
     if(offsets[2]<52 || offsets[2]>=block || !j3d_names(f,32+offsets[2],32+block,n/3,pd)) return false;
     { uint32_t next=block; for(i=0;i<8;++i) if(i!=2 && offsets[i]>offsets[2] && offsets[i]<next) next=offsets[i]; lengths[2]=next-offsets[2]; }
     for(i=0;i<8;++i) { if(!lengths[i] || !reserve(ranges,&nranges,8,offsets[i],lengths[i],52,block)) return false; }
@@ -39,7 +39,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     for(i=0;i<n/3;++i) { uint8_t index; if(!pm_read(f,32+(int64_t)offsets[1]+i*2,p,2) || pm_be16(p)!=i || !pm_read(f,32+(int64_t)offsets[3]+i,&index,1) || index>9) return false; }
     if(!floats(f,32+offsets[4],n,true,pd) || !floats(f,32+offsets[5],counts[0],true,pd) || !floats(f,32+offsets[7],counts[2],true,pd)) return false;
     for(i=0;i<8;++i) { xx_rt_snprintf(label,sizeof(label),"table-%u.bin",i); if(!emit(f,s,label,32+offsets[i],lengths[i],total)) return false; }
-    if(32U+(uint64_t)block!=total) return false; s->size=total; return true;
+    if(32U+(uint64_t)block!=total) { return false; } s->size=total; return true;
 
 }
 

@@ -6,7 +6,7 @@
 static uint32_t length24(const uint8_t *p) {return (uint32_t)p[0]*65536U+(uint32_t)p[1]*256U+p[2];}
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[8];nh_blob b={0};bool ok=false;uint64_t at=0;unsigned messages=0;
-    if(!pm_read(f,0,h,8) || xx_rt_memcmp(h,"BUFR",4) || h[7]!=4) return false;NH_NEED(nh_load(f,&b,pd));
+    if(!pm_read(f,0,h,8) || xx_rt_memcmp(h,"BUFR",4) || h[7]!=4) { return false; } NH_NEED(nh_load(f,&b,pd));
     while(at<b.n) {uint64_t end;uint32_t n;unsigned section;bool local;NH_NEED(++messages<=600 && nh_span(&b,at,8) && !xx_rt_memcmp(b.p+(size_t)at,"BUFR",4) && b.p[(size_t)at+7]==4);end=at+length24(b.p+(size_t)at+4);NH_NEED(end>=at+45 && end<=b.n && nh_add(f,s,&b,"indicator",at,8));at+=8;
         NH_NEED(eh_span(at,22,end-4));n=length24(b.p+(size_t)at);NH_NEED(n>=22 && eh_span(at,n,end-4));local=(b.p[(size_t)at+9]&128)!=0;
         NH_NEED(!(b.p[(size_t)at+9]&127) && pm_be16(b.p+(size_t)at+15)>=1900 && b.p[(size_t)at+17]>=1 && b.p[(size_t)at+17]<=12 && b.p[(size_t)at+18]>=1 && b.p[(size_t)at+18]<=31 && b.p[(size_t)at+19]<24 && b.p[(size_t)at+20]<60 && b.p[(size_t)at+21]<61 && nh_add(f,s,&b,"identification",at,n));at+=n;

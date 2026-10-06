@@ -11,7 +11,7 @@ static bool bt_name(nh_blob *b,uint64_t strings,uint64_t length,uint32_t offset,
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     nh_blob b;uint64_t h,types,tn,strings,sn,at,end,i,j,tail,count=0;uint32_t *offsets=NULL;bool ok=false;
-    if(!nh_load(f,&b,pd)) return false;NH_NEED(nh_span(&b,0,24) && pm_le16(b.p)==0xeb9f && b.p[2]==1 && !b.p[3]);h=pm_le32(b.p+4);types=pm_le32(b.p+8);tn=pm_le32(b.p+12);strings=pm_le32(b.p+16);sn=pm_le32(b.p+20);
+    if(!nh_load(f,&b,pd)) { return false; } NH_NEED(nh_span(&b,0,24) && pm_le16(b.p)==0xeb9f && b.p[2]==1 && !b.p[3]);h=pm_le32(b.p+4);types=pm_le32(b.p+8);tn=pm_le32(b.p+12);strings=pm_le32(b.p+16);sn=pm_le32(b.p+20);
     NH_NEED(h>=24 && h<=65536 && !types && strings==tn && sn && nh_span(&b,h,tn) && nh_span(&b,h+strings,sn) && h+tn+sn==b.n);types+=h;strings+=h;NH_NEED(!b.p[(size_t)strings] && !b.p[(size_t)(strings+sn-1)]);at=strings;
     while(at<strings+sn) NH_NEED(th_z(&b,&at,strings+sn,true));
     offsets=(uint32_t *)xx_mem_alloc((size_t)(tn/12+1)*sizeof(*offsets));NH_NEED(offsets);offsets[0]=0;end=types+tn;

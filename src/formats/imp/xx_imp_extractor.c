@@ -36,7 +36,7 @@ static void xx_imp_search_close(Abstractformat *format) {
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
-    xx_imp_search_open, xx_imp_search_close
+    xx_imp_search_open, xx_imp_search_close, false
 };
 
 static xx_format_search_state *xx_imp_create_format_search(

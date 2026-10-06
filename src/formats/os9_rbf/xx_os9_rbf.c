@@ -333,7 +333,7 @@ void xx_os9_rbf_init(xx_os9_rbf *disk, xx_io_device *device, int64_t base) {
 }
 xx_os9_rbf *xx_os9_rbf_create_ex(xx_io_device *device, int64_t base, xx_os9_rbf_variant variant) {
     xx_os9_rbf *disk = (xx_os9_rbf *)xx_mem_alloc(sizeof(*disk));
-    if (disk) xx_os9_rbf_init_ex(disk, device, base, variant); return disk;
+    if (disk) { xx_os9_rbf_init_ex(disk, device, base, variant); } return disk;
 }
 xx_os9_rbf *xx_os9_rbf_create(xx_io_device *device, int64_t base) {
     return xx_os9_rbf_create_ex(device, base, XX_OS9_RBF_CLASSIC);
@@ -377,7 +377,7 @@ static bool rb_options(xx_list_s *destination, const xx_list_s *source) {
     size_t i; if (!source) return true;
     for (i = 0U; i < source->count; ++i) {
         const xx_meta *item = (const xx_meta *)xx_list_at(source, i); xx_meta copy;
-        if (!item) continue; xx_meta_init(&copy, item->meta_id);
+        if (!item) { continue; } xx_meta_init(&copy, item->meta_id);
         if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) { xx_meta_cleanup(&copy); return false; }
     }
     return true;

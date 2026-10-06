@@ -21,7 +21,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             xx_rt_snprintf(label,sizeof(label),"extension-%u-code-%u.bin",extensions-1,code);if(!pm_add(f,s,label,(int64_t)p,z)) return false;p+=z;
         }
     }
-    if(!pm_add(f,s,"voxels.bin",(int64_t)at,(int64_t)n)) return false;s->size=(int64_t)(at+n);return true;
+    if(!pm_add(f,s,"voxels.bin",(int64_t)at,(int64_t)n)) { return false; } s->size=(int64_t)(at+n);return true;
 }
 
 void xx_nifti2_init(xx_nifti2 *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_NIFTI2,"nifti2"); } }

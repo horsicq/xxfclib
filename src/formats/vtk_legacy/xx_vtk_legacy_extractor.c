@@ -7,7 +7,7 @@ static Abstractformat *open_reader(xx_io_device *d) { xx_vtk_legacy *r=xx_vtk_le
 static void close_reader(Abstractformat *f) { xx_vtk_legacy_free((xx_vtk_legacy *)f); }
 static const uint8_t bytes_0[] = {35,32,118,116,107,32,68,97,116,97,70,105,108,101,32,86,101,114,115,105,111,110,32};
 static const xx_format_search_anchor anchors[] = {{bytes_0,sizeof(bytes_0),0}};
-static const xx_format_search_desc desc = {types,1U,anchors,sizeof(anchors)/sizeof(anchors[0]),open_reader,close_reader};
+static const xx_format_search_desc desc = {types,1U,anchors,sizeof(anchors)/sizeof(anchors[0]),open_reader,close_reader, false};
 static xx_format_search_state *create_search(xx_format_extractor *x,xx_io_device *d,const xx_list_s *o,xx_pd_struct *pd) { (void)x; return xx_format_search_create(&desc,d,o,pd); }
 static const xx_format_search_info *current_search(xx_format_extractor *x,xx_format_search_state *s) { (void)x; return xx_format_search_current(s); }
 static bool next_search(xx_format_extractor *x,xx_format_search_state *s,xx_pd_struct *pd) { (void)x; return xx_format_search_find_next(s,pd); }

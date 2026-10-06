@@ -100,7 +100,7 @@ static void xv_drop(xv_view *v,void *p,size_t size) {
 }
 static bool xv_grow(xv_view *v,void **p,size_t old,size_t size) {
     void *q=xv_alloc(v,size); if(!q) return false;
-    if(*p) memcpy(q,*p,old);xv_drop(v,*p,old);*p=q;return true;
+    if(*p) { memcpy(q,*p,old); } xv_drop(v,*p,old);*p=q;return true;
 }
 static void xv_release(xv_view *v) {
     size_t i;
@@ -118,7 +118,7 @@ static bool xv_number(const char *p,size_t n,unsigned base,uint64_t *value) {
         if(c<'0'||c>='0'+base || x>(UINT64_MAX-(c-'0'))/base) return false;
         x=x*base+(c-'0');digit=true;
     }
-    if(!digit) return false;*value=x;return true;
+    if(!digit) { return false; } *value=x;return true;
 }
 static bool xv_field(const uint8_t *p,size_t n,char *out,size_t capacity) {
     size_t k=0;while(k<n&&p[k])++k;
@@ -320,7 +320,7 @@ static bool xv_text_equal(const xv_xml *x,uint32_t node,const char *s) {
 }
 static uint32_t xv_value(const xv_xml *x,uint32_t node) {
     const xv_node *n;
-    if(!node) return 0;n=&x->nodes[node-1U];
+    if(!node) { return 0; } n=&x->nodes[node-1U];
     return n->tag==XT_VALUE&&n->child?n->child:node;
 }
 static uint32_t xv_lookup(const xv_xml *x,uint32_t object,const char *key) {
@@ -406,7 +406,7 @@ static bool xv_manifest(xx_io_device *dev,xv_view *v,const xv_tar *tar,xx_pd_str
     if(x.size-x.pos>=6U&&!memcmp(x.bytes+x.pos,"<?xml ",6U)) {
         size_t first=x.pos;x.pos+=6U;
         while(x.size-x.pos>=2U&&memcmp(x.bytes+x.pos,"?>",2U)&&x.pos-first<256U) ++x.pos;
-        if(x.size-x.pos<2U||x.pos-first==256U) goto done;x.pos+=2U;
+        if(x.size-x.pos<2U||x.pos-first==256U) { goto done; } x.pos+=2U;
     }
     if(!xv_xml_node(&x,0U,&root)||!xv_xml_misc(&x)||x.pos!=x.size||
        x.nodes[root-1U].tag!=XT_VALUE||!xv_xml_validate(&x,root)) goto done;
@@ -461,8 +461,8 @@ static bool xv_chunk_name(const char *path,char id[80],uint64_t *index,unsigned 
     return true;
 }
 static int xv_hex(unsigned c) {
-    if(c>='0'&&c<='9')return (int)(c-'0');if(c>='a'&&c<='f')return (int)(c-'a'+10U);
-    if(c>='A'&&c<='F')return (int)(c-'A'+10U);return -1;
+    if(c>='0'&&c<='9') {return (int)(c-'0'); } if(c>='a'&&c<='f')return (int)(c-'a'+10U);
+    if(c>='A'&&c<='F') {return (int)(c-'A'+10U); } return -1;
 }
 static int xv_chunk_compare(const void *a,const void *b) {
     uint64_t x=((const xv_chunk *)a)->physical,y=((const xv_chunk *)b)->physical;
@@ -476,14 +476,14 @@ static bool xv_index(xx_io_device *dev,xv_view *v,const xv_tar *items,size_t cou
         if(!strcmp(t->name,"ova.xml")) continue;
         if(t->type==5U) {
             size_t n=strlen(t->name);if(n&&t->name[n-1U]=='/')--n;
-            if(n>=sizeof(id)) return false;memcpy(id,t->name,n);id[n]=0;
-            if(!xv_find_disk(v,id)) return false;continue;
+            if(n>=sizeof(id)) { return false; } memcpy(id,t->name,n);id[n]=0;
+            if(!xv_find_disk(v,id)) { return false; } continue;
         }
         if(!xv_chunk_name(t->name,id,&physical,&hash)||!(disk=xv_find_disk(v,id))) return false;
         if(hash) {
             size_t n=strlen(t->name)-(hash==1U?9U:7U);
             memcpy(name,t->name,n);name[n]=0;
-            if(!xv_find_tar(items,count,name)) return false;continue;
+            if(!xv_find_tar(items,count,name)) { return false; } continue;
         }
         if(t->size>XV_CHUNK||physical>(disk->size+XV_CHUNK-1U)/XV_CHUNK+XV_ENTRIES) return false;
         (void)xx_rt_snprintf(name,sizeof(name),"%s.checksum",t->name);cs=xv_find_tar(items,count,name);hash=1U;
@@ -503,7 +503,7 @@ static bool xv_index(xx_io_device *dev,xv_view *v,const xv_tar *items,size_t cou
             if(!xv_rel(dev,v,cs->offset,digest,(size_t)cs->size,pd)) return false;
             for(j=0;j<(unsigned)cs->size/2U;++j) {
                 int a=xv_hex((uint8_t)digest[j*2U]),b=xv_hex((uint8_t)digest[j*2U+1U]);
-                if(a<0||b<0) return false;ch->digest[j]=(uint8_t)((unsigned)a*16U+(unsigned)b);
+                if(a<0||b<0) { return false; } ch->digest[j]=(uint8_t)((unsigned)a*16U+(unsigned)b);
             }
             ch->physical=physical;ch->offset=t->offset;ch->size=(uint32_t)t->size;ch->hash=hash;
             ++disk->count;disk->stored+=t->size;
@@ -565,10 +565,10 @@ static void xv_xxh_update(xv_xxh *h,const uint8_t *p,size_t n) {
     if(h->used) {
         size_t take=32U-h->used;if(take>n)take=n;
         memcpy(h->tail+h->used,p,take);h->used+=take;p+=take;n-=take;
-        if(h->used!=32U)return;xv_xxh_stripe(h,h->tail);h->used=0;
+        if(h->used!=32U) {return; } xv_xxh_stripe(h,h->tail);h->used=0;
     }
     while(n>=32U) {xv_xxh_stripe(h,p);p+=32U;n-=32U;}
-    if(n)memcpy(h->tail,p,n);h->used=n;
+    if(n) {memcpy(h->tail,p,n); } h->used=n;
 }
 static uint64_t xv_xxh_final(const xv_xxh *h) {
     uint64_t x;size_t at=0;unsigned i;
@@ -588,7 +588,7 @@ static uint64_t xv_xxh_final(const xv_xxh *h) {
 }
 static void xv_destroy_format(Abstractformat *f) { xx_xva_destroy((xx_xva *)f); }
 void xx_xva_init(xx_xva *v,xx_io_device *d,int64_t base) {
-    if(!v) return;xx_mem_zero(v,sizeof(*v));xx_format_init(&v->format,d,base);
+    if(!v) { return; } xx_mem_zero(v,sizeof(*v));xx_format_init(&v->format,d,base);
     v->format.file_type=XV_TYPE;v->format.format_type=XX_TYPE_ARCHIVE;v->format.is_archive=true;
     xx_format_set_mime_type(&v->format,"application/x-xen-xva");xx_format_set_extension(&v->format,"xva");
     v->format.check_is_valid=xx_xva_check_is_valid;v->format.handle_base_info=xx_xva_handle_base_info;
@@ -603,7 +603,7 @@ xx_xva *xx_xva_create(xx_io_device *d,int64_t base) {
     xx_xva *v=(xx_xva *)xx_mem_alloc(sizeof(*v));if(v)xx_xva_init(v,d,base);return v;
 }
 void xx_xva_destroy(xx_xva *v) {
-    if(!v)return;xv_release((xv_view *)v->internal);v->internal=NULL;xx_format_cleanup_extra_parameters(&v->format);
+    if(!v) {return; } xv_release((xv_view *)v->internal);v->internal=NULL;xx_format_cleanup_extra_parameters(&v->format);
 }
 void xx_xva_free(xx_xva *v) {if(v){xx_xva_destroy(v);xx_mem_free(v);}}
 bool xx_xva_check_is_valid(Abstractformat *f,xx_pd_struct *pd) {
@@ -638,14 +638,14 @@ static void xv_cursor_free(void *p) {
 }
 xx_archive_record_state *xx_xva_create_archive_records_reading(Abstractformat *f,const xx_list_s *options,xx_pd_struct *pd) {
     xx_archive_record_state *s;xv_cursor *c;xv_view *v;size_t i;
-    if(!f||!xx_xva_handle_base_info(f,pd))return NULL;v=(xv_view *)((xx_xva *)f)->internal;
+    if(!f||!xx_xva_handle_base_info(f,pd)) {return NULL; } v=(xv_view *)((xx_xva *)f)->internal;
     c=(xv_cursor *)xx_mem_calloc(1U,sizeof(*c));s=(xx_archive_record_state *)xx_mem_alloc(sizeof(*s));
     if(!c||!s){xx_mem_free(c);xx_mem_free(s);return NULL;}
     ++v->refs;c->view=v;xx_archive_record_state_init(s,f);s->internal_state=c;s->free_internal=xv_cursor_free;
     s->total_records=(int64_t)v->count;
     if(options)for(i=0;i<options->count;++i){
         const xx_meta *m=(const xx_meta *)xx_list_at(options,i);xx_meta copy;
-        if(!m)continue;xx_meta_init(&copy,m->meta_id);
+        if(!m) {continue; } xx_meta_init(&copy,m->meta_id);
         if(!xx_var_copy(&copy.var,&m->var)||!xx_list_append(&s->options,&copy)){
             xx_meta_cleanup(&copy);xx_archive_record_state_free(s);return NULL;
         }
@@ -675,7 +675,7 @@ static bool xv_limits(Abstractformat *f,const xx_archive_record_state *s,const x
 static bool xv_write(xx_io_device *d,const uint8_t *p,size_t n,xx_pd_struct *pd) {
     size_t done=0;while(done<n&&!xv_stop(pd)){
         ssize_t got=xx_io_write(d,p+done,n-done);
-        if(got<=0||(size_t)got>n-done||xv_stop(pd))return false;done+=(size_t)got;
+        if(got<=0||(size_t)got>n-done||xv_stop(pd)) {return false; } done+=(size_t)got;
     }return done==n&&!xv_stop(pd);
 }
 bool xx_xva_extract_record_to_device(Abstractformat *f,xx_archive_record_state *s,xx_io_device *dst,xx_pd_struct *pd) {
@@ -692,7 +692,7 @@ bool xx_xva_extract_record_to_device(Abstractformat *f,xx_archive_record_state *
             if(dst){
                 xx_mem_zero(buf,copy);
                 while(written<logical){size_t part=(size_t)(logical-written<copy?logical-written:copy);
-                    if(!xv_write(dst,buf,part,pd))goto done;written+=part;}
+                    if(!xv_write(dst,buf,part,pd)) {goto done; } written+=part;}
             }else written=logical;
         }
         if(ch->hash==1U){if(!xx_hash_init(&sha,XX_HASH_SHA1))goto done;}else xv_xxh_init(&xxh);
@@ -718,7 +718,7 @@ static char xv_fold(char c){return c>='A'&&c<='Z'?(char)(c+32):c;}
 static bool xv_equal(const char *a,const char *b){while(*a&&xv_fold(*a)==xv_fold(*b)){++a;++b;}return *a==*b;}
 static xx_io_device *xv_stage(const char *dest,char **path){
     size_t i,parent=0;unsigned attempt;char *dir=xx_str_dup(dest);*path=NULL;if(!dir)return NULL;
-    for(i=0;dir[i];++i)if(dir[i]=='/'||dir[i]=='\\')parent=i+1U;dir[parent]=0;
+    for(i=0;dir[i];++i) {if(dir[i]=='/'||dir[i]=='\\')parent=i+1U; } dir[parent]=0;
     for(attempt=0;attempt<128U;++attempt){
         char suffix[40];char *candidate;xx_io_device *d;
         (void)xx_rt_snprintf(suffix,sizeof(suffix),".xx_xva.tmp.%u",attempt);candidate=xx_str_concat(dir,suffix);if(!candidate)break;

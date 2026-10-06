@@ -39,7 +39,7 @@ static uint8_t *ac_alloc(ac_blob *b, uint32_t n) {
     p=(uint8_t *)xx_mem_alloc(n ? n : 1U); if(p) b->used+=n; return p;
 }
 static void ac_release(ac_blob *b, uint8_t *p, uint32_t n) { if(p) { xx_mem_free(p); b->used-=n; } }
-static bool ac_compact(ac_blob *b,uint8_t **p,uint32_t old,uint32_t size) {
+static XXFC_MAYBE_UNUSED bool ac_compact(ac_blob *b,uint8_t **p,uint32_t old,uint32_t size) {
     uint8_t *next; if(size>old || !p || !*p) return false;
     next=(uint8_t *)xx_mem_realloc(*p,size?size:1U); if(!next) return false;
     *p=next; b->used-=old-size; return true;
@@ -58,24 +58,24 @@ static bool ac_memory(Abstractformat *f, pm_stream *s, ac_blob *b, const char *n
     s->items[s->count-1U].packed_size=packed; s->items[s->count-1U].offset=-1;
     s->items[s->count-1U].compression_method=method; return true;
 }
-static bool ac_name(char *out, size_t capacity, const uint8_t *p, uint32_t n) {
+static XXFC_MAYBE_UNUSED bool ac_name(char *out, size_t capacity, const uint8_t *p, uint32_t n) {
     uint32_t i; if(!n || n>=capacity) return false;
     for(i=0;i<n && p[i];++i) { if(p[i]<32U || p[i]==127U) return false; out[i]=(char)p[i]; }
-    if(!i) return false; out[i]=0; return true;
+    if(!i) { return false; } out[i]=0; return true;
 }
-static uint16_t ac_crc16(const uint8_t *p, uint32_t n) {
+static XXFC_MAYBE_UNUSED uint16_t ac_crc16(const uint8_t *p, uint32_t n) {
     uint16_t c=0; uint32_t i; unsigned k;
     for(i=0;i<n;++i) { c^=p[i]; for(k=0;k<8;++k) c=(uint16_t)((c>>1)^((c&1U)?0xA001U:0)); }
     return c;
 }
-static uint32_t ac_crc32(const uint8_t *p, uint32_t n, uint32_t c) {
+static XXFC_MAYBE_UNUSED uint32_t ac_crc32(const uint8_t *p, uint32_t n, uint32_t c) {
     uint32_t i; unsigned k;
     for(i=0;i<n;++i) { c^=p[i]; for(k=0;k<8;++k) c=(c>>1)^((c&1U)?UINT32_C(0xEDB88320):0); }
     return c;
 }
 /* CompDisk's historical Olaf checksum uses byte injection after shifting,
  * unlike the ordinary CCITT byte XOR into the high octet. */
-static uint16_t ac_olaf(const uint8_t *p, uint32_t n) {
+static XXFC_MAYBE_UNUSED uint16_t ac_olaf(const uint8_t *p, uint32_t n) {
     uint16_t c=0; uint32_t i; unsigned k;
     for(i=0;i<n;++i) { uint16_t high=(uint16_t)(c&0xFF00U);
         for(k=0;k<8;++k) high=(uint16_t)((high<<1)^((high&0x8000U)?0x1021U:0));
@@ -95,9 +95,9 @@ static bool ac_unix_ex(ac_blob *b, const uint8_t *in, uint32_t packed, uint8_t *
     src=xx_io_mem_open_ro(framed,packed+3U); dst=xx_io_mem_open(out,n);
     if(src && dst) ok=xx_compress_decode_device(src,0,packed+3U,dst,&size,b->pd) && size>=0 && (uint64_t)size<=n && ac_poll(b);
     if(ok && written) *written=(uint32_t)size;
-    if(src) xx_io_close(src); if(dst) xx_io_close(dst); ac_release(b,framed,packed+3U); b->used-=workspace; return ok;
+    if(src) { xx_io_close(src); } if(dst) xx_io_close(dst); ac_release(b,framed,packed+3U); b->used-=workspace; return ok;
 }
-static bool ac_unix(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *out,uint32_t n,uint8_t width) {
+static XXFC_MAYBE_UNUSED bool ac_unix(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *out,uint32_t n,uint8_t width) {
     uint32_t written=0; return ac_unix_ex(b,in,packed,out,n,width,&written) && written==n;
 }
 typedef struct ac_bits { const uint8_t *p; uint32_t n; uint64_t bit; bool failed; bool lsb; } ac_bits;
@@ -115,13 +115,13 @@ static bool ac_rle90(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *out,u
         if((at&4095U)==0 && !ac_poll(b)) return false;
         if(c==0x90U) { if(i>=packed) return false; count=in[i++];
             if(!count) { c=0x90U; count=1; } else { if(!at) return false; c=out[at-1U]; --count; } }
-        if(count>n-at) return false; while(count--) out[at++]=c;
+        if(count>n-at) { return false; } while(count--) out[at++]=c;
     }
     return at==n && i==packed && ac_poll(b);
 }
 /* AMPK/Amiga Plus LZSS: the same MIT codec grammar as algo/ampk, with
  * cancellation inside the token walk and strict declared output bounds. */
-static bool ac_ampk(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *out,uint32_t n) {
+static XXFC_MAYBE_UNUSED bool ac_ampk(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *out,uint32_t n) {
     uint8_t ring[4096]; uint32_t at=0,pos=0,head=4078,flags=0,left=0;
     xx_rt_memset(ring,' ',4078); xx_mem_zero(ring+4078,18);
     while(at<n) {
@@ -142,22 +142,22 @@ static bool ac_squeeze(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *out
     if(packed<2U || (nodes=pm_le16(in))>256U || 2U+4U*nodes>packed) return false;
     child[0]=child[1]=-257;
     for(i=0;i<2U*nodes;++i) { int16_t v=(int16_t)pm_le16(in+2U+i*2U);
-        if(v>=0 ? (uint16_t)v>=nodes : v< -257) return false; child[i]=v; }
+        if(v>=0 ? (uint16_t)v>=nodes : v< -257) { return false; } child[i]=v; }
     bits.p=in+2U+4U*nodes; bits.n=packed-2U-4U*nodes; bits.bit=0; bits.failed=false; bits.lsb=true;
     for(;;) { int node=0; unsigned depth=0;
         if((at&4095U)==0 && !ac_poll(b)) return false;
         do { if(depth++>nodes || bits.failed) return false; node=child[(unsigned)node*2U+ac_bits_get(&bits,1)]; } while(node>=0);
-        if(bits.failed) return false; if(node==-257) break;
-        if(at>=cap) return false; out[at++]=(uint8_t)(-node-1);
+        if(bits.failed) { return false; } if(node==-257) break;
+        if(at>=cap) { return false; } out[at++]=(uint8_t)(-node-1);
     }
     *written=at; return ac_poll(b);
 }
 /* Warp applies RLE90 after its optional LZW or Squeeze transport. */
-static bool ac_warp_decode(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *out,uint32_t n,uint16_t method) {
+static XXFC_MAYBE_UNUSED bool ac_warp_decode(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *out,uint32_t n,uint16_t method) {
     uint8_t *mid; uint32_t cap,written=0; bool ok=false;
     if(!method) { if(packed!=n) return false; xx_rt_memcpy(out,in,n); return true; }
     if(method==3U) return ac_rle90(b,in,packed,out,n);
-    if(n>(AC_MAX_BYTES-512U)/2U) return false; cap=n*2U+512U; mid=ac_alloc(b,cap); if(!mid) return false;
+    if(n>(AC_MAX_BYTES-512U)/2U) { return false; } cap=n*2U+512U; mid=ac_alloc(b,cap); if(!mid) return false;
     if(method==1U && packed && in[0]==12U) ok=ac_unix_ex(b,in+1U,packed-1U,mid,cap,12U,&written);
     else if(method==2U) ok=ac_squeeze(b,in,packed,mid,cap,&written);
     if(ok) ok=ac_rle90(b,mid,written,out,n);
@@ -170,7 +170,7 @@ static uint32_t ac_reverse_get(ac_reverse_bits *r,unsigned width) {
 }
 /* Backwards PowerPacker grammar, using the library's MIT PP20 decoder facts.
  * No synthesized transport or hidden duplicate input/output allocations. */
-static bool ac_pp(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *out,uint32_t n,const uint8_t widths[4]) {
+static XXFC_MAYBE_UNUSED bool ac_pp(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *out,uint32_t n,const uint8_t widths[4]) {
     ac_reverse_bits bits; uint32_t at=n,i;
     if(packed<8U || (packed&3U) || pm_be32(in+packed-4U)>>8U!=n || in[packed-1U]>31U) return false;
     for(i=0;i<4U;++i) if(widths[i]<9U || widths[i]>16U || (i && widths[i]<widths[i-1U])) return false;
@@ -180,9 +180,9 @@ static bool ac_pp(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *out,uint
         if(bits.failed || !ac_poll(b)) return false;
         if(!ac_reverse_get(&bits,1U)) {
             do { value=ac_reverse_get(&bits,2U); if(bits.failed || value>at-length) return false; length+=value; } while(value==3U);
-            if(length>=at) return false; ++length;
+            if(length>=at) { return false; } ++length;
             while(length--) { if((at&4095U)==0 && !ac_poll(b)) return false; out[--at]=(uint8_t)ac_reverse_get(&bits,8U); }
-            if(bits.failed) return false; if(!at) break;
+            if(bits.failed) { return false; } if(!at) break;
         }
         cls=ac_reverse_get(&bits,2U); width=widths[cls]; length=cls+2U;
         if(cls==3U) { if(!ac_reverse_get(&bits,1U)) width=7U; offset=ac_reverse_get(&bits,width);

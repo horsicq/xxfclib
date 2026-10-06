@@ -101,11 +101,11 @@ static void xx_bsn_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static uint16_t xx_bsn_le16(const uint8_t *data) {
+static XXFC_MAYBE_UNUSED uint16_t xx_bsn_le16(const uint8_t *data) {
     return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
 }
 
-static uint32_t xx_bsn_le32(const uint8_t *data) {
+static XXFC_MAYBE_UNUSED uint32_t xx_bsn_le32(const uint8_t *data) {
     return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
            ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
 }

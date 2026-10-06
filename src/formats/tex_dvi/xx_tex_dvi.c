@@ -10,7 +10,7 @@ static bool tg_quick(Abstractformat *f,uint64_t n) {uint8_t b[15];return tg_prob
 typedef struct dv_font {uint32_t id;uint64_t at,size;} dv_font;
 static bool dv_def(const uint8_t *b,uint64_t *p,uint64_t n,uint32_t op,dv_font *fonts,uint32_t *count) {unsigned bytes=op-242;uint64_t start=*p-1,after;uint32_t id,i;uint8_t a,l;if(!tg_span(*p,bytes+14U,n))return false;id=tg_uint(b+*p,bytes);*p+=bytes;if(!pm_be32(b+*p+4)||!pm_be32(b+*p+8))return false;a=b[*p+12];l=b[*p+13];*p+=14;if(!l||!tg_span(*p,(uint32_t)a+l,n))return false;after=*p+a+l;for(i=0;i<(uint32_t)a+l;++i)if(b[*p+i]==0)return false;*p=after;
  for(i=0;i<*count;++i)if(fonts[i].id==id){uint64_t old=fonts[i].at+1;unsigned oldBytes=b[fonts[i].at]-242;if(fonts[i].size-oldBytes!=after-start-bytes||xx_rt_memcmp(b+old+oldBytes,b+start+1+bytes,(size_t)(after-start-1-bytes))!=0)return false;return true;}
- if(*count>=512)return false;fonts[*count].id=id;fonts[*count].at=start;fonts[*count].size=after-start;++*count;return true;
+ if(*count>=512) {return false; } fonts[*count].id=id;fonts[*count].at=start;fonts[*count].size=after-start;++*count;return true;
 }
 static bool dv_used(uint32_t *used,uint32_t *count,uint32_t id) {uint32_t i;for(i=0;i<*count;++i)if(used[i]==id)return true;if(*count>=512)return false;used[(*count)++]=id;return true;}
 static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
@@ -32,10 +32,10 @@ static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
   else if(op>=171&&op<=234){currentFont=op-171;selected=true;continue;}
   else if(op>=235&&op<=238){bytes=op-234;if(!tg_span(p,bytes,n))return false;currentFont=tg_uint(b+p,bytes);selected=true;p+=bytes;continue;}
   else if(op>=239&&op<=242){uint32_t size;bytes=op-238;if(!tg_span(p,bytes,n))return false;size=tg_uint(b+p,bytes);p+=bytes;if(!tg_span(p,size,n))return false;p+=size;continue;}else return false;
-  if(!tg_span(p,bytes,n))return false;p+=bytes;
+  if(!tg_span(p,bytes,n)) {return false; } p+=bytes;
  }
- if(!post||!postpost||page||!fontsCount)return false;for(i=0;i<usedCount;++i){uint32_t j;bool found=false;for(j=0;j<fontsCount;++j)if(fonts[j].id==used[i])found=true;if(!found)return false;}
- if(!tg_emit(f,s,"dvi-postamble.bin",postAt,n-postAt,n))return false;s->size=(int64_t)n;return true;
+ if(!post||!postpost||page||!fontsCount) {return false; } for(i=0;i<usedCount;++i){uint32_t j;bool found=false;for(j=0;j<fontsCount;++j)if(fonts[j].id==used[i])found=true;if(!found)return false;}
+ if(!tg_emit(f,s,"dvi-postamble.bin",postAt,n-postAt,n)) {return false; } s->size=(int64_t)n;return true;
 }
 
 void xx_tex_dvi_init(xx_tex_dvi *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_TEX_DVI,"dvi");}}

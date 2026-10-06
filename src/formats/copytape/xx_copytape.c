@@ -11,6 +11,6 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd){uint8_t h[
   for(i=9;i<15U;++i){if(h[i]<'0'||h[i]>'9')return false;len=len*10U+h[i]-'0';}if(!len||at>n||len+17U>n-at||!da_read(f,at+16U+len,&tail,1,pd)||tail!='\n')return false;
   xx_rt_snprintf(name,sizeof(name),"file-%04u-block-%06u.bin",file,block++);if(!da_add(f,s,name,at+16U,len))return false;at+=17U+len;if(s->count>100000U)return false;
  }
- if(!end||at!=n)return false;s->size=(int64_t)n;return true;
+ if(!end||at!=n) {return false; } s->size=(int64_t)n;return true;
 }
 DA_API(copytape,XX_FILE_TYPE_COPYTAPE,"cptp")

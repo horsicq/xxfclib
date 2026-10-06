@@ -31,7 +31,7 @@ static void xx_apple_disk_copy_6_ndif_image_search_close(Abstractformat *format)
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     NULL, 0U,
-    xx_apple_disk_copy_6_ndif_image_search_open, xx_apple_disk_copy_6_ndif_image_search_close
+    xx_apple_disk_copy_6_ndif_image_search_open, xx_apple_disk_copy_6_ndif_image_search_close, false
 };
 
 static xx_format_search_state *xx_apple_disk_copy_6_ndif_image_create_format_search(

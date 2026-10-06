@@ -311,7 +311,7 @@ static bool dc_pbkdf(bool s,const uint8_t *pw,size_t pwn,const uint8_t *salt,siz
         idx[0]=(uint8_t)(block>>24); idx[1]=(uint8_t)(block>>16); idx[2]=(uint8_t)(block>>8); idx[3]=(uint8_t)block;
         dc_hmac_parts(&h,salt,sn,idx,4,u); dc_copy(v,u,hlen);
         for(j=1;j<rounds;j++) { if((j&63U)==0 && xx_pd_is_stopped(pd)) goto end; dc_hmac_parts(&h,u,hlen,NULL,0,u); for(k=0;k<hlen;k++) v[k]^=u[k]; }
-        if(xx_pd_is_stopped(pd)) goto end; dc_copy(out+done,v,amount); done+=amount; block++;
+        if(xx_pd_is_stopped(pd)) { goto end; } dc_copy(out+done,v,amount); done+=amount; block++;
     } ok=true;
 end: if(!ok) dc_clear(out,n); dc_clear(&h,sizeof(h)); dc_clear(u,sizeof(u)); dc_clear(v,sizeof(v)); return ok;
 }
@@ -350,7 +350,7 @@ static bool dc_password(Abstractformat *f,const xx_list_s *opts,const uint8_t **
     if(v->type==XX_VAR_TYPE_STRING||v->type==XX_VAR_TYPE_STRING_VIEW) { *out=(const uint8_t*)xx_var_get_str(v); *n=v->val.str.len; }
     else if(v->type==XX_VAR_TYPE_BYTES||v->type==XX_VAR_TYPE_BYTES_VIEW) *out=xx_var_get_bytes(v,n);
     else if(v->type==XX_VAR_TYPE_WSTRING||v->type==XX_VAR_TYPE_WSTRING_VIEW) { if(available==0 || v->val.wstr.len>1048576U || v->val.wstr.len>(available-1U)/4U) return false; *owned=xx_str_unicode_to_utf8(xx_var_get_wstr(v)); if(!*owned) return false; *out=(const uint8_t*)*owned; *n=xx_str_len(*owned); }
-    else return false; return *n<=1048576 && (*out||!*n);
+    else { return false; } return *n<=1048576 && (*out||!*n);
 }
 static bool dc_read_at(xx_io_device *d,uint64_t off,uint8_t *p,size_t n) {
     size_t done=0; if(off>INT64_MAX||xx_io_seek64(d,(int64_t)off,SEEK_SET)!=0) return false;
@@ -366,7 +366,7 @@ static bool dc_same_path(const char *a,const char *b) {
  * complete success. A NULL-destination test never enters this helper. */
 static xx_io_device *dc_stage(const char *destination,char **stage) {
     char *parent=xx_str_dup(destination);size_t i,cut=0;unsigned attempt;*stage=NULL;if(!parent)return NULL;
-    for(i=0;parent[i];i++) if(parent[i]=='/'||parent[i]=='\\')cut=i+1;parent[cut]=0;
+    for(i=0;parent[i];i++) { if(parent[i]=='/'||parent[i]=='\\')cut=i+1; } parent[cut]=0;
     for(attempt=0;attempt<128;attempt++) {
         char tail[40],*candidate;xx_io_device *d;xx_rt_snprintf(tail,sizeof(tail),".xx_crypto.tmp.%u",attempt);
         candidate=xx_str_concat(parent,tail);if(!candidate)break;if(dc_same_path(candidate,destination)){xx_str_free(candidate);continue;}
@@ -378,12 +378,12 @@ static unsigned dc_luks_mode(const uint8_t h[592]) {
     if(dc_text(h+40,32,"cbc-plain")) return DC_CBC_PLAIN;
     if(dc_text(h+40,32,"cbc-plain64")) return DC_CBC_PLAIN64;
     if(dc_text(h+40,32,"cbc-essiv:sha256")) return DC_CBC_ESSIV;
-    if(dc_text(h+40,32,"xts-plain64")) return DC_XTS_PLAIN64; return 0;
+    if(dc_text(h+40,32,"xts-plain64")) { return DC_XTS_PLAIN64; } return 0;
 }
 /* Header/keyslot extent bounds are also checked for detached QCOW2 headers.
  * AF material is read one sector at a time; its full declared striped extent
  * is authenticated indirectly by the recovered master-key digest. */
-static bool dc_luks_unlock(xx_io_device *d,uint64_t base,uint64_t extent,bool detached,const uint8_t *pw,size_t pwn,dc_crypto *result,xx_pd_struct *pd) {
+static XXFC_MAYBE_UNUSED bool dc_luks_unlock(xx_io_device *d,uint64_t base,uint64_t extent,bool detached,const uint8_t *pw,size_t pwn,dc_crypto *result,xx_pd_struct *pd) {
     uint8_t h[592],key[64]={0},derived[64]={0},digest[32]={0},sector[512]={0};
     dc_crypto trial; uint32_t n,iter,mode; bool sha256,ok=false; unsigned slot; uint64_t work=16000000;
     uint64_t starts[8]={0},lengths[8]={0},payload; xx_mem_zero(&trial,sizeof(trial)); xx_mem_zero(result,sizeof(*result));
@@ -394,14 +394,14 @@ static bool dc_luks_unlock(xx_io_device *d,uint64_t base,uint64_t extent,bool de
     if(!detached&&(payload<1024||payload>extent)) goto end;
     for(slot=0;slot<8;slot++) {
         size_t a=208+48*slot; uint32_t active=xx_data_get_u32(h,sizeof(h),a,true),stripes=xx_data_get_u32(h,sizeof(h),a+44,true); unsigned j;
-        if(active==0xdead) continue; if(active!=0xac71f3 || stripes==0||stripes>1000000) goto end;
+        if(active==0xdead) { continue; } if(active!=0xac71f3 || stripes==0||stripes>1000000) goto end;
         starts[slot]=(uint64_t)xx_data_get_u32(h,sizeof(h),a+40,true)*512; lengths[slot]=((uint64_t)n*stripes+511)&~UINT64_C(511);
         if(starts[slot]<1024 || starts[slot]>extent || lengths[slot]>extent-starts[slot] || (!detached && starts[slot]+lengths[slot]>payload)) goto end;
         for(j=0;j<slot;j++) if(lengths[j]&&starts[slot]<starts[j]+lengths[j]&&starts[j]<starts[slot]+lengths[slot]) goto end;
     }
     for(slot=0;slot<8;slot++) {
         size_t a=208+48*slot; uint32_t rounds,stripes,s; uint64_t pos=0; unsigned k,difference=0;
-        if(!lengths[slot]) continue; rounds=xx_data_get_u32(h,sizeof(h),a+4,true); stripes=xx_data_get_u32(h,sizeof(h),a+44,true);
+        if(!lengths[slot]) { continue; } rounds=xx_data_get_u32(h,sizeof(h),a+4,true); stripes=xx_data_get_u32(h,sizeof(h),a+44,true);
         if(!dc_pbkdf(sha256,pw,pwn,h+a+8,32,rounds,derived,n,&work,pd) || !dc_crypto_init(&trial,mode,derived,n)) goto end;
         xx_mem_zero(key,sizeof(key));
         for(s=0;s<stripes;s++) {

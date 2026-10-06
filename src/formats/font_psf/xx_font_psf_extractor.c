@@ -32,7 +32,7 @@ static const xx_format_search_anchor anchors[] = { { anchor_0,sizeof(anchor_0),0
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     anchors, 2U,
-    xx_font_psf_search_open, xx_font_psf_search_close
+    xx_font_psf_search_open, xx_font_psf_search_close, false
 };
 
 static xx_format_search_state *xx_font_psf_create_format_search(

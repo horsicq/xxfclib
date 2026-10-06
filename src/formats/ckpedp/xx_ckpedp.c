@@ -276,7 +276,7 @@ static bool ce_map_add(ce_path_map *map, char *key, char *value,
                        bool is_directory) {
     size_t index;
     if (!map || !key ||
-        (map->count + 1U) * 4U >= map->capacity * 3U && !ce_map_grow(map) ||
+        ((map->count + 1U) * 4U >= map->capacity * 3U && !ce_map_grow(map)) ||
         ce_map_get(map, key)) return false;
     index = ce_path_hash(key) & (map->capacity - 1U);
     while (map->slots[index].key)

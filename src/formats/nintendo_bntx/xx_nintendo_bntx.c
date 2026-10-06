@@ -30,14 +30,14 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(g64(h+64,false) || g64(h+72,false) || pm_le32(h+80)) return false;
     if(pm_le32(h+16)<2 || !span(pm_le32(h+16)-2,2,total) || !pm_read(f,pm_le32(h+16)-2,n,2) || !span(pm_le32(h+16),pm_le16(n)+1,total) || !zname(f,pm_le32(h+16),pm_le32(h+16)+pm_le16(n)+1)) return false;
     limit=reloc ? reloc : total;
-    if(pm_le32(datah+8)<16 || !span(data,pm_le32(datah+8),limit)) return false; data_end=data+pm_le32(datah+8);
+    if(pm_le32(datah+8)<16 || !span(data,pm_le32(datah+8),limit)) { return false; } data_end=data+pm_le32(datah+8);
     if(reloc && (reloc<data+16 || !span(reloc,16,total) || !pm_read(f,reloc,datah,16) || xx_rt_memcmp(datah,"_RLT",4) || pm_le32(datah+4)!=reloc || pm_le32(datah+8)>16)) return false;
     for(i=0;i<count;++i) { uint64_t info,ptrs,name,first,last,image; uint32_t w,he,mips,j,alignment;
-        if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,(int64_t)(table+i*8),p,8)) return false; info=g64(p,false);
+        if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,(int64_t)(table+i*8),p,8)) { return false; } info=g64(p,false);
         if(info<88 || !span(info,160,data) || !pm_read(f,(int64_t)info,b,160) || xx_rt_memcmp(b,"BRTI",4) || pm_le32(b+8)<160 || !span(info,pm_le32(b+8),data)) return false;
         w=pm_le32(b+36); he=pm_le32(b+40); mips=pm_le16(b+22); image=pm_le32(b+80); alignment=pm_le32(b+84); name=g64(b+96,false); ptrs=g64(b+112,false);
         if((b[16]&~1U) || b[17]!=2 || pm_le16(b+18)>1 || !mips || mips>16 || pm_le16(b+24)!=1 || !w || !he || w>16384 || he>16384 || pm_le32(b+44)!=1 || pm_le32(b+48)!=1 || !pm_le32(b+28) || !image || !alignment || (alignment&(alignment-1)) || alignment>65536 || name<88 || !span(name,2,data) || !pm_read(f,(int64_t)name,n,2) || !span(name+2,pm_le16(n)+1,data) || !zname(f,name+2,name+3+pm_le16(n)) || ptrs<88 || !span(ptrs,(uint64_t)mips*8,data)) return false;
-        if(!pm_read(f,(int64_t)ptrs,p,8)) return false; first=g64(p,false); if(first<data+16 || first%alignment || !span(first,image,data_end)) return false; last=first;
+        if(!pm_read(f,(int64_t)ptrs,p,8)) { return false; } first=g64(p,false); if(first<data+16 || first%alignment || !span(first,image,data_end)) return false; last=first;
         for(j=0;j<mips;++j) { uint64_t next=first+image;
             if(pd && xx_pd_is_stopped(pd)) return false;
             if(j+1<mips) { if(!pm_read(f,(int64_t)(ptrs+(j+1)*8),p,8)) return false; next=g64(p,false); }

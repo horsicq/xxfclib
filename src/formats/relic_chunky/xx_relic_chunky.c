@@ -17,10 +17,10 @@ static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uin
 }
 static bool chunky_nodes(Abstractformat *f,pm_stream *s,uint64_t at,uint64_t end,uint64_t total,unsigned depth,unsigned *count,xx_pd_struct *pd) {
     uint8_t h[28],name[4096]; uint32_t n,size,i; uint64_t next; char label[40];
-    if(depth>32) return false; while(at<end) {
+    if(depth>32) { return false; } while(at<end) {
       if(++*count>4096 || !take(f,&at,end,h,28,pd) || (xx_rt_memcmp(h,"FOLD",4) && xx_rt_memcmp(h,"DATA",4)) || !pm_le32(h+8) || pm_le32(h+8)>65535) return false;
-      for(i=4;i<8;++i) if(h[i]<32 || h[i]>126) return false; size=pm_le32(h+12); n=pm_le32(h+16);
-      if(n>4096 || !take(f,&at,end,name,n,pd) || !span(at,size,end)) return false; for(i=0;i<n;++i) if(name[i]>127 || (name[i]<32 && name[i])) return false; next=at+size;
+      for(i=4;i<8;++i) { if(h[i]<32 || h[i]>126) return false; } size=pm_le32(h+12); n=pm_le32(h+16);
+      if(n>4096 || !take(f,&at,end,name,n,pd) || !span(at,size,end)) { return false; } for(i=0;i<n;++i) if(name[i]>127 || (name[i]<32 && name[i])) return false; next=at+size;
       if(!xx_rt_memcmp(h,"FOLD",4)) { if(!chunky_nodes(f,s,at,next,total,depth+1,count,pd)) return false; }
       else { xx_rt_snprintf(label,sizeof(label),"chunk-%c%c%c%c.bin",h[4],h[5],h[6],h[7]); if(!emit(f,s,label,at,size,total)) return false; } at=next;
     } return at==end;

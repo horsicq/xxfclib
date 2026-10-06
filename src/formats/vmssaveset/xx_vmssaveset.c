@@ -103,7 +103,7 @@ static uint32_t vmssaveset_be32(const uint8_t *b) {
            ((uint32_t)b[2] << 8U) | (uint32_t)b[3];
 }
 
-static uint64_t vmssaveset_be64(const uint8_t *b) {
+static XXFC_MAYBE_UNUSED uint64_t vmssaveset_be64(const uint8_t *b) {
     return ((uint64_t)vmssaveset_be32(b) << 32U) | (uint64_t)vmssaveset_be32(b + 4U);
 }
 
@@ -139,7 +139,7 @@ static bool vmssaveset_write_all(xx_io_device *device, const void *data, size_t 
 }
 
 /* Copy a run of source bytes straight through to the destination. */
-static bool vmssaveset_copy_range(xx_io_device *source, int64_t offset, uint64_t size,
+static XXFC_MAYBE_UNUSED bool vmssaveset_copy_range(xx_io_device *source, int64_t offset, uint64_t size,
                            xx_io_device *destination, xx_pd_struct *pd) {
     size_t capacity = xx_get_file_buffer_size();
     uint8_t *buffer = NULL;
@@ -170,7 +170,7 @@ buffer_done:
 }
 
 /* Emit `size` zero bytes: the filler every sparse disk image needs. */
-static bool vmssaveset_write_zeros(xx_io_device *destination, uint64_t size,
+static XXFC_MAYBE_UNUSED bool vmssaveset_write_zeros(xx_io_device *destination, uint64_t size,
                             xx_pd_struct *pd) {
     size_t capacity = xx_get_file_buffer_size();
     uint8_t *buffer = NULL;

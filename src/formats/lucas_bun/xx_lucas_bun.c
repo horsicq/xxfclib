@@ -11,7 +11,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(!gm_read(f,total,0,h,12)) return false;
     if(!xx_rt_memcmp(h,"LB83",4)) step=20; else if(!xx_rt_memcmp(h,"LB23",4)) step=32; else return false;
     table=pm_be32(h+4); count=pm_be32(h+8); tableend=table+(uint64_t)count*step;
-    if(count>65536 || table<12 || !gm_range(total,table,(uint64_t)count*step)) return false; s->size=(int64_t)tableend;
+    if(count>65536 || table<12 || !gm_range(total,table,(uint64_t)count*step)) { return false; } s->size=(int64_t)tableend;
     for(i=0;i<count;++i) {
         uint64_t at,n;
         if(gm_stopped(pd) || !gm_read(f,total,table+(uint64_t)i*step,r,step)) return false;

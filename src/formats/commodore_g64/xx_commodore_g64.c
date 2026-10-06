@@ -16,11 +16,11 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
   uint32_t at=pm_le32(b->p+12+i*4),speed=pm_le32(b->p+12+tracks*4+i*4),len;
   if(!at) { if(speed>3) return false; continue; }
   if(at<base || !nh_range(b,at,2) || !(len=pm_le16(b->p+at)) || len>maxlen || !nh_range(b,at+2,len) || !nh_disjoint(spans,&count,168,at,len+2)) return false;
-  if(end<at+2+len) end=at+2+len; ++nonempty;
+  if(end<at+2+len) { end=at+2+len; } ++nonempty;
   xx_rt_snprintf(name,sizeof(name),"halftrack-%u.gcr",i+2); if(!nh_emit(f,s,b,name,at+2,len)) return false;
   if(speed>3) { uint32_t z=(len+3)/4; if(speed<base || !nh_range(b,speed,z) || !nh_disjoint(spans,&count,168,speed,z)) return false; if(end<speed+z) end=speed+z; xx_rt_snprintf(name,sizeof(name),"halftrack-%u.speed",i+2); if(!nh_emit(f,s,b,name,speed,z)) return false; }
  }
- if(!nonempty) return false; s->size=end; return true;
+ if(!nonempty) { return false; } s->size=end; return true;
 }
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { nh_blob b; bool ok; if(!nh_load(f,&b,pd)) return false; ok=parse_blob(f,s,&b); xx_mem_free(b.p); return ok; }

@@ -8,7 +8,7 @@ static bool stock_annotation(nh_blob *b,stock_anno *a,unsigned *n,el_token id,el
     for(j=0;j<data.n;++j) {unsigned ch=b->p[(size_t)(data.at+j)];if(ch<=32 || ch>126) return false;}
     for(i=0;i<*n;++i) {uint64_t cost=a[i].key.n+id.n;if(cost>*budget) return false;*budget-=cost;if(a[i].gc==gc && th_same(b,a[i].key,key) && (gc || th_same(b,a[i].id,id))) break;}
     if(i==*n) {if(*n==1024) return false;a[i].id=id;a[i].key=key;a[i].width=0;a[i].gc=gc;++*n;}
-    if(data.n>F14_MAX_SEQUENCE-a[i].width) return false;a[i].width+=data.n;return true;
+    if(data.n>F14_MAX_SEQUENCE-a[i].width) { return false; } a[i].width+=data.n;return true;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     nh_blob b={0};el_lines c={0};el_token line,t[8],*references=NULL;f14_sequence *q=NULL;stock_anno *annotations=NULL;unsigned n=0,nt,an=0,rn=0,i;uint64_t total=0,budget=10000000;bool ended=false,ok=false;

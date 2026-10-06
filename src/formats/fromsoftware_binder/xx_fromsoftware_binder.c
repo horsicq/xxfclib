@@ -11,16 +11,16 @@ static uint32_t bn32(bool be,const uint8_t *p) { return be ? pm_be32(p) : pm_le3
 static uint64_t bn64(bool be,const uint8_t *p) { return be ? wgb64(p) : wg64(p); }
 static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[64]; bool four,be,bitbe,unicode=false; unsigned format,entry,count,i; uint64_t headers,table,limit=(uint64_t)pm_available(f),extent; size_t name_budget=16777216;
-    if(!pm_read(f,0,h,32) || (xx_rt_memcmp(h,"BND3",4) && xx_rt_memcmp(h,"BND4",4))) return false; four=h[3]=='4';
+    if(!pm_read(f,0,h,32) || (xx_rt_memcmp(h,"BND3",4) && xx_rt_memcmp(h,"BND4",4))) { return false; } four=h[3]=='4';
     if(four) { if(!pm_read(f,0,h,64) || h[4]>1 || h[5]>1 || h[6] || h[7] || h[8] || h[9]>1 || h[10]>1 || h[11] || h[48]>1 || h[50] || h[51] || !wg_zero(h+52,12)) return false;
         be=h[9]!=0; bitbe=!h[10]; unicode=h[48]!=0; format=bitbe || ((h[49]&1) && !(h[49]&128)) ? h[49] : bn_reverse(h[49]); count=bn32(be,h+12); headers=bn64(be,h+40); table=64;
-        if(bn64(be,h+16)!=64) return false; entry=16+((format&16) ? 8U : 4U)+((format&32) ? 8U : 0U)+((format&2) ? 4U : 0U)+((format&12) ? 4U : 0U)+(format==4 ? 8U : 0U); if(bn64(be,h+32)!=entry) return false;
+        if(bn64(be,h+16)!=64) { return false; } entry=16+((format&16) ? 8U : 4U)+((format&32) ? 8U : 0U)+((format&2) ? 4U : 0U)+((format&12) ? 4U : 0U)+(format==4 ? 8U : 0U); if(bn64(be,h+32)!=entry) return false;
     } else { if(h[13]>1 || h[14]>1 || h[15] || !wg_zero(h+28,4)) return false; bitbe=h[14]!=0; format=bitbe || ((h[12]&1) && !(h[12]&128)) ? h[12] : bn_reverse(h[12]); be=h[13] || (format&1); count=bn32(be,h+16); headers=bn32(be,h+20); table=32;
-        if(bn32(be,h+24)!=0 && bn32(be,h+24)!=0x80000000U) return false; entry=8+((format&16) ? 8U : 4U)+((format&2) ? 4U : 0U)+((format&12) ? 4U : 0U)+((format&32) ? 4U : 0U);
+        if(bn32(be,h+24)!=0 && bn32(be,h+24)!=0x80000000U) { return false; } entry=8+((format&16) ? 8U : 4U)+((format&2) ? 4U : 0U)+((format&12) ? 4U : 0U)+((format&32) ? 4U : 0U);
     }
-    if((format&~63U) || (format&64U) || !count || count>65536 || headers<table+(uint64_t)count*entry || headers>limit) return false; extent=headers;
+    if((format&~63U) || (format&64U) || !count || count>65536 || headers<table+(uint64_t)count*entry || headers>limit) { return false; } extent=headers;
     for(i=0;i<count;++i) { uint8_t flags; uint64_t bytes,offset,raw; unsigned p; uint32_t nameoff; char label[48]; int64_t namepos;
-        if(wg_stop(pd) || !pm_read(f,(int64_t)(table+(uint64_t)i*entry),h,entry) || h[1] || h[2] || h[3]) return false; flags=bitbe ? h[0] : bn_reverse(h[0]); if(flags&1) return false;
+        if(wg_stop(pd) || !pm_read(f,(int64_t)(table+(uint64_t)i*entry),h,entry) || h[1] || h[2] || h[3]) { return false; } flags=bitbe ? h[0] : bn_reverse(h[0]); if(flags&1) return false;
         if(four) { if(bn32(be,h+4)!=UINT32_MAX) return false; bytes=bn64(be,h+8); p=16; if(format&32) { raw=bn64(be,h+p); p+=8; if(raw!=bytes) return false; } }
         else { bytes=bn32(be,h+4); if(bytes>INT32_MAX) return false; p=8; }
         offset=(format&16) ? bn64(be,h+p) : bn32(be,h+p); p+=(format&16) ? 8 : 4; if(format&2) p+=4;
@@ -29,7 +29,7 @@ static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             if(!wg_name(f,namepos,(int64_t)headers,unicode,&name_budget,pd)) return false;
         }
         if(!four && (format&32) && bn32(be,h+p)!=bytes) return false;
-        if(offset<headers || !wg_range((int64_t)limit,offset,bytes)) return false; xx_rt_snprintf(label,sizeof(label),"file-%u.bin",i); if(!pm_add(f,s,label,(int64_t)offset,(int64_t)bytes)) return false; if(offset+bytes>extent) extent=offset+bytes;
+        if(offset<headers || !wg_range((int64_t)limit,offset,bytes)) { return false; } xx_rt_snprintf(label,sizeof(label),"file-%u.bin",i); if(!pm_add(f,s,label,(int64_t)offset,(int64_t)bytes)) return false; if(offset+bytes>extent) extent=offset+bytes;
     } s->size=(int64_t)extent; return true;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { return wg_parse(f,s,pd) && wg_members(s,pd); }

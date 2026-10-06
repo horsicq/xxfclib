@@ -894,7 +894,7 @@ bool xx_lingvoarc_archive_record_move_to_next(Abstractformat *format,
     (void)pd;
     if (!format || !state || state->format != format ||
         !(stream = (lva_stream *)state->internal_state) ||
-        stream->index + 1U >= state->total_records) {
+        stream->index + 1U >= (uint64_t)state->total_records) {
         if (state) state->has_record = false;
         return false;
     }
@@ -952,7 +952,7 @@ bool xx_lingvoarc_unpack_current_archive_record(
     bool raw;
     if (!format || !state || state->format != format || !state->has_record ||
         !(stream = (lva_stream *)state->internal_state) ||
-        stream->index >= state->total_records || (pd && xx_pd_is_stopped(pd)))
+        stream->index >= (uint64_t)state->total_records || (pd && xx_pd_is_stopped(pd)))
         return false;
     raw = stream->variant == XX_LINGVOARC_VARIANT_CONTAINER &&
           stream->index >= stream->count;

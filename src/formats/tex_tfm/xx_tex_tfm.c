@@ -17,7 +17,7 @@ static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  for(i=0;i<nc;++i){const uint8_t *c=b+at[1]+(uint64_t)i*4;uint32_t tag=c[2]&3,rem=c[3];if(tg_stop(pd)||c[0]>=counts[2]||(uint32_t)(c[1]>>4)>=counts[3]||(uint32_t)(c[1]&15)>=counts[4]||(uint32_t)(c[2]>>2)>=counts[5])return false;if(!c[0]){if(c[1]||c[2]||c[3])return false;continue;}if(tag==1&&rem>=counts[6])return false;if(tag==3&&rem>=counts[8])return false;if(tag==2){uint32_t target=rem,steps=0;while(true){const uint8_t *next;if(!tf_char(b,at[1],bc,ec,target)||++steps>nc)return false;next=b+at[1]+(target-bc)*4;if((next[2]&3)!=2)break;target=next[3];}}}
  for(i=0;i<counts[6];++i){const uint8_t *l=b+at[6]+(uint64_t)i*4;uint32_t rem=l[3];if(tg_stop(pd))return false;if(l[0]>128){uint32_t jump=(uint32_t)l[2]*256+rem;if(jump>=counts[6]&&!(i==0||i+1==counts[6]))return false;}else{if(l[0]<128&&i+l[0]+1>=counts[6])return false;if(!tf_char(b,at[1],bc,ec,l[1]))return false;if(l[2]>=128){if((uint32_t)(l[2]-128)*256+rem>=counts[7])return false;}else if(!tf_char(b,at[1],bc,ec,rem))return false;}}
  for(i=0;i<counts[8];++i)for(j=0;j<4;++j){uint32_t c=b[at[8]+(uint64_t)i*4+j];if((c||j==3)&&!tf_char(b,at[1],bc,ec,c))return false;}
- if(!tg_emit(f,s,"tfm-counts.bin",0,24,n))return false;for(i=0;i<10;++i)if(counts[i]&&!tg_emit(f,s,labels[i],at[i],(uint64_t)counts[i]*4,n))return false;s->size=(int64_t)n;return true;
+ if(!tg_emit(f,s,"tfm-counts.bin",0,24,n)) {return false; } for(i=0;i<10;++i)if(counts[i]&&!tg_emit(f,s,labels[i],at[i],(uint64_t)counts[i]*4,n))return false;s->size=(int64_t)n;return true;
 }
 
 void xx_tex_tfm_init(xx_tex_tfm *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_TEX_TFM,"tfm");}}

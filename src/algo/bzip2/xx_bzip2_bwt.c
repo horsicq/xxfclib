@@ -5,6 +5,11 @@
 #include "xx_bzip2_internal.h"
 #include "xxfclib/rt/xx_rt.h"
 
+/* length is capped at BZ2_MAX_BLOCK_SIZE, so the four-array scratch size
+ * computed below cannot overflow size_t. */
+_Static_assert((size_t)BZ2_MAX_BLOCK_SIZE <= SIZE_MAX / (4U * sizeof(uint32_t)),
+               "bzip2 BWT scratch size overflows size_t");
+
 /* Sort circular suffixes by doubling the compared prefix. Each round is a
  * stable counting sort of integer classes, rather than repeatedly comparing
  * circular byte strings. The shifted-order array becomes the new class array
@@ -28,7 +33,6 @@ bool xx_bzip2_bwt_transform(const uint8_t *src, int length,
     if (!src || !bwt || !orig_ptr || length <= 0 ||
         length > BZ2_MAX_BLOCK_SIZE) return false;
     n = (uint32_t)length;
-    if ((size_t)n > SIZE_MAX / (4U * sizeof(uint32_t))) return false;
     scratch_size = (size_t)n * 4U * sizeof(uint32_t);
 
     for (i = 0; i < n; ++i) histogram[src[i]]++;

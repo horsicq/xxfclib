@@ -6,7 +6,7 @@
 #include "xxfclib/formats/nintendo_tpl/xx_nintendo_tpl.h"
 #include "../xx_payload_members.h"
 
-static uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uint64_t n,uint64_t total) {
     size_t i;
@@ -15,7 +15,7 @@ static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uin
         if(n && b && at<a+b && a<at+n) return false; }
     return pm_add(f,s,name,(int64_t)at,(int64_t)n);
 }
-static bool zname(Abstractformat *f,uint64_t at,uint64_t end) {
+static XXFC_MAYBE_UNUSED bool zname(Abstractformat *f,uint64_t at,uint64_t end) {
     uint8_t c; uint64_t i; if(at>=end || end>(uint64_t)pm_available(f)) return false;
     for(i=0;i<4096 && at+i<end;++i) { if(!pm_read(f,(int64_t)(at+i),&c,1)) return false; if(!c) return i!=0; } return false;
 }

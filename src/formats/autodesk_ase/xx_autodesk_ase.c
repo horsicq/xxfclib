@@ -10,11 +10,11 @@ static bool ae_open(tb_text *q) {return tb_word(q,"{")&&tb_done(q);}
 static bool ae_bool(tb_text *q,unsigned count) {unsigned i;int32_t v;for(i=0;i<count;++i)if(!tb_i(q,&v)||v<0||v>1)return false;return tb_done(q);}
 static bool tb_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  tb_text q={b,0,n,0,0,0};unsigned stack[4],depth=0,state=0,objects=0,matdecl=0,mats=0;uint32_t nv=0,nf=0,vertices=0,faces=0;unsigned meshflags=0,objflags=0,tmflags=0;uint64_t start=0,covered;bool scene=false,material=false;int32_t v;const char *str;
- if(!tb_utf(b,n,false,pd)||!tb_line(&q)||!tb_word(&q,"*3DSMAX_ASCIIEXPORT")||!tb_i(&q,&v)||v!=200||!tb_done(&q)||!tb_emit(f,s,"descriptor.ase",0,q.p,n))return false;covered=q.p;
+ if(!tb_utf(b,n,false,pd)||!tb_line(&q)||!tb_word(&q,"*3DSMAX_ASCIIEXPORT")||!tb_i(&q,&v)||v!=200||!tb_done(&q)||!tb_emit(f,s,"descriptor.ase",0,q.p,n)) {return false; } covered=q.p;
  while(q.p<n){if(tb_stop(pd))return false;if(!tb_next(&q)){if(q.p<n)return false;break;}
   if(tb_word(&q,"}")){if(!depth||!tb_done(&q))return false;
-   if(state==2&&mats!=matdecl)return false;if(state==4&&(objflags!=7))return false;if(state==5&&(tmflags&15)!=15)return false;
-   if(state==6&&(meshflags!=15))return false;if(state==7&&vertices!=nv)return false;if(state==8&&faces!=nf)return false;
+   if(state==2&&mats!=matdecl) {return false; } if(state==4&&(objflags!=7))return false;if(state==5&&(tmflags&15)!=15)return false;
+   if(state==6&&(meshflags!=15)) {return false; } if(state==7&&vertices!=nv)return false;if(state==8&&faces!=nf)return false;
    state=stack[--depth];if(!depth){if(!tb_emit(f,s,"section.ase",start,q.p-start,n))return false;covered=q.p;}continue;
   }
   if(!depth){start=covered;
@@ -22,7 +22,7 @@ static bool tb_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
    if(tb_word(&q,"*SCENE")){if(scene||!ae_open(&q))return false;scene=true;state=1;}
    else if(tb_word(&q,"*MATERIAL_LIST")){if(material||objects||!ae_open(&q))return false;material=true;state=2;}
    else if(tb_word(&q,"*GEOMOBJECT")){if(++objects>1024||!ae_open(&q))return false;state=4;objflags=0;}
-   else return false;stack[depth++]=0;continue;
+   else { return false; } stack[depth++]=0;continue;
   }
   if(state==1){
    if(tb_word(&q,"*SCENE_FILENAME")){if(!tb_string(&q)||!tb_done(&q))return false;}

@@ -27,7 +27,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     codec=b[8]; ch=b[10]; n=pm_be32(b+20); table=pm_be32(b+24); base=pm_be32(b+28); if(codec>1 || b[9]>1 || !ch || ch>8 || b[11] || !pm_be16(b+12) || b[14] || b[15] || !n || n>16777216 || (b[9] && pm_be32(b+16)>=n) || pm_be32(b+32) || !reserve(ranges,&nr,10,table,(uint64_t)ch*4,28,in-8)) return false;
     data=da+8U+(uint64_t)base; for(i=0;i<ch;++i) { uint32_t ci; if(stop(pd) || !pm_read(f,io+8+(int64_t)table+i*4,q,4) || !reserve(ranges,&nr,10,ci=pm_be32(q),28,28,in-8) || !pm_read(f,io+8+(int64_t)ci,p,28) || pm_be32(p+4) || pm_be32(p+24) || !span(data+pm_be32(p),(uint64_t)n*(codec+1),da+(uint64_t)dn)) return false;
       xx_rt_snprintf(label,sizeof(label),"channel-%u.pcm",i); if(!emit(f,s,label,data+pm_be32(p),(uint64_t)n*(codec+1),total)) return false; }
-    if(!emit(f,s,"info.bin",io,in,total)) return false; s->size=total; return true;
+    if(!emit(f,s,"info.bin",io,in,total)) { return false; } s->size=total; return true;
 
 }
 

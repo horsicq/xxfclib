@@ -9,7 +9,7 @@ static bool pq_header(Abstractformat *f,const char *magic,pq_item *items,unsigne
     if(total>67108864 || !pm_read(f,0,h,16) || xx_rt_memcmp(h,magic,8) || h[8]<'1' || h[8]>'3' || h[9]!='.') return false;
     for(i=8;i<16;++i) {if(!h[i]) nul=true;else if(nul || (h[i]!='.' && (h[i]<'0' || h[i]>'9'))) return false;}if(!nul) return false;
     for(i=0;i<1024;++i) {pq_item *v=items+i;uint64_t n=0;if(at>4194256 || !eh_take(f,&at,total,h,48,pd)) return false;
-        for(j=0;j<32 && h[j];++j) if(h[j]<32 || h[j]>126) return false;if(!j || j==32) return false;
+        for(j=0;j<32 && h[j];++j) { if(h[j]<32 || h[j]>126) return false; } if(!j || j==32) return false;
         xx_rt_memcpy(v->name,h,32);v->index=(int32_t)pm_le32(h+32);v->type=pm_le32(h+36);v->value=fd_le64(h+40);
         if(v->index < -1 || v->index>=4096) return false;
         for(j=0;j<i;++j) if(items[j].index==v->index && !xx_rt_strcmp(items[j].name,v->name)) return false;
@@ -38,7 +38,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(!items) return false;
     if(!pq_header(f,"PQTTTR\0\0",items,&n,&at,pd) || !pq_int(items,n,"TTResult_NumberOfRecords",-1,&count) || !pq_int(items,n,"TTResultFormat_TTTRRecType",-1,&kind) || count>16777216 || !fd_mul(count,4,&bytes) || bytes!=total-at) goto done;
     switch(kind) {case 0x00010203:case 0x00010303:case 0x00010204:case 0x00010304:case 0x01010204:case 0x01010304:case 0x00010205:case 0x00010305:case 0x00010206:case 0x00010306:case 0x01010206:case 0x01010306:case 0x00010207:case 0x00010307:case 0x00010208:case 0x00010308:break;default:goto done;}
-    if(!pm_add(f,s,"ptu-header.bin",0,(int64_t)at) || (bytes && !pm_add(f,s,"tttr-records.bin",(int64_t)at,(int64_t)bytes))) goto done;s->size=(int64_t)total;ok=true;
+    if(!pm_add(f,s,"ptu-header.bin",0,(int64_t)at) || (bytes && !pm_add(f,s,"tttr-records.bin",(int64_t)at,(int64_t)bytes))) { goto done; } s->size=(int64_t)total;ok=true;
 done:xx_mem_free(items);return ok;
 }
 

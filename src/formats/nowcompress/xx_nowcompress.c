@@ -33,7 +33,7 @@ static bool now_old_lz(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *out
         if(flags&128U) { if(at==cap) return false; out[at++]=in[pos++]; }
         else { if(packed-pos<2U) return false; a=in[pos++]; c=in[pos++]; distance=((uint32_t)(a&0xF8U)<<5U)|c; length=a&7U;
             if(!length) { if(pos>=packed) return false; length=in[pos++]; } length+=2U;
-            if(!distance || distance>at || length>cap-at) return false; while(length--) { out[at]=out[at-distance]; ++at; } }
+            if(!distance || distance>at || length>cap-at) { return false; } while(length--) { out[at]=out[at-distance]; ++at; } }
         flags<<=1U; --left;
     }
     *written=at; return true;
@@ -58,7 +58,7 @@ static uint32_t now_distance(unsigned selector,ac_bits *bits) {
 }
 static bool now_new_lz(ac_blob *b,const uint8_t *in,uint32_t packed,const uint8_t history[32768],uint8_t *out,uint32_t cap,uint32_t *written) {
     uint8_t header[346],lengths[290]; uint32_t header_size,pos,n,at=0,i; uint64_t end; ac_prefix main,offsets; ac_bits bits;
-    if(packed<4U || pm_be16(in)<0x2F59U) return false; header_size=pm_be16(in)-0x2F59U;
+    if(packed<4U || pm_be16(in)<0x2F59U) { return false; } header_size=pm_be16(in)-0x2F59U;
     if(header_size>packed-4U || !now_huffman(b,in+4U,header_size,header,346U,20U,&n) || n!=346U) return false;
     pos=4U+header_size; if(pos&1U) ++pos; if(pos>packed) return false;
     for(i=0;i<290U;++i) lengths[i]=header[i];
@@ -69,7 +69,7 @@ static bool now_new_lz(ac_blob *b,const uint8_t *in,uint32_t packed,const uint8_
         unsigned token; if(!ac_poll(b) || !ac_prefix_read(&main,&bits,&token)) return false;
         if(token<256U) { if(at==cap) return false; out[at++]=(uint8_t)token; }
         else { uint32_t length=now_length(token-256U,&bits),distance; unsigned selector;
-            if(!ac_prefix_read(&offsets,&bits,&selector)) return false; distance=now_distance(selector,&bits);
+            if(!ac_prefix_read(&offsets,&bits,&selector)) { return false; } distance=now_distance(selector,&bits);
             if(!distance || distance>32768U+at || length>cap-at) return false;
             while(length--) { out[at]=distance>at?history[32768U+at-distance]:out[at-distance]; ++at; }
         }
@@ -79,21 +79,21 @@ static bool now_new_lz(ac_blob *b,const uint8_t *in,uint32_t packed,const uint8_
 }
 static bool now_file(ac_blob *b,uint32_t start,uint32_t limit,uint8_t *out,uint32_t expected,uint8_t cache[32768]) {
     uint32_t first,entries,table,previous,i,sum=0,produced=0; uint8_t history[32768]; bool initial=true;
-    if(!ac_span(b,start,20U)) return false; first=pm_be32(b->p+start);
+    if(!ac_span(b,start,20U)) { return false; } first=pm_be32(b->p+start);
     if(first<start+20U || first>limit || (first-start-4U)%8U) return false;
     entries=(first-start-4U)/8U-1U; if(!entries || entries>8191U) return false;
-    for(i=0;i<4U;++i) sum+=b->p[start+i]; table=start+4U; previous=first;
+    for(i=0;i<4U;++i) { sum+=b->p[start+i]; } table=start+4U; previous=first;
     xx_rt_memcpy(history,cache,32768U);
     for(i=0;i<entries;++i) {
         uint32_t next,padding,packed,decoded=0,j; unsigned flags; const uint8_t *p;
         if(!ac_span(b,table,8U)) return false;
-        for(j=0;j<8U;++j) sum+=b->p[table+j]; flags=pm_be16(b->p+table); padding=pm_be16(b->p+table+2U); next=pm_be32(b->p+table+4U); table+=8U;
+        for(j=0;j<8U;++j) { sum+=b->p[table+j]; } flags=pm_be16(b->p+table); padding=pm_be16(b->p+table+2U); next=pm_be32(b->p+table+4U); table+=8U;
         if(next==previous) { initial=true; xx_rt_memcpy(history,cache,32768U); continue; }
         if(next<previous || next>limit || next-previous<4U+padding || flags&~0x7FU) return false;
         packed=next-previous-padding-4U; p=b->p+previous;
         if(flags&0x20U) {
             if(flags&0x1FU) { uint32_t cap=expected-produced; uint8_t *mid=ac_alloc(b,cap); uint32_t n=0; bool ok;
-                if(!mid) return false; ok=now_huffman(b,p,packed,mid,cap,256U,&n) && now_old_lz(b,mid,n,out+produced,cap,&decoded); ac_release(b,mid,cap); if(!ok) return false;
+                if(!mid) { return false; } ok=now_huffman(b,p,packed,mid,cap,256U,&n) && now_old_lz(b,mid,n,out+produced,cap,&decoded); ac_release(b,mid,cap); if(!ok) return false;
             } else if(!now_huffman(b,p,packed,out+produced,expected-produced,256U,&decoded)) return false;
         } else if(flags&0x40U) { if(!now_new_lz(b,p,packed,history,out+produced,expected-produced,&decoded)) return false; }
         else if(flags&0x1FU) { if(!now_old_lz(b,p,packed,out+produced,expected-produced,&decoded)) return false; }
@@ -117,7 +117,7 @@ static bool now_parse(Abstractformat *f,pm_stream *s,ac_blob *b) {
         if(sum!=pm_be32(b->p+at+106U) || !b->p[at] || b->p[at]>31U || !ac_name(name,sizeof(name),b->p+at+1U,b->p[at])) return false;
         if(pm_be16(b->p+at+36U)&0x10U) continue;
         data=pm_be32(b->p+at+86U); resource=pm_be32(b->p+at+90U); start=pm_be32(b->p+at+98U); end=pm_be32(b->p+at+102U);
-        if(data>AC_MAX_BYTES || resource>AC_MAX_BYTES-data) return false; n=data+resource;
+        if(data>AC_MAX_BYTES || resource>AC_MAX_BYTES-data) { return false; } n=data+resource;
         if(!n) { if(!ac_emit(f,s,b,name,0,0)) return false; continue; }
         if(start<24U+count*110U || end<start || end>b->n) return false;
         out=ac_alloc(b,n); if(!out) return false;

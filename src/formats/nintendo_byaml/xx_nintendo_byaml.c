@@ -26,18 +26,18 @@ static bool by_table(Abstractformat *f,pm_stream *s,uint32_t offset,bool be,uint
     table_end=(uint64_t)offset+8+(uint64_t)*count*4; if(!pm_read(f,(int64_t)offset+4,p,4)) return false; previous=g32(p,be); if(previous!=table_end-offset) return false;
     for(i=0;i<*count;++i) { if(stop(pd) || !pm_read(f,(int64_t)offset+8+i*4,p,4)) return false; last=g32(p,be); if(last<=previous || !span(offset,last,end)) return false;
       pos=(uint64_t)offset+previous; if(!cstring(f,&pos,(uint64_t)offset+last,4096,true,pd) || pos!=(uint64_t)offset+last) return false; previous=last; }
-    if(!emit(f,s,label,offset,previous,end)) return false; if((uint64_t)offset+previous>*measured) *measured=(uint64_t)offset+previous; return true;
+    if(!emit(f,s,label,offset,previous,end)) { return false; } if((uint64_t)offset+previous>*measured) *measured=(uint64_t)offset+previous; return true;
 }
 static bool by_node(Abstractformat *f,pm_stream *s,uint32_t offset,bool be,uint32_t keys,uint32_t strings,unsigned expected,unsigned depth,uint32_t *visited,unsigned *nvisited,uint64_t *measured,xx_pd_struct *pd) {
     uint8_t h[4],e[8],p[4]; uint32_t n,i,previous=0; uint64_t at,total=(uint64_t)pm_available(f),length,value_at; char label[40];
-    if(depth>32 || *nvisited>=1024 || offset<16 || (offset&3)) return false; for(i=0;i<*nvisited;++i) if(visited[i]==offset) return false; visited[(*nvisited)++]=offset;
+    if(depth>32 || *nvisited>=1024 || offset<16 || (offset&3)) { return false; } for(i=0;i<*nvisited;++i) if(visited[i]==offset) return false; visited[(*nvisited)++]=offset;
     if(!pm_read(f,offset,h,4) || (h[0]!=0xc0 && h[0]!=0xc1) || (expected && h[0]!=expected) || (n=u24(h+1,be))>1024) return false;
     length=h[0]==0xc1 ? 4+(uint64_t)n*8 : 4+((n+3U)&~3U)+(uint64_t)n*4; if(!span(offset,length,total)) return false;
     xx_rt_snprintf(label,sizeof(label),"%s-node.bin",h[0]==0xc1 ? "map" : "array"); if(!emit(f,s,label,offset,length,total)) return false; if((uint64_t)offset+length>*measured) *measured=(uint64_t)offset+length;
     for(i=0;i<n;++i) { uint8_t kind; uint32_t value;
       if(h[0]==0xc1) { at=(uint64_t)offset+4+i*8; if(!pm_read(f,(int64_t)at,e,8)) return false; value=u24(e,be); if(value>=keys || (i && value<=previous)) return false; previous=value; kind=e[3]; value_at=at+4; }
       else { at=(uint64_t)offset+4+i; if(!pm_read(f,(int64_t)at,&kind,1)) return false; value_at=(uint64_t)offset+4+((n+3U)&~3U)+i*4; }
-      if(stop(pd) || !pm_read(f,(int64_t)value_at,p,4)) return false; value=g32(p,be);
+      if(stop(pd) || !pm_read(f,(int64_t)value_at,p,4)) { return false; } value=g32(p,be);
       if(kind==0xc0 || kind==0xc1) { if(!by_node(f,s,value,be,keys,strings,kind,depth+1,visited,nvisited,measured,pd)) return false; }
       else if(kind==0xa0) { if(value>=strings) return false; }
       else if(kind==0xd0) { if(value>1) return false; }
@@ -51,7 +51,7 @@ static bool by_node(Abstractformat *f,pm_stream *s,uint32_t offset,bool be,uint3
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[16]; bool be; uint32_t keys,strings,visited[1024],root; unsigned count=0; uint64_t measured=16;
-    if(!pm_read(f,0,h,16)) return false; be=h[0]=='B' && h[1]=='Y'; if(!be && !(h[0]=='Y' && h[1]=='B')) return false; if(g16(h+2,be)!=2) return false; root=g32(h+12,be);
+    if(!pm_read(f,0,h,16)) { return false; } be=h[0]=='B' && h[1]=='Y'; if(!be && !(h[0]=='Y' && h[1]=='B')) return false; if(g16(h+2,be)!=2) return false; root=g32(h+12,be);
     if(!by_table(f,s,g32(h+4,be),be,&keys,&measured,"key-table.bin",pd) || !by_table(f,s,g32(h+8,be),be,&strings,&measured,"string-table.bin",pd) || !root || !by_node(f,s,root,be,keys,strings,0,0,visited,&count,&measured,pd)) return false;
     s->size=(int64_t)measured; return true;
 

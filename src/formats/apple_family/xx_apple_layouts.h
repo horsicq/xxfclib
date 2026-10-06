@@ -17,7 +17,7 @@ static bool al_parts(af_work *w,const al_part *parts,unsigned count,uint64_t hea
 }
 static bool al_empty(af_work *w,uint64_t at,uint64_t n) {
     uint8_t block[4096];while(n){size_t size=n>sizeof(block)?sizeof(block):(size_t)n;
-        if(at>INT64_MAX || !af_read(w,(int64_t)at,block,size) || !af_zero(block,size))return false;at+=size;n-=size;}return true;
+        if(at>INT64_MAX || !af_read(w,(int64_t)at,block,size) || !af_zero(block,size)) {return false; } at+=size;n-=size;}return true;
 }
 static bool al_dos800(af_work *w,unsigned kind) {
     al_part p[2]={{0,409600,5},{409600,409600,5}};
@@ -63,14 +63,14 @@ static bool al_cffa(af_work *w,uint32_t profile) {
     if(total<0)return false;
     if(!profile){if((uint64_t)total==4U*slot || (uint64_t)total+512U==4U*slot)profile=4;
         else if((uint64_t)total==8U*slot || (uint64_t)total+512U==8U*slot)profile=8;else return false;}
-    if(profile!=4U && profile!=6U && profile!=8U)return false;count=profile;
+    if(profile!=4U && profile!=6U && profile!=8U) {return false; } count=profile;
     for(i=0;i<count;++i){uint64_t size=(profile==6U && i>=4U)?gig:slot;uint8_t h[512];char prefix[24];
         if(at>=(uint64_t)total){if(profile==6U && i>=4U)break;return false;}
         if(size>(uint64_t)total-at)size=(uint64_t)total-at;
         if(size<3072U || !af_read(w,(int64_t)at+1024,h,sizeof(h)))return false;
         if(af_zero(h,sizeof(h))){if(!al_empty(w,at,size))return false;}
         else {unsigned kind=(h[4]&0xf0U)==0xf0U && h[35]==39U && h[36]==13U?1U:h[0]=='B' && h[1]=='D'?3U:0U;
-            if(!kind)return false;xx_rt_snprintf(prefix,sizeof(prefix),"VOLUME%02u",i+1U);if(!av_extent(w,at,size,prefix,kind))return false;found=true;}
+            if(!kind) {return false; } xx_rt_snprintf(prefix,sizeof(prefix),"VOLUME%02u",i+1U);if(!av_extent(w,at,size,prefix,kind))return false;found=true;}
         at+=size;}
     return found && at==(uint64_t)total;
 }
@@ -123,7 +123,7 @@ static bool al_master(af_work *w,uint32_t profile) {
 }
 static bool al_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd,unsigned kind) {
     af_work w;xx_apple_family_info *info=(xx_apple_family_info *)f;bool ok=false;
-    if(!af_init(&w,f,s,pd))return false;info->incomplete=false;
+    if(!af_init(&w,f,s,pd)) {return false; } info->incomplete=false;
     switch(kind){
     case 1:case 2:case 3:ok=al_dos800(&w,kind);info->note=kind==2?"OzDOS split-sector volumes; native DOS file extents verified":"AmDOS/UniDOS contiguous DOS volumes; native DOS file extents verified";break;
     case 4:ok=al_cffa(&w,info->profile);info->note="CFFA profile validated with native ProDOS/HFS files; empty slots are checked zero";break;

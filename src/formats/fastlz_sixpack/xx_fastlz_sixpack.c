@@ -8,7 +8,7 @@
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     nh_blob b;uint8_t *out=NULL;uint64_t at=8,n,raw,body,want=0,made=0,total=0;unsigned count=0;char name[96];bool active=false,ok=false;
-    if(!nh_load(f,&b,pd)) return false;NH_NEED(nh_span(&b,0,8) && !xx_rt_memcmp(b.p,"\x89" "6PK\r\n\x1a\n",8));NH_NEED(nh_add(f,s,&b,"sixpack-header",0,8));
+    if(!nh_load(f,&b,pd)) { return false; } NH_NEED(nh_span(&b,0,8) && !xx_rt_memcmp(b.p,"\x89" "6PK\r\n\x1a\n",8));NH_NEED(nh_add(f,s,&b,"sixpack-header",0,8));
     while(at<b.n) {uint16_t id,opt;NH_NEED(nh_span(&b,at,16) && ++count<=4094);id=pm_le16(b.p+(size_t)at);opt=pm_le16(b.p+(size_t)at+2);n=pm_le32(b.p+(size_t)at+4);raw=pm_le32(b.p+(size_t)at+12);body=at+16;NH_NEED(nh_span(&b,body,n) && xx_adler32(b.p+(size_t)body,(size_t)n)==pm_le32(b.p+(size_t)at+8));
         if(id==1) {uint16_t namesize;NH_NEED(!active && !opt && !raw && n>=11);want=fd_le64(b.p+(size_t)body);namesize=pm_le16(b.p+(size_t)body+8);NH_NEED(namesize && n==(uint64_t)namesize+10 && b.p[(size_t)(body+n-1)]==0 && !xx_rt_memchr(b.p+(size_t)body+10,0,namesize-1) && fourth_utf8(b.p+(size_t)body+10,namesize-1,pd) && want<=67108864-total);
             xx_rt_snprintf(name,sizeof(name),"%.*s",(int)(namesize-1),b.p+(size_t)body+10);out=(uint8_t *)xx_mem_alloc((size_t)(want ? want:1));NH_NEED(out);made=0;active=true;total+=want;

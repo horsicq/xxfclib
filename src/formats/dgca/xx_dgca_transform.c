@@ -29,8 +29,8 @@ int dg_deinterleave(const unsigned char *planes,unsigned char *out,size_t count,
     if(!planes||!out||dt_overlap(planes,out,count))return 0;
     for(plane=0;plane<stride&&plane<count;++plane){size_t pos;
         for(pos=plane;pos<count;){
-            if(!(chunk++&4095)&&dt_cancel(cancel,opaque))return -1;out[pos]=planes[offset++];
-            if(count-1-pos<stride)break;pos+=stride;
+            if(!(chunk++&4095)&&dt_cancel(cancel,opaque)) {return -1; } out[pos]=planes[offset++];
+            if(count-1-pos<stride) {break; } pos+=stride;
         }
     }
     return offset==count?1:0;

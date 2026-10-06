@@ -5,7 +5,7 @@
 static bool vcf_key(nh_blob *b,el_token v) {return v.n && v.n<=255 && el_chars(b,v,"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-",true);}
 static bool vcf_meta(nh_blob *b,el_token line) {
     uint64_t i=2,eq;bool quoted=false,escaped=false;unsigned brackets=0;if(!el_prefix(b,line,"##") || line.n<4) return false;
-    while(i<line.n && b->p[(size_t)(line.at+i)]!='=') ++i;eq=i;if(eq==line.n || !vcf_key(b,el_slice(line,2,eq-2)) || ++i==line.n) return false;
+    while(i<line.n && b->p[(size_t)(line.at+i)]!='=') { ++i; } eq=i;if(eq==line.n || !vcf_key(b,el_slice(line,2,eq-2)) || ++i==line.n) return false;
     for(;i<line.n;++i) {uint8_t ch=b->p[(size_t)(line.at+i)];if(escaped) {if(ch!='\\' && ch!='"') return false;escaped=false;continue;}if(quoted && ch=='\\') {escaped=true;continue;}if(ch=='"') quoted=!quoted;else if(!quoted && ch=='<') {if(++brackets>1) return false;}else if(!quoted && ch=='>') {if(!brackets) return false;--brackets;}}
     return !quoted && !escaped && !brackets;
 }

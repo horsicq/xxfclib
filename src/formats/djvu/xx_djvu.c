@@ -11,12 +11,12 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(!pm_read(f,0,h,16) || xx_rt_memcmp(h,"AT&TFORM",8) || xx_rt_memcmp(h+12,"DJVU",4) || pm_be32(h+8)<4) return false;
     end=12+(uint64_t)pm_be32(h+8); if(end>(uint64_t)pm_available(f) || !pm_add(f,s,"djvu-header.bin",0,16)) return false;
     while(at<end) { uint32_t size; uint64_t payload,next; char label[48]; unsigned i;
-        if(fd_stop(pd) || ++count>4096 || !fd_range(at,8,end) || !pm_read(f,(int64_t)at,h,8)) return false; size=pm_be32(h+4); payload=at+8;
-        if(!fd_range(payload,(uint64_t)size+(size&1),end)) return false; next=payload+size+(size&1);
+        if(fd_stop(pd) || ++count>4096 || !fd_range(at,8,end) || !pm_read(f,(int64_t)at,h,8)) { return false; } size=pm_be32(h+4); payload=at+8;
+        if(!fd_range(payload,(uint64_t)size+(size&1),end)) { return false; } next=payload+size+(size&1);
         for(i=0;i<4;++i) if(h[i]<32 || h[i]>126) return false;
         if(!xx_rt_memcmp(h,"FORM",4)) return false;
         if(!xx_rt_memcmp(h,"INFO",4)) { uint64_t pixels;
-            if(info || count!=1 || size!=10 || !pm_read(f,(int64_t)payload,b,10) || !pm_be16(b) || !pm_be16(b+2) || !fd_mul(pm_be16(b),pm_be16(b+2),&pixels) || pixels>67108864 || pm_le16(b+4)<20 || pm_le16(b+4)>26 || pm_le16(b+6)<25 || pm_le16(b+6)>6000 || b[8]<3 || b[8]>50 || (b[9]!=1 && b[9]!=2 && b[9]!=5 && b[9]!=6)) return false; info=true;
+            if(info || count!=1 || size!=10 || !pm_read(f,(int64_t)payload,b,10) || !pm_be16(b) || !pm_be16(b+2) || !fd_mul(pm_be16(b),pm_be16(b+2),&pixels) || pixels>67108864 || pm_le16(b+4)<20 || pm_le16(b+4)>26 || pm_le16(b+6)<25 || pm_le16(b+6)>6000 || b[8]<3 || b[8]>50 || (b[9]!=1 && b[9]!=2 && b[9]!=5 && b[9]!=6)) { return false; } info=true;
         } else { if(!info) return false;
             if(!xx_rt_memcmp(h,"Sjbz",4) || !xx_rt_memcmp(h,"BGjp",4) || !xx_rt_memcmp(h,"BG44",4)) { if(!size) return false; image=true; }
             if(!xx_rt_memcmp(h,"INCL",4)) { uint8_t name[1024]; if(!size || size>1024 || !pm_read(f,(int64_t)payload,name,size) || !fourth_utf8(name,size,pd)) return false; for(i=0;i<size;++i) if(!name[i]) return false; }

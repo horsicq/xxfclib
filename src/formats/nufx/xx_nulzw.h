@@ -14,15 +14,15 @@ static bool nl_codes(af_work *w,nl_state *s,const uint8_t *p,size_t n,uint32_t w
         if(!af_poll(w) || s->next>4095U)return false;
         while(width<12U && (s->next+1U)>=(1U<<width))++width;
         if(bit>n*8U || width>n*8U-bit)return false;
-        for(k=0;k<width;++k)code|=(uint32_t)((p[(bit+k)/8U]>>((bit+k)&7U))&1U)<<k;bit+=width;
+        for(k=0;k<width;++k) {code|=(uint32_t)((p[(bit+k)/8U]>>((bit+k)&7U))&1U)<<k; } bit+=width;
         if(code==256U){nl_reset(s);continue;}
         if(!s->previous){if(code>255U)return false;s->rle[out++]=(uint8_t)code;s->old=code;s->first=code;s->previous=true;continue;}
         original=code;walk=code;
         if(code==s->next){s->stack[depth++]=(uint8_t)s->first;walk=s->old;}
         else if(code>s->next)return false;
         while(walk>=257U){if(walk>=s->next || depth>=4095U || s->parent[walk]>=walk)return false;s->stack[depth++]=s->suffix[walk];walk=s->parent[walk];}
-        if(walk>255U || depth>=4096U)return false;first=walk;s->stack[depth++]=(uint8_t)first;
-        if(depth>wanted-out)return false;while(depth)s->rle[out++]=s->stack[--depth];
+        if(walk>255U || depth>=4096U) {return false; } first=walk;s->stack[depth++]=(uint8_t)first;
+        if(depth>wanted-out) {return false; } while(depth)s->rle[out++]=s->stack[--depth];
         s->parent[s->next]=(uint16_t)s->old;s->suffix[s->next]=(uint8_t)first;++s->next;s->old=original;s->first=first;
     }
     *used=(bit+7U)/8U;return true;
@@ -31,7 +31,7 @@ static bool nl_rle(nl_state *s,const uint8_t *p,uint32_t n,uint8_t marker) {
     uint32_t at=0,out=0;if(n==4096U){xx_rt_memcpy(s->chunk,p,4096);return true;}
     while(at<n){uint8_t value=p[at++];uint32_t count=1;
         if(value==marker){if(n-at<2U)return false;value=p[at++];count=(uint32_t)p[at++]+1U;}
-        if(count>4096U-out)return false;xx_rt_memset(s->chunk+out,value,count);out+=count;}
+        if(count>4096U-out) {return false; } xx_rt_memset(s->chunk+out,value,count);out+=count;}
     return out==4096U;
 }
 static bool nl_decode(af_work *w,const uint8_t *p,size_t n,uint8_t *out,uint32_t wanted,unsigned method) {
@@ -39,7 +39,7 @@ static bool nl_decode(af_work *w,const uint8_t *p,size_t n,uint8_t *out,uint32_t
     if(n<at || !(s=(nl_state *)af_alloc(w,sizeof(*s),false)))return false;
     marker=p[at-1U];nl_reset(s);
     while(done<wanted){uint32_t raw;bool lzw;size_t take,used=0,header,declared=0;const uint8_t *rle;uint32_t copy=wanted-done>4096U?4096U:wanted-done;
-        if(!af_poll(w) || at>n || n-at<2U)goto end;header=at;raw=pm_le16(p+at);at+=2U;
+        if(!af_poll(w) || at>n || n-at<2U) {goto end; } header=at;raw=pm_le16(p+at);at+=2U;
         if(method==2U){if(n-at<1U || p[at]>1U || raw<1U || raw>4096U)goto end;lzw=p[at++]!=0;nl_reset(s);}
         else {lzw=(raw&0x8000U)!=0;if(raw&0x6000U)goto end;raw&=0x1fffU;if(raw<1U || raw>4096U)goto end;
             if(lzw){if(n-at<2U)goto end;declared=pm_le16(p+at);at+=2U;if(declared<5U || declared>n-header){declared=pm_be16(p+at-2U);if(declared<5U || declared>n-header)goto end;}}}

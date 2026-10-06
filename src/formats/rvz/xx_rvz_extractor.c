@@ -19,7 +19,7 @@ static void rvz_close_window(Abstractformat *format) {
 static const xx_format_search_desc rvz_desc = {
     rvz_types, sizeof(rvz_types) / sizeof(rvz_types[0]),
     rvz_anchors, sizeof(rvz_anchors) / sizeof(rvz_anchors[0]),
-    rvz_open_window, rvz_close_window
+    rvz_open_window, rvz_close_window, false
 };
 static xx_format_search_state *rvz_create_search(xx_format_extractor *self,
     xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd) {

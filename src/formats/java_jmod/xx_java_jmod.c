@@ -14,7 +14,7 @@ static bool jmod_origin(Abstractformat *f,int64_t end,xx_pd_struct *pd) {
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     int64_t available=pm_available(f);uint8_t h[8];
     if(fd_stop(pd) || available<34 || available>67108864 || !pm_read(f,0,h,8) || xx_rt_memcmp(h,"JM\1\0PK\3\4",8) || !jmod_origin(f,available,pd) || !wg_zip(f,4,available,pd)) return false;
-    if(!pm_add(f,s,"module.zip",4,available-4)) return false;s->size=available;return true;
+    if(!pm_add(f,s,"module.zip",4,available-4)) { return false; } s->size=available;return true;
 }
 
 void xx_java_jmod_init(xx_java_jmod *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_JAVA_JMOD,"java_jmod"); } }

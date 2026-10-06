@@ -9,7 +9,7 @@
 #include "xxfclib/formats/mpq/xx_mpq.h"
 static bool w6_at_parse(Abstractformat *f,pm_stream *s,int64_t at,xx_pd_struct *pd) {
     xx_mpq *r; bool ok; int64_t size; uint8_t h[32];uint64_t hn,bn,hs,bs;int64_t limit=pm_available(f);if(!pm_read(f,at,h,32) || pm_le16(h+12)>1 || !(hn=pm_le32(h+24)) || hn>65536 || !(bn=pm_le32(h+28)) || bn>65536) return false;hs=pm_le32(h+16);bs=pm_le32(h+20);if(hs<pm_le32(h+4) || bs<pm_le32(h+4) || !wg_range(limit,at,pm_le32(h+8)) || !wg_range(pm_le32(h+8),hs,hn*16) || !wg_range(pm_le32(h+8),bs,bn*16) || (hs<bs+bn*16 && bs<hs+hn*16)) return false;
-    if(wg_stop(pd)) return false; r=xx_mpq_create(f->device,f->base_address+at); if(!r) return false;
+    if(wg_stop(pd)) { return false; } r=xx_mpq_create(f->device,f->base_address+at); if(!r) return false;
     ok=xx_format_handle_base_info(&r->format,pd);size=r->format.format_size;
     ok=ok && !wg_stop(pd) && r->format.number_of_archive_records>0 && r->format.number_of_archive_records<=4096 && wg_range(pm_available(f),at,(uint64_t)size);xx_mpq_free(r);
     return ok && w6_component(f,s,at,size,"payload.mpq");

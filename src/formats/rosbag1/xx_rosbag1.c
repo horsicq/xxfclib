@@ -8,7 +8,7 @@ typedef struct rb_record {rb_field fields[16];unsigned count;uint8_t op;uint64_t
 static const rb_field *rb_find(const rb_record *r,const char *name,unsigned size) {unsigned i;size_t n=xx_rt_strlen(name);for(i=0;i<r->count;++i) if(r->fields[i].name_size==n && !xx_rt_memcmp(r->fields[i].name,name,n) && r->fields[i].size==size) return &r->fields[i];return NULL;}
 static bool rb_header(nh_blob *b,uint64_t at,uint64_t end,rb_record *r) {
     r->count=0;while(at<end) {uint32_t n,i,key=0;const uint8_t *p;if(!eh_span(at,4,end) || r->count==16) return false;n=pm_le32(b->p+(size_t)at);at+=4;if(!n || !eh_span(at,n,end)) return false;p=b->p+(size_t)at;
-        while(key<n && p[key]!='=') ++key;if(!key || key==n || key>63 || !nh_ascii(p,key,false)) return false;
+        while(key<n && p[key]!='=') { ++key; } if(!key || key==n || key>63 || !nh_ascii(p,key,false)) return false;
         for(i=0;i<r->count;++i) if(r->fields[i].name_size==key && !xx_rt_memcmp(p,r->fields[i].name,key)) return false;
         r->fields[r->count].name=p;r->fields[r->count].name_size=key;r->fields[r->count].value=p+key+1;r->fields[r->count++].size=n-key-1;at+=n;
     }return at==end;
@@ -23,20 +23,20 @@ static bool rb_connection(nh_blob *b,const rb_record *r,uint64_t *id) {
     rb_record data;const rb_field *topic,*type,*md5;unsigned i;if(!rb_number(r,"conn",4,id) || *id>65535 || !rb_header(b,r->data,r->next,&data)) return false;
     topic=rb_find(r,"topic",0);for(i=0;i<r->count;++i) if(r->fields[i].name_size==5 && !xx_rt_memcmp(r->fields[i].name,"topic",5)) topic=&r->fields[i];if(!topic || !topic->size || !fourth_utf8(topic->value,topic->size,b->pd)) return false;
     type=NULL;for(i=0;i<data.count;++i) if(data.fields[i].name_size==4 && !xx_rt_memcmp(data.fields[i].name,"type",4)) type=&data.fields[i];md5=rb_find(&data,"md5sum",32);
-    if(!type || !type->size || !md5 || !fourth_utf8(type->value,type->size,b->pd)) return false;for(i=0;i<32;++i) if(!((md5->value[i]>='0' && md5->value[i]<='9') || (md5->value[i]>='a' && md5->value[i]<='f'))) return false;return true;
+    if(!type || !type->size || !md5 || !fourth_utf8(type->value,type->size,b->pd)) { return false; } for(i=0;i<32;++i) if(!((md5->value[i]>='0' && md5->value[i]<='9') || (md5->value[i]>='a' && md5->value[i]<='f'))) return false;return true;
 }
 typedef struct rb_msg {uint32_t conn,offset;uint64_t time;bool indexed;} rb_msg;
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[13];nh_blob b={0};bool ok=false;rb_record r;uint64_t at=13,index,conn_count,chunk_count,chunk_pos,chunk_data,chunk_end,declared,min_time=UINT64_MAX,max_time=0;uint32_t ids[128],counts[128]={0};uint64_t metadata[128],metadata_size[128];bool terminal[128]={0},indexed[128]={0};rb_msg messages[4090];unsigned connections=0,message_count=0,i,j,info_count=0;
     if(!pm_read(f,0,h,13) || xx_rt_memcmp(h,"#ROSBAG V2.0\n",13)) return false;
     NH_NEED(nh_load(f,&b,pd) && rb_read(&b,at,b.n,&r) && r.op==3 && rb_number(&r,"index_pos",8,&index) && rb_number(&r,"conn_count",4,&conn_count) && rb_number(&r,"chunk_count",4,&chunk_count) && conn_count && conn_count<=128 && chunk_count==1 && index<b.n);
-    for(i=0;i<r.size;++i) NH_NEED(b.p[(size_t)r.data+i]==' ');at=r.next;NH_NEED(nh_add(f,s,&b,"file-header",0,at));chunk_pos=at;
+    for(i=0;i<r.size;++i) { NH_NEED(b.p[(size_t)r.data+i]==' '); } at=r.next;NH_NEED(nh_add(f,s,&b,"file-header",0,at));chunk_pos=at;
     NH_NEED(rb_read(&b,at,index,&r) && r.op==5 && rb_number(&r,"size",4,&declared) && declared==r.size);{const rb_field *v=rb_find(&r,"compression",4);NH_NEED(v && !xx_rt_memcmp(v->value,"none",4));}
     chunk_data=r.data;chunk_end=r.next;at=chunk_data;NH_NEED(nh_add(f,s,&b,"chunk-header",chunk_pos,chunk_data-chunk_pos));
     while(at<chunk_end) {uint64_t id,time,start=at;NH_NEED(rb_read(&b,at,chunk_end,&r));
         if(r.op==7) {NH_NEED(connections<128 && rb_connection(&b,&r,&id));for(i=0;i<connections;++i) NH_NEED(ids[i]!=id);ids[connections]=(uint32_t)id;metadata[connections]=r.data;metadata_size[connections]=r.size;++connections;NH_NEED(nh_add(f,s,&b,"connection",start,r.next-start));}
         else if(r.op==2) {NH_NEED(message_count<4090 && rb_number(&r,"conn",4,&id) && rb_time(&r,"time",&time));for(i=0;i<connections && ids[i]!=id;++i) {}NH_NEED(i<connections && nh_add(f,s,&b,"message",r.data,r.size));messages[message_count].conn=(uint32_t)id;messages[message_count].offset=(uint32_t)(start-chunk_data);messages[message_count].time=time;messages[message_count++].indexed=false;++counts[i];if(time<min_time) min_time=time;if(time>max_time) max_time=time;}
-        else NH_NEED(false);at=r.next;
+        else { NH_NEED(false); } at=r.next;
     }NH_NEED(connections==conn_count && message_count);at=chunk_end;
     while(at<index) {uint64_t id,count,ver;NH_NEED(rb_read(&b,at,index,&r) && r.op==4 && rb_number(&r,"ver",4,&ver) && ver==1 && rb_number(&r,"conn",4,&id) && rb_number(&r,"count",4,&count) && count && count*12==r.size);
         for(i=0;i<connections && ids[i]!=id;++i) {}NH_NEED(i<connections && !indexed[i] && counts[i]==count);indexed[i]=true;

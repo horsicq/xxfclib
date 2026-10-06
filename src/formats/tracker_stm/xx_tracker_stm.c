@@ -8,25 +8,25 @@
 
 static bool sm_emit(Abstractformat *f,pm_stream *s,const char *label,uint64_t at,uint64_t n,uint64_t *measured) {
     if(s->count>=4096 || !fd_range(at,n,(uint64_t)pm_available(f)) || at+n>268435456 || !pm_add(f,s,label,(int64_t)at,(int64_t)n)) return false;
-    if(at+n>*measured) *measured=at+n; return true;
+    if(at+n>*measured) { *measured=at+n; } return true;
 }
-static bool sm_zero(const uint8_t *p,size_t n) { size_t i; for(i=0;i<n;++i) if(p[i]) return false; return true; }
-static bool sm_loop(uint32_t begin,uint32_t end,uint32_t length,bool enabled) { return !enabled || (begin<end && end<=length); }
+static XXFC_MAYBE_UNUSED bool sm_zero(const uint8_t *p,size_t n) { size_t i; for(i=0;i<n;++i) if(p[i]) return false; return true; }
+static XXFC_MAYBE_UNUSED bool sm_loop(uint32_t begin,uint32_t end,uint32_t length,bool enabled) { return !enabled || (begin<end && end<=length); }
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[48],b[32],orders[128]; uint32_t patterns,i,j,n,ptr[31],length[31],count=0; uint64_t measured=0,start,pattern_end; char label[48]; fd_cursor c={f,0,(uint64_t)pm_available(f),pd,0};
     if(!fd_get(&c,h,48) || xx_rt_memcmp(h+20,"!Scream!",8) || h[28]!=26 || h[29]!=2 || h[30]!=2 || h[31]!=21 || !(patterns=h[33]) || patterns>64 || h[34]>64) return false;
     for(i=0;i<31;++i) { uint32_t a,z; if(!fd_get(&c,b,32)) return false; length[i]=pm_le16(b+16); ptr[i]=(uint32_t)pm_le16(b+14)*16; a=pm_le16(b+18); z=pm_le16(b+20);
         if(b[22]>64 || a>length[i] || (z!=65535 && (z>length[i] || (z && a>=z))) || (length[i] && !pm_le16(b+24))) return false; }
-    if(!fd_get(&c,orders,128)) return false; for(i=0;i<128;++i) { if(orders[i]>=99) break; if(orders[i]>=patterns) return false; ++count; } if(!count) return false;
+    if(!fd_get(&c,orders,128)) { return false; } for(i=0;i<128;++i) { if(orders[i]>=99) break; if(orders[i]>=patterns) return false; ++count; } if(!count) return false;
     if(!sm_emit(f,s,"stm-descriptor.bin",0,c.at,&measured)) return false;
     for(i=0;i<patterns;++i) { start=c.at;
         for(j=0;j<256;++j) { if(!fd_get(&c,b,1)) return false; n=b[0]; if(n==251 || n==252 || n==253) continue;
-            if(n<254 && ((n&15)>11 || (n>>4)>7)) return false; if(!fd_get(&c,b,3) || (b[0]>>3)>31) return false; }
+            if(n<254 && ((n&15)>11 || (n>>4)>7)) { return false; } if(!fd_get(&c,b,3) || (b[0]>>3)>31) return false; }
         xx_rt_snprintf(label,sizeof(label),"pattern-%u.bin",i); if(!sm_emit(f,s,label,start,c.at-start,&measured)) return false;
     } pattern_end=c.at;
     for(i=0;i<31;++i) if(length[i]) { if(fd_stop(pd) || ptr[i]<pattern_end) return false; xx_rt_snprintf(label,sizeof(label),"sample-%u.bin",i+1); if(!sm_emit(f,s,label,ptr[i],length[i],&measured)) return false; }
-    if(!fd_disjoint(s,(uint64_t)f->base_address)) return false; s->size=(int64_t)measured; return true;
+    if(!fd_disjoint(s,(uint64_t)f->base_address)) { return false; } s->size=(int64_t)measured; return true;
 }
 
 void xx_tracker_stm_init(xx_tracker_stm *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_TRACKER_STM,"stm"); } }

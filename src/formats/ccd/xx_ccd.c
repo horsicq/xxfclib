@@ -202,7 +202,6 @@ static ccd_view *ccd_parse(Abstractformat *f, xx_pd_struct *pd) {
         !entries[1].pmin_set || entries[1].pmin != v->count ||
         !entries[2].plba_set || !entries[2].plba) goto done;
     v->leadout = entries[2].plba;
-    if (v->leadout > INT64_MAX / CCD_IMG_SECTOR) goto done;
     for (i = 0U; i < tocs; ++i)
         if (!entries[i].seen || !entries[i].session_set || entries[i].session != 1U ||
             !entries[i].adr_set || entries[i].adr != 1U) goto done;
@@ -254,7 +253,7 @@ void xx_ccd_init(xx_ccd *c, xx_io_device *device, int64_t base) {
 }
 xx_ccd *xx_ccd_create(xx_io_device *device, int64_t base) {
     xx_ccd *c = (xx_ccd *)xx_mem_alloc(sizeof(*c));
-    if (c) xx_ccd_init(c, device, base); return c;
+    if (c) { xx_ccd_init(c, device, base); } return c;
 }
 void xx_ccd_destroy(xx_ccd *c) {
     if (!c) return;
@@ -264,7 +263,7 @@ void xx_ccd_destroy(xx_ccd *c) {
 void xx_ccd_free(xx_ccd *c) { if (c) { xx_ccd_destroy(c); xx_mem_free(c); } }
 bool xx_ccd_check_is_valid(Abstractformat *f, xx_pd_struct *pd) {
     ccd_view *v = ccd_parse(f, pd);
-    if (!v) return false; ccd_release(v); return true;
+    if (!v) { return false; } ccd_release(v); return true;
 }
 bool xx_ccd_handle_base_info(Abstractformat *f, xx_pd_struct *pd) {
     xx_ccd *c = (xx_ccd *)f; ccd_view *v;

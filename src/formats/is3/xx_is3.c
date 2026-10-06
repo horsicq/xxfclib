@@ -285,16 +285,15 @@ static bool is3_parse_cabinet(Abstractformat *format, const uint8_t *header,
     file_size = is3_le32(header + 0x37U);
 
     /* Both tables have to be wholly inside this volume before a single byte
-     * of them is read; the file count is a 16-bit field and cannot overflow
-     * the member ceiling. */
+     * of them is read; the file and directory counts are 16-bit fields and
+     * cannot overflow the member and directory ceilings. */
     if (directory_count == 0U || file_count == 0U ||
         (int64_t)directory_offset > size ||
         (int64_t)directory_size > size - (int64_t)directory_offset ||
         (int64_t)file_offset > size ||
         (int64_t)file_size > size - (int64_t)file_offset ||
         directory_size < IS3_DIR_FIXED_SIZE ||
-        file_size < IS3_FILE_FIXED_SIZE ||
-        directory_count > IS3_MAX_DIRECTORIES)
+        file_size < IS3_FILE_FIXED_SIZE)
         return false;
 
     directories = (uint8_t *)xx_mem_alloc(directory_size);

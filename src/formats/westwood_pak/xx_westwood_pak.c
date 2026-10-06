@@ -119,7 +119,7 @@ void xx_westwood_pak_init(xx_westwood_pak *r,xx_io_device *d,int64_t base) {
 }
 xx_westwood_pak *xx_westwood_pak_create(xx_io_device *d,int64_t base) {
     xx_westwood_pak *r=(xx_westwood_pak *)xx_mem_alloc(sizeof(*r));
-    if(r) xx_westwood_pak_init(r,d,base); return r;
+    if(r) { xx_westwood_pak_init(r,d,base); } return r;
 }
 void xx_westwood_pak_destroy(xx_westwood_pak *r) {
     if(r) xx_format_cleanup_extra_parameters(&r->format);

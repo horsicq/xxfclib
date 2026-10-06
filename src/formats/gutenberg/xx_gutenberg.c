@@ -32,7 +32,7 @@ static bool gb_parse_order(af_work *w,const af_blob *b,bool po) {
     uint8_t claims[GB_SECTORS]={0};uint16_t directories[GB_SECTORS],sectors[GB_SECTORS];uint32_t nd,i,j;
     const uint8_t *root=gb_sector(b,17U*16U+7U,po);char volume[32];uint8_t vn[9];size_t length=9;
     if(b->n!=35U*4096U || !root)return false;
-    for(i=0;i<9U;++i)vn[i]=root[6U+i]&0x7fU;while(length && vn[length-1U]==' ')--length;
+    for(i=0;i<9U;++i) {vn[i]=root[6U+i]&0x7fU; } while(length && vn[length-1U]==' ')--length;
     /* Volume names are descriptive, and the original producer allows slash.
      * They never become host paths; quote them as a single safe leaf. */
     if(root[15]!=0x8dU || !af_leaf(volume,sizeof(volume),vn,length) ||
@@ -57,7 +57,7 @@ static bool gb_parse_order(af_work *w,const af_blob *b,bool po) {
 }
 static void gb_rollback(af_work *w) {
     size_t i;for(i=0;i<w->s->count;++i) {if(w->s->items[i].memory)xx_mem_free(w->s->items[i].memory);pm_free_password(w->s->items[i].password);}
-    if(w->s->items)xx_mem_free(w->s->items);xx_mem_zero(w->s,sizeof(*w->s));
+    if(w->s->items) {xx_mem_free(w->s->items); } xx_mem_zero(w->s,sizeof(*w->s));
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     af_work w;af_blob b;bool ok;xx_gutenberg *r=(xx_gutenberg *)f;

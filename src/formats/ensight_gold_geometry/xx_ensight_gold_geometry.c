@@ -24,8 +24,8 @@ static bool fg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  while(q.p<n){uint32_t count,i;unsigned arity=0,type=0;start=q.p;if(!fg_span(q.p,80,n))goto part_done;if(fg_ens_text(b+q.p,"part"))break;
  if(!fg_take(&q,80,&p))goto part_done;
  if(fg_ens_text(p,"point")){type=1;arity=1;}else if(fg_ens_text(p,"bar2")){type=2;arity=2;}else if(fg_ens_text(p,"tria3")){type=3;arity=3;}else if(fg_ens_text(p,"quad4")){type=4;arity=4;}else if(fg_ens_text(p,"tetra4")){type=5;arity=4;}else if(fg_ens_text(p,"pyramid5")){type=6;arity=5;}else if(fg_ens_text(p,"penta6")){type=7;arity=6;}else if(fg_ens_text(p,"hexa8")){type=8;arity=8;}else goto part_done;
- if(types&(1U<<type))goto part_done;types|=1U<<type;
- if(!fg_count(&q,1000000,&count)||!count||count>1000000-elements)goto part_done;elements+=count;
+ if(types&(1U<<type)) {goto part_done; } types|=1U<<type;
+ if(!fg_count(&q,1000000,&count)||!count||count>1000000-elements) {goto part_done; } elements+=count;
  if(elemids&&!fg_ens_ids(&q,count,&elementset))goto part_done;
  for(i=0;i<count*arity;++i){uint32_t index;if(!fg_take(&q,4,&p)||(index=pm_le32(p))<1||index>nodes)goto part_done;}
  xx_rt_snprintf(label,sizeof(label),"part-%u-elements-%u.geo",id,typeindex++);if(!fg_emit(f,s,label,start,q.p-start,n))goto part_done;

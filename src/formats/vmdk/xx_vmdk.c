@@ -464,7 +464,7 @@ static bool vmdk_walk(Abstractformat *f, const vmdk_stream *s,
     bool valid = false;
     int level = -1;
     if (!vmdk_memory_limit(f, options, base_memory) ||
-        s->entries > SIZE_MAX / 4U || s->gtes > SIZE_MAX / 4U) return false;
+        s->entries > SIZE_MAX / 4U || (uint64_t)s->gtes * 4U > SIZE_MAX) return false;
     directory = (uint8_t *)xx_mem_alloc((size_t)s->entries * 4U);
     table = (uint8_t *)xx_mem_alloc((size_t)s->gtes * 4U);
     if (!directory || !table ||
@@ -817,7 +817,7 @@ static xx_io_device *vmdk_disk_open(Abstractformat *source,
     uint64_t base_memory;
     int64_t cursor;
     if (!source || !layout || layout->entries > SIZE_MAX / 4U ||
-        layout->gtes > SIZE_MAX / 4U) return NULL;
+        (uint64_t)layout->gtes * 4U > SIZE_MAX) return NULL;
     base_memory = sizeof(vmdk_disk) + layout->entries * 4U +
                   (uint64_t)layout->gtes * 4U;
     if (!vmdk_memory_limit(source, options, base_memory)) return NULL;

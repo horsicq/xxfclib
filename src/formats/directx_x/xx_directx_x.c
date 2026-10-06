@@ -26,7 +26,7 @@ static bool fg_x_object(fg_x_state *st,unsigned parent,unsigned depth,uint32_t v
  if(depth>32||++st->objects>4096)return false;
  if(fg_kw(q,"Frame"))kind=1;else if(fg_kw(q,"Mesh"))kind=2;else if(fg_kw(q,"Material"))kind=3;else if(fg_kw(q,"FrameTransformMatrix"))kind=4;else if(fg_kw(q,"MeshNormals"))kind=5;else if(fg_kw(q,"MeshTextureCoords"))kind=6;else if(fg_kw(q,"MeshMaterialList"))kind=7;else if(fg_kw(q,"VertexDuplicationIndices"))kind=8;else if(fg_kw(q,"XSkinMeshHeader"))kind=9;else if(fg_kw(q,"SkinWeights"))kind=10;else if(fg_kw(q,"AnimTicksPerSecond"))kind=11;else if(fg_kw(q,"TextureFilename"))kind=12;else return false;
  if(parent==0){if(kind!=1&&kind!=2&&kind!=3&&kind!=11)return false;}else if(parent==1){if(kind!=1&&kind!=2&&kind!=4)return false;}else if(parent==2){if(kind<5||kind>10)return false;}else if(parent==3){if(kind!=12)return false;}else if(parent==7){if(kind!=3)return false;}else return false;
- if(!fg_skip(q))return false;if(q->p<q->n&&q->b[q->p]!='{'){if(!fg_ident(q,&at,&z))return false;named=true;if((kind==1||kind==3)&&!fg_x_add(st,at,z,kind,false))return false;}
+ if(!fg_skip(q)) {return false; } if(q->p<q->n&&q->b[q->p]!='{'){if(!fg_ident(q,&at,&z))return false;named=true;if((kind==1||kind==3)&&!fg_x_add(st,at,z,kind,false))return false;}
  if(!fg_char(q,'{'))return false;
  if(kind==4){for(i=0;i<16;++i){double v;if(!fg_number(q,&v)||!fg_char(q,i<15?',':';'))return false;}if(!fg_char(q,';'))return false;}
  else if(kind==3){if(!fg_x_vectors(q,1,4,true)||!fg_x_float(q,false)||!fg_x_vectors(q,1,3,true)||!fg_x_vectors(q,1,3,true))return false;while(fg_skip(q)&&q->p<q->n&&q->b[q->p]!='}')if(!fg_x_object(st,kind,depth+1,0,0))return false;}
@@ -44,9 +44,9 @@ static bool fg_x_object(fg_x_state *st,unsigned parent,unsigned depth,uint32_t v
 }
 static bool fg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  fg_x_state st;unsigned i,j;bool ok=false;xx_mem_zero(&st,sizeof(st));st.q.b=b;st.q.p=16;st.q.n=n;st.q.pd=pd;st.q.comments=true;
- if(n<16||!fg_tag(b,"xof 0303txt 0032",16)||!fg_utf(b,n,true,pd)||!fg_emit(f,s,"descriptor.x",0,16,n))return false;st.names=(fg_x_name *)xx_mem_alloc(sizeof(fg_x_name)*4096);st.refs=(fg_x_name *)xx_mem_alloc(sizeof(fg_x_name)*4096);if(!st.names||!st.refs)goto done;
+ if(n<16||!fg_tag(b,"xof 0303txt 0032",16)||!fg_utf(b,n,true,pd)||!fg_emit(f,s,"descriptor.x",0,16,n)) {return false; } st.names=(fg_x_name *)xx_mem_alloc(sizeof(fg_x_name)*4096);st.refs=(fg_x_name *)xx_mem_alloc(sizeof(fg_x_name)*4096);if(!st.names||!st.refs)goto done;
  while(fg_skip(&st.q)&&st.q.p<n){uint64_t p=st.q.p;fg_lex save=st.q;bool temp=fg_kw(&st.q,"template");char label[48];st.q=save;if(!(temp?fg_x_template(&st):fg_x_object(&st,0,0,0,0)))goto done;xx_rt_snprintf(label,sizeof(label),"object-%u.x",(unsigned)s->count);if(!fg_emit(f,s,label,p,st.q.p-p,n))goto done;}
- if(!st.meshes||!fg_end(&st.q))goto done;for(i=0;i<st.nr;++i){bool found=false;for(j=0;j<st.nn;++j)if(fg_x_equal(&st,st.refs[i],st.names[j])){if(st.refs[i].kind!=st.names[j].kind)goto done;found=true;break;}if(!found||st.work>16000000)goto done;}ok=fg_cover(f,s,"framing.x",n);
+ if(!st.meshes||!fg_end(&st.q)) {goto done; } for(i=0;i<st.nr;++i){bool found=false;for(j=0;j<st.nn;++j)if(fg_x_equal(&st,st.refs[i],st.names[j])){if(st.refs[i].kind!=st.names[j].kind)goto done;found=true;break;}if(!found||st.work>16000000)goto done;}ok=fg_cover(f,s,"framing.x",n);
 done:if(st.names)xx_mem_free(st.names);if(st.refs)xx_mem_free(st.refs);return ok;
 }
 

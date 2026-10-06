@@ -9,7 +9,7 @@ void xx_hxc_xml_disk_layout_init(xx_hxc_xml_disk_layout *r,xx_io_device *d,int64
 }
 xx_hxc_xml_disk_layout *xx_hxc_xml_disk_layout_create(xx_io_device *d,int64_t b) {
     xx_hxc_xml_disk_layout *r=(xx_hxc_xml_disk_layout *)xx_mem_alloc(sizeof(*r));
-    if(r) xx_hxc_xml_disk_layout_init(r,d,b); return r;
+    if(r) { xx_hxc_xml_disk_layout_init(r,d,b); } return r;
 }
 void xx_hxc_xml_disk_layout_destroy(xx_hxc_xml_disk_layout *r) { xx_hxc_raw_floppy_destroy(r); }
 void xx_hxc_xml_disk_layout_free(xx_hxc_xml_disk_layout *r) { xx_hxc_raw_floppy_free(r); }

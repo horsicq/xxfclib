@@ -216,7 +216,7 @@ void xx_cdrdao_toc_init(xx_cdrdao_toc *t, xx_io_device *device, int64_t base) {
 }
 xx_cdrdao_toc *xx_cdrdao_toc_create(xx_io_device *device, int64_t base) {
     xx_cdrdao_toc *t = (xx_cdrdao_toc *)xx_mem_alloc(sizeof(*t));
-    if (t) xx_cdrdao_toc_init(t, device, base); return t;
+    if (t) { xx_cdrdao_toc_init(t, device, base); } return t;
 }
 void xx_cdrdao_toc_destroy(xx_cdrdao_toc *t) {
     uint32_t i;
@@ -230,7 +230,7 @@ void xx_cdrdao_toc_free(xx_cdrdao_toc *t) {
 }
 bool xx_cdrdao_toc_check_is_valid(Abstractformat *f, xx_pd_struct *pd) {
     toc_view *v = toc_parse(f, pd);
-    if (!v) return false; toc_release(v); return true;
+    if (!v) { return false; } toc_release(v); return true;
 }
 bool xx_cdrdao_toc_handle_base_info(Abstractformat *f, xx_pd_struct *pd) {
     xx_cdrdao_toc *t = (xx_cdrdao_toc *)f; toc_view *v;
@@ -259,7 +259,7 @@ bool xx_cdrdao_toc_set_data_device(xx_cdrdao_toc *t, uint32_t index,
 static bool toc_safe_name(const char *name) {
     static const char *const reserved[] = {"CON","PRN","AUX","NUL","CONIN$","CONOUT$","CLOCK$"};
     size_t n, stem, i; char word[16];
-    if (!name) return false; n = strlen(name);
+    if (!name) { return false; } n = strlen(name);
     if (!n || n > TOC_MAX_NAME || name[n - 1U] == '.' || name[n - 1U] == ' ') return false;
     for (i = 0U; i < n; ++i) {
         unsigned char c = (unsigned char)name[i];

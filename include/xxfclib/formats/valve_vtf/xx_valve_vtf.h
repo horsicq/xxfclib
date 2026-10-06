@@ -1,7 +1,7 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  * Layout reference: https://raw.githubusercontent.com/ValveSoftware/source-sdk-2013/master/src/public/vtf/vtf.h
- * Valve VTF 7.0–7.2 encoded thumbnails and mip/frame/face surfaces (RGBA/RGB/BGR/BGRA, DXT1/3/5). Resource-table 7.3+ and Xbox variants are rejected; no pixel decoding.
+ * Valve VTF 7.0â€“7.2 encoded thumbnails and mip/frame/face surfaces (RGBA/RGB/BGR/BGRA, DXT1/3/5). Resource-table 7.3+ and Xbox variants are rejected; no pixel decoding.
  */
 #ifndef XX_VALVE_VTF_H
 #define XX_VALVE_VTF_H

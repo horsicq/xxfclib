@@ -11,7 +11,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  for(i=0;i<np;++i){const uint8_t *q=b.p+(size_t)pat+i*(2+ch*2);FM_NEED(pm_be16(q)>0&&pm_be16(q)<=256);for(j=0;j<ch;++j)FM_NEED(pm_be16(q+2+j*2)>0&&pm_be16(q+2+j*2)<=nt);}
  for(i=1;i<nt;++i){uint32_t row=0;a=pm_be32(b.p+(size_t)trk+i*4);at=a;FM_NEED(fm_span(&b,at,2));rows=pm_be16(b.p+(size_t)at);at+=2;FM_NEED(rows&&rows<=255);while(row<rows){uint8_t v;FM_NEED(fm_work(&b,1)&&fm_span(&b,at,1));v=b.p[(size_t)at++];row+=v&3;FM_NEED(row<rows);for(j=2;j<8;++j)if(v&(1U<<j)){FM_NEED(fm_span(&b,at,1));if(j==3)FM_NEED(b.p[(size_t)at]<=ni);++at;}++row;}FM_NEED(fm_claim(&b,ranges,&nr,a,at-a,true)&&fm_emit(f,s,&b,"track.mgt",a,at-a));}
  for(i=0;i<ni;++i){const uint8_t *q=b.p+(size_t)inst+i*80;uint64_t n=pm_be32(q+36),lp=pm_be32(q+40),lz=pm_be32(q+44);FM_NEED(lp<=n&&lz<=n-lp&&!(q[64]&~3U));if(n){a=pm_be32(q+32);FM_NEED(fm_claim(&b,ranges,&nr,a,n,true)&&fm_emit(f,s,&b,"sample.pcm8",a,n));}}
- for(i=0;i<nr;++i)if(ranges[i].at+ranges[i].n>end)end=ranges[i].at+ranges[i].n;FM_NEED(end==b.n);s->size=(int64_t)b.n;ok=true;
+ for(i=0;i<nr;++i) { if(ranges[i].at+ranges[i].n>end)end=ranges[i].at+ranges[i].n; } FM_NEED(end==b.n);s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }
 void xx_tracker_megatracker_init(xx_tracker_megatracker *r,xx_io_device *d,int64_t b) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,b,XX_FILE_TYPE_TRACKER_MEGATRACKER,"tracker_megatracker");}}

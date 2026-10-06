@@ -8,7 +8,7 @@ static bool read_components(Abstractformat *f,pm_stream *s,er_blob *b) {
  uint32_t a=0,count=0,files=0,data=0,load=0,total=0;bool active=false,binary=false;const uint8_t *p=b->p;
  while(a<b->n) {uint32_t leader=a,z,i,sum,type;char name[16];if(!er_poll(b) || ++count>4096) return false;
   while(a<b->n && p[a]==0x55) {if(a-leader>=4096) return false;++a;}if(a==b->n) {if(active || !files) return false;break;}
-  if(a==leader || !er_range(b,a,3) || p[a]!=0x3c) return false;type=p[a+1];z=p[a+2];a+=3;if(!er_range(b,a,z+2) || p[a+z+1]!=0x55) return false;
+  if(a==leader || !er_range(b,a,3) || p[a]!=0x3c) { return false; } type=p[a+1];z=p[a+2];a+=3;if(!er_range(b,a,z+2) || p[a+z+1]!=0x55) return false;
   sum=type+z;for(i=0;i<z;++i) sum+=p[a+i];if((sum&255U)!=p[a+z]) return false;
   if(type==0) {if(active || z!=15 || !er_name(p+a,8,name,false) || p[a+8]>2 || (p[a+9]!=0 && p[a+9]!=255) || (p[a+10]!=0 && p[a+10]!=255)) return false;
    load=pm_be16(p+a+13);binary=p[a+8]==2 && p[a+9]==0;total=data=0;active=true;if(!er_emit(f,s,b,"filename-descriptor.bin",a,z)) return false;

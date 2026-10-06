@@ -8,7 +8,7 @@ static bool dcd_record(Abstractformat *f,uint64_t *at,uint64_t end,bool be,uint3
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[92],p[8];uint64_t total=(uint64_t)pm_available(f),at=92,data,bytes,header;uint32_t frames,atoms,title,i,j,tail;bool be,box;char label[64];
-    if(total>67108864 || !pm_read(f,0,h,92) || xx_rt_memcmp(h+4,"CORD",4)) return false;be=pm_be32(h)==84;
+    if(total>67108864 || !pm_read(f,0,h,92) || xx_rt_memcmp(h+4,"CORD",4)) { return false; } be=pm_be32(h)==84;
     if(fd_u32(h,be)!=84 || fd_u32(h+88,be)!=84 || !(frames=fd_u32(h+8,be)) || frames>1024 || (int32_t)fd_u32(h+12,be)<0 || !fd_u32(h+16,be) || fd_u32(h+40,be) || (fd_u32(h+44,be)&0x7f800000U)==0x7f800000U || !fd_u32(h+84,be) || fd_u32(h+48,be)>1 || fd_u32(h+52,be)) return false;
     box=fd_u32(h+48,be)!=0;for(i=56;i<84;i+=4) if(fd_u32(h+i,be)) return false;
     if(!eh_word(f,&at,total,be,&title,pd) || title<84 || title>4+80*32 || (title-4)%80 || !eh_span(at,title,total) || !pm_read(f,(int64_t)at,p,4) || fd_u32(p,be)!=(title-4)/80) return false;

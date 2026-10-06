@@ -8,7 +8,7 @@ static bool atoms(Abstractformat *f,const beam_chunk *chunk,unsigned *count,xx_p
     uint8_t b[256];uint32_t n,i;uint64_t at=chunk->at+4,end=chunk->at+chunk->size;
     if(chunk->size<4 || !pm_read(f,(int64_t)chunk->at,b,4) || !(n=pm_be32(b)) || n>65536) return false;
     for(i=0;i<n;++i) {unsigned len;if(fd_stop(pd) || !fd_range(at,1,end) || !pm_read(f,(int64_t)at++,b,1)) return false;len=b[0];if(!fd_range(at,len,end) || !pm_read(f,(int64_t)at,b,len)) return false;
-        if(chunk->id==UINT32_C(0x41745538) && !fourth_utf8(b,len,pd)) return false;at+=len;
+        if(chunk->id==UINT32_C(0x41745538) && !fourth_utf8(b,len,pd)) { return false; } at+=len;
     }if(at!=end) return false;*count=n;return true;
 }
 static bool table(Abstractformat *f,const beam_chunk *chunk,unsigned atom_count,unsigned labels,bool imports,xx_pd_struct *pd) {
@@ -24,11 +24,11 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     end=8+(uint64_t)pm_be32(h+4);if(end<12 || end>(uint64_t)available || end>67108864) return false;
     while(at<end) {uint32_t id,n;uint64_t padded;if(fd_stop(pd) || count==128 || !fd_range(at,8,end) || !pm_read(f,(int64_t)at,h,8)) return false;
         id=pm_be32(h);n=pm_be32(h+4);for(i=0;i<4;++i) if(h[i]<32 || h[i]>126) return false;padded=((uint64_t)n+3)&~UINT64_C(3);
-        if(!fd_range(at+8,padded,end)) return false;for(i=0;i<count;++i) if(chunks[i].id==id) return false;
+        if(!fd_range(at+8,padded,end)) { return false; } for(i=0;i<count;++i) if(chunks[i].id==id) return false;
         chunks[count].id=id;chunks[count].size=n;chunks[count].at=at+8;
         if(id==UINT32_C(0x41746f6d) || id==UINT32_C(0x41745538)) {if(atom>=0) return false;atom=(int)count;}
-        if(id==UINT32_C(0x436f6465)) code=(int)count;if(id==UINT32_C(0x53747254)) str=(int)count;
-        if(id==UINT32_C(0x496d7054)) imp=(int)count;if(id==UINT32_C(0x45787054)) exp=(int)count;
+        if(id==UINT32_C(0x436f6465)) { code=(int)count; } if(id==UINT32_C(0x53747254)) str=(int)count;
+        if(id==UINT32_C(0x496d7054)) { imp=(int)count; } if(id==UINT32_C(0x45787054)) exp=(int)count;
         ++count;at+=8+padded;
     }
     if(at!=end || atom<0 || code<0 || str<0 || imp<0 || exp<0 || !atoms(f,chunks+atom,&natoms,pd) || chunks[code].size<21 || !pm_read(f,(int64_t)chunks[code].at,h,20)) return false;

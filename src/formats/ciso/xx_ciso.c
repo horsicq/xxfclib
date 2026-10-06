@@ -124,7 +124,7 @@ static uint32_t ciso_be32(const uint8_t *b) {
            ((uint32_t)b[2] << 8U) | (uint32_t)b[3];
 }
 
-static uint64_t ciso_be64(const uint8_t *b) {
+static XXFC_MAYBE_UNUSED uint64_t ciso_be64(const uint8_t *b) {
     return ((uint64_t)ciso_be32(b) << 32U) | (uint64_t)ciso_be32(b + 4U);
 }
 
@@ -191,7 +191,7 @@ buffer_done:
 }
 
 /* Emit `size` zero bytes: the filler every sparse disk image needs. */
-static bool ciso_write_zeros(xx_io_device *destination, uint64_t size,
+static XXFC_MAYBE_UNUSED bool ciso_write_zeros(xx_io_device *destination, uint64_t size,
                             xx_pd_struct *pd) {
     size_t capacity = xx_get_file_buffer_size();
     uint8_t *buffer = NULL;
@@ -254,7 +254,7 @@ static char *ciso_make_name(const char *prefix, int64_t index,
 /* Names that DO come from the container are normalized here: separators are
  * unified, traversal components are removed and anything a filesystem would
  * choke on becomes '_'. */
-static char *ciso_clean_name(const uint8_t *bytes, size_t size) {
+static XXFC_MAYBE_UNUSED char *ciso_clean_name(const uint8_t *bytes, size_t size) {
     char *name;
     size_t input = 0U, output = 0U;
     if ((!bytes && size != 0U) || size > SIZE_MAX - 2U) return NULL;

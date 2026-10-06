@@ -6,8 +6,8 @@
 #include "xxfclib/formats/nintendo_3dsx/xx_nintendo_3dsx.h"
 #include "../xx_payload_members.h"
 
-static uint16_t g16(const uint8_t *p,bool be) { return be ? pm_be16(p) : pm_le16(p); }
-static uint32_t g32(const uint8_t *p,bool be) { return be ? pm_be32(p) : pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint16_t g16(const uint8_t *p,bool be) { return be ? pm_be16(p) : pm_le16(p); }
+static XXFC_MAYBE_UNUSED uint32_t g32(const uint8_t *p,bool be) { return be ? pm_be32(p) : pm_le32(p); }
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool overlap(uint64_t a,uint64_t n,uint64_t b,uint64_t m) { return n && m && a<b+m && b<a+n; }
 static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uint64_t n,uint64_t total) {
@@ -16,11 +16,11 @@ static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uin
     for(i=0;i<s->count;++i) if(overlap(at,n,(uint64_t)(s->items[i].offset-f->base_address),(uint64_t)s->items[i].size)) return false;
     return pm_add(f,s,name,(int64_t)at,(int64_t)n);
 }
-static bool zname(Abstractformat *f,uint64_t at,uint64_t end,bool empty) {
+static XXFC_MAYBE_UNUSED bool zname(Abstractformat *f,uint64_t at,uint64_t end,bool empty) {
     uint8_t c; uint64_t i; if(at>=end || end>(uint64_t)pm_available(f)) return false;
     for(i=0;i<4096 && at+i<end;++i) { if(!pm_read(f,(int64_t)(at+i),&c,1)) return false; if(!c) return empty || i!=0; } return false;
 }
-static bool bom(const uint8_t *p,bool *be) { *be=p[0]==0xfe && p[1]==0xff; return *be || (p[0]==0xff && p[1]==0xfe); }
+static XXFC_MAYBE_UNUSED bool bom(const uint8_t *p,bool *be) { *be=p[0]==0xfe && p[1]==0xff; return *be || (p[0]==0xff && p[1]==0xfe); }
 
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
@@ -33,11 +33,11 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     at=56; relocation_start=at+(uint64_t)sizes[0]+sizes[1]+sizes[2]-bss;
     if(!span(at,relocation_start-at+bytes,(uint64_t)pm_available(f))) return false;
     for(i=0;i<3;++i) { char label[40]; uint32_t n=sizes[i]-(i==2 ? bss : 0); xx_rt_snprintf(label,sizeof(label),"%s.bin",i==0 ? "code" : i==1 ? "rodata" : "data");
-        if((pd && xx_pd_is_stopped(pd)) || (n && !emit(f,s,label,at,n,relocation_start+bytes))) return false; at+=n; }
+        if((pd && xx_pd_is_stopped(pd)) || (n && !emit(f,s,label,at,n,relocation_start+bytes))) { return false; } at+=n; }
     for(i=0;i<3;++i) for(j=0;j<2;++j) { char label[40]; uint64_t start=at; word=0;
         for(k=0;k<counts[i*2+j];++k) { uint32_t skip,patch;
-            if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,(int64_t)at,e,4)) return false; at+=4; skip=pm_le16(e); patch=pm_le16(e+2);
-            if((!patch && !skip) || word+skip>(uint64_t)sizes[i]/4 || patch>(uint64_t)sizes[i]/4-word-skip) return false; word+=skip+patch; }
+            if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,(int64_t)at,e,4)) { return false; } at+=4; skip=pm_le16(e); patch=pm_le16(e+2);
+            if((!patch && !skip) || word+skip>(uint64_t)sizes[i]/4 || patch>(uint64_t)sizes[i]/4-word-skip) { return false; } word+=skip+patch; }
         if(at>start) { xx_rt_snprintf(label,sizeof(label),"segment-%u-%s-relocations.bin",i,j ? "relative" : "absolute"); if(!emit(f,s,label,start,at-start,at)) return false; }
     }
     s->size=(int64_t)at; return true;

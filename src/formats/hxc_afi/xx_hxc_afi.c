@@ -9,7 +9,7 @@ static bool afi_tag(hx_blob *b,uint64_t a,const char *tag){size_t n=xx_rt_strlen
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd){
  hx_blob b;hx_range ranges[4096];unsigned nr=0;uint32_t list,infos,count,i,strings,lo,hi,ls,hs;uint64_t maximum=0;bool ok=false;char name[96],text[512];uint8_t seen[340];
  static const char *types[]={"","MFM_DATA","INDEX_DATA","BITRATE_DATA","PDC_DATA","WEAKBITS_DATA","CELL_DATA"};
- if(!hx_load(f,&b,pd))return false;xx_mem_zero(seen,sizeof(seen));
+ if(!hx_load(f,&b,pd)) {return false; } xx_mem_zero(seen,sizeof(seen));
  HX_NEED(afi_tag(&b,0,"AFI_FLOPPY_IMG")&&hx_span(&b,0,32)&&b.p[16]==0&&b.p[17]<=2&&pm_le32(b.p+18)==32&&hx_ccitt(&b,0,32));
  infos=pm_le32(b.p+22);list=pm_le32(b.p+26);HX_NEED(hx_claim(&b,ranges,&nr,0,32)&&infos>=32&&list>=32&&afi_tag(&b,infos,"AFI_INFO")&&hx_span(&b,infos,54));
  lo=pm_le32(b.p+infos+32);hi=pm_le32(b.p+infos+36);ls=pm_le32(b.p+infos+40);hs=pm_le32(b.p+infos+44);strings=pm_le32(b.p+infos+48);

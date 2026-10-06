@@ -13,7 +13,7 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
  if(!nh_range(b,0,20) || xx_rt_memcmp(b->p,"C64-TAPE-RAW",12) || b->p[12]>1 || b->p[13] || b->p[14]>3 || b->p[15] || !pm_le32(b->p+16) || !nh_range(b,20,pm_le32(b->p+16))) return false;
  end=20+pm_le32(b->p+16);
  while(at<end) { if(!(at&4095U) && !nh_poll(b)) return false; if(!b->p[at++] && b->p[12]==1) { if(end-at<3 || !nh_u24(b->p+at)) return false; at+=3; } }
- if(!nh_emit(f,s,b,"tape-descriptor.bin",0,20) || !nh_emit(f,s,b,"pulses.tapdata",20,end-20)) return false; s->size=end; return true;
+ if(!nh_emit(f,s,b,"tape-descriptor.bin",0,20) || !nh_emit(f,s,b,"pulses.tapdata",20,end-20)) { return false; } s->size=end; return true;
 }
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { nh_blob b; bool ok; if(!nh_load(f,&b,pd)) return false; ok=parse_blob(f,s,&b); xx_mem_free(b.p); return ok; }

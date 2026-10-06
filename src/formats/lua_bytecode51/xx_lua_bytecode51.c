@@ -28,17 +28,17 @@ static bool lua_string(lua_scan *q){uint64_t len;if(!span(q->p,q->size_t_width,q
 static bool lua_count(lua_scan *q,uint32_t *c,uint32_t max){if(!span(q->p,4,q->n))return false;*c=pm_le32(q->b+q->p);q->p+=4;return *c<=max;}
 static bool lua_proto(lua_scan *q,unsigned depth){uint32_t first,last,code,constants,children,lines,locals,upvalues,i;uint8_t nups,params,stack;if(depth>32||++q->protos>1024||stop(q->pd)||!lua_string(q)||!span(q->p,12,q->n))return false;
  first=pm_le32(q->b+q->p);last=pm_le32(q->b+q->p+4);nups=q->b[q->p+8];params=q->b[q->p+9];stack=q->b[q->p+11];if(first>last||nups>60||params>stack||stack<2||stack>250||q->b[q->p+10]>7)return false;q->p+=12;
- if(!lua_count(q,&code,65536)||!code||q->instructions+code>1000000||!span(q->p,(uint64_t)code*4,q->n))return false;q->instructions+=code;for(i=0;i<code;++i)if((pm_le32(q->b+q->p+(uint64_t)i*4)&63)>37)return false;q->p+=(uint64_t)code*4;
- if(!lua_count(q,&constants,65536))return false;for(i=0;i<constants;++i){uint8_t t;if(q->p>=q->n)return false;t=q->b[q->p++];if(t==0)continue;if(t==1){if(q->p>=q->n||q->b[q->p++]>1)return false;}else if(t==3){if(!span(q->p,8,q->n)||!finite64(q->b+q->p,false))return false;q->p+=8;}else if(t==4){if(!lua_string(q))return false;}else return false;}
- if(!lua_count(q,&children,1024))return false;for(i=0;i<children;++i)if(!lua_proto(q,depth+1))return false;
- if(!lua_count(q,&lines,65536)||(lines&&lines!=code)||!span(q->p,(uint64_t)lines*4,q->n))return false;q->p+=(uint64_t)lines*4;if(!lua_count(q,&locals,65536))return false;for(i=0;i<locals;++i){uint32_t a,e;if(!lua_string(q)||!span(q->p,8,q->n))return false;a=pm_le32(q->b+q->p);e=pm_le32(q->b+q->p+4);q->p+=8;if(a>e||e>code)return false;}
- if(!lua_count(q,&upvalues,60)||(upvalues&&upvalues!=nups))return false;for(i=0;i<upvalues;++i)if(!lua_string(q))return false;return true;
+ if(!lua_count(q,&code,65536)||!code||q->instructions+code>1000000||!span(q->p,(uint64_t)code*4,q->n)) {return false; } q->instructions+=code;for(i=0;i<code;++i)if((pm_le32(q->b+q->p+(uint64_t)i*4)&63)>37)return false;q->p+=(uint64_t)code*4;
+ if(!lua_count(q,&constants,65536)) {return false; } for(i=0;i<constants;++i){uint8_t t;if(q->p>=q->n)return false;t=q->b[q->p++];if(t==0)continue;if(t==1){if(q->p>=q->n||q->b[q->p++]>1)return false;}else if(t==3){if(!span(q->p,8,q->n)||!finite64(q->b+q->p,false))return false;q->p+=8;}else if(t==4){if(!lua_string(q))return false;}else return false;}
+ if(!lua_count(q,&children,1024)) {return false; } for(i=0;i<children;++i)if(!lua_proto(q,depth+1))return false;
+ if(!lua_count(q,&lines,65536)||(lines&&lines!=code)||!span(q->p,(uint64_t)lines*4,q->n)) {return false; } q->p+=(uint64_t)lines*4;if(!lua_count(q,&locals,65536))return false;for(i=0;i<locals;++i){uint32_t a,e;if(!lua_string(q)||!span(q->p,8,q->n))return false;a=pm_le32(q->b+q->p);e=pm_le32(q->b+q->p+4);q->p+=8;if(a>e||e>code)return false;}
+ if(!lua_count(q,&upvalues,60)||(upvalues&&upvalues!=nups)) {return false; } for(i=0;i<upvalues;++i)if(!lua_string(q))return false;return true;
 }
 
 static bool parse_data(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
 
  lua_scan q;if(n<12||xx_rt_memcmp(b,"\x1bLua\x51",5)||b[5]||b[6]!=1||b[7]!=4||(b[8]!=4&&b[8]!=8)||b[9]!=4||b[10]!=8||b[11])return false;xx_mem_zero(&q,sizeof(q));q.b=b;q.n=n;q.p=12;q.size_t_width=b[8];q.pd=pd;if(!lua_proto(&q,0)||q.p!=n)return false;
- if(!emit(f,s,"header.bin",0,12,n)||!emit(f,s,"prototype-tree.bin",12,n-12,n))return false;s->size=(int64_t)n;return true;
+ if(!emit(f,s,"header.bin",0,12,n)||!emit(f,s,"prototype-tree.bin",12,n-12,n)) {return false; } s->size=(int64_t)n;return true;
 
 }
 

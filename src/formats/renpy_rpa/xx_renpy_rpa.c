@@ -6,7 +6,7 @@
 #include "xxfclib/formats/renpy_rpa/xx_renpy_rpa.h"
 #include "../xx_payload_members.h"
 
-static uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uint64_t n,uint64_t total) {
     size_t i;
@@ -15,7 +15,7 @@ static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uin
         if(n && b && at<a+b && a<at+n) return false; }
     return pm_add(f,s,name,(int64_t)at,(int64_t)n);
 }
-static bool zname(Abstractformat *f,uint64_t at,uint64_t end) {
+static XXFC_MAYBE_UNUSED bool zname(Abstractformat *f,uint64_t at,uint64_t end) {
     uint8_t c; uint64_t i; if(at>=end || end>(uint64_t)pm_available(f)) return false;
     for(i=0;i<4096 && at+i<end;++i) { if(!pm_read(f,(int64_t)(at+i),&c,1)) return false; if(!c) return i!=0; } return false;
 }
@@ -30,14 +30,14 @@ static bool integer(rp *r,uint64_t *v) {
     if(op=='K') { if(r->at>=r->size) return false; *v=r->p[r->at++]; return true; }
     if(op=='M') { if(r->size-r->at<2) return false; *v=pm_le16(r->p+r->at); r->at+=2; return true; }
     if(op=='J') { if(r->size-r->at<4 || r->p[r->at+3]&128) return false; *v=pm_le32(r->p+r->at); r->at+=4; return true; }
-    if(op!=0x8a || r->at>=r->size) return false; n=r->p[r->at++]; if(!n || n>8 || r->size-r->at<n || r->p[r->at+n-1]&128) return false;
+    if(op!=0x8a || r->at>=r->size) { return false; } n=r->p[r->at++]; if(!n || n>8 || r->size-r->at<n || r->p[r->at+n-1]&128) return false;
     *v=0; for(i=0;i<n;++i) *v|=(uint64_t)r->p[r->at+i]<<(i*8); r->at+=n; return true;
 }
 static bool keyname(rp *r) {
     uint8_t op; uint32_t n; if(r->at>=r->size) return false; op=r->p[r->at++];
     if(op=='X' || op=='T') { if(r->size-r->at<4) return false; n=pm_le32(r->p+r->at); r->at+=4; }
     else if(op=='U') { if(r->at>=r->size) return false; n=r->p[r->at++]; } else return false;
-    if(!n || n>4096 || r->size-r->at<n) return false; r->at+=n; return memo(r);
+    if(!n || n>4096 || r->size-r->at<n) { return false; } r->at+=n; return memo(r);
 }
 static bool hexnumber(const uint8_t *p,size_t n,uint64_t *value) { size_t i; *value=0; for(i=0;i<n;++i) { uint8_t c=p[i]; unsigned d=c>='0' && c<='9' ? c-'0' : c>='a' && c<='f' ? c-'a'+10 : c>='A' && c<='F' ? c-'A'+10 : 16; if(d>15) return false; *value=(*value<<4)|d; } return true; }
 

@@ -25,7 +25,7 @@ buffer_done:
     xx_mem_free(b);
     return buffer_result;
 }
-static bool section(Abstractformat *f,uint64_t at,uint64_t total,const char *magic,uint32_t n,xx_pd_struct *pd) { uint8_t h[8]; return !stop(pd) && n>=8 && span(at,n,total) && pm_read(f,(int64_t)at,h,8) && !xx_rt_memcmp(h,magic,4) && pm_be32(h+4)==n; }
+static XXFC_MAYBE_UNUSED bool section(Abstractformat *f,uint64_t at,uint64_t total,const char *magic,uint32_t n,xx_pd_struct *pd) { uint8_t h[8]; return !stop(pd) && n>=8 && span(at,n,total) && pm_read(f,(int64_t)at,h,8) && !xx_rt_memcmp(h,magic,4) && pm_be32(h+4)==n; }
 
 
 typedef struct utf_string_cache { uint64_t pool,end,*budget; uint32_t offsets[64]; unsigned count,next; } utf_string_cache;
@@ -61,35 +61,35 @@ done:
     xx_mem_free(p);return result;
 }
 static bool utf_value(Abstractformat *f,pm_stream *s,uint64_t at,unsigned kind,utf_string_cache *cache,uint64_t data,uint64_t total,bool collect,xx_pd_struct *pd) { uint8_t p[16]; static const uint8_t sizes[]={1,1,2,2,4,4,8,8,4,8,4,8,16}; if(kind>12 || !pm_read(f,(int64_t)at,p,sizes[kind])) return false;
-    if(kind==8 && !finite32(p,true)) return false; if(kind==9 && (g64(p,true)&0x7ff0000000000000ULL)==0x7ff0000000000000ULL) return false;
+    if(kind==8 && !finite32(p,true)) { return false; } if(kind==9 && (g64(p,true)&0x7ff0000000000000ULL)==0x7ff0000000000000ULL) return false;
     if(kind==10) return utf_string(f,cache,pm_be32(p),pd);
     if(kind==11) { uint32_t offset=pm_be32(p),n=pm_be32(p+4); if(!span(offset,n,total-data)) return false; if(n && collect && !emit(f,s,"binary-value.bin",data+offset,n,total)) return false; }
     return !stop(pd);
 }
 static bool utf_table(Abstractformat *f,pm_stream *s,uint64_t base,uint64_t available,bool collect,uint64_t *length,uint64_t *scan_budget,xx_pd_struct *pd) { uint8_t h[32],p[5]; uint32_t rows,columns,width,i,j,colwidth=0; uint64_t total,row_at,strings,data,at=base+32; unsigned kinds[128],sizes[128],flags[128]; uint32_t positions[128]; utf_string_cache cache;
     static const uint8_t type_sizes[]={1,1,2,2,4,4,8,8,4,8,4,8,16};
-    if(!span(base,32,available) || !pm_read(f,(int64_t)base,h,32) || xx_rt_memcmp(h,"@UTF",4) || pm_be16(h+8)>1) return false; *length=8U+(uint64_t)pm_be32(h+4); if(*length<32 || *length>67108864 || !span(base,*length,available)) return false; total=base+*length; row_at=base+8+pm_be16(h+10); strings=base+8+pm_be32(h+12); data=base+8+pm_be32(h+16); columns=pm_be16(h+24); width=pm_be16(h+26); rows=pm_be32(h+28);
-    if(!scan_budget || !columns || columns>128 || !rows || rows>1024 || row_at<base+32 || strings<row_at || data<strings || data>total || data-strings>1048576 || !span(row_at,(uint64_t)rows*width,strings)) return false; xx_mem_zero(&cache,sizeof(cache)); cache.pool=strings; cache.end=data; cache.budget=scan_budget; if(!utf_string(f,&cache,pm_be32(h+20),pd)) return false;
+    if(!span(base,32,available) || !pm_read(f,(int64_t)base,h,32) || xx_rt_memcmp(h,"@UTF",4) || pm_be16(h+8)>1) { return false; } *length=8U+(uint64_t)pm_be32(h+4); if(*length<32 || *length>67108864 || !span(base,*length,available)) return false; total=base+*length; row_at=base+8+pm_be16(h+10); strings=base+8+pm_be32(h+12); data=base+8+pm_be32(h+16); columns=pm_be16(h+24); width=pm_be16(h+26); rows=pm_be32(h+28);
+    if(!scan_budget || !columns || columns>128 || !rows || rows>1024 || row_at<base+32 || strings<row_at || data<strings || data>total || data-strings>1048576 || !span(row_at,(uint64_t)rows*width,strings)) { return false; } xx_mem_zero(&cache,sizeof(cache)); cache.pool=strings; cache.end=data; cache.budget=scan_budget; if(!utf_string(f,&cache,pm_be32(h+20),pd)) return false;
     for(i=0;i<columns;++i) { uint32_t kind,flag; if(!take(f,&at,row_at,p,5,pd)) return false; kind=p[0]&15; flag=p[0]&0xf0; if(kind>12 || !(flag&0x10) || (flag&0x80) || !utf_string(f,&cache,pm_be32(p+1),pd)) return false; kinds[i]=kind; sizes[i]=type_sizes[kind]; flags[i]=flag; positions[i]=colwidth;
       if(flag&0x20) { if(!span(at,sizes[i],row_at) || !utf_value(f,s,at,kind,&cache,data,total,collect,pd)) return false; at+=sizes[i]; }
       if(flag&0x40) colwidth+=sizes[i]; }
     if(colwidth!=width || !zeros(f,at,row_at-at,pd) || !zeros(f,row_at+(uint64_t)rows*width,strings-row_at-(uint64_t)rows*width,pd)) return false;
     for(j=0;j<rows;++j) for(i=0;i<columns;++i) if((flags[i]&0x40) && !utf_value(f,s,row_at+(uint64_t)j*width+positions[i],kinds[i],&cache,data,total,collect,pd)) return false;
-    if(collect && (!emit(f,s,"schema.bin",base+32,row_at-base-32,total) || (width && !emit(f,s,"rows.bin",row_at,(uint64_t)rows*width,total)) || !emit(f,s,"strings.bin",strings,data-strings,total))) return false; return true;
+    if(collect && (!emit(f,s,"schema.bin",base+32,row_at-base-32,total) || (width && !emit(f,s,"rows.bin",row_at,(uint64_t)rows*width,total)) || !emit(f,s,"strings.bin",strings,data-strings,total))) { return false; } return true;
 }
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[32]; uint64_t at=0,total=(uint64_t)pm_available(f),n,body,payload,end,length,scan_budget=8388608; unsigned count=0,packets=0; bool crid=false; char label[40];
     while(at<total) { uint32_t kind,type,pad,offset; if(++count>4096 || stop(pd) || !span(at,32,total) || !pm_read(f,(int64_t)at,h,32)) return false; kind=pm_be32(h); n=8U+(uint64_t)pm_be32(h+4); offset=pm_be16(h+8); pad=pm_be16(h+10); type=pm_be16(h+14);
-      if(n<32 || offset<24 || type>3 || h[13] || pm_be32(h+24) || pm_be32(h+28) || !span(at,n,total) || offset+8U>n || pad>n-offset-8U) return false; end=at+n; payload=at+8+offset; body=end-payload-pad;
+      if(n<32 || offset<24 || type>3 || h[13] || pm_be32(h+24) || pm_be32(h+28) || !span(at,n,total) || offset+8U>n || pad>n-offset-8U) { return false; } end=at+n; payload=at+8+offset; body=end-payload-pad;
       if(kind==0x43524944U) { if(crid || count!=1 || type!=1 || h[12] || !body || !utf_table(f,s,payload,payload+body,true,&length,&scan_budget,pd) || length!=body) return false; crid=true; }
       else if(kind==0x40534656U || kind==0x40534641U) { if(!crid) return false; if(type==0) { if(!body) return false; xx_rt_snprintf(label,sizeof(label),kind==0x40534656U ? "video-%u-packet.bin":"audio-%u-packet.bin",h[12]); if(!emit(f,s,label,payload,body,total)) return false; ++packets; }
         else if(type==1 || type==3) { if(!body || !utf_table(f,s,payload,payload+body,true,&length,&scan_budget,pd) || length!=body) return false; }
         else if(body && !emit(f,s,"section-end.bin",payload,body,total)) return false; }
-      else return false; if(!zeros(f,end-pad,pad,pd)) return false; at=end;
+      else { return false; } if(!zeros(f,end-pad,pad,pd)) return false; at=end;
     }
-    if(!crid || !packets) return false; s->size=(int64_t)total; return true;
+    if(!crid || !packets) { return false; } s->size=(int64_t)total; return true;
 
 }
 

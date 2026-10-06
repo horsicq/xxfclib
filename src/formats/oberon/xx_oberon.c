@@ -244,7 +244,7 @@ static bool ob_set_record(xx_archive_record *record, const ob_member *item) {
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER,
                                            false);
 }
-static const xx_var *ob_option(const xx_list_s *options, uint32_t id) {
+static XXFC_MAYBE_UNUSED const xx_var *ob_option(const xx_list_s *options, uint32_t id) {
     size_t i;
     if (!options) return NULL;
     for (i = 0U; i < options->count; ++i) {

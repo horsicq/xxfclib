@@ -9,7 +9,7 @@ static bool read_components(Abstractformat *f,pm_stream *s,th_blob *b) {
  if(b->n<=160 || b->n>4194464 || xx_rt_memcmp(p,"SGC\x1a",4) || p[4]!=1 || p[5]>1 || p[40]>2 || !p[37] || (unsigned)p[36]+p[37]>256 || (p[39] && p[38]>p[39])) return false;
  load=pm_le16(p+8);if(p[40]==2 && (load<0x8000 || b->n-160>65536-load)) return false;
  if(p[40]<2 && load>=0xc000) return false;
- if(!th_emit(f,s,b,"music-descriptor.bin",0,160) || !th_emit(f,s,b,"program.bin",160,b->n-160)) return false;s->size=b->n;return true;
+ if(!th_emit(f,s,b,"music-descriptor.bin",0,160) || !th_emit(f,s,b,"program.bin",160,b->n-160)) { return false; } s->size=b->n;return true;
 }
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {

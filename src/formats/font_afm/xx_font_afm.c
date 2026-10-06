@@ -22,7 +22,7 @@ static bool af_char(af_state *a,tb_text *q) {
   else if(tb_word(q,"WX")||tb_word(q,"WY")||tb_word(q,"W0X")||tb_word(q,"W0Y")||tb_word(q,"W1X")||tb_word(q,"W1Y")){if(!af_nums(q,1))return false;width=true;}
   else if(tb_word(q,"W")||tb_word(q,"W0")||tb_word(q,"W1")||tb_word(q,"VV")){if(!af_nums(q,2))return false;width=true;}
   else if(tb_word(q,"L")){if(a->refs_count>65533||!af_name(q,a->refs[a->refs_count++])||!af_name(q,a->refs[a->refs_count++])||!tb_done(q))return false;}
-  else return false;q->t=semi+1;q->stop=end;tb_space(q);
+  else { return false; } q->t=semi+1;q->stop=end;tb_space(q);
  }return flags==7&&width;
 }
 static bool af_global(tb_text *q) {
@@ -40,7 +40,7 @@ static bool tb_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
 #define AF(x) do{if(!(x))goto done;}while(0)
  while(q.p<n){AF(!tb_stop(pd)&&tb_line(&q));if(tb_done(&q))continue;
   if(tb_word(&q,"StartCharMetrics")){AF(!characters&&fontname&&!kern&&!composite&&tb_i(&q,&count)&&count>0&&count<=4096&&tb_done(&q)&&tb_emit(f,s,"descriptor.afm",0,q.p,n));characters=true;start=q.p;
-   for(i=0;i<count;++i)AF(tb_line(&q)&&af_char(&a,&q));AF(tb_line(&q)&&tb_word(&q,"EndCharMetrics")&&tb_done(&q)&&tb_emit(f,s,"character-metrics.afm",start,q.p-start,n));
+   for(i=0;i<count;++i) {AF(tb_line(&q)&&af_char(&a,&q)); } AF(tb_line(&q)&&tb_word(&q,"EndCharMetrics")&&tb_done(&q)&&tb_emit(f,s,"character-metrics.afm",start,q.p-start,n));
    for(j=0;j<a.refs_count;++j)AF(af_lookup(&a,a.refs[j],false));
   }
   else if(tb_word(&q,"StartKernData")){AF(characters&&!kern&&!composite&&tb_done(&q));kern=true;start=q.start;

@@ -15,11 +15,11 @@ static bool er_load(Abstractformat *f,er_blob *b,xx_pd_struct *pd) {
 static bool er_emit(Abstractformat *f,pm_stream *s,const er_blob *b,const char *name,uint32_t a,uint32_t z) {
  return z && s->count<4096 && er_poll(b) && er_range(b,a,z) && pm_add(f,s,name,a,z);
 }
-static bool er_zero(const uint8_t *p,uint32_t z) {uint32_t i;for(i=0;i<z;++i) if(p[i]) return false;return true;}
-static bool er_name(const uint8_t *p,uint32_t z,char *out,bool petscii) {
+static XXFC_MAYBE_UNUSED bool er_zero(const uint8_t *p,uint32_t z) {uint32_t i;for(i=0;i<z;++i) if(p[i]) return false;return true;}
+static XXFC_MAYBE_UNUSED bool er_name(const uint8_t *p,uint32_t z,char *out,bool petscii) {
  uint32_t i,n=0;bool ended=false;
  if(!z || !p[0] || p[0]==' ') return false;
  for(i=0;i<z;++i) {unsigned c=p[i];if(!c) ended=true;else if(ended || c<32 || c==127 || (!petscii && c>126)) return false;else out[n++]=(char)c;}
- while(n && out[n-1]==' ') --n;out[n]=0;return n!=0;
+ while(n && out[n-1]==' ') { --n; } out[n]=0;return n!=0;
 }
 #endif

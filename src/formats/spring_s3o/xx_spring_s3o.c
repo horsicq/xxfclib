@@ -28,13 +28,13 @@ static bool s3o_piece(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n
  if(nc>256||nv>65536||ni>262144||pm_le32(b+at+20)||kind>2||kind==1||pm_le32(b+at+36)||!floats(b,at+40,3,false,n)||!s3o_string(b,n,name,r,nr)||!name||(nv==0)!=(ni==0)||(ni&&(ni%(kind==2?4:3)))||(nc&&!reserve(r,nr,2048,children,(uint64_t)nc*4,52,n))||(nv&&!reserve(r,nr,2048,vertices,(uint64_t)nv*32,52,n))||(ni&&!reserve(r,nr,2048,indices,(uint64_t)ni*4,52,n))||!floats(b,vertices,(uint64_t)nv*8,false,n))return false;
  for(i=0;i<ni;++i)if(pm_le32(b+indices+(uint64_t)i*4)>=nv)return false;
  xx_rt_snprintf(label,sizeof(label),"piece-%u-header.bin",*pieces-1);if(!emit(f,s,label,at,52,n))return false;if(nv){xx_rt_snprintf(label,sizeof(label),"piece-%u-vertices.bin",*pieces-1);if(!emit(f,s,label,vertices,(uint64_t)nv*32,n))return false;xx_rt_snprintf(label,sizeof(label),"piece-%u-indices.bin",*pieces-1);if(!emit(f,s,label,indices,(uint64_t)ni*4,n))return false;}
- for(i=0;i<nc;++i)if(!s3o_piece(f,s,b,n,pm_le32(b+children+(uint64_t)i*4),r,nr,pieces,depth+1,pd))return false;return true;
+ for(i=0;i<nc;++i) {if(!s3o_piece(f,s,b,n,pm_le32(b+children+(uint64_t)i*4),r,nr,pieces,depth+1,pd))return false; } return true;
 }
 
 static bool parse_data(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
 
  range ranges[2048];unsigned nr=0,pieces=0;uint64_t end=52;unsigned i;if(n<52||xx_rt_memcmp(b,"Spring unit\0",12)||pm_le32(b+12)||pm_le32(b+40)||!floats(b,16,5,false,n)||(pm_le32(b+16)&0x80000000U)||(pm_le32(b+20)&0x80000000U)||!s3o_string(b,n,pm_le32(b+44),ranges,&nr)||!s3o_string(b,n,pm_le32(b+48),ranges,&nr)||!s3o_piece(f,s,b,n,pm_le32(b+36),ranges,&nr,&pieces,0,pd))return false;
- for(i=0;i<nr;++i)if(ranges[i].at+ranges[i].n>end)end=ranges[i].at+ranges[i].n;s->size=(int64_t)end;return s->count>1;
+ for(i=0;i<nr;++i) {if(ranges[i].at+ranges[i].n>end)end=ranges[i].at+ranges[i].n; } s->size=(int64_t)end;return s->count>1;
 
 }
 

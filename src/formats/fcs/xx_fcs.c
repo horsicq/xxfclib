@@ -16,7 +16,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             if(fd_stop(pd) || count>=4096) goto done;
             for(t=0;t<2;++t) {bool ended=false;tokens[t]=dest;
                 while(p<limit) {char ch=*p++;if(ch==delim) {if(p<limit && *p==delim) {++p;*dest++=delim;}else {ended=true;break;}}else {if(!ch) goto done;*dest++=ch;}}
-                if(!ended || dest==tokens[t]) goto done;*dest++=0;
+                if(!ended || dest==tokens[t]) { goto done; } *dest++=0;
             }
             if(tokens[0][0]!='$') { /* Nonstandard optional keywords are retained. */ }
             for(i=0;i<count;++i) if(!xx_rt_strcmp(pairs[i].key,tokens[0])) goto done;

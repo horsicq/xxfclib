@@ -24,7 +24,7 @@ static bool lit_valid(Abstractformat *f,xx_pd_struct *pd) {
     return true;
 }
 static bool lit_info(Abstractformat *f,xx_pd_struct *pd) {
-    if(!lit_valid(f,pd))return false;f->format_size=xx_io_total_size(f->device)-f->base_address;
+    if(!lit_valid(f,pd)) {return false; } f->format_size=xx_io_total_size(f->device)-f->base_address;
     f->is_valid=true;f->base_info_handled=true;return true;
 }
 static const xx_archive_record *lit_current(Abstractformat *f,xx_archive_record_state *state) {
@@ -35,12 +35,12 @@ static const xx_archive_record *lit_current(Abstractformat *f,xx_archive_record_
 static char *lit_helper_path(void) {
 #ifdef _WIN32
     wchar_t path[32768];DWORD n=GetModuleFileNameW(NULL,path,32768);
-    if(!n||n>=32768)return NULL;while(n&&path[n-1]!=L'/'&&path[n-1]!=L'\\')--n;
-    if(!n||n+32>=32768)return NULL;xx_rt_memcpy(path+n,L"xfu_convertlit_helper.exe",sizeof(L"xfu_convertlit_helper.exe"));return xx_str_unicode_to_utf8(path);
+    if(!n||n>=32768) {return NULL; } while(n&&path[n-1]!=L'/'&&path[n-1]!=L'\\')--n;
+    if(!n||n+32>=32768) {return NULL; } xx_rt_memcpy(path+n,L"xfu_convertlit_helper.exe",sizeof(L"xfu_convertlit_helper.exe"));return xx_str_unicode_to_utf8(path);
 #else
     char path[4096];ssize_t n=readlink("/proc/self/exe",path,sizeof(path)-1);
-    if(n<=0||n>=(ssize_t)sizeof(path)-32)return NULL;while(n&&path[n-1]!='/')--n;
-    if(!n)return NULL;xx_rt_memcpy(path+n,"xfu_convertlit_helper",sizeof("xfu_convertlit_helper"));return xx_str_dup(path);
+    if(n<=0||n>=(ssize_t)sizeof(path)-32) {return NULL; } while(n&&path[n-1]!='/')--n;
+    if(!n) {return NULL; } xx_rt_memcpy(path+n,"xfu_convertlit_helper",sizeof("xfu_convertlit_helper"));return xx_str_dup(path);
 #endif
 }
 static bool lit_same_name(const char *a,const char *b) {
@@ -53,7 +53,7 @@ static bool lit_index_blob(xx_microsoft_lit *a,uint8_t *data,size_t size) {
     if((drm!=0&&drm!=1&&drm!=3)||!count||count>65535U)return false;
     index=xx_mem_calloc(1,sizeof(*index));if(!index)return false;
     for(i=0;i<count;++i){uint32_t n;uint64_t bytes;char *name;size_t j;
-        if(at>size||size-at<12)goto failed;n=ue2_u32(data+at);bytes=ue2_u64(data+at+4);at+=12;
+        if(at>size||size-at<12) {goto failed; } n=ue2_u32(data+at);bytes=ue2_u64(data+at+4);at+=12;
         if(!n||n>4096||n>size-at||xx_rt_memchr(data+at,0,n))goto failed;
         name=xx_mem_alloc((size_t)n+1);if(!name)goto failed;xx_rt_memcpy(name,data+at,n);name[n]=0;at+=n;
         if(!ue2_safe_name(name)||bytes>size-at){xx_mem_free(name);goto failed;}
@@ -95,16 +95,16 @@ static bool lit_decode(Abstractformat *f,uint64_t limit,xx_pd_struct *pd) {
             if(!n||n>65536||at>input||n>input-at||!ue2_read(f,f->base_address+(int64_t)at,chunk,n))goto done;
             af_put32(h,n);if(!af_output(&process,h,4)||!af_output(&process,chunk,n))goto done;xx_pd_set_current(pd,level,at+n);
         }else if(type==2){if(announced||!af_input(&process,h,8))goto done;total=af_le64(h);
-            if(total<16||total>LIT_MAX_BLOB||total>limit-worker-input)goto done;output=xx_mem_alloc((size_t)total);if(!output)goto done;announced=true;
+            if(total<16||total>LIT_MAX_BLOB||total>limit-worker-input) {goto done; } output=xx_mem_alloc((size_t)total);if(!output)goto done;announced=true;
         }else if(type==3){uint32_t n;if(!announced||!af_input(&process,h,4))goto done;n=af_le32(h);
-            if(!n||n>65536||n>total-received||!af_input(&process,output+(size_t)received,n))goto done;received+=n;
+            if(!n||n>65536||n>total-received||!af_input(&process,output+(size_t)received,n)) {goto done; } received+=n;
         }else if(type==4){if(!af_input(&process,h,12))goto done;rejected=af_le32(h);
             if(rejected||!announced||af_le64(h+4)!=total||received!=total||!af_live(&process))goto done;
             ok=lit_index_blob(a,output,(size_t)total);if(ok){output=NULL;a->decode_memory_limit=limit;}break;
         }else goto done;
     }
 done:
-    if(level>=0)xx_pd_leave_level(pd,level);af_close(&process);xx_str_free(helper);xx_mem_free(output);
+    if(level>=0) {xx_pd_leave_level(pd,level); } af_close(&process);xx_str_free(helper);xx_mem_free(output);
     if(!ok&&(!pd||!xx_pd_is_stopped(pd)))xx_pd_set_error(pd,1,process.status==AF_UNAVAILABLE?"ConvertLIT decoder helper unavailable":process.status==AF_TIMEOUT?"ConvertLIT decoding timed out":rejected==2?"LIT owner-key DRM5 requires a personal key and is unsupported":rejected==3?"LIT decoder exceeds archive memory limit":"LIT book is damaged, unsupported or exceeds archive memory limit");
     return ok;
 }
@@ -124,11 +124,11 @@ static bool lit_unpack(Abstractformat *f,xx_archive_record_state *state,xx_pd_st
     if(base&&ue2_safe_name(xx_archive_record_get_original_name(r)))path=xx_str_concat3(base,"/",xx_archive_record_get_original_name(r));
     memory=xx_io_mem_open_ro(a->decoded,a->decoded_size);
     if(path&&memory&&xx_store_create_dirs_a(path,false))result=xx_store_unpack_device_to_file(memory,r->data_offset,r->compressed_size,path,pd);
-    if(memory)xx_io_close(memory);xx_str_free(path);xx_str_free(owned);return result;
+    if(memory) {xx_io_close(memory); } xx_str_free(path);xx_str_free(owned);return result;
 }
 static void lit_destroy(Abstractformat *f) { xx_microsoft_lit *a=(xx_microsoft_lit *)f;ue2_destroy_format(f);xx_mem_free(a->decoded);a->decoded=NULL;a->decoded_size=0;a->decode_memory_limit=0; }
 void xx_microsoft_lit_init(xx_microsoft_lit *a,xx_io_device *device,int64_t base) {
-    if(!a)return;xx_mem_zero(a,sizeof(*a));ue2_init_format(&a->format,device,base,LIT_TYPE,"lit","application/x-ms-reader");
+    if(!a) {return; } xx_mem_zero(a,sizeof(*a));ue2_init_format(&a->format,device,base,LIT_TYPE,"lit","application/x-ms-reader");
     a->format.check_is_valid=lit_valid;a->format.handle_base_info=lit_info;a->format.get_number_of_archive_records=lit_count;
     a->format.get_current_archive_record=lit_current;
     a->format.create_archive_records_reading=lit_records;a->format.unpack_current_archive_record=lit_unpack;a->format.destroy=lit_destroy;

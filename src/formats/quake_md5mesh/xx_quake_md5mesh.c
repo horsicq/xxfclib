@@ -31,11 +31,11 @@ static bool md5_mesh(lex *q,int32_t joints){int32_t nv=0,nt=0,nw=0,i,j,index,val
  if(!word(q,"{")||!word(q,"shader")||!tok(q)||!q->quoted||!word(q,"numverts")||!integer(q,&nv)||nv<3||nv>65536)goto done;
  first=(int32_t *)xx_mem_alloc((size_t)nv*4);counts=(int32_t *)xx_mem_alloc((size_t)nv*4);if(!first||!counts)goto done;
  for(i=0;i<nv;++i){if(!word(q,"vert")||!integer(q,&index)||index!=i||!word(q,"(")||!number(q,&a)||!number(q,&d)||!word(q,")")||!integer(q,&first[i])||!integer(q,&counts[i])||first[i]<0||counts[i]<1||counts[i]>256)goto done;}
- if(!word(q,"numtris")||!integer(q,&nt)||nt<1||nt>65536)goto done;for(i=0;i<nt;++i){if(!word(q,"tri")||!integer(q,&index)||index!=i)goto done;for(j=0;j<3;++j)if(!integer(q,&value)||value<0||value>=nv)goto done;}
- if(!word(q,"numweights")||!integer(q,&nw)||nw<1||nw>65536)goto done;bias=(double *)xx_mem_alloc((size_t)nw*sizeof(double));if(!bias)goto done;
+ if(!word(q,"numtris")||!integer(q,&nt)||nt<1||nt>65536) {goto done; } for(i=0;i<nt;++i){if(!word(q,"tri")||!integer(q,&index)||index!=i)goto done;for(j=0;j<3;++j)if(!integer(q,&value)||value<0||value>=nv)goto done;}
+ if(!word(q,"numweights")||!integer(q,&nw)||nw<1||nw>65536) {goto done; } bias=(double *)xx_mem_alloc((size_t)nw*sizeof(double));if(!bias)goto done;
  for(i=0;i<nw;++i)if(!word(q,"weight")||!integer(q,&index)||index!=i||!integer(q,&value)||value<0||value>=joints||!number(q,&bias[i])||bias[i]<0||bias[i]>1||!vector3(q,NULL))goto done;
  for(i=0;i<nv;++i){double sum=0;if(first[i]>=nw||counts[i]>nw-first[i])goto done;for(j=0;j<counts[i];++j)sum+=bias[first[i]+j];if(sum<0.999||sum>1.001)goto done;}
- if(!word(q,"}"))goto done;result=true;
+ if(!word(q,"}")) {goto done; } result=true;
  done:if(first)xx_mem_free(first);if(counts)xx_mem_free(counts);if(bias)xx_mem_free(bias);return result;
 }
 

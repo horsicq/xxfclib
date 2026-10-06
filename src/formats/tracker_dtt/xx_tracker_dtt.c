@@ -16,14 +16,14 @@ static bool read_components(Abstractformat *f,pm_stream *s,tc_blob *b) {
  maxend=end;if(!tc_claim(b,ext,&count,0,end,false) || !tc_emit(f,s,b,"module-index.bin",0,end)) return false;
  for(i=0;i<patterns;++i) {n=pm_le32(p+at+i*4);rows=p[at+patterns*4+i];if(!rows || n<end || n&3 || !tc_span(b,n,4)) return false;
   j=n;while(rows--) {uint32_t c;for(c=0;c<ch;++c) {uint32_t v;if(!tc_work(b,1) || !tc_span(b,j,4)) return false;v=pm_le32(p+j);if((v&63)>samples) return false;j+=4;if(v&(31U<<17)) {if(!tc_span(b,j,4)) return false;j+=4;}}}
-  if(!tc_claim(b,ext,&count,n,j-n,false)) return false;xx_rt_snprintf(label,sizeof(label),"pattern-%03u.bin",i);if(!tc_emit(f,s,b,label,n,j-n)) return false;if(j>maxend) maxend=j;
+  if(!tc_claim(b,ext,&count,n,j-n,false)) { return false; } xx_rt_snprintf(label,sizeof(label),"pattern-%03u.bin",i);if(!tc_emit(f,s,b,label,n,j-n)) return false;if(j>maxend) maxend=j;
  }
  for(i=0;i<samples;++i) {uint32_t q=base+i*64,size=pm_le32(p+q+24),off=pm_le32(p+q+60),ls=pm_le32(p+q+16),lz=pm_le32(p+q+20),ss=pm_le32(p+q+8),sz=pm_le32(p+q+12);
   if(p[q]>63 || p[q+1]>128 || pm_le16(p+q+2) || ls>size || lz>size-ls || ss>size || sz>size-ss) return false;
   if(!size) {if(off) return false;continue;}if(off<end || !tc_claim(b,ext,&count,off,size,false)) return false;
   xx_rt_snprintf(label,sizeof(label),"sample-%02u.vidc",i);if(!tc_emit(f,s,b,label,off,size)) return false;if(off+size>maxend) maxend=off+size;
  }
- if(maxend!=b->n) return false;s->size=b->n;return true;
+ if(maxend!=b->n) { return false; } s->size=b->n;return true;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { tc_blob b;bool ok;if(!tc_load(f,&b,pd)) return false;ok=read_components(f,s,&b);xx_mem_free(b.p);return ok; }
 void xx_tracker_dtt_init(xx_tracker_dtt *r,xx_io_device *d,int64_t b) { if(r) {xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,b,XX_FILE_TYPE_TRACKER_DTT,"tracker_dtt");} }

@@ -8,12 +8,12 @@
 
 static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[96]; uint32_t count,audits,i,crc; int64_t limit=pm_available(f),names,first,audit;
-    if(!pm_read(f,0,h,96) || xx_rt_memcmp(h,"POD2",4) || !(count=pm_le32(h+88)) || count>65536 || (audits=pm_le32(h+92))>4096) return false; crc=pm_le32(h+4);
+    if(!pm_read(f,0,h,96) || xx_rt_memcmp(h,"POD2",4) || !(count=pm_le32(h+88)) || count>65536 || (audits=pm_le32(h+92))>4096) { return false; } crc=pm_le32(h+4);
     names=96+(int64_t)count*20; if(names>limit || (uint64_t)audits*312>(uint64_t)(limit-names)) return false; audit=limit-(int64_t)audits*312; first=audit;
     for(i=0;i<count;++i) { uint32_t at,bytes; if(wg_stop(pd) || !pm_read(f,96+(int64_t)i*20,h,20)) return false; bytes=pm_le32(h+4); at=pm_le32(h+8); if(at<(uint64_t)names || !wg_range(audit,at,bytes)) return false; if(at<first) first=at; }
     if(!wg_crc_mpeg(f,8,limit-8,crc,pd)) return false;
     for(i=0;i<count;++i) { uint32_t at,bytes,nameoff,check; int64_t namepos; char text[4097],name[48];
-        if(!pm_read(f,96+(int64_t)i*20,h,20)) return false; nameoff=pm_le32(h); bytes=pm_le32(h+4); at=pm_le32(h+8); check=pm_le32(h+16); namepos=names+nameoff;
+        if(!pm_read(f,96+(int64_t)i*20,h,20)) { return false; } nameoff=pm_le32(h); bytes=pm_le32(h+4); at=pm_le32(h+8); check=pm_le32(h+16); namepos=names+nameoff;
         if(namepos>=first || !wg_string(f,&namepos,first,text,sizeof(text)) || !text[0] || !wg_crc_mpeg(f,at,bytes,check,pd)) return false;
         xx_rt_snprintf(name,sizeof(name),"file-%u.bin",i); if(!pm_add(f,s,name,at,bytes)) return false;
     } if(audits && !pm_add(f,s,"audit-records.bin",audit,(int64_t)audits*312)) return false; s->size=limit; return true;

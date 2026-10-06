@@ -126,7 +126,7 @@ void xx_fdcopy_cfi_init(xx_fdcopy_cfi *c,xx_io_device *d,int64_t base) {
 }
 xx_fdcopy_cfi *xx_fdcopy_cfi_create(xx_io_device *d,int64_t base) {
     xx_fdcopy_cfi *c=(xx_fdcopy_cfi *)xx_mem_alloc(sizeof(*c));
-    if (c) xx_fdcopy_cfi_init(c,d,base); return c;
+    if (c) { xx_fdcopy_cfi_init(c,d,base); } return c;
 }
 void xx_fdcopy_cfi_destroy(xx_fdcopy_cfi *c) {
     if (!c) return;
@@ -274,7 +274,7 @@ bool xx_fdcopy_cfi_extract_record_to_device(Abstractformat *f,
 static bool cfi_equal_path(const char *a,const char *b) {
     while (*a && *b) {
         char x=*a++,y=*b++;
-        if (x=='\\') x='/'; if (y=='\\') y='/';
+        if (x=='\\') { x='/'; } if (y=='\\') y='/';
         if (x>='A' && x<='Z') x=(char)(x+32);
         if (y>='A' && y<='Z') y=(char)(y+32);
         if (x!=y) return false;

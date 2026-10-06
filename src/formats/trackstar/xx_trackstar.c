@@ -8,7 +8,7 @@
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd){
     af_work w;af_blob b;uint32_t records,i,j;uint8_t *image=NULL;unsigned sectors=0;bool full=true,ok=false,recognized=false;xx_trackstar *r=(xx_trackstar *)f;
     if(!af_init(&w,f,s,pd) || !af_load(&w,&b))return false;
-    if((b.n!=40U*6656U && b.n!=80U*6656U) || !(image=af_alloc(&w,35U*4096U,false)))goto done;records=b.n/6656U;
+    if((b.n!=40U*6656U && b.n!=80U*6656U) || !(image=af_alloc(&w,35U*4096U,false))) {goto done; } records=b.n/6656U;
     for(i=0;i<records;++i){const uint8_t *h=b.p+i*6656U;uint32_t n=pm_le16(h+6654);uint8_t *out;char name[48];
         if(!af_poll(&w) || !af_zero(h+46,82) || h[128]!=(records==80U?1U:0U) || n>6525U)goto done;
         for(j=0;j<46U;++j)if(h[j] && (h[j]<32U || h[j]>126U))goto done;
@@ -21,7 +21,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd){
              * the optional sector decoder requires at least512bytes. */
             if(n<512U){full=false;continue;}
             found=ag_track(&w,out,n,records==80U?i/2U:i,image+(records==80U?i/2U:i)*4096U,&this_sectors);
-            if(found<0 || (sectors && this_sectors && sectors!=this_sectors))goto done;if(this_sectors)sectors=this_sectors;if(!this_sectors || found!=(int)this_sectors)full=false;}
+            if(found<0 || (sectors && this_sectors && sectors!=this_sectors)) {goto done; } if(this_sectors)sectors=this_sectors;if(!this_sectors || found!=(int)this_sectors)full=false;}
     }
     if(full && sectors){if(sectors==13U)for(i=1;i<35U;++i)xx_rt_memmove(image+i*3328U,image+i*4096U,3328U);
         if(!ag_files(&w,image,35U,sectors,&recognized) || !af_copy(&w,"decoded-sectors.do",image,35U*sectors*256U))goto done;}

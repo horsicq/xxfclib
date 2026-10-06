@@ -1043,7 +1043,7 @@ static bool xx_dmg_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_dmg_find_option(const xx_list_s *options,
+static XXFC_MAYBE_UNUSED const xx_var *xx_dmg_find_option(const xx_list_s *options,
                                         uint32_t meta_id) {
     size_t index;
     if (!options) return NULL;
@@ -1456,7 +1456,7 @@ static ssize_t xx_dmg_discard(xx_io_device *device,const void *data,size_t size)
 static bool xx_dmg_same_path(const char *a,const char *b) {
     while (*a && *b) {
         char x=*a++,y=*b++;
-        if (x=='\\') x='/'; if (y=='\\') y='/';
+        if (x=='\\') { x='/'; } if (y=='\\') y='/';
         if (x>='A' && x<='Z') x=(char)(x+32);
         if (y>='A' && y<='Z') y=(char)(y+32);
         if (x!=y) return false;

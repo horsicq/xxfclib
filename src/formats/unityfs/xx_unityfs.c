@@ -23,12 +23,12 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     blocks=pm_be32(b+16); if(!blocks || blocks>65536 || (uint64_t)blocks*10+24>packed) return false; position=info+20;
     for(i=0;i<blocks;++i) { uint32_t a,c; if(gm_stopped(pd) || !gm_read(f,(int64_t)(info+packed),position,r,10)) return false; position+=10;
         a=pm_be32(r); c=pm_be32(r+4); if(a!=c || (pm_be16(r+8)&~0x40U)) return false; sum+=a; }
-    if(data>limit || sum>limit-data || !gm_read(f,(int64_t)(info+packed),position,b,4)) return false; nodes=pm_be32(b); position+=4;
-    if(nodes>65536) return false; s->size=(int64_t)size;
+    if(data>limit || sum>limit-data || !gm_read(f,(int64_t)(info+packed),position,b,4)) { return false; } nodes=pm_be32(b); position+=4;
+    if(nodes>65536) { return false; } s->size=(int64_t)size;
     for(i=0;i<nodes;++i) { uint64_t off;
-        if(gm_stopped(pd) || !gm_read(f,(int64_t)(info+packed),position,b,20)) return false; off=gm_be64(b); n=gm_be64(b+8); position+=20;
+        if(gm_stopped(pd) || !gm_read(f,(int64_t)(info+packed),position,b,20)) { return false; } off=gm_be64(b); n=gm_be64(b+8); position+=20;
         limit=info+packed-position; if(limit>4096) limit=4096;
-        if(!gm_string(f,(int64_t)(info+packed),position,limit,&used) || used==1) return false; position+=used;
+        if(!gm_string(f,(int64_t)(info+packed),position,limit,&used) || used==1) { return false; } position+=used;
         if(off>sum || n>sum-off || !gm_add(f,s,"asset.bin",data+off,n,data,(int64_t)size)) return false;
     }
     return position==info+packed;

@@ -111,7 +111,7 @@ static uint32_t xx_lzh5_read_bits(xx_lzh5_bits *bits, int count) {
     return result;
 }
 
-static uint32_t xx_lzh5_peek_bits(xx_lzh5_bits *bits, int count) {
+static XXFC_MAYBE_UNUSED uint32_t xx_lzh5_peek_bits(xx_lzh5_bits *bits, int count) {
     uint32_t result = xx_lzh5_read_bits(bits, count);
 
     bits->available += count;

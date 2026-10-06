@@ -15,7 +15,7 @@ static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  for(i=0;i<glyphs;++i){if(tg_stop(pd))return false;xx_rt_snprintf(label,sizeof(label),"glyph-%u.bitmap",i);if(!tg_emit(f,s,label,p,bytes,n))return false;p+=bytes;}
  after=p;if(flags&(one?6U:1U)){for(i=0;i<glyphs;++i){bool sequence=false,has=false;for(;;){uint32_t c;if(tg_stop(pd)||p>=n)return false;if(one){if(!tg_span(p,2,n))return false;c=pm_le16(b+p);p+=2;}else c=b[p++];if(c==(one?65535U:255U)){if(sequence&&!has)return false;break;}if(c==(one?65534U:254U)){if(one&&!(flags&4))return false;if(sequence&&!has)return false;sequence=true;has=false;continue;}if(one){if(!tg_scalar(c))return false;}else{--p;if(!tg_utf(b,&p,n,false))return false;}has=true;}}
  if(!tg_emit(f,s,"unicode-map.bin",after,p-after,n))return false;}
- if(p!=n||bitmap==0)return false;s->size=(int64_t)n;return true;
+ if(p!=n||bitmap==0) {return false; } s->size=(int64_t)n;return true;
 }
 
 void xx_font_psf_init(xx_font_psf *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_FONT_PSF,"psf");}}

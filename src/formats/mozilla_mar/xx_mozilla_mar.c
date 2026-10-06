@@ -215,8 +215,8 @@ static bool mar_component_safe(const char *part, size_t length) {
     };
     size_t i, stem = 0U;
     char upper[16];
-    if (!length || length == 1U && part[0] == '.' ||
-        length == 2U && part[0] == '.' && part[1] == '.' ||
+    if (!length || (length == 1U && part[0] == '.') ||
+        (length == 2U && part[0] == '.' && part[1] == '.') ||
         part[length - 1U] == '.' || part[length - 1U] == ' ') return false;
     for (i = 0U; i < length; ++i) {
         unsigned char c = (unsigned char)part[i];

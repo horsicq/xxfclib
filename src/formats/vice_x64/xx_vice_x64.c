@@ -19,7 +19,7 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
  if(b->p[64+didx*256U]!=18 || b->p[65+didx*256U]!=1 || b->p[66+didx*256U]!=0x41 || !nh_emit(f,s,b,"disk-descriptor.bin",0,64)) return false;
  while(dt) {
   const uint8_t *dir;
-  if(!nh_poll(b) || !sector_at(tracks,dt,ds,&didx) || used[didx]) return false; used[didx]=1; dir=b->p+64+didx*256U;
+  if(!nh_poll(b) || !sector_at(tracks,dt,ds,&didx) || used[didx]) { return false; } used[didx]=1; dir=b->p+64+didx*256U;
   for(i=0;i<8;++i) {
    const uint8_t *e=dir+i*32U; uint32_t t=e[3],z=e[4],count=0,len=0,idx; uint8_t *data;
    if(!e[2]) continue;
@@ -39,7 +39,7 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
   }
   dt=dir[0]; ds=dir[1]; if(!dt && ds!=255) return false;
  }
- if(!files) return false; s->size=64+(int64_t)total*256+(b->p[9] ? total : 0); return true;
+ if(!files) { return false; } s->size=64+(int64_t)total*256+(b->p[9] ? total : 0); return true;
 }
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { nh_blob b; bool ok; if(!nh_load(f,&b,pd)) return false; ok=parse_blob(f,s,&b); xx_mem_free(b.p); return ok; }

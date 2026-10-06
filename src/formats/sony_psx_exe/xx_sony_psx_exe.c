@@ -18,7 +18,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[2048]; uint32_t pc,address,n,bss,bssn,sp,i; uint64_t total;
     if(!pm_read(f,0,h,sizeof(h)) || xx_rt_memcmp(h,"PS-X EXE",8)) return false;
-    for(i=8;i<16;++i) if(h[i]) return false; for(i=56;i<76;++i) if(h[i]) return false;
+    for(i=8;i<16;++i) { if(h[i]) return false; } for(i=56;i<76;++i) if(h[i]) return false;
     pc=pm_le32(h+16); address=pm_le32(h+24); n=pm_le32(h+28); bss=pm_le32(h+40); bssn=pm_le32(h+44); sp=pm_le32(h+48);
     if(!n || (n&2047) || (address&3) || address<0x80000000U || !span((uint64_t)address-0x80000000U,n,0x200000) || pc<address || pc-address>=n || (pc&3) || pm_le32(h+32) || pm_le32(h+36)) return false;
     if(bssn && ((bss&3) || (bssn&3) || bss<0x80000000U || !span((uint64_t)bss-0x80000000U,bssn,0x200000) || overlap(address,n,bss,bssn))) return false;

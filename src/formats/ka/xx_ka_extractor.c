@@ -23,7 +23,7 @@ static void ka_close(Abstractformat *format) {
     xx_ka_free((xx_ka *)format);
 }
 static const xx_format_search_desc ka_desc = {
-    ka_types, 1U, ka_anchors, 1U, ka_open, ka_close
+    ka_types, 1U, ka_anchors, 1U, ka_open, ka_close, false
 };
 static xx_format_search_state *ka_create_search(xx_format_extractor *self,
     xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd) {

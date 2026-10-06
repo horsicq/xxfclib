@@ -17,7 +17,7 @@ static void ce_close(Abstractformat *format) { xx_edp_free((xx_edp *)format); }
 static const xx_format_search_desc ce_desc = {
     ce_types, sizeof(ce_types) / sizeof(ce_types[0]),
     ce_anchors, sizeof(ce_anchors) / sizeof(ce_anchors[0]),
-    ce_open, ce_close
+    ce_open, ce_close, false
 };
 static xx_format_search_state *ce_create(xx_format_extractor *self,
     xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd) {

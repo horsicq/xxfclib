@@ -15,7 +15,7 @@ static bool doc_append(doc_bytes *b, const void *p, size_t n) {
         next=xx_mem_realloc(b->p,cap); if(!next) return false;
         b->p=(uint8_t *)next; b->cap=cap;
     }
-    if(n) xx_rt_memcpy(b->p+b->n,p,n); b->n+=n; return true;
+    if(n) { xx_rt_memcpy(b->p+b->n,p,n); } b->n+=n; return true;
 }
 static bool doc_text(doc_bytes *b,const char *p) { return doc_append(b,p,xx_rt_strlen(p)); }
 static size_t doc_limit(Abstractformat *f) {
@@ -135,7 +135,7 @@ static bool doc_qm(Abstractformat *f,pm_stream *s,const uint8_t *p,size_t n,xx_p
     if(n<16 || xx_rt_memcmp(p,magic,16)) return false;
     while(at<n) {
         uint8_t tag; uint32_t len;
-        if(n-at<5) return false; tag=p[at++]; len=pm_be32(p+at); at+=4;
+        if(n-at<5) { return false; } tag=p[at++]; len=pm_be32(p+at); at+=4;
         if(len>n-at || !tag) return false;
         if(tag==0x42) { if(hashes) return false; hashes=p+at; hn=len; }
         if(tag==0x69) { if(messages) return false; messages=p+at; mn=len; }
@@ -153,7 +153,7 @@ static bool doc_qm(Abstractformat *f,pm_stream *s,const uint8_t *p,size_t n,xx_p
         while(cursor<mn) {
             uint8_t tag=messages[cursor++]; uint32_t len;
             if(tag==1) { end=true; break; }
-            if(mn-cursor<4) goto done; len=pm_be32(messages+cursor); cursor+=4;
+            if(mn-cursor<4) { goto done; } len=pm_be32(messages+cursor); cursor+=4;
             if(tag==5) continue;
             if(len==UINT32_MAX) len=0;
             if(len>mn-cursor) goto done;
@@ -224,17 +224,17 @@ static bool doc_parameter(const char *field,const char *key,char *out,size_t cap
     while(at<n) {
         size_t start,len,k=0; bool quoted=false;
         while(at<n && p[at]!=';') ++at;
-        if(at==n) return false; ++at;
+        if(at==n) { return false; } ++at;
         while(at<n && (p[at]==' ' || p[at]=='\t')) ++at;
         start=at; while(at<n && p[at]!='=' && p[at]!=';' && p[at]!=' ' && p[at]!='\t') ++at; len=at-start;
         while(at<n && (p[at]==' ' || p[at]=='\t')) ++at;
-        if(at==n || p[at]!='=') continue; ++at;
+        if(at==n || p[at]!='=') { continue; } ++at;
         while(at<n && (p[at]==' ' || p[at]=='\t')) ++at;
         if(at<n && p[at]=='"') { quoted=true; ++at; }
         if(!doc_ci(p+start,len,key)) { if(quoted) { while(at<n && p[at]!='"') { if(p[at]=='\\' && at+1<n) ++at; ++at; } if(at<n) ++at; } continue; }
         while(at<n && (quoted?p[at]!='"':p[at]!=';' && p[at]!=' ' && p[at]!='\t')) {
             uint8_t c=p[at++]; if(quoted && c=='\\') { if(at==n) return false; c=p[at++]; }
-            if(c<32 || k+1>=cap) return false; out[k++]=(char)c;
+            if(c<32 || k+1>=cap) { return false; } out[k++]=(char)c;
         }
         if(quoted && (at==n || p[at]!='"')) return false;
         out[k]=0; return k!=0;
@@ -288,7 +288,7 @@ static bool doc_mime_part(Abstractformat *f,pm_stream *s,const uint8_t *p,size_t
         if(!doc_parameter(h.type,"boundary",boundary,sizeof(boundary))) return false;
         while(at<n) {
             size_t start=at,end,trim,len=xx_rt_strlen(boundary); bool closing;
-            while(at<n && p[at]!='\n') ++at; end=at; if(at<n) ++at; if(end>start && p[end-1]=='\r') --end;
+            while(at<n && p[at]!='\n') { ++at; } end=at; if(at<n) ++at; if(end>start && p[end-1]=='\r') --end;
             if(end-start<len+2 || p[start]!='-' || p[start+1]!='-' || xx_rt_memcmp(p+start+2,boundary,len)) continue;
             trim=start+2+len; closing=trim+2<=end && p[trim]=='-' && p[trim+1]=='-'; if(closing) trim+=2;
             while(trim<end && (p[trim]==' ' || p[trim]=='\t')) ++trim;
@@ -310,7 +310,7 @@ static bool doc_mime_part(Abstractformat *f,pm_stream *s,const uint8_t *p,size_t
         if(h.location[0]) { const char *leaf=h.location,*q=h.location; while(*q) { if(*q=='/' || *q=='\\') leaf=q+1; ++q; } xx_rt_snprintf(name,sizeof(name),"%s",leaf); }
         if(!name[0]) xx_rt_snprintf(name,sizeof(name),"body.%s",xx_rt_strlen(h.type)>=9 && doc_ci((const uint8_t *)h.type,9,"text/html")?"html":"txt");
     }
-    if(data.n>*budget) goto done; *budget-=data.n;
+    if(data.n>*budget) { goto done; } *budget-=data.n;
     ok=doc_member(f,s,name,&data);
 done: xx_mem_free(data.p); return ok;
 }
@@ -336,19 +336,19 @@ static bool doc_hlp(Abstractformat *f,pm_stream *s,const uint8_t *p,size_t n,xx_
         const uint8_t *page;size_t at=8,end;uint16_t entries,next,j;
         if(cur>=count || seen[cur] || (pd && xx_pd_is_stopped(pd)))goto done;
         seen[cur]=1;page=pages+(size_t)cur*page_size;entries=pm_le16(page+2);next=pm_le16(page+6);
-        if(pm_le16(page)>page_size-8 || pm_le16(page+4)!=previous)goto done;end=page_size-pm_le16(page);
+        if(pm_le16(page)>page_size-8 || pm_le16(page+4)!=previous) {goto done; } end=page_size-pm_le16(page);
         for(j=0;j<entries;++j) {
             size_t start=at,len;uint32_t offset,allocation,bytes;char name[256];
-            while(at<end && page[at])++at;len=at-start;
+            while(at<end && page[at]) {++at; } len=at-start;
             if(!len || len>=sizeof(name) || at>=end || end-at<5)goto done;
             xx_rt_memcpy(name,page+start,len);name[len]=0;offset=pm_le32(page+at+1);at+=5;
-            if(last[0] && xx_rt_strcmp(last,name)>=0)goto done;xx_rt_memcpy(last,name,len+1);
+            if(last[0] && xx_rt_strcmp(last,name)>=0) {goto done; } xx_rt_memcpy(last,name,len+1);
             if(offset<16 || offset>size || size-offset<9)goto done;
             allocation=pm_le32(p+offset);bytes=pm_le32(p+offset+4);
             if(allocation<9 || allocation>size-offset || bytes>allocation-9 || !pm_add(f,s,name,offset+9,bytes))goto done;
             if(++listed>1000000)goto done;
         }
-        if(at!=end)goto done;previous=cur;cur=next;
+        if(at!=end) {goto done; } previous=cur;cur=next;
     }
     if(listed!=pm_le32(h+34))goto done;
     s->size=size;ok=true;
@@ -362,7 +362,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     else if(f->file_type==XX_FILE_TYPE_QT_QM) ok=doc_qm(f,s,p,n,pd);
     else if(f->file_type==XX_FILE_TYPE_MIME_MESSAGE) { budget=limit-n; ok=doc_mime_part(f,s,p,n,0,&budget,pd); }
     else if(f->file_type==XX_FILE_TYPE_WINDOWS_HELP) ok=doc_hlp(f,s,p,n,pd);
-    if(f->file_type!=XX_FILE_TYPE_WINDOWS_HELP)s->size=available; xx_mem_free(p); return ok;
+    if(f->file_type!=XX_FILE_TYPE_WINDOWS_HELP) {s->size=available; } xx_mem_free(p); return ok;
 }
 xx_ue2_documents *xx_ue2_documents_create(xx_io_device *d,int64_t b,xx_file_type_t type) {
     xx_ue2_documents *r=(xx_ue2_documents *)xx_mem_alloc(sizeof(*r));

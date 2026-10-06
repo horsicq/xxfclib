@@ -21,8 +21,8 @@ static bool hg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  else if(z==7&&hg_tag(b+at,"ellipse",7)){args=6;shape=true;}
  else if((z==9&&hg_tag(b+at,"translate",9))||(z==5&&hg_tag(b+at,"scale",5)))args=2;
  else if(z==6&&hg_tag(b+at,"rotate",6))args=1;else return false;
- for(i=0;i<args;++i)if(!hg_number(&q,&v[i]))return false;if(z==7&&hg_tag(b+at,"viewbox",7)&&(v[2]<=v[0]||v[3]<=v[1]))return false;if(shape)++shapes;}
- if(!hg_end(&q))return false;xx_rt_snprintf(label,sizeof(label),"drawing-command-%u.mvg",commands-1);if(!hg_emit(f,s,label,lines.start,lines.p-lines.start,n))return false;}
+ for(i=0;i<args;++i) {if(!hg_number(&q,&v[i]))return false; } if(z==7&&hg_tag(b+at,"viewbox",7)&&(v[2]<=v[0]||v[3]<=v[1]))return false;if(shape)++shapes;}
+ if(!hg_end(&q)) {return false; } xx_rt_snprintf(label,sizeof(label),"drawing-command-%u.mvg",commands-1);if(!hg_emit(f,s,label,lines.start,lines.p-lines.start,n))return false;}
  return lines.p==n&&view&&shapes&&!depth&&hg_cover(f,s,"drawing-whitespace.txt",n);}
 
 void xx_imagemagick_mvg_init(xx_imagemagick_mvg *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_IMAGEMAGICK_MVG,"mvg");}}

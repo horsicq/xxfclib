@@ -6,7 +6,7 @@
 typedef struct hd_dd { uint16_t tag,ref; uint32_t at,n; } hd_dd;
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[12]; uint32_t block=4,visited[1024],starts[1024],ends[1024],blocks=0,total=0; hd_dd *entries=NULL; uint64_t end=4; bool result=false;
-    if(!fd_equal(f,0,"\x0e\x03\x13\x01",4)) return false; entries=(hd_dd *)xx_mem_alloc(4096*sizeof(*entries)); if(!entries) return false;
+    if(!fd_equal(f,0,"\x0e\x03\x13\x01",4)) { return false; } entries=(hd_dd *)xx_mem_alloc(4096*sizeof(*entries)); if(!entries) return false;
     while(block) { uint16_t count; uint32_t next,i,j,tableend;
         if(fd_stop(pd) || blocks==1024 || !pm_read(f,block,h,6)) goto done;
         for(i=0;i<blocks;++i) if(visited[i]==block) goto done;
@@ -14,7 +14,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         tableend=block+6+count*12; if(tableend<block) goto done; visited[blocks]=starts[blocks]=block; ends[blocks++]=tableend; if(tableend>end) end=tableend;
         for(i=0;i<count;++i) { hd_dd d; if(fd_stop(pd) || !pm_read(f,block+6+(int64_t)i*12,h,12)) goto done;
             d.tag=pm_be16(h); d.ref=pm_be16(h+2); d.at=pm_be32(h+4); d.n=pm_be32(h+8);
-            if(d.tag==1) continue; if(d.tag<=1 || (d.tag&0x4000) || !d.ref || d.at<4 || !fd_range(d.at,d.n,(uint64_t)pm_available(f))) goto done;
+            if(d.tag==1) { continue; } if(d.tag<=1 || (d.tag&0x4000) || !d.ref || d.at<4 || !fd_range(d.at,d.n,(uint64_t)pm_available(f))) goto done;
             for(j=0;j<total;++j) if(entries[j].tag==d.tag && entries[j].ref==d.ref) goto done;
             entries[total++]=d; if((uint64_t)d.at+d.n>end) end=(uint64_t)d.at+d.n;
         } block=next;
@@ -25,7 +25,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         xx_rt_snprintf(name,sizeof(name),"tag-%u-ref-%u.bin",d->tag,d->ref); if(!pm_add(f,s,name,d->at,d->n)) goto done;
       }
     }
-    if(!total || !fd_disjoint(s,(uint64_t)f->base_address+4)) goto done; s->size=(int64_t)end; result=true;
+    if(!total || !fd_disjoint(s,(uint64_t)f->base_address+4)) { goto done; } s->size=(int64_t)end; result=true;
 done: xx_mem_free(entries); return result;
 }
 

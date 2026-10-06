@@ -25,7 +25,7 @@ static bool vf_packet(const uint8_t *b,uint64_t n,tg_ids *fonts,uint32_t first,x
   else if(c>=235&&c<=238){uint32_t v;z=c-234;if(!tg_span(p,z,n)||(v=tg_uint(b+p,z))>2147483646||!tg_id(fonts,v+1,false,pd))return false;selected=v+1;p+=z;continue;}
   else if(c>=239&&c<=242){uint32_t size;z=c-238;if(!tg_span(p,z,n))return false;size=tg_uint(b+p,z);p+=z;if(size>1048576||!tg_span(p,size,n))return false;p+=size;continue;}
   else return false;
-  if(!tg_span(p,z,n))return false;p+=z;
+  if(!tg_span(p,z,n)) {return false; } p+=z;
  }return !depth;
 }
 static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {

@@ -29,7 +29,7 @@ static void xx_mame_floppy_image_mfi_search_close(Abstractformat *format) {
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
-    xx_mame_floppy_image_mfi_search_open, xx_mame_floppy_image_mfi_search_close
+    xx_mame_floppy_image_mfi_search_open, xx_mame_floppy_image_mfi_search_close, false
 };
 static xx_format_search_state *xx_mame_floppy_image_mfi_search_create(
     xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,

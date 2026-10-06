@@ -34,7 +34,7 @@ static bool class_cp_valid(class_cp *cp,uint16_t total,uint16_t major,xx_pd_stru
         else if(tag==17 || tag==18) { if(!b || b>=total || cp[b].tag!=12) return false; }
         else if(tag==15) {
             uint8_t target;
-            if(!a || a>=total || cp[i].kind<1 || cp[i].kind>9) return false; target=cp[a].tag;
+            if(!a || a>=total || cp[i].kind<1 || cp[i].kind>9) { return false; } target=cp[a].tag;
             if(cp[i].kind<=4 ? target!=9 : cp[i].kind==9 ? target!=11 :
                (cp[i].kind==5 || cp[i].kind==8) ? target!=10 :
                (target!=10 && !(major>=52 && target==11))) return false;
@@ -52,7 +52,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     cp=(class_cp *)xx_mem_alloc((size_t)total*sizeof(*cp)); if(!cp) return false; xx_mem_zero(cp,(size_t)total*sizeof(*cp));
     for(i=1;i<total;++i) {
         uint8_t tag; uint32_t bytes=0;
-        if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,at++,&tag,1)) goto done; cp[i].tag=tag;
+        if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,at++,&tag,1)) { goto done; } cp[i].tag=tag;
         switch(tag) {
             case 1: { uint16_t n; if(!class_u16(f,&at,&n) || n>(uint64_t)(pm_available(f)-at)) goto done; at+=n; continue; }
             case 3: case 4: bytes=4; break;
@@ -84,7 +84,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             if(!class_u16(f,&at,&count)) goto done;
             for(i=0;i<count;++i) {
                 uint16_t name,descriptor; char label[48]; start=at;
-                if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,at,p,6)) goto done; at+=6;
+                if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,at,p,6)) { goto done; } at+=6;
                 name=pm_be16(p+2); descriptor=pm_be16(p+4);
                 if(!name || name>=total || cp[name].tag!=1 || !descriptor || descriptor>=total || cp[descriptor].tag!=1 || !class_attributes(f,&at,cp,total,pd)) goto done;
                 xx_rt_snprintf(label,sizeof(label),"%s-%u.bin",group?"method":"field",(unsigned)i);

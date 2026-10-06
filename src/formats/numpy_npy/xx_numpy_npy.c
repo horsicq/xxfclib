@@ -9,11 +9,11 @@ static bool np_char(np_text *t,uint8_t b) { np_space(t); if(t->at>=t->n || t->p[
 static bool np_word(np_text *t,const char *p) { size_t n=xx_rt_strlen(p); np_space(t); if(n>t->n-t->at || xx_rt_memcmp(t->p+t->at,p,n)) return false; t->at+=n; return true; }
 static bool np_string(np_text *t,char *p,size_t cap) { uint8_t q; size_t n=0; np_space(t); if(t->at>=t->n || ((q=t->p[t->at++])!='\'' && q!='"')) return false;
     while(t->at<t->n && t->p[t->at]!=q) { uint8_t c=t->p[t->at++]; if(c<32 || c>126 || c=='\\' || n+1>=cap) return false; p[n++]=(char)c; }
-    if(t->at>=t->n) return false; ++t->at; p[n]=0; return true;
+    if(t->at>=t->n) { return false; } ++t->at; p[n]=0; return true;
 }
 static bool np_number(np_text *t,uint64_t *v) { unsigned count=0; *v=0; np_space(t); while(t->at<t->n && t->p[t->at]>='0' && t->p[t->at]<='9') { unsigned c=t->p[t->at++]-'0'; if(*v>((uint64_t)INT64_MAX-c)/10) return false; *v=*v*10+c; ++count; } return count!=0; }
 static bool np_dtype(const char *p,uint64_t *size) { size_t at=0; char kind; uint64_t n=0;
-    if(p[0]!='<' && p[0]!='>' && p[0]!='|' && p[0]!='=') return false; at=1; kind=p[at++];
+    if(p[0]!='<' && p[0]!='>' && p[0]!='|' && p[0]!='=') { return false; } at=1; kind=p[at++];
     if(!kind || !p[at]) return false;
     while(p[at]>='0' && p[at]<='9') { unsigned d=p[at++]-'0'; if(n>(1048576U-d)/10) return false; n=n*10+d; }
     if(p[at] || !n) return false;
@@ -45,9 +45,9 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
                 np_space(&t); if(t.at<t.n && t.p[t.at]==')') { ++t.at; break; }
             }
         } else goto done;
-        if(keys&bit) goto done; keys|=bit; np_space(&t);
+        if(keys&bit) { goto done; } keys|=bit; np_space(&t);
         if(t.at<t.n && t.p[t.at]=='}') { ++t.at; break; }
-        if(!np_char(&t,',')) goto done; np_space(&t); if(t.at<t.n && t.p[t.at]=='}') { ++t.at; break; }
+        if(!np_char(&t,',')) { goto done; } np_space(&t); if(t.at<t.n && t.p[t.at]=='}') { ++t.at; break; }
     }
     np_space(&t); if(t.at!=t.n || keys!=7 || !fd_mul(elements,item,&bytes) || !fd_range(prefix+len,bytes,(uint64_t)pm_available(f))) goto done;
     if(!pm_add(f,s,"npy-header.txt",prefix,len) || !pm_add(f,s,"array-data.bin",prefix+len,(int64_t)bytes)) goto done;

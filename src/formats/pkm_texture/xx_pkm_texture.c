@@ -11,7 +11,7 @@ static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  uint32_t type=pm_be16(b+6),x=pm_be16(b+12),y=pm_be16(b+14),cx=pm_be16(b+8),cy=pm_be16(b+10),bytes;uint64_t size;
  if(tg_stop(pd)||type>11||type==2||(b[4]=='1'&&type!=0)||!x||!y||cx!=(x+3)/4*4||cy!=(y+3)/4*4)return false;
  bytes=(type==3||type==6||type==8||type==10)?16U:8U;size=(uint64_t)(cx/4)*(cy/4)*bytes;if(n!=16+size)return false;
- if(!tg_emit(f,s,"pkm-header.bin",0,16,n)||!tg_emit(f,s,"texture-blocks.pkm",16,size,n))return false;s->size=(int64_t)n;return true;
+ if(!tg_emit(f,s,"pkm-header.bin",0,16,n)||!tg_emit(f,s,"texture-blocks.pkm",16,size,n)) {return false; } s->size=(int64_t)n;return true;
 }
 
 void xx_pkm_texture_init(xx_pkm_texture *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_PKM_TEXTURE,"pkm");}}

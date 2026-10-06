@@ -8,10 +8,10 @@
 
 static bool sm_emit(Abstractformat *f,pm_stream *s,const char *label,uint64_t at,uint64_t n,uint64_t *measured) {
     if(s->count>=4096 || !fd_range(at,n,(uint64_t)pm_available(f)) || at+n>268435456 || !pm_add(f,s,label,(int64_t)at,(int64_t)n)) return false;
-    if(at+n>*measured) *measured=at+n; return true;
+    if(at+n>*measured) { *measured=at+n; } return true;
 }
-static bool sm_zero(const uint8_t *p,size_t n) { size_t i; for(i=0;i<n;++i) if(p[i]) return false; return true; }
-static bool sm_loop(uint32_t begin,uint32_t end,uint32_t length,bool enabled) { return !enabled || (begin<end && end<=length); }
+static XXFC_MAYBE_UNUSED bool sm_zero(const uint8_t *p,size_t n) { size_t i; for(i=0;i<n;++i) if(p[i]) return false; return true; }
+static XXFC_MAYBE_UNUSED bool sm_loop(uint32_t begin,uint32_t end,uint32_t length,bool enabled) { return !enabled || (begin<end && end<=length); }
 
 static bool sm_okt_chunk(fd_cursor *c,const char *tag,uint32_t *length,uint64_t *begin) {
     uint8_t h[8]; *begin=c->at; if(!fd_get(c,h,8) || xx_rt_memcmp(h,tag,4)) return false; *length=pm_be32(h+4); return fd_range(c->at,*length,c->end);
@@ -19,14 +19,14 @@ static bool sm_okt_chunk(fd_cursor *c,const char *tag,uint32_t *length,uint64_t 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t magic[8],b[1152],orders[128]; uint32_t n,channels=4,patterns,count,ns=0,lens[36],i,j; uint64_t measured=0,start; char label[48]; fd_cursor c={f,0,(uint64_t)pm_available(f),pd,0};
     if(!fd_get(&c,magic,8) || xx_rt_memcmp(magic,"OKTASONG",8) || !sm_emit(f,s,"okt-magic.bin",0,8,&measured)) return false;
-    if(!sm_okt_chunk(&c,"CMOD",&n,&start) || n!=8 || !fd_get(&c,b,8)) return false; for(i=0;i<4;++i) { if(pm_be16(b+i*2)>1) return false; channels+=pm_be16(b+i*2); }
+    if(!sm_okt_chunk(&c,"CMOD",&n,&start) || n!=8 || !fd_get(&c,b,8)) { return false; } for(i=0;i<4;++i) { if(pm_be16(b+i*2)>1) return false; channels+=pm_be16(b+i*2); }
     if(!sm_emit(f,s,"cmod.bin",start,c.at-start,&measured) || !sm_okt_chunk(&c,"SAMP",&n,&start) || n!=1152 || !fd_get(&c,b,1152)) return false;
     for(i=0;i<36;++i) { uint8_t *p=b+i*32; uint32_t len=pm_be32(p+20),a=(uint32_t)pm_be16(p+24)*2,z=(uint32_t)pm_be16(p+26)*2;
-        if(len>16777216 || (len&1) || pm_be16(p+28)>64 || pm_be16(p+30)>2 || (z>2 && (a>len || z>len-a))) return false; if(len) lens[ns++]=len; }
+        if(len>16777216 || (len&1) || pm_be16(p+28)>64 || pm_be16(p+30)>2 || (z>2 && (a>len || z>len-a))) { return false; } if(len) lens[ns++]=len; }
     if(!sm_emit(f,s,"samp.bin",start,c.at-start,&measured) || !sm_okt_chunk(&c,"SPEE",&n,&start) || n!=2 || !fd_get(&c,b,2) || !pm_be16(b) || pm_be16(b)>255 || !sm_emit(f,s,"spee.bin",start,c.at-start,&measured)) return false;
     if(!sm_okt_chunk(&c,"SLEN",&n,&start) || n!=2 || !fd_get(&c,b,2) || !(patterns=pm_be16(b)) || patterns>128 || !sm_emit(f,s,"slen.bin",start,c.at-start,&measured)) return false;
     if(!sm_okt_chunk(&c,"PLEN",&n,&start) || n!=2 || !fd_get(&c,b,2) || !(count=pm_be16(b)) || count>128 || !sm_emit(f,s,"plen.bin",start,c.at-start,&measured)) return false;
-    if(!sm_okt_chunk(&c,"PATT",&n,&start) || n<count || n>256 || !fd_get(&c,orders,count)) return false; for(i=0;i<count;++i) if(orders[i]>=patterns) return false;
+    if(!sm_okt_chunk(&c,"PATT",&n,&start) || n<count || n>256 || !fd_get(&c,orders,count)) { return false; } for(i=0;i<count;++i) if(orders[i]>=patterns) return false;
     if(!fd_skip(&c,n-count) || !sm_emit(f,s,"patt.bin",start,c.at-start,&measured)) return false;
     for(i=0;i<patterns;++i) { uint32_t rows; if(!sm_okt_chunk(&c,"PBOD",&n,&start) || n<2 || !fd_get(&c,b,2) || !(rows=pm_be16(b)) || rows>256 || n!=2+rows*channels*4) return false;
         for(j=0;j<rows*channels;++j) if(!fd_get(&c,b,4) || b[0]>36 || b[1]>=36 || b[2]>31) return false;

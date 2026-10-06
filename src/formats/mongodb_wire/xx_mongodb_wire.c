@@ -8,7 +8,7 @@
 static bool bs_doc(nh_blob *,uint64_t *,uint64_t,unsigned,unsigned *,bool);
 static bool bs_string(nh_blob *b,uint64_t *at,uint64_t end) {
     uint64_t n;if(!eh_span(*at,4,end) || !nh_span(b,*at,4)) return false;n=pm_le32(b->p+(size_t)*at);*at+=4;
-    if(!n || n>65536 || !eh_span(*at,n,end) || !nh_span(b,*at,n) || b->p[(size_t)(*at+n-1)] || !fourth_utf8(b->p+(size_t)*at,(size_t)n-1,b->pd)) return false;*at+=n;return true;
+    if(!n || n>65536 || !eh_span(*at,n,end) || !nh_span(b,*at,n) || b->p[(size_t)(*at+n-1)] || !fourth_utf8(b->p+(size_t)*at,(size_t)n-1,b->pd)) { return false; } *at+=n;return true;
 }
 static bool bs_element(nh_blob *b,uint64_t *at,uint64_t end,unsigned depth,unsigned *nodes,bool array,unsigned index) {
     unsigned type;uint64_t n=0,start,key;char want[24];if(*at>=end || !nh_span(b,*at,1) || ++*nodes>1000000) return false;type=b->p[(size_t)(*at)++];key=*at;if(!tw_z(b,at,end,true)) return false;
@@ -30,7 +30,7 @@ static bool bs_element(nh_blob *b,uint64_t *at,uint64_t end,unsigned depth,unsig
 static bool bs_doc(nh_blob *b,uint64_t *at,uint64_t limit,unsigned depth,unsigned *nodes,bool array) {
     uint64_t start=*at,end,n;unsigned index=0;if(depth>32 || !eh_span(*at,5,limit) || !nh_span(b,*at,5)) return false;n=pm_le32(b->p+(size_t)*at);if(n<5 || !eh_span(*at,n,limit)) return false;end=start+n;*at+=4;
     while(*at<end-1) if(!bs_element(b,at,end-1,depth,nodes,array,index++)) return false;
-    if(*at!=end-1 || b->p[(size_t)*at]) return false;++*at;return true;
+    if(*at!=end-1 || b->p[(size_t)*at]) { return false; } ++*at;return true;
 }
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {nh_blob b;uint64_t at=0,start,end,n,p,section,idStart;uint32_t flags;uint64_t identifiers[256],idLengths[256];unsigned work=0,messages=0,body,sequences;bool ok=false;if(!nh_load(f,&b,pd)) return false;while(at<b.n) {NH_NEED(nh_span(&b,at,21));start=at;n=pm_le32(b.p+(size_t)at);NH_NEED(n>=26 && eh_span(at,n,b.n) && pm_le32(b.p+(size_t)at+12)==2013);flags=pm_le32(b.p+(size_t)at+16);NH_NEED(!(flags&~0x10003U));end=at+n;if(flags&1) {NH_NEED(n>=30 && ec_crc(&b,at,n-4,pm_le32(b.p+(size_t)end-4),true));end-=4;}NH_NEED(nh_add(f,s,&b,"opmsg-header",at,20));at+=20;body=0;sequences=0;while(at<end) {uint8_t kind=b.p[(size_t)at++];section=at-1;if(!kind) {p=at;NH_NEED(!body++ && bs_doc(&b,&at,end,0,&work,false) && nh_add(f,s,&b,"body-document",p,at-p));}else if(kind==1) {NH_NEED(eh_span(at,5,end));n=pm_le32(b.p+(size_t)at);NH_NEED(n>=5 && eh_span(at,n,end));p=at+n;at+=4;idStart=at;NH_NEED(tw_z(&b,&at,p,true) && at-idStart>1 && sequences<256);for(unsigned j=0;j<sequences;++j) NH_NEED(idLengths[j]!=at-idStart || xx_rt_memcmp(b.p+(size_t)identifiers[j],b.p+(size_t)idStart,(size_t)(at-idStart)));identifiers[sequences]=idStart;idLengths[sequences++]=at-idStart;NH_NEED(nh_add(f,s,&b,"sequence-header",section,at-section));unsigned docs=0;while(at<p) {uint64_t doc=at;NH_NEED(++docs<=2048 && bs_doc(&b,&at,p,0,&work,false) && nh_add(f,s,&b,"sequence-document",doc,at-doc));}NH_NEED(docs && at==p);}else NH_NEED(false);}NH_NEED(body==1 && at==end && ++messages<=256);at=start+pm_le32(b.p+(size_t)start);if(flags&1) NH_NEED(nh_add(f,s,&b,"crc32c",end,4));}NH_NEED(messages);s->size=(int64_t)b.n;ok=true;done:xx_mem_free(b.p);return ok;}

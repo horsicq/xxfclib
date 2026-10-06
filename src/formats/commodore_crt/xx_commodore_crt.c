@@ -20,7 +20,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         packet=pm_be32(c+4); bytes=pm_be16(c+14);
         if(bytes==0 || packet!=(uint32_t)bytes+16 || pm_be16(c+8)>2) return false;
         xx_rt_snprintf(name,sizeof(name),"bank-%u-at-%04x.bin",(unsigned)pm_be16(c+10),(unsigned)pm_be16(c+12));
-        if(!pm_add(f,s,name,at+16,bytes)) return false; at+=packet;
+        if(!pm_add(f,s,name,at+16,bytes)) { return false; } at+=packet;
     }
     s->size=at; return s->count!=0;
 

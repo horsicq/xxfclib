@@ -26,9 +26,9 @@ static uint32_t rol32(uint32_t n,unsigned bits) {return bits?(n<<bits)|(n>>(32-b
 static bool parse_data(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
 
  uint32_t t1=0xf8ca4ddcU,t2=t1,t3=t1,t4=t1,t5=t1,t6=t1,entry;uint64_t at;uint32_t crc1,crc2;if(n<0x101000||n>67108864||(n&511)||pm_be32(b)!=0x80371240U||(entry=pm_be32(b+8))<0x80000000U||entry>=0x80800000U||(entry&3)||!zero(b+24,8))return false;
- for(at=0x20;at<0x34;++at)if(b[at]<32||b[at]>126)return false;for(at=0x1000;at<0x101000;at+=4){uint32_t d=pm_be32(b+at),r=rol32(d,d&31),next=t6+d;if((at&0x3fff)==0&&stop(pd))return false;if(next<t6)++t4;t6=next;t3^=d;t5+=r;if(t2>d)t2^=r;else t2^=t6^d;t1+=t5^d;}
+ for(at=0x20;at<0x34;++at) {if(b[at]<32||b[at]>126)return false; } for(at=0x1000;at<0x101000;at+=4){uint32_t d=pm_be32(b+at),r=rol32(d,d&31),next=t6+d;if((at&0x3fff)==0&&stop(pd))return false;if(next<t6)++t4;t6=next;t3^=d;t5+=r;if(t2>d)t2^=r;else t2^=t6^d;t1+=t5^d;}
  crc1=t6^t4^t3;crc2=t5^t2^t1;if(pm_be32(b+16)!=crc1||pm_be32(b+20)!=crc2)return false;
- if(!emit(f,s,"header.bin",0,64,n)||!emit(f,s,"ipl3.bin",64,4032,n)||!emit(f,s,"rom-body.bin",4096,n-4096,n))return false;s->size=(int64_t)n;return true;
+ if(!emit(f,s,"header.bin",0,64,n)||!emit(f,s,"ipl3.bin",64,4032,n)||!emit(f,s,"rom-body.bin",4096,n-4096,n)) {return false; } s->size=(int64_t)n;return true;
 
 }
 

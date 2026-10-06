@@ -207,7 +207,7 @@ static bool arcv4_parse(Abstractformat *format, arcv4_stream **result,
         uint32_t chunk_type;
         uint32_t header_size;
         uint32_t record_size;
-        if (pd && xx_pd_is_stopped(pd) || stream->count >= ARCV4_MAX_MEMBERS ||
+        if ((pd && xx_pd_is_stopped(pd)) || stream->count >= ARCV4_MAX_MEMBERS ||
             offset > size - (int64_t)sizeof(prologue) ||
             !arcv4_read_at(format->device, format->base_address + offset,
                            prologue, sizeof(prologue)))

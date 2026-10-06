@@ -139,8 +139,7 @@ static bool xx_softronics_parse_buffer(const uint8_t *input,
     tail_offset = XX_SOFTRONICS_NAME_OFFSET + name_size + 1U;
     uncompressed_size = xx_softronics_read32le(input + tail_offset);
     if (uncompressed_size == 0U ||
-        (uint64_t)uncompressed_size > XX_SOFTRONICS_MAX_OUTPUT ||
-        (uint64_t)uncompressed_size > (uint64_t)SIZE_MAX) {
+        (uint64_t)uncompressed_size > XX_SOFTRONICS_MAX_OUTPUT) {
         return false;
     }
     context->uncompressed_size = uncompressed_size;

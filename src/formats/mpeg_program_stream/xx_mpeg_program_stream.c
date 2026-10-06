@@ -11,13 +11,13 @@ static bool ps_timestamp(const uint8_t *b,unsigned tag) { return (unsigned)(b[0]
 static bool ps_pack(const uint8_t *b,uint64_t at,uint64_t n,uint64_t *end) {
  ng_bits q;uint32_t rate,stuff;unsigned i;if(!ng_span(at,12,n))return false;q.b=b+at;q.bit=32;q.end=(n-at)*8;
  if((b[at+4]>>4)==2){if(!ps_value(&q,4,2)||!ng_bits_skip(&q,3)||!ps_value(&q,1,1)||!ng_bits_skip(&q,15)||!ps_value(&q,1,1)||!ng_bits_skip(&q,15)||!ps_value(&q,1,1)||!ps_value(&q,1,1)||!ng_bits_get(&q,22,&rate)||!rate||!ps_value(&q,1,1))return false;*end=at+12;return true;}
- if(!ng_span(at,14,n)||!ps_value(&q,2,1)||!ng_bits_skip(&q,3)||!ps_value(&q,1,1)||!ng_bits_skip(&q,15)||!ps_value(&q,1,1)||!ng_bits_skip(&q,15)||!ps_value(&q,1,1)||!ng_bits_get(&q,9,&rate)||rate>299||!ps_value(&q,1,1)||!ng_bits_get(&q,22,&rate)||!rate||!ps_value(&q,1,1)||!ps_value(&q,1,1)||!ps_value(&q,5,31)||!ng_bits_get(&q,3,&stuff)||!ng_span(at+14,stuff,n))return false;for(i=0;i<stuff;++i)if(b[at+14+i]!=255)return false;*end=at+14+stuff;return true;
+ if(!ng_span(at,14,n)||!ps_value(&q,2,1)||!ng_bits_skip(&q,3)||!ps_value(&q,1,1)||!ng_bits_skip(&q,15)||!ps_value(&q,1,1)||!ng_bits_skip(&q,15)||!ps_value(&q,1,1)||!ng_bits_get(&q,9,&rate)||rate>299||!ps_value(&q,1,1)||!ng_bits_get(&q,22,&rate)||!rate||!ps_value(&q,1,1)||!ps_value(&q,1,1)||!ps_value(&q,5,31)||!ng_bits_get(&q,3,&stuff)||!ng_span(at+14,stuff,n)) {return false; } for(i=0;i<stuff;++i)if(b[at+14+i]!=255)return false;*end=at+14+stuff;return true;
 }
 static bool ps_pes(const uint8_t *b,uint64_t p,uint64_t end) {
  unsigned stuff=0;if(p>=end)return false;
  if((b[p]&0xc0)==0x80){unsigned flags,need,len;if(!ng_span(p,3,end)||b[p]&0x30||(b[p+1]&63))return false;flags=b[p+1]>>6;len=b[p+2];need=flags==2?5:flags==3?10:0;if(flags==1||len<need||!ng_span(p+3,len,end))return false;p+=3;if(need&&(!ps_timestamp(b+p,flags==2?2:3)||(need==10&&!ps_timestamp(b+p+5,1))))return false;p+=need;for(;need<len;++need)if(b[p++]!=255)return false;return p<end;}
  while(p<end&&b[p]==255){if(++stuff>16)return false;++p;}if(p>=end)return false;if((b[p]&0xc0)==0x40){if(!ng_span(p,2,end))return false;p+=2;}if(p>=end)return false;
- if(b[p]==15)return p+1<end;if((b[p]>>4)==2)return ng_span(p,5,end)&&ps_timestamp(b+p,2)&&p+5<end;if((b[p]>>4)==3)return ng_span(p,10,end)&&ps_timestamp(b+p,3)&&ps_timestamp(b+p+5,1)&&p+10<end;return false;
+ if(b[p]==15) {return p+1<end; } if((b[p]>>4)==2)return ng_span(p,5,end)&&ps_timestamp(b+p,2)&&p+5<end;if((b[p]>>4)==3)return ng_span(p,10,end)&&ps_timestamp(b+p,3)&&ps_timestamp(b+p+5,1)&&p+10<end;return false;
 }
 static bool ng_quick(Abstractformat *f,uint64_t n) { uint8_t h[5];return ng_probe(f,n,h,5)&&!xx_rt_memcmp(h,"\0\0\1\xba",4)&&((h[4]>>4)==2||(h[4]>>6)==1); }
 static bool ng_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {

@@ -246,11 +246,11 @@ static bool pyc_object(pyc_cursor *c,unsigned depth,bool collect,pyc_value *out)
         break;
     case 'l': {
         int32_t count;uint32_t digit=0;
-        if(!pyc_number(c,4,&n))return false;count=(int32_t)n;
-        if(count==INT32_MIN)return false;n=(uint32_t)(count<0?-count:count);
+        if(!pyc_number(c,4,&n)) {return false; } count=(int32_t)n;
+        if(count==INT32_MIN) {return false; } n=(uint32_t)(count<0?-count:count);
         if(n>PYC_MAX_STRING/2U||!pyc_span(c,c->at,(size_t)n*2U))return false;
         for(i=0;i<n;++i)if(!pyc_number(c,2,&digit)||digit>32767)return false;
-        if(n&&!digit)return false;break;
+        if(n&&!digit) {return false; } break;
     }
     case 's':case 't':case 'u':case 'a':case 'A':case 'z':case 'Z': {
         bool ascii=type=='a'||type=='A'||type=='z'||type=='Z';
@@ -281,10 +281,10 @@ static bool pyc_object(pyc_cursor *c,unsigned depth,bool collect,pyc_value *out)
             if(ch=='0'){++c->at;break;}
             if(ch<0||!pyc_object(c,depth+1U,false,&child)||!pyc_object(c,depth+1U,false,&child))return false;
         }
-        if(i==PYC_MAX_OBJECTS)return false;break;
+        if(i==PYC_MAX_OBJECTS) {return false; } break;
     case 'c':
         if(c->in_root_constants)c->collect_enabled=false;
-        if(!pyc_code(c,depth))return false;v.size=1;break;
+        if(!pyc_code(c,depth)) {return false; } v.size=1;break;
     case ':':
         if(c->major<3||c->minor<14)return false;
         for(i=0;i<3;++i){pyc_value child;if(!pyc_object(c,depth+1U,false,&child))return false;}

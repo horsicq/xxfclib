@@ -9,7 +9,7 @@ static unsigned ply_width(const char *p) {
     if(!xx_rt_strcmp(p,"char") || !xx_rt_strcmp(p,"uchar") || !xx_rt_strcmp(p,"int8") || !xx_rt_strcmp(p,"uint8")) return 1;
     if(!xx_rt_strcmp(p,"short") || !xx_rt_strcmp(p,"ushort") || !xx_rt_strcmp(p,"int16") || !xx_rt_strcmp(p,"uint16")) return 2;
     if(!xx_rt_strcmp(p,"int") || !xx_rt_strcmp(p,"uint") || !xx_rt_strcmp(p,"float") || !xx_rt_strcmp(p,"int32") || !xx_rt_strcmp(p,"uint32") || !xx_rt_strcmp(p,"float32")) return 4;
-    if(!xx_rt_strcmp(p,"double") || !xx_rt_strcmp(p,"float64")) return 8;return 0;
+    if(!xx_rt_strcmp(p,"double") || !xx_rt_strcmp(p,"float64")) { return 8; } return 0;
 }
 static unsigned ply_count_width(const char *p) {if(!xx_rt_strcmp(p,"uchar") || !xx_rt_strcmp(p,"uint8")) return 1;if(!xx_rt_strcmp(p,"ushort") || !xx_rt_strcmp(p,"uint16")) return 2;if(!xx_rt_strcmp(p,"uint") || !xx_rt_strcmp(p,"uint32")) return 4;return 0;}
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
@@ -21,7 +21,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         char *p=sd_trim(line);if(sd_prefix(p,"comment ",8) || sd_prefix(p,"obj_info ",9)) continue;t=sv_tokens(p,v,5);
         if(t==1 && !xx_rt_strcmp(v[0],"end_header")) {ended=true;break;}
         if(t==3 && !xx_rt_strcmp(v[0],"element")) {uint64_t rows;size_t z=xx_rt_strlen(v[1]);if(ne==32 || !z || z>=64 || !sd_uint(v[2],&rows) || !rows || rows>1000000-total) goto done;
-            for(i=0;i<ne;++i) if(!xx_rt_strcmp(elements[i].name,v[1])) goto done;xx_rt_memcpy(elements[ne].name,v[1],z+1);elements[ne++].rows=rows;total+=rows;}
+            for(i=0;i<ne;++i) { if(!xx_rt_strcmp(elements[i].name,v[1])) goto done; } xx_rt_memcpy(elements[ne].name,v[1],z+1);elements[ne++].rows=rows;total+=rows;}
         else if(ne && t>=3 && !xx_rt_strcmp(v[0],"property")) {ply_element *e=elements+ne-1;ply_prop *prop;size_t z;char *name;if(e->properties==64 || (t!=3 && t!=5)) goto done;name=v[t-1];z=xx_rt_strlen(name);if(!z || z>=64) goto done;for(i=0;i<e->properties;++i) if(!xx_rt_strcmp(e->props[i].name,name)) goto done;prop=e->props+e->properties++;xx_rt_memcpy(prop->name,name,z+1);
             if(t==3) {prop->width=ply_width(v[1]);if(!prop->width) goto done;}
             else if(t==5 && !xx_rt_strcmp(v[1],"list")) {prop->width=ply_width(v[3]);prop->count_width=ply_count_width(v[2]);prop->is_list=true;if(!prop->width || !prop->count_width) goto done;}

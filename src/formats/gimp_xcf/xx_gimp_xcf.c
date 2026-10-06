@@ -16,12 +16,12 @@ static bool xc_add(xc_state *x,uint64_t p,uint64_t z,const char *label) {
 }
 static bool xc_string(xc_state *x,uint64_t *p,uint64_t end) {
  uint32_t z;if(!eg_span(*p,4,end))return false;z=pm_be32(x->b+*p);*p+=4;
- if(!z||z>65536||!eg_span(*p,z,end)||x->b[*p+z-1]||!eg_utf(x->b+*p,z-1,false,x->pd))return false;*p+=z;return true;
+ if(!z||z>65536||!eg_span(*p,z,end)||x->b[*p+z-1]||!eg_utf(x->b+*p,z-1,false,x->pd)) {return false; } *p+=z;return true;
 }
 static bool xc_props(xc_state *x,uint64_t *p,bool image) {
  uint32_t count=0;const uint8_t *b=x->b;uint64_t seen=0;
  for(;;){uint32_t type,z,v;uint64_t end;if(eg_stop(x->pd)||++count>1024||!eg_span(*p,8,x->n))return false;type=pm_be32(b+*p);z=pm_be32(b+*p+4);*p+=8;if(!type)return z==0;
-  if(type>63||z>1048576||!eg_span(*p,z,x->n)||(seen&((uint64_t)1<<type)))return false;seen|=(uint64_t)1<<type;end=*p+z;v=z>=4?pm_be32(b+*p):0;
+  if(type>63||z>1048576||!eg_span(*p,z,x->n)||(seen&((uint64_t)1<<type))) {return false; } seen|=(uint64_t)1<<type;end=*p+z;v=z>=4?pm_be32(b+*p):0;
   if(type==1){if(!image||z<4||v>256||z!=4+v*3)return false;x->colors=v;}
   else if(type==2||type==3||type==4){if(z)return false;}
   else if(type==6){if(z!=4||v>255)return false;}
@@ -50,7 +50,7 @@ static bool xc_tile(xc_state *x,uint64_t *p,uint32_t pixels,uint32_t bpp) {
 }
 static bool xc_hierarchy(xc_state *x,uint32_t at,uint32_t w,uint32_t h,uint32_t bpp) {
  uint64_t p=at;uint32_t levels[16],count=0,i,tw=w,th=h;const uint8_t *b=x->b;
- if(!eg_span(p,16,x->n)||pm_be32(b+p)!=w||pm_be32(b+p+4)!=h||pm_be32(b+p+8)!=bpp)return false;p+=12;
+ if(!eg_span(p,16,x->n)||pm_be32(b+p)!=w||pm_be32(b+p+4)!=h||pm_be32(b+p+8)!=bpp) {return false; } p+=12;
  for(;;){uint32_t v;if(!eg_span(p,4,x->n))return false;v=pm_be32(b+p);p+=4;if(!v)break;if(count==16)return false;levels[count++]=v;}
  if(!count||!xc_add(x,at,p-at,"hierarchy.xcf"))return false;
  for(i=0;i<count;++i){uint64_t start=levels[i];uint32_t tiles=((tw+63)/64)*((th+63)/64),j;uint32_t ptr[4096];
@@ -61,21 +61,21 @@ static bool xc_hierarchy(xc_state *x,uint32_t at,uint32_t w,uint32_t h,uint32_t 
    for(j=0;j<tiles;++j){uint32_t xx=j%((tw+63)/64),yy=j/((tw+63)/64),cw=tw-xx*64,ch=th-yy*64;uint64_t data=ptr[j];if(cw>64)cw=64;if(ch>64)ch=64;if(j&&ptr[j]<=ptr[j-1])return false;
     if(!xc_tile(x,&data,cw*ch,bpp)||(j+1<tiles&&data!=ptr[j+1]))return false;}
   }
-  if(!xc_add(x,start,p-start,i?"dummy-level.xcf":"tile-directory.xcf"))return false;tw=tw>1?tw/2:1;th=th>1?th/2:1;
+  if(!xc_add(x,start,p-start,i?"dummy-level.xcf":"tile-directory.xcf")) {return false; } tw=tw>1?tw/2:1;th=th>1?th/2:1;
  }
  return true;
 }
 static bool xc_drawable(xc_state *x,uint32_t at,bool layer,uint32_t canvasw,uint32_t canvash) {
  const uint8_t *b=x->b;uint64_t p=at;uint32_t w,h,type,bpp,hptr,mask=0;
- if(!eg_span(p,layer?16:12,x->n))return false;w=pm_be32(b+p);h=pm_be32(b+p+4);p+=8;
+ if(!eg_span(p,layer?16:12,x->n)) {return false; } w=pm_be32(b+p);h=pm_be32(b+p+4);p+=8;
  if(!w||!h||w>16384||h>16384||(uint64_t)w*h>16777216)return false;
  if(layer){type=pm_be32(b+p);p+=4;if(type>5||type/2!=x->base)return false;bpp=type<2?3+(type&1):1+(type&1);}
  else{bpp=1;if(w!=canvasw||h!=canvash)return false;}
- if((uint64_t)w*h*bpp>67108864||x->budget>67108864-(uint64_t)w*h*bpp)return false;x->budget+=(uint64_t)w*h*bpp;
- if(!xc_string(x,&p,x->n)||!xc_props(x,&p,false)||!eg_span(p,layer?8:4,x->n))return false;hptr=pm_be32(b+p);p+=4;if(layer){mask=pm_be32(b+p);p+=4;}
+ if((uint64_t)w*h*bpp>67108864||x->budget>67108864-(uint64_t)w*h*bpp) {return false; } x->budget+=(uint64_t)w*h*bpp;
+ if(!xc_string(x,&p,x->n)||!xc_props(x,&p,false)||!eg_span(p,layer?8:4,x->n)) {return false; } hptr=pm_be32(b+p);p+=4;if(layer){mask=pm_be32(b+p);p+=4;}
  if(!xc_add(x,at,p-at,layer?"layer.xcf":"channel.xcf"))return false;
  if(hptr&&!xc_hierarchy(x,hptr,w,h,bpp))return false;
- if(mask&&!xc_drawable(x,mask,false,w,h))return false;return true;
+ if(mask&&!xc_drawable(x,mask,false,w,h)) {return false; } return true;
 }
 static bool eg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  xc_state x;uint32_t w,h,layers[1024],channels[1024],lc=0,cc=0,i;uint64_t p=26,covered=0;bool result=false;xx_mem_zero(&x,sizeof(x));x.f=f;x.s=s;x.b=b;x.n=n;x.pd=pd;
@@ -88,9 +88,9 @@ static bool eg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  for(i=0;i<lc;++i)if(eg_stop(pd)||!xc_drawable(&x,layers[i],true,w,h))goto done;
  for(i=0;i<cc;++i)if(eg_stop(pd)||!xc_drawable(&x,channels[i],false,w,h))goto done;
  for(i=0;i<x.count;++i){uint32_t j,best=i;xc_region swap;
-  for(j=i+1;j<x.count;++j)if(x.r[j].p<x.r[best].p)best=j;swap=x.r[i];x.r[i]=x.r[best];x.r[best]=swap;
-  if(x.r[i].p!=covered||!eg_emit(f,s,x.r[i].label,x.r[i].p,x.r[i].z,n))goto done;covered+=x.r[i].z;}
- if(covered!=n)goto done;s->size=(int64_t)n;result=true;
+  for(j=i+1;j<x.count;++j) {if(x.r[j].p<x.r[best].p)best=j; } swap=x.r[i];x.r[i]=x.r[best];x.r[best]=swap;
+  if(x.r[i].p!=covered||!eg_emit(f,s,x.r[i].label,x.r[i].p,x.r[i].z,n)) {goto done; } covered+=x.r[i].z;}
+ if(covered!=n) {goto done; } s->size=(int64_t)n;result=true;
 done:xx_mem_free(x.r);return result;
 }
 

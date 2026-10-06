@@ -15,7 +15,7 @@ static bool pcompress_parse(Abstractformat *f,pm_stream *s,ac_blob *b) {
         size=pm_be32(b->p+at+1U); at+=5U; if(!ac_span(b,at,size)) return false;
         if(size>14U && b->p[at]=='L' && b->p[at+1]=='H' && b->p[at+2]==0U && b->p[at+6]==0U) {
             uint32_t written=0,used=0; n=pm_be32(b->p+at+2); packed=pm_be32(b->p+at+6); crc=pm_be32(b->p+at+10);
-            if(packed!=size-14U) return false; out=ac_alloc(b,n); if(!out) return false;
+            if(packed!=size-14U) { return false; } out=ac_alloc(b,n); if(!out) return false;
             /* PCompress checks the packed bytes, then decodes its 317-symbol
              * Zoom LH alphabet with an explicit EOF (distinct from LH1). */
             if(ac_crc32(b->p+at+14U,packed,0U)!=crc || !ac_adaptive(b,b->p+at+14U,packed,out,n,&written,&used,3U) || written!=n || used!=packed) { ac_release(b,out,n); return ac_error(b,"PCompress LH decode or CRC failed"); }

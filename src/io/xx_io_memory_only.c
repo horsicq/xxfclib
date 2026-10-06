@@ -139,7 +139,7 @@ static ssize_t xx_io_ram_write(xx_io_device *device,const void *buffer,size_t n)
     if(!xx_io_ram_grow(temp,end)) return -1;
     if(temp->position>temp->size) xx_mem_zero(temp->data+temp->size,temp->position-temp->size);
     xx_mem_copy(temp->data+temp->position,buffer,n);temp->position=end;
-    if(end>temp->size) temp->size=end;return (ssize_t)n;
+    if(end>temp->size) { temp->size=end; } return (ssize_t)n;
 }
 static int xx_io_ram_seek64(xx_io_device *device,int64_t offset,int whence) {
     xx_io_ram_temp *temp=xx_io_ram_state(device);int64_t base,target;

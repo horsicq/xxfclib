@@ -11,7 +11,7 @@ static bool oc_next(nh_blob *b,uint64_t *at,uint64_t end,oc_field *x) {
     uint64_t key;if(!th_var(b,at,end,&key) || !(key>>3) || (key>>3)>0x1fffffff) return false;x->tag=key>>3;x->wire=key&7;x->n=0;x->at=*at;x->v=0;
     if(!x->wire) return th_var(b,at,end,&x->v);
     if(x->wire==2) {if(!th_var(b,at,end,&x->n)) return false;x->at=*at;}else if(x->wire==1) x->n=8;else if(x->wire==5) x->n=4;else return false;
-    if(!eh_span(*at,x->n,end) || !nh_span(b,*at,x->n)) return false;*at+=x->n;return true;
+    if(!eh_span(*at,x->n,end) || !nh_span(b,*at,x->n)) { return false; } *at+=x->n;return true;
 }
 static bool oc_proto(nh_blob *b,uint64_t at,uint64_t n) {uint64_t end=at+n;oc_field x;unsigned fields=0;while(at<end) if(++fields>100000 || !oc_next(b,&at,end,&x)) return false;return at==end;}
 static bool oc_numbers(nh_blob *b,oc_field *x,uint64_t limit) {uint64_t at=x->at,v;if(!x->wire) return x->v<limit;if(x->wire!=2) return false;while(at<x->at+x->n) if(!th_var(b,&at,x->at+x->n,&v) || v>=limit) return false;return true;}
@@ -32,7 +32,7 @@ static bool oc_stripe_footer(nh_blob *b,uint64_t at,uint64_t n,uint64_t types,ui
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     nh_blob b;oc_field x;uint64_t at,end,ps,fl=0,ml=0,footer,meta,types=0,stripes=0,totalrows=0,wantrows=0,content=0,header=0,bodyend=3;unsigned flags=0;bool ok=false;
-    if(!nh_load(f,&b,pd)) return false;NH_NEED(nh_span(&b,0,4) && !xx_rt_memcmp(b.p,"ORC",3));ps=b.p[(size_t)b.n-1];NH_NEED(ps && ps<=b.n-4);at=b.n-1-ps;end=b.n-1;
+    if(!nh_load(f,&b,pd)) { return false; } NH_NEED(nh_span(&b,0,4) && !xx_rt_memcmp(b.p,"ORC",3));ps=b.p[(size_t)b.n-1];NH_NEED(ps && ps<=b.n-4);at=b.n-1-ps;end=b.n-1;
     while(at<end) {NH_NEED(oc_next(&b,&at,end,&x));if(x.tag==1 || x.tag==2 || x.tag==5 || x.tag==7) {unsigned mask=x.tag==1 ? 1:x.tag==2 ? 2:x.tag==5 ? 4:8;NH_NEED(!x.wire && !(flags&mask));flags|=mask;if(x.tag==1) fl=x.v;else if(x.tag==5) ml=x.v;else NH_NEED(!x.v);}
         else if(x.tag==8000) NH_NEED(x.wire==2 && x.n==3 && !xx_rt_memcmp(b.p+(size_t)x.at,"ORC",3));
         else if(x.tag==4) {uint64_t p=x.at,v[2];NH_NEED(x.wire==2 && th_var(&b,&p,x.at+x.n,&v[0]) && th_var(&b,&p,x.at+x.n,&v[1]) && p==x.at+x.n && !v[0] && (v[1]==11 || v[1]==12));}

@@ -22,7 +22,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,at,t,8) || xx_rt_memcmp(t,"MTrk",4)) return false;
         bytes=pm_be32(t+4); if(bytes<4) return false;
         xx_rt_snprintf(name,sizeof(name),"track-%u.events",(unsigned)i);
-        if(!pm_add(f,s,name,at+8,bytes)) return false; at+=8+(int64_t)bytes;
+        if(!pm_add(f,s,name,at+8,bytes)) { return false; } at+=8+(int64_t)bytes;
     }
     s->size=at; return true;
 

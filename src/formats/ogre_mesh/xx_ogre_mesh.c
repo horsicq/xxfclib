@@ -33,15 +33,15 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(!pm_read(f,0,h,26) || xx_rt_memcmp(h,"\0\x10[MeshSerializer_v1.100]\n",26) || !og_chunk(f,&at,(uint64_t)pm_available(f),&kind,&root_end,pd) || kind!=0x3000 || !take(f,&at,root_end,p,1,pd) || p[0]) return false;
     while(at<root_end) { if(!og_chunk(f,&at,root_end,&kind,&child,pd)) return false; start=at;
       if(kind==0x4000) { uint32_t n,verts,i; if(++meshes>1024 || !og_line(f,&at,child,pd) || !take(f,&at,child,p,6,pd) || p[0] || p[5] || !(n=pm_le32(p+1)) || n>196608 || n%3) return false; indices=at;
-        if(!span(at,(uint64_t)n*2,child) || !emit(f,s,"submesh-metadata.bin",start,at-start,root_end)) return false; at+=(uint64_t)n*2;
-        if(!og_chunk(f,&at,child,&kind,&geometry,pd) || kind!=0x5000 || !og_geometry(f,s,at,geometry,root_end,&verts,pd)) return false; at=geometry;
-        for(i=0;i<n;++i) if(stop(pd) || !pm_read(f,(int64_t)(indices+i*2),p,2) || pm_le16(p)>=verts) return false; if(!emit(f,s,"triangle-indices.bin",indices,(uint64_t)n*2,root_end)) return false;
+        if(!span(at,(uint64_t)n*2,child) || !emit(f,s,"submesh-metadata.bin",start,at-start,root_end)) { return false; } at+=(uint64_t)n*2;
+        if(!og_chunk(f,&at,child,&kind,&geometry,pd) || kind!=0x5000 || !og_geometry(f,s,at,geometry,root_end,&verts,pd)) { return false; } at=geometry;
+        for(i=0;i<n;++i) { if(stop(pd) || !pm_read(f,(int64_t)(indices+i*2),p,2) || pm_le16(p)>=verts) return false; } if(!emit(f,s,"triangle-indices.bin",indices,(uint64_t)n*2,root_end)) return false;
         if(at<child) { uint64_t operation; if(!og_chunk(f,&at,child,&kind,&operation,pd) || kind!=0x4010 || operation-at!=2 || !take(f,&at,operation,p,2,pd) || pm_le16(p)!=4) return false; }
         if(at!=child) return false;
       } else if(kind==0x9000) { unsigned i; if(bounds || child-at!=28 || !take(f,&at,child,p,28,pd)) return false; bounds=true; for(i=0;i<28;i+=4) if(!finite32(p+i,false)) return false; if(pm_le32(p+24)&0x80000000U || !emit(f,s,"mesh-bounds.bin",start,28,root_end)) return false; }
-      else return false; at=child;
+      else { return false; } at=child;
     }
-    if(!meshes || !bounds) return false; s->size=(int64_t)root_end; return true;
+    if(!meshes || !bounds) { return false; } s->size=(int64_t)root_end; return true;
 
 }
 

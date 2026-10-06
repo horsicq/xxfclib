@@ -11,7 +11,7 @@ static bool w6_swag_at(Abstractformat *f,pm_stream *s,int64_t base,xx_pd_struct 
     if(end<=base || !pm_read(f,end,footer,129) || footer[0]>60 || footer[61]>65 || !(count=pm_le16(footer+127)) || count>4096) return false;
     for(i=0;i<count;++i) { unsigned size,name,j,sum=0;uint32_t packed;
         if(wg_stop(pd) || end-at<187 || !pm_read(f,at,h,187) || xx_rt_memcmp(h+2,"-sw1-",5) || !(name=h[186]) || name>12 || (size=h[0])!=187+name || end-at<(int64_t)size+2 || !pm_read(f,at,h,size+2)) return false;
-        for(j=2;j<size+2;++j) sum+=h[j];if((sum&255)!=h[1]) return false;for(j=0;j<name;++j) if(h[187+j]<32 || h[187+j]>126) return false;
+        for(j=2;j<size+2;++j) { sum+=h[j]; } if((sum&255)!=h[1]) return false;for(j=0;j<name;++j) if(h[187+j]<32 || h[187+j]>126) return false;
         packed=pm_le32(h+7);if(packed>INT32_MAX || pm_le32(h+11)>67108864 || !wg_range(end,at+size+2,packed)) return false;at+=size+2+packed;
     }if(at==end-1) { uint8_t marker;if(!pm_read(f,at,&marker,1) || marker) return false;++at; }return at==end && w6_component(f,s,base,end+129-base,"payload.swg");
 }

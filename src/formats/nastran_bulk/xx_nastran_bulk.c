@@ -9,7 +9,7 @@ static bool fg_quick(Abstractformat *f,uint64_t n) {uint8_t c;return n>=24&&pm_r
 static bool fg_nas_fields(fg_text *q,char field[24][65],unsigned *count) {
  uint64_t p=q->start,end=q->stop;unsigned n=0;bool comma=false;uint64_t i;for(i=p;i<end;++i){if(q->b[i]=='$'){end=i;break;}if(q->b[i]==',')comma=true;}
  while(p<end){uint64_t stop=comma?p:p+8,j,z;if(!comma&&stop>end)stop=end;else if(comma)while(stop<end&&q->b[stop]!=',')++stop;if(n>=24)return false;j=p;while(j<stop&&(q->b[j]==32||q->b[j]==9))++j;z=stop;while(z>j&&(q->b[z-1]==32||q->b[z-1]==9))--z;if(z-j>64)return false;xx_mem_copy(field[n],q->b+j,(size_t)(z-j));field[n][z-j]=0;++n;p=stop;if(comma&&p<end)++p;}
- while(n&&field[n-1][0]==0)--n;*count=n;return n>0;
+ while(n&&field[n-1][0]==0) {--n; } *count=n;return n>0;
 }
 static bool fg_nas_int(const char *p,int32_t *v,bool blank) {fg_text q;size_t z=xx_rt_strlen(p);if(!z&&blank){*v=0;return true;}q.b=(const uint8_t *)p;q.t=0;q.stop=z;return fg_i(&q,v)&&q.t==z;}
 static bool fg_nas_real(const char *p,double *v,bool blank) {uint8_t b[80];size_t z=xx_rt_strlen(p),i,o=0;fg_text q;bool exponent=false;if(!z&&blank){*v=0;return true;}if(z>64)return false;for(i=0;i<z;++i){uint8_t c=(uint8_t)p[i];if(c=='D'||c=='d')c='E';if(c=='E'||c=='e')exponent=true;else if(i&&!exponent&&(c=='+'||c=='-')){b[o++]='E';exponent=true;}b[o++]=c;}q.b=b;q.t=0;q.stop=o;return fg_num(&q,v)&&q.t==o;}
@@ -23,7 +23,7 @@ static bool fg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  if(!fg_nas_fields(&q,fields,&count))goto done;
  if(!xx_rt_strcmp(fields[0],"GRID"))grid=true;
  else if(!xx_rt_strcmp(fields[0],"CTRIA3"))arity=3;else if(!xx_rt_strcmp(fields[0],"CQUAD4")||!xx_rt_strcmp(fields[0],"CTETRA"))arity=4;else if(!xx_rt_strcmp(fields[0],"CPYRA")||!xx_rt_strcmp(fields[0],"CPYRAM"))arity=5;else if(!xx_rt_strcmp(fields[0],"CPENTA"))arity=6;else if(!xx_rt_strcmp(fields[0],"CHEXA"))arity=8;else if(!xx_rt_strcmp(fields[0],"CBAR"))arity=2;else goto done;
- if(count<2||!fg_nas_int(fields[1],&id,false)||id<1)goto done;card=true;
+ if(count<2||!fg_nas_int(fields[1],&id,false)||id<1) {goto done; } card=true;
  if(grid){if(count<6||count>9||!fg_nas_int(fields[2],&value,true)||value||!fg_nas_real(fields[3],&v,false)||!fg_nas_real(fields[4],&v,false)||!fg_nas_real(fields[5],&v,false))goto done;for(i=6;i<count;++i)if(!fg_nas_int(fields[i],&value,true)||value)goto done;if(!pass){if(!fg_id(&nodes,(uint32_t)id,true,pd)||++nodecount>1000000)goto done;}}
  else {bool bar=!xx_rt_strcmp(fields[0],"CBAR");unsigned expected=3+arity+(bar?3:0);if(count!=expected||!fg_nas_int(fields[2],&value,true)||value<0)goto done;if(!pass){if(!fg_id(&elements,(uint32_t)id,true,pd)||++elementcount>1000000)goto done;}
  for(i=0;i<arity;++i){if(!fg_nas_int(fields[3+i],&value,false)||value<1||(pass&&!fg_id(&nodes,(uint32_t)value,false,pd)))goto done;{unsigned j;int32_t other;for(j=0;j<i;++j)if(!fg_nas_int(fields[3+j],&other,false)||other==value)goto done;}}

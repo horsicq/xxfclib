@@ -8,7 +8,7 @@
 
 static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[34]; uint64_t block,previous=28,metadata=28; uint32_t version,capacity,declared,actual=0; unsigned blocks=0,pass; int64_t limit=pm_available(f);
-    if(!pm_read(f,0,h,28) || xx_rt_memcmp(h,"MYP\0",4) || ((version=pm_le32(h+4))!=4 && version!=5) || !(capacity=pm_le32(h+20)) || capacity>65536 || !(declared=pm_le32(h+24)) || declared>65536) return false; block=wg64(h+12);
+    if(!pm_read(f,0,h,28) || xx_rt_memcmp(h,"MYP\0",4) || ((version=pm_le32(h+4))!=4 && version!=5) || !(capacity=pm_le32(h+20)) || capacity>65536 || !(declared=pm_le32(h+24)) || declared>65536) { return false; } block=wg64(h+12);
     for(pass=0;pass<2;++pass) { uint64_t first=block; previous=28; blocks=0;
         while(first) { uint32_t count,i; uint64_t next,stop; if(wg_stop(pd) || ++blocks>1024 || first<previous || !wg_range(limit,first,12) || !pm_read(f,(int64_t)first,h,12)) return false;
             count=pm_le32(h); next=wg64(h+4); if(count>capacity || !wg_range(limit,first+12,(uint64_t)count*34)) return false; stop=first+12+(uint64_t)count*34; if(next && next<stop) return false; if(stop>metadata) metadata=stop;
@@ -18,7 +18,7 @@ static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             } previous=stop; first=next;
         }
     }
-    if(actual!=declared) return false; s->size=(int64_t)metadata;
+    if(actual!=declared) { return false; } s->size=(int64_t)metadata;
     { wg_extent *ranges=(wg_extent *)xx_mem_alloc(s->count*sizeof(*ranges)); size_t i; bool ok; if(!ranges) return false;
       for(i=0;i<s->count;++i) { ranges[i].lo=s->items[i].offset-(s->items[i].packed_size-s->items[i].size); ranges[i].hi=s->items[i].offset+s->items[i].size; s->items[i].packed_size=s->items[i].size; }
       ok=wg_extents(ranges,s->count,pd); xx_mem_free(ranges); if(!ok) return false;

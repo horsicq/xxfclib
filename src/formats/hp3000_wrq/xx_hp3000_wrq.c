@@ -8,7 +8,7 @@
 
 static bool w5_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     static const char *keys[6]={"RECSIZE=","BLOCKFACTOR=","CODE=","EXTENTS=","FILESIZE=","FORMAT="}; uint8_t h[512]; size_t n,p=0,i; uint64_t v[5]; int64_t limit=pm_available(f); uint64_t bytes;
-    if(limit<64 || wg_stop(pd)) return false; n=limit>512 ? 512U : (size_t)limit; if(!pm_read(f,0,h,n)) return false;
+    if(limit<64 || wg_stop(pd)) { return false; } n=limit>512 ? 512U : (size_t)limit; if(!pm_read(f,0,h,n)) return false;
     for(i=0;i<6;++i) { size_t k=xx_rt_strlen(keys[i]),start; if(k>n-p || xx_rt_memcmp(h+p,keys[i],k)) return false; p+=k;
         if(i==5) { if(p>=n || h[p++]!='F') return false; break; } start=p; while(p<n && h[p]>='0' && h[p]<='9') ++p;
         if(!wg_decimal((const char *)h+start,p-start,&v[i]) || p>=n || h[p++]!=';') return false;

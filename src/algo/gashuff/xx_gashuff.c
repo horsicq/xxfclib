@@ -136,8 +136,7 @@ static bool xx_gashuff_parse_internal(const uint8_t *input,
         return false;
     }
     record_count = (uint16_t)(node_count + 1U);
-    if (root_index >= record_count ||
-        (size_t)record_count > (SIZE_MAX - 7U) / 21U) {
+    if (root_index >= record_count) {
         return false;
     }
     max_tree_bytes = ((size_t)record_count * 21U + 7U) / 8U;

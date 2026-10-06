@@ -27,7 +27,7 @@ static bool parse_data(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t 
 
  uint32_t frames,points,i;uint64_t end,at;char label[40];float prev=-1.0f;if(n<8||!(frames=pm_be32(b))||frames>4096||!(points=pm_be32(b+4))||points>65536||(uint64_t)frames*points>1000000)return false;
  end=8+(uint64_t)frames*4+(uint64_t)frames*points*12;if(end!=n||!floats(b,8,frames,true,end))return false;for(i=0;i<frames;++i){uint32_t bits=pm_be32(b+8+i*4);float now;xx_rt_memcpy(&now,&bits,4);if(now<0||now<=prev)return false;prev=now;}
- if(!emit(f,s,"timestamps.f32be",8,(uint64_t)frames*4,end))return false;at=8+(uint64_t)frames*4;for(i=0;i<frames;++i){if(stop(pd)||!floats(b,at,(uint64_t)points*3,true,end))return false;xx_rt_snprintf(label,sizeof(label),"frame-%u.xyzf32be",i);if(!emit(f,s,label,at,(uint64_t)points*12,end))return false;at+=(uint64_t)points*12;}s->size=(int64_t)end;return true;
+ if(!emit(f,s,"timestamps.f32be",8,(uint64_t)frames*4,end)) {return false; } at=8+(uint64_t)frames*4;for(i=0;i<frames;++i){if(stop(pd)||!floats(b,at,(uint64_t)points*3,true,end))return false;xx_rt_snprintf(label,sizeof(label),"frame-%u.xyzf32be",i);if(!emit(f,s,label,at,(uint64_t)points*12,end))return false;at+=(uint64_t)points*12;}s->size=(int64_t)end;return true;
 
 }
 

@@ -12,7 +12,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(!pm_read(f,0,h,24) || h[0]!=0xe9 || !h[1] || h[1]>16 || h[2]>3 || ((h[3]&15)>2 && (h[3]&15)!=15) || pm_le16(h+12)!=0 || h[23]!=0) return false;
     for(i=19;i<23;++i) if(h[i]) return false;
     for(i=0;i<h[1];++i) {
-        uint32_t size,addr; int64_t pos,left; char name[64];
+        uint32_t size,addr; int64_t pos; uint64_t left; char name[64];
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,at,seg,8)) return false;
         addr=pm_le32(seg); size=pm_le32(seg+4); at+=8;
         if(!size || addr>UINT32_MAX-size || at>available || size>(uint64_t)(available-at)) return false;
@@ -22,7 +22,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         while(left) {
             size_t n=left>sizeof(buf) ? sizeof(buf) : (size_t)left;
             if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,pos,buf,n)) return false;
-            for(j=0;j<n;++j) checksum^=buf[j]; pos+=n; left-=n;
+            for(j=0;j<n;++j) { checksum^=buf[j]; } pos+=n; left-=n;
         }
         at+=size;
     }

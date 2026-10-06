@@ -20,14 +20,14 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[132],t[12]; uint32_t size,count,i,offsets[1024],sizes[1024],tags[1024],common=0; uint16_t date[6];
     if(!pm_read(f,0,h,132) || (size=pm_be32(h))<144 || size>(uint64_t)pm_available(f) || xx_rt_memcmp(h+36,"acsp",4) || (h[8]!=2 && h[8]!=4) || h[10] || h[11] || pm_be32(h+64)>3 || (count=pm_be32(h+128))==0 || count>1024 || 132+(uint64_t)count*12>size) return false;
     if(xx_rt_memcmp(h+12,"scnr",4) && xx_rt_memcmp(h+12,"mntr",4) && xx_rt_memcmp(h+12,"prtr",4) && xx_rt_memcmp(h+12,"link",4) && xx_rt_memcmp(h+12,"spac",4) && xx_rt_memcmp(h+12,"abst",4) && xx_rt_memcmp(h+12,"nmcl",4)) return false;
-    for(i=0;i<6;++i) date[i]=pm_be16(h+24+i*2); if(!date[0] || date[1]<1 || date[1]>12 || date[2]<1 || date[2]>31 || date[3]>23 || date[4]>59 || date[5]>59) return false;
+    for(i=0;i<6;++i) { date[i]=pm_be16(h+24+i*2); } if(!date[0] || date[1]<1 || date[1]>12 || date[2]<1 || date[2]>31 || date[3]>23 || date[4]>59 || date[5]>59) return false;
     for(i=100;i<128;++i) if(h[i]) return false;
     for(i=0;i<count;++i) { uint32_t j,tag,at,n; char name[40];
-        if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,132+(int64_t)i*12,t,12)) return false; tag=pm_be32(t); at=pm_be32(t+4); n=pm_be32(t+8);
+        if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,132+(int64_t)i*12,t,12)) { return false; } tag=pm_be32(t); at=pm_be32(t+4); n=pm_be32(t+8);
         if((at&3) || at<132+count*12U || at>size || n>size-at || !ic_type(f,at,n)) return false;
         for(j=0;j<i;++j) if(tag==tags[j] || (at<offsets[j]+sizes[j] && at+n>offsets[j] && (at!=offsets[j] || n!=sizes[j]))) return false;
         tags[i]=tag; offsets[i]=at; sizes[i]=n;
-        if(tag==0x64657363U) common|=1; if(tag==0x63707274U) common|=2;
+        if(tag==0x64657363U) { common|=1; } if(tag==0x63707274U) common|=2;
         xx_rt_snprintf(name,sizeof(name),"tag-%08X.bin",tag); if(!pm_add(f,s,name,at,n)) return false;
     } s->size=size; return common==3;
 }

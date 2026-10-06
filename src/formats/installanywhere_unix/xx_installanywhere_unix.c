@@ -8,7 +8,7 @@
 
 static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     size_t len,vars; char *text=wg_shell(f,&len),*second; uint64_t block=32768,start,jre=0,arch,res=0,blocks,preamble,previous; int64_t limit=pm_available(f); bool ok=false;
-    if(!text) return false; if((!xx_rt_strstr(text,"InstallAnywhere (tm) UNIX Self Extractor") &&
+    if(!text) { return false; } if((!xx_rt_strstr(text,"InstallAnywhere (tm) UNIX Self Extractor") &&
        !xx_rt_strstr(text,"InstallAnywhere UNIX Self Extractor") &&
        !xx_rt_strstr(text,"InstallAnywhere is preparing to install")) ||
        !(second=xx_rt_strstr(text+10,"#!/bin/sh")) || second-text>4096) goto done;
@@ -21,9 +21,9 @@ static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     } else { if(!wg_number(text,vars,"ARCHSTART",&start) || start>(uint64_t)limit/block) goto done; preamble=start*block; }
     if(preamble<vars || start>(uint64_t)limit/block || !wg_range(limit,start*block,arch) || !wg_zip(f,(int64_t)(start*block),(int64_t)(start*block+arch),pd)) goto done;
     if(wg_number(text,vars,"ARCHSIZE",&blocks) && blocks!=(arch+block-1)/block) goto done;
-    if(!pm_add(f,s,"installer.zip",(int64_t)(start*block),(int64_t)arch)) goto done; previous=start*block+arch; start+=(arch+block-1)/block;
+    if(!pm_add(f,s,"installer.zip",(int64_t)(start*block),(int64_t)arch)) { goto done; } previous=start*block+arch; start+=(arch+block-1)/block;
     if(wg_number(text,vars,"RESSIZE",&blocks) && blocks) {
-        if(!wg_number(text,vars,"RESREALSIZE",&res) || res<22 || blocks!=(res+block-1)/block || start>(uint64_t)limit/block || !wg_range(limit,start*block,res) || !wg_zip(f,(int64_t)(start*block),(int64_t)(start*block+res),pd) || !pm_add(f,s,"Resource1.zip",(int64_t)(start*block),(int64_t)res)) goto done; previous=start*block+res;
+        if(!wg_number(text,vars,"RESREALSIZE",&res) || res<22 || blocks!=(res+block-1)/block || start>(uint64_t)limit/block || !wg_range(limit,start*block,res) || !wg_zip(f,(int64_t)(start*block),(int64_t)(start*block+res),pd) || !pm_add(f,s,"Resource1.zip",(int64_t)(start*block),(int64_t)res)) { goto done; } previous=start*block+res;
     } s->size=(int64_t)previous; ok=true;
 done: xx_mem_free(text); return ok;
 }

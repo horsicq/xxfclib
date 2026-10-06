@@ -29,11 +29,11 @@ static bool hx_number(const char *text,uint64_t maximum,uint64_t *result) {
         n=n*base+d; digit=true;
     }
     while(*text==' ' || *text=='\t' || *text=='\r' || *text=='\n') ++text;
-    if(!digit || *text) return false; *result=n; return true;
+    if(!digit || *text) { return false; } *result=n; return true;
 }
 static bool hx_attribute_number(xx_xml *xml,const char *key,uint64_t max,uint64_t *n,bool required) {
     const char *value=xx_xml_attribute_value(xml,key);
-    if(!value) return !required; return hx_number(value,max,n);
+    if(!value) { return !required; } return hx_number(value,max,n);
 }
 static bool hx_hex(hx_sector *s,const char *text) {
     uint8_t *data; size_t count=0,i; int high=-1;

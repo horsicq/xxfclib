@@ -5,7 +5,7 @@
 static bool embl_header(nh_blob *b,el_token line,bool *accession) {
     static const char *const keys[]={"XX","AC","DE","DT","KW","OS","OC","OG","OX","RN","RP","RC","RX","RA","RT","RL","DR","CC","AH","AS","CO","FH","FT"};
     unsigned i;el_token key;if(line.n<2) return false;key=el_slice(line,0,2);if(line.n>2 && b->p[(size_t)(line.at+2)]!=' ') return false;
-    for(i=0;i<sizeof(keys)/sizeof(keys[0]);++i) if(el_eq(b,key,keys[i])) {if(i==1) {if(line.n<=5) return false;*accession=true;}return true;}return false;
+    for(i=0;i<sizeof(keys)/sizeof(keys[0]);++i) { if(el_eq(b,key,keys[i])) {if(i==1) {if(line.n<=5) return false;*accession=true;}return true;} } return false;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     nh_blob b={0};el_lines c={0};el_token line,t[64],*names=NULL;f14_sequence q={0};unsigned nt,count=0;uint64_t total=0,budget=10000000;bool ok=false;
@@ -15,7 +15,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         NH_NEED(el_prefix(&b,line,"ID   ") && el_split(&b,line,t,64,&nt,false) && nt>=4 && el_eq(&b,t[nt-1],"BP.") && el_uint(&b,t[nt-2],&length) && length && length<=F14_MAX_SEQUENCE && t[1].n>1 && b.p[(size_t)(t[1].at+t[1].n-1)]==';');id=el_slice(t[1],0,t[1].n-1);NH_NEED(el_ident(&b,id) && count<1024 && el_unique(&b,id,names,count,&budget));names[count++]=id;
         while(c.at<b.n) {NH_NEED(el_line(&c,&line));if(el_prefix(&b,line,"SQ   ")) {sq=true;break;}NH_NEED(embl_header(&b,line,&accession));}
         NH_NEED(sq && accession && el_split(&b,line,t,64,&nt,false) && nt==14 && el_eq(&b,t[0],"SQ") && el_eq(&b,t[1],"Sequence") && el_uint(&b,t[2],&declared) && declared==length && el_eq(&b,t[3],"BP;") && el_eq(&b,t[5],"A;") && el_eq(&b,t[7],"C;") && el_eq(&b,t[9],"G;") && el_eq(&b,t[11],"T;") && el_eq(&b,t[13],"other;"));
-        for(i=0;i<5;++i) NH_NEED(el_uint(&b,t[4+2*i],&counts[i]) && counts[i]<=length);NH_NEED(nh_add(f,s,&b,"embl-header",start,c.at-start));
+        for(i=0;i<5;++i) { NH_NEED(el_uint(&b,t[4+2*i],&counts[i]) && counts[i]<=length); } NH_NEED(nh_add(f,s,&b,"embl-header",start,c.at-start));
         while(c.at<b.n) {uint64_t position;NH_NEED(el_line(&c,&line));if(el_eq(&b,line,"//")) break;NH_NEED(el_split(&b,line,t,64,&nt,false) && nt>=2 && nt<=7 && el_uint(&b,t[nt-1],&position));
             for(i=0;i<nt-1;++i) {uint64_t j;NH_NEED(t[i].n<=10 && (i==nt-2 || t[i].n==10) && f14_append(&b,&q,t[i],false,true,true));for(j=0;j<t[i].n;++j) {unsigned ch=f14_upper(b.p[(size_t)(t[i].at+j)]),k=ch=='A' ? 0:ch=='C' ? 1:ch=='G' ? 2:ch=='T' ? 3:4;++observed[k];}}NH_NEED(q.n==position && q.n<=length);
         }

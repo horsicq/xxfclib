@@ -93,7 +93,7 @@ static void xx_arx_search_close(Abstractformat *format) {
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
-    xx_arx_search_open, xx_arx_search_close
+    xx_arx_search_open, xx_arx_search_close, false
 };
 
 static xx_format_search_state *xx_arx_create_format_search(

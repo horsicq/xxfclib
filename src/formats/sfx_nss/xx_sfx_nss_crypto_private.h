@@ -55,7 +55,7 @@ static bool nss_crypto_init_password_bytes(nss_blowfish *cipher,
     return ok;
 }
 
-static bool nss_crypto_init_password(nss_blowfish *cipher,
+static XXFC_MAYBE_UNUSED bool nss_crypto_init_password(nss_blowfish *cipher,
                                      const char *password) {
     return password && nss_crypto_init_password_bytes(
         cipher, (const uint8_t *)password, xx_rt_strlen(password));

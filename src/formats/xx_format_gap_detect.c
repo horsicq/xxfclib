@@ -31,7 +31,7 @@ xx_file_type_t xx_format_gap_detect(xx_io_device *device) {
         case gap_apple:candidate=xx_apple_addition_candidate(row->type,device,first,size,total);break;
         case gap_volume:candidate=xx_volume_addition_candidate(row->type,device,first,size,total);break;
         }
-        if(!candidate) continue; reader=row->create(device,0); if(!reader) continue;
+        if(!candidate) { continue; } reader=row->create(device,0); if(!reader) continue;
         valid=xx_format_is_valid(reader,NULL); row->destroy(reader);
         if(valid) { result=row->type; break; }
     }

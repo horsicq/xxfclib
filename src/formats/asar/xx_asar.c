@@ -951,7 +951,7 @@ bool xx_asar_unpack_current_archive_record(Abstractformat *self,
         while (result && position < end) {
             size_t take = (size_t)(end - position < (int64_t)file_io_capacity
                                        ? end - position
-                                       : file_io_capacity);
+                                       : (int64_t)file_io_capacity);
             result = !(pd && xx_pd_is_stopped(pd)) &&
                      xx_asar_read_at(self, position, buffer, take);
             position += (int64_t)take;
@@ -1011,7 +1011,7 @@ bool xx_asar_unpack_current_archive_record(Abstractformat *self,
         while (result && position < end) {
             size_t take = (size_t)(end - position < (int64_t)file_io_capacity
                                        ? end - position
-                                       : file_io_capacity);
+                                       : (int64_t)file_io_capacity);
             size_t written = 0U;
 
             if ((pd && xx_pd_is_stopped(pd)) ||

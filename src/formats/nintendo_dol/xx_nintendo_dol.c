@@ -21,20 +21,20 @@ buffer_done:
     xx_mem_free(b);
     return buffer_result;
 }
-static bool section(Abstractformat *f,uint64_t at,uint64_t total,const char *magic,uint32_t n,xx_pd_struct *pd) { uint8_t h[8]; return !stop(pd) && n>=8 && span(at,n,total) && pm_read(f,(int64_t)at,h,8) && !xx_rt_memcmp(h,magic,4) && pm_be32(h+4)==n; }
+static XXFC_MAYBE_UNUSED bool section(Abstractformat *f,uint64_t at,uint64_t total,const char *magic,uint32_t n,xx_pd_struct *pd) { uint8_t h[8]; return !stop(pd) && n>=8 && span(at,n,total) && pm_read(f,(int64_t)at,h,8) && !xx_rt_memcmp(h,magic,4) && pm_be32(h+4)==n; }
 
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[256]; uint32_t address[18],size[18],entry,bss,bssn,i,j; uint64_t total=256; bool executable=false; char label[40];
-    if(!pm_read(f,0,h,256) || pm_be32(h)!=256 || !zeros(f,228,28,pd)) return false; entry=pm_be32(h+224); bss=pm_be32(h+216); bssn=pm_be32(h+220);
+    if(!pm_read(f,0,h,256) || pm_be32(h)!=256 || !zeros(f,228,28,pd)) { return false; } entry=pm_be32(h+224); bss=pm_be32(h+216); bssn=pm_be32(h+220);
     for(i=0;i<18;++i) { uint32_t offset=pm_be32(h+i*4); uint64_t limit; address[i]=pm_be32(h+72+i*4); size[i]=pm_be32(h+144+i*4);
       if(!size[i]) { if(offset || address[i]) return false; continue; } limit=address[i]>=0x90000000U ? 0x94000000ULL : 0x81800000ULL;
       if(offset<256 || address[i]<0x80000000U || (address[i]>=0x81800000U && address[i]<0x90000000U) || !span(address[i],size[i],limit) || (address[i]&3) || !span(offset,size[i],(uint64_t)pm_available(f))) return false;
       for(j=0;j<i;++j) if(overlap(address[i],size[i],address[j],size[j])) return false;
       xx_rt_snprintf(label,sizeof(label),i<7 ? "text-%u.bin":"data-%u.bin",i<7 ? i:i-7); if(stop(pd) || !emit(f,s,label,offset,size[i],(uint64_t)pm_available(f))) return false;
-      if((uint64_t)offset+size[i]>total) total=(uint64_t)offset+size[i]; if(i<7 && entry>=address[i] && entry-address[i]<size[i]) executable=true; }
-    if(!size[0] || !executable || (entry&3)) return false; if(bssn) { uint64_t limit=bss>=0x90000000U ? 0x94000000ULL:0x81800000ULL; if(bss<0x80000000U || (bss>=0x81800000U && bss<0x90000000U) || !span(bss,bssn,limit)) return false; for(i=0;i<18;++i) if(overlap(bss,bssn,address[i],size[i])) return false; }
+      if((uint64_t)offset+size[i]>total) { total=(uint64_t)offset+size[i]; } if(i<7 && entry>=address[i] && entry-address[i]<size[i]) executable=true; }
+    if(!size[0] || !executable || (entry&3)) { return false; } if(bssn) { uint64_t limit=bss>=0x90000000U ? 0x94000000ULL:0x81800000ULL; if(bss<0x80000000U || (bss>=0x81800000U && bss<0x90000000U) || !span(bss,bssn,limit)) return false; for(i=0;i<18;++i) if(overlap(bss,bssn,address[i],size[i])) return false; }
     s->size=(int64_t)total; return true;
 
 }

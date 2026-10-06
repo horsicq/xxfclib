@@ -56,7 +56,7 @@
 #define UUE_NAME_MAX 240U
 #define UUE_PAYLOAD_NAME "payload"
 
-static const char uue_xx_alphabet[] =
+static XXFC_MAYBE_UNUSED const char uue_xx_alphabet[] =
     "+-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
 /* ---------------------------------------------------------------------- */

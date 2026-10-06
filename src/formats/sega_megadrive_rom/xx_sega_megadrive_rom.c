@@ -26,7 +26,7 @@ static bool parse_data(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t 
  uint32_t stack,entry,sum=0;uint64_t end,at;if(n<514||xx_rt_memcmp(b+256,"SEGA",4)||(stack=pm_be32(b))<0xff0000||stack>0x1000000||stack&1||(entry=pm_be32(b+4))<512||entry&1||pm_be32(b+0x1a0))return false;
  end=1+(uint64_t)pm_be32(b+0x1a4);if(end<514||end>16777216||end>n||(end&1)||entry>=end)return false;for(at=0x100;at<0x18e;++at)if(b[at]<32||b[at]>126)return false;
  for(at=512;at<end;at+=2){if((at&65535)==0&&stop(pd))return false;sum+=pm_be16(b+at);}if((sum&65535)!=pm_be16(b+0x18e))return false;
- if(!emit(f,s,"vectors.bin",0,256,end)||!emit(f,s,"cartridge-header.bin",256,256,end)||!emit(f,s,"rom-body.bin",512,end-512,end))return false;s->size=(int64_t)end;return true;
+ if(!emit(f,s,"vectors.bin",0,256,end)||!emit(f,s,"cartridge-header.bin",256,256,end)||!emit(f,s,"rom-body.bin",512,end-512,end)) {return false; } s->size=(int64_t)end;return true;
 
 }
 

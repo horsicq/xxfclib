@@ -3562,7 +3562,7 @@ static bool xx_format_is_jffs2_device(xx_io_device *device) {
     return result;
 }
 
-static bool xx_format_is_yaffs_device(xx_io_device *device) {
+static XXFC_MAYBE_UNUSED bool xx_format_is_yaffs_device(xx_io_device *device) {
     xx_yaffs value;
     bool result;
     if (!device) return false;
@@ -3756,7 +3756,7 @@ static bool xx_format_is_csman_device(xx_io_device *device) {
     return result;
 }
 
-static bool xx_format_is_vxworks_device(xx_io_device *device) {
+static XXFC_MAYBE_UNUSED bool xx_format_is_vxworks_device(xx_io_device *device) {
     xx_vxworks value;
     bool result;
     if (!device) return false;
@@ -6899,8 +6899,8 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
     bool is_xeditpack = magic_size >= 16 && magic[0x0] == 0x00U && magic[0x1] == 0x01U && magic[0x2] == 0x40U &&
                         (magic[3] == 0xc6U || magic[3] == 0xe5U);
     bool is_wpk = magic_size >= 0x0c &&
-                  (magic[0x0] == 0x03U && magic[0x1] == 0x24U && magic[0x2] == 0x01U && magic[0x3] == 0x01U ||
-                   magic[0x0] == 0x03U && magic[0x1] == 0x24U && magic[0x2] == 0x33U && magic[0x3] == 0x01U);
+                  ((magic[0x0] == 0x03U && magic[0x1] == 0x24U && magic[0x2] == 0x01U && magic[0x3] == 0x01U) ||
+                   (magic[0x0] == 0x03U && magic[0x1] == 0x24U && magic[0x2] == 0x33U && magic[0x3] == 0x01U));
     bool is_wintersoft = magic_size >= 16 && xx_rt_memcmp(magic, "**++", 4U) == 0 &&
                          (xx_rt_memcmp(magic + 0x4U, "LZW ", 4U) == 0 ||
                           xx_rt_memcmp(magic + 0x4U, "HUFF", 4U) == 0);

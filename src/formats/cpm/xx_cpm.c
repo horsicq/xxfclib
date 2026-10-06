@@ -50,7 +50,7 @@ static bool cpm_read_at(const cpm_view *v, uint64_t physical, void *buffer, size
     if (!xx_io_seek64(v->device, v->base + (int64_t)physical, SEEK_SET)) {
         while (done < size && !cpm_stopped(pd)) {
             ssize_t got = xx_io_read(v->device, (uint8_t *)buffer + done, size - done);
-            if (got <= 0 || (size_t)got > size - done) break; done += (size_t)got;
+            if (got <= 0 || (size_t)got > size - done) { break; } done += (size_t)got;
         }
         ok = done == size;
     }
@@ -105,7 +105,7 @@ static bool cpm_raw_name(const uint8_t *entry, uint8_t name[11], uint8_t *attrib
             if (field && (entry[1U + i] & 0x80U)) *attributes |= (uint8_t)(1U << (i - 8U));
             if (c < 0x20U || c > 0x7EU || c == '<' || c == '>' || c == '.' || c == ',' || c == ';' || c == ':' || c == '=' || c == '?' || c == '*' || c == '[' || c == ']') return false;
             if (c == ' ') ended = true; else if (ended) return false;
-            if (c >= 'a' && c <= 'z') c -= 32U; name[i] = c;
+            if (c >= 'a' && c <= 'z') { c -= 32U; } name[i] = c;
         }
     }
     return name[0] != ' ';
@@ -226,7 +226,7 @@ static cpm_view *cpm_parse(Abstractformat *self, xx_pd_struct *pd) {
         } while (i < v->extent_count && cpm_same_file(v->extents + first, v->extents + i));
         member->first = first; member->count = i - first; member->slot = v->extents[first].slot; member->size = end;
         if (end && v->geometry.length_mode == XX_CPM_LENGTH_LAST_RECORD_USED && v->extents[last].byte_count && v->extents[last].byte_count < 128U) member->size -= 128U - v->extents[last].byte_count;
-        if (!cpm_name(v, member, v->extents + first, pd)) goto fail; ++v->count;
+        if (!cpm_name(v, member, v->extents + first, pd)) { goto fail; } ++v->count;
     }
     v->retained_memory = sizeof(*v) + (uint64_t)v->slots * (sizeof(*v->extents) + sizeof(*v->members));
     xx_mem_free(v->claimed); v->claimed = NULL; xx_mem_free(v->names); v->names = NULL; return v;
@@ -240,13 +240,13 @@ static const cpm_extent *cpm_extent_find(const cpm_view *v, const cpm_member *me
 }
 void xx_cpm_geometry_ibm3740(xx_cpm_geometry *g) {
     static const uint16_t order[26] = {0,6,12,18,24,4,10,16,22,2,8,14,20,1,7,13,19,25,5,11,17,23,3,9,15,21};
-    if (!g) return; xx_mem_zero(g, sizeof(*g)); g->tracks = 77U; g->physical_sectors_per_track = 26U; g->physical_sector_size = 128U;
+    if (!g) { return; } xx_mem_zero(g, sizeof(*g)); g->tracks = 77U; g->physical_sectors_per_track = 26U; g->physical_sector_size = 128U;
     g->spt = 26U; g->bsh = 3U; g->blm = 7U; g->dsm = 242U; g->drm = 63U; g->off = 2U; g->al0 = 0xC0U; g->version = XX_CPM_VERSION_22;
     xx_mem_copy(g->sector_order, order, sizeof(order));
 }
 static void cpm_vtable_destroy(Abstractformat *self) { xx_cpm_destroy((xx_cpm *)self); }
 void xx_cpm_init_ex(xx_cpm *v, xx_io_device *device, int64_t base, const xx_cpm_geometry *geometry) {
-    if (!v) return; xx_mem_zero(v, sizeof(*v)); xx_format_init(&v->format, device, base);
+    if (!v) { return; } xx_mem_zero(v, sizeof(*v)); xx_format_init(&v->format, device, base);
     if (geometry) v->geometry = *geometry;
     v->format.endian = XX_ENDIAN_LITTLE; v->format.file_type = CPM_TYPE; v->format.format_type = XX_TYPE_ARCHIVE; v->format.is_archive = true;
     xx_format_set_mime_type(&v->format, "application/x-cpm-fs"); xx_format_set_extension(&v->format, "img");
@@ -327,7 +327,7 @@ bool xx_cpm_extract_record_to_device(Abstractformat *self, xx_archive_record_sta
     while (done < member->size) {
         uint32_t group = done / v->span, within = done % v->span, block_index = within / v->block_size;
         const cpm_extent *extent = cpm_extent_find(v, member, group); size_t part = v->block_size - within % v->block_size, written = 0U;
-        if (part > buffer_size) part = buffer_size; if (part > member->size - done) part = member->size - done;
+        if (part > buffer_size) { part = buffer_size; } if (part > member->size - done) part = member->size - done;
         if (extent && within < extent->used) {
             if (part > extent->used - within) part = extent->used - within;
             if (block_index >= v->pointer_count) { ok = false; break; }
@@ -344,7 +344,7 @@ bool xx_cpm_extract_record_to_device(Abstractformat *self, xx_archive_record_sta
 }
 static xx_io_device *cpm_stage(const char *destination, char **stage_path) {
     unsigned attempt; size_t i, parent = 0U; char *directory = xx_str_dup(destination); *stage_path = NULL; if (!directory) return NULL;
-    for (i = 0U; directory[i]; ++i) if (directory[i] == '/' || directory[i] == '\\') parent = i + 1U; directory[parent] = 0;
+    for (i = 0U; directory[i]; ++i) { if (directory[i] == '/' || directory[i] == '\\') parent = i + 1U; } directory[parent] = 0;
     for (attempt = 0U; attempt < 128U; ++attempt) {
         char suffix[48], *candidate; xx_io_device *output; xx_rt_snprintf(suffix, sizeof(suffix), ".xx_cpm.tmp.%u", attempt);
         candidate = xx_str_concat(directory, suffix); if (!candidate) break;
@@ -367,8 +367,8 @@ bool xx_cpm_unpack_current_archive_record(Abstractformat *self, xx_archive_recor
     path = (*base && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", v->members[v->index].name) : xx_str_concat(base, v->members[v->index].name);
     if (!path || (!overwrite && xx_io_file_exists_a(path)) || !xx_store_create_dirs_a(path, false)) goto done;
     { xx_io_device *output = cpm_stage(path, &staged); if (!output) goto done; ok = xx_cpm_extract_record_to_device(self, state, output, pd); if (xx_io_close(output)) ok = false; }
-    if (cpm_stopped(pd)) ok = false; if (ok) ok = xx_io_file_replace_a(staged, path, overwrite);
+    if (cpm_stopped(pd)) { ok = false; } if (ok) ok = xx_io_file_replace_a(staged, path, overwrite);
 done:
-    if (!ok && staged) xx_io_file_remove_a(staged); xx_str_free(staged); xx_str_free(path); xx_str_free(owned); return ok;
+    if (!ok && staged) { xx_io_file_remove_a(staged); } xx_str_free(staged); xx_str_free(path); xx_str_free(owned); return ok;
 }
 void xx_cpm_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state) { (void)self; xx_archive_record_state_free(state); }

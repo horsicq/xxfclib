@@ -14,7 +14,7 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
  size=b->n-128; for(i=112;i<120;++i) if(b->p[i]) banked=true;
  if(!banked) { if(size>65536U-load) return false; }
  else { uint32_t pages=(size+(load&4095U)+4095U)/4096U; if(size>1048576U) return false; for(i=112;i<120;++i) if(b->p[i]>=pages) return false; }
- if(!nh_emit(f,s,b,"music-descriptor.bin",0,128) || !nh_emit(f,s,b,"program.bin",128,size)) return false; s->size=b->n; return true;
+ if(!nh_emit(f,s,b,"music-descriptor.bin",0,128) || !nh_emit(f,s,b,"program.bin",128,size)) { return false; } s->size=b->n; return true;
 }
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { nh_blob b; bool ok; if(!nh_load(f,&b,pd)) return false; ok=parse_blob(f,s,&b); xx_mem_free(b.p); return ok; }

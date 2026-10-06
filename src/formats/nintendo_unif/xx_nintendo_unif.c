@@ -19,7 +19,7 @@ static bool read_components(Abstractformat *f,pm_stream *s,th_blob *b) {
   xx_rt_snprintf(name,sizeof(name),"chunk-%u-%c%c%c%c.unif",count-1,p[a],p[a+1],p[a+2],p[a+3]);if(!th_emit(f,s,b,name,a,8+z)) return false;a+=8+z;
  }
  for(i=0;i<32;++i) if(havecrc[i]) {bool okay;uint32_t actual;if(!rom_size[i]) return false;actual=th_crc(b,rom_at[i],rom_size[i],&okay);if(!okay || actual!=checks[i]) return false;}
- if(!map || !prg) return false;s->size=b->n;return true;
+ if(!map || !prg) { return false; } s->size=b->n;return true;
 }
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {

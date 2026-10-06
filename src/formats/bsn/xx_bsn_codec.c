@@ -86,7 +86,7 @@ bool bsnBuildTree(const uint8_t *vLengths, int32_t length_count, BsnTree *pTree)
     }
     if (nLeft != 0) return false;
 
-    if(nIndex>BSN_NC)return false; pTree->symbol_count=nIndex;
+    if(nIndex>BSN_NC) {return false; } pTree->symbol_count=nIndex;
     int32_t vNext[BSN_MAX_CODE_LENGTH + 1]={0};
     for (int32_t nLength = 1; nLength <= nMaxLength; ++nLength) {
         vNext[nLength] = pTree->nFirstIndex[nLength];
@@ -249,7 +249,7 @@ bool xx_bsn_lz_decode(const uint8_t *packed,size_t packed_size,
     bsnResetTree(&positionTree);
 
     uint32_t nBlockRemaining = 0;
-    int64_t nNextCancelCheck = BSN_CANCEL_CHECK_INTERVAL;
+    size_t nNextCancelCheck = BSN_CANCEL_CHECK_INTERVAL;
     while (produced < nUncompressedSize) {
         if (produced >= nNextCancelCheck) {
             if ((pPdStruct && xx_pd_is_stopped(pPdStruct))) return false;
@@ -300,7 +300,7 @@ bool xx_bsn_lz_decode(const uint8_t *packed,size_t packed_size,
         // distance can never exceed the dictionary.  Both are hard errors:
         // silently clamping either one would emit wrong bytes.
         if ((nDistance > (uint32_t)(BSN_WINDOW_SIZE)) ||
-            ((int64_t)(produced) + nMatchLength > nUncompressedSize)) {
+            (produced + (size_t)(nMatchLength) > nUncompressedSize)) {
             return false;
         }
 

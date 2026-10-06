@@ -11,10 +11,17 @@
 #define DA_MAX_RUNS 262144U
 #define DA_MAX_LOGICAL UINT64_C(8796093022208)
 typedef struct da_run {uint64_t at,bytes,count,stride;int fill;xx_io_device *source;} da_run;
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable:4200)
+#endif
 typedef struct da_map {uint64_t count,bytes;da_run runs[];} da_map;
-static uint64_t da_le64(const uint8_t *p){return (uint64_t)pm_le32(p)|((uint64_t)pm_le32(p+4)<<32);}
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+static XXFC_MAYBE_UNUSED uint64_t da_le64(const uint8_t *p){return (uint64_t)pm_le32(p)|((uint64_t)pm_le32(p+4)<<32);}
 static bool da_poll(xx_pd_struct *pd){return !pd||!xx_pd_is_stopped(pd);}
-static bool da_read(Abstractformat *f,uint64_t at,void *p,size_t n,xx_pd_struct *pd){size_t done=0;while(done<n){size_t z=n-done>65536U?65536U:n-done;if(!da_poll(pd)||at>INT64_MAX-done||!pm_read(f,(int64_t)at+done,(uint8_t *)p+done,z))return false;done+=z;}return da_poll(pd);}
+static XXFC_MAYBE_UNUSED bool da_read(Abstractformat *f,uint64_t at,void *p,size_t n,xx_pd_struct *pd){size_t done=0;while(done<n){size_t z=n-done>65536U?65536U:n-done;if(!da_poll(pd)||at>INT64_MAX-done||!pm_read(f,(int64_t)at+done,(uint8_t *)p+done,z))return false;done+=z;}return da_poll(pd);}
 static bool da_budget(Abstractformat *f,pm_stream *s,uint64_t extra){size_t i;uint64_t total=65536U+sizeof(*s),capacity=s->capacity;if(s->count==capacity)capacity=capacity?capacity*2U:8U;total+=capacity*sizeof(pm_member);for(i=0;i<s->count;++i)if(s->items[i].memory){uint64_t n=s->items[i].compression_method==DA_MAP_METHOD?sizeof(da_map)+((da_map *)s->items[i].memory)->count*sizeof(da_run):(uint64_t)s->items[i].size;if(n>UINT64_MAX-total)return false;total+=n;}return extra<=UINT64_MAX-total&&hx_limit(f,XX_META_ID_OPT_MEMORY_LIMIT,total+extra);}
 static bool da_add(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uint64_t n){return at<=INT64_MAX&&n<=INT64_MAX&&da_budget(f,s,0)&&hx_limit(f,XX_META_ID_OPT_MAX_MEMBER_SIZE,n)&&pm_add(f,s,name,(int64_t)at,(int64_t)n);}
 static bool da_map_add(Abstractformat *f,pm_stream *s,const char *name,const da_run *runs,size_t count){
@@ -27,18 +34,18 @@ static bool da_map_add(Abstractformat *f,pm_stream *s,const char *name,const da_
   sz=r->bytes*r->count;if(sz>DA_MAX_LOGICAL-total)return false;total+=sz;
   if(r->fill<0){if(r->count>1U&&r->stride>(UINT64_MAX-r->bytes)/(r->count-1U))return false;extent=r->bytes+(r->count-1U)*r->stride;
    limit=r->source?xx_io_size(r->source):pm_available(f);
-   if(limit<0||r->at>(uint64_t)limit||extent>(uint64_t)limit-r->at||sz>UINT64_MAX-packed)return false;packed+=sz;
+   if(limit<0||r->at>(uint64_t)limit||extent>(uint64_t)limit-r->at||sz>UINT64_MAX-packed) {return false; } packed+=sz;
   }
  }
  if(!hx_limit(f,XX_META_ID_OPT_MAX_MEMBER_SIZE,total)||!pm_add(f,s,name,0,0))return false;
  map=(da_map *)xx_mem_alloc(n);if(!map){--s->count;return false;}map->count=count;map->bytes=total;xx_rt_memcpy(map->runs,runs,count*sizeof(*runs));
  s->items[s->count-1U].memory=(uint8_t *)map;s->items[s->count-1U].size=(int64_t)total;s->items[s->count-1U].packed_size=(int64_t)packed;s->items[s->count-1U].compression_method=DA_MAP_METHOD;return true;
 }
-static bool da_one(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uint64_t bytes,uint64_t count,uint64_t stride,int fill,xx_io_device *source){da_run r;r.at=at;r.bytes=bytes;r.count=count;r.stride=stride;r.fill=fill;r.source=source;return da_map_add(f,s,name,&r,1U);}
+static XXFC_MAYBE_UNUSED bool da_one(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uint64_t bytes,uint64_t count,uint64_t stride,int fill,xx_io_device *source){da_run r;r.at=at;r.bytes=bytes;r.count=count;r.stride=stride;r.fill=fill;r.source=source;return da_map_add(f,s,name,&r,1U);}
 static const xx_archive_record *da_current(Abstractformat *f,xx_archive_record_state *st){const xx_archive_record *r=pm_current(f,st);if(r&&!xx_archive_record_set_meta_u64(&st->current_record,XX_META_ID_COMPRESSION_METHOD,0))return NULL;return r;}
 static bool da_unpack(Abstractformat *f,xx_archive_record_state *st,xx_pd_struct *pd){
  pm_stream *s;pm_member *m;da_map *map;const xx_var *v;const char *base=NULL;char *owned=NULL,*path=NULL,*stage=NULL;xx_io_device *out=NULL;uint8_t *buf=NULL;size_t i;bool ok=false,overwrite=false;int64_t cursor;
- if(!f||!st||st->format!=f||!st->has_record||!da_poll(pd))return false;s=(pm_stream *)st->internal_state;m=s->items+s->index;
+ if(!f||!st||st->format!=f||!st->has_record||!da_poll(pd)) {return false; } s=(pm_stream *)st->internal_state;m=s->items+s->index;
  if(m->compression_method!=DA_MAP_METHOD)return pm_unpack(f,st,pd);
  map=(da_map *)m->memory;v=xx_format_resolve_extra_parameter(f,&st->options,XX_META_ID_OPT_MAX_MEMBER_SIZE);if(v&&(uint64_t)m->size>xx_var_get_u64(v))return false;
  v=xx_format_resolve_extra_parameter(f,&st->options,XX_META_ID_OPT_MEMORY_LIMIT);if(v&&sizeof(*map)+map->count*sizeof(da_run)+65536U>xx_var_get_u64(v))return false;
@@ -58,10 +65,10 @@ static bool da_unpack(Abstractformat *f,xx_archive_record_state *st,xx_pd_struct
  }
  (void)xx_io_seek64(f->device,cursor,SEEK_SET);if(!da_poll(pd))ok=false;
 done:
- if(buf)xx_mem_free(buf);if(out&&xx_io_close(out)!=0)ok=false;if(ok&&stage)ok=da_poll(pd)&&xx_io_file_replace_a(stage,path,overwrite);if(stage){if(!ok)(void)xx_io_file_remove_a(stage);xx_str_free(stage);}if(path)xx_str_free(path);if(owned)xx_str_free(owned);return ok;
+ if(buf) {xx_mem_free(buf); } if(out&&xx_io_close(out)!=0)ok=false;if(ok&&stage)ok=da_poll(pd)&&xx_io_file_replace_a(stage,path,overwrite);if(stage){if(!ok)(void)xx_io_file_remove_a(stage);xx_str_free(stage);}if(path)xx_str_free(path);if(owned)xx_str_free(owned);return ok;
 }
 static xx_archive_record_state *da_records(Abstractformat *f,const xx_list_s *opts,xx_pd_struct *pd){xx_disk_additions_info parse;xx_archive_record_state *st=NULL;unsigned i;const uint32_t ids[]={XX_META_ID_OPT_MEMORY_LIMIT,XX_META_ID_OPT_MAX_MEMBER_SIZE};
- if(!f)return NULL;parse=*(xx_disk_additions_info *)f;xx_format_init(&parse.format,f->device,f->base_address);parse.format.file_type=f->file_type;parse.reading_records=true;
+ if(!f) {return NULL; } parse=*(xx_disk_additions_info *)f;xx_format_init(&parse.format,f->device,f->base_address);parse.format.file_type=f->file_type;parse.reading_records=true;
  for(i=0;i<2U;++i){const xx_var *v=xx_format_resolve_extra_parameter(f,opts,ids[i]);if(v&&!xx_format_set_extra_parameter(&parse.format,ids[i],v))goto done;}if(!hx_limit(&parse.format,XX_META_ID_OPT_MEMORY_LIMIT,65536U)||!hx_limit(&parse.format,XX_META_ID_OPT_MAX_MEMBER_SIZE,4U))goto done;st=pm_create_records(&parse.format,opts,pd);if(st){st->format=f;((xx_disk_additions_info *)f)->incomplete=parse.incomplete;}
 done:xx_format_cleanup_extra_parameters(&parse.format);return st;
 }

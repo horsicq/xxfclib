@@ -53,13 +53,13 @@ static bool cr_lzw(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *out,uin
             if(previous==CR_NONE || (!old && token!=d.next)) return false;
             stack[top++]=first; code=previous; exceptional=true;
         }
-        while(d.parent[code]!=CR_NONE && (d.parent[code]&4095U)!=CR_NONE) {
+        while(d.parent[code]!=CR_NONE) {
             unsigned parent=d.parent[code]&4095U;
             if(top>=4095U || ++guard>=4096U || d.parent[code]==CR_EMPTY || (!old && (code<260U || parent>=d.next))) return false;
             stack[top++]=d.suffix[code]; code=parent;
         }
         first=d.suffix[code]; stack[top++]=first;
-        if(top>cap-at) return false; while(top) out[at++]=stack[--top];
+        if(top>cap-at) { return false; } while(top) out[at++]=stack[--top];
         if(previous!=CR_NONE) {
             if(old) { if(d.next<4095U && !cr_insert_old(&d,previous,first)) return false; }
             else if(d.next<4096U) { if(!cr_insert(&d,previous,first)) return false; }
@@ -85,7 +85,7 @@ static bool crunch_parse(Abstractformat *f,pm_stream *s,ac_blob *b) {
     old=(b->p[at+1U]&0xF0U)==0x10U; start=at+4U;
     cap=8U*1024U*1024U;
     { const xx_var *v=ac_option(f,XX_META_ID_OPT_MAX_MEMBER_SIZE); if(v && xx_var_get_u64(v)<cap) cap=(uint32_t)xx_var_get_u64(v); }
-    if(b->used>=b->limit) return false; if(cap>b->limit-b->used) cap=(uint32_t)(b->limit-b->used);
+    if(b->used>=b->limit) { return false; } if(cap>b->limit-b->used) cap=(uint32_t)(b->limit-b->used);
     out=ac_alloc(b,cap); if(!out) return false;
     if(type==0xFEU ? !cr_lzw(b,b->p+start,b->n-start,out,cap,&n,&used,old) : !ac_adaptive(b,b->p+start,b->n-start,out,cap,&n,&used,old?1U:2U)) { ac_release(b,out,cap); return false; }
     /* Crunch LZW applies RLE90 type2 (count1 is also a literal90).

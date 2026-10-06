@@ -51,7 +51,7 @@ static bool vr_grub_entry(void *opaque,const xx_grub_backend_entry *entry) {
     m=&list->stream->items[list->stream->count-1]; m->context=c; m->free_context=vr_grub_free;
     m->display_name=xx_str_dup(path); m->size=(int64_t)entry->size; m->read_all=vr_grub_read;
     m->directory=entry->directory; if(m->directory) { m->size=0; m->read_all=NULL; }
-    if(!m->display_name) return false; list->used+=bytes; return true;
+    if(!m->display_name) { return false; } list->used+=bytes; return true;
 }
 static bool vr_grub_files(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     xx_volume *r=(xx_volume *)f; vr_grub_listing list; const xx_var *v; xx_grub_backend_status status=XX_GRUB_BACKEND_LIMIT;

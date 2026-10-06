@@ -10,12 +10,12 @@ static bool ng_quick(Abstractformat *f,uint64_t n) { uint8_t h[84];uint32_t coun
 static bool ng_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  uint32_t count,i,j;uint64_t at;if(n<84||!(count=pm_le32(b+80))||count>1000000||84+(uint64_t)count*50!=n)return false;
  for(i=0,at=84;i<count;++i,at+=50){float xyz[9];double ax,ay,az,bx,by,bz,cx,cy,cz;if(ng_stop(pd)||pm_le16(b+at+48))return false;
-  for(j=0;j<12;++j)if(!ng_finite32(b+at+j*4))return false;xx_rt_memcpy(xyz,b+at+12,sizeof(xyz));
+  for(j=0;j<12;++j) {if(!ng_finite32(b+at+j*4))return false; } xx_rt_memcpy(xyz,b+at+12,sizeof(xyz));
   for(j=0;j<9;++j)if(xyz[j]<-1e20f||xyz[j]>1e20f)return false;
   ax=(double)xyz[3]-xyz[0];ay=(double)xyz[4]-xyz[1];az=(double)xyz[5]-xyz[2];bx=(double)xyz[6]-xyz[0];by=(double)xyz[7]-xyz[1];bz=(double)xyz[8]-xyz[2];cx=ay*bz-az*by;cy=az*bx-ax*bz;cz=ax*by-ay*bx;
   if(cx==0&&cy==0&&cz==0)return false;
  }
- if(!ng_emit(f,s,"header.bin",0,84,n)||!ng_emit(f,s,"facets.bin",84,n-84,n))return false;s->size=(int64_t)n;return true;
+ if(!ng_emit(f,s,"header.bin",0,84,n)||!ng_emit(f,s,"facets.bin",84,n-84,n)) {return false; } s->size=(int64_t)n;return true;
 }
 
 void xx_stereolithography_stl_init(xx_stereolithography_stl *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_STEREOLITHOGRAPHY_STL,"stl");}}

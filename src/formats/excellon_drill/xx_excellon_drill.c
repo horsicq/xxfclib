@@ -23,7 +23,7 @@ static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
   }
   if(!tg_emit(f,s,body?"drill-command.drl":"tool-descriptor.drl",line.start,line.p-line.start,n))return false;
  }
- if(!ended||!tg_cover(f,s,"comments.drl",n))return false;s->size=(int64_t)n;return true;
+ if(!ended||!tg_cover(f,s,"comments.drl",n)) {return false; } s->size=(int64_t)n;return true;
 }
 
 void xx_excellon_drill_init(xx_excellon_drill *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_EXCELLON_DRILL,"drl");}}

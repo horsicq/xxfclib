@@ -31,7 +31,7 @@ static __inline bool tg_utf(const uint8_t *b,uint64_t *at,uint64_t end,bool modi
  uint64_t p=*at;uint32_t c,min;unsigned k,i;uint8_t v;if(p>=end)return false;v=b[p++];
  if(v<128){if(modified && !v)return false;*at=p;return true;}
  if(v>=0xc0 && v<=0xdf){k=1;c=v&31U;min=128;}else if(v>=0xe0 && v<=0xef){k=2;c=v&15U;min=2048;}else if(!modified && v>=0xf0 && v<=0xf4){k=3;c=v&7U;min=65536;}else return false;
- if(!tg_span(p,k,end))return false;for(i=0;i<k;++i){if((b[p]&0xc0)!=0x80)return false;c=(c<<6)|(b[p++]&63U);}
+ if(!tg_span(p,k,end)) {return false; } for(i=0;i<k;++i){if((b[p]&0xc0)!=0x80)return false;c=(c<<6)|(b[p++]&63U);}
  if(c<min && !(modified && c==0 && v==0xc0 && b[p-1]==0x80))return false;
  if(!modified && !tg_scalar(c))return false;
  if(modified && c>=0xd800 && c<=0xdbff){if(!tg_span(p,3,end)||b[p]!=0xed||b[p+1]<0xb0||b[p+1]>0xbf||(b[p+2]&0xc0)!=0x80)return false;p+=3;}

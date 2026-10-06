@@ -25,8 +25,8 @@ static bool parse_data(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t 
 
  uint32_t branch,i;int64_t target,displacement;uint8_t check=0;if(n<256||n>33554432||(n&(n-1))||b[0xb2]!=0x96||b[0xb3]||b[0xb4]||!zero(b+0xb5,7)||!zero(b+0xbe,2)||xx_crc32_calc(0U,b+4,156)!=0xd0beb55eU)return false;
  branch=pm_le32(b);if((branch>>24)!=0xea)return false;displacement=branch&0xffffffU;if(displacement&0x800000)displacement-=0x1000000;target=8+displacement*4;if(target<192||(uint64_t)target>=n)return false;
- for(i=0xa0;i<0xbd;++i)check=(uint8_t)(check+b[i]);check=(uint8_t)(0U-check-0x19U);if(check!=b[0xbd]||stop(pd))return false;
- if(!emit(f,s,"header.bin",0,192,n)||!emit(f,s,"rom-body.bin",192,n-192,n))return false;s->size=(int64_t)n;return true;
+ for(i=0xa0;i<0xbd;++i) {check=(uint8_t)(check+b[i]); } check=(uint8_t)(0U-check-0x19U);if(check!=b[0xbd]||stop(pd))return false;
+ if(!emit(f,s,"header.bin",0,192,n)||!emit(f,s,"rom-body.bin",192,n-192,n)) {return false; } s->size=(int64_t)n;return true;
 
 }
 

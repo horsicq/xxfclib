@@ -59,11 +59,11 @@ static uint32_t xx_sfx_localzip_le32(const uint8_t *data) {
            ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
 }
 
-static uint16_t xx_sfx_localzip_be16(const uint8_t *data) {
+static XXFC_MAYBE_UNUSED uint16_t xx_sfx_localzip_be16(const uint8_t *data) {
     return (uint16_t)((uint16_t)data[1] | ((uint16_t)data[0] << 8));
 }
 
-static uint32_t xx_sfx_localzip_be32(const uint8_t *data) {
+static XXFC_MAYBE_UNUSED uint32_t xx_sfx_localzip_be32(const uint8_t *data) {
     return (uint32_t)data[3] | ((uint32_t)data[2] << 8) |
            ((uint32_t)data[1] << 16) | ((uint32_t)data[0] << 24);
 }
@@ -178,7 +178,7 @@ static bool xx_sfx_localzip_add(xx_sfx_localzip_stream *stream,
 
 /* Slots carry no names; they are filed under a zero-padded index, the width
  * taken from the slot count the way U3's listing does it. */
-static char *xx_sfx_localzip_slot_name(uint32_t index, uint32_t width) {
+static XXFC_MAYBE_UNUSED char *xx_sfx_localzip_slot_name(uint32_t index, uint32_t width) {
     char text[32];
     size_t length = 0U;
     uint32_t scale = 1U;
@@ -200,7 +200,7 @@ static char *xx_sfx_localzip_slot_name(uint32_t index, uint32_t width) {
     return xx_str_dup(text);
 }
 
-static uint32_t xx_sfx_localzip_digits(uint32_t value) {
+static XXFC_MAYBE_UNUSED uint32_t xx_sfx_localzip_digits(uint32_t value) {
     uint32_t digits = 1U;
 
     while (value >= 10U) {

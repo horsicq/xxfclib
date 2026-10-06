@@ -32,7 +32,7 @@ static const xx_format_search_anchor anchors[] = { { anchor_0,sizeof(anchor_0),0
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     anchors, 2U,
-    xx_audio_mpeg_mp3_search_open, xx_audio_mpeg_mp3_search_close
+    xx_audio_mpeg_mp3_search_open, xx_audio_mpeg_mp3_search_close, false
 };
 
 static xx_format_search_state *xx_audio_mpeg_mp3_create_format_search(

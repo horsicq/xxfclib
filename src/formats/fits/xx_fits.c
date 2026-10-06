@@ -8,10 +8,10 @@
 
 static bool fi_integer(const uint8_t *card,int64_t *value) {
     unsigned at=10; bool negative=false; uint64_t n=0; unsigned digits=0;
-    if(card[8]!='=' || card[9]!=' ') return false; while(at<30 && card[at]==' ') ++at;
+    if(card[8]!='=' || card[9]!=' ') { return false; } while(at<30 && card[at]==' ') ++at;
     if(at<30 && (card[at]=='+' || card[at]=='-')) negative=card[at++]=='-';
     while(at<30 && card[at]>='0' && card[at]<='9') { if(n>((uint64_t)INT64_MAX-(card[at]-'0'))/10) return false; n=n*10+card[at++]-'0'; ++digits; }
-    while(at<30 && card[at]==' ') ++at; if(!digits || at!=30) return false; *value=negative ? -(int64_t)n : (int64_t)n; return true;
+    while(at<30 && card[at]==' ') { ++at; } if(!digits || at!=30) return false; *value=negative ? -(int64_t)n : (int64_t)n; return true;
 }
 static bool fi_padding(Abstractformat *f,int64_t at,int64_t end,uint8_t expected,xx_pd_struct *pd) {
     size_t capacity=xx_get_file_buffer_size(); uint8_t *b=NULL; bool buffer_result=false; while(at<end) {if(!b) { if((uint64_t)(end-at)<capacity) capacity=(size_t)(end-at); b=(uint8_t *)xx_mem_alloc(capacity); if(!b) { buffer_result=false; goto buffer_done; } }  size_t n=(uint64_t)(end-at)>capacity ? capacity : (size_t)(end-at),i;
@@ -33,7 +33,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             if(cards==2) { if(xx_rt_memcmp(card,"BITPIX  ",8) || !fi_integer(card,&bitpix) || (bitpix!=8 && bitpix!=16 && bitpix!=32 && bitpix!=64 && bitpix!=-32 && bitpix!=-64)) return false; }
             else if(cards==3) { if(xx_rt_memcmp(card,"NAXIS   ",8) || !fi_integer(card,&naxis) || naxis<0 || naxis>16) return false; samples=naxis ? 1U : 0U; }
             else if(cards>=4 && cards<4+(unsigned)naxis) { char key[9]; unsigned n=cards-3; xx_rt_snprintf(key,sizeof(key),"NAXIS%-3u",n);
-                if(xx_rt_memcmp(card,key,8) || !fi_integer(card,&value) || value<0 || ((uint64_t)value && samples>(uint64_t)INT64_MAX/(uint64_t)value)) return false; samples*=(uint64_t)value; ++axis;
+                if(xx_rt_memcmp(card,key,8) || !fi_integer(card,&value) || value<0 || ((uint64_t)value && samples>(uint64_t)INT64_MAX/(uint64_t)value)) { return false; } samples*=(uint64_t)value; ++axis;
             } else if(hdus>1 && cards==4+(unsigned)naxis) { if(xx_rt_memcmp(card,"PCOUNT  ",8) || !fi_integer(card,&value) || value) return false; }
             else if(hdus>1 && cards==5+(unsigned)naxis) { if(xx_rt_memcmp(card,"GCOUNT  ",8) || !fi_integer(card,&value) || value!=1) return false; }
             if(!xx_rt_memcmp(card,"EXTEND  = ",10)) { if(card[29]!='T' && card[29]!='F') return false; if(hdus==1) extend=card[29]=='T'; }
@@ -44,8 +44,8 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if(!ended || cards<4+(unsigned)naxis+(hdus>1 ? 2U : 0U) || axis!=(unsigned)naxis) return false;
         header_end=start+((at-start+2879)/2880)*2880; if(header_end>limit || !fi_padding(f,at,header_end,' ',pd)) return false;
         bytes=(uint64_t)(bitpix<0 ? -bitpix : bitpix)/8; if(bytes && samples>(uint64_t)INT64_MAX/bytes) return false; bytes*=samples;
-        if(bytes>(uint64_t)(limit-header_end)) return false; data_end=header_end+(int64_t)bytes;
-        if(data_end>INT64_MAX-2879) return false; padded=header_end+((int64_t)bytes+2879)/2880*2880; if(padded>limit || !fi_padding(f,data_end,padded,0,pd)) return false;
+        if(bytes>(uint64_t)(limit-header_end)) { return false; } data_end=header_end+(int64_t)bytes;
+        if(data_end>INT64_MAX-2879) { return false; } padded=header_end+((int64_t)bytes+2879)/2880*2880; if(padded>limit || !fi_padding(f,data_end,padded,0,pd)) return false;
         xx_rt_snprintf(label,sizeof(label),"hdu-%u-header.txt",hdus-1); if(!pm_add(f,s,label,start,header_end-start)) return false;
         if(bytes) { xx_rt_snprintf(label,sizeof(label),"hdu-%u-array.bin",hdus-1); if(!pm_add(f,s,label,header_end,(int64_t)bytes)) return false; }
         at=padded;

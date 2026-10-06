@@ -20,7 +20,7 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b,af_work *w) {
  uint32_t at=12,info=0,tmap=0,trks=0,trksz=0,flux=0,flux_header=0;
  uint32_t meta=0,metasz=0,i,version,nonempty=0,info_version;
  uint8_t mapped[160]={0},fluxmapped[160]={0};
- nh_span spans[160]; uint32_t count=0; bool ok; char name[48];
+ nh_span spans[160]; uint32_t count=0; bool ok; char name[48]; (void)f;
  if(!nh_range(b,0,12) || (xx_rt_memcmp(b->p,"WOZ1\xff\x0a\x0d\x0a",8) && xx_rt_memcmp(b->p,"WOZ2\xff\x0a\x0d\x0a",8))) return false;
  version=b->p[3]-'0'; if(pm_le32(b->p+8) && (nh_crc(b,12,b->n-12,&ok)!=pm_le32(b->p+8) || !ok)) return false;
  while(at<b->n) { uint32_t z; if(!nh_range(b,at,8) || (z=pm_le32(b->p+at+4))>b->n-at-8) return false;
@@ -29,7 +29,7 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b,af_work *w) {
   else if(!xx_rt_memcmp(b->p+at,"TRKS",4)) { if(trks || z<(version==1 ? 6656U : 1280U)) return false; trks=at+8; trksz=z; }
   else if(!xx_rt_memcmp(b->p+at,"FLUX",4)) { if(flux || z!=160U) return false; flux_header=at; flux=at+8; }
   else if(!xx_rt_memcmp(b->p+at,"META",4)) { if(meta || !z || z>1048576U) return false; meta=at+8; metasz=z; }
-  else return false; at+=8+z;
+  else { return false; } at+=8+z;
  }
  if(info!=20 || tmap!=88 || trks!=256 || b->p[info+2]>1 ||
     b->p[info+3]>1 || b->p[info+4]>1) return false;
@@ -81,7 +81,7 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b,af_work *w) {
   }
  }
  if(meta) { uint32_t pos; bool tab=false; for(pos=0;pos<metasz;++pos) { uint8_t c=b->p[meta+pos]; if(!(pos&4095U) && !nh_poll(b)) return false; if(c=='\t') { if(tab) return false; tab=true; } else if(c=='\n') { if(!tab) return false; tab=false; } else if(c<32 || c>126) return false; } if(tab || b->p[meta+metasz-1]!='\n' || !wz_emit(w,b,"metadata.txt",meta,metasz)) return false; }
- if(!nonempty) return false; s->size=at; return true;
+ if(!nonempty) { return false; } s->size=at; return true;
 }
 
 static bool wz_decode(af_work *w,const af_blob *b){
@@ -97,7 +97,7 @@ static bool wz_decode(af_work *w,const af_blob *b){
   else{const uint8_t *e=b->p+tracks+index*8U;start=(uint32_t)pm_le16(e)*512U;bits=pm_le32(e+4);}
   if(!bits || bits>1048576U){full=false;continue;}
   n=ag_latch(w,b->p+start,bits,latch,131074U);if(!n || (found=ag_track(w,latch,n,i,image+i*4096U,&count))<0)goto done;
-  if(sectors && count && sectors!=count)goto done;if(count)sectors=count;if(!count || found!=(int)count)full=false;
+  if(sectors && count && sectors!=count) {goto done; } if(count)sectors=count;if(!count || found!=(int)count)full=false;
  }
  if(full && sectors){if(sectors==13U)for(i=1;i<cylinders;++i)xx_rt_memmove(image+i*3328U,image+i*4096U,3328U);
   if(!ag_files(w,image,cylinders,sectors,&recognized) || !af_copy(w,"decoded-sectors.do",image,cylinders*sectors*256U))goto done;}

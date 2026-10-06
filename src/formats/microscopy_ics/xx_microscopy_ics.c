@@ -27,7 +27,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         }else if(!xx_rt_strcmp(v[0],"parameter")) {if(n<3 || !(seen&8)) return false;if(!xx_rt_strcmp(v[1],"origin") || !xx_rt_strcmp(v[1],"scale")) {if(n!=params+2) return false;for(i=2;i<n;++i) if(!sd_float_token(v[i])) return false;}
             else if(!xx_rt_strcmp(v[1],"units") || !xx_rt_strcmp(v[1],"labels")) {if(n!=params+2) return false;}else return false;
         }else if(xx_rt_strcmp(v[0],"history")) return false;
-        if(flag && (seen&flag)) return false;seen|=flag;
+        if(flag && (seen&flag)) { return false; } seen|=flag;
     }
     if(lines>512 || c.at>65536 || n!=1 || xx_rt_strcmp(v[0],"end") || (seen&974)!=974 || (real && bits!=32 && bits!=64) || !fd_mul(pixels,bits/8,&bytes) || !eh_span(c.at,bytes,c.end) || c.at+bytes!=c.end || !pm_add(f,s,"ics-header.txt",0,(int64_t)c.at) || !pm_add(f,s,"pixels.bin",(int64_t)c.at,(int64_t)bytes)) return false;
     s->size=(int64_t)c.end;return true;

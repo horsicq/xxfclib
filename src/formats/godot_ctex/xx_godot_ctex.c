@@ -20,10 +20,10 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(!pm_read(f,0,h,52) || xx_rt_memcmp(h,"GST2",4) || pm_le32(h+4)!=1 || pm_le32(h+36)) return false;
     w=pm_le16(h+40); height=pm_le16(h+42); mips=pm_le32(h+44); fmt=pm_le32(h+48);
     if(!w || !height || w>8192 || height>8192 || pm_le32(h+8)!=w || pm_le32(h+12)!=height || mips>15 || fmt>5 || (pm_le32(h+16)&~0x0d800000U) || (!!mips!=!!(pm_le32(h+16)&0x800000))) return false;
-    for(i=24;i<36;++i) if(h[i]) return false; bpp=fmt==0 || fmt==2 ? 1 : fmt==1 || fmt==3 ? 2 : fmt==4 ? 3 : 4; mw=w; mh=height; if(mips) { uint32_t levels=0,a=w,b=height; while(a>1 || b>1) { if(a>1) a/=2; if(b>1) b/=2; ++levels; } if(mips!=levels) return false; }
+    for(i=24;i<36;++i) { if(h[i]) return false; } bpp=fmt==0 || fmt==2 ? 1 : fmt==1 || fmt==3 ? 2 : fmt==4 ? 3 : 4; mw=w; mh=height; if(mips) { uint32_t levels=0,a=w,b=height; while(a>1 || b>1) { if(a>1) a/=2; if(b>1) b/=2; ++levels; } if(mips!=levels) return false; }
     for(i=0;i<=mips;++i) { if(stop(pd) || (i<mips && mw==1 && mh==1)) return false; n=(uint64_t)mw*mh*bpp; xx_rt_snprintf(label,sizeof(label),"mip-%u.pixels",i);
-      if(!emit(f,s,label,at,n,total)) return false; at+=n; if(mw>1) mw/=2; if(mh>1) mh/=2; }
-    if(at!=total) return false; s->size=(int64_t)at; return true;
+      if(!emit(f,s,label,at,n,total)) { return false; } at+=n; if(mw>1) mw/=2; if(mh>1) mh/=2; }
+    if(at!=total) { return false; } s->size=(int64_t)at; return true;
 
 }
 

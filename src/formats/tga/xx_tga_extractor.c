@@ -15,7 +15,7 @@ static const uint8_t bytes_3[] = {0x09};
 static const uint8_t bytes_4[] = {0x0A};
 static const uint8_t bytes_5[] = {0x0B};
 static const xx_format_search_anchor anchors[] = { {bytes_0,sizeof(bytes_0),2}, {bytes_1,sizeof(bytes_1),2}, {bytes_2,sizeof(bytes_2),2}, {bytes_3,sizeof(bytes_3),2}, {bytes_4,sizeof(bytes_4),2}, {bytes_5,sizeof(bytes_5),2} };
-static const xx_format_search_desc desc = {types,1U,anchors,sizeof(anchors)/sizeof(anchors[0]),open_reader,close_reader};
+static const xx_format_search_desc desc = {types,1U,anchors,sizeof(anchors)/sizeof(anchors[0]),open_reader,close_reader, false};
 static xx_format_search_state *create_search(xx_format_extractor *x,xx_io_device *d,const xx_list_s *o,xx_pd_struct *pd) { (void)x; return xx_format_search_create(&desc,d,o,pd); }
 static const xx_format_search_info *current_search(xx_format_extractor *x,xx_format_search_state *s) { (void)x; return xx_format_search_current(s); }
 static bool next_search(xx_format_extractor *x,xx_format_search_state *s,xx_pd_struct *pd) { (void)x; return xx_format_search_find_next(s,pd); }

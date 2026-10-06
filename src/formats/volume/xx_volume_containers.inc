@@ -30,7 +30,7 @@ static bool vr_coff(Abstractformat *f,pm_stream *s,xx_pd_struct *pd,bool te) {
             while(length<sizeof(text) && value+length<string_size) { if(!pm_read(f,(int64_t)(strings+value+length),text+length,1)) return false; if(!text[length++]) break; }
             if(!length || text[length-1] || !vr_name(section,sizeof(section),text,length)) return false;
         } else if(!vr_name(section,sizeof(section),e,8)) return false;
-        if(!bytes) continue; offset=(int64_t)raw+adjust;
+        if(!bytes) { continue; } offset=(int64_t)raw+adjust;
         if(offset<sections+(int64_t)count*40 || !pm_add(f,s,section,offset,bytes)) return false;
         xx_rt_snprintf(name,sizeof(name),"section-%02u-%s.bin",i,section);
         /* pm_add sanitizes names and adds collision-resistant sequence IDs. */
@@ -38,7 +38,7 @@ static bool vr_coff(Abstractformat *f,pm_stream *s,xx_pd_struct *pd,bool te) {
     }
     if(!te && symbol_count && !pm_add(f,s,"coff-symbols.bin",(int64_t)sym,(int64_t)symbol_count*18)) return false;
     if(!te && string_size>4 && !pm_add(f,s,"coff-string-table.bin",(int64_t)strings,string_size)) return false;
-    if(!s->count) return false; r->capability=te?"UEFI TE header validation and original section extraction":"COFF object header validation and original section extraction";
+    if(!s->count) { return false; } r->capability=te?"UEFI TE header validation and original section extraction":"COFF object header validation and original section extraction";
     return vr_info(f,s,"Sections retain their original bytes; relocation and execution are not performed.\n");
 }
 typedef struct vr_lp_table { uint32_t offset,count,stride; } vr_lp_table;
@@ -64,7 +64,7 @@ static bool vr_lp(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(!pm_read(f,12288+header,tables,bytes) || !xx_sha256_memory(tables,bytes,digest) || xx_rt_memcmp(digest,h+48,32)) goto done;
     for(i=0;i<pt.count;++i) { const uint8_t *p=tables+pt.offset+(size_t)i*pt.stride; uint32_t first=pm_le32(p+40),count=pm_le32(p+44),j; char name[64]; mm_map *map;
         if(!vr_poll(pd) || !vr_name(name,sizeof(name),p,36) || first>et.count || count>et.count-first || pm_le32(p+48)>=gt.count || (pm_le32(p+36)&~15U)) goto done;
-        if(!count || (pm_le32(p+36)&8)) continue; map=mm_create(); if(!map) goto done;
+        if(!count || (pm_le32(p+36)&8)) { continue; } map=mm_create(); if(!map) goto done;
         for(j=0;j<count;++j) { const uint8_t *e=tables+et.offset+(size_t)(first+j)*et.stride; uint64_t sectors=mm_le64(e),sector=mm_le64(e+12); uint32_t type=pm_le32(e+8),dev=pm_le32(e+20);
             if(!vr_poll(pd) || !sectors || sectors>INT64_MAX/512 || type>1 || (type==0 && (dev!=0 || sector>INT64_MAX/512 || sector<mm_le64(tables+dt.offset)))) { mm_free(map); xx_pd_set_error(pd,1,"LP extent requires an absent block device or unsupported target"); goto done; }
             if(!mm_add(f,map,type==1?-1:(int64_t)(sector*512),sectors*512)) { mm_free(map); goto done; }
@@ -85,18 +85,18 @@ static bool vr_cfg_word(vr_cfg *c,char *out,size_t cap) { size_t n=0; while(c->p
 static bool vr_cfg_value(vr_cfg *c,int index) {
     vr_cfg_node *node=&c->nodes[index]; vr_cfg_space(c); if(c->p>=c->end) return false;
     if(*c->p=='"') { size_t n=0; node->kind=2; ++c->p; while(c->p<c->end && *c->p!='"') { char v=*c->p++; if(v=='\\') { if(c->p==c->end) return false; v=*c->p++; }
-            if((unsigned char)v<32 || n+1>=sizeof(node->text)) return false; node->text[n++]=v; } if(c->p==c->end) return false; ++c->p; node->text[n]=0; return true; }
+            if((unsigned char)v<32 || n+1>=sizeof(node->text)) { return false; } node->text[n++]=v; } if(c->p==c->end) return false; ++c->p; node->text[n]=0; return true; }
     if(*c->p=='[') { if(c->depth++>=16) return false; node->kind=3; ++c->p; vr_cfg_space(c); while(c->p<c->end && *c->p!=']') { int child=vr_cfg_new(c,index); if(child<0 || !vr_cfg_value(c,child)) return false; vr_cfg_space(c); if(c->p<c->end && *c->p==',') { ++c->p; vr_cfg_space(c); } else if(c->p==c->end || *c->p!=']') return false; }
-        if(c->p==c->end) return false; ++c->p; --c->depth; return true; }
+        if(c->p==c->end) { return false; } ++c->p; --c->depth; return true; }
     node->kind=1; { const char *start=c->p; uint64_t n=0; while(c->p<c->end && *c->p>='0' && *c->p<='9') { unsigned d=(unsigned)(*c->p++-'0'); if(n>(UINT64_MAX-d)/10) return false; n=n*10+d; } node->number=n; return c->p>start; }
 }
 static bool vr_cfg_block(vr_cfg *c,int parent) {
-    if(c->depth++>=16) return false; vr_cfg_space(c);
+    if(c->depth++>=16) { return false; } vr_cfg_space(c);
     while(c->p<c->end && *c->p!='}') { int index=vr_cfg_new(c,parent); if(index<0 || !vr_cfg_word(c,c->nodes[index].name,sizeof(c->nodes[index].name))) return false;
         vr_cfg_space(c); if(c->p==c->end) return false;
         if(*c->p=='{') { ++c->p; if(!vr_cfg_block(c,index) || c->p==c->end || *c->p!='}') return false; ++c->p; }
         else if(*c->p=='=') { ++c->p; if(!vr_cfg_value(c,index)) return false; }
-        else return false; vr_cfg_space(c);
+        else { return false; } vr_cfg_space(c);
     } --c->depth; return true;
 }
 static int vr_cfg_find(vr_cfg *c,int parent,const char *name) { size_t i; for(i=0;i<c->count;++i) if(c->nodes[i].parent==parent && !xx_rt_strcmp(c->nodes[i].name,name)) return (int)i; return -1; }

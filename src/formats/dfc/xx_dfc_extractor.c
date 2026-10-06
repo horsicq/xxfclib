@@ -20,7 +20,7 @@ static void dfc_close(Abstractformat *format) {
     xx_dfc_free((xx_dfc *)format);
 }
 static const xx_format_search_desc dfc_desc = {
-    dfc_types, 1U, NULL, 0U, dfc_open, dfc_close
+    dfc_types, 1U, NULL, 0U, dfc_open, dfc_close, false
 };
 static xx_format_search_state *dfc_create_search(xx_format_extractor *self,
     xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd) {

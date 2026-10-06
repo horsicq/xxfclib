@@ -8,7 +8,7 @@
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     nh_blob b;uint8_t *out=NULL;uint64_t at=0,total=0,n,raw,body;unsigned chunks=0;bool ok=false;
-    if(!nh_load(f,&b,pd)) return false;NH_NEED(nh_span(&b,0,10) && !xx_rt_memcmp(b.p,"\xff\x06\0\0sNaPpY",10));out=(uint8_t *)xx_mem_alloc(67108864);NH_NEED(out);
+    if(!nh_load(f,&b,pd)) { return false; } NH_NEED(nh_span(&b,0,10) && !xx_rt_memcmp(b.p,"\xff\x06\0\0sNaPpY",10));out=(uint8_t *)xx_mem_alloc(67108864);NH_NEED(out);
     while(at<b.n) {unsigned type;NH_NEED(nh_span(&b,at,4) && ++chunks<=4094);type=b.p[(size_t)at];n=(uint64_t)b.p[(size_t)at+1]|(uint64_t)b.p[(size_t)at+2]<<8|(uint64_t)b.p[(size_t)at+3]<<16;body=at+4;NH_NEED(nh_span(&b,body,n));
         if(type==255) NH_NEED(n==6 && !xx_rt_memcmp(b.p+(size_t)body,"sNaPpY",6));
         else if(type<2) {uint32_t crc;NH_NEED(n>=4);crc=pm_le32(b.p+(size_t)body);raw=n-4;

@@ -59,7 +59,7 @@ static int64_t fi_header(xx_io_device *d,int64_t base) {
     int64_t total=xx_io_total_size(d),at=base,end;
     if(!ue2_range(total,base,18)||!fi_read_at(d,base,h,18))return -1;
     if(h[0]=='M'&&h[1]=='Z') {
-        if(!fi_read_at(d,base,h,64))return -1;peoff=ue2_u32(h+60);
+        if(!fi_read_at(d,base,h,64)) {return -1; } peoff=ue2_u32(h+60);
         if(peoff>16U*1024U*1024U||!ue2_range(total-base,peoff,24)||!fi_read_at(d,base+peoff,pe,24)||xx_rt_memcmp(pe,"PE\0\0",4))return -1;
         count=ue2_u16(pe+6);optional=ue2_u16(pe+20);
         if(!count||count>96||optional<64||optional>4096||!ue2_range(total-base,(int64_t)peoff+24,(int64_t)optional+count*40)||!fi_read_at(d,base+peoff+24+60,h,4))return -1;
@@ -90,7 +90,7 @@ static bool fi_lzma(const uint8_t *input,size_t available,uint8_t *output,size_t
 static bool fi_select(fi_cursor *main,fi_cursor *out,fi_index *ix,unsigned *next) {
     unsigned selector;if(!fi_byte(main,&selector))return false;
     if(!selector){*out=*main;return false;} /* inline sections intentionally unsupported until bounded grammar proof */
-    if(*next>=6)return false;out->bytes=ix->meta[*next];out->size=ix->meta_size[*next];out->at=0;(*next)++;return true;
+    if(*next>=6) {return false; } out->bytes=ix->meta[*next];out->size=ix->meta_size[*next];out->at=0;(*next)++;return true;
 }
 static char *fi_name(fi_cursor *c,unsigned encoding,uint64_t owned,uint64_t workspace,uint64_t budget) {
     unsigned units=0,i;const uint8_t *p;char *out;
@@ -177,7 +177,7 @@ static fi_index *fi_parse(Abstractformat *f,const xx_list_s *opts,xx_pd_struct *
         if(!fi_room(ix->owned,tail_size,budget,name_size+(new_capacity!=old?new_capacity*sizeof(ue2_member):0))||!ue2_add(&ix->records,ix->outer[i].name,0,ix->outer[i].size,ix->outer[i].filetime))goto bad;
         ix->owned+=name_size+(new_capacity-old)*sizeof(ue2_member);ix->records.members[i].is_folder=(ix->outer[i].flags&0x10)!=0;
     }
-    if(ix->owned>budget)goto bad;xx_mem_free(tail);if(saved>=0)xx_io_seek64(f->device,saved,XX_RT_SEEK_SET);return ix;
+    if(ix->owned>budget) {goto bad; } xx_mem_free(tail);if(saved>=0)xx_io_seek64(f->device,saved,XX_RT_SEEK_SET);return ix;
 bad:
     xx_mem_free(tail);fi_index_free(ix);if(saved>=0)xx_io_seek64(f->device,saved,XX_RT_SEEK_SET);return NULL;
 }
@@ -204,7 +204,7 @@ static bool fi_restore(Abstractformat *f,const xx_list_s *opts,xx_pd_struct *pd)
     fi_index *ix=((fi_format*)f)->index,*flat=NULL;fi_emit_state emitter;fead_restore_context context;
     uint8_t *streams[4]={NULL,NULL,NULL,NULL},*packed=NULL,*main=NULL;size_t i,consumed;
     uint64_t used=ix->owned,limit=fi_budget(f,opts);int64_t saved=xx_io_tell(f->device),positions[4];bool ok=false;
-    if(ix->restored)return used<=limit;if((pd&&xx_pd_is_stopped(pd))||used>limit)goto done;
+    if(ix->restored) {return used<=limit; } if((pd&&xx_pd_is_stopped(pd))||used>limit)goto done;
     positions[0]=ix->stream;positions[3]=positions[0]+ix->packed[0];positions[1]=positions[3]+ix->packed[3];positions[2]=positions[1]+ix->packed[1];
     for(i=0;i<3;i++) {
         uint64_t dictionary=UINT64_C(1)<<ix->exponent[i];
@@ -219,7 +219,7 @@ static bool fi_restore(Abstractformat *f,const xx_list_s *opts,xx_pd_struct *pd)
     {const uint8_t *input[4]={streams[0],streams[1],streams[2],streams[3]};size_t sizes[4]={ix->output[0],ix->output[1],ix->output[2],ix->packed[3]};
      if(!fead_bcj2_decode(input,sizes,main,ix->output[3],pd)||(pd&&xx_pd_is_stopped(pd)))goto done;}
     for(i=0;i<4;i++){xx_mem_free(streams[i]);streams[i]=NULL;used-=i==3?ix->packed[i]:ix->output[i];}
-    if(!fi_charge(&used,limit,sizeof(*flat)))goto done;flat=(fi_index*)xx_mem_calloc(1,sizeof(*flat));if(!flat)goto done;
+    if(!fi_charge(&used,limit,sizeof(*flat))) {goto done; } flat=(fi_index*)xx_mem_calloc(1,sizeof(*flat));if(!flat)goto done;
     emitter.index=flat;emitter.capacity=0;emitter.used=&used;emitter.limit=limit;emitter.pd=pd;
     xx_rt_memset(&context,0,sizeof(context));context.data=main;context.size=ix->output[3];context.members=ix->outer;context.member_count=ix->outer_count;
     context.resources=ix->resources;context.resource_count=ix->resource_count;context.actions=ix->actions;context.action_count=ix->action_count;
@@ -231,7 +231,7 @@ static bool fi_restore(Abstractformat *f,const xx_list_s *opts,xx_pd_struct *pd)
     ix->owned+=flat->owned;flat->records.members=NULL;flat->records.count=0;flat->payloads=NULL;ix->restored=true;
     f->number_of_archive_records=ix->records.count;ok=true;
 done:
-    for(i=0;i<4;i++)xx_mem_free(streams[i]);xx_mem_free(main);xx_mem_free(packed);fi_index_free(flat);
+    for(i=0;i<4;i++) {xx_mem_free(streams[i]); } xx_mem_free(main);xx_mem_free(packed);fi_index_free(flat);
     if(saved>=0)xx_io_seek64(f->device,saved,XX_RT_SEEK_SET);
     return ok?true:fi_fail(pd,"FEAD payload is damaged, unsupported, or exceeds the memory limit");
 }
@@ -296,7 +296,7 @@ Abstractformat *xx_fead_create(xx_io_device *d,int64_t base) {
 void xx_fead_free(Abstractformat *f) {if(f){fi_destroy(f);xx_mem_free(f);}}
 xx_file_type_t xx_fead_detect_device(xx_io_device *d,xx_pd_struct *pd) {
     int64_t saved;Abstractformat *f=NULL;xx_file_type_t type=XX_FILE_TYPE_UNKNOWN;
-    if(!d||(pd&&xx_pd_is_stopped(pd)))return type;saved=xx_io_tell(d);
+    if(!d||(pd&&xx_pd_is_stopped(pd))) {return type; } saved=xx_io_tell(d);
     if(fi_header(d,0)>=0){f=xx_fead_create(d,0);if(f&&fi_info(f,pd))type=FI_TYPE;}xx_fead_free(f);
-    if(saved>=0)xx_io_seek64(d,saved,XX_RT_SEEK_SET);return type;
+    if(saved>=0) {xx_io_seek64(d,saved,XX_RT_SEEK_SET); } return type;
 }

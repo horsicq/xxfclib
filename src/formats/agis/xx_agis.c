@@ -95,7 +95,7 @@ static void xx_agis_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static uint16_t xx_agis_le16(const uint8_t *data) {
+static XXFC_MAYBE_UNUSED uint16_t xx_agis_le16(const uint8_t *data) {
     return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
 }
 
@@ -104,11 +104,11 @@ static uint32_t xx_agis_le32(const uint8_t *data) {
            ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
 }
 
-static uint16_t xx_agis_be16(const uint8_t *data) {
+static XXFC_MAYBE_UNUSED uint16_t xx_agis_be16(const uint8_t *data) {
     return (uint16_t)((uint16_t)data[1] | ((uint16_t)data[0] << 8));
 }
 
-static uint32_t xx_agis_be32(const uint8_t *data) {
+static XXFC_MAYBE_UNUSED uint32_t xx_agis_be32(const uint8_t *data) {
     return (uint32_t)data[3] | ((uint32_t)data[2] << 8) |
            ((uint32_t)data[1] << 16) | ((uint32_t)data[0] << 24);
 }

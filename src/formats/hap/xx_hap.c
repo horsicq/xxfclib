@@ -185,7 +185,7 @@ static int64_t xx_hap_i32(const uint8_t *data) {
 }
 
 static char xx_hap_hex_digit(uint8_t value) {
-    return (char)(value < 10U ? ('0' + value) : ('A' + (value - 10U)));
+    return (char)(value < 10U ? ('0' + value) : ('A' + (value - 10)));
 }
 
 /* Trim at the first NUL, then drop trailing spaces, then escape everything

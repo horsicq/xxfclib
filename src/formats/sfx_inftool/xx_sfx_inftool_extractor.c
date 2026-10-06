@@ -11,7 +11,7 @@ static Abstractformat *open_reader(xx_io_device *d) {
     return a ? &a->format : NULL;
 }
 static void close_reader(Abstractformat *f) { xx_sfx_inftool_free((xx_sfx_inftool *)f); }
-static const xx_format_search_desc desc = {types, 1, anchors, 1, open_reader, close_reader};
+static const xx_format_search_desc desc = {types, 1, anchors, 1, open_reader, close_reader, false};
 static xx_format_search_state *create_search(xx_format_extractor *self, xx_io_device *d,
                                              const xx_list_s *o, xx_pd_struct *pd) {
     (void)self; return xx_format_search_create(&desc, d, o, pd);

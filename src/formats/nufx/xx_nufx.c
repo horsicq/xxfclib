@@ -38,7 +38,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd){
             else if(method || kind>2U || raw>packed || packed>65536U)goto done;
             end+=packed;
         }
-        if(!named)goto done;total+=threads;at=end;
+        if(!named) {goto done; } total+=threads;at=end;
     }
     ok=at==b.n && af_poll(&w);if(ok){s->size=b.n;((xx_nufx *)f)->number_of_records=s->count;((xx_nufx *)f)->note="Native stored/Squeeze/LZW1/LZW2; header CRC and applicable thread/chunk CRC checked";}
 done:af_release(&w,b.p,b.n);return ok;

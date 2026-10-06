@@ -122,7 +122,7 @@ static bool w5_comments(Abstractformat *f, pm_stream *s, xx_pd_struct *pd) {
 }
 static bool w5_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { static const uint8_t sig[]={0x4b,0x2a}; int64_t low;
     if (w5_comments(f, s, pd)) return true;
-    if(!w5_carrier(f,false,&low,pd)) return false; low=64;
+    if(!w5_carrier(f,false,&low,pd)) { return false; } low=64;
     return w5_embedded(f,s,low,sig,sizeof(sig),0,nested_open,nested_close,"payload.rtp",pd);
 }
 

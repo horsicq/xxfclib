@@ -16,7 +16,7 @@ static bool cdaf_parse(Abstractformat *f,pm_stream *s,ac_blob *b) {
         pos+=namesize+(namesize&1U);
         if(!ac_span(b,pos,8U)) return false;
         if(!xx_rt_memcmp(b->p+pos,"NOTE",4)) { uint32_t note=pm_be32(b->p+pos+4);
-            if(note==UINT32_MAX || !ac_span(b,pos+8U,note)) return false; pos+=8U+note+(note&1U); }
+            if(note==UINT32_MAX || !ac_span(b,pos+8U,note)) { return false; } pos+=8U+note+(note&1U); }
         if(!ac_span(b,pos,8U) || xx_rt_memcmp(b->p+pos,"BODY",4)) return false;
         packed=pm_be32(b->p+pos+4); pos+=8U; if(!ac_span(b,pos,packed) || packed==UINT32_MAX) return false;
         out=ac_alloc(b,n); if(!out) return false;

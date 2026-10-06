@@ -27,10 +27,10 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     for(i=0;i<types;++i) { if(!take(f,&at,end,e,23,pd) || (int32_t)pm_le32(e)<=0 || pm_le32(e)==114 || e[4]>1 || pm_le16(e+5)!=65535) return false; }
     if(!take(f,&at,end,p,4,pd) || !(objects=pm_le32(p)) || objects>1024) return false;
     for(i=0;i<objects;++i) { uint64_t id; at=(at+3)&~3ULL; if(!take(f,&at,end,e,24,pd)) return false; id=g64(e,false); start=g64(e+8,false); n=pm_le32(e+16); type=pm_le32(e+20);
-      if(!id || !n || type>=types || !span(start,n,total-data)) return false; for(j=0;j<i;++j) if(ids[j]==id) return false; ids[i]=id;
+      if(!id || !n || type>=types || !span(start,n,total-data)) { return false; } for(j=0;j<i;++j) if(ids[j]==id) return false; ids[i]=id;
       xx_rt_snprintf(label,sizeof(label),"object-%u.bin",i); if(!emit(f,s,label,data+start,n,total)) return false; }
     for(i=0;i<3;++i) if(!take(f,&at,end,p,4,pd) || pm_le32(p)) return false;
-    if(!cstring(f,&at,end,4096,true,pd) || at!=end) return false; s->size=(int64_t)total; return true;
+    if(!cstring(f,&at,end,4096,true,pd) || at!=end) { return false; } s->size=(int64_t)total; return true;
 
 }
 

@@ -12,23 +12,23 @@ static bool eg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  if(pm_be32(b)!=0x5380f634U||(version!=0x3f800000U&&version!=0x3fcccccdU)||!eg_tag(b+88,"PICT",4)||!w||!h||w>16384||h>2048||(uint64_t)w*h>8388608||!eg_f32(pm_be32(b+96))||(pm_be32(b+96)&0x80000000U)||!(pm_be32(b+96)&0x7fffffffU)||pm_be16(b+100)>3||pm_be16(b+102))return false;
  while(next){uint8_t bits,mask;unsigned channels=0,k;if(packets==4||!eg_span(p,4,n)||b[p]>1)return false;next=b[p]!=0;bits=b[p+1];types[packets]=b[p+2];mask=b[p+3];p+=4;
   if((bits!=8&&bits!=16)||types[packets]>2||!mask||(mask&15)||(mask&seen))return false;
-  for(k=0;k<4;++k)if(mask&(128U>>k))++channels;seen|=mask;sizes[packets]=(uint8_t)(channels*(bits/8));++packets;
+  for(k=0;k<4;++k) {if(mask&(128U>>k))++channels; } seen|=mask;sizes[packets]=(uint8_t)(channels*(bits/8));++packets;
  }
  if((seen!=0xe0&&seen!=0xf0)||!eg_emit(f,s,"descriptor.pic",0,p,n))return false;
  for(y=0;y<h;++y){uint64_t start=p;
   for(i=0;i<packets;++i){uint32_t x=0;
    if(types[i]==0){uint64_t z=(uint64_t)w*sizes[i];if(!eg_span(p,z,n))return false;p+=z;continue;}
    while(x<w){uint32_t count;uint64_t bytes;uint8_t code;
-    if(eg_stop(pd)||!eg_span(p,1,n))return false;code=b[p++];
+    if(eg_stop(pd)||!eg_span(p,1,n)) {return false; } code=b[p++];
     if(types[i]==1){count=code;bytes=sizes[i];}
     else if(code<128){count=code+1U;bytes=(uint64_t)count*sizes[i];}
     else{if(code==128){if(!eg_span(p,2,n))return false;count=pm_be16(b+p);p+=2;}else count=code-127U;bytes=sizes[i];}
-    if(!count||count>w-x||!eg_span(p,bytes,n))return false;p+=bytes;x+=count;
+    if(!count||count>w-x||!eg_span(p,bytes,n)) {return false; } p+=bytes;x+=count;
    }
   }
   xx_rt_snprintf(label,sizeof(label),"scanline-%u.pic",y);if(!eg_emit(f,s,label,start,p-start,n))return false;
  }
- if(p!=n)return false;s->size=(int64_t)n;return true;
+ if(p!=n) {return false; } s->size=(int64_t)n;return true;
 }
 
 void xx_softimage_pic_init(xx_softimage_pic *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_SOFTIMAGE_PIC,"pic");}}

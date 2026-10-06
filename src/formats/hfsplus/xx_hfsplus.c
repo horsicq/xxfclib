@@ -432,8 +432,8 @@ static bool hp_device_name(const char *name) {
     if (name[n] && name[n] != '.') return false;
     for (i = 0U; i < sizeof(devices) / sizeof(devices[0]); ++i) if (hp_equal(stem, devices[i])) return true;
     return n == 4U && stem[3] >= '0' && stem[3] <= '9' &&
-        ((stem[0] == 'C' || stem[0] == 'c') && (stem[1] == 'O' || stem[1] == 'o') && (stem[2] == 'M' || stem[2] == 'm') ||
-         (stem[0] == 'L' || stem[0] == 'l') && (stem[1] == 'P' || stem[1] == 'p') && (stem[2] == 'T' || stem[2] == 't'));
+        (((stem[0] == 'C' || stem[0] == 'c') && (stem[1] == 'O' || stem[1] == 'o') && (stem[2] == 'M' || stem[2] == 'm')) ||
+         ((stem[0] == 'L' || stem[0] == 'l') && (stem[1] == 'P' || stem[1] == 'p') && (stem[2] == 'T' || stem[2] == 't')));
 }
 static bool hp_name_output(const hp_name *name, char *output, bool host) {
     size_t i, at = 0U;
@@ -492,7 +492,7 @@ static bool hp_folder_path(hp_view *v, hp_entry *entry, unsigned depth, xx_pd_st
     if (entry->id == 2U) {
         if (v->path_bytes >= HP_PATH_MEMORY) return false;
         entry->path = xx_str_dup(""); entry->path_state = 2U;
-        if (entry->path) ++v->path_bytes; return entry->path != NULL;
+        if (entry->path) { ++v->path_bytes; } return entry->path != NULL;
     }
     parent = hp_entry_find(v, entry->parent);
     if (!parent || !hp_folder_path(v, parent, depth + 1U, pd) || parent->depth >= 64U || !hp_name_output(&entry->name, component, true) ||
@@ -502,7 +502,7 @@ static bool hp_folder_path(hp_view *v, hp_entry *entry, unsigned depth, xx_pd_st
         size_t bytes = xx_str_len(member->name) + 1U;
         if (bytes > HP_PATH_MEMORY - v->path_bytes) return false;
         entry->path = xx_str_dup(member->name); entry->path_state = 2U;
-        if (entry->path) v->path_bytes += bytes; return entry->path != NULL;
+        if (entry->path) { v->path_bytes += bytes; } return entry->path != NULL;
     }
 }
 static bool hp_catalog_finish(hp_view *v, xx_pd_struct *pd) {
@@ -621,7 +621,7 @@ fail:
 
 static void hp_vtable_destroy(Abstractformat *self) { xx_hfsplus_destroy((xx_hfsplus *)self); }
 void xx_hfsplus_init(xx_hfsplus *v, xx_io_device *device, int64_t base) {
-    if (!v) return; xx_mem_zero(v, sizeof(*v)); xx_format_init(&v->format, device, base);
+    if (!v) { return; } xx_mem_zero(v, sizeof(*v)); xx_format_init(&v->format, device, base);
     v->format.endian = XX_ENDIAN_BIG; v->format.file_type = HP_TYPE; v->format.format_type = XX_TYPE_ARCHIVE; v->format.is_archive = true;
     xx_format_set_mime_type(&v->format, "application/x-hfsplus-fs"); xx_format_set_extension(&v->format, "img");
     v->format.check_is_valid = xx_hfsplus_check_is_valid; v->format.handle_base_info = xx_hfsplus_handle_base_info;

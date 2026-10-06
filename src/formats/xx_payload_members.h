@@ -30,16 +30,16 @@ typedef struct pm_member {
 } pm_member;
 typedef struct pm_stream { pm_member *items; size_t count, capacity, index; int64_t size; } pm_stream;
 static bool pm_parse(Abstractformat *, pm_stream *, xx_pd_struct *);
-static uint16_t pm_le16(const uint8_t *p) { return (uint16_t)(p[0] | p[1]<<8); }
-static uint16_t pm_be16(const uint8_t *p) { return (uint16_t)(p[0]<<8 | p[1]); }
-static uint32_t pm_le32(const uint8_t *p) { return (uint32_t)p[0] | (uint32_t)p[1]<<8 | (uint32_t)p[2]<<16 | (uint32_t)p[3]<<24; }
-static uint32_t pm_be32(const uint8_t *p) { return (uint32_t)p[0]<<24 | (uint32_t)p[1]<<16 | (uint32_t)p[2]<<8 | p[3]; }
+static XXFC_MAYBE_UNUSED uint16_t pm_le16(const uint8_t *p) { return (uint16_t)(p[0] | p[1]<<8); }
+static XXFC_MAYBE_UNUSED uint16_t pm_be16(const uint8_t *p) { return (uint16_t)(p[0]<<8 | p[1]); }
+static XXFC_MAYBE_UNUSED uint32_t pm_le32(const uint8_t *p) { return (uint32_t)p[0] | (uint32_t)p[1]<<8 | (uint32_t)p[2]<<16 | (uint32_t)p[3]<<24; }
+static XXFC_MAYBE_UNUSED uint32_t pm_be32(const uint8_t *p) { return (uint32_t)p[0]<<24 | (uint32_t)p[1]<<16 | (uint32_t)p[2]<<8 | p[3]; }
 static int64_t pm_available(Abstractformat *f) {
     int64_t n;
     if (!f || !f->device || f->base_address<0 || (n=xx_io_size(f->device))<f->base_address) return -1;
     return n-f->base_address;
 }
-static bool pm_read(Abstractformat *f, int64_t at, void *p, size_t n) {
+static XXFC_MAYBE_UNUSED bool pm_read(Abstractformat *f, int64_t at, void *p, size_t n) {
     int64_t left=pm_available(f);
     size_t capacity=xx_get_file_buffer_size(),done=0;
     if(at<0 || left<at || n>(uint64_t)(left-at) || (!p && n) ||
@@ -91,7 +91,7 @@ static void pm_free_stream(void *p) {
         xx_mem_free(s->items[i].display_name);
         pm_free_password(s->items[i].password);
     }
-    if(s->items) xx_mem_free(s->items); xx_mem_free(s);
+    if(s->items) { xx_mem_free(s->items); } xx_mem_free(s);
 }
 static pm_stream *pm_open(Abstractformat *f, xx_pd_struct *pd) {
     pm_stream *s; int64_t cursor;
@@ -150,7 +150,7 @@ static xx_archive_record_state *pm_create_records(Abstractformat *f, const xx_li
     xx_archive_record_state_init(st,f); st->internal_state=s; st->free_internal=pm_free_stream; st->total_records=s->count;
     for(i=0;opts && i<opts->count;++i) {
         const xx_meta *m=(const xx_meta *)xx_list_at(opts,i); xx_meta copy;
-        if(!m) continue; xx_meta_init(&copy,m->meta_id);
+        if(!m) { continue; } xx_meta_init(&copy,m->meta_id);
         if(!xx_var_copy(&copy.var,&m->var) || !xx_list_append(&st->options,&copy)) {
             xx_meta_cleanup(&copy); xx_archive_record_state_free(st); return NULL;
         }
@@ -279,7 +279,7 @@ done:
         if(!result) (void)xx_io_file_remove_a(stage);
         xx_str_free(stage);
     }
-    if(path) xx_str_free(path); if(owned) xx_str_free(owned); return result;
+    if(path) { xx_str_free(path); } if(owned) xx_str_free(owned); return result;
 }
 static void pm_free_records(Abstractformat *f, xx_archive_record_state *st) { (void)f; xx_archive_record_state_free(st); }
 static void pm_init(Abstractformat *f, xx_io_device *d, int64_t b, xx_file_type_t type, const char *ext) {

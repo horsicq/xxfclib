@@ -11,7 +11,7 @@ static bool mq_property(tb_text *q,bool scene) {
  const char *v3[]={"scale","rotation","translation","color","pos","lookat","amb","dir"};const char *v1[]={"facet","normal_weight","head","pich","bank","zoom2","frontclip","backclip"};const char *integer[]={"depth","folding","visible","locking","shading","color_type","ortho"};unsigned i;int32_t v;
  for(i=0;i<sizeof(v3)/sizeof(v3[0]);++i)if(tb_word(q,v3[i]))return tb_nums(q,3);
  for(i=0;i<sizeof(v1)/sizeof(v1[0]);++i)if(tb_word(q,v1[i]))return tb_nums(q,1);
- for(i=0;i<sizeof(integer)/sizeof(integer[0]);++i)if(tb_word(q,integer[i]))return tb_i(q,&v)&&v>=0&&v<=65535&&tb_done(q);(void)scene;return false;
+ for(i=0;i<sizeof(integer)/sizeof(integer[0]);++i) {if(tb_word(q,integer[i]))return tb_i(q,&v)&&v>=0&&v<=65535&&tb_done(q); } (void)scene;return false;
 }
 static bool mq_args(tb_text *q,char key[32],tb_text *args) {uint64_t a,end;unsigned j=0;tb_space(q);while(q->t<q->stop&&q->b[q->t]!='('){uint8_t c=q->b[q->t++];if(c<65||c>122||j>=31)return false;key[j++]=(char)c;}key[j]=0;if(!j||q->t==q->stop)return false;a=++q->t;end=a;while(end<q->stop&&q->b[end]!=')'){if(q->b[end]=='(')return false;++end;}if(end==q->stop)return false;*args=*q;args->t=a;args->stop=end;q->t=end+1;return true;}
 static bool tb_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
@@ -32,7 +32,7 @@ static bool tb_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
      if(!xx_rt_strcmp(key,"col")){if(flags&1)return false;flags|=1;nums=4;}
      else if(!xx_rt_strcmp(key,"shader")||!xx_rt_strcmp(key,"vcol")){if(!tb_i(&a,&v)||v<0||v>4||!tb_done(&a))return false;continue;}
      else if(xx_rt_strcmp(key,"dif")&&xx_rt_strcmp(key,"amb")&&xx_rt_strcmp(key,"emi")&&xx_rt_strcmp(key,"spc")&&xx_rt_strcmp(key,"power")&&xx_rt_strcmp(key,"reflect")&&xx_rt_strcmp(key,"refract"))return false;
-     for(j=0;j<(int32_t)nums;++j)if(!tb_num(&a,&x)||x<0||(nums==4&&x>1))return false;if(!tb_done(&a))return false;
+     for(j=0;j<(int32_t)nums;++j) {if(!tb_num(&a,&x)||x<0||(nums==4&&x>1))return false; } if(!tb_done(&a))return false;
     }if(!(flags&1))return false;
    }if(!tb_next(&q)||!tb_word(&q,"}")||!tb_done(&q)||!tb_emit(f,s,"materials.mqo",start,q.p-start,n))return false;
   }else if(tb_word(&q,"Object")){unsigned flags=0;if(++objects>1024||!tb_string(&q)||!mq_open(&q))return false;nv=0;nf=0;

@@ -11,11 +11,11 @@ static bool amplus_parse(Abstractformat *f,pm_stream *s,ac_blob *b) {
         const uint8_t *tag; uint32_t outer,limit,pos,filesize,namesize,size,mode=0,crc=0,sum=0,i; char name[96]; uint8_t *out=NULL;
         if(!ac_poll(b) || !ac_span(b,at,8)) return false;
         tag=b->p+at; outer=pm_be32(tag+4); pos=at+8U;
-        if(!ac_span(b,pos,outer) || outer==UINT32_MAX) return false; limit=pos+outer;
+        if(!ac_span(b,pos,outer) || outer==UINT32_MAX) { return false; } limit=pos+outer;
         if(!xx_rt_memcmp(tag,"VERS",4) || !xx_rt_memcmp(tag,"DISK",4) || !xx_rt_memcmp(tag,"PREF",4) || !xx_rt_memcmp(tag,"MKDR",4)) { at=limit+(outer&1U); continue; }
         if(xx_rt_memcmp(tag,"HELP",4)) {
             if(xx_rt_memcmp(tag,"PACK",4) && xx_rt_memcmp(tag,"DATA",4)) return false;
-            if(outer<10U) return false; mode=pm_be16(b->p+pos); size=pm_be32(b->p+pos+2); crc=pm_be32(b->p+pos+6); pos+=10U;
+            if(outer<10U) { return false; } mode=pm_be16(b->p+pos); size=pm_be32(b->p+pos+2); crc=pm_be32(b->p+pos+6); pos+=10U;
             if(size>outer) return false;
         }
         if(!ac_span(b,pos,36U) || pos+36U>limit || xx_rt_memcmp(b->p+pos,"FILE",4)) return false;

@@ -21,7 +21,7 @@ static bool tg_index(Abstractformat *f,int64_t at,uint64_t pixels,unsigned step,
                 if(v<first || v-first>=count) {result=false;break;}
             }
         }
-        if(!result) break; done+=n;
+        if(!result) { break; } done+=n;
     }
     xx_mem_free(b);return result;
 }
@@ -37,13 +37,13 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(h[1]) { if(!count || first+count>65536 || (h[7]!=15 && h[7]!=16 && h[7]!=24 && h[7]!=32)) return false; palette=(uint64_t)count*((h[7]+7U)/8U); }
     else { if(first || count || h[7]) return false; palette=0; }
     step=(bits+7U)/8U; pixels=(uint64_t)w*height; at=18+h[0]; if(at>foot || palette>(uint64_t)(foot-at)) return false;
-    if(!pm_add(f,s,"descriptor.bin",0,18) || (h[0] && !pm_add(f,s,"image-id.bin",18,h[0])) || (palette && !pm_add(f,s,"palette.bin",at,(int64_t)palette))) return false; at+=(int64_t)palette; data=at;
+    if(!pm_add(f,s,"descriptor.bin",0,18) || (h[0] && !pm_add(f,s,"image-id.bin",18,h[0])) || (palette && !pm_add(f,s,"palette.bin",at,(int64_t)palette))) { return false; } at+=(int64_t)palette; data=at;
     if(!rle) { uint64_t bytes=pixels*step; if(bytes>(uint64_t)(foot-at) || (indexed && !tg_index(f,at,pixels,step,first,count,pd))) return false; at+=(int64_t)bytes; }
     else { uint64_t done=0; while(done<pixels) { uint8_t packet; uint64_t run,stored;
-            if((pd && xx_pd_is_stopped(pd)) || at>=foot || !pm_read(f,at++,&packet,1)) return false; run=(packet&127)+1U; stored=(packet&128) ? 1U : run;
-            if(run>pixels-done || stored*step>(uint64_t)(foot-at) || (indexed && !tg_index(f,at,stored,step,first,count,pd))) return false; at+=(int64_t)(stored*step); done+=run;
+            if((pd && xx_pd_is_stopped(pd)) || at>=foot || !pm_read(f,at++,&packet,1)) { return false; } run=(packet&127)+1U; stored=(packet&128) ? 1U : run;
+            if(run>pixels-done || stored*step>(uint64_t)(foot-at) || (indexed && !tg_index(f,at,stored,step,first,count,pd))) { return false; } at+=(int64_t)(stored*step); done+=run;
         } }
-    if(at!=foot || !pm_add(f,s,rle ? "pixels-rle.bin" : "pixels-raw.bin",data,at-data)) return false; s->size=foot+26; return true;
+    if(at!=foot || !pm_add(f,s,rle ? "pixels-rle.bin" : "pixels-raw.bin",data,at-data)) { return false; } s->size=foot+26; return true;
 }
 
 void xx_tga_init(xx_tga *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_TGA,"tga"); } }

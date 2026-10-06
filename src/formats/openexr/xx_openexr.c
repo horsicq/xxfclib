@@ -17,8 +17,8 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     static const unsigned lines[12]={1,1,1,16,32,16,32,32,32,256,256,32};
     if(!pm_read(f,0,h,8) || pm_le32(h)!=20000630U || ((version=pm_le32(h+4))&255)!=2 || (version&~0x402U)) return false;
     for(;;) { char name[258],type[258],label[96]; uint32_t n;
-        if((pd && xx_pd_is_stopped(pd)) || !ex_string(f,&at,limit,name,(version&0x400) ? 258U : 34U)) return false; if(!name[0]) break;
-        if(!ex_string(f,&at,limit,type,(version&0x400) ? 258U : 34U) || limit-at<4 || !pm_read(f,at,h,4)) return false; n=pm_le32(h); at+=4;
+        if((pd && xx_pd_is_stopped(pd)) || !ex_string(f,&at,limit,name,(version&0x400) ? 258U : 34U)) { return false; } if(!name[0]) break;
+        if(!ex_string(f,&at,limit,type,(version&0x400) ? 258U : 34U) || limit-at<4 || !pm_read(f,at,h,4)) { return false; } n=pm_le32(h); at+=4;
         if(n>INT32_MAX || n>(uint64_t)(limit-at)) return false;
         if(!xx_rt_strcmp(name,"channels")) { int64_t p=at,stop=at+n; if(mask&1 || xx_rt_strcmp(type,"chlist")) return false;
             for(;;) { char channel[258]; if(!ex_string(f,&p,stop,channel,(version&0x400) ? 258U : 34U)) return false; if(!channel[0]) break;
@@ -35,14 +35,14 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         else if(!xx_rt_strcmp(name,"tiles") || !xx_rt_strcmp(name,"chunkCount")) return false;
         { char safe[61]; unsigned j; for(j=0;j<60 && name[j];++j) { unsigned char b=(unsigned char)name[j]; safe[j]=((b>='a' && b<='z') || (b>='A' && b<='Z') || (b>='0' && b<='9') || b=='_' || b=='-') ? (char)b : '_'; } safe[j]=0;
             xx_rt_snprintf(label,sizeof(label),"attribute-%s.bin",safe); }
-        if(!pm_add(f,s,label,at,n)) return false; at+=n;
+        if(!pm_add(f,s,label,at,n)) { return false; } at+=n;
     }
     if(mask!=255) return false;
     if((int64_t)xmax-xmin+1>UINT32_MAX || (int64_t)ymax-ymin+1>UINT32_MAX) return false;
     width=(uint32_t)((int64_t)xmax-xmin+1); height=(uint32_t)((int64_t)ymax-ymin+1); block=lines[compression];
     /* Keep overlap validation bounded for attacker-controlled offset tables. */
-    if(((uint64_t)height+block-1)/block>4096) return false; chunk_count=(height+block-1)/block; table=at;
-    if((uint64_t)chunk_count*8>(uint64_t)(limit-table)) return false; end=table+(int64_t)chunk_count*8; first_chunk=s->count;
+    if(((uint64_t)height+block-1)/block>4096) { return false; } chunk_count=(height+block-1)/block; table=at;
+    if((uint64_t)chunk_count*8>(uint64_t)(limit-table)) { return false; } end=table+(int64_t)chunk_count*8; first_chunk=s->count;
     for(i=0;i<chunk_count;++i) { uint64_t offset; uint32_t bytes; int32_t y; unsigned j; char name[48]; uint64_t raw=0;
         if(pd && xx_pd_is_stopped(pd)) return false;
         if(!pm_read(f,table+(int64_t)i*8,h,8) || (offset=ex_le64(h))>(uint64_t)limit || offset<(uint64_t)(table+(int64_t)chunk_count*8) || limit-(int64_t)offset<8 || !pm_read(f,(int64_t)offset,h,8)) return false;

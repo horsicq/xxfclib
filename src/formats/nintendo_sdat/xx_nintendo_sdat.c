@@ -9,20 +9,20 @@ static bool sd_nitro(tc_blob *b,uint32_t a,uint32_t z) {
  if(xx_rt_memcmp(p+a,"SSEQ",4) && xx_rt_memcmp(p+a,"SSAR",4) && xx_rt_memcmp(p+a,"SBNK",4) && xx_rt_memcmp(p+a,"SWAR",4) && xx_rt_memcmp(p+a,"STRM",4)) return false;
  size=pm_le32(p+a+8);n=pm_le16(p+a+14);if(size<24 || size>z || !n || n>3 || !tc_zero(p+a+size,z-size)) return false;
  at=16;for(i=0;i<n;++i) {uint32_t s;if(!tc_work(b,1) || size-at<8) return false;s=pm_le32(p+a+at+4);
-  if(s<8 || s>size-at || (xx_rt_memcmp(p+a+at,"DATA",4) && xx_rt_memcmp(p+a+at,"HEAD",4) && xx_rt_memcmp(p+a+at,"ADPC",4))) return false;at+=s;
+  if(s<8 || s>size-at || (xx_rt_memcmp(p+a+at,"DATA",4) && xx_rt_memcmp(p+a+at,"HEAD",4) && xx_rt_memcmp(p+a+at,"ADPC",4))) { return false; } at+=s;
  }return at==size;
 }
 static bool read_components(Abstractformat *f,pm_stream *s,tc_blob *b) {
  const uint8_t *p=b->p;uint32_t offsets[4],sizes[4],parts[8],counts[8],records[8],a,z,i,j,k,files,info,fat,file,syms,nblock=0,extcount=0;tc_extent ext[4096];char label[64];
  if(b->n<64 || xx_rt_memcmp(p,"SDAT",4) || pm_le16(p+4)!=0xfeff || pm_le16(p+6)!=0x100 || pm_le32(p+8)!=b->n || pm_le16(p+12)!=64 || !tc_zero(p+48,16)) return false;
  for(i=0;i<4;++i) {offsets[i]=pm_le32(p+16+i*8);sizes[i]=pm_le32(p+20+i*8);if(!offsets[i]) {if(i || sizes[i]) return false;continue;}
-  if(offsets[i]<64 || sizes[i]<8 || !tc_claim(b,ext,&extcount,offsets[i],sizes[i],false) || pm_le32(p+offsets[i]+4)!=sizes[i]) return false;++nblock;}
- if(pm_le16(p+14)!=nblock || !offsets[1] || !offsets[2] || !offsets[3]) return false;info=offsets[1];fat=offsets[2];file=offsets[3];syms=offsets[0];
+  if(offsets[i]<64 || sizes[i]<8 || !tc_claim(b,ext,&extcount,offsets[i],sizes[i],false) || pm_le32(p+offsets[i]+4)!=sizes[i]) { return false; } ++nblock;}
+ if(pm_le16(p+14)!=nblock || !offsets[1] || !offsets[2] || !offsets[3]) { return false; } info=offsets[1];fat=offsets[2];file=offsets[3];syms=offsets[0];
  if(xx_rt_memcmp(p+info,"INFO",4) || sizes[1]<40 || xx_rt_memcmp(p+fat,"FAT ",4) || sizes[2]<12 || xx_rt_memcmp(p+file,"FILE",4) || sizes[3]<24 || !tc_zero(p+file+12,12)) return false;
  files=pm_le32(p+fat+8);if(!files || files>1024 || sizes[2]!=12+16*files || pm_le32(p+file+8)!=files) return false;
  for(i=0;i<8;++i) {uint32_t rel=pm_le32(p+info+8+4*i);if(rel<40 || rel>sizes[1]-4) return false;parts[i]=info+rel;counts[i]=pm_le32(p+parts[i]);if(counts[i]>1024 || counts[i]>(sizes[1]-rel-4)/4) return false;records[i]=parts[i]+4;}
  for(i=0;i<8;++i) for(j=0;j<counts[i];++j) {uint32_t q=pm_le32(p+records[i]+4*j),min[]={10,4,12,4,8,4,17,8};if(!q) continue;
-  if(!tc_work(b,1) || q<40 || q>sizes[1] || min[i]>sizes[1]-q) return false;q+=info;
+  if(!tc_work(b,1) || q<40 || q>sizes[1] || min[i]>sizes[1]-q) { return false; } q+=info;
   if(i<4 || i==7) {uint32_t id=pm_le16(p+q);static const char *types[]={"SSEQ","SSAR","SBNK","SWAR"};if(id>=files) return false;a=pm_le32(p+fat+12+16*id);z=pm_le32(p+fat+16+16*id);if(!tc_span(b,a,z) || z<16 || xx_rt_memcmp(p+a,i==7?"STRM":types[i],4)) return false;}
   if(i==0) {if(pm_le16(p+q+4)>=counts[2] || p[q+6]>127 || p[q+9]>=counts[4]) return false;}
   if(i==2) for(k=0;k<4;++k) {int32_t id=(int16_t)pm_le16(p+q+4+k*2);if(id!=-1 && (id<0 || (uint32_t)id>=counts[3])) return false;}

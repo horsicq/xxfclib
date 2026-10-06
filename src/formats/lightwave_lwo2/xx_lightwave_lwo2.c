@@ -36,7 +36,7 @@ static bool parse_data(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t 
  case 0x54414753U:if(tags)return false;tags=true;while(p<e){if(++nt>65536||!cstr(b,&p,e,1024,false))return false;if(p&1)++p;}if(p!=e)return false;break;
  case 0x50544147U:if(ptag||len<4||xx_rt_memcmp(b+p,"SURF",4))return false;ptag=p+4;ptag_end=e;break;default:return false;}
  xx_rt_snprintf(label,sizeof(label),"chunk-%u.bin",(unsigned)s->count);if(!emit(f,s,label,at,8+len,end))return false;at=e+(len&1);if(at>end||(len&1&&b[e]))return false; }
- if(!layer||!nv||!polys||!tags||!nt)return false;at=polys;while(at<polys_end){uint32_t count,j,index;if(!span(at,2,polys_end)||++np>65536)return false;count=pm_be16(b+at);at+=2;if(count<3||count>1024)return false;for(j=0;j<count;++j)if(!vx(b,&at,polys_end,&index)||index>=nv)return false;}
+ if(!layer||!nv||!polys||!tags||!nt) {return false; } at=polys;while(at<polys_end){uint32_t count,j,index;if(!span(at,2,polys_end)||++np>65536)return false;count=pm_be16(b+at);at+=2;if(count<3||count>1024)return false;for(j=0;j<count;++j)if(!vx(b,&at,polys_end,&index)||index>=nv)return false;}
  at=ptag;while(ptag&&at<ptag_end){uint32_t index;if(!vx(b,&at,ptag_end,&index)||index>=np||!span(at,2,ptag_end)||pm_be16(b+at)>=nt)return false;at+=2;}if(!np)return false;s->size=(int64_t)end;return true;
 
 }

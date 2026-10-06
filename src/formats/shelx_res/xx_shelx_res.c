@@ -7,7 +7,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     NH_NEED(nh_load(f,&b,pd));c.b=&b;
     NH_NEED(th_words(&c,&line,t,128,&nt,"!") && nt>=1 && el_eq(&b,t[0],"TITL"));
     NH_NEED(th_words(&c,&line,t,128,&nt,"!") && nt==8 && el_eq(&b,t[0],"CELL") && th_floats(&b,t+1,7));
-    for(i=1;i<=4;++i) NH_NEED(th_positive(&b,t[i]));for(i=5;i<8;++i) NH_NEED(tw_value(&b,t[i])>0 && tw_value(&b,t[i])<180);
+    for(i=1;i<=4;++i) { NH_NEED(th_positive(&b,t[i])); } for(i=5;i<8;++i) NH_NEED(tw_value(&b,t[i])>0 && tw_value(&b,t[i])<180);
     NH_NEED(th_words(&c,&line,t,128,&nt,"!") && nt==2 && el_eq(&b,t[0],"LATT") && el_eq(&b,t[1],"-1"));
     NH_NEED(th_words(&c,&line,t,128,&nt,"!") && nt>=2 && nt<=119 && el_eq(&b,t[0],"SFAC"));nsp=nt-1;
     for(i=0;i<nsp;++i) {unsigned j;NH_NEED(tw_element(&b,t[i+1]));for(j=0;j<i;++j) NH_NEED(!th_same(&b,species[j],t[i+1]));species[i]=t[i+1];}head=c.at;

@@ -28,18 +28,18 @@ static bool fbx_properties(const uint8_t *b,uint64_t *p,uint64_t end,uint64_t co
  uint64_t i; if(count>65536)return false;for(i=0;i<count;++i) {uint8_t t;uint64_t width=0;if(stop(pd)||*p>=end)return false;t=b[(*p)++];switch(t) {case 'Y':width=2;break;case 'C':width=1;break;case 'I':case 'F':width=4;break;case 'L':case 'D':width=8;break;
  case 'S':case 'R':if(!span(*p,4,end))return false;width=u32(b+*p,false);*p+=4;break;
  case 'f':case 'd':case 'l':case 'i':case 'b':case 'c': {uint32_t c,encoding,packed;uint64_t raw;uint8_t *owned=NULL;const uint8_t *data;size_t written=0;uint32_t j;bool okay=true;
-   if(!span(*p,12,end))return false;c=u32(b+*p,false);encoding=u32(b+*p+4,false);packed=u32(b+*p+8,false);*p+=12;width=(t=='d'||t=='l')?8:(t=='f'||t=='i')?4:1;raw=(uint64_t)c*width;
-   if(encoding>1||raw>16777216||raw>*budget||!span(*p,packed,end))return false;*budget-=raw;data=b+*p;
+   if(!span(*p,12,end)) {return false; } c=u32(b+*p,false);encoding=u32(b+*p+4,false);packed=u32(b+*p+8,false);*p+=12;width=(t=='d'||t=='l')?8:(t=='f'||t=='i')?4:1;raw=(uint64_t)c*width;
+   if(encoding>1||raw>16777216||raw>*budget||!span(*p,packed,end)) {return false; } *budget-=raw;data=b+*p;
    if(encoding) {owned=(uint8_t *)xx_mem_alloc((size_t)(raw?raw:1));if(!owned)return false;okay=xx_zlib_stream_decode_memory(data,packed,owned,(size_t)raw,&written)&&written==raw&&xx_zlib_stream_trailer_matches(data,packed,owned,(size_t)raw);data=owned;}else if(packed!=raw)okay=false;
    if(okay)for(j=0;j<c;++j) {if((t=='f'&&!finite32(data+(uint64_t)j*4,false))||(t=='d'&&!finite64(data+(uint64_t)j*8,false))||(t=='b'&&data[j]>1)){okay=false;break;}}
-   if(owned)xx_mem_free(owned);if(!okay)return false;*p+=packed;continue; }
+   if(owned) {xx_mem_free(owned); } if(!okay)return false;*p+=packed;continue; }
  default:return false; }
- if(!span(*p,width,end))return false;if((t=='C'&&b[*p]>1)||(t=='F'&&!finite32(b+*p,false))||(t=='D'&&!finite64(b+*p,false)))return false;*p+=width; }return *p==end;
+ if(!span(*p,width,end)) {return false; } if((t=='C'&&b[*p]>1)||(t=='F'&&!finite32(b+*p,false))||(t=='D'&&!finite64(b+*p,false)))return false;*p+=width; }return *p==end;
 }
 static bool fbx_node(const uint8_t *b,uint64_t *at,uint64_t end,unsigned hs,unsigned depth,unsigned *nodes,uint64_t *budget,xx_pd_struct *pd) {
  uint64_t start=*at,finish,count,len,p,prop_end;unsigned name;if(depth>32||++*nodes>65536||stop(pd)||!span(start,hs,end))return false;
  finish=hs==25?u64(b+start,false):u32(b+start,false);count=hs==25?u64(b+start+8,false):u32(b+start+4,false);len=hs==25?u64(b+start+16,false):u32(b+start+8,false);name=b[start+hs-1];p=start+hs;
- if(!name||finish<p||finish>end||!span(p,name,finish))return false;p+=name;if(!span(p,len,finish))return false;prop_end=p+len;if(!fbx_properties(b,&p,prop_end,count,budget,pd))return false;
+ if(!name||finish<p||finish>end||!span(p,name,finish)) {return false; } p+=name;if(!span(p,len,finish))return false;prop_end=p+len;if(!fbx_properties(b,&p,prop_end,count,budget,pd))return false;
  if(p<finish) {if(finish-p<hs)return false;while(p<finish-hs)if(!fbx_node(b,&p,finish-hs,hs,depth+1,nodes,budget,pd))return false;if(p!=finish-hs||!zero(b+p,hs))return false;}
  *at=finish;return true;
 }
@@ -47,11 +47,11 @@ static bool fbx_node(const uint8_t *b,uint64_t *at,uint64_t end,unsigned hs,unsi
 static bool parse_data(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
 
  uint32_t version;unsigned hs,nodes=0;uint64_t at=27,budget=67108864,footer,end;char label[40];static const uint8_t tail[]={0xf8,0x5a,0x8c,0x6a,0xde,0xf5,0xd9,0x7e,0xec,0xe9,0x0c,0xe3,0x75,0x8f,0x29,0x0b};
- if(n<27||xx_rt_memcmp(b,"Kaydara FBX Binary  \0\x1a\0",23)||((version=u32(b+23,false))!=7400&&version!=7500))return false;hs=version==7500?25:13;
+ if(n<27||xx_rt_memcmp(b,"Kaydara FBX Binary  \0\x1a\0",23)||((version=u32(b+23,false))!=7400&&version!=7500)) {return false; } hs=version==7500?25:13;
  while(span(at,hs,n)&&!zero(b+at,hs)) {uint64_t start=at;if(!fbx_node(b,&at,n,hs,0,&nodes,&budget,pd))return false;xx_rt_snprintf(label,sizeof(label),"root-%u.fbxnode",(unsigned)s->count);if(!emit(f,s,label,start,at-start,n))return false;}
- if(!s->count||!span(at,hs+20,n)||!zero(b+at,hs)||!zero(b+at+hs+16,4))return false;footer=at+hs;end=footer+20;end=((end+15)&~15ULL)==end?end+16:(end+15)&~15ULL;
- if(!span(end,140,n)||!zero(b+footer+20,end-footer-20)||u32(b+end,false)!=version||!zero(b+end+4,120)||xx_rt_memcmp(b+end+124,tail,16))return false;end+=140;
- if(!emit(f,s,"footer.bin",footer,end-footer,n))return false;s->size=(int64_t)end;return true;
+ if(!s->count||!span(at,hs+20,n)||!zero(b+at,hs)||!zero(b+at+hs+16,4)) {return false; } footer=at+hs;end=footer+20;end=((end+15)&~15ULL)==end?end+16:(end+15)&~15ULL;
+ if(!span(end,140,n)||!zero(b+footer+20,end-footer-20)||u32(b+end,false)!=version||!zero(b+end+4,120)||xx_rt_memcmp(b+end+124,tail,16)) {return false; } end+=140;
+ if(!emit(f,s,"footer.bin",footer,end-footer,n)) {return false; } s->size=(int64_t)end;return true;
 
 }
 

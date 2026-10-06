@@ -24,16 +24,16 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if(gm_stopped(pd) || !gm_read(f,total,base+4+(uint64_t)i*8,b,8)) return false;
         if(!xx_rt_memcmp(b,"tMOV",4)) return false;
         rt=base+pm_be16(b+4); nt=base+pm_be16(b+6);
-        if(!gm_read(f,total,rt,b,2)) return false; resources=pm_be16(b); if(!gm_range(total,rt+2,(uint64_t)resources*4)) return false;
+        if(!gm_read(f,total,rt,b,2)) { return false; } resources=pm_be16(b); if(!gm_range(total,rt+2,(uint64_t)resources*4)) return false;
         if(rt+2+(uint64_t)resources*4>(uint64_t)s->size) s->size=(int64_t)(rt+2+(uint64_t)resources*4);
         if(rt+2+(uint64_t)resources*4>metadata_end) metadata_end=rt+2+(uint64_t)resources*4;
-        if(!gm_read(f,total,nt,b,2)) return false; names=pm_be16(b); if(!gm_range(total,nt+2,(uint64_t)names*4)) return false;
+        if(!gm_read(f,total,nt,b,2)) { return false; } names=pm_be16(b); if(!gm_range(total,nt+2,(uint64_t)names*4)) return false;
         if(nt+2+(uint64_t)names*4>(uint64_t)s->size) s->size=(int64_t)(nt+2+(uint64_t)names*4);
         if(nt+2+(uint64_t)names*4>metadata_end) metadata_end=nt+2+(uint64_t)names*4;
         for(k=0;k<names;++k) { uint64_t str,remain;
             if(!gm_read(f,total,nt+2+(uint64_t)k*4,b,4) || !pm_be16(b+2) || pm_be16(b+2)>count) return false;
             str=base+strings+pm_be16(b); if(str>(uint64_t)total) return false; remain=(uint64_t)total-str; if(remain>4096) remain=4096;
-            if(!gm_string(f,total,str,remain,&used)) return false; if(str+used>(uint64_t)s->size) s->size=(int64_t)(str+used);
+            if(!gm_string(f,total,str,remain,&used)) { return false; } if(str+used>(uint64_t)s->size) s->size=(int64_t)(str+used);
             if(str+used>metadata_end) metadata_end=str+used;
         }
     }
@@ -42,7 +42,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if(gm_stopped(pd) || !gm_read(f,total,base+4+(uint64_t)i*8,b,8)) return false;
         rt=base+pm_be16(b+4); if(!gm_read(f,total,rt,b,2)) return false; resources=pm_be16(b);
         for(j=0;j<resources;++j) { uint16_t index; uint64_t at,n;
-            if(gm_stopped(pd) || !gm_read(f,total,rt+2+(uint64_t)j*4,b,4)) return false; index=pm_be16(b+2); if(!index || index>count) return false;
+            if(gm_stopped(pd) || !gm_read(f,total,rt+2+(uint64_t)j*4,b,4)) { return false; } index=pm_be16(b+2); if(!index || index>count) return false;
             if(!gm_read(f,total,ft+4+(uint64_t)(index-1)*10,r,10)) return false;
             at=pm_be32(r); n=pm_be16(r+4) | (uint32_t)r[6]<<16 | (uint32_t)(r[7]&7)<<24;
             if(at<metadata_end && at+n>base) return false;

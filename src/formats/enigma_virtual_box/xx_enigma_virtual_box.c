@@ -246,7 +246,7 @@ static bool evb_unpack(Abstractformat *f, xx_archive_record_state *state, xx_pd_
         if ((pd && xx_pd_is_stopped(pd)) || !take || take > EVB_CHUNK_LIMIT || take > remaining) goto cleanup;
         if (take > packed_capacity) {
             uint8_t *new_packed = (uint8_t *)xx_mem_realloc(packed, take);
-            if (!new_packed) goto cleanup; packed = new_packed; packed_capacity = take;
+            if (!new_packed) { goto cleanup; } packed = new_packed; packed_capacity = take;
         }
         if (!ue2_read(f, cursor, packed, take)) goto cleanup;
         data = packed; data_size = take;
@@ -284,13 +284,13 @@ static bool evb_info(Abstractformat *f, xx_pd_struct *pd) {
     return ue2_accept(f, evb_parse(f, &a->legacy, &a->container_offset, pd));
 }
 void xx_enigma_virtual_box_init(xx_enigma_virtual_box *a, xx_io_device *device, int64_t base) {
-    if (!a) return; xx_mem_zero(a, sizeof(*a));
+    if (!a) { return; } xx_mem_zero(a, sizeof(*a));
     ue2_init_format(&a->format, device, base, UE2_ENIGMA_TYPE, "exe", "application/x-enigma-virtual-box");
     a->format.check_is_valid = evb_valid; a->format.handle_base_info = evb_info; a->format.unpack_current_archive_record = evb_unpack;
 }
 xx_enigma_virtual_box *xx_enigma_virtual_box_create(xx_io_device *device, int64_t base) {
     xx_enigma_virtual_box *a = (xx_enigma_virtual_box *)xx_mem_alloc(sizeof(*a));
-    if (a) xx_enigma_virtual_box_init(a, device, base); return a;
+    if (a) { xx_enigma_virtual_box_init(a, device, base); } return a;
 }
 void xx_enigma_virtual_box_destroy(xx_enigma_virtual_box *a) { if (a) ue2_destroy_format(&a->format); }
 void xx_enigma_virtual_box_free(xx_enigma_virtual_box *a) { if (a) { xx_enigma_virtual_box_destroy(a); xx_mem_free(a); } }

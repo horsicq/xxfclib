@@ -16,12 +16,12 @@ static bool bp_get(bp_bits *q,unsigned n,uint32_t *v) {unsigned i;uint32_t u=0;i
 static bool bp_ue(bp_bits *q,uint32_t *v) {unsigned zeros=0;uint32_t u,x;for(;;){if(!bp_get(q,1,&u)||zeros>20)return false;if(u)break;++zeros;}if(!bp_get(q,zeros,&x))return false;*v=((1U<<zeros)-1)+x;return true;}
 static bool bp_header(const uint8_t *b,uint64_t *p,uint64_t end,unsigned depth) {
  uint32_t z,mincb,diffcb,mintb,difftb,hier,u,pcm;bp_bits q;
- if(!bp_ue7(b,p,end,&z)||!z||z>256||!eg_span(*p,z,end))return false;q.b=b+*p;q.p=0;q.end=(uint64_t)z*8;
+ if(!bp_ue7(b,p,end,&z)||!z||z>256||!eg_span(*p,z,end)) {return false; } q.b=b+*p;q.p=0;q.end=(uint64_t)z*8;
  if(!bp_ue(&q,&mincb)||!bp_ue(&q,&diffcb)||mincb>3||diffcb>3-mincb||!bp_ue(&q,&mintb)||!bp_ue(&q,&difftb)||mintb>3||difftb>3-mintb||mintb+2>mincb+3||!bp_ue(&q,&hier)||hier>4||!bp_get(&q,1,&u)||!bp_get(&q,1,&pcm))return false;
  if(pcm){uint32_t minpcm,diffpcm;if(!bp_get(&q,4,&u)||u+1>depth||!bp_get(&q,4,&u)||u+1>depth||!bp_ue(&q,&minpcm)||!bp_ue(&q,&diffpcm)||minpcm>3||diffpcm>3-minpcm||!bp_get(&q,1,&u))return false;}
  if(!bp_get(&q,1,&u)||!bp_get(&q,1,&u))return false;
  if(u){uint32_t range;if(!bp_get(&q,1,&range)||!bp_get(&q,7,&u)||u)return false;if(range&&!bp_get(&q,9,&u))return false;}
- if(q.end-q.p>7)return false;while(q.p<q.end){if(!bp_get(&q,1,&u)||u)return false;}*p+=z;return true;
+ if(q.end-q.p>7) {return false; } while(q.p<q.end){if(!bp_get(&q,1,&u)||u)return false;}*p+=z;return true;
 }
 static bool eg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  uint64_t p=6,extensions=0,picture,header;uint32_t w,h,z,pixel=b[4]>>5,space=b[5]>>4,nals=0,ps=0,color=0,alpha=0;bool hasalpha=(b[4]&16)||(b[5]&4);char label[64];
@@ -34,8 +34,8 @@ static bool eg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  if(hasalpha){header=p;if(!bp_header(b,&p,n,(b[4]&15)+8)||!eg_emit(f,s,"alpha-hevc-header.bpg",header,p-header,n))return false;}
  header=p;if(!bp_header(b,&p,n,(b[4]&15)+8)||!eg_emit(f,s,"color-hevc-header.bpg",header,p-header,n))return false;
  while(p<n){uint64_t start=p,end;uint32_t type,layer;unsigned zeros=0;
-  if(eg_stop(pd)||++nals>2048||!eg_span(p,3,n)||(b[p]&128)||!(b[p+1]&7))return false;type=(b[p]>>1)&63;layer=((b[p]&1)<<5)|(b[p+1]>>3);
-  if((b[p+1]&7)!=1||layer>1||(layer&&!hasalpha)||(type!=34&&type!=39&&type!=40&&type!=19&&type!=20))return false;p+=2;end=p;
+  if(eg_stop(pd)||++nals>2048||!eg_span(p,3,n)||(b[p]&128)||!(b[p+1]&7)) {return false; } type=(b[p]>>1)&63;layer=((b[p]&1)<<5)|(b[p+1]>>3);
+  if((b[p+1]&7)!=1||layer>1||(layer&&!hasalpha)||(type!=34&&type!=39&&type!=40&&type!=19&&type!=20)) {return false; } p+=2;end=p;
   while(end<n){if((end&4095)==0&&eg_stop(pd))return false;if(b[end]==0){++zeros;++end;continue;}
    if(b[end]==1&&zeros>=2){end-=zeros;break;}zeros=0;++end;}
   if(end==n){while(end>p&&b[end-1]==0)--end;}
@@ -47,7 +47,7 @@ static bool eg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
   p=end;if(p<n){uint64_t prefix=p;while(p<n&&b[p]==0)++p;if(p==n){if(!eg_emit(f,s,"nal-padding.bpg",prefix,p-prefix,n))return false;break;}if(b[p]!=1||p-prefix<2||p-prefix>16)return false;++p;
    if(!eg_emit(f,s,"nal-separator.bpg",prefix,p-prefix,n))return false;}
  }
- if(!color||hasalpha!=(alpha!=0))return false;s->size=(int64_t)n;return true;
+ if(!color||hasalpha!=(alpha!=0)) {return false; } s->size=(int64_t)n;return true;
 }
 
 void xx_bpg_image_init(xx_bpg_image *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_BPG_IMAGE,"bpg");}}

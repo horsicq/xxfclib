@@ -87,8 +87,8 @@ static bool cb_device_name(const char *name) {
     if (name[i] && name[i] != '.') return false;
     for (j = 0U; j < sizeof(devices) / sizeof(devices[0]); ++j) if (cb_equal(stem, devices[j])) return true;
     return i == 4U && stem[3] >= '0' && stem[3] <= '9' &&
-        ((stem[0] == 'C' || stem[0] == 'c') && (stem[1] == 'O' || stem[1] == 'o') && (stem[2] == 'M' || stem[2] == 'm') ||
-         (stem[0] == 'L' || stem[0] == 'l') && (stem[1] == 'P' || stem[1] == 'p') && (stem[2] == 'T' || stem[2] == 't'));
+        (((stem[0] == 'C' || stem[0] == 'c') && (stem[1] == 'O' || stem[1] == 'o') && (stem[2] == 'M' || stem[2] == 'm')) ||
+         ((stem[0] == 'L' || stem[0] == 'l') && (stem[1] == 'P' || stem[1] == 'p') && (stem[2] == 'T' || stem[2] == 't')));
 }
 static bool cb_name(const uint8_t raw[16], char out[80]) {
     unsigned i; size_t used = 0U; bool padded = false;
@@ -287,7 +287,7 @@ static bool cb_options(xx_list_s *destination, const xx_list_s *source) {
     size_t i; if (!source) return true;
     for (i = 0U; i < source->count; ++i) {
         const xx_meta *item = (const xx_meta *)xx_list_at(source, i); xx_meta copy;
-        if (!item) continue; xx_meta_init(&copy, item->meta_id);
+        if (!item) { continue; } xx_meta_init(&copy, item->meta_id);
         if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) { xx_meta_cleanup(&copy); return false; }
     }
     return true;

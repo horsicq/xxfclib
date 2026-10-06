@@ -22,18 +22,18 @@ static bool cstring(Abstractformat *f,uint64_t *at,uint64_t end,unsigned maximum
 static bool b3d_chunk(Abstractformat *f,uint64_t *at,uint64_t end,uint8_t tag[4],uint64_t *payload_end,xx_pd_struct *pd) { uint8_t h[8]; if(!take(f,at,end,h,8,pd) || !span(*at,pm_le32(h+4),end)) return false; xx_rt_memcpy(tag,h,4); *payload_end=*at+pm_le32(h+4); return true; }
 static bool b3d_node(Abstractformat *f,pm_stream *s,uint64_t at,uint64_t end,uint64_t total,unsigned depth,uint32_t brushes,uint32_t *nodes,xx_pd_struct *pd) {
     uint8_t tag[4],p[16]; uint64_t child,start; bool mesh=false;
-    if(depth>32 || ++*nodes>1024 || !cstring(f,&at,end,4096,true,pd) || !span(at,40,end) || !floats(f,at,10,false,pd)) return false; at+=40;
+    if(depth>32 || ++*nodes>1024 || !cstring(f,&at,end,4096,true,pd) || !span(at,40,end) || !floats(f,at,10,false,pd)) { return false; } at+=40;
     while(at<end) { if(!b3d_chunk(f,&at,end,tag,&child,pd)) return false;
       if(!xx_rt_memcmp(tag,"NODE",4)) { if(!b3d_node(f,s,at,child,total,depth+1,brushes,nodes,pd)) return false; }
       else if(!xx_rt_memcmp(tag,"MESH",4)) { uint32_t verts=0,tris=0; uint64_t mi=at,part; if(mesh || !take(f,&at,child,p,4,pd) || ((int32_t)pm_le32(p)!=-1 && pm_le32(p)>=brushes)) return false; mesh=true;
         while(at<child) { if(!b3d_chunk(f,&at,child,tag,&part,pd)) return false; start=at;
           if(!xx_rt_memcmp(tag,"VRTS",4)) { uint32_t flags,sets,size,stride; if(verts || !take(f,&at,part,p,12,pd)) return false; flags=pm_le32(p); sets=pm_le32(p+4); size=pm_le32(p+8);
-            if(flags>3 || sets>4 || size>4 || (!!sets!=!!size)) return false; stride=12+((flags&1) ? 12:0)+((flags&2) ? 16:0)+sets*size*4;
+            if(flags>3 || sets>4 || size>4 || (!!sets!=!!size)) { return false; } stride=12+((flags&1) ? 12:0)+((flags&2) ? 16:0)+sets*size*4;
             if((part-at)%stride || (part-at)/stride>65536 || !(verts=(uint32_t)((part-at)/stride)) || !floats(f,at,(part-at)/4,false,pd) || !emit(f,s,"vertex-stream.bin",start,part-start,total)) return false; }
           else if(!xx_rt_memcmp(tag,"TRIS",4)) { uint32_t i,n; if(!verts || !take(f,&at,part,p,4,pd) || ((int32_t)pm_le32(p)!=-1 && pm_le32(p)>=brushes) || (part-at)%12 || (part-at)/12>65536 || !(n=(uint32_t)((part-at)/12))) return false;
             for(i=0;i<n;++i) { unsigned j; if(!take(f,&at,part,p,12,pd)) return false; for(j=0;j<3;++j) if(pm_le32(p+j*4)>=verts) return false; }
-            if(!emit(f,s,"triangle-stream.bin",start,part-start,total)) return false; ++tris; }
-          else return false; at=part;
+            if(!emit(f,s,"triangle-stream.bin",start,part-start,total)) { return false; } ++tris; }
+          else { return false; } at=part;
         }
         if(!verts || !tris || !span(mi,4,child)) return false;
       } else return false; at=child;
@@ -44,7 +44,7 @@ static bool b3d_node(Abstractformat *f,pm_stream *s,uint64_t at,uint64_t end,uin
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[12],tag[4],p[32]; uint64_t total,at=12,child,start; uint32_t textures=0,brushes=0,nodes=0; bool texseen=false,brushseen=false;
-    if(!pm_read(f,0,h,12) || xx_rt_memcmp(h,"BB3D",4) || pm_le32(h+8)!=1) return false; total=8U+(uint64_t)pm_le32(h+4); if(total<12 || total>(uint64_t)pm_available(f)) return false;
+    if(!pm_read(f,0,h,12) || xx_rt_memcmp(h,"BB3D",4) || pm_le32(h+8)!=1) { return false; } total=8U+(uint64_t)pm_le32(h+4); if(total<12 || total>(uint64_t)pm_available(f)) return false;
     while(at<total) { if(!b3d_chunk(f,&at,total,tag,&child,pd)) return false; start=at;
       if(!xx_rt_memcmp(tag,"TEXS",4)) { if(texseen || brushseen || nodes) return false; texseen=true;
         while(at<child) { if(++textures>1024 || !cstring(f,&at,child,4096,false,pd) || !take(f,&at,child,p,28,pd)) return false; { unsigned j; for(j=8;j<28;j+=4) if(!finite32(p+j,false)) return false; } }
@@ -54,9 +54,9 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
           for(i=0;i<refs;++i) { if(!take(f,&at,child,p,4,pd) || ((int32_t)pm_le32(p)!=-1 && pm_le32(p)>=textures)) return false; } }
         if(!emit(f,s,"brush-table.bin",start,child-start,total)) return false; }
       else if(!xx_rt_memcmp(tag,"NODE",4)) { if(!b3d_node(f,s,at,child,total,0,brushes,&nodes,pd)) return false; }
-      else return false; at=child;
+      else { return false; } at=child;
     }
-    if(!nodes || !s->count) return false; s->size=(int64_t)total; return true;
+    if(!nodes || !s->count) { return false; } s->size=(int64_t)total; return true;
 
 }
 

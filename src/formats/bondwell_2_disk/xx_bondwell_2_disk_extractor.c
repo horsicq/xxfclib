@@ -22,7 +22,7 @@ static void xx_bondwell_2_disk_search_close(Abstractformat *format) {
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     NULL, 0U,
-    xx_bondwell_2_disk_search_open, xx_bondwell_2_disk_search_close
+    xx_bondwell_2_disk_search_open, xx_bondwell_2_disk_search_close, false
 };
 static xx_format_search_state *xx_bondwell_2_disk_search_create(
     xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,

@@ -32,7 +32,7 @@ static bool ls_file(ls_ctx *c,uint32_t id,uint32_t expected,uint8_t **result) {
     /* Small maps hold 41 six-byte extents up to the user label. V1 maps occupy
      * their second leader page. A zero count terminates, without zeroing junk. */
     for(i=0;i<max;++i){const uint8_t *e=map+offset+i*6U;uint32_t first=pm_be32(e),count=pm_be16(e+4);
-        if(!count)break;if(first>=c->blocks-c->base || count>c->blocks-c->base-first || count>UINT32_MAX-blocks)return false;
+        if(!count) {break; } if(first>=c->blocks-c->base || count>c->blocks-c->base-first || count>UINT32_MAX-blocks)return false;
         blocks+=count;
         for(j=0;j<i;++j){const uint8_t *v=map+offset+j*6U;uint32_t va=pm_be32(v),vn=pm_be16(v+4);if(first<va+vn && va<first+count)return false;}}
     if((uint64_t)blocks*512U<size || (size && !blocks))return false;
@@ -52,11 +52,11 @@ static bool ls_entry_add(ls_ctx *c,uint16_t parent,uint16_t id,uint8_t type,uint
         if(c->w->used>c->w->limit || extra>c->w->limit-c->w->used)return false;
         e=(ls_entry *)xx_mem_realloc(c->entries,extra);if(!e)return false;c->w->used+=(next-c->capacity)*sizeof(ls_entry);c->entries=e;c->capacity=(uint32_t)next;}
     e=&c->entries[c->count];xx_mem_zero(e,sizeof(*e));e->parent=parent;e->id=id;e->type=type;e->size=size;
-    if(!af_leaf(e->leaf,sizeof(e->leaf),name,n))return false;++c->count;return true;
+    if(!af_leaf(e->leaf,sizeof(e->leaf),name,n)) {return false; } ++c->count;return true;
 }
 static bool ls_node(ls_ctx *c,uint32_t start,unsigned depth,uint32_t *next_node) {
     uint8_t *node=NULL;uint32_t page=start,i,n,kind,child,prior=UINT32_MAX;bool ok=false;
-    if(depth>16U || start>=c->blocks-c->base || c->nodes[start] || !af_poll(c->w))return false;c->nodes[start]=1;
+    if(depth>16U || start>=c->blocks-c->base || c->nodes[start] || !af_poll(c->w)) {return false; } c->nodes[start]=1;
     node=af_alloc(c->w,2048,false);if(!node)return false;
     for(i=0;i<4U;++i){const uint8_t *p=ls_data(c,page),*t=ls_tag(c,page);
         if(!p || !t || pm_be16(t+4)!=4U || c->claims[page] || (i && ls_link(t,false)!=prior))goto done;
@@ -65,7 +65,7 @@ static bool ls_node(ls_ctx *c,uint32_t start,unsigned depth,uint32_t *next_node)
     if(n>128U || kind>1U || 2036U-n*2U<(kind?4U:0U))goto done;
     child=kind?pm_be32(node):UINT32_MAX;
     for(i=0;i<n;++i){uint32_t at=pm_be16(node+2034U-i*2U)+(kind?4U:0U),type,len,j;const uint8_t *e;size_t name_size;
-        if(at>2036U-n*2U || 38U>2036U-n*2U-at)goto done;e=node+at;type=e[36];
+        if(at>2036U-n*2U || 38U>2036U-n*2U-at) {goto done; } e=node+at;type=e[36];
         len=type==1U?48U:(type==2U || type==3U || type==4U || type==5U)?64U:type==8U?78U:38U;
         /* etype_pad is alignment storage, not a zero-valued format field.
          * Original LisaOS catalogs retain nonzero bytes here. */
@@ -85,17 +85,17 @@ static bool ls_path(ls_ctx *c,const ls_entry *e,char out[96]) {
     const ls_entry *parts[33];uint32_t count=0,i,parent=e->parent;size_t at=0;parts[count++]=e;
     while(parent){const ls_entry *found=NULL;if(count>=33U)return false;
         for(i=0;i<c->count;++i)if(c->entries[i].type==1U && c->entries[i].id==parent){found=&c->entries[i];break;}
-        if(!found)return false;parts[count++]=found;parent=found->parent;}
+        if(!found) {return false; } parts[count++]=found;parent=found->parent;}
     for(i=count;i>0;--i){size_t n=xx_rt_strlen(parts[i-1U]->leaf);if(at+n+(at?1U:0U)>=96U)return false;if(at)out[at++]='/';xx_rt_memcpy(out+at,parts[i-1U]->leaf,n);at+=n;}out[at]=0;return af_safe(out);
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
-    af_work w;af_blob b;ls_ctx c;const uint8_t *h,*m;uint32_t i,next,root,size;uint8_t *catalog=NULL;bool ok=false;
-    if(!af_init(&w,f,s,pd) || !af_load(&w,&b))return false;xx_mem_zero(&c,sizeof(c));c.w=&w;c.b=&b;
-    if(b.n<84U+512U || b.p[0]>63U || pm_be16(b.p+82)!=0x100U)goto done;c.data=pm_be32(b.p+64);c.tags=pm_be32(b.p+68);c.blocks=c.data/512U;
+    af_work w;af_blob b;ls_ctx c;const uint8_t *h,*m;uint32_t i,next,root,size=0;uint8_t *catalog=NULL;bool ok=false;
+    if(!af_init(&w,f,s,pd) || !af_load(&w,&b)) {return false; } xx_mem_zero(&c,sizeof(c));c.w=&w;c.b=&b;
+    if(b.n<84U+512U || b.p[0]>63U || pm_be16(b.p+82)!=0x100U) {goto done; } c.data=pm_be32(b.p+64);c.tags=pm_be32(b.p+68);c.blocks=c.data/512U;
     if(!c.data || c.data%512U || c.tags!=c.blocks*12U || (uint64_t)84U+c.data+c.tags!=b.n ||
        ls_sum(&w,b.p+84,c.data)!=pm_be32(b.p+72) || ls_sum(&w,b.p+84+c.data+12,c.tags-12)!=pm_be32(b.p+76))goto done;
     h=b.p+84;if(pm_be16(h+4)!=0xaaaaU || pm_be16(h+6)!=0x850U || (c.base=pm_be16(h+14))>=c.blocks)goto done;
-    m=ls_data(&c,0);if(!m || (c.version=pm_be16(m))!=14U && c.version!=15U && c.version!=17U || m[12]>32U ||
+    m=ls_data(&c,0);if(!m || ((c.version=pm_be16(m))!=14U && c.version!=15U && c.version!=17U) || m[12]>32U ||
        pm_be16(m+126)!=512U || pm_be32(m+108)!=c.base || pm_be32(m+120)>c.blocks || pm_be32(m+120)<=c.base ||
        !(c.packing=pm_be16(m+152)) || c.packing>36U || !(c.sblocks=pm_be16(m+154)) ||
        !(c.maxfiles=pm_be16(m+160)) || c.maxfiles>32766U || c.maxfiles>c.packing*c.sblocks)goto done;
@@ -109,7 +109,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             if(!ls_entry_add(&c,0,pm_be16(e+36),type,pm_be32(ls_srecord(&c,pm_be16(e+36))+8),e+1,e[0]))goto done;}
         af_release(&w,catalog,size);catalog=NULL;}
     for(i=0;i<c.count;++i){ls_entry *e=&c.entries[i];char name[96];uint8_t *out=NULL;
-        if(!ls_path(&c,e,name))goto done;if(e->type==1U){if(!af_add(&w,name,0,0,NULL))goto done;s->items[s->count-1U].compression_method=65535U;}
+        if(!ls_path(&c,e,name)) {goto done; } if(e->type==1U){if(!af_add(&w,name,0,0,NULL))goto done;s->items[s->count-1U].compression_method=65535U;}
         else {if(!ls_file(&c,e->id,e->size,&out))goto done;if(!af_add(&w,name,0,e->size,out)){af_release(&w,out,e->size);goto done;}}}
     ok=af_poll(&w);if(ok){xx_lisa_fs *r=(xx_lisa_fs *)f;s->size=b.n;r->number_of_records=s->count;
         r->note="LisaOS1/2 flat and LisaOS3 B-tree catalogs from tagged DC42 microfloppies; original file bytes; DC42 checksums and page/extent identity verified";}

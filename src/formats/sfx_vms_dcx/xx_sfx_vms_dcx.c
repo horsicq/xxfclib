@@ -67,7 +67,7 @@ static bool vd_table_open(Abstractformat *f, int64_t at, vd_table *table,
         xx_mem_copy(slot + VD_NODE_OFFSET, data + cursor + node_at, nodes);
         if (map_at) {
             symbols = last - first + 1U;
-            if (block - map_at != symbols * 2U) goto done;
+            if ((size_t)(block - map_at) != symbols * 2U) goto done;
             xx_mem_copy(slot + VD_MAP_OFFSET + first * 2U,
                         data + cursor + map_at, symbols * 2U);
         }

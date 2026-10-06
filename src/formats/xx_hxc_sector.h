@@ -32,7 +32,7 @@ static bool hc_load(Abstractformat *f, hc_blob *b, xx_pd_struct *pd) {
     }
     return true;
 }
-static uint8_t *hc_alloc(hc_blob *b, uint32_t size) {
+static XXFC_MAYBE_UNUSED uint8_t *hc_alloc(hc_blob *b, uint32_t size) {
     uint8_t *p;
     if (!size || size > HC_MAX_BYTES || b->used > b->limit || size > b->limit - b->used || !hc_poll(b)) return NULL;
     p = (uint8_t *)xx_mem_alloc(size); if (p) b->used += size; return p;
@@ -42,13 +42,13 @@ static bool hc_emit(Abstractformat *f, pm_stream *s, const hc_blob *b, const cha
     return s->count < HC_MAX_MEMBERS && hc_poll(b) && hc_span_ok(b, at, size) &&
         (!v || size <= xx_var_get_u64(v)) && pm_add(f, s, name, at, size);
 }
-static bool hc_memory(Abstractformat *f, pm_stream *s, const hc_blob *b, const char *name, uint8_t *p, uint32_t size) {
+static XXFC_MAYBE_UNUSED bool hc_memory(Abstractformat *f, pm_stream *s, const hc_blob *b, const char *name, uint8_t *p, uint32_t size) {
     const xx_var *v = hc_option(f, XX_META_ID_OPT_MAX_MEMBER_SIZE);
     if ((v && size > xx_var_get_u64(v)) || !hc_emit(f, s, b, name, 0U, 0U)) { xx_mem_free(p); return false; }
     s->items[s->count - 1U].memory = p; s->items[s->count - 1U].size = size;
     s->items[s->count - 1U].packed_size = 0; s->items[s->count - 1U].offset = -1; return true;
 }
-static bool hc_disjoint(hc_span *spans, uint32_t *count, uint32_t capacity, uint32_t at, uint32_t size) {
+static XXFC_MAYBE_UNUSED bool hc_disjoint(hc_span *spans, uint32_t *count, uint32_t capacity, uint32_t at, uint32_t size) {
     uint32_t i;
     if (!size) return true;
     if (*count >= capacity || at > UINT32_MAX - size) return false;
@@ -56,18 +56,18 @@ static bool hc_disjoint(hc_span *spans, uint32_t *count, uint32_t capacity, uint
         if (at < spans[i].at + spans[i].size && spans[i].at < at + size) return false;
     spans[*count].at = at; spans[*count].size = size; ++*count; return true;
 }
-static bool hc_ascii_name(const uint8_t *p, uint32_t size) {
+static XXFC_MAYBE_UNUSED bool hc_ascii_name(const uint8_t *p, uint32_t size) {
     uint32_t i; bool nonblank = false;
     for (i = 0U; i < size; ++i) { if (p[i] < 32U || p[i] > 126U) return false; if (p[i] != ' ') nonblank = true; }
     return nonblank;
 }
-static bool hc_geometry(xx_hxc_sector_info *r, uint32_t c, uint32_t h, uint32_t s, uint32_t bytes, uint32_t *total) {
+static XXFC_MAYBE_UNUSED bool hc_geometry(xx_hxc_sector_info *r, uint32_t c, uint32_t h, uint32_t s, uint32_t bytes, uint32_t *total) {
     uint64_t n = (uint64_t)c * h * s * bytes;
     if (!c || c > 255U || !h || h > 2U || !s || s > 64U || bytes < 64U || bytes > 8192U ||
         (bytes & (bytes - 1U)) || !n || n > HC_MAX_BYTES) return false;
     r->cylinders = c; r->heads = h; r->sectors_per_track = s; r->sector_size = bytes; *total = (uint32_t)n; return true;
 }
-static uint16_t hc_crc16(const uint8_t *p, uint32_t n, uint16_t crc) {
+static XXFC_MAYBE_UNUSED uint16_t hc_crc16(const uint8_t *p, uint32_t n, uint16_t crc) {
     uint32_t i; unsigned bit;
     for (i = 0U; i < n; ++i) { crc ^= (uint16_t)p[i] << 8U; for (bit = 0U; bit < 8U; ++bit)
         crc = (uint16_t)((crc << 1U) ^ ((crc & 0x8000U) ? 0x1021U : 0U)); }

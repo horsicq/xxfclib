@@ -29,7 +29,9 @@
 #include "xx_string_platform.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/rt/xx_rt.h"
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 
 /* TinyCC's bundled <windows.h> leaves <winnls.h> commented out, so the code

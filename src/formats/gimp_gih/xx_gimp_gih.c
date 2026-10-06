@@ -25,9 +25,9 @@ static bool sm_gih_header(const uint8_t *p,size_t n,size_t *header,uint32_t *bru
     *header=at+1; start=line; while(line<at && p[line]>='0' && p[line]<='9') ++line;
     if(!sm_decimal(p+start,line-start,&count) || !count || count>4096 || line==at || p[line++]!=' ') return false;
     while(line<at) { size_t value,end; uint32_t v=0; unsigned which=9;
-        while(line<at && p[line]==' ') ++line; if(line==at) break;
+        while(line<at && p[line]==' ') { ++line; } if(line==at) break;
         key=line; while(line<at && p[line]!=':' && p[line]!=' ') ++line; colon=line;
-        if(line==at || p[line++]!=':') return false; value=line; while(line<at && p[line]!=' ') ++line; end=line;
+        if(line==at || p[line++]!=':') { return false; } value=line; while(line<at && p[line]!=' ') ++line; end=line;
         if(colon-key==6 && !xx_rt_memcmp(p+key,"ncells",6)) which=0;
         else if(colon-key==9 && !xx_rt_memcmp(p+key,"cellwidth",9)) which=1;
         else if(colon-key==10 && !xx_rt_memcmp(p+key,"cellheight",10)) which=2;
@@ -38,7 +38,7 @@ static bool sm_gih_header(const uint8_t *p,size_t n,size_t *header,uint32_t *bru
         else if(colon-key==5 && !xx_rt_memcmp(p+key,"rank0",5)) which=7;
         else if(colon-key==9 && !xx_rt_memcmp(p+key,"placement",9)) { if(seen&256 || end-value!=8 || xx_rt_memcmp(p+value,"constant",8)) return false; seen|=256; continue; }
         else if(colon-key==4 && !xx_rt_memcmp(p+key,"sel0",4)) { if(select || !((end-value==11 && !xx_rt_memcmp(p+value,"incremental",11)) || (end-value==6 && !xx_rt_memcmp(p+value,"random",6)) || (end-value==8 && !xx_rt_memcmp(p+value,"pressure",8)))) return false; select=true; continue; }
-        if(which>7 || seen&(1U<<which) || !sm_decimal(p+value,end-value,&v) || !v) return false; vals[which]=v; seen|=1U<<which;
+        if(which>7 || seen&(1U<<which) || !sm_decimal(p+value,end-value,&v) || !v) { return false; } vals[which]=v; seen|=1U<<which;
     }
     if(!(seen&1) || vals[0]!=count || !(seen&16) || vals[4]!=1 || !(seen&128) || (rank=vals[7])!=count || !select || ((seen&96)==96 && (uint64_t)vals[5]*vals[6]<count)) return false;
     *brushes=count; return true;
@@ -47,7 +47,7 @@ bool xx_gimp_gih_probe_header(const uint8_t *p,size_t n) { size_t header; uint32
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[512]; uint64_t end=(uint64_t)pm_available(f),at,hs,stop; size_t n=end>512 ? 512:(size_t)end,header; uint32_t count,i;
-    if(!pm_read(f,0,h,n) || !sm_gih_header(h,n,&header,&count) || !pm_add(f,s,"gih-header.txt",0,(int64_t)header)) return false; at=header;
+    if(!pm_read(f,0,h,n) || !sm_gih_header(h,n,&header,&count) || !pm_add(f,s,"gih-header.txt",0,(int64_t)header)) { return false; } at=header;
     for(i=0;i<count;++i) { char label[48]; if(!sm_gimp(f,at,end,false,&hs,&stop,pd) || stop-header>268435456) return false;
         xx_rt_snprintf(label,sizeof(label),"brush-%u.gbr",i); if(!pm_add(f,s,label,(int64_t)at,(int64_t)(stop-at))) return false; at=stop; }
     s->size=(int64_t)at; return true;

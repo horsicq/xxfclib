@@ -22,7 +22,7 @@ static void mar_search_close(Abstractformat *format) {
 static const xx_format_search_desc mar_desc = {
     mar_types, sizeof(mar_types) / sizeof(mar_types[0]),
     mar_anchors, sizeof(mar_anchors) / sizeof(mar_anchors[0]),
-    mar_search_open, mar_search_close
+    mar_search_open, mar_search_close, false
 };
 
 static xx_format_search_state *mar_create_search(

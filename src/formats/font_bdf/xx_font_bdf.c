@@ -15,16 +15,16 @@ static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  tg_text q={b,0,n,0,0};int32_t v[4],global[4];uint32_t count,i,j;uint64_t start,header;char label[64];int32_t *encodings;bool result=false;
  if(!bd_next(&q,pd)||q.len!=13||!bd_next(&q,pd)||!tg_line_tag(&q,"FONT ",5)||q.len<=5||!bd_next(&q,pd)||!bd_nums(&q,"SIZE ",5,v,3)||v[0]<1||v[0]>4096||v[1]<1||v[2]<1||!bd_next(&q,pd)||!bd_nums(&q,"FONTBOUNDINGBOX ",16,global,4)||global[0]<0||global[0]>4096||global[1]<1||global[1]>4096||global[2]<-65536||global[2]>65536||global[3]<-65536||global[3]>65536||!bd_next(&q,pd))return false;
  if(tg_line_tag(&q,"STARTPROPERTIES ",16)){if(!bd_nums(&q,"STARTPROPERTIES ",16,v,1)||v[0]<0||v[0]>1024)return false;count=(uint32_t)v[0];for(i=0;i<count;++i)if(!bd_next(&q,pd)||!bd_property(&q))return false;if(!bd_next(&q,pd)||q.len!=13||!tg_line_tag(&q,"ENDPROPERTIES",13)||!bd_next(&q,pd))return false;}
- if(!bd_nums(&q,"CHARS ",6,v,1)||v[0]<1||v[0]>4093)return false;count=(uint32_t)v[0];header=q.p;if(!tg_emit(f,s,"bdf-global.bdf",0,header,n))return false;
+ if(!bd_nums(&q,"CHARS ",6,v,1)||v[0]<1||v[0]>4093) {return false; } count=(uint32_t)v[0];header=q.p;if(!tg_emit(f,s,"bdf-global.bdf",0,header,n))return false;
  encodings=(int32_t *)xx_mem_alloc(count*sizeof(*encodings));if(!encodings)return false;
  for(i=0;i<count;++i){int32_t encoding;uint32_t width,height,rowBytes;start=q.p;if(!bd_next(&q,pd)||!tg_line_tag(&q,"STARTCHAR ",10)||q.len<=10||!bd_next(&q,pd))goto done;
-  if(!bd_nums(&q,"ENCODING ",9,v,1)||v[0]<-1||v[0]>0x10ffff||(v[0]>=0&&!tg_scalar((uint32_t)v[0])))goto done;encoding=v[0];for(j=0;j<i;++j)if(encoding>=0&&encodings[j]==encoding)goto done;encodings[i]=encoding;
+  if(!bd_nums(&q,"ENCODING ",9,v,1)||v[0]<-1||v[0]>0x10ffff||(v[0]>=0&&!tg_scalar((uint32_t)v[0]))) {goto done; } encoding=v[0];for(j=0;j<i;++j)if(encoding>=0&&encodings[j]==encoding)goto done;encodings[i]=encoding;
   if(!bd_next(&q,pd)||!bd_nums(&q,"SWIDTH ",7,v,2)||v[0]<-65536||v[0]>65536||v[1]!=0||!bd_next(&q,pd)||!bd_nums(&q,"DWIDTH ",7,v,2)||v[0]<-65536||v[0]>65536||v[1]!=0||!bd_next(&q,pd)||!bd_nums(&q,"BBX ",4,v,4)||v[0]<0||v[0]>4096||v[1]<0||v[1]>4096||v[2]<-65536||v[2]>65536||v[3]<-65536||v[3]>65536)goto done;
   width=(uint32_t)v[0];height=(uint32_t)v[1];rowBytes=(width+7)/8;if(!bd_next(&q,pd))goto done;
   if(tg_line_tag(&q,"ATTRIBUTES ",11)){uint32_t value;if(q.len!=15)goto done;for(j=11;j<15;++j)if(!bd_hex(b[q.start+j],&value))goto done;if(!bd_next(&q,pd))goto done;}
   if(q.len!=6||!tg_line_tag(&q,"BITMAP",6))goto done;
   for(j=0;j<height;++j){uint32_t k,value;if(tg_stop(pd)||!tg_line(&q)||q.len!=(uint64_t)rowBytes*2)goto done;for(k=0;k<q.len;++k){if(!bd_hex(b[q.start+k],&value))goto done;}}
-  if(!bd_next(&q,pd)||q.len!=7||!tg_line_tag(&q,"ENDCHAR",7))goto done;xx_rt_snprintf(label,sizeof(label),"glyph-%u.bdf",i);if(!tg_emit(f,s,label,start,q.p-start,n))goto done;
+  if(!bd_next(&q,pd)||q.len!=7||!tg_line_tag(&q,"ENDCHAR",7)) {goto done; } xx_rt_snprintf(label,sizeof(label),"glyph-%u.bdf",i);if(!tg_emit(f,s,label,start,q.p-start,n))goto done;
  }
  start=q.p;if(!bd_next(&q,pd)||q.len!=7||!tg_line_tag(&q,"ENDFONT",7)||q.p!=n||b[n-1]!=10||!tg_emit(f,s,"bdf-end.bin",start,n-start,n))goto done;s->size=(int64_t)n;result=true;
 done:xx_mem_free(encodings);return result;

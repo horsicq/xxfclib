@@ -12,7 +12,7 @@ static const uint8_t ag_codes53[32]={0xab,0xad,0xae,0xaf,0xb5,0xb6,0xb7,0xba,0xb
 static const uint8_t ag_phys_dos[16]={0,7,14,6,13,5,12,4,11,3,10,2,9,1,8,15};
 static uint8_t ag_byte(const uint8_t *p,uint32_t n,uint32_t at){return p[at%n];}
 static bool ag_four(const uint8_t *p,uint32_t n,uint32_t at,uint8_t *out){uint8_t a=ag_byte(p,n,at),b=ag_byte(p,n,at+1U);
-    if((a&0xaaU)!=0xaaU || (b&0xaaU)!=0xaaU)return false;*out=(uint8_t)(((a<<1U)|1U)&b);return true;}
+    if((a&0xaaU)!=0xaaU || (b&0xaaU)!=0xaaU) {return false; } *out=(uint8_t)(((a<<1U)|1U)&b);return true;}
 static bool ag_data(const uint8_t *p,uint32_t n,uint32_t at,unsigned sectors,uint8_t *out){
     uint8_t inverse[256],values[410],previous=0;uint32_t i,count=sectors==13U?410U:342U;
     xx_rt_memset(inverse,255,sizeof(inverse));for(i=0;i<(sectors==13U?32U:64U);++i)inverse[sectors==13U?ag_codes53[i]:ag_codes62[i]]=(uint8_t)i;
@@ -51,13 +51,13 @@ static int ag_track(af_work *w,const uint8_t *p,uint32_t n,uint32_t track,uint8_
 /* Bitstream latch model: sync zeros are skipped until the next set bit,
  * then the next eight cells form one high-bit disk nibble. One extra cycle
  * permits fields that cross the stored track boundary. */
-static uint32_t ag_latch(af_work *w,const uint8_t *bits,uint32_t count,uint8_t *out,uint32_t capacity){
+static XXFC_MAYBE_UNUSED uint32_t ag_latch(af_work *w,const uint8_t *bits,uint32_t count,uint8_t *out,uint32_t capacity){
     uint32_t at=0,used=0,start=UINT32_MAX;unsigned value=0,len=0;
     if(!count || count>1048576U)return 0;
     while(at<count*2U+8U){unsigned bit;
         if(!len && ((start==UINT32_MAX && at>=count) || (start!=UINT32_MAX && at>=start+count)))break;
         bit=(bits[(at%count)/8U]>>(7U-((at%count)&7U)))&1U;
-        if(!(at&4095U) && !af_poll(w))return 0;if(start==UINT32_MAX && bit)start=at;++at;if(!len && !bit)continue;
+        if(!(at&4095U) && !af_poll(w)) {return 0; } if(start==UINT32_MAX && bit)start=at;++at;if(!len && !bit)continue;
         value=(value<<1U)|bit;if(++len==8U){if(used>=capacity)return 0;out[used++]=(uint8_t)value;len=0;value=0;}}
     return used;
 }
@@ -68,7 +68,7 @@ static bool ag_files(af_work *w,uint8_t *image,uint32_t tracks,unsigned sectors,
     else if(sectors==16U){const uint8_t *h=image+2816U;
         if((h[4]&0xf0U)==0xf0U && (h[4]&15U) && h[35]==39U && h[36]==13U)kind=1;
         else if(pm_le16(h)==0U && pm_le16(h+2)==6U && pm_le16(h+4)==0U && h[6]>=1U && h[6]<=7U)kind=2;}
-    if(!kind)return true;*recognized=true;d=xx_io_mem_open_ro(image,size);if(!d)return false;
+    if(!kind) {return true; } *recognized=true;d=xx_io_mem_open_ro(image,size);if(!d)return false;
     ok=av_volume(w,d,"FILES",kind);xx_io_close(d);return ok;
 }
 #endif

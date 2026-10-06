@@ -22,7 +22,7 @@ static void ani_search_close(Abstractformat *format) {
 static const xx_format_search_desc ani_desc = {
     ani_types, sizeof(ani_types) / sizeof(ani_types[0]),
     ani_anchors, sizeof(ani_anchors) / sizeof(ani_anchors[0]),
-    ani_search_open, ani_search_close
+    ani_search_open, ani_search_close, false
 };
 
 static xx_format_search_state *ani_create_search(

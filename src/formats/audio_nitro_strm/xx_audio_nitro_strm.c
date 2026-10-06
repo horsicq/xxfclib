@@ -38,7 +38,7 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
     if (data_size<8 || data_size>total-data_at || data_at+data_size!=total) return false;
     encoding=h[0x18]; channels=h[0x1a];
     if (encoding>2 || h[0x19]>1 || !channels || channels>16 || h[0x1b] ||
-        ns16(h+0x1c,be)<4000 || ns16(h+0x1c,be)>96000 ||
+        ns16(h+0x1c,be)<4000 ||
         ns32(h+0x28,be)!=data_at+8) return false;
     total_samples=ns32(h+0x24,be);
     blocks=ns32(h+0x2c,be); block_size=ns32(h+0x30,be);

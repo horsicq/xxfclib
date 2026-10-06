@@ -30,7 +30,7 @@ static void xx_tiled_tmx_search_close(Abstractformat *format) {
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     NULL, 0U,
-    xx_tiled_tmx_search_open, xx_tiled_tmx_search_close
+    xx_tiled_tmx_search_open, xx_tiled_tmx_search_close, false
 };
 
 static xx_format_search_state *xx_tiled_tmx_create_format_search(

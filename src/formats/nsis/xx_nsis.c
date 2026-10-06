@@ -28,7 +28,7 @@ static bool ns_decode(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *out,
         z.next_in=(unsigned char *)in; z.avail_in=packed;
         while(status==BZ_OK) {
             unsigned chunk=cap-at; unsigned before=z.avail_in; if(chunk>4096U) chunk=4096U;
-            if(!chunk || !ac_poll(b)) break; z.next_out=out+at; z.avail_out=chunk;
+            if(!chunk || !ac_poll(b)) { break; } z.next_out=out+at; z.avail_out=chunk;
             status=nsis_BZ2_bzDecompress(&z); at+=chunk-z.avail_out;
             if(status==BZ_OK && before==z.avail_in && chunk==z.avail_out) break;
         }
@@ -45,11 +45,11 @@ static bool ns_decode(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *out,
 }
 static unsigned ns_method(const uint8_t *p,uint32_t n) {
     if(ns_lzma(p,n) || (n>=8U && p[0]<=1U && ns_lzma(p+1U,n-1U))) return 2U;
-    if(n>=2U && p[0]==0x31U && p[1]<14U) return 3U; return 1U;
+    if(n>=2U && p[0]==0x31U && p[1]<14U) { return 3U; } return 1U;
 }
 static bool ns_name(char name[96],const uint8_t *header,uint32_t strings,uint32_t end,uint32_t offset,bool unicode) {
     uint32_t at; unsigned n=0;
-    if(offset>(end-strings)/(unicode?2U:1U)) return false; at=strings+offset*(unicode?2U:1U);
+    if(offset>(end-strings)/(unicode?2U:1U)) { return false; } at=strings+offset*(unicode?2U:1U);
     while(at<end) {
         uint32_t value=unicode?(at+1U<end?pm_le16(header+at):UINT32_MAX):header[at]; at+=unicode?2U:1U;
         if(!value) { if(!n) return false; name[n]=0; return true; }
@@ -115,20 +115,20 @@ static bool ns_parse(Abstractformat *f,pm_stream *s,ac_blob *b) {
         if(!ns_name(name,header,strings,lang,pm_le32(command+8U),unicode)) goto fail;
         offset=pm_le32(command+12U);
         if(non_solid) {
-            if(offset>data_size-pos || data_size-pos-offset<4U) goto fail; at=pos+offset;
+            if(offset>data_size-pos || data_size-pos-offset<4U) { goto fail; } at=pos+offset;
             packed=pm_le32(data+at); n=packed&0x7FFFFFFFU;
             if(n>data_size-at-4U) goto fail;
             if(!(packed&0x80000000U)) { if(!ac_emit(f,s,b,name,start+28U+at+4U,n)) goto fail; continue; }
             cap=16U*1024U*1024U;
             { const xx_var *v=ac_option(f,XX_META_ID_OPT_MAX_MEMBER_SIZE); if(v && xx_var_get_u64(v)<cap) cap=(uint32_t)xx_var_get_u64(v); }
-            if(b->used>=b->limit) goto fail; if(cap>b->limit-b->used) cap=(uint32_t)(b->limit-b->used);
+            if(b->used>=b->limit) { goto fail; } if(cap>b->limit-b->used) cap=(uint32_t)(b->limit-b->used);
             out=ac_alloc(b,cap); if(!out) goto fail;
             if(!ns_decode(b,data+at+4U,n,out,cap,&packed,ns_method(data+at+4U,n))) { ac_release(b,out,cap); goto fail; }
             if(!ac_compact(b,&out,cap,packed)) { ac_release(b,out,cap); goto fail; }
             if(!ac_memory(f,s,b,name,out,packed,n,(uint16_t)method)) goto fail;
         } else {
-            if(offset>solid_n-pos || solid_n-pos-offset<4U) goto fail; at=pos+offset; n=pm_le32(solid+at);
-            if(n>solid_n-at-4U) goto fail; out=ac_alloc(b,n); if(!out) goto fail; xx_rt_memcpy(out,solid+at+4U,n);
+            if(offset>solid_n-pos || solid_n-pos-offset<4U) { goto fail; } at=pos+offset; n=pm_le32(solid+at);
+            if(n>solid_n-at-4U) { goto fail; } out=ac_alloc(b,n); if(!out) goto fail; xx_rt_memcpy(out,solid+at+4U,n);
             if(!ac_memory(f,s,b,name,out,n,0,(uint16_t)method)) goto fail;
         }
     }

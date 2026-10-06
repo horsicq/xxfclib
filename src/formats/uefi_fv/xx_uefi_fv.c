@@ -1052,7 +1052,7 @@ static bool xx_uefi_fv_copy_options(xx_list_s *destination,
     return true;
 }
 
-static const xx_var *xx_uefi_fv_find_option(const xx_list_s *options,
+static XXFC_MAYBE_UNUSED const xx_var *xx_uefi_fv_find_option(const xx_list_s *options,
                                             uint32_t meta_id) {
     size_t index;
     if (!options) return NULL;

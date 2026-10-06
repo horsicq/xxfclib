@@ -11,7 +11,7 @@ static bool pn_byte(pn_bytes *r,uint8_t *b,bool consume) {
     if(r->at>=r->end) return false;
     if(!r->data) { if((uint64_t)(r->end-r->at)<r->capacity) r->capacity=(size_t)(r->end-r->at); r->data=(uint8_t *)xx_mem_alloc(r->capacity); if(!r->data) return false; }
     if(r->at<r->start || r->at-r->start>=(int64_t)r->count) { r->count=(uint64_t)(r->end-r->at)>r->capacity ? r->capacity : (size_t)(r->end-r->at);
-        if((r->pd && xx_pd_is_stopped(r->pd)) || !pm_read(r->f,r->at,r->data,r->count)) return false; r->start=r->at; }
+        if((r->pd && xx_pd_is_stopped(r->pd)) || !pm_read(r->f,r->at,r->data,r->count)) { return false; } r->start=r->at; }
     *b=r->data[(size_t)(r->at-r->start)]; if(consume) ++r->at; return true;
 }
 static bool pn_space(uint8_t b) { return b==9 || b==10 || b==11 || b==12 || b==13 || b==32; }
@@ -23,17 +23,17 @@ static bool pn_skip(pn_bytes *r) { uint8_t b;
 static bool pn_num(pn_bytes *r,uint32_t *n) { uint8_t b; uint32_t value=0; unsigned digits=0;
     if(!pn_skip(r)) return false;
     while(pn_byte(r,&b,false) && b>='0' && b<='9') { if(++digits>10 || value>(UINT32_MAX-(b-'0'))/10U) return false; value=value*10U+b-'0'; ++r->at; }
-    if(!digits || !pn_byte(r,&b,false) || (!pn_space(b) && b!='#')) return false; *n=value; return true;
+    if(!digits || !pn_byte(r,&b,false) || (!pn_space(b) && b!='#')) { return false; } *n=value; return true;
 }
 static bool pn_delimiter(pn_bytes *r) { uint8_t b,next; if(!pn_byte(r,&b,true) || !pn_space(b)) return false;
-    if(b==13 && pn_byte(r,&next,false) && next==10) ++r->at; return true;
+    if(b==13 && pn_byte(r,&next,false) && next==10) { ++r->at; } return true;
 }
 static bool pn_line(pn_bytes *r,char *line,size_t capacity) { uint8_t b; size_t n=0;
     while(pn_byte(r,&b,true)) { if(b==10) { line[n]=0; return true; } if(b==13) continue; if(b<32 && b!=9) return false; if(n+1>=capacity) return false; line[n++]=(char)b; } return false;
 }
 static bool pn_decimal(const char *p,uint32_t *v) { uint32_t n=0; unsigned digits=0; while(*p==' ' || *p=='\t') ++p;
     while(*p>='0' && *p<='9') { if(++digits>10 || n>(UINT32_MAX-(unsigned)(*p-'0'))/10U) return false; n=n*10U+(unsigned)(*p++-'0'); }
-    while(*p==' ' || *p=='\t') ++p; if(!digits || (*p && *p!='#')) return false; *v=n; return true;
+    while(*p==' ' || *p=='\t') { ++p; } if(!digits || (*p && *p!='#')) return false; *v=n; return true;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     pn_bytes r;bool buffer_result=false; unsigned images=0; xx_mem_zero(&r,sizeof(r)); r.f=f; r.pd=pd; r.end=pm_available(f); r.start=-1;r.capacity=xx_get_file_buffer_size();
@@ -42,7 +42,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if(kind=='7') { char line[512]; unsigned fields=0,lines=0;
             if(!pn_delimiter(&r)) { buffer_result = (false); goto buffer_done; }
             for(;;) { char *key,*value; uint32_t n; if(++lines>1024 || !pn_line(&r,line,sizeof(line))) { buffer_result = (false); goto buffer_done; } key=line;
-                while(*key==' ' || *key=='\t') ++key; if(!*key || *key=='#') continue;
+                while(*key==' ' || *key=='\t') { ++key; } if(!*key || *key=='#') continue;
                 value=key; while(*value && *value!=' ' && *value!='\t') ++value; if(*value) *value++=0;
                 if(!xx_rt_strcmp(key,"ENDHDR")) { while(*value==' ' || *value=='\t') ++value; if(*value && *value!='#') { buffer_result = (false); goto buffer_done; } break; }
                 if(!xx_rt_strcmp(key,"TUPLTYPE")) { if(!*value) { buffer_result = (false); goto buffer_done; } continue; }

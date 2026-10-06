@@ -30,7 +30,7 @@ static void xx_nintendo_u8_search_close(Abstractformat *format) {
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
-    xx_nintendo_u8_search_open, xx_nintendo_u8_search_close
+    xx_nintendo_u8_search_open, xx_nintendo_u8_search_close, false
 };
 
 static xx_format_search_state *xx_nintendo_u8_create_format_search(

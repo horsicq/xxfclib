@@ -384,8 +384,8 @@ static bool hfs_device_name(const char *name) {
     if (name[n] && name[n] != '.') return false;
     for (i = 0U; i < sizeof(devices) / sizeof(devices[0]); ++i) if (hfs_equal(stem, devices[i])) return true;
     return n == 4U && stem[3] >= '0' && stem[3] <= '9' &&
-        ((stem[0] == 'C' || stem[0] == 'c') && (stem[1] == 'O' || stem[1] == 'o') && (stem[2] == 'M' || stem[2] == 'm') ||
-         (stem[0] == 'L' || stem[0] == 'l') && (stem[1] == 'P' || stem[1] == 'p') && (stem[2] == 'T' || stem[2] == 't'));
+        (((stem[0] == 'C' || stem[0] == 'c') && (stem[1] == 'O' || stem[1] == 'o') && (stem[2] == 'M' || stem[2] == 'm')) ||
+         ((stem[0] == 'L' || stem[0] == 'l') && (stem[1] == 'P' || stem[1] == 'p') && (stem[2] == 'T' || stem[2] == 't')));
 }
 static bool hfs_name(const uint8_t *raw, char *output, bool host) {
     size_t n = raw[0], i, at = 0U;
@@ -441,7 +441,7 @@ static bool hfs_folder_path(hfs_view *v, hfs_entry *entry, unsigned depth, xx_pd
     if (entry->id == 2U) {
         if (v->path_bytes >= HFS_PATH_MEMORY) return false;
         entry->path = xx_str_dup(""); entry->path_state = 2U;
-        if (entry->path) ++v->path_bytes; return entry->path != NULL;
+        if (entry->path) { ++v->path_bytes; } return entry->path != NULL;
     }
     parent = hfs_entry_find(v, entry->parent);
     if (!parent || !hfs_folder_path(v, parent, depth + 1U, pd) || parent->depth >= 64U || !hfs_name(entry->name, component, true) ||
@@ -451,7 +451,7 @@ static bool hfs_folder_path(hfs_view *v, hfs_entry *entry, unsigned depth, xx_pd
         size_t bytes = xx_str_len(member->name) + 1U;
         if (bytes > HFS_PATH_MEMORY - v->path_bytes) return false;
         entry->path = xx_str_dup(member->name); entry->path_state = 2U;
-        if (entry->path) v->path_bytes += bytes; return entry->path != NULL;
+        if (entry->path) { v->path_bytes += bytes; } return entry->path != NULL;
     }
 }
 static bool hfs_catalog_finish(hfs_view *v, const uint8_t *volume_name, xx_pd_struct *pd) {
@@ -567,7 +567,7 @@ fail:
 }
 static void hfs_vtable_destroy(Abstractformat *self) { xx_hfs_destroy((xx_hfs *)self); }
 void xx_hfs_init(xx_hfs *v, xx_io_device *device, int64_t base) {
-    if (!v) return; xx_mem_zero(v, sizeof(*v)); xx_format_init(&v->format, device, base);
+    if (!v) { return; } xx_mem_zero(v, sizeof(*v)); xx_format_init(&v->format, device, base);
     v->format.endian = XX_ENDIAN_BIG; v->format.file_type = HFS_TYPE; v->format.format_type = XX_TYPE_ARCHIVE; v->format.is_archive = true;
     xx_format_set_mime_type(&v->format, "application/x-hfs-fs"); xx_format_set_extension(&v->format, "img");
     v->format.check_is_valid = xx_hfs_check_is_valid; v->format.handle_base_info = xx_hfs_handle_base_info;

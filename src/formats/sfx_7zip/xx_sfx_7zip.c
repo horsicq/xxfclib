@@ -9,7 +9,7 @@
 #include "xxfclib/formats/7zip/xx_7zip.h"
 static bool w6_at_parse(Abstractformat *f,pm_stream *s,int64_t at,xx_pd_struct *pd) {
     xx_7zip *r; bool ok; int64_t size; uint8_t h[32],kind;uint64_t off,n;if(!pm_read(f,at,h,32) || (n=w6_u64(h+20,false))>4194304 || !(off=w6_u64(h+12,false)) || !wg_range(pm_available(f),at+32,off) || !wg_range(pm_available(f),at+32+(int64_t)off,n) || !pm_read(f,at+32+(int64_t)off,&kind,1) || (kind!=1 && kind!=23)) return false;
-    if(wg_stop(pd)) return false; r=xx_7zip_create(f->device,f->base_address+at); if(!r) return false;
+    if(wg_stop(pd)) { return false; } r=xx_7zip_create(f->device,f->base_address+at); if(!r) return false;
     ok=xx_format_handle_base_info(&r->format,pd);size=r->format.format_size;
     ok=ok && !wg_stop(pd) && r->format.number_of_archive_records>0 && r->format.number_of_archive_records<=4096 && wg_range(pm_available(f),at,(uint64_t)size);xx_7zip_free(r);
     return ok && w6_component(f,s,at,size,"payload.7z");

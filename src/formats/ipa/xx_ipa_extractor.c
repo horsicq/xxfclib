@@ -38,7 +38,7 @@ static void xx_ipa_search_close(Abstractformat *format) {
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     k_anchors, sizeof(k_anchors) / sizeof(k_anchors[0]),
-    xx_ipa_search_open, xx_ipa_search_close
+    xx_ipa_search_open, xx_ipa_search_close, false
 };
 
 static xx_format_search_state *xx_ipa_create_format_search(

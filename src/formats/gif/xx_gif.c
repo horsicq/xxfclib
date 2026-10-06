@@ -413,7 +413,7 @@ static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd
     if(!xx_component_add(f,s,6,7,"logical-screen")) return false;
     if(h[10]&128) {
         uint32_t n=xx_gif_color_table_size(h[10]);
-        if(!xx_component_add(f,s,pos,n,"global-color-table")) return false; pos+=n;
+        if(!xx_component_add(f,s,pos,n,"global-color-table")) { return false; } pos+=n;
     }
     while(pos<f->format_size-1) {
         uint8_t type, flags, label, first;

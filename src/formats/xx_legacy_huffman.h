@@ -18,7 +18,7 @@ static void ac_tree_rebuild(ac_tree *t) {
     for(i=0;i<t->total;++i) if(t->child[i]>=(int)t->total) { t->frequency[j]=(t->frequency[i]+1)/2; t->child[j++]=t->child[i]; }
     for(i=0,k=t->chars;k<t->total;i+=2U,++k) {
         int weight=t->frequency[i]+t->frequency[i+1U],at=(int)k-1;
-        while(at>=0 && weight<t->frequency[at]) --at; ++at;
+        while(at>=0 && weight<t->frequency[at]) { --at; } ++at;
         for(j=k;j>(unsigned)at;--j) { t->frequency[j]=t->frequency[j-1U]; t->child[j]=t->child[j-1U]; }
         t->frequency[at]=weight; t->child[at]=(int)i;
     }
@@ -51,7 +51,7 @@ static bool ac_adaptive(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *ou
     for(width=3U;width<=8U;++width) for(i=0;i<counts[width-3U];++i,++symbol) for(j=0;j<(1U<<(8U-width));++j) { widths[k]=(uint8_t)width; codes[k++]=(uint8_t)symbol; }
     for(;;) {
         int node=tree.child[tree.root]; uint32_t count=1,distance=0; unsigned token;
-        if(!ac_poll(b)) return false; if(mode>=4U && at==cap) break;
+        if(!ac_poll(b)) { return false; } if(mode>=4U && at==cap) break;
         while(node<(int)tree.total && !bits.failed) node=tree.child[node+ac_bits_get(&bits,1)];
         if(bits.failed || node<(int)tree.total || node>=(int)(tree.total+tree.chars)) return false;
         token=(unsigned)node-tree.total; ac_tree_update(&tree,token,mode==3U || mode==5U);

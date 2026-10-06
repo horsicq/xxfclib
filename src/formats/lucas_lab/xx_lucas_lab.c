@@ -10,7 +10,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[16],r[16]; uint32_t count,names,i; uint64_t nt,floor,used; int64_t total=pm_available(f);
     if(!gm_read(f,total,0,h,16) || xx_rt_memcmp(h,"LABN",4) || pm_le32(h+4)!=0x10000) return false;
     count=pm_le32(h+8); names=pm_le32(h+12); nt=16+(uint64_t)count*16; floor=nt+names;
-    if(count>65536 || names>16777216 || !gm_range(total,nt,names)) return false; s->size=(int64_t)floor;
+    if(count>65536 || names>16777216 || !gm_range(total,nt,names)) { return false; } s->size=(int64_t)floor;
     for(i=0;i<count;++i) {
         uint32_t name; if(gm_stopped(pd) || !gm_read(f,total,16+(uint64_t)i*16,r,16)) return false;
         name=pm_le32(r); if(name>=names || !gm_string(f,total,nt+name,names-name,&used) || used==1 || !gm_add(f,s,"member.bin",pm_le32(r+4),pm_le32(r+8),floor,total)) return false;

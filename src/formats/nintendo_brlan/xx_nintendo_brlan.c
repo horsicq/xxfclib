@@ -25,7 +25,7 @@ static bool section(Abstractformat *f,uint64_t at,uint64_t total,const char *mag
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint32_t total,n,bindings,table,i,j,nranges=0; uint16_t blocks; uint8_t h[28],p[12],q[4]; uint64_t end; rg ranges[1024];
-    if(!nw_header(f,"RLAN",8,&total,&blocks,pd) || blocks!=1 || !pm_read(f,16,h,20) || !section(f,16,total,"pai1",n=pm_be32(h+4),pd) || n<20 || n+16U!=(uint64_t)total || !pm_be16(h+8) || h[10]>1 || h[11] || pm_be16(h+12) || !(bindings=pm_be16(h+14)) || bindings>32) return false; end=n; table=pm_be32(h+16);
+    if(!nw_header(f,"RLAN",8,&total,&blocks,pd) || blocks!=1 || !pm_read(f,16,h,20) || !section(f,16,total,"pai1",n=pm_be32(h+4),pd) || n<20 || n+16U!=(uint64_t)total || !pm_be16(h+8) || h[10]>1 || h[11] || pm_be16(h+12) || !(bindings=pm_be16(h+14)) || bindings>32) { return false; } end=n; table=pm_be32(h+16);
     if(!reserve(ranges,&nranges,1024,table,(uint64_t)bindings*4,20,end)) return false;
     for(i=0;i<bindings;++i) { uint32_t binding,tracks,k; uint64_t group; if(stop(pd) || !pm_read(f,16+(int64_t)table+i*4,q,4) || !reserve(ranges,&nranges,1024,binding=pm_be32(q),28,20,end) || !pm_read(f,16+(int64_t)binding,h,28) || !xx_rt_memchr(h,0,20) || h[20]!=1 || h[21] || h[22] || h[23]) return false;
       group=(uint64_t)binding+pm_be32(h+24); if(!span(group,8,end) || !pm_read(f,16+(int64_t)group,h,8) || xx_rt_memcmp(h,"RLPA",4) || !(tracks=h[4]) || tracks>10 || h[5] || h[6] || h[7] || !reserve(ranges,&nranges,1024,group,8+(uint64_t)tracks*4,20,end)) return false;
@@ -34,7 +34,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         for(k=0;k<keys;++k) { uint32_t time; if(stop(pd) || !pm_read(f,16+(int64_t)keyat+k*12,p,12) || !finite32(p,true) || !finite32(p+4,true) || !finite32(p+8,true) || ((time=pm_be32(p))&0x80000000U) || (k && time<=previous)) return false; previous=time; }
       }
     }
-    if(!emit(f,s,"pane-animation.bin",16,n,total)) return false; s->size=total; return true;
+    if(!emit(f,s,"pane-animation.bin",16,n,total)) { return false; } s->size=total; return true;
 
 }
 

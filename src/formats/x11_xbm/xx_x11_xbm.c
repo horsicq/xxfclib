@@ -14,19 +14,19 @@ static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
   else if(z>7&&tg_tag(b+at+z-7,"_height",7)){suffix=7;bit=2;h=value;}
   else if(z>6&&tg_tag(b+at+z-6,"_x_hot",6)){suffix=6;bit=4;hx=value;}
   else if(z>6&&tg_tag(b+at+z-6,"_y_hot",6)){suffix=6;bit=8;hy=value;}else return false;
-  if(mask&bit||z-suffix>=sizeof(base))return false;if(!basez){basez=z-suffix;xx_rt_memcpy(base,b+at,(size_t)basez);}else if(basez!=z-suffix||!tg_tag(b+at,base,(size_t)basez))return false;mask|=bit;
+  if(mask&bit||z-suffix>=sizeof(base)) {return false; } if(!basez){basez=z-suffix;xx_rt_memcpy(base,b+at,(size_t)basez);}else if(basez!=z-suffix||!tg_tag(b+at,base,(size_t)basez))return false;mask|=bit;
  }
  if((mask&3)!=3||((mask&12)!=0&&(mask&12)!=12)||w<1||h<1||w>65536||h>65536||((mask&12)&&(hx<0||hy<0||hx>=w||hy>=h)))return false;
- if(!tg_kw(&q,"static"))return false;(void)tg_kw(&q,"const");(void)tg_kw(&q,"unsigned");if(!tg_kw(&q,"char")||!tg_ident(&q,&at,&z)||z!=basez+5||!tg_tag(b+at,base,(size_t)basez)||!tg_tag(b+at+basez,"_bits",5)||!tg_char(&q,'['))return false;
+ if(!tg_kw(&q,"static")) {return false; } (void)tg_kw(&q,"const");(void)tg_kw(&q,"unsigned");if(!tg_kw(&q,"char")||!tg_ident(&q,&at,&z)||z!=basez+5||!tg_tag(b+at,base,(size_t)basez)||!tg_tag(b+at+basez,"_bits",5)||!tg_char(&q,'['))return false;
  count=((uint64_t)w+7)/8*h;if(!count||count>16000000)return false;
  if(!tg_char(&q,']')){int32_t declared;if(!tg_integer(&q,&declared)||declared!=(int32_t)count||!tg_char(&q,']'))return false;}
- if(!tg_char(&q,'=')||!tg_char(&q,'{'))return false;data=q.p;pixels=(uint8_t *)xx_mem_alloc((size_t)count);if(!pixels)return false;
+ if(!tg_char(&q,'=')||!tg_char(&q,'{')) {return false; } data=q.p;pixels=(uint8_t *)xx_mem_alloc((size_t)count);if(!pixels)return false;
  for(i=0;i<count;++i){uint32_t value=0;unsigned digits=0;if(tg_stop(pd)||!tg_skip(&q)||!tg_span(q.p,2,n)||b[q.p]!='0'||(b[q.p+1]!='x'&&b[q.p+1]!='X'))goto fail;q.p+=2;
   while(q.p<n){uint8_t c=b[q.p];unsigned v=c>='0'&&c<='9'?c-'0':c>='a'&&c<='f'?c-'a'+10:c>='A'&&c<='F'?c-'A'+10:16;if(v==16)break;if(++digits>2)goto fail;value=value*16+v;++q.p;}
-  if(!digits)goto fail;pixels[i]=(uint8_t)value;if(i+1<count&&!tg_char(&q,','))goto fail;
+  if(!digits) {goto fail; } pixels[i]=(uint8_t)value;if(i+1<count&&!tg_char(&q,','))goto fail;
  }
  (void)tg_char(&q,',');if(!tg_char(&q,'}')||!tg_char(&q,';')||!tg_end(&q)||!tg_emit(f,s,"descriptor.xbm",0,data,n))goto fail;
- if(!tg_memory(f,s,"bitmap-lsb.bin",pixels,count))return false;s->size=(int64_t)n;return true;
+ if(!tg_memory(f,s,"bitmap-lsb.bin",pixels,count)) {return false; } s->size=(int64_t)n;return true;
 fail:xx_mem_free(pixels);return false;
 }
 

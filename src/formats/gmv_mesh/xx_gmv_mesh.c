@@ -23,7 +23,7 @@ static bool fg_gmv_binary(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64
  else if(fg_gmv_text(p,"cycleno")){kind=128;if(!fg_count(&q,2147483647,&count))return false;}
  else if(fg_gmv_text(p,"probtime")){kind=256;double v;if(!fg_float(&q,&v)||v<0)return false;}
  else if(fg_gmv_text(p,"endgmv")){ended=true;if(!nodes||!cells||q.p!=n)return false;}
- else return false;if(kind&&(seen&kind))return false;seen|=kind;xx_rt_snprintf(label,sizeof(label),"section-%u.gmv",section++);if(!fg_emit(f,s,label,start,q.p-start,n))return false;if(ended)break;
+ else { return false; } if(kind&&(seen&kind))return false;seen|=kind;xx_rt_snprintf(label,sizeof(label),"section-%u.gmv",section++);if(!fg_emit(f,s,label,start,q.p-start,n))return false;if(ended)break;
  }
  return ended&&q.p==n;
 }
@@ -38,7 +38,7 @@ static bool fg_gmv_ascii(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_
  else if(fg_kw(&q,"cycleno")){kind=128;if(!fg_integer(&q,&id)||id<0)return false;}
  else if(fg_kw(&q,"probtime")){kind=256;if(!fg_number(&q,&v)||v<0)return false;}
  else if(fg_kw(&q,"endgmv")){if(!nodes||!cells||!fg_end(&q))return false;ended=true;}
- else return false;if(kind&&(seen&kind))return false;seen|=kind;xx_rt_snprintf(label,sizeof(label),"section-%u.gmv",section++);if(!fg_emit(f,s,label,start,q.p-start,n))return false;if(ended)break;
+ else { return false; } if(kind&&(seen&kind))return false;seen|=kind;xx_rt_snprintf(label,sizeof(label),"section-%u.gmv",section++);if(!fg_emit(f,s,label,start,q.p-start,n))return false;if(ended)break;
  }
  return ended&&fg_end(&q)&&fg_cover(f,s,"framing.gmv",n);
 }

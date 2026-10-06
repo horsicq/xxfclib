@@ -39,8 +39,7 @@ bool xx_oraclesqueeze_parse_tree(const uint8_t *input, size_t input_size,
     size_t table_size;
     if (!input || !info || input_size < 7U) return false;
     node_count = xx_oraclesqueeze_read16le(input);
-    if (node_count == 0U || node_count > XX_ORACLESQUEEZE_MAX_NODES ||
-        (size_t)node_count > (SIZE_MAX - 2U) / 4U) {
+    if (node_count == 0U || node_count > XX_ORACLESQUEEZE_MAX_NODES) {
         return false;
     }
     table_size = 2U + (size_t)node_count * 4U;

@@ -33,7 +33,7 @@ static void *dga_alloc(void *opaque,size_t size) {
 }
 static void dga_release(void *opaque,void *pointer) {
     dga_index *ix=(dga_index *)opaque;dga_allocation *h;
-    if(!pointer)return;h=((dga_allocation *)pointer)-1;ix->live-=h->header.bytes;xx_mem_free(h);
+    if(!pointer) {return; } h=((dga_allocation *)pointer)-1;ix->live-=h->header.bytes;xx_mem_free(h);
 }
 static int dga_cancel(void *opaque) {return xx_pd_is_stopped(((dga_index *)opaque)->pd);}
 static size_t dga_read(void *opaque,uint64_t offset,void *bytes,size_t size) {
@@ -57,7 +57,7 @@ static bool dga_password(Abstractformat *f,const xx_list_s *options,char out[102
         n=v->val.str.len;
         if(n>1024||(!v->val.str.ptr&&n))return dga_fail(pd,"DGCA password exceeds the supported size");
         for(i=0;i<n;++i)if(!v->val.str.ptr[i])return dga_fail(pd,"DGCA password contains an embedded NUL");
-        if(n)xx_rt_memcpy(out,v->val.str.ptr,n);out[n]=0;return true;
+        if(n) {xx_rt_memcpy(out,v->val.str.ptr,n); } out[n]=0;return true;
     }
     if(v->type!=XX_VAR_TYPE_WSTRING&&v->type!=XX_VAR_TYPE_WSTRING_VIEW)
         return dga_fail(pd,"DGCA password must be a string");
@@ -81,7 +81,7 @@ too_long:
     return dga_fail(pd,"DGCA password exceeds the supported size");
 }
 static void dga_index_free(dga_index *ix) {
-    if(!ix)return;dg_native_result_free(&ix->decoded);dga_release(ix,ix->records.members);
+    if(!ix) {return; } dg_native_result_free(&ix->decoded);dga_release(ix,ix->records.members);
     dga_release(ix,ix->password);xx_mem_free(ix);
 }
 static void dga_invalidate(dga_format *f) {
@@ -101,7 +101,7 @@ static bool dga_info_options(Abstractformat *f,const xx_list_s *options,xx_pd_st
     dga_format *format=(dga_format *)f;dga_index *ix;dg_callbacks cb;dg_status status;char pwd[1025];
     uint64_t cap,member_limit,max_members;int64_t saved,total;size_t i,j,n;bool success=false;
     if(!f||!f->device||xx_pd_is_stopped(pd))return false;
-    if(!dga_password(f,options,pwd,pd))return false;ix=format->index;
+    if(!dga_password(f,options,pwd,pd)) {return false; } ix=format->index;
     if(ix&&f->base_info_handled&&f->is_valid&&ix->source==f->device&&ix->base==f->base_address&&!xx_rt_strcmp(ix->password,pwd))return dga_limits_match(ix,f,options,pd);
     dga_invalidate(format);total=xx_io_total_size(f->device);
     if(f->base_address<0||total<f->base_address)return dga_fail(pd,"DGCA invalid source range");
@@ -132,7 +132,7 @@ static bool dga_info_options(Abstractformat *f,const xx_list_s *options,xx_pd_st
     format->index=ix;f->format_size=ix->records.size;f->number_of_archive_records=ix->records.count;f->is_valid=f->base_info_handled=true;success=true;
 done:
     if(saved>=0&&xx_io_seek64(f->device,saved,XX_RT_SEEK_SET)){if(success){format->index=NULL;f->is_valid=f->base_info_handled=false;}success=false;}
-    if(!success)dga_index_free(ix);return success;
+    if(!success) {dga_index_free(ix); } return success;
 }
 static bool dga_info(Abstractformat *f,xx_pd_struct *pd) {return dga_info_options(f,NULL,pd);}
 static int64_t dga_size(Abstractformat *f,xx_pd_struct *pd) {return f&&dga_info(f,pd)?f->format_size:-1;}
@@ -146,7 +146,7 @@ static bool dga_path_copy(xx_var *dst,const xx_var *src,xx_pd_struct *pd) {
         if(n>DGA_PATH_LENGTH||(!src->val.str.ptr&&n))return dga_fail(pd,"DGCA extraction path exceeds the supported size");
         for(i=0;i<n;++i)if(!src->val.str.ptr[i])return dga_fail(pd,"DGCA extraction path contains an embedded NUL");
         narrow=(char *)xx_mem_alloc(n+1);if(!narrow)return false;
-        if(n)xx_rt_memcpy(narrow,src->val.str.ptr,n);narrow[n]=0;
+        if(n) {xx_rt_memcpy(narrow,src->val.str.ptr,n); } narrow[n]=0;
         return xx_var_set_str_take(dst,narrow,n);
     }
     if(src->type==XX_VAR_TYPE_WSTRING||src->type==XX_VAR_TYPE_WSTRING_VIEW){
@@ -154,7 +154,7 @@ static bool dga_path_copy(xx_var *dst,const xx_var *src,xx_pd_struct *pd) {
         if(n>DGA_PATH_LENGTH||(!src->val.wstr.ptr&&n))return dga_fail(pd,"DGCA extraction path exceeds the supported size");
         for(i=0;i<n;++i)if(!src->val.wstr.ptr[i])return dga_fail(pd,"DGCA extraction path contains an embedded NUL");
         wide=(wchar_t *)xx_mem_alloc((n+1)*sizeof(*wide));if(!wide)return false;
-        if(n)xx_rt_memcpy(wide,src->val.wstr.ptr,n*sizeof(*wide));wide[n]=0;
+        if(n) {xx_rt_memcpy(wide,src->val.wstr.ptr,n*sizeof(*wide)); } wide[n]=0;
         return xx_var_set_wstr_take(dst,wide,n);
     }
     return dga_fail(pd,"DGCA extraction path must be a string");
@@ -165,7 +165,7 @@ static xx_archive_record_state *dga_records(Abstractformat *f,const xx_list_s *o
     bool path_in_options=false;
     xx_meta_init(&path,XX_META_ID_OPT_UNPACK_PATH);
     if(effective_path&&!dga_path_copy(&path.var,effective_path,pd))goto fail;
-    if(!dga_info_options(f,options,pd))goto fail;s=ue2_records(f,options,pd);if(!s)goto fail;
+    if(!dga_info_options(f,options,pd)) {goto fail; } s=ue2_records(f,options,pd);if(!s)goto fail;
     /* The common copier retains string-view pointers. An operation password
      * must remain owned after its caller releases or changes those views. */
     for(i=0;i<s->options.count;++i){

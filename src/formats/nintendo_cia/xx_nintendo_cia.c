@@ -15,7 +15,7 @@ static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uin
         if(n && b && at<a+b && a<at+n) return false; }
     return pm_add(f,s,name,(int64_t)at,(int64_t)n);
 }
-static bool zname(Abstractformat *f,uint64_t at,uint64_t end) {
+static XXFC_MAYBE_UNUSED bool zname(Abstractformat *f,uint64_t at,uint64_t end) {
     uint8_t c; uint64_t i; if(at>=end || end>(uint64_t)pm_available(f)) return false;
     for(i=0;i<4096 && at+i<end;++i) { if(!pm_read(f,(int64_t)(at+i),&c,1)) return false; if(!c) return i!=0; } return false;
 }
@@ -38,7 +38,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     for(i=0;i<count;++i) { uint16_t index,type; uint64_t n; char label[40];
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,(int64_t)(tmd+0xb04+i*48),e,48)) return false;
         index=pm_be16(e+4); type=pm_be16(e+6); n=g64(e+8,true);
-        if(seen[index/8]&(1U<<(7-index%8))) return false; seen[index/8]|=(uint8_t)(1U<<(7-index%8));
+        if(seen[index/8]&(1U<<(7-index%8))) { return false; } seen[index/8]|=(uint8_t)(1U<<(7-index%8));
         if(!(h[32+index/8]&(1U<<(7-index%8)))) continue;
         if((type&1) || !n || !span(at,n,content+content_size) || !xx_hash_device(XX_HASH_SHA256,f->device,f->base_address+(int64_t)at,(int64_t)n,digest,32,pd) || !xx_hash_equal(digest,e+16,32)) return false;
         xx_rt_snprintf(label,sizeof(label),"content-%u.bin",index); if(!emit(f,s,label,at,n,total)) return false; at+=n; }

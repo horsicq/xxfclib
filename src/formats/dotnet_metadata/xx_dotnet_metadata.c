@@ -19,7 +19,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,at,d,8)) return false;
         offsets[i]=pm_le32(d); sizes[i]=pm_le32(d+4); at+=8;
         for(j=0;j<33;++j) { if(j==32 || !pm_read(f,at++,&b,1)) return false; names[i][j]=(char)b; if(!b) break; if(b<32 || b>126 || b=='/' || b=='\\' || b==':') return false; }
-        if(!j) return false; at=(at+3)&~INT64_C(3);
+        if(!j) { return false; } at=(at+3)&~INT64_C(3);
         for(j=0;j<i;++j) if(!xx_rt_strcmp(names[j],names[i])) return false;
     }
     total=(uint64_t)at;

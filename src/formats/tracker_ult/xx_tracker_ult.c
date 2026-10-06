@@ -8,9 +8,9 @@
 
 static bool sm_emit(Abstractformat *f,pm_stream *s,const char *label,uint64_t at,uint64_t n,uint64_t *measured) {
     if(s->count>=4096 || !fd_range(at,n,(uint64_t)pm_available(f)) || at+n>268435456 || !pm_add(f,s,label,(int64_t)at,(int64_t)n)) return false;
-    if(at+n>*measured) *measured=at+n; return true;
+    if(at+n>*measured) { *measured=at+n; } return true;
 }
-static bool sm_zero(const uint8_t *p,size_t n) { size_t i; for(i=0;i<n;++i) if(p[i]) return false; return true; }
+static XXFC_MAYBE_UNUSED bool sm_zero(const uint8_t *p,size_t n) { size_t i; for(i=0;i<n;++i) if(p[i]) return false; return true; }
 static bool sm_loop(uint32_t begin,uint32_t end,uint32_t length,bool enabled) { return !enabled || (begin<end && end<=length); }
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
@@ -29,7 +29,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(!sm_emit(f,s,"orders-panning.bin",start,c.at-start,&measured)) return false;
     for(i=0;i<channels;++i) { uint32_t events=0; start=c.at; while(events<patterns*64) { uint32_t repeats=1,note; if(!fd_get(&c,b,1)) return false; note=b[0];
             if(note==252) { if(!fd_get(&c,b,2) || !b[0]) return false; repeats=b[0]; note=b[1]; }
-            if(note>60 || repeats>patterns*64-events || !fd_get(&c,b,4) || b[0]>samples) return false; events+=repeats;
+            if(note>60 || repeats>patterns*64-events || !fd_get(&c,b,4) || b[0]>samples) { return false; } events+=repeats;
         } xx_rt_snprintf(label,sizeof(label),"channel-%u-events.bin",i); if(!sm_emit(f,s,label,start,c.at-start,&measured)) return false;
     }
     for(j=0;j<samples;++j) if(length[j]) { start=c.at; if(!fd_skip(&c,length[j])) return false; xx_rt_snprintf(label,sizeof(label),"sample-%u.bin",j+1); if(!sm_emit(f,s,label,start,length[j],&measured)) return false; }

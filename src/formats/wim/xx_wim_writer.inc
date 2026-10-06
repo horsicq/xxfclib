@@ -159,13 +159,13 @@ static bool wimw_options(wimw_state *w, const xx_list_s *options, xx_pd_struct *
         const xx_meta *item = (const xx_meta *)xx_list_at(options, i); uint64_t n;
         if (!item) return false;
         if (item->meta_id == XX_META_ID_COMPRESSION_METHOD) {
-            if (!wimw_method(&item->var,&n)) return wimw_error(pd,"Unknown WIM compression method"); w->method=(unsigned)n;
+            if (!wimw_method(&item->var,&n)) { return wimw_error(pd,"Unknown WIM compression method"); } w->method=(unsigned)n;
         } else if (item->meta_id == XX_META_ID_COMPRESSION_LEVEL) {
-            if (!wimw_unsigned(&item->var,&n)||n>100) return wimw_error(pd,"WIM compression level must be 0..100");w->level=(unsigned)n;
+            if (!wimw_unsigned(&item->var,&n)||n>100) { return wimw_error(pd,"WIM compression level must be 0..100"); } w->level=(unsigned)n;
         } else if (item->meta_id == XX_META_ID_OPT_MEMORY_LIMIT) {
-            if (!wimw_unsigned(&item->var,&n)) return wimw_error(pd,"Invalid WIM memory limit");w->memory_limit=n;
+            if (!wimw_unsigned(&item->var,&n)) { return wimw_error(pd,"Invalid WIM memory limit"); } w->memory_limit=n;
         } else if (item->meta_id == XX_META_ID_OPT_MAX_MEMBER_SIZE) {
-            if (!wimw_unsigned(&item->var,&n)) return wimw_error(pd,"Invalid WIM member limit");w->max_member_size=n;
+            if (!wimw_unsigned(&item->var,&n)) { return wimw_error(pd,"Invalid WIM member limit"); } w->max_member_size=n;
         } else if (item->meta_id == XX_META_ID_ENCRYPTION_METHOD && wimw_unsigned(&item->var,&n) && !n) {
         } else return wimw_error(pd,"Unsupported WIM writer option; password encryption is unavailable");
     }
@@ -211,7 +211,7 @@ static bool wimw_stream(Abstractformat *self,wimw_state *w,xx_io_device *source,
         entry->packed_size=size;entry->resource_flags=0;
     }
     w->offset=(int64_t)(start+table_size+encoded);
-    if(xx_io_seek64(self->device,w->offset,SEEK_SET))goto cleanup;okay=true;
+    if(xx_io_seek64(self->device,w->offset,SEEK_SET)) {goto cleanup; } okay=true;
 cleanup:
     if(progress>=0)xx_pd_leave_level(pd,progress);
     if(xx_pd_is_stopped(pd))okay=false;
@@ -294,7 +294,7 @@ bool xx_wim_pack_archive_record(Abstractformat *self, xx_archive_write_state *st
             uint32_t code = (uint32_t)input[i];
             if (!code || code > 0x10ffffU) return false;
             if (code >= 0xd800U && code <= 0xdbffU && sizeof(wchar_t) == 2U) {
-                if (++i == units || input[i] < 0xdc00U || input[i] > 0xdfffU) return false;
+                if (++i == units || (uint32_t)input[i] < 0xdc00U || (uint32_t)input[i] > 0xdfffU) return false;
             } else if (code >= 0xd800U && code <= 0xdfffU) return false;
         }
         wide = (wchar_t *)xx_mem_alloc((units + 1U) * sizeof(wchar_t));

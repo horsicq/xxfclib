@@ -23,7 +23,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[32],b[8]; uint32_t total,i,n; uint64_t at=32; char label[40]; static const char *tags[]={"INF1","VTX1","EVP1","DRW1","JNT1","SHP1","MAT3","TEX1"};
     if(!pm_read(f,0,h,32) || xx_rt_memcmp(h,"J3D2bmd3",8) || pm_be32(h+12)!=8 || (total=pm_be32(h+8))<32 || total>(uint64_t)pm_available(f)) return false;
     for(i=0;i<8;++i) { if(!pm_read(f,(int64_t)at,b,8) || (n=pm_be32(b+4))<32 || (n&31) || !section(f,at,total,tags[i],n,pd)) return false; xx_rt_snprintf(label,sizeof(label),"section-%s.bin",tags[i]); if(!emit(f,s,label,at,n,total)) return false; at+=n; }
-    if(at!=total) return false; s->size=total; return true;
+    if(at!=total) { return false; } s->size=total; return true;
 
 }
 

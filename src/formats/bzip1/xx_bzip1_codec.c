@@ -470,7 +470,7 @@ static bool bz1_emitByte(Bzip1Decoder *ctx, uint8_t nByte) {
     if(ctx->output_size==ctx->output_capacity) {
         size_t capacity=ctx->output_capacity ? ctx->output_capacity*2 : 65536;
         void *new_output=xx_mem_realloc(ctx->output,capacity);
-        if(!new_output)return false;ctx->output=new_output;ctx->output_capacity=capacity;
+        if(!new_output) {return false; } ctx->output=new_output;ctx->output_capacity=capacity;
     }
     ctx->output[ctx->output_size++]=nByte;
     return true;
@@ -595,7 +595,7 @@ static bool bz1_run(Bzip1Decoder *ctx)
 
 bool xx_bzip1_decode(const uint8_t *input,size_t input_size,uint8_t **output,size_t *output_size,xx_pd_struct *pd) {
  Bzip1Decoder *ctx;bool ok;
- if(!output || !output_size || !input)return false;*output=NULL;*output_size=0;
+ if(!output || !output_size || !input) {return false; } *output=NULL;*output_size=0;
  ctx=(Bzip1Decoder *)xx_mem_calloc(1,sizeof(*ctx));if(!ctx)return false;
  ctx->input=input;ctx->input_size=input_size;ctx->pd=pd;ctx->m_nBigR=BZIP1_R_INITIAL;
  bzip1InitModel(&ctx->m_byteModel,256,0,256);

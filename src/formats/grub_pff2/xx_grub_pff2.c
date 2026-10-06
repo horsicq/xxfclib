@@ -14,13 +14,13 @@ static bool fg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  if(!fg_span(p+8,z,n))return false;
  if(fg_tag(b+p,"NAME",4))bit=1;else if(fg_tag(b+p,"FAMI",4))bit=2;else if(fg_tag(b+p,"WEIG",4))bit=4;else if(fg_tag(b+p,"SLAN",4))bit=8;
  else if(fg_tag(b+p,"PTSZ",4))bit=16;else if(fg_tag(b+p,"MAXW",4))bit=32;else if(fg_tag(b+p,"MAXH",4))bit=64;else if(fg_tag(b+p,"ASCE",4))bit=128;else if(fg_tag(b+p,"DESC",4))bit=256;else if(fg_tag(b+p,"CHIX",4))bit=512;else return false;
- if(seen&bit)return false;seen|=bit;
+ if(seen&bit) {return false; } seen|=bit;
  if(bit<=8){uint32_t k;if(!z||z>1024||b[p+8+z-1])return false;for(k=0;k+1<z;++k)if(b[p+8+k]<32||b[p+8+k]>126)return false;}
  else if(bit==512){if(!z||z%9||z/9>4000)return false;index=p+8;indexlen=z;glyphs=z/9;}
  else {uint16_t v;if(z!=2)return false;v=pm_be16(b+p+8);if(bit==32)maxw=v;if(bit==64)maxh=v;if((bit==16||bit==32||bit==64)&&(!v||v>4096))return false;}
- xx_rt_snprintf(label,sizeof(label),"section-%u.pf2",s->count);if(!fg_emit(f,s,label,p,(uint64_t)z+8,n))return false;p+=(uint64_t)z+8;
+ xx_rt_snprintf(label,sizeof(label),"section-%u.pf2",(unsigned)s->count);if(!fg_emit(f,s,label,p,(uint64_t)z+8,n))return false;p+=(uint64_t)z+8;
  }
- if(!data||!(seen&1)||!indexlen||(seen&(32|64|128|256))!=(32|64|128|256))return false;p=data;
+ if(!data||!(seen&1)||!indexlen||(seen&(32|64|128|256))!=(32|64|128|256)) {return false; } p=data;
  for(i=0;i<glyphs;++i){uint64_t at=index+(uint64_t)i*9,z;uint32_t code=pm_be32(b+at),offset=pm_be32(b+at+5);uint16_t w,h;if((i&&code<=lastcode)||code>0x10ffff||(code>=0xd800&&code<=0xdfff)||b[at+4]||offset!=p||!fg_span(p,10,n))return false;lastcode=code;w=pm_be16(b+p);h=pm_be16(b+p+2);if(w>maxw||h>maxh)return false;z=((uint64_t)w*h+7)/8;if(!fg_span(p+10,z,n))return false;xx_rt_snprintf(label,sizeof(label),"glyph-%08x.pf2",code);if(!fg_emit(f,s,label,p,z+10,n))return false;p+=z+10;}
  return p==n;
 }

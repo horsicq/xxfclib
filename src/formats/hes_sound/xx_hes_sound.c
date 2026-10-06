@@ -18,7 +18,7 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
   if(initial>=load && initial-load<z) mapped=true;
   xx_rt_snprintf(name,sizeof(name),"data-%u.bin",n++); if(!nh_emit(f,s,b,name,at,z+16)) return false; at+=16+z;
  }
- if(!mapped || !n) return false; s->size=at; return true;
+ if(!mapped || !n) { return false; } s->size=at; return true;
 }
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { nh_blob b; bool ok; if(!nh_load(f,&b,pd)) return false; ok=parse_blob(f,s,&b); xx_mem_free(b.p); return ok; }

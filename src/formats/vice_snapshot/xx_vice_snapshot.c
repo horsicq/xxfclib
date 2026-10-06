@@ -18,7 +18,7 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
   if(!nh_range(b,at,22) || !b->p[at] || !nh_ascii(b->p+at,16,true) || (z=pm_le32(b->p+at+18))<=22 || !nh_range(b,at,z) || ++n>4095) return false;
   xx_rt_snprintf(label,sizeof(label),"module-%u.bin",n-1); if(!nh_emit(f,s,b,label,at,z)) return false; at+=z;
  }
- if(!n) return false; s->size=at; return true;
+ if(!n) { return false; } s->size=at; return true;
 }
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { nh_blob b; bool ok; if(!nh_load(f,&b,pd)) return false; ok=parse_blob(f,s,&b); xx_mem_free(b.p); return ok; }

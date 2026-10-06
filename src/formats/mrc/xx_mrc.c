@@ -15,7 +15,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     ext=fd_u32(h+92,be);if(ext>INT32_MAX || !fd_mul(count,width,&n)) return false;at=1024+ext;
     if(!fd_range(at,n,(uint64_t)available) || !pm_add(f,s,"mrc-header.bin",0,1024)) return false;
     if(ext && !pm_add(f,s,"extended-header.bin",1024,(int64_t)ext)) return false;
-    if(!pm_add(f,s,"volume.bin",(int64_t)at,(int64_t)n)) return false;s->size=(int64_t)(at+n);return true;
+    if(!pm_add(f,s,"volume.bin",(int64_t)at,(int64_t)n)) { return false; } s->size=(int64_t)(at+n);return true;
 }
 
 void xx_mrc_init(xx_mrc *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_MRC,"mrc"); } }

@@ -9,8 +9,8 @@ static uint32_t tf_crc(uint32_t crc,const uint8_t *p,size_t n) {return ~xx_crc32
 static uint32_t tf_mask(uint32_t c) {c=~c;return ((c>>15)|(c<<17))+0xa282ead8U;}
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[12],*buffer,tail[4];uint64_t at=0,end;int64_t available=pm_available(f);unsigned count=0;size_t capacity=xx_get_file_buffer_size();bool ok=false;
-    if(available<16 || available>64*1024*1024 || fd_stop(pd)) return false;end=(uint64_t)available;
-    if(capacity>(SIZE_MAX>>1)) capacity=SIZE_MAX>>1;if(end<capacity) capacity=(size_t)end;
+    if(available<16 || available>64*1024*1024 || fd_stop(pd)) { return false; } end=(uint64_t)available;
+    if(capacity>(SIZE_MAX>>1)) { capacity=SIZE_MAX>>1; } if(end<capacity) capacity=(size_t)end;
     buffer=(uint8_t *)xx_mem_alloc(capacity);if(!buffer) return false;
     while(at<end) {uint64_t n,p,left;uint32_t crc=UINT32_MAX;char label[64];
         if(fd_stop(pd) || ++count>4096 || !fd_range(at,12,end) || !pm_read(f,(int64_t)at,h,12) || pm_le32(h+8)!=tf_mask(tf_crc(UINT32_MAX,h,8))) goto done;

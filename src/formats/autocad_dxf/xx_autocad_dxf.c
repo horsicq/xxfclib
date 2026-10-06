@@ -15,7 +15,7 @@ static unsigned group_kind(uint16_t c) {
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[22];nh_blob b={0};bool ok=false,in_section=false,want_name=false,eof=false;uint64_t at=22,start=0;unsigned tags=0,sections=0;char section[256];
-    if(!pm_read(f,0,h,22) || xx_rt_memcmp(h,"AutoCAD Binary DXF\r\n\x1a\0",22)) return false;NH_NEED(nh_load(f,&b,pd) && nh_add(f,s,&b,"sentinel",0,22));
+    if(!pm_read(f,0,h,22) || xx_rt_memcmp(h,"AutoCAD Binary DXF\r\n\x1a\0",22)) { return false; } NH_NEED(nh_load(f,&b,pd) && nh_add(f,s,&b,"sentinel",0,22));
     while(at<b.n) {uint16_t code;unsigned kind;uint64_t value;char text[1024]={0};NH_NEED(++tags<=1000000 && nh_span(&b,at,2) && !eof);code=pm_le16(b.p+(size_t)at);kind=group_kind(code);at+=2;value=at;NH_NEED(kind!=255);
         if(!kind) {size_t n=0;while(at<b.n && b.p[(size_t)at]) {NH_NEED(n+1<sizeof(text));text[n++]=(char)b.p[(size_t)at++];}NH_NEED(at<b.n && nh_ascii((const uint8_t *)text,n,false));++at;}
         else if(kind==3) {uint8_t n;NH_NEED(nh_span(&b,at,1));n=b.p[(size_t)at++];NH_NEED(nh_span(&b,at,n));at+=n;}

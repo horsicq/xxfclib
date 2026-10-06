@@ -282,7 +282,7 @@ static bool cb_options(xx_list_s *destination, const xx_list_s *source) {
     size_t i; if (!source) return true;
     for (i = 0U; i < source->count; ++i) {
         const xx_meta *item = (const xx_meta *)xx_list_at(source, i); xx_meta copy;
-        if (!item) continue; xx_meta_init(&copy, item->meta_id);
+        if (!item) { continue; } xx_meta_init(&copy, item->meta_id);
         if (!xx_var_copy(&copy.var, &item->var) || !xx_list_append(destination, &copy)) { xx_meta_cleanup(&copy); return false; }
     }
     return true;

@@ -6,9 +6,9 @@
 #include "xxfclib/formats/sony_psarc/xx_sony_psarc.h"
 #include "../xx_payload_members.h"
 
-static uint16_t r16(const uint8_t *p,bool be) { return be ? pm_be16(p) : pm_le16(p); }
-static uint32_t r32(const uint8_t *p,bool be) { return be ? pm_be32(p) : pm_le32(p); }
-static uint64_t r64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint16_t r16(const uint8_t *p,bool be) { return be ? pm_be16(p) : pm_le16(p); }
+static XXFC_MAYBE_UNUSED uint32_t r32(const uint8_t *p,bool be) { return be ? pm_be32(p) : pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint64_t r64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[32],e[30],b[2]; uint32_t toc,count,block,i,zcount; uint64_t end;
@@ -31,7 +31,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             actual=pm_be16(b); if(!actual) actual=block;
             /* Stored PSARC blocks have their uncompressed size in the table.
              * A smaller block denotes compressed data and is rejected. */
-            if(actual!=want) return false; left-=want;
+            if(actual!=want) { return false; } left-=want;
         }
         xx_rt_snprintf(label,sizeof(label),i ? "file-%u.bin" : "manifest.txt",(unsigned)i);
         if(!pm_add(f,s,label,(int64_t)off,(int64_t)size)) return false;

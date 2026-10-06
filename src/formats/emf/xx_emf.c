@@ -20,11 +20,11 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     } else if(offset || hs!=88) return false;
     xx_mem_zero(objects,sizeof(objects)); at=hs; if(!pm_add(f,s,"emf-header.bin",0,hs)) return false;
     while(at<total) { uint32_t kind,size,wanted=0,v=0; char label[48];
-        if(fd_stop(pd) || count>=records || !fd_range(at,8,total) || !pm_read(f,(int64_t)at,b,8)) return false; kind=pm_le32(b); size=pm_le32(b+4);
+        if(fd_stop(pd) || count>=records || !fd_range(at,8,total) || !pm_read(f,(int64_t)at,b,8)) { return false; } kind=pm_le32(b); size=pm_le32(b+4);
         if(size<8 || (size&3) || !fd_range(at,size,total) || !pm_read(f,(int64_t)at,b,size<32 ? size:32)) return false;
         if(kind==14) { if(size!=20 || pm_le32(b+8) || (pm_le32(b+12)!=0 && pm_le32(b+12)!=16) || pm_le32(b+16)!=20 || at+size!=total || count+1!=records) return false; }
         else if(kind>=2 && kind<=4) { uint32_t n;
-            if(size<28 || !sm_rect(b+8) || !(n=pm_le32(b+24)) || n>65536-points || size!=28+(uint64_t)n*8 || (kind==2 && (n<4 || (n-1)%3)) || (kind==3 && n<3) || (kind==4 && n<2)) return false; points+=n;
+            if(size<28 || !sm_rect(b+8) || !(n=pm_le32(b+24)) || n>65536-points || size!=28+(uint64_t)n*8 || (kind==2 && (n<4 || (n-1)%3)) || (kind==3 && n<3) || (kind==4 && n<2)) { return false; } points+=n;
         } else {
             if(kind>=9 && kind<=13) wanted=16;
             else if(kind==15) wanted=20;

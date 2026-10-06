@@ -15,7 +15,7 @@ static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  if(!digits||!nonzero||exponent>38||exponent<-38)return false;
  values=(uint64_t)(uint32_t)dim[0]*(uint32_t)dim[1]*(b[1]=='F'?3U:1U);p=text.p;if(values>16777216||!tg_span(p,values*4,n)||p+values*4!=n)return false;
  for(i=0;i<values;++i){uint32_t v;if((i&1023)==0&&tg_stop(pd))return false;v=negative?pm_le32(b+p+i*4):pm_be32(b+p+i*4);if((v&0x7f800000U)==0x7f800000U)return false;}
- if(!tg_emit(f,s,"pfm-header.bin",0,p,n)||!tg_emit(f,s,"float-raster.bin",p,n-p,n))return false;s->size=(int64_t)n;return true;
+ if(!tg_emit(f,s,"pfm-header.bin",0,p,n)||!tg_emit(f,s,"float-raster.bin",p,n-p,n)) {return false; } s->size=(int64_t)n;return true;
 }
 
 void xx_netpbm_pfm_init(xx_netpbm_pfm *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_NETPBM_PFM,"pfm");}}

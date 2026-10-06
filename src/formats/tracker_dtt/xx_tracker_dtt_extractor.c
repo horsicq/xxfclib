@@ -6,7 +6,7 @@ static Abstractformat *open_reader(xx_io_device *d) {xx_tracker_dtt *r=xx_tracke
 static void close_reader(Abstractformat *f) {xx_tracker_dtt_free((xx_tracker_dtt *)f);}
 static const uint8_t bytes_0[]={0x44,0x73,0x6b,0x54};
 static const xx_format_search_anchor anchors[]={{bytes_0,sizeof(bytes_0),0}};
-static const xx_format_search_desc desc={types,1U,anchors,1U,open_reader,close_reader};
+static const xx_format_search_desc desc={types,1U,anchors,1U,open_reader,close_reader, false};
 static xx_format_search_state *create_search(xx_format_extractor *x,xx_io_device *d,const xx_list_s *o,xx_pd_struct *pd) {(void)x;return xx_format_search_create(&desc,d,o,pd);}
 static const xx_format_search_info *current_search(xx_format_extractor *x,xx_format_search_state *s) {(void)x;return xx_format_search_current(s);}
 static bool next_search(xx_format_extractor *x,xx_format_search_state *s,xx_pd_struct *pd) {(void)x;return xx_format_search_find_next(s,pd);}

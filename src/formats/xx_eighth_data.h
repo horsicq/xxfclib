@@ -10,7 +10,7 @@ static bool eh_take(Abstractformat *f,uint64_t *at,uint64_t end,void *p,size_t n
 static bool eh_word(Abstractformat *f,uint64_t *at,uint64_t end,bool be,uint32_t *v,xx_pd_struct *pd) {
     uint8_t p[4];if(!eh_take(f,at,end,p,4,pd)) return false;*v=fd_u32(p,be);return true;
 }
-static bool eh_float_array(Abstractformat *f,uint64_t at,uint64_t bytes,unsigned width,bool be,xx_pd_struct *pd) {
+static XXFC_MAYBE_UNUSED bool eh_float_array(Abstractformat *f,uint64_t at,uint64_t bytes,unsigned width,bool be,xx_pd_struct *pd) {
     size_t capacity=xx_get_file_buffer_size(),i; uint64_t done=0; unsigned used=0;
     uint8_t *p,word[8]; bool result=true;
     if((width!=4 && width!=8) || bytes%width || !eh_span(at,bytes,(uint64_t)pm_available(f))) return false;
@@ -32,7 +32,7 @@ static bool eh_float_array(Abstractformat *f,uint64_t at,uint64_t bytes,unsigned
     }
     xx_mem_free(p);return result;
 }
-static bool eh_utf16_end(Abstractformat *f,uint64_t at,uint64_t end,xx_pd_struct *pd) {
+static XXFC_MAYBE_UNUSED bool eh_utf16_end(Abstractformat *f,uint64_t at,uint64_t end,xx_pd_struct *pd) {
     uint8_t p[2];unsigned i;bool high=false;
     for(i=0;i<4096;++i) {uint16_t ch;if(!eh_take(f,&at,end,p,2,pd)) return false;ch=pm_le16(p);
         if(!ch) return !high;
@@ -41,10 +41,10 @@ static bool eh_utf16_end(Abstractformat *f,uint64_t at,uint64_t end,xx_pd_struct
         else if(ch>=0xdc00 && ch<=0xdfff) return false;
     }return false;
 }
-static bool eh_i32_string(Abstractformat *f,uint64_t *at,uint64_t end,bool be,bool empty,xx_pd_struct *pd) {
+static XXFC_MAYBE_UNUSED bool eh_i32_string(Abstractformat *f,uint64_t *at,uint64_t end,bool be,bool empty,xx_pd_struct *pd) {
     unsigned i;uint32_t c;for(i=0;i<256;++i) {if(!eh_word(f,at,end,be,&c,pd)) return false;if(!c) return empty || i!=0;if(c<32 || c>126) return false;}return false;
 }
-static bool eh_no_overlap(uint64_t a,uint64_t n,uint64_t b,uint64_t m) {return !n || !m || a>=b+m || b>=a+n;}
+static XXFC_MAYBE_UNUSED bool eh_no_overlap(uint64_t a,uint64_t n,uint64_t b,uint64_t m) {return !n || !m || a>=b+m || b>=a+n;}
 typedef struct eh_bytes {Abstractformat *f;xx_pd_struct *pd;uint64_t at,end,start;size_t count,capacity;uint8_t *bytes;} eh_bytes;
 static bool eh_byte(eh_bytes *r,uint8_t *b) {
     if(fd_stop(r->pd) || r->at>=r->end) return false;
@@ -53,7 +53,7 @@ static bool eh_byte(eh_bytes *r,uint8_t *b) {
     *b=r->bytes[(size_t)(r->at-r->start)];++r->at;return true;
 }
 /* Validate bounded JPEG marker/scan framing; entropy-coded pixels stay encoded. */
-static bool eh_jpeg(Abstractformat *f,uint64_t at,uint64_t end,xx_pd_struct *pd) {
+static XXFC_MAYBE_UNUSED bool eh_jpeg(Abstractformat *f,uint64_t at,uint64_t end,xx_pd_struct *pd) {
     eh_bytes r;bool buffer_result=false;uint8_t a,b,marker=0;unsigned segments=0;bool sof=false,scan=false;
     xx_mem_zero(&r,sizeof(r));r.f=f;r.pd=pd;r.at=at;r.end=end;r.capacity=xx_get_file_buffer_size();
     if(!eh_byte(&r,&a) || !eh_byte(&r,&b) || a!=255 || b!=216) { buffer_result = (false); goto buffer_done; }

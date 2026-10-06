@@ -71,9 +71,9 @@ static void wep_put32(uint8_t *p,uint32_t v){p[0]=(uint8_t)v;p[1]=(uint8_t)(v>>8
 static void wep_put64(uint8_t *p,uint64_t v){wep_put32(p,(uint32_t)v);wep_put32(p+4,(uint32_t)(v>>32));}
 static void wep_close(wep_process *p){
 #ifdef _WIN32
- if(p->input)CloseHandle(p->input);if(p->output)CloseHandle(p->output);if(p->write_event)CloseHandle(p->write_event);if(p->process){if(WaitForSingleObject(p->process,100)!=WAIT_OBJECT_0){TerminateProcess(p->process,2);WaitForSingleObject(p->process,1000);}CloseHandle(p->process);}if(p->job)CloseHandle(p->job);
+ if(p->input) {CloseHandle(p->input); } if(p->output)CloseHandle(p->output);if(p->write_event)CloseHandle(p->write_event);if(p->process){if(WaitForSingleObject(p->process,100)!=WAIT_OBJECT_0){TerminateProcess(p->process,2);WaitForSingleObject(p->process,1000);}CloseHandle(p->process);}if(p->job)CloseHandle(p->job);
 #else
- if(p->input>=0)close(p->input);if(p->output>=0)close(p->output);if(p->process>0){int status;if(waitpid(p->process,&status,WNOHANG)==0){kill(p->process,SIGKILL);while(waitpid(p->process,&status,0)<0&&errno==EINTR){}}}
+ if(p->input>=0) {close(p->input); } if(p->output>=0)close(p->output);if(p->process>0){int status;if(waitpid(p->process,&status,WNOHANG)==0){kill(p->process,SIGKILL);while(waitpid(p->process,&status,0)<0&&errno==EINTR){}}}
 #endif
 }
 static bool wep_start(wep_process *p,const char *helper,uint64_t memory){
@@ -96,7 +96,7 @@ static bool wep_start(wep_process *p,const char *helper,uint64_t memory){
  InitializeProcThreadAttributeList(NULL,1,0,&attribute_size);si.lpAttributeList=HeapAlloc(GetProcessHeap(),0,attribute_size);if(!si.lpAttributeList||!InitializeProcThreadAttributeList(si.lpAttributeList,1,0,&attribute_size))goto done;attributes_live=true;handles[0]=child_read;handles[1]=child_write;if(!UpdateProcThreadAttribute(si.lpAttributeList,0,PROC_THREAD_ATTRIBUTE_HANDLE_LIST,handles,sizeof(handles),NULL,NULL))goto done;
  si.StartupInfo.dwFlags=STARTF_USESTDHANDLES;si.StartupInfo.hStdInput=child_read;si.StartupInfo.hStdOutput=child_write;si.StartupInfo.hStdError=child_write;
  p->job=CreateJobObjectW(NULL,NULL);if(!p->job)goto done;xx_rt_memset(&limits,0,sizeof(limits));limits.BasicLimitInformation.LimitFlags=JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE|JOB_OBJECT_LIMIT_PROCESS_MEMORY;limits.ProcessMemoryLimit=(SIZE_T)(memory+32U*1024U*1024U);if(!SetInformationJobObject(p->job,JobObjectExtendedLimitInformation,&limits,sizeof(limits)))goto done;
- if(!CreateProcessW(converted?converted:path,command,NULL,NULL,TRUE,EXTENDED_STARTUPINFO_PRESENT|CREATE_NO_WINDOW|CREATE_SUSPENDED,NULL,NULL,&si.StartupInfo,&pi))goto done;p->process=pi.hProcess;if(!AssignProcessToJobObject(p->job,pi.hProcess)){TerminateProcess(pi.hProcess,2);CloseHandle(pi.hThread);goto done;}if(ResumeThread(pi.hThread)==(DWORD)-1){CloseHandle(pi.hThread);goto done;}CloseHandle(pi.hThread);ok=true;
+ if(!CreateProcessW(converted?converted:path,command,NULL,NULL,TRUE,EXTENDED_STARTUPINFO_PRESENT|CREATE_NO_WINDOW|CREATE_SUSPENDED,NULL,NULL,&si.StartupInfo,&pi)) {goto done; } p->process=pi.hProcess;if(!AssignProcessToJobObject(p->job,pi.hProcess)){TerminateProcess(pi.hProcess,2);CloseHandle(pi.hThread);goto done;}if(ResumeThread(pi.hThread)==(DWORD)-1){CloseHandle(pi.hThread);goto done;}CloseHandle(pi.hThread);ok=true;
 done:if(child_read)CloseHandle(child_read);if(child_write)CloseHandle(child_write);if(si.lpAttributeList){if(attributes_live)DeleteProcThreadAttributeList(si.lpAttributeList);HeapFree(GetProcessHeap(),0,si.lpAttributeList);}if(command)HeapFree(GetProcessHeap(),0,command);if(converted)xx_str_wfree(converted);return ok;
 #else
  int in[2]={-1,-1},out[2]={-1,-1};char path[4096];pid_t pid;p->input=p->output=-1;if(!helper){ssize_t n=readlink("/proc/self/exe",path,sizeof(path)-1);if(n<=0||n>=(ssize_t)sizeof(path)-32)return false;while(n&&path[n-1]!='/')--n;if(!n)return false;xx_rt_memcpy(path+n,"xfu_wim_codec_helper",sizeof("xfu_wim_codec_helper"));helper=path;}if(socketpair(WEP_UNIX,SOCK_STREAM,0,in)||socketpair(WEP_UNIX,SOCK_STREAM,0,out))goto failed;pid=fork();if(pid<0)goto failed;if(!pid){struct rlimit limit;limit.rlim_cur=limit.rlim_max=(rlim_t)(memory+32U*1024U*1024U);if(setrlimit(RLIMIT_AS,&limit))_exit(126);dup2(in[0],STDIN_FILENO);dup2(out[1],STDOUT_FILENO);dup2(out[1],STDERR_FILENO);close(in[0]);close(in[1]);close(out[0]);close(out[1]);execl(helper,helper,(char *)NULL);_exit(127);}close(in[0]);close(out[1]);p->input=in[1];p->output=out[0];p->process=pid;fcntl(p->input,F_SETFL,fcntl(p->input,F_GETFL)|O_NONBLOCK);return true;
@@ -114,7 +114,7 @@ static wimw_encoder *wimw_encoder_create(unsigned method,unsigned level,uint64_t
 #ifndef _WIN32
  e->process.input=e->process.output=-1;
 #endif
- if(!wep_live(&e->process)||!wep_start(&e->process,NULL,worker))goto fail;xx_rt_memcpy(h,"WCE1",4);wep_put32(h+4,method);wep_put32(h+8,level);wep_put32(h+12,32768);wep_put64(h+16,worker);
+ if(!wep_live(&e->process)||!wep_start(&e->process,NULL,worker)) {goto fail; } xx_rt_memcpy(h,"WCE1",4);wep_put32(h+4,method);wep_put32(h+8,level);wep_put32(h+12,32768);wep_put64(h+16,worker);
  if(!wep_output(&e->process,h,32)||!wep_input(&e->process,h,16))goto fail;
  if(xx_rt_memcmp(h,"WCR1",4)||wep_le32(h+4)||wep_le64(h+8)>worker){e->process.status=wep_le32(h+4)==2?WEP_LIMIT:WEP_UNAVAILABLE;goto fail;}
  e->process.status=WEP_OK;return e;

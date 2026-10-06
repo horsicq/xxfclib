@@ -84,7 +84,7 @@ static bool pdp11ar_zero_tail_buffered(Abstractformat *format, int64_t offset,
         size_t portion = (uint64_t)size > (uint64_t)buffer_capacity ? buffer_capacity :
                                                           (size_t)size;
         size_t index;
-        if (pd && xx_pd_is_stopped(pd) ||
+        if ((pd && xx_pd_is_stopped(pd)) ||
             !pdp11ar_read_at(format->device, offset, buffer, portion))
             return false;
         for (index = 0U; index < portion; ++index) {
@@ -196,7 +196,7 @@ static bool pdp11ar_parse(Abstractformat *format, pdp11ar_stream **result,
         pdp11ar_member member;
         int64_t data_offset;
         int64_t stride;
-        if (pd && xx_pd_is_stopped(pd) || stream->count >= PDP11AR_MAX_MEMBERS ||
+        if ((pd && xx_pd_is_stopped(pd)) || stream->count >= PDP11AR_MAX_MEMBERS ||
             size - offset < (int64_t)sizeof(header) ||
             !pdp11ar_read_at(format->device, format->base_address + offset,
                              header, sizeof(header)))
@@ -321,7 +321,7 @@ static bool pdp11ar_verify_member_buffered(Abstractformat *format,
     remaining = member->size;
     while (remaining != 0U) {
         size_t portion = remaining > buffer_capacity ? buffer_capacity : remaining;
-        if (pd && xx_pd_is_stopped(pd) ||
+        if ((pd && xx_pd_is_stopped(pd)) ||
             !pdp11ar_read_at(format->device, offset, buffer, portion))
             return false;
         offset += (int64_t)portion;

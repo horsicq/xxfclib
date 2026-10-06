@@ -35,7 +35,7 @@ static bool vrml_node(tg_lex *q,unsigned depth,unsigned expected,uint32_t *point
   else if(kind==14){VF("bottomRadius",1,7) else VF("height",2,7) else VF("bottom",3,10) else VF("side",4,10)}
   else if(kind==15){VF("radius",1,7) else VF("height",2,7) else VF("bottom",3,10) else VF("top",4,10) else VF("side",5,10)}
 #undef VF
-  if(!field||(fields&(1U<<field)))return false;fields|=1U<<field;
+  if(!field||(fields&(1U<<field))) {return false; } fields|=1U<<field;
   if(mode==1){unsigned count=0;bool array=tg_char(q,'[');if(array&&tg_char(q,']'))continue;do {if(++count>4096||!vrml_node(q,depth+1,0,&unused,&child)||!vrml_child(child))return false;if(array&&tg_char(q,']'))break;if(!array)break;}while(count<=4096);}
   else if(mode==2){if(!vrml_node(q,depth+1,0,&unused,&child)||(child!=6&&child!=7&&child!=9&&child!=14&&child!=15))return false;}
   else if(mode==14||mode==15||mode==16){if(!vrml_node(q,depth+1,mode==14?4:mode==15?5:8,&unused,&child))return false;if(mode==16)coords=unused;}
@@ -48,15 +48,15 @@ static bool vrml_node(tg_lex *q,unsigned depth,unsigned expected,uint32_t *point
   else if(mode==8){if(!tg_char(q,'['))return false;while(!tg_char(q,']')){if(++coords>100000||!vrml_vec(q,3,false,false))return false;}if(!coords)return false;}
   else if(mode==9){int32_t index;if(!tg_char(q,'['))return false;while(!tg_char(q,']')){if(++indices>300000||!tg_integer(q,&index)||index<-1)return false;if(index==-1){if(facepoints<3)return false;facepoints=0;if(++faces>100000)return false;}else {if((uint32_t)index>maxindex)maxindex=(uint32_t)index;haveindex=true;++facepoints;}}if(facepoints){if(facepoints<3)return false;++faces;}}
  }
- if(kind==8&&(!coords||(fields&(1<<1))==0))return false;if(kind==9&&(!coords||!faces||!haveindex||maxindex>=coords))return false;
- if(kind==3&&!(fields&(1<<1)))return false;if(points)*points=coords;if(kindout)*kindout=kind;return true;
+ if(kind==8&&(!coords||(fields&(1<<1))==0)) {return false; } if(kind==9&&(!coords||!faces||!haveindex||maxindex>=coords))return false;
+ if(kind==3&&!(fields&(1<<1))) {return false; } if(points)*points=coords;if(kindout)*kindout=kind;return true;
 }
 static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  tg_text line={b,0,n,0,0,0};tg_lex q;unsigned roots=0;uint32_t points;unsigned kind;
  if(!tg_utf(b,n,false,pd)||!tg_line(&line)||line.stop<15||!tg_tag(b,"#VRML V2.0 utf8",15)||(line.stop>15&&b[15]!=32&&b[15]!=9)||!tg_emit(f,s,"descriptor.wrl",0,line.p,n))return false;
  q.b=b;q.p=line.p;q.n=n;q.pd=pd;q.work=0;q.hash=true;q.commas=true;q.comments=false;
  while(!tg_end(&q)){uint64_t start;if(!tg_skip(&q))return false;start=q.p;if(++roots>4093||!vrml_node(&q,0,0,&points,&kind)||!vrml_child(kind)||!tg_emit(f,s,"node.wrl",start,q.p-start,n))return false;}
- if(!roots||!tg_cover(f,s,"comments.wrl",n))return false;s->size=(int64_t)n;return true;
+ if(!roots||!tg_cover(f,s,"comments.wrl",n)) {return false; } s->size=(int64_t)n;return true;
 }
 
 void xx_vrml_scene_init(xx_vrml_scene *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_VRML_SCENE,"wrl");}}

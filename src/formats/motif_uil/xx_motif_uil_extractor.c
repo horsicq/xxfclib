@@ -31,7 +31,7 @@ static const xx_format_search_anchor anchors[] = { {anchor_bytes,sizeof(anchor_b
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     anchors, 1U,
-    xx_motif_uil_search_open, xx_motif_uil_search_close
+    xx_motif_uil_search_open, xx_motif_uil_search_close, false
 };
 
 static xx_format_search_state *xx_motif_uil_create_format_search(

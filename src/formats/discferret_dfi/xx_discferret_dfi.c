@@ -6,7 +6,7 @@
 #include "../hxc_afi/xx_hxc_tracks.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  hx_blob b;uint64_t at=4;uint32_t count=0;bool v2,ok=false;char name[96],info[256];
- if(!hx_load(f,&b,pd))return false;v2=hx_tag(&b,0,"DFE2",4);HX_NEED(v2||hx_tag(&b,0,"DFER",4));HX_NEED(hx_emit(f,s,&b,"descriptor.dfi",0,4));
+ if(!hx_load(f,&b,pd)) {return false; } v2=hx_tag(&b,0,"DFE2",4);HX_NEED(v2||hx_tag(&b,0,"DFER",4));HX_NEED(hx_emit(f,s,&b,"descriptor.dfi",0,4));
  while(at<b.n){uint32_t cyl,head,sector,z,k;uint64_t carry=0;
   HX_NEED(count<1024&&hx_span(&b,at,10));cyl=pm_be16(b.p+at);head=pm_be16(b.p+at+2);sector=pm_be16(b.p+at+4);z=pm_be32(b.p+at+6);
   HX_NEED(cyl<=255&&head<=15&&z<=8U*1024U*1024U&&hx_span(&b,at+10,z)&&hx_work(&b,z));

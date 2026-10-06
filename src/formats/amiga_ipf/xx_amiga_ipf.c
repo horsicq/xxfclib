@@ -7,10 +7,10 @@
 typedef struct ipf_track {uint32_t key,imge,data,size;} ipf_track;
 static bool ipf_stream(tc_blob *b,uint32_t a,uint32_t end,uint32_t cells,bool bits,uint32_t *used) {
  uint32_t start=a,left=cells;while(a<end) {uint32_t v=b->p[a++],bytes=v>>5,param=0,i,kind=v&31;uint64_t amount,n;
-  if(!tc_work(b,1) || bytes>4 || bytes>end-a) return false;for(i=0;i<bytes;++i) param=(param<<8)|b->p[a++];
+  if(!tc_work(b,1) || bytes>4 || bytes>end-a) { return false; } for(i=0;i<bytes;++i) param=(param<<8)|b->p[a++];
   if(!kind) {if(v || left) return false;*used=a-start;return true;}
-  if(!bytes || !param || kind>3) return false;amount=bits ? param:(uint64_t)param*8;n=(amount+7)/8;
-  if(kind!=1) amount*=2;if(amount>left || n>end-a) return false;a+=(uint32_t)n;left-=(uint32_t)amount;
+  if(!bytes || !param || kind>3) { return false; } amount=bits ? param:(uint64_t)param*8;n=(amount+7)/8;
+  if(kind!=1) { amount*=2; } if(amount>left || n>end-a) return false;a+=(uint32_t)n;left-=(uint32_t)amount;
  }return false;
 }
 static bool ipf_data(tc_blob *b,const ipf_track *t,uint32_t encoder) {
@@ -19,14 +19,14 @@ static bool ipf_data(tc_blob *b,const ipf_track *t,uint32_t encoder) {
  for(i=0;i<n;++i) {uint32_t q=t->data+i*32,dc=pm_be32(p+q),gc=pm_be32(p+q+4),flags=pm_be32(p+q+20),off=pm_be32(p+q+28),used;
   if(!dc || dc>2000000 || gc>2000000 || (gc && gc<8) || pm_be32(p+q+16)!=1 || (flags&~4U) || (encoder==1 && flags) || pm_be32(p+q+24)>255 || off<table || off>=t->size) return false;
   if(!ipf_stream(b,t->data+off,end,dc,encoder==2 && (flags&4),&used) || !tc_claim(b,ext,&count,t->data+off,used,false)) return false;
-  if(t->data+off+used>maxend) maxend=t->data+off+used;data+=dc;gaps+=gc;cells+=(uint64_t)dc+gc;
+  if(t->data+off+used>maxend) { maxend=t->data+off+used; } data+=dc;gaps+=gc;cells+=(uint64_t)dc+gc;
  }if(cells>2000000 || cells!=pm_be32(p+t->imge+48) || data!=pm_be32(p+t->imge+40) || gaps!=pm_be32(p+t->imge+44) || end-maxend>3 || !tc_zero(p+maxend,end-maxend)) return false;return true;
 }
 static bool read_components(Abstractformat *f,pm_stream *s,tc_blob *b) {
  const uint8_t *p=b->p;uint32_t a=0,n=0,info=0,encoder=0,minc=0,maxc=0,minh=0,maxh=0,i,z,crc;ipf_track tracks[170];char label[64];
- if(b->n<12 || xx_rt_memcmp(p,"CAPS",4)) return false;xx_mem_zero(tracks,sizeof(tracks));
+ if(b->n<12 || xx_rt_memcmp(p,"CAPS",4)) { return false; } xx_mem_zero(tracks,sizeof(tracks));
  while(a<b->n) {uint32_t start=a;if(!tc_span(b,a,12) || !tc_work(b,1)) return false;z=pm_be32(p+a+4);
-  if(z<12 || !tc_span(b,a,z) || !tc_crc(b,a,z,true,&crc) || crc!=pm_be32(p+a+8)) return false;a+=z;
+  if(z<12 || !tc_span(b,a,z) || !tc_crc(b,a,z,true,&crc) || crc!=pm_be32(p+a+8)) { return false; } a+=z;
   if(!xx_rt_memcmp(p+start,"CAPS",4)) {if(start || z!=12) return false;}
   else if(!xx_rt_memcmp(p+start,"INFO",4)) {if(start!=12 || info++ || z!=96 || pm_be32(p+start+12)!=1 || pm_be32(p+start+20)!=1) return false;
    encoder=pm_be32(p+start+16);minc=pm_be32(p+start+36);maxc=pm_be32(p+start+40);minh=pm_be32(p+start+44);maxh=pm_be32(p+start+48);
@@ -36,7 +36,7 @@ static bool read_components(Abstractformat *f,pm_stream *s,tc_blob *b) {
    for(i=0;i<n;++i) if(tracks[i].key==key || (pm_be32(p+tracks[i].imge+12)==c && pm_be32(p+tracks[i].imge+16)==h)) return false;
    tracks[n].key=key;tracks[n].imge=start;++n;
   }else if(!xx_rt_memcmp(p+start,"DATA",4)) {uint32_t key,size,bits;ipf_track *t=NULL;if(!info || z!=28) return false;key=pm_be32(p+start+24);size=pm_be32(p+start+12);bits=pm_be32(p+start+16);
-   for(i=0;i<n;++i) if(tracks[i].key==key) t=&tracks[i];if(!t || t->data || !size || !tc_span(b,a,size) || bits!=(uint64_t)size*8 || !tc_crc(b,a,size,false,&crc) || crc!=pm_be32(p+start+20)) return false;
+   for(i=0;i<n;++i) { if(tracks[i].key==key) t=&tracks[i]; } if(!t || t->data || !size || !tc_span(b,a,size) || bits!=(uint64_t)size*8 || !tc_crc(b,a,size,false,&crc) || crc!=pm_be32(p+start+20)) return false;
    t->data=a;t->size=size;a+=size;
   }else return false;
  }if(!info || !n) return false;

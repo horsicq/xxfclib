@@ -17,7 +17,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     while(at<have && h[at]>='0' && h[at]<='9') { version=version*10+h[at++]-'0'; if(version>5) return false; }
     if(at+8>have || h[at++]!='\n' || (h[at]!='0' && h[at]!='1')) return false;
     compressed=h[at++]-'0';
-    if(h[at++]!='\n' || xx_rt_memcmp(h+at,"none\n",5)) return false; at+=5;
+    if(h[at++]!='\n' || xx_rt_memcmp(h+at,"none\n",5)) { return false; } at+=5;
     bytes=pm_available(f)-(int64_t)at; if(bytes<6) return false;
     if(!compressed) {
         if(bytes<1024 || bytes%512 || !pm_add(f,s,"backup.tar",(int64_t)at,bytes)) return false;

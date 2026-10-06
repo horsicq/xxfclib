@@ -19,9 +19,9 @@ static bool finite32(const uint8_t *p,bool be) { return (g32(p,be)&0x7f800000U)!
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[244],e[80],p[2]; uint32_t total,count,table,skinrefs,families,skins,i,w,height,data; uint64_t metadata_end,skinbytes; char label[40];
-    if(!pm_read(f,0,h,244) || xx_rt_memcmp(h,"IDST",4) || pm_le32(h+4)!=10 || !xx_rt_memchr(h+8,0,64)) return false; total=pm_le32(h+72);
-    if(total<244 || total>(uint64_t)pm_available(f)) return false; for(i=76;i<136;i+=4) if(!finite32(h+i,false)) return false;
-    for(i=140;i<180;i+=4) if(pm_le32(h+i)) return false; for(i=204;i<244;i+=4) if(pm_le32(h+i)) return false;
+    if(!pm_read(f,0,h,244) || xx_rt_memcmp(h,"IDST",4) || pm_le32(h+4)!=10 || !xx_rt_memchr(h+8,0,64)) { return false; } total=pm_le32(h+72);
+    if(total<244 || total>(uint64_t)pm_available(f)) { return false; } for(i=76;i<136;i+=4) if(!finite32(h+i,false)) return false;
+    for(i=140;i<180;i+=4) { if(pm_le32(h+i)) return false; } for(i=204;i<244;i+=4) if(pm_le32(h+i)) return false;
     count=pm_le32(h+180); table=pm_le32(h+184); skinrefs=pm_le32(h+192); families=pm_le32(h+196); skins=pm_le32(h+200); skinbytes=(uint64_t)skinrefs*families*2;
     if(!count || count>100 || table<244 || !span(table,(uint64_t)count*80,total) || skinrefs>100 || families>100 || (!!skinrefs!=!!families) || (skinbytes && (skins<244 || !span(skins,skinbytes,total) || overlap(table,(uint64_t)count*80,skins,skinbytes)))) return false;
     metadata_end=(uint64_t)table+count*80; if(skinbytes && skins+skinbytes>metadata_end) metadata_end=skins+skinbytes;
@@ -31,7 +31,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
       xx_rt_snprintf(label,sizeof(label),"texture-%u.indices",i); if(!emit(f,s,label,data,(uint64_t)w*height,total)) return false;
       xx_rt_snprintf(label,sizeof(label),"texture-%u.rgb-palette",i); if(!emit(f,s,label,(uint64_t)data+w*height,768,total)) return false; }
     for(i=0;i<skinbytes/2;++i) if(stop(pd) || !pm_read(f,(int64_t)skins+i*2,p,2) || pm_le16(p)>=count) return false;
-    if(skinbytes && !emit(f,s,"skin-families.bin",skins,skinbytes,total)) return false; s->size=total; return true;
+    if(skinbytes && !emit(f,s,"skin-families.bin",skins,skinbytes,total)) { return false; } s->size=total; return true;
 
 }
 

@@ -7,7 +7,7 @@
 static const xx_file_type_t types[] = {XX_FILE_TYPE_RIP_MESSAGE};
 static Abstractformat *open_reader(xx_io_device *d) { xx_rip_message *r=xx_rip_message_create(d,0); return r ? &r->format : NULL; }
 static void close_reader(Abstractformat *f) { xx_rip_message_free((xx_rip_message *)f); }
-static const xx_format_search_desc desc = {types,1U,NULL,0U,open_reader,close_reader};
+static const xx_format_search_desc desc = {types,1U,NULL,0U,open_reader,close_reader, false};
 static xx_format_search_state *create_search(xx_format_extractor *x,xx_io_device *d,const xx_list_s *o,xx_pd_struct *pd) { (void)x; return xx_format_search_create(&desc,d,o,pd); }
 static const xx_format_search_info *current_search(xx_format_extractor *x,xx_format_search_state *s) { (void)x; return xx_format_search_current(s); }
 static bool next_search(xx_format_extractor *x,xx_format_search_state *s,xx_pd_struct *pd) { (void)x; return xx_format_search_find_next(s,pd); }

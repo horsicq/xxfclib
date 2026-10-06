@@ -21,6 +21,6 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd){uint8_t h[
  for(c=0;c<h[19];++c)for(head=0;head<h[17];++head){xx_rt_snprintf(name,sizeof(name),"c%03u-h%u-sectors.img",c,head);if(!wc_track(f,s,&at,c,head,h[18],pd,name))return false;}
  for(i=0;i<4U;++i)if(h[20U+i]){xx_rt_snprintf(name,sizeof(name),"extra-c%03u-h%u-sectors.img",h[19]+i/2U,i&1U);if(!wc_track(f,s,&at,h[19]+i/2U,i&1U,h[18],pd,name))return false;}
  for(i=0;i<2U;++i)if(h[24]&(1U<<i)){uint32_t n;if(!da_read(f,at,x,6,pd)||x[0]!=3U+i)return false;n=pm_le16(x+4);at+=6;if(!da_add(f,s,i?"directory.txt":"comment.txt",at,n))return false;at+=n;}
- if(at!=(uint64_t)pm_available(f))return false;s->size=(int64_t)at;return da_poll(pd);
+ if(at!=(uint64_t)pm_available(f)) {return false; } s->size=(int64_t)at;return da_poll(pd);
 }
 DA_API(wc_disk_image,XX_FILE_TYPE_WC_DISK_IMAGE,"d2f")

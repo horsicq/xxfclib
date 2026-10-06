@@ -33,7 +33,7 @@ static void xx_pm_shift_model_model_b_3( model_b* model, int ctx1, int ctx2 ) {
  xx_pm_model_b_shift_context(model,  ctx1 );
  xx_pm_model_b_shift_context(model,  ctx2 );
 }
-static void xx_pm_shift_model_model_b_4( model_b* model, int ctx1, int ctx2, int ctx3 ) {
+static XXFC_MAYBE_UNUSED void xx_pm_shift_model_model_b_4( model_b* model, int ctx1, int ctx2, int ctx3 ) {
  xx_pm_model_b_shift_context(model,  ctx1 );
  xx_pm_model_b_shift_context(model,  ctx2 );
  xx_pm_model_b_shift_context(model,  ctx3 );
@@ -138,7 +138,7 @@ static void xx_pm_aricoder_destroy(aricoder *self) {
 
 static void xx_pm_aricoder_delete(aricoder *self) {if (self) { xx_pm_aricoder_destroy(self); xx_pm_free(self->ctx, self); }}
 
-static void xx_pm_aricoder_encode(aricoder *self, symbol* s) {
+static XXFC_MAYBE_UNUSED void xx_pm_aricoder_encode(aricoder *self, symbol* s) {
  if (!self || !self->ctx || self->ctx->failed) return;
  if (!s || !s->scale || s->scale >= XX_PM_ARITH_LIMIT / 4U ||
      s->low_count >= s->high_count || s->high_count > s->scale ||
@@ -294,7 +294,7 @@ static void xx_pm_model_s_init(model_s *self, int max_s, int max_c, int max_o, i
  for ( i = 0; i < self->max_symbol; i++ )
   null_table->counts[ i ] = 1;
  null_table->max_count = 1;
- null_table->max_symbol = self->max_symbol;
+ null_table->max_symbol = (unsigned short)self->max_symbol;
  start_table = ( table_s* ) xx_pm_calloc(self->ctx,  1, sizeof( table_s ) );
     if ( start_table == NULL ) { self->error = true; xx_pm_entropy_fail(self->ctx, __LINE__); return; };
  start_table->links = self->max_context ? (table_s **)xx_pm_calloc(self->ctx, self->max_context, sizeof(table_s *)) : NULL;
@@ -372,7 +372,7 @@ static void xx_pm_model_s_update_model(model_s *self, int symbol) {
    counts = context->counts + symbol;
    (*counts)++;
    if ( (*counts) > context->max_count ) context->max_count = (*counts);
-   if ( symbol >= context->max_symbol ) context->max_symbol = symbol+1;
+   if ( symbol >= context->max_symbol ) context->max_symbol = (unsigned short)(symbol+1);
    if ( (*counts) >= self->max_count )
     xx_pm_model_s_rescale_table(self, context, 1 );
   }
@@ -421,7 +421,7 @@ static void xx_pm_model_s_flush_model(model_s *self, int scale_factor) {
  xx_pm_model_s_recursive_flush(self, self->contexts[ 0 ], scale_factor );
 }
 
-static void xx_pm_model_s_exclude_symbols(model_s *self, char rule, int c) {
+static XXFC_MAYBE_UNUSED void xx_pm_model_s_exclude_symbols(model_s *self, char rule, int c) {
  if (!self || !self->ctx || self->ctx->failed) return;
  if (!self->scoreboard || c < -1 || c > self->max_symbol ||
      (rule == 'e' && (c < 0 || c >= self->max_symbol))) {
@@ -456,7 +456,7 @@ static void xx_pm_model_s_exclude_symbols(model_s *self, char rule, int c) {
  }
 }
 
-static int xx_pm_model_s_convert_int_to_symbol(model_s *self, int c, symbol *s) {
+static XXFC_MAYBE_UNUSED int xx_pm_model_s_convert_int_to_symbol(model_s *self, int c, symbol *s) {
  table_s* context;
  if (!self || !self->ctx || self->ctx->failed) return 0;
  if (!s || !self->contexts || c < -1 || c >= self->max_symbol ||
@@ -576,7 +576,7 @@ static void xx_pm_model_s_rescale_table(model_s *self, table_s* context, int sca
  context->max_count >>= scale_factor;
  for ( i = lst_symbol - 1; i >= 0; i-- )
   if ( counts[ i ] > 0 ) break;
- context->max_symbol = i + 1;
+ context->max_symbol = (unsigned short)(i + 1);
 }
 
 static void xx_pm_model_s_recursive_flush(model_s *self, table_s* context, int scale_factor) {
@@ -729,7 +729,7 @@ static void xx_pm_model_b_flush_model(model_b *self, int scale_factor) {
  xx_pm_model_b_recursive_flush(self, self->contexts[ 0 ], scale_factor );
 }
 
-static int xx_pm_model_b_convert_int_to_symbol(model_b *self, int c, symbol *s) {
+static XXFC_MAYBE_UNUSED int xx_pm_model_b_convert_int_to_symbol(model_b *self, int c, symbol *s) {
  table* context;
  if (!self || !self->ctx || self->ctx->failed) return 0;
  if (!s || !self->contexts || c < 0 || c > 1) { self->error = true; xx_pm_entropy_fail(self->ctx, __LINE__); return 0; }

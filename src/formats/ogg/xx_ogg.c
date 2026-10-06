@@ -30,7 +30,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,at,h,27)) return false;
         if(xx_rt_memcmp(h,"OggS",4)) { if(all_ended) break; return false; }
         flags=h[5]; n=h[26]; if(h[4] || (flags&~7U) || !pm_read(f,at+27,lace,n)) return false;
-        for(i=0;i<n;++i) body+=lace[i]; page=27+(int64_t)n+body;
+        for(i=0;i<n;++i) { body+=lace[i]; } page=27+(int64_t)n+body;
         if(page>limit-at || !og_crc(f,at,page,pm_le32(h+22))) return false;
         serial=pm_le32(h+14); seq=pm_le32(h+18);
         for(k=0;k<count && streams[k].serial!=serial;++k) {}
@@ -42,7 +42,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         xx_rt_snprintf(name,sizeof(name),"page-%u-%u.encoded",serial,seq); if(!pm_add(f,s,name,at+27+n,body)) return false;
         at+=page; all_ended=true; for(k=0;k<count;++k) if(!streams[k].ended) all_ended=false;
     }
-    if(!count || !all_ended) return false; s->size=at; return true;
+    if(!count || !all_ended) { return false; } s->size=at; return true;
 }
 
 void xx_ogg_init(xx_ogg *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_OGG,"ogg"); } }

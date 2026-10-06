@@ -10,7 +10,7 @@ static const uint8_t bytes_1[] = {176,233,255,239};
 static const uint8_t bytes_2[] = {42,227,137,184};
 static const uint8_t bytes_3[] = {184,137,227,42};
 static const xx_format_search_anchor anchors[] = {{bytes_0,sizeof(bytes_0),252},{bytes_1,sizeof(bytes_1),252},{bytes_2,sizeof(bytes_2),252},{bytes_3,sizeof(bytes_3),252}};
-static const xx_format_search_desc desc = {types,1U,anchors,sizeof(anchors)/sizeof(anchors[0]),open_reader,close_reader};
+static const xx_format_search_desc desc = {types,1U,anchors,sizeof(anchors)/sizeof(anchors[0]),open_reader,close_reader, false};
 static xx_format_search_state *create_search(xx_format_extractor *x,xx_io_device *d,const xx_list_s *o,xx_pd_struct *pd) { (void)x; return xx_format_search_create(&desc,d,o,pd); }
 static const xx_format_search_info *current_search(xx_format_extractor *x,xx_format_search_state *s) { (void)x; return xx_format_search_current(s); }
 static bool next_search(xx_format_extractor *x,xx_format_search_state *s,xx_pd_struct *pd) { (void)x; return xx_format_search_find_next(s,pd); }

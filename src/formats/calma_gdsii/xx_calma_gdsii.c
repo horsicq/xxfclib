@@ -42,7 +42,7 @@ static bool tb_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
    else if(type==43){GS(dtype==2&&size==2&&pm_be16(data)>0&&!(seen&512));seen|=512;}
    else if(type==44){GS(dtype==6&&size&&size<=4096&&(seen&512)&&tb_utf(data,size-(data[size-1]==0),false,pd));seen&=~512U;}
    else if(type==48||type==49){flag=type==48?65536:131072;GS(element==9&&(seen&8192)&&dtype==3&&size==4);}
-   else goto done;if(flag){GS(!(seen&flag));seen|=flag;}
+   else { goto done; } if(flag){GS(!(seen&flag));seen|=flag;}
   }else goto done;p+=z;
  }GS(stage==8);{unsigned i,j;for(i=0;i<refs_count;++i){for(j=0;j<names_count;++j){GS(!tb_stop(pd)&&++work<=16000000);if(!xx_rt_strcmp(refs[i],names[j]))break;}GS(j<names_count);}}s->size=(int64_t)n;result=true;
 done:xx_mem_free(names);xx_mem_free(refs);return result;

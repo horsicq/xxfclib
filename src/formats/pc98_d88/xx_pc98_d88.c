@@ -197,7 +197,7 @@ bool xx_pc98_d88_extract_record_to_device(Abstractformat *f,
 static bool d88_same_path(const char *a,const char *b) {
     while (*a&&*b) {
         char x=*a++,y=*b++;
-        if (x=='\\') x='/'; if (y=='\\') y='/';
+        if (x=='\\') { x='/'; } if (y=='\\') y='/';
         if (x>='A'&&x<='Z') x=(char)(x+32);
         if (y>='A'&&y<='Z') y=(char)(y+32);
         if (x!=y) return false;
@@ -265,7 +265,7 @@ void xx_pc98_d88_init(xx_pc98_d88 *r,xx_io_device *d,int64_t b) {
 }
 xx_pc98_d88 *xx_pc98_d88_create(xx_io_device *d,int64_t b) {
     xx_pc98_d88 *r=(xx_pc98_d88 *)xx_mem_alloc(sizeof(*r));
-    if (r) xx_pc98_d88_init(r,d,b); return r;
+    if (r) { xx_pc98_d88_init(r,d,b); } return r;
 }
 void xx_pc98_d88_destroy(xx_pc98_d88 *r) {
     if (r) xx_format_cleanup_extra_parameters(&r->format);

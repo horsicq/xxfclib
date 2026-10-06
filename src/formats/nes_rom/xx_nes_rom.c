@@ -19,7 +19,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     chr=(h[5]+(nes2 ? (h[9]>>4)*256 : 0))*(int64_t)8192;
     if(prg==0) return false;
     if(h[6]&4) { if(!pm_add(f,s,"trainer.bin",at,512)) return false; at+=512; }
-    if(!pm_add(f,s,"prg.bin",at,prg)) return false; at+=prg;
+    if(!pm_add(f,s,"prg.bin",at,prg)) { return false; } at+=prg;
     if(chr) { if(!pm_add(f,s,"chr.bin",at,chr)) return false; at+=chr; }
     /* Unclassified trailing data (including NES2 miscellaneous ROMs) is overlay. */
     if(nes2 && (h[14]&3)) return false;

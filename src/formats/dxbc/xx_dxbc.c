@@ -531,7 +531,7 @@ static bool xx_components_build(Abstractformat *f, xx_component_stream *s, xx_pd
     for(i=0;i<d->chunk_count;++i) {
         char kind[5]; uint32_t id=d->chunk_ids[i]; unsigned j;
         if(xx_pd_is_stopped(pd)) return false;
-        for(j=0;j<4;++j) kind[j]=(char)(id>>(j*8)); kind[4]=0;
+        for(j=0;j<4;++j) { kind[j]=(char)(id>>(j*8)); } kind[4]=0;
         if(!xx_component_add(f,s,d->chunk_offsets[i]+8,d->chunk_sizes[i],kind)) return false;
     }
     return true;

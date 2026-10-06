@@ -595,10 +595,10 @@ static bool pcis_finish_names(pcis_stream *stream) {
         pcis_member *member = &stream->items[index];
         const char **slot = pcis_name_slot(&set, member->name);
         bool unique = *slot == NULL;
-        size_t attempt;
-        for (attempt = 0U; !unique && attempt < PCIS_NAME_TRIES; ++attempt) {
+        size_t retry;
+        for (retry = 0U; !unique && retry < PCIS_NAME_TRIES; ++retry) {
             char *candidate = pcis_suffixed_name(member->name, index + 1U,
-                                                 attempt);
+                                                 retry);
             if (!candidate) {
                 xx_mem_free((void *)set.slots);
                 return false;

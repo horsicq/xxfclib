@@ -14,7 +14,7 @@ static bool hp_values(const uint8_t *b,uint64_t start,uint64_t end,double values
 static bool tb_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  uint64_t p=0,start,end;bool initialized=false,drawing=false,pen=false;unsigned commands=0;uint8_t terminator=3;
  while(p<n){uint8_t a,c;double values[32];unsigned k,i;start=p;while(p<n&&(b[p]==9||b[p]==10||b[p]==13||b[p]==32))++p;if(p==n){if(!tb_emit(f,s,"whitespace.hpgl",start,n-start,n))return false;break;}
-  if(tb_stop(pd)||++commands>4094||!tb_span(p,2,n))return false;a=b[p++];c=b[p++];if(a<'A'||a>'Z'||c<'A'||c>'Z')return false;
+  if(tb_stop(pd)||++commands>4094||!tb_span(p,2,n)) {return false; } a=b[p++];c=b[p++];if(a<'A'||a>'Z'||c<'A'||c>'Z')return false;
   if(a=='L'&&c=='B'){end=p;while(p<n&&b[p]!=terminator){if(p-end>=4096)return false;++p;}if(p==n||!initialized||!tb_utf(b+end,p-end,false,pd))return false;++p;if(p<n&&b[p]==';')++p;drawing|=pen;}
   else {end=p;while(p<n&&b[p]!=';'){if(p-end>=2048)return false;++p;}if(p==n)return false;
    if(a=='D'&&c=='T'){if(p-end>1)return false;terminator=p==end?3:b[end];if(!terminator||terminator==';')return false;}

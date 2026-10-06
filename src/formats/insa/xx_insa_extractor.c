@@ -23,7 +23,7 @@ static void insa_close(Abstractformat *format) {
     xx_insa_free((xx_insa *)format);
 }
 static const xx_format_search_desc insa_desc = {
-    insa_types, 1U, insa_anchors, 1U, insa_open, insa_close
+    insa_types, 1U, insa_anchors, 1U, insa_open, insa_close, false
 };
 static xx_format_search_state *insa_create_search(xx_format_extractor *self,
     xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd) {

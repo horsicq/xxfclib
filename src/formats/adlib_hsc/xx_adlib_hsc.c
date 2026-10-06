@@ -9,7 +9,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  FM_NEED(active);for(i=0;i<51;++i){uint8_t v=b.p[1536+i];if(!term){if(v>=0xb2)term=true;else if(v&128)FM_NEED((v&127)<51);else FM_NEED(v<np);}}FM_NEED(term&&b.p[1536]<np);
  FM_NEED(fm_emit(f,s,&b,"instruments.hsc",0,1536)&&fm_emit(f,s,&b,"orders.hsc",1536,51));
  for(i=0;i<np;++i){at=1587+(uint64_t)i*1152;for(j=0;j<576;++j){const uint8_t *q=b.p+(size_t)at+j*2;FM_NEED(fm_work(&b,1));if(q[0]&128)FM_NEED(q[1]<128);else FM_NEED(q[0]<=96||q[0]==127);}FM_NEED(fm_emit(f,s,&b,"pattern.hsc",at,1152));}
- if(n%1152)FM_NEED(fm_emit(f,s,&b,"terminator.hsc",b.n-1,1));s->size=(int64_t)b.n;ok=true;
+ if(n%1152) {FM_NEED(fm_emit(f,s,&b,"terminator.hsc",b.n-1,1)); } s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }
 void xx_adlib_hsc_init(xx_adlib_hsc *r,xx_io_device *d,int64_t b) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,b,XX_FILE_TYPE_ADLIB_HSC,"adlib_hsc");}}

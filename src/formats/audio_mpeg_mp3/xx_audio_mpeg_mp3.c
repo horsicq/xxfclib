@@ -12,8 +12,8 @@ static bool mp_id3(const uint8_t *b,uint64_t at,uint64_t n,uint64_t *end) {
  bytes=mp_syncsafe(b+at+6);p=at+10;limit=p+bytes;if(!ng_span(p,bytes,n)||bytes>4194304)return false;
  while(p<limit){uint32_t len;unsigned i;if(!b[p]){if(!ng_zero(b+p,limit-p))return false;p=limit;break;}if(!ng_span(p,10,limit))return false;
   for(i=0;i<4;++i)if(!((b[p+i]>='A'&&b[p+i]<='Z')||(b[p+i]>='0'&&b[p+i]<='9')))return false;
-  if(b[p+8]||b[p+9])return false;if(version==4){if((b[p+4]|b[p+5]|b[p+6]|b[p+7])&128)return false;len=mp_syncsafe(b+p+4);}else len=pm_be32(b+p+4);
-  if(!len||!ng_span(p+10,len,limit))return false;p+=10+len;
+  if(b[p+8]||b[p+9]) {return false; } if(version==4){if((b[p+4]|b[p+5]|b[p+6]|b[p+7])&128)return false;len=mp_syncsafe(b+p+4);}else len=pm_be32(b+p+4);
+  if(!len||!ng_span(p+10,len,limit)) {return false; } p+=10+len;
  }*end=limit;return true;
 }
 static bool ng_quick(Abstractformat *f,uint64_t n) { uint8_t h[4];return ng_probe(f,n,h,4)&&((!xx_rt_memcmp(h,"ID3",3)&&(h[3]==3||h[3]==4))||(h[0]==255&&h[1]==0xfb)); }
@@ -24,10 +24,10 @@ static bool ng_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  while(at<n){uint32_t r,br,size,channels,side,reservoir,value,partbits=0;unsigned gr,c,j;ng_bits q;
   if(ng_stop(pd)||!ng_span(at,4,n)||b[at]!=255||b[at+1]!=0xfb||(br=b[at+2]>>4)<1||br>14||(r=(b[at+2]>>2)&3)>=3||(b[at+3]&3)==2)return false;
   channels=(b[at+3]>>6)==3?1:2;side=channels==1?17:32;size=144000U*bitrates[br]/rates[r]+((b[at+2]>>1)&1);
-  if(size<=4+side||!ng_span(at,size,n))return false;if(sr==99){sr=r;ch=channels;}else if(sr!=r||ch!=channels)return false;
+  if(size<=4+side||!ng_span(at,size,n)) {return false; } if(sr==99){sr=r;ch=channels;}else if(sr!=r||ch!=channels)return false;
   q.b=b+at+4;q.bit=0;q.end=(uint64_t)side*8;if(!ng_bits_get(&q,9,&reservoir)||reservoir>mainbytes||!ng_bits_skip(&q,channels==1?5:3)||!ng_bits_skip(&q,channels*4))return false;
   for(gr=0;gr<2;++gr)for(c=0;c<channels;++c){uint32_t window,region;
-   if(!ng_bits_get(&q,12,&value))return false;partbits+=value;if(!ng_bits_get(&q,9,&value)||value>288||!ng_bits_skip(&q,12)||!ng_bits_get(&q,1,&window))return false;
+   if(!ng_bits_get(&q,12,&value)) {return false; } partbits+=value;if(!ng_bits_get(&q,9,&value)||value>288||!ng_bits_skip(&q,12)||!ng_bits_get(&q,1,&window))return false;
    if(window){if(!ng_bits_get(&q,2,&value)||!value||!ng_bits_skip(&q,1))return false;for(j=0;j<2;++j)if(!ng_bits_get(&q,5,&value)||value==4||value==14)return false;if(!ng_bits_skip(&q,9))return false;}
    else {for(j=0;j<3;++j)if(!ng_bits_get(&q,5,&value)||value==4||value==14)return false;if(!ng_bits_get(&q,4,&region)||!ng_bits_get(&q,3,&value)||region+value>20)return false;}
    if(!ng_bits_skip(&q,3))return false;

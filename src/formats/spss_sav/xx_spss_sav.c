@@ -15,7 +15,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             if(continuations) { if(type!=UINT32_MAX || label || missing) return false; --continuations; }
             else { if(type>255 || !v[20] || v[20]==' ') return false; if(type>8) continuations=(type+7)/8-1; }
             if(label) { uint32_t n; if(!sv_i(&c,be,&n) || n>65535 || !fd_skip(&c,((uint64_t)n+3)&~3ULL)) return false; }
-            if(!fd_skip(&c,(missing>INT32_MAX ? (uint64_t)(-(int32_t)missing):missing)*8)) return false; ++variables;
+            if(!fd_skip(&c,(missing>INT32_MAX ? (uint64_t)(-(int32_t)missing):missing)*8)) { return false; } ++variables;
         } else if(tag==3) { uint32_t n,i,indexcount,link; if(!sv_i(&c,be,&n) || n>4096) return false;
             for(i=0;i<n;++i) { uint8_t len; if(!fd_skip(&c,8) || !fd_get(&c,&len,1) || !fd_skip(&c,(((uint64_t)len+1+7)&~7ULL)-1)) return false; }
             if(!sv_i(&c,be,&link) || link!=4 || !sv_i(&c,be,&indexcount) || !indexcount || indexcount>slots) return false;

@@ -14,15 +14,15 @@ static bool fg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  if(!fg_next(&q)||!fg_word(&q,"Charset")||!fg_string(&q)||!fg_done(&q))return false;
  if(!fg_next(&q)||!fg_word(&q,"Columns")||!fg_i(&q,&columns)||columns<0||columns>1024||!fg_done(&q))return false;
  while(columns--){uint64_t p;if(!fg_next(&q))return false;fg_space(&q);p=q.t;while(q.t<q.stop&&((b[q.t]>='A'&&b[q.t]<='Z')||(b[q.t]>='a'&&b[q.t]<='z')||(b[q.t]>='0'&&b[q.t]<='9')||b[q.t]=='_'))++q.t;if(q.t==p)return false;if(fg_word(&q,"Integer")||fg_word(&q,"Smallint")||fg_word(&q,"Float")||fg_word(&q,"Logical")||fg_word(&q,"Date")){if(!fg_done(&q))return false;}else return false;}
- if(!fg_next(&q)||!fg_word(&q,"Data")||!fg_done(&q)||!fg_emit(f,s,"descriptor.mif",0,q.p,n))return false;data=true;
+ if(!fg_next(&q)||!fg_word(&q,"Data")||!fg_done(&q)||!fg_emit(f,s,"descriptor.mif",0,q.p,n)) {return false; } data=true;
  while(fg_next(&q)){unsigned kind=0;int32_t parts=1,points,i,j;double x,y,firstx=0,firsty=0,lastx=0,lasty=0,area=0;uint64_t end;
- if(fg_stop(pd)||++geometries>4000)return false;start=q.start;
+ if(fg_stop(pd)||++geometries>4000) {return false; } start=q.start;
  if(fg_word(&q,"Point")){kind=1;if(!fg_nums(&q,2))return false;}
  else if(fg_word(&q,"Line")){kind=2;if(!fg_nums(&q,4))return false;}
  else if(fg_word(&q,"Pline")){kind=3;if(!fg_i(&q,&points)||points<2||points>1000000||!fg_done(&q))return false;for(i=0;i<points;++i)if(!fg_next(&q)||!fg_nums(&q,2))return false;}
  else if(fg_word(&q,"Region")){kind=4;if(!fg_i(&q,&parts)||parts<1||parts>16384||!fg_done(&q))return false;for(j=0;j<parts;++j){if(!fg_next(&q)||!fg_i(&q,&points)||points<4||points>1000000||!fg_done(&q))return false;area=0;for(i=0;i<points;++i){if(!fg_next(&q)||!fg_num(&q,&x)||!fg_num(&q,&y)||!fg_done(&q))return false;if(!i){firstx=x;firsty=y;}else area+=lastx*y-x*lasty;lastx=x;lasty=y;}if(!fg_near(firstx,lastx)||!fg_near(firsty,lasty)||area==0)return false;}}
  else if(fg_word(&q,"Rect")||fg_word(&q,"Ellipse")){kind=5;if(!fg_nums(&q,4))return false;}
- else return false;end=q.p;
+ else { return false; } end=q.p;
  while(q.p<n){fg_text save=q;if(!fg_next(&q))break;if(fg_word(&q,"Pen")){if(kind==1||!fg_mif_style(&q,3,2))return false;}
  else if(fg_word(&q,"Brush")){if(kind<4||!fg_mif_style(&q,3,1))return false;}
  else if(fg_word(&q,"Symbol")){if(kind!=1||!fg_mif_style(&q,3,1))return false;}

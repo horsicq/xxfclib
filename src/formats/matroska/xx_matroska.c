@@ -23,7 +23,7 @@ static bool mk_element(Abstractformat *f,int64_t at,int64_t end,uint32_t *id,int
 }
 static bool mk_unsigned(Abstractformat *f,int64_t at,int64_t end,uint64_t *v) {
     uint8_t b[8]; int64_t n=end-at; unsigned i; uint64_t value=0;
-    if(n<1 || n>8 || !pm_read(f,at,b,(size_t)n)) return false; for(i=0;i<(unsigned)n;++i) value=(value<<8)|b[i]; *v=value; return true;
+    if(n<1 || n>8 || !pm_read(f,at,b,(size_t)n)) { return false; } for(i=0;i<(unsigned)n;++i) value=(value<<8)|b[i]; *v=value; return true;
 }
 static bool mk_crc(Abstractformat *f,int64_t start,int64_t end,int64_t omit_start,int64_t omit_end,uint32_t expected) {
     size_t capacity=xx_get_file_buffer_size();uint8_t *b=NULL;bool ok=false;uint32_t crc=0U;int64_t at=start;
@@ -39,13 +39,13 @@ static bool mk_block(mk_ctx *c,int64_t at,int64_t end,bool simple) {
     uint64_t track,sizes[256],sum=0; unsigned width,lace,count=1,i; uint8_t h[3],b; bool unknown; char name[64]; int64_t data;
     if(!mk_vint(c->f,&at,end,&track,&width,false,&unknown) || !track || end-at<3 || !pm_read(c->f,at,h,3)) return false;
     for(i=0;i<c->track_count && c->tracks[i]!=track;++i) {} if(i==c->track_count) return false;
-    if((h[2]&0x70U) || (!simple && (h[2]&0x81U))) return false; lace=(h[2]>>1)&3U; at+=3;
+    if((h[2]&0x70U) || (!simple && (h[2]&0x81U))) { return false; } lace=(h[2]>>1)&3U; at+=3;
     if(lace) { if(at>=end || !pm_read(c->f,at++,&b,1) || !b) return false; count=(unsigned)b+1; }
     if(lace==1) for(i=0;i+1<count;++i) { sizes[i]=0; do { if(at>=end || !pm_read(c->f,at++,&b,1)) return false; sizes[i]+=b; } while(b==255); sum+=sizes[i]; }
     else if(lace==3 && count>1) {
-        if(!mk_vint(c->f,&at,end,&sizes[0],&width,false,&unknown)) return false; sum=sizes[0];
+        if(!mk_vint(c->f,&at,end,&sizes[0],&width,false,&unknown)) { return false; } sum=sizes[0];
         for(i=1;i+1<count;++i) { uint64_t raw,bias; int64_t delta;
-            if(!mk_vint(c->f,&at,end,&raw,&width,false,&unknown)) return false; bias=(1ULL<<(7*width-1))-1;
+            if(!mk_vint(c->f,&at,end,&raw,&width,false,&unknown)) { return false; } bias=(1ULL<<(7*width-1))-1;
             delta=(int64_t)raw-(int64_t)bias;
             if((delta<0 && (uint64_t)(-delta)>sizes[i-1]) || (delta>0 && sizes[i-1]>INT64_MAX-(uint64_t)delta)) return false;
             sizes[i]=(uint64_t)((int64_t)sizes[i-1]+delta); if(sizes[i]>UINT64_MAX-sum) return false; sum+=sizes[i];
@@ -55,7 +55,7 @@ static bool mk_block(mk_ctx *c,int64_t at,int64_t end,bool simple) {
     else { if(sum>(uint64_t)(end-at)) return false; sizes[count-1]=(uint64_t)(end-at)-sum; }
     data=at;
     for(i=0;i<count;++i) { xx_rt_snprintf(name,sizeof(name),"track-%u-block-%u-frame-%u.encoded",(unsigned)track,c->blocks,i);
-        if(!sizes[i] || !pm_add(c->f,c->s,name,data,(int64_t)sizes[i])) return false; data+=(int64_t)sizes[i]; }
+        if(!sizes[i] || !pm_add(c->f,c->s,name,data,(int64_t)sizes[i])) { return false; } data+=(int64_t)sizes[i]; }
     ++c->blocks; return data==end;
 }
 static bool mk_master(uint32_t id) {
@@ -69,7 +69,7 @@ static bool mk_children(mk_ctx *c,int64_t start,int64_t end,unsigned depth,uint3
            (id==0xA1 && parent!=0xA0) || (id==0xA0 && parent!=0x1F43B675U)) return false;
         if(id==0x1549A966U || id==0x1654AE6BU || id==0x1F43B675U) {
             unsigned part=id==0x1549A966U ? 1U : id==0x1654AE6BU ? 2U : 4U;
-            if(parent!=0x18538067U || (part!=4 && (segment_parts&part))) return false; segment_parts|=part;
+            if(parent!=0x18538067U || (part!=4 && (segment_parts&part))) { return false; } segment_parts|=part;
         }
         if(id==0xBF) { if(++crc_count>1 || stop-body!=4 || !pm_read(c->f,body,b,4) || !mk_crc(c->f,start,end,at,stop,pm_le32(b))) return false; }
         else if(id==0xEC) {}
@@ -78,7 +78,7 @@ static bool mk_children(mk_ctx *c,int64_t start,int64_t end,unsigned depth,uint3
         else {
             if(parent==0x1549A966U && (id==0x4D80 || id==0x5741)) {
                 bool *present=id==0x4D80 ? &muxing : &writing;
-                if(*present || stop==body) return false; *present=true;
+                if(*present || stop==body) { return false; } *present=true;
             }
             if(parent==0xAE) {
                 if(id==0xD7) { if(track || !mk_unsigned(c->f,body,stop,&track)) return false; }
@@ -91,9 +91,9 @@ static bool mk_children(mk_ctx *c,int64_t start,int64_t end,unsigned depth,uint3
         } at=stop;
     }
     if(parent==0xAE) { unsigned i; if(!track || track>UINT32_MAX || !uid || !type || !codec || c->track_count==256) return false;
-        for(i=0;i<c->track_count;++i) if(c->tracks[i]==track) return false; c->tracks[c->track_count++]=track; }
+        for(i=0;i<c->track_count;++i) { if(c->tracks[i]==track) return false; } c->tracks[c->track_count++]=track; }
     if((parent==0x1F43B675U && !timecode) || (parent==0x18538067U && segment_parts!=7) ||
-       (parent==0x1549A966U && (!muxing || !writing))) return false; return at==end;
+       (parent==0x1549A966U && (!muxing || !writing))) { return false; } return at==end;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint32_t id; int64_t body,end,at,limit=pm_available(f); bool doctype=false; mk_ctx c;
@@ -107,7 +107,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     }
     if(!doctype || !mk_element(f,end,limit,&id,&body,&at,true) || id!=0x18538067U) return false;
     xx_mem_zero(&c,sizeof(c)); c.f=f; c.s=s; c.pd=pd;
-    if(!mk_children(&c,body,at,0,id) || !c.track_count || !c.blocks) return false; s->size=at; return true;
+    if(!mk_children(&c,body,at,0,id) || !c.track_count || !c.blocks) { return false; } s->size=at; return true;
 }
 
 void xx_matroska_init(xx_matroska *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_MATROSKA,"matroska"); } }

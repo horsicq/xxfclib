@@ -9,7 +9,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  pt=(uint64_t)pm_le16(b.p+32)*16;it=(uint64_t)pm_le16(b.p+34)*16;ct=(uint64_t)pm_le16(b.p+36)*16;
  TM_NEED(tm_claim(&b,ranges,&nr,0,64)&&tm_claim(&b,ranges,&nr,pt,np*2)&&tm_claim(&b,ranges,&nr,it,ni*2)&&tm_claim(&b,ranges,&nr,ct,32+no*5));
  TM_NEED(tm_emit(f,s,&b,"descriptor.stx",0,64)&&tm_emit(f,s,&b,"pattern-index.stx",pt,np*2)&&tm_emit(f,s,&b,"instrument-index.stx",it,ni*2)&&tm_emit(f,s,&b,"channels-orders.stx",ct,32+no*5));
- if(pt+np*2>maximum)maximum=pt+np*2;if(it+ni*2>maximum)maximum=it+ni*2;if(ct+32+no*5>maximum)maximum=ct+32+no*5;
+ if(pt+np*2>maximum) {maximum=pt+np*2; } if(it+ni*2>maximum)maximum=it+ni*2;if(ct+32+no*5>maximum)maximum=ct+32+no*5;
  for(i=0;i<no;++i)TM_NEED(b.p[(size_t)ct+32+i*5]<np||(i+1==no&&b.p[(size_t)ct+32+i*5]==255));
  for(i=0;i<ni;++i){uint64_t q=(uint64_t)pm_le16(b.p+(size_t)it+i*2)*16;uint32_t a,z;TM_NEED(tm_claim(&b,ranges,&nr,q,80));a=pm_le32(b.p+(size_t)q+20);z=pm_le32(b.p+(size_t)q+24);lens[i]=pm_le32(b.p+(size_t)q+16);sample_at[i]=(uint32_t)pm_le16(b.p+(size_t)q+14)*16;TM_NEED((b.p[(size_t)q]==1||(!b.p[(size_t)q]&&!lens[i]))&&b.p[(size_t)q+28]<=64&&!b.p[(size_t)q+30]&&!(b.p[(size_t)q+31]&~1U)&&lens[i]<=16777216);if(z&&z!=65535)TM_NEED(a<=z&&z<=lens[i]);TM_NEED(tm_emit(f,s,&b,"instrument.stx",q,80));if(q+80>maximum)maximum=q+80;}
  {uint64_t q=(uint64_t)pm_le16(b.p+(size_t)pt)*16;TM_NEED(tm_span(&b,q,2));broken=pm_le16(b.p+(size_t)q)==pm_le16(b.p+28);}

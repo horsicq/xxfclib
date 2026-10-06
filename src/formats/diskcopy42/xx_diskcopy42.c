@@ -128,7 +128,7 @@ void xx_diskcopy42_init(xx_diskcopy42 *d, xx_io_device *source, int64_t base) {
 }
 xx_diskcopy42 *xx_diskcopy42_create(xx_io_device *source, int64_t base) {
     xx_diskcopy42 *d=(xx_diskcopy42 *)xx_mem_alloc(sizeof(*d));
-    if (d) xx_diskcopy42_init(d,source,base); return d;
+    if (d) { xx_diskcopy42_init(d,source,base); } return d;
 }
 void xx_diskcopy42_destroy(xx_diskcopy42 *d) {
     if (!d) return;
@@ -409,7 +409,7 @@ bool xx_diskcopy42_extract_record_to_device(Abstractformat *f,
 static bool dc_equal_path(const char *a, const char *b) {
     while (*a && *b) {
         char x=*a++,y=*b++;
-        if (x=='\\') x='/'; if (y=='\\') y='/';
+        if (x=='\\') { x='/'; } if (y=='\\') y='/';
         if (x>='A' && x<='Z') x=(char)(x+32);
         if (y>='A' && y<='Z') y=(char)(y+32);
         if (x!=y) return false;

@@ -50,10 +50,10 @@ done:xx_mem_free(tail);return ok;
 }
 bool xx_superdat_has_candidate_device(xx_io_device *io,int64_t base) {
     Abstractformat *f;int64_t at,saved;uint32_t size,start,count;bool modern,ok;
-    if(!io||base<0)return false;f=xx_mem_calloc(1,sizeof(*f));if(!f)return false;f->device=io;f->base_address=base;saved=xx_io_tell(io);
+    if(!io||base<0) {return false; } f=xx_mem_calloc(1,sizeof(*f));if(!f)return false;f->device=io;f->base_address=base;saved=xx_io_tell(io);
     ok=sd_footer(f,&at,&size,&start,&count,&modern);
     if(ok){uint8_t h[18];ok=ue2_read(f,base+start,h,sizeof(h))&&ue2_u32(h)==0xdeadbeefU&&!xx_rt_memcmp(h+4,"__NAILZHUFLIB\0",14);}
-    if(saved>=0&&xx_io_seek64(io,saved,XX_RT_SEEK_SET))ok=false;xx_mem_free(f);return ok;
+    if(saved>=0&&xx_io_seek64(io,saved,XX_RT_SEEK_SET)) {ok=false; } xx_mem_free(f);return ok;
 }
 static bool sd_name(uint8_t *p,size_t capacity) {
     size_t i;uint8_t *nul=xx_rt_memchr(p,0,capacity);if(!nul||nul==p)return false;
@@ -162,22 +162,22 @@ static bool sd_unpack(Abstractformat *f,xx_archive_record_state *s,xx_pd_struct 
     const xx_archive_record *r=sd_current(f,s);sd_state *state=s?s->internal_state:NULL;sd_index *ix=f?((xx_superdat*)f)->index:NULL;
     const ue2_member *m;const sd_item *item;const xx_var *option=NULL;const char *base=NULL;char *owned=NULL,*path=NULL;
     xx_io_device *out=NULL;size_t i;int64_t saved;bool ok=false,created=false;
-    if(!r||xx_pd_is_stopped(pd))return false;m=ix->records.members+state->reading.cursor;item=ix->items+state->reading.cursor;saved=xx_io_tell(f->device);
+    if(!r||xx_pd_is_stopped(pd)) {return false; } m=ix->records.members+state->reading.cursor;item=ix->items+state->reading.cursor;saved=xx_io_tell(f->device);
     for(i=0;i<s->options.count;++i){const xx_meta *meta=xx_list_at((const xx_list_t*)&s->options,i);if(!meta)continue;
         if(meta->meta_id==XX_META_ID_OPT_UNPACK_PATH)option=&meta->var;
         if(meta->meta_id==XX_META_ID_OPT_MAX_MEMBER_SIZE&&(uint64_t)m->original_size>xx_var_get_u64(&meta->var))return sd_fail(pd,"SuperDAT member exceeds configured size limit");}
-    if(!sd_decode(f,m,item,NULL,pd))goto done;if(!option){ok=true;goto done;}
+    if(!sd_decode(f,m,item,NULL,pd)) {goto done; } if(!option){ok=true;goto done;}
     if(option->type==XX_VAR_TYPE_STRING||option->type==XX_VAR_TYPE_STRING_VIEW)base=xx_var_get_str(option);
     else if(option->type==XX_VAR_TYPE_WSTRING||option->type==XX_VAR_TYPE_WSTRING_VIEW){owned=xx_str_unicode_to_utf8(xx_var_get_wstr(option));base=owned;}
-    if(base&&ue2_safe_name(m->name))path=xx_str_concat3(base,"/",m->name);if(!path||!xx_store_create_dirs_a(path,false))goto done;
+    if(base&&ue2_safe_name(m->name)) {path=xx_str_concat3(base,"/",m->name); } if(!path||!xx_store_create_dirs_a(path,false))goto done;
     out=xx_io_file_open(path,"wb");if(!out)goto done;created=true;ok=sd_decode(f,m,item,out,pd);
 done:
-    if(out&&xx_io_close(out))ok=false;if(saved>=0&&xx_io_seek64(f->device,saved,XX_RT_SEEK_SET))ok=false;
-    if(!ok&&created)xx_io_file_remove_a(path);xx_str_free(path);xx_str_free(owned);return ok;
+    if(out&&xx_io_close(out)) {ok=false; } if(saved>=0&&xx_io_seek64(f->device,saved,XX_RT_SEEK_SET))ok=false;
+    if(!ok&&created) {xx_io_file_remove_a(path); } xx_str_free(path);xx_str_free(owned);return ok;
 }
 static void sd_destroy(Abstractformat *f) { xx_superdat *a=(xx_superdat*)f;sd_free_index(a->index);a->index=NULL;++a->generation;if(!a->generation)++a->generation;f->base_info_handled=f->is_valid=false;f->number_of_archive_records=0;f->format_size=-1;xx_format_cleanup_extra_parameters(f); }
 void xx_superdat_init(xx_superdat *a,xx_io_device *io,int64_t base) {
-    if(!a)return;xx_mem_zero(a,sizeof(*a));ue2_init_format(&a->format,io,base,XX_FILE_TYPE_SUPERDAT,"exe","application/x-superdat");
+    if(!a) {return; } xx_mem_zero(a,sizeof(*a));ue2_init_format(&a->format,io,base,XX_FILE_TYPE_SUPERDAT,"exe","application/x-superdat");
     a->format.check_is_valid=sd_valid;a->format.handle_base_info=sd_info;a->format.create_archive_records_reading=sd_records;
     a->format.get_current_archive_record=sd_current;a->format.archive_record_move_to_next=sd_next;a->format.unpack_current_archive_record=sd_unpack;a->format.destroy=sd_destroy;
 }

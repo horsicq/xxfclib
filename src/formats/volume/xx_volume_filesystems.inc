@@ -108,7 +108,7 @@ static bool vr_filesystem(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         at=512; if(!vr_fs_super(f,&at,b,512)) return false; magic=pm_be32(b+28); r->big_endian=true;
         found=magic==0x00072959 || magic==0x0007295A; r->block_size=512; r->blocks=pm_be32(b); found=found && r->blocks && r->blocks<=(uint64_t)source/512; break;
     case XX_FILE_TYPE_AMIGA_SFS:
-        if(!vr_fs_super(f,&at,b,512)) return false; magic=pm_be32(b); r->big_endian=true;
+        if(!vr_fs_super(f,&at,b,512)) { return false; } magic=pm_be32(b); r->big_endian=true;
         found=magic==UINT32_C(0x53465300) || magic==UINT32_C(0x53465302); r->version=magic&255; break;
     case XX_FILE_TYPE_SOLAR_FS:
         if(!vr_fs_super(f,&at,b,512)) return false;
@@ -126,7 +126,7 @@ static bool vr_filesystem(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     case XX_FILE_TYPE_VMFS:
         at=1048576; if(!vr_fs_super(f,&at,b,512)) return false; found=pm_le32(b)==UINT32_C(0xC001D00D); r->version=pm_le32(b+4); break;
     case XX_FILE_TYPE_XIA_FS:
-        if(!vr_fs_super(f,&at,b,1024)) return false; found=pm_le32(b+572)==UINT32_C(0x012FD16D); r->block_size=pm_le32(b+512); r->blocks=pm_le32(b+516);
+        if(!vr_fs_super(f,&at,b,1024)) { return false; } found=pm_le32(b+572)==UINT32_C(0x012FD16D); r->block_size=pm_le32(b+512); r->blocks=pm_le32(b+516);
         found=found && vr_power(r->block_size) && r->block_size>=1024 && r->blocks<=(uint64_t)source/r->block_size; header=1024; break;
     case XX_FILE_TYPE_XFS:
         if(!vr_fs_super(f,&at,b,512) || xx_rt_memcmp(b,"XFSB",4)) return false;

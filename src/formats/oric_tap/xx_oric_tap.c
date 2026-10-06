@@ -11,7 +11,7 @@ static bool read_components(Abstractformat *f,pm_stream *s,er_blob *b) {
   if(p[h] || p[h+1] || (p[h+2]!=0 && p[h+2]!=0x80) || (p[h+3]!=0 && p[h+3]!=0x80 && p[h+3]!=0xc7) || p[h+8]) return false;
   end=pm_be16(p+h+4);start=pm_be16(p+h+6);if(end<start) return false;a=h+9;n=0;
   while(a<b->n && p[a]) {if(n>=255 || p[a]<32 || p[a]>126) return false;name[n++]=(char)p[a++];}if(a==b->n) return false;name[n]=0;++a;z=end-start+1;
-  if(!er_emit(f,s,b,"tape-descriptor.bin",h,a-h) || !er_emit(f,s,b,n ? name:"unnamed-file.bin",a,z)) return false;a+=z;
+  if(!er_emit(f,s,b,"tape-descriptor.bin",h,a-h) || !er_emit(f,s,b,n ? name:"unnamed-file.bin",a,z)) { return false; } a+=z;
  }s->size=b->n;return count!=0;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { er_blob b;bool ok;if(!er_load(f,&b,pd)) return false;ok=read_components(f,s,&b);xx_mem_free(b.p);return ok; }

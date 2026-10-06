@@ -9,7 +9,7 @@
 #include "xxfclib/formats/zpak/xx_zpak.h"
 static bool w6_at_parse(Abstractformat *f,pm_stream *s,int64_t at,xx_pd_struct *pd) {
     xx_zpak *r; bool ok; int64_t size; 
-    if(wg_stop(pd)) return false; r=xx_zpak_create(f->device,f->base_address+at); if(!r) return false;
+    if(wg_stop(pd)) { return false; } r=xx_zpak_create(f->device,f->base_address+at); if(!r) return false;
     ok=xx_format_handle_base_info(&r->format,pd);size=r->format.format_size;
     ok=ok && !wg_stop(pd) && r->format.number_of_archive_records>0 && r->format.number_of_archive_records<=4096 && wg_range(pm_available(f),at,(uint64_t)size);xx_zpak_free(r);
     return ok && w6_component(f,s,at,size,"payload.zpak");

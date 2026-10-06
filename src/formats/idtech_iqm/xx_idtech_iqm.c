@@ -43,7 +43,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
       xx_rt_snprintf(label,sizeof(label),"vertex-array-%u.bin",kind); if(!emit(f,s,label,offset,(uint64_t)verts*size*(format==7 ? 4:1),total)) return false; if(!kind) position=true; } }
     if(adj) { if(adj<124 || (adj&3) || !emit(f,s,"adjacency.bin",adj,(uint64_t)tris*12,total)) return false; for(i=0;i<tris;++i) { if(stop(pd) || !pm_read(f,adj+(int64_t)i*12,q,12)) return false; for(j=0;j<3;++j) if(pm_le32(q+j*4)!=UINT32_MAX && pm_le32(q+j*4)>=tris) return false; } }
     if(pm_le32(h+108)) { if(pm_le32(h+108)>1048576 || pm_le32(h+112)<124 || !emit(f,s,"comment.bin",pm_le32(h+112),pm_le32(h+108),total)) return false; } else if(pm_le32(h+112)) return false;
-    if(!position || covered!=tris) return false; s->size=total; return true;
+    if(!position || covered!=tris) { return false; } s->size=total; return true;
 
 }
 

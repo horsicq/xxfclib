@@ -29,22 +29,22 @@ static __inline int32_t tg_sint(const uint8_t *p,unsigned z) {uint32_t u=tg_uint
 static __inline bool tg_utf(const uint8_t *b,uint64_t n,bool ascii,xx_pd_struct *pd) {
  uint64_t p=0;while(p<n){uint32_t c,min;unsigned k,i;uint8_t v;if((p&4095)==0&&tg_stop(pd))return false;v=b[p++];
  if(v<128){if(!v || (v<32 && v!=9 && v!=10 && v!=13))return false;continue;}
- if(ascii)return false;if(v>=0xc2 && v<=0xdf){k=1;c=v&31;min=128;}else if(v>=0xe0&&v<=0xef){k=2;c=v&15;min=2048;}else if(v>=0xf0&&v<=0xf4){k=3;c=v&7;min=65536;}else return false;
- if(!tg_span(p,k,n))return false;for(i=0;i<k;++i){if((b[p]&0xc0)!=0x80)return false;c=(c<<6)|(b[p++]&63);}
+ if(ascii) {return false; } if(v>=0xc2 && v<=0xdf){k=1;c=v&31;min=128;}else if(v>=0xe0&&v<=0xef){k=2;c=v&15;min=2048;}else if(v>=0xf0&&v<=0xf4){k=3;c=v&7;min=65536;}else return false;
+ if(!tg_span(p,k,n)) {return false; } for(i=0;i<k;++i){if((b[p]&0xc0)!=0x80)return false;c=(c<<6)|(b[p++]&63);}
  if(c<min||c>0x10ffff||(c>=0xd800&&c<=0xdfff))return false;}return true;
 }
 typedef struct tg_text {const uint8_t *b;uint64_t p,end,start,stop,t;} tg_text;
 static __inline bool tg_line(tg_text *q) {
  uint64_t p=q->p;if(p>=q->end)return false;q->start=p;
  while(p<q->end&&q->b[p]!=10&&q->b[p]!=13){if(p-q->start>=8192)return false;++p;}q->stop=p;
- if(p<q->end&&q->b[p]==13)++p;if(p<q->end&&q->b[p]==10)++p;q->p=p;q->t=q->start;return true;
+ if(p<q->end&&q->b[p]==13) {++p; } if(p<q->end&&q->b[p]==10)++p;q->p=p;q->t=q->start;return true;
 }
 static __inline void tg_space(tg_text *q) {while(q->t<q->stop&&(q->b[q->t]==32||q->b[q->t]==9))++q->t;}
 static __inline bool tg_done(tg_text *q) {tg_space(q);return q->t==q->stop || q->b[q->t]=='#';}
 static __inline bool tg_next(tg_text *q) {while(q->p<q->end){if(!tg_line(q))return false;if(!tg_done(q))return true;}return false;}
 static __inline bool tg_word(tg_text *q,const char *s) {
  uint64_t p;size_t n=xx_rt_strlen(s);tg_space(q);p=q->t;
- if(!tg_span(p,n,q->stop)||!tg_tag(q->b+p,s,n)||(p+n<q->stop&&q->b[p+n]!=32&&q->b[p+n]!=9))return false;q->t=p+n;return true;
+ if(!tg_span(p,n,q->stop)||!tg_tag(q->b+p,s,n)||(p+n<q->stop&&q->b[p+n]!=32&&q->b[p+n]!=9)) {return false; } q->t=p+n;return true;
 }
 static __inline bool tg_i(tg_text *q,int32_t *v) {
  uint64_t p;uint32_t u=0;bool neg=false;tg_space(q);p=q->t;
@@ -61,7 +61,7 @@ static __inline bool tg_num(tg_text *q,double *value) {
  if(!digits)return false;
  if(p<q->stop&&(q->b[p]=='e'||q->b[p]=='E')){++p;if(p<q->stop&&(q->b[p]=='+'||q->b[p]=='-'))eneg=q->b[p++]=='-';if(p>=q->stop||q->b[p]<'0'||q->b[p]>'9')return false;while(p<q->stop&&q->b[p]>='0'&&q->b[p]<='9'){exp=exp*10+q->b[p++]-'0';if(exp>38)return false;}}
  if(p<q->stop&&q->b[p]!=32&&q->b[p]!=9&&q->b[p]!='#')return false;
- while(frac--)scale*=10;v/=scale;while(exp--)v=eneg?v/10:v*10;if(v>3.402823466e38)return false;
+ while(frac--) {scale*=10; } v/=scale;while(exp--)v=eneg?v/10:v*10;if(v>3.402823466e38)return false;
  q->t=p;*value=neg?-v:v;return true;
 }
 static __inline bool tg_nums(tg_text *q,unsigned n) {unsigned i;double v;for(i=0;i<n;++i)if(!tg_num(q,&v))return false;return tg_done(q);}
@@ -107,7 +107,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  if(available<1||available>33554432||tg_stop(pd)||!tg_quick(f,(uint64_t)available))return false;
  b=(uint8_t *)xx_mem_alloc((size_t)available);if(!b)return false;
  while(p<(uint64_t)available){size_t z=(uint64_t)available-p>65536?65536:(size_t)((uint64_t)available-p);
-  if(tg_stop(pd)||!pm_read(f,(int64_t)p,b+p,z))goto done;p+=z;}
+  if(tg_stop(pd)||!pm_read(f,(int64_t)p,b+p,z)) {goto done; } p+=z;}
  ok=!tg_stop(pd)&&tg_parse(f,s,b,(uint64_t)available,pd)&&!tg_stop(pd);
 done:xx_mem_free(b);return ok;
 }

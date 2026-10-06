@@ -22,7 +22,7 @@ static bool fm_byte(fm_bytes *r,uint8_t *b) {
     if(r->pos>=r->end) return false;
     if(r->begin<0 || r->pos<r->begin || r->pos-r->begin>=(int64_t)r->count) {
         int64_t left=r->end-r->pos; r->count=(uint64_t)left>r->capacity ? r->capacity : (size_t)left;
-        if((r->pd && xx_pd_is_stopped(r->pd)) || !pm_read(r->f,r->pos,r->buffer,r->count)) return false; r->begin=r->pos;
+        if((r->pd && xx_pd_is_stopped(r->pd)) || !pm_read(r->f,r->pos,r->buffer,r->count)) { return false; } r->begin=r->pos;
     }
     *b=r->buffer[(size_t)(r->pos-r->begin)]; ++r->pos; return true;
 }
@@ -37,11 +37,11 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     width=pm_le16(h+6); height=pm_le16(h+8); flags=h[10]; channels=h[11]; ncmap=h[13];
     if(!width || !height || width>32767 || height>32767 || (uint64_t)width*height>16777216 || flags>15 || (flags&3)==3 || !channels || channels>4 || ncmap>4 || h[14]>8) return false;
     if(!pm_add(f,s,"setup.bin",0,15)) return false;
-    if(!fm_start(&r,f,pd,15,pm_available(f))) return false; n=flags&2 ? 1U : 1U+(channels/2U)*2U;
+    if(!fm_start(&r,f,pd,15,pm_available(f))) { return false; } n=flags&2 ? 1U : 1U+(channels/2U)*2U;
     if(!fm_skip(&r,n) || (!(flags&2) && !pm_add(f,s,"background.bin",15,channels))) return fm_finish(&r,false);
     if(ncmap) { n=(uint64_t)ncmap*((uint64_t)1<<h[14])*2U; start=r.pos; if(!fm_skip(&r,n) || !pm_add(f,s,"colormap.le16",start,(int64_t)n)) return fm_finish(&r,false); }
     if(flags&8) { uint8_t word[2],last; unsigned len; start=r.pos;
-        if(!pm_read(f,start,word,2)) return fm_finish(&r,false); len=pm_le16(word);
+        if(!pm_read(f,start,word,2)) { return fm_finish(&r,false); } len=pm_le16(word);
         if(!len || !fm_skip(&r,2U+len+(len&1U)) || !pm_read(f,start+1+len,&last,1) || last || !pm_add(f,s,"comments.txt",start+2,len)) return fm_finish(&r,false);
     }
     start=r.pos;
@@ -61,7 +61,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         } else if(code==7) { if(datum || !pixels) return fm_finish(&r,false); break; }
         else return fm_finish(&r,false);
     }
-    if(!pm_add(f,s,"opcodes.urt-rle",start,r.pos-start)) return fm_finish(&r,false); s->size=r.pos; return fm_finish(&r,true);
+    if(!pm_add(f,s,"opcodes.urt-rle",start,r.pos-start)) { return fm_finish(&r,false); } s->size=r.pos; return fm_finish(&r,true);
 }
 
 void xx_utah_rle_init(xx_utah_rle *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_UTAH_RLE,"rle"); } }

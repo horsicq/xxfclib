@@ -288,8 +288,8 @@ static bool ampk_parse(Abstractformat *format, ampk_stream **result) {
                 member.salvage_tail = true;
                 salvaged_tail = true;
             }
-            if (data_size > INT64_MAX || member.original_size == 0U &&
-                data_size != 0U || data_size > (uint64_t)(size - cursor -
+            if (data_size > INT64_MAX || (member.original_size == 0U &&
+                data_size != 0U) || data_size > (uint64_t)(size - cursor -
                                                             (int64_t)header_size))
                 break;
             component = ampk_component(record + AMPK_PREFIX_SIZE, name_size);
@@ -391,8 +391,8 @@ static bool ampk_decode_member(Abstractformat *format,
     uint8_t *output = NULL;
     size_t written = 0U;
     bool decoded = false;
-    if (!format || !member || !plain || !plain_size || member->data_size < 0 ||
-        member->original_size > SIZE_MAX) return false;
+    if (!format || !member || !plain || !plain_size || member->data_size < 0)
+        return false;
     if (member->method == 0U && (uint64_t)member->data_size !=
                                    member->original_size) return false;
     packed = (uint8_t *)xx_mem_alloc(member->data_size != 0

@@ -174,7 +174,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         }
         if(block_end>=0 && at!=block_end) return false;
     }
-    if(!schema || !pm_read(f,at,sync,16)) return false; at+=16;
+    if(!schema || !pm_read(f,at,sync,16)) { return false; } at+=16;
     while(at<left) {
         int64_t size; char label[80];
         if((pd && xx_pd_is_stopped(pd)) || !avro_long(f,&at,&count) || count<=0 || !avro_long(f,&at,&size) || size<0 || size>left-at || left-at-size<16) return false;

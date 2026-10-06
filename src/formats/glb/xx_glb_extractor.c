@@ -33,7 +33,7 @@ static const xx_format_search_anchor anchors[] = {
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     anchors, sizeof(anchors)/sizeof(anchors[0]),
-    xx_glb_search_open, xx_glb_search_close
+    xx_glb_search_open, xx_glb_search_close, false
 };
 
 static xx_format_search_state *xx_glb_create_format_search(

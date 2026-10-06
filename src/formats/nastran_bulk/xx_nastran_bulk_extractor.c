@@ -30,7 +30,7 @@ static void xx_nastran_bulk_search_close(Abstractformat *format) {
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
     NULL, 0U,
-    xx_nastran_bulk_search_open, xx_nastran_bulk_search_close
+    xx_nastran_bulk_search_open, xx_nastran_bulk_search_close, false
 };
 
 static xx_format_search_state *xx_nastran_bulk_create_format_search(

@@ -15,7 +15,7 @@ static bool vr_atari_type(uint32_t type) {
 }
 static bool vr_atari_entries(Abstractformat *f,pm_stream *s,const uint8_t *b,size_t start,unsigned count,uint64_t root,uint64_t base,uint64_t *seen,unsigned *seen_count,xx_pd_struct *pd) {
     unsigned i; for(i=0;i<count;++i) { const uint8_t *e=b+start+i*12; uint32_t type=pm_be32(e),length=pm_be32(e+8); uint64_t sector=pm_be32(e+4); char label[4];
-        if(!vr_poll(pd)) return false; if(!length || !((type>>24)&1U)) continue; if(!vr_atari_type(type)) return false;
+        if(!vr_poll(pd)) { return false; } if(!length || !((type>>24)&1U)) continue; if(!vr_atari_type(type)) return false;
         if((type&UINT32_C(0xFFFFFF))==UINT32_C(0x58474D)) {
             uint8_t next[512]; unsigned j; uint64_t where=sector+root;
             if(*seen_count>=64 || where>INT64_MAX/512) return false;
@@ -40,12 +40,12 @@ static bool vr_partitions(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     switch(f->file_type) {
     case XX_FILE_TYPE_DEC_DISKLABEL:
         at=31*512; if(!pm_read(f,at,b,512) || pm_le32(b+440)!=0x032957 || pm_le32(b+444)!=1) return false;
-        for(i=0;i<8;++i) if(!vr_part(f,s,i,"DEC",(uint64_t)pm_le32(b+452+i*8)*512,(uint64_t)pm_le32(b+448+i*8)*512)) return false; break;
+        for(i=0;i<8;++i) { if(!vr_part(f,s,i,"DEC",(uint64_t)pm_le32(b+452+i*8)*512,(uint64_t)pm_le32(b+448+i*8)*512)) return false; } break;
     case XX_FILE_TYPE_DRAGONFLY_DISKLABEL:
         table_size=2048; if(!pm_read(f,at,b,table_size) || pm_le32(b+512)!=UINT32_C(0xC4464C59) || !pm_le32(b+524) || pm_le32(b+524)>16) return false;
         { uint32_t crc=pm_le32(b+516); xx_mem_zero(b+516,4);
           if(xx_crc32(XX_CRC_TYPE_CRC32,b+512,200+(size_t)pm_le32(b+524)*64)!=crc) return false; }
-        for(i=0;i<pm_le32(b+524);++i) if(!vr_part(f,s,i,"BSD64",mm_le64(b+712+i*64),mm_le64(b+720+i*64))) return false; break;
+        for(i=0;i<pm_le32(b+524);++i) { if(!vr_part(f,s,i,"BSD64",mm_le64(b+712+i*64),mm_le64(b+720+i*64))) return false; } break;
     case XX_FILE_TYPE_SGI_VOLUME_HEADER:
         if(!pm_read(f,at,b,512) || pm_be32(b)!=UINT32_C(0x0BE5A941)) return false;
         { uint32_t sum=0,bytes=pm_be16(b+40); for(i=0;i<128;++i) sum+=pm_be32(b+i*4); if(sum || !vr_power(bytes) || bytes<128 || bytes>8192) return false;
@@ -67,10 +67,10 @@ static bool vr_partitions(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         at=512; if(!pm_read(f,at,b,512) || xx_rt_memcmp(b,"part ",5)) return false;
         { const char *p=(const char *)b; b[511]=0;
           while(*p) { char name[64]; size_t n=0; uint64_t first,last;
-              if(xx_rt_strncmp(p,"part ",5)) return false; p+=5;
+              if(xx_rt_strncmp(p,"part ",5)) { return false; } p+=5;
               while(*p && *p!=' ' && *p!='\n') { if(n+1>=sizeof(name) || (unsigned char)*p<33) return false; name[n++]=*p++; } name[n]=0;
               if(!n || !vr_uint(&p,&first) || !vr_uint(&p,&last) || last<=first || first>INT64_MAX/512 || last>INT64_MAX/512) return false;
-              while(*p==' ' || *p=='\r') ++p; if(*p && *p!='\n') return false; if(*p=='\n') ++p;
+              while(*p==' ' || *p=='\r') { ++p; } if(*p && *p!='\n') return false; if(*p=='\n') ++p;
               if(!vr_part(f,s,(unsigned)s->count,name,first*512,(last-first)*512)) return false;
           } } break;
     case XX_FILE_TYPE_XENIX_PARTITIONS:
@@ -104,10 +104,10 @@ static bool vr_partitions(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     case XX_FILE_TYPE_ACORN_PARTITIONS:
         at=3072; if(!pm_read(f,at,b,512)) return false;
         { uint32_t sum=0,heads=b[450]+((b[456]>>6)&1),spt=b[449],bytes; uint64_t map; uint8_t entries[512];
-          for(i=0;i<511;++i) sum=(sum&255)+(sum>>8)+b[i]; sum=(sum&255)+(sum>>8);
+          for(i=0;i<511;++i) { sum=(sum&255)+(sum>>8)+b[i]; } sum=(sum&255)+(sum>>8);
           if((uint8_t)sum!=b[511] || b[448]<7 || b[448]>13 || !heads || !spt) return false;
           bytes=1U<<b[448]; map=(uint64_t)pm_le16(b+509)*heads*spt; r->block_size=bytes;
-          if(map>INT64_MAX/bytes || !pm_read(f,(int64_t)(map*bytes),entries,512)) return false;
+          if(map>(uint64_t)INT64_MAX/bytes || !pm_read(f,(int64_t)(map*bytes),entries,512)) return false;
           if((b[508]&15)==9) { for(i=0;i<42;++i) { const uint8_t *e=entries+i*12; uint32_t magic=pm_le32(e);
               if(magic!=UINT32_C(0xDEAFA1DE) && magic!=UINT32_C(0xDEAFAB1E)) continue;
               if(!vr_part(f,s,i,magic==UINT32_C(0xDEAFA1DE)?"Linux":"swap",(map+pm_le32(e+4))*bytes,(uint64_t)pm_le32(e+8)*bytes)) return false; } }

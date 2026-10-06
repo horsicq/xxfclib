@@ -52,7 +52,7 @@ static bool xx_archive_addition_candidate(xx_file_type_t type,xx_io_device *devi
         if(!first[1]) return xadg_be32(first+a+4U)==11264U;
         if(first[a+1U]!=0 && first[a+1U]!=2U) return false;
         n=first[a+4U]|(uint32_t)first[a+5U]<<8U|(uint32_t)first[a+6U]<<16U;
-        if(n&~0x3FFFFFU) return false; c=0; for(i=0;i<22U;++i) if(n&(1U<<i)) c+=528U;
+        if(n&~0x3FFFFFU) { return false; } c=0; for(i=0;i<22U;++i) if(n&(1U<<i)) c+=528U;
         return xadg_be32(first+a+8U)==c && xadg_be32(first+a+12U)<=(uint64_t)source_total-a-20U;
     case XX_FILE_TYPE_COMPDISK:
         return size>=16U && !xx_rt_memcmp(first,"COMP",4) && xadg_be32(first+4)==5U && !xadg_be32(first+8) && !xadg_be32(first+12) && source_total>=16+80*6;
@@ -63,7 +63,7 @@ static bool xx_archive_addition_candidate(xx_file_type_t type,xx_io_device *devi
         /* BASIC SYS SFX has a line-derived exact record offset. */
         if(size>=9U && first[6]==0x9EU && first[7]=='(') {
             uint8_t record[32]; n=first[4]|(uint32_t)first[5]<<8U;
-            if(n<7U || n>4096U) return false; a=(n-6U)*254U; if(n==15U && first[8]=='7') --a;
+            if(n<7U || n>4096U) { return false; } a=(n-6U)*254U; if(n==15U && first[8]=='7') --a;
             return source_total>=a+32U && xadg_read(device,a,record,sizeof(record)) && xx_archive_addition_candidate(type,NULL,record,sizeof(record),source_total-a);
         }
         return false;

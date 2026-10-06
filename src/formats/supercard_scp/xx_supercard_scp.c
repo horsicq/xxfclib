@@ -82,7 +82,7 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
    xx_rt_snprintf(name,sizeof(name),"track-%u-revolution-%u.flux",logical,j); if(!nh_emit(f,s,b,name,at,len*2U)) return false; if(extent<at+len*2U) extent=at+len*2U;
   }
  }
- if(!tracks || extent>data_end) return false; s->size=(b->p[8]&0x20U)?b->n:extent; return true;
+ if(!tracks || extent>data_end) { return false; } s->size=(b->p[8]&0x20U)?b->n:extent; return true;
 }
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { nh_blob b; bool ok; if(!nh_load(f,&b,pd)) return false; ok=parse_blob(f,s,&b); xx_mem_free(b.p); return ok; }

@@ -33,7 +33,7 @@ static bool lhf_decode(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *out
                 else if(!symbol) { if(!i || !previous) return false; len=previous; run=ac_bits_get(&bits,3U)+3U; }
                 else { len=0; run=ac_bits_get(&bits,symbol==1U?2U:7U)+(symbol==1U?4U:8U); }
                 if(bits.failed || run>512U-i || run>lengthcount+1U-i) return false;
-                while(run--) lengths[i++]=(uint8_t)len; previous=len;
+                while(run--) { lengths[i++]=(uint8_t)len; } previous=len;
             }
             highest=lengthcount; while(highest && !lengths[highest]) --highest;
             if(!ac_prefix_build(&chars,lengths,512U,16U)) return false;
@@ -64,7 +64,7 @@ static bool lhf_parse(Abstractformat *f,pm_stream *s,ac_blob *b) {
         uint32_t packed,n,name_n,pos; char name[96];
         if(!ac_poll(b) || !ac_span(b,at,16U)) return false;
         name_n=pm_be16(b->p+at+2); packed=pm_be32(b->p+at+4); n=pm_be32(b->p+at+8); pos=at+16U;
-        if(!ac_span(b,pos,name_n) || !ac_name(name,sizeof(name),b->p+pos,name_n)) return false; pos+=name_n;
+        if(!ac_span(b,pos,name_n) || !ac_name(name,sizeof(name),b->p+pos,name_n)) { return false; } pos+=name_n;
         if(!ac_span(b,pos,packed)) return false;
         if(n==UINT32_MAX) { if(packed) return false; }
         else if(!n) { if(!ac_emit(f,s,b,name,pos,packed)) return false; }

@@ -11,7 +11,7 @@ typedef struct qo_bytes { Abstractformat *f; xx_pd_struct *pd; int64_t pos,end,b
 static bool qo_byte(qo_bytes *r,uint8_t *b) {
     if(r->pos>=r->end) return false;
     if(r->pos<r->begin || r->pos-r->begin>=(int64_t)r->n) { int64_t left=r->end-r->pos; r->n=(uint64_t)left>r->capacity ? r->capacity : (size_t)left;
-        if((r->pd && xx_pd_is_stopped(r->pd)) || !pm_read(r->f,r->pos,r->buf,r->n)) return false; r->begin=r->pos; }
+        if((r->pd && xx_pd_is_stopped(r->pd)) || !pm_read(r->f,r->pos,r->buf,r->n)) { return false; } r->begin=r->pos; }
     *b=r->buf[(size_t)(r->pos-r->begin)]; ++r->pos; return true;
 }
 static bool qo_finish(qo_bytes *r,bool result) { xx_mem_free(r->buf); return result; }
@@ -31,7 +31,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         else if((op&192)==64) { pixel[0]=(uint8_t)(pixel[0]+((op>>4)&3)-2); pixel[1]=(uint8_t)(pixel[1]+((op>>2)&3)-2); pixel[2]=(uint8_t)(pixel[2]+(op&3)-2); }
         else if((op&192)==128) { uint8_t b; int dg=(op&63)-32; if(!qo_byte(&r,&b)) return qo_finish(&r,false); pixel[0]=(uint8_t)(pixel[0]+dg+(b>>4)-8); pixel[1]=(uint8_t)(pixel[1]+dg); pixel[2]=(uint8_t)(pixel[2]+dg+(b&15)-8); }
         else run=(op&63)+1U;
-        if(run>pixels-done) return qo_finish(&r,false); hash=(pixel[0]*3U+pixel[1]*5U+pixel[2]*7U+pixel[3]*11U)%64U; xx_rt_memcpy(index[hash],pixel,4); done+=run;
+        if(run>pixels-done) { return qo_finish(&r,false); } hash=(pixel[0]*3U+pixel[1]*5U+pixel[2]*7U+pixel[3]*11U)%64U; xx_rt_memcpy(index[hash],pixel,4); done+=run;
     }
     if(!pm_read(f,r.pos,marker,8) || xx_rt_memcmp(marker,"\0\0\0\0\0\0\0\1",8) || !pm_add(f,s,"descriptor.bin",4,10) || !pm_add(f,s,"opcodes.qoi",14,r.pos-14)) return qo_finish(&r,false);
     s->size=r.pos+8; return qo_finish(&r,true);

@@ -88,7 +88,7 @@ static const xx_archive_record *vr_current(Abstractformat *f,xx_archive_record_s
     return record;
 }
 void xx_volume_init(xx_volume *r,xx_io_device *d,int64_t base,xx_file_type_t type,const char *ext) {
-    if(!r) return; xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,base,type,ext);
+    if(!r) { return; } xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,base,type,ext);
     r->format.create_archive_records_reading=vr_records; r->format.get_current_archive_record=vr_current;
     r->format.check_is_valid=vr_valid; r->format.handle_base_info=vr_handle;
     r->format.unpack_current_archive_record=vr_unpack;

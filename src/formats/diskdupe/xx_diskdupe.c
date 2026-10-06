@@ -47,7 +47,7 @@ static uint16_t diskdupe_le16(const uint8_t *b) {
     return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
 }
 
-static uint32_t diskdupe_le32(const uint8_t *b) {
+static XXFC_MAYBE_UNUSED uint32_t diskdupe_le32(const uint8_t *b) {
     return (uint32_t)diskdupe_le16(b) | ((uint32_t)diskdupe_le16(b + 2U) << 16U);
 }
 

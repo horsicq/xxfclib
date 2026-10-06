@@ -8,7 +8,7 @@
 
 static bool w5_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t *tail,h[46],l[30]; int64_t limit=pm_available(f),low,ecd=-1,dir,archive,at,local; size_t n,i; uint16_t count; uint32_t bytes,relative; bool ok=false;
-    if(limit<98 || !pm_read(f,0,h,2) || xx_rt_memcmp(h,"MZ",2)) return false; low=limit>65557 ? limit-65557 : 0; n=(size_t)(limit-low);
+    if(limit<98 || !pm_read(f,0,h,2) || xx_rt_memcmp(h,"MZ",2)) { return false; } low=limit>65557 ? limit-65557 : 0; n=(size_t)(limit-low);
     tail=(uint8_t *)xx_mem_alloc(n); if(!tail || !pm_read(f,low,tail,n)) { if(tail) xx_mem_free(tail); return false; }
     for(i=n-22+1;i>0;--i) { size_t p=i-1; if((p&4095U)==0 && wg_stop(pd)) goto done; if(!xx_rt_memcmp(tail+p,"PK\5\6",4) && p+22+pm_le16(tail+p+20)==n) { ecd=low+(int64_t)p; xx_rt_memcpy(h,tail+p,22); break; } }
     if(ecd<0 || pm_le16(h+4) || pm_le16(h+6) || !(count=pm_le16(h+10)) || count==65535 || count!=pm_le16(h+8) || (bytes=pm_le32(h+12))>(uint64_t)ecd || (relative=pm_le32(h+16))==UINT32_MAX) goto done;

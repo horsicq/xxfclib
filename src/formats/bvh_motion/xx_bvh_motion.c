@@ -18,8 +18,8 @@ static bool fg_bvh_node(fg_lex *q,unsigned depth,unsigned *joints,unsigned *chan
 }
 static bool fg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  fg_lex q={b,0,n,pd,0,false,false,false};unsigned joints=0,channels=0;int32_t frames;double dt,v;uint64_t p,i,total;
- if(!fg_utf(b,n,true,pd)||!fg_kw(&q,"HIERARCHY")||!fg_bvh_node(&q,0,&joints,&channels,true,false)||!fg_emit(f,s,"hierarchy.bvh",0,q.p,n))return false;p=q.p;
- if(!fg_kw(&q,"MOTION")||!fg_kw(&q,"Frames")||!fg_char(&q,':')||!fg_integer(&q,&frames)||frames<1||frames>1000000||!fg_kw(&q,"Frame")||!fg_kw(&q,"Time")||!fg_char(&q,':')||!fg_number(&q,&dt)||dt<=0||dt>60||!fg_emit(f,s,"motion-descriptor.bvh",p,q.p-p,n))return false;p=q.p;total=(uint64_t)frames*channels;if(total>16000000)return false;
+ if(!fg_utf(b,n,true,pd)||!fg_kw(&q,"HIERARCHY")||!fg_bvh_node(&q,0,&joints,&channels,true,false)||!fg_emit(f,s,"hierarchy.bvh",0,q.p,n)) {return false; } p=q.p;
+ if(!fg_kw(&q,"MOTION")||!fg_kw(&q,"Frames")||!fg_char(&q,':')||!fg_integer(&q,&frames)||frames<1||frames>1000000||!fg_kw(&q,"Frame")||!fg_kw(&q,"Time")||!fg_char(&q,':')||!fg_number(&q,&dt)||dt<=0||dt>60||!fg_emit(f,s,"motion-descriptor.bvh",p,q.p-p,n)) {return false; } p=q.p;total=(uint64_t)frames*channels;if(total>16000000)return false;
  for(i=0;i<total;++i)if(!fg_number(&q,&v))return false;
  return fg_emit(f,s,"motion-frames.bvh",p,q.p-p,n)&&fg_end(&q)&&fg_cover(f,s,"whitespace.bvh",n);
 }

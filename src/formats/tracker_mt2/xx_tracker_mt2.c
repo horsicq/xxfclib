@@ -7,7 +7,7 @@
 static bool e8_parse(e8_blob*c) {
  size_t p=388;unsigned patterns,orders,chn,i;uint16_t version;
  if(!e8_range(c,0,388) || !e8_eq(c,0,"MT20",4) || (version=pm_le16(c->b+8))<0x200 || version>0x201 || !(orders=pm_le16(c->b+106)) || orders>256 || pm_le16(c->b+108)>=orders || !(patterns=pm_le16(c->b+110)) || patterns>256 || !(chn=pm_le16(c->b+112)) || chn>64 || pm_le32(c->b+118) || pm_le16(c->b+122) || pm_le16(c->b+124) || pm_le16(c->b+382) || pm_le32(c->b+384))return false;
- for(i=0;i<orders;++i)if(c->b[126+i]>=patterns)return false;if(!e8_add(c,"headers-orders.bin",0,p))return false;
+ for(i=0;i<orders;++i) {if(c->b[126+i]>=patterns)return false; } if(!e8_add(c,"headers-orders.bin",0,p))return false;
  for(i=0;i<patterns;++i){uint32_t z;unsigned rows;size_t n;if(!e8_range(c,p,6) || !(rows=pm_le16(c->b+p)) || rows>1024 || (z=pm_le32(c->b+p+2))!=(uint32_t)(rows*chn*7U))return false;n=(z+1U)&~1U;if(!e8_add(c,"pattern.bin",p,6U+n))return false;if(n>z && c->b[p+6+z])return false;p+=6U+n;}
  {size_t start=p;for(i=0;i<511;++i){if(!e8_range(c,p,36) || pm_le32(c->b+p+32))return false;p+=36;}if(!e8_add(c,"empty-instrument-sample-slots.bin",start,p-start))return false;}
  return p==c->n;

@@ -13,15 +13,15 @@ static dg_status copy(const dg_callbacks *cb,unsigned char *out,const unsigned c
 }
 static int unit_size(const unsigned char *in,size_t size,size_t *total,size_t *raw) {
     uint32_t method;uint64_t n;
-    if(size<8)return 0;method=u32(in);*raw=u32(in+4);
+    if(size<8) {return 0; } method=u32(in);*raw=u32(in+4);
     if(!method)n=8+(uint64_t)*raw;
     else if(method==1&&size>=32)n=32+(uint64_t)u32(in+24)+u32(in+28);
     else return 0;
-    if(n>size||n>SIZE_MAX)return 0;*total=(size_t)n;return 1;
+    if(n>size||n>SIZE_MAX) {return 0; } *total=(size_t)n;return 1;
 }
 dg_status dg_codec_output_size(const dg_callbacks *cb,const unsigned char *in,size_t size,size_t *raw) {
     size_t total,part,at=8,sum=0;uint32_t method,count,i;
-    if(!cb||!in||!raw||size<8)return DG_FORMAT;if(stop(cb))return DG_CANCELLED;method=u32(in);
+    if(!cb||!in||!raw||size<8) {return DG_FORMAT; } if(stop(cb))return DG_CANCELLED;method=u32(in);
     if(method<2){if(!unit_size(in,size,&total,raw)||total!=size)return DG_FORMAT;return DG_OK;}
     if(method!=2)return DG_UNSUPPORTED_CODEC;
     count=u32(in+4);if(!count||count>(size-8)/8)return DG_FORMAT;
@@ -30,7 +30,7 @@ dg_status dg_codec_output_size(const dg_callbacks *cb,const unsigned char *in,si
         if(at>size||!unit_size(in+at,size-at,&total,&part)||part>SIZE_MAX-sum)return DG_FORMAT;
         at+=total;sum+=part;
     }
-    if(at!=size)return DG_FORMAT;*raw=sum;return DG_OK;
+    if(at!=size) {return DG_FORMAT; } *raw=sum;return DG_OK;
 }
 static dg_status unit(const dg_callbacks *cb,const unsigned char *in,size_t size,
                       unsigned char *out,size_t raw,int apply_filter) {
@@ -79,7 +79,7 @@ dg_status dg_codec_decode(const dg_callbacks *cb,const unsigned char *in,size_t 
     uint32_t method,stride,plane;size_t at,part,total,unit_raw,combined=0;
     dg_status status;
     if(!cb||!cb->allocate||!cb->release||!in||size<8||(raw&&!out))return DG_FORMAT;
-    if(stop(cb))return DG_CANCELLED;method=u32(in);
+    if(stop(cb)) {return DG_CANCELLED; } method=u32(in);
     if(method<2)return unit(cb,in,size,out,raw,0);
     if(method!=2)return DG_UNSUPPORTED_CODEC;
     stride=u32(in+4);if(!stride||stride>(size-8)/8||(raw&&stride>raw))return DG_FORMAT;

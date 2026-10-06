@@ -166,7 +166,7 @@ static bool xx_huf_parse(Abstractformat *format, xx_huf_stream **result,
     member_count = xx_huf_read16le(header + 2U);
     symbol_count = xx_huf_read16le(header + 4U);
     directory_offset = (int64_t)xx_huf_read32le(header + 6U);
-    if (member_count == 0U || member_count > XX_HUF_MAX_MEMBERS ||
+    if (member_count == 0U ||
         symbol_count == 0U || symbol_count > XX_HUF_MAX_SYMBOLS ||
         directory_offset <= 9 || directory_offset >= input_size) {
         return false;
@@ -358,7 +358,6 @@ static bool xx_huf_decode_member(Abstractformat *format,
     if (!format || !format->device || !stream || !member || !plain ||
         !plain_size || member->stream_size <= 0 ||
         (uint64_t)member->stream_size > (uint64_t)SIZE_MAX ||
-        (uint64_t)member->uncompressed_size > (uint64_t)SIZE_MAX ||
         (pd && xx_pd_is_stopped(pd))) {
         return false;
     }

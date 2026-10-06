@@ -54,7 +54,7 @@ static bool vg_xvalidate(vg_xml *q) {unsigned i,j;uint64_t work=0;for(i=1;i<=q->
  case VX_SCENE:if(parent->kind!=VX_COLLADA||!c||q->nodes[c].kind!=VX_VISINST||q->nodes[c].next)return false;break;
  case VX_VISINST:allowed=(1U<<11);if(parent->kind!=VX_SCENE||!vg_xfind(q,vg_xattr_get(v,11),VX_VISUAL)||!vg_xempty(q,v))return false;break;
  default:return false;}
- if(!vg_xattrs_ok(v,allowed))return false;if(v->child&&!vg_xcontainer(q,v))return false;}
+ if(!vg_xattrs_ok(v,allowed)) {return false; } if(v->child&&!vg_xcontainer(q,v))return false;}
  /* Resolve input streams only after all source accessors have been validated. */
  for(i=1;i<=q->count;++i){vg_xnode *v=&q->nodes[i];if(v->kind==VX_VERTICES){vg_xnode *input=&q->nodes[v->child];v->value=q->nodes[input->value].value;v->width=q->nodes[input->value].width;if(v->width<3)return false;}if(v->kind==VX_P){vg_xnode *tri=&q->nodes[v->parent];uint32_t limits[8],k;vg_lex t={q->b,v->text,v->stop,q->pd,0,false,false,false};unsigned c=tri->child;int32_t index;while(c){vg_xnode *in=&q->nodes[c];if(in->kind==VX_INPUT)limits[in->width]=q->nodes[in->value].value;c=in->next;}for(k=0;k<tri->value*3*tri->width;++k)if(!vg_integer(&t,&index)||index<0||(uint32_t)index>=limits[k%tri->width])return false;if(!vg_end(&t))return false;}}
  return true;}

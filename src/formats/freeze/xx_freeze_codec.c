@@ -98,7 +98,7 @@ static bool fr_byte(fr_context *c,uint8_t value) {
 }
 bool xx_freeze_decode(const uint8_t *input,size_t size,uint8_t **output,size_t *used,xx_pd_struct *pd) {
  fr_context *c=NULL;unsigned table[8]={0,0,1,3,8,12,24,16},counts=0,weight=0,i,old;bool ok=false;
- if(!output || !used)return false;*output=NULL;*used=0;
+ if(!output || !used) {return false; } *output=NULL;*used=0;
  if(!input || size<2 || input[0]!=0x1f || (input[1]!=0x9e && input[1]!=0x9f))return false;
  old=input[1]==0x9e;
  if(!old){
@@ -127,7 +127,7 @@ bool xx_freeze_decode(const uint8_t *input,size_t size,uint8_t **output,size_t *
   else{
    unsigned length=symbol-254,code=0,first=0,offset=0,depth,high=0,low,distance;bool found=false;
    for(depth=0;depth<8;++depth){
-    if(!fr_bit(c,&b))goto done;code=(code<<1)|b;
+    if(!fr_bit(c,&b)) {goto done; } code=(code<<1)|b;
     if(code>=first && code-first<table[depth]){high=offset+code-first;found=true;break;}
     offset+=table[depth];first=(first+table[depth])<<1;
    }

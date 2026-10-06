@@ -25,7 +25,7 @@ static bool av_name(char *out,size_t cap,const char *prefix,const char *name) {
     if(n){xx_rt_memcpy(out,prefix,n);at=n;out[at++]='/';}
     for(i=0;name[i];++i){unsigned char c=(unsigned char)name[i];
         if(c>=33U && c<=126U && c!='~' && c!='\\' && c!=':' && c!='<' && c!='>' && c!='"' && c!='|' && c!='?' && c!='*') {
-            if(at+1U>=cap)return false;out[at++]=(char)c;
+            if(at+1U>=cap) {return false; } out[at++]=(char)c;
         } else {if(at+3U>=cap)return false;out[at++]='~';out[at++]=hex[c>>4U];out[at++]=hex[c&15U];}}
     out[at]=0;return af_safe(out);
 }
@@ -63,7 +63,7 @@ static bool av_volume(af_work *w,xx_io_device *device,const char *prefix,unsigne
      * collected. Reserve half of the remaining ceiling for each lifetime. */
     w->limit=w->used+remaining;
     if(kind==1 && (((xx_prodos *)f)->damaged || ((xx_prodos *)f)->truncated))goto done;
-    if(st->total_records<0)goto done;expected=(size_t)st->total_records;
+    if(st->total_records<0) {goto done; } expected=(size_t)st->total_records;
     /* CP/M has no on-disk geometry signature. The explicit DOS hybrid view
      * supplies its Apple-DO preset and requires a live, validated directory. */
     if(kind==7 && !expected)goto done;
@@ -81,7 +81,7 @@ static bool av_volume(af_work *w,xx_io_device *device,const char *prefix,unsigne
     ok=seen==expected && af_poll(w);
 done:if(st)xx_format_free_archive_records_reading(f,st);if(f)destroy(f);w->limit=original_limit;return ok;
 }
-static bool av_extent(af_work *w,uint64_t at,uint64_t size,const char *prefix,unsigned kind) {
+static XXFC_MAYBE_UNUSED bool av_extent(af_work *w,uint64_t at,uint64_t size,const char *prefix,unsigned kind) {
     xx_io_device *sub;int64_t available=pm_available(w->f);bool ok;
     if(at>INT64_MAX || size>INT64_MAX || available<0 || at>(uint64_t)available || size>(uint64_t)available-at)return false;
     sub=xx_io_sub_open_ro(w->f->device,w->f->base_address+(int64_t)at,(int64_t)size);if(!sub)return false;

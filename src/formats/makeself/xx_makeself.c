@@ -77,7 +77,7 @@ static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(!wg_number(text,len,"skip",&lines)) { p=xx_rt_strstr(text,"head -n "); if(!p) goto done; p+=8; { size_t k=0; while(p[k]>='0' && p[k]<='9') ++k; if(!wg_decimal(p,k,&lines)) goto done; } }
     if(!wg_lines(f,lines,&offset,pd)) goto done;
     while(i<n) { uint64_t bytes; size_t begin; uint8_t h[6]; const char *ext="tar"; char label[48];
-        while(i<n && sizes[i]==' ') ++i; begin=i; while(i<n && sizes[i]>='0' && sizes[i]<='9') ++i;
+        while(i<n && sizes[i]==' ') { ++i; } begin=i; while(i<n && sizes[i]>='0' && sizes[i]<='9') ++i;
         if(begin==i || !wg_decimal(sizes+begin,i-begin,&bytes) || !bytes || bytes<6 || (i<n && sizes[i]!=' ') || ++count>64 || !wg_range(limit,offset,bytes) || !pm_read(f,offset,h,6) || wg_stop(pd)) goto done;
         if(h[0]==31 && h[1]==139 && h[2]==8 && !(h[3]&224)) ext="tar.gz";
         else if(!xx_rt_memcmp(h,"BZh",3) && h[3]>='1' && h[3]<='9') ext="tar.bz2";
@@ -86,7 +86,7 @@ static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         else if(!wg_tar(f,offset,offset+(int64_t)bytes,pd)) goto done;
         xx_rt_snprintf(label,sizeof(label),"payload-%u.%s",count-1,ext); if(!pm_add(f,s,label,offset,(int64_t)bytes)) goto done; offset+=(int64_t)bytes;
     }
-    if(!count) goto done; s->size=offset; ok=true;
+    if(!count) { goto done; } s->size=offset; ok=true;
 done: xx_mem_free(text); return ok;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { return wg_parse(f,s,pd) && wg_members(s,pd); }

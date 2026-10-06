@@ -6,7 +6,7 @@
 #include "../snes_spc/xx_tenth_retro.h"
 static bool read_components(Abstractformat *f,pm_stream *s,th_blob *b) {
  const uint8_t *p=b->p;unsigned side,sides;uint32_t total;
- if(b->n<16 || xx_rt_memcmp(p,"FDS\x1a",4) || !p[4] || p[4]>8 || !th_zero(p+5,11)) return false;sides=p[4];total=16+65500U*sides;if(!th_range(b,0,total) || !th_emit(f,s,b,"disk-descriptor.bin",0,16)) return false;
+ if(b->n<16 || xx_rt_memcmp(p,"FDS\x1a",4) || !p[4] || p[4]>8 || !th_zero(p+5,11)) { return false; } sides=p[4];total=16+65500U*sides;if(!th_range(b,0,total) || !th_emit(f,s,b,"disk-descriptor.bin",0,16)) return false;
  for(side=0;side<sides;++side) {
   uint32_t a=16+65500U*side,end=a+65500;unsigned count,i;char name[64];if(!th_poll(b) || xx_rt_memcmp(p+a,"\1*NINTENDO-HVC*",15) || p[a+56]!=2) return false;count=p[a+57];if(!count || count>128) return false;
   xx_rt_snprintf(name,sizeof(name),"side-%u-descriptor.bin",side);if(!th_emit(f,s,b,name,a,58)) return false;a+=58;

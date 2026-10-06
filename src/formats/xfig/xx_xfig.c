@@ -12,28 +12,28 @@ typedef struct sm_token { const uint8_t *p; size_t n; } sm_token;
 static bool sm_line_read(sm_text *r,sm_line *line) {
     size_t begin=r->at,end; if(fd_stop(r->pd) || begin>=r->n || ++r->lines>262144) return false;
     while(r->at<r->n && r->p[r->at]!='\n') { uint8_t b=r->p[r->at]; if((b<32 && b!='\t' && b!='\r') || b>126 || r->at-begin>=4096) return false; ++r->at; }
-    if(r->at==r->n) return false; end=r->at++; if(end>begin && r->p[end-1]=='\r') --end;
+    if(r->at==r->n) { return false; } end=r->at++; if(end>begin && r->p[end-1]=='\r') --end;
     line->p=r->p+begin; line->n=end-begin; line->begin=begin; line->stop=r->at; return true;
 }
 static bool sm_line_equal(sm_line *line,const char *text) { size_t n=xx_rt_strlen(text); return line->n==n && !xx_rt_memcmp(line->p,text,n); }
 static unsigned sm_split(sm_line *line,sm_token *tokens,unsigned cap) {
     size_t at=0,begin; unsigned count=0;
     while(at<line->n) { while(at<line->n && (line->p[at]==' ' || line->p[at]=='\t')) ++at; if(at==line->n) break; begin=at;
-        while(at<line->n && line->p[at]!=' ' && line->p[at]!='\t') ++at; if(count==cap) return cap+1;
+        while(at<line->n && line->p[at]!=' ' && line->p[at]!='\t') { ++at; } if(count==cap) return cap+1;
         tokens[count].p=line->p+begin; tokens[count++].n=at-begin;
     } return count;
 }
 static bool sm_integer(sm_token t,int32_t *out) {
     size_t at=0; uint32_t v=0; bool neg=false;
-    if(!t.n || t.n>10) return false; if(t.p[at]=='-' || t.p[at]=='+') neg=t.p[at++]=='-'; if(at==t.n) return false;
+    if(!t.n || t.n>10) { return false; } if(t.p[at]=='-' || t.p[at]=='+') neg=t.p[at++]=='-'; if(at==t.n) return false;
     while(at<t.n) { if(t.p[at]<'0' || t.p[at]>'9' || v>1000000) return false; v=v*10+t.p[at++]-'0'; }
-    if(v>10000000) return false; *out=neg ? -(int32_t)v:(int32_t)v; return true;
+    if(v>10000000) { return false; } *out=neg ? -(int32_t)v:(int32_t)v; return true;
 }
 static bool sm_real(sm_token t,bool nonnegative,bool nonzero) {
     size_t at=0; unsigned whole=0,fraction=0; bool dot=false,digit=false,any=false,negative=false;
-    if(!t.n || t.n>32) return false; if(t.p[at]=='-' || t.p[at]=='+') negative=t.p[at++]=='-';
+    if(!t.n || t.n>32) { return false; } if(t.p[at]=='-' || t.p[at]=='+') negative=t.p[at++]=='-';
     while(at<t.n) { uint8_t b=t.p[at++]; if(b=='.') { if(dot) return false; dot=true; continue; }
-        if(b<'0' || b>'9') return false; digit=true; any=any || b!='0'; if(dot) { if(++fraction>16) return false; } else if(++whole>7) return false;
+        if(b<'0' || b>'9') { return false; } digit=true; any=any || b!='0'; if(dot) { if(++fraction>16) return false; } else if(++whole>7) return false;
     } return digit && (!nonnegative || !negative || !any) && (!nonzero || any);
 }
 static bool sm_color_ref(int32_t v,const uint8_t *colors) { return (v>=-1 && v<=31) || (v>=32 && v<=543 && colors[v-32]); }
@@ -54,7 +54,7 @@ static bool sm_fig_parse(Abstractformat *f,pm_stream *s,const uint8_t *data,size
     }
     header=r.at; if(!pm_add(f,s,"fig-header.txt",0,(int64_t)header)) return false;
     while(r.at<n) { unsigned fields,i; size_t begin,stop; char label[48];
-        if(!sm_line_read(&r,&line)) return false; if(!line.n || line.p[0]=='#') continue;
+        if(!sm_line_read(&r,&line)) { return false; } if(!line.n || line.p[0]=='#') continue;
         fields=sm_split(&line,tokens,20); begin=line.begin; if(!fields || fields>20 || !sm_integer(tokens[0],v) || ++count>4096) return false;
         if(v[0]==0) {
             if(geometry || fields!=3 || !sm_integer(tokens[1],v+1) || v[1]<32 || v[1]>543 || colors[v[1]-32] || tokens[2].n!=7 || tokens[2].p[0]!='#') return false;
@@ -80,8 +80,8 @@ static bool sm_fig_parse(Abstractformat *f,pm_stream *s,const uint8_t *data,size
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     int64_t n=pm_available(f); uint8_t *data; bool ok=false;
-    if(n<32 || n>8388608) return false; data=(uint8_t *)xx_mem_alloc((size_t)n); if(!data) return false;
-    if(pm_read(f,0,data,(size_t)n)) ok=sm_fig_parse(f,s,data,(size_t)n,pd); xx_mem_free(data); return ok;
+    if(n<32 || n>8388608) { return false; } data=(uint8_t *)xx_mem_alloc((size_t)n); if(!data) return false;
+    if(pm_read(f,0,data,(size_t)n)) { ok=sm_fig_parse(f,s,data,(size_t)n,pd); } xx_mem_free(data); return ok;
 }
 
 void xx_xfig_init(xx_xfig *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_XFIG,"fig"); } }

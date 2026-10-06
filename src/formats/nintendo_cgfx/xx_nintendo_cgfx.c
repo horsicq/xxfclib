@@ -23,20 +23,20 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     total=pm_le32(h+12); blocks=pm_le32(h+16); if(!blocks || blocks>2 || total>(uint64_t)pm_available(f) || !pm_read(f,20,b,136) || xx_rt_memcmp(b,"DATA",4) || (ds=pm_le32(b+4))<136 || !span(20,ds,total)) return false; end=20U+(uint64_t)ds;
     for(i=0;i<16;++i) { uint32_t count=pm_le32(b+8+i*8),rel=pm_le32(b+12+i*8); int64_t target;
       if(!count) { if(rel) return false; continue; } if(count>1024 || !rel) return false; target=32+(int64_t)i*8+(int32_t)rel;
-      if(target<156 || !span((uint64_t)target,12,end) || !pm_read(f,target,d,12) || xx_rt_memcmp(d,"DICT",4) || pm_le32(d+8)!=count || pm_le32(d+4)!=12U+16U*(count+1U) || !span((uint64_t)target,pm_le32(d+4),end)) return false; dicts[i]=(uint64_t)target; sizes[i]=pm_le32(d+4);
+      if(target<156 || !span((uint64_t)target,12,end) || !pm_read(f,target,d,12) || xx_rt_memcmp(d,"DICT",4) || pm_le32(d+8)!=count || pm_le32(d+4)!=12U+16U*(count+1U) || !span((uint64_t)target,pm_le32(d+4),end)) { return false; } dicts[i]=(uint64_t)target; sizes[i]=pm_le32(d+4);
       for(j=0;j<i;++j) if(overlap(dicts[i],sizes[i],dicts[j],sizes[j])) return false;
     }
     for(i=0;i<16;++i) if(sizes[i]) { uint32_t count=(uint32_t)((sizes[i]-12)/16-1);
       for(j=0;j<=count;++j) { uint64_t node=dicts[i]+12+j*16; int64_t target; uint64_t pos;
-        if(stop(pd) || !pm_read(f,(int64_t)node,e,16) || pm_le16(e+4)>count || pm_le16(e+6)>count) return false; if(!j) { if(pm_le32(e+8) || pm_le32(e+12)) return false; continue; }
+        if(stop(pd) || !pm_read(f,(int64_t)node,e,16) || pm_le16(e+4)>count || pm_le16(e+6)>count) { return false; } if(!j) { if(pm_le32(e+8) || pm_le32(e+12)) return false; continue; }
         target=(int64_t)node+8+(int32_t)pm_le32(e+8); if(!pm_le32(e+8) || target<156 || (uint64_t)target>=end) return false; pos=(uint64_t)target; if(!cstring(f,&pos,end,4096,false,pd)) return false;
         for(k=0;k<16;++k) if(overlap((uint64_t)target,pos-(uint64_t)target,dicts[k],sizes[k])) return false;
         target=(int64_t)node+12+(int32_t)pm_le32(e+12); if(!pm_le32(e+12) || target<156 || !span((uint64_t)target,8,end)) return false; for(k=0;k<16;++k) if(overlap((uint64_t)target,8,dicts[k],sizes[k])) return false;
       }
     }
-    if(!emit(f,s,"graphics-data.bin",data,ds,total)) return false; at=end;
+    if(!emit(f,s,"graphics-data.bin",data,ds,total)) { return false; } at=end;
     if(blocks==2) { uint8_t p[8]; uint32_t n; if(!pm_read(f,(int64_t)at,p,8) || xx_rt_memcmp(p,"IMAG",4) || (n=pm_le32(p+4))<8 || !span(at,n,total) || !emit(f,s,"image-block.bin",at,n,total)) return false; at+=n; }
-    if(at!=total) return false; s->size=total; return true;
+    if(at!=total) { return false; } s->size=total; return true;
 
 }
 

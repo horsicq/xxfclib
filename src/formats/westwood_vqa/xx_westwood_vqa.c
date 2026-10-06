@@ -14,7 +14,7 @@ static bool vqa_frame(const uint8_t *b,uint64_t at,uint64_t end,bool *vectors) {
 static bool ng_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  uint32_t version=pm_le16(b+20),frames=pm_le16(b+24),width=pm_le16(b+26),height=pm_le16(b+28),rate=pm_le16(b+44),channels=b[46],bits=b[47],seen=0,index=0;uint64_t at=62,table,previous=0;uint32_t bw=b[30],bh=b[31];bool haveindex=false;
  if((uint64_t)pm_be32(b+4)+8!=n||(version!=1&&version!=2)||!frames||frames>2000||!width||width>4096||!height||height>4096||!bw||bw>8||!bh||bh>8||width%bw||height%bh||!b[32]||b[32]>30||!pm_le16(b+34)||pm_le16(b+34)>256||channels>2||(bits&&bits!=8&&bits!=16)||(rate&&rate<8000))return false;
- if(!ng_emit(f,s,"vqa_header.bin",0,62,n))return false;table=0;
+ if(!ng_emit(f,s,"vqa_header.bin",0,62,n)) {return false; } table=0;
  while(at<n){uint64_t q,end,next;uint32_t len;if(ng_stop(pd)||!ng_span(at,8,n))return false;len=pm_be32(b+at+4);q=at+8;if(!ng_span(q,len,n))return false;end=q+len;next=end+(len&1U);if(next>n||(len&1U&&b[end]))return false;
   if(pm_tag(b+at,"FINF",4)){uint32_t i;if(haveindex||seen||len!=(uint64_t)frames*4)return false;table=q;haveindex=true;for(i=0;i<frames;++i){uint64_t offset=(uint64_t)(pm_le32(b+q+(uint64_t)i*4)&0x3fffffffU)*2;if(offset<next||offset>=n||(i&&offset<=previous))return false;previous=offset;}}
   else {if(!haveindex)return false;if(index<frames){uint64_t target=(uint64_t)(pm_le32(b+table+(uint64_t)index*4)&0x3fffffffU)*2;if(target<at)return false;if(target==at)++index;}
@@ -22,9 +22,9 @@ static bool ng_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
    else if(pm_tag(b+at,"SND0",4)||pm_tag(b+at,"SND1",4)||pm_tag(b+at,"SND2",4)){if(!len||!rate||!channels||!bits)return false;if(pm_tag(b+at,"SND0",4)&&len%(channels*(bits/8)))return false;if(pm_tag(b+at,"SND1",4)&&(len<4||!pm_le16(b+q)||(uint32_t)pm_le16(b+q+2)+4!=len))return false;}
    else return false;
   }
-  if(!ng_emit(f,s,"vqa_encoded_chunk.bin",at,next-at,n))return false;at=next;
+  if(!ng_emit(f,s,"vqa_encoded_chunk.bin",at,next-at,n)) {return false; } at=next;
  }
- if(!haveindex||seen!=frames||index!=frames)return false;s->size=(int64_t)n;return true;
+ if(!haveindex||seen!=frames||index!=frames) {return false; } s->size=(int64_t)n;return true;
 }
 
 void xx_westwood_vqa_init(xx_westwood_vqa *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_WESTWOOD_VQA,"vqa");}}

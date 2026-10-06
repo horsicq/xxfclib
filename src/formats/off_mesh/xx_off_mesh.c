@@ -19,7 +19,7 @@ static bool eg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
   while(!eg_done(&q)){if(++colors>4||!eg_num(&q,&v)||v<0||v>255)return false;}if(colors!=0&&colors!=3&&colors!=4)return false;
  }
  while(q.p<n){if(!eg_line(&q)||!eg_done(&q))return false;}
- if(!eg_emit(f,s,"descriptor.off",0,vs,n)||!eg_emit(f,s,"vertices.off",vs,fs-vs,n)||!eg_emit(f,s,"polygons.off",fs,n-fs,n))return false;s->size=(int64_t)n;return true;
+ if(!eg_emit(f,s,"descriptor.off",0,vs,n)||!eg_emit(f,s,"vertices.off",vs,fs-vs,n)||!eg_emit(f,s,"polygons.off",fs,n-fs,n)) {return false; } s->size=(int64_t)n;return true;
 }
 
 void xx_off_mesh_init(xx_off_mesh *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_OFF_MESH,"off");}}

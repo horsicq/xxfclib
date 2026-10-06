@@ -47,7 +47,7 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
     int64_t span = pm_available(format), expected;
     uint16_t count;
     size_t i, j;
-    if (span < DFC_ENTRY_SIZE + sizeof(prefix) ||
+    if (span < (int64_t)(DFC_ENTRY_SIZE + sizeof(prefix)) ||
         !pm_read(format, 0, prefix, sizeof(prefix))) return false;
     count = pm_le16(prefix);
     if (pm_le16(prefix + 2U) != 1U) return false;

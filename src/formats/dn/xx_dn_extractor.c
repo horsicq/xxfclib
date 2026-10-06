@@ -23,7 +23,7 @@ static void dn_close(Abstractformat *format) {
     xx_dn_free((xx_dn *)format);
 }
 static const xx_format_search_desc dn_desc = {
-    dn_types, 1U, dn_anchors, 1U, dn_open, dn_close
+    dn_types, 1U, dn_anchors, 1U, dn_open, dn_close, false
 };
 static xx_format_search_state *dn_create_search(xx_format_extractor *self,
     xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd) {

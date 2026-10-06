@@ -22,7 +22,7 @@ static bool fm_byte(fm_bytes *r,uint8_t *b) {
     if(r->pos>=r->end) return false;
     if(r->begin<0 || r->pos<r->begin || r->pos-r->begin>=(int64_t)r->count) {
         int64_t left=r->end-r->pos; r->count=(uint64_t)left>r->capacity ? r->capacity : (size_t)left;
-        if((r->pd && xx_pd_is_stopped(r->pd)) || !pm_read(r->f,r->pos,r->buffer,r->count)) return false; r->begin=r->pos;
+        if((r->pd && xx_pd_is_stopped(r->pd)) || !pm_read(r->f,r->pos,r->buffer,r->count)) { return false; } r->begin=r->pos;
     }
     *b=r->buffer[(size_t)(r->pos-r->begin)]; ++r->pos; return true;
 }
@@ -35,14 +35,14 @@ static bool rd_line(fm_bytes *r,char *line,size_t capacity) {
     size_t n=0; uint8_t b;
     while(fm_byte(r,&b)) {
         if(b==10) { if(n && line[n-1]==13) --n; line[n]=0; return true; }
-        if(n+1>=capacity || (b<32 && b!=9 && b!=13) || b>126) return false; line[n++]=(char)b;
+        if(n+1>=capacity || (b<32 && b!=9 && b!=13) || b>126) { return false; } line[n++]=(char)b;
     }
     return false;
 }
 static bool rd_number(const char **p,unsigned *n) {
     unsigned value=0,digits=0; while(**p==' ' || **p=='\t') ++*p;
     while(**p>='0' && **p<='9') { if(value>3276 || (value==3276 && **p>'7')) return false; value=value*10U+(unsigned)(*(*p)++-'0'); ++digits; }
-    if(!digits || !value) return false; *n=value; return true;
+    if(!digits || !value) { return false; } *n=value; return true;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     fm_bytes r; char line[1025],label[48]; unsigned width,height,i; bool format=false; int64_t start; const char *p;
@@ -52,15 +52,15 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if(r.pos>65536 || !rd_line(&r,line,sizeof(line))) return fm_finish(&r,false);
         if(!line[0]) break;
         if(!xx_rt_strncmp(line,"FORMAT=",7)) {
-            if(format || (xx_rt_strcmp(line+7,"32-bit_rle_rgbe") && xx_rt_strcmp(line+7,"32-bit_rle_xyze"))) return fm_finish(&r,false); format=true;
+            if(format || (xx_rt_strcmp(line+7,"32-bit_rle_rgbe") && xx_rt_strcmp(line+7,"32-bit_rle_xyze"))) { return fm_finish(&r,false); } format=true;
         }
     }
     if(!format || !rd_line(&r,line,sizeof(line)) || r.pos>65536) return fm_finish(&r,false);
     p=line;
-    if((*p!='-' && *p!='+') || p[1]!='Y' || p[2]!=' ') return fm_finish(&r,false); p+=3;
-    if(!rd_number(&p,&height)) return fm_finish(&r,false); while(*p==' ' || *p=='\t') ++p;
-    if((*p!='+' && *p!='-') || p[1]!='X' || p[2]!=' ') return fm_finish(&r,false); p+=3;
-    if(!rd_number(&p,&width)) return fm_finish(&r,false); while(*p==' ' || *p=='\t') ++p;
+    if((*p!='-' && *p!='+') || p[1]!='Y' || p[2]!=' ') { return fm_finish(&r,false); } p+=3;
+    if(!rd_number(&p,&height)) { return fm_finish(&r,false); } while(*p==' ' || *p=='\t') ++p;
+    if((*p!='+' && *p!='-') || p[1]!='X' || p[2]!=' ') { return fm_finish(&r,false); } p+=3;
+    if(!rd_number(&p,&width)) { return fm_finish(&r,false); } while(*p==' ' || *p=='\t') ++p;
     if(*p || height>4096 || (uint64_t)width*height>16777216 || !pm_add(f,s,"descriptor.txt",0,r.pos)) return fm_finish(&r,false);
     for(i=0;i<height;++i) { uint8_t h[4]; unsigned c,j; bool encoded; start=r.pos;
         if(pd && xx_pd_is_stopped(pd)) return fm_finish(&r,false);
@@ -70,8 +70,8 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             if(((unsigned)h[2]<<8 | h[3])!=width) return fm_finish(&r,false);
             for(c=0;c<4;++c) { unsigned done=0;
                 while(done<width) { uint8_t op; unsigned n;
-                    if(!fm_byte(&r,&op) || !op) return fm_finish(&r,false); n=op>128 ? op-128U : op;
-                    if(n>width-done || !fm_skip(&r,op>128 ? 1U : n)) return fm_finish(&r,false); done+=n;
+                    if(!fm_byte(&r,&op) || !op) { return fm_finish(&r,false); } n=op>128 ? op-128U : op;
+                    if(n>width-done || !fm_skip(&r,op>128 ? 1U : n)) { return fm_finish(&r,false); } done+=n;
                 }
             }
         } else {

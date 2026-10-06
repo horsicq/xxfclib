@@ -44,7 +44,7 @@ static bool sig_byte_is_ansi(uint8_t value) {
     return value >= 0x20U && value <= 0x7eU;
 }
 
-static bool sig_byte_ok(uint8_t value, xx_data_sig_kind kind) {
+static XXFC_MAYBE_UNUSED bool sig_byte_ok(uint8_t value, xx_data_sig_kind kind) {
     switch (kind) {
         case XX_DATA_SIG_NOT_NULL:
             return value != 0U;
@@ -713,7 +713,7 @@ static bool sig_input_match(SigInput *input,
 bool xx_data_signature_match(const void *data, size_t data_size,
                              int64_t offset, const xx_data_signature *signature,
                              const xx_data_sig_context *context, int64_t *end_offset) {
-    SigInput input = {(const uint8_t *)data, NULL, (uint64_t)data_size, false};
+    SigInput input = {(const uint8_t *)data, NULL, (uint64_t)data_size, false, 0, NULL, NULL, 0, 0, 0, 0};
     return sig_input_match(&input, offset, signature, context, end_offset);
 }
 
@@ -1199,7 +1199,7 @@ finished:
 int64_t xx_data_signature_find_text(const void *data, size_t data_size,
                                     int64_t offset, int64_t length, const char *text,
                                     const xx_data_sig_context *context) {
-    SigInput input = {(const uint8_t *)data, NULL, (uint64_t)data_size, false};
+    SigInput input = {(const uint8_t *)data, NULL, (uint64_t)data_size, false, 0, NULL, NULL, 0, 0, 0, 0};
     return sig_input_find_text(&input, offset, length, text, context);
 }
 

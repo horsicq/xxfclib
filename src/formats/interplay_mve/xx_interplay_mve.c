@@ -34,9 +34,9 @@ static bool ng_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
    }q=p+len;
   }
   if(type==4){if(!eos||!last)return false;shutdown=true;}if(type==5){if(!shutdown||size)return false;ended=true;}
-  if(!ng_emit(f,s,"mve_encoded_chunk.bin",at,end-at,n))return false;at=end;
+  if(!ng_emit(f,s,"mve_encoded_chunk.bin",at,end-at,n)) {return false; } at=end;
  }
- if(!frames||!ended)return false;s->size=(int64_t)n;return true;
+ if(!frames||!ended) {return false; } s->size=(int64_t)n;return true;
 }
 
 void xx_interplay_mve_init(xx_interplay_mve *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_INTERPLAY_MVE,"mve");}}

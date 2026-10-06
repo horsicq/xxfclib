@@ -4,7 +4,7 @@
 #include "xx_thirteenth_root.h"
 #define F15_NEED(x) do { if(!(x)) goto done; } while(0)
 static bool f15_charge(nh_blob *b,uint64_t *budget,uint64_t n) {
-    if(fd_stop(b->pd) || n>*budget) return false;*budget-=n;return true;
+    if(fd_stop(b->pd) || n>*budget) { return false; } *budget-=n;return true;
 }
 static bool f15_identifier(nh_blob *b,el_token t) {
     return t.n<=255 && el_chars(b,t,"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.:|+-",true);
@@ -27,7 +27,7 @@ static bool f15_csv(nh_blob *b,el_token t,uint64_t *position,uint64_t *value) {
     if(start>=t.n) return false;
     while(*position<t.n && b->p[(size_t)(t.at+*position)]!=',') ++*position;
     if(!el_uint(b,el_slice(t,start,*position-start),value)) return false;
-    if(*position<t.n) ++*position;return true;
+    if(*position<t.n) { ++*position; } return true;
 }
 static bool f15_unique(nh_blob *b,el_token t,el_token *known,unsigned count,uint64_t *budget) {
     unsigned i;
@@ -46,14 +46,14 @@ static bool f15_track(nh_blob *b,el_token line,bool wig) {
     while(at<line.n) {
         uint64_t start;el_token key,value;
         while(at<line.n && (b->p[(size_t)(line.at+at)]==' ' || b->p[(size_t)(line.at+at)]=='\t')) ++at;
-        if(at==line.n) break;start=at;
+        if(at==line.n) { break; } start=at;
         while(at<line.n && b->p[(size_t)(line.at+at)]!='=') ++at;
         key=el_slice(line,start,at-start);
         if(at==line.n || !el_chars(b,key,"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_",true) || key.n>64 || count==64 || !f15_unique(b,key,keys,count,&budget)) return false;
         keys[count++]=key;++at;start=at;
         if(at<line.n && b->p[(size_t)(line.at+at)]=='"') {
             start=++at;while(at<line.n && b->p[(size_t)(line.at+at)]!='"') ++at;
-            if(at==line.n) return false;value=el_slice(line,start,at-start);++at;
+            if(at==line.n) { return false; } value=el_slice(line,start,at-start);++at;
         } else {
             while(at<line.n && b->p[(size_t)(line.at+at)]!=' ' && b->p[(size_t)(line.at+at)]!='\t') ++at;
             value=el_slice(line,start,at-start);
@@ -71,10 +71,10 @@ static bool f15_bed(Abstractformat *f,pm_stream *s,nh_blob *b) {
         if(!line.n || b->p[(size_t)line.at]=='#') {if(!nh_add(f,s,b,"metadata",start,c.at-start)) return false;continue;}
         if(el_prefix(b,line,"track")) {if(body || !f15_track(b,line,false) || !nh_add(f,s,b,"track",start,c.at-start)) return false;continue;}
         if(el_prefix(b,line,"browser ")) {
-            if(body || !el_split(b,line,t,12,&nt,false) || nt!=3 || !el_eq(b,t[1],"position") || !el_ident(b,t[2]) || !nh_add(f,s,b,"browser",start,c.at-start)) return false;continue;
+            if(body || !el_split(b,line,t,12,&nt,false) || nt!=3 || !el_eq(b,t[1],"position") || !el_ident(b,t[2]) || !nh_add(f,s,b,"browser",start,c.at-start)) { return false; } continue;
         }
         if(!el_split(b,line,t,12,&nt,true) || nt<3 || ++count>4094 || !f15_identifier(b,t[0]) || !el_uint(b,t[1],&a) || !el_uint(b,t[2],&z) || a>z || z>UINT32_MAX) return false;
-        if(fields && nt!=fields) return false;fields=nt;body=true;
+        if(fields && nt!=fields) { return false; } fields=nt;body=true;
         if(nt>=4 && !el_ident(b,t[3])) return false;
         if(nt>=5) {uint64_t score;if(!el_uint(b,t[4],&score) || score>1000) return false;}
         if(nt>=6 && (t[5].n!=1 || !el_chars(b,t[5],"+-.",true))) return false;
@@ -102,7 +102,7 @@ static bool f15_wiggle(Abstractformat *f,pm_stream *s,nh_blob *b) {
     if(!th_ascii(b)) return false;
     while(c.at<b->n) {
         uint64_t start=c.at;
-        if(!el_line(&c,&line)) return false;line=el_trim(b,line);
+        if(!el_line(&c,&line)) { return false; } line=el_trim(b,line);
         if(!line.n || b->p[(size_t)line.at]=='#') continue;
         if(el_prefix(b,line,"track")) {
             if(track_pending || (active && !rows) || !f15_track(b,line,true)) return false;
@@ -117,13 +117,13 @@ static bool f15_wiggle(Abstractformat *f,pm_stream *s,nh_blob *b) {
             for(i=1;i<nt;++i) {
                 uint64_t a=0;el_token key,value;unsigned bit;
                 while(a<t[i].n && b->p[(size_t)(t[i].at+a)]!='=') ++a;
-                if(!a || a==t[i].n) return false;key=el_slice(t[i],0,a);value=el_slice(t[i],a+1,t[i].n-a-1);
+                if(!a || a==t[i].n) { return false; } key=el_slice(t[i],0,a);value=el_slice(t[i],a+1,t[i].n-a-1);
                 if(el_eq(b,key,"chrom")) {bit=1;chrom=value;if(!f15_identifier(b,value)) return false;}
                 else if(el_eq(b,key,"start")) {bit=2;if(!fixed || !el_uint(b,value,&position) || !position) return false;}
                 else if(el_eq(b,key,"step")) {bit=4;if(!fixed || !el_uint(b,value,&step) || !step) return false;}
                 else if(el_eq(b,key,"span")) {bit=8;if(!el_uint(b,value,&span) || !span) return false;}
                 else return false;
-                if(seen&bit) return false;seen|=bit;
+                if(seen&bit) { return false; } seen|=bit;
             }
             if(!chrom.n || (fixed && (seen&7)!=7) || position>UINT32_MAX || step>UINT32_MAX || span>UINT32_MAX) return false;
             if(!active && start && !nh_add(f,s,b,"metadata",0,start)) return false;
@@ -141,18 +141,18 @@ static bool f15_attributes(nh_blob *b,el_token t,bool gene,uint64_t *budget) {
     while(at<t.n) {
         uint64_t start;el_token key,value;
         while(at<t.n && (b->p[(size_t)(t.at+at)]==' ' || b->p[(size_t)(t.at+at)]=='\t')) ++at;
-        if(at==t.n) break;start=at;
+        if(at==t.n) { break; } start=at;
         while(at<t.n && b->p[(size_t)(t.at+at)]!=' ' && b->p[(size_t)(t.at+at)]!='\t') ++at;
         key=el_slice(t,start,at-start);
         if(count==128 || key.n>64 || !el_chars(b,key,"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_",true) || !f15_unique(b,key,keys,count,budget)) return false;
         keys[count++]=key;
         while(at<t.n && (b->p[(size_t)(t.at+at)]==' ' || b->p[(size_t)(t.at+at)]=='\t')) ++at;
-        if(at==t.n || b->p[(size_t)(t.at+at++)]!='"') return false;start=at;
+        if(at==t.n || b->p[(size_t)(t.at+at++)]!='"') { return false; } start=at;
         while(at<t.n && b->p[(size_t)(t.at+at)]!='"') {
             if(b->p[(size_t)(t.at+at)]=='\\') {++at;if(at==t.n || (b->p[(size_t)(t.at+at)]!='"' && b->p[(size_t)(t.at+at)]!='\\')) return false;}
-            if(!f15_charge(b,budget,1)) return false;++at;
+            if(!f15_charge(b,budget,1)) { return false; } ++at;
         }
-        if(at==t.n || at-start>4096) return false;value=el_slice(t,start,at-start);++at;
+        if(at==t.n || at-start>4096) { return false; } value=el_slice(t,start,at-start);++at;
         if(at==t.n || b->p[(size_t)(t.at+at++)]!=';') return false;
         if(at<t.n && b->p[(size_t)(t.at+at)]!=' ' && b->p[(size_t)(t.at+at)]!='\t') return false;
         if(el_eq(b,key,"gene_id")) {if(!value.n) return false;gid=true;}
@@ -196,8 +196,8 @@ static bool f15_spi1d(Abstractformat *f,pm_stream *s,nh_blob *b) {
     if(!th_ascii(b) || !f15_words(&c,&line,t,4,&nt) || nt!=2 || !el_eq(b,t[0],"Version") || !el_eq(b,t[1],"1")) return false;
     if(!f15_words(&c,&line,t,4,&nt) || nt!=3 || !el_eq(b,t[0],"From") || !el_float(b,t[1]) || !el_float(b,t[2]) || tw_value(b,t[1])>=tw_value(b,t[2])) return false;
     if(!f15_words(&c,&line,t,4,&nt) || nt!=2 || !el_eq(b,t[0],"Length") || !el_uint(b,t[1],&n) || !n || n>262144) return false;
-    if(!f15_words(&c,&line,t,4,&nt) || nt!=2 || !el_eq(b,t[0],"Components") || !el_uint(b,t[1],&i) || !i || i>3) return false;components=(unsigned)i;
-    if(!f15_words(&c,&line,t,4,&nt) || nt!=1 || !el_eq(b,t[0],"{")) return false;start=c.at;
+    if(!f15_words(&c,&line,t,4,&nt) || nt!=2 || !el_eq(b,t[0],"Components") || !el_uint(b,t[1],&i) || !i || i>3) { return false; } components=(unsigned)i;
+    if(!f15_words(&c,&line,t,4,&nt) || nt!=1 || !el_eq(b,t[0],"{")) { return false; } start=c.at;
     if(!nh_add(f,s,b,"lut-header",0,start)) return false;
     for(i=0;i<n;++i) if(!f15_words(&c,&line,t,4,&nt) || nt!=components || !th_floats(b,t,nt)) return false;
     if(!nh_add(f,s,b,"curve-values",start,c.at-start) || !f15_words(&c,&line,t,4,&nt) || nt!=1 || !el_eq(b,t[0],"}") || !f15_finish(&c)) return false;
@@ -307,7 +307,7 @@ static bool f15_sff_index(Abstractformat *f,pm_stream *s,nh_blob *b,uint64_t at,
     for(i=0;i<count;++i) {
         uint64_t start=at,offset=0;unsigned j,k;bool found=false;
         while(at<end && b->p[(size_t)at]) {if(at-start>=255 || b->p[(size_t)at]<33 || b->p[(size_t)at]>126) return false;++at;}
-        if(at==start || end-at<6 || b->p[(size_t)at]) return false;++at;
+        if(at==start || end-at<6 || b->p[(size_t)at]) { return false; } ++at;
         for(k=0;k<4;++k) {if(b->p[(size_t)at]==255) return false;offset=offset*255+b->p[(size_t)at++];}
         if(b->p[(size_t)at++]!=255) return false;
         for(j=0;j<count;++j) {if(!f15_charge(b,&budget,1)) return false;if(reads[j].name.n==at-start-6) {if(!f15_charge(b,&budget,reads[j].name.n)) return false;if(!xx_rt_memcmp(b->p+(size_t)start,b->p+(size_t)reads[j].name.at,(size_t)reads[j].name.n)) {if(reads[j].indexed || reads[j].offset!=offset) return false;reads[j].indexed=true;found=true;break;}}}

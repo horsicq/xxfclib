@@ -9,7 +9,7 @@
 static bool w6_chz_at(Abstractformat *f,pm_stream *s,int64_t at,xx_pd_struct *pd) {
     int64_t limit=pm_available(f);uint8_t h[24];unsigned depth=0,records=0;
     while(at<limit) { uint32_t tag;uint64_t n;uint16_t name;char label[48];
-        if(wg_stop(pd) || ++records>4096 || !pm_read(f,at,h,4)) return false;tag=pm_le32(h);
+        if(wg_stop(pd) || ++records>4096 || !pm_read(f,at,h,4)) { return false; } tag=pm_le32(h);
         if(tag==0x46684353) { uint32_t raw;if(!pm_read(f,at,h,24) || (n=pm_le32(h+4))>INT32_MAX || (raw=pm_le32(h+8))>INT32_MAX || !(name=pm_le16(h+22)) || name>4096 || n<24U+name || !wg_range(limit,at,n) || h[20]>1 || (h[20]==0 && n-24-name!=raw) || (raw && n==24U+name)) return false;
             { uint8_t namebuf[4096];unsigned j;if(!pm_read(f,at+24,namebuf,name)) return false;for(j=0;j<name;++j) if(namebuf[j]<32 || namebuf[j]==127) return false; }
             xx_rt_snprintf(label,sizeof(label),"member-%u.%s",(unsigned)s->count,h[20] ? "charc":"bin");if(!pm_add(f,s,label,at+24+name,(int64_t)n-24-name)) return false;at+=(int64_t)n;

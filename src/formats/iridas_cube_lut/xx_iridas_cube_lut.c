@@ -13,11 +13,11 @@ static bool tb_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
   if(!samples&&tb_word(&q,"TITLE")){if((seen&1)||!tb_string(&q)||!tb_done(&q))return false;seen|=1;continue;}
   if(!samples&&(tb_word(&q,"DOMAIN_MIN")||tb_word(&q,"DOMAIN_MAX"))){bool min=tb_tag(b+q.t-10,"DOMAIN_MIN",10);uint32_t bit=min?2U:4U;double *a=min?lo:hi;if(seen&bit)return false;seen|=bit;for(j=0;j<3;++j)if(!tb_num(&q,&a[j]))return false;if(!tb_done(&q))return false;continue;}
   if(!samples&&(tb_word(&q,"LUT_1D_SIZE")||tb_word(&q,"LUT_3D_SIZE"))){int32_t size;bool three=tb_tag(b+q.t-11,"LUT_3D_SIZE",11);if((seen&8)||!tb_i(&q,&size)||size<2||size>(three?64:65536)||!tb_done(&q))return false;need=three?(uint32_t)size*size*size:(uint32_t)size;seen|=8;continue;}
-  if(!(seen&8))return false;if(!samples){data=q.start;samples=true;}
-  for(j=0;j<3;++j)if(!tb_num(&q,&v))return false;if(!tb_done(&q)||++count>need)return false;
+  if(!(seen&8)) {return false; } if(!samples){data=q.start;samples=true;}
+  for(j=0;j<3;++j) {if(!tb_num(&q,&v))return false; } if(!tb_done(&q)||++count>need)return false;
  }
- if(!samples||count!=need)return false;for(count=0;count<3;++count)if(lo[count]>=hi[count])return false;
- if(!tb_emit(f,s,"descriptor.cube",0,data,n)||!tb_emit(f,s,"table.cube",data,n-data,n))return false;s->size=(int64_t)n;return true;
+ if(!samples||count!=need) {return false; } for(count=0;count<3;++count)if(lo[count]>=hi[count])return false;
+ if(!tb_emit(f,s,"descriptor.cube",0,data,n)||!tb_emit(f,s,"table.cube",data,n-data,n)) {return false; } s->size=(int64_t)n;return true;
 }
 
 void xx_iridas_cube_lut_init(xx_iridas_cube_lut *r,xx_io_device *d,int64_t at) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,at,XX_FILE_TYPE_IRIDAS_CUBE_LUT,"cube");}}

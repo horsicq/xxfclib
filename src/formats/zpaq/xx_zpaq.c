@@ -729,7 +729,7 @@ static zp_pred *zp_pred_create(const uint8_t *hdr, const uint8_t *hcomp,
     zp_pred *pr = (zp_pred *)xx_mem_calloc(1U, sizeof(zp_pred));
     const uint8_t *cp;
     int i;
-    uint32_t j, count;
+    uint32_t j, count = 0U;
     if (!pr) return NULL;
     zp_tables_init(&pr->tables);
     pr->n = hdr[4];

@@ -15,7 +15,8 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {nh_blob b
  else if(t==3) {NH_NEED(mq_string(f,s,&b,&at,end,"topic",true,true,false));if((h>>1)&3) {start=at;NH_NEED(mq_id(&b,&at,end) && nh_add(f,s,&b,"packet-id",start,2));}NH_NEED(nh_add(f,s,&b,"payload",at,end-at));at=end;++publishes;}
  else if(t==8 || t==10) {start=at;NH_NEED(mq_id(&b,&at,end) && nh_add(f,s,&b,"packet-id",start,2));unsigned filters=0;while(at<end) {NH_NEED(++filters<=256 && mq_filter(&b,at,end) && mq_string(f,s,&b,&at,end,"topic-filter",true,false,false));if(t==8) {NH_NEED(at<end && b.p[(size_t)at]<=2 && nh_add(f,s,&b,"requested-qos",at,1));++at;}}NH_NEED(filters);}
  else if(t==9) {start=at;NH_NEED(n>=3 && mq_id(&b,&at,end));while(at<end) {NH_NEED(b.p[(size_t)at]<=2 || b.p[(size_t)at]==128);++at;}NH_NEED(nh_add(f,s,&b,"suback-fields",start,n));}
- else if(t>=4 && t<=11) {start=at;NH_NEED(n==2 && mq_id(&b,&at,end) && nh_add(f,s,&b,"ack-fields",start,2));}else NH_NEED(!n);NH_NEED(at==end && ++packets<=512 && (t!=14 || at==b.n));last=t;}
+ else if(t>=4 && t<=11) {start=at;NH_NEED(n==2 && mq_id(&b,&at,end) && nh_add(f,s,&b,"ack-fields",start,2));}else NH_NEED(!n);
+ NH_NEED(at==end && ++packets<=512 && (t!=14 || at==b.n));last=t;}
  NH_NEED(packets>=3 && publishes && last==14);s->size=(int64_t)b.n;ok=true;done:xx_mem_free(b.p);return ok;}
 
 void xx_mqtt_packets_init(xx_mqtt_packets *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_MQTT_PACKETS,"mqtt"); } }

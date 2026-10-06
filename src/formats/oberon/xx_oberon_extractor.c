@@ -17,7 +17,7 @@ static void ob_close(Abstractformat *format) {
 }
 static const xx_format_search_desc ob_search = {
     ob_types, sizeof(ob_types) / sizeof(ob_types[0]),
-    NULL, 0U, ob_open, ob_close
+    NULL, 0U, ob_open, ob_close, false
 };
 static xx_format_search_state *ob_create_search(
     xx_format_extractor *self, xx_io_device *device, const xx_list_s *options,

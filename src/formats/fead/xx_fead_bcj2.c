@@ -50,7 +50,7 @@ bool fead_bcj2_decode(const uint8_t *const inputs[4], const size_t sizes[4],
  for(i=0;i<258;++i)d.probabilities[i]=1024;
  if(!b2_range_byte(&d,&first)||first!=0)return false;
  for(i=0;i<4;++i) { uint8_t next;if(!b2_range_byte(&d,&next))return false;d.code=(d.code<<8)|next; }
- if(d.code==UINT32_MAX)return false;d.range=UINT32_MAX;
+ if(d.code==UINT32_MAX) {return false; } d.range=UINT32_MAX;
  level=xx_pd_enter_level(pd,output_size,"FEAD BCJ2 restore");
  while(d.main_pos<d.main_size) {
   uint8_t opcode;bool branch;
@@ -61,7 +61,7 @@ bool fead_bcj2_decode(const uint8_t *const inputs[4], const size_t sizes[4],
   }
   opcode=d.main_data[d.main_pos++];
   branch=opcode==0xe8U||opcode==0xe9U||(d.previous==0x0fU&&(opcode&0xf0U)==0x80U);
-  if(produced>=output_size)goto done;output[produced++]=opcode;++d.ip;
+  if(produced>=output_size) {goto done; } output[produced++]=opcode;++d.ip;
   if(branch) {
    uint16_t *probability=opcode==0xe8U?&d.probabilities[2U+d.previous]:&d.probabilities[opcode==0xe9U?1U:0U];
    bool converted;
