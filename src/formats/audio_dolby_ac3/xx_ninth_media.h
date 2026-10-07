@@ -6,14 +6,14 @@
 #define XX_NINTH_MEDIA_H
 #include "../xx_payload_members.h"
 #include "xxfclib/algo/crc/xx_crc.h"
+#include "xxfclib/data/xx_data.h"
 static bool ng_parse(Abstractformat *,pm_stream *,const uint8_t *,uint64_t,xx_pd_struct *);
 static bool ng_quick(Abstractformat *,uint64_t);
 static __inline bool ng_span(uint64_t at,uint64_t bytes,uint64_t end) { return at<=end && bytes<=end-at; }
 static __inline bool pm_tag(const uint8_t *p,const char *tag,size_t n) { return xx_rt_memcmp(p,tag,n)==0; }
 static __inline bool ng_stop(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
-static __inline uint64_t ng_le64(const uint8_t *p) { return (uint64_t)pm_le32(p) | (uint64_t)pm_le32(p+4)<<32; }
 static __inline bool ng_zero(const uint8_t *p,uint64_t n) { uint64_t i;for(i=0;i<n;++i)if(p[i])return false;return true; }
-static __inline bool ng_finite32(const uint8_t *p) { return (pm_le32(p)&0x7f800000U)!=0x7f800000U; }
+static __inline bool ng_finite32(const uint8_t *p) { return (xx_data_get_u32(p, 4, 0, false)&0x7f800000U)!=0x7f800000U; }
 static __inline bool ng_emit(Abstractformat *f,pm_stream *s,const char *label,uint64_t at,uint64_t n,uint64_t end) { return s->count<4096 && ng_span(at,n,end) && pm_add(f,s,label,(int64_t)at,(int64_t)n); }
 typedef struct ng_bits { const uint8_t *b;uint64_t bit,end; } ng_bits;
 static __inline bool ng_bits_get(ng_bits *q,unsigned count,uint32_t *v) {

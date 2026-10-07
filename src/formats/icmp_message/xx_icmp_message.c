@@ -3,6 +3,7 @@
  */
 /* Primary: https://www.rfc-editor.org/rfc/rfc792.html */
 #include "xxfclib/formats/icmp_message/xx_icmp_message.h"
+#include "xxfclib/data/xx_data.h"
 #include "../xx_fifteenth_wrappers.h"
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd){nh_blob b;bool ok=false;if(!nh_load(f,&b,pd))return false;NH_NEED(b.n>=9&&b.n<=65535&&(b.p[0]==0||b.p[0]==8)&&!b.p[1]&&f15_checksum(&b,0,b.n,0));NH_NEED(nh_add(f,s,&b,"icmp-echo-header",0,8)&&nh_add(f,s,&b,"echo-data",8,b.n-8));s->size=(int64_t)b.n;ok=true;done:xx_mem_free(b.p);return ok;}

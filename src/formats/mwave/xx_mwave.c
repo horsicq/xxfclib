@@ -35,6 +35,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef MWAVE
 #define XX_MWAVE_FILE_TYPE XX_FILE_TYPE_MWAVE
@@ -160,10 +161,6 @@ typedef struct mwave_header_s {
     int64_t packed_size;
 } mwave_header;
 
-static uint16_t mwave_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
 static bool mwave_read_at(xx_io_device *device, int64_t offset, void *buffer,
                           size_t size) {
     size_t done = 0U;
@@ -212,7 +209,7 @@ static bool mwave_parse_header(Abstractformat *format, mwave_header *result) {
                        sizeof(header)))
         return false;
     if (header[0] != XX_COMPRESS_MAGIC0 || header[1] != XX_COMPRESS_MAGIC1 ||
-        mwave_le16(header + 6U) != MWAVE_CONSTANT ||
+        xx_data_get_u16(header + 6U, 2, 0, false) != MWAVE_CONSTANT ||
         header[20] != 0U || header[21] != 0U || header[22] != 0U)
         return false;
     /* The flags byte is the standard compress one; refuse anything the
@@ -225,8 +222,8 @@ static bool mwave_parse_header(Abstractformat *format, mwave_header *result) {
     if (result->name[0] == 0)
         xx_rt_memcpy(result->name, MWAVE_FALLBACK_NAME,
                      xx_rt_strlen(MWAVE_FALLBACK_NAME) + 1U);
-    result->dos_time = mwave_le16(header + 2U);
-    result->dos_date = mwave_le16(header + 4U);
+    result->dos_time = xx_data_get_u16(header + 2U, 2, 0, false);
+    result->dos_date = xx_data_get_u16(header + 4U, 2, 0, false);
     result->flags = header[23];
     result->packed_size = size - (int64_t)MWAVE_HEADER_SIZE;
     return true;

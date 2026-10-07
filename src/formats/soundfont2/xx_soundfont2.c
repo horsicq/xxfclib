@@ -11,6 +11,7 @@
  */
 #include "xxfclib/formats/soundfont2/xx_soundfont2.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 #define SF2_MAX_CHUNKS 4096U
 #define SF2_MAX_SAMPLES 32767U
@@ -42,7 +43,7 @@ static bool sf2_chunk_at(Abstractformat *f, uint64_t at, uint64_t end,
         !pm_read(f, (int64_t)at, h, sizeof(h))) return false;
     xx_rt_memcpy(c->id, h, 4);
     c->data=at+8;
-    c->size=pm_le32(h+4);
+    c->size=xx_data_get_u32(h+4, 4, 0, false);
     if (c->size > end-c->data ||
         (c->size & 1U) > end-c->data-c->size) return false;
     c->next=c->data+c->size+(c->size & 1U);
@@ -75,7 +76,7 @@ static bool sf2_list(Abstractformat *f, uint64_t at, uint64_t end,
             uint8_t version[4];
             if (layout->has_ifil || c.size!=4 ||
                 !pm_read(f,(int64_t)c.data,version,4) ||
-                pm_le16(version)!=2) return false;
+                xx_data_get_u16(version, 2, 0, false)!=2) return false;
             layout->has_ifil=true;
         } else if (kind==1 && sf2_tag(c.id,"smpl")) {
             if (layout->has_smpl || (c.size & 1U)) return false;
@@ -112,9 +113,9 @@ static bool sf2_scan(Abstractformat *f, sf2_layout *layout,
     int64_t total=pm_available(f);
     if (total<12 || !pm_read(f,0,h,sizeof(h)) ||
         !sf2_tag(h,"RIFF") || !sf2_tag(h+8,"sfbk") ||
-        pm_le32(h+4)<4U) return false;
+        xx_data_get_u32(h+4, 4, 0, false)<4U) return false;
     available=(uint64_t)total;
-    layout->riff_end=8U+(uint64_t)pm_le32(h+4);
+    layout->riff_end=8U+(uint64_t)xx_data_get_u32(h+4, 4, 0, false);
     if (layout->riff_end>available) return false;
     at=12;
     while (at<layout->riff_end) {
@@ -186,10 +187,10 @@ static bool sf2_samples(Abstractformat *f, pm_stream *s,
         uint32_t i;
         for (i=0; i<samples; ++i) {
             const uint8_t *h=headers+(size_t)i*46U;
-            uint32_t start=pm_le32(h+20), end=pm_le32(h+24);
-            uint32_t loop_start=pm_le32(h+28), loop_end=pm_le32(h+32);
-            uint32_t rate=pm_le32(h+36);
-            uint16_t sample_type=pm_le16(h+44);
+            uint32_t start=xx_data_get_u32(h+20, 4, 0, false), end=xx_data_get_u32(h+24, 4, 0, false);
+            uint32_t loop_start=xx_data_get_u32(h+28, 4, 0, false), loop_end=xx_data_get_u32(h+32, 4, 0, false);
+            uint32_t rate=xx_data_get_u32(h+36, 4, 0, false);
+            uint16_t sample_type=xx_data_get_u16(h+44, 2, 0, false);
             uint16_t base_type=(uint16_t)(sample_type & 0x7fffU);
             char label[48];
             uint64_t offset, size;

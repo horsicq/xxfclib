@@ -2,8 +2,6 @@
 #ifndef XX_ELEVENTH_CONTAINERS_H
 #define XX_ELEVENTH_CONTAINERS_H
 #include "../xx_ninth_data.h"
-static XXFC_MAYBE_UNUSED uint64_t ec_le64(const uint8_t *p) {return (uint64_t)pm_le32(p)|((uint64_t)pm_le32(p+4)<<32);}
-static XXFC_MAYBE_UNUSED uint64_t ec_be64(const uint8_t *p) {return ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4);}
 static XXFC_MAYBE_UNUSED bool ec_utf(nh_blob *b,uint64_t at,uint64_t n) {return nh_span(b,at,n) && n<=65536 && fourth_utf8(b->p+(size_t)at,(size_t)n,b->pd);}
 static XXFC_MAYBE_UNUSED bool ec_pad(nh_blob *b,uint64_t *at,uint64_t align) {uint64_t n=(align-(*at&(align-1)))&(align-1);if(!nh_zero(b,*at,n)) return false;*at+=n;return true;}
 static bool ec_var(nh_blob *b,uint64_t *at,uint64_t end,uint64_t *value) {unsigned shift=0;uint64_t v=0;uint8_t c;do {if(*at>=end || !nh_span(b,*at,1) || shift>=70) return false;c=b->p[(size_t)(*at)++];if(shift==63 && (c&254)) return false;v|=(uint64_t)(c&127)<<shift;shift+=7;}while(c&128);*value=v;return true;}

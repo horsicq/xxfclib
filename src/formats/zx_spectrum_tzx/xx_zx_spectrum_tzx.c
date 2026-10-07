@@ -7,6 +7,7 @@
  */
 #include "xxfclib/formats/zx_spectrum_tzx/xx_zx_spectrum_tzx.h"
 #include "../vice_x64/xx_ninth_retro.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
  uint32_t at=10,blocks=0,groups=0; char name[48];
@@ -15,17 +16,17 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
   uint32_t start=at,z=0,i; uint8_t id=b->p[at++];
   if(++blocks>4095 || !nh_poll(b)) return false;
   switch(id) {
-   case 0x10: if(!nh_range(b,at,4) || !(z=pm_le16(b->p+at+2))) return false; z+=4; break;
-   case 0x11: if(!nh_range(b,at,18) || !pm_le16(b->p+at) || !pm_le16(b->p+at+2) || !pm_le16(b->p+at+4) || !pm_le16(b->p+at+6) || !pm_le16(b->p+at+8) || !b->p[at+12] || b->p[at+12]>8 || !(z=nh_u24(b->p+at+15))) return false; z+=18; break;
-   case 0x12: if(!nh_range(b,at,4) || !pm_le16(b->p+at) || !pm_le16(b->p+at+2)) return false; z=4; break;
-   case 0x13: if(!nh_range(b,at,1) || !b->p[at]) return false; z=1+(uint32_t)b->p[at]*2; if(!nh_range(b,at,z)) return false; for(i=1;i<z;i+=2) if(!pm_le16(b->p+at+i)) return false; break;
-   case 0x14: if(!nh_range(b,at,10) || !pm_le16(b->p+at) || !pm_le16(b->p+at+2) || !b->p[at+4] || b->p[at+4]>8 || !(z=nh_u24(b->p+at+7))) return false; z+=10; break;
+   case 0x10: if(!nh_range(b,at,4) || !(z=xx_data_get_u16(b->p+at+2, 2, 0, false))) return false; z+=4; break;
+   case 0x11: if(!nh_range(b,at,18) || !xx_data_get_u16(b->p+at, 2, 0, false) || !xx_data_get_u16(b->p+at+2, 2, 0, false) || !xx_data_get_u16(b->p+at+4, 2, 0, false) || !xx_data_get_u16(b->p+at+6, 2, 0, false) || !xx_data_get_u16(b->p+at+8, 2, 0, false) || !b->p[at+12] || b->p[at+12]>8 || !(z=xx_data_get_u24(b->p+at+15, 3, 0, false))) return false; z+=18; break;
+   case 0x12: if(!nh_range(b,at,4) || !xx_data_get_u16(b->p+at, 2, 0, false) || !xx_data_get_u16(b->p+at+2, 2, 0, false)) return false; z=4; break;
+   case 0x13: if(!nh_range(b,at,1) || !b->p[at]) return false; z=1+(uint32_t)b->p[at]*2; if(!nh_range(b,at,z)) return false; for(i=1;i<z;i+=2) if(!xx_data_get_u16(b->p+at+i, 2, 0, false)) return false; break;
+   case 0x14: if(!nh_range(b,at,10) || !xx_data_get_u16(b->p+at, 2, 0, false) || !xx_data_get_u16(b->p+at+2, 2, 0, false) || !b->p[at+4] || b->p[at+4]>8 || !(z=xx_data_get_u24(b->p+at+7, 3, 0, false))) return false; z+=10; break;
    case 0x20: z=2; break;
    case 0x21: if(++groups>16) return false; /* fall through */
    case 0x30: if(!nh_range(b,at,1) || !b->p[at]) return false; z=1+b->p[at]; if(!nh_range(b,at,z) || !nh_ascii(b->p+at+1,z-1,false)) return false; break;
    case 0x22: if(!groups) return false; --groups; break;
-   case 0x32: if(!nh_range(b,at,3) || (z=pm_le16(b->p+at))<1 || !nh_range(b,at+2,z)) return false; { uint32_t p=at+3,end=at+2+z,c=b->p[at+2]; for(i=0;i<c;++i) { uint32_t k; if(end-p<2 || ((b->p[p]>8) && b->p[p]!=255) || !(k=b->p[p+1]) || k>end-p-2 || !nh_ascii(b->p+p+2,k,false)) return false; p+=2+k; } if(p!=end) return false; } z+=2; break;
-   case 0x35: if(!nh_range(b,at,20) || !nh_ascii(b->p+at,16,true) || (z=pm_le32(b->p+at+16))>NH_LIMIT-20) return false; z+=20; break;
+   case 0x32: if(!nh_range(b,at,3) || (z=xx_data_get_u16(b->p+at, 2, 0, false))<1 || !nh_range(b,at+2,z)) return false; { uint32_t p=at+3,end=at+2+z,c=b->p[at+2]; for(i=0;i<c;++i) { uint32_t k; if(end-p<2 || ((b->p[p]>8) && b->p[p]!=255) || !(k=b->p[p+1]) || k>end-p-2 || !nh_ascii(b->p+p+2,k,false)) return false; p+=2+k; } if(p!=end) return false; } z+=2; break;
+   case 0x35: if(!nh_range(b,at,20) || !nh_ascii(b->p+at,16,true) || (z=xx_data_get_u32(b->p+at+16, 4, 0, false))>NH_LIMIT-20) return false; z+=20; break;
    default: return false;
   }
   if(!nh_range(b,at,z)) { return false; } at+=z; xx_rt_snprintf(name,sizeof(name),"block-%u-%02x.bin",blocks-1,id); if(!nh_emit(f,s,b,name,start,at-start)) return false;

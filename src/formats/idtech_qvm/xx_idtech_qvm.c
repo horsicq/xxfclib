@@ -5,12 +5,13 @@
  */
 #include "xxfclib/formats/idtech_qvm/xx_idtech_qvm.h"
 #include "../bethesda_bsa/xx_game_table.h"
+#include "xxfclib/data/xx_data.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[32]; uint32_t co,cn,at,dn,ln; uint64_t end; int64_t total=pm_available(f);
-    if(!gm_read(f,total,0,h,32) || pm_le32(h)!=0x12721444 || !pm_le32(h+4) || pm_le32(h+4)>16777216 || gm_stopped(pd)) return false;
-    co=pm_le32(h+8); cn=pm_le32(h+12); at=pm_le32(h+16); dn=pm_le32(h+20); ln=pm_le32(h+24);
-    end=(uint64_t)at+dn+ln; if(co<32 || !cn || pm_le32(h+4)>cn || (dn&3) || at<(uint64_t)co+cn || !gm_range(total,at,(uint64_t)dn+ln)) return false;
+    if(!gm_read(f,total,0,h,32) || xx_data_get_u32(h, 4, 0, false)!=0x12721444 || !xx_data_get_u32(h+4, 4, 0, false) || xx_data_get_u32(h+4, 4, 0, false)>16777216 || gm_stopped(pd)) return false;
+    co=xx_data_get_u32(h+8, 4, 0, false); cn=xx_data_get_u32(h+12, 4, 0, false); at=xx_data_get_u32(h+16, 4, 0, false); dn=xx_data_get_u32(h+20, 4, 0, false); ln=xx_data_get_u32(h+24, 4, 0, false);
+    end=(uint64_t)at+dn+ln; if(co<32 || !cn || xx_data_get_u32(h+4, 4, 0, false)>cn || (dn&3) || at<(uint64_t)co+cn || !gm_range(total,at,(uint64_t)dn+ln)) return false;
     s->size=(int64_t)end; if(!gm_add(f,s,"code.bin",co,cn,32,(int64_t)end)) return false;
     if(dn && !gm_add(f,s,"data.bin",at,dn,32,(int64_t)end)) return false;
     if(ln && !gm_add(f,s,"literals.bin",(uint64_t)at+dn,ln,32,(int64_t)end)) return false;

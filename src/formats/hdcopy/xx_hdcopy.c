@@ -34,6 +34,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef HDCOPY
 #define XX_HDCOPY_FILE_TYPE XX_FILE_TYPE_HDCOPY
@@ -74,27 +75,6 @@ typedef struct hdcopy_stream_s {
     uint64_t aux1;
     uint64_t aux2;
 } hdcopy_stream;
-
-static uint16_t hdcopy_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static uint32_t hdcopy_le32(const uint8_t *b) {
-    return (uint32_t)hdcopy_le16(b) | ((uint32_t)hdcopy_le16(b + 2U) << 16U);
-}
-
-static XXFC_MAYBE_UNUSED uint64_t hdcopy_le64(const uint8_t *b) {
-    return (uint64_t)hdcopy_le32(b) | ((uint64_t)hdcopy_le32(b + 4U) << 32U);
-}
-
-static uint32_t hdcopy_be32(const uint8_t *b) {
-    return ((uint32_t)b[0] << 24U) | ((uint32_t)b[1] << 16U) |
-           ((uint32_t)b[2] << 8U) | (uint32_t)b[3];
-}
-
-static XXFC_MAYBE_UNUSED uint64_t hdcopy_be64(const uint8_t *b) {
-    return ((uint64_t)hdcopy_be32(b) << 32U) | (uint64_t)hdcopy_be32(b + 4U);
-}
 
 static bool hdcopy_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -380,7 +360,7 @@ static bool hdcopy_parse(Abstractformat *format, hdcopy_stream **result) {
             !hdcopy_read_at(format->device, format->base_address + cursor,
                             length_bytes, sizeof(length_bytes)))
             return false;
-        block_size = (int64_t)hdcopy_le16(length_bytes);
+        block_size = (int64_t)xx_data_get_u16(length_bytes, 2, 0, false);
         cursor += 2;
         if (block_size < 1 || block_size > size - cursor) return false;
         cursor += block_size;
@@ -454,7 +434,7 @@ static bool hdcopy_write_member(Abstractformat *format, hdcopy_stream *stream,
         if (!hdcopy_read_at(format->device, format->base_address + cursor,
                             length_bytes, sizeof(length_bytes)))
             goto done;
-        block_size = hdcopy_le16(length_bytes);
+        block_size = xx_data_get_u16(length_bytes, 2, 0, false);
         cursor += 2;
         if (block_size < 1U) goto done;
         packed = (uint8_t *)xx_mem_alloc(block_size);

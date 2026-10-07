@@ -20,6 +20,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 /* xxfc_defs.h is shared and is not edited from here, so the file-type
  * constant is resolved through the alias macro that the enumerator defines. */
@@ -66,17 +67,8 @@ static const uint8_t spq1_program[8] = {0x06U, 'U', 'S', '_', 'P', 'C', 'U', 0U}
 
 /* --- small helpers --------------------------------------------------------- */
 
-static uint16_t spq1_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t spq1_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
-
 static int64_t spq1_le32s(const uint8_t *bytes) {
-    return (int64_t)(int32_t)spq1_le32(bytes);
+    return (int64_t)(int32_t)xx_data_get_u32(bytes, 4, 0, false);
 }
 
 static bool spq1_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -110,9 +102,9 @@ static uint32_t spq1_match_stub(const uint8_t *header, int64_t size) {
     if (header[0] != 'M' || header[1] != 'Z') return 0U;
     for (build = 0U; build < 5U; ++build) {
         const spq1_stub *stub = &spq1_stubs[build];
-        if (spq1_le32(header + 0x10) == stub->at10 &&
-            spq1_le32(header + 0x20) == stub->at20 &&
-            spq1_le32(header + 0x24) == stub->at24 && size > stub->stub_size)
+        if (xx_data_get_u32(header + 0x10, 4, 0, false) == stub->at10 &&
+            xx_data_get_u32(header + 0x20, 4, 0, false) == stub->at20 &&
+            xx_data_get_u32(header + 0x24, 4, 0, false) == stub->at24 && size > stub->stub_size)
             return build + 1U;
     }
     if (xx_rt_memcmp(header + XX_SFX_COMPAQ_SOFTPAQ_NAME_AT, spq1_program,
@@ -128,7 +120,7 @@ static bool spq1_is_trailer(const uint8_t *record) {
     return record[0] == 'F' && record[1] == 'I' && record[2] == 'T' &&
            record[3] == '0' && record[4] == '0' &&
            (record[5] == '1' || record[5] == '2') && record[12] == 0U &&
-           spq1_le32(record + 13) == 0U && spq1_le32s(record + 17) > 0;
+           xx_data_get_u32(record + 13, 4, 0, false) == 0U && spq1_le32s(record + 17) > 0;
 }
 
 /* One directory entry: the zero byte after the name, a non-negative size and
@@ -377,8 +369,8 @@ static bool spq1_parse(Abstractformat *format, spq1_stream **result,
         member->size = spq1_le32s(entry + 13);
         member->data_offset = format->base_address + spq1_le32s(entry + 17);
         if (layout.record_size == SPQ1_LONG) {
-            member->dos_date = spq1_le16(entry + 21);
-            member->dos_time = spq1_le16(entry + 23);
+            member->dos_date = xx_data_get_u16(entry + 21, 2, 0, false);
+            member->dos_time = xx_data_get_u16(entry + 23, 2, 0, false);
             member->has_time = member->dos_date != 0U;
         }
         member->name = (char *)xx_mem_alloc(SPQ1_NAME_CAPACITY);

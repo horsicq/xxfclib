@@ -19,6 +19,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -65,15 +66,6 @@ typedef struct spk_stream_s {
     size_t files;
     int64_t archive_size;
 } spk_stream;
-
-static uint16_t spk_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t spk_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
 
 static bool spk_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -212,9 +204,9 @@ static bool spk_walk(Abstractformat *format, spk_stream *stream,
         }
         if (!spk_known_method(method)) return false;
 
-        packed_size = spk_le32(header + 0x0f);
-        original_size = spk_le32(header + 0x19);
-        load_address = spk_le32(header + 0x1d);
+        packed_size = xx_data_get_u32(header + 0x0f, 4, 0, false);
+        original_size = xx_data_get_u32(header + 0x19, 4, 0, false);
+        load_address = xx_data_get_u32(header + 0x1d, 4, 0, false);
         /* The declared extent must fit in what is left of this chain before
          * it is used to seek, recurse or allocate. */
         if ((int64_t)packed_size >
@@ -227,8 +219,8 @@ static bool spk_walk(Abstractformat *format, spk_stream *stream,
         /* U3 rejects a member whose every field is zero; such a "member" is
          * indistinguishable from padding. */
         if (packed_size == 0U && original_size == 0U &&
-            spk_le16(header + 0x13) == 0U && spk_le16(header + 0x15) == 0U &&
-            spk_le16(header + 0x17) == 0U)
+            xx_data_get_u16(header + 0x13, 2, 0, false) == 0U && xx_data_get_u16(header + 0x15, 2, 0, false) == 0U &&
+            xx_data_get_u16(header + 0x17, 2, 0, false) == 0U)
             return false;
 
         component = spk_component(header + 2, XX_SPK_NAME_SIZE,
@@ -255,12 +247,12 @@ static bool spk_walk(Abstractformat *format, spk_stream *stream,
         member->data_offset = format->base_address + data_offset;
         member->packed_size = packed_size;
         member->original_size = folder ? 0U : original_size;
-        member->dos_date = spk_le16(header + 0x13);
-        member->dos_time = spk_le16(header + 0x15);
-        member->crc = spk_le16(header + 0x17);
+        member->dos_date = xx_data_get_u16(header + 0x13, 2, 0, false);
+        member->dos_time = xx_data_get_u16(header + 0x15, 2, 0, false);
+        member->crc = xx_data_get_u16(header + 0x17, 2, 0, false);
         member->load_address = load_address;
-        member->exec_address = spk_le32(header + 0x21);
-        member->attributes = spk_le32(header + 0x25);
+        member->exec_address = xx_data_get_u32(header + 0x21, 4, 0, false);
+        member->attributes = xx_data_get_u32(header + 0x25, 4, 0, false);
         member->method = method;
         member->folder = folder;
         if (!folder) ++stream->files;

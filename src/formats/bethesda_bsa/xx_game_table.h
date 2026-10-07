@@ -6,8 +6,6 @@
 #ifndef XX_GAME_TABLE_H
 #define XX_GAME_TABLE_H
 #include "../xx_payload_members.h"
-static XXFC_MAYBE_UNUSED uint64_t gm_le64(const uint8_t *p) { return (uint64_t)pm_le32(p) | (uint64_t)pm_le32(p+4)<<32; }
-static XXFC_MAYBE_UNUSED uint64_t gm_be64(const uint8_t *p) { return (uint64_t)pm_be32(p)<<32 | pm_be32(p+4); }
 static bool gm_range(int64_t total,uint64_t at,uint64_t n) { return total>=0 && at<=(uint64_t)total && n<=(uint64_t)total-at; }
 static bool gm_read(Abstractformat *f,int64_t total,uint64_t at,void *p,size_t n) { return gm_range(total,at,n) && pm_read(f,(int64_t)at,p,n); }
 static XXFC_MAYBE_UNUSED bool gm_string(Abstractformat *f,int64_t total,uint64_t at,uint64_t limit,uint64_t *used) {

@@ -48,6 +48,7 @@
 #include "xxfclib/algo/dcl/xx_dcl.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_MIZ_COPY_CHUNK (64 * 1024)
 
@@ -152,8 +153,6 @@ static bool xx_miz_add(xx_miz_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_miz_le16(const uint8_t *data);
-static uint32_t xx_miz_le32(const uint8_t *data);
 static uint64_t xx_miz_dos_to_unix(uint16_t dos_date, uint16_t dos_time);
 static xx_miz_stream *xx_miz_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_miz_decode(Abstractformat *self, const xx_miz_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
@@ -166,15 +165,6 @@ static bool xx_miz_decode(Abstractformat *self, const xx_miz_member *member, uin
  * set, and this is the same rule with a tighter bound. */
 /* The container carries exactly one member. The cap exists so the shape of
  * this reader matches every other one, not because a count is read. */
-
-static uint16_t xx_miz_le16(const uint8_t *data) {
-    return (uint16_t)((uint32_t)data[0] | ((uint32_t)data[1] << 8));
-}
-
-static uint32_t xx_miz_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* DOS date/time -> Unix seconds. Written out rather than taken from a helper
  * because there is no CRT here; an out-of-range field yields 0 (unknown)
@@ -264,9 +254,9 @@ static xx_miz_stream *xx_miz_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (xx_rt_memcmp(header + 6, magic_tail, sizeof(magic_tail)) != 0) {
         return NULL;
     }
-    if ((uint32_t)xx_miz_le16(header + 4) != XX_MIZ_VERSION) return NULL;
+    if ((uint32_t)xx_data_get_u16(header + 4, 2, 0, false) != XX_MIZ_VERSION) return NULL;
 
-    name_field_size = (int64_t)xx_miz_le16(header + 10);
+    name_field_size = (int64_t)xx_data_get_u16(header + 10, 2, 0, false);
     if (name_field_size < 2 || name_field_size > XX_MIZ_MAX_NAME_FIELD) {
         return NULL;
     }
@@ -309,12 +299,12 @@ static xx_miz_stream *xx_miz_parse(Abstractformat *self, xx_pd_struct *pd) {
         return NULL;
     }
 
-    dos_time = xx_miz_le16(record + 0);
-    dos_date = xx_miz_le16(record + 2);
+    dos_time = xx_data_get_u16(record + 0, 2, 0, false);
+    dos_date = xx_data_get_u16(record + 2, 2, 0, false);
     /* Read through int32_t on purpose: a size field with its top bit set is
      * corrupt, not a two-gigabyte quantity. */
-    uncompressed_size = (int64_t)(int32_t)xx_miz_le32(record + 4);
-    compressed_size = (int64_t)(int32_t)xx_miz_le32(record + 8);
+    uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(record + 4, 4, 0, false);
+    compressed_size = (int64_t)(int32_t)xx_data_get_u32(record + 8, 4, 0, false);
     if (uncompressed_size < 0 || compressed_size < 0) return NULL;
     if (uncompressed_size > XX_MIZ_MAX_SIZE ||
         compressed_size > XX_MIZ_MAX_SIZE) {

@@ -34,6 +34,7 @@
 #include "xxfclib/algo/dcl/xx_dcl.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ASCENDBACKUP_COPY_CHUNK (64 * 1024)
 
@@ -145,8 +146,6 @@ static bool xx_ascendbackup_add(xx_ascendbackup_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_ascendbackup_le16(const uint8_t *data);
-static uint32_t xx_ascendbackup_le32(const uint8_t *data);
 static bool xx_ascendbackup_name_character(uint8_t character);
 static bool xx_ascendbackup_name_is_valid(const uint8_t *name, size_t length);
 static bool xx_ascendbackup_dcl_prelude(const uint8_t *prelude);
@@ -165,15 +164,6 @@ static bool xx_ascendbackup_decode(Abstractformat *self, const xx_ascendbackup_m
 /* No count is stored; this is a runaway guard, not a format limit. The
  * reference volume holds 46 members. */
 /* Parse decodes the whole volume once (see below), so the span is bounded. */
-
-static uint16_t xx_ascendbackup_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_ascendbackup_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static bool xx_ascendbackup_name_character(uint8_t character) {
     if (character >= 'A' && character <= 'Z') return true;
@@ -334,7 +324,7 @@ static xx_ascendbackup_stream *xx_ascendbackup_parse(Abstractformat *self,
                                      length_field, sizeof(length_field))) {
             goto fail;
         }
-        name_size = (int64_t)xx_ascendbackup_le16(length_field);
+        name_size = (int64_t)xx_data_get_u16(length_field, 2, 0, false);
         if (name_size < 1 || name_size > XX_ASCENDBACKUP_MAX_NAME_SIZE) {
             goto fail;
         }
@@ -355,7 +345,7 @@ static xx_ascendbackup_stream *xx_ascendbackup_parse(Abstractformat *self,
         }
 
         compressed_size =
-            (int64_t)xx_ascendbackup_le32(header + (size_t)name_size);
+            (int64_t)xx_data_get_u32(header + (size_t)name_size, 4, 0, false);
         if (compressed_size < XX_ASCENDBACKUP_MIN_PACKED_SIZE) goto fail;
         data_offset = offset + header_size;
         /* A payload running past EOF is a rejection, not a short read. */

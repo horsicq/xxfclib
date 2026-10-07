@@ -15,6 +15,7 @@
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/algo/diskdoubler/xx_diskdoubler.h"
+#include "xxfclib/data/xx_data.h"
 
 /* ------------------------------------------------------------ bit reader ---
  * MSB-first reader used by the ADn and DDn methods.  It is bounded by the
@@ -150,10 +151,6 @@ static uint32_t dd_be16(const uint8_t *data, size_t offset) {
     return ((uint32_t)data[offset] << 8) | (uint32_t)data[offset + 1U];
 }
 
-static uint32_t dd_be32(const uint8_t *data, size_t offset) {
-    return (dd_be16(data, offset) << 16) | dd_be16(data, offset + 2U);
-}
-
 /* ============================================================== ADn (6/9) */
 
 bool xx_diskdoubler_adn_decode_memory(const uint8_t *input, size_t input_size,
@@ -270,7 +267,7 @@ static bool ddn_read_code(const uint8_t *input, size_t input_size,
     dd_bits reader;
 
     if (input_size < 4U || start > input_size - 4U) return false;
-    header = dd_be32(input, start);
+    header = xx_data_get_u32(input + start, 4, 0, true);
     code_count = (int32_t)((header >> 24) & 0xffU) + 1;
     byte_count = (int32_t)((header >> 13) & 0x7ffU);
     maximum_length = (int32_t)((header >> 8) & 0x1fU);
@@ -332,7 +329,7 @@ bool xx_diskdoubler_ddn_decode_memory(const uint8_t *input, size_t input_size,
             result = false;
             break;
         }
-        uncompressed_size = dd_be32(input, start);
+        uncompressed_size = xx_data_get_u32(input + start, 4, 0, true);
         literal_count = dd_be16(input, start + 4U);
         offset_count = dd_be16(input, start + 6U);
         length_packed = dd_be16(input, start + 8U);

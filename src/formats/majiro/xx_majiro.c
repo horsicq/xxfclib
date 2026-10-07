@@ -14,6 +14,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 #ifdef MAJIRO
 #define MA_FILE_TYPE XX_FILE_TYPE_MAJIRO
@@ -49,10 +50,6 @@ typedef struct ma_name_key {
 
 static bool ma_stopped(xx_pd_struct *pd) {
     return pd && xx_pd_is_stopped(pd);
-}
-static uint32_t ma_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | (uint32_t)p[1] << 8U |
-           (uint32_t)p[2] << 16U | (uint32_t)p[3] << 24U;
 }
 static bool ma_read(xx_io_device *device, int64_t at, void *buffer,
                     size_t size, xx_pd_struct *pd) {
@@ -161,11 +158,11 @@ static ma_layout *ma_parse_inner(Abstractformat *format, xx_pd_struct *pd) {
         xx_rt_memcmp(header + 11U, ".000\0", 5U)) return NULL;
     layout = (ma_layout *)xx_mem_calloc(1U, sizeof(*layout));
     if (!layout) return NULL;
-    layout->count = ma_le32(header + 16U);
+    layout->count = xx_data_get_u32(header + 16U, 4, 0, false);
     layout->version = (uint32_t)(header[10] - '0');
     layout->record_size = (layout->version + 1U) * 4U;
-    layout->names_offset = ma_le32(header + 20U);
-    layout->data_offset = ma_le32(header + 24U);
+    layout->names_offset = xx_data_get_u32(header + 20U, 4, 0, false);
+    layout->data_offset = xx_data_get_u32(header + 24U, 4, 0, false);
     index_end = MA_HEADER_SIZE +
         ((uint64_t)layout->count + (layout->version == 1U ? 1U : 0U)) *
             layout->record_size;
@@ -202,16 +199,16 @@ static ma_layout *ma_parse_inner(Abstractformat *format, xx_pd_struct *pd) {
             !ma_read(format->device, format->base_address + MA_HEADER_SIZE +
                       (int64_t)i * layout->record_size, entry,
                       layout->record_size, pd)) goto done;
-        offset = ma_le32(entry + hash_size);
+        offset = xx_data_get_u32(entry + hash_size, 4, 0, false);
         if (layout->version == 1U) {
             uint32_t end;
             if (!ma_read(format->device, format->base_address + MA_HEADER_SIZE +
                           (int64_t)(i + 1U) * layout->record_size, next,
                           layout->record_size, pd)) goto done;
-            end = ma_le32(next + hash_size);
+            end = xx_data_get_u32(next + hash_size, 4, 0, false);
             if (end < offset) goto done;
             size = end - offset;
-        } else size = ma_le32(entry + hash_size + 4U);
+        } else size = xx_data_get_u32(entry + hash_size + 4U, 4, 0, false);
         if (offset < layout->data_offset || (uint64_t)offset > (uint64_t)available ||
             (uint64_t)size > (uint64_t)available - offset) goto done;
         member->offset = format->base_address + offset;

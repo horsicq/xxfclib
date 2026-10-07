@@ -14,6 +14,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 #ifdef MALIE_LIB
 #define ML_FILE_TYPE XX_FILE_TYPE_MALIE_LIB
@@ -54,13 +55,6 @@ typedef struct ml_name_key {
 
 static bool ml_stopped(xx_pd_struct *pd) {
     return pd && xx_pd_is_stopped(pd);
-}
-static uint32_t ml_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | (uint32_t)p[1] << 8U |
-           (uint32_t)p[2] << 16U | (uint32_t)p[3] << 24U;
-}
-static uint64_t ml_le64(const uint8_t *p) {
-    return (uint64_t)ml_le32(p) | (uint64_t)ml_le32(p + 4U) << 32U;
 }
 static bool ml_read(xx_io_device *device, int64_t at, void *buffer,
                     size_t size, xx_pd_struct *pd) {
@@ -308,7 +302,7 @@ static int ml_walk(Abstractformat *format, ml_layout *layout, uint64_t at,
     if (!ml_read(format->device, format->base_address + (int64_t)at + ML_HEADER_SIZE, index, index_size, pd)) goto done;
     for (i = 0U; i < count; ++i) {
         const uint8_t *entry = index + (size_t)i * ML_RECORD_SIZE;
-        uint32_t offset = ml_le32(entry + 40U), member_size = ml_le32(entry + 36U);
+        uint32_t offset = xx_data_get_u32(entry + 40U, 4, 0, false), member_size = xx_data_get_u32(entry + 36U, 4, 0, false);
         if (ml_stopped(pd)) goto done;
         if (!entry[0] || (uint64_t)offset < index_end ||
             (uint64_t)offset > size || (uint64_t)member_size > size - offset) { result = 0; goto done; }
@@ -317,13 +311,13 @@ static int ml_walk(Abstractformat *format, ml_layout *layout, uint64_t at,
     if ((int64_t)(at + index_end) > layout->format_size) layout->format_size = (int64_t)(at + index_end);
     for (i = 0U; i < count; ++i) {
         const uint8_t *entry = index + (size_t)i * ML_RECORD_SIZE;
-        uint32_t offset = ml_le32(entry + 40U), member_size = ml_le32(entry + 36U);
+        uint32_t offset = xx_data_get_u32(entry + 40U, 4, 0, false), member_size = xx_data_get_u32(entry + 36U, 4, 0, false);
         if ((int64_t)(at + offset + member_size) > layout->format_size)
             layout->format_size = (int64_t)(at + offset + member_size);
     }
     for (i = 0U; i < count; ++i) {
         const uint8_t *entry = index + (size_t)i * ML_RECORD_SIZE;
-        uint32_t offset = ml_le32(entry + 40U), member_size = ml_le32(entry + 36U);
+        uint32_t offset = xx_data_get_u32(entry + 40U, 4, 0, false), member_size = xx_data_get_u32(entry + 36U, 4, 0, false);
         size_t length = 0U;
         char *path;
         bool nested = false;
@@ -371,7 +365,7 @@ static int ml_walk_u(Abstractformat *format, ml_layout *layout, uint64_t at,
     if (size < ML_HEADER_SIZE) return 0;
     if (!ml_read(format->device, format->base_address + (int64_t)at, header, sizeof(header), pd)) return -1;
     if (xx_rt_memcmp(header, "LIBU", 4U)) return 0;
-    count = ml_le32(header + 8U);
+    count = xx_data_get_u32(header + 8U, 4, 0, false);
     if (!count || count > 32767U) return 0;
     index_size = (size_t)count * ML_U_RECORD_SIZE;
     index_end = ML_HEADER_SIZE + (uint64_t)index_size;
@@ -384,8 +378,8 @@ static int ml_walk_u(Abstractformat *format, ml_layout *layout, uint64_t at,
                  index, index_size, pd)) goto done;
     for (i = 0U; i < count; ++i) {
         const uint8_t *entry = index + (size_t)i * ML_U_RECORD_SIZE;
-        uint64_t offset = ml_le64(entry + 72U);
-        uint32_t member_size = ml_le32(entry + 68U);
+        uint64_t offset = xx_data_get_u64(entry + 72U, 8, 0, false);
+        uint32_t member_size = xx_data_get_u32(entry + 68U, 4, 0, false);
         char *name;
         if (ml_stopped(pd)) goto done;
         name = ml_unicode_name(entry);
@@ -399,14 +393,14 @@ static int ml_walk_u(Abstractformat *format, ml_layout *layout, uint64_t at,
     if ((int64_t)(at + index_end) > layout->format_size) layout->format_size = (int64_t)(at + index_end);
     for (i = 0U; i < count; ++i) {
         const uint8_t *entry = index + (size_t)i * ML_U_RECORD_SIZE;
-        uint64_t offset = ml_le64(entry + 72U), member_size = ml_le32(entry + 68U);
+        uint64_t offset = xx_data_get_u64(entry + 72U, 8, 0, false), member_size = xx_data_get_u32(entry + 68U, 4, 0, false);
         if ((int64_t)(at + offset + member_size) > layout->format_size)
             layout->format_size = (int64_t)(at + offset + member_size);
     }
     for (i = 0U; i < count; ++i) {
         const uint8_t *entry = index + (size_t)i * ML_U_RECORD_SIZE;
-        uint64_t offset = ml_le64(entry + 72U);
-        uint32_t member_size = ml_le32(entry + 68U);
+        uint64_t offset = xx_data_get_u64(entry + 72U, 8, 0, false);
+        uint32_t member_size = xx_data_get_u32(entry + 68U, 4, 0, false);
         char *path;
         bool nested = false;
         if (ml_stopped(pd)) goto done;

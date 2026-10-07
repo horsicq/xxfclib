@@ -4,12 +4,13 @@
  */
 #include "xxfclib/formats/oric_tap/xx_oric_tap.h"
 #include "../atari_7800_a78/xx_eleventh_retro.h"
+#include "xxfclib/data/xx_data.h"
 static bool read_components(Abstractformat *f,pm_stream *s,er_blob *b) {
  uint32_t a=0,count=0;const uint8_t *p=b->p;
  while(a<b->n) {uint32_t leader=a,h,n,start,end,z;char name[257];if(!er_poll(b) || ++count>1024) return false;
   while(a<b->n && p[a]==0x16) {if(a-leader>=4096) return false;++a;}if(a-leader<3 || !er_range(b,a,10) || p[a]!=0x24) return false;h=++a;
   if(p[h] || p[h+1] || (p[h+2]!=0 && p[h+2]!=0x80) || (p[h+3]!=0 && p[h+3]!=0x80 && p[h+3]!=0xc7) || p[h+8]) return false;
-  end=pm_be16(p+h+4);start=pm_be16(p+h+6);if(end<start) return false;a=h+9;n=0;
+  end=xx_data_get_u16(p+h+4, 2, 0, true);start=xx_data_get_u16(p+h+6, 2, 0, true);if(end<start) return false;a=h+9;n=0;
   while(a<b->n && p[a]) {if(n>=255 || p[a]<32 || p[a]>126) return false;name[n++]=(char)p[a++];}if(a==b->n) return false;name[n]=0;++a;z=end-start+1;
   if(!er_emit(f,s,b,"tape-descriptor.bin",h,a-h) || !er_emit(f,s,b,n ? name:"unnamed-file.bin",a,z)) { return false; } a+=z;
  }s->size=b->n;return count!=0;

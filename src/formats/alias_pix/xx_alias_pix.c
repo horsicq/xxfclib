@@ -6,9 +6,10 @@
  */
 #include "xxfclib/formats/alias_pix/xx_alias_pix.h"
 #include "../wavefront_obj/xx_eleventh_media.h"
-static bool eg_quick(Abstractformat *f,uint64_t n) {uint8_t b[10];return n>=14&&pm_read(f,0,b,10)&&(pm_be16(b+8)==8||pm_be16(b+8)==24);}
+#include "xxfclib/data/xx_data.h"
+static bool eg_quick(Abstractformat *f,uint64_t n) {uint8_t b[10];return n>=14&&pm_read(f,0,b,10)&&(xx_data_get_u16(b+8, 2, 0, true)==8||xx_data_get_u16(b+8, 2, 0, true)==24);}
 static bool eg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
- uint32_t w=pm_be16(b),h=pm_be16(b+2),bits=pm_be16(b+8),y;uint64_t p=10;char label[64];
+ uint32_t w=xx_data_get_u16(b, 2, 0, true),h=xx_data_get_u16(b+2, 2, 0, true),bits=xx_data_get_u16(b+8, 2, 0, true),y;uint64_t p=10;char label[64];
  if(!w||!h||w>16384||h>2048||(uint64_t)w*h>16777216||(bits!=8&&bits!=24)||!eg_emit(f,s,"descriptor.pix",0,10,n))return false;
  for(y=0;y<h;++y){uint64_t start=p;uint32_t x=0;
   while(x<w){uint32_t z;if(eg_stop(pd)||!eg_span(p,1+bits/8,n)||(z=b[p])==0||z>w-x)return false;p+=1+bits/8;x+=z;}

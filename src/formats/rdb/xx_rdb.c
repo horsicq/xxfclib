@@ -97,17 +97,12 @@ static size_t xx_rdb_read_at(xx_io_device *device, int64_t offset, void *data,
     return done;
 }
 
-static uint32_t xx_rdb_be32(const uint8_t *data, size_t offset) {
-    return ((uint32_t)data[offset] << 24) | ((uint32_t)data[offset + 1U] << 16) |
-           ((uint32_t)data[offset + 2U] << 8) | (uint32_t)data[offset + 3U];
-}
-
 /* The first longs of a block add up to zero. */
 static bool xx_rdb_checksum_ok(const uint8_t *data, uint32_t longs) {
     uint32_t sum = 0U;
     uint32_t index;
     for (index = 0U; index < longs; ++index) {
-        sum += xx_rdb_be32(data, (size_t)index * 4U);
+        sum += xx_data_get_u32(data + (size_t)index * 4U, 4, 0, true);
     }
     return sum == 0U;
 }
@@ -207,10 +202,10 @@ static bool xx_rdb_read_block(Abstractformat *self, xx_rdb_private *parsed,
     }
     got = xx_rdb_read_at(self->device, offset, parsed->block,
                          parsed->block_bytes);
-    if (got < 20U || xx_rdb_be32(parsed->block, 0U) != id) return false;
+    if (got < 20U || xx_data_get_u32(parsed->block + 0U, 4, 0, true) != id) return false;
     *type_ok = true;
-    *next = xx_rdb_be32(parsed->block, 16U);
-    longs = xx_rdb_be32(parsed->block, 4U);
+    *next = xx_data_get_u32(parsed->block + 16U, 4, 0, true);
+    longs = xx_data_get_u32(parsed->block + 4U, 4, 0, true);
     if (offset + (int64_t)got > parsed->archive_end) {
         parsed->archive_end = offset + (int64_t)got;
     }
@@ -294,9 +289,9 @@ static bool xx_rdb_find_rdsk(Abstractformat *self, xx_rdb_private *parsed,
         uint32_t longs;
         uint32_t block_bytes;
         if (position + XX_RDB_MIN_BLOCK > got) break;
-        if (xx_rdb_be32(block, 0U) != XX_RDB_ID_RDSK) continue;
-        longs = xx_rdb_be32(block, 4U);
-        block_bytes = xx_rdb_be32(block, 16U);
+        if (xx_data_get_u32(block + 0U, 4, 0, true) != XX_RDB_ID_RDSK) continue;
+        longs = xx_data_get_u32(block + 4U, 4, 0, true);
+        block_bytes = xx_data_get_u32(block + 16U, 4, 0, true);
         if (longs < XX_RDB_RDSK_MIN_LONGS ||
             longs > XX_RDB_SCAN_STEP / 4U ||
             (size_t)longs * 4U > got - position ||
@@ -325,20 +320,20 @@ static bool xx_rdb_collect_partition(Abstractformat *self,
     const uint8_t *block = parsed->block;
     const uint8_t *env = block + 128;
     xx_rdb_entry entry;
-    uint32_t table_size = xx_rdb_be32(env, 0U);
-    uint32_t surfaces = xx_rdb_be32(env, 12U);
-    uint32_t blocks_per_track = xx_rdb_be32(env, 20U);
+    uint32_t table_size = xx_data_get_u32(env + 0U, 4, 0, true);
+    uint32_t surfaces = xx_data_get_u32(env + 12U, 4, 0, true);
+    uint32_t blocks_per_track = xx_data_get_u32(env + 20U, 4, 0, true);
     uint64_t cylinder_bytes;
     uint64_t start;
     uint64_t declared;
     int64_t available;
     xx_rt_memset(&entry, 0, sizeof(entry));
-    entry.low_cyl = xx_rdb_be32(env, 36U);
-    entry.high_cyl = xx_rdb_be32(env, 40U);
-    entry.flags = xx_rdb_be32(block, 20U);
+    entry.low_cyl = xx_data_get_u32(env + 36U, 4, 0, true);
+    entry.high_cyl = xx_data_get_u32(env + 40U, 4, 0, true);
+    entry.flags = xx_data_get_u32(block + 20U, 4, 0, true);
     /* DosType is environment long 16, present when the table reaches it. */
     if (table_size >= 16U && longs >= 32U + 17U) {
-        entry.dos_type = xx_rdb_be32(env, 64U);
+        entry.dos_type = xx_data_get_u32(env + 64U, 4, 0, true);
     }
     if (table_size < 10U || surfaces == 0U || blocks_per_track == 0U ||
         entry.high_cyl < entry.low_cyl) {
@@ -489,12 +484,12 @@ static bool xx_rdb_walk_filesystems(Abstractformat *self,
         if (!usable) continue;
         xx_rt_memset(&entry, 0, sizeof(entry));
         entry.is_filesystem = true;
-        entry.dos_type = xx_rdb_be32(parsed->block, 32U);
-        entry.flags = xx_rdb_be32(parsed->block, 36U);
+        entry.dos_type = xx_data_get_u32(parsed->block + 32U, 4, 0, true);
+        entry.flags = xx_data_get_u32(parsed->block + 36U, 4, 0, true);
         entry.header_offset = offset;
         entry.data_offset = -1;
         entry.index = count;
-        seg_list = xx_rdb_be32(parsed->block, 72U);
+        seg_list = xx_data_get_u32(parsed->block + 72U, 4, 0, true);
         if (seg_list == XX_RDB_END_OF_CHAIN || seg_list == 0U) continue;
         if (!xx_rdb_walk_lseg(self, parsed, seg_list, &entry, pd)) {
             xx_rdb_entry_cleanup(&entry);
@@ -542,19 +537,19 @@ static bool xx_rdb_parse(Abstractformat *self, xx_rdb_private *parsed,
     if (!xx_rdb_find_rdsk(self, parsed, rdsk)) goto fail;
     parsed->block = (uint8_t *)xx_mem_alloc(parsed->block_bytes);
     if (!parsed->block) goto fail;
-    if (!xx_rdb_walk_partitions(self, parsed, xx_rdb_be32(rdsk, 28U), pd) ||
-        !xx_rdb_walk_filesystems(self, parsed, xx_rdb_be32(rdsk, 32U), pd)) {
+    if (!xx_rdb_walk_partitions(self, parsed, xx_data_get_u32(rdsk + 28U, 4, 0, true), pd) ||
+        !xx_rdb_walk_filesystems(self, parsed, xx_data_get_u32(rdsk + 32U, 4, 0, true), pd)) {
         goto fail;
     }
     /* Physical geometry, then the blocks reserved for the RDB. */
-    if (xx_rdb_mul((uint64_t)xx_rdb_be32(rdsk, 68U), xx_rdb_be32(rdsk, 72U),
+    if (xx_rdb_mul((uint64_t)xx_data_get_u32(rdsk + 68U, 4, 0, true), xx_data_get_u32(rdsk + 72U, 4, 0, true),
                    &cylinder_blocks)) {
         uint64_t blocks;
-        if (xx_rdb_mul(cylinder_blocks, xx_rdb_be32(rdsk, 64U), &blocks)) {
+        if (xx_rdb_mul(cylinder_blocks, xx_data_get_u32(rdsk + 64U, 4, 0, true), &blocks)) {
             xx_rdb_extend_end(self, parsed, blocks, parsed->block_bytes);
         }
     }
-    rdb_blocks_hi = xx_rdb_be32(rdsk, 132U);
+    rdb_blocks_hi = xx_data_get_u32(rdsk + 132U, 4, 0, true);
     if (rdb_blocks_hi != XX_RDB_END_OF_CHAIN) {
         xx_rdb_extend_end(self, parsed, (uint64_t)rdb_blocks_hi + 1U,
                           parsed->block_bytes);

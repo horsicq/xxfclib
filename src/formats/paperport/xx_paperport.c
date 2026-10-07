@@ -49,6 +49,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef PAPERPORT
 #define XX_PAPERPORT_FILE_TYPE XX_FILE_TYPE_PAPERPORT
@@ -96,24 +97,6 @@ typedef struct xx_paperport_stream_s {
 static void xx_paperport_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint16_t xx_paperport_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_paperport_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static XXFC_MAYBE_UNUSED uint16_t xx_paperport_be16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[1] | ((uint16_t)data[0] << 8));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t xx_paperport_be32(const uint8_t *data) {
-    return (uint32_t)data[3] | ((uint32_t)data[2] << 8) |
-           ((uint32_t)data[1] << 16) | ((uint32_t)data[0] << 24);
-}
 
 static bool xx_paperport_read_at(Abstractformat *self, int64_t offset,
                               uint8_t *buffer, size_t size) {
@@ -240,10 +223,10 @@ static bool xx_paperport_chunk(Abstractformat *self, int64_t span,
         return false;
     }
     if (head[0] != 'V' || head[1] != 'Z') return false;
-    payload = (int64_t)(int32_t)xx_paperport_le32(head + 2);
+    payload = (int64_t)(int32_t)xx_data_get_u32(head + 2, 4, 0, false);
     if (payload < XX_PAPERPORT_CHUNK_HEADER_SIZE) return false;
     *size = payload;
-    *type = xx_paperport_le16(head + 26);
+    *type = xx_data_get_u16(head + 26, 2, 0, false);
     return true;
 }
 
@@ -304,8 +287,8 @@ static xx_paperport_stream *xx_paperport_parse(Abstractformat *self,
     }
 
     root_offset =
-        (int64_t)(int32_t)xx_paperport_le32(head +
-                                            XX_PAPERPORT_ROOT_POINTER_OFFSET);
+        (int64_t)(int32_t)xx_data_get_u32(head +
+                                            XX_PAPERPORT_ROOT_POINTER_OFFSET, 4, 0, false);
     if (!xx_paperport_chunk(self, span, root_offset, &root_size, &root_type) ||
         root_type != XX_PAPERPORT_CHUNK_ROOT ||
         root_size < XX_PAPERPORT_MIN_ROOT_PAYLOAD) {
@@ -321,9 +304,9 @@ static xx_paperport_stream *xx_paperport_parse(Abstractformat *self,
     }
     /* The page count is stored twice; the two copies must agree.  That is
      * what makes a six-byte signature safe to detect on. */
-    count = xx_paperport_le16(prefix);
+    count = xx_data_get_u16(prefix, 2, 0, false);
     if (count < 1U || count > XX_PAPERPORT_MAX_PAGES ||
-        xx_paperport_le16(prefix + 10) != count) {
+        xx_data_get_u16(prefix + 10, 2, 0, false) != count) {
         return NULL;
     }
 
@@ -354,7 +337,7 @@ static xx_paperport_stream *xx_paperport_parse(Abstractformat *self,
         }
         cursor += XX_PAPERPORT_ROOT_ENTRY_SIZE;
 
-        item_offset = (int64_t)(int32_t)xx_paperport_le32(entry + 4);
+        item_offset = (int64_t)(int32_t)xx_data_get_u32(entry + 4, 4, 0, false);
         if (!xx_paperport_chunk(self, span, item_offset, &item_size,
                                 &item_type) ||
             item_type != XX_PAPERPORT_CHUNK_ITEM) {
@@ -370,7 +353,7 @@ static xx_paperport_stream *xx_paperport_parse(Abstractformat *self,
             goto fail;
         }
 
-        image_offset = (int64_t)(int32_t)xx_paperport_le32(item + 34);
+        image_offset = (int64_t)(int32_t)xx_data_get_u32(item + 34, 4, 0, false);
         if (!xx_paperport_chunk(self, span, image_offset, &image_size,
                                 &image_type) ||
             image_type != XX_PAPERPORT_CHUNK_IMAGE ||

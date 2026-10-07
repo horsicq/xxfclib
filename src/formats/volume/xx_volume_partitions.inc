@@ -14,7 +14,7 @@ static bool vr_atari_type(uint32_t type) {
     return false;
 }
 static bool vr_atari_entries(Abstractformat *f,pm_stream *s,const uint8_t *b,size_t start,unsigned count,uint64_t root,uint64_t base,uint64_t *seen,unsigned *seen_count,xx_pd_struct *pd) {
-    unsigned i; for(i=0;i<count;++i) { const uint8_t *e=b+start+i*12; uint32_t type=pm_be32(e),length=pm_be32(e+8); uint64_t sector=pm_be32(e+4); char label[4];
+    unsigned i; for(i=0;i<count;++i) { const uint8_t *e=b+start+i*12; uint32_t type=xx_data_get_u32(e, 4, 0, true),length=xx_data_get_u32(e+8, 4, 0, true); uint64_t sector=xx_data_get_u32(e+4, 4, 0, true); char label[4];
         if(!vr_poll(pd)) { return false; } if(!length || !((type>>24)&1U)) continue; if(!vr_atari_type(type)) return false;
         if((type&UINT32_C(0xFFFFFF))==UINT32_C(0x58474D)) {
             uint8_t next[512]; unsigned j; uint64_t where=sector+root;
@@ -39,30 +39,30 @@ static bool vr_partitions(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     r->capability="partition-table validation and bounded partition-image extraction";
     switch(f->file_type) {
     case XX_FILE_TYPE_DEC_DISKLABEL:
-        at=31*512; if(!pm_read(f,at,b,512) || pm_le32(b+440)!=0x032957 || pm_le32(b+444)!=1) return false;
-        for(i=0;i<8;++i) { if(!vr_part(f,s,i,"DEC",(uint64_t)pm_le32(b+452+i*8)*512,(uint64_t)pm_le32(b+448+i*8)*512)) return false; } break;
+        at=31*512; if(!pm_read(f,at,b,512) || xx_data_get_u32(b+440, 4, 0, false)!=0x032957 || xx_data_get_u32(b+444, 4, 0, false)!=1) return false;
+        for(i=0;i<8;++i) { if(!vr_part(f,s,i,"DEC",(uint64_t)xx_data_get_u32(b+452+i*8, 4, 0, false)*512,(uint64_t)xx_data_get_u32(b+448+i*8, 4, 0, false)*512)) return false; } break;
     case XX_FILE_TYPE_DRAGONFLY_DISKLABEL:
-        table_size=2048; if(!pm_read(f,at,b,table_size) || pm_le32(b+512)!=UINT32_C(0xC4464C59) || !pm_le32(b+524) || pm_le32(b+524)>16) return false;
-        { uint32_t crc=pm_le32(b+516); xx_mem_zero(b+516,4);
-          if(xx_crc32(XX_CRC_TYPE_CRC32,b+512,200+(size_t)pm_le32(b+524)*64)!=crc) return false; }
-        for(i=0;i<pm_le32(b+524);++i) { if(!vr_part(f,s,i,"BSD64",mm_le64(b+712+i*64),mm_le64(b+720+i*64))) return false; } break;
+        table_size=2048; if(!pm_read(f,at,b,table_size) || xx_data_get_u32(b+512, 4, 0, false)!=UINT32_C(0xC4464C59) || !xx_data_get_u32(b+524, 4, 0, false) || xx_data_get_u32(b+524, 4, 0, false)>16) return false;
+        { uint32_t crc=xx_data_get_u32(b+516, 4, 0, false); xx_mem_zero(b+516,4);
+          if(xx_crc32(XX_CRC_TYPE_CRC32,b+512,200+(size_t)xx_data_get_u32(b+524, 4, 0, false)*64)!=crc) return false; }
+        for(i=0;i<xx_data_get_u32(b+524, 4, 0, false);++i) { if(!vr_part(f,s,i,"BSD64",xx_data_get_u64(b+712+i*64, 8, 0, false),xx_data_get_u64(b+720+i*64, 8, 0, false))) return false; } break;
     case XX_FILE_TYPE_SGI_VOLUME_HEADER:
-        if(!pm_read(f,at,b,512) || pm_be32(b)!=UINT32_C(0x0BE5A941)) return false;
-        { uint32_t sum=0,bytes=pm_be16(b+40); for(i=0;i<128;++i) sum+=pm_be32(b+i*4); if(sum || !vr_power(bytes) || bytes<128 || bytes>8192) return false;
+        if(!pm_read(f,at,b,512) || xx_data_get_u32(b, 4, 0, true)!=UINT32_C(0x0BE5A941)) return false;
+        { uint32_t sum=0,bytes=xx_data_get_u16(b+40, 2, 0, true); for(i=0;i<128;++i) sum+=xx_data_get_u32(b+i*4, 4, 0, true); if(sum || !vr_power(bytes) || bytes<128 || bytes>8192) return false;
           r->block_size=bytes; r->big_endian=true;
-          for(i=0;i<16;++i) { const uint8_t *e=b+312+i*12; uint32_t type=pm_be32(e+8); if(type==0 || type==6) continue;
-              if(!vr_part(f,s,i,"SGI",(uint64_t)pm_be32(e+4)*bytes,(uint64_t)pm_be32(e)*bytes)) return false; } }
+          for(i=0;i<16;++i) { const uint8_t *e=b+312+i*12; uint32_t type=xx_data_get_u32(e+8, 4, 0, true); if(type==0 || type==6) continue;
+              if(!vr_part(f,s,i,"SGI",(uint64_t)xx_data_get_u32(e+4, 4, 0, true)*bytes,(uint64_t)xx_data_get_u32(e, 4, 0, true)*bytes)) return false; } }
         break;
     case XX_FILE_TYPE_HUMAN68K_PARTITIONS:
-        at=2048; if(!pm_read(f,at,b,512) || pm_be32(b)!=UINT32_C(0x5836384B)) {
-            at=1024; if(!pm_read(f,at,b,256) || pm_be32(b)!=UINT32_C(0x5836384B)) return false; r->block_size=256; table_size=256;
+        at=2048; if(!pm_read(f,at,b,512) || xx_data_get_u32(b, 4, 0, true)!=UINT32_C(0x5836384B)) {
+            at=1024; if(!pm_read(f,at,b,256) || xx_data_get_u32(b, 4, 0, true)!=UINT32_C(0x5836384B)) return false; r->block_size=256; table_size=256;
         } else r->block_size=1024;
         r->big_endian=true;
         for(i=0;i<8;++i) { const uint8_t *e=b+16+i*16; char name[9]; xx_rt_memcpy(name,e,8); name[8]=0;
-            if(!vr_part(f,s,i,name,(uint64_t)(pm_be32(e+8)&UINT32_C(0xFFFFFF))*r->block_size,(uint64_t)pm_be32(e+12)*r->block_size)) return false; } break;
+            if(!vr_part(f,s,i,name,(uint64_t)(xx_data_get_u32(e+8, 4, 0, true)&UINT32_C(0xFFFFFF))*r->block_size,(uint64_t)xx_data_get_u32(e+12, 4, 0, true)*r->block_size)) return false; } break;
     case XX_FILE_TYPE_RIO_KARMA_PARTITIONS:
-        if(!pm_read(f,at,b,512) || pm_le16(b+510)!=0xAB56) return false;
-        for(i=0;i<2;++i) { const uint8_t *e=b+270+i*16; if(e[4]==0x4D && !vr_part(f,s,i,"Karma",(uint64_t)pm_le32(e+8)*512,(uint64_t)pm_le32(e+12)*512)) return false; } break;
+        if(!pm_read(f,at,b,512) || xx_data_get_u16(b+510, 2, 0, false)!=0xAB56) return false;
+        for(i=0;i<2;++i) { const uint8_t *e=b+270+i*16; if(e[4]==0x4D && !vr_part(f,s,i,"Karma",(uint64_t)xx_data_get_u32(e+8, 4, 0, false)*512,(uint64_t)xx_data_get_u32(e+12, 4, 0, false)*512)) return false; } break;
     case XX_FILE_TYPE_PLAN9_PARTITIONS:
         at=512; if(!pm_read(f,at,b,512) || xx_rt_memcmp(b,"part ",5)) return false;
         { const char *p=(const char *)b; b[511]=0;
@@ -74,56 +74,56 @@ static bool vr_partitions(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
               if(!vr_part(f,s,(unsigned)s->count,name,first*512,(last-first)*512)) return false;
           } } break;
     case XX_FILE_TYPE_XENIX_PARTITIONS:
-        at=42*512; if(!pm_read(f,at,b,512) || pm_le16(b)!=0x1234) return false;
-        for(i=0;i<16;++i) { uint32_t first=pm_le32(b+2+i*8),size=pm_le32(b+6+i*8);
+        at=42*512; if(!pm_read(f,at,b,512) || xx_data_get_u16(b, 2, 0, false)!=0x1234) return false;
+        for(i=0;i<16;++i) { uint32_t first=xx_data_get_u32(b+2+i*8, 4, 0, false),size=xx_data_get_u32(b+6+i*8, 4, 0, false);
             if((first&UINT32_C(0x80000000)) || (size&UINT32_C(0x80000000)) || !vr_part(f,s,i,"XENIX",((uint64_t)first+977)*1024,(uint64_t)size*1024)) return false; } break;
     case XX_FILE_TYPE_MINIX_PARTITIONS:
-        if(!pm_read(f,at,b,512) || pm_le16(b+510)!=0xAA55) return false;
+        if(!pm_read(f,at,b,512) || xx_data_get_u16(b+510, 2, 0, false)!=0xAA55) return false;
         for(i=0;i<4;++i) { const uint8_t *e=b+446+i*16; if(e[4] && e[4]!=0x81) return false;
-            if(e[4]==0x81 && !vr_part(f,s,i,"Minix",(uint64_t)pm_le32(e+8)*512,(uint64_t)pm_le32(e+12)*512)) return false; } break;
+            if(e[4]==0x81 && !vr_part(f,s,i,"Minix",(uint64_t)xx_data_get_u32(e+8, 4, 0, false)*512,(uint64_t)xx_data_get_u32(e+12, 4, 0, false)*512)) return false; } break;
     case XX_FILE_TYPE_ATARI_AHDI:
-        if(!pm_read(f,at,b,512) || !pm_be32(b+450) || pm_be32(b+450)>(uint64_t)pm_available(f)/512) return false;
+        if(!pm_read(f,at,b,512) || !xx_data_get_u32(b+450, 4, 0, true) || xx_data_get_u32(b+450, 4, 0, true)>(uint64_t)pm_available(f)/512) return false;
         { uint64_t seen[64]={0}; unsigned count=0;
           if(!vr_atari_entries(f,s,b,454,4,0,0,seen,&count,pd) || !vr_atari_entries(f,s,b,342,8,0,0,seen,&count,pd)) return false; }
         r->big_endian=true; break;
     case XX_FILE_TYPE_NEXT_DISKLABEL:
         { int offsets[]={0,2048,7680,8192}; bool found=false; for(i=0;i<4;++i) { at=offsets[i]; if(!pm_read(f,at,b,1024)) continue;
-              uint32_t magic=pm_be32(b); if(magic==UINT32_C(0x4E655854) || magic==UINT32_C(0x646C5632) || magic==UINT32_C(0x646C5633)) { found=true; break; } }
+              uint32_t magic=xx_data_get_u32(b, 4, 0, true); if(magic==UINT32_C(0x4E655854) || magic==UINT32_C(0x646C5632) || magic==UINT32_C(0x646C5633)) { found=true; break; } }
           if(!found) return false; }
-        table_size=1024; r->block_size=pm_be32(b+92); r->big_endian=true;
-        if(!vr_power(r->block_size) || r->block_size<128 || r->block_size>8192 || (pm_be16(b+112)&0x8000)) return false;
+        table_size=1024; r->block_size=xx_data_get_u32(b+92, 4, 0, true); r->big_endian=true;
+        if(!vr_power(r->block_size) || r->block_size<128 || r->block_size>8192 || (xx_data_get_u16(b+112, 2, 0, true)&0x8000)) return false;
         vr_label(r,b+12,24);
-        for(i=0;i<8;++i) { const uint8_t *e=b+190+i*44; uint32_t first=pm_be32(e),length=pm_be32(e+4); if(!length || length==UINT32_MAX) continue;
-            if((first&UINT32_C(0x80000000)) || !vr_part(f,s,i,"NeXT",((uint64_t)first+pm_be16(b+112))*r->block_size,(uint64_t)length*r->block_size)) return false; } break;
+        for(i=0;i<8;++i) { const uint8_t *e=b+190+i*44; uint32_t first=xx_data_get_u32(e, 4, 0, true),length=xx_data_get_u32(e+4, 4, 0, true); if(!length || length==UINT32_MAX) continue;
+            if((first&UINT32_C(0x80000000)) || !vr_part(f,s,i,"NeXT",((uint64_t)first+xx_data_get_u16(b+112, 2, 0, true))*r->block_size,(uint64_t)length*r->block_size)) return false; } break;
     case XX_FILE_TYPE_APRICOT_PARTITIONS:
         if(!pm_read(f,at,b,512) || !b[12] || b[12]>8 || b[13]!=1 || b[8]>4 || b[11]>5) return false;
-        r->block_size=pm_le16(b+14); if(!vr_power(r->block_size) || r->block_size<128 || r->block_size>8192 || !b[22] || !pm_le16(b+16) || !pm_le32(b+18)) return false;
-        if((uint64_t)b[22]*pm_le16(b+16)*pm_le32(b+18)>(uint64_t)pm_available(f)/r->block_size) return false;
+        r->block_size=xx_data_get_u16(b+14, 2, 0, false); if(!vr_power(r->block_size) || r->block_size<128 || r->block_size>8192 || !b[22] || !xx_data_get_u16(b+16, 2, 0, false) || !xx_data_get_u32(b+18, 4, 0, false)) return false;
+        if((uint64_t)b[22]*xx_data_get_u16(b+16, 2, 0, false)*xx_data_get_u32(b+18, 4, 0, false)>(uint64_t)pm_available(f)/r->block_size) return false;
         for(i=0;i<b[12];++i) { const uint8_t *e=b+320+i*16;
-            if(pm_le16(e)!=r->block_size || !vr_part(f,s,i,"Apricot",(uint64_t)pm_le16(e+14)*r->block_size,(uint64_t)pm_le16(e+8)*r->block_size)) return false; } break;
+            if(xx_data_get_u16(e, 2, 0, false)!=r->block_size || !vr_part(f,s,i,"Apricot",(uint64_t)xx_data_get_u16(e+14, 2, 0, false)*r->block_size,(uint64_t)xx_data_get_u16(e+8, 2, 0, false)*r->block_size)) return false; } break;
     case XX_FILE_TYPE_ACORN_PARTITIONS:
         at=3072; if(!pm_read(f,at,b,512)) return false;
         { uint32_t sum=0,heads=b[450]+((b[456]>>6)&1),spt=b[449],bytes; uint64_t map; uint8_t entries[512];
           for(i=0;i<511;++i) { sum=(sum&255)+(sum>>8)+b[i]; } sum=(sum&255)+(sum>>8);
           if((uint8_t)sum!=b[511] || b[448]<7 || b[448]>13 || !heads || !spt) return false;
-          bytes=1U<<b[448]; map=(uint64_t)pm_le16(b+509)*heads*spt; r->block_size=bytes;
+          bytes=1U<<b[448]; map=(uint64_t)xx_data_get_u16(b+509, 2, 0, false)*heads*spt; r->block_size=bytes;
           if(map>(uint64_t)INT64_MAX/bytes || !pm_read(f,(int64_t)(map*bytes),entries,512)) return false;
-          if((b[508]&15)==9) { for(i=0;i<42;++i) { const uint8_t *e=entries+i*12; uint32_t magic=pm_le32(e);
+          if((b[508]&15)==9) { for(i=0;i<42;++i) { const uint8_t *e=entries+i*12; uint32_t magic=xx_data_get_u32(e, 4, 0, false);
               if(magic!=UINT32_C(0xDEAFA1DE) && magic!=UINT32_C(0xDEAFAB1E)) continue;
-              if(!vr_part(f,s,i,magic==UINT32_C(0xDEAFA1DE)?"Linux":"swap",(map+pm_le32(e+4))*bytes,(uint64_t)pm_le32(e+8)*bytes)) return false; } }
-          else if(((b[508]&15)==1 || (b[508]&15)==2) && pm_le32(entries)==UINT32_C(0x4A657320)) {
+              if(!vr_part(f,s,i,magic==UINT32_C(0xDEAFA1DE)?"Linux":"swap",(map+xx_data_get_u32(e+4, 4, 0, false))*bytes,(uint64_t)xx_data_get_u32(e+8, 4, 0, false)*bytes)) return false; } }
+          else if(((b[508]&15)==1 || (b[508]&15)==2) && xx_data_get_u32(entries, 4, 0, false)==UINT32_C(0x4A657320)) {
               for(i=0;i<8;++i) { const uint8_t *e=entries+8+i*28; char name[17]; xx_rt_memcpy(name,e+12,16); name[16]=0;
-                  if(!vr_part(f,s,i,name,(map+pm_le32(e))*bytes,(uint64_t)pm_le32(e+4)*bytes)) return false; } }
+                  if(!vr_part(f,s,i,name,(map+xx_data_get_u32(e, 4, 0, false))*bytes,(uint64_t)xx_data_get_u32(e+4, 4, 0, false)*bytes)) return false; } }
           else return false;
         } break;
     case XX_FILE_TYPE_PC98_PARTITIONS:
         if(!r->heads || !r->sectors_per_track || !r->logical_sector_size) { xx_pd_set_error(pd,1,"PC-9800 partition extraction requires explicit CHS geometry"); return false; }
-        if(!pm_read(f,0,b,r->logical_sector_size) || pm_le16(b+r->logical_sector_size-2)!=0xAA55 || !xx_rt_memcmp(b+54,"FAT",3)) return false;
+        if(!pm_read(f,0,b,r->logical_sector_size) || xx_data_get_u16(b+r->logical_sector_size-2, 2, 0, false)!=0xAA55 || !xx_rt_memcmp(b+54,"FAT",3)) return false;
         at=r->logical_sector_size; if(!pm_read(f,at,b,256)) return false; table_size=256;
         for(i=0;i<8;++i) { const uint8_t *e=b+i*32; uint64_t first,last; char name[17]; if(!e[0]) continue;
             if(e[9]>=r->heads || e[13]>=r->heads || e[8]>=r->sectors_per_track || e[12]>=r->sectors_per_track) return false;
-            first=((uint64_t)pm_le16(e+10)*r->heads+e[9])*r->sectors_per_track+e[8];
-            last=((uint64_t)pm_le16(e+14)*r->heads+e[13])*r->sectors_per_track+e[12];
+            first=((uint64_t)xx_data_get_u16(e+10, 2, 0, false)*r->heads+e[9])*r->sectors_per_track+e[8];
+            last=((uint64_t)xx_data_get_u16(e+14, 2, 0, false)*r->heads+e[13])*r->sectors_per_track+e[12];
             xx_rt_memcpy(name,e+16,16); name[16]=0;
             if(last<first || !vr_part(f,s,i,name,first*r->block_size,(last-first+1)*r->block_size)) return false;
         } break;

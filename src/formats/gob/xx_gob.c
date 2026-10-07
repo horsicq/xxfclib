@@ -50,6 +50,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef GOB
 
@@ -149,11 +150,6 @@ static bool xx_gob_read_at(Abstractformat *self, int64_t offset,
         completed += (size_t)received;
     }
     return true;
-}
-
-static uint32_t xx_gob_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
 }
 
 static bool xx_gob_range_within(int64_t total, int64_t offset, int64_t size) {
@@ -284,7 +280,7 @@ static xx_gob_stream *xx_gob_parse(Abstractformat *self, xx_pd_struct *pd) {
         header_size = XX_GOB_DF_HEADER_SIZE;
         entry_size = XX_GOB_DF_ENTRY_SIZE;
         name_size = XX_GOB_DF_NAME_SIZE;
-        table_offset = (int64_t)xx_gob_le32(header + 4);
+        table_offset = (int64_t)xx_data_get_u32(header + 4, 4, 0, false);
     } else if (xx_rt_memcmp(header, "GOB ", 4U) == 0) {
         flavour = XX_GOB_FLAVOUR_JK;
         header_size = XX_GOB_JK_HEADER_SIZE;
@@ -292,8 +288,8 @@ static xx_gob_stream *xx_gob_parse(Abstractformat *self, xx_pd_struct *pd) {
         name_size = XX_GOB_JK_NAME_SIZE;
         /* The version word is the only other fixed thing this flavour has;
          * pinning it keeps a four-byte signature from being the whole gate. */
-        if (xx_gob_le32(header + 4) != XX_GOB_JK_VERSION) return NULL;
-        table_offset = (int64_t)xx_gob_le32(header + 8);
+        if (xx_data_get_u32(header + 4, 4, 0, false) != XX_GOB_JK_VERSION) return NULL;
+        table_offset = (int64_t)xx_data_get_u32(header + 8, 4, 0, false);
     } else {
         return NULL;
     }
@@ -309,7 +305,7 @@ static xx_gob_stream *xx_gob_parse(Abstractformat *self, xx_pd_struct *pd) {
                         sizeof(count_bytes))) {
         return NULL;
     }
-    count = xx_gob_le32(count_bytes);
+    count = xx_data_get_u32(count_bytes, 4, 0, false);
     if (count == 0U || count > XX_GOB_MAX_MEMBERS) return NULL;
     /* count * entry_size cannot overflow: count is bounded above by 2^20 and
      * entry_size by 136. */
@@ -330,8 +326,8 @@ static xx_gob_stream *xx_gob_parse(Abstractformat *self, xx_pd_struct *pd) {
     for (index = 0U; index < count; ++index) {
         const uint8_t *entry = table + (size_t)index * (size_t)entry_size;
         xx_gob_member member;
-        int64_t offset = (int64_t)xx_gob_le32(entry);
-        int64_t size = (int64_t)xx_gob_le32(entry + 4);
+        int64_t offset = (int64_t)xx_data_get_u32(entry, 4, 0, false);
+        int64_t size = (int64_t)xx_data_get_u32(entry + 4, 4, 0, false);
         char *name;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;

@@ -56,15 +56,15 @@ static bool cbm_parse(Abstractformat *f,pm_stream *s,ac_blob *b) {
     uint32_t at=0;
     /* BASIC SYS wrapper: the line number determines the exact payload block. */
     if(b->n>265U && b->p[6]==0x9EU && b->p[7]=='(') {
-        uint32_t line=pm_le16(b->p+4); if(line<7U || line>4096U) return false;
+        uint32_t line=xx_data_get_u16(b->p+4, 2, 0, false); if(line<7U || line>4096U) return false;
         at=(line-6U)*254U; if(line==15U && b->p[8]=='7') --at;
     }
     while(at<b->n) {
         uint32_t n,blocks,record,header,name_n,i,sum=0; uint16_t expected; unsigned ver,method; uint8_t *out; char name[96];
         if(!ac_poll(b) || !ac_span(b,at,11U)) return false;
-        ver=b->p[at]; method=b->p[at+1]; expected=pm_le16(b->p+at+2);
+        ver=b->p[at]; method=b->p[at+1]; expected=xx_data_get_u16(b->p+at+2, 2, 0, false);
         n=(uint32_t)b->p[at+4]|(uint32_t)b->p[at+5]<<8U|(uint32_t)b->p[at+6]<<16U;
-        blocks=pm_le16(b->p+at+7); name_n=b->p[at+10]; header=11U+name_n+(ver==2U?3U:0U);
+        blocks=xx_data_get_u16(b->p+at+7, 2, 0, false); name_n=b->p[at+10]; header=11U+name_n+(ver==2U?3U:0U);
         if((ver!=1U && ver!=2U) || method>(ver==1U?2U:5U) || !name_n || name_n>16U || !blocks ||
             (b->p[at+9]!='P' && b->p[at+9]!='S' && b->p[at+9]!='U' && !(ver==2U && b->p[at+9]=='R')) ||
             !ac_span(b,at,header) || !ac_name(name,sizeof(name),b->p+at+11,name_n)) return false;

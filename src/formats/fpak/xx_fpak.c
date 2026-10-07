@@ -62,6 +62,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Pending registration in xxfc_defs.h.  Once the enumerator XX_FILE_TYPE_FPAK
  * and its short alias FPAK are added there this fallback switches itself
@@ -141,15 +142,6 @@ typedef enum xx_fpak_assembly_e {
 static void xx_fpak_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint16_t xx_fpak_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_fpak_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static bool xx_fpak_read_at(Abstractformat *self, int64_t offset,
                             uint8_t *buffer, size_t size) {
@@ -365,10 +357,10 @@ static bool xx_fpak_read_volume(Abstractformat *self, xx_fpak_stream *stream,
                              sizeof(header))) {
             return false;
         }
-        stream->version = xx_fpak_le16(header + 4);
-        stream->total_packed = (int64_t)xx_fpak_le32(header + 6);
-        stream->total_raw = (int64_t)xx_fpak_le32(header + 10);
-        description_size = (int64_t)xx_fpak_le16(header + 14);
+        stream->version = xx_data_get_u16(header + 4, 2, 0, false);
+        stream->total_packed = (int64_t)xx_data_get_u32(header + 6, 4, 0, false);
+        stream->total_raw = (int64_t)xx_data_get_u32(header + 10, 4, 0, false);
+        description_size = (int64_t)xx_data_get_u16(header + 14, 2, 0, false);
         /* +6 is NOT a version count: it is the number of members in the whole
          * distribution set, so a lead volume of a large set carries a large
          * value.  Restricting it rejects most real volumes. */
@@ -425,15 +417,15 @@ static bool xx_fpak_read_volume(Abstractformat *self, xx_fpak_stream *stream,
                           fixed[2] == 'P' && fixed[3] == 'F');
         }
         if (!malformed) {
-            segment_flags = xx_fpak_le16(fixed + 4);
-            segment_method = xx_fpak_le16(fixed + 6);
-            dos_time = xx_fpak_le16(fixed + 8);
-            dos_date = xx_fpak_le16(fixed + 10);
-            crc32 = xx_fpak_le32(fixed + 12);
-            packed_size = (int64_t)xx_fpak_le32(fixed + 16);
-            raw_size = (int64_t)xx_fpak_le32(fixed + 20);
-            segment_size = (int64_t)xx_fpak_le32(fixed + 24);
-            name_size = (int64_t)xx_fpak_le16(fixed + 28);
+            segment_flags = xx_data_get_u16(fixed + 4, 2, 0, false);
+            segment_method = xx_data_get_u16(fixed + 6, 2, 0, false);
+            dos_time = xx_data_get_u16(fixed + 8, 2, 0, false);
+            dos_date = xx_data_get_u16(fixed + 10, 2, 0, false);
+            crc32 = xx_data_get_u32(fixed + 12, 4, 0, false);
+            packed_size = (int64_t)xx_data_get_u32(fixed + 16, 4, 0, false);
+            raw_size = (int64_t)xx_data_get_u32(fixed + 20, 4, 0, false);
+            segment_size = (int64_t)xx_data_get_u32(fixed + 24, 4, 0, false);
+            name_size = (int64_t)xx_data_get_u16(fixed + 28, 2, 0, false);
             malformed =
                 (segment_method != XX_FPAK_METHOD_STORED &&
                  segment_method != XX_FPAK_METHOD_IMPLODED) ||

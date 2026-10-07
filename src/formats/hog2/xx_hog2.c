@@ -38,6 +38,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef HOG2
 #define XX_HOG2_FILE_TYPE XX_FILE_TYPE_HOG2
@@ -71,11 +72,6 @@ typedef struct xx_hog2_stream_s {
 static void xx_hog2_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint32_t xx_hog2_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static bool xx_hog2_read_at(Abstractformat *self, int64_t offset,
                              uint8_t *buffer, size_t size) {
@@ -175,13 +171,13 @@ static xx_hog2_stream *xx_hog2_parse(Abstractformat *self,
 
     /* The count is bounded before it is multiplied out, and the product is
      * then bounded against the real file size before anything is allocated. */
-    count = (uint64_t)xx_hog2_le32(head + 4);
+    count = (uint64_t)xx_data_get_u32(head + 4, 4, 0, false);
     if (count == 0U || count > XX_HOG2_MAX_MEMBERS) return NULL;
     table_size = (int64_t)(count * XX_HOG2_ENTRY_SIZE);
     if (table_size > span - XX_HOG2_HEADER_SIZE) return NULL;
     /* The header republishes where the payloads start; it must agree with the
      * count exactly, which is the cheapest check there is on the count. */
-    if ((int64_t)xx_hog2_le32(head + 8) != XX_HOG2_HEADER_SIZE + table_size) {
+    if ((int64_t)xx_data_get_u32(head + 8, 4, 0, false) != XX_HOG2_HEADER_SIZE + table_size) {
         return NULL;
     }
 
@@ -203,7 +199,7 @@ static xx_hog2_stream *xx_hog2_parse(Abstractformat *self,
     cursor = XX_HOG2_HEADER_SIZE + table_size;
     for (index = 0U; index < count; ++index) {
         const uint8_t *entry = table + (size_t)(index * XX_HOG2_ENTRY_SIZE);
-        int64_t size = (int64_t)xx_hog2_le32(entry + 40);
+        int64_t size = (int64_t)xx_data_get_u32(entry + 40, 4, 0, false);
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         if (size < 0 || size > span - cursor) goto fail;

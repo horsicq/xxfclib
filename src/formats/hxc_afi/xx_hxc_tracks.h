@@ -7,6 +7,7 @@
 #include "../xx_payload_members.h"
 #include "xxfclib/algo/deflate/xx_deflate.h"
 #include "xxfclib/algo/lz4/xx_lz4.h"
+#include "xxfclib/data/xx_data.h"
 
 #define HX_MAX_FILE (64U*1024U*1024U)
 #define HX_MAX_OUTPUT (64U*1024U*1024U)
@@ -59,7 +60,7 @@ static bool hx_zlib(hx_blob *b,const uint8_t *p,size_t n,uint8_t *out,size_t pla
  xx_mem_zero(&sink,sizeof(sink));xx_mem_zero(&d,sizeof(d));sink.p=out;sink.cap=plain;sink.pd=b->pd;d.priv=&sink;d.write=hx_sink_write;
  if(!xx_deflate_unpack_memory_to_device_ex(p+2,n-6U,&d,&used,false,b->pd)||used!=n-6U||sink.n!=plain||!hx_work(b,plain))return false;
  for(i=0;i<plain;++i){if(!(i&4095U)&&!hx_poll(b))return false;a=(a+out[i])%65521U;c=(c+a)%65521U;}
- return ((c<<16)|a)==pm_be32(p+n-4U);
+ return ((c<<16)|a)==xx_data_get_u32(p+n-4U, 4, 0, true);
 }
 static XXFC_MAYBE_UNUSED bool hx_decode(Abstractformat *f,pm_stream *s,hx_blob *b,const char *name,uint64_t a,uint32_t packed,uint32_t plain,bool lz4) {
  uint8_t *out;size_t written=0;bool ok;
@@ -68,7 +69,6 @@ static XXFC_MAYBE_UNUSED bool hx_decode(Abstractformat *f,pm_stream *s,hx_blob *
  ok=lz4?(xx_lz4_decompress_block(b->p+a,packed,out,plain,&written)&&written==plain):hx_zlib(b,b->p+a,packed,out,plain);
  if(!ok||!hx_owned(f,s,b,name,out,plain)){xx_mem_free(out);return false;}return true;
 }
-static XXFC_MAYBE_UNUSED void hx_put32(uint8_t *p,uint32_t n){p[0]=(uint8_t)n;p[1]=(uint8_t)(n>>8);p[2]=(uint8_t)(n>>16);p[3]=(uint8_t)(n>>24);}
 /* Parsing operation limits never mutates the persistent reader. The parsers
  * use only device/base and resolved budgets, so a private format snapshot can
  * safely carry the two effective options into pm_open. Published iterator

@@ -17,6 +17,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef TWOIMG
 #define XX_TWOIMG_FILE_TYPE XX_FILE_TYPE_TWOIMG
@@ -51,14 +52,6 @@ typedef struct twoimg_stream_s {
     xx_prodos *prodos;
     xx_archive_record_state *prodos_state;
 } twoimg_stream;
-
-static uint16_t twoimg_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static uint32_t twoimg_le32(const uint8_t *b) {
-    return (uint32_t)twoimg_le16(b) | ((uint32_t)twoimg_le16(b + 2U) << 16U);
-}
 
 static bool twoimg_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -176,16 +169,16 @@ static bool twoimg_parse(Abstractformat *format, twoimg_stream **result) {
         header[0] != '2' || header[1] != 'I' || header[2] != 'M' ||
         header[3] != 'G')
         return false;
-    header_size = (int64_t)twoimg_le16(header + 8U);
-    version = twoimg_le16(header + 10U);
-    image_format = twoimg_le32(header + 12U);
-    blocks = twoimg_le32(header + 20U);
-    data_offset = (int64_t)twoimg_le32(header + 24U);
-    data_size = (int64_t)twoimg_le32(header + 28U);
-    comment_offset = (int64_t)twoimg_le32(header + 32U);
-    comment_size = (int64_t)twoimg_le32(header + 36U);
-    creator_offset = (int64_t)twoimg_le32(header + 40U);
-    creator_size = (int64_t)twoimg_le32(header + 44U);
+    header_size = (int64_t)xx_data_get_u16(header + 8U, 2, 0, false);
+    version = xx_data_get_u16(header + 10U, 2, 0, false);
+    image_format = xx_data_get_u32(header + 12U, 4, 0, false);
+    blocks = xx_data_get_u32(header + 20U, 4, 0, false);
+    data_offset = (int64_t)xx_data_get_u32(header + 24U, 4, 0, false);
+    data_size = (int64_t)xx_data_get_u32(header + 28U, 4, 0, false);
+    comment_offset = (int64_t)xx_data_get_u32(header + 32U, 4, 0, false);
+    comment_size = (int64_t)xx_data_get_u32(header + 36U, 4, 0, false);
+    creator_offset = (int64_t)xx_data_get_u32(header + 40U, 4, 0, false);
+    creator_size = (int64_t)xx_data_get_u32(header + 44U, 4, 0, false);
     if (header_size < (int64_t)TWOIMG_HEADER_SIZE || header_size > size ||
         version > 1U || image_format > 2U || blocks == 0U ||
         data_offset < header_size || data_offset > size)

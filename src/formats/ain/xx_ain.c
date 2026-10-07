@@ -11,6 +11,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 #define AIN_HEADER 24U
 #define AIN_RECORD 29U
 #define AIN_MAX_MEMBERS 65535U
@@ -19,23 +20,21 @@
 #define AIN_ENDGROUP 0x08U
 typedef struct { int64_t data,packed,skip; uint32_t original,time; uint8_t method; bool encrypted; char *name; } ain_member;
 typedef struct { ain_member *items; size_t count,index; int64_t end; } ain_stream;
-static uint16_t u16(const uint8_t*p){return(uint16_t)(p[0]|((uint16_t)p[1]<<8U));}
-static uint32_t u32(const uint8_t*p){return(uint32_t)u16(p)|((uint32_t)u16(p+2)<<16U);}
 static bool read_at(xx_io_device*d,int64_t o,void*p,size_t n){size_t at=0;if(!d||o<0||o>LONG_MAX||xx_io_seek(d,(long)o,SEEK_SET))return false;while(at<n){ssize_t x=xx_io_read(d,(uint8_t*)p+at,n-at);if(x<=0||(size_t)x>n-at)return false;at+=(size_t)x;}return true;}
 static void stream_free(void*p){ain_stream*s=(ain_stream*)p;size_t i;if(!s)return;for(i=0;i<s->count;i++)if(s->items[i].name)xx_str_free(s->items[i].name);if(s->items)xx_mem_free(s->items);xx_mem_free(s);}
 static bool name_safe(const char*n){const char*s=n,*p;if(!n||!n[0]||n[0]=='/'||n[0]=='\\'||n[1]==':')return false;for(p=n;;p++){unsigned char c=(unsigned char)*p;if(c==':'||c=='<'||c=='>'||c=='"'||c=='|'||c=='?'||c=='*'||(c&&c<32))return false;if(c=='/'||c=='\\'||!c){size_t z=(size_t)(p-s);if(!z||(z==1&&s[0]=='.')||(z==2&&s[0]=='.'&&s[1]=='.'))return false;if(!c)return true;s=p+1;}}}
 static bool parse(Abstractformat*f,ain_stream**out){uint8_t h[AIN_HEADER],*packed=NULL,*dir=NULL;uint16_t count;uint32_t off;uint64_t sum=0;int64_t total;size_t cap,i,pos=0,group_first=0;int64_t group_offset=-1,group_skip=0;bool encrypted;ain_stream*s=NULL;
  if(!f||!f->device||!out||(total=xx_io_total_size(f->device))-f->base_address<(int64_t)AIN_HEADER||!read_at(f->device,f->base_address,h,sizeof(h))||h[0]!='!')return false;
- if((h[1]&15U)<1U||(h[1]&15U)>4U||(h[1]>>4U)<1U||(h[1]>>4U)>3U||(u16(h+2)!=0U&&u16(h+2)!=0x8000U))return false;
- for(i=0;i<22U;i++) {sum+=h[i]; } if((uint16_t)sum!=(uint16_t)(u16(h+22)^0x5555U))return false;count=u16(h+8);off=u32(h+14);if(!count||off<AIN_HEADER||(int64_t)off>=total-f->base_address)return false;
+ if((h[1]&15U)<1U||(h[1]&15U)>4U||(h[1]>>4U)<1U||(h[1]>>4U)>3U||(xx_data_get_u16(h+2, 2, 0, false)!=0U&&xx_data_get_u16(h+2, 2, 0, false)!=0x8000U))return false;
+ for(i=0;i<22U;i++) {sum+=h[i]; } if((uint16_t)sum!=(uint16_t)(xx_data_get_u16(h+22, 2, 0, false)^0x5555U))return false;count=xx_data_get_u16(h+8, 2, 0, false);off=xx_data_get_u32(h+14, 4, 0, false);if(!count||off<AIN_HEADER||(int64_t)off>=total-f->base_address)return false;
  cap=(size_t)count*1053U+4096U;if(cap>AIN_MAX_DIRECTORY)cap=AIN_MAX_DIRECTORY;packed=(uint8_t*)xx_mem_alloc((size_t)(total-f->base_address-(int64_t)off));dir=(uint8_t*)xx_mem_calloc(cap,1);s=(ain_stream*)xx_mem_calloc(1,sizeof(*s));if(!packed||!dir||!s||!read_at(f->device,f->base_address+(int64_t)off,packed,(size_t)(total-f->base_address-(int64_t)off)))goto fail;
  /* AIN's directory is a self-terminating compressed stream. The decoder
     writes its valid prefix before returning at the stream terminator. */
- (void)xx_ain_decode_memory(packed,(size_t)(total-f->base_address-(int64_t)off),0,dir,cap,NULL);encrypted=u16(h+2)!=0U;
+ (void)xx_ain_decode_memory(packed,(size_t)(total-f->base_address-(int64_t)off),0,dir,cap,NULL);encrypted=xx_data_get_u16(h+2, 2, 0, false)!=0U;
  for(i=0;i<count;i++){uint8_t*rec;size_t start;ain_member*m,*grown;uint32_t original,stored_packed,data_offset;uint8_t flags;
   if(pos>cap||cap-pos<AIN_RECORD) {goto fail; } rec=dir+pos;pos+=AIN_RECORD;start=pos;while(pos<cap&&dir[pos]){if(dir[pos]<0x20U||pos-start>=1024U)goto fail;++pos;}if(pos==start||pos>=cap)goto fail;++pos;if(pos>=cap||dir[pos]!=0)goto fail;++pos;
-  flags=rec[22];if(flags&0xe7U)goto fail;original=u32(rec+5);stored_packed=u32(rec+9);data_offset=u32(rec+13);if(original>INT32_MAX)goto fail;if(flags&AIN_NEWGROUP){group_offset=data_offset;group_skip=0;group_first=s->count;}if(group_offset<0||f->base_address+group_offset>total)goto fail;
-  grown=(ain_member*)xx_mem_realloc(s->items,(s->count+1U)*sizeof(*grown));if(!grown)goto fail;s->items=grown;m=&s->items[s->count];xx_mem_zero(m,sizeof(*m));m->name=(char*)xx_mem_alloc(pos-start);if(!m->name)goto fail;xx_rt_memcpy(m->name,dir+start,pos-start-1U);m->name[pos-start-1U]=0;for(size_t q=0;m->name[q];q++)if(m->name[q]=='\\')m->name[q]='/';m->data=f->base_address+group_offset;m->packed=total-m->data;m->skip=group_skip;m->original=original;m->time=(uint32_t)u16(rec+1)|((uint32_t)u16(rec+3)<<16U);m->method=h[1]&15U;m->encrypted=encrypted;
+  flags=rec[22];if(flags&0xe7U)goto fail;original=xx_data_get_u32(rec+5, 4, 0, false);stored_packed=xx_data_get_u32(rec+9, 4, 0, false);data_offset=xx_data_get_u32(rec+13, 4, 0, false);if(original>INT32_MAX)goto fail;if(flags&AIN_NEWGROUP){group_offset=data_offset;group_skip=0;group_first=s->count;}if(group_offset<0||f->base_address+group_offset>total)goto fail;
+  grown=(ain_member*)xx_mem_realloc(s->items,(s->count+1U)*sizeof(*grown));if(!grown)goto fail;s->items=grown;m=&s->items[s->count];xx_mem_zero(m,sizeof(*m));m->name=(char*)xx_mem_alloc(pos-start);if(!m->name)goto fail;xx_rt_memcpy(m->name,dir+start,pos-start-1U);m->name[pos-start-1U]=0;for(size_t q=0;m->name[q];q++)if(m->name[q]=='\\')m->name[q]='/';m->data=f->base_address+group_offset;m->packed=total-m->data;m->skip=group_skip;m->original=original;m->time=(uint32_t)xx_data_get_u16(rec+1, 2, 0, false)|((uint32_t)xx_data_get_u16(rec+3, 2, 0, false)<<16U);m->method=h[1]&15U;m->encrypted=encrypted;
   if(m->method==4U){m->data=f->base_address+group_offset+group_skip;m->packed=original;m->skip=0;if(m->data<0||m->data>total||m->packed>total-m->data)goto fail;}++s->count;group_skip+=original;
   if(flags&AIN_ENDGROUP){if(m->method!=4U){int64_t n=stored_packed;if(n<0||m->data>total||n>total-m->data)n=total-m->data;for(size_t q=group_first;q<s->count;q++)s->items[q].packed=n;}group_offset=-1;}
  }

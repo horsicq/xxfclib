@@ -28,6 +28,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef SQ
 #define XX_SQ_FILE_TYPE XX_FILE_TYPE_SQ
@@ -68,27 +69,6 @@ typedef struct sq_stream_s {
     uint64_t aux1;
     uint64_t aux2;
 } sq_stream;
-
-static uint16_t sq_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static uint32_t sq_le32(const uint8_t *b) {
-    return (uint32_t)sq_le16(b) | ((uint32_t)sq_le16(b + 2U) << 16U);
-}
-
-static XXFC_MAYBE_UNUSED uint64_t sq_le64(const uint8_t *b) {
-    return (uint64_t)sq_le32(b) | ((uint64_t)sq_le32(b + 4U) << 32U);
-}
-
-static uint32_t sq_be32(const uint8_t *b) {
-    return ((uint32_t)b[0] << 24U) | ((uint32_t)b[1] << 16U) |
-           ((uint32_t)b[2] << 8U) | (uint32_t)b[3];
-}
-
-static XXFC_MAYBE_UNUSED uint64_t sq_be64(const uint8_t *b) {
-    return ((uint64_t)sq_be32(b) << 32U) | (uint64_t)sq_be32(b + 4U);
-}
 
 static bool sq_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -584,7 +564,7 @@ static bool sq_parse(Abstractformat *format, sq_stream **result) {
     want = (size_t)size < sizeof(buffer) ? (size_t)size : sizeof(buffer);
     xx_mem_zero(buffer, sizeof(buffer));
     if (!sq_read_at(format->device, format->base_address, buffer, want) ||
-        sq_le32(buffer) != UINT32_C(0xaeac5153))
+        xx_data_get_u32(buffer, 4, 0, false) != UINT32_C(0xaeac5153))
         return false;
 
     name_length = 0U;

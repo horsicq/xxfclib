@@ -5,16 +5,13 @@
  */
 #include "xxfclib/formats/nintendo_gb_rom/xx_nintendo_gb_rom.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 static __inline bool span(uint64_t a,uint64_t n,uint64_t e) { return a<=e && n<=e-a; }
 static __inline bool stop(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
-static __inline uint64_t u64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
-static __inline uint32_t u32(const uint8_t *p,bool be) { return be ? pm_be32(p):pm_le32(p); }
-static __inline uint16_t u16(const uint8_t *p,bool be) { return be ? pm_be16(p):pm_le16(p); }
-static __inline uint32_t be24(const uint8_t *p) { return (uint32_t)p[0]<<16 | (uint32_t)p[1]<<8 | p[2]; }
 static __inline bool zero(const uint8_t *b,uint64_t n) { uint64_t i; for(i=0;i<n;++i) if(b[i]) return false; return true; }
-static __inline bool finite32(const uint8_t *p,bool be) { return (u32(p,be)&0x7f800000U)!=0x7f800000U; }
-static __inline bool finite64(const uint8_t *p,bool be) { return (u64(p,be)&0x7ff0000000000000ULL)!=0x7ff0000000000000ULL; }
+static __inline bool finite32(const uint8_t *p,bool be) { return (xx_data_get_u32(p, 4, 0, be)&0x7f800000U)!=0x7f800000U; }
+static __inline bool finite64(const uint8_t *p,bool be) { return (xx_data_get_u64(p, 8, 0, be)&0x7ff0000000000000ULL)!=0x7ff0000000000000ULL; }
 static __inline bool floats(const uint8_t *b,uint64_t at,uint64_t count,bool be,uint64_t n) { uint64_t i; if(!span(at,count*4,n)) return false; for(i=0;i<count;++i) if(!finite32(b+at+i*4,be)) return false; return true; }
 static __inline bool emit(Abstractformat *f,pm_stream *s,const char *label,uint64_t a,uint64_t n,uint64_t e) { return span(a,n,e) && s->count<4096 && pm_add(f,s,label,(int64_t)a,(int64_t)n); }
 static __inline bool cstr(const uint8_t *b,uint64_t *at,uint64_t end,uint64_t maximum,bool empty) { uint64_t start=*at; while(*at<end && *at-start<=maximum) { uint8_t c=b[(*at)++]; if(!c) return empty || *at>start+1; if(c<32 || c==127) return false; } return false; }
@@ -27,7 +24,7 @@ static bool parse_data(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t 
  uint32_t banks,i;uint64_t end,at;uint8_t check=0;uint32_t sum=0;char label[32];if(n<336||xx_rt_memcmp(b+0x104,logo,sizeof(logo))||(b[0x148]>8&&(b[0x148]<0x52||b[0x148]>0x54))||b[0x149]>5||b[0x14a]>1)return false;
  switch(b[0x147]) {case 0:case 1:case 2:case 3:case 5:case 6:case 8:case 9:case 0x0b:case 0x0c:case 0x0d:case 0x0f:case 0x10:case 0x11:case 0x12:case 0x13:case 0x19:case 0x1a:case 0x1b:case 0x1c:case 0x1d:case 0x1e:case 0x20:case 0x22:case 0xfc:case 0xfd:case 0xfe:case 0xff:break;default:return false;}
  banks=b[0x148]<=8?2U<<b[0x148]:b[0x148]==0x52?72:b[0x148]==0x53?80:96;end=(uint64_t)banks*16384;if(end>n)return false;for(i=0x134;i<=0x14c;++i)check=(uint8_t)(check-b[i]-1);if(check!=b[0x14d])return false;
- for(at=0;at<end;++at){if((at&65535)==0&&stop(pd))return false;if(at!=0x14e&&at!=0x14f)sum+=b[at];}if((sum&65535)!=pm_be16(b+0x14e))return false;
+ for(at=0;at<end;++at){if((at&65535)==0&&stop(pd))return false;if(at!=0x14e&&at!=0x14f)sum+=b[at];}if((sum&65535)!=xx_data_get_u16(b+0x14e, 2, 0, true))return false;
  for(i=0;i<banks;++i){xx_rt_snprintf(label,sizeof(label),"bank-%u.bin",i);if(!emit(f,s,label,(uint64_t)i*16384,16384,end))return false;}s->size=(int64_t)end;return true;
 
 }

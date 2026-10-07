@@ -11,13 +11,6 @@ typedef struct inf_zip_entry_s {
     uint16_t version, flags, method, time, date, name_size;
 } inf_zip_entry;
 
-static void inf_put16(uint8_t *p, uint16_t value) {
-    p[0] = (uint8_t)value; p[1] = (uint8_t)(value >> 8);
-}
-static void inf_put32(uint8_t *p, uint32_t value) {
-    inf_put16(p, (uint16_t)value); inf_put16(p + 2, (uint16_t)(value >> 16));
-}
-
 static bool inf_legacy_zip(uint8_t **image, size_t *size, const uint8_t *inf,
                             size_t inf_size, bool *encrypted, xx_pd_struct *pd) {
     inf_zip_entry *entries = NULL;
@@ -34,9 +27,9 @@ static bool inf_legacy_zip(uint8_t **image, size_t *size, const uint8_t *inf,
         uint16_t flags, method;
         if (inf_stop(pd) || count == 65535 || !inf_range(cd_at, at, 30) ||
             xx_rt_memcmp(zip + at, "PK\3\4", 4) ||
-            (flags = inf_u16(zip + at + 6)) & ~11U || !(flags & 8) ||
-            ((method = inf_u16(zip + at + 8)) != 0 && method != 8) ||
-            inf_u16(zip + at + 4) < 10 || inf_u16(zip + at + 4) > 20) goto done;
+            (flags = xx_data_get_u16(zip + at + 6, 2, 0, false)) & ~11U || !(flags & 8) ||
+            ((method = xx_data_get_u16(zip + at + 8, 2, 0, false)) != 0 && method != 8) ||
+            xx_data_get_u16(zip + at + 4, 2, 0, false) < 10 || xx_data_get_u16(zip + at + 4, 2, 0, false) > 20) goto done;
         if (count == capacity) {
             size_t next = capacity ? capacity * 2 : 64;
             inf_zip_entry *more;
@@ -47,12 +40,12 @@ static bool inf_legacy_zip(uint8_t **image, size_t *size, const uint8_t *inf,
         }
         entry = &entries[count]; xx_mem_zero(entry, sizeof(*entry));
         entry->at = (uint32_t)at;
-        entry->version = inf_u16(zip + at + 4);
+        entry->version = xx_data_get_u16(zip + at + 4, 2, 0, false);
         entry->flags = flags; entry->method = method;
-        entry->time = inf_u16(zip + at + 10); entry->date = inf_u16(zip + at + 12);
-        entry->crc = inf_u32(zip + at + 14); entry->packed = inf_u32(zip + at + 18);
-        entry->size = inf_u32(zip + at + 22); entry->name_size = inf_u16(zip + at + 26);
-        extra_size = inf_u16(zip + at + 28);
+        entry->time = xx_data_get_u16(zip + at + 10, 2, 0, false); entry->date = xx_data_get_u16(zip + at + 12, 2, 0, false);
+        entry->crc = xx_data_get_u32(zip + at + 14, 4, 0, false); entry->packed = xx_data_get_u32(zip + at + 18, 4, 0, false);
+        entry->size = xx_data_get_u32(zip + at + 22, 4, 0, false); entry->name_size = xx_data_get_u16(zip + at + 26, 2, 0, false);
+        extra_size = xx_data_get_u16(zip + at + 28, 2, 0, false);
         payload = at + 30U + entry->name_size + extra_size;
         if (!inf_range(cd_at, at + 30, (uint64_t)entry->name_size + extra_size) ||
             !entry->name_size || entry->name_size > 4096 ||
@@ -68,7 +61,7 @@ static bool inf_legacy_zip(uint8_t **image, size_t *size, const uint8_t *inf,
             while (p < end) {
                 unsigned id, n;
                 if (!inf_range(end, p, 4)) goto done;
-                id = inf_u16(zip + p); n = inf_u16(zip + p + 2); p += 4;
+                id = xx_data_get_u16(zip + p, 2, 0, false); n = xx_data_get_u16(zip + p + 2, 2, 0, false); p += 4;
                 if (id == 1 || id == 0x9901 || !inf_range(end, p, n)) goto done;
                 p += n;
             }
@@ -76,9 +69,9 @@ static bool inf_legacy_zip(uint8_t **image, size_t *size, const uint8_t *inf,
         descriptor = payload + entry->packed;
         if (!inf_range(cd_at, descriptor, 16) ||
             xx_rt_memcmp(zip + descriptor, "PK\7\10", 4) ||
-            inf_u32(zip + descriptor + 4) != entry->crc ||
-            inf_u32(zip + descriptor + 8) != entry->packed ||
-            inf_u32(zip + descriptor + 12) != entry->size) goto done;
+            xx_data_get_u32(zip + descriptor + 4, 4, 0, false) != entry->crc ||
+            xx_data_get_u32(zip + descriptor + 8, 4, 0, false) != entry->packed ||
+            xx_data_get_u32(zip + descriptor + 12, 4, 0, false) != entry->size) goto done;
         if (flags & 1) *encrypted = true;
         cd_size += 46U + entry->name_size;
         at = descriptor + 16;
@@ -96,19 +89,19 @@ static bool inf_legacy_zip(uint8_t **image, size_t *size, const uint8_t *inf,
         uint8_t *h = zip + at;
         if (inf_stop(pd)) goto done;
         xx_mem_zero(h, 46); xx_mem_copy(h, "PK\1\2", 4);
-        inf_put16(h + 4, 20); inf_put16(h + 6, e->version);
-        inf_put16(h + 8, e->flags); inf_put16(h + 10, e->method);
-        inf_put16(h + 12, e->time); inf_put16(h + 14, e->date);
-        inf_put32(h + 16, e->crc); inf_put32(h + 20, e->packed); inf_put32(h + 24, e->size);
-        inf_put16(h + 28, e->name_size); inf_put32(h + 38, 32);
-        inf_put32(h + 42, e->at);
+        xx_data_set_u16(h + 4, 2, 0, 20, false); xx_data_set_u16(h + 6, 2, 0, e->version, false);
+        xx_data_set_u16(h + 8, 2, 0, e->flags, false); xx_data_set_u16(h + 10, 2, 0, e->method, false);
+        xx_data_set_u16(h + 12, 2, 0, e->time, false); xx_data_set_u16(h + 14, 2, 0, e->date, false);
+        xx_data_set_u32(h + 16, 4, 0, e->crc, false); xx_data_set_u32(h + 20, 4, 0, e->packed, false); xx_data_set_u32(h + 24, 4, 0, e->size, false);
+        xx_data_set_u16(h + 28, 2, 0, e->name_size, false); xx_data_set_u32(h + 38, 4, 0, 32, false);
+        xx_data_set_u32(h + 42, 4, 0, e->at, false);
         /* Reallocation may move the image; use the stored local offset. */
         xx_mem_copy(h + 46, zip + e->at + 30, e->name_size);
         at += 46U + e->name_size;
     }
     xx_mem_zero(zip + at, 22); xx_mem_copy(zip + at, "PK\5\6", 4);
-    inf_put16(zip + at + 8, (uint16_t)count); inf_put16(zip + at + 10, (uint16_t)count);
-    inf_put32(zip + at + 12, (uint32_t)cd_size); inf_put32(zip + at + 16, (uint32_t)cd_at);
+    xx_data_set_u16(zip + at + 8, 2, 0, (uint16_t)count, false); xx_data_set_u16(zip + at + 10, 2, 0, (uint16_t)count, false);
+    xx_data_set_u32(zip + at + 12, 4, 0, (uint32_t)cd_size, false); xx_data_set_u32(zip + at + 16, 4, 0, (uint32_t)cd_at, false);
     *size = at + 22;
     ok = !inf_stop(pd);
 done:

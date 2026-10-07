@@ -45,6 +45,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_POWERBOARDBBS_COPY_CHUNK (64 * 1024)
 
@@ -204,15 +205,6 @@ typedef struct {
     char name[XX_POWERBOARDBBS_NAME_BUFFER];
 } xx_powerboardbbs_choice;
 
-static uint16_t xx_powerboardbbs_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_powerboardbbs_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
 /* DOS-legal 8.3 characters.  The corpus only ever uses letters, digits and
  * " ! $ - _ ", but the rest of the DOS set is accepted so that a legitimate
  * member cannot be rejected over punctuation.  Every character here is inside
@@ -367,7 +359,7 @@ static bool xx_powerboardbbs_read_header(Abstractformat *self, int64_t span,
     /* Prefer the narrow reading: it is the common case, and the walk falls
      * back to the wide one when the tail stops chaining. */
     if ((int64_t)(size_index + 2) <= available) {
-        size = (int64_t)xx_powerboardbbs_le16(buffer + size_index);
+        size = (int64_t)xx_data_get_u16(buffer + size_index, 2, 0, false);
         if (size >= 1 && size <= XX_POWERBOARDBBS_INTEGER_MAX &&
             xx_powerboardbbs_range_within(span, size_offset + 2, size)) {
             header->width[header->count] = 2;
@@ -376,7 +368,7 @@ static bool xx_powerboardbbs_read_header(Abstractformat *self, int64_t span,
         }
     }
     if ((int64_t)(size_index + 4) <= available) {
-        size = (int64_t)xx_powerboardbbs_le32(buffer + size_index);
+        size = (int64_t)xx_data_get_u32(buffer + size_index, 4, 0, false);
         /* The two readings are made disjoint on purpose: a value that fits a
          * Pascal Integer would have been written as one, so the LongInt
          * reading only ever offers sizes the narrow one cannot express. */

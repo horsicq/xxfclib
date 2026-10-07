@@ -51,6 +51,7 @@
 #include "xxfclib/algo/sclsectors/xx_sclsectors.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_TI99ARC_COPY_CHUNK (64 * 1024)
 
@@ -157,8 +158,6 @@ static bool xx_ti99arc_add(xx_ti99arc_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_ti99arc_be16(const uint8_t *data);
-static uint16_t xx_ti99arc_le16(const uint8_t *data);
 static bool xx_ti99arc_chain(const uint8_t *catalogue, size_t catalogue_size, int64_t *out_size);
 static bool xx_ti99arc_entry_free(const uint8_t *entry);
 static bool xx_ti99arc_entry_name(const uint8_t *entry, char **out_name);
@@ -166,18 +165,8 @@ static bool xx_ti99arc_locate(const uint8_t *catalogue, size_t catalogue_size, i
 static bool xx_ti99arc_is_tifiles(const uint8_t *wrapper, int64_t size);
 static bool xx_ti99arc_is_fiad(const uint8_t *wrapper, int64_t size);
 static xx_ti99arc_stream *xx_ti99arc_parse(Abstractformat *self, xx_pd_struct *pd);
-static void xx_ti99arc_put_le32(uint8_t *data, uint32_t value);
 static void xx_ti99arc_tifiles_prefix(const uint8_t *entry, uint8_t *prefix);
 static bool xx_ti99arc_decode(Abstractformat *self, const xx_ti99arc_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
-
-
-static uint16_t xx_ti99arc_be16(const uint8_t *data) {
-    return (uint16_t)(((uint16_t)data[0] << 8) | (uint16_t)data[1]);
-}
-
-static uint16_t xx_ti99arc_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
 
 /* Walk the sector chain and return the catalogue's byte length.
  *
@@ -296,7 +285,7 @@ static bool xx_ti99arc_locate(const uint8_t *catalogue, size_t catalogue_size,
                 *out_offset = cursor;
                 return true;
             }
-            member_size = (int64_t)xx_ti99arc_be16(entry + 0x0C) *
+            member_size = (int64_t)xx_data_get_u16(entry + 0x0C, 2, 0, true) *
                           XX_TI99ARC_SECTOR_SIZE;
             if (member_size > (int64_t)XX_TI99ARC_MAX_PLAIN_SIZE - cursor) {
                 return false;
@@ -316,7 +305,7 @@ static bool xx_ti99arc_is_tifiles(const uint8_t *wrapper, int64_t size) {
 
     if (wrapper[0] != 0x07U) return false;
     if (xx_rt_memcmp(wrapper + 1, magic, sizeof(magic)) != 0) return false;
-    sectors = (int64_t)xx_ti99arc_be16(wrapper + 8);
+    sectors = (int64_t)xx_data_get_u16(wrapper + 8, 2, 0, true);
     return size == sectors * XX_TI99ARC_SECTOR_SIZE + XX_TI99ARC_WRAPPER_SIZE ||
            size == (sectors + 1) * XX_TI99ARC_SECTOR_SIZE;
 }
@@ -328,11 +317,11 @@ static bool xx_ti99arc_is_fiad(const uint8_t *wrapper, int64_t size) {
     int64_t sectors;
     size_t index;
 
-    if (xx_ti99arc_le16(wrapper + 10) != 0U) return false;
+    if (xx_data_get_u16(wrapper + 10, 2, 0, false) != 0U) return false;
     for (index = 0x1CU; index < (size_t)XX_TI99ARC_WRAPPER_SIZE; ++index) {
         if (wrapper[index] != 0U) return false;
     }
-    sectors = (int64_t)xx_ti99arc_be16(wrapper + 0x0E);
+    sectors = (int64_t)xx_data_get_u16(wrapper + 0x0E, 2, 0, true);
     return sectors != 0 &&
            size == sectors * XX_TI99ARC_SECTOR_SIZE + XX_TI99ARC_WRAPPER_SIZE;
 }
@@ -441,7 +430,7 @@ static xx_ti99arc_stream *xx_ti99arc_parse(Abstractformat *self,
 
             if (xx_ti99arc_entry_free(entry)) continue;
             if (stream->count >= (size_t)XX_TI99ARC_MAX_MEMBERS) goto fail;
-            member_size = (int64_t)xx_ti99arc_be16(entry + 0x0C) *
+            member_size = (int64_t)xx_data_get_u16(entry + 0x0C, 2, 0, true) *
                           XX_TI99ARC_SECTOR_SIZE;
 
             xx_mem_zero(&member, sizeof(member));
@@ -514,13 +503,6 @@ fail:
 /* Fourteen entries per sector, 0x400 sectors: the format's own ceiling. */
 /* The properties blob xx_ti99arc_decode_member() reads: four u32 LE fields
  * and then the synthesised TIFILES header. */
-
-static void xx_ti99arc_put_le32(uint8_t *data, uint32_t value) {
-    data[0] = (uint8_t)(value & 0xFFU);
-    data[1] = (uint8_t)((value >> 8) & 0xFFU);
-    data[2] = (uint8_t)((value >> 8 >> 8) & 0xFFU);
-    data[3] = (uint8_t)((value >> 8 >> 8 >> 8) & 0xFFU);
-}
 
 /* The 0x80-byte TIFILES header a member needs and the archive does not hold.
  * Entry bytes 0x00..0x09 land at 0x00 and entry bytes 0x0a..0x11 land at
@@ -621,10 +603,10 @@ static bool xx_ti99arc_decode(Abstractformat *self,
             member_size > (int64_t)XX_TI99ARC_MAX_PLAIN_SIZE - member_offset) {
             goto fail;
         }
-        xx_ti99arc_put_le32(props, (uint32_t)(member_offset + member_size));
-        xx_ti99arc_put_le32(props + 4, (uint32_t)member_offset);
-        xx_ti99arc_put_le32(props + 8, (uint32_t)member_size);
-        xx_ti99arc_put_le32(props + 12, (uint32_t)XX_TI99ARC_WRAPPER_SIZE);
+        xx_data_set_u32(props, 4, 0, (uint32_t)(member_offset + member_size), false);
+        xx_data_set_u32(props + 4, 4, 0, (uint32_t)member_offset, false);
+        xx_data_set_u32(props + 8, 4, 0, (uint32_t)member_size, false);
+        xx_data_set_u32(props + 12, 4, 0, (uint32_t)XX_TI99ARC_WRAPPER_SIZE, false);
         xx_ti99arc_tifiles_prefix(entry, props + 0x10);
         if (!xx_ti99arc_decode_member(input, (size_t)member->compressed_size,
                                       props, sizeof(props), output,

@@ -117,8 +117,8 @@ static bool xx_rar_header_volume(xx_io_device *source, int64_t start, int64_t en
         header = (uint8_t *)xx_mem_alloc((size_t)block.header_size);
         if (!header || !xx_rar_read_exact_at(source, p, header, (size_t)block.header_size)) goto done;
         flags = (uint16_t)(block.flags & ~XX_RAR4_MAIN_FLAG_PASSWORD);
-        xx_rar_split_u16(header + 3, flags);
-        xx_rar_split_u16(header, (uint16_t)xx_crc32_calc(0, header + 2, (size_t)block.header_size - 2));
+        xx_data_set_u16(header + 3, 2, 0, flags, false);
+        xx_data_set_u16(header, 2, 0, (uint16_t)xx_crc32_calc(0, header + 2, (size_t)block.header_size - 2), false);
         if (!xx_rar_split_header(view, view->count, header, (size_t)block.header_size)) goto done;
         header = NULL;
     } else if (!xx_rar_header_key5(source, &block, password, password_size, key, pd)) goto done;

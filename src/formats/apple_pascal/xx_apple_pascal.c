@@ -8,6 +8,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 #ifdef APPLE_PASCAL
 #define PASCAL_TYPE XX_FILE_TYPE_APPLE_PASCAL
 #else
@@ -43,9 +44,6 @@ typedef struct pascal_view_s {
     size_t count;
     size_t index;
 } pascal_view;
-static uint16_t pascal_u16(const uint8_t *p) {
-    return (uint16_t)((uint16_t)p[0] | ((uint16_t)p[1] << 8));
-}
 static bool pascal_read_at(xx_io_device *device, int64_t offset, void *buffer,
                             size_t size, xx_pd_struct *pd) {
     int64_t saved;
@@ -157,11 +155,11 @@ static bool pascal_parse_order(Abstractformat *self,
     }
     if (!pascal_read(view, 2U * PASCAL_BLOCK, directory, sizeof(directory), pd))
         return false;
-    view->blocks = pascal_u16(directory + 14);
-    view->declared = pascal_u16(directory + 16);
+    view->blocks = xx_data_get_u16(directory + 14, 2, 0, false);
+    view->declared = xx_data_get_u16(directory + 16, 2, 0, false);
     n = directory[6];
-    if (pascal_u16(directory) != 0U || pascal_u16(directory + 2) != 6U ||
-        pascal_u16(directory + 4) != 0U || !n || n > 7U ||
+    if (xx_data_get_u16(directory, 2, 0, false) != 0U || xx_data_get_u16(directory + 2, 2, 0, false) != 6U ||
+        xx_data_get_u16(directory + 4, 2, 0, false) != 0U || !n || n > 7U ||
         view->blocks < 6U || view->declared > PASCAL_FILES ||
         (order == XX_APPLE_PASCAL_ORDER_DOS && view->blocks != 280U) ||
         (uint64_t)view->blocks * PASCAL_BLOCK > (uint64_t)(total - view->base))
@@ -176,9 +174,9 @@ static bool pascal_parse_order(Abstractformat *self,
     view->bytes = (uint32_t)view->blocks * PASCAL_BLOCK;
     for (i = 0U; i < view->declared; ++i) {
         const uint8_t *entry = directory + (i + 1U) * PASCAL_ENTRY;
-        uint32_t first = pascal_u16(entry), end = pascal_u16(entry + 2);
-        uint16_t type = pascal_u16(entry + 4), last = pascal_u16(entry + 22);
-        uint16_t date = pascal_u16(entry + 24);
+        uint32_t first = xx_data_get_u16(entry, 2, 0, false), end = xx_data_get_u16(entry + 2, 2, 0, false);
+        uint16_t type = xx_data_get_u16(entry + 4, 2, 0, false), last = xx_data_get_u16(entry + 22, 2, 0, false);
+        uint16_t date = xx_data_get_u16(entry + 24, 2, 0, false);
         pascal_member member;
         unsigned attempt;
         char original[32];

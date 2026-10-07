@@ -10,10 +10,10 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     while(block) { uint16_t count; uint32_t next,i,j,tableend;
         if(fd_stop(pd) || blocks==1024 || !pm_read(f,block,h,6)) goto done;
         for(i=0;i<blocks;++i) if(visited[i]==block) goto done;
-        count=pm_be16(h); next=pm_be32(h+2); if(!count || count>4096-total || !fd_range(block,6+(uint64_t)count*12,(uint64_t)pm_available(f))) goto done;
+        count=xx_data_get_u16(h, 2, 0, true); next=xx_data_get_u32(h+2, 4, 0, true); if(!count || count>4096-total || !fd_range(block,6+(uint64_t)count*12,(uint64_t)pm_available(f))) goto done;
         tableend=block+6+count*12; if(tableend<block) goto done; visited[blocks]=starts[blocks]=block; ends[blocks++]=tableend; if(tableend>end) end=tableend;
         for(i=0;i<count;++i) { hd_dd d; if(fd_stop(pd) || !pm_read(f,block+6+(int64_t)i*12,h,12)) goto done;
-            d.tag=pm_be16(h); d.ref=pm_be16(h+2); d.at=pm_be32(h+4); d.n=pm_be32(h+8);
+            d.tag=xx_data_get_u16(h, 2, 0, true); d.ref=xx_data_get_u16(h+2, 2, 0, true); d.at=xx_data_get_u32(h+4, 4, 0, true); d.n=xx_data_get_u32(h+8, 4, 0, true);
             if(d.tag==1) { continue; } if(d.tag<=1 || (d.tag&0x4000) || !d.ref || d.at<4 || !fd_range(d.at,d.n,(uint64_t)pm_available(f))) goto done;
             for(j=0;j<total;++j) if(entries[j].tag==d.tag && entries[j].ref==d.ref) goto done;
             entries[total++]=d; if((uint64_t)d.at+d.n>end) end=(uint64_t)d.at+d.n;

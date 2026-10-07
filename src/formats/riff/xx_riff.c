@@ -68,11 +68,6 @@ static bool xx_riff_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static uint32_t xx_riff_u32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) | ((uint32_t)p[2] << 16U) |
-           ((uint32_t)p[3] << 24U);
-}
-
 /* A FOURCC as the RIFF specification defines it: four ASCII characters,
  * space padded on the right.  Printable ASCII is accepted anywhere (real
  * form types such as the "-=SO" of an obfuscated WAVE use punctuation);
@@ -129,7 +124,7 @@ static bool xx_riff_parse(Abstractformat *self, xx_riff_parsed *parsed,
         header[3] != 0x46U) { /* "RIFF" */
         return false;
     }
-    parsed->riff_size = xx_riff_u32(header + 4);
+    parsed->riff_size = xx_data_get_u32(header + 4, 4, 0, false);
     /* riff_size is a u32, so the sum cannot overflow an int64. */
     parsed->format_size = (int64_t)parsed->riff_size +
                           (int64_t)XX_RIFF_CHUNK_HEADER_SIZE;
@@ -163,7 +158,7 @@ static bool xx_riff_parse(Abstractformat *self, xx_riff_parsed *parsed,
             return false;
         }
         if (!xx_riff_fourcc_is_valid(chunk)) return false;
-        size = xx_riff_u32(chunk + 4);
+        size = xx_data_get_u32(chunk + 4, 4, 0, false);
         room = end - position - (int64_t)XX_RIFF_CHUNK_HEADER_SIZE;
         if ((int64_t)size > room) return false;
         if (count == 0U) xx_rt_memcpy(parsed->first_chunk_id, chunk, 4U);

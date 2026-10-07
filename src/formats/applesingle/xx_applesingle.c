@@ -19,6 +19,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* The enum entry is added by the coordinator; keep compiling until it is. */
 #ifdef APPLESINGLE
@@ -53,15 +54,6 @@ typedef struct as_stream_s {
     uint32_t version;
     uint32_t number_of_entries;
 } as_stream;
-
-static uint32_t as_be32(const uint8_t *bytes) {
-    return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
-           ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3];
-}
-
-static uint16_t as_be16(const uint8_t *bytes) {
-    return (uint16_t)(((uint16_t)bytes[0] << 8U) | (uint16_t)bytes[1]);
-}
 
 static bool as_read_at(xx_io_device *device, int64_t offset, void *buffer,
                        size_t size) {
@@ -159,11 +151,11 @@ static bool as_parse(Abstractformat *format, as_stream **result) {
         !as_read_at(format->device, format->base_address, header,
                     sizeof(header)))
         return false;
-    magic = as_be32(header);
-    version = as_be32(header + 4U);
+    magic = xx_data_get_u32(header, 4, 0, true);
+    version = xx_data_get_u32(header + 4U, 4, 0, true);
     if (magic != AS_MAGIC_SINGLE && magic != AS_MAGIC_DOUBLE) return false;
     if (version != AS_VERSION_1 && version != AS_VERSION_2) return false;
-    count = as_be16(header + 24U);
+    count = xx_data_get_u16(header + 24U, 2, 0, true);
     if (count == 0U || count > AS_MAX_ENTRIES) return false;
     /* Bound the descriptor table against the real file before allocating. */
     table_size = (size_t)count * AS_DESCRIPTOR_SIZE;
@@ -197,9 +189,9 @@ static bool as_parse(Abstractformat *format, as_stream **result) {
     for (index = 0U; index < (size_t)count; ++index) {
         const uint8_t *descriptor = table + index * AS_DESCRIPTOR_SIZE;
         as_entry *entry = &stream->items[index];
-        uint32_t entry_id = as_be32(descriptor);
-        uint32_t entry_offset = as_be32(descriptor + 4U);
-        uint32_t entry_length = as_be32(descriptor + 8U);
+        uint32_t entry_id = xx_data_get_u32(descriptor, 4, 0, true);
+        uint32_t entry_offset = xx_data_get_u32(descriptor + 4U, 4, 0, true);
+        uint32_t entry_length = xx_data_get_u32(descriptor + 8U, 4, 0, true);
         /* Both fields come straight off the wire: a descriptor claiming a
          * huge length must be rejected, never trusted into an allocation. */
         if ((int64_t)entry_offset > size ||

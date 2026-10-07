@@ -17,6 +17,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define ARCV4_HEADER_SIZE 0x79cU
 #define ARCV4_ZERO_OFFSET 0x08U
@@ -53,20 +54,6 @@ typedef struct arcv4_stream_s {
     int64_t archive_size;
     uint16_t subvariant;
 } arcv4_stream;
-
-static uint16_t arcv4_le16(const uint8_t *bytes) {
-    return (uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U);
-}
-
-static uint32_t arcv4_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
-
-static uint64_t arcv4_le64(const uint8_t *bytes) {
-    return (uint64_t)arcv4_le32(bytes) |
-           ((uint64_t)arcv4_le32(bytes + 4U) << 32U);
-}
 
 static bool arcv4_read_at(xx_io_device *device, int64_t offset, void *buffer,
                           size_t size) {
@@ -187,9 +174,9 @@ static bool arcv4_parse(Abstractformat *format, arcv4_stream **result,
     if (size < (int64_t)(ARCV4_HEADER_SIZE + ARCV4_FILE_PROLOGUE_SIZE) ||
         !arcv4_read_at(format->device, format->base_address, header,
                        sizeof(header)) ||
-        xx_rt_memcmp(header, "ARCV", 4U) != 0 || arcv4_le16(header + 4U) != 0x0400U)
+        xx_rt_memcmp(header, "ARCV", 4U) != 0 || xx_data_get_u16(header + 4U, 2, 0, false) != 0x0400U)
         return false;
-    subvariant = arcv4_le16(header + 6U);
+    subvariant = xx_data_get_u16(header + 6U, 2, 0, false);
     if ((subvariant != 1U && subvariant != 5U) ||
         !arcv4_filled(header, ARCV4_ZERO_OFFSET, ARCV4_ZERO_SIZE, 0U) ||
         /* The start of this field carries a short archive-specific token;
@@ -212,9 +199,9 @@ static bool arcv4_parse(Abstractformat *format, arcv4_stream **result,
             !arcv4_read_at(format->device, format->base_address + offset,
                            prologue, sizeof(prologue)))
             goto done;
-        chunk_type = arcv4_le32(prologue + 4U);
-        header_size = arcv4_le32(prologue + 8U);
-        record_size = arcv4_le32(prologue + 12U);
+        chunk_type = xx_data_get_u32(prologue + 4U, 4, 0, false);
+        header_size = xx_data_get_u32(prologue + 8U, 4, 0, false);
+        record_size = xx_data_get_u32(prologue + 12U, 4, 0, false);
         if (xx_rt_memcmp(prologue, "EOFM", 4U) == 0) {
             if (stream->count == 0U || (chunk_type & 0xffU) != 3U ||
                 header_size != ARCV4_FILE_PROLOGUE_SIZE || record_size != 0U)
@@ -244,7 +231,7 @@ static bool arcv4_parse(Abstractformat *format, arcv4_stream **result,
                 if (body) xx_mem_free(body);
                 goto done;
             }
-            tag_size = arcv4_le32(body);
+            tag_size = xx_data_get_u32(body, 4, 0, false);
             if (tag_size > ARCV4_MAX_TAG_SIZE || tag_size > record_size - 4U) {
                 xx_mem_free(body);
                 goto done;
@@ -254,7 +241,7 @@ static bool arcv4_parse(Abstractformat *format, arcv4_stream **result,
                 xx_mem_free(body);
                 goto done;
             }
-            name_size = arcv4_le32(body + position);
+            name_size = xx_data_get_u32(body + position, 4, 0, false);
             position += 4U;
             if (name_size == 0U || name_size > ARCV4_MAX_NAME_SIZE ||
                 name_size > record_size - position ||
@@ -266,11 +253,11 @@ static bool arcv4_parse(Abstractformat *format, arcv4_stream **result,
             member.name = arcv4_name(body + position, name_size);
             position += name_size;
             tail = body + position;
-            member.original_size = arcv4_le32(tail);
-            member.flags = arcv4_le32(tail + 4U);
-            member.filetime = arcv4_le64(tail + 8U);
-            member.packed_size = arcv4_le32(tail + 24U);
-            member.method = arcv4_le32(tail + 28U);
+            member.original_size = xx_data_get_u32(tail, 4, 0, false);
+            member.flags = xx_data_get_u32(tail + 4U, 4, 0, false);
+            member.filetime = xx_data_get_u64(tail + 8U, 8, 0, false);
+            member.packed_size = xx_data_get_u32(tail + 24U, 4, 0, false);
+            member.method = xx_data_get_u32(tail + 28U, 4, 0, false);
             if (!member.name || member.flags > 0xffU ||
                 (member.method != 0U && member.method != 2U) ||
                 !arcv4_read_at(format->device,
@@ -281,26 +268,26 @@ static bool arcv4_parse(Abstractformat *format, arcv4_stream **result,
                 goto done;
             }
             if (xx_rt_memcmp(data_header, "DATA", 4U) != 0 ||
-                ((arcv4_le32(data_header + 4U) & 0xffU) != 1U &&
-                 (arcv4_le32(data_header + 4U) & 0xffU) != 5U) ||
-                arcv4_le32(data_header + 8U) != ARCV4_DATA_HEADER_SIZE ||
-                arcv4_le32(data_header + 16U) != 0U ||
-                arcv4_le32(data_header + 24U) != 0U ||
-                arcv4_le32(data_header + 28U) != 0U) {
+                ((xx_data_get_u32(data_header + 4U, 4, 0, false) & 0xffU) != 1U &&
+                 (xx_data_get_u32(data_header + 4U, 4, 0, false) & 0xffU) != 5U) ||
+                xx_data_get_u32(data_header + 8U, 4, 0, false) != ARCV4_DATA_HEADER_SIZE ||
+                xx_data_get_u32(data_header + 16U, 4, 0, false) != 0U ||
+                xx_data_get_u32(data_header + 24U, 4, 0, false) != 0U ||
+                xx_data_get_u32(data_header + 28U, 4, 0, false) != 0U) {
                 xx_mem_free(member.name);
                 xx_mem_free(body);
                 goto done;
             }
-            member.packed_size = arcv4_le32(data_header + 12U);
-            member.crc32 = arcv4_le32(data_header + 20U);
-            member.spanned = arcv4_le32(tail + 24U) == UINT32_MAX ||
-                             (arcv4_le32(data_header + 4U) & 0xffU) == 1U;
+            member.packed_size = xx_data_get_u32(data_header + 12U, 4, 0, false);
+            member.crc32 = xx_data_get_u32(data_header + 20U, 4, 0, false);
+            member.spanned = xx_data_get_u32(tail + 24U, 4, 0, false) == UINT32_MAX ||
+                             (xx_data_get_u32(data_header + 4U, 4, 0, false) & 0xffU) == 1U;
             member.header_offset = format->base_address + offset;
             member.header_size = ARCV4_FILE_PROLOGUE_SIZE + record_size +
                                  ARCV4_DATA_HEADER_SIZE;
             member.data_offset = format->base_address + data_header_offset +
                                  ARCV4_DATA_HEADER_SIZE;
-            if ((!member.spanned && arcv4_le32(tail + 24U) != member.packed_size) ||
+            if ((!member.spanned && xx_data_get_u32(tail + 24U, 4, 0, false) != member.packed_size) ||
                 (!member.spanned && member.method == 0U &&
                  member.packed_size != member.original_size) ||
                 member.data_offset - format->base_address > size ||

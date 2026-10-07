@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: MIT. Native reader with bounded RAM pipe transport. */
 #include "xxfclib/formats/microsoft_lit/xx_microsoft_lit.h"
 #include "../ue2_indexed.h"
+#include "xxfclib/data/xx_data.h"
 typedef struct ac_blob { uint8_t *p;uint32_t n;uint64_t used,limit;xx_pd_struct *pd; } ac_blob;
 static bool ac_error(ac_blob *b,const char *why) { xx_pd_set_error(b->pd,1,why);return false; }
 #include "../xx_archive_codec_pipe.h"
@@ -13,12 +14,12 @@ static bool lit_valid(Abstractformat *f,xx_pd_struct *pd) {
     uint8_t h[40],table[80];uint32_t header,secondary,i;uint64_t start,total;
     int64_t size=f&&f->device?xx_io_total_size(f->device):-1;
     if(pd&&xx_pd_is_stopped(pd))return false;
-    if(!f||f->base_address<0||!ue2_read(f,f->base_address,h,40)||xx_rt_memcmp(h,"ITOLITLS",8)||ue2_u32(h+8)!=1||ue2_u32(h+16)!=5)return false;
-    header=ue2_u32(h+12);secondary=ue2_u32(h+20);
+    if(!f||f->base_address<0||!ue2_read(f,f->base_address,h,40)||xx_rt_memcmp(h,"ITOLITLS",8)||xx_data_get_u32(h+8, 4, 0, false)!=1||xx_data_get_u32(h+16, 4, 0, false)!=5)return false;
+    header=xx_data_get_u32(h+12, 4, 0, false);secondary=xx_data_get_u32(h+20, 4, 0, false);
     if(header<40||header>65536||secondary<232||secondary>65536||!ue2_range(size,f->base_address+(int64_t)header,80+(int64_t)secondary))return false;
     if(!ue2_read(f,f->base_address+header,table,80))return false;
     start=(uint64_t)header+80+secondary;total=(uint64_t)(size-f->base_address);
-    for(i=0;i<5;++i){uint64_t at=ue2_u64(table+i*16),n=ue2_u64(table+i*16+8);
+    for(i=0;i<5;++i){uint64_t at=xx_data_get_u64(table+i*16, 8, 0, false),n=xx_data_get_u64(table+i*16+8, 8, 0, false);
         if(at<start||at>total||n>total-at||at>UINT32_MAX||n>UINT32_MAX)return false;
         if((i==0&&n!=24)||((i==1||i==2)&&n<32)||((i==3||i==4)&&n!=16))return false;}
     return true;
@@ -48,12 +49,12 @@ static bool lit_same_name(const char *a,const char *b) {
 }
 static bool lit_index_blob(xx_microsoft_lit *a,uint8_t *data,size_t size) {
     ue2_index *index=NULL;uint32_t count,drm,i;size_t at=16;
-    if(size<16||xx_rt_memcmp(data,"LITP",4)||ue2_u32(data+12))return false;
-    drm=ue2_u32(data+4);count=ue2_u32(data+8);
+    if(size<16||xx_rt_memcmp(data,"LITP",4)||xx_data_get_u32(data+12, 4, 0, false))return false;
+    drm=xx_data_get_u32(data+4, 4, 0, false);count=xx_data_get_u32(data+8, 4, 0, false);
     if((drm!=0&&drm!=1&&drm!=3)||!count||count>65535U)return false;
     index=xx_mem_calloc(1,sizeof(*index));if(!index)return false;
     for(i=0;i<count;++i){uint32_t n;uint64_t bytes;char *name;size_t j;
-        if(at>size||size-at<12) {goto failed; } n=ue2_u32(data+at);bytes=ue2_u64(data+at+4);at+=12;
+        if(at>size||size-at<12) {goto failed; } n=xx_data_get_u32(data+at, 4, 0, false);bytes=xx_data_get_u64(data+at+4, 8, 0, false);at+=12;
         if(!n||n>4096||n>size-at||xx_rt_memchr(data+at,0,n))goto failed;
         name=xx_mem_alloc((size_t)n+1);if(!name)goto failed;xx_rt_memcpy(name,data+at,n);name[n]=0;at+=n;
         if(!ue2_safe_name(name)||bytes>size-at){xx_mem_free(name);goto failed;}
@@ -87,19 +88,19 @@ static bool lit_decode(Abstractformat *f,uint64_t limit,xx_pd_struct *pd) {
     process.input=process.output=-1;
 #endif
     helper=lit_helper_path();if(!helper||!af_start(&process,helper,worker)){process.status=AF_UNAVAILABLE;goto done;}
-    xx_rt_memset(h,0,sizeof(h));xx_rt_memcpy(h,"LTC1",4);af_put64(h+8,input);af_put64(h+24,worker);
+    xx_rt_memset(h,0,sizeof(h));xx_rt_memcpy(h,"LTC1",4);xx_data_set_u64(h+8, 8, 0, input, false);xx_data_set_u64(h+24, 8, 0, worker, false);
     if(!af_output(&process,h,32))goto done;
     level=xx_pd_enter_level(pd,input,"Decoding Microsoft Reader book");
-    for(;;){unsigned type;if(!af_input(&process,h,4))goto done;type=af_le32(h);
-        if(type==1){uint64_t at;uint32_t n;if(announced||!af_input(&process,h,12))goto done;at=af_le64(h);n=af_le32(h+8);
+    for(;;){unsigned type;if(!af_input(&process,h,4))goto done;type=xx_data_get_u32(h, 4, 0, false);
+        if(type==1){uint64_t at;uint32_t n;if(announced||!af_input(&process,h,12))goto done;at=xx_data_get_u64(h, 8, 0, false);n=xx_data_get_u32(h+8, 4, 0, false);
             if(!n||n>65536||at>input||n>input-at||!ue2_read(f,f->base_address+(int64_t)at,chunk,n))goto done;
-            af_put32(h,n);if(!af_output(&process,h,4)||!af_output(&process,chunk,n))goto done;xx_pd_set_current(pd,level,at+n);
-        }else if(type==2){if(announced||!af_input(&process,h,8))goto done;total=af_le64(h);
+            xx_data_set_u32(h, 4, 0, n, false);if(!af_output(&process,h,4)||!af_output(&process,chunk,n))goto done;xx_pd_set_current(pd,level,at+n);
+        }else if(type==2){if(announced||!af_input(&process,h,8))goto done;total=xx_data_get_u64(h, 8, 0, false);
             if(total<16||total>LIT_MAX_BLOB||total>limit-worker-input) {goto done; } output=xx_mem_alloc((size_t)total);if(!output)goto done;announced=true;
-        }else if(type==3){uint32_t n;if(!announced||!af_input(&process,h,4))goto done;n=af_le32(h);
+        }else if(type==3){uint32_t n;if(!announced||!af_input(&process,h,4))goto done;n=xx_data_get_u32(h, 4, 0, false);
             if(!n||n>65536||n>total-received||!af_input(&process,output+(size_t)received,n)) {goto done; } received+=n;
-        }else if(type==4){if(!af_input(&process,h,12))goto done;rejected=af_le32(h);
-            if(rejected||!announced||af_le64(h+4)!=total||received!=total||!af_live(&process))goto done;
+        }else if(type==4){if(!af_input(&process,h,12))goto done;rejected=xx_data_get_u32(h, 4, 0, false);
+            if(rejected||!announced||xx_data_get_u64(h+4, 8, 0, false)!=total||received!=total||!af_live(&process))goto done;
             ok=lit_index_blob(a,output,(size_t)total);if(ok){output=NULL;a->decode_memory_limit=limit;}break;
         }else goto done;
     }

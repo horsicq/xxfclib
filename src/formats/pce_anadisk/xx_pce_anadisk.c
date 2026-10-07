@@ -4,6 +4,7 @@
  */
 #include "xxfclib/formats/pce_anadisk/xx_pce_anadisk.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 #ifdef PCE_ANADISK
 #define ANADISK_FILE_TYPE XX_FILE_TYPE_PCE_ANADISK
@@ -44,7 +45,7 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
         logical_h = header[3];
         sector_id = header[4];
         mfm_size = header[5];
-        payload_size = pm_le16(header + 6U);
+        payload_size = xx_data_get_u16(header + 6U, 2, 0, false);
         /* The PCE writer stores these header bytes verbatim. Restrict the
          * ranges only when guessing a format with no file signature. */
         if (payload_size > (uint64_t)(available - cursor - 8) ||

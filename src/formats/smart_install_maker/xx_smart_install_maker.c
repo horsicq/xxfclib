@@ -8,6 +8,7 @@
 #include "xxfclib/algo/deflate/xx_deflate.h"
 #include "xxfclib/algo/lzx/xx_lzx.h"
 #include "xxfclib/algo/quantum/xx_quantum.h"
+#include "xxfclib/data/xx_data.h"
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -32,7 +33,6 @@ static bool sim_input(Abstractformat *f,uint8_t *image,size_t n,xx_pd_struct *pd
     if(level>=0) {xx_pd_leave_level(pd,level); } return ok&&!xx_pd_is_stopped(pd);
 }
 static bool sim_range(size_t n,size_t p,size_t z) {return p<=n && z<=n-p;}
-static uint64_t sim_u64(const uint8_t *p) {return pm_le32(p)|((uint64_t)pm_le32(p+4)<<32);}
 static bool sim_string_read(sim_reader *r,sim_string *s) {
     size_t at=r->at;while(r->at<r->n && r->p[r->at]) {if(r->at-at>=4096)return false;++r->at;}
     if(r->at==r->n) {return false; } s->p=r->p+at;s->n=r->at-at;++r->at;return true;
@@ -121,23 +121,23 @@ static bool sim_add(Abstractformat *f,pm_stream *s,char *name,int64_t at,const u
 bad:xx_mem_free(name);return false;
 }
 static uint32_t sim_checksum(const uint8_t *p,size_t n) {
-    uint32_t sum=0;while(n>=4){sum^=pm_le32(p);p+=4;n-=4;}if(n==3)sum^=(uint32_t)p[0]<<16|(uint32_t)p[1]<<8|p[2];else if(n==2)sum^=(uint32_t)p[0]<<8|p[1];else if(n)sum^=p[0];return sum;
+    uint32_t sum=0;while(n>=4){sum^=xx_data_get_u32(p, 4, 0, false);p+=4;n-=4;}if(n==3)sum^=(uint32_t)p[0]<<16|(uint32_t)p[1]<<8|p[2];else if(n==2)sum^=(uint32_t)p[0]<<8|p[1];else if(n)sum^=p[0];return sum;
 }
 static bool sim_cab(Abstractformat *f,pm_stream *s,const uint8_t *raw,size_t n,const char *prefix,sim_string *names,size_t name_count,unsigned cp,sim_budget *b) {
     uint16_t nf,nfiles,flags;uint8_t fr=0,dr=0;size_t at,files_at,i,j;sim_folder *folders=NULL;bool ok=false;
-    if(n<32||pm_le32(raw)||pm_le32(raw+8)||pm_le32(raw+16)||pm_le32(raw+4)!=(uint64_t)n+4||raw[20]!=3||raw[21]!=1)return false;
-    nf=pm_le16(raw+22);nfiles=pm_le16(raw+24);flags=pm_le16(raw+26);files_at=pm_le32(raw+12);if(!nf||nf>4096||!nfiles||(flags&3)||flags>4||files_at<4||files_at-4>=n)return false;files_at-=4;at=32;
-    if(flags&4) {size_t reserve;if(!sim_range(n,at,4))return false;reserve=pm_le16(raw+at);fr=raw[at+2];dr=raw[at+3];at+=4;if(!sim_range(n,at,reserve))return false;at+=reserve;}
+    if(n<32||xx_data_get_u32(raw, 4, 0, false)||xx_data_get_u32(raw+8, 4, 0, false)||xx_data_get_u32(raw+16, 4, 0, false)||xx_data_get_u32(raw+4, 4, 0, false)!=(uint64_t)n+4||raw[20]!=3||raw[21]!=1)return false;
+    nf=xx_data_get_u16(raw+22, 2, 0, false);nfiles=xx_data_get_u16(raw+24, 2, 0, false);flags=xx_data_get_u16(raw+26, 2, 0, false);files_at=xx_data_get_u32(raw+12, 4, 0, false);if(!nf||nf>4096||!nfiles||(flags&3)||flags>4||files_at<4||files_at-4>=n)return false;files_at-=4;at=32;
+    if(flags&4) {size_t reserve;if(!sim_range(n,at,4))return false;reserve=xx_data_get_u16(raw+at, 2, 0, false);fr=raw[at+2];dr=raw[at+3];at+=4;if(!sim_range(n,at,reserve))return false;at+=reserve;}
     if(!sim_take(b,nf*sizeof(*folders))) {return false; } folders=(sim_folder *)xx_mem_calloc(nf,sizeof(*folders));if(!folders)return false;
-    for(i=0;i<nf;++i) {if(!sim_range(n,at,8+fr))goto done;folders[i].at=pm_le32(raw+at);folders[i].blocks=pm_le16(raw+at+4);folders[i].type=pm_le16(raw+at+6);if(folders[i].at<4||!folders[i].blocks||(folders[i].type&15)>3)goto done;folders[i].at-=4;at+=8+fr;}
+    for(i=0;i<nf;++i) {if(!sim_range(n,at,8+fr))goto done;folders[i].at=xx_data_get_u32(raw+at, 4, 0, false);folders[i].blocks=xx_data_get_u16(raw+at+4, 2, 0, false);folders[i].type=xx_data_get_u16(raw+at+6, 2, 0, false);if(folders[i].at<4||!folders[i].blocks||(folders[i].type&15)>3)goto done;folders[i].at-=4;at+=8+fr;}
     if(at>files_at)goto done;
     /* CAB data cannot alias the cabinet header, folder table or file table. */
-    {sim_reader files={raw,n,files_at};for(i=0;i<nfiles;++i) {sim_string name;if(sim_stop(b)||!sim_range(n,files.at,16)||pm_le16(raw+files.at+8)>=nf)goto done;files.at+=16;if(!sim_string_read(&files,&name))goto done;}
+    {sim_reader files={raw,n,files_at};for(i=0;i<nfiles;++i) {sim_string name;if(sim_stop(b)||!sim_range(n,files.at,16)||xx_data_get_u16(raw+files.at+8, 2, 0, false)>=nf)goto done;files.at+=16;if(!sim_string_read(&files,&name))goto done;}
     for(i=0;i<nf;++i)if(folders[i].at<files.at||folders[i].at>=n)goto done;}
     for(i=0;i<nf;++i) {
         sim_folder *folder=folders+i;size_t total=0,pos=folder->at,arrays=folder->blocks*(sizeof(uint8_t *)+2*sizeof(size_t)),workspace=0;uint8_t *decoded=NULL;const uint8_t **blocks=NULL;size_t *packed=NULL,*plain=NULL;bool folder_ok=false;uint16_t method=folder->type&15;unsigned bits=(folder->type>>8)&31;
         if(!sim_take(b,arrays)) {goto done; } blocks=(const uint8_t **)xx_mem_calloc(folder->blocks,sizeof(*blocks));packed=(size_t *)xx_mem_calloc(folder->blocks,sizeof(*packed));plain=(size_t *)xx_mem_calloc(folder->blocks,sizeof(*plain));if(!blocks||!packed||!plain)goto folder_done;
-        for(j=0;j<folder->blocks;++j) {uint32_t checksum;uint16_t z,y;if(sim_stop(b)||!sim_range(n,pos,8+dr))goto folder_done;checksum=pm_le32(raw+pos);z=pm_le16(raw+pos+4);y=pm_le16(raw+pos+6);pos+=8+dr;
+        for(j=0;j<folder->blocks;++j) {uint32_t checksum;uint16_t z,y;if(sim_stop(b)||!sim_range(n,pos,8+dr))goto folder_done;checksum=xx_data_get_u32(raw+pos, 4, 0, false);z=xx_data_get_u16(raw+pos+4, 2, 0, false);y=xx_data_get_u16(raw+pos+6, 2, 0, false);pos+=8+dr;
             if(!z||!y||y>32768||!sim_range(n,pos,z)||total>SIM_CAP-y)goto folder_done;
             if(checksum && checksum!=(sim_checksum(raw+pos,z)^((uint32_t)y<<16|z)))goto folder_done;
             blocks[j]=raw+pos;packed[j]=z;plain[j]=y;total+=y;pos+=z;}
@@ -149,7 +149,7 @@ static bool sim_cab(Abstractformat *f,pm_stream *s,const uint8_t *raw,size_t n,c
             else if(packed[j]<2||blocks[j][0]!='C'||blocks[j][1]!='K'||!xx_deflate_decompress_memory_with_dictionary(blocks[j]+2,packed[j]-2,decoded+offset,plain[j],&wrote,decoded+(offset>32768?offset-32768:0),offset>32768?32768:offset,false)||wrote!=plain[j])goto folder_done;
             offset+=plain[j];}}
         else {size_t wrote=0;bool success=method==3?xx_lzx_cab_decode(blocks,packed,plain,folder->blocks,bits,decoded,total,&wrote):xx_quantum_cab_decode(blocks,packed,plain,folder->blocks,bits,decoded,total,&wrote);if(!success||wrote!=total||sim_stop(b))goto folder_done;}
-        {sim_reader files={raw,n,files_at};for(j=0;j<nfiles;++j) {size_t off,z;uint16_t fi,attrs;sim_string name;char *path;uint32_t numeric;if(!sim_range(n,files.at,16))goto folder_done;z=pm_le32(raw+files.at);off=pm_le32(raw+files.at+4);fi=pm_le16(raw+files.at+8);attrs=pm_le16(raw+files.at+14);files.at+=16;if(fi>=nf||!sim_string_read(&files,&name))goto folder_done;if(fi!=i)continue;if(off>total||z>total-off)goto folder_done;
+        {sim_reader files={raw,n,files_at};for(j=0;j<nfiles;++j) {size_t off,z;uint16_t fi,attrs;sim_string name;char *path;uint32_t numeric;if(!sim_range(n,files.at,16))goto folder_done;z=xx_data_get_u32(raw+files.at, 4, 0, false);off=xx_data_get_u32(raw+files.at+4, 4, 0, false);fi=xx_data_get_u16(raw+files.at+8, 2, 0, false);attrs=xx_data_get_u16(raw+files.at+14, 2, 0, false);files.at+=16;if(fi>=nf||!sim_string_read(&files,&name))goto folder_done;if(fi!=i)continue;if(off>total||z>total-off)goto folder_done;
             if(names && sim_number(name,&numeric)&&numeric<name_count){name=names[numeric];attrs&=(uint16_t)0xFF7FU;}path=sim_path(name,attrs&128?65001:cp,prefix,!names,b);if(!path||!sim_add(f,s,path,-1,decoded+off,z,method,b))goto folder_done;}}
         folder_ok=true;
 folder_done:
@@ -174,7 +174,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     {uint64_t opts=sim_option_bytes(format->parse_options),defaults=sim_option_bytes(&f->list_extra_parameters);if(b.used>b.limit||opts>b.limit-b.used||defaults>b.limit-b.used-opts)return false;b.used+=opts+defaults;}
     if(length<4096+36||(uint64_t)length>SIM_CAP||!sim_take(&b,(uint64_t)length))return false;
     image=(uint8_t *)xx_mem_alloc((size_t)length);if(!image||!sim_input(f,image,(size_t)length,pd))goto done;end=(size_t)length-36;
-    so=sim_u64(image+end);rl=sim_u64(image+end+8);ro=sim_u64(image+end+16);co=sim_u64(image+end+24);
+    so=xx_data_get_u64(image+end, 8, 0, false);rl=xx_data_get_u64(image+end+8, 8, 0, false);ro=xx_data_get_u64(image+end+16, 8, 0, false);co=xx_data_get_u64(image+end+24, 8, 0, false);
     if(image[end+35]!=0xf1||image[end+32]>1||image[end+34]<119||so<4096||so>=ro||ro>co||co>end||rl>co-ro)goto done;
     if(!sim_range(end,(size_t)so,21)||xx_rt_memcmp(image+so,"Smart Install Maker v.",21)) {
         size_t found=0;for(i=4096;i+21<=end;++i) {if(sim_stop(&b))goto done;if(!xx_rt_memcmp(image+i,"Smart Install Maker v.",21))found=i;}
@@ -193,7 +193,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(image[end+32]) {if(!sim_cab(f,s,image+(size_t)ro,(size_t)rl,"runtime",NULL,0,cp,&b))goto done;}
     else {sim_reader runtime={image+(size_t)ro,(size_t)rl,0};for(i=0;i<image[end+33];++i) {sim_string name,z;uint32_t size;char *path;if(!sim_string_read(&runtime,&name)||!sim_string_read(&runtime,&z)||!sim_number(z,&size)||!sim_range(runtime.n,runtime.at,size))goto done;path=sim_path(name,cp,"runtime",true,&b);if(!path||!sim_add(f,s,path,f->base_address+(int64_t)ro+(int64_t)runtime.at,NULL,size,0,&b))goto done;runtime.at+=size;}if(runtime.at!=runtime.n)goto done;}
     if(rl!=co-ro)goto done;
-    if(!chunks&&!rest) {at=(size_t)co;for(i=0;i<name_count;++i) {uint32_t size;char *path;if(!sim_range(end,at,24))goto done;size=pm_le32(image+at+4);at+=24;if(!sim_range(end,at,size))goto done;path=sim_path(names[i],cp,"data",false,&b);if(!path||!sim_add(f,s,path,f->base_address+(int64_t)at,NULL,size,0,&b))goto done;at+=size;}if(at!=end)goto done;}
+    if(!chunks&&!rest) {at=(size_t)co;for(i=0;i<name_count;++i) {uint32_t size;char *path;if(!sim_range(end,at,24))goto done;size=xx_data_get_u32(image+at+4, 4, 0, false);at+=24;if(!sim_range(end,at,size))goto done;path=sim_path(names[i],cp,"data",false,&b);if(!path||!sim_add(f,s,path,f->base_address+(int64_t)at,NULL,size,0,&b))goto done;at+=size;}if(at!=end)goto done;}
     else {uint64_t span=(uint64_t)chunks*chunk_size+rest;if(span!=end-co||chunks>1||(chunks&&rest)||!span)goto done;if(!sim_cab(f,s,image+(size_t)co,(size_t)span,"content",names,name_count,cp,&b))goto done;}
     b.used-=(uint64_t)length+name_count*sizeof(*names);for(i=0;i<s->count;++i)((sim_context *)s->items[i].context)->retained=b.used;s->size=length;ok=true;
 done:xx_mem_free(names);xx_mem_free(image);if(!ok&&!xx_pd_is_stopped(pd))xx_pd_set_error(pd,XXFC_ERR_GENERIC,"Unsupported, malformed or over-budget Smart Install Maker package");return ok;
@@ -223,7 +223,7 @@ bool xx_smart_install_maker_has_candidate_device(xx_io_device *device,int64_t ba
     size-=base;if(size<4096+36||(uint64_t)size>SIM_CAP)goto done;
     if(xx_io_seek64(device,base+size-36,SEEK_SET)!=0)goto done;
     while(got<sizeof(footer)) {ssize_t n=xx_io_read(device,footer+got,sizeof(footer)-got);if(n<=0||(size_t)n>sizeof(footer)-got)goto done;got+=(size_t)n;}
-    end=(uint64_t)size-36;so=sim_u64(footer);rl=sim_u64(footer+8);ro=sim_u64(footer+16);co=sim_u64(footer+24);
+    end=(uint64_t)size-36;so=xx_data_get_u64(footer, 8, 0, false);rl=xx_data_get_u64(footer+8, 8, 0, false);ro=xx_data_get_u64(footer+16, 8, 0, false);co=xx_data_get_u64(footer+24, 8, 0, false);
     /* The full parser verifies the string signature and handles rebased stubs. */
     candidate=footer[35]==0xf1&&footer[32]<=1&&footer[34]>=119&&so>=4096&&so<ro&&ro<=co&&co<=end&&rl==co-ro;
 done:if(xx_io_seek64(device,cursor,SEEK_SET)!=0)return false;return candidate;

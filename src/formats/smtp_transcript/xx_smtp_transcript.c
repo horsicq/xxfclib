@@ -3,6 +3,7 @@
  */
 /* Primary: https://www.rfc-editor.org/rfc/rfc5321.html */
 #include "xxfclib/formats/smtp_transcript/xx_smtp_transcript.h"
+#include "xxfclib/data/xx_data.h"
 #include "../xx_fourteenth_wrappers.h"
 
 static bool address(nh_blob *b,uint64_t at,uint64_t n,const char *prefix){uint64_t z=xx_rt_strlen(prefix);if(n<=z+2||!fw_ci(b,at,z,prefix)||b->p[(size_t)(at+z)]!='<'||b->p[(size_t)(at+n-1)]!='>')return false;for(uint64_t i=z+1;i+1<n;++i){uint8_t c=b->p[(size_t)(at+i)];if(c<33||c>126||c=='<'||c=='>')return false;}return true;}

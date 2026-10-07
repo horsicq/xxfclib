@@ -12,6 +12,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XPK_LZX_LITERAL_NODES (768U*16U+1U)
 #define XPK_LZX_LENGTH_NODES (20U*16U+1U)
@@ -23,10 +24,6 @@ typedef struct xpk_lzx_bits {
     uint16_t word;
     unsigned left;
 } xpk_lzx_bits;
-static uint32_t xpk_lzx_le32(const uint8_t *p) {
-    return (uint32_t)p[0]|((uint32_t)p[1]<<8U)|((uint32_t)p[2]<<16U)|
-           ((uint32_t)p[3]<<24U);
-}
 static uint32_t xpk_lzx_crc(const uint8_t *data,size_t size,uint32_t previous) {
     return xx_crc32_calc(previous,data,size);
 }
@@ -128,10 +125,10 @@ static bool xpk_lzx_native(const uint8_t *packed,size_t size,uint8_t *output,
     size_t produced=0U,blocks=0U,i;
     if(!packed || !output || !wanted || size<41U || xx_pd_is_stopped(pd))return false;
     if(packed[0]!='L' || packed[1]!='Z' || packed[2]!='X' || packed[3])return false;
-    raw_size=xpk_lzx_le32(packed+12U);
-    packed_size=xpk_lzx_le32(packed+16U);
-    raw_crc=xpk_lzx_le32(packed+32U);
-    header_crc=xpk_lzx_le32(packed+36U);
+    raw_size=xx_data_get_u32(packed+12U, 4, 0, false);
+    packed_size=xx_data_get_u32(packed+16U, 4, 0, false);
+    raw_crc=xx_data_get_u32(packed+32U, 4, 0, false);
+    header_crc=xx_data_get_u32(packed+36U, 4, 0, false);
     mode=packed[21U];
     if(raw_size!=wanted || (mode!=0U && mode!=2U))return false;
     offset=41U+(uint32_t)packed[40U]+(uint32_t)packed[24U];

@@ -6,16 +6,13 @@
 #include "xxfclib/formats/autodesk_fbx/xx_autodesk_fbx.h"
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 static __inline bool span(uint64_t a,uint64_t n,uint64_t e) { return a<=e && n<=e-a; }
 static __inline bool stop(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
-static __inline uint64_t u64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
-static __inline uint32_t u32(const uint8_t *p,bool be) { return be ? pm_be32(p):pm_le32(p); }
-static __inline uint16_t u16(const uint8_t *p,bool be) { return be ? pm_be16(p):pm_le16(p); }
-static __inline uint32_t be24(const uint8_t *p) { return (uint32_t)p[0]<<16 | (uint32_t)p[1]<<8 | p[2]; }
 static __inline bool zero(const uint8_t *b,uint64_t n) { uint64_t i; for(i=0;i<n;++i) if(b[i]) return false; return true; }
-static __inline bool finite32(const uint8_t *p,bool be) { return (u32(p,be)&0x7f800000U)!=0x7f800000U; }
-static __inline bool finite64(const uint8_t *p,bool be) { return (u64(p,be)&0x7ff0000000000000ULL)!=0x7ff0000000000000ULL; }
+static __inline bool finite32(const uint8_t *p,bool be) { return (xx_data_get_u32(p, 4, 0, be)&0x7f800000U)!=0x7f800000U; }
+static __inline bool finite64(const uint8_t *p,bool be) { return (xx_data_get_u64(p, 8, 0, be)&0x7ff0000000000000ULL)!=0x7ff0000000000000ULL; }
 static __inline bool floats(const uint8_t *b,uint64_t at,uint64_t count,bool be,uint64_t n) { uint64_t i; if(!span(at,count*4,n)) return false; for(i=0;i<count;++i) if(!finite32(b+at+i*4,be)) return false; return true; }
 static __inline bool emit(Abstractformat *f,pm_stream *s,const char *label,uint64_t a,uint64_t n,uint64_t e) { return span(a,n,e) && s->count<4096 && pm_add(f,s,label,(int64_t)a,(int64_t)n); }
 static __inline bool cstr(const uint8_t *b,uint64_t *at,uint64_t end,uint64_t maximum,bool empty) { uint64_t start=*at; while(*at<end && *at-start<=maximum) { uint8_t c=b[(*at)++]; if(!c) return empty || *at>start+1; if(c<32 || c==127) return false; } return false; }
@@ -26,9 +23,9 @@ static __inline uint32_t crc32_bytes(const uint8_t *b,uint64_t n) { return xx_cr
 #include "xxfclib/algo/deflate/xx_deflate.h"
 static bool fbx_properties(const uint8_t *b,uint64_t *p,uint64_t end,uint64_t count,uint64_t *budget,xx_pd_struct *pd) {
  uint64_t i; if(count>65536)return false;for(i=0;i<count;++i) {uint8_t t;uint64_t width=0;if(stop(pd)||*p>=end)return false;t=b[(*p)++];switch(t) {case 'Y':width=2;break;case 'C':width=1;break;case 'I':case 'F':width=4;break;case 'L':case 'D':width=8;break;
- case 'S':case 'R':if(!span(*p,4,end))return false;width=u32(b+*p,false);*p+=4;break;
+ case 'S':case 'R':if(!span(*p,4,end))return false;width=xx_data_get_u32(b+*p, 4, 0, false);*p+=4;break;
  case 'f':case 'd':case 'l':case 'i':case 'b':case 'c': {uint32_t c,encoding,packed;uint64_t raw;uint8_t *owned=NULL;const uint8_t *data;size_t written=0;uint32_t j;bool okay=true;
-   if(!span(*p,12,end)) {return false; } c=u32(b+*p,false);encoding=u32(b+*p+4,false);packed=u32(b+*p+8,false);*p+=12;width=(t=='d'||t=='l')?8:(t=='f'||t=='i')?4:1;raw=(uint64_t)c*width;
+   if(!span(*p,12,end)) {return false; } c=xx_data_get_u32(b+*p, 4, 0, false);encoding=xx_data_get_u32(b+*p+4, 4, 0, false);packed=xx_data_get_u32(b+*p+8, 4, 0, false);*p+=12;width=(t=='d'||t=='l')?8:(t=='f'||t=='i')?4:1;raw=(uint64_t)c*width;
    if(encoding>1||raw>16777216||raw>*budget||!span(*p,packed,end)) {return false; } *budget-=raw;data=b+*p;
    if(encoding) {owned=(uint8_t *)xx_mem_alloc((size_t)(raw?raw:1));if(!owned)return false;okay=xx_zlib_stream_decode_memory(data,packed,owned,(size_t)raw,&written)&&written==raw&&xx_zlib_stream_trailer_matches(data,packed,owned,(size_t)raw);data=owned;}else if(packed!=raw)okay=false;
    if(okay)for(j=0;j<c;++j) {if((t=='f'&&!finite32(data+(uint64_t)j*4,false))||(t=='d'&&!finite64(data+(uint64_t)j*8,false))||(t=='b'&&data[j]>1)){okay=false;break;}}
@@ -38,7 +35,7 @@ static bool fbx_properties(const uint8_t *b,uint64_t *p,uint64_t end,uint64_t co
 }
 static bool fbx_node(const uint8_t *b,uint64_t *at,uint64_t end,unsigned hs,unsigned depth,unsigned *nodes,uint64_t *budget,xx_pd_struct *pd) {
  uint64_t start=*at,finish,count,len,p,prop_end;unsigned name;if(depth>32||++*nodes>65536||stop(pd)||!span(start,hs,end))return false;
- finish=hs==25?u64(b+start,false):u32(b+start,false);count=hs==25?u64(b+start+8,false):u32(b+start+4,false);len=hs==25?u64(b+start+16,false):u32(b+start+8,false);name=b[start+hs-1];p=start+hs;
+ finish=hs==25?xx_data_get_u64(b+start, 8, 0, false):xx_data_get_u32(b+start, 4, 0, false);count=hs==25?xx_data_get_u64(b+start+8, 8, 0, false):xx_data_get_u32(b+start+4, 4, 0, false);len=hs==25?xx_data_get_u64(b+start+16, 8, 0, false):xx_data_get_u32(b+start+8, 4, 0, false);name=b[start+hs-1];p=start+hs;
  if(!name||finish<p||finish>end||!span(p,name,finish)) {return false; } p+=name;if(!span(p,len,finish))return false;prop_end=p+len;if(!fbx_properties(b,&p,prop_end,count,budget,pd))return false;
  if(p<finish) {if(finish-p<hs)return false;while(p<finish-hs)if(!fbx_node(b,&p,finish-hs,hs,depth+1,nodes,budget,pd))return false;if(p!=finish-hs||!zero(b+p,hs))return false;}
  *at=finish;return true;
@@ -47,10 +44,10 @@ static bool fbx_node(const uint8_t *b,uint64_t *at,uint64_t end,unsigned hs,unsi
 static bool parse_data(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
 
  uint32_t version;unsigned hs,nodes=0;uint64_t at=27,budget=67108864,footer,end;char label[40];static const uint8_t tail[]={0xf8,0x5a,0x8c,0x6a,0xde,0xf5,0xd9,0x7e,0xec,0xe9,0x0c,0xe3,0x75,0x8f,0x29,0x0b};
- if(n<27||xx_rt_memcmp(b,"Kaydara FBX Binary  \0\x1a\0",23)||((version=u32(b+23,false))!=7400&&version!=7500)) {return false; } hs=version==7500?25:13;
+ if(n<27||xx_rt_memcmp(b,"Kaydara FBX Binary  \0\x1a\0",23)||((version=xx_data_get_u32(b+23, 4, 0, false))!=7400&&version!=7500)) {return false; } hs=version==7500?25:13;
  while(span(at,hs,n)&&!zero(b+at,hs)) {uint64_t start=at;if(!fbx_node(b,&at,n,hs,0,&nodes,&budget,pd))return false;xx_rt_snprintf(label,sizeof(label),"root-%u.fbxnode",(unsigned)s->count);if(!emit(f,s,label,start,at-start,n))return false;}
  if(!s->count||!span(at,hs+20,n)||!zero(b+at,hs)||!zero(b+at+hs+16,4)) {return false; } footer=at+hs;end=footer+20;end=((end+15)&~15ULL)==end?end+16:(end+15)&~15ULL;
- if(!span(end,140,n)||!zero(b+footer+20,end-footer-20)||u32(b+end,false)!=version||!zero(b+end+4,120)||xx_rt_memcmp(b+end+124,tail,16)) {return false; } end+=140;
+ if(!span(end,140,n)||!zero(b+footer+20,end-footer-20)||xx_data_get_u32(b+end, 4, 0, false)!=version||!zero(b+end+4,120)||xx_rt_memcmp(b+end+124,tail,16)) {return false; } end+=140;
  if(!emit(f,s,"footer.bin",footer,end-footer,n)) {return false; } s->size=(int64_t)end;return true;
 
 }

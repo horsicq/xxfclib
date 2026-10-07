@@ -6,7 +6,7 @@
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     nh_blob b={0};uint8_t h[12];uint32_t sizes[16]={0};bool stamp[16]={0},ok=false;uint64_t at,end;unsigned records=0;
     if(!pm_read(f,0,h,sizeof(h)) || (h[0]!=12 && h[0]!=14) || xx_rt_memcmp(h+8,".FIT",4)) return false;
-    NH_NEED(nh_load(f,&b,pd));end=(uint64_t)h[0]+pm_le32(h+4);
+    NH_NEED(nh_load(f,&b,pd));end=(uint64_t)h[0]+xx_data_get_u32(h+4, 4, 0, false);
     NH_NEED(end+2==b.n && h[1]>=16 && h[1]<64 && nh_crc16(b.p,(size_t)b.n)==0);
     if(h[0]==14) NH_NEED(nh_crc16(b.p,14)==0);
     NH_NEED(nh_add(f,s,&b,"header",0,h[0]));at=h[0];

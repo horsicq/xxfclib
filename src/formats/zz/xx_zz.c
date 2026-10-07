@@ -33,6 +33,7 @@
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/algo/deflate/xx_deflate.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ZZ_COPY_CHUNK (64 * 1024)
 
@@ -134,7 +135,6 @@ static bool xx_zz_add(xx_zz_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint32_t xx_zz_le32(const uint8_t *data);
 static xx_zz_stream *xx_zz_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_zz_decode(Abstractformat *self, const xx_zz_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
@@ -143,11 +143,6 @@ static bool xx_zz_decode(Abstractformat *self, const xx_zz_member *member, uint8
  * member. */
 /* The container holds exactly one member; the cap is here so the shape of
  * this reader matches the others and cannot silently grow a list. */
-
-static uint32_t xx_zz_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static xx_zz_stream *xx_zz_parse(Abstractformat *self, xx_pd_struct *pd) {
     xx_zz_stream *stream = NULL;
@@ -169,12 +164,12 @@ static xx_zz_stream *xx_zz_parse(Abstractformat *self, xx_pd_struct *pd) {
         return NULL;
     }
 
-    if (xx_zz_le32(header) != (uint32_t)XX_ZZ_MAGIC) return NULL;
+    if (xx_data_get_u32(header, 4, 0, false) != (uint32_t)XX_ZZ_MAGIC) return NULL;
 
     /* The length is read as a signed 32 bit value and must be strictly
      * positive, so 0 and any value with the high bit set are rejected. An
      * empty member is not representable in this container. */
-    raw_size = xx_zz_le32(header + 4);
+    raw_size = xx_data_get_u32(header + 4, 4, 0, false);
     if (raw_size == 0U || (raw_size & 0x80000000UL) != 0U) return NULL;
     uncompressed = (int64_t)raw_size;
 
@@ -182,8 +177,8 @@ static xx_zz_stream *xx_zz_parse(Abstractformat *self, xx_pd_struct *pd) {
      * this is the bulk of the whole-file defence: "ZZ\x02\x00" alone turns up
      * inside ordinary binary data, and a later reader tempted to drop this
      * check would make every such hit a ZZ archive. */
-    if (xx_zz_le32(header + 8) != 0U) return NULL;
-    if (xx_zz_le32(header + 12) != 0U) return NULL;
+    if (xx_data_get_u32(header + 8, 4, 0, false) != 0U) return NULL;
+    if (xx_data_get_u32(header + 12, 4, 0, false) != 0U) return NULL;
 
     /* The payload is a zlib stream by definition, so its two byte prologue
      * (method/window, then the check bits and the preset-dictionary flag) is

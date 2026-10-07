@@ -43,6 +43,7 @@
 #include "xxfclib/global/xx_global.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and not edited from here,
  * so the alias macro that sits next to the enumerator is tested instead. */
@@ -112,10 +113,6 @@ static uint32_t arni_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static uint32_t arni_le32(const uint8_t *bytes) {
-    return arni_le16(bytes) | (arni_le16(bytes + 2U) << 16U);
-}
-
 static bool arni_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
     size_t done = 0U;
@@ -145,7 +142,7 @@ static int arni_classify(const uint8_t *bytes, int64_t *size) {
                                                         : ARNI_KIND_NONE;
     /* Signed on purpose, as the references read it: a size with the top bit
      * set is corrupt, not a two-gigabyte member. */
-    value = (int64_t)(int32_t)arni_le32(bytes + 4);
+    value = (int64_t)(int32_t)xx_data_get_u32(bytes + 4, 4, 0, false);
     if (value <= 0 || value >= ARNI_MAX_SIZE) return ARNI_KIND_NONE;
     if (size) *size = value;
     return ARNI_KIND_MEMBER;
@@ -382,9 +379,9 @@ static bool arni_rva_to_offset(const arni_pe *pe, uint32_t rva, uint32_t size,
     uint32_t index;
     for (index = 0U; index < pe->section_count; ++index) {
         const uint8_t *section = pe->sections + index * ARNI_SECTION_SIZE;
-        uint32_t address = arni_le32(section + 12);
-        uint32_t raw_size = arni_le32(section + 16);
-        uint32_t raw_pointer = arni_le32(section + 20);
+        uint32_t address = xx_data_get_u32(section + 12, 4, 0, false);
+        uint32_t raw_size = xx_data_get_u32(section + 16, 4, 0, false);
+        uint32_t raw_pointer = xx_data_get_u32(section + 20, 4, 0, false);
         uint32_t delta;
         int64_t raw_end;
         if (rva < address || raw_size == 0U) continue;
@@ -420,7 +417,7 @@ static bool arni_read_pe(arni_pe *pe, xx_io_device *device, int64_t base,
         !arni_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' ||
         dos[1] != 'Z')
         return false;
-    lfanew = arni_le32(dos + 0x3c);
+    lfanew = xx_data_get_u32(dos + 0x3c, 4, 0, false);
     if (lfanew < ARNI_DOS_HEADER || lfanew > ARNI_MAX_LFANEW ||
         (int64_t)lfanew > available - ARNI_PE_HEADER ||
         !arni_read_at(device, base + lfanew, header, sizeof(header)) ||
@@ -450,21 +447,21 @@ static bool arni_read_pe(arni_pe *pe, xx_io_device *device, int64_t base,
     }
     /* The resource directory is data directory 2. */
     if (optional_size < directory_offset + 3U * 8U) return false;
-    directories = arni_le32(optional + directory_offset - 4U);
+    directories = xx_data_get_u32(optional + directory_offset - 4U, 4, 0, false);
     if (directories < 3U) return false;
-    pe->import_rva = arni_le32(optional + directory_offset + 8U);
-    rsrc_rva = arni_le32(optional + directory_offset + 16U);
+    pe->import_rva = xx_data_get_u32(optional + directory_offset + 8U, 4, 0, false);
+    rsrc_rva = xx_data_get_u32(optional + directory_offset + 16U, 4, 0, false);
     if (rsrc_rva == 0U ||
         !arni_rva_to_offset(pe, rsrc_rva, ARNI_DIR_SIZE, &pe->rsrc_offset,
                             &pe->rsrc_limit))
         return false;
 
     /* What the carrier occupies: its headers and every section's raw data. */
-    end = arni_le32(optional + 60);
+    end = xx_data_get_u32(optional + 60, 4, 0, false);
     for (index = 0U; index < pe->section_count; ++index) {
         const uint8_t *section = pe->sections + index * ARNI_SECTION_SIZE;
-        uint64_t raw_size = arni_le32(section + 16);
-        uint64_t raw_pointer = arni_le32(section + 20);
+        uint64_t raw_size = xx_data_get_u32(section + 16, 4, 0, false);
+        uint64_t raw_pointer = xx_data_get_u32(section + 20, 4, 0, false);
         if (raw_size != 0U && raw_pointer + raw_size > end)
             end = raw_pointer + raw_size;
     }
@@ -501,8 +498,8 @@ static bool arni_read_entry(arni_pe *pe, int64_t entries, uint32_t index,
                       pe->base + entries + (int64_t)index * ARNI_ENTRY_SIZE,
                       entry, sizeof(entry)))
         return false;
-    *name = arni_le32(entry);
-    *target = arni_le32(entry + 4);
+    *name = xx_data_get_u32(entry, 4, 0, false);
+    *target = xx_data_get_u32(entry + 4, 4, 0, false);
     return true;
 }
 
@@ -518,8 +515,8 @@ static bool arni_try_leaf(arni_pe *pe, uint32_t relative, uint32_t *walks,
     if (offset > pe->rsrc_limit - ARNI_DATA_ENTRY_SIZE ||
         !arni_read_at(pe->device, pe->base + offset, entry, sizeof(entry)))
         return false;
-    rva = arni_le32(entry);
-    size = arni_le32(entry + 4);
+    rva = xx_data_get_u32(entry, 4, 0, false);
+    size = xx_data_get_u32(entry + 4, 4, 0, false);
     if (size < ARNI_MIN_CONTAINER || (int64_t)size > ARNI_MAX_CONTAINER ||
         !arni_rva_to_offset(pe, rva, size, &data, NULL) ||
         !arni_read_at(pe->device, pe->base + data, head, sizeof(head)) ||
@@ -555,7 +552,7 @@ static void arni_collect_imports(arni_pe *pe, arni_location *location) {
                           sizeof(descriptor)) ||
             xx_rt_memcmp(descriptor, zero, sizeof(zero)) == 0)
             break;
-        if (arni_rva_to_offset(pe, arni_le32(descriptor + 12), 1U, &name,
+        if (arni_rva_to_offset(pe, xx_data_get_u32(descriptor + 12, 4, 0, false), 1U, &name,
                                NULL))
             location->import_names[location->import_name_count++] = name;
     }

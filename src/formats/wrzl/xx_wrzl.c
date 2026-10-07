@@ -14,6 +14,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -40,15 +41,6 @@ typedef struct wrzl_stream_s {
     uint8_t flags;
     bool consumed;
 } wrzl_stream;
-
-static uint16_t wrzl_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t wrzl_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
 
 static bool wrzl_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
@@ -146,7 +138,7 @@ static bool wrzl_scan_chunks(Abstractformat *format, int64_t span,
             !wrzl_read_at(format->device, format->base_address + cursor,
                           lead, sizeof(lead)))
             return false;
-        packed = wrzl_le16(lead);
+        packed = xx_data_get_u16(lead, 2, 0, false);
         if (packed == 0U || packed > span - cursor - 2 ||
             (lead[2] != WRZL_MODE_COMPRESSED &&
              lead[2] != WRZL_MODE_COPIED) ||
@@ -196,7 +188,7 @@ static bool wrzl_decode_stream(Abstractformat *format,
         if ((pd && xx_pd_is_stopped(pd)) || end - cursor < 3 ||
             !wrzl_read_at(format->device, cursor, size_field, 2U))
             goto done;
-        packed_size = wrzl_le16(size_field);
+        packed_size = xx_data_get_u16(size_field, 2, 0, false);
         expected = left < WRZL_BLOCK_PLAIN ? (size_t)left :
                                              WRZL_BLOCK_PLAIN;
         cursor += 2;
@@ -249,7 +241,7 @@ static bool wrzl_parse(Abstractformat *format, wrzl_stream **result,
     if (xx_rt_memcmp(header, XX_WRZL_SIGNATURE, XX_WRZL_SIGNATURE_SIZE) != 0)
         return false;
 
-    unpacked_size = wrzl_le32(header + 4);
+    unpacked_size = xx_data_get_u32(header + 4, 4, 0, false);
     /* U3 reads this as a signed int and requires it to be non-negative. */
     if ((unpacked_size & 0x80000000U) != 0U) return false;
     if ((int64_t)unpacked_size > XX_WRZL_MAX_UNCOMPRESSED_SIZE) return false;

@@ -12,6 +12,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_LIZARD_PAYLOAD_NAME "payload"
 #define XX_LIZARD_MAGIC UINT32_C(0x184D2206)
@@ -26,16 +27,6 @@
 
 static void xx_lizard_vtable_destroy(Abstractformat *self);
 
-static uint32_t xx_lizard_read_u32le(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
-
-static uint64_t xx_lizard_read_u64le(const uint8_t *data) {
-    return (uint64_t)xx_lizard_read_u32le(data) |
-           ((uint64_t)xx_lizard_read_u32le(data + 4U) << 32U);
-}
-
 static uint32_t xx_lizard_rotl32(uint32_t value, unsigned count) {
     return (value << count) | (value >> (32U - count));
 }
@@ -44,7 +35,7 @@ static uint32_t xx_lizard_xxh32(const uint8_t *data, size_t size) {
     uint32_t hash = XX_LIZARD_XXH_P5 + (uint32_t)size;
     size_t offset = 0U;
     while (size - offset >= 4U) {
-        hash += xx_lizard_read_u32le(data + offset) * XX_LIZARD_XXH_P3;
+        hash += xx_data_get_u32(data + offset, 4, 0, false) * XX_LIZARD_XXH_P3;
         hash = xx_lizard_rotl32(hash, 17U) * XX_LIZARD_XXH_P4;
         offset += 4U;
     }
@@ -120,12 +111,12 @@ static bool xx_lizard_scan_frames(const uint8_t *source, size_t size,
         bool content_checksum;
 
         if ((size_t)(end - cursor) < 4U) return false;
-        magic = xx_lizard_read_u32le(cursor);
+        magic = xx_data_get_u32(cursor, 4, 0, false);
         cursor += 4U;
         if ((magic & UINT32_C(0xFFFFFFF0)) == XX_LIZARD_SKIP_MAGIC) {
             uint32_t skipped_size;
             if ((size_t)(end - cursor) < 4U) return false;
-            skipped_size = xx_lizard_read_u32le(cursor);
+            skipped_size = xx_data_get_u32(cursor, 4, 0, false);
             cursor += 4U;
             if (!xx_lizard_take(&cursor, end, (size_t)skipped_size)) {
                 return false;
@@ -143,7 +134,7 @@ static bool xx_lizard_scan_frames(const uint8_t *source, size_t size,
             (descriptor & UINT8_C(0x8F)) != 0U ||
             !xx_lizard_block_limit(descriptor, &block_limit) ||
             (size_t)(end - cursor) < 8U) return false;
-        content_size = xx_lizard_read_u64le(cursor);
+        content_size = xx_data_get_u64(cursor, 8, 0, false);
         cursor += 8U;
         if (cursor == end ||
             *cursor != (uint8_t)(xx_lizard_xxh32(
@@ -160,7 +151,7 @@ static bool xx_lizard_scan_frames(const uint8_t *source, size_t size,
             uint32_t stored_size;
             size_t block_size;
             if ((size_t)(end - cursor) < 4U) return false;
-            stored_size = xx_lizard_read_u32le(cursor);
+            stored_size = xx_data_get_u32(cursor, 4, 0, false);
             cursor += 4U;
             if (stored_size == 0U) break;
             block_size = (size_t)(stored_size & UINT32_C(0x7FFFFFFF));

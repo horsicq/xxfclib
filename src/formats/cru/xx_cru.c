@@ -49,6 +49,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_CRU_COPY_CHUNK (64 * 1024)
 
@@ -179,15 +180,6 @@ static bool xx_cru_decode(Abstractformat *self,
 static const uint8_t XX_CRU_SIGNATURE[8] = {'C', 'R', 'U', 'S', 'H',
                                             ' ', 'v', '1'};
 
-static uint16_t xx_cru_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_cru_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
 static xx_cru_stream *xx_cru_parse(Abstractformat *self, xx_pd_struct *pd) {
     xx_cru_stream *stream = NULL;
     uint8_t *table = NULL;
@@ -226,17 +218,17 @@ static xx_cru_stream *xx_cru_parse(Abstractformat *self, xx_pd_struct *pd) {
         return NULL;
     }
 
-    directory_count = (int)xx_cru_le16(header + 0x10);
-    member_count = (int)xx_cru_le16(header + 0x12);
+    directory_count = (int)xx_data_get_u16(header + 0x10, 2, 0, false);
+    member_count = (int)xx_data_get_u16(header + 0x12, 2, 0, false);
     /* Reserved, and observed zero in every writer: the second structural
      * guard behind the banner. */
-    if (xx_cru_le16(header + 0x14) != 0U) return NULL;
+    if (xx_data_get_u16(header + 0x14, 2, 0, false) != 0U) return NULL;
     if (directory_count >= XX_CRU_MAX_DIRECTORIES) return NULL;
     /* A single-member archive is not produced by this format, and rejecting
      * it costs nothing while removing a whole class of accidental match. */
     if (member_count <= 1 || member_count > XX_CRU_MAX_MEMBERS) return NULL;
 
-    table_offset = (int64_t)(int32_t)xx_cru_le32(header + 0x16);
+    table_offset = (int64_t)(int32_t)xx_data_get_u32(header + 0x16, 4, 0, false);
     /* The table cannot start inside the header it is announced from. */
     if (table_offset < XX_CRU_HEADER_SIZE) return NULL;
     table_size = (int64_t)member_count * XX_CRU_ENTRY_SIZE;
@@ -308,7 +300,7 @@ static xx_cru_stream *xx_cru_parse(Abstractformat *self, xx_pd_struct *pd) {
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         directory_index = (int)entry[0];
-        size = (int64_t)(int32_t)xx_cru_le32(entry + 6);
+        size = (int64_t)(int32_t)xx_data_get_u32(entry + 6, 4, 0, false);
         if (size < 0) goto fail;
         /* Sizes are the only thing positioning the payload, so a member that
          * runs past the end invalidates every member after it as well. */
@@ -347,8 +339,8 @@ static xx_cru_stream *xx_cru_parse(Abstractformat *self, xx_pd_struct *pd) {
         member.data_offset = self->base_address + data_offset;
         member.compressed_size = size;
         member.uncompressed_size = size;
-        member.timestamp = (uint64_t)xx_cru_le16(entry + 2) |
-                           ((uint64_t)xx_cru_le16(entry + 4) << 16);
+        member.timestamp = (uint64_t)xx_data_get_u16(entry + 2, 2, 0, false) |
+                           ((uint64_t)xx_data_get_u16(entry + 4, 2, 0, false) << 16);
         if (!xx_cru_add(stream, &member)) {
             xx_str_free(member.name);
             goto fail;

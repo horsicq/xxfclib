@@ -27,6 +27,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -138,21 +139,6 @@ static bool bw_write_all(xx_io_device *device, const uint8_t *buffer,
     return true;
 }
 
-static uint16_t bw_le16(const uint8_t *b) {
-    return (uint16_t)(b[0] | (b[1] << 8));
-}
-
-static uint32_t bw_le32(const uint8_t *b) {
-    return (uint32_t)b[0] | ((uint32_t)b[1] << 8U) | ((uint32_t)b[2] << 16U) |
-           ((uint32_t)b[3] << 24U);
-}
-
-static int32_t bw_s32(const uint8_t *b) {
-    uint32_t v = bw_le32(b);
-    return v <= (uint32_t)INT32_MAX ? (int32_t)v
-                                    : (int32_t)(v - 0x80000000U) + INT32_MIN;
-}
-
 static bool bw_take(bw_cursor *c, void *buffer, uint32_t size) {
     if (c->end - c->position < (int64_t)size) return false;
     if (!bw_read_at(c->device, c->base + c->position, buffer, size))
@@ -174,9 +160,9 @@ static char *bw_utf16_to_utf8(const uint8_t *text, uint32_t units) {
     uint32_t index = 0U;
     if (!out) return NULL;
     while (index < units) {
-        uint32_t code = bw_le16(text + 2U * index++);
+        uint32_t code = xx_data_get_u16(text + 2U * index++, 2, 0, false);
         if (code >= 0xD800U && code <= 0xDBFFU && index < units) {
-            uint32_t low = bw_le16(text + 2U * index);
+            uint32_t low = xx_data_get_u16(text + 2U * index, 2, 0, false);
             if (low >= 0xDC00U && low <= 0xDFFFU) {
                 code = 0x10000U + ((code - 0xD800U) << 10U) + (low - 0xDC00U);
                 ++index;
@@ -230,8 +216,8 @@ static bool bw_parse_blocks(bw_image *image, bw_cursor *c) {
     uint8_t *name = NULL;
     uint32_t count, path_length, index;
     if (!bw_take(c, head, 8U)) return false;
-    count = bw_le32(head);
-    path_length = bw_le32(head + 4);
+    count = xx_data_get_u32(head, 4, 0, false);
+    path_length = xx_data_get_u32(head + 4, 4, 0, false);
     if (count > BW_BLOCKS || !bw_skip(c, path_length)) return false;
     name = (uint8_t *)xx_mem_alloc(BW_MAX_NAME_BYTES);
     if (!name) return false;
@@ -239,12 +225,12 @@ static bool bw_parse_blocks(bw_image *image, bw_cursor *c) {
         bw_block *block = &image->blocks[index];
         uint32_t name_length;
         if (!bw_take(c, head, BW_DATA_BLOCK)) break;
-        block->type = bw_le32(head);
-        block->length_bytes = bw_le32(head + 4);
-        block->offset = bw_le32(head + 24);
-        block->start = bw_s32(head + 40);
-        block->sectors = bw_s32(head + 44);
-        name_length = bw_le32(head + 48);
+        block->type = xx_data_get_u32(head, 4, 0, false);
+        block->length_bytes = xx_data_get_u32(head + 4, 4, 0, false);
+        block->offset = xx_data_get_u32(head + 24, 4, 0, false);
+        block->start = xx_data_get_i32(head + 40, 4, 0, false);
+        block->sectors = xx_data_get_i32(head + 44, 4, 0, false);
+        name_length = xx_data_get_u32(head + 48, 4, 0, false);
         if ((name_length & 1U) || name_length > BW_MAX_NAME_BYTES ||
             !bw_take(c, name, name_length) || !bw_skip(c, 4U))
             break;
@@ -290,9 +276,9 @@ static bool bw_parse_sessions(bw_image *image, bw_cursor *c,
             track->type = type;
             track->point = point;
             track->session = (uint16_t)(session + 1U);
-            track->pregap = bw_le32(entry + 22);
-            track->start = bw_s32(entry + 42);
-            track->length = bw_s32(entry + 46);
+            track->pregap = xx_data_get_u32(entry + 22, 4, 0, false);
+            track->start = xx_data_get_i32(entry + 42, 4, 0, false);
+            track->length = xx_data_get_i32(entry + 46, 4, 0, false);
             track->entry_offset = entry_offset;
             if (track->length < 0) return false;
         }
@@ -373,28 +359,28 @@ static bw_image *bw_load(Abstractformat *format) {
         !xx_blindwrite_5_6_image_test_magic(buffer, BW_TAG_SIZE) ||
         !bw_take(&cursor, buffer, BW_DISC_BLOCK_1))
         return NULL;
-    disc_type = bw_le16(buffer + 32);
-    sessions = bw_le16(buffer + 34);
+    disc_type = xx_data_get_u16(buffer + 32, 2, 0, false);
+    sessions = xx_data_get_u16(buffer + 34, 2, 0, false);
     if (sessions == 0U || sessions > BW_MAX_SESSIONS) return NULL;
     info_length = (disc_type >= 0x08U && disc_type <= 0x0AU)
-                      ? bw_le16(buffer + 86)
-                      : bw_le32(buffer + 108);
+                      ? xx_data_get_u16(buffer + 86, 2, 0, false)
+                      : xx_data_get_u32(buffer + 108, 4, 0, false);
     if (!bw_skip(&cursor, BW_FIXED_GAP) ||
         !bw_take(&cursor, lengths, BW_DISC_BLOCK_2) ||
-        !bw_skip(&cursor, bw_le32(lengths)) ||      /* mode page 0x2A */
-        !bw_skip(&cursor, bw_le32(lengths + 4)) ||  /* unknown block */
-        !bw_skip(&cursor, bw_le16(buffer + 80)) ||  /* PMA */
-        !bw_skip(&cursor, bw_le16(buffer + 82)) ||  /* ATIP */
-        !bw_skip(&cursor, bw_le16(buffer + 84)) ||  /* CD-TEXT */
-        !bw_skip(&cursor, bw_le32(buffer + 88)) ||  /* BCA */
-        !bw_skip(&cursor, bw_le32(buffer + 104)) || /* DVD structures */
+        !bw_skip(&cursor, xx_data_get_u32(lengths, 4, 0, false)) ||      /* mode page 0x2A */
+        !bw_skip(&cursor, xx_data_get_u32(lengths + 4, 4, 0, false)) ||  /* unknown block */
+        !bw_skip(&cursor, xx_data_get_u16(buffer + 80, 2, 0, false)) ||  /* PMA */
+        !bw_skip(&cursor, xx_data_get_u16(buffer + 82, 2, 0, false)) ||  /* ATIP */
+        !bw_skip(&cursor, xx_data_get_u16(buffer + 84, 2, 0, false)) ||  /* CD-TEXT */
+        !bw_skip(&cursor, xx_data_get_u32(buffer + 88, 4, 0, false)) ||  /* BCA */
+        !bw_skip(&cursor, xx_data_get_u32(buffer + 104, 4, 0, false)) || /* DVD structures */
         !bw_skip(&cursor, info_length))
         return NULL;
     image = (bw_image *)xx_mem_calloc(1U, sizeof(*image));
     if (!image) return NULL;
     ok = bw_parse_blocks(image, &cursor) &&
          bw_parse_sessions(image, &cursor, sessions) &&
-         bw_skip(&cursor, bw_le32(lengths + 16)) && /* internal DPM data */
+         bw_skip(&cursor, xx_data_get_u32(lengths + 16, 4, 0, false)) && /* internal DPM data */
          bw_skip(&cursor, 4U) &&                    /* declared length */
          bw_take(&cursor, buffer, BW_TAG_SIZE) &&
          xx_rt_memcmp(buffer, BW_FOOTER, BW_TAG_SIZE) == 0;

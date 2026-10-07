@@ -3,7 +3,7 @@
 #include "../xx_fifteenth_media.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  m15_blob b={0};uint64_t at,music;uint32_t ni,i;bool ended=false,ok=false;
- M15_NEED(m15_load(f,&b,pd)&&m15_span(&b,0,20)&&pm_le16(b.p)==0x55aa&&b.p[2]<=1&&pm_le16(b.p+8)==20);music=pm_le16(b.p+12);M15_NEED(music>20&&(music-20)%64==0&&music<b.n&&!((b.n-music)&1));ni=(uint32_t)((music-20)/64);M15_NEED(ni<=256&&m15_emit(f,s,&b,"descriptor.rix",0,20));for(i=0;i<ni;++i){at=20+(uint64_t)i*64;M15_NEED(m15_emit(f,s,&b,"instrument.rix",at,64));}
+ M15_NEED(m15_load(f,&b,pd)&&m15_span(&b,0,20)&&xx_data_get_u16(b.p, 2, 0, false)==0x55aa&&b.p[2]<=1&&xx_data_get_u16(b.p+8, 2, 0, false)==20);music=xx_data_get_u16(b.p+12, 2, 0, false);M15_NEED(music>20&&(music-20)%64==0&&music<b.n&&!((b.n-music)&1));ni=(uint32_t)((music-20)/64);M15_NEED(ni<=256&&m15_emit(f,s,&b,"descriptor.rix",0,20));for(i=0;i<ni;++i){at=20+(uint64_t)i*64;M15_NEED(m15_emit(f,s,&b,"instrument.rix",at,64));}
  for(at=music;at<b.n;at+=2){uint8_t lo=b.p[(size_t)at],hi=b.p[(size_t)at+1];M15_NEED(m15_work(&b,1));if(hi==128){M15_NEED(!lo&&at+2==b.n);ended=true;break;}if(hi<128)continue;M15_NEED((hi&15)<11&&(hi&240)>=144&&(hi&240)<=192);if((hi&240)==144)M15_NEED(lo<ni);}
  M15_NEED(ended&&m15_emit(f,s,&b,"event-stream.rix",music,b.n-music));s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;

@@ -42,6 +42,7 @@
 #include "xxfclib/algo/dcl/xx_dcl.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_IBMZPAK_COPY_CHUNK (64 * 1024)
 
@@ -149,8 +150,6 @@ static bool xx_ibmzpak_add(xx_ibmzpak_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_ibmzpak_le16(const uint8_t *data);
-static uint32_t xx_ibmzpak_le32(const uint8_t *data);
 static uint8_t *xx_ibmzpak_load(Abstractformat *self, int64_t data_offset, int64_t size);
 static char *xx_ibmzpak_make_name(const uint8_t *field);
 static xx_ibmzpak_stream *xx_ibmzpak_parse(Abstractformat *self, xx_pd_struct *pd);
@@ -165,15 +164,6 @@ static bool xx_ibmzpak_decode(Abstractformat *self, const xx_ibmzpak_member *mem
 /* The container has no method field: every member is a DCL stream. The value
  * is synthesised so that 0 keeps its generator-wide meaning of "stored" and a
  * listing never claims these members are uncompressed. */
-
-static uint16_t xx_ibmzpak_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_ibmzpak_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* Read a whole member into a fresh buffer. Shared by parse (which measures
  * the stream) and decode (which expands it), so the two can never disagree
@@ -312,14 +302,14 @@ static xx_ibmzpak_stream *xx_ibmzpak_parse(Abstractformat *self,
      * reserved zero and the version word are part of the signature. */
     if (xx_rt_memcmp(header, magic, sizeof(magic)) != 0) return NULL;
     if (header[5] != 0U) return NULL;
-    if (xx_ibmzpak_le16(header + 6) != XX_IBMZPAK_VERSION) return NULL;
+    if (xx_data_get_u16(header + 6, 2, 0, false) != XX_IBMZPAK_VERSION) return NULL;
 
     if (!xx_ibmzpak_read_at(self, self->base_address + span -
                                       XX_IBMZPAK_COUNT_SIZE,
                             trailer, sizeof(trailer))) {
         return NULL;
     }
-    count = (int64_t)xx_ibmzpak_le16(trailer);
+    count = (int64_t)xx_data_get_u16(trailer, 2, 0, false);
     if (count < 1 || count > XX_IBMZPAK_MAX_MEMBERS) return NULL;
 
     /* count <= 65535 and the entry size is 88, so the product is bounded well
@@ -361,7 +351,7 @@ static xx_ibmzpak_stream *xx_ibmzpak_parse(Abstractformat *self,
         name = xx_ibmzpak_make_name(entry);
         if (!name) goto fail;
 
-        packed_size = (int64_t)xx_ibmzpak_le32(entry + XX_IBMZPAK_NAME_SIZE);
+        packed_size = (int64_t)xx_data_get_u32(entry + XX_IBMZPAK_NAME_SIZE, 4, 0, false);
         if (packed_size < XX_IBMZPAK_MIN_PACKED_SIZE) {
             xx_str_free(name);
             goto fail;
@@ -411,8 +401,8 @@ static xx_ibmzpak_stream *xx_ibmzpak_parse(Abstractformat *self,
         member.method = XX_IBMZPAK_METHOD_DCL;
         /* Date at +0x54, time at +0x56, published as the usual packed dword. */
         member.timestamp =
-            ((uint64_t)xx_ibmzpak_le16(entry + XX_IBMZPAK_NAME_SIZE + 4) << 16) |
-            (uint64_t)xx_ibmzpak_le16(entry + XX_IBMZPAK_NAME_SIZE + 6);
+            ((uint64_t)xx_data_get_u16(entry + XX_IBMZPAK_NAME_SIZE + 4, 2, 0, false) << 16) |
+            (uint64_t)xx_data_get_u16(entry + XX_IBMZPAK_NAME_SIZE + 6, 2, 0, false);
         member.is_folder = false;
         if (!xx_ibmzpak_add(stream, &member)) {
             xx_str_free(name);

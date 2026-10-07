@@ -29,6 +29,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 #ifdef INSTALLSHIELD_3
 #define XX_INSTALLSHIELD_3_FILE_TYPE XX_FILE_TYPE_INSTALLSHIELD_3
@@ -97,15 +98,6 @@ typedef struct is3_stream_s {
     size_t count;
     size_t index;
 } is3_stream;
-
-static uint16_t is3_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t is3_le32(const uint8_t *bytes) {
-    return (uint32_t)is3_le16(bytes) |
-           ((uint32_t)is3_le16(bytes + 2U) << 16U);
-}
 
 static bool is3_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -570,7 +562,7 @@ static bool is3_walk(xx_io_device *device, int64_t base,
         if (!is3_range_within(end, position, IS3_MIN_RECORD) ||
             !(view = is3_window_get(&window, end, position, 4U)))
             goto done;
-        length = is3_le32(view);
+        length = xx_data_get_u32(view, 4, 0, false);
         if (length == 0U || length > IS3_MAX_PATH ||
             !is3_range_within(end, position + 4, (int64_t)length + 8) ||
             !(view = is3_window_get(&window, end, position + 4,
@@ -582,7 +574,7 @@ static bool is3_walk(xx_io_device *device, int64_t base,
         xx_installshield_3_decode(buffer, length);
         for (k = 0U; k < length; ++k)
             if (!is3_char_ok(buffer[k])) goto done;
-        size = is3_le32(buffer + length + 4U);
+        size = xx_data_get_u32(buffer + length + 4U, 4, 0, false);
         data = position + 4 + (int64_t)length + 8;
         if (!is3_range_within(end, data, (int64_t)size)) goto done;
         if (stream) {
@@ -594,8 +586,8 @@ static bool is3_walk(xx_io_device *device, int64_t base,
             member->data_offset = base + data;
             member->size = (int64_t)size;
             member->index = index;
-            member->dos_date = is3_le16(buffer + length);
-            member->dos_time = is3_le16(buffer + length + 2U);
+            member->dos_date = xx_data_get_u16(buffer + length, 2, 0, false);
+            member->dos_time = xx_data_get_u16(buffer + length + 2U, 2, 0, false);
             ++stream->count;
         }
         position = data + (int64_t)size;
@@ -624,9 +616,9 @@ static bool is3_check_descriptor(xx_io_device *device, int64_t base,
         return false;
     xx_mem_zero(&candidate, sizeof(candidate));
     candidate.descriptor_offset = offset;
-    candidate.data_offset = (int64_t)is3_le32(descriptor + 0x08);
-    candidate.count = is3_le32(descriptor + 0x0C);
-    candidate.archive_size = (int64_t)is3_le32(descriptor + 0x10);
+    candidate.data_offset = (int64_t)xx_data_get_u32(descriptor + 0x08, 4, 0, false);
+    candidate.count = xx_data_get_u32(descriptor + 0x0C, 4, 0, false);
+    candidate.archive_size = (int64_t)xx_data_get_u32(descriptor + 0x10, 4, 0, false);
     candidate.is_ne = is_ne;
     if ((data_exact >= 0 && candidate.data_offset != data_exact) ||
         candidate.data_offset < data_min || candidate.count == 0U ||
@@ -663,7 +655,7 @@ static bool is3_first_record_ok(xx_io_device *device, int64_t base,
     if (!is3_range_within(available, position, IS3_MIN_RECORD) ||
         !is3_read_at(device, base + position, head, sizeof(head)))
         return false;
-    length = is3_le32(head);
+    length = xx_data_get_u32(head, 4, 0, false);
     if (length == 0U || length > IS3_MAX_PATH ||
         !is3_range_within(available, position + 4, (int64_t)length + 8) ||
         !is3_read_at(device, base + position + 4, buffer,
@@ -673,7 +665,7 @@ static bool is3_first_record_ok(xx_io_device *device, int64_t base,
     for (k = 0U; k < length; ++k)
         if (!is3_char_ok(buffer[k])) return false;
     return is3_range_within(available, position + 4 + (int64_t)length + 8,
-                            (int64_t)is3_le32(buffer + length + 4U));
+                            (int64_t)xx_data_get_u32(buffer + length + 4U, 4, 0, false));
 }
 
 static bool is3_locate_pe(xx_io_device *device, int64_t base,
@@ -692,14 +684,14 @@ static bool is3_locate_pe(xx_io_device *device, int64_t base,
     if (!is3_range_within(available, header, (int64_t)sizeof(coff)) ||
         !is3_read_at(device, base + header, coff, sizeof(coff)))
         return false;
-    section_count = is3_le16(coff + 6U);
-    optional_size = is3_le16(coff + 20U);
+    section_count = xx_data_get_u16(coff + 6U, 2, 0, false);
+    optional_size = xx_data_get_u16(coff + 20U, 2, 0, false);
     if (section_count == 0U || section_count > IS3_PE_MAX_SECTIONS ||
         optional_size < sizeof(optional) ||
         !is3_range_within(available, header + 24, (int64_t)sizeof(optional)) ||
         !is3_read_at(device, base + header + 24, optional, sizeof(optional)))
         return false;
-    optional_magic = is3_le16(optional);
+    optional_magic = xx_data_get_u16(optional, 2, 0, false);
     if (optional_magic != 0x10BU && optional_magic != 0x20BU) return false;
     section_table = header + 24 + (int64_t)optional_size;
     if (!is3_range_within(available, section_table,
@@ -707,11 +699,11 @@ static bool is3_locate_pe(xx_io_device *device, int64_t base,
         !is3_read_at(device, base + section_table, sections,
                      (size_t)section_count * 40U))
         return false;
-    image_end = (int64_t)is3_le32(optional + 60U);
+    image_end = (int64_t)xx_data_get_u32(optional + 60U, 4, 0, false);
     for (index = 0U; index < section_count; ++index) {
         const uint8_t *entry = sections + (size_t)index * 40U;
-        int64_t raw_size = (int64_t)is3_le32(entry + 16U);
-        int64_t raw_offset = (int64_t)is3_le32(entry + 20U);
+        int64_t raw_size = (int64_t)xx_data_get_u32(entry + 16U, 4, 0, false);
+        int64_t raw_offset = (int64_t)xx_data_get_u32(entry + 20U, 4, 0, false);
         if (raw_size == 0) continue;
         if (!is3_range_within(available, raw_offset, raw_size)) return false;
         if (raw_offset + raw_size > image_end)
@@ -763,8 +755,8 @@ static bool is3_locate_ne(xx_io_device *device, int64_t base,
     if (!is3_range_within(available, header, (int64_t)sizeof(ne)) ||
         !is3_read_at(device, base + header, ne, sizeof(ne)))
         return false;
-    resource_table = is3_le16(ne + 0x24U);
-    resident_names = is3_le16(ne + 0x26U);
+    resource_table = xx_data_get_u16(ne + 0x24U, 2, 0, false);
+    resident_names = xx_data_get_u16(ne + 0x26U, 2, 0, false);
     if (resource_table == 0U || resident_names <= resource_table) return false;
     table_size = resident_names - resource_table;
     if (table_size < 2U + 8U + 12U ||
@@ -778,7 +770,7 @@ static bool is3_locate_ne(xx_io_device *device, int64_t base,
         xx_mem_free(table);
         return false;
     }
-    shift = is3_le16(table);
+    shift = xx_data_get_u16(table, 2, 0, false);
     if (shift > 15U) {
         xx_mem_free(table);
         return false;
@@ -788,16 +780,16 @@ static bool is3_locate_ne(xx_io_device *device, int64_t base,
      * with offset and length in (1 << shift) units.  Each step advances at
      * least 8 bytes through the table, so the walk is bounded by it. */
     while (!found && position + 8U <= table_size) {
-        uint32_t type = is3_le16(table + position);
-        uint32_t count = is3_le16(table + position + 2U);
+        uint32_t type = xx_data_get_u16(table + position, 2, 0, false);
+        uint32_t count = xx_data_get_u16(table + position + 2U, 2, 0, false);
         uint32_t k;
         if (type == 0U) break;
         position += 8U;
         if (count > (table_size - position) / 12U) break;
         for (k = 0U; k < count && !found; ++k) {
             const uint8_t *entry = table + position + (size_t)k * 12U;
-            int64_t offset = (int64_t)is3_le16(entry) << shift;
-            int64_t length = (int64_t)is3_le16(entry + 2U) << shift;
+            int64_t offset = (int64_t)xx_data_get_u16(entry, 2, 0, false) << shift;
+            int64_t length = (int64_t)xx_data_get_u16(entry + 2U, 2, 0, false) << shift;
             if (type != IS3_NE_RESOURCE_TYPE || length < IS3_DESC_SIZE)
                 continue;
             if (++tried > IS3_MAX_CANDIDATES) break;
@@ -826,7 +818,7 @@ static bool is3_locate(Abstractformat *format, is3_layout *layout,
         !is3_read_at(format->device, format->base_address, mz, sizeof(mz)) ||
         mz[0] != 'M' || mz[1] != 'Z')
         return false;
-    header = (int64_t)is3_le32(mz + 0x3CU);
+    header = (int64_t)xx_data_get_u32(mz + 0x3CU, 4, 0, false);
     if (header < 0x40 ||
         !is3_range_within(available, header, (int64_t)sizeof(signature)) ||
         !is3_read_at(format->device, format->base_address + header,

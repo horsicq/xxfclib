@@ -6,14 +6,14 @@
 #include "../disk_additions/xx_disk_additions.h"
 typedef struct b4_track {char file[256];uint32_t offset,adjust,end;int32_t pregap,start;uint8_t mode,point,session;} b4_track;
 typedef struct b4_desc {char data[256],sub[256];uint32_t count;b4_track tracks[256];} b4_desc;
-static bool b4_var(Abstractformat *f,uint64_t *at,char *out,size_t capacity,xx_pd_struct *pd){uint8_t h[4];uint32_t n;if(!da_read(f,*at,h,4,pd))return false;n=pm_le32(h);*at+=4U;if(n>65536U||*at>(uint64_t)pm_available(f)||n>(uint64_t)pm_available(f)-*at)return false;if(out){size_t i;if(n>=capacity||!da_read(f,*at,out,n,pd))return false;out[n]=0;for(i=0;i<n;++i)if(!out[i])break;out[i]=0;}*at+=n;return da_poll(pd);}
+static bool b4_var(Abstractformat *f,uint64_t *at,char *out,size_t capacity,xx_pd_struct *pd){uint8_t h[4];uint32_t n;if(!da_read(f,*at,h,4,pd))return false;n=xx_data_get_u32(h, 4, 0, false);*at+=4U;if(n>65536U||*at>(uint64_t)pm_available(f)||n>(uint64_t)pm_available(f)-*at)return false;if(out){size_t i;if(n>=capacity||!da_read(f,*at,out,n,pd))return false;out[n]=0;for(i=0;i<n;++i)if(!out[i])break;out[i]=0;}*at+=n;return da_poll(pd);}
 static bool b4_decode(Abstractformat *f,b4_desc *desc,xx_pd_struct *pd){uint8_t h[59];uint64_t at=31,n=(uint64_t)pm_available(f);uint32_t i,j,count;xx_mem_zero(desc,sizeof(*desc));
  if(n>16U*1024U*1024U||!da_read(f,0,h,31,pd)||xx_rt_memcmp(h,"BLINDWRITE TOC FILE",19))return false;
  for(i=0;i<3U;++i)if(!b4_var(f,&at,NULL,0,pd))return false;
- if(!da_read(f,at,h,4,pd)) {return false; } count=pm_le32(h);at+=4U;if(!count||count>256U)return false;desc->count=count;
+ if(!da_read(f,at,h,4,pd)) {return false; } count=xx_data_get_u32(h, 4, 0, false);at+=4U;if(!count||count>256U)return false;desc->count=count;
  if(!b4_var(f,&at,desc->data,sizeof(desc->data),pd)||!b4_var(f,&at,desc->sub,sizeof(desc->sub),pd)||!da_read(f,at,h,5,pd)) {return false; } at+=5U;if(h[4]>n-at)return false;at+=h[4];
  for(i=0;i<count;++i){b4_track *track=desc->tracks+i;if(!b4_var(f,&at,track->file,sizeof(track->file),pd)||!da_read(f,at,h,59,pd))return false;at+=59;
-  track->offset=pm_le32(h);track->session=h[13];track->mode=h[17];track->point=h[19];track->adjust=pm_le32(h+28);track->end=pm_le32(h+38);track->pregap=(int32_t)pm_le32(h+43);track->start=(int32_t)pm_le32(h+47);
+  track->offset=xx_data_get_u32(h, 4, 0, false);track->session=h[13];track->mode=h[17];track->point=h[19];track->adjust=xx_data_get_u32(h+28, 4, 0, false);track->end=xx_data_get_u32(h+38, 4, 0, false);track->pregap=(int32_t)xx_data_get_u32(h+43, 4, 0, false);track->start=(int32_t)xx_data_get_u32(h+47, 4, 0, false);
   if(track->point<0xa0U&&(!track->point||track->point>99U||track->mode>2U||!track->session||track->pregap>track->start||track->start<0||track->end<=(uint32_t)track->start))return false;
   for(j=0;j<15U;++j)if(!b4_var(f,&at,NULL,0,pd))return false;
  }

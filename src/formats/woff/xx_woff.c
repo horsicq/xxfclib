@@ -10,8 +10,8 @@
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[44],e[20]; uint32_t count,total,previous=0,off,size,original,i,j; uint64_t sfntsize; int64_t end;
     uint32_t offsets[4098],sizes[4098]; uint8_t used[4098]={0};
-    if(!pm_read(f,0,h,44) || xx_rt_memcmp(h,"wOFF",4) || !font_flavor(pm_be32(h+4)) || pm_be16(h+14)) return false;
-    total=pm_be32(h+8); count=pm_be16(h+12); if(!count || count>4095 || total>pm_available(f) || total<44+(uint64_t)count*20) return false;
+    if(!pm_read(f,0,h,44) || xx_rt_memcmp(h,"wOFF",4) || !font_flavor(xx_data_get_u32(h+4, 4, 0, true)) || xx_data_get_u16(h+14, 2, 0, true)) return false;
+    total=xx_data_get_u32(h+8, 4, 0, true); count=xx_data_get_u16(h+12, 2, 0, true); if(!count || count>4095 || total>pm_available(f) || total<44+(uint64_t)count*20) return false;
     sfntsize=12+(uint64_t)count*16; end=44+(int64_t)count*20;
     for(i=0;i<count+2;++i) {
         char name[64]; uint32_t checksum=0; int mode=0;
@@ -19,14 +19,14 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if(i<count) {
             uint32_t tag;
             if(!pm_read(f,44+(int64_t)i*20,e,20) || !font_tag(e)) return false;
-            tag=pm_be32(e); if(i && tag<=previous) return false; previous=tag;
-            off=pm_be32(e+4); size=pm_be32(e+8); original=pm_be32(e+12); checksum=pm_be32(e+16);
+            tag=xx_data_get_u32(e, 4, 0, true); if(i && tag<=previous) return false; previous=tag;
+            off=xx_data_get_u32(e+4, 4, 0, true); size=xx_data_get_u32(e+8, 4, 0, true); original=xx_data_get_u32(e+12, 4, 0, true); checksum=xx_data_get_u32(e+16, 4, 0, true);
             if(size>original) { return false; } mode=size<original; sfntsize+=((uint64_t)original+3)&~UINT64_C(3);
             if(sfntsize>64U*1024U*1024U) return false;
-            xx_rt_snprintf(name,sizeof(name),"table-%08x.bin",pm_be32(e));
+            xx_rt_snprintf(name,sizeof(name),"table-%08x.bin",xx_data_get_u32(e, 4, 0, true));
         } else {
-            off=pm_be32(h+(i==count ? 24 : 36)); size=pm_be32(h+(i==count ? 28 : 40));
-            original=i==count ? pm_be32(h+32) : size; mode=i==count;
+            off=xx_data_get_u32(h+(i==count ? 24 : 36), 4, 0, true); size=xx_data_get_u32(h+(i==count ? 28 : 40), 4, 0, true);
+            original=i==count ? xx_data_get_u32(h+32, 4, 0, true) : size; mode=i==count;
             xx_rt_snprintf(name,sizeof(name),"%s",i==count ? "metadata.xml" : "private.bin");
             if(!off && !size && !original) { offsets[i]=sizes[i]=0; continue; }
             if(!off || !size || !original || off<end) return false;
@@ -37,7 +37,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if(!font_range(f,s,off,size,original,name,mode,checksum,i<count,pd)) return false;
         if((int64_t)off+size>end) end=(int64_t)off+size;
     }
-    if(sfntsize>64U*1024U*1024U || sfntsize!=pm_be32(h+16) || end>total) return false;
+    if(sfntsize>64U*1024U*1024U || sfntsize!=xx_data_get_u32(h+16, 4, 0, true) || end>total) return false;
     {
         uint64_t cursor=44+(uint64_t)count*20; uint32_t n;
         for(n=0;n<count+2;++n) {

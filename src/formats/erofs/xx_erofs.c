@@ -21,6 +21,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define ER_SB_OFFSET 1024U
 #define ER_SB_BYTES 128U
@@ -61,16 +62,6 @@ typedef struct er_view_s {
     size_t dir_count, dir_capacity;
 } er_view;
 
-static uint16_t er_u16(const uint8_t *p) {
-    return (uint16_t)((uint16_t)p[0] | ((uint16_t)p[1] << 8U));
-}
-static uint32_t er_u32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) |
-        ((uint32_t)p[2] << 16U) | ((uint32_t)p[3] << 24U);
-}
-static uint64_t er_u64(const uint8_t *p) {
-    return (uint64_t)er_u32(p) | ((uint64_t)er_u32(p + 4U) << 32U);
-}
 static bool er_stopped(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
 static bool er_work(er_view *v, xx_pd_struct *pd) {
     return !er_stopped(pd) && ++v->work <= ER_MAX_WORK;
@@ -114,11 +105,11 @@ static bool er_super(er_view *v, xx_pd_struct *pd) {
     uint8_t block_bits;
     bool ok = false;
     if (!er_range(v, ER_SB_OFFSET, ER_SB_BYTES) ||
-        !er_read(v, ER_SB_OFFSET, sb, sizeof(sb), pd) || er_u32(sb) != ER_MAGIC)
+        !er_read(v, ER_SB_OFFSET, sb, sizeof(sb), pd) || xx_data_get_u32(sb, 4, 0, false) != ER_MAGIC)
         return false;
-    compat = er_u32(sb + 0x08U);
-    v->incompat = er_u32(sb + 0x50U);
-    algorithms = er_u16(sb + 0x54U);
+    compat = xx_data_get_u32(sb + 0x08U, 4, 0, false);
+    v->incompat = xx_data_get_u32(sb + 0x50U, 4, 0, false);
+    algorithms = xx_data_get_u16(sb + 0x54U, 2, 0, false);
     if (algorithms != UINT16_MAX && algorithms &&
         (algorithms & (algorithms - 1U))) return false;
     v->algorithm = algorithms == UINT16_MAX &&
@@ -133,7 +124,7 @@ static bool er_super(er_view *v, xx_pd_struct *pd) {
         (!(v->incompat & 1U) ? algorithms != 0U : algorithms == 0U) ||
         (algorithms && v->algorithm != 0U && !(v->incompat & 2U)) ||
         sb[0x5AU] != 0U ||
-        sb[0x68U] || er_u16(sb + 0x6AU) || !er_zero(sb + 0x78U, 8U))
+        sb[0x68U] || xx_data_get_u16(sb + 0x6AU, 2, 0, false) || !er_zero(sb + 0x78U, 8U))
         return false;
     v->block_size = UINT32_C(1) << block_bits;
     if (v->incompat & 2U) {
@@ -142,24 +133,24 @@ static bool er_super(er_view *v, xx_pd_struct *pd) {
             !er_read(v, ER_SB_OFFSET + ER_SB_BYTES, cfg, sizeof(cfg), pd))
             return false;
         if (v->algorithm == 0U) {
-            if (er_u16(cfg) != 14U || er_u16(cfg + 2U) == 0U ||
-                er_u16(cfg + 4U) < 2U || er_u16(cfg + 4U) > 256U ||
+            if (xx_data_get_u16(cfg, 2, 0, false) != 14U || xx_data_get_u16(cfg + 2U, 2, 0, false) == 0U ||
+                xx_data_get_u16(cfg + 4U, 2, 0, false) < 2U || xx_data_get_u16(cfg + 4U, 2, 0, false) > 256U ||
                 !er_zero(cfg + 6U, 10U)) return false;
         } else if (v->algorithm == 1U) {
-            v->lzma_dict = er_u32(cfg + 2U);
-            if (er_u16(cfg) != 14U || v->lzma_dict < 4096U ||
-                v->lzma_dict > ER_MAX_Z_DECODE || er_u16(cfg + 6U) != 0U ||
+            v->lzma_dict = xx_data_get_u32(cfg + 2U, 4, 0, false);
+            if (xx_data_get_u16(cfg, 2, 0, false) != 14U || v->lzma_dict < 4096U ||
+                v->lzma_dict > ER_MAX_Z_DECODE || xx_data_get_u16(cfg + 6U, 2, 0, false) != 0U ||
                 !er_zero(cfg + 8U, 8U)) return false;
         } else if (v->algorithm == 2U) {
-            if (er_u16(cfg) != 6U || cfg[2U] != 15U ||
+            if (xx_data_get_u16(cfg, 2, 0, false) != 6U || cfg[2U] != 15U ||
                 !er_zero(cfg + 3U, 5U)) return false;
         } else if (v->algorithm == 3U) {
-            if (er_u16(cfg) != 6U || cfg[2U] != 0U || cfg[3U] > 14U ||
+            if (xx_data_get_u16(cfg, 2, 0, false) != 6U || cfg[2U] != 0U || cfg[3U] > 14U ||
                 !er_zero(cfg + 4U, 4U)) return false;
         } else return false;
     }
-    v->root_nid = er_u16(sb + 0x0EU);
-    v->meta_blkaddr = er_u32(sb + 0x28U);
+    v->root_nid = xx_data_get_u16(sb + 0x0EU, 2, 0, false);
+    v->meta_blkaddr = xx_data_get_u32(sb + 0x28U, 4, 0, false);
     /* `blocks` is a statvfs field, not an address bound in the core spec.
      * An image may use data beyond it, so the source device bounds reads. */
     if ((uint64_t)v->meta_blkaddr * v->block_size >= v->bytes) return false;
@@ -170,7 +161,7 @@ static bool er_super(er_view *v, xx_pd_struct *pd) {
         checksum_block = (uint8_t *)xx_mem_alloc(span);
         if (!checksum_block || !er_read(v, ER_SB_OFFSET, checksum_block, span, pd))
             goto finish;
-        declared_checksum = er_u32(checksum_block + 4U);
+        declared_checksum = xx_data_get_u32(checksum_block + 4U, 4, 0, false);
         xx_mem_zero(checksum_block + 4U, 4U);
         if (er_crc32c(checksum_block, span) != declared_checksum) goto finish;
     }
@@ -200,9 +191,9 @@ static bool er_zindex(er_view *v, const er_inode *node, uint64_t index,
         if (index > (UINT64_MAX - indexes) / 8U ||
             !er_read(v, indexes + index * 8U, bytes, 8U, pd))
             return false;
-        *type = (uint8_t)(er_u16(bytes) & 3U);
-        *ofs = *type == 2U ? er_u16(bytes + 4U) : er_u16(bytes + 2U);
-        *physical = er_u32(bytes + 4U);
+        *type = (uint8_t)(xx_data_get_u16(bytes, 2, 0, false) & 3U);
+        *ofs = *type == 2U ? xx_data_get_u16(bytes + 4U, 2, 0, false) : xx_data_get_u16(bytes + 2U, 2, 0, false);
+        *physical = xx_data_get_u32(bytes + 4U, 4, 0, false);
         *after_pack = indexes + (index + 1U) * 8U;
         return true;
     }
@@ -228,19 +219,19 @@ static bool er_zindex(er_view *v, const er_inode *node, uint64_t index,
     rel = (unsigned)(index - pack_start);
     bits = (perpack * entry_bytes - 4U) * 8U / perpack;
     if (lobits + 2U > bits) return false;
-    word = er_u32(bytes + rel * bits / 8U);
+    word = xx_data_get_u32(bytes + rel * bits / 8U, 4, 0, false);
     word >>= rel * bits % 8U;
     *ofs = word & ((1U << lobits) - 1U);
     *type = (uint8_t)((word >> lobits) & 3U);
-    anchor = er_u32(bytes + perpack * entry_bytes - 4U);
+    anchor = xx_data_get_u32(bytes + perpack * entry_bytes - 4U, 4, 0, false);
     for (j = 0U; j < rel; ++j) {
         uint32_t next;
         unsigned span = 1U;
-        word = er_u32(bytes + j * bits / 8U) >> (j * bits % 8U);
+        word = xx_data_get_u32(bytes + j * bits / 8U, 4, 0, false) >> (j * bits % 8U);
         if (((word >> lobits) & 3U) == 2U) {
             if (big && (word & (1U << 11U))) {
                 uint32_t previous = j ?
-                    er_u32(bytes + (j - 1U) * bits / 8U) >>
+                    xx_data_get_u32(bytes + (j - 1U) * bits / 8U, 4, 0, false) >>
                         ((j - 1U) * bits % 8U) : 0U;
                 if (!j || ((previous >> lobits) & 3U) == 2U) {
                     span = word & ((1U << 11U) - 1U);
@@ -251,7 +242,7 @@ static bool er_zindex(er_view *v, const er_inode *node, uint64_t index,
             continue;
         }
         if (big) {
-            next = er_u32(bytes + (j + 1U) * bits / 8U) >>
+            next = xx_data_get_u32(bytes + (j + 1U) * bits / 8U, 4, 0, false) >>
                 ((j + 1U) * bits % 8U);
             if (((next >> lobits) & 3U) == 2U &&
                 (next & (1U << 11U))) {
@@ -351,11 +342,11 @@ static bool er_zscan(er_view *v, const er_inode *node, bool decode,
         return false;
     aligned = (node->offset + node->inode_bytes + 7U) & ~UINT64_C(7);
     if (!er_read(v, aligned, header, sizeof(header), pd)) return false;
-    advise = er_u16(header + 4U);
+    advise = xx_data_get_u16(header + 4U, 2, 0, false);
     big = (advise & 6U) == 6U;
     tail = (advise & 8U) != 0U;
-    tail_bytes = er_u16(header + 2U);
-    if (er_u16(header) ||
+    tail_bytes = xx_data_get_u16(header + 2U, 2, 0, false);
+    if (xx_data_get_u16(header, 2, 0, false) ||
         (tail ? (!tail_bytes || tail_bytes > v->block_size ||
                  !(v->incompat & 16U)) : tail_bytes != 0U) ||
         (node->layout == 1U ? (advise & ~2U) != 0U :
@@ -436,7 +427,7 @@ static bool er_inode_read(er_view *v, uint64_t nid, er_inode *out,
         return false;
     offset = (uint64_t)v->meta_blkaddr * v->block_size + nid * 32U;
     if (!er_range(v, offset, 32U) || !er_read(v, offset, data, 32U, pd)) return false;
-    format = er_u16(data);
+    format = xx_data_get_u16(data, 2, 0, false);
     if (format & 0xFFF0U) return false;
     layout = (uint8_t)((format >> 1U) & 7U);
     inode_bytes = (format & 1U) ? 64U : 32U;
@@ -445,20 +436,20 @@ static bool er_inode_read(er_view *v, uint64_t nid, er_inode *out,
     if (inode_bytes == 64U &&
         (!er_range(v, offset, 64U) || !er_read(v, offset, data, 64U, pd)))
         return false;
-    xattrs = er_u16(data + 2U);
-    mode = er_u16(data + 4U);
+    xattrs = xx_data_get_u16(data + 2U, 2, 0, false);
+    mode = xx_data_get_u16(data + 4U, 2, 0, false);
     if (xattrs || ((mode & 0xF000U) != 0x4000U &&
                    (mode & 0xF000U) != 0x8000U)) return false;
     if (inode_bytes == 32U) {
-        if (!er_zero(data + 0x1CU, 4U) || !er_u16(data + 6U)) return false;
+        if (!er_zero(data + 0x1CU, 4U) || !xx_data_get_u16(data + 6U, 2, 0, false)) return false;
     } else {
         if (!er_zero(data + 6U, 2U) || !er_zero(data + 0x30U, 16U) ||
-            !er_u32(data + 0x2CU)) return false;
+            !xx_data_get_u32(data + 0x2CU, 4, 0, false)) return false;
     }
     xx_mem_zero(out, sizeof(*out));
     out->nid = nid; out->offset = offset;
-    out->size = inode_bytes == 32U ? er_u32(data + 8U) : er_u64(data + 8U);
-    out->startblk = er_u32(data + 0x10U);
+    out->size = inode_bytes == 32U ? xx_data_get_u32(data + 8U, 4, 0, false) : xx_data_get_u64(data + 8U, 8, 0, false);
+    out->startblk = xx_data_get_u32(data + 0x10U, 4, 0, false);
     out->chunk_info = out->startblk;
     out->inode_bytes = inode_bytes; out->layout = layout;
     out->directory = (mode & 0xF000U) == 0x4000U;
@@ -489,7 +480,7 @@ static bool er_inode_read(er_view *v, uint64_t nid, er_inode *out,
                 uint32_t block;
                 if (!er_read(v, offset + inode_bytes + i * 4U, raw, 4U, pd))
                     return false;
-                block = er_u32(raw);
+                block = xx_data_get_u32(raw, 4, 0, false);
                 remaining = out->size - i * chunk_size;
                 if (remaining > chunk_size) remaining = chunk_size;
                 if (block != UINT32_MAX &&
@@ -534,7 +525,7 @@ static bool er_logical(er_view *v, const er_inode *node, uint64_t offset,
             uint8_t raw[4]; uint32_t block;
             if (!er_read(v, node->offset + node->inode_bytes + index * 4U,
                          raw, 4U, pd)) return false;
-            block = er_u32(raw);
+            block = xx_data_get_u32(raw, 4, 0, false);
             available = chunk_size - within;
             if (block == UINT32_MAX) {
                 part = (size_t)(available < size - done ? available : size - done);
@@ -687,22 +678,22 @@ static bool er_walk(er_view *v, uint64_t nid, uint64_t parent,
         if (span > v->block_size) span = v->block_size;
         if (span < 12U || !er_logical(v, &directory, position, block, span, pd))
             goto finish;
-        first_offset = er_u16(block + 8U);
+        first_offset = xx_data_get_u16(block + 8U, 2, 0, false);
         if (!first_offset || first_offset % 12U || first_offset > span)
             goto finish;
         entries = first_offset / 12U;
         for (j = 0U; j < entries; ++j) {
             uint8_t *entry = block + j * 12U;
-            uint16_t name_offset = er_u16(entry + 8U);
+            uint16_t name_offset = xx_data_get_u16(entry + 8U, 2, 0, false);
             size_t end, length;
-            uint64_t child_nid = er_u64(entry);
+            uint64_t child_nid = xx_data_get_u64(entry, 8, 0, false);
             bool is_folder;
             er_inode child;
             char leaf[768], *path;
             if (!er_work(v, pd) || entry[11U] || name_offset < first_offset ||
                 name_offset >= span || entry[10U] > 7U) goto finish;
             if (j + 1U < entries) {
-                end = er_u16(block + (j + 1U) * 12U + 8U);
+                end = xx_data_get_u16(block + (j + 1U) * 12U + 8U, 2, 0, false);
                 if (end <= name_offset || end > span) goto finish;
                 length = end - name_offset;
                 if (memchr(block + name_offset, 0, length)) goto finish;

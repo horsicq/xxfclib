@@ -15,6 +15,7 @@
 #include "xxfclib/algo/ti99arc/xx_ti99arc.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/data/xx_data.h"
 
 #define XX_TI99_MAX_BITS 12
 #define XX_TI99_CAPACITY (1 << XX_TI99_MAX_BITS)
@@ -296,11 +297,6 @@ bool xx_ti99arc_scan_memory(const uint8_t *input, size_t input_size, size_t max_
     return true;
 }
 
-static uint32_t xx_ti99_read_u32(const uint8_t *p)
-{
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
-
 bool xx_ti99arc_decode_member(const uint8_t *input, size_t input_size, const uint8_t *props, size_t props_size, uint8_t *output, size_t output_size,
                               size_t *written)
 {
@@ -318,10 +314,10 @@ bool xx_ti99arc_decode_member(const uint8_t *input, size_t input_size, const uin
     if (!input || !props || !output) return false;
     if (props_size < header) return false;
 
-    plain_size = xx_ti99_read_u32(props + 0);
-    member_offset = xx_ti99_read_u32(props + 4);
-    member_size = xx_ti99_read_u32(props + 8);
-    prefix_size = xx_ti99_read_u32(props + 12);
+    plain_size = xx_data_get_u32(props + 0, 4, 0, false);
+    member_offset = xx_data_get_u32(props + 4, 4, 0, false);
+    member_size = xx_data_get_u32(props + 8, 4, 0, false);
+    prefix_size = xx_data_get_u32(props + 12, 4, 0, false);
 
     if ((size_t)prefix_size > (props_size - header)) return false;
     if ((plain_size == 0) || (plain_size > XX_TI99ARC_MAX_PLAIN_SIZE)) return false;

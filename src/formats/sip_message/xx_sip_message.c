@@ -3,6 +3,7 @@
  */
 /* Primary: https://www.rfc-editor.org/rfc/rfc3261.html */
 #include "xxfclib/formats/sip_message/xx_sip_message.h"
+#include "xxfclib/data/xx_data.h"
 #include "../xx_fifteenth_wrappers.h"
 
 static bool token(nh_blob *b,uint64_t p,uint64_t n){if(!n||n>64||!nh_span(b,p,n))return false;for(uint64_t i=0;i<n;++i){uint8_t c=b->p[(size_t)(p+i)];if(!((c>='A'&&c<='Z')||(c>='a'&&c<='z')||(c>='0'&&c<='9')||c=='-'||c=='_'))return false;}return true;}

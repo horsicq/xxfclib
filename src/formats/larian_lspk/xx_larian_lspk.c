@@ -6,8 +6,9 @@
 #include "xxfclib/formats/larian_lspk/xx_larian_lspk.h"
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static XXFC_MAYBE_UNUSED uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)xx_data_get_u32(p, 4, 0, true)<<32)|xx_data_get_u32(p+4, 4, 0, true) : ((uint64_t)xx_data_get_u32(p+4, 4, 0, false)<<32)|xx_data_get_u32(p, 4, 0, false); }
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uint64_t n,uint64_t total) {
     size_t i;
@@ -25,15 +26,15 @@ static XXFC_MAYBE_UNUSED uint16_t crc16(const uint8_t *p,size_t n) { return xx_c
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[24],e[280]; uint32_t data,list,count,i; uint64_t total=(uint64_t)pm_available(f),end;
-    if(!pm_read(f,0,h,24) || xx_rt_memcmp(h,"LSPK",4) || pm_le32(h+4)!=10 || pm_le16(h+16)!=1 || h[18]) return false;
-    data=pm_le32(h+8); list=pm_le32(h+12); count=pm_le32(h+20);
+    if(!pm_read(f,0,h,24) || xx_rt_memcmp(h,"LSPK",4) || xx_data_get_u32(h+4, 4, 0, false)!=10 || xx_data_get_u16(h+16, 2, 0, false)!=1 || h[18]) return false;
+    data=xx_data_get_u32(h+8, 4, 0, false); list=xx_data_get_u32(h+12, 4, 0, false); count=xx_data_get_u32(h+20, 4, 0, false);
     if(!count || count>4096 || list!=(uint64_t)count*280 || data<24+(uint64_t)list || data>total) { return false; } end=data;
     for(i=0;i<count;++i) { uint64_t at,n,crc; uint32_t j; char label[40];
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,24+(int64_t)i*280,e,280)) return false;
-        for(j=0;j<256 && e[j];++j) {} if(!j || j==256 || pm_le32(e+264) || pm_le32(e+268) || pm_le32(e+272)) return false;
-        at=(uint64_t)data+pm_le32(e+256); n=pm_le32(e+260);
+        for(j=0;j<256 && e[j];++j) {} if(!j || j==256 || xx_data_get_u32(e+264, 4, 0, false) || xx_data_get_u32(e+268, 4, 0, false) || xx_data_get_u32(e+272, 4, 0, false)) return false;
+        at=(uint64_t)data+xx_data_get_u32(e+256, 4, 0, false); n=xx_data_get_u32(e+260, 4, 0, false);
         if(!span(at,n,total)) return false;
-        if(pm_le32(e+276) && (!xx_crc_calculate_device_by_type(f->device,f->base_address+(int64_t)at,(int64_t)n,XX_CRC_TYPE_CRC32,pd,&crc) || crc!=pm_le32(e+276))) return false;
+        if(xx_data_get_u32(e+276, 4, 0, false) && (!xx_crc_calculate_device_by_type(f->device,f->base_address+(int64_t)at,(int64_t)n,XX_CRC_TYPE_CRC32,pd,&crc) || crc!=xx_data_get_u32(e+276, 4, 0, false))) return false;
         xx_rt_snprintf(label,sizeof(label),"file-%u.bin",i); if(!emit(f,s,label,at,n,total)) return false; if(at+n>end) end=at+n; }
     s->size=(int64_t)end; return true;
 

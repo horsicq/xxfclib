@@ -43,6 +43,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef PAIN
 #define XX_PAIN_FILE_TYPE XX_FILE_TYPE_PAIN
@@ -71,14 +72,6 @@ typedef struct pain_stream_s {
     size_t index;
     int64_t archive_size;
 } pain_stream;
-
-static uint16_t pain_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t pain_le32(const uint8_t *bytes) {
-    return (uint32_t)pain_le16(bytes) | ((uint32_t)pain_le16(bytes + 2U) << 16U);
-}
 
 static bool pain_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -229,8 +222,8 @@ static bool pain_parse(Abstractformat *format, pain_stream **result) {
                       sizeof(header)) ||
         xx_rt_memcmp(header, "CRDATA00", 8U) != 0)
         return false;
-    directory_offset = (int64_t)pain_le32(header + 8U);
-    count = pain_le32(header + 12U);
+    directory_offset = (int64_t)xx_data_get_u32(header + 8U, 4, 0, false);
+    count = xx_data_get_u32(header + 12U, 4, 0, false);
     /* The directory must start inside the file and hold exactly count
      * entries, ending on the last byte. */
     if (count == 0U || count > PAIN_MAX_MEMBERS ||
@@ -255,10 +248,10 @@ static bool pain_parse(Abstractformat *format, pain_stream **result) {
     for (index = 0U; index < count; ++index) {
         const uint8_t *entry = directory + (size_t)index * PAIN_ENTRY_SIZE;
         pain_member member;
-        uint32_t data_offset = pain_le32(entry);
-        uint32_t method = pain_le32(entry + 4U);
-        uint32_t packed = pain_le32(entry + 8U);
-        uint32_t unpacked = pain_le32(entry + 12U);
+        uint32_t data_offset = xx_data_get_u32(entry, 4, 0, false);
+        uint32_t method = xx_data_get_u32(entry + 4U, 4, 0, false);
+        uint32_t packed = xx_data_get_u32(entry + 8U, 4, 0, false);
+        uint32_t unpacked = xx_data_get_u32(entry + 12U, 4, 0, false);
         if (method != PAIN_METHOD_STORE && method != PAIN_METHOD_LZSS)
             goto fail;
         if (!pain_plausible_raw_name(entry + 16U, PAIN_NAME_SIZE)) goto fail;
@@ -470,7 +463,7 @@ static bool pain_decode_lzss(Abstractformat *format, const pain_member *member,
         !pain_read_at(format->device, member->data_offset, packed,
                       packed_size))
         goto fail;
-    tag = pain_le32(packed);
+    tag = xx_data_get_u32(packed, 4, 0, false);
     if (tag == PAIN_LZ_BLOCK_STORED) {
         if (body_size != output_size) goto fail;
         if (output_size != 0U)

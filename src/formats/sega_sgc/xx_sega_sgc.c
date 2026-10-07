@@ -4,10 +4,11 @@
  */
 #include "xxfclib/formats/sega_sgc/xx_sega_sgc.h"
 #include "../snes_spc/xx_tenth_retro.h"
+#include "xxfclib/data/xx_data.h"
 static bool read_components(Abstractformat *f,pm_stream *s,th_blob *b) {
  const uint8_t *p=b->p;uint32_t load;
  if(b->n<=160 || b->n>4194464 || xx_rt_memcmp(p,"SGC\x1a",4) || p[4]!=1 || p[5]>1 || p[40]>2 || !p[37] || (unsigned)p[36]+p[37]>256 || (p[39] && p[38]>p[39])) return false;
- load=pm_le16(p+8);if(p[40]==2 && (load<0x8000 || b->n-160>65536-load)) return false;
+ load=xx_data_get_u16(p+8, 2, 0, false);if(p[40]==2 && (load<0x8000 || b->n-160>65536-load)) return false;
  if(p[40]<2 && load>=0xc000) return false;
  if(!th_emit(f,s,b,"music-descriptor.bin",0,160) || !th_emit(f,s,b,"program.bin",160,b->n-160)) { return false; } s->size=b->n;return true;
 }

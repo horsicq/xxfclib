@@ -32,6 +32,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -103,11 +104,6 @@ typedef struct rsd_stream_s {
 
 static uint32_t rsd_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
-}
-
-static uint32_t rsd_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
 }
 
 static bool rsd_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -286,8 +282,8 @@ static bool rsd_parse_record(const uint8_t *window, size_t available,
         if (c < 0x20U || c == 0x7FU) return false;
     }
     /* Signed on purpose: the setup engine reads both sizes as int32. */
-    packed = (int64_t)(int32_t)rsd_le32(window);
-    unpacked = (int64_t)(int32_t)rsd_le32(window + 4);
+    packed = (int64_t)(int32_t)xx_data_get_u32(window, 4, 0, false);
+    unpacked = (int64_t)(int32_t)xx_data_get_u32(window + 4, 4, 0, false);
     if (packed < RSD_STREAM_HEADER || unpacked < 0 ||
         unpacked > packed * RSD_RATIO + RSD_RATIO_SLACK)
         return false;

@@ -10,16 +10,16 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     nh_blob b;uint8_t *dir=NULL,*owned=NULL,*used=NULL;uint64_t at,j,k,dn,db,map,blocks,count,size,need,total=0;uint32_t bs,fpm;bool ok=false;
     if(!nh_load(f,&b,pd)) return false;
     NH_NEED(nh_span(&b,0,56) && !xx_rt_memcmp(b.p,"Microsoft C/C++ MSF 7.00\r\n\x1a" "DS\0\0\0",32));
-    bs=pm_le32(b.p+32);fpm=pm_le32(b.p+36);blocks=pm_le32(b.p+40);dn=pm_le32(b.p+44);map=pm_le32(b.p+52);
-    NH_NEED(bs==4096 && (fpm==1 || fpm==2) && blocks>=4 && blocks*bs==b.n && dn>=4 && dn<=4194304 && map<blocks && !pm_le32(b.p+48));
+    bs=xx_data_get_u32(b.p+32, 4, 0, false);fpm=xx_data_get_u32(b.p+36, 4, 0, false);blocks=xx_data_get_u32(b.p+40, 4, 0, false);dn=xx_data_get_u32(b.p+44, 4, 0, false);map=xx_data_get_u32(b.p+52, 4, 0, false);
+    NH_NEED(bs==4096 && (fpm==1 || fpm==2) && blocks>=4 && blocks*bs==b.n && dn>=4 && dn<=4194304 && map<blocks && !xx_data_get_u32(b.p+48, 4, 0, false));
     db=(dn+bs-1)/bs;NH_NEED(db*4<=bs);dir=(uint8_t *)xx_mem_alloc((size_t)dn);used=(uint8_t *)xx_mem_alloc((size_t)blocks);NH_NEED(dir && used);xx_mem_zero(used,(size_t)blocks);used[0]=1;
     for(j=0;j<blocks;j+=bs) {if(j+1<blocks) used[(size_t)(j+1)]=1;if(j+2<blocks) used[(size_t)(j+2)]=1;}
     NH_NEED(!used[(size_t)map]);used[(size_t)map]=1;
-    for(j=0;j<db;++j) {uint64_t id=pm_le32(b.p+(size_t)(map*bs+j*4)),n=dn-j*bs;NH_NEED(id<blocks && !used[(size_t)id]);used[(size_t)id]=1;if(n>bs) n=bs;xx_rt_memcpy(dir+(size_t)(j*bs),b.p+(size_t)(id*bs),(size_t)n);}
-    count=pm_le32(dir);NH_NEED(count<=4093 && count*4+4<=dn);at=count*4+4;
+    for(j=0;j<db;++j) {uint64_t id=xx_data_get_u32(b.p+(size_t)(map*bs+j*4), 4, 0, false),n=dn-j*bs;NH_NEED(id<blocks && !used[(size_t)id]);used[(size_t)id]=1;if(n>bs) n=bs;xx_rt_memcpy(dir+(size_t)(j*bs),b.p+(size_t)(id*bs),(size_t)n);}
+    count=xx_data_get_u32(dir, 4, 0, false);NH_NEED(count<=4093 && count*4+4<=dn);at=count*4+4;
     NH_NEED(nh_add(f,s,&b,"superblock",0,56));
-    for(j=0;j<count;++j) {char name[40];size=pm_le32(dir+4+(size_t)(j*4));if(size==0xffffffffU) continue;NH_NEED(size<=67108864-total);total+=size;need=(size+bs-1)/bs;NH_NEED(eh_span(at,need*4,dn));if(!j) {at+=need*4;total-=size;continue;}owned=(uint8_t *)xx_mem_alloc((size_t)(size ? size:1));NH_NEED(owned);
-        for(k=0;k<need;++k) {uint64_t id=pm_le32(dir+(size_t)at),n=size-k*bs;at+=4;NH_NEED(!fd_stop(pd) && id<blocks && !used[(size_t)id]);used[(size_t)id]=1;if(n>bs) n=bs;xx_rt_memcpy(owned+(size_t)(k*bs),b.p+(size_t)(id*bs),(size_t)n);}
+    for(j=0;j<count;++j) {char name[40];size=xx_data_get_u32(dir+4+(size_t)(j*4), 4, 0, false);if(size==0xffffffffU) continue;NH_NEED(size<=67108864-total);total+=size;need=(size+bs-1)/bs;NH_NEED(eh_span(at,need*4,dn));if(!j) {at+=need*4;total-=size;continue;}owned=(uint8_t *)xx_mem_alloc((size_t)(size ? size:1));NH_NEED(owned);
+        for(k=0;k<need;++k) {uint64_t id=xx_data_get_u32(dir+(size_t)at, 4, 0, false),n=size-k*bs;at+=4;NH_NEED(!fd_stop(pd) && id<blocks && !used[(size_t)id]);used[(size_t)id]=1;if(n>bs) n=bs;xx_rt_memcpy(owned+(size_t)(k*bs),b.p+(size_t)(id*bs),(size_t)n);}
         xx_rt_snprintf(name,sizeof(name),"stream-%04u",(unsigned)j);NH_NEED(th_mem(f,s,name,&owned,size));
     }
     NH_NEED(at==dn);

@@ -6,13 +6,11 @@
  */
 #include "xxfclib/formats/audio_nitro_strm/xx_audio_nitro_strm.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 #ifndef XX_FILE_TYPE_AUDIO_NITRO_STRM
 #define XX_FILE_TYPE_AUDIO_NITRO_STRM ((xx_file_type_t)1520)
 #endif
-
-static uint16_t ns16(const uint8_t *p, bool be) { return be ? pm_be16(p) : pm_le16(p); }
-static uint32_t ns32(const uint8_t *p, bool be) { return be ? pm_be32(p) : pm_le32(p); }
 
 static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
 {
@@ -27,23 +25,23 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
     if (available<0x68 || !pm_read(f,0,h,sizeof(h)) || xx_rt_memcmp(h,"STRM",4)) return false;
     be=h[4]==0xfe && h[5]==0xff;
     if (!be && !(h[4]==0xff && h[5]==0xfe)) return false;
-    if (ns16(h+6,be)!=0x0100 || ns16(h+12,be)!=0x10 || ns16(h+14,be)!=2 ||
+    if (xx_data_get_u16(h+6, 2, 0, be)!=0x0100 || xx_data_get_u16(h+12, 2, 0, be)!=0x10 || xx_data_get_u16(h+14, 2, 0, be)!=2 ||
         xx_rt_memcmp(h+0x10,"HEAD",4)) return false;
-    total=ns32(h+8,be); head_size=ns32(h+0x14,be);
+    total=xx_data_get_u32(h+8, 4, 0, be); head_size=xx_data_get_u32(h+0x14, 4, 0, be);
     if (total>(uint64_t)available || total<0x68 || head_size<0x50 || head_size>total-0x10) return false;
     data_at=0x10U+head_size;
     if (data_at>total-8 || !pm_read(f,(int64_t)data_at,data_header,8) ||
         xx_rt_memcmp(data_header,"DATA",4)) return false;
-    data_size=ns32(data_header+4,be);
+    data_size=xx_data_get_u32(data_header+4, 4, 0, be);
     if (data_size<8 || data_size>total-data_at || data_at+data_size!=total) return false;
     encoding=h[0x18]; channels=h[0x1a];
     if (encoding>2 || h[0x19]>1 || !channels || channels>16 || h[0x1b] ||
-        ns16(h+0x1c,be)<4000 ||
-        ns32(h+0x28,be)!=data_at+8) return false;
-    total_samples=ns32(h+0x24,be);
-    blocks=ns32(h+0x2c,be); block_size=ns32(h+0x30,be);
-    samples_per_block=ns32(h+0x34,be); last_size=ns32(h+0x38,be);
-    last_samples=ns32(h+0x3c,be);
+        xx_data_get_u16(h+0x1c, 2, 0, be)<4000 ||
+        xx_data_get_u32(h+0x28, 4, 0, be)!=data_at+8) return false;
+    total_samples=xx_data_get_u32(h+0x24, 4, 0, be);
+    blocks=xx_data_get_u32(h+0x2c, 4, 0, be); block_size=xx_data_get_u32(h+0x30, 4, 0, be);
+    samples_per_block=xx_data_get_u32(h+0x34, 4, 0, be); last_size=xx_data_get_u32(h+0x38, 4, 0, be);
+    last_samples=xx_data_get_u32(h+0x3c, 4, 0, be);
     if (!blocks || !block_size || !samples_per_block || !last_size ||
         last_size>block_size || !last_samples || last_samples>samples_per_block ||
         (uint64_t)(blocks-1)*samples_per_block+last_samples!=total_samples ||

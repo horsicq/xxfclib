@@ -24,6 +24,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: picks up the real file type as soon as the
  * enumerator (and its alias macro) exists in xxfc_defs.h. */
@@ -93,23 +94,6 @@ typedef struct stos_stream_s {
 
 static uint32_t stos_be16(const uint8_t *b) {
     return ((uint32_t)b[0] << 8U) | (uint32_t)b[1];
-}
-
-static uint32_t stos_be32(const uint8_t *b) {
-    return ((uint32_t)b[0] << 24U) | ((uint32_t)b[1] << 16U) |
-           ((uint32_t)b[2] << 8U) | (uint32_t)b[3];
-}
-
-static void stos_put_le16(uint8_t *d, uint32_t v) {
-    d[0] = (uint8_t)(v & 0xFFU);
-    d[1] = (uint8_t)((v >> 8U) & 0xFFU);
-}
-
-static void stos_put_le32(uint8_t *d, uint32_t v) {
-    d[0] = (uint8_t)(v & 0xFFU);
-    d[1] = (uint8_t)((v >> 8U) & 0xFFU);
-    d[2] = (uint8_t)((v >> 16U) & 0xFFU);
-    d[3] = (uint8_t)((v >> 24U) & 0xFFU);
 }
 
 static bool stos_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -233,10 +217,10 @@ static bool stos_parse_sprites(xx_io_device *dev, stos_context *c,
     size_t first = c->count;
     if (limit - bank < STOS_SPRITE_HEADER ||
         !stos_read_at(dev, bank, h, sizeof(h)) ||
-        stos_be32(h) != STOS_ID_SPRITE)
+        xx_data_get_u32(h, 4, 0, true) != STOS_ID_SPRITE)
         return false;
     for (r = 0U; r < 3U; ++r) {
-        offs[r] = stos_be32(h + 4U + 4U * r);
+        offs[r] = xx_data_get_u32(h + 4U + 4U * r, 4, 0, true);
         counts[r] = stos_be16(h + 16U + 2U * r);
         total += counts[r];
     }
@@ -247,7 +231,7 @@ static bool stos_parse_sprites(xx_io_device *dev, stos_context *c,
     pal_pos = bank + STOS_SPRITE_HEADER + (int64_t)total * STOS_PARAM_BLOCK;
     if (pal_pos <= limit - STOS_PALETTE_BLOCK &&
         stos_read_at(dev, pal_pos, palblk, sizeof(palblk)) &&
-        stos_be32(palblk) == STOS_ID_PALT) {
+        xx_data_get_u32(palblk, 4, 0, true) == STOS_ID_PALT) {
         stos_read_palette(palblk + 4, c->pal);
         if (pal_pos + STOS_PALETTE_BLOCK > furthest)
             furthest = pal_pos + STOS_PALETTE_BLOCK;
@@ -279,7 +263,7 @@ static bool stos_parse_sprites(xx_io_device *dev, stos_context *c,
             stos_item *it;
             words = pb[4];
             height = pb[5];
-            mask_off = block + (int64_t)stos_be32(pb);
+            mask_off = block + (int64_t)xx_data_get_u32(pb, 4, 0, true);
             size = words * 2 * height * (1 + (int64_t)stos_res_bpp[r]);
             if (words == 0 || height == 0) continue; /* Deark skips these */
             if (mask_off < bank || mask_off > limit || size > limit - mask_off) {
@@ -377,12 +361,12 @@ static bool stos_parse(Abstractformat *format, stos_context *out, bool full) {
     c.start = start;
     container = xx_rt_memcmp(head, sig, STOS_SIG_SIZE) == 0;
     if (container) {
-        c.bank_number = stos_be32(head + 10);
+        c.bank_number = xx_data_get_u32(head + 10, 4, 0, true);
         c.bank_type = head[14];
         if (c.bank_number == 0U || c.bank_number > STOS_MAX_BANK) return false;
-        if (c.bank_type == 0x81U) c.bank_id = stos_be32(head + STOS_HEADER);
+        if (c.bank_type == 0x81U) c.bank_id = xx_data_get_u32(head + STOS_HEADER, 4, 0, true);
     } else {
-        if (stos_be32(head) != STOS_ID_SPRITE) return false;
+        if (xx_data_get_u32(head, 4, 0, true) != STOS_ID_SPRITE) return false;
         c.bank_id = STOS_ID_SPRITE;
     }
     if (full) {
@@ -448,22 +432,22 @@ static void stos_bmp_header(uint8_t *head, const stos_item *it) {
     xx_mem_zero(head, BMP_FILE_HEADER + BMP_V4_HEADER);
     head[0] = 'B';
     head[1] = 'M';
-    stos_put_le32(head + 2, (uint32_t)it->output_size);
-    stos_put_le32(head + 10, BMP_FILE_HEADER + BMP_V4_HEADER);
-    stos_put_le32(head + 14, BMP_V4_HEADER);
-    stos_put_le32(head + 18, (uint32_t)it->width);
-    stos_put_le32(head + 22, (uint32_t)it->height); /* bottom-up */
-    stos_put_le16(head + 26, 1U);
-    stos_put_le16(head + 28, 32U);
-    stos_put_le32(head + 30, 3U); /* BI_BITFIELDS */
-    stos_put_le32(head + 34, (uint32_t)(it->width * 4 * it->height));
-    stos_put_le32(head + 38, 2835U);
-    stos_put_le32(head + 42, 2835U);
-    stos_put_le32(head + 54, 0x00FF0000U);
-    stos_put_le32(head + 58, 0x0000FF00U);
-    stos_put_le32(head + 62, 0x000000FFU);
-    stos_put_le32(head + 66, 0xFF000000U);
-    stos_put_le32(head + 70, 0x73524742U); /* 'sRGB' */
+    xx_data_set_u32(head + 2, 4, 0, (uint32_t)it->output_size, false);
+    xx_data_set_u32(head + 10, 4, 0, BMP_FILE_HEADER + BMP_V4_HEADER, false);
+    xx_data_set_u32(head + 14, 4, 0, BMP_V4_HEADER, false);
+    xx_data_set_u32(head + 18, 4, 0, (uint32_t)it->width, false);
+    xx_data_set_u32(head + 22, 4, 0, (uint32_t)it->height, false); /* bottom-up */
+    xx_data_set_u16(head + 26, 2, 0, (uint16_t)1U, false);
+    xx_data_set_u16(head + 28, 2, 0, (uint16_t)32U, false);
+    xx_data_set_u32(head + 30, 4, 0, 3U, false); /* BI_BITFIELDS */
+    xx_data_set_u32(head + 34, 4, 0, (uint32_t)(it->width * 4 * it->height), false);
+    xx_data_set_u32(head + 38, 4, 0, 2835U, false);
+    xx_data_set_u32(head + 42, 4, 0, 2835U, false);
+    xx_data_set_u32(head + 54, 4, 0, 0x00FF0000U, false);
+    xx_data_set_u32(head + 58, 4, 0, 0x0000FF00U, false);
+    xx_data_set_u32(head + 62, 4, 0, 0x000000FFU, false);
+    xx_data_set_u32(head + 66, 4, 0, 0xFF000000U, false);
+    xx_data_set_u32(head + 70, 4, 0, 0x73524742U, false); /* 'sRGB' */
 }
 
 static uint32_t stos_bit(const uint8_t *row, int64_t word, int64_t x) {

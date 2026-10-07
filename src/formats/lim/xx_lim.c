@@ -47,6 +47,7 @@
 #include "xxfclib/algo/lim/xx_lim.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_LIM_COPY_CHUNK (64 * 1024)
 
@@ -155,8 +156,6 @@ static bool xx_lim_add(xx_lim_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_lim_le16(const uint8_t *data);
-static uint32_t xx_lim_le32(const uint8_t *data);
 static bool xx_lim_read_name(Abstractformat *self, int64_t span, int64_t *offset, uint8_t *raw, size_t *out_length);
 static size_t xx_lim_escape(const uint8_t *raw, size_t length, char *buffer);
 static xx_lim_stream *xx_lim_parse(Abstractformat *self, xx_pd_struct *pd);
@@ -172,15 +171,6 @@ static bool xx_lim_decode(Abstractformat *self, const xx_lim_member *member, uin
  * directory prefix. */
 
 /* Directory attribute bit in the record's attribute byte. */
-
-static uint16_t xx_lim_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_lim_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* Read a NUL-terminated name, advancing *offset past the terminator. The
  * terminator must actually be found inside the container: a name that runs
@@ -269,7 +259,7 @@ static xx_lim_stream *xx_lim_parse(Abstractformat *self, xx_pd_struct *pd) {
      * tolerant; checking only "LM" would match a great deal of text. */
     if (xx_rt_memcmp(header, magic, sizeof(magic)) != 0) return NULL;
     if (header[4] != 0U) return NULL;
-    if (xx_lim_le16(header + 6) != 0x0010U) return NULL;
+    if (xx_data_get_u16(header + 6, 2, 0, false) != 0x0010U) return NULL;
 
     raw = (uint8_t *)xx_mem_alloc((size_t)XX_LIM_MAX_NAME);
     if (!raw) return NULL;
@@ -301,10 +291,10 @@ static xx_lim_stream *xx_lim_parse(Abstractformat *self, xx_pd_struct *pd) {
                             sizeof(chunk))) {
             goto fail;
         }
-        tag = xx_lim_le16(chunk);
+        tag = xx_data_get_u16(chunk, 2, 0, false);
         /* Signed: the field is an i16 and a negative chunk size is the mark
          * of a chain that has left the archive. */
-        chunk_size = (int16_t)xx_lim_le16(chunk + 2);
+        chunk_size = (int16_t)xx_data_get_u16(chunk + 2, 2, 0, false);
         if (chunk_size < XX_LIM_CHUNK_HEAD_SIZE) break;
         offset += XX_LIM_CHUNK_HEAD_SIZE;
 
@@ -341,8 +331,8 @@ static xx_lim_stream *xx_lim_parse(Abstractformat *self, xx_pd_struct *pd) {
         attributes = record[6];
         /* Signed on purpose: a size with the top bit set is a corrupt field,
          * not a two-gigabyte member. */
-        uncompressed_size = (int64_t)(int32_t)xx_lim_le32(record + 9);
-        compressed_size = (int64_t)(int32_t)xx_lim_le32(record + 13);
+        uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(record + 9, 4, 0, false);
+        compressed_size = (int64_t)(int32_t)xx_data_get_u32(record + 13, 4, 0, false);
         if (uncompressed_size < 0 || compressed_size < 0) break;
         if (uncompressed_size > XX_LIM_MAX_DECODED ||
             compressed_size > XX_LIM_MAX_COMPRESSED) {
@@ -384,8 +374,8 @@ static xx_lim_stream *xx_lim_parse(Abstractformat *self, xx_pd_struct *pd) {
         member.uncompressed_size = uncompressed_size;
         member.method = (uint32_t)record[8];
         /* DOS date/time; the record stores time first, date second. */
-        member.timestamp = ((uint64_t)xx_lim_le16(record + 4) << 16) |
-                           (uint64_t)xx_lim_le16(record + 2);
+        member.timestamp = ((uint64_t)xx_data_get_u16(record + 4, 2, 0, false) << 16) |
+                           (uint64_t)xx_data_get_u16(record + 2, 2, 0, false);
         /* A directory ENTRY is a file chunk with the DOS directory
          * attribute, not the 0xd180 chunk - that one only sets the prefix. */
         member.is_folder = (attributes & XX_LIM_ATTR_DIRECTORY) != 0U;

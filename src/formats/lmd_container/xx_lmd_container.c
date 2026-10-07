@@ -63,7 +63,7 @@ static bool lmd_bitmap(Abstractformat *f,pm_member *member,xx_pd_struct *pd) {
     while(at<size) {
         uint32_t length; size_t count;
         if(wg_stop(pd) || size-at<4) goto done;
-        length=pm_le32(packed+at); at+=4;
+        length=xx_data_get_u32(packed+at, 4, 0, false); at+=4;
         if(!length || length>LMD_BLOCK_LIMIT || length>size-at ||
            !lmd_block(packed+at,length,block,&count) ||
            count>LMD_MEMBER_LIMIT-used) goto done;
@@ -82,7 +82,7 @@ static bool lmd_bitmap(Abstractformat *f,pm_member *member,xx_pd_struct *pd) {
         }
     }
     if(used<26 || plain[0]!='B' || plain[1]!='M' ||
-       pm_le32(plain+2)!=(uint32_t)used || pm_le32(plain+10)>=used) goto done;
+       xx_data_get_u32(plain+2, 4, 0, false)!=(uint32_t)used || xx_data_get_u32(plain+10, 4, 0, false)>=used) goto done;
     member->memory=plain; member->size=(int64_t)used; plain=NULL;
     { size_t n=xx_rt_strlen(member->name);
       if(n<12 || xx_rt_memcmp(member->name+n-12,".lmd-encoded",12)) goto done;
@@ -98,17 +98,17 @@ done:
 
 static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[16]; uint32_t count,i; int64_t limit=pm_available(f),table=13; bool bitmap;
-    if(!pm_read(f,0,h,13) || h[0]!=8 || (xx_rt_memcmp(h+1,"LMDSLL30",8) && xx_rt_memcmp(h+1,"LMDBML30",8)) || !(count=pm_le32(h+9)) || count>4096 || (uint64_t)count*4>(uint64_t)(limit-table)) { return false; } bitmap=!xx_rt_memcmp(h+1,"LMDBML30",8);
+    if(!pm_read(f,0,h,13) || h[0]!=8 || (xx_rt_memcmp(h+1,"LMDSLL30",8) && xx_rt_memcmp(h+1,"LMDBML30",8)) || !(count=xx_data_get_u32(h+9, 4, 0, false)) || count>4096 || (uint64_t)count*4>(uint64_t)(limit-table)) { return false; } bitmap=!xx_rt_memcmp(h+1,"LMDBML30",8);
     for(i=0;i<count;++i) { uint32_t begin,stop; int64_t data; char name[48];
-        if(wg_stop(pd) || !pm_read(f,table+(int64_t)i*4,h,4)) { return false; } begin=pm_le32(h);
-        if(i+1<count) { if(!pm_read(f,table+(int64_t)(i+1)*4,h,4)) return false; stop=pm_le32(h); } else { if(limit>UINT32_MAX) return false; stop=(uint32_t)limit; }
+        if(wg_stop(pd) || !pm_read(f,table+(int64_t)i*4,h,4)) { return false; } begin=xx_data_get_u32(h, 4, 0, false);
+        if(i+1<count) { if(!pm_read(f,table+(int64_t)(i+1)*4,h,4)) return false; stop=xx_data_get_u32(h, 4, 0, false); } else { if(limit>UINT32_MAX) return false; stop=(uint32_t)limit; }
         if(begin<table+(uint64_t)count*4 || stop<=begin || !wg_range(limit,begin,stop-begin)) { return false; } data=begin;
         { uint8_t flags,n; uint32_t bytes; if(!pm_read(f,data++,&flags,1) || (flags&~15U) || !!(flags&8)!=bitmap || (!bitmap && !(flags&2))) return false;
           if(flags&2) { if(data>=stop || !pm_read(f,data++,&n,1) || !n || !wg_range(stop,data,n)) return false; data+=n; }
           if(flags&4) { if(!wg_range(stop,data,4)) return false; data+=4; }
-          if(bitmap) { uint8_t b[18]; if(stop-data<4 || !pm_read(f,data,b,4) || (bytes=pm_le32(b))!=(uint64_t)(stop-data-4) || !bytes) return false; data+=4;
-            if(flags&1) { if(bytes<5 || !pm_read(f,data,b,4) || pm_le32(b)!=bytes-4) return false; xx_rt_snprintf(name,sizeof(name),"bitmap-%u.lmd-encoded",i); }
-            else { if(bytes<26 || !pm_read(f,data,b,18) || b[0]!='B' || b[1]!='M' || pm_le32(b+2)!=bytes || pm_le32(b+10)>=bytes) return false; xx_rt_snprintf(name,sizeof(name),"bitmap-%u.bmp",i); }
+          if(bitmap) { uint8_t b[18]; if(stop-data<4 || !pm_read(f,data,b,4) || (bytes=xx_data_get_u32(b, 4, 0, false))!=(uint64_t)(stop-data-4) || !bytes) return false; data+=4;
+            if(flags&1) { if(bytes<5 || !pm_read(f,data,b,4) || xx_data_get_u32(b, 4, 0, false)!=bytes-4) return false; xx_rt_snprintf(name,sizeof(name),"bitmap-%u.lmd-encoded",i); }
+            else { if(bytes<26 || !pm_read(f,data,b,18) || b[0]!='B' || b[1]!='M' || xx_data_get_u32(b+2, 4, 0, false)!=bytes || xx_data_get_u32(b+10, 4, 0, false)>=bytes) return false; xx_rt_snprintf(name,sizeof(name),"bitmap-%u.bmp",i); }
             if(!pm_add(f,s,name,data,bytes)) return false;
             xx_rt_snprintf(s->items[s->count-1].name,sizeof(s->items[s->count-1].name),
                            (flags&1) ? "%u.lmd-encoded" : "%u.bmp",i);

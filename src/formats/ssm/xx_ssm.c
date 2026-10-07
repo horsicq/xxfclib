@@ -24,6 +24,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef SSM
 #define XX_SSM_FILE_TYPE XX_FILE_TYPE_SSM
@@ -61,14 +62,6 @@ typedef struct ssm_stream_s {
     size_t index;
     int64_t archive_size;
 } ssm_stream;
-
-static uint16_t ssm_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t ssm_le32(const uint8_t *bytes) {
-    return (uint32_t)ssm_le16(bytes) | ((uint32_t)ssm_le16(bytes + 2U) << 16U);
-}
 
 static bool ssm_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -216,8 +209,8 @@ static bool ssm_parse(Abstractformat *format, ssm_stream **result) {
         xx_rt_memcmp(header, "SSM\x00", 4U) != 0)
         return false;
     if (!ssm_plausible_raw_name(header + 4U, SSM_NAME_SIZE)) return false;
-    method = ssm_le32(header + 0x20U);
-    unpacked = ssm_le32(header + 0x14U);
+    method = xx_data_get_u32(header + 0x20U, 4, 0, false);
+    unpacked = xx_data_get_u32(header + 0x14U, 4, 0, false);
     /* Only the two documented opcode revisions exist, and a module that
      * claims to decode to nothing is not a module. */
     if ((method != 3U && method != 5U) || unpacked == 0U ||
@@ -244,8 +237,8 @@ static bool ssm_parse(Abstractformat *format, ssm_stream **result) {
      * in the high half, the time in the low one.  The corpus confirms the
      * field order - PICN4413 carries 1997-06-06 14:20:38, which is what U3
      * stamps on the file it writes. */
-    member.dos_time = ((uint32_t)ssm_le16(header + 0x10U) << 16U) |
-                      ssm_le16(header + 0x12U);
+    member.dos_time = ((uint32_t)xx_data_get_u16(header + 0x10U, 2, 0, false) << 16U) |
+                      xx_data_get_u16(header + 0x12U, 2, 0, false);
     if (!ssm_add_member(stream, &member)) {
         xx_str_free(member.name);
         ssm_stream_free(stream);

@@ -16,6 +16,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef COPYQMEXE
 #define XX_COPYQMEXE_FILE_TYPE XX_FILE_TYPE_COPYQMEXE
@@ -43,14 +44,6 @@ typedef struct copyqmexe_stream_s {
     size_t index;
     int64_t archive_size;
 } copyqmexe_stream;
-
-static uint16_t copyqmexe_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static uint32_t copyqmexe_le32(const uint8_t *b) {
-    return (uint32_t)copyqmexe_le16(b) | ((uint32_t)copyqmexe_le16(b + 2U) << 16U);
-}
 
 static bool copyqmexe_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -157,13 +150,13 @@ static void copyqmexe_layout_free(copyqmexe_layout *layout) {
 static uint32_t copyqmexe_row_lines(const copyqmexe_layout *layout,
                                     uint32_t screen) {
     const int64_t row = layout->directory + (int64_t)screen * layout->stride;
-    return copyqmexe_le16(layout->overlay + row + (layout->stride == 8 ? 2 : 0));
+    return xx_data_get_u16(layout->overlay + row + (layout->stride == 8 ? 2 : 0), 2, 0, false);
 }
 
 static uint32_t copyqmexe_row_start(const copyqmexe_layout *layout,
                                     uint32_t screen) {
     const int64_t row = layout->directory + (int64_t)screen * layout->stride;
-    return copyqmexe_le32(layout->overlay + row + (layout->stride == 8 ? 4 : 2));
+    return xx_data_get_u32(layout->overlay + row + (layout->stride == 8 ? 4 : 2), 4, 0, false);
 }
 
 /* The Sydex tools (COPYQM, TELEDISK, CQMENU, FORMATQM and their installers)
@@ -191,8 +184,8 @@ static bool copyqmexe_open(Abstractformat *format, copyqmexe_layout *layout) {
                            sizeof(dos)) ||
         dos[0] != 'M' || dos[1] != 'Z')
         return false;
-    last_page = copyqmexe_le16(dos + 2U);
-    pages = copyqmexe_le16(dos + 4U);
+    last_page = xx_data_get_u16(dos + 2U, 2, 0, false);
+    pages = xx_data_get_u16(dos + 4U, 2, 0, false);
     if (pages == 0U || last_page > 511U) return false;
     image_end = (int64_t)(pages - 1U) * 512 +
                 (int64_t)(last_page != 0U ? last_page : 512U);
@@ -206,13 +199,13 @@ static bool copyqmexe_open(Abstractformat *format, copyqmexe_layout *layout) {
                            overlay, (size_t)overlay_size) ||
         overlay[0] != 'T' || overlay[1] != 'X')
         goto fail;
-    node_count = copyqmexe_le16(overlay + 2U);
-    screen_count = copyqmexe_le16(overlay + 4U);
-    body_size = copyqmexe_le32(overlay + 6U);
+    node_count = xx_data_get_u16(overlay + 2U, 2, 0, false);
+    screen_count = xx_data_get_u16(overlay + 4U, 2, 0, false);
+    body_size = xx_data_get_u32(overlay + 6U, 4, 0, false);
     if (node_count < 3U || (node_count & 1U) == 0U || node_count > 255U ||
         screen_count == 0U || screen_count > COPYQMEXE_MAX_SCREENS ||
         (int64_t)body_size > overlay_size - 10 ||
-        copyqmexe_le16(overlay + 10U) != node_count)
+        xx_data_get_u16(overlay + 10U, 2, 0, false) != node_count)
         goto fail;
     /* The TX length covers the help screens only.  Several original Sydex
      * executables append an independent DOS text tail after that body. */
@@ -240,8 +233,8 @@ static bool copyqmexe_open(Abstractformat *format, copyqmexe_layout *layout) {
                 ok = false;
                 break;
             }
-            lines = copyqmexe_le16(overlay + row + (stride == 8 ? 2 : 0));
-            value = copyqmexe_le32(overlay + row + (stride == 8 ? 4 : 2));
+            lines = xx_data_get_u16(overlay + row + (stride == 8 ? 2 : 0), 2, 0, false);
+            value = xx_data_get_u32(overlay + row + (stride == 8 ? 4 : 2), 4, 0, false);
             if (lines == 0U || lines > COPYQMEXE_MAX_LINES ||
                 (int64_t)value >= body || (index > 0U && value <= previous))
                 ok = false;
@@ -276,10 +269,10 @@ static bool copyqmexe_open(Abstractformat *format, copyqmexe_layout *layout) {
         uint16_t geometry;
         if (copyqmexe_row_start(layout, 0U) != 6U || layout->data_size < 6)
             goto fail;
-        geometry = copyqmexe_le16(overlay + layout->data_start);
+        geometry = xx_data_get_u16(overlay + layout->data_start, 2, 0, false);
         if (geometry == 0U ||
-            copyqmexe_le16(overlay + layout->data_start + 2) != geometry ||
-            copyqmexe_le16(overlay + layout->data_start + 4) != geometry) {
+            xx_data_get_u16(overlay + layout->data_start + 2, 2, 0, false) != geometry ||
+            xx_data_get_u16(overlay + layout->data_start + 4, 2, 0, false) != geometry) {
             layout->overlay = NULL;
             goto fail;
         }

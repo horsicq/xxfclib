@@ -39,18 +39,18 @@ static bool ad_sections(Abstractformat *f, int64_t *data_at,
     if (limit < 512 || limit > AD_INPUT_MAX ||
         !wg_pe(f, &overlay, &cabinet, &cabinet_end, pd) ||
         !pm_read(f, 0, header, sizeof(header))) return false;
-    pe = pm_le32(header + 60);
+    pe = xx_data_get_u32(header + 60, 4, 0, false);
     if (!pm_read(f, pe, header, 24)) return false;
-    count = pm_le16(header + 6);
-    optional = pm_le16(header + 20);
+    count = xx_data_get_u16(header + 6, 2, 0, false);
+    optional = xx_data_get_u16(header + 20, 2, 0, false);
     *data_at = *ad_at = -1;
     for (i = 0U; i < count; ++i) {
         uint32_t size, raw;
         if (wg_stop(pd) ||
             !pm_read(f, (int64_t)pe + 24 + optional + (int64_t)i * 40,
                      section, sizeof(section))) return false;
-        size = pm_le32(section + 16);
-        raw = pm_le32(section + 20);
+        size = xx_data_get_u32(section + 16, 4, 0, false);
+        raw = xx_data_get_u32(section + 20, 4, 0, false);
         if (!xx_rt_memcmp(section, ".data\0\0\0", 8)) {
             if (*data_at >= 0 || !size || size > AD_SECTION_MAX) return false;
             *data_at = raw; *data_size = size;
@@ -86,15 +86,15 @@ static bool ad_directory(Abstractformat *f, int64_t start, int64_t end,
     bool encrypted = false, control = false;
     if (end - start < 22 || !pm_read(f, end - 22, eocd, sizeof(eocd)) ||
         xx_rt_memcmp(eocd, "PK\5\6", 4) ||
-        pm_le16(eocd + 4) || pm_le16(eocd + 6) || pm_le16(eocd + 20))
+        xx_data_get_u16(eocd + 4, 2, 0, false) || xx_data_get_u16(eocd + 6, 2, 0, false) || xx_data_get_u16(eocd + 20, 2, 0, false))
         return false;
-    count = pm_le16(eocd + 10);
-    if (!count || count > AD_MAX_COUNT || pm_le16(eocd + 8) != count)
+    count = xx_data_get_u16(eocd + 10, 2, 0, false);
+    if (!count || count > AD_MAX_COUNT || xx_data_get_u16(eocd + 8, 2, 0, false) != count)
         return false;
-    bytes = pm_le32(eocd + 12);
+    bytes = xx_data_get_u32(eocd + 12, 4, 0, false);
     if (bytes > (uint64_t)(end - start - 22)) return false;
     directory = end - 22 - bytes;
-    bias = directory - pm_le32(eocd + 16);
+    bias = directory - xx_data_get_u32(eocd + 16, 4, 0, false);
     /* Some stubs retain ordinary ZIP-relative offsets, while others rewrite
      * the whole graph to absolute file offsets. Require a single origin for
      * the directory and every local member; never repair individual offsets. */
@@ -108,9 +108,9 @@ static bool ad_directory(Abstractformat *f, int64_t start, int64_t end,
         if (wg_stop(pd) || at > end - 22 - 46 ||
             !pm_read(f, at, central, sizeof(central)) ||
             xx_rt_memcmp(central, "PK\1\2", 4)) return false;
-        names = pm_le16(central + 28);
-        extra = pm_le16(central + 30);
-        comment = pm_le16(central + 32);
+        names = xx_data_get_u16(central + 28, 2, 0, false);
+        extra = xx_data_get_u16(central + 30, 2, 0, false);
+        comment = xx_data_get_u16(central + 32, 2, 0, false);
         record_bytes = 46 + (int64_t)names + extra + comment;
         if (!names || names >= sizeof(m->name) ||
             record_bytes > end - 22 - at ||
@@ -119,21 +119,21 @@ static bool ad_directory(Abstractformat *f, int64_t start, int64_t end,
         m->name[names] = '\0';
         for (j = 0U; j < i; ++j)
             if (!xx_rt_strcmp(m->name, members[j].name)) return false;
-        m->flags = pm_le16(central + 8);
-        m->method = pm_le16(central + 10);
-        m->time = pm_le16(central + 12);
-        m->crc = pm_le32(central + 16);
-        m->packed = pm_le32(central + 20);
-        m->raw = pm_le32(central + 24);
-        local_at = (int64_t)pm_le32(central + 42) + bias;
+        m->flags = xx_data_get_u16(central + 8, 2, 0, false);
+        m->method = xx_data_get_u16(central + 10, 2, 0, false);
+        m->time = xx_data_get_u16(central + 12, 2, 0, false);
+        m->crc = xx_data_get_u32(central + 16, 4, 0, false);
+        m->packed = xx_data_get_u32(central + 20, 4, 0, false);
+        m->raw = xx_data_get_u32(central + 24, 4, 0, false);
+        local_at = (int64_t)xx_data_get_u32(central + 42, 4, 0, false) + bias;
         if (!m->raw || m->raw > AD_MEMBER_MAX ||
             m->raw > AD_TOTAL_MAX - raw_total ||
             !m->packed || m->packed > AD_MEMBER_MAX ||
             local_at < previous_end || local_at > directory - 30 ||
             !pm_read(f, local_at, local, sizeof(local)) ||
             xx_rt_memcmp(local, "PK\3\4", 4)) return false;
-        local_names = pm_le16(local + 26);
-        local_extra = pm_le16(local + 28);
+        local_names = xx_data_get_u16(local + 26, 2, 0, false);
+        local_extra = xx_data_get_u16(local + 28, 2, 0, false);
         data = (int64_t)local_at + 30 + local_names + local_extra;
         if (local_names != names || data > directory ||
             m->packed > (uint64_t)(directory - data)) return false;
@@ -371,7 +371,7 @@ static bool pm_parse(Abstractformat *f, pm_stream *stream, xx_pd_struct *pd) {
     if (!ad_sections(f, &data_at, &data_size, &ad_at, &ad_size, pd) ||
         !pm_read(f, ad_at, header, sizeof(header)) ||
         xx_rt_memcmp(header, "AD01", 4)) goto done;
-    zip_size = pm_le32(header + 8);
+    zip_size = xx_data_get_u32(header + 8, 4, 0, false);
     zip_at = ad_at + 12;
     zip_end = zip_at + zip_size;
     if (zip_size < 22U || zip_size > ad_size - 12U || zip_end > limit ||

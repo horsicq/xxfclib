@@ -41,6 +41,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -127,19 +128,6 @@ typedef struct isz_table_s {
     size_t io_capacity;
     uint8_t single_entry[4];
 } isz_table;
-
-static uint16_t isz_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static uint32_t isz_le32(const uint8_t *b) {
-    return (uint32_t)b[0] | ((uint32_t)b[1] << 8U) | ((uint32_t)b[2] << 16U) |
-           ((uint32_t)b[3] << 24U);
-}
-
-static uint64_t isz_le64(const uint8_t *b) {
-    return (uint64_t)isz_le32(b) | ((uint64_t)isz_le32(b + 4U) << 32U);
-}
 
 static bool isz_read_at_sized(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size, size_t io_capacity) {
@@ -286,11 +274,11 @@ static bool isz_parse_segments(isz_context *context, xx_io_device *device) {
                          sizeof(record)))
             return false;
         isz_deobfuscate(record, sizeof(record), 0U);
-        size = isz_le64(record);
-        chunks = isz_le32(record + 8U);
-        first = isz_le32(record + 12U);
-        offset = isz_le32(record + 16U);
-        left = isz_le32(record + 20U);
+        size = xx_data_get_u64(record, 8, 0, false);
+        chunks = xx_data_get_u32(record + 8U, 4, 0, false);
+        first = xx_data_get_u32(record + 12U, 4, 0, false);
+        offset = xx_data_get_u32(record + 16U, 4, 0, false);
+        left = xx_data_get_u32(record + 20U, 4, 0, false);
         position += ISZ_SEGMENT_RECORD;
         if (size == 0U) break;
         if (count == ISZ_MAX_SEGMENTS) return false;
@@ -360,7 +348,7 @@ static int64_t isz_footer_size(const isz_context *context,
         !isz_read_at(device, context->base, header, size) ||
         !isz_read_at(device, context->base + data_end, footer, size + 4U) ||
         xx_rt_memcmp(header, footer, size) != 0 ||
-        isz_le32(footer + size) != (uint32_t)size)
+        xx_data_get_u32(footer + size, 4, 0, false) != (uint32_t)size)
         return 0;
     return (int64_t)size + 4;
 }
@@ -384,17 +372,17 @@ static bool isz_parse(Abstractformat *format, isz_context *out,
         return false;
     context.header_size = header[4];
     context.version = header[5];
-    context.volume_serial = isz_le32(header + 6U);
-    context.sector_size = isz_le16(header + 10U);
-    context.total_sectors = isz_le32(header + 12U);
+    context.volume_serial = xx_data_get_u32(header + 6U, 4, 0, false);
+    context.sector_size = xx_data_get_u16(header + 10U, 2, 0, false);
+    context.total_sectors = xx_data_get_u32(header + 12U, 4, 0, false);
     context.encryption = header[16];
-    context.segment_size = isz_le64(header + 17U);
-    context.chunk_count = isz_le32(header + 25U);
-    context.chunk_size = isz_le32(header + 29U);
+    context.segment_size = xx_data_get_u64(header + 17U, 8, 0, false);
+    context.chunk_count = xx_data_get_u32(header + 25U, 4, 0, false);
+    context.chunk_size = xx_data_get_u32(header + 29U, 4, 0, false);
     context.pointer_size = header[33];
-    context.pointer_offset = isz_le32(header + 35U);
-    context.segment_offset = isz_le32(header + 39U);
-    context.data_offset = isz_le32(header + 43U);
+    context.pointer_offset = xx_data_get_u32(header + 35U, 4, 0, false);
+    context.segment_offset = xx_data_get_u32(header + 39U, 4, 0, false);
+    context.data_offset = xx_data_get_u32(header + 43U, 4, 0, false);
     if (context.header_size < ISZ_HEADER_MIN || context.version > 1U ||
         (int64_t)context.header_size > context.input_size ||
         context.encryption > ISZ_ENC_AES256 || header[34] != 0U ||

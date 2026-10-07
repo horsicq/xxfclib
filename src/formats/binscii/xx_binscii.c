@@ -27,6 +27,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef BINSCII
 #define XX_BINSCII_FILE_TYPE XX_FILE_TYPE_BINSCII
@@ -178,10 +179,6 @@ static bool bsc_decode(const bsc_segment *s, const uint8_t *src, size_t units,
     return true;
 }
 
-static uint32_t bsc_le24(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) | ((uint32_t)p[2] << 16U);
-}
-
 /* The signature line has just been read: parse the alphabet and header
  * lines.  On success the reader stands at the first data line. */
 static bool bsc_read_header(bsc_lines *r, bsc_segment *s) {
@@ -211,9 +208,9 @@ static bool bsc_read_header(bsc_lines *r, bsc_segment *s) {
     if (bsc_crc16(0U, hdr, 24U) !=
         (uint16_t)((uint16_t)hdr[24] | ((uint16_t)hdr[25] << 8U)))
         return false;
-    s->file_len = bsc_le24(hdr);
-    s->offset = bsc_le24(hdr + 3U);
-    s->seg_len = bsc_le24(hdr + 21U);
+    s->file_len = xx_data_get_u24(hdr, 3, 0, false);
+    s->offset = xx_data_get_u24(hdr + 3U, 3, 0, false);
+    s->seg_len = xx_data_get_u24(hdr + 21U, 3, 0, false);
     if (s->offset > s->file_len || s->seg_len > s->file_len - s->offset)
         return false;
     return true;

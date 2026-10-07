@@ -159,10 +159,6 @@ static bool phdd_write_all(xx_io_device *output, const uint8_t *data,
     return true;
 }
 
-static uint32_t phdd_le32(const uint8_t *p) {
-    return xx_data_get_u32(p, 4U, 0U, false);
-}
-
 /* ---------------------------------------------------------------- parse -- */
 
 /* Header, catalog and data area bounds; no BAT entry is read here, so this
@@ -190,19 +186,19 @@ static bool phdd_parse_header(Abstractformat *self, phdd_context *ctx) {
     } else if (xx_rt_memcmp(header, "WithoutFreeSpace", 16U) != 0) {
         return false;
     }
-    version = phdd_le32(header + 16);
+    version = xx_data_get_u32(header + 16, 4, 0, false);
     if (version != PHDD_VERSION) return false;
 
     ctx->base = self->base_address;
     ctx->input_size = total - self->base_address;
-    ctx->heads = phdd_le32(header + 20);
-    ctx->cylinders = phdd_le32(header + 24);
-    ctx->tracks = phdd_le32(header + 28);
-    ctx->bat_entries = phdd_le32(header + 32);
+    ctx->heads = xx_data_get_u32(header + 20, 4, 0, false);
+    ctx->cylinders = xx_data_get_u32(header + 24, 4, 0, false);
+    ctx->tracks = xx_data_get_u32(header + 28, 4, 0, false);
+    ctx->bat_entries = xx_data_get_u32(header + 32, 4, 0, false);
     ctx->nb_sectors = xx_data_get_u64(header, sizeof(header), 36U, false);
-    ctx->in_use = phdd_le32(header + 44);
-    ctx->data_off = phdd_le32(header + 48);
-    ctx->flags = phdd_le32(header + 52);
+    ctx->in_use = xx_data_get_u32(header + 44, 4, 0, false);
+    ctx->data_off = xx_data_get_u32(header + 48, 4, 0, false);
+    ctx->flags = xx_data_get_u32(header + 52, 4, 0, false);
     ctx->ext_off = xx_data_get_u64(header, sizeof(header), 56U, false);
 
     /* The old header only defines the low half of the sector count. */
@@ -282,7 +278,7 @@ static bool phdd_bat_get(xx_io_device *device, const phdd_context *ctx,
         bat->first = index;
         bat->count = count;
     }
-    *entry = phdd_le32(bat->raw + (size_t)(index - bat->first) * 4U);
+    *entry = xx_data_get_u32(bat->raw + (size_t)(index - bat->first) * 4U, 4, 0, false);
     return true;
 }
 

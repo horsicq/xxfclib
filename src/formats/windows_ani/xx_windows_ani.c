@@ -9,6 +9,7 @@
  */
 #include "xxfclib/formats/windows_ani/xx_windows_ani.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 #define ANI_MAX_FRAMES 4096U
 #define ANI_MAX_STEPS 65536U
@@ -28,11 +29,11 @@ static bool ani_icon(Abstractformat *f, int64_t at, uint32_t size,
     uint16_t count;
     uint32_t i;
     if (size < 22U || !pm_read(f, at, header, sizeof(header)) ||
-        pm_le16(header) != 0U ||
-        (pm_le16(header + 2U) != 1U && pm_le16(header + 2U) != 2U))
+        xx_data_get_u16(header, 2, 0, false) != 0U ||
+        (xx_data_get_u16(header + 2U, 2, 0, false) != 1U && xx_data_get_u16(header + 2U, 2, 0, false) != 2U))
         return false;
-    *is_cursor = pm_le16(header + 2U) == 2U;
-    count = pm_le16(header + 4U);
+    *is_cursor = xx_data_get_u16(header + 2U, 2, 0, false) == 2U;
+    count = xx_data_get_u16(header + 4U, 2, 0, false);
     if (!count || count > 4096U ||
         (uint64_t)6U + (uint64_t)count * 16U > size ||
         count > *entry_budget) return false;
@@ -43,8 +44,8 @@ static bool ani_icon(Abstractformat *f, int64_t at, uint32_t size,
         if ((pd && xx_pd_is_stopped(pd)) ||
             !pm_read(f, at + 6 + (int64_t)i * 16, entry, sizeof(entry)))
             return false;
-        length = pm_le32(entry + 8U);
-        offset = pm_le32(entry + 12U);
+        length = xx_data_get_u32(entry + 8U, 4, 0, false);
+        offset = xx_data_get_u32(entry + 12U, 4, 0, false);
         if (!length || offset < 6U + (uint32_t)count * 16U ||
             offset > size || length > size - offset) return false;
     }
@@ -62,7 +63,7 @@ static bool ani_frames(Abstractformat *f, pm_stream *s, int64_t at,
         char name[32];
         if ((pd && xx_pd_is_stopped(pd)) || end - at < 8 ||
             !pm_read(f, at, chunk, sizeof(chunk))) return false;
-        size = pm_le32(chunk + 4U);
+        size = xx_data_get_u32(chunk + 4U, 4, 0, false);
         payload = at + 8;
         if ((int64_t)size > end - payload ||
             (int64_t)(size & 1U) > end - payload - size) return false;
@@ -90,7 +91,7 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd) {
     bool rate_seen = false;
     if (available < 12 || !pm_read(f, 0, riff, sizeof(riff)) ||
         !ani_id(riff, "RIFF") || !ani_id(riff + 8U, "ACON")) return false;
-    declared = pm_le32(riff + 4U);
+    declared = xx_data_get_u32(riff + 4U, 4, 0, false);
     if (declared < 4U || (int64_t)declared > available - 8) return false;
     end = 8 + (int64_t)declared;
     for (at = 12; at < end;) {
@@ -99,7 +100,7 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd) {
         int64_t payload, next;
         if ((pd && xx_pd_is_stopped(pd)) || end - at < 8 ||
             !pm_read(f, at, chunk, sizeof(chunk))) return false;
-        size = pm_le32(chunk + 4U);
+        size = xx_data_get_u32(chunk + 4U, 4, 0, false);
         payload = at + 8;
         if ((int64_t)size > end - payload ||
             (int64_t)(size & 1U) > end - payload - size) return false;
@@ -108,10 +109,10 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd) {
             uint8_t header[36];
             if (header_seen || fram_seen || size < sizeof(header) ||
                 !pm_read(f, payload, header, sizeof(header)) ||
-                pm_le32(header) != 36U) return false;
-            frames = pm_le32(header + 4U);
-            steps = pm_le32(header + 8U);
-            flags = pm_le32(header + 32U);
+                xx_data_get_u32(header, 4, 0, false) != 36U) return false;
+            frames = xx_data_get_u32(header + 4U, 4, 0, false);
+            steps = xx_data_get_u32(header + 8U, 4, 0, false);
+            flags = xx_data_get_u32(header + 32U, 4, 0, false);
             /* Some ANI writers leave cSteps zero to mean one identity step
              * for every frame. Resolve that convention before checking the
              * optional rate/sequence tables. */
@@ -154,7 +155,7 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd) {
             uint8_t index[4];
             if ((pd && xx_pd_is_stopped(pd)) ||
                 !pm_read(f, sequence_at + (int64_t)i * 4,
-                         index, sizeof(index)) || pm_le32(index) >= frames)
+                         index, sizeof(index)) || xx_data_get_u32(index, 4, 0, false) >= frames)
                 return false;
         }
     }

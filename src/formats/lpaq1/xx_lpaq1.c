@@ -4,7 +4,7 @@
 #include "../xx_archive_codec_pipe.h"
 static bool lp_parse(Abstractformat *f,pm_stream *s,ac_blob *b){uint32_t size;uint8_t *out;
  if(b->n<9||b->p[0]!='p'||b->p[1]!='Q'||b->p[2]!=1||b->p[3]<'0'||b->p[3]>'9')return false;
- size=pm_be32(b->p+4);if(size>AC_MAX_BYTES)return false;out=ac_alloc(b,size);if(!out)return false;
+ size=xx_data_get_u32(b->p+4, 4, 0, true);if(size>AC_MAX_BYTES)return false;out=ac_alloc(b,size);if(!out)return false;
  if(!af_decode(b,5,out,size)){ac_release(b,out,size);return false;}
  return ac_memory(f,s,b,"decoded.bin",out,size,b->n-8,1);
 }

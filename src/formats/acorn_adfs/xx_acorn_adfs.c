@@ -8,6 +8,7 @@
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/algo/store/xx_store.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 #ifdef ADFS
 #define AD_TYPE XX_FILE_TYPE_ADFS
 #else
@@ -40,8 +41,6 @@ typedef struct ad_view_s {
     size_t count, index, capacity, name_capacity;
     char volume_name[16];
 } ad_view;
-static uint32_t ad_u24(const uint8_t *p) { return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16); }
-static uint32_t ad_u32(const uint8_t *p) { return ad_u24(p) | ((uint32_t)p[3] << 24); }
 static bool ad_stopped(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
 static bool ad_work(ad_view *v, xx_pd_struct *pd) { return !ad_stopped(pd) && ++v->work <= AD_MAX_WORK; }
 static bool ad_bit(const uint8_t *map, uint32_t sector) { return (map[sector / 8U] & (0x80U >> (sector % 8U))) != 0U; }
@@ -183,7 +182,7 @@ static bool ad_scan_dir(ad_view *v, uint32_t sector, uint32_t parent_sector,
     for (i = 0U; i < 5U; ++i) if (!ad_read_sector(v, sector + i, raw + i * AD_SECTOR, pd)) return false;
     if ((xx_mem_compare(raw + 1U, "Hugo", 4U) && xx_mem_compare(raw + 1U, "Nick", 4U)) ||
         xx_mem_compare(raw + 1U, raw + 0x4FBU, 4U) || raw[0] != raw[0x4FAU] ||
-        raw[0x4CBU] != 0U || raw[0x4FFU] != 0U || ad_u24(raw + 0x4D6U) != parent_sector ||
+        raw[0x4CBU] != 0U || raw[0x4FFU] != 0U || xx_data_get_u24(raw + 0x4D6U, 3, 0, false) != parent_sector ||
         !ad_name(raw + 0x4CCU, 10U, actual) || !ad_equal(actual, name)) return false;
     for (i = 0x4ECU; i < 0x4FAU; ++i) if (raw[i]) return false;
     for (i = 0U; i < 47U; ++i) {
@@ -195,7 +194,7 @@ static bool ad_scan_dir(ad_view *v, uint32_t sector, uint32_t parent_sector,
         if (previous[0] && ad_compare(previous, entry_name) >= 0) return false;
         xx_rt_snprintf(previous, sizeof(previous), "%s", entry_name);
         for (j = 0U; j < 10U; ++j) if (entry[j] & 128U) attributes |= UINT32_C(1) << j;
-        directory = (attributes & 8U) != 0U; first = ad_u24(entry + 22U); size = ad_u32(entry + 18U);
+        directory = (attributes & 8U) != 0U; first = xx_data_get_u24(entry + 22U, 3, 0, false); size = xx_data_get_u32(entry + 18U, 4, 0, false);
         if (directory) { if (size != AD_DIR_SIZE || first < 7U || first > v->sectors - 5U) return false; }
         else {
             if (size > v->bytes) return false;
@@ -230,7 +229,7 @@ static ad_view *ad_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (!ad_read_sector(v, 0U, map0, pd) || !ad_read_sector(v, 1U, map1, pd) ||
         ad_checksum(map0) != map0[255] || ad_checksum(map1) != map1[255] || map0[246] ||
         (map1[254] % 3U) || map1[254] > 246U) goto fail;
-    sectors = ad_u24(map0 + 252U);
+    sectors = xx_data_get_u24(map0 + 252U, 3, 0, false);
     if (sectors != XX_ACORN_ADFS_S && sectors != XX_ACORN_ADFS_M && sectors != XX_ACORN_ADFS_L) goto fail;
     if (volume->variant != XX_ACORN_ADFS_AUTO && volume->variant != (xx_acorn_adfs_variant)sectors) goto fail;
     if ((uint64_t)sectors * AD_SECTOR > v->bytes) goto fail;
@@ -239,7 +238,7 @@ static ad_view *ad_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (sectors == XX_ACORN_ADFS_L && v->order != XX_ACORN_ADFS_ORDER_LINEAR && v->order != XX_ACORN_ADFS_ORDER_L_TRACK_INTERLEAVED) goto fail;
     count = map1[254] / 3U;
     for (i = 0U; i < count; ++i) {
-        uint32_t start = ad_u24(map0 + i * 3U), length = ad_u24(map1 + i * 3U), j;
+        uint32_t start = xx_data_get_u24(map0 + i * 3U, 3, 0, false), length = xx_data_get_u24(map1 + i * 3U, 3, 0, false), j;
         if (!length || start < prev || start > sectors || length > sectors - start) goto fail;
         for (j = 0U; j < length; ++j) { if (!ad_work(v, pd)) goto fail; ad_set(v->free_map, start + j); }
         prev = start + length;

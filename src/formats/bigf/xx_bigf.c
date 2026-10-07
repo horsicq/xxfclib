@@ -29,6 +29,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_BIGF_COPY_CHUNK (64 * 1024)
 
@@ -155,16 +156,6 @@ static bool xx_bigf_decode(Abstractformat *self,
 #define XX_BIGF_MAX_MEMBERS 100000
 #define XX_BIGF_MAX_NAME 4096
 
-static uint32_t xx_bigf_be32(const uint8_t *data) {
-    return ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16) |
-           ((uint32_t)data[2] << 8) | (uint32_t)data[3];
-}
-
-static uint32_t xx_bigf_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
 static xx_bigf_stream *xx_bigf_parse(Abstractformat *self, xx_pd_struct *pd) {
     xx_bigf_stream *stream;
     uint8_t header[XX_BIGF_HEADER_SIZE];
@@ -185,7 +176,7 @@ static xx_bigf_stream *xx_bigf_parse(Abstractformat *self, xx_pd_struct *pd) {
         (header[3] != 'F' && header[3] != '4')) {
         return NULL;
     }
-    count = (int64_t)(int32_t)xx_bigf_be32(header + 8);
+    count = (int64_t)(int32_t)xx_data_get_u32(header + 8, 4, 0, true);
     if (count <= 0 || count > XX_BIGF_MAX_MEMBERS) return NULL;
 
     stream = (xx_bigf_stream *)xx_mem_alloc(sizeof(*stream));
@@ -210,13 +201,13 @@ static xx_bigf_stream *xx_bigf_parse(Abstractformat *self, xx_pd_struct *pd) {
 
         /* Uninitialised-memory filler standing in for the last entry. */
         if (index == count - 1 &&
-            xx_bigf_le32(entry) == XX_BIGF_SENTINEL &&
-            xx_bigf_le32(entry + 4) == XX_BIGF_SENTINEL) {
+            xx_data_get_u32(entry, 4, 0, false) == XX_BIGF_SENTINEL &&
+            xx_data_get_u32(entry + 4, 4, 0, false) == XX_BIGF_SENTINEL) {
             break;
         }
 
-        data_offset = (int64_t)(int32_t)xx_bigf_be32(entry);
-        data_size = (int64_t)(int32_t)xx_bigf_be32(entry + 4);
+        data_offset = (int64_t)(int32_t)xx_data_get_u32(entry, 4, 0, true);
+        data_size = (int64_t)(int32_t)xx_data_get_u32(entry + 4, 4, 0, true);
         if (data_offset < 0 || data_size < 0) goto fail;
 
         /* The name is inline and NUL terminated, so its length is only known

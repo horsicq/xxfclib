@@ -581,17 +581,35 @@ int64_t xx_data_find_unicode_string(const void *data, size_t data_size, size_t s
 static int64_t xx_data_find_masked_scalar(const uint8_t *data, size_t size,
                                           const uint8_t *value, const uint8_t *mask,
                                           size_t pattern_size, size_t idx1, size_t idx2) {
+    /* scan[p] is the rarest byte of the start p. */
+    const uint8_t *scan = data + idx1;
+    const uint64_t ones = 0x0101010101010101ULL;
+    const uint64_t repeated = (uint64_t)value[idx1] * ones;
     size_t last = size - pattern_size;
-    size_t p;
+    size_t p = 0;
 
-    for (p = 0; p <= last; ++p) {
+    while (p <= last) {
         size_t i;
 
-        if (data[p + idx1] != value[idx1] || data[p + idx2] != value[idx2]) continue;
-        for (i = 0; i < pattern_size; ++i) {
-            if ((uint8_t)(data[p + i] & mask[i]) != value[i]) break;
+        /* Skip eight starts at once while none has the rarest byte (SWAR,
+         * like the one-byte scan below); p + 7 <= last keeps the word inside. */
+        if (last - p >= 7) {
+            uint64_t word;
+            uint64_t x;
+            xx_mem_copy(&word, scan + p, sizeof(word));
+            x = word ^ repeated;
+            if (((x - ones) & ~x & 0x8080808080808080ULL) == 0) {
+                p += 8;
+                continue;
+            }
         }
-        if (i == pattern_size) return (int64_t)p;
+        if (scan[p] == value[idx1] && data[p + idx2] == value[idx2]) {
+            for (i = 0; i < pattern_size; ++i) {
+                if ((uint8_t)(data[p + i] & mask[i]) != value[i]) break;
+            }
+            if (i == pattern_size) return (int64_t)p;
+        }
+        ++p;
     }
     return -1;
 }

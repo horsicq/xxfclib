@@ -3,6 +3,7 @@
  */
 /* Primary: https://www.rfc-editor.org/rfc/rfc7515.html */
 #include "xxfclib/formats/jose_jws/xx_jose_jws.h"
+#include "xxfclib/data/xx_data.h"
 #include "../xx_fifteenth_wrappers.h"
 
 static void whitespace(nh_blob *b,uint64_t *at){while(*at<b->n&&(b->p[(size_t)*at]==' '||b->p[(size_t)*at]=='\r'||b->p[(size_t)*at]=='\n'||b->p[(size_t)*at]=='\t'))++*at;}

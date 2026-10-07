@@ -25,6 +25,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: picks up the real file type as soon as the
  * enumerator (and its alias macro) exists in xxfc_defs.h. */
@@ -91,23 +92,6 @@ typedef struct ros_stream_s {
 
 /* ---------------------------------------------------------------------- */
 /* Helpers                                                                 */
-
-static uint32_t ros_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
-
-static void ros_put_le16(uint8_t *data, uint32_t value) {
-    data[0] = (uint8_t)(value & 0xFFU);
-    data[1] = (uint8_t)((value >> 8U) & 0xFFU);
-}
-
-static void ros_put_le32(uint8_t *data, uint32_t value) {
-    data[0] = (uint8_t)(value & 0xFFU);
-    data[1] = (uint8_t)((value >> 8U) & 0xFFU);
-    data[2] = (uint8_t)((value >> 16U) & 0xFFU);
-    data[3] = (uint8_t)((value >> 24U) & 0xFFU);
-}
 
 static bool ros_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -254,12 +238,12 @@ static bool ros_name_equal(const char *a, const char *b) {
 /* Structural checks of one 44-byte sprite header that sits at @p pos
  * (relative to the file) of an area of @p area_size bytes. */
 static bool ros_header_ok(const uint8_t *h, int64_t pos, int64_t area_size) {
-    uint32_t size = ros_le32(h), image = ros_le32(h + 32),
-             mask = ros_le32(h + 36);
+    uint32_t size = xx_data_get_u32(h, 4, 0, false), image = xx_data_get_u32(h + 32, 4, 0, false),
+             mask = xx_data_get_u32(h + 36, 4, 0, false);
     if (size < ROS_SPRITE_HEADER || (int64_t)size > area_size - pos)
         return false;
     if (h[4] <= 0x20U || h[4] > 0x7EU) return false;
-    if (ros_le32(h + 24) > 31U || ros_le32(h + 28) > 31U) return false;
+    if (xx_data_get_u32(h + 24, 4, 0, false) > 31U || xx_data_get_u32(h + 28, 4, 0, false) > 31U) return false;
     if (image < ROS_SPRITE_HEADER || (image & 3U) != 0U || image > size)
         return false;
     if (mask != 0U &&
@@ -273,9 +257,9 @@ bool xx_risc_os_sprite_prefilter(const uint8_t *magic, size_t magic_size,
     uint32_t count, first, free_offset, size, image;
     size_t sb, i;
     if (!magic || magic_size < 36U) return false;
-    count = ros_le32(magic);
-    first = ros_le32(magic + 4);
-    free_offset = ros_le32(magic + 8);
+    count = xx_data_get_u32(magic, 4, 0, false);
+    first = xx_data_get_u32(magic + 4, 4, 0, false);
+    free_offset = xx_data_get_u32(magic + 8, 4, 0, false);
     if (count == 0U || count > XX_RISC_OS_SPRITE_MAX_SPRITES) return false;
     if (first != 16U && first != 32U) return false;
     sb = (size_t)first - 4U;
@@ -283,7 +267,7 @@ bool xx_risc_os_sprite_prefilter(const uint8_t *magic, size_t magic_size,
     if (free_offset < first + ROS_SPRITE_HEADER ||
         (int64_t)free_offset - 4 > total_size)
         return false;
-    size = ros_le32(magic + sb);
+    size = xx_data_get_u32(magic + sb, 4, 0, false);
     if (size < ROS_SPRITE_HEADER || size > free_offset - 4U - sb) return false;
     if (magic[sb + 4] <= 0x20U || magic[sb + 4] > 0x7EU) return false;
     for (i = 1U; i < ROS_NAME_SIZE; ++i) {
@@ -291,16 +275,16 @@ bool xx_risc_os_sprite_prefilter(const uint8_t *magic, size_t magic_size,
         if (c == 0U) break;
         if (c < 0x20U || c > 0x7EU) return false;
     }
-    if (ros_le32(magic + sb + 16) > 0xFFFFU ||
-        ros_le32(magic + sb + 20) > 0xFFFFU ||
-        ros_le32(magic + sb + 24) > 31U || ros_le32(magic + sb + 28) > 31U)
+    if (xx_data_get_u32(magic + sb + 16, 4, 0, false) > 0xFFFFU ||
+        xx_data_get_u32(magic + sb + 20, 4, 0, false) > 0xFFFFU ||
+        xx_data_get_u32(magic + sb + 24, 4, 0, false) > 31U || xx_data_get_u32(magic + sb + 28, 4, 0, false) > 31U)
         return false;
-    image = ros_le32(magic + sb + 32);
+    image = xx_data_get_u32(magic + sb + 32, 4, 0, false);
     if (image < ROS_SPRITE_HEADER || (image & 3U) != 0U || image > size)
         return false;
     if (magic_size >= sb + ROS_SPRITE_HEADER) {
-        uint32_t mask = ros_le32(magic + sb + 36);
-        uint32_t mode = ros_le32(magic + sb + 40);
+        uint32_t mask = xx_data_get_u32(magic + sb + 36, 4, 0, false);
+        uint32_t mode = xx_data_get_u32(magic + sb + 40, 4, 0, false);
         if (mask != 0U &&
             (mask < ROS_SPRITE_HEADER || (mask & 3U) != 0U || mask > size))
             return false;
@@ -311,10 +295,10 @@ bool xx_risc_os_sprite_prefilter(const uint8_t *magic, size_t magic_size,
 
 /* Work out how a sprite is rendered; false leaves it as a raw member. */
 static bool ros_plan_image(const uint8_t *h, ros_sprite *s) {
-    uint32_t words = ros_le32(h + 16), rows = ros_le32(h + 20);
-    uint32_t first_bit = ros_le32(h + 24), last_bit = ros_le32(h + 28);
-    uint32_t image = ros_le32(h + 32), mask = ros_le32(h + 36);
-    uint32_t mode = ros_le32(h + 40), type = (mode >> 27U) & 0xFU;
+    uint32_t words = xx_data_get_u32(h + 16, 4, 0, false), rows = xx_data_get_u32(h + 20, 4, 0, false);
+    uint32_t first_bit = xx_data_get_u32(h + 24, 4, 0, false), last_bit = xx_data_get_u32(h + 28, 4, 0, false);
+    uint32_t image = xx_data_get_u32(h + 32, 4, 0, false), mask = xx_data_get_u32(h + 36, 4, 0, false);
+    uint32_t mode = xx_data_get_u32(h + 40, 4, 0, false), type = (mode >> 27U) & 0xFU;
     int64_t width_words, pdwidth, end_pad, image_bytes, end;
     bool has_mask = mask != 0U && mask != image;
     size_t i;
@@ -417,9 +401,9 @@ static bool ros_parse(Abstractformat *format, ros_context *out, bool full) {
         !ros_read_at(format->device, format->base_address, header,
                      sizeof(header)))
         return false;
-    count = ros_le32(header);
-    first = ros_le32(header + 4);
-    free_offset = ros_le32(header + 8);
+    count = xx_data_get_u32(header, 4, 0, false);
+    first = xx_data_get_u32(header + 4, 4, 0, false);
+    free_offset = xx_data_get_u32(header + 8, 4, 0, false);
     if (count == 0U || count > XX_RISC_OS_SPRITE_MAX_SPRITES) return false;
     if (first < 16U || (first & 3U) != 0U) return false;
     if (free_offset < first + ROS_SPRITE_HEADER) return false;
@@ -445,7 +429,7 @@ static bool ros_parse(Abstractformat *format, ros_context *out, bool full) {
             char stem[ROS_NAME_MAX - 8];
             s = &context.sprites[context.count];
             s->offset = format->base_address + pos;
-            s->size = (int64_t)ros_le32(sh);
+            s->size = (int64_t)xx_data_get_u32(sh, 4, 0, false);
             if (ros_plan_image(sh, s)) {
                 s->kind = ROS_KIND_BMP;
             } else {
@@ -472,7 +456,7 @@ static bool ros_parse(Abstractformat *format, ros_context *out, bool full) {
             }
         }
         ++context.count;
-        pos += (int64_t)ros_le32(sh);
+        pos += (int64_t)xx_data_get_u32(sh, 4, 0, false);
     }
     if (context.count == 0U) {
         ros_context_free(&context);
@@ -543,23 +527,23 @@ static bool ros_render(Abstractformat *format, const ros_sprite *s,
     xx_mem_zero(head, sizeof(head));
     head[0] = 'B';
     head[1] = 'M';
-    ros_put_le32(head + 2, (uint32_t)s->output_size);
-    ros_put_le32(head + 10, (uint32_t)head_size);
-    ros_put_le32(head + 14, (uint32_t)(head_size - BMP_FILE_HEADER));
-    ros_put_le32(head + 18, (uint32_t)s->width);
-    ros_put_le32(head + 22, (uint32_t)s->height); /* bottom-up */
-    ros_put_le16(head + 26, 1U);
-    ros_put_le16(head + 28, (uint32_t)(bpp * 8));
-    ros_put_le32(head + 30, s->use_mask ? 3U : 0U); /* BI_BITFIELDS / BI_RGB */
-    ros_put_le32(head + 34, (uint32_t)(stride * s->height));
-    ros_put_le32(head + 38, ros_ppm(s->xdpi));
-    ros_put_le32(head + 42, ros_ppm(s->ydpi));
+    xx_data_set_u32(head + 2, 4, 0, (uint32_t)s->output_size, false);
+    xx_data_set_u32(head + 10, 4, 0, (uint32_t)head_size, false);
+    xx_data_set_u32(head + 14, 4, 0, (uint32_t)(head_size - BMP_FILE_HEADER), false);
+    xx_data_set_u32(head + 18, 4, 0, (uint32_t)s->width, false);
+    xx_data_set_u32(head + 22, 4, 0, (uint32_t)s->height, false); /* bottom-up */
+    xx_data_set_u16(head + 26, 2, 0, (uint16_t)1U, false);
+    xx_data_set_u16(head + 28, 2, 0, (uint16_t)((uint32_t)(bpp * 8)), false);
+    xx_data_set_u32(head + 30, 4, 0, s->use_mask ? 3U : 0U, false); /* BI_BITFIELDS / BI_RGB */
+    xx_data_set_u32(head + 34, 4, 0, (uint32_t)(stride * s->height), false);
+    xx_data_set_u32(head + 38, 4, 0, ros_ppm(s->xdpi), false);
+    xx_data_set_u32(head + 42, 4, 0, ros_ppm(s->ydpi), false);
     if (s->use_mask) {
-        ros_put_le32(head + 54, 0x00FF0000U);
-        ros_put_le32(head + 58, 0x0000FF00U);
-        ros_put_le32(head + 62, 0x000000FFU);
-        ros_put_le32(head + 66, 0xFF000000U);
-        ros_put_le32(head + 70, 0x73524742U); /* 'sRGB' */
+        xx_data_set_u32(head + 54, 4, 0, 0x00FF0000U, false);
+        xx_data_set_u32(head + 58, 4, 0, 0x0000FF00U, false);
+        xx_data_set_u32(head + 62, 4, 0, 0x000000FFU, false);
+        xx_data_set_u32(head + 66, 4, 0, 0xFF000000U, false);
+        xx_data_set_u32(head + 70, 4, 0, 0x73524742U, false); /* 'sRGB' */
     }
 
     pal = (uint32_t *)xx_mem_alloc(256U * sizeof(uint32_t));
@@ -641,9 +625,9 @@ static bool ros_copy_raw(Abstractformat *format, const ros_sprite *s,
     int64_t done = 0;
     bool result = true;
     if (s->size > UINT32_MAX - 16) return false;
-    ros_put_le32(head, 1U);
-    ros_put_le32(head + 4, 16U);
-    ros_put_le32(head + 8, (uint32_t)(16 + s->size));
+    xx_data_set_u32(head, 4, 0, 1U, false);
+    xx_data_set_u32(head + 4, 4, 0, 16U, false);
+    xx_data_set_u32(head + 8, 4, 0, (uint32_t)(16 + s->size), false);
     if (!ros_write(destination, head, sizeof(head))) return false;
     if (capacity == 0U) capacity = 65536U;
     buffer = (uint8_t *)xx_mem_alloc(capacity);

@@ -11,6 +11,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_cri_awb_MAX_MEMBERS 1000000U
 typedef struct xx_cri_awb_member_s {
@@ -33,16 +34,6 @@ typedef struct xx_cri_awb_stream_s {
 } xx_cri_awb_stream;
 static void xx_cri_awb_vtable_destroy(Abstractformat *self);
 
-static inline uint16_t xx_cri_awb_u16(const uint8_t *p, bool be) {
-    return be ? (uint16_t)(((uint16_t)p[0] << 8) | p[1])
-              : (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
-}
-static inline uint32_t xx_cri_awb_u32(const uint8_t *p, bool be) {
-    return be ? ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
-                ((uint32_t)p[2] << 8) | p[3]
-              : p[0] | ((uint32_t)p[1] << 8) |
-                ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
 static bool xx_cri_awb_range_within(int64_t span, int64_t offset, int64_t size) {
     return offset >= 0 && size >= 0 && offset <= span && size <= span-offset;
 }
@@ -218,21 +209,21 @@ static xx_cri_awb_stream *xx_cri_awb_parse(Abstractformat *self,xx_pd_struct *pd
 
     uint8_t h[16],raw[8]; uint32_t count,i,align,ids,width; int64_t offsets,table_end,last;
     if(!xx_cri_awb_read_rel(self,span,0,h,sizeof(h)) || xx_rt_memcmp(h,"AFS2",4U)) goto fail;
-    count=xx_cri_awb_u32(h+8,false); width=h[5]; ids=xx_cri_awb_u16(h+6,false); align=xx_cri_awb_u16(h+12,false);
+    count=xx_data_get_u32(h+8, 4, 0, false); width=h[5]; ids=xx_data_get_u16(h+6, 2, 0, false); align=xx_data_get_u16(h+12, 2, 0, false);
     if((h[4]!=1U && h[4]!=2U) || (width!=2U && width!=4U) ||
        (ids!=2U && ids!=4U) || !align || count>XX_cri_awb_MAX_MEMBERS) goto fail;
     offsets=16+(int64_t)count*ids; table_end=offsets+((int64_t)count+1)*width;
     if(table_end>span || !xx_cri_awb_read_rel(self,span,offsets+(int64_t)count*width,raw,width)) goto fail;
-    last=width==2U?xx_cri_awb_u16(raw,false):xx_cri_awb_u32(raw,false);
+    last=width==2U?xx_data_get_u16(raw, 2, 0, false):xx_data_get_u32(raw, 4, 0, false);
     if(last<table_end || last>span) goto fail;
     s->archive_size=last;
     for(i=0;i<count;++i) {
         int64_t off,next; uint32_t id; char name[32];
         if((pd && xx_pd_is_stopped(pd)) || !xx_cri_awb_read_rel(self,span,16+(int64_t)i*ids,raw,ids)) goto fail;
-        id=ids==2U?xx_cri_awb_u16(raw,false):xx_cri_awb_u32(raw,false);
+        id=ids==2U?xx_data_get_u16(raw, 2, 0, false):xx_data_get_u32(raw, 4, 0, false);
         if(!xx_cri_awb_read_rel(self,span,offsets+(int64_t)i*width,raw,(size_t)width*2U)) goto fail;
-        off=width==2U?xx_cri_awb_u16(raw,false):xx_cri_awb_u32(raw,false);
-        next=width==2U?xx_cri_awb_u16(raw+width,false):xx_cri_awb_u32(raw+width,false);
+        off=width==2U?xx_data_get_u16(raw, 2, 0, false):xx_data_get_u32(raw, 4, 0, false);
+        next=width==2U?xx_data_get_u16(raw+width, 2, 0, false):xx_data_get_u32(raw+width, 4, 0, false);
         if(off<table_end || next<off || next>last) goto fail;
         off+=off%align?align-off%align:0;
         if(next<last) next+=next%align?align-next%align:0;

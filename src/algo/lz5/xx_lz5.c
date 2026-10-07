@@ -29,6 +29,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_LZ5_MAGIC UINT32_C(0x184D2205)
 #define XX_LZ5_SKIP_MAGIC UINT32_C(0x184D2A50)
@@ -38,16 +39,6 @@
 #define XX_LZ5_XXH_P3 UINT32_C(3266489917)
 #define XX_LZ5_XXH_P4 UINT32_C(668265263)
 #define XX_LZ5_XXH_P5 UINT32_C(374761393)
-
-static uint32_t xx_lz5_read32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
-           ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
-
-static uint64_t xx_lz5_read64(const uint8_t *p) {
-    return (uint64_t)xx_lz5_read32(p) |
-           ((uint64_t)xx_lz5_read32(p + 4) << 32);
-}
 
 static uint32_t xx_lz5_rotl(uint32_t value, unsigned bits) {
     return (value << bits) | (value >> (32U - bits));
@@ -71,10 +62,10 @@ static uint32_t xx_lz5_xxh32(const uint8_t *data, size_t size) {
         uint32_t c = 0;
         uint32_t d = 0U - XX_LZ5_XXH_P1;
         do {
-            a = xx_lz5_xxh_round(a, xx_lz5_read32(cursor));
-            b = xx_lz5_xxh_round(b, xx_lz5_read32(cursor + 4));
-            c = xx_lz5_xxh_round(c, xx_lz5_read32(cursor + 8));
-            d = xx_lz5_xxh_round(d, xx_lz5_read32(cursor + 12));
+            a = xx_lz5_xxh_round(a, xx_data_get_u32(cursor, 4, 0, false));
+            b = xx_lz5_xxh_round(b, xx_data_get_u32(cursor + 4, 4, 0, false));
+            c = xx_lz5_xxh_round(c, xx_data_get_u32(cursor + 8, 4, 0, false));
+            d = xx_lz5_xxh_round(d, xx_data_get_u32(cursor + 12, 4, 0, false));
             cursor += 16;
         } while (cursor <= limit);
         hash = xx_lz5_rotl(a, 1) + xx_lz5_rotl(b, 7) +
@@ -84,7 +75,7 @@ static uint32_t xx_lz5_xxh32(const uint8_t *data, size_t size) {
     }
     hash += (uint32_t)size;
     while ((size_t)(end - cursor) >= 4U) {
-        hash += xx_lz5_read32(cursor) * XX_LZ5_XXH_P3;
+        hash += xx_data_get_u32(cursor, 4, 0, false) * XX_LZ5_XXH_P3;
         hash = xx_lz5_rotl(hash, 17) * XX_LZ5_XXH_P4;
         cursor += 4;
     }
@@ -236,12 +227,12 @@ bool xx_lz5_decompress_memory(const void *source, size_t source_size,
         bool content_checksum;
 
         if ((size_t)(end - input) < 4U) return false;
-        magic = xx_lz5_read32(input);
+        magic = xx_data_get_u32(input, 4, 0, false);
         input += 4;
         if ((magic & UINT32_C(0xFFFFFFF0)) == XX_LZ5_SKIP_MAGIC) {
             uint32_t skip_size;
             if ((size_t)(end - input) < 4U) return false;
-            skip_size = xx_lz5_read32(input);
+            skip_size = xx_data_get_u32(input, 4, 0, false);
             input += 4;
             if ((size_t)(end - input) < (size_t)skip_size) return false;
             input += skip_size;
@@ -263,7 +254,7 @@ bool xx_lz5_decompress_memory(const void *source, size_t source_size,
         content_checksum = (flags & UINT8_C(0x04)) != 0U;
         if (has_content_size) {
             if ((size_t)(end - input) < 8U) return false;
-            content_size = xx_lz5_read64(input);
+            content_size = xx_data_get_u64(input, 8, 0, false);
             input += 8;
         }
         if (input == end ||
@@ -282,7 +273,7 @@ bool xx_lz5_decompress_memory(const void *source, size_t source_size,
             size_t block_output = 0;
 
             if ((size_t)(end - input) < 4U) return false;
-            stored_size = xx_lz5_read32(input);
+            stored_size = xx_data_get_u32(input, 4, 0, false);
             input += 4;
             if (stored_size == 0U) break;
             uncompressed = (stored_size & UINT32_C(0x80000000)) != 0U;
@@ -295,7 +286,7 @@ bool xx_lz5_decompress_memory(const void *source, size_t source_size,
             input += block_size;
             if (block_checksum) {
                 if ((size_t)(end - input) < 4U ||
-                    xx_lz5_read32(input) != xx_lz5_xxh32(block_data, block_size)) {
+                    xx_data_get_u32(input, 4, 0, false) != xx_lz5_xxh32(block_data, block_size)) {
                     return false;
                 }
                 input += 4;
@@ -328,7 +319,7 @@ bool xx_lz5_decompress_memory(const void *source, size_t source_size,
 
         if (content_checksum) {
             if ((size_t)(end - input) < 4U ||
-                xx_lz5_read32(input) != xx_lz5_xxh32(
+                xx_data_get_u32(input, 4, 0, false) != xx_lz5_xxh32(
                     output + frame_output_start,
                     output_position - frame_output_start)) {
                 return false;

@@ -34,6 +34,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef HXC_HFE_V3
 #define XX_HXC_HFE_V3_FILE_TYPE XX_FILE_TYPE_HXC_HFE_V3
@@ -111,10 +112,6 @@ typedef struct v3_work_s {
     uint32_t *syncs;
     uint8_t *field;
 } v3_work;
-
-static uint16_t v3_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
 
 static uint8_t v3_rev8(uint8_t v) {
     v = (uint8_t)(((v & 0xF0U) >> 4U) | ((v & 0x0FU) << 4U));
@@ -196,7 +193,7 @@ static bool v3_read_header(xx_io_device *device, int64_t base,
     out->tracks = (int32_t)head[9];
     out->sides = (int32_t)head[10];
     out->encoding = head[11];
-    lut_offset = (int64_t)v3_le16(head + 0x12) * V3_BLOCK;
+    lut_offset = (int64_t)xx_data_get_u16(head + 0x12, 2, 0, false) * V3_BLOCK;
     if (lut_offset < V3_HEADER_SIZE ||
         lut_offset > available - (int64_t)out->tracks * 4)
         return false;
@@ -206,8 +203,8 @@ static bool v3_read_header(xx_io_device *device, int64_t base,
     end = lut_offset + (int64_t)out->tracks * 4;
     for (track = 0; track < out->tracks; ++track) {
         const int64_t offset =
-            (int64_t)v3_le16(lut + (size_t)track * 4U) * V3_BLOCK;
-        const int64_t length = (int64_t)v3_le16(lut + (size_t)track * 4U + 2U);
+            (int64_t)xx_data_get_u16(lut + (size_t)track * 4U, 2, 0, false) * V3_BLOCK;
+        const int64_t length = (int64_t)xx_data_get_u16(lut + (size_t)track * 4U + 2U, 2, 0, false);
         int64_t stop;
         if (length == 0) continue;
         if (offset < V3_HEADER_SIZE || offset > available ||

@@ -11,7 +11,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(!nh_load(f,&b,pd)) { return false; } NH_NEED(nh_span(&b,0,10) && !xx_rt_memcmp(b.p,"\xff\x06\0\0sNaPpY",10));out=(uint8_t *)xx_mem_alloc(67108864);NH_NEED(out);
     while(at<b.n) {unsigned type;NH_NEED(nh_span(&b,at,4) && ++chunks<=4094);type=b.p[(size_t)at];n=(uint64_t)b.p[(size_t)at+1]|(uint64_t)b.p[(size_t)at+2]<<8|(uint64_t)b.p[(size_t)at+3]<<16;body=at+4;NH_NEED(nh_span(&b,body,n));
         if(type==255) NH_NEED(n==6 && !xx_rt_memcmp(b.p+(size_t)body,"sNaPpY",6));
-        else if(type<2) {uint32_t crc;NH_NEED(n>=4);crc=pm_le32(b.p+(size_t)body);raw=n-4;
+        else if(type<2) {uint32_t crc;NH_NEED(n>=4);crc=xx_data_get_u32(b.p+(size_t)body, 4, 0, false);raw=n-4;
             if(!type) {uint64_t pos=body+4;NH_NEED(th_var(&b,&pos,body+n,&raw) && raw<=65536);}
             NH_NEED(raw<=65536 && raw<=67108864-total);if(type) xx_rt_memcpy(out+(size_t)total,b.p+(size_t)body+4,(size_t)raw);else NH_NEED(th_snappy(b.p+(size_t)body+4,n-4,out+(size_t)total,raw,pd));
             NH_NEED(!fd_stop(pd) && th_mask(xx_crc32c_calc(0,out+(size_t)total,(size_t)raw))==crc);total+=raw;

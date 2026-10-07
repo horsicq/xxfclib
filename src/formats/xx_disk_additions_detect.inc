@@ -2,8 +2,6 @@
  * validation remains mandatory; raw signal/Micral profiles are explicit.
  * No reads, allocation, cursor changes or source bytes beyond first_size.
  */
-static uint16_t ddet_le16(const uint8_t *p){return (uint16_t)(p[0]|p[1]<<8);}
-static uint32_t ddet_le32(const uint8_t *p){return (uint32_t)p[0]|(uint32_t)p[1]<<8|(uint32_t)p[2]<<16|(uint32_t)p[3]<<24;}
 static bool xx_disk_addition_candidate(uint32_t type,const uint8_t *first512,size_t first_size,uint64_t source_total){const uint8_t *p=first512;uint64_t size;uint32_t i,blocks,bps,tracks,copied=0;if(!p)return false;
  switch(type){
  case XX_FILE_TYPE_LISA_BLU:
@@ -21,15 +19,15 @@ static bool xx_disk_addition_candidate(uint32_t type,const uint8_t *first512,siz
   if(first_size<8U||p[1]>11U||!p[2]||p[2]>2U||!p[3]||p[3]>90U||p[4]>7U||!p[5]||p[5]>64U) {return false; } return source_total==8U+(uint64_t)p[2]*p[3]*p[5]*(128U<<p[4]);
  case XX_FILE_TYPE_RAY_DIM:return first_size>=84U&&!xx_rt_memcmp(p,"Disk IMage VER ",15)&&p[80]>=1U&&p[80]<=5U&&p[82]>=1U&&p[82]<=64U&&p[83]<=2U;
  case XX_FILE_TYPE_RS_IDE:
-  if(first_size<128U||xx_rt_memcmp(p,"RS-IDE\x1a",7)||(p[8]&~1U)) {return false; } i=ddet_le16(p+9);return i>=128U&&source_total>i&&(source_total-i)%((p[8]&1U)?256U:512U)==0;
+  if(first_size<128U||xx_rt_memcmp(p,"RS-IDE\x1a",7)||(p[8]&~1U)) {return false; } i=xx_data_get_u16(p+9, 2, 0, false);return i>=128U&&source_total>i&&(source_total-i)%((p[8]&1U)?256U:512U)==0;
  case XX_FILE_TYPE_T98_HDD:
-  if(first_size<256U||!(i=ddet_le32(p))||i>1048576U) {return false; } for(blocks=4;blocks<256U;++blocks)if(p[blocks])return false;return source_total==256U+(uint64_t)i*8U*33U*256U;
+  if(first_size<256U||!(i=xx_data_get_u32(p, 4, 0, false))||i>1048576U) {return false; } for(blocks=4;blocks<256U;++blocks)if(p[blocks])return false;return source_total==256U+(uint64_t)i*8U*33U*256U;
  case XX_FILE_TYPE_PC_86F:
-  if(first_size<12U||xx_rt_memcmp(p,"86BF",4)||p[4]!=12U||p[5]!=2U||(ddet_le16(p+6)&0xe000U)) {return false; } size=8U+((p[6]&8U)?2048U:1024U);return source_total>size&&ddet_le32(p+8)>=size;
+  if(first_size<12U||xx_rt_memcmp(p,"86BF",4)||p[4]!=12U||p[5]!=2U||(xx_data_get_u16(p+6, 2, 0, false)&0xe000U)) {return false; } size=8U+((p[6]&8U)?2048U:1024U);return source_total>size&&xx_data_get_u32(p+8, 4, 0, false)>=size;
  case XX_FILE_TYPE_FDX68_FDX:
-  if(first_size<256U||xx_rt_memcmp(p,"FDX\x03",4)) {return false; } blocks=ddet_le32(p+100);tracks=ddet_le32(p+72);i=ddet_le32(p+76);return blocks>16U&&blocks<=1048576U&&tracks>=1U&&tracks<=256U&&i>=1U&&i<=2U&&source_total==256U+(uint64_t)tracks*i*blocks;
+  if(first_size<256U||xx_rt_memcmp(p,"FDX\x03",4)) {return false; } blocks=xx_data_get_u32(p+100, 4, 0, false);tracks=xx_data_get_u32(p+72, 4, 0, false);i=xx_data_get_u32(p+76, 4, 0, false);return blocks>16U&&blocks<=1048576U&&tracks>=1U&&tracks<=256U&&i>=1U&&i<=2U&&source_total==256U+(uint64_t)tracks*i*blocks;
  case XX_FILE_TYPE_HEATHKIT_H17:return first_size>=8U&&!xx_rt_memcmp(p,"H17D200\xff",8);
- case XX_FILE_TYPE_BOCHS_GROWING:return first_size>=96U&&!xx_rt_memcmp(p,"Bochs Virtual HD Image\0",23)&&!xx_rt_memcmp(p+32,"Redolog\0",8)&&!xx_rt_memcmp(p+48,"Growing\0",8)&&ddet_le32(p+68)==512U;
+ case XX_FILE_TYPE_BOCHS_GROWING:return first_size>=96U&&!xx_rt_memcmp(p,"Bochs Virtual HD Image\0",23)&&!xx_rt_memcmp(p+32,"Redolog\0",8)&&!xx_rt_memcmp(p+48,"Growing\0",8)&&xx_data_get_u32(p+68, 4, 0, false)==512U;
  case XX_FILE_TYPE_HXC_LOGIC_ANALYZER:case XX_FILE_TYPE_MICRAL_N_RAW:return false;
  default:return false;
  }

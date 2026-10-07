@@ -10,6 +10,7 @@
 #include "xxfclib/algo/gashuff/xx_gashuff.h"
 
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_GASHUFF_HEADER_SIZE 8U
 #define XX_GASHUFF_MAX_NODES 511U
@@ -29,15 +30,6 @@ typedef struct xx_gashuff_node_s {
     uint8_t symbol;
     bool is_leaf;
 } xx_gashuff_node;
-
-static uint16_t xx_gashuff_read16le(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8U));
-}
-
-static uint32_t xx_gashuff_read32le(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
 
 static bool xx_gashuff_read_bit(xx_gashuff_bit_reader *reader,
                                 uint32_t *value) {
@@ -128,9 +120,9 @@ static bool xx_gashuff_parse_internal(const uint8_t *input,
         input_size > XX_GASHUFF_MAX_INPUT || input_size > SIZE_MAX / 8U) {
         return false;
     }
-    uncompressed_size = xx_gashuff_read32le(input);
-    node_count = xx_gashuff_read16le(input + 4U);
-    root_index = xx_gashuff_read16le(input + 6U);
+    uncompressed_size = xx_data_get_u32(input, 4, 0, false);
+    node_count = xx_data_get_u16(input + 4U, 2, 0, false);
+    root_index = xx_data_get_u16(input + 6U, 2, 0, false);
     if (uncompressed_size == 0U || uncompressed_size > XX_GASHUFF_MAX_OUTPUT ||
         node_count < 3U || node_count > XX_GASHUFF_MAX_NODES) {
         return false;

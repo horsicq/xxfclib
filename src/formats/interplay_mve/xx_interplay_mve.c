@@ -11,22 +11,22 @@ static bool ng_quick(Abstractformat *f,uint64_t n) {uint8_t h[26];return ng_prob
 static bool ng_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  uint64_t at=26;uint32_t width=0,height=0,audio=0,channels=0,bps=0,frames=0;bool shutdown=false,eos=false,ended=false;
  if(!ng_emit(f,s,"mve_header.bin",0,26,n))return false;
- while(at<n){uint64_t q,end;uint32_t size,type;bool last=false;if(ng_stop(pd)||!ng_span(at,4,n)||ended)return false;size=pm_le16(b+at);type=pm_le16(b+at+2);q=at+4;if(type>5||!ng_span(q,size,n))return false;end=q+size;if(shutdown&&type!=5)return false;
-  while(q<end){uint32_t len,op,v;uint64_t p;if(!ng_span(q,4,end)||last)return false;len=pm_le16(b+q);op=b[q+2];v=b[q+3];p=q+4;if(!ng_span(p,len,end)||op>21)return false;
+ while(at<n){uint64_t q,end;uint32_t size,type;bool last=false;if(ng_stop(pd)||!ng_span(at,4,n)||ended)return false;size=xx_data_get_u16(b+at, 2, 0, false);type=xx_data_get_u16(b+at+2, 2, 0, false);q=at+4;if(type>5||!ng_span(q,size,n))return false;end=q+size;if(shutdown&&type!=5)return false;
+  while(q<end){uint32_t len,op,v;uint64_t p;if(!ng_span(q,4,end)||last)return false;len=xx_data_get_u16(b+q, 2, 0, false);op=b[q+2];v=b[q+3];p=q+4;if(!ng_span(p,len,end)||op>21)return false;
    switch(op){
     case 0:if(v||len||type!=4)return false;eos=true;break;
     case 1:if(v||len)return false;last=true;break;
-    case 2:if(v||len!=6||!pm_le32(b+p)||!pm_le16(b+p+4))return false;break;
-    case 3:if(v>1||len<6||len>10||!pm_le16(b+p+4))return false;audio=1;channels=(pm_le16(b+p+2)&1U)+1;bps=((pm_le16(b+p+2)>>1)&1U)+1;if(v==1&&(pm_le16(b+p+2)&4U))audio=2;break;
+    case 2:if(v||len!=6||!xx_data_get_u32(b+p, 4, 0, false)||!xx_data_get_u16(b+p+4, 2, 0, false))return false;break;
+    case 3:if(v>1||len<6||len>10||!xx_data_get_u16(b+p+4, 2, 0, false))return false;audio=1;channels=(xx_data_get_u16(b+p+2, 2, 0, false)&1U)+1;bps=((xx_data_get_u16(b+p+2, 2, 0, false)>>1)&1U)+1;if(v==1&&(xx_data_get_u16(b+p+2, 2, 0, false)&4U))audio=2;break;
     case 4:if(v||len)return false;break;
-    case 5:if(v>2||len!=4+v*2U||!pm_le16(b+p)||!pm_le16(b+p+2))return false;width=(uint32_t)pm_le16(b+p)*8;height=(uint32_t)pm_le16(b+p+2)*8;if(width>8192||height>8192||((v==2)&&pm_le16(b+p+6)>1))return false;break;
+    case 5:if(v>2||len!=4+v*2U||!xx_data_get_u16(b+p, 2, 0, false)||!xx_data_get_u16(b+p+2, 2, 0, false))return false;width=(uint32_t)xx_data_get_u16(b+p, 2, 0, false)*8;height=(uint32_t)xx_data_get_u16(b+p+2, 2, 0, false)*8;if(width>8192||height>8192||((v==2)&&xx_data_get_u16(b+p+6, 2, 0, false)>1))return false;break;
     case 6:case 16:case 17:if(v>3||len<14||!width||!height)return false;++frames;break;
     case 7:if(v>1||len!=6||!width)return false;break;
-    case 8:if(v||!audio||len<6||!pm_le16(b+p+2)||!pm_le16(b+p+4))return false;if(audio==1&&len-6!=pm_le16(b+p+4))return false;if(audio==2&&len<6+channels)return false;if(pm_le16(b+p+4)%(channels*bps))return false;break;
-    case 9:if(v||!audio||len!=6||!pm_le16(b+p+2)||!pm_le16(b+p+4))return false;break;
-    case 10:if(v||len!=6||!pm_le16(b+p)||!pm_le16(b+p+2))return false;break;
+    case 8:if(v||!audio||len<6||!xx_data_get_u16(b+p+2, 2, 0, false)||!xx_data_get_u16(b+p+4, 2, 0, false))return false;if(audio==1&&len-6!=xx_data_get_u16(b+p+4, 2, 0, false))return false;if(audio==2&&len<6+channels)return false;if(xx_data_get_u16(b+p+4, 2, 0, false)%(channels*bps))return false;break;
+    case 9:if(v||!audio||len!=6||!xx_data_get_u16(b+p+2, 2, 0, false)||!xx_data_get_u16(b+p+4, 2, 0, false))return false;break;
+    case 10:if(v||len!=6||!xx_data_get_u16(b+p, 2, 0, false)||!xx_data_get_u16(b+p+2, 2, 0, false))return false;break;
     case 11:if(v||len<6)return false;break;
-    case 12:{uint32_t start,count,i;if(v||len<4)return false;start=pm_le16(b+p);count=pm_le16(b+p+2);if(!count||start>256||count>256-start||len!=4+count*3)return false;for(i=4;i<len;++i)if(b[p+i]>63)return false;break;}
+    case 12:{uint32_t start,count,i;if(v||len<4)return false;start=xx_data_get_u16(b+p, 2, 0, false);count=xx_data_get_u16(b+p+2, 2, 0, false);if(!count||start>256||count>256-start||len!=4+count*3)return false;for(i=4;i<len;++i)if(b[p+i]>63)return false;break;}
     case 13:if(v||!len)return false;break;
     case 14:case 15:if(v||!len||!width||len>(uint64_t)width*height)return false;break;
     case 18:case 19:case 20:case 21:if(v||len>4096)return false;break;

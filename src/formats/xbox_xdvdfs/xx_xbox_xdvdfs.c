@@ -5,6 +5,7 @@
  */
 #include "xxfclib/formats/xbox_xdvdfs/xx_xbox_xdvdfs.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool overlap(uint64_t a,uint64_t n,uint64_t b,uint64_t m) { return n && m && a<b+m && b<a+n; }
@@ -18,16 +19,16 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[2048],e[14],name[255]; uint64_t table,total=67584,end=(uint64_t)pm_available(f); uint32_t extent_n[1024],seen[1024],pending[2048],size,count=0,queue=1,i; char label[40];
     if(!pm_read(f,65536,h,sizeof(h)) || xx_rt_memcmp(h,"MICROSOFT*XBOX*MEDIA",20) || xx_rt_memcmp(h+2028,"MICROSOFT*XBOX*MEDIA",20)) return false;
-    table=(uint64_t)pm_le32(h+20)*2048; size=pm_le32(h+24); if(table<67584 || size<14 || size>16777216 || !span(table,size,end)) return false; total=table+size; pending[0]=0;
+    table=(uint64_t)xx_data_get_u32(h+20, 4, 0, false)*2048; size=xx_data_get_u32(h+24, 4, 0, false); if(table<67584 || size<14 || size>16777216 || !span(table,size,end)) return false; total=table+size; pending[0]=0;
     while(queue) { uint32_t node=pending[--queue],n,j; uint64_t at,bytes; uint16_t left,right;
       if(stop(pd) || count>=1024 || !span(node,14,size) || !pm_read(f,(int64_t)(table+node),e,14)) return false;
       for(i=0;i<count;++i) { if(node==seen[i]) return false; } seen[count]=node;
       n=e[13]; bytes=(14U+(uint64_t)n+3)&~3ULL; if(!n || !span(node,bytes,size) || (node&3) || (e[12]&~0x27U) || !pm_read(f,(int64_t)(table+node+14),name,n)) return false;
       for(j=0;j<n;++j) if(name[j]<32 || name[j]=='/' || name[j]=='\\' || !name[j]) return false;
       for(i=0;i<count;++i) { if(overlap(node,bytes,seen[i],extent_n[i])) return false; } extent_n[count]=(uint32_t)bytes;
-      at=(uint64_t)pm_le32(e+4)*2048; n=pm_le32(e+8); if(at<67584 || !span(at,n,end) || overlap(at,n,table,size)) return false;
+      at=(uint64_t)xx_data_get_u32(e+4, 4, 0, false)*2048; n=xx_data_get_u32(e+8, 4, 0, false); if(at<67584 || !span(at,n,end) || overlap(at,n,table,size)) return false;
       xx_rt_snprintf(label,sizeof(label),"file-%u.bin",count); if(!emit(f,s,label,at,n,end)) return false; if(at+n>total) total=at+n;
-      left=pm_le16(e); right=pm_le16(e+2); if(queue+2>2048) return false; if(left && left!=65535) pending[queue++]=(uint32_t)left*4; if(right && right!=65535) pending[queue++]=(uint32_t)right*4; ++count;
+      left=xx_data_get_u16(e, 2, 0, false); right=xx_data_get_u16(e+2, 2, 0, false); if(queue+2>2048) return false; if(left && left!=65535) pending[queue++]=(uint32_t)left*4; if(right && right!=65535) pending[queue++]=(uint32_t)right*4; ++count;
     }
     if(!count) { return false; } s->size=(int64_t)total; return true;
 

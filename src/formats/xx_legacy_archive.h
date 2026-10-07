@@ -10,6 +10,7 @@
 #include "xxfclib/algo/lzh/xx_lzh.h"
 #include "xxfclib/algo/compress/xx_compress.h"
 #include "xxfclib/formats/pp20/xx_pp20.h"
+#include "xxfclib/data/xx_data.h"
 #define AC_MAX_BYTES (64U * 1024U * 1024U)
 #define AC_MAX_MEMBERS 65535U
 typedef struct ac_blob { uint8_t *p; uint32_t n; uint64_t used, limit; xx_pd_struct *pd; } ac_blob;
@@ -139,9 +140,9 @@ static XXFC_MAYBE_UNUSED bool ac_ampk(ac_blob *b,const uint8_t *in,uint32_t pack
 /* Squeeze's explicit little-endian binary tree, with -257 as EOF. */
 static bool ac_squeeze(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *out,uint32_t cap,uint32_t *written) {
     int16_t child[512]; uint16_t nodes; uint32_t i,at=0; ac_bits bits;
-    if(packed<2U || (nodes=pm_le16(in))>256U || 2U+4U*nodes>packed) return false;
+    if(packed<2U || (nodes=xx_data_get_u16(in, 2, 0, false))>256U || 2U+4U*nodes>packed) return false;
     child[0]=child[1]=-257;
-    for(i=0;i<2U*nodes;++i) { int16_t v=(int16_t)pm_le16(in+2U+i*2U);
+    for(i=0;i<2U*nodes;++i) { int16_t v=(int16_t)xx_data_get_u16(in+2U+i*2U, 2, 0, false);
         if(v>=0 ? (uint16_t)v>=nodes : v< -257) { return false; } child[i]=v; }
     bits.p=in+2U+4U*nodes; bits.n=packed-2U-4U*nodes; bits.bit=0; bits.failed=false; bits.lsb=true;
     for(;;) { int node=0; unsigned depth=0;
@@ -172,7 +173,7 @@ static uint32_t ac_reverse_get(ac_reverse_bits *r,unsigned width) {
  * No synthesized transport or hidden duplicate input/output allocations. */
 static XXFC_MAYBE_UNUSED bool ac_pp(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *out,uint32_t n,const uint8_t widths[4]) {
     ac_reverse_bits bits; uint32_t at=n,i;
-    if(packed<8U || (packed&3U) || pm_be32(in+packed-4U)>>8U!=n || in[packed-1U]>31U) return false;
+    if(packed<8U || (packed&3U) || xx_data_get_u32(in+packed-4U, 4, 0, true)>>8U!=n || in[packed-1U]>31U) return false;
     for(i=0;i<4U;++i) if(widths[i]<9U || widths[i]>16U || (i && widths[i]<widths[i-1U])) return false;
     xx_mem_zero(&bits,sizeof(bits)); bits.p=in; bits.pos=packed-4U; ac_reverse_get(&bits,in[packed-1U]);
     while(at) {

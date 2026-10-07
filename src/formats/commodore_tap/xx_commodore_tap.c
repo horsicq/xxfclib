@@ -7,12 +7,13 @@
  */
 #include "xxfclib/formats/commodore_tap/xx_commodore_tap.h"
 #include "../vice_x64/xx_ninth_retro.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
  uint32_t at=20,end;
- if(!nh_range(b,0,20) || xx_rt_memcmp(b->p,"C64-TAPE-RAW",12) || b->p[12]>1 || b->p[13] || b->p[14]>3 || b->p[15] || !pm_le32(b->p+16) || !nh_range(b,20,pm_le32(b->p+16))) return false;
- end=20+pm_le32(b->p+16);
- while(at<end) { if(!(at&4095U) && !nh_poll(b)) return false; if(!b->p[at++] && b->p[12]==1) { if(end-at<3 || !nh_u24(b->p+at)) return false; at+=3; } }
+ if(!nh_range(b,0,20) || xx_rt_memcmp(b->p,"C64-TAPE-RAW",12) || b->p[12]>1 || b->p[13] || b->p[14]>3 || b->p[15] || !xx_data_get_u32(b->p+16, 4, 0, false) || !nh_range(b,20,xx_data_get_u32(b->p+16, 4, 0, false))) return false;
+ end=20+xx_data_get_u32(b->p+16, 4, 0, false);
+ while(at<end) { if(!(at&4095U) && !nh_poll(b)) return false; if(!b->p[at++] && b->p[12]==1) { if(end-at<3 || !xx_data_get_u24(b->p+at, 3, 0, false)) return false; at+=3; } }
  if(!nh_emit(f,s,b,"tape-descriptor.bin",0,20) || !nh_emit(f,s,b,"pulses.tapdata",20,end-20)) { return false; } s->size=end; return true;
 }
 

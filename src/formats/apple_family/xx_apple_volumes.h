@@ -13,6 +13,7 @@
 #include "xxfclib/formats/apple_dos32/xx_apple_dos32.h"
 #include "xxfclib/formats/hfs/xx_hfs.h"
 #include "xxfclib/formats/cpm/xx_cpm_presets.h"
+#include "xxfclib/data/xx_data.h"
 typedef bool (*av_extract_fn)(Abstractformat *,xx_archive_record_state *,xx_io_device *,xx_pd_struct *);
 typedef void (*av_free_fn)(void *);
 static bool av_budget(Abstractformat *f,uint32_t key,uint64_t n) {
@@ -40,11 +41,11 @@ static bool av_volume(af_work *w,xx_io_device *device,const char *prefix,unsigne
     remaining=(w->limit-w->used)/2U;if(remaining<4096U)return false;
     if(!kind){saved=xx_io_tell(device);if(saved<0 || xx_io_seek64(device,1024,SEEK_SET)!=0 || xx_io_read(device,h,sizeof(h))!=(ssize_t)sizeof(h) || xx_io_seek64(device,saved,SEEK_SET)!=0)return false;
         if((h[4]&0xf0U)==0xf0U && (h[4]&15U) && h[35]==39U && h[36]==13U)kind=1;
-        else if(pm_le16(h)==0U && pm_le16(h+2)==6U && pm_le16(h+4)==0U && h[6]>=1U && h[6]<=7U)kind=2;
+        else if(xx_data_get_u16(h, 2, 0, false)==0U && xx_data_get_u16(h+2, 2, 0, false)==6U && xx_data_get_u16(h+4, 2, 0, false)==0U && h[6]>=1U && h[6]<=7U)kind=2;
         else if(h[0]=='B' && h[1]=='D')kind=3;
         else {if(xx_io_size(device)!=143360 || xx_io_seek64(device,2816,SEEK_SET)!=0 || xx_io_read(device,h,sizeof(h))!=(ssize_t)sizeof(h) || xx_io_seek64(device,saved,SEEK_SET)!=0)return false;
             if((h[4]&0xf0U)==0xf0U && (h[4]&15U) && h[35]==39U && h[36]==13U)kind=1;
-            else if(pm_le16(h)==0U && pm_le16(h+2)==6U && pm_le16(h+4)==0U && h[6]>=1U && h[6]<=7U)kind=2;else return false;}}
+            else if(xx_data_get_u16(h, 2, 0, false)==0U && xx_data_get_u16(h+2, 2, 0, false)==6U && xx_data_get_u16(h+4, 2, 0, false)==0U && h[6]>=1U && h[6]<=7U)kind=2;else return false;}}
     switch(kind){
     case 1:f=(Abstractformat *)xx_prodos_create(device,0);extract=xx_prodos_extract_record_to_device;destroy=(av_free_fn)xx_prodos_free;break;
     case 2:f=(Abstractformat *)xx_apple_pascal_create(device,0);extract=xx_apple_pascal_extract_record_to_device;destroy=(av_free_fn)xx_apple_pascal_free;break;

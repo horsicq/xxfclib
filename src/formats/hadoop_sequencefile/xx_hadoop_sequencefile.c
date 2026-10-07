@@ -12,10 +12,10 @@ static bool sq_vint(nh_blob *b,uint64_t *at,uint64_t *v) {
 static bool sq_text(nh_blob *b,uint64_t *at,bool empty) {uint64_t n;if(!sq_vint(b,at,&n) || n>65536 || (!empty && !n) || !nh_span(b,*at,n) || !fourth_utf8(b->p+(size_t)*at,(size_t)n,b->pd)) return false;*at+=n;return true;}
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     nh_blob b;uint64_t at=4,sync,n,key,i;uint32_t meta;bool ok=false;
-    if(!nh_load(f,&b,pd)) { return false; } NH_NEED(nh_span(&b,0,4) && !xx_rt_memcmp(b.p,"SEQ\x06",4) && sq_text(&b,&at,false) && sq_text(&b,&at,false));NH_NEED(nh_span(&b,at,6) && !b.p[(size_t)at] && !b.p[(size_t)at+1]);at+=2;meta=pm_be32(b.p+(size_t)at);at+=4;NH_NEED(meta<=4094);
+    if(!nh_load(f,&b,pd)) { return false; } NH_NEED(nh_span(&b,0,4) && !xx_rt_memcmp(b.p,"SEQ\x06",4) && sq_text(&b,&at,false) && sq_text(&b,&at,false));NH_NEED(nh_span(&b,at,6) && !b.p[(size_t)at] && !b.p[(size_t)at+1]);at+=2;meta=xx_data_get_u32(b.p+(size_t)at, 4, 0, true);at+=4;NH_NEED(meta<=4094);
     for(i=0;i<meta;++i) { NH_NEED(sq_text(&b,&at,false) && sq_text(&b,&at,true)); } sync=at;NH_NEED(nh_span(&b,at,16));at+=16;NH_NEED(nh_add(f,s,&b,"sequence-header",0,at));
-    while(at<b.n) {NH_NEED(nh_span(&b,at,4));n=pm_be32(b.p+(size_t)at);at+=4;if(n==0xffffffffU) {NH_NEED(nh_span(&b,at,16) && !xx_rt_memcmp(b.p+(size_t)at,b.p+(size_t)sync,16));NH_NEED(nh_add(f,s,&b,"sync-marker",at-4,20));at+=16;if(at==b.n) break;NH_NEED(nh_span(&b,at,4));n=pm_be32(b.p+(size_t)at);at+=4;}
-        NH_NEED(n<=67108864 && nh_span(&b,at,4));key=pm_be32(b.p+(size_t)at);at+=4;NH_NEED(key<=n && nh_span(&b,at,n));NH_NEED(nh_add(f,s,&b,"key",at,key) && nh_add(f,s,&b,"value",at+key,n-key));at+=n;
+    while(at<b.n) {NH_NEED(nh_span(&b,at,4));n=xx_data_get_u32(b.p+(size_t)at, 4, 0, true);at+=4;if(n==0xffffffffU) {NH_NEED(nh_span(&b,at,16) && !xx_rt_memcmp(b.p+(size_t)at,b.p+(size_t)sync,16));NH_NEED(nh_add(f,s,&b,"sync-marker",at-4,20));at+=16;if(at==b.n) break;NH_NEED(nh_span(&b,at,4));n=xx_data_get_u32(b.p+(size_t)at, 4, 0, true);at+=4;}
+        NH_NEED(n<=67108864 && nh_span(&b,at,4));key=xx_data_get_u32(b.p+(size_t)at, 4, 0, true);at+=4;NH_NEED(key<=n && nh_span(&b,at,n));NH_NEED(nh_add(f,s,&b,"key",at,key) && nh_add(f,s,&b,"value",at+key,n-key));at+=n;
     }NH_NEED(s->count>1);s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }

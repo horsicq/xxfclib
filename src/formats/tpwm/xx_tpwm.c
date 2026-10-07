@@ -54,6 +54,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* The alias macro is defined next to the enumerator in xxfc_defs.h, so testing
  * for it picks up the real file type as soon as TPWM is registered there.
@@ -110,11 +111,6 @@ typedef struct xx_tpwm_stream_s {
 static void xx_tpwm_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint32_t xx_tpwm_be32(const uint8_t *data) {
-    return ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16) |
-           ((uint32_t)data[2] << 8) | (uint32_t)data[3];
-}
 
 static bool xx_tpwm_read_at(Abstractformat *self, int64_t offset,
                             uint8_t *buffer, size_t size) {
@@ -298,7 +294,7 @@ static xx_tpwm_stream *xx_tpwm_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (compressed_size < XX_TPWM_MIN_PACKED_SIZE) return NULL;
     if (compressed_size > XX_TPWM_MAX_DECODED) return NULL;
 
-    uncompressed_size = (int64_t)xx_tpwm_be32(header + 4);
+    uncompressed_size = (int64_t)xx_data_get_u32(header + 4, 4, 0, true);
     /* A zero plaintext length would make extraction write an empty file and
      * call it success, so it is a reject rather than an empty member. */
     if (uncompressed_size < 1) return NULL;

@@ -37,6 +37,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef BEOSPKG
 #define XX_BEOSPKG_FILE_TYPE XX_FILE_TYPE_BEOSPKG
@@ -88,15 +89,6 @@ static bool beos_range_within(int64_t total, int64_t offset, int64_t size) {
            size <= total - offset;
 }
 
-static uint32_t beos_be32(const uint8_t *bytes) {
-    return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
-           ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3];
-}
-
-static uint64_t beos_be64(const uint8_t *bytes) {
-    return ((uint64_t)beos_be32(bytes) << 32U) | (uint64_t)beos_be32(bytes + 4);
-}
-
 static bool beos_tag_is(const beos_tag *tag, const char *id) {
     return xx_rt_memcmp(tag->id, id, 4U) == 0;
 }
@@ -134,7 +126,7 @@ static bool beos_skip_payload(const uint8_t *image, int64_t size,
     if (type == BEOS_TYPE_STRING || type == BEOS_TYPE_BLOB) {
         uint32_t length;
         if (!beos_range_within(size, offset, 4)) return false;
-        length = beos_be32(image + offset);
+        length = xx_data_get_u32(image + offset, 4, 0, true);
         if (length > (uint32_t)INT32_MAX ||
             !beos_range_within(size, offset + 4, (int64_t)length))
             return false;
@@ -145,7 +137,7 @@ static bool beos_skip_payload(const uint8_t *image, int64_t size,
         uint64_t compressed;
         if (!beos_range_within(size, offset, BEOS_CHUNK_DESCRIPTOR_SIZE))
             return false;
-        compressed = beos_be64(image + offset);
+        compressed = xx_data_get_u64(image + offset, 8, 0, true);
         if (compressed > (uint64_t)INT64_MAX ||
             !beos_range_within(size, offset + BEOS_CHUNK_DESCRIPTOR_SIZE,
                                (int64_t)compressed))
@@ -192,7 +184,7 @@ static bool beos_read_fields(const uint8_t *image, int64_t size, int64_t offset,
         if (beos_tag_is(&tag, "Name") && tag.type == BEOS_TYPE_STRING) {
             uint32_t length;
             if (!beos_range_within(size, tag.payload_offset, 4)) goto fail;
-            length = beos_be32(image + tag.payload_offset);
+            length = xx_data_get_u32(image + tag.payload_offset, 4, 0, true);
             if (length > (uint32_t)BEOS_MAX_STRING ||
                 !beos_range_within(size, tag.payload_offset + 4,
                                    (int64_t)length))
@@ -213,7 +205,7 @@ static bool beos_read_fields(const uint8_t *image, int64_t size, int64_t offset,
         if (beos_tag_is(&tag, "OffT") && tag.type == BEOS_TYPE_U64) {
             uint64_t value;
             if (!beos_range_within(size, tag.payload_offset, 8)) goto fail;
-            value = beos_be64(image + tag.payload_offset);
+            value = xx_data_get_u64(image + tag.payload_offset, 8, 0, true);
             if (value > (uint64_t)INT64_MAX) goto fail;
             if (data_offset) *data_offset = (int64_t)value;
             cursor = tag.payload_offset + 8;
@@ -222,7 +214,7 @@ static bool beos_read_fields(const uint8_t *image, int64_t size, int64_t offset,
         if (beos_tag_is(&tag, "OrgS") && tag.type == BEOS_TYPE_U64) {
             uint64_t value;
             if (!beos_range_within(size, tag.payload_offset, 8)) goto fail;
-            value = beos_be64(image + tag.payload_offset);
+            value = xx_data_get_u64(image + tag.payload_offset, 8, 0, true);
             if (value > (uint64_t)INT64_MAX) goto fail;
             if (original_size) *original_size = (int64_t)value;
             cursor = tag.payload_offset + 8;
@@ -447,7 +439,7 @@ static bool beos_parse(Abstractformat *format, beos_stream **result,
             if (tag.type != BEOS_TYPE_U64 ||
                 !beos_range_within(size, tag.payload_offset, 8))
                 goto fail;
-            value = beos_be64(stream->image + tag.payload_offset);
+            value = xx_data_get_u64(stream->image + tag.payload_offset, 8, 0, true);
             if (value > (uint64_t)INT64_MAX) goto fail;
             tree_offset = (int64_t)value;
             break;
@@ -485,9 +477,9 @@ static bool beos_parse(Abstractformat *format, beos_stream **result,
                                BEOS_CHUNK_DESCRIPTOR_SIZE))
             goto fail;
         descriptor = stream->image + chunk.payload_offset;
-        compressed = beos_be64(descriptor);
-        original = beos_be64(descriptor + 8);
-        method = beos_be32(descriptor + 16);
+        compressed = xx_data_get_u64(descriptor, 8, 0, true);
+        original = xx_data_get_u64(descriptor + 8, 8, 0, true);
+        method = xx_data_get_u32(descriptor + 16, 4, 0, true);
         if (method != BEOS_METHOD_ZLIB) goto fail;
         if (compressed > (uint64_t)INT64_MAX ||
             original > (uint64_t)BEOS_MAX_OUTPUT)

@@ -6,6 +6,7 @@
 #include "xxfclib/formats/utah_rle/xx_utah_rle.h"
 #include "../xx_payload_members.h"
 #include "xxfclib/global/xx_global.h"
+#include "xxfclib/data/xx_data.h"
 
 typedef struct fm_bytes { Abstractformat *f; xx_pd_struct *pd; int64_t pos,end,begin; size_t count,capacity; uint8_t *buffer; } fm_bytes;
 static bool fm_start(fm_bytes *r,Abstractformat *f,xx_pd_struct *pd,int64_t at,int64_t end) {
@@ -33,15 +34,15 @@ static bool fm_skip(fm_bytes *r,uint64_t n) {
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[15],b,op,datum; unsigned width,height,channels,flags,ncmap,x=0,y=0,color=0,instructions=0; uint64_t n; fm_bytes r; int64_t start; bool pixels=false;
-    if(!pm_read(f,0,h,15) || pm_le16(h)!=0xCC52 || h[12]!=8) return false;
-    width=pm_le16(h+6); height=pm_le16(h+8); flags=h[10]; channels=h[11]; ncmap=h[13];
+    if(!pm_read(f,0,h,15) || xx_data_get_u16(h, 2, 0, false)!=0xCC52 || h[12]!=8) return false;
+    width=xx_data_get_u16(h+6, 2, 0, false); height=xx_data_get_u16(h+8, 2, 0, false); flags=h[10]; channels=h[11]; ncmap=h[13];
     if(!width || !height || width>32767 || height>32767 || (uint64_t)width*height>16777216 || flags>15 || (flags&3)==3 || !channels || channels>4 || ncmap>4 || h[14]>8) return false;
     if(!pm_add(f,s,"setup.bin",0,15)) return false;
     if(!fm_start(&r,f,pd,15,pm_available(f))) { return false; } n=flags&2 ? 1U : 1U+(channels/2U)*2U;
     if(!fm_skip(&r,n) || (!(flags&2) && !pm_add(f,s,"background.bin",15,channels))) return fm_finish(&r,false);
     if(ncmap) { n=(uint64_t)ncmap*((uint64_t)1<<h[14])*2U; start=r.pos; if(!fm_skip(&r,n) || !pm_add(f,s,"colormap.le16",start,(int64_t)n)) return fm_finish(&r,false); }
     if(flags&8) { uint8_t word[2],last; unsigned len; start=r.pos;
-        if(!pm_read(f,start,word,2)) { return fm_finish(&r,false); } len=pm_le16(word);
+        if(!pm_read(f,start,word,2)) { return fm_finish(&r,false); } len=xx_data_get_u16(word, 2, 0, false);
         if(!len || !fm_skip(&r,2U+len+(len&1U)) || !pm_read(f,start+1+len,&last,1) || last || !pm_add(f,s,"comments.txt",start+2,len)) return fm_finish(&r,false);
     }
     start=r.pos;

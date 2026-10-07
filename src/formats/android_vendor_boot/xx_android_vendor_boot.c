@@ -5,6 +5,7 @@
  */
 #include "xxfclib/formats/android_vendor_boot/xx_android_vendor_boot.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 
 static int64_t page_end(int64_t at,uint32_t page) { return (at+page-1)&~((int64_t)page-1); }
@@ -12,11 +13,11 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[2128],e[108]; uint32_t v,page,header,ram,dtb,table=0,count=0,entry=0,config=0,i;
     int64_t available=pm_available(f),ra,da,ta,ca,end;
     if(!pm_read(f,0,h,2112) || xx_rt_memcmp(h,"VNDRBOOT",8)) return false;
-    v=pm_le32(h+8); page=pm_le32(h+12); ram=pm_le32(h+24); header=pm_le32(h+2096); dtb=pm_le32(h+2100);
+    v=xx_data_get_u32(h+8, 4, 0, false); page=xx_data_get_u32(h+12, 4, 0, false); ram=xx_data_get_u32(h+24, 4, 0, false); header=xx_data_get_u32(h+2096, 4, 0, false); dtb=xx_data_get_u32(h+2100, 4, 0, false);
     if((v!=3 && v!=4) || page<512 || page>65536 || (page&(page-1)) || header!=(v==3 ? 2112U : 2128U)) return false;
     if(v==4) {
         if(!pm_read(f,2112,h+2112,16)) return false;
-        table=pm_le32(h+2112); count=pm_le32(h+2116); entry=pm_le32(h+2120); config=pm_le32(h+2124);
+        table=xx_data_get_u32(h+2112, 4, 0, false); count=xx_data_get_u32(h+2116, 4, 0, false); entry=xx_data_get_u32(h+2120, 4, 0, false); config=xx_data_get_u32(h+2124, 4, 0, false);
         if(count>65533 || (count && entry!=108) || (!count && entry!=0 && entry!=108) || (uint64_t)count*entry!=table) return false;
     }
     if((v==4 && ram && !count) || (!ram && !dtb && !config)) return false;
@@ -26,7 +27,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     else for(i=0;i<count;++i) {
         uint32_t size,off,type; char name[64];
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,ta+(int64_t)i*entry,e,108)) return false;
-        size=pm_le32(e); off=pm_le32(e+4); type=pm_le32(e+8);
+        size=xx_data_get_u32(e, 4, 0, false); off=xx_data_get_u32(e+4, 4, 0, false); type=xx_data_get_u32(e+8, 4, 0, false);
         if(!size || off>ram || size>ram-off || type>3) return false;
         xx_rt_snprintf(name,sizeof(name),"ramdisk-%u-type-%u.bin",i,type);
         if(!pm_add(f,s,name,ra+off,size)) return false;

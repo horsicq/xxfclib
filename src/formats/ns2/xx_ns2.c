@@ -25,6 +25,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef NS2
 #define XX_NS2_FILE_TYPE XX_FILE_TYPE_NS2
@@ -122,11 +123,6 @@ static ssize_t ns2_write_some(xx_io_device *device, const void *buffer,
         done += (size_t)n;
     }
     return (ssize_t)done;
-}
-
-static uint32_t ns2_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
 }
 
 static bool ns2_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -336,7 +332,7 @@ static bool ns2_read_header(Abstractformat *format, ns2_layout *layout) {
         !ns2_read_at(format->device, format->base_address, header,
                      sizeof(header)))
         return false;
-    base = (int64_t)ns2_le32(header);
+    base = (int64_t)xx_data_get_u32(header, 4, 0, false);
     /* Cheap rejection: the index starts with a quote and a name byte. */
     if (header[4] != (uint8_t)'"' || header[5] < 0x20U || header[5] == 0x7fU ||
         header[5] == (uint8_t)'"')
@@ -388,7 +384,7 @@ static size_t ns2_parse_entry(const uint8_t *view, size_t avail,
         at - 1U > NS2_MAX_NAME || avail - at - 1U < NS2_SIZE_FIELD)
         return 0U;
     *name_length = (uint32_t)(at - 1U);
-    *size = ns2_le32(view + at + 1U);
+    *size = xx_data_get_u32(view + at + 1U, 4, 0, false);
     return at + 1U + NS2_SIZE_FIELD;
 }
 

@@ -7,6 +7,7 @@
 #define DC_MAX_MEMBERS 512U
 #define DC_NATIVE_DMK 1
 #include "../wux/xx_disk_containers_native.h"
+#include "xxfclib/data/xx_data.h"
 
 #ifdef DMK
 #define DC_FILE_TYPE XX_FILE_TYPE_DMK
@@ -85,7 +86,7 @@ static bool dmk_track(const uint8_t *track, uint32_t length, uint32_t absolute,
     uint8_t seen[256] = {0};
     bool ended = false;
     for (i = 0U; i < 64U; ++i) {
-        uint16_t pointer = dc_le16(track + i * 2U);
+        uint16_t pointer = xx_data_get_u16(track + i * 2U, 2, 0, false);
         uint16_t offset = (uint16_t)(pointer & UINT16_C(0x3fff));
         if (!pointer) { ended = true; continue; }
         if (ended || (pointer & UINT16_C(0x4000)) || offset < 128U ||
@@ -158,7 +159,7 @@ static bool dc_parse(Abstractformat *f, dc_image *image,
     if (!dc_read(f, image, 0U, header, sizeof(header), pd) ||
         (header[0] != 0U && header[0] != 0xffU) || !header[1] ||
         (header[4] & 0xafU) || !dc_zero(header + 5U, 11U)) return false;
-    length = dc_le16(header + 2U); cylinders = header[1];
+    length = xx_data_get_u16(header + 2U, 2, 0, false); cylinders = header[1];
     heads = (header[4] & 0x10U) ? 1U : 2U; tracks = cylinders * heads;
     physical = (uint64_t)tracks * length;
     if (length <= 128U || length >= 16384U ||

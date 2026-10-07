@@ -10,17 +10,17 @@
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  uint8_t h[98],orders[771],p[1024],map[8],inst[48],refs[8]={0}; uint16_t sizes[256]; uint32_t i,j,n,rows,len,count; uint64_t at; fd_cursor c={f,0,(uint64_t)pm_available(f),pd,0}; char label[40];
- if(!fd_get(&c,h,98) || xx_rt_memcmp(h,"FAR\xfe",4) || xx_rt_memcmp(h+44,"\r\n\x1a",3) || h[49]!=0x10 || h[75]>=16 || !fd_skip(&c,pm_le16(h+96)) || !fd_get(&c,orders,sizeof(orders))) return false;
- count=orders[257]; if(!count || orders[258]>=count || pm_le16(h+47)<c.at || !fd_skip(&c,pm_le16(h+47)-c.at)) return false;
+ if(!fd_get(&c,h,98) || xx_rt_memcmp(h,"FAR\xfe",4) || xx_rt_memcmp(h+44,"\r\n\x1a",3) || h[49]!=0x10 || h[75]>=16 || !fd_skip(&c,xx_data_get_u16(h+96, 2, 0, false)) || !fd_get(&c,orders,sizeof(orders))) return false;
+ count=orders[257]; if(!count || orders[258]>=count || xx_data_get_u16(h+47, 2, 0, false)<c.at || !fd_skip(&c,xx_data_get_u16(h+47, 2, 0, false)-c.at)) return false;
  for(i=0;i<16;++i) if(h[50+i]>1 || h[76+i]>15) return false;
- for(i=0;i<256;++i) { n=sizes[i]=pm_le16(orders+259+i*2); if(n && (n<66 || (n-2)%64 || (n-2)/64>256)) return false; }
+ for(i=0;i<256;++i) { n=sizes[i]=xx_data_get_u16(orders+259+i*2, 2, 0, false); if(n && (n<66 || (n-2)%64 || (n-2)/64>256)) return false; }
  if(!em_emit(f,s,"descriptor.bin",0,c.at,c.end)) return false;
  for(i=0;i<256;++i) if((n=sizes[i])!=0) { at=c.at; rows=(n-2)/64; if(!fd_get(&c,p,2) || p[0]>=rows || !fd_skip(&c,n-2)) return false;
   { fd_cursor d={f,at+2,at+n,pd,0}; while(d.at<d.end) { size_t part=d.end-d.at>sizeof(p) ? sizeof(p):(size_t)(d.end-d.at); if(!fd_get(&d,p,part)) return false; for(j=0;j<part;j+=4) {if(p[j]>72 || (p[j] && p[j+1]>=64) || p[j+2]>16) return false;if(p[j]) refs[p[j+1]/8]|=(uint8_t)(1U<<(p[j+1]%8));} } }
   xx_rt_snprintf(label,sizeof(label),"pattern-%u.bin",i); if(!em_emit(f,s,label,at,n,c.end)) return false;
  }
  at=c.at; if(!fd_get(&c,map,8) || !em_emit(f,s,"sample-bitmap.bin",at,8,c.end)) return false;for(i=0;i<8;++i) if(refs[i]&~map[i]) return false;
- for(i=0;i<64;++i) if(map[i/8]&(1U<<(i%8))) { at=c.at; if(!fd_get(&c,inst,48) || (len=pm_le32(inst+32))>65536 || inst[46]>1 || (inst[47]&~15U) || ((inst[47]&8) && (pm_le32(inst+38)>=pm_le32(inst+42) || pm_le32(inst+42)>len)) || (inst[46] && ((len|pm_le32(inst+38)|pm_le32(inst+42))&1))) return false;
+ for(i=0;i<64;++i) if(map[i/8]&(1U<<(i%8))) { at=c.at; if(!fd_get(&c,inst,48) || (len=xx_data_get_u32(inst+32, 4, 0, false))>65536 || inst[46]>1 || (inst[47]&~15U) || ((inst[47]&8) && (xx_data_get_u32(inst+38, 4, 0, false)>=xx_data_get_u32(inst+42, 4, 0, false) || xx_data_get_u32(inst+42, 4, 0, false)>len)) || (inst[46] && ((len|xx_data_get_u32(inst+38, 4, 0, false)|xx_data_get_u32(inst+42, 4, 0, false))&1))) return false;
   xx_rt_snprintf(label,sizeof(label),"instrument-%u.bin",i); if(!em_emit(f,s,label,at,48,c.end)) return false; if(len) { xx_rt_snprintf(label,sizeof(label),"sample-%u.pcm",i); if(!em_take_emit(&c,s,label,len)) return false; }
  }
  s->size=(int64_t)c.at; return true;

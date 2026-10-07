@@ -5,27 +5,28 @@
  */
 #include "xxfclib/formats/ktx2/xx_ktx2.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static XXFC_MAYBE_UNUSED uint16_t r16(const uint8_t *p,bool be) { return be ? pm_be16(p) : pm_le16(p); }
-static XXFC_MAYBE_UNUSED uint32_t r32(const uint8_t *p,bool be) { return be ? pm_be32(p) : pm_le32(p); }
-static uint64_t r64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint16_t r16(const uint8_t *p,bool be) { return be ? xx_data_get_u16(p, 2, 0, true) : xx_data_get_u16(p, 2, 0, false); }
+static XXFC_MAYBE_UNUSED uint32_t r32(const uint8_t *p,bool be) { return be ? xx_data_get_u32(p, 4, 0, true) : xx_data_get_u32(p, 4, 0, false); }
+static uint64_t r64(const uint8_t *p,bool be) { return be ? ((uint64_t)xx_data_get_u32(p, 4, 0, true)<<32)|xx_data_get_u32(p+4, 4, 0, true) : ((uint64_t)xx_data_get_u32(p+4, 4, 0, false)<<32)|xx_data_get_u32(p, 4, 0, false); }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[80],e[24],b[12]; uint32_t levels,i,dfd,dfdsize,kvd,kvdsize; uint64_t end,table;
-    if(!pm_read(f,0,h,80) || xx_rt_memcmp(h,"\xabKTX 20\xbb\r\n\x1a\n",12) || pm_le32(h+44) ||
-       (pm_le32(h+16)!=1 && pm_le32(h+16)!=2 && pm_le32(h+16)!=4 && pm_le32(h+16)!=8) ||
-       !pm_le32(h+20) || pm_le32(h+20)>16384 || pm_le32(h+24)>16384 || pm_le32(h+28)>16384 || pm_le32(h+32)>4096 ||
-       (pm_le32(h+36)!=1 && pm_le32(h+36)!=6) || r64(h+64,false) || r64(h+72,false)) return false;
-    levels=pm_le32(h+40); if(!levels) levels=1; if(levels>32) return false; table=80+(uint64_t)levels*24;
-    dfd=pm_le32(h+48); dfdsize=pm_le32(h+52); kvd=pm_le32(h+56); kvdsize=pm_le32(h+60);
+    if(!pm_read(f,0,h,80) || xx_rt_memcmp(h,"\xabKTX 20\xbb\r\n\x1a\n",12) || xx_data_get_u32(h+44, 4, 0, false) ||
+       (xx_data_get_u32(h+16, 4, 0, false)!=1 && xx_data_get_u32(h+16, 4, 0, false)!=2 && xx_data_get_u32(h+16, 4, 0, false)!=4 && xx_data_get_u32(h+16, 4, 0, false)!=8) ||
+       !xx_data_get_u32(h+20, 4, 0, false) || xx_data_get_u32(h+20, 4, 0, false)>16384 || xx_data_get_u32(h+24, 4, 0, false)>16384 || xx_data_get_u32(h+28, 4, 0, false)>16384 || xx_data_get_u32(h+32, 4, 0, false)>4096 ||
+       (xx_data_get_u32(h+36, 4, 0, false)!=1 && xx_data_get_u32(h+36, 4, 0, false)!=6) || r64(h+64,false) || r64(h+72,false)) return false;
+    levels=xx_data_get_u32(h+40, 4, 0, false); if(!levels) levels=1; if(levels>32) return false; table=80+(uint64_t)levels*24;
+    dfd=xx_data_get_u32(h+48, 4, 0, false); dfdsize=xx_data_get_u32(h+52, 4, 0, false); kvd=xx_data_get_u32(h+56, 4, 0, false); kvdsize=xx_data_get_u32(h+60, 4, 0, false);
     if(dfd<table || (dfd&3) || dfdsize<28 || dfd>(uint64_t)pm_available(f) || dfdsize>(uint64_t)pm_available(f)-dfd ||
-       !pm_read(f,dfd,b,4) || pm_le32(b)!=dfdsize || !pm_add(f,s,"data-format-descriptor.bin",dfd,dfdsize)) return false;
+       !pm_read(f,dfd,b,4) || xx_data_get_u32(b, 4, 0, false)!=dfdsize || !pm_add(f,s,"data-format-descriptor.bin",dfd,dfdsize)) return false;
     end=(uint64_t)dfd+dfdsize;
     {
         uint64_t at=(uint64_t)dfd+4;
         while(at<end) {
             uint32_t n;
-            if(end-at<24 || !pm_read(f,(int64_t)at,b,8) || (n=pm_le16(b+6))<24 || (n&3) || n>end-at) return false;
+            if(end-at<24 || !pm_read(f,(int64_t)at,b,8) || (n=xx_data_get_u16(b+6, 2, 0, false))<24 || (n&3) || n>end-at) return false;
             at+=n;
         }
         if(at!=end) return false;
@@ -35,7 +36,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if(kvd<end || (kvd&3) || (kvdsize&3) || !pm_add(f,s,"keyvalues.bin",kvd,kvdsize)) return false;
         while(at<kend) {
             uint32_t n,j; uint8_t c; bool ended=false;
-            if(kend-at<4 || !pm_read(f,(int64_t)at,b,4) || !(n=pm_le32(b)) || n>kend-at-4 || 4+((n+3ULL)&~3ULL)>kend-at) return false;
+            if(kend-at<4 || !pm_read(f,(int64_t)at,b,4) || !(n=xx_data_get_u32(b, 4, 0, false)) || n>kend-at-4 || 4+((n+3ULL)&~3ULL)>kend-at) return false;
             for(j=0;j<n;++j) { if(!pm_read(f,(int64_t)at+4+j,&c,1)) return false; if(!c) { ended=true; break; } }
             if(!ended) { return false; } at+=4+((n+3ULL)&~3ULL);
         }

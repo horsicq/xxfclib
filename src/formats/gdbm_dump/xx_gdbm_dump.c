@@ -4,6 +4,7 @@
  */
 /* Primary: https://ftp.gnu.org/gnu/gdbm/gdbm-1.24.tar.gz */
 #include "xxfclib/formats/gdbm_dump/xx_gdbm_dump.h"
+#include "xxfclib/data/xx_data.h"
 #include "../xx_thirteenth_wrappers.h"
 
 static int b64(uint8_t c){return c>='A'&&c<='Z'?c-'A':c>='a'&&c<='z'?c-'a'+26:c>='0'&&c<='9'?c-'0'+52:c=='+'?62:c=='/'?63:-1;}

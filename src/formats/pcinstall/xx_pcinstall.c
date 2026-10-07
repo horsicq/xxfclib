@@ -45,6 +45,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef PCINSTALL
 #define XX_PCINSTALL_FILE_TYPE XX_FILE_TYPE_PCINSTALL
@@ -85,14 +86,6 @@ typedef struct pci_stream_s {
     int64_t archive_size;
     uint16_t declared_count;
 } pci_stream;
-
-static uint16_t pci_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t pci_le32(const uint8_t *bytes) {
-    return (uint32_t)pci_le16(bytes) | ((uint32_t)pci_le16(bytes + 2U) << 16U);
-}
 
 static bool pci_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -243,10 +236,10 @@ static bool pci_parse(Abstractformat *format, pci_stream **result,
     for (index = 0U; index < PCI_TAG_OFFSET; ++index)
         if (header[index] != 0U) return false;
     if (header[PCI_TAG_OFFSET] != PCI_TAG) return false;
-    if (pci_le32(header + 0x10) != (uint32_t)PCI_TAG) return false;
+    if (xx_data_get_u32(header + 0x10, 4, 0, false) != (uint32_t)PCI_TAG) return false;
     for (index = 0x14U; index < PCI_VOLUME_HEADER_SIZE; ++index)
         if (header[index] != 0U) return false;
-    declared = pci_le16(header + PCI_COUNT_OFFSET);
+    declared = xx_data_get_u16(header + PCI_COUNT_OFFSET, 2, 0, false);
     if (declared == 0U || declared > PCI_MAX_RECORDS) return false;
     /* Each member costs at least its descriptor, so a count that could not
      * fit is rejected before a single allocation happens. */
@@ -269,7 +262,7 @@ static bool pci_parse(Abstractformat *format, pci_stream **result,
             goto fail;
         for (zero = 0x1cU; zero < PCI_RECORD_SIZE; ++zero)
             if (record[zero] != 0U) goto fail;
-        packed_size = (int64_t)pci_le32(record + PCI_SIZE_OFFSET);
+        packed_size = (int64_t)xx_data_get_u32(record + PCI_SIZE_OFFSET, 4, 0, false);
         if (!pci_range_within(available, cursor + PCI_RECORD_SIZE,
                               packed_size))
             goto fail;
@@ -280,8 +273,8 @@ static bool pci_parse(Abstractformat *format, pci_stream **result,
         member.data_offset = base + cursor + PCI_RECORD_SIZE;
         member.packed_size = packed_size;
         member.unpacked_size = -1;
-        member.dos_date = pci_le16(record + PCI_DATE_OFFSET);
-        member.dos_time = pci_le16(record + PCI_TIME_OFFSET);
+        member.dos_date = xx_data_get_u16(record + PCI_DATE_OFFSET, 2, 0, false);
+        member.dos_time = xx_data_get_u16(record + PCI_TIME_OFFSET, 2, 0, false);
         if (!pci_add_member(stream, &member)) {
             xx_mem_free(member.name);
             goto fail;

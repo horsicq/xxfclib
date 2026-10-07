@@ -46,6 +46,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef SFARK_COMPRESSED_SOUNDFONT
 #define XX_SFARK_COMPRESSED_SOUNDFONT_FILE_TYPE \
@@ -101,11 +102,6 @@ typedef struct sfk_context_s {
     size_t count;
     size_t kinds[3];             /* 0 SoundFont, 1 licence, 2 notes */
 } sfk_context;
-
-static uint32_t sfk_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) | ((uint32_t)p[2] << 16U) |
-           ((uint32_t)p[3] << 24U);
-}
 
 static bool sfk_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -194,14 +190,14 @@ static bool sfk_parse_header(Abstractformat *format, sfk_header *h) {
                      SFK_HEADER_SIZE)) return false;
     if (xx_rt_memcmp(buf + 0x1AU, "sfArk", 5U) != 0) return false;
     xx_mem_zero(h, sizeof(*h));
-    h->flags = sfk_le32(buf);
-    h->original_size = sfk_le32(buf + 4U);
-    h->compressed_size = sfk_le32(buf + 8U);
-    h->file_check = sfk_le32(buf + 12U);
-    stored = sfk_le32(buf + 16U);
+    h->flags = xx_data_get_u32(buf, 4, 0, false);
+    h->original_size = xx_data_get_u32(buf + 4U, 4, 0, false);
+    h->compressed_size = xx_data_get_u32(buf + 8U, 4, 0, false);
+    h->file_check = xx_data_get_u32(buf + 12U, 4, 0, false);
+    stored = xx_data_get_u32(buf + 16U, 4, 0, false);
     h->method = buf[0x1FU];
-    h->audio_start = sfk_le32(buf + 0x22U);
-    h->post_audio = sfk_le32(buf + 0x26U);
+    h->audio_start = xx_data_get_u32(buf + 0x22U, 4, 0, false);
+    h->post_audio = xx_data_get_u32(buf + 0x26U, 4, 0, false);
     if (h->method < 4U || h->method > 7U) return false;
     if (h->original_size == 0U || h->original_size > (uint32_t)INT32_MAX ||
         h->audio_start == 0U || h->audio_start >= h->post_audio ||
@@ -255,7 +251,7 @@ static bool sfk_parse_texts(Abstractformat *format, sfk_context *ctx,
         if (!(ctx->header.flags & bit)) continue;
         if (end - offset < 4 || !sfk_read_at(format->device, offset, word, 4U))
             return false;
-        packed = sfk_le32(word);
+        packed = xx_data_get_u32(word, 4, 0, false);
         if (packed == 0U || packed > SFK_BLOCK_MAX ||
             (int64_t)packed > end - offset - 4) return false;
         if (!sfk_read_at(format->device, offset + 4, scratch_in, packed))
@@ -833,7 +829,7 @@ static bool sfk_run(Abstractformat *format, const sfk_context *ctx,
             uint8_t word[4];
             uint32_t packed, size;
             if (!sfk_get_bytes(&d->bits, word, 4U)) goto done;
-            packed = sfk_le32(word);
+            packed = xx_data_get_u32(word, 4, 0, false);
             if (packed == 0U || packed > SFK_BLOCK_MAX ||
                 !sfk_get_bytes(&d->bits, d->zin, packed)) goto done;
             size = sfk_inflate(d->zin, packed, d->zout);

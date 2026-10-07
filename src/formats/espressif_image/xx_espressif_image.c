@@ -5,16 +5,17 @@
  */
 #include "xxfclib/formats/espressif_image/xx_espressif_image.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[24],seg[8],buf[8192],checksum=0xef,stored; int64_t at=24,end,available=pm_available(f); unsigned i,j;
-    if(!pm_read(f,0,h,24) || h[0]!=0xe9 || !h[1] || h[1]>16 || h[2]>3 || ((h[3]&15)>2 && (h[3]&15)!=15) || pm_le16(h+12)!=0 || h[23]!=0) return false;
+    if(!pm_read(f,0,h,24) || h[0]!=0xe9 || !h[1] || h[1]>16 || h[2]>3 || ((h[3]&15)>2 && (h[3]&15)!=15) || xx_data_get_u16(h+12, 2, 0, false)!=0 || h[23]!=0) return false;
     for(i=19;i<23;++i) if(h[i]) return false;
     for(i=0;i<h[1];++i) {
         uint32_t size,addr; int64_t pos; uint64_t left; char name[64];
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,at,seg,8)) return false;
-        addr=pm_le32(seg); size=pm_le32(seg+4); at+=8;
+        addr=xx_data_get_u32(seg, 4, 0, false); size=xx_data_get_u32(seg+4, 4, 0, false); at+=8;
         if(!size || addr>UINT32_MAX-size || at>available || size>(uint64_t)(available-at)) return false;
         xx_rt_snprintf(name,sizeof(name),"segment-%u-address-%08x.bin",i,addr);
         if(!pm_add(f,s,name,at,size)) return false;

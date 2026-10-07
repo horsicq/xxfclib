@@ -27,6 +27,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef OUTLOOK_EXPRESS_DBX_MAILBOX
 #define XX_OUTLOOK_EXPRESS_DBX_MAILBOX_FILE_TYPE \
@@ -92,11 +93,6 @@ typedef struct dbx_parse_s {
     bool failed; /**< Allocation failure: the parse as a whole fails. */
 } dbx_parse;
 
-static uint32_t dbx_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
-
 static bool dbx_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     size_t done = 0U;
@@ -142,18 +138,18 @@ static bool dbx_header(Abstractformat *format, int64_t *size_out,
         !dbx_read_at(format->device, format->base_address, head, sizeof(head)) ||
         xx_rt_memcmp(head, g_dbx_magic, sizeof(g_dbx_magic)) != 0)
         return false;
-    root = dbx_le32(head + DBX_ROOT_OFFSET);
+    root = xx_data_get_u32(head + DBX_ROOT_OFFSET, 4, 0, false);
     if (root != 0U) {
         if (!dbx_in_file(size, root, DBX_NODE_HEADER) ||
             !dbx_read_at(format->device, format->base_address + (int64_t)root,
                          node, sizeof(node)) ||
-            dbx_le32(node) != root || node[0x11] > DBX_NODE_ENTRIES ||
+            xx_data_get_u32(node, 4, 0, false) != root || node[0x11] > DBX_NODE_ENTRIES ||
             !dbx_in_file(size, root,
                          DBX_NODE_HEADER + (uint64_t)node[0x11] * DBX_NODE_ENTRY))
             return false;
     }
     if (size_out) *size_out = size;
-    if (count_out) *count_out = dbx_le32(head + DBX_COUNT_OFFSET);
+    if (count_out) *count_out = xx_data_get_u32(head + DBX_COUNT_OFFSET, 4, 0, false);
     if (root_out) *root_out = root;
     return true;
 }
@@ -180,11 +176,11 @@ static bool dbx_chain(xx_io_device *device, int64_t base, int64_t size,
         if (!dbx_in_file(size, offset, DBX_BLOCK_HEADER) ||
             !dbx_read_at(device, base + (int64_t)offset, header,
                          sizeof(header)) ||
-            dbx_le32(header) != offset)
+            xx_data_get_u32(header, 4, 0, false) != offset)
             goto done;
-        body = dbx_le32(header + 4U);
-        used = dbx_le32(header + 8U);
-        next = dbx_le32(header + 12U);
+        body = xx_data_get_u32(header + 4U, 4, 0, false);
+        used = xx_data_get_u32(header + 8U, 4, 0, false);
+        next = xx_data_get_u32(header + 12U, 4, 0, false);
         if (body == 0U || body > DBX_MAX_BLOCK_BODY || used > body ||
             !dbx_in_file(size, offset, (uint64_t)DBX_BLOCK_HEADER + used))
             goto done;
@@ -279,9 +275,9 @@ static void dbx_add_info(dbx_parse *parse, uint32_t info) {
     if (!dbx_in_file(parse->size, info, DBX_INFO_HEADER) ||
         !dbx_read_at(parse->device, parse->base + (int64_t)info, header,
                      sizeof(header)) ||
-        dbx_le32(header) != info)
+        xx_data_get_u32(header, 4, 0, false) != info)
         return;
-    body = dbx_le32(header + 4U);
+    body = xx_data_get_u32(header + 4U, 4, 0, false);
     count = header[0x0A];
     if ((uint64_t)count * 4U > body ||
         !dbx_in_file(parse->size, info, (uint64_t)DBX_INFO_HEADER + body) ||
@@ -291,7 +287,7 @@ static void dbx_add_info(dbx_parse *parse, uint32_t info) {
         return;
     dbx_touch(parse, info, (uint64_t)DBX_INFO_HEADER + body);
     for (index = 0U; index < count && !found; ++index) {
-        uint32_t attribute = dbx_le32(attributes + index * 4U);
+        uint32_t attribute = xx_data_get_u32(attributes + index * 4U, 4, 0, false);
         uint32_t value = attribute >> 8U;
         if ((attribute & 0x7FU) != DBX_ATTR_MESSAGE) continue;
         if (attribute & 0x80U) {
@@ -305,7 +301,7 @@ static void dbx_add_info(dbx_parse *parse, uint32_t info) {
                                  (int64_t)data,
                              word, sizeof(word)))
                 return;
-            address = dbx_le32(word);
+            address = xx_data_get_u32(word, 4, 0, false);
         }
         found = true;
     }
@@ -348,9 +344,9 @@ static bool dbx_load_node(dbx_parse *parse, dbx_frame *stack, size_t depth,
         if (stack[index].offset == offset) return false;
     if (!dbx_read_at(parse->device, parse->base + (int64_t)offset, frame->node,
                      DBX_NODE_HEADER) ||
-        dbx_le32(frame->node) != offset ||
+        xx_data_get_u32(frame->node, 4, 0, false) != offset ||
         (depth != 0U &&
-         dbx_le32(frame->node + 0x0CU) != stack[depth - 1U].offset))
+         xx_data_get_u32(frame->node + 0x0CU, 4, 0, false) != stack[depth - 1U].offset))
         return false;
     used = frame->node[0x11];
     if (used > DBX_NODE_ENTRIES ||
@@ -416,13 +412,13 @@ static bool dbx_parse_all(Abstractformat *format, dbx_parse *parse,
         }
         if (frame->position < 0) {
             frame->position = 0;
-            child = dbx_le32(frame->node + 0x08U);
+            child = xx_data_get_u32(frame->node + 0x08U, 4, 0, false);
         } else if ((uint32_t)frame->position < frame->used) {
             const uint8_t *entry = frame->node + DBX_NODE_HEADER +
                                    (size_t)frame->position * DBX_NODE_ENTRY;
             ++frame->position;
-            dbx_add_info(parse, dbx_le32(entry));
-            child = dbx_le32(entry + 4U);
+            dbx_add_info(parse, xx_data_get_u32(entry, 4, 0, false));
+            child = xx_data_get_u32(entry + 4U, 4, 0, false);
         } else {
             --depth;
             continue;

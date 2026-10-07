@@ -17,6 +17,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_LOGITECHCOMPRESS_HEADER_SIZE 8U
 #define XX_LOGITECHCOMPRESS_MIN_PAYLOAD 3U
@@ -33,11 +34,6 @@ typedef struct xx_logitechcompress_context_s {
 } xx_logitechcompress_context;
 
 static void xx_logitechcompress_vtable_destroy(Abstractformat *self);
-
-static uint32_t xx_logitechcompress_read32le(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
 
 static bool xx_logitechcompress_read_exact_at(xx_io_device *device,
                                               int64_t offset, void *data,
@@ -83,7 +79,7 @@ static bool xx_logitechcompress_parse_buffer(
         input[0] != 0xdaU || input[1] != 0xfaU) {
         return false;
     }
-    uncompressed_size = xx_logitechcompress_read32le(input + 4U);
+    uncompressed_size = xx_data_get_u32(input + 4U, 4, 0, false);
     compressed_size = input_size - XX_LOGITECHCOMPRESS_HEADER_SIZE;
     if (uncompressed_size == 0U ||
         uncompressed_size > XX_LOGITECHCOMPRESS_MAX_OUTPUT ||

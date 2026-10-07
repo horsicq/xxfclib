@@ -5,15 +5,16 @@
  */
 #include "xxfclib/formats/bioware_rim/xx_bioware_rim.h"
 #include "../bethesda_bsa/xx_game_table.h"
+#include "xxfclib/data/xx_data.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[120],r[32]; uint32_t count,table,i; int64_t total=pm_available(f); uint64_t floor;
     if(!gm_read(f,total,0,h,120) || xx_rt_memcmp(h,"RIM V1.0",8)) return false;
-    count=pm_le32(h+12); table=pm_le32(h+16);
+    count=xx_data_get_u32(h+12, 4, 0, false); table=xx_data_get_u32(h+16, 4, 0, false);
     if(count>65536 || table<120 || !gm_range(total,table,(uint64_t)count*32)) return false;
     floor=table+(uint64_t)count*32; s->size=(int64_t)floor;
     for(i=0;i<count;++i) {
-        if(gm_stopped(pd) || !gm_read(f,total,table+(uint64_t)i*32,r,32) || !gm_add(f,s,"resource.bin",pm_le32(r+24),pm_le32(r+28),floor,total)) return false;
+        if(gm_stopped(pd) || !gm_read(f,total,table+(uint64_t)i*32,r,32) || !gm_add(f,s,"resource.bin",xx_data_get_u32(r+24, 4, 0, false),xx_data_get_u32(r+28, 4, 0, false),floor,total)) return false;
     }
     return true;
 }

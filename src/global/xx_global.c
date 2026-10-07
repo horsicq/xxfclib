@@ -69,6 +69,16 @@ size_t xx_global_get_file_buffer_size(void) {
     return xx_get_file_buffer_size();
 }
 
+static uint64_t g_file_memory_limit = XX_DEFAULT_FILE_MEMORY_LIMIT;
+
+void xx_set_file_memory_limit(uint64_t limit) {
+    g_file_memory_limit = limit;
+}
+
+uint64_t xx_get_file_memory_limit(void) {
+    return g_file_memory_limit;
+}
+
 #include "platforms/xx_global_platform.h"
 
 static bool g_sse2_detected = false;

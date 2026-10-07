@@ -47,6 +47,7 @@
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/algo/coktellz/xx_coktellz.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_STK_COPY_CHUNK (64 * 1024)
 
@@ -152,8 +153,6 @@ static bool xx_stk_add(xx_stk_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_stk_le16(const uint8_t *data);
-static uint32_t xx_stk_le32(const uint8_t *data);
 static bool xx_stk_name_byte_valid(uint8_t value);
 static int64_t xx_stk_copy_name(const uint8_t *source, int64_t max_length, uint8_t *target);
 static bool xx_stk_publish(xx_stk_stream *stream, const char *name, int64_t header_offset, int64_t header_size, int64_t data_offset, int64_t packed, int64_t plain, uint32_t method);
@@ -169,15 +168,6 @@ static bool xx_stk_decode(Abstractformat *self, const xx_stk_member *member, uin
  * 65535. The larger of the two is the array cap. */
 
 /* Longest name accepted from STK2's packed name blob. */
-
-static uint16_t xx_stk_le16(const uint8_t *data) {
-    return (uint16_t)((uint32_t)data[0] | ((uint32_t)data[1] << 8));
-}
-
-static uint32_t xx_stk_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* DOS names only; anything outside printable ASCII in a format that has no
  * signature is far more likely to be a false positive than an exotic name.
@@ -257,7 +247,7 @@ static xx_stk_stream *xx_stk_parse_classic(Abstractformat *self, int64_t span,
                         sizeof(count_field))) {
         return NULL;
     }
-    count = (int64_t)xx_stk_le16(count_field);
+    count = (int64_t)xx_data_get_u16(count_field, 2, 0, false);
     /* A zero count is not an archive, and the upper bound is what stops a
      * file whose first two bytes happen to be large from being walked as a
      * directory. */
@@ -278,8 +268,8 @@ static xx_stk_stream *xx_stk_parse_classic(Abstractformat *self, int64_t span,
         }
         if (xx_stk_copy_name(entry, XX_STK_NAME_SIZE, name) <= 0) goto fail;
 
-        stored_size = (int64_t)xx_stk_le32(entry + 13);
-        data_offset = (int64_t)xx_stk_le32(entry + 17);
+        stored_size = (int64_t)xx_data_get_u32(entry + 13, 4, 0, false);
+        data_offset = (int64_t)xx_data_get_u32(entry + 17, 4, 0, false);
         method = (uint32_t)entry[21];
 
         /* Only 0 and 1 were ever assigned, and this byte is the most
@@ -310,7 +300,7 @@ static xx_stk_stream *xx_stk_parse_classic(Abstractformat *self, int64_t span,
                                 sizeof(prefix))) {
                 goto fail;
             }
-            plain_size = (int64_t)xx_stk_le32(prefix);
+            plain_size = (int64_t)xx_data_get_u32(prefix, 4, 0, false);
             /* The stored size field of a compressed entry counts the stream
              * plus three, not plus four: the writer charged three bytes of
              * overhead for the four-byte prefix. Matching the reference here
@@ -367,7 +357,7 @@ static xx_stk_stream *xx_stk_parse_stk2(Abstractformat *self, int64_t span,
     if (!xx_stk_read_at(self, self->base_address, header, sizeof(header))) {
         return NULL;
     }
-    directory_offset = (int64_t)xx_stk_le32(header + 28);
+    directory_offset = (int64_t)xx_data_get_u32(header + 28, 4, 0, false);
     /* The directory sits after the member data, so it cannot overlap the
      * header, and its first two words must fit. */
     if (directory_offset < XX_STK2_HEADER_SIZE) return NULL;
@@ -376,9 +366,9 @@ static xx_stk_stream *xx_stk_parse_stk2(Abstractformat *self, int64_t span,
                         sizeof(directory))) {
         return NULL;
     }
-    count = (int64_t)xx_stk_le32(directory);
+    count = (int64_t)xx_data_get_u32(directory, 4, 0, false);
     if (count == 0 || count > XX_STK_MAX_MEMBERS) return NULL;
-    meta_offset = (int64_t)xx_stk_le32(directory + 4);
+    meta_offset = (int64_t)xx_data_get_u32(directory + 4, 4, 0, false);
     name_base = directory_offset + 8;
     /* The packed name blob fills [name_base, meta_offset); an inverted pair
      * means the directory is not one. */
@@ -403,9 +393,9 @@ static xx_stk_stream *xx_stk_parse_stk2(Abstractformat *self, int64_t span,
                             sizeof(record))) {
             goto fail;
         }
-        name_pointer = (int64_t)xx_stk_le32(record);
-        stored_size = (int64_t)xx_stk_le32(record + 40);
-        plain_size = (int64_t)xx_stk_le32(record + 44);
+        name_pointer = (int64_t)xx_data_get_u32(record, 4, 0, false);
+        stored_size = (int64_t)xx_data_get_u32(record + 40, 4, 0, false);
+        plain_size = (int64_t)xx_data_get_u32(record + 44, 4, 0, false);
 
         chunk_offset = cursor;
         if (stored_size > directory_offset - cursor) goto fail;

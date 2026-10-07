@@ -34,6 +34,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested. */
@@ -169,15 +170,6 @@ typedef struct lx_stream_s {
 /* ---------------------------------------------------------------------- */
 /* Small helpers                                                           */
 
-static uint32_t lx_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) | ((uint32_t)p[2] << 16U) |
-           ((uint32_t)p[3] << 24U);
-}
-
-static uint64_t lx_le64(const uint8_t *p) {
-    return (uint64_t)lx_le32(p) | ((uint64_t)lx_le32(p + 4) << 32U);
-}
-
 static bool lx_read_at(xx_io_device *device, int64_t offset, void *buffer,
                        size_t size) {
     size_t done = 0U;
@@ -220,7 +212,7 @@ static bool lx_parse_header(Abstractformat *format, lx_layout *l,
     if (method > 2U) return false;
     l->base = format->base_address;
     l->method = method;
-    l->segment = lx_le32(header + 12);
+    l->segment = xx_data_get_u32(header + 12, 4, 0, false);
     *size_out = size;
     return true;
 }
@@ -228,17 +220,17 @@ static bool lx_parse_header(Abstractformat *format, lx_layout *l,
 /* A descriptor on its own: checksum, fixed size field, sane type. */
 static bool lx_desc_decode(const uint8_t *raw, lx_section *s, uint64_t *prev) {
     uint32_t type;
-    if (xx_adler32(raw, 60U) != lx_le32(raw + 60)) return false;
-    type = lx_le32(raw);
-    if (type == 0U || type > 0xFFFFU || lx_le32(raw + 24) != LX_DESC)
+    if (xx_adler32(raw, 60U) != xx_data_get_u32(raw + 60, 4, 0, false)) return false;
+    type = xx_data_get_u32(raw, 4, 0, false);
+    if (type == 0U || type > 0xFFFFU || xx_data_get_u32(raw + 24, 4, 0, false) != LX_DESC)
         return false;
     s->type = type;
-    s->flags = lx_le32(raw + 4);
-    s->size = lx_le64(raw + 16);
-    s->padding = lx_le32(raw + 28);
+    s->flags = xx_data_get_u32(raw + 4, 4, 0, false);
+    s->size = xx_data_get_u64(raw + 16, 8, 0, false);
+    s->padding = xx_data_get_u32(raw + 28, 4, 0, false);
     s->data = 0;
     if ((uint64_t)s->padding > s->size) return false;
-    *prev = lx_le64(raw + 8);
+    *prev = xx_data_get_u64(raw + 8, 8, 0, false);
     return true;
 }
 
@@ -327,8 +319,8 @@ static bool lx_walk_forward(xx_io_device *device, lx_layout *l, int64_t size,
             const uint8_t *r = buffer + i;
             uint64_t p = pos + i, prev;
             lx_section s;
-            if (lx_le32(r + 24) != LX_DESC || lx_le64(r + 8) != expect ||
-                lx_le64(r + 16) > p - start || !lx_desc_decode(r, &s, &prev))
+            if (xx_data_get_u32(r + 24, 4, 0, false) != LX_DESC || xx_data_get_u64(r + 8, 8, 0, false) != expect ||
+                xx_data_get_u64(r + 16, 8, 0, false) > p - start || !lx_desc_decode(r, &s, &prev))
                 continue;
             s.data = l->base + (int64_t)start;
             if (!lx_push_section(l, &s)) goto done;
@@ -549,10 +541,10 @@ static bool lx_add_table(xx_io_device *device, lx_info *info,
     lx_table table;
     uint64_t need;
     if (s->size < 32U || !lx_read_at(device, s->data, header, 32U) ||
-        xx_adler32(header, 16U) != lx_le32(header + 16))
+        xx_adler32(header, 16U) != xx_data_get_u32(header + 16, 4, 0, false))
         return false;
-    table.first = lx_le64(header);
-    table.count = lx_le32(header + 8);
+    table.first = xx_data_get_u64(header, 8, 0, false);
+    table.count = xx_data_get_u32(header + 8, 4, 0, false);
     if (table.count > LX_MAX_TABLE_ENTRIES ||
         table.first > UINT64_MAX / 2U)
         return false;
@@ -596,7 +588,7 @@ static bool lx_verify_table(xx_io_device *device, lx_table *table) {
         at += (int64_t)take;
         left -= take;
     }
-    if (!lx_read_at(device, at, stored, 4U) || lx_le32(stored) != adler)
+    if (!lx_read_at(device, at, stored, 4U) || xx_data_get_u32(stored, 4, 0, false) != adler)
         return false;
     table->verified = 1U;
     return true;
@@ -654,8 +646,8 @@ static bool lx_decode_entry(lx_media *m, const uint8_t entry[16],
                             size_t capacity, size_t *produced,
                             xx_pd_struct *pd) {
     const lx_layout *l = &m->info->layout;
-    uint64_t offset = lx_le64(entry);
-    uint32_t size = lx_le32(entry + 8), flags = lx_le32(entry + 12);
+    uint64_t offset = xx_data_get_u64(entry, 8, 0, false);
+    uint32_t size = xx_data_get_u32(entry + 8, 4, 0, false), flags = xx_data_get_u32(entry + 12, 4, 0, false);
     uint64_t limit = (uint64_t)(l->end - l->base);
     *produced = 0U;
     if ((flags & LX_CHUNK_COMPRESSED) && (flags & LX_CHUNK_PATTERN)) {
@@ -705,7 +697,7 @@ static bool lx_decode_entry(lx_media *m, const uint8_t entry[16],
         if (flags & LX_CHUNK_CHECKSUM) {
             if (!lx_read_at(m->device, l->base + (int64_t)offset + (int64_t)data,
                             stored, 4U) ||
-                lx_le32(stored) != xx_adler32(m->chunk, data))
+                xx_data_get_u32(stored, 4, 0, false) != xx_adler32(m->chunk, data))
                 return false;
         }
         *produced = data;
@@ -773,7 +765,7 @@ static uint32_t lx_infer_chunk_size(xx_io_device *device, lx_info *info) {
     probe.chunk_size = LX_MAX_CHUNK;
     if (info->chunk_end == 0U || !lx_media_open(&m, device, &probe)) return 0U;
     if (lx_find_chunk(&m, 0U, entry)) {
-        uint32_t flags = lx_le32(entry + 12);
+        uint32_t flags = xx_data_get_u32(entry + 12, 4, 0, false);
         if (!((flags & LX_CHUNK_COMPRESSED) && (flags & LX_CHUNK_PATTERN)) &&
             lx_decode_entry(&m, entry, LX_MAX_CHUNK, &produced, NULL))
             result = (uint32_t)produced;

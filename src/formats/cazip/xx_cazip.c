@@ -96,6 +96,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* The enumerator is added by the coordinator, not by this file.  Until it
  * exists the reader still compiles and simply reports UNKNOWN.  Delete this
@@ -175,15 +176,6 @@ typedef struct xx_cazip_stream_s {
 static void xx_cazip_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------ helpers --- */
-
-static uint16_t xx_cazip_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8));
-}
-
-static uint32_t xx_cazip_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8) |
-           ((uint32_t)bytes[2] << 16) | ((uint32_t)bytes[3] << 24);
-}
 
 static bool xx_cazip_read_at(Abstractformat *self, int64_t offset,
                              uint8_t *buffer, size_t size) {
@@ -390,8 +382,8 @@ static xx_cazip_stream *xx_cazip_parse_classic(Abstractformat *self,
     if (header[8] < '0' || header[8] > '9' || header[9] < '0' ||
         header[9] > '9')
         return NULL;
-    if (xx_cazip_le16(header + 10) != 1U) return NULL;
-    flavour = xx_cazip_le16(header + 12);
+    if (xx_data_get_u16(header + 10, 2, 0, false) != 1U) return NULL;
+    flavour = xx_data_get_u16(header + 12, 2, 0, false);
     if (flavour != 1U && flavour != 2U) return NULL;
     if (header[18] != 0U || header[19] != 0U) return NULL;
     /* The next two bytes are the DCL preamble, so they are validated as one:
@@ -421,7 +413,7 @@ static xx_cazip_stream *xx_cazip_parse_classic(Abstractformat *self,
     member.uncompressed_size = -1;
     member.method = XX_CAZIP_METHOD_CLASSIC_BASE +
                     header[XX_CAZIP_CLASSIC_HEADER + XX_CAZIP_DCL_DICT_OFFSET];
-    member.crc32 = xx_cazip_le32(header + 14);
+    member.crc32 = xx_data_get_u32(header + 14, 4, 0, false);
     member.has_crc32 = true;
     member.mode = 0U;
     member.timestamp = 0U;

@@ -7,8 +7,8 @@
 static bool crunchdisk_parse(Abstractformat *f,pm_stream *s,ac_blob *b) {
     uint32_t bytes,sectors,heads,low,high,per,total,at=32,c,i,j,plane; uint16_t method,eff; uint8_t *image;
     if(b->n<32U || xx_rt_memcmp(b->p,"CDF0",4)) return false;
-    bytes=pm_be32(b->p+4); sectors=pm_be32(b->p+8); heads=pm_be32(b->p+12); low=pm_be32(b->p+16); high=pm_be32(b->p+20);
-    eff=pm_be16(b->p+28); method=pm_be16(b->p+30);
+    bytes=xx_data_get_u32(b->p+4, 4, 0, true); sectors=xx_data_get_u32(b->p+8, 4, 0, true); heads=xx_data_get_u32(b->p+12, 4, 0, true); low=xx_data_get_u32(b->p+16, 4, 0, true); high=xx_data_get_u32(b->p+20, 4, 0, true);
+    eff=xx_data_get_u16(b->p+28, 2, 0, true); method=xx_data_get_u16(b->p+30, 2, 0, true);
     if(bytes<128U || bytes>8192U || (bytes&(bytes-1U)) || !sectors || sectors>64U || !heads || heads>2U || low>high || high>255U || method>2U || eff>4U || b->p[25]) return false;
     if(b->p[24]) return ac_error(b,"password-protected CrunchDisk requires unsupported PX20 decryption");
     per=bytes*sectors*heads;
@@ -16,7 +16,7 @@ static bool crunchdisk_parse(Abstractformat *f,pm_stream *s,ac_blob *b) {
     image=ac_alloc(b,total); if(!image) return false;
     for(c=low;c<=high;++c) { uint32_t size,stored; uint8_t *plain=NULL; const uint8_t *source;
         if(!ac_poll(b) || !ac_span(b,at,8U) || (xx_rt_memcmp(b->p+at,"CYL0",4) && xx_rt_memcmp(b->p+at,"CYL1",4))) goto fail;
-        stored=size=pm_be32(b->p+at+4); if(!ac_span(b,at+8U,size)) goto fail; source=b->p+at+8U;
+        stored=size=xx_data_get_u32(b->p+at+4, 4, 0, true); if(!ac_span(b,at+8U,size)) goto fail; source=b->p+at+8U;
         if(b->p[at+3]=='0') { if(size!=per) goto fail; xx_rt_memcpy(image+(c-low)*per,source,per); }
         else {
             if(method==2U) { ac_error(b,"CrunchDisk XPK compression is unsupported"); goto fail; }

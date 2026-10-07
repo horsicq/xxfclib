@@ -6,6 +6,7 @@
 #include "xxfclib/formats/sgi_rgb/xx_sgi_rgb.h"
 #include "../xx_payload_members.h"
 #include "xxfclib/global/xx_global.h"
+#include "xxfclib/data/xx_data.h"
 
 typedef struct fm_bytes { Abstractformat *f; xx_pd_struct *pd; int64_t pos,end,begin; size_t count,capacity; uint8_t *buffer; } fm_bytes;
 static bool fm_start(fm_bytes *r,Abstractformat *f,xx_pd_struct *pd,int64_t at,int64_t end) {
@@ -42,10 +43,10 @@ static bool sg_row(Abstractformat *f,xx_pd_struct *pd,uint32_t at,uint32_t size,
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[512],word[4]; unsigned x,y,z,dim,bpc,i,j,count; uint32_t starts[1024],sizes[1024]; int64_t end; uint64_t samples,plane; char label[48]; bool named=false;
-    if(!pm_read(f,0,h,512) || pm_be16(h)!=474 || h[2]>1 || (h[3]!=1 && h[3]!=2) || pm_be32(h+104)) return false;
-    bpc=h[3]; dim=pm_be16(h+4); x=pm_be16(h+6); y=pm_be16(h+8); z=pm_be16(h+10);
+    if(!pm_read(f,0,h,512) || xx_data_get_u16(h, 2, 0, true)!=474 || h[2]>1 || (h[3]!=1 && h[3]!=2) || xx_data_get_u32(h+104, 4, 0, true)) return false;
+    bpc=h[3]; dim=xx_data_get_u16(h+4, 2, 0, true); x=xx_data_get_u16(h+6, 2, 0, true); y=xx_data_get_u16(h+8, 2, 0, true); z=xx_data_get_u16(h+10, 2, 0, true);
     samples=(uint64_t)x*y*z; plane=(uint64_t)x*y*bpc;
-    if(!x || !y || !z || z>16 || dim<1 || dim>3 || (dim==1 && (y!=1 || z!=1)) || (dim==2 && z!=1) || samples>67108864 || samples*bpc>268435456 || pm_be32(h+12)>pm_be32(h+16) || pm_be32(h+16)>(bpc==1 ? 255U : 65535U)) return false;
+    if(!x || !y || !z || z>16 || dim<1 || dim>3 || (dim==1 && (y!=1 || z!=1)) || (dim==2 && z!=1) || samples>67108864 || samples*bpc>268435456 || xx_data_get_u32(h+12, 4, 0, true)>xx_data_get_u32(h+16, 4, 0, true) || xx_data_get_u32(h+16, 4, 0, true)>(bpc==1 ? 255U : 65535U)) return false;
     for(i=24;i<104;++i) if(!h[i]) named=true;
     if(!named || !pm_add(f,s,"descriptor.bin",0,512)) return false;
     if(!h[2]) {
@@ -55,8 +56,8 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         count=y*z; if(count>1024) return false; end=512+8*(int64_t)count;
         if(end>pm_available(f)) return false;
         for(i=0;i<count;++i) {
-            if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,512+4*(int64_t)i,word,4)) { return false; } starts[i]=pm_be32(word);
-            if(!pm_read(f,512+4*(int64_t)(count+i),word,4)) { return false; } sizes[i]=pm_be32(word);
+            if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,512+4*(int64_t)i,word,4)) { return false; } starts[i]=xx_data_get_u32(word, 4, 0, true);
+            if(!pm_read(f,512+4*(int64_t)(count+i),word,4)) { return false; } sizes[i]=xx_data_get_u32(word, 4, 0, true);
             if(starts[i]<512U+8U*count || !sizes[i] || sizes[i]>(2U*x+1U)*bpc || (uint64_t)starts[i]+sizes[i]>(uint64_t)pm_available(f)) return false;
             for(j=0;j<i;++j) {
                 if((uint64_t)starts[i]<(uint64_t)starts[j]+sizes[j] && (uint64_t)starts[j]<(uint64_t)starts[i]+sizes[i] && !(starts[i]==starts[j] && sizes[i]==sizes[j])) return false;

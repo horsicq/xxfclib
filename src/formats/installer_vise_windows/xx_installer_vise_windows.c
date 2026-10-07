@@ -29,6 +29,7 @@
 #include <limits.h>
 #include <stddef.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* xxfc_defs.h is shared and is not edited from here, so the file-type
  * constant is resolved through the alias macro that the enumerator defines. */
@@ -81,14 +82,6 @@ enum {
 };
 
 /* --- little-endian helpers and device access ----------------------------- */
-
-static uint16_t vise_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t vise_le32(const uint8_t *bytes) {
-    return (uint32_t)vise_le16(bytes) | ((uint32_t)vise_le16(bytes + 2U) << 16U);
-}
 
 static bool vise_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
@@ -650,7 +643,7 @@ static int64_t vise_follow_pointer(xx_io_device *device, int64_t base,
     if (vise_is_tag(head, "SIVM") && vise_is_tag(head + 8, "ESIV") &&
         pointer + VISE_WRAPPER_SIZE + VISE_HEADER_SIZE <= footer) {
         *wrapper = pointer;
-        *wrapper_size = (int64_t)vise_le32(head + 4);
+        *wrapper_size = (int64_t)xx_data_get_u32(head + 4, 4, 0, false);
         return pointer + VISE_WRAPPER_SIZE;
     }
     return -1;
@@ -684,7 +677,7 @@ static bool vise_locate(Abstractformat *format, vise_layout *layout) {
     if (!vise_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' ||
         dos[1] != 'Z')
         return false;
-    lfanew = (int64_t)vise_le32(dos + 0x3c);
+    lfanew = (int64_t)xx_data_get_u32(dos + 0x3c, 4, 0, false);
     if (lfanew < 4 || lfanew > VISE_MAX_LFANEW ||
         !vise_range(total, lfanew, (int64_t)sizeof(nt)) ||
         !vise_read_at(device, base + lfanew, nt, sizeof(nt)))
@@ -700,11 +693,11 @@ static bool vise_locate(Abstractformat *format, vise_layout *layout) {
             !vise_is_tag(footer, "ESIV"))
             return false;
         layout->header = vise_follow_pointer(device, base, total,
-            (int64_t)vise_le32(footer + 4U), at,
+            (int64_t)xx_data_get_u32(footer + 4U, 4, 0, false), at,
             &layout->wrapper, &layout->wrapper_size);
         if (layout->header < 0 ||
             !vise_read_at(device, base + layout->header, head, sizeof(head)) ||
-            !vise_is_tag(head, "ESIV") || vise_le32(head + 8U) != 1U)
+            !vise_is_tag(head, "ESIV") || xx_data_get_u32(head + 8U, 4, 0, false) != 1U)
             return false;
         layout->image_end = layout->header;
         layout->footer = at;
@@ -713,8 +706,8 @@ static bool vise_locate(Abstractformat *format, vise_layout *layout) {
     }
     if (nt[0] != 'P' || nt[1] != 'E' || nt[2] != 0U || nt[3] != 0U)
         return false;
-    count = vise_le16(nt + 6);
-    optional_size = vise_le16(nt + 20);
+    count = xx_data_get_u16(nt + 6, 2, 0, false);
+    optional_size = xx_data_get_u16(nt + 20, 2, 0, false);
     if (count == 0U || count > VISE_MAX_SECTIONS ||
         optional_size > VISE_MAX_OPTIONAL)
         return false;
@@ -726,13 +719,13 @@ static bool vise_locate(Abstractformat *format, vise_layout *layout) {
                                                      : sizeof(optional);
     if (optional_read >= 2U &&
         vise_read_at(device, base + lfanew + 24, optional, optional_read)) {
-        uint16_t magic = vise_le16(optional);
+        uint16_t magic = xx_data_get_u16(optional, 2, 0, false);
         size_t directories = magic == 0x10bU ? 96U
                              : magic == 0x20bU ? 112U : 0U;
         if (directories != 0U && optional_read >= directories + 40U &&
-            vise_le32(optional + directories - 4U) >= 5U) {
-            int64_t offset = (int64_t)vise_le32(optional + directories + 32U);
-            int64_t size = (int64_t)vise_le32(optional + directories + 36U);
+            xx_data_get_u32(optional + directories - 4U, 4, 0, false) >= 5U) {
+            int64_t offset = (int64_t)xx_data_get_u32(optional + directories + 32U, 4, 0, false);
+            int64_t size = (int64_t)xx_data_get_u32(optional + directories + 36U, 4, 0, false);
             if (size >= 8 && offset >= 0x40 && vise_range(total, offset, size)) {
                 layout->cert_offset = offset;
                 layout->cert_size = size;
@@ -746,8 +739,8 @@ static bool vise_locate(Abstractformat *format, vise_layout *layout) {
         goto fail;
     for (index = 0U; index < count; ++index) {
         const uint8_t *row = sections + (size_t)index * 40U;
-        int64_t raw_size = (int64_t)vise_le32(row + 16);
-        int64_t raw_offset = (int64_t)vise_le32(row + 20);
+        int64_t raw_size = (int64_t)xx_data_get_u32(row + 16, 4, 0, false);
+        int64_t raw_offset = (int64_t)xx_data_get_u32(row + 20, 4, 0, false);
         if (raw_size == 0) continue;
         if (raw_offset + raw_size > overlay) overlay = raw_offset + raw_size;
     }
@@ -763,8 +756,8 @@ static bool vise_locate(Abstractformat *format, vise_layout *layout) {
     /* 2. The container in a section, behind its SIVM wrapper. */
     for (index = 0U; layout->header < 0 && index < count; ++index) {
         const uint8_t *row = sections + (size_t)index * 40U;
-        int64_t raw_size = (int64_t)vise_le32(row + 16);
-        int64_t raw_offset = (int64_t)vise_le32(row + 20);
+        int64_t raw_size = (int64_t)xx_data_get_u32(row + 16, 4, 0, false);
+        int64_t raw_offset = (int64_t)xx_data_get_u32(row + 20, 4, 0, false);
         uint8_t wrap[12];
         int64_t size;
         if (raw_size < VISE_WRAPPER_SIZE + VISE_HEADER_SIZE +
@@ -773,7 +766,7 @@ static bool vise_locate(Abstractformat *format, vise_layout *layout) {
             !vise_read_at(device, base + raw_offset, wrap, sizeof(wrap)) ||
             !vise_is_tag(wrap, "SIVM") || !vise_is_tag(wrap + 8, "ESIV"))
             continue;
-        size = (int64_t)vise_le32(wrap + 4);
+        size = (int64_t)xx_data_get_u32(wrap + 4, 4, 0, false);
         if (size < VISE_WRAPPER_SIZE + VISE_HEADER_SIZE ||
             !vise_range(total, raw_offset, size + VISE_FOOTER_SIZE))
             continue;
@@ -819,7 +812,7 @@ static bool vise_locate(Abstractformat *format, vise_layout *layout) {
                                           sizeof(footer))) { readable = false; break; }
                         if (!vise_is_tag(footer, "ESIV")) continue;
                         header = vise_follow_pointer(
-                            device, base, total, (int64_t)vise_le32(footer + 4U),
+                            device, base, total, (int64_t)xx_data_get_u32(footer + 4U, 4, 0, false),
                             position, &layout->wrapper, &layout->wrapper_size);
                         if (header >= 0) {
                             layout->header = header;
@@ -839,7 +832,7 @@ static bool vise_locate(Abstractformat *format, vise_layout *layout) {
     if (layout->header < 0 ||
         !vise_range(total, layout->header, VISE_HEADER_SIZE + 3) ||
         !vise_read_at(device, base + layout->header, head, sizeof(head)) ||
-        !vise_is_tag(head, "ESIV") || vise_le32(head + 8) != 1U)
+        !vise_is_tag(head, "ESIV") || xx_data_get_u32(head + 8, 4, 0, false) != 1U)
         return false;
     layout->end = total;
     if (layout->wrapper >= 0) {
@@ -857,7 +850,7 @@ static bool vise_footer_at(xx_io_device *device, int64_t base, int64_t total,
     uint8_t footer[VISE_FOOTER_SIZE];
     return vise_range(total, at, VISE_FOOTER_SIZE) &&
            vise_read_at(device, base + at, footer, sizeof(footer)) &&
-           vise_is_tag(footer, "ESIV") && vise_le32(footer + 4) == pointer;
+           vise_is_tag(footer, "ESIV") && xx_data_get_u32(footer + 4, 4, 0, false) == pointer;
 }
 
 /* Finds the footer that closes the container.  It normally sits at the end
@@ -927,7 +920,7 @@ static void vise_find_footer(Abstractformat *format, vise_layout *layout,
         last = chunk - VISE_FOOTER_SIZE;
         for (i = 0U; i <= last; ++i) {
             if (buffer[i] == 'E' && vise_is_tag(buffer + i, "ESIV") &&
-                vise_le32(buffer + i + 4U) == pointer) {
+                xx_data_get_u32(buffer + i + 4U, 4, 0, false) == pointer) {
                 layout->footer = cursor + (int64_t)i;
                 layout->end = layout->footer;
                 xx_mem_free(buffer);
@@ -977,13 +970,13 @@ static uint32_t vise_u8(vise_cursor *c) {
 static uint32_t vise_u16(vise_cursor *c) {
     uint8_t value[2] = {0U, 0U};
     (void)vise_take(c, value, 2U);
-    return vise_le16(value);
+    return xx_data_get_u16(value, 2, 0, false);
 }
 
 static uint32_t vise_u32(vise_cursor *c) {
     uint8_t value[4] = {0U, 0U, 0U, 0U};
     (void)vise_take(c, value, 4U);
-    return vise_le32(value);
+    return xx_data_get_u32(value, 4, 0, false);
 }
 
 static bool vise_skip_str16(vise_cursor *c) {
@@ -1340,7 +1333,7 @@ static bool vise_setup_table(Abstractformat *format, const vise_layout *layout,
         if (!c.ok || length == 0U || !vise_take(&c, name, length) ||
             !vise_name_ok(name, length) || !vise_take(&c, fields, 16U))
             return false;
-        packed = (int64_t)vise_le32(fields + 12);
+        packed = (int64_t)xx_data_get_u32(fields + 12, 4, 0, false);
         data = c.pos;
         if (packed < 2 || (packed & 1) != 0 || !vise_skip(&c, packed))
             return false;
@@ -1361,8 +1354,8 @@ static bool vise_setup_table(Abstractformat *format, const vise_layout *layout,
             member.data_offset = data;
             member.packed_size = packed;
             member.unpacked_size = raw;
-            member.dos_date = vise_le16(fields);
-            member.dos_time = vise_le16(fields + 2);
+            member.dos_date = xx_data_get_u16(fields, 2, 0, false);
+            member.dos_time = xx_data_get_u16(fields + 2, 2, 0, false);
             if (!vise_add_named(parsed, &member, name, length)) return false;
         }
     }
@@ -1481,12 +1474,12 @@ static bool vise_object_crc(const uint8_t *window, size_t size, size_t at,
                             uint32_t *crc) {
     size_t length, index;
     if (at > size || size - at < 7U) return false;
-    length = vise_le16(window + at + 5U);
+    length = xx_data_get_u16(window + at + 5U, 2, 0, false);
     if (length > VISE_MAX_STRING16 || size - at - 7U < length + 18U)
         return false;
     for (index = 0U; index < length; ++index)
         if (!vise_name_byte(window[at + 7U + index])) return false;
-    *crc = vise_le32(window + at + 7U + length + 14U);
+    *crc = xx_data_get_u32(window + at + 7U + length + 14U, 4, 0, false);
     return true;
 }
 
@@ -1521,7 +1514,7 @@ static bool vise_scan(Abstractformat *format, const vise_layout *layout,
         /* Install-file object: u16 name length, name, 4 or 6 reserved
          * bytes, unpacked, packed, flags 1, data offset. */
         if (q + 2U <= size) {
-            uint32_t length = vise_le16(window + q);
+            uint32_t length = xx_data_get_u16(window + q, 2, 0, false);
             if (length != 0U && length <= VISE_MAX_NAME16 &&
                 q + 2U + length + 4U + 16U <= size &&
                 vise_object_name(window, size, q + 2U, length, &object_bad)) {
@@ -1534,10 +1527,10 @@ static bool vise_scan(Abstractformat *format, const vise_layout *layout,
                     uint32_t decoded = 0U;
                     vise_member member;
                     if (fields + 16U > size) continue;
-                    raw = vise_le32(window + fields);
-                    packed = vise_le32(window + fields + 4U);
-                    flags = vise_le32(window + fields + 8U);
-                    relative = vise_le32(window + fields + 12U);
+                    raw = xx_data_get_u32(window + fields, 4, 0, false);
+                    packed = xx_data_get_u32(window + fields + 4U, 4, 0, false);
+                    flags = xx_data_get_u32(window + fields + 8U, 4, 0, false);
+                    relative = xx_data_get_u32(window + fields + 12U, 4, 0, false);
                     if (flags != 1U || raw == 0U || packed < 2U ||
                         (packed & 1U) != 0U)
                         continue;
@@ -1558,8 +1551,8 @@ static bool vise_scan(Abstractformat *format, const vise_layout *layout,
                     member.unpacked_size = raw;
                     /* attributes, three FILETIMEs, then DOS date and time */
                     if (fields + 16U + 32U <= size) {
-                        member.dos_date = vise_le16(window + fields + 44U);
-                        member.dos_time = vise_le16(window + fields + 46U);
+                        member.dos_date = xx_data_get_u16(window + fields + 44U, 2, 0, false);
+                        member.dos_time = xx_data_get_u16(window + fields + 46U, 2, 0, false);
                     }
                     member.decoded_crc = decoded;
                     member.has_crc = vise_object_crc(window, size,
@@ -1587,7 +1580,7 @@ static bool vise_scan(Abstractformat *format, const vise_layout *layout,
                 vise_support_name(window, size, q + 1U, length, &support_bad,
                                   &support_dot)) {
                 size_t fields = q + 1U + length;
-                int64_t packed = (int64_t)vise_le32(window + fields + 12U);
+                int64_t packed = (int64_t)xx_data_get_u32(window + fields + 12U, 4, 0, false);
                 int64_t data = start + (int64_t)(fields + 16U);
                 uint64_t raw = 0U;
                 if (packed >= 2 && (packed & 1) == 0 &&
@@ -1601,8 +1594,8 @@ static bool vise_scan(Abstractformat *format, const vise_layout *layout,
                     member.data_offset = data;
                     member.packed_size = packed;
                     member.unpacked_size = raw;
-                    member.dos_date = vise_le16(window + fields);
-                    member.dos_time = vise_le16(window + fields + 2U);
+                    member.dos_date = xx_data_get_u16(window + fields, 2, 0, false);
+                    member.dos_time = xx_data_get_u16(window + fields + 2U, 2, 0, false);
                     if (!vise_add_named(parsed, &member, window + q + 1U,
                                         length)) {
                         xx_mem_free(window);

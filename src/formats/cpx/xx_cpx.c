@@ -65,6 +65,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef CPX
 #define XX_CPX_FILE_TYPE XX_FILE_TYPE_CPX
@@ -117,14 +118,6 @@ typedef struct cpx_stream_s {
     int64_t archive_size;
     uint8_t version;
 } cpx_stream;
-
-static uint16_t cpx_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t cpx_le32(const uint8_t *bytes) {
-    return (uint32_t)cpx_le16(bytes) | ((uint32_t)cpx_le16(bytes + 2U) << 16U);
-}
 
 static bool cpx_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -353,7 +346,7 @@ static bool cpx_parse_v1(Abstractformat *format, int64_t size,
                          const uint8_t *header, cpx_stream **result) {
     cpx_stream *stream;
     uint8_t *directory = NULL;
-    size_t count = (size_t)cpx_le16(header + 4U);
+    size_t count = (size_t)xx_data_get_u16(header + 4U, 2, 0, false);
     int64_t directory_size, directory_end;
     size_t index;
 
@@ -388,9 +381,9 @@ static bool cpx_parse_v1(Abstractformat *format, int64_t size,
         for (; scan < CPX_V1_NAME_SIZE; ++scan)
             if (record[scan] != 0U) goto fail;
 
-        offset = (int64_t)cpx_le32(record + 22U);
+        offset = (int64_t)xx_data_get_u32(record + 22U, 4, 0, false);
         if (offset < directory_end || offset >= size) goto fail;
-        declared = cpx_le32(record + 18U);
+        declared = xx_data_get_u32(record + 18U, 4, 0, false);
 
         member->name = cpx_normalize_name(record, CPX_V1_NAME_SIZE);
         if (!member->name || !member->name[0]) goto fail;
@@ -399,7 +392,7 @@ static bool cpx_parse_v1(Abstractformat *format, int64_t size,
         member->header_size = CPX_V1_RECORD_SIZE;
         member->data_offset = format->base_address + offset;
         member->attributes = record[13];
-        member->timestamp = cpx_le32(record + 14U);
+        member->timestamp = xx_data_get_u32(record + 14U, 4, 0, false);
         member->flags = declared;
         member->stored = (declared & UINT32_C(0x80000000)) != 0U;
         member->unpacked_size = declared & UINT32_C(0x7fffffff);
@@ -463,13 +456,13 @@ static bool cpx_parse_v4(Abstractformat *format, int64_t size,
     cpx_stream *stream = NULL;
     uint8_t *records = NULL;
     uint8_t *names = NULL;
-    int64_t header_size = (int64_t)cpx_le16(header + 4U);
-    int64_t record_size = (int64_t)cpx_le32(header + 8U);
-    int64_t record_offset = (int64_t)cpx_le32(header + 12U);
-    int64_t name_size = (int64_t)cpx_le32(header + 16U);
-    int64_t name_offset = (int64_t)cpx_le32(header + 20U);
-    int64_t extra_size = (int64_t)cpx_le32(header + 24U);
-    int64_t extra_offset = (int64_t)cpx_le32(header + 28U);
+    int64_t header_size = (int64_t)xx_data_get_u16(header + 4U, 2, 0, false);
+    int64_t record_size = (int64_t)xx_data_get_u32(header + 8U, 4, 0, false);
+    int64_t record_offset = (int64_t)xx_data_get_u32(header + 12U, 4, 0, false);
+    int64_t name_size = (int64_t)xx_data_get_u32(header + 16U, 4, 0, false);
+    int64_t name_offset = (int64_t)xx_data_get_u32(header + 20U, 4, 0, false);
+    int64_t extra_size = (int64_t)xx_data_get_u32(header + 24U, 4, 0, false);
+    int64_t extra_offset = (int64_t)xx_data_get_u32(header + 28U, 4, 0, false);
     int64_t end;
     size_t count, index;
 
@@ -501,10 +494,10 @@ static bool cpx_parse_v4(Abstractformat *format, int64_t size,
     for (index = 0U; index < count; ++index) {
         const uint8_t *record = records + index * CPX_V4_RECORD_SIZE;
         cpx_member *member = &stream->items[index];
-        int64_t name_at = (int64_t)cpx_le32(record);
-        int64_t packed = (int64_t)cpx_le32(record + 20U);
-        int64_t offset = (int64_t)cpx_le32(record + 24U);
-        uint64_t unpacked = cpx_le32(record + 8U);
+        int64_t name_at = (int64_t)xx_data_get_u32(record, 4, 0, false);
+        int64_t packed = (int64_t)xx_data_get_u32(record + 20U, 4, 0, false);
+        int64_t offset = (int64_t)xx_data_get_u32(record + 24U, 4, 0, false);
+        uint64_t unpacked = xx_data_get_u32(record + 8U, 4, 0, false);
         int64_t limit;
 
         if (name_at < 0 || name_at >= name_size) goto fail;
@@ -522,9 +515,9 @@ static bool cpx_parse_v4(Abstractformat *format, int64_t size,
         member->header_size = CPX_V4_RECORD_SIZE;
         member->data_offset = format->base_address + offset;
         member->packed_size = packed;
-        member->attributes = cpx_le32(record + 4U);
-        member->timestamp = cpx_le32(record + 12U);
-        member->flags = cpx_le32(record + 16U);
+        member->attributes = xx_data_get_u32(record + 4U, 4, 0, false);
+        member->timestamp = xx_data_get_u32(record + 12U, 4, 0, false);
+        member->flags = xx_data_get_u32(record + 16U, 4, 0, false);
         member->stored = (unpacked == (uint64_t)packed);
         member->unpacked_size = unpacked;
         if (!member->stored && !cpx_check_size(unpacked, packed)) goto fail;

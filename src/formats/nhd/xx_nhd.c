@@ -6,6 +6,7 @@
  */
 #include "xxfclib/formats/nhd/xx_nhd.h"
 #include "../wux/xx_disk_containers_native.h"
+#include "xxfclib/data/xx_data.h"
 
 #ifdef NHD
 #define DC_FILE_TYPE XX_FILE_TYPE_NHD
@@ -22,11 +23,11 @@ static bool dc_parse(Abstractformat *f, dc_image *image,
     if (!dc_read(f, image, 0U, header, sizeof(header), pd) ||
         xx_rt_memcmp(header, "T98HDDIMAGE.R0\0", 15U) || header[15U] ||
         !dc_zero(header + 286U, 226U)) return false;
-    header_size = dc_le32(header + 272U);
-    cylinders = dc_le32(header + 276U);
-    heads = dc_le16(header + 280U);
-    per_track = dc_le16(header + 282U);
-    sector_size = dc_le16(header + 284U);
+    header_size = xx_data_get_u32(header + 272U, 4, 0, false);
+    cylinders = xx_data_get_u32(header + 276U, 4, 0, false);
+    heads = xx_data_get_u16(header + 280U, 2, 0, false);
+    per_track = xx_data_get_u16(header + 282U, 2, 0, false);
+    sector_size = xx_data_get_u16(header + 284U, 2, 0, false);
     if (header_size < sizeof(header) || header_size > UINT32_C(1048576) ||
         !cylinders || !heads || !per_track || sector_size < 128U || sector_size > 16384U ||
         (sector_size & (sector_size - 1U))) return false;

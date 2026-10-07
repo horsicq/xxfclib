@@ -42,6 +42,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef IS11
 #define XX_IS11_FILE_TYPE XX_FILE_TYPE_IS11
@@ -92,14 +93,6 @@ typedef struct is11_stream_s {
     uint32_t generation;
     uint8_t variant;
 } is11_stream;
-
-static uint16_t is11_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t is11_le32(const uint8_t *bytes) {
-    return (uint32_t)is11_le16(bytes) | ((uint32_t)is11_le16(bytes + 2U) << 16U);
-}
 
 static bool is11_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
@@ -500,13 +493,13 @@ static bool is11_parse(Abstractformat *format, is11_stream **result,
     if (available < IS11_HEADER_SIZE + IS11_MEMBER_HEADER_GEN1 + 2)
         return false;
     if (!is11_read_at(format->device, base, header, sizeof(header)) ||
-        is11_le32(header) != IS11_MAGIC)
+        xx_data_get_u32(header, 4, 0, false) != IS11_MAGIC)
         return false;
-    format_word = is11_le32(header + 4);
+    format_word = xx_data_get_u32(header + 4, 4, 0, false);
     if (format_word != IS11_FORMAT_GEN1 && format_word != IS11_FORMAT_GEN3)
         return false;
     if (header[8] != 1U && header[8] != 2U) return false;
-    if (is11_le32(header + 9) != 0U) return false;
+    if (xx_data_get_u32(header + 9, 4, 0, false) != 0U) return false;
 
     stream = (is11_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;
@@ -527,8 +520,8 @@ static bool is11_parse(Abstractformat *format, is11_stream **result,
             !is11_read_at(format->device, base + cursor, member_header,
                           (size_t)member_header_size))
             goto fail;
-        packed_size = (int32_t)is11_le32(member_header + 1);
-        next_offset = (int32_t)is11_le32(member_header + 5);
+        packed_size = (int32_t)xx_data_get_u32(member_header + 1, 4, 0, false);
+        next_offset = (int32_t)xx_data_get_u32(member_header + 5, 4, 0, false);
         name_length = member_header[member_header_size - 1];
         if (packed_size < 0 || next_offset < 0 || name_length == 0U) goto fail;
 
@@ -549,8 +542,8 @@ static bool is11_parse(Abstractformat *format, is11_stream **result,
         member.unpacked_size = -1;
         member.flags = member_header[0];
         if (stream->generation == 3U) {
-            member.dos_date = is11_le16(member_header + 9);
-            member.dos_time = is11_le16(member_header + 11);
+            member.dos_date = xx_data_get_u16(member_header + 9, 2, 0, false);
+            member.dos_time = xx_data_get_u16(member_header + 11, 2, 0, false);
         }
         if (!is11_range_within(available, member.data_offset - base,
                                member.packed_size))

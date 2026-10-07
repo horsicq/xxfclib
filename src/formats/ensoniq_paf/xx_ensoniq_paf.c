@@ -5,6 +5,7 @@
  */
 #include "xxfclib/formats/ensoniq_paf/xx_ensoniq_paf.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 #ifndef ENSONIQ_PAF
 #define XX_FILE_TYPE_ENSONIQ_PAF ((xx_file_type_t)1541)
 #endif
@@ -17,11 +18,11 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(!xx_rt_memcmp(h," paf",4)) be=true;
     else if(!xx_rt_memcmp(h,"fap ",4)) be=false;
     else return false;
-    version=be?pm_be32(h+4):pm_le32(h+4);
-    endian=be?pm_be32(h+8):pm_le32(h+8);
-    rate=be?pm_be32(h+12):pm_le32(h+12);
-    encoding=be?pm_be32(h+16):pm_le32(h+16);
-    channels=be?pm_be32(h+20):pm_le32(h+20);
+    version=be?xx_data_get_u32(h+4, 4, 0, true):xx_data_get_u32(h+4, 4, 0, false);
+    endian=be?xx_data_get_u32(h+8, 4, 0, true):xx_data_get_u32(h+8, 4, 0, false);
+    rate=be?xx_data_get_u32(h+12, 4, 0, true):xx_data_get_u32(h+12, 4, 0, false);
+    encoding=be?xx_data_get_u32(h+16, 4, 0, true):xx_data_get_u32(h+16, 4, 0, false);
+    channels=be?xx_data_get_u32(h+20, 4, 0, true):xx_data_get_u32(h+20, 4, 0, false);
     if(version || endian>1 || !rate || rate>384000 || encoding>2 ||
        !channels || channels>1024) return false;
     data_size=available-2048;

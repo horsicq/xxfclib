@@ -25,9 +25,9 @@ static bool ng_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  while(at<n){uint8_t type;uint64_t end;uint32_t len;if(ng_stop(pd)||!ng_span(at,4,n)||b[at]||b[at+1]||b[at+2]!=1)return false;type=b[at+3];
   if(type==0xb9){if(!packs||!pes||at+4!=n||!ng_emit(f,s,"program-end.bin",at,4,n))return false;at+=4;break;}
   if(type==0xba){if(!ps_pack(b,at,n,&end))return false;++packs;}
-  else {if(!packs||!ng_span(at,6,n)||!(len=pm_be16(b+at+4))||!ng_span(at+6,len,n))return false;end=at+6+len;
+  else {if(!packs||!ng_span(at,6,n)||!(len=xx_data_get_u16(b+at+4, 2, 0, true))||!ng_span(at+6,len,n))return false;end=at+6+len;
    if(type==0xbb){ng_bits q;uint32_t v;uint64_t p;if(len<6||(len-6)%3)return false;q.b=b+at+6;q.bit=0;q.end=48;if(!ps_value(&q,1,1)||!ng_bits_get(&q,22,&v)||!v||!ps_value(&q,1,1)||!ng_bits_skip(&q,10)||!ps_value(&q,1,1)||!ng_bits_skip(&q,6)||!ps_value(&q,7,127))return false;for(p=at+12;p<end;p+=3)if((b[p]!=0xb8&&b[p]!=0xb9&&b[p]!=0xbd&&(b[p]<0xc0||b[p]>0xef))||(b[p+1]&0xc0)!=0xc0)return false;}
-   else if(type==0xbc){uint64_t p=at+6,finish;uint32_t bytes;if(len<10||(b[p]&0x60)!=0x60||b[p+1]!=255)return false;p+=2;bytes=pm_be16(b+p);p+=2;if(!ng_span(p,bytes,end-4))return false;p+=bytes;if(!ng_span(p,2,end-4))return false;bytes=pm_be16(b+p);p+=2;finish=p+bytes;if(finish!=end-4)return false;while(p<finish){if(!ng_span(p,4,finish)||!b[p]||(b[p+1]!=0xbd&&(b[p+1]<0xc0||b[p+1]>0xef)))return false;bytes=pm_be16(b+p+2);p+=4;if(!ng_span(p,bytes,finish))return false;p+=bytes;}}
+   else if(type==0xbc){uint64_t p=at+6,finish;uint32_t bytes;if(len<10||(b[p]&0x60)!=0x60||b[p+1]!=255)return false;p+=2;bytes=xx_data_get_u16(b+p, 2, 0, true);p+=2;if(!ng_span(p,bytes,end-4))return false;p+=bytes;if(!ng_span(p,2,end-4))return false;bytes=xx_data_get_u16(b+p, 2, 0, true);p+=2;finish=p+bytes;if(finish!=end-4)return false;while(p<finish){if(!ng_span(p,4,finish)||!b[p]||(b[p+1]!=0xbd&&(b[p+1]<0xc0||b[p+1]>0xef)))return false;bytes=xx_data_get_u16(b+p+2, 2, 0, true);p+=4;if(!ng_span(p,bytes,finish))return false;p+=bytes;}}
    else if(type==0xbe){uint64_t p=at+6;if(b[p]==15)++p;for(;p<end;++p)if(b[p]!=255)return false;}
    else if(type==0xbf){if(len<1)return false;}
    else if(type==0xbd||(type>=0xc0&&type<=0xef)){if(!ps_pes(b,at+6,end))return false;++pes;}

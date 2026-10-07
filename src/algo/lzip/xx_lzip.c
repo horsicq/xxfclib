@@ -17,6 +17,7 @@
 
 #include <limits.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_LZIP_MAX_MEMBERS ((size_t)1000000U)
 
@@ -37,20 +38,6 @@ typedef struct xx_lzip_counter_s {
     uint32_t crc32;
     bool failed;
 } xx_lzip_counter;
-
-static uint32_t xx_lzip_read_u32le(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
-
-static uint64_t xx_lzip_read_u64le(const uint8_t *data) {
-    uint64_t result = 0U;
-    unsigned index;
-    for (index = 0U; index < 8U; ++index) {
-        result |= (uint64_t)data[index] << (index * 8U);
-    }
-    return result;
-}
 
 static bool xx_lzip_read_exact_at(xx_io_device *device, int64_t offset,
                                   void *buffer, size_t size, size_t io_capacity) {
@@ -113,8 +100,8 @@ static bool xx_lzip_member_before(xx_io_device *source, int64_t stream_start,
                                trailer, sizeof(trailer), io_capacity)) {
         return false;
     }
-    member_size64 = xx_lzip_read_u64le(trailer + 12U);
-    output_size64 = xx_lzip_read_u64le(trailer + 4U);
+    member_size64 = xx_data_get_u64(trailer + 12U, 8, 0, false);
+    output_size64 = xx_data_get_u64(trailer + 4U, 8, 0, false);
     if (member_size64 < XX_LZIP_MIN_MEMBER_SIZE ||
         member_size64 > (uint64_t)(end - stream_start) ||
         member_size64 > (uint64_t)INT64_MAX ||
@@ -133,7 +120,7 @@ static bool xx_lzip_member_before(xx_io_device *source, int64_t stream_start,
     member->compressed_size =
         member_size - (int64_t)sizeof(header) - (int64_t)sizeof(trailer);
     member->uncompressed_size = (int64_t)output_size64;
-    member->crc32 = xx_lzip_read_u32le(trailer);
+    member->crc32 = xx_data_get_u32(trailer, 4, 0, false);
     member->dictionary_size = dictionary_size;
     return member->compressed_size >= 5;
 }
@@ -176,7 +163,7 @@ static bool xx_lzip_collect_members(xx_io_device *source,
             !xx_lzip_dictionary_size(header[5], &dictionary_size)) {
             return false;
         }
-        output_size64 = xx_lzip_read_u64le(trailer + 4U);
+        output_size64 = xx_data_get_u64(trailer + 4U, 8, 0, false);
         if (output_size64 > (uint64_t)INT64_MAX) return false;
         members = (xx_lzip_member *)xx_mem_alloc(sizeof(*members));
         if (!members) return false;
@@ -185,7 +172,7 @@ static bool xx_lzip_collect_members(xx_io_device *source,
         members[0].compressed_size = source_size - (int64_t)sizeof(header) -
                                      (int64_t)sizeof(trailer);
         members[0].uncompressed_size = (int64_t)output_size64;
-        members[0].crc32 = xx_lzip_read_u32le(trailer);
+        members[0].crc32 = xx_data_get_u32(trailer, 4, 0, false);
         members[0].dictionary_size = dictionary_size;
         *members_out = members;
         *count_out = 1U;

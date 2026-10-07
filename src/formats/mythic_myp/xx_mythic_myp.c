@@ -8,12 +8,12 @@
 
 static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[34]; uint64_t block,previous=28,metadata=28; uint32_t version,capacity,declared,actual=0; unsigned blocks=0,pass; int64_t limit=pm_available(f);
-    if(!pm_read(f,0,h,28) || xx_rt_memcmp(h,"MYP\0",4) || ((version=pm_le32(h+4))!=4 && version!=5) || !(capacity=pm_le32(h+20)) || capacity>65536 || !(declared=pm_le32(h+24)) || declared>65536) { return false; } block=wg64(h+12);
+    if(!pm_read(f,0,h,28) || xx_rt_memcmp(h,"MYP\0",4) || ((version=xx_data_get_u32(h+4, 4, 0, false))!=4 && version!=5) || !(capacity=xx_data_get_u32(h+20, 4, 0, false)) || capacity>65536 || !(declared=xx_data_get_u32(h+24, 4, 0, false)) || declared>65536) { return false; } block=wg64(h+12);
     for(pass=0;pass<2;++pass) { uint64_t first=block; previous=28; blocks=0;
         while(first) { uint32_t count,i; uint64_t next,stop; if(wg_stop(pd) || ++blocks>1024 || first<previous || !wg_range(limit,first,12) || !pm_read(f,(int64_t)first,h,12)) return false;
-            count=pm_le32(h); next=wg64(h+4); if(count>capacity || !wg_range(limit,first+12,(uint64_t)count*34)) return false; stop=first+12+(uint64_t)count*34; if(next && next<stop) return false; if(stop>metadata) metadata=stop;
+            count=xx_data_get_u32(h, 4, 0, false); next=wg64(h+4); if(count>capacity || !wg_range(limit,first+12,(uint64_t)count*34)) return false; stop=first+12+(uint64_t)count*34; if(next && next<stop) return false; if(stop>metadata) metadata=stop;
             for(i=0;i<count;++i) { uint64_t offset; uint32_t header,packed,raw; char label[48]; if(wg_stop(pd) || !pm_read(f,(int64_t)(first+12+(uint64_t)i*34),h,34)) return false; offset=wg64(h); if(!offset) continue;
-                header=pm_le32(h+8); packed=pm_le32(h+12); raw=pm_le32(h+16); if(pm_le16(h+32) || packed!=raw || !wg_range(limit,offset,(uint64_t)header+packed)) return false;
+                header=xx_data_get_u32(h+8, 4, 0, false); packed=xx_data_get_u32(h+12, 4, 0, false); raw=xx_data_get_u32(h+16, 4, 0, false); if(xx_data_get_u16(h+32, 2, 0, false) || packed!=raw || !wg_range(limit,offset,(uint64_t)header+packed)) return false;
                 if(pass) { if(offset<metadata || ++actual>declared) return false; xx_rt_snprintf(label,sizeof(label),"resource-%u.bin",actual-1); if(!pm_add(f,s,label,(int64_t)(offset+header),raw)) return false; s->items[s->count-1].packed_size=(int64_t)header+packed; }
             } previous=stop; first=next;
         }

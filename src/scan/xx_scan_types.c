@@ -11,6 +11,7 @@
 #include "xxfclib/formats/jar/xx_jar.h"
 #include "xxfclib/formats/npm/xx_npm.h"
 #include "xxfclib/formats/pyc/xx_pyc.h"
+#include "xxfclib/formats/dotnet/xx_dotnet.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -237,8 +238,15 @@ static xx_file_type_t xx_scan_detect_type(xx_io_device *device,
             if (!memcmp(signature, "PE\0\0", 4)) {
                 uint16_t magic = (uint16_t)signature[24] |
                                  ((uint16_t)signature[25] << 8U);
-                if (magic == 0x10bU) return XX_FILE_TYPE_PE32;
-                if (magic == 0x20bU) return XX_FILE_TYPE_PE64;
+                if (magic == 0x10bU || magic == 0x20bU) {
+                    xx_dotnet managed;
+                    bool valid_managed;
+                    xx_dotnet_init(&managed, device, 0);
+                    valid_managed = xx_dotnet_check_is_valid(&managed.pe.format, pd);
+                    xx_dotnet_destroy(&managed);
+                    if (valid_managed) return XX_FILE_TYPE_DOTNET;
+                    return magic == 0x10bU ? XX_FILE_TYPE_PE32 : XX_FILE_TYPE_PE64;
+                }
             }
         }
         {
@@ -393,6 +401,20 @@ xx_list_t *xx_scan_get_file_types(xx_scan_engine *engine, xx_io_device *device,
         return NULL;
     }
     if (!xx_list_append(types, &binary)) goto oom;
+    if (preferred == XX_FILE_TYPE_DOTNET) {
+        xx_file_type_t dos = XX_FILE_TYPE_MSDOS;
+        xx_file_type_t pe_type;
+        uint8_t pe_header[26];
+        uint8_t dos_header[64];
+        if (!xx_scan_read_at(&window.view, 0, dos_header, sizeof(dos_header)) ||
+            !xx_scan_read_at(&window.view, xx_scan_u32le(dos_header + 0x3c), pe_header, sizeof(pe_header))) {
+            xx_list_destroy(types);
+            return NULL;
+        }
+        pe_type = pe_header[24] == 0x0b && pe_header[25] == 0x02 ? XX_FILE_TYPE_PE64 : XX_FILE_TYPE_PE32;
+        if (original_position >= 0) (void)xx_io_seek64(device, original_position, SEEK_SET);
+        if (!xx_list_append(types, &dos) || !xx_list_append(types, &pe_type)) goto oom;
+    }
     if (preferred == XX_FILE_TYPE_APK || preferred == XX_FILE_TYPE_JAR ||
         preferred == XX_FILE_TYPE_IPA) {
         xx_file_type_t zip = XX_FILE_TYPE_ZIP;

@@ -37,6 +37,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* The alias macro is defined next to the enumerator in xxfc_defs.h, so testing
  * for it picks up the real file type as soon as MRNZ is registered there.
@@ -88,11 +89,6 @@ static const uint8_t xx_mrnz_magic[8] = {'M',  'R',  'N',  'Z',
                                          0x88U, 0xf0U, 0x27U, 0x33U};
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint32_t xx_mrnz_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static bool xx_mrnz_read_at(Abstractformat *self, int64_t offset,
                             uint8_t *buffer, size_t size) {
@@ -190,7 +186,7 @@ static xx_mrnz_stream *xx_mrnz_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (payload_size > XX_MRNZ_MAX_DECODED) return NULL;
 
     {
-        uint32_t declared = xx_mrnz_le32(header + 8);
+        uint32_t declared = xx_data_get_u32(header + 8, 4, 0, false);
         /* Bounded before it is used for anything: the mask loop runs over
          * exactly this many bytes of a buffer sized from the file. */
         if (declared > (uint32_t)XX_MRNZ_MAX_OBFUSCATED) return NULL;

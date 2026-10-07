@@ -42,6 +42,7 @@
 #include "xxfclib/algo/lofi/xx_lofi.h"
 #include "xxfclib/formats/iso9660/xx_iso9660.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_LOFI_COPY_CHUNK (64 * 1024)
 
@@ -155,8 +156,6 @@ static bool xx_lofi_add(xx_lofi_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint32_t xx_lofi_be32(const uint8_t *data);
-static uint64_t xx_lofi_be64(const uint8_t *data);
 static xx_lofi_stream *xx_lofi_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_lofi_decode(Abstractformat *self, const xx_lofi_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 static void xx_lofi_nested_iso_free(xx_lofi_nested_iso *nested);
@@ -172,16 +171,6 @@ static bool xx_lofi_prefix_iso_record(xx_archive_record_state *state);
  * also a bound on that allocation. */
 /* One logical image, so one member. */
 /* The container names the algorithm rather than numbering it. */
-
-static uint32_t xx_lofi_be32(const uint8_t *data) {
-    return ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16) |
-           ((uint32_t)data[2] << 8) | (uint32_t)data[3];
-}
-
-static uint64_t xx_lofi_be64(const uint8_t *data) {
-    return ((uint64_t)xx_lofi_be32(data) << 32) |
-           (uint64_t)xx_lofi_be32(data + 4);
-}
 
 static xx_lofi_stream *xx_lofi_parse(Abstractformat *self,
                                      xx_pd_struct *pd) {
@@ -230,9 +219,9 @@ static xx_lofi_stream *xx_lofi_parse(Abstractformat *self,
         if (header[entry] != 0U) return NULL;
     }
 
-    segment_size = (int64_t)xx_lofi_be32(header + 0x24);
-    index_entries = (int64_t)xx_lofi_be32(header + 0x28);
-    last_segment_size = (int64_t)xx_lofi_be32(header + 0x2C);
+    segment_size = (int64_t)xx_data_get_u32(header + 0x24, 4, 0, true);
+    index_entries = (int64_t)xx_data_get_u32(header + 0x28, 4, 0, true);
+    last_segment_size = (int64_t)xx_data_get_u32(header + 0x2C, 4, 0, true);
     if (segment_size <= 0 || segment_size > XX_LOFI_MAX_SEGMENT_SIZE) {
         return NULL;
     }
@@ -268,8 +257,8 @@ static xx_lofi_stream *xx_lofi_parse(Abstractformat *self,
      * rules at decode time, so relaxing them here can only produce members
      * that then refuse to extract. */
     for (entry = 0; entry < index_entries; ++entry) {
-        uint64_t value = xx_lofi_be64(index + entry *
-                                              XX_LOFI_INDEX_ENTRY_SIZE);
+        uint64_t value = xx_data_get_u64(index + entry *
+                                              XX_LOFI_INDEX_ENTRY_SIZE, 8, 0, true);
         if (value > (uint64_t)INT64_MAX) {
             xx_mem_free(index);
             return NULL;

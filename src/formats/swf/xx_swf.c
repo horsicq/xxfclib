@@ -33,6 +33,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -212,30 +213,6 @@ static uint32_t swf_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static uint32_t swf_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
-
-static void swf_put_le16(uint8_t *bytes, uint32_t value) {
-    bytes[0] = (uint8_t)value;
-    bytes[1] = (uint8_t)(value >> 8U);
-}
-
-static void swf_put_le32(uint8_t *bytes, uint32_t value) {
-    bytes[0] = (uint8_t)value;
-    bytes[1] = (uint8_t)(value >> 8U);
-    bytes[2] = (uint8_t)(value >> 16U);
-    bytes[3] = (uint8_t)(value >> 24U);
-}
-
-static void swf_put_be32(uint8_t *bytes, uint32_t value) {
-    bytes[0] = (uint8_t)(value >> 24U);
-    bytes[1] = (uint8_t)(value >> 16U);
-    bytes[2] = (uint8_t)(value >> 8U);
-    bytes[3] = (uint8_t)value;
-}
-
 static bool swf_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     const size_t file_io_capacity = gb_swf_capacity();
@@ -288,7 +265,7 @@ static bool swf_parse_header(Abstractformat *format, swf_header *out) {
     xx_mem_zero(&h, sizeof(h));
     h.signature = head[0];
     h.version = head[3];
-    h.file_length = swf_le32(head + 4U);
+    h.file_length = xx_data_get_u32(head + 4U, 4, 0, false);
     h.input_size = size;
     /* The smallest movie is the header, a one-byte RECT, frame rate and
      * frame count. */
@@ -321,7 +298,7 @@ static bool swf_parse_header(Abstractformat *format, swf_header *out) {
                          head + SWF_HEADER,
                          SWF_ZWS_HEADER + 2U - SWF_HEADER))
             return false;
-        packed = swf_le32(head + 8U);
+        packed = xx_data_get_u32(head + 8U, 4, 0, false);
         property = head[12];
         if (property >= 9U * 5U * 5U) return false;
         /* lc + lp above 4 is legal LZMA but no SWF writer uses it and the
@@ -373,7 +350,7 @@ static bool swf_check_prefix(const uint8_t *body, size_t size,
     length = header & 0x3FU;
     if (length == 0x3FU) {
         if (position + 4U > size) return position + 4U <= movie;
-        length = swf_le32(body + position);
+        length = xx_data_get_u32(body + position, 4, 0, false);
         position += 4U;
     }
     return length <= movie - position;
@@ -533,10 +510,10 @@ static bool swf_decode_body(Abstractformat *format, const swf_header *h,
         /* Matches never reach further back than the output produced so
          * far, so a dictionary as large as the wanted output is enough
          * (7-Zip clamps the same way).  This also bounds the allocation. */
-        dictionary = swf_le32(props + 1U);
+        dictionary = xx_data_get_u32(props + 1U, 4, 0, false);
         if ((uint64_t)dictionary > sink->limit) {
             dictionary = (uint32_t)sink->limit;
-            swf_put_le32(props + 1U, dictionary);
+            xx_data_set_u32(props + 1U, 4, 0, dictionary, false);
         }
         ok = xx_lzma_unpack_device(format->device, h->data_offset,
                                    h->data_size, props, sizeof(props),
@@ -794,7 +771,7 @@ static void swf_top_tag(swf_parsed *parsed, swf_cursor *cursor,
         if (length <= skip) break;
         /* The colour data ends at AlphaDataOffset; an offset past the tag
          * is clamped to it. */
-        image = swf_le32(head + 2U);
+        image = xx_data_get_u32(head + 2U, 4, 0, false);
         if (image > length - skip) image = length - skip;
         swf_add_image(parsed, cursor, id, tag_offset, body + skip, image);
         break;
@@ -929,7 +906,7 @@ static bool swf_walk(swf_parsed *parsed, Abstractformat *format,
                 !swf_fetch(cursor, position, head + 2U, 4U))
                 length = UINT64_MAX;
             else
-                length = swf_le32(head + 2U);
+                length = xx_data_get_u32(head + 2U, 4, 0, false);
             position += 4U;
         }
         if (position > level_end || length > level_end - position) {
@@ -1130,17 +1107,17 @@ static void swf_wav_header(uint8_t *out, uint8_t flags, uint64_t data_size) {
     uint32_t align = channels * bits / 8U;
     uint32_t pad = (uint32_t)(data_size & 1U);
     xx_rt_memcpy(out, "RIFF", 4U);
-    swf_put_le32(out + 4U, (uint32_t)(36U + data_size + pad));
+    xx_data_set_u32(out + 4U, 4, 0, (uint32_t)(36U + data_size + pad), false);
     xx_rt_memcpy(out + 8U, "WAVEfmt ", 8U);
-    swf_put_le32(out + 16U, 16U);
-    swf_put_le16(out + 20U, 1U);
-    swf_put_le16(out + 22U, channels);
-    swf_put_le32(out + 24U, rate);
-    swf_put_le32(out + 28U, rate * align);
-    swf_put_le16(out + 32U, align);
-    swf_put_le16(out + 34U, bits);
+    xx_data_set_u32(out + 16U, 4, 0, 16U, false);
+    xx_data_set_u16(out + 20U, 2, 0, (uint16_t)1U, false);
+    xx_data_set_u16(out + 22U, 2, 0, (uint16_t)channels, false);
+    xx_data_set_u32(out + 24U, 4, 0, rate, false);
+    xx_data_set_u32(out + 28U, 4, 0, rate * align, false);
+    xx_data_set_u16(out + 32U, 2, 0, (uint16_t)align, false);
+    xx_data_set_u16(out + 34U, 2, 0, (uint16_t)bits, false);
     xx_rt_memcpy(out + 36U, "data", 4U);
-    swf_put_le32(out + 40U, (uint32_t)data_size);
+    xx_data_set_u32(out + 40U, 4, 0, (uint32_t)data_size, false);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -1197,13 +1174,13 @@ static bool swf_png_chunk(swf_png *png, const char *type,
     uint8_t head[8], tail[4];
     uint32_t crc;
     uint64_t length = (uint64_t)prefix_size + size + suffix_size;
-    swf_put_be32(head, (uint32_t)length);
+    xx_data_set_u32(head, 4, 0, (uint32_t)length, true);
     xx_rt_memcpy(head + 4U, type, 4U);
     crc = xx_crc32_calc(0U, head + 4U, 4U);
     if (prefix_size) crc = xx_crc32_calc(crc, prefix, prefix_size);
     if (size) crc = xx_crc32_calc(crc, data, size);
     if (suffix_size) crc = xx_crc32_calc(crc, suffix, suffix_size);
-    swf_put_be32(tail, crc);
+    xx_data_set_u32(tail, 4, 0, crc, true);
     if (!swf_write_all(png->out, head, 8U) ||
         (prefix_size && !swf_write_all(png->out, prefix, prefix_size)) ||
         (size && !swf_write_all(png->out, data, size)) ||
@@ -1227,10 +1204,10 @@ static bool swf_png_emit_block(swf_png *png, bool final) {
         png->first_block = false;
     }
     prefix[prefix_size++] = final ? 1U : 0U;
-    swf_put_le16(prefix + prefix_size, png->block_have);
-    swf_put_le16(prefix + prefix_size + 2U, ~png->block_have & 0xFFFFU);
+    xx_data_set_u16(prefix + prefix_size, 2, 0, (uint16_t)png->block_have, false);
+    xx_data_set_u16(prefix + prefix_size + 2U, 2, 0, (uint16_t)(~png->block_have & 0xFFFFU), false);
     prefix_size += 4U;
-    swf_put_be32(suffix, png->adler);
+    xx_data_set_u32(suffix, 4, 0, png->adler, true);
     if (!swf_png_chunk(png, "IDAT", prefix, prefix_size, png->block,
                        png->block_have, suffix, final ? 4U : 0U))
         return false;
@@ -1274,8 +1251,8 @@ static bool swf_png_start(swf_png *png) {
         return false;
     }
     png->written += sizeof(signature);
-    swf_put_be32(ihdr, png->width);
-    swf_put_be32(ihdr + 4U, png->height);
+    xx_data_set_u32(ihdr, 4, 0, png->width, true);
+    xx_data_set_u32(ihdr + 4U, 4, 0, png->height, true);
     ihdr[8] = 8U;
     ihdr[9] = color_type;
     ihdr[10] = 0U;
@@ -1596,7 +1573,7 @@ static bool swf_parse(Abstractformat *format, swf_parsed **out,
     parsed->header[1] = 'W';
     parsed->header[2] = 'S';
     parsed->header[3] = h.version;
-    swf_put_le32(parsed->header + 4U, h.file_length);
+    xx_data_set_u32(parsed->header + 4U, 4, 0, h.file_length, false);
     if (h.signature == 'F') {
         parsed->movie_size = (uint64_t)h.format_size;
         parsed->movie_complete = h.format_size == (int64_t)h.file_length;

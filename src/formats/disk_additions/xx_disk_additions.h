@@ -19,7 +19,6 @@ typedef struct da_map {uint64_t count,bytes;da_run runs[];} da_map;
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
-static XXFC_MAYBE_UNUSED uint64_t da_le64(const uint8_t *p){return (uint64_t)pm_le32(p)|((uint64_t)pm_le32(p+4)<<32);}
 static bool da_poll(xx_pd_struct *pd){return !pd||!xx_pd_is_stopped(pd);}
 static XXFC_MAYBE_UNUSED bool da_read(Abstractformat *f,uint64_t at,void *p,size_t n,xx_pd_struct *pd){size_t done=0;while(done<n){size_t z=n-done>65536U?65536U:n-done;if(!da_poll(pd)||at>INT64_MAX-done||!pm_read(f,(int64_t)at+done,(uint8_t *)p+done,z))return false;done+=z;}return da_poll(pd);}
 static bool da_budget(Abstractformat *f,pm_stream *s,uint64_t extra){size_t i;uint64_t total=65536U+sizeof(*s),capacity=s->capacity;if(s->count==capacity)capacity=capacity?capacity*2U:8U;total+=capacity*sizeof(pm_member);for(i=0;i<s->count;++i)if(s->items[i].memory){uint64_t n=s->items[i].compression_method==DA_MAP_METHOD?sizeof(da_map)+((da_map *)s->items[i].memory)->count*sizeof(da_run):(uint64_t)s->items[i].size;if(n>UINT64_MAX-total)return false;total+=n;}return extra<=UINT64_MAX-total&&hx_limit(f,XX_META_ID_OPT_MEMORY_LIMIT,total+extra);}

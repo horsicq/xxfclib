@@ -32,6 +32,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef HXC_HFE_HDDD_A2_VARIANT
 #define XX_HXC_HFE_HDDD_A2_VARIANT_FILE_TYPE XX_FILE_TYPE_HXC_HFE_HDDD_A2_VARIANT
@@ -71,15 +72,6 @@ typedef struct a2_geometry_s {
     uint64_t plain_size;
 } a2_geometry;
 
-static uint16_t a2_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static void a2_put16(uint8_t *b, uint32_t value) {
-    b[0] = (uint8_t)(value & 0xffU);
-    b[1] = (uint8_t)((value >> 8U) & 0xffU);
-}
-
 static bool a2_read_at(xx_io_device *device, int64_t offset, void *buffer,
                        size_t size) {
     size_t done = 0U;
@@ -105,8 +97,8 @@ static bool a2_header(const uint8_t *file, size_t size, a2_geometry *out) {
     out->tracks = (int32_t)file[9];
     out->sides = (int32_t)file[10];
     out->encoding = file[11];
-    out->bitrate = a2_le16(file + 0x0c);
-    out->lut_offset = (int64_t)a2_le16(file + 0x12) * A2_BLOCK;
+    out->bitrate = xx_data_get_u16(file + 0x0c, 2, 0, false);
+    out->lut_offset = (int64_t)xx_data_get_u16(file + 0x12, 2, 0, false) * A2_BLOCK;
     if (out->lut_offset < A2_HEADER_SIZE ||
         out->lut_offset > (int64_t)size ||
         (int64_t)out->tracks * 4 > (int64_t)size - out->lut_offset)
@@ -120,8 +112,8 @@ static bool a2_header(const uint8_t *file, size_t size, a2_geometry *out) {
 static bool a2_track(const uint8_t *file, size_t size, const a2_geometry *g,
                      int32_t track, int64_t *offset, uint32_t *side_length) {
     const uint8_t *entry = file + g->lut_offset + (int64_t)track * 4;
-    const int64_t start = (int64_t)a2_le16(entry) * A2_BLOCK;
-    const uint32_t length = a2_le16(entry + 2);
+    const int64_t start = (int64_t)xx_data_get_u16(entry, 2, 0, false) * A2_BLOCK;
+    const uint32_t length = xx_data_get_u16(entry + 2, 2, 0, false);
     const int64_t padded =
         (((int64_t)length + A2_BLOCK - 1) / A2_BLOCK) * A2_BLOCK;
     if (length < 8U || start < A2_HEADER_SIZE || start > (int64_t)size ||
@@ -178,11 +170,11 @@ static void a2_build_plain(const uint8_t *file, size_t size,
     int32_t track;
     xx_mem_zero(out, (size_t)g->plain_size);
     xx_mem_copy(out, file, A2_HEADER_SIZE);
-    a2_put16(out + 0x0c, (uint32_t)g->bitrate / 2U);
+    xx_data_set_u16(out + 0x0c, 2, 0, (uint16_t)((uint32_t)g->bitrate / 2U), false);
     if (out[0x0b] == 8U || out[0x0b] == 9U) out[0x0b] = (uint8_t)(out[0x0b] - 2U);
     if (out[0x17] == 8U || out[0x17] == 9U) out[0x17] = (uint8_t)(out[0x17] - 2U);
     if (out[0x19] == 8U || out[0x19] == 9U) out[0x19] = (uint8_t)(out[0x19] - 2U);
-    a2_put16(out + 0x12, 1U);
+    xx_data_set_u16(out + 0x12, 2, 0, (uint16_t)1U, false);
     xx_rt_memset(out + A2_BLOCK, 0xff, (size_t)g->lut_blocks * A2_BLOCK);
     for (track = 0; track < g->tracks; ++track) {
         int64_t offset;
@@ -192,12 +184,12 @@ static void a2_build_plain(const uint8_t *file, size_t size,
         int64_t padded;
         if (!a2_track(file, size, g, track, &offset, &side_length)) return;
         /* a2_track guaranteed this extent lies inside the file */
-        padded = (((int64_t)a2_le16(file + g->lut_offset + (int64_t)track * 4 +
-                                    2) +
+        padded = (((int64_t)xx_data_get_u16(file + g->lut_offset + (int64_t)track * 4 +
+                                    2, 2, 0, false) +
                    A2_BLOCK - 1) / A2_BLOCK) * A2_BLOCK;
         plain_side = side_length / 2U;
-        a2_put16(out + A2_BLOCK + (size_t)track * 4U, block);
-        a2_put16(out + A2_BLOCK + (size_t)track * 4U + 2U, plain_side * 2U);
+        xx_data_set_u16(out + A2_BLOCK + (size_t)track * 4U, 2, 0, (uint16_t)block, false);
+        xx_data_set_u16(out + A2_BLOCK + (size_t)track * 4U + 2U, 2, 0, (uint16_t)(plain_side * 2U), false);
         for (side = 0; side < g->sides; ++side) {
             for (j = 0U; j < plain_side; ++j) {
                 const uint8_t h0 = a2_side_byte(file, offset, side, 2U * j);
@@ -380,12 +372,12 @@ static bool a2_quick(Abstractformat *format) {
     if (xx_rt_memcmp(header, "HXCPICFE", 8U) != 0 || header[8] != 0U ||
         header[9] == 0U || (header[10] != 1U && header[10] != 2U))
         return false;
-    lut = (int64_t)a2_le16(header + 0x12) * A2_BLOCK;
+    lut = (int64_t)xx_data_get_u16(header + 0x12, 2, 0, false) * A2_BLOCK;
     if (lut < A2_HEADER_SIZE || lut > total - 4 ||
         !a2_read_at(format->device, format->base_address + lut, entry, 4U))
         return false;
-    start = (int64_t)a2_le16(entry) * A2_BLOCK;
-    length = a2_le16(entry + 2);
+    start = (int64_t)xx_data_get_u16(entry, 2, 0, false) * A2_BLOCK;
+    length = xx_data_get_u16(entry + 2, 2, 0, false);
     if (length < 8U || start < A2_HEADER_SIZE || start > total - A2_CHUNK ||
         !a2_read_at(format->device, format->base_address + start, chunk,
                     A2_CHUNK))

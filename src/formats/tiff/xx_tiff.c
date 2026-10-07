@@ -5,12 +5,13 @@
  */
 #include "xxfclib/formats/tiff/xx_tiff.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 typedef struct tf_value { uint16_t type; uint64_t count; int64_t at; } tf_value;
 typedef struct tf_ctx { Abstractformat *f; pm_stream *s; bool be,big; int64_t limit,end; uint64_t queue[1024]; unsigned used,count; xx_pd_struct *pd; } tf_ctx;
-static uint16_t tf16(tf_ctx *c,const uint8_t *p) { return c->be ? pm_be16(p) : pm_le16(p); }
-static uint32_t tf32(tf_ctx *c,const uint8_t *p) { return c->be ? pm_be32(p) : pm_le32(p); }
-static uint64_t tf64(tf_ctx *c,const uint8_t *p) { return c->be ? (uint64_t)pm_be32(p)<<32|pm_be32(p+4) : (uint64_t)pm_le32(p+4)<<32|pm_le32(p); }
+static uint16_t tf16(tf_ctx *c,const uint8_t *p) { return c->be ? xx_data_get_u16(p, 2, 0, true) : xx_data_get_u16(p, 2, 0, false); }
+static uint32_t tf32(tf_ctx *c,const uint8_t *p) { return c->be ? xx_data_get_u32(p, 4, 0, true) : xx_data_get_u32(p, 4, 0, false); }
+static uint64_t tf64(tf_ctx *c,const uint8_t *p) { return c->be ? (uint64_t)xx_data_get_u32(p, 4, 0, true)<<32|xx_data_get_u32(p+4, 4, 0, true) : (uint64_t)xx_data_get_u32(p+4, 4, 0, false)<<32|xx_data_get_u32(p, 4, 0, false); }
 static unsigned tf_width(unsigned type) { static const unsigned widths[19]={0,1,1,2,4,8,1,1,2,4,8,4,8,4,0,0,8,8,8}; return type<19 ? widths[type] : 0; }
 static bool tf_num(tf_ctx *c,tf_value v,uint64_t index,uint64_t *n) {
     uint8_t b[8]; unsigned w=tf_width(v.type);

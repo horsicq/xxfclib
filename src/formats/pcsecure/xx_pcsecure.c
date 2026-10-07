@@ -38,6 +38,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* The alias macro is defined next to the enumerator in xxfc_defs.h, so testing
  * for it picks up the real file type as soon as PCSECURE is registered there.
@@ -84,11 +85,6 @@ typedef struct xx_pcsecure_stream_s {
 static void xx_pcsecure_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint32_t xx_pcsecure_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static bool xx_pcsecure_known_signature(uint32_t signature) {
     return signature == XX_PCSECURE_SIG_PCT5 ||
@@ -173,7 +169,7 @@ static xx_pcsecure_stream *xx_pcsecure_parse(Abstractformat *self,
                              sizeof(signature_bytes))) {
         return NULL;
     }
-    signature = xx_pcsecure_le32(signature_bytes);
+    signature = xx_data_get_u32(signature_bytes, 4, 0, false);
     if (!xx_pcsecure_known_signature(signature)) return NULL;
 
     stream = (xx_pcsecure_stream *)xx_mem_alloc(sizeof(*stream));

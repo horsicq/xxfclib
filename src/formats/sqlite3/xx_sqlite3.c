@@ -5,23 +5,24 @@
  */
 #include "xxfclib/formats/sqlite3/xx_sqlite3.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[100],b[8]; uint32_t page,pages,i,usable,encoding; int64_t end;
     if(!pm_read(f,0,h,100) || xx_rt_memcmp(h,"SQLite format 3\0",16)) return false;
-    page=pm_be16(h+16); if(page==1) page=65536;
+    page=xx_data_get_u16(h+16, 2, 0, true); if(page==1) page=65536;
     if(page<512 || page>65536 || (page&(page-1)) || (h[18]!=1 && h[18]!=2) || (h[19]!=1 && h[19]!=2)) return false;
     usable=page-h[20]; if(usable<480 || h[21]!=64 || h[22]!=32 || h[23]!=32) return false;
-    pages=pm_be32(h+28); encoding=pm_be32(h+56);
-    if(!pages || pages>65536 || pm_be32(h+24)!=pm_be32(h+92) || encoding<1 || encoding>3 || pm_be32(h+44)<1 || pm_be32(h+44)>4) return false;
-    if(pm_be32(h+32)>pages || pm_be32(h+36)>=pages || pm_be32(h+52)>pages || pm_be32(h+64)>1) return false;
-    if((!pm_be32(h+32))!=(!pm_be32(h+36)) || pm_be32(h+32)==1 ||
-       (!pm_be32(h+52) && pm_be32(h+64))) return false;
+    pages=xx_data_get_u32(h+28, 4, 0, true); encoding=xx_data_get_u32(h+56, 4, 0, true);
+    if(!pages || pages>65536 || xx_data_get_u32(h+24, 4, 0, true)!=xx_data_get_u32(h+92, 4, 0, true) || encoding<1 || encoding>3 || xx_data_get_u32(h+44, 4, 0, true)<1 || xx_data_get_u32(h+44, 4, 0, true)>4) return false;
+    if(xx_data_get_u32(h+32, 4, 0, true)>pages || xx_data_get_u32(h+36, 4, 0, true)>=pages || xx_data_get_u32(h+52, 4, 0, true)>pages || xx_data_get_u32(h+64, 4, 0, true)>1) return false;
+    if((!xx_data_get_u32(h+32, 4, 0, true))!=(!xx_data_get_u32(h+36, 4, 0, true)) || xx_data_get_u32(h+32, 4, 0, true)==1 ||
+       (!xx_data_get_u32(h+52, 4, 0, true) && xx_data_get_u32(h+64, 4, 0, true))) return false;
     for(i=72;i<92;++i) if(h[i]) return false;
     end=(int64_t)page*pages; if(end>pm_available(f)) return false;
     if(!pm_read(f,100,b,8) || (b[0]!=5 && b[0]!=13)) return false;
     {
-        uint32_t header=b[0]==5?12:8, cells=pm_be16(b+3),start=pm_be16(b+5),freeblock=pm_be16(b+1);
+        uint32_t header=b[0]==5?12:8, cells=xx_data_get_u16(b+3, 2, 0, true),start=xx_data_get_u16(b+5, 2, 0, true),freeblock=xx_data_get_u16(b+1, 2, 0, true);
         if(!start && page==65536) start=65536;
         if(100U+header+2U*cells>start || start>usable || b[7]>60 || (freeblock && (freeblock<100U+header+2U*cells || freeblock>usable-4))) return false;
     }

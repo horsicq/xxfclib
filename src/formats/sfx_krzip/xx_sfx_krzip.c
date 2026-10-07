@@ -31,6 +31,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* xxfc_defs.h is shared and is not edited from here, so the file-type
  * constant is resolved through the alias macro that the enumerator defines. */
@@ -71,15 +72,6 @@
 #define KRZ_LCG_ADD UINT32_C(1)
 
 /* --- small helpers --------------------------------------------------------- */
-
-static uint32_t krz_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
-
-static uint16_t krz_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U));
-}
 
 static bool krz_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -378,7 +370,7 @@ static bool krz_walk(xx_io_device *device, int64_t base, const krz_info *info,
                          2U))
             return false;
         krz_unmask(record, 2U, &state);
-        name_size = krz_le16(record);
+        name_size = xx_data_get_u16(record, 2, 0, false);
         if (name_size == 0U || name_size > KRZ_MAX_NAME) return false;
         name_total += name_size;
         if (name_total > KRZ_MAX_NAME_TOTAL) return false;
@@ -392,8 +384,8 @@ static bool krz_walk(xx_io_device *device, int64_t base, const krz_info *info,
             if (record[2U + byte] < 0x20U || record[2U + byte] == 0x7fU)
                 return false;
         fields = record + 2U + name_size;
-        raw = krz_le32(fields + 4U);
-        packed = krz_le32(fields + 12U);
+        raw = xx_data_get_u32(fields + 4U, 4, 0, false);
+        packed = xx_data_get_u32(fields + 12U, 4, 0, false);
         /* The stub reads both sizes as signed. */
         if (raw > (uint32_t)INT32_MAX || packed > (uint32_t)INT32_MAX)
             return false;
@@ -407,12 +399,12 @@ static bool krz_walk(xx_io_device *device, int64_t base, const krz_info *info,
             member->header_size = 2U + need;
             member->data_offset = info->stream_at + data;
             member->data_state = state;
-            member->dos_time = krz_le16(fields);
-            member->dos_date = krz_le16(fields + 2U);
+            member->dos_time = xx_data_get_u16(fields, 2, 0, false);
+            member->dos_date = xx_data_get_u16(fields + 2U, 2, 0, false);
             member->raw_size = raw;
-            member->attributes = krz_le32(fields + 8U);
+            member->attributes = xx_data_get_u32(fields + 8U, 4, 0, false);
             member->packed_size = packed;
-            member->stored_check = krz_le32(fields + 16U);
+            member->stored_check = xx_data_get_u32(fields + 16U, 4, 0, false);
             member->name = krz_name(record + 2U, name_size);
             if (!member->name) return false;
             member->safe = krz_safe_output_name(member->name);
@@ -436,13 +428,13 @@ static bool krz_overlay(xx_io_device *device, int64_t base, int64_t size,
     if (size < KRZ_MIN_FILE || !krz_read_at(device, base, dos, sizeof(dos)) ||
         dos[0] != 'M' || dos[1] != 'Z')
         return false;
-    lfanew = (int64_t)krz_le32(dos + 0x3c);
+    lfanew = (int64_t)xx_data_get_u32(dos + 0x3c, 4, 0, false);
     if (lfanew < 4 || lfanew > KRZ_MAX_LFANEW || lfanew > size - 24 ||
         !krz_read_at(device, base + lfanew, nt, sizeof(nt)) || nt[0] != 'P' ||
         nt[1] != 'E' || nt[2] != 0U || nt[3] != 0U)
         return false;
-    sections = krz_le16(nt + 6);
-    optional = krz_le16(nt + 20);
+    sections = xx_data_get_u16(nt + 6, 2, 0, false);
+    optional = xx_data_get_u16(nt + 20, 2, 0, false);
     table_at = lfanew + 24 + (int64_t)optional;
     if (sections == 0U || sections > KRZ_MAX_SECTIONS ||
         table_at > size - (int64_t)sections * 40 ||
@@ -450,8 +442,8 @@ static bool krz_overlay(xx_io_device *device, int64_t base, int64_t size,
         return false;
     for (index = 0U; index < sections; ++index) {
         const uint8_t *row = table + index * 40U;
-        int64_t raw_size = (int64_t)krz_le32(row + 16);
-        int64_t raw_offset = (int64_t)krz_le32(row + 20);
+        int64_t raw_size = (int64_t)xx_data_get_u32(row + 16, 4, 0, false);
+        int64_t raw_offset = (int64_t)xx_data_get_u32(row + 20, 4, 0, false);
         if (raw_size == 0) continue;
         if (raw_offset > size || raw_size > size - raw_offset) return false;
         if (raw_offset + raw_size > end) end = raw_offset + raw_size;
@@ -493,7 +485,7 @@ static bool krz_scan(Abstractformat *format, krz_info *info,
                          info->stream_size,
                      check, sizeof(check)))
         return false;
-    info->check = krz_le32(check);
+    info->check = xx_data_get_u32(check, 4, 0, false);
     return true;
 }
 
@@ -582,7 +574,7 @@ static uint32_t krz_method(const uint8_t *head, size_t available,
                            uint32_t packed) {
     if (available >= KRZ_ZLIB_HEAD + 2U && head[0] == KRZ_ZLIB_TAG &&
         head[KRZ_ZLIB_HEAD] == 0x78U &&
-        (uint64_t)krz_le32(head + 5U) + KRZ_ZLIB_HEAD == (uint64_t)packed)
+        (uint64_t)xx_data_get_u32(head + 5U, 4, 0, false) + KRZ_ZLIB_HEAD == (uint64_t)packed)
         return XX_SFX_KRZIP_METHOD_ZLIB;
     return XX_SFX_KRZIP_METHOD_DCL;
 }
@@ -608,9 +600,9 @@ static bool krz_probe_method(xx_io_device *device, int64_t base,
 static bool krz_decode_zlib(const uint8_t *packed, uint32_t packed_size,
                             uint32_t raw_size, uint64_t budget,
                             uint8_t **output, const uint8_t **plain) {
-    uint32_t inflated = krz_le32(packed + 1U);
-    uint32_t stream = krz_le32(packed + 5U);
-    uint32_t stream_check = krz_le32(packed + 9U);
+    uint32_t inflated = xx_data_get_u32(packed + 1U, 4, 0, false);
+    uint32_t stream = xx_data_get_u32(packed + 5U, 4, 0, false);
+    uint32_t stream_check = xx_data_get_u32(packed + 9U, 4, 0, false);
     uint32_t prefix, length = 0U, index;
     size_t written = 0U;
     uint8_t *buffer;

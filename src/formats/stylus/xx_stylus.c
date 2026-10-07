@@ -42,6 +42,7 @@
 #include "xxfclib/algo/stylus/xx_stylus.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_STYLUS_COPY_CHUNK (64 * 1024)
 
@@ -144,7 +145,6 @@ static bool xx_stylus_add(xx_stylus_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_stylus_le16(const uint8_t *data);
 static uint8_t xx_stylus_to_lower(uint8_t character);
 static xx_stylus_stream *xx_stylus_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_stylus_decode(Abstractformat *self, const xx_stylus_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
@@ -159,10 +159,6 @@ static bool xx_stylus_decode(Abstractformat *self, const xx_stylus_member *membe
 /* The base name is stored nowhere in the container - the reference takes it
  * from the device's file name - so this placeholder plus the format's own
  * extension is the only truthful thing to publish. */
-
-static uint16_t xx_stylus_le16(const uint8_t *data) {
-    return (uint16_t)((uint32_t)data[0] | ((uint32_t)data[1] << 8));
-}
 
 static uint8_t xx_stylus_to_lower(uint8_t character) {
     return (character >= 'A' && character <= 'Z')
@@ -209,7 +205,7 @@ static xx_stylus_stream *xx_stylus_parse(Abstractformat *self,
      * member table, no length field and no terminator behind them - if these
      * go, the format has no false-positive defence left except the CRC, which
      * is not checked until extraction. */
-    if (xx_stylus_le16(header + 4) != 1U) return NULL;
+    if (xx_data_get_u16(header + 4, 2, 0, false) != 1U) return NULL;
     if (header[6] != (uint8_t)XX_STYLUS_KIND_SDC) return NULL;
     /* Case-insensitive on purpose: the reference compares the tag that way
      * and lowercase "sdc" occurs in the wild. */

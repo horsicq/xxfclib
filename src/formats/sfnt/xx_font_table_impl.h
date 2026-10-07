@@ -3,6 +3,7 @@
 #include "xxfclib/algo/deflate/xx_deflate.h"
 #include "xxfclib/algo/adler32/xx_adler32.h"
 #include "xxfclib/algo/brotli/xx_brotli.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool font_flavor(uint32_t n) { return n==0x10000 || n==0x4f54544f || n==0x74727565 || n==0x74797031; }
 static bool font_tag(const uint8_t *p) { unsigned i; for(i=0;i<4;++i) if(p[i]<32 || p[i]>126) return false; return true; }
@@ -25,7 +26,7 @@ static bool font_range(Abstractformat *f,pm_stream *s,int64_t at,uint32_t packed
             if(packed<6 || (in[0]&15)!=8 || in[0]>>4>7 || ((uint32_t)in[0]*256+in[1])%31 || (in[1]&32)) goto done;
             dest=xx_io_mem_open(out,original); if(!dest) goto done;
             ok=xx_deflate_unpack_memory_to_device_ex(in+2,packed-6,dest,&consumed,false,pd); written=(size_t)xx_io_tell(dest); xx_io_close(dest);
-            ok=ok && consumed==packed-6 && written==original && xx_adler32_update(1,out,original)==pm_be32(in+packed-4);
+            ok=ok && consumed==packed-6 && written==original && xx_adler32_update(1,out,original)==xx_data_get_u32(in+packed-4, 4, 0, true);
         } else ok=xx_brotli_decompress_memory(in,packed,out,original,&written) && written==original;
         if(!ok) goto done;
     } else { if(packed!=original) goto done; out=in; in=NULL; }

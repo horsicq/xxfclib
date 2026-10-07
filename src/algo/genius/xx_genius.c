@@ -22,6 +22,7 @@
 
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/algo/dcl/xx_dcl.h"
+#include "xxfclib/data/xx_data.h"
 
 /* uint32 plaintext length + uint32 CRC-32 behind the last block. */
 #define GPL_TRAILER_SIZE ((size_t)8)
@@ -32,12 +33,6 @@
 #define GPL_MIN_BLOCK_SIZE ((size_t)3)
 /* The reader will not publish a member larger than this either. */
 #define GPL_MAX_OUTPUT ((size_t)512 * 1024 * 1024)
-
-static uint32_t xx_genius_read_le32(const uint8_t *p)
-{
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
-           ((uint32_t)p[3] << 24);
-}
 
 /* DELIBERATE: the stored value is the RUNNING EDB88320 accumulator seeded with
  * 0xFFFFFFFF, NOT the customary complemented result.  The writer stores the
@@ -81,7 +76,7 @@ bool xx_genius_decode_memory(const uint8_t *input, size_t input_size,
         size_t block_written = 0U;
 
         if ((blocks_end - offset) < GPL_BLOCKLEN_SIZE) return false;
-        block_size = (size_t)xx_genius_read_le32(input + offset);
+        block_size = (size_t)xx_data_get_u32(input + offset, 4, 0, false);
         offset += GPL_BLOCKLEN_SIZE;
         if ((block_size < GPL_MIN_BLOCK_SIZE) ||
             (block_size > (blocks_end - offset))) {
@@ -114,8 +109,8 @@ bool xx_genius_decode_memory(const uint8_t *input, size_t input_size,
     if (offset != blocks_end) return false;
     if (produced != output_size) return false;
 
-    declared_size = xx_genius_read_le32(input + blocks_end);
-    stored_crc = xx_genius_read_le32(input + blocks_end + 4U);
+    declared_size = xx_data_get_u32(input + blocks_end, 4, 0, false);
+    stored_crc = xx_data_get_u32(input + blocks_end + 4U, 4, 0, false);
     if ((size_t)declared_size != output_size) return false;
 
     /* Over the 433 members of the reference corpus the stored CRC matches on

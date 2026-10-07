@@ -41,6 +41,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef APPLE_DISK_COPY_6_NDIF_IMAGE
 #define XX_APPLE_DISK_COPY_6_NDIF_IMAGE_FILE_TYPE XX_FILE_TYPE_APPLE_DISK_COPY_6_NDIF_IMAGE
@@ -92,15 +93,6 @@ typedef struct ndif_stream_s {
 
 static uint32_t ndif_be16(const uint8_t *p) {
     return ((uint32_t)p[0] << 8U) | (uint32_t)p[1];
-}
-
-static uint32_t ndif_be24(const uint8_t *p) {
-    return ((uint32_t)p[0] << 16U) | ((uint32_t)p[1] << 8U) | (uint32_t)p[2];
-}
-
-static uint32_t ndif_be32(const uint8_t *p) {
-    return ((uint32_t)p[0] << 24U) | ((uint32_t)p[1] << 16U) |
-           ((uint32_t)p[2] << 8U) | (uint32_t)p[3];
 }
 
 static uint64_t ndif_pad128(uint64_t value) {
@@ -224,8 +216,8 @@ static bool ndif_parse_macbinary(const uint8_t *h, int64_t base, int64_t total,
     verified = xx_crc16_xmodem_calc(0U, h, 124U) == ndif_be16(h + 124U) &&
                (h[122] >= 129U || ndif_be16(h + 124U) != 0U);
     if (verified) secondary = ndif_be16(h + 120U);
-    c->data_size = ndif_be32(h + 83U);
-    c->rsrc_size = ndif_be32(h + 87U);
+    c->data_size = xx_data_get_u32(h + 83U, 4, 0, true);
+    c->rsrc_size = xx_data_get_u32(h + 87U, 4, 0, true);
     if (c->data_size > NDIF_MB_MAX_FORK || c->rsrc_size > NDIF_RSRC_MAX ||
         c->rsrc_size < 16U + 30U)
         return false;
@@ -255,10 +247,10 @@ static bool ndif_find_bcem(xx_io_device *device, const ndif_context *c,
     bool result = false;
     if (!ndif_read_at(device, c->rsrc_offset, head, sizeof(head)))
         return false;
-    data_off = ndif_be32(head);
-    map_off = ndif_be32(head + 4U);
-    data_len = ndif_be32(head + 8U);
-    map_len = ndif_be32(head + 12U);
+    data_off = xx_data_get_u32(head, 4, 0, true);
+    map_off = xx_data_get_u32(head + 4U, 4, 0, true);
+    data_len = xx_data_get_u32(head + 8U, 4, 0, true);
+    map_len = xx_data_get_u32(head + 12U, 4, 0, true);
     if (data_off < 16U || data_off > c->rsrc_size ||
         data_len > c->rsrc_size - data_off || map_off < 16U ||
         map_off > c->rsrc_size || map_len < 30U ||
@@ -285,13 +277,13 @@ static bool ndif_find_bcem(xx_io_device *device, const ndif_context *c,
             const uint8_t *r = map + ref_off + ref * 12U;
             uint32_t item, size;
             if (ndif_be16(r) != 128U) continue;
-            item = ndif_be24(r + 5U);
+            item = xx_data_get_u24(r + 5U, 3, 0, true);
             if (item > data_len || data_len - item < 4U) goto done;
             if (!ndif_read_at(device,
                               c->rsrc_offset + data_off + item, length_bytes,
                               4U))
                 goto done;
-            size = ndif_be32(length_bytes);
+            size = xx_data_get_u32(length_bytes, 4, 0, true);
             if (size > data_len - item - 4U) goto done;
             *offset_out = c->rsrc_offset + data_off + item + 4U;
             *size_out = size;
@@ -309,9 +301,9 @@ done:
 static bool ndif_check_table(const uint8_t *b, uint32_t size, ndif_context *c) {
     uint32_t count, index, previous = 0U;
     if (size < NDIF_BCEM_HEADER || b[4] > 63U) return false;
-    c->num_sectors = ndif_be32(b + 0x44U);
-    c->segmented = ndif_be32(b + 0x54U) != 0U;
-    count = ndif_be32(b + 0x7CU);
+    c->num_sectors = xx_data_get_u32(b + 0x44U, 4, 0, true);
+    c->segmented = xx_data_get_u32(b + 0x54U, 4, 0, true) != 0U;
+    count = xx_data_get_u32(b + 0x7CU, 4, 0, true);
     if (count < 1U || count > (size - NDIF_BCEM_HEADER) / NDIF_ENTRY)
         return false;
     /* The terminator's 24-bit sector must equal the count. */
@@ -320,8 +312,8 @@ static bool ndif_check_table(const uint8_t *b, uint32_t size, ndif_context *c) {
     c->has_kencode = false;
     for (index = 0U; index < count; ++index) {
         const uint8_t *e = b + NDIF_BCEM_HEADER + index * NDIF_ENTRY;
-        uint32_t sector = ndif_be24(e), type = e[3];
-        uint32_t offset = ndif_be32(e + 4U), length = ndif_be32(e + 8U);
+        uint32_t sector = xx_data_get_u24(e, 3, 0, true), type = e[3];
+        uint32_t offset = xx_data_get_u32(e + 4U, 4, 0, true), length = xx_data_get_u32(e + 8U, 4, 0, true);
         if (index == 0U ? sector != 0U : sector < previous) return false;
         previous = sector;
         if (index + 1U == count) {
@@ -570,8 +562,8 @@ static bool ndif_unpack_context(Abstractformat *format,
     for (index = 0U; index + 1U < c->num_entries; ++index) {
         const uint8_t *e = c->table + (size_t)index * NDIF_ENTRY;
         uint32_t type = e[3];
-        uint32_t offset = ndif_be32(e + 4U), length = ndif_be32(e + 8U);
-        uint64_t sectors = (uint64_t)ndif_be24(e + NDIF_ENTRY) - ndif_be24(e);
+        uint32_t offset = xx_data_get_u32(e + 4U, 4, 0, true), length = xx_data_get_u32(e + 8U, 4, 0, true);
+        uint64_t sectors = (uint64_t)xx_data_get_u24(e + NDIF_ENTRY, 3, 0, true) - xx_data_get_u24(e, 3, 0, true);
         uint64_t bytes = sectors * NDIF_SECTOR;
         if (pd && xx_pd_is_stopped(pd)) goto done;
         if (sectors == 0U) continue;

@@ -5,8 +5,9 @@
  */
 #include "xxfclib/formats/nintendo_ncch/xx_nintendo_ncch.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static XXFC_MAYBE_UNUSED uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)xx_data_get_u32(p, 4, 0, true)<<32)|xx_data_get_u32(p+4, 4, 0, true) : ((uint64_t)xx_data_get_u32(p+4, 4, 0, false)<<32)|xx_data_get_u32(p, 4, 0, false); }
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uint64_t n,uint64_t total) {
     size_t i;
@@ -24,15 +25,15 @@ static XXFC_MAYBE_UNUSED bool zname(Abstractformat *f,uint64_t at,uint64_t end) 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[512]; uint64_t total,offsets[5],sizes[5]; unsigned i,j; const char *labels[]={"extended-header.bin","plain.bin","logo.bin","exefs.bin","romfs.bin"};
-    if(!pm_read(f,0,h,512) || xx_rt_memcmp(h+256,"NCCH",4) || pm_le16(h+0x112)>2 || h[0x18e] || !(h[0x18f]&4) || (h[0x18f]&0x21)) return false;
-    total=(uint64_t)pm_le32(h+0x104)*512;
+    if(!pm_read(f,0,h,512) || xx_rt_memcmp(h+256,"NCCH",4) || xx_data_get_u16(h+0x112, 2, 0, false)>2 || h[0x18e] || !(h[0x18f]&4) || (h[0x18f]&0x21)) return false;
+    total=(uint64_t)xx_data_get_u32(h+0x104, 4, 0, false)*512;
     if(total<512 || total>(uint64_t)pm_available(f)) return false;
-    offsets[0]=512; sizes[0]=pm_le32(h+0x180); if(sizes[0] && sizes[0]!=0x400) return false; if(sizes[0]) sizes[0]=0x800;
-    offsets[1]=(uint64_t)pm_le32(h+0x190)*512; sizes[1]=(uint64_t)pm_le32(h+0x194)*512;
-    offsets[2]=(uint64_t)pm_le32(h+0x198)*512; sizes[2]=(uint64_t)pm_le32(h+0x19c)*512;
-    offsets[3]=(uint64_t)pm_le32(h+0x1a0)*512; sizes[3]=(uint64_t)pm_le32(h+0x1a4)*512;
-    offsets[4]=(uint64_t)pm_le32(h+0x1b0)*512; sizes[4]=(uint64_t)pm_le32(h+0x1b4)*512;
-    if(pm_le32(h+0x1a8)>pm_le32(h+0x1a4) || pm_le32(h+0x1b8)>pm_le32(h+0x1b4)) return false;
+    offsets[0]=512; sizes[0]=xx_data_get_u32(h+0x180, 4, 0, false); if(sizes[0] && sizes[0]!=0x400) return false; if(sizes[0]) sizes[0]=0x800;
+    offsets[1]=(uint64_t)xx_data_get_u32(h+0x190, 4, 0, false)*512; sizes[1]=(uint64_t)xx_data_get_u32(h+0x194, 4, 0, false)*512;
+    offsets[2]=(uint64_t)xx_data_get_u32(h+0x198, 4, 0, false)*512; sizes[2]=(uint64_t)xx_data_get_u32(h+0x19c, 4, 0, false)*512;
+    offsets[3]=(uint64_t)xx_data_get_u32(h+0x1a0, 4, 0, false)*512; sizes[3]=(uint64_t)xx_data_get_u32(h+0x1a4, 4, 0, false)*512;
+    offsets[4]=(uint64_t)xx_data_get_u32(h+0x1b0, 4, 0, false)*512; sizes[4]=(uint64_t)xx_data_get_u32(h+0x1b4, 4, 0, false)*512;
+    if(xx_data_get_u32(h+0x1a8, 4, 0, false)>xx_data_get_u32(h+0x1a4, 4, 0, false) || xx_data_get_u32(h+0x1b8, 4, 0, false)>xx_data_get_u32(h+0x1b4, 4, 0, false)) return false;
     for(i=0;i<5;++i) { if(pd && xx_pd_is_stopped(pd)) return false; if(!sizes[i]) { if(i && offsets[i]) return false; continue; }
         if(offsets[i]<512 || !span(offsets[i],sizes[i],total)) return false;
         for(j=0;j<i;++j) if(sizes[j] && offsets[i]<offsets[j]+sizes[j] && offsets[j]<offsets[i]+sizes[i]) return false;

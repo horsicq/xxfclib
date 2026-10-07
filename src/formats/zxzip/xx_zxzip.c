@@ -42,6 +42,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ZXZIP_HEADER_SIZE 0x11
 #define XX_ZXZIP_DIR_ENTRY_SIZE XX_ZXZIP_ENTRY_SIZE
@@ -73,15 +74,6 @@ typedef struct xx_zxzip_stream_s {
 static void xx_zxzip_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint16_t xx_zxzip_read16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8U));
-}
-
-static uint32_t xx_zxzip_read32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
 
 static bool xx_zxzip_read_at(Abstractformat *self, int64_t offset,
                              uint8_t *buffer, size_t size) {
@@ -232,10 +224,10 @@ static xx_zxzip_stream *xx_zxzip_parse(Abstractformat *self,
     if (xx_rt_memcmp(header + 8, "ZIP", 3U) != 0 || header[0x0d] != 0U) {
         return NULL;
     }
-    remaining = (int64_t)xx_zxzip_read16(header + 0x0b);
+    remaining = (int64_t)xx_data_get_u16(header + 0x0b, 2, 0, false);
     if ((remaining >> 8) > (int64_t)header[0x0e]) return NULL;
     if (xx_zxzip_hobeta_check(header, 15U) !=
-        xx_zxzip_read16(header + 0x0f)) {
+        xx_data_get_u16(header + 0x0f, 2, 0, false)) {
         return NULL;
     }
     for (index = 0U; index < 9U; ++index) {
@@ -271,7 +263,7 @@ static xx_zxzip_stream *xx_zxzip_parse(Abstractformat *self,
         }
         if (!name_ok) break;
 
-        packed = (int64_t)xx_zxzip_read16(entry + 0x0e);
+        packed = (int64_t)xx_data_get_u16(entry + 0x0e, 2, 0, false);
         data_offset = offset + (int64_t)XX_ZXZIP_DIR_ENTRY_SIZE;
         /* The last member of a truncated archive declares more packed bytes
          * than the file holds.  It is still listed - the reference does - but
@@ -295,7 +287,7 @@ static xx_zxzip_stream *xx_zxzip_parse(Abstractformat *self,
         member.compressed_size = packed;
         member.uncompressed_size =
             (int64_t)XX_ZXZIP_HOBETA_SIZE + (int64_t)padded_size;
-        member.crc = xx_zxzip_read32(entry + 0x10);
+        member.crc = xx_data_get_u32(entry + 0x10, 4, 0, false);
         member.method = entry[0x14];
         member.sub_method = entry[0x15];
         xx_rt_memcpy(member.entry, entry, sizeof(entry));

@@ -16,6 +16,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_DMAPACKED_HEADER_SIZE 0x22U
 #define XX_DMAPACKED_NAME_OFFSET 0x04U
@@ -40,15 +41,6 @@ typedef struct xx_dmapacked_context_s {
 } xx_dmapacked_context;
 
 static void xx_dmapacked_vtable_destroy(Abstractformat *self);
-
-static uint16_t xx_dmapacked_read16le(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8U));
-}
-
-static uint32_t xx_dmapacked_read32le(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
 
 static bool xx_dmapacked_read_exact_at(xx_io_device *device, int64_t offset,
                                        void *data, size_t size) {
@@ -109,12 +101,12 @@ static bool xx_dmapacked_parse_buffer(const uint8_t *input, size_t input_size,
         input[0] != 'd' || input[1] != 'm' || input[2] != 0x10U ||
         input[3] != 0x11U ||
         xx_rt_memcmp(input + XX_DMAPACKED_TAG_OFFSET, "PAKPAK", 6U) != 0 ||
-        xx_dmapacked_read16le(input + XX_DMAPACKED_VERSION_OFFSET) !=
+        xx_data_get_u16(input + XX_DMAPACKED_VERSION_OFFSET, 2, 0, false) !=
             0x2a00U ||
         !xx_dmapacked_parse_name(input, context->file_name)) {
         return false;
     }
-    uncompressed_size = xx_dmapacked_read32le(input + XX_DMAPACKED_RAWSIZE_OFFSET);
+    uncompressed_size = xx_data_get_u32(input + XX_DMAPACKED_RAWSIZE_OFFSET, 4, 0, false);
     compressed_size = input_size - XX_DMAPACKED_HEADER_SIZE;
     if (uncompressed_size == 0U || uncompressed_size > XX_DMAPACKED_MAX_OUTPUT ||
         uncompressed_size > (uint64_t)SIZE_MAX ||
@@ -126,8 +118,8 @@ static bool xx_dmapacked_parse_buffer(const uint8_t *input, size_t input_size,
         return false;
     }
     context->uncompressed_size = uncompressed_size;
-    context->dos_date = xx_dmapacked_read16le(input + XX_DMAPACKED_DOSDATE_OFFSET);
-    context->dos_time = xx_dmapacked_read16le(input + XX_DMAPACKED_DOSTIME_OFFSET);
+    context->dos_date = xx_data_get_u16(input + XX_DMAPACKED_DOSDATE_OFFSET, 2, 0, false);
+    context->dos_time = xx_data_get_u16(input + XX_DMAPACKED_DOSTIME_OFFSET, 2, 0, false);
     context->stream_size = (int64_t)input_size;
     return true;
 }

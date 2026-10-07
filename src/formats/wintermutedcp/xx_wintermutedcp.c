@@ -48,6 +48,7 @@
 #include "xxfclib/algo/deflate/xx_deflate.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef WINTERMUTEDCP
 #define XX_WINTERMUTEDCP_FILE_TYPE XX_FILE_TYPE_WINTERMUTEDCP
@@ -92,24 +93,6 @@ typedef struct xx_wintermutedcp_stream_s {
 static void xx_wintermutedcp_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static XXFC_MAYBE_UNUSED uint16_t xx_wintermutedcp_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_wintermutedcp_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static XXFC_MAYBE_UNUSED uint16_t xx_wintermutedcp_be16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[1] | ((uint16_t)data[0] << 8));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t xx_wintermutedcp_be32(const uint8_t *data) {
-    return (uint32_t)data[3] | ((uint32_t)data[2] << 8) |
-           ((uint32_t)data[1] << 16) | ((uint32_t)data[0] << 24);
-}
 
 static bool xx_wintermutedcp_read_at(Abstractformat *self, int64_t offset,
                               uint8_t *buffer, size_t size) {
@@ -300,8 +283,8 @@ static xx_wintermutedcp_stream *xx_wintermutedcp_parse(Abstractformat *self,
     }
     if (xx_rt_memcmp(head, "\xde\xad\xc0\xde" "JUNK", 8U) != 0) return NULL;
 
-    version = xx_wintermutedcp_le32(head + 8);
-    directory_count = xx_wintermutedcp_le32(head + 124);
+    version = xx_data_get_u32(head + 8, 4, 0, false);
+    directory_count = xx_data_get_u32(head + 124, 4, 0, false);
     if ((version != XX_WINTERMUTEDCP_VERSION_1 &&
          version != XX_WINTERMUTEDCP_VERSION_2) ||
         directory_count == 0U ||
@@ -312,7 +295,7 @@ static xx_wintermutedcp_stream *xx_wintermutedcp_parse(Abstractformat *self,
 
     directory_offset = XX_WINTERMUTEDCP_HEADER_SIZE;
     if (version == XX_WINTERMUTEDCP_VERSION_2) {
-        directory_offset = (int64_t)xx_wintermutedcp_le32(head + 128);
+        directory_offset = (int64_t)xx_data_get_u32(head + 128, 4, 0, false);
     }
     if (directory_offset < XX_WINTERMUTEDCP_HEADER_SIZE ||
         directory_offset >= span) {
@@ -347,7 +330,7 @@ static xx_wintermutedcp_stream *xx_wintermutedcp_parse(Abstractformat *self,
         }
         /* One media byte plus the little-endian file count. */
         if ((size_t)directory_size - cursor < 5U) goto fail;
-        file_count = xx_wintermutedcp_le32(blob + cursor + 1U);
+        file_count = xx_data_get_u32(blob + cursor + 1U, 4, 0, false);
         cursor += 5U;
         if (file_count > XX_WINTERMUTEDCP_MAX_RECORDS ||
             seen + file_count > XX_WINTERMUTEDCP_MAX_RECORDS) {
@@ -375,9 +358,9 @@ static xx_wintermutedcp_stream *xx_wintermutedcp_parse(Abstractformat *self,
             }
             if ((size_t)directory_size - cursor < record_size) goto fail;
             record = blob + cursor;
-            data_offset = (int64_t)xx_wintermutedcp_le32(record);
-            plain_size = (uint64_t)xx_wintermutedcp_le32(record + 4);
-            packed_size = (uint64_t)xx_wintermutedcp_le32(record + 8);
+            data_offset = (int64_t)xx_data_get_u32(record, 4, 0, false);
+            plain_size = (uint64_t)xx_data_get_u32(record + 4, 4, 0, false);
+            packed_size = (uint64_t)xx_data_get_u32(record + 8, 4, 0, false);
             stored_size = packed_size != 0U ? packed_size : plain_size;
 
             xx_mem_zero(&member, sizeof(member));

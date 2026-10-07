@@ -31,6 +31,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and not edited from here,
  * so the alias macro that sits next to the enumerator is tested instead. */
@@ -126,10 +127,6 @@ static uint32_t sfs_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static uint32_t sfs_le32(const uint8_t *bytes) {
-    return sfs_le16(bytes) | (sfs_le16(bytes + 2U) << 16U);
-}
-
 static bool sfs_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     const size_t file_io_capacity = gb_sfxstart_capacity();
@@ -173,7 +170,7 @@ static bool sfs_read_record(xx_io_device *device, int64_t base, int64_t end,
         !sfs_read_at(device, base + offset, head, sizeof(head)) ||
         head[0] != '*')
         return false;
-    name_length = sfs_le32(head + 1);
+    name_length = xx_data_get_u32(head + 1, 4, 0, false);
     if (name_length == 0U || name_length > SFS_MAX_NAME ||
         (int64_t)name_length >
             end - offset - (SFS_RECORD_HEAD + SFS_RECORD_MID + SFS_SEPARATOR) ||
@@ -181,7 +178,7 @@ static bool sfs_read_record(xx_io_device *device, int64_t base, int64_t end,
                      (size_t)name_length + SFS_RECORD_MID) ||
         body[name_length] != '-' || body[name_length + 1U] != '>')
         return false;
-    size = (int64_t)sfs_le32(body + name_length + 2U);
+    size = (int64_t)xx_data_get_u32(body + name_length + 2U, 4, 0, false);
     data = offset + SFS_RECORD_HEAD + (int64_t)name_length + SFS_RECORD_MID;
     if (size > end - data - SFS_SEPARATOR ||
         !sfs_read_at(device, base + data + size, separator,
@@ -220,8 +217,8 @@ static bool sfs_read_header(xx_io_device *device, int64_t base,
         !sfs_read_at(device, base + at, head, sizeof(head)) ||
         xx_rt_memcmp(head, sfs_tag, sizeof(sfs_tag)) != 0)
         return false;
-    size = sfs_le32(head + 8);
-    last = sfs_le32(head + 12);
+    size = xx_data_get_u32(head + 8, 4, 0, false);
+    last = xx_data_get_u32(head + 12, 4, 0, false);
     if (last >= SFS_MAX_RECORDS) return false;
     /* Every record costs at least SFS_MIN_RECORD bytes. */
     if ((uint64_t)size < ((uint64_t)last + 1U) * SFS_MIN_RECORD ||
@@ -277,13 +274,13 @@ static bool sfs_read_trailer(xx_io_device *device, int64_t base,
         !sfs_read_at(device, base + layout->chain_end, head, sizeof(head)) ||
         head[0] != '+')
         return false;
-    length = sfs_le32(head + 1);
+    length = xx_data_get_u32(head + 1, 4, 0, false);
     if (length > SFS_MAX_COMMAND ||
         left != (int64_t)SFS_TRAILER_FIXED + (int64_t)length ||
         !sfs_read_at(device, base + layout->chain_end + 5, body,
                      (size_t)length + 5U) ||
         body[length] != '-' ||
-        (int64_t)sfs_le32(body + length + 1U) != layout->start)
+        (int64_t)xx_data_get_u32(body + length + 1U, 4, 0, false) != layout->start)
         return false;
     xx_rt_memcpy(layout->command, body, length);
     layout->command[length] = 0;
@@ -324,11 +321,11 @@ static int64_t sfs_pe_image_end(xx_io_device *device, int64_t base,
     if (!sfs_read_at(device, base + table, sections,
                      (size_t)count * SFS_SECTION_SIZE))
         return 0;
-    end = sfs_le32(optional + 60);
+    end = xx_data_get_u32(optional + 60, 4, 0, false);
     for (index = 0U; index < count; ++index) {
         const uint8_t *section = sections + (size_t)index * SFS_SECTION_SIZE;
-        uint64_t raw_size = sfs_le32(section + 16);
-        uint64_t raw_pointer = sfs_le32(section + 20);
+        uint64_t raw_size = xx_data_get_u32(section + 16, 4, 0, false);
+        uint64_t raw_pointer = xx_data_get_u32(section + 20, 4, 0, false);
         if (raw_size != 0U && raw_pointer + raw_size > end)
             end = raw_pointer + raw_size;
     }
@@ -365,7 +362,7 @@ static bool sfs_locate(Abstractformat *format, sfs_layout *layout,
         return false;
 
     /* The stub's own layout: the payload opens the PE overlay. */
-    lfanew = sfs_le32(dos + 0x3c);
+    lfanew = xx_data_get_u32(dos + 0x3c, 4, 0, false);
     if (lfanew >= SFS_DOS_HEADER && lfanew <= SFS_MAX_LFANEW)
         image_end = sfs_pe_image_end(device, base, available, lfanew);
     if (image_end > 0 &&
@@ -379,7 +376,7 @@ static bool sfs_locate(Abstractformat *format, sfs_layout *layout,
      * full and end on the last byte. */
     if (!sfs_read_at(device, base + available - 4, tail, sizeof(tail)))
         return false;
-    pointer = (int64_t)sfs_le32(tail);
+    pointer = (int64_t)xx_data_get_u32(tail, 4, 0, false);
     if (pointer == image_end || pointer < SFS_DOS_HEADER ||
         pointer > available - SFS_HEADER - SFS_MIN_RECORD -
                       SFS_TRAILER_FIXED ||

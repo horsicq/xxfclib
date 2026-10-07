@@ -32,6 +32,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested; this
@@ -80,15 +81,6 @@
 
 static uint32_t tz_le16(const uint8_t *p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8U);
-}
-
-static uint32_t tz_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) | ((uint32_t)p[2] << 16U) |
-           ((uint32_t)p[3] << 24U);
-}
-
-static uint64_t tz_le64(const uint8_t *p) {
-    return (uint64_t)tz_le32(p) | ((uint64_t)tz_le32(p + 4U) << 32U);
 }
 
 static bool tz_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -332,7 +324,7 @@ static tz_lzma *tz_lzma_open(xx_io_device *device, int64_t offset,
                              int64_t size, const uint8_t *props,
                              uint64_t limit) {
     tz_lzma *z;
-    uint32_t d = props[0], dict = tz_le32(props + 1U);
+    uint32_t d = props[0], dict = xx_data_get_u32(props + 1U, 4, 0, false);
     size_t literals;
     unsigned index;
     if (d >= 9U * 5U * 5U || dict > TZ_MAX_DICT || size < 5) return NULL;
@@ -555,7 +547,7 @@ static bool tz_pe_overlay(Abstractformat *format, int64_t size,
     if (size < TZ_MIN_FILE || !tz_read_at(format->device, base, header, 64U) ||
         header[0] != 'M' || header[1] != 'Z')
         return false;
-    nt_offset = (int64_t)tz_le32(header + 0x3CU);
+    nt_offset = (int64_t)xx_data_get_u32(header + 0x3CU, 4, 0, false);
     if (nt_offset < 4 || nt_offset > size - 64 ||
         !tz_read_at(format->device, base + nt_offset, nt, sizeof(nt)) ||
         xx_rt_memcmp(nt, "PE\0\0", 4U) != 0)
@@ -569,7 +561,7 @@ static bool tz_pe_overlay(Abstractformat *format, int64_t size,
         return false;
     magic = tz_le16(optional);
     if (magic != 0x10BU && magic != 0x20BU) return false;
-    *alignment = tz_le32(optional + 36U);
+    *alignment = xx_data_get_u32(optional + 36U, 4, 0, false);
     table_offset = nt_offset + 24 + (int64_t)optional_size;
     if (table_offset > size ||
         (int64_t)(sections * TZ_PE_ROW) > size - table_offset ||
@@ -578,8 +570,8 @@ static bool tz_pe_overlay(Abstractformat *format, int64_t size,
         return false;
     for (index = 0U; index < sections; ++index) {
         const uint8_t *row = table + index * TZ_PE_ROW;
-        int64_t raw_size = (int64_t)tz_le32(row + 16U);
-        int64_t raw_offset = (int64_t)tz_le32(row + 20U);
+        int64_t raw_size = (int64_t)xx_data_get_u32(row + 16U, 4, 0, false);
+        int64_t raw_offset = (int64_t)xx_data_get_u32(row + 20U, 4, 0, false);
         if (raw_size == 0) continue;
         if (raw_offset + raw_size > end) end = raw_offset + raw_size;
     }
@@ -591,8 +583,8 @@ static bool tz_pe_overlay(Abstractformat *format, int64_t size,
 
 static bool tz_section_header_ok(const uint8_t *h) {
     return xx_rt_memcmp(h + 0x10U, "tiz3", 4U) == 0 &&
-           (tz_le32(h + 0x40U) ^ tz_le32(h + 0x44U)) == TZ_XOR_KEY &&
-           h[0x48] < 9U * 5U * 5U && tz_le32(h + 0x49U) <= TZ_MAX_DICT &&
+           (xx_data_get_u32(h + 0x40U, 4, 0, false) ^ xx_data_get_u32(h + 0x44U, 4, 0, false)) == TZ_XOR_KEY &&
+           h[0x48] < 9U * 5U * 5U && xx_data_get_u32(h + 0x49U, 4, 0, false) <= TZ_MAX_DICT &&
            h[TZ_STREAM] == 0U;
 }
 
@@ -640,7 +632,7 @@ static bool tz_locate(Abstractformat *format, tz_layout *layout,
                         sizeof(h)) ||
             !tz_section_header_ok(h))
             break;
-        declared = (int64_t)tz_le64(h + 0x20U);
+        declared = (int64_t)xx_data_get_u64(h + 0x20U, 8, 0, false);
         if (declared < TZ_MIN_SECTION) break;
         present = declared > size - position ? size - position : declared;
         if (out) {
@@ -660,8 +652,8 @@ static bool tz_locate(Abstractformat *format, tz_layout *layout,
         if (position <= size - TZ_SEPARATOR &&
             tz_read_at(format->device, format->base_address + position,
                        separator, sizeof(separator)) &&
-            (tz_le32(separator) ^ tz_le32(separator + 4U)) == UINT32_MAX &&
-            tz_le64(separator + 8U) == 0U)
+            (xx_data_get_u32(separator, 4, 0, false) ^ xx_data_get_u32(separator + 4U, 4, 0, false)) == UINT32_MAX &&
+            xx_data_get_u64(separator + 8U, 8, 0, false) == 0U)
             position += TZ_SEPARATOR;
     }
     if (layout->count == 0U) return false;
@@ -782,7 +774,7 @@ static bool tz_cursor_next(tz_cursor *c, xx_pd_struct *pd) {
             ++c->section;
             continue;
         }
-        size = (int64_t)tz_le64(c->header + 0x10U);
+        size = (int64_t)xx_data_get_u64(c->header + 0x10U, 8, 0, false);
         if (got != TZ_BLOCK || xx_rt_memcmp(c->header, "tzf3", 4U) != 0 ||
             size < 0 || (uint64_t)size > c->z->limit - c->z->total ||
             c->listed >= TZ_MAX_BLOCKS) {
@@ -896,7 +888,7 @@ static void tz_member_name(uint64_t number, char *name) {
 static bool tz_set_record(xx_archive_record *record, const tz_cursor *c) {
     const tz_section *section = &c->sections[c->section];
     char name[TZ_NAME_MAX];
-    uint64_t filetime = tz_le64(c->header + 0x20U);
+    uint64_t filetime = xx_data_get_u64(c->header + 0x20U, 8, 0, false);
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     tz_member_name(c->listed, name);

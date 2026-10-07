@@ -37,6 +37,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef SINNER
 #define XX_SINNER_FILE_TYPE XX_FILE_TYPE_SINNER
@@ -70,11 +71,6 @@ typedef struct xx_sinner_stream_s {
 static void xx_sinner_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint32_t xx_sinner_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static bool xx_sinner_read_at(Abstractformat *self, int64_t offset,
                              uint8_t *buffer, size_t size) {
@@ -182,7 +178,7 @@ static xx_sinner_stream *xx_sinner_parse(Abstractformat *self,
     /* The count is capped and then bounded against the real file size before
      * the table is allocated - a 24-byte header must not be able to ask for a
      * large allocation. */
-    count = (uint64_t)xx_sinner_le32(head + 20);
+    count = (uint64_t)xx_data_get_u32(head + 20, 4, 0, false);
     if (count == 0U || count > XX_SINNER_MAX_MEMBERS) return NULL;
     table_size = (int64_t)(count * XX_SINNER_ENTRY_SIZE);
     if (table_size > span - XX_SINNER_HEADER_SIZE) return NULL;
@@ -206,9 +202,9 @@ static xx_sinner_stream *xx_sinner_parse(Abstractformat *self,
     cursor = 0;
     for (index = 0U; index < count; ++index) {
         const uint8_t *entry = table + (size_t)(index * XX_SINNER_ENTRY_SIZE);
-        int64_t size = (int64_t)xx_sinner_le32(entry + XX_SINNER_NAME_SIZE);
+        int64_t size = (int64_t)xx_data_get_u32(entry + XX_SINNER_NAME_SIZE, 4, 0, false);
         int64_t offset =
-            (int64_t)xx_sinner_le32(entry + XX_SINNER_NAME_SIZE + 4);
+            (int64_t)xx_data_get_u32(entry + XX_SINNER_NAME_SIZE + 4, 4, 0, false);
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         /* The stored offset is relative to the end of the table and the

@@ -1377,6 +1377,7 @@
 #include "xxfclib/formats/atarist/xx_atarist.h"
 #include "xxfclib/formats/amigahunk/xx_amigahunk.h"
 #include "xxfclib/formats/pe/xx_pe.h"
+#include "xxfclib/formats/dotnet/xx_dotnet.h"
 #include "xxfclib/formats/elf/xx_elf.h"
 #include "xxfclib/formats/macho/xx_macho.h"
 #include "xxfclib/formats/ne/xx_ne.h"
@@ -5744,6 +5745,7 @@ xx_file_type_t xx_format_get_parent_file_type(xx_file_type_t type) {
          * their outer stream, so they hang directly off BINARY. */
         case XX_FILE_TYPE_PE32:
         case XX_FILE_TYPE_PE64:
+        case XX_FILE_TYPE_DOTNET:
         case XX_FILE_TYPE_NE:
         case XX_FILE_TYPE_LE:
         case XX_FILE_TYPE_LX:
@@ -5790,12 +5792,25 @@ xx_list_t *xx_format_get_file_types_device(xx_io_device *dev) {
     xx_list_t *list = xx_list_create(sizeof(xx_file_type_t), NULL);
     size_t count;
     size_t index;
+    xx_file_type_t detected;
 
     if (!list) {
         return NULL;
     }
-    count = xx_format_get_file_type_chain(xx_format_get_file_type_device(dev),
-                                          chain, XX_FILE_TYPE_CHAIN_MAX);
+    detected = xx_format_get_file_type_device(dev);
+    if (detected == XX_FILE_TYPE_DOTNET) {
+        int64_t saved = xx_io_tell(dev);
+        uint32_t nt_offset = xx_io_get_u32(dev, 0x3c, false);
+        uint16_t magic = xx_io_get_u16(dev, (int64_t)nt_offset + 24, false);
+        chain[0] = XX_FILE_TYPE_BINARY;
+        chain[1] = XX_FILE_TYPE_MSDOS;
+        chain[2] = magic == XX_PE_MAGIC_64 ? XX_FILE_TYPE_PE64 : XX_FILE_TYPE_PE32;
+        chain[3] = XX_FILE_TYPE_DOTNET;
+        count = 4U;
+        if (saved >= 0) (void)xx_io_seek64(dev, saved, SEEK_SET);
+    } else {
+        count = xx_format_get_file_type_chain(detected, chain, XX_FILE_TYPE_CHAIN_MAX);
+    }
     for (index = 0U; index < count; ++index) {
         if (!xx_list_append(list, &chain[index])) {
             xx_list_destroy(list);
@@ -6323,6 +6338,58 @@ static bool xx_format_is_installanywhere_unix_device(xx_io_device *device) {
 }
 
 xx_file_type_t xx_format_gap_detect(xx_io_device *device);
+
+/* These generated groups contain hundreds of concrete readers. Keep their
+ * stack frames separate: inlining every reader into the broad detector can
+ * consume the entire default Windows thread stack before a parser is called.
+ * The groups retain their original order and cursor restoration behavior. */
+static XX_FORMAT_NOINLINE xx_file_type_t xx_format_probe_registered_groups_1_4(
+    xx_io_device *dev, int64_t total_size, int64_t orig_pos, bool is_mz,
+    const uint8_t *magic, size_t magic_size) {
+    #include "xx_format_registered_fifty.inc"
+    #include "xx_format_registered_second_fifty.inc"
+    #include "xx_format_registered_third_fifty.inc"
+    #include "xx_format_registered_fourth_fifty.inc"
+    return XX_FILE_TYPE_UNKNOWN;
+}
+
+static XX_FORMAT_NOINLINE xx_file_type_t xx_format_probe_registered_groups_5_8(
+    xx_io_device *dev, int64_t total_size, int64_t orig_pos, bool is_mz,
+    const uint8_t *magic, size_t magic_size) {
+    (void)magic;
+    (void)magic_size;
+    #include "xx_format_registered_fifth_fifty.inc"
+    #include "xx_format_registered_sixth_fifty.inc"
+    #include "xx_format_registered_seventh_fifty.inc"
+    #include "xx_format_registered_eighth_fifty.inc"
+    return XX_FILE_TYPE_UNKNOWN;
+}
+
+static XX_FORMAT_NOINLINE xx_file_type_t xx_format_probe_registered_groups_9_12(
+    xx_io_device *dev, int64_t total_size, int64_t orig_pos, bool is_mz,
+    const uint8_t *magic, size_t magic_size) {
+    (void)is_mz;
+    (void)magic;
+    (void)magic_size;
+    #include "xx_format_registered_ninth_fifty.inc"
+    #include "xx_format_registered_tenth_fifty.inc"
+    #include "xx_format_registered_eleventh_fifty.inc"
+    #include "xx_format_registered_twelfth_fifty.inc"
+    return XX_FILE_TYPE_UNKNOWN;
+}
+
+static XX_FORMAT_NOINLINE xx_file_type_t xx_format_probe_registered_groups_13_16(
+    xx_io_device *dev, int64_t total_size, int64_t orig_pos, bool is_mz,
+    const uint8_t *magic, size_t magic_size) {
+    (void)is_mz;
+    (void)magic;
+    (void)magic_size;
+    #include "xx_format_registered_thirteenth_fifty.inc"
+    #include "xx_format_registered_fourteenth_fifty.inc"
+    #include "xx_format_registered_fifteenth_fifty.inc"
+    #include "xx_format_registered_sixteenth_fifty.inc"
+    return XX_FILE_TYPE_UNKNOWN;
+}
 
 static XX_FORMAT_NOINLINE xx_file_type_t xx_format_get_unpacked_file_type_device(xx_io_device *dev) {
 #else
@@ -7496,22 +7563,17 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         if (valid) return XX_FILE_TYPE_INSTALLER_VISE_WINDOWS;
     }
 
-    #include "xx_format_registered_fifty.inc"
-    #include "xx_format_registered_second_fifty.inc"
-    #include "xx_format_registered_third_fifty.inc"
-    #include "xx_format_registered_fourth_fifty.inc"
-    #include "xx_format_registered_fifth_fifty.inc"
-    #include "xx_format_registered_sixth_fifty.inc"
-    #include "xx_format_registered_seventh_fifty.inc"
-    #include "xx_format_registered_eighth_fifty.inc"
-    #include "xx_format_registered_ninth_fifty.inc"
-    #include "xx_format_registered_tenth_fifty.inc"
-    #include "xx_format_registered_eleventh_fifty.inc"
-    #include "xx_format_registered_twelfth_fifty.inc"
-    #include "xx_format_registered_thirteenth_fifty.inc"
-    #include "xx_format_registered_fourteenth_fifty.inc"
-    #include "xx_format_registered_fifteenth_fifty.inc"
-    #include "xx_format_registered_sixteenth_fifty.inc"
+    {
+        xx_file_type_t registered;
+        registered = xx_format_probe_registered_groups_1_4(dev, total_size, orig_pos, is_mz, magic, magic_size);
+        if (registered != XX_FILE_TYPE_UNKNOWN) return registered;
+        registered = xx_format_probe_registered_groups_5_8(dev, total_size, orig_pos, is_mz, magic, magic_size);
+        if (registered != XX_FILE_TYPE_UNKNOWN) return registered;
+        registered = xx_format_probe_registered_groups_9_12(dev, total_size, orig_pos, is_mz, magic, magic_size);
+        if (registered != XX_FILE_TYPE_UNKNOWN) return registered;
+        registered = xx_format_probe_registered_groups_13_16(dev, total_size, orig_pos, is_mz, magic, magic_size);
+        if (registered != XX_FILE_TYPE_UNKNOWN) return registered;
+    }
 
     if (is_ms_dos_backup) {
         if (xx_format_is_ms_dos_backup_device(dev)) {
@@ -7911,7 +7973,15 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev) {
         }
         xx_pe_destroy(&pe);
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
-        if (pe_type != XX_FILE_TYPE_UNKNOWN) return pe_type;
+        if (pe_type != XX_FILE_TYPE_UNKNOWN) {
+            xx_dotnet managed;
+            bool valid_managed;
+            xx_dotnet_init(&managed, dev, 0);
+            valid_managed = xx_dotnet_check_is_valid(&managed.pe.format, NULL);
+            xx_dotnet_destroy(&managed);
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            return valid_managed ? XX_FILE_TYPE_DOTNET : pe_type;
+        }
         xx_ne_init(&ne, dev, 0);
         valid_ne = xx_ne_check_is_valid(&ne.format, NULL);
         xx_ne_destroy(&ne);
@@ -12443,6 +12513,7 @@ const char *xx_format_file_type_to_string(xx_file_type_t type) {
         case XX_FILE_TYPE_SFX_SBX_EXTRACTOR: return "SBX self-extractor";
         case XX_FILE_TYPE_PE32: return "PE32";
         case XX_FILE_TYPE_PE64: return "PE64";
+        case XX_FILE_TYPE_DOTNET: return "DotNet";
         case XX_FILE_TYPE_BINARY: return "BINARY";
         case XX_FILE_TYPE_AIN: return "AIN";
         case XX_FILE_TYPE_ALDUS: return "ALDUS";

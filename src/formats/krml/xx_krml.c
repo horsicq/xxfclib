@@ -25,6 +25,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_KRML_COPY_CHUNK (64 * 1024)
 
@@ -149,22 +150,11 @@ static bool xx_krml_decode(Abstractformat *self,
 #define XX_KRML_RECORD_SIZE 21
 #define XX_KRML_NAME_SIZE 13
 
-static uint16_t xx_krml_le16(const uint8_t *data)
-{
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_krml_le32(const uint8_t *data)
-{
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
 /* The 32-bit offset/size fields are signed in the original reader: a value with
  * the top bit set is a malformed record, not a 2GB+ one. */
 static int64_t xx_krml_i32(const uint8_t *data)
 {
-    uint32_t value = xx_krml_le32(data);
+    uint32_t value = xx_data_get_u32(data, 4, 0, false);
     if (value & 0x80000000u) {
         return (int64_t)value - (int64_t)0x100000000LL;
     }
@@ -232,7 +222,7 @@ static xx_krml_stream *xx_krml_parse(Abstractformat *self, xx_pd_struct *pd)
     if (xx_rt_memcmp(header, "KRML", 4) != 0) {
         return NULL;
     }
-    count = (int64_t)xx_krml_le16(header + 4);
+    count = (int64_t)xx_data_get_u16(header + 4, 2, 0, false);
     /* An empty directory is not a degenerate-but-valid archive here: the
      * original rejects it, and accepting it would make "KRML\0\0" a match. */
     if ((count <= 0) || (count > XX_KRML_MAX_MEMBERS)) {

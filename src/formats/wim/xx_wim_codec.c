@@ -36,6 +36,7 @@
 #include "xx_wim_codec.h"
 
 #include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Bytes of implied zero input a decoder may consume past the end of its
  * chunk (bit-buffer look-ahead and range-coder normalisation), in bytes. */
@@ -43,17 +44,6 @@
 
 static uint32_t wc_le16(const uint8_t *b) {
     return (uint32_t)b[0] | ((uint32_t)b[1] << 8U);
-}
-
-static uint32_t wc_le32(const uint8_t *b) {
-    return wc_le16(b) | (wc_le16(b + 2U) << 16U);
-}
-
-static void wc_put_le32(uint8_t *b, uint32_t v) {
-    b[0] = (uint8_t)v;
-    b[1] = (uint8_t)(v >> 8U);
-    b[2] = (uint8_t)(v >> 16U);
-    b[3] = (uint8_t)(v >> 24U);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -191,7 +181,7 @@ static bool xpress_decode(wim_huff *h, const uint8_t *in, size_t in_size,
                 cur += 2U;
                 if (length == 0U) {
                     if (in_size - cur < 4U) return false;
-                    length = wc_le32(in + cur);
+                    length = xx_data_get_u32(in + cur, 4, 0, false);
                     cur += 4U;
                 }
                 if (length < 15U) return false;
@@ -329,14 +319,14 @@ static void lzx_undo_e8(uint8_t *data, size_t size) {
             continue;
         }
         {
-            int32_t abs_offset = (int32_t)wc_le32(data + i + 1U);
+            int32_t abs_offset = (int32_t)xx_data_get_u32(data + i + 1U, 4, 0, false);
             int32_t pos = (int32_t)i;
             if (abs_offset >= 0) {
                 if (abs_offset < LZX_E8_SIZE)
-                    wc_put_le32(data + i + 1U, (uint32_t)(abs_offset - pos));
+                    xx_data_set_u32(data + i + 1U, 4, 0, (uint32_t)(abs_offset - pos), false);
             } else if (abs_offset >= -pos) {
-                wc_put_le32(data + i + 1U,
-                            (uint32_t)(abs_offset + LZX_E8_SIZE));
+                xx_data_set_u32(data + i + 1U, 4, 0,
+                            (uint32_t)(abs_offset + LZX_E8_SIZE), false);
             }
         }
         i += 5U;
@@ -475,9 +465,9 @@ static bool lzx_decode(lzx_state *x, const uint8_t *in, size_t in_size,
             if (pos != block_start || start > in_size || in_size - start < 12U)
                 return false;
             amount = target - pos;
-            r0 = wc_le32(in + start);
-            r1 = wc_le32(in + start + 4U);
-            r2 = wc_le32(in + start + 8U);
+            r0 = xx_data_get_u32(in + start, 4, 0, false);
+            r1 = xx_data_get_u32(in + start + 4U, 4, 0, false);
+            r2 = xx_data_get_u32(in + start + 8U, 4, 0, false);
             start += 12U;
             if (r0 == 0U || r1 == 0U || r2 == 0U || amount > in_size - start)
                 return false;
@@ -805,10 +795,10 @@ static void lzms_undo_x86(int32_t *last_use, uint8_t *data, size_t size) {
             if (data[i + 1] != 0x15U) continue;
             span = 2U;
         }
-        value = wc_le32(data + i + span);
+        value = xx_data_get_u32(data + i + span, 4, 0, false);
         if (i - last_x86 <= reach) {
             value -= (uint32_t)i;
-            wc_put_le32(data + i + span, value);
+            xx_data_set_u32(data + i + span, 4, 0, value, false);
         }
         target = ((uint32_t)i + value) & 0xFFFFU;
         i += (int32_t)span + 3;

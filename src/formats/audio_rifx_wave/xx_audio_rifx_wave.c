@@ -16,11 +16,11 @@ static bool printable(const uint8_t*p) {
 static bool fmt_valid(const uint8_t*p,uint32_t n) {
     uint32_t tag,ch,rate,bytes,align,bits,expected;
     if(n<16 || n>4096 || n==17)return false;
-    tag=pm_be16(p);ch=pm_be16(p+2);rate=pm_be32(p+4);
-    bytes=pm_be32(p+8);align=pm_be16(p+12);bits=pm_be16(p+14);
+    tag=xx_data_get_u16(p, 2, 0, true);ch=xx_data_get_u16(p+2, 2, 0, true);rate=xx_data_get_u32(p+4, 4, 0, true);
+    bytes=xx_data_get_u32(p+8, 4, 0, true);align=xx_data_get_u16(p+12, 2, 0, true);bits=xx_data_get_u16(p+14, 2, 0, true);
     if(!tag || !ch || ch>64 || !rate || rate>384000 ||
        !bytes || !align || bits>64)return false;
-    if(n>=18 && pm_be16(p+16)>n-18)return false;
+    if(n>=18 && xx_data_get_u16(p+16, 2, 0, true)>n-18)return false;
     if(tag==1 || tag==3) {
         if((tag==1 && bits!=8 && bits!=16 && bits!=24 && bits!=32) ||
            (tag==3 && bits!=32 && bits!=64))return false;
@@ -36,7 +36,7 @@ static bool pm_parse(Abstractformat*f,pm_stream*s,xx_pd_struct*pd) {
     if(fd_stop(pd)||available<36 || !pm_read(f,0,h,12) ||
        xx_rt_memcmp(h,"RIFX",4) || xx_rt_memcmp(h+8,"WAVE",4))
         return false;
-    total=8U+(uint64_t)pm_be32(h+4);
+    total=8U+(uint64_t)xx_data_get_u32(h+4, 4, 0, true);
     if(total<36 || total>(uint64_t)available ||
        !pm_add(f,s,"rifx-header.bin",0,12))return false;
     p=12;
@@ -44,7 +44,7 @@ static bool pm_parse(Abstractformat*f,pm_stream*s,xx_pd_struct*pd) {
         uint32_t size;uint64_t next;char label[48],tag[5];unsigned i;
         if(fd_stop(pd)||++chunks>4096 || !fd_range(p,8,total) ||
            !pm_read(f,(int64_t)p,c,8) || !printable(c))return false;
-        size=pm_be32(c+4);next=p+8U+(uint64_t)size+(size&1U);
+        size=xx_data_get_u32(c+4, 4, 0, true);next=p+8U+(uint64_t)size+(size&1U);
         if(next>total)return false;
         for(i=0;i<4;++i)
             tag[i]=(c[i]==' ' || c[i]=='/' || c[i]=='\\' || c[i]==':' ||
@@ -55,7 +55,7 @@ static bool pm_parse(Abstractformat*f,pm_stream*s,xx_pd_struct*pd) {
             if(has_fmt || size>sizeof(fmt) || size<16 ||
                !pm_read(f,(int64_t)p+8,fmt,size) || !fmt_valid(fmt,size))
                 return false;
-            fmt_tag=pm_be16(fmt);fmt_align=pm_be16(fmt+12);
+            fmt_tag=xx_data_get_u16(fmt, 2, 0, true);fmt_align=xx_data_get_u16(fmt+12, 2, 0, true);
             has_fmt=1;xx_rt_snprintf(label,sizeof(label),"format-descriptor.bin");
         } else if(!xx_rt_memcmp(c,"data",4)) {
             if(!size)return false;

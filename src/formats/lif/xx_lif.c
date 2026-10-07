@@ -16,6 +16,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -111,15 +112,6 @@ static bool lif_scan_lzd(const uint8_t *data, size_t size,
     return true;
 }
 
-static uint16_t lif_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t lif_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
-
 static bool lif_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     size_t done = 0U;
@@ -183,21 +175,21 @@ static bool lif_parse(Abstractformat *format, lif_stream **result,
                      sizeof(header)))
         return false;
 
-    magic = lif_le16(header);
+    magic = xx_data_get_u16(header, 2, 0, false);
     if (magic != 0x4344U && magic != 0x4c44U) return false;
-    if (lif_le16(header + 2) != XX_LIF_VERSION) return false;
-    if (lif_le16(header + 4) == 0U) return false;
+    if (xx_data_get_u16(header + 2, 2, 0, false) != XX_LIF_VERSION) return false;
+    if (xx_data_get_u16(header + 4, 2, 0, false) == 0U) return false;
 
-    declared_total = lif_le32(header + 0x15);
-    method = lif_le32(header + 0x19);
-    packed_size = lif_le32(header + 0x1d);
+    declared_total = xx_data_get_u32(header + 0x15, 4, 0, false);
+    method = xx_data_get_u32(header + 0x19, 4, 0, false);
+    packed_size = xx_data_get_u32(header + 0x1d, 4, 0, false);
     if (declared_total == 0U || (declared_total & 0x80000000U) != 0U)
         return false;
     if (method != XX_LIF_METHOD) return false;
     if ((packed_size & 0x80000000U) != 0U ||
         packed_size > LIF_MAX_PACKED)
         return false;
-    if (lif_le32(header + 0x21) != 0U) return false;
+    if (xx_data_get_u32(header + 0x21, 4, 0, false) != 0U) return false;
 
     /* The two structural identities.  A two-byte magic is far too weak on its
      * own, and these are what make it safe: the declared total must cover the
@@ -228,8 +220,8 @@ static bool lif_parse(Abstractformat *format, lif_stream **result,
     stream->stream_size = stream_size;
     stream->unpacked_size = unpacked_size;
     stream->total_size = (int64_t)declared_total;
-    stream->dos_date = lif_le16(header + 0x25);
-    stream->dos_time = lif_le16(header + 0x27);
+    stream->dos_date = xx_data_get_u16(header + 0x25, 2, 0, false);
+    stream->dos_time = xx_data_get_u16(header + 0x27, 2, 0, false);
     stream->consumed = false;
     *result = stream;
     return true;

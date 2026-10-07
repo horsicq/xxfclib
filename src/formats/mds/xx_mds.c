@@ -13,6 +13,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef MDS
 #define MDS_TYPE XX_FILE_TYPE_MDS
@@ -48,14 +49,6 @@ typedef struct mds_cursor_s {
     uint32_t index;
 } mds_cursor;
 static bool mds_stop(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
-static uint16_t mds_u16(const uint8_t *p) { return (uint16_t)(p[0] | ((uint16_t)p[1] << 8U)); }
-static uint32_t mds_u32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) |
-           ((uint32_t)p[2] << 16U) | ((uint32_t)p[3] << 24U);
-}
-static uint64_t mds_u64(const uint8_t *p) {
-    return (uint64_t)mds_u32(p) | ((uint64_t)mds_u32(p + 4U) << 32U);
-}
 static bool mds_mode(uint8_t mode) {
     return mode == 0xA9U || mode == 0xAAU || mode == 0xABU ||
            mode == 0xECU || mode == 0xADU;
@@ -90,22 +83,22 @@ static mds_view *mds_parse(Abstractformat *f, xx_pd_struct *pd) {
                                     (size_t)(total - f->base_address), pd)) goto done;
     v->base = f->base_address; v->descriptor_size = total - f->base_address;
     if (memcmp(data, "MEDIA DESCRIPTOR", 16U) || data[0x10U] != 1U ||
-        data[0x11U] != 4U || mds_u16(data + 0x12U) != 0U ||
-        mds_u32(data + 0x50U) != MDS_HEADER) goto done;
-    sessions = mds_u16(data + 0x14U);
+        data[0x11U] != 4U || xx_data_get_u16(data + 0x12U, 2, 0, false) != 0U ||
+        xx_data_get_u32(data + 0x50U, 4, 0, false) != MDS_HEADER) goto done;
+    sessions = xx_data_get_u16(data + 0x14U, 2, 0, false);
     if (!sessions || sessions > MDS_MAX_SESSIONS ||
-        mds_u16(data + 0x16U) != sessions) goto done;
+        xx_data_get_u16(data + 0x16U, 2, 0, false) != sessions) goto done;
     v->sessions = sessions;
     block_start = MDS_HEADER + (uint64_t)sessions * MDS_SESSION;
     if (block_start > (uint64_t)v->descriptor_size) goto done;
     for (s = 0U; s < sessions; ++s) {
         const uint8_t *session = data + MDS_HEADER + s * MDS_SESSION;
-        uint32_t count = session[0x0AU], first = mds_u16(session + 0x0CU);
-        uint32_t last = mds_u16(session + 0x0EU), tracks;
-        if (mds_u16(session + 0x08U) != s + 1U || !first || last < first ||
+        uint32_t count = session[0x0AU], first = xx_data_get_u16(session + 0x0CU, 2, 0, false);
+        uint32_t last = xx_data_get_u16(session + 0x0EU, 2, 0, false), tracks;
+        if (xx_data_get_u16(session + 0x08U, 2, 0, false) != s + 1U || !first || last < first ||
             last > MDS_MAX_TRACKS || first != v->count + 1U ||
             session[0x0BU] != 3U ||
-            mds_u32(session + 0x14U) != block_start + block_total * MDS_BLOCK)
+            xx_data_get_u32(session + 0x14U, 4, 0, false) != block_start + block_total * MDS_BLOCK)
             goto done;
         tracks = last - first + 1U;
         if (count != tracks + (s == 0U ? 6U : 4U) ||
@@ -116,12 +109,12 @@ static mds_view *mds_parse(Abstractformat *f, xx_pd_struct *pd) {
     extra_start = block_start + (uint64_t)block_total * MDS_BLOCK;
     footer = extra_start + (uint64_t)block_total * MDS_EXTRA;
     if (footer + MDS_FOOTER + 6U != (uint64_t)v->descriptor_size ||
-        mds_u32(data + footer) != footer + MDS_FOOTER ||
-        mds_u32(data + footer + 4U) != 0U ||
+        xx_data_get_u32(data + footer, 4, 0, false) != footer + MDS_FOOTER ||
+        xx_data_get_u32(data + footer + 4U, 4, 0, false) != 0U ||
         memcmp(data + footer + MDS_FOOTER, "*.mdf\0", 6U)) goto done;
     for (s = 0U; s < sessions; ++s) {
         const uint8_t *session = data + MDS_HEADER + s * MDS_SESSION;
-        uint32_t first = mds_u16(session + 0x0CU), last = mds_u16(session + 0x0EU);
+        uint32_t first = xx_data_get_u16(session + 0x0CU, 2, 0, false), last = xx_data_get_u16(session + 0x0EU, 2, 0, false);
         uint32_t count = session[0x0AU], t;
         const uint8_t *blocks = data + block_start + (uint64_t)block_index * MDS_BLOCK;
         if (blocks[4U] != 0xA0U || blocks[MDS_BLOCK + 4U] != 0xA1U ||
@@ -134,16 +127,16 @@ static mds_view *mds_parse(Abstractformat *f, xx_pd_struct *pd) {
             uint64_t length;
             if (!mds_mode(block[0]) || block[1U] != 0U ||
                 block[2U] != (block[0] == 0xA9U ? 0x10U : 0x14U) ||
-                block[4U] != t || mds_u16(block + 0x10U) != MDS_SECTOR ||
-                mds_u32(block + 0x0CU) != extra_start + (uint64_t)slot * MDS_EXTRA ||
-                mds_u32(block + 0x30U) != 1U ||
-                mds_u32(block + 0x34U) != footer ||
-                !mds_u32(extra + 4U)) goto done;
+                block[4U] != t || xx_data_get_u16(block + 0x10U, 2, 0, false) != MDS_SECTOR ||
+                xx_data_get_u32(block + 0x0CU, 4, 0, false) != extra_start + (uint64_t)slot * MDS_EXTRA ||
+                xx_data_get_u32(block + 0x30U, 4, 0, false) != 1U ||
+                xx_data_get_u32(block + 0x34U, 4, 0, false) != footer ||
+                !xx_data_get_u32(extra + 4U, 4, 0, false)) goto done;
             track->number = (uint16_t)t; track->mode = block[0];
-            track->lba = mds_u32(block + 0x24U);
-            track->offset = mds_u64(block + 0x28U);
-            track->pregap = mds_u32(extra);
-            track->sectors = mds_u32(extra + 4U);
+            track->lba = xx_data_get_u32(block + 0x24U, 4, 0, false);
+            track->offset = xx_data_get_u64(block + 0x28U, 8, 0, false);
+            track->pregap = xx_data_get_u32(extra, 4, 0, false);
+            track->sectors = xx_data_get_u32(extra + 4U, 4, 0, false);
             track->header_offset = v->base + (int64_t)(block_start + (uint64_t)slot * MDS_BLOCK);
             length = (uint64_t)track->sectors * MDS_SECTOR;
             if (length > INT64_MAX || track->offset != expected_mdf ||

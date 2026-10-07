@@ -9,7 +9,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd){
     af_work w;af_blob b;uint32_t records,i,j;uint8_t *image=NULL;unsigned sectors=0;bool full=true,ok=false,recognized=false;xx_trackstar *r=(xx_trackstar *)f;
     if(!af_init(&w,f,s,pd) || !af_load(&w,&b))return false;
     if((b.n!=40U*6656U && b.n!=80U*6656U) || !(image=af_alloc(&w,35U*4096U,false))) {goto done; } records=b.n/6656U;
-    for(i=0;i<records;++i){const uint8_t *h=b.p+i*6656U;uint32_t n=pm_le16(h+6654);uint8_t *out;char name[48];
+    for(i=0;i<records;++i){const uint8_t *h=b.p+i*6656U;uint32_t n=xx_data_get_u16(h+6654, 2, 0, false);uint8_t *out;char name[48];
         if(!af_poll(&w) || !af_zero(h+46,82) || h[128]!=(records==80U?1U:0U) || n>6525U)goto done;
         for(j=0;j<46U;++j)if(h[j] && (h[j]<32U || h[j]>126U))goto done;
         if(!n){if(!af_zero(h+129,6525U))goto done;if(i<(records==80U?70U:35U) && (records==40U || !(i&1U)))full=false;continue;}

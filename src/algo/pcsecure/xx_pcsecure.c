@@ -10,6 +10,7 @@
 #include "xxfclib/algo/pcsecure/xx_pcsecure.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/data/xx_data.h"
 
 /* ------------------------------------------------------------- tables --- */
 /* Standard DES.  Bit 1 is the most significant bit of the value permuted,
@@ -201,31 +202,6 @@ static void pcs_decrypt_block(const uint8_t *in, uint8_t *out,
 
 /* ------------------------------------------------------------- endian --- */
 
-static uint16_t pcs_read_u16le(const uint8_t *p)
-{
-    return (uint16_t)((uint32_t)p[0] | ((uint32_t)p[1] << 8));
-}
-
-static uint32_t pcs_read_u32le(const uint8_t *p)
-{
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
-           ((uint32_t)p[3] << 24);
-}
-
-static void pcs_write_u16le(uint8_t *p, uint16_t value)
-{
-    p[0] = (uint8_t)(value & 0xffU);
-    p[1] = (uint8_t)((value >> 8) & 0xffU);
-}
-
-static void pcs_write_u32le(uint8_t *p, uint32_t value)
-{
-    p[0] = (uint8_t)(value & 0xffU);
-    p[1] = (uint8_t)((value >> 8) & 0xffU);
-    p[2] = (uint8_t)((value >> 16) & 0xffU);
-    p[3] = (uint8_t)((value >> 24) & 0xffU);
-}
-
 static uint32_t pcs_swap32(uint32_t value)
 {
     return ((value & 0x000000ffU) << 24) | ((value & 0x0000ff00U) << 8) |
@@ -241,13 +217,13 @@ static void pcs_fix_header_byte_order(uint8_t *header)
     int32_t i;
 
     for (i = 0; i < 7; ++i) {
-        const uint32_t value = pcs_swap32(pcs_read_u32le(header + dword_offsets[i]));
-        pcs_write_u32le(header + dword_offsets[i], value);
+        const uint32_t value = pcs_swap32(xx_data_get_u32(header + dword_offsets[i], 4, 0, false));
+        xx_data_set_u32(header + dword_offsets[i], 4, 0, value, false);
     }
     for (i = 0; i < 2; ++i) {
-        const uint16_t value = pcs_read_u16le(header + word_offsets[i]);
-        pcs_write_u16le(header + word_offsets[i],
-                        (uint16_t)(((value & 0x00ffU) << 8) | (value >> 8)));
+        const uint16_t value = xx_data_get_u16(header + word_offsets[i], 2, 0, false);
+        xx_data_set_u16(header + word_offsets[i], 2, 0,
+                        (uint16_t)(((value & 0x00ffU) << 8) | (value >> 8)), false);
     }
 }
 
@@ -432,12 +408,12 @@ static bool pcs_try_header(const uint8_t *header, const uint8_t key[8],
         pcs_decrypt_block(header + 4 + i * 8, plain + 4 + i * 8, subkeys, rounds);
     }
 
-    high = pcs_read_u32le(plain + 0x28) ^ pcs_read_u32le(plain + 0x30);
-    low = pcs_read_u32le(plain + 0x2c) ^ pcs_read_u32le(plain + 0x34);
+    high = xx_data_get_u32(plain + 0x28, 4, 0, false) ^ xx_data_get_u32(plain + 0x30, 4, 0, false);
+    low = xx_data_get_u32(plain + 0x2c, 4, 0, false) ^ xx_data_get_u32(plain + 0x34, 4, 0, false);
     /* "SeaHawks", split across two XOR pairs. */
     if ((high != 0x48616553U) || (low != 0x736b7761U)) return false;
 
-    payload_rounds = pcs_read_u16le(plain + 0x0c);
+    payload_rounds = xx_data_get_u16(plain + 0x0c, 2, 0, false);
     swapped = (uint16_t)(((payload_rounds & 0x00ffU) << 8) |
                          (payload_rounds >> 8));
     /* The payload round count must be 0..16 before the header is accepted;
@@ -468,7 +444,7 @@ bool xx_pcsecure_parse_header(const uint8_t *input, size_t input_size,
     /* Strictly more than 68 bytes: a header with no payload is not a file. */
     if (input_size <= (size_t)XX_PCSECURE_HEADER_SIZE) return false;
 
-    signature = pcs_read_u32le(input);
+    signature = xx_data_get_u32(input, 4, 0, false);
     if (!pcs_is_known_signature(signature)) return false;
 
     data_size = input_size - (size_t)XX_PCSECURE_HEADER_SIZE;
@@ -502,8 +478,8 @@ bool xx_pcsecure_parse_header(const uint8_t *input, size_t input_size,
     }
     if (found < 0) return false;
 
-    uncompressed = pcs_read_u32le(plain + 0x18);
-    compressed = pcs_read_u32le(plain + 0x20);
+    uncompressed = xx_data_get_u32(plain + 0x18, 4, 0, false);
+    compressed = xx_data_get_u32(plain + 0x20, 4, 0, false);
     if ((uncompressed == 0U) ||
         ((uint64_t)uncompressed > (uint64_t)XX_PCSECURE_MAX_OUTPUT)) {
         return false;
@@ -514,11 +490,11 @@ bool xx_pcsecure_parse_header(const uint8_t *input, size_t input_size,
 
     for (i = 0; i < 8; ++i) info->key[i] = candidates[found][i];
     info->signature = signature;
-    info->flags = pcs_read_u32le(plain + 8);
-    info->rounds = (int32_t)pcs_read_u16le(plain + 0x0c);
+    info->flags = xx_data_get_u32(plain + 8, 4, 0, false);
+    info->rounds = (int32_t)xx_data_get_u16(plain + 0x0c, 2, 0, false);
     info->uncompressed_size = (uint64_t)uncompressed;
     info->compressed_size = (uint64_t)compressed;
-    info->dos_time = pcs_read_u32le(plain + 0x38);
+    info->dos_time = xx_data_get_u32(plain + 0x38, 4, 0, false);
     for (i = 0; i < 4; ++i) info->name_extension[i] = plain[0x12 + i];
     info->user_password = verifier_nonzero;
 

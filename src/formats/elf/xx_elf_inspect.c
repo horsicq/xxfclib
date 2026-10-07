@@ -21,7 +21,7 @@
  * SOFTWARE.
  */
 
-/* xelf.c - ELF reader, ported from xx_elf_inspection.
+/* Native ELF inspection helpers used by DIE and other metadata queries.
  *
  * Covers what the ELF database directory queries: the header, the section
  * table (with names resolved through .shstrtab), the program headers, the

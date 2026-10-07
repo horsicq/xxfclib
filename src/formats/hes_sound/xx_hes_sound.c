@@ -7,14 +7,15 @@
  */
 #include "xxfclib/formats/hes_sound/xx_hes_sound.h"
 #include "../vice_x64/xx_ninth_retro.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
  uint32_t at=16,count=0,n=0,initial,bank; bool mapped=false; nh_span spans[64]; char name[48];
  if(!nh_range(b,0,32) || xx_rt_memcmp(b->p,"HESM",4) || b->p[4] || !nh_emit(f,s,b,"music-descriptor.bin",0,16)) return false;
- bank=b->p[8+(pm_le16(b->p+6)>>13)]; if(bank>127) return false; initial=bank*8192U+(pm_le16(b->p+6)&8191U);
+ bank=b->p[8+(xx_data_get_u16(b->p+6, 2, 0, false)>>13)]; if(bank>127) return false; initial=bank*8192U+(xx_data_get_u16(b->p+6, 2, 0, false)&8191U);
  while(at<b->n) {
   uint32_t z,load;
-  if(!nh_range(b,at,16) || xx_rt_memcmp(b->p+at,"DATA",4) || !(z=pm_le32(b->p+at+4)) || (load=pm_le32(b->p+at+8))>=1048576U || z>1048576U-load || pm_le32(b->p+at+12) || !nh_range(b,at+16,z) || !nh_disjoint(spans,&count,64,load,z)) return false;
+  if(!nh_range(b,at,16) || xx_rt_memcmp(b->p+at,"DATA",4) || !(z=xx_data_get_u32(b->p+at+4, 4, 0, false)) || (load=xx_data_get_u32(b->p+at+8, 4, 0, false))>=1048576U || z>1048576U-load || xx_data_get_u32(b->p+at+12, 4, 0, false) || !nh_range(b,at+16,z) || !nh_disjoint(spans,&count,64,load,z)) return false;
   if(initial>=load && initial-load<z) mapped=true;
   xx_rt_snprintf(name,sizeof(name),"data-%u.bin",n++); if(!nh_emit(f,s,b,name,at,z+16)) return false; at+=16+z;
  }

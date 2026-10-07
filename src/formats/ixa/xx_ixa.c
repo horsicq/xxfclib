@@ -54,6 +54,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef IXA
 #define XX_IXA_FILE_TYPE XX_FILE_TYPE_IXA
@@ -93,24 +94,6 @@ typedef struct xx_ixa_stream_s {
 static void xx_ixa_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static XXFC_MAYBE_UNUSED uint16_t xx_ixa_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_ixa_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static XXFC_MAYBE_UNUSED uint16_t xx_ixa_be16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[1] | ((uint16_t)data[0] << 8));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t xx_ixa_be32(const uint8_t *data) {
-    return (uint32_t)data[3] | ((uint32_t)data[2] << 8) |
-           ((uint32_t)data[1] << 16) | ((uint32_t)data[0] << 24);
-}
 
 static bool xx_ixa_read_at(Abstractformat *self, int64_t offset,
                               uint8_t *buffer, size_t size) {
@@ -282,15 +265,15 @@ static xx_ixa_stream *xx_ixa_parse(Abstractformat *self,
     }
     /* U3's predicate: the magic plus the two header constants. */
     if (xx_rt_memcmp(head, "IXALANCE", 8U) != 0 ||
-        xx_ixa_le32(head + 0x28) != XX_IXA_MAGIC_CHECK_A ||
-        xx_ixa_le32(head + 0x2c) != XX_IXA_MAGIC_CHECK_B) {
+        xx_data_get_u32(head + 0x28, 4, 0, false) != XX_IXA_MAGIC_CHECK_A ||
+        xx_data_get_u32(head + 0x2c, 4, 0, false) != XX_IXA_MAGIC_CHECK_B) {
         return NULL;
     }
 
     /* The stored value is the slot count plus one. */
-    if (xx_ixa_le32(head + 0x30) == 0U) return NULL;
-    slots = xx_ixa_le32(head + 0x30) - 1U;
-    auxiliary = xx_ixa_le32(head + 0x38);
+    if (xx_data_get_u32(head + 0x30, 4, 0, false) == 0U) return NULL;
+    slots = xx_data_get_u32(head + 0x30, 4, 0, false) - 1U;
+    auxiliary = xx_data_get_u32(head + 0x38, 4, 0, false);
     if (slots == 0U || slots > XX_IXA_MAX_SLOTS) return NULL;
     /* Bound the table against the real file before allocating it, and make
      * the header's own republished table end agree exactly -- that is the
@@ -299,7 +282,7 @@ static xx_ixa_stream *xx_ixa_parse(Abstractformat *self,
         return NULL;
     }
     table_end = XX_IXA_TABLE_OFFSET + (int64_t)slots * XX_IXA_ENTRY_SIZE;
-    if ((int64_t)xx_ixa_le32(head + 0x34) != table_end) return NULL;
+    if ((int64_t)xx_data_get_u32(head + 0x34, 4, 0, false) != table_end) return NULL;
     if ((int64_t)auxiliary > span - table_end) return NULL;
 
     table = (uint8_t *)xx_mem_alloc((size_t)slots * XX_IXA_ENTRY_SIZE);
@@ -317,9 +300,9 @@ static xx_ixa_stream *xx_ixa_parse(Abstractformat *self,
     cursor = table_end + (int64_t)auxiliary;
     for (index = 0U; index < slots; ++index) {
         const uint8_t *entry = table + (size_t)index * XX_IXA_ENTRY_SIZE;
-        int64_t offset = (int64_t)xx_ixa_le32(entry);
-        int64_t packed = (int64_t)xx_ixa_le32(entry + 4);
-        int64_t plain = (int64_t)xx_ixa_le32(entry + 8);
+        int64_t offset = (int64_t)xx_data_get_u32(entry, 4, 0, false);
+        int64_t packed = (int64_t)xx_data_get_u32(entry + 4, 4, 0, false);
+        int64_t plain = (int64_t)xx_data_get_u32(entry + 8, 4, 0, false);
         xx_ixa_member member;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
@@ -427,7 +410,7 @@ static bool xx_ixa_expand(const uint8_t *packed, size_t packed_size,
         }
     }
     if (!ended || m < 4U) goto finish;
-    declared = xx_ixa_le32(middle);
+    declared = xx_data_get_u32(middle, 4, 0, false);
     if (declared != m) goto finish;
     while (p < m) {
         uint8_t control = middle[p++];

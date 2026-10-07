@@ -22,6 +22,7 @@
 #include "xxfclib/algo/aes_winzip/xx_aes_winzip.h"
 #include "xxfclib/algo/sha/xx_sha.h"
 #include "../aes/xx_aes_internal.h"
+#include "xxfclib/data/xx_data.h"
 
 #define XX_WINZIP_AES_MAX_DERIVED   66U
 #define XX_WINZIP_AES_PBKDF2_ROUNDS 1000U
@@ -46,13 +47,6 @@ static void xx_bytes_copy(uint8_t *destination, const uint8_t *source, size_t si
     for (index = 0U; index < size; ++index) {
         destination[index] = source[index];
     }
-}
-
-static void xx_store_be32(uint8_t *data, uint32_t value) {
-    data[0] = (uint8_t)(value >> 24U);
-    data[1] = (uint8_t)(value >> 16U);
-    data[2] = (uint8_t)(value >> 8U);
-    data[3] = (uint8_t)value;
 }
 
 static bool xx_sha1_update_progress(xx_sha1_context *context,
@@ -135,7 +129,7 @@ static bool xx_pbkdf2_hmac_sha1(const uint8_t *password, size_t password_size,
         size_t index;
         size_t amount;
 
-        xx_store_be32(block_index, block_number);
+        xx_data_set_u32(block_index, 4, 0, block_number, true);
         if (!xx_hmac_sha1_parts(password, password_size, salt, salt_size,
                            block_index, sizeof(block_index), current, pd)) goto cleanup;
         xx_bytes_copy(accumulated, current, sizeof(accumulated));

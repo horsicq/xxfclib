@@ -4,6 +4,7 @@
 #include "xxfclib/buf/xx_buf.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 /* ------------------------------------------------------------------- AXML */
 
@@ -53,24 +54,6 @@ static uint8_t rd8(const unsigned char *pData, size_t nSize, size_t nOffset)
     return pData[nOffset];
 }
 
-static uint16_t rd16(const unsigned char *pData, size_t nSize, size_t nOffset)
-{
-    if (nOffset + 2 > nSize) {
-        return 0;
-    }
-
-    return (uint16_t)(pData[nOffset] | (pData[nOffset + 1] << 8));
-}
-
-static uint32_t rd32(const unsigned char *pData, size_t nSize, size_t nOffset)
-{
-    if (nOffset + 4 > nSize) {
-        return 0;
-    }
-
-    return (uint32_t)pData[nOffset] | ((uint32_t)pData[nOffset + 1] << 8) | ((uint32_t)pData[nOffset + 2] << 16) | ((uint32_t)pData[nOffset + 3] << 24);
-}
-
 /* Appends the pool string at nIndex to pOut as UTF-8. Out-of-range indices
  * (including 0xFFFFFFFF for "no string") append nothing. */
 static void axml_append_string(const AxmlPool *pPool, uint32_t nIndex, xx_buf_t *pOut)
@@ -85,7 +68,7 @@ static void axml_append_string(const AxmlPool *pPool, uint32_t nIndex, xx_buf_t 
         return;
     }
 
-    nStrOffsetRel = rd32(pPool->pData, pPool->nEnd, pPool->nOffsetsBase + (size_t)nIndex * 4);
+    nStrOffsetRel = xx_data_get_u32(pPool->pData, pPool->nEnd, pPool->nOffsetsBase + (size_t)nIndex * 4, false);
     if (nStrOffsetRel >= pPool->nEnd - pPool->nStringsBase) { pOut->failed = true; return; }
     nStrOffset = pPool->nStringsBase + nStrOffsetRel;
 
@@ -144,19 +127,19 @@ static void axml_append_string(const AxmlPool *pPool, uint32_t nIndex, xx_buf_t 
      * 0x10000 or more. */
     nBase = nStrOffset;
     if (pPool->nEnd - nBase < 2) { pOut->failed = true; return; }
-    nLen = rd16(pPool->pData, pPool->nEnd, nBase);
+    nLen = xx_data_get_u16(pPool->pData, pPool->nEnd, nBase, false);
     nBase += 2;
 
     if (nLen & 0x8000) {
         if (pPool->nEnd - nBase < 2) { pOut->failed = true; return; }
-        nLen = ((nLen & 0x7FFF) << 16) | rd16(pPool->pData, pPool->nEnd, nBase);
+        nLen = ((nLen & 0x7FFF) << 16) | xx_data_get_u16(pPool->pData, pPool->nEnd, nBase, false);
         nBase += 2;
     }
 
     if (nLen >= 0x10000) {
         pOut->failed = true; return;
     }
-    if (pPool->nEnd - nBase < 2 || nLen > (pPool->nEnd - nBase - 2) / 2 || rd16(pPool->pData, pPool->nEnd, nBase + (size_t)nLen * 2) != 0) { pOut->failed = true; return; }
+    if (pPool->nEnd - nBase < 2 || nLen > (pPool->nEnd - nBase - 2) / 2 || xx_data_get_u16(pPool->pData, pPool->nEnd, nBase + (size_t)nLen * 2, false) != 0) { pOut->failed = true; return; }
 
     /* Decode to UTF-8, handling the surrogate pair range. */
     for (k = 0; k < nLen; k++) {
@@ -174,7 +157,7 @@ static void axml_append_string(const AxmlPool *pPool, uint32_t nIndex, xx_buf_t 
         }
 
         if ((nUnit >= 0xD800) && (nUnit <= 0xDBFF) && ((k + 1) < nLen)) {
-            uint32_t nLow = rd16(pPool->pData, pPool->nEnd, nBase + (size_t)(k + 1) * 2);
+            uint32_t nLow = xx_data_get_u16(pPool->pData, pPool->nEnd, nBase + (size_t)(k + 1) * 2, false);
 
             if ((nLow >= 0xDC00) && (nLow <= 0xDFFF)) {
                 nUnit = 0x10000 + ((nUnit - 0xD800) << 10) + (nLow - 0xDC00);
@@ -267,19 +250,19 @@ static char *axml_decode(const unsigned char *pData, size_t nSize, xx_pd_struct 
     pool.nSize = nSize;
 
     /* Top chunk must be RES_XML. */
-    if ((nSize < 8) || (rd16(pData, nSize, 0) != AXML_RES_XML)) {
+    if ((nSize < 8) || (xx_data_get_u16(pData, nSize, 0, false) != AXML_RES_XML)) {
         xx_buf_free(&out);
 
         return NULL;
     }
 
-    if (rd16(pData, nSize, 2) != 8 || rd32(pData, nSize, 4) != nSize) goto invalid;
+    if (xx_data_get_u16(pData, nSize, 2, false) != 8 || xx_data_get_u32(pData, nSize, 4, false) != nSize) goto invalid;
     nOffset = 8;
 
     while (nOffset + 8 <= nSize) {
-        uint16_t nType = rd16(pData, nSize, nOffset);
-        uint16_t nHeaderSize = rd16(pData, nSize, nOffset + 2);
-        uint32_t nChunkSize = rd32(pData, nSize, nOffset + 4);
+        uint16_t nType = xx_data_get_u16(pData, nSize, nOffset, false);
+        uint16_t nHeaderSize = xx_data_get_u16(pData, nSize, nOffset + 2, false);
+        uint32_t nChunkSize = xx_data_get_u32(pData, nSize, nOffset + 4, false);
 
         if (xx_pd_is_stopped(pd) || nHeaderSize < 8 || nChunkSize < nHeaderSize || nChunkSize > nSize - nOffset) goto invalid;
 
@@ -288,27 +271,27 @@ static char *axml_decode(const unsigned char *pData, size_t nSize, xx_pd_struct 
         if (nType == AXML_RES_STRING_POOL) {
             if (nHeaderSize < 28 || nChunkSize < 28) goto invalid;
             pool.nEnd = nOffset + nChunkSize;
-            pool.nStringCount = rd32(pData, nSize, nOffset + 8);
-            pool.nFlags = rd32(pData, nSize, nOffset + 16);
+            pool.nStringCount = xx_data_get_u32(pData, nSize, nOffset + 8, false);
+            pool.nFlags = xx_data_get_u32(pData, nSize, nOffset + 16, false);
             pool.nOffsetsBase = nOffset + nHeaderSize;
-            pool.nStringsBase = nOffset + rd32(pData, nSize, nOffset + 20);
+            pool.nStringsBase = nOffset + xx_data_get_u32(pData, nSize, nOffset + 20, false);
             if (pool.nStringCount > (nChunkSize - nHeaderSize) / 4 || pool.nStringsBase < pool.nOffsetsBase + (size_t)pool.nStringCount * 4 || pool.nStringsBase > pool.nEnd) goto invalid;
             bHavePool = 1;
         } else if (nType == AXML_RES_XML_START_NAMESPACE) {
             if (nChunkSize < 24 || nHeaderSize < 16) goto invalid;
             if ((bHavePool) && (ns.nCount < AXML_MAX_NS)) {
-                ns.nPrefix[ns.nCount] = rd32(pData, nSize, nOffset + 16);
-                ns.nUri[ns.nCount] = rd32(pData, nSize, nOffset + 20);
+                ns.nPrefix[ns.nCount] = xx_data_get_u32(pData, nSize, nOffset + 16, false);
+                ns.nUri[ns.nCount] = xx_data_get_u32(pData, nSize, nOffset + 20, false);
                 ns.nCount++;
             }
         } else if (nType == AXML_RES_XML_START_ELEMENT) {
-            uint32_t nName = rd32(pData, nSize, nOffset + 20);
-            uint16_t nAttrCount = rd16(pData, nSize, nOffset + 28);
+            uint32_t nName = xx_data_get_u32(pData, nSize, nOffset + 20, false);
+            uint16_t nAttrCount = xx_data_get_u16(pData, nSize, nOffset + 28, false);
             uint16_t attr_start, attr_size;
             size_t nAttrOffset;
             if (!bHavePool || nHeaderSize < 16 || nChunkSize < 36) goto invalid;
-            attr_start = rd16(pData, nSize, nOffset + 24);
-            attr_size = rd16(pData, nSize, nOffset + 26);
+            attr_start = xx_data_get_u16(pData, nSize, nOffset + 24, false);
+            attr_size = xx_data_get_u16(pData, nSize, nOffset + 26, false);
             if (attr_start < 20 || attr_size < 20 || attr_start > nChunkSize - 16) goto invalid;
             nAttrOffset = nOffset + 16 + attr_start;
             if (nAttrCount > (nOffset + nChunkSize - nAttrOffset) / attr_size) goto invalid;
@@ -338,10 +321,10 @@ static char *axml_decode(const unsigned char *pData, size_t nSize, xx_pd_struct 
 
                 nAttrBudget--;
 
-                nAttrNs = rd32(pData, nSize, nAt + 0);
-                nAttrName = rd32(pData, nSize, nAt + 4);
+                nAttrNs = xx_data_get_u32(pData, nSize, nAt + 0, false);
+                nAttrName = xx_data_get_u32(pData, nSize, nAt + 4, false);
                 nDataType = pData[nAt + 15]; /* HEADER_XML_ATTRIBUTE.dataType */
-                nAttrData = rd32(pData, nSize, nAt + 16);
+                nAttrData = xx_data_get_u32(pData, nSize, nAt + 16, false);
 
                 xx_buf_append_char(&out, ' ');
                 axml_write_attr_name(&pool, &ns, nAttrNs, nAttrName, &out);

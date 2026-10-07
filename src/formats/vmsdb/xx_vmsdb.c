@@ -56,6 +56,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef VMSDB
 #define XX_VMSDB_FILE_TYPE XX_FILE_TYPE_VMSDB
@@ -114,15 +115,6 @@ typedef struct vmsdb_cursor_s {
     int64_t size;
     int64_t position;
 } vmsdb_cursor;
-
-static uint32_t vmsdb_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
-
-static uint16_t vmsdb_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
 
 static bool vmsdb_parse_tag(const uint8_t *data, int64_t available,
                             vmsdb_tag *tag) {
@@ -285,9 +277,9 @@ static bool vmsdb_read_at(xx_io_device *device, int64_t offset, void *buffer,
 }
 
 static bool vmsdb_check_magic(const uint8_t *magic) {
-    return vmsdb_le32(magic) == UINT32_C(0x8074ffff) &&
-           vmsdb_le32(magic + 4) == UINT32_C(0x018080a0) &&
-           vmsdb_le32(magic + 8) == UINT32_C(0x00018101);
+    return xx_data_get_u32(magic, 4, 0, false) == UINT32_C(0x8074ffff) &&
+           xx_data_get_u32(magic + 4, 4, 0, false) == UINT32_C(0x018080a0) &&
+           xx_data_get_u32(magic + 8, 4, 0, false) == UINT32_C(0x00018101);
 }
 
 static bool vmsdb_walk_members(vmsdb_stream *stream, int64_t base_address,
@@ -343,8 +335,8 @@ static bool vmsdb_walk_members(vmsdb_stream *stream, int64_t base_address,
             xx_str_free(member.name);
             break;
         }
-        blocks = (int64_t)(int32_t)vmsdb_le32(attributes + 0x13);
-        last_bytes = (int64_t)vmsdb_le16(attributes + 0x1f);
+        blocks = (int64_t)(int32_t)xx_data_get_u32(attributes + 0x13, 4, 0, false);
+        last_bytes = (int64_t)xx_data_get_u16(attributes + 0x1f, 2, 0, false);
         /* A block count of zero makes the declared size negative.  The
          * reference does not reject that: its remaining-bytes counter never
          * goes positive and the member comes out empty. */

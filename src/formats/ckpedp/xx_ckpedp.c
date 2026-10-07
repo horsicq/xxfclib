@@ -14,6 +14,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #define CE_HEADER_SIZE 14
 #define CE_RECORD_FIXED_SIZE 22
@@ -54,13 +55,6 @@ typedef struct ce_path_map {
 } ce_path_map;
 
 static bool ce_stopped(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
-static uint16_t ce_le16(const uint8_t *p) {
-    return (uint16_t)((uint16_t)p[0] | (uint16_t)p[1] << 8U);
-}
-static uint32_t ce_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | (uint32_t)p[1] << 8U |
-           (uint32_t)p[2] << 16U | (uint32_t)p[3] << 24U;
-}
 static bool ce_range_within(int64_t total, int64_t at, int64_t length) {
     return at >= 0 && length >= 0 && at <= total && length <= total - at;
 }
@@ -179,13 +173,13 @@ static char *ce_decode_name(const uint8_t *raw, uint16_t units, bool utf16) {
     name = (char *)xx_mem_alloc((size_t)units * 4U + 1U);
     if (!name) return NULL;
     for (i = 0U; i < units; ++i) {
-        uint32_t c = utf16 ? (uint32_t)(~ce_le16(raw + (size_t)i * 2U) & 0xffffU)
+        uint32_t c = utf16 ? (uint32_t)(~xx_data_get_u16(raw + (size_t)i * 2U, 2, 0, false) & 0xffffU)
                            : (uint32_t)(~raw[i] & 0xffU);
         if (c < 0x40U) c += 0x20U;
         if (utf16 && c >= 0xd800U && c <= 0xdbffU) {
             uint32_t low;
             if (++i >= units) goto invalid;
-            low = (uint32_t)(~ce_le16(raw + (size_t)i * 2U) & 0xffffU);
+            low = (uint32_t)(~xx_data_get_u16(raw + (size_t)i * 2U, 2, 0, false) & 0xffffU);
             if (low < 0xdc00U || low > 0xdfffU) goto invalid;
             c = 0x10000U + ((c - 0xd800U) << 10U) + low - 0xdc00U;
         } else if (utf16 && c >= 0xdc00U && c <= 0xdfffU) {
@@ -439,7 +433,7 @@ static ce_layout *ce_parse(Abstractformat *format, xx_pd_struct *pd) {
     utf16 = format->file_type == XX_FILE_TYPE_EDP;
     if (xx_rt_memcmp(header, utf16 ? ".EDP" : ".CKP", 4U) ||
         header[4] != 0U || header[5] != 1U) return NULL;
-    count = ce_le32(header + 6U);
+    count = xx_data_get_u32(header + 6U, 4, 0, false);
     if (count > CE_MAX_RECORDS ||
         (uint64_t)count > (uint64_t)(span - CE_HEADER_SIZE) /
                           (CE_RECORD_FIXED_SIZE + (utf16 ? 2U : 1U)) ||
@@ -462,7 +456,7 @@ static ce_layout *ce_parse(Abstractformat *format, xx_pd_struct *pd) {
         if (ce_stopped(pd) || !ce_range_within(span, cursor, 2) ||
             !ce_read(format->device, format->base_address + cursor,
                      count_raw, sizeof(count_raw), pd)) goto done;
-        units = ce_le16(count_raw);
+        units = xx_data_get_u16(count_raw, 2, 0, false);
         if (!units || units > CE_MAX_NAME_UNITS) goto done;
         name_bytes = (size_t)units * (utf16 ? 2U : 1U);
         record_bytes = CE_RECORD_FIXED_SIZE + name_bytes;
@@ -483,9 +477,9 @@ static ce_layout *ce_parse(Abstractformat *format, xx_pd_struct *pd) {
         }
         member->header_offset = format->base_address + cursor;
         member->header_size = (int64_t)record_bytes;
-        member->data_offset = ce_le32(tail + 12U);
-        member->data_size = ce_le32(tail + 16U);
-        if (ce_le32(tail + 8U) != 0U) {
+        member->data_offset = xx_data_get_u32(tail + 12U, 4, 0, false);
+        member->data_size = xx_data_get_u32(tail + 16U, 4, 0, false);
+        if (xx_data_get_u32(tail + 8U, 4, 0, false) != 0U) {
             xx_mem_free(record); goto done;
         }
         xx_mem_free(record);

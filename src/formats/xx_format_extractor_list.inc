@@ -1149,6 +1149,7 @@ extern xx_format_extractor xx_pcxlib_extractor;
 extern xx_format_extractor xx_pdb_extractor;
 extern xx_format_extractor xx_pdp11ar_extractor;
 extern xx_format_extractor xx_pe_extractor;
+extern xx_format_extractor xx_dotnet_extractor;
 extern xx_format_extractor xx_pea_extractor;
 extern xx_format_extractor xx_perform_extractor;
 extern xx_format_extractor xx_phar_extractor;
@@ -2426,6 +2427,7 @@ static const struct {
     { XX_FILE_TYPE_PDP11AR, &xx_pdp11ar_extractor },
     { XX_FILE_TYPE_PE32, &xx_pe_extractor },
     { XX_FILE_TYPE_PE64, &xx_pe_extractor },
+    { XX_FILE_TYPE_DOTNET, &xx_dotnet_extractor },
     { XX_FILE_TYPE_PEA, &xx_pea_extractor },
     { XX_FILE_TYPE_PERFORM, &xx_perform_extractor },
     { XX_FILE_TYPE_PHAR, &xx_phar_extractor },

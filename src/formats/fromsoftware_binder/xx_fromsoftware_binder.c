@@ -7,7 +7,7 @@
 #include "../makeself/xx_fourth_wrapper_table.h"
 
 static uint8_t bn_reverse(uint8_t b) { b=(uint8_t)((b>>4)|(b<<4)); b=(uint8_t)(((b&0xcc)>>2)|((b&0x33)<<2)); return (uint8_t)(((b&0xaa)>>1)|((b&0x55)<<1)); }
-static uint32_t bn32(bool be,const uint8_t *p) { return be ? pm_be32(p) : pm_le32(p); }
+static uint32_t bn32(bool be,const uint8_t *p) { return be ? xx_data_get_u32(p, 4, 0, true) : xx_data_get_u32(p, 4, 0, false); }
 static uint64_t bn64(bool be,const uint8_t *p) { return be ? wgb64(p) : wg64(p); }
 static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[64]; bool four,be,bitbe,unicode=false; unsigned format,entry,count,i; uint64_t headers,table,limit=(uint64_t)pm_available(f),extent; size_t name_budget=16777216;

@@ -12,7 +12,7 @@ static bool mp_id3(const uint8_t *b,uint64_t at,uint64_t n,uint64_t *end) {
  bytes=mp_syncsafe(b+at+6);p=at+10;limit=p+bytes;if(!ng_span(p,bytes,n)||bytes>4194304)return false;
  while(p<limit){uint32_t len;unsigned i;if(!b[p]){if(!ng_zero(b+p,limit-p))return false;p=limit;break;}if(!ng_span(p,10,limit))return false;
   for(i=0;i<4;++i)if(!((b[p+i]>='A'&&b[p+i]<='Z')||(b[p+i]>='0'&&b[p+i]<='9')))return false;
-  if(b[p+8]||b[p+9]) {return false; } if(version==4){if((b[p+4]|b[p+5]|b[p+6]|b[p+7])&128)return false;len=mp_syncsafe(b+p+4);}else len=pm_be32(b+p+4);
+  if(b[p+8]||b[p+9]) {return false; } if(version==4){if((b[p+4]|b[p+5]|b[p+6]|b[p+7])&128)return false;len=mp_syncsafe(b+p+4);}else len=xx_data_get_u32(b+p+4, 4, 0, true);
   if(!len||!ng_span(p+10,len,limit)) {return false; } p+=10+len;
  }*end=limit;return true;
 }

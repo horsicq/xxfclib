@@ -16,6 +16,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef HFE
 #define XX_HFE_FILE_TYPE XX_FILE_TYPE_HFE
@@ -45,14 +46,6 @@ typedef struct hfe_stream_s {
     uint32_t recovered_cylinders;
     bool incomplete_tracks;
 } hfe_stream;
-
-static uint16_t hfe_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t hfe_le32(const uint8_t *b) {
-    return (uint32_t)hfe_le16(b) | ((uint32_t)hfe_le16(b + 2U) << 16U);
-}
 
 static bool hfe_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -189,7 +182,7 @@ static bool hfe_header(const uint8_t *file, size_t size, hfe_geometry *out) {
     out->variable = false;
     out->incomplete_tracks = false;
     out->recovered_cylinders = 0U;
-    out->lut_offset = (int64_t)hfe_le16(file + 0x12) * HFE_BLOCK;
+    out->lut_offset = (int64_t)xx_data_get_u16(file + 0x12, 2, 0, false) * HFE_BLOCK;
     if (out->tracks > HFE_MAX_TRACKS || out->lut_offset < HFE_HEADER_SIZE ||
         out->lut_offset > (int64_t)size)
         return false;
@@ -204,8 +197,8 @@ static bool hfe_track_bits(const uint8_t *file, size_t size,
                            uint8_t *side0, uint8_t *side1, size_t capacity,
                            size_t *cells0, size_t *cells1) {
     const int64_t entry = geometry->lut_offset + (int64_t)track * 4;
-    const int64_t offset = (int64_t)hfe_le16(file + entry) * HFE_BLOCK;
-    const int64_t length = (int64_t)hfe_le16(file + entry + 2);
+    const int64_t offset = (int64_t)xx_data_get_u16(file + entry, 2, 0, false) * HFE_BLOCK;
+    const int64_t length = (int64_t)xx_data_get_u16(file + entry + 2, 2, 0, false);
     const int64_t side_bytes = length / 2;
     size_t used[2];
     int32_t side;
@@ -848,7 +841,7 @@ static bool hfe_fm_walk(const uint8_t *file, size_t size,
         /* A v1 entry gives the same byte count to each side.  Odd entries
          * cannot describe whole bytes on both sides. */
         if (entry > size || size - entry < 4U ||
-            (hfe_le16(file + entry + 2U) & 1U) != 0U ||
+            (xx_data_get_u16(file + entry + 2U, 2, 0, false) & 1U) != 0U ||
             !hfe_track_bits(file, size, geometry, (int32_t)track,
                             side0, side1, capacity, &cells0, &cells1)) {
             ok = false;

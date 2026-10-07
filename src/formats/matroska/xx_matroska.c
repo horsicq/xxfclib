@@ -6,6 +6,7 @@
 #include "xxfclib/formats/matroska/xx_matroska.h"
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 typedef struct mk_ctx { Abstractformat *f; pm_stream *s; xx_pd_struct *pd; uint64_t tracks[256]; unsigned track_count,blocks; } mk_ctx;
 static bool mk_vint(Abstractformat *f,int64_t *at,int64_t end,uint64_t *value,unsigned *length,bool id,bool *unknown) {
@@ -71,7 +72,7 @@ static bool mk_children(mk_ctx *c,int64_t start,int64_t end,unsigned depth,uint3
             unsigned part=id==0x1549A966U ? 1U : id==0x1654AE6BU ? 2U : 4U;
             if(parent!=0x18538067U || (part!=4 && (segment_parts&part))) { return false; } segment_parts|=part;
         }
-        if(id==0xBF) { if(++crc_count>1 || stop-body!=4 || !pm_read(c->f,body,b,4) || !mk_crc(c->f,start,end,at,stop,pm_le32(b))) return false; }
+        if(id==0xBF) { if(++crc_count>1 || stop-body!=4 || !pm_read(c->f,body,b,4) || !mk_crc(c->f,start,end,at,stop,xx_data_get_u32(b, 4, 0, false))) return false; }
         else if(id==0xEC) {}
         else if(id==0xA3 || id==0xA1) { if(!mk_block(c,body,stop,id==0xA3)) return false; }
         else if(mk_master(id)) { if(!mk_children(c,body,stop,depth+1,id)) return false; }

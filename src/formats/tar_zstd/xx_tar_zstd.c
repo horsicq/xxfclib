@@ -10,6 +10,7 @@
 #include "xxfclib/memory/xx_memory.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_TAR_ZSTD_MAGIC UINT32_C(0xFD2FB528)
 #define XX_TAR_ZSTD_SKIP_MAGIC UINT32_C(0x184D2A50)
@@ -17,16 +18,6 @@
 #define XX_TAR_ZSTD_MAX_BUFFER ((size_t)1024U * 1024U * 1024U)
 
 static void xx_tar_zstd_vtable_destroy(Abstractformat *self);
-
-static uint32_t xx_tar_zstd_read32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
-
-static uint32_t xx_tar_zstd_read24(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U);
-}
 
 static bool xx_tar_zstd_take(const uint8_t **cursor, const uint8_t *end,
                              size_t count) {
@@ -81,12 +72,12 @@ static bool xx_tar_zstd_declared_size(const uint8_t *source, size_t size,
         bool last_block = false;
 
         if ((size_t)(end - cursor) < 4U) return false;
-        magic = xx_tar_zstd_read32(cursor);
+        magic = xx_data_get_u32(cursor, 4, 0, false);
         cursor += 4U;
         if ((magic & UINT32_C(0xFFFFFFF0)) == XX_TAR_ZSTD_SKIP_MAGIC) {
             uint32_t skipped_size;
             if ((size_t)(end - cursor) < 4U) return false;
-            skipped_size = xx_tar_zstd_read32(cursor);
+            skipped_size = xx_data_get_u32(cursor, 4, 0, false);
             cursor += 4U;
             if (!xx_tar_zstd_take(&cursor, end, (size_t)skipped_size)) {
                 return false;
@@ -133,7 +124,7 @@ static bool xx_tar_zstd_declared_size(const uint8_t *source, size_t size,
             size_t block_size;
             size_t encoded_size;
             if ((size_t)(end - cursor) < 3U) return false;
-            header = xx_tar_zstd_read24(cursor);
+            header = xx_data_get_u24(cursor, 3, 0, false);
             cursor += 3U;
             last_block = (header & 1U) != 0U;
             block_type = (header >> 1U) & 3U;

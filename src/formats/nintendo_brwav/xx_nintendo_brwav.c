@@ -5,6 +5,7 @@
  */
 #include "xxfclib/formats/nintendo_brwav/xx_nintendo_brwav.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool overlap(uint64_t a,uint64_t n,uint64_t b,uint64_t m) { return n && m && a<b+m && b<a+n; }
@@ -16,17 +17,17 @@ static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uin
 }
 typedef struct rg { uint64_t at,n; } rg;
 static bool reserve(rg *r,unsigned *count,unsigned maximum,uint64_t at,uint64_t n,uint64_t lower,uint64_t end) { unsigned i; if(*count>=maximum || at<lower || !span(at,n,end)) return false; for(i=0;i<*count;++i) if(overlap(at,n,r[i].at,r[i].n)) return false; r[*count].at=at; r[*count].n=n; ++*count; return true; }
-static bool section(Abstractformat *f,uint64_t at,uint64_t total,const char *magic,uint32_t n,xx_pd_struct *pd) { uint8_t h[8]; return !stop(pd) && n>=8 && span(at,n,total) && pm_read(f,(int64_t)at,h,8) && !xx_rt_memcmp(h,magic,4) && pm_be32(h+4)==n; }
+static bool section(Abstractformat *f,uint64_t at,uint64_t total,const char *magic,uint32_t n,xx_pd_struct *pd) { uint8_t h[8]; return !stop(pd) && n>=8 && span(at,n,total) && pm_read(f,(int64_t)at,h,8) && !xx_rt_memcmp(h,magic,4) && xx_data_get_u32(h+4, 4, 0, true)==n; }
 
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[32],b[36],p[28],q[4]; uint32_t total,io,in,da,dn,ch,n,codec,table,base,i; uint64_t data; char label[40]; rg ranges[10]; unsigned nr=0;
-    if(!pm_read(f,0,h,32) || xx_rt_memcmp(h,"RWAV",4) || pm_be16(h+4)!=0xfeff || pm_be16(h+6)!=0x102 || pm_be16(h+12)!=32 || pm_be16(h+14)!=2 || (total=pm_be32(h+8))>(uint64_t)pm_available(f)) return false;
-    io=pm_be32(h+16); in=pm_be32(h+20); da=pm_be32(h+24); dn=pm_be32(h+28); if(io<32 || da<32 || overlap(io,in,da,dn) || !section(f,io,total,"INFO",in,pd) || !section(f,da,total,"DATA",dn,pd) || in<36 || !pm_read(f,io,b,36)) return false;
-    codec=b[8]; ch=b[10]; n=pm_be32(b+20); table=pm_be32(b+24); base=pm_be32(b+28); if(codec>1 || b[9]>1 || !ch || ch>8 || b[11] || !pm_be16(b+12) || b[14] || b[15] || !n || n>16777216 || (b[9] && pm_be32(b+16)>=n) || pm_be32(b+32) || !reserve(ranges,&nr,10,table,(uint64_t)ch*4,28,in-8)) return false;
-    data=da+8U+(uint64_t)base; for(i=0;i<ch;++i) { uint32_t ci; if(stop(pd) || !pm_read(f,io+8+(int64_t)table+i*4,q,4) || !reserve(ranges,&nr,10,ci=pm_be32(q),28,28,in-8) || !pm_read(f,io+8+(int64_t)ci,p,28) || pm_be32(p+4) || pm_be32(p+24) || !span(data+pm_be32(p),(uint64_t)n*(codec+1),da+(uint64_t)dn)) return false;
-      xx_rt_snprintf(label,sizeof(label),"channel-%u.pcm",i); if(!emit(f,s,label,data+pm_be32(p),(uint64_t)n*(codec+1),total)) return false; }
+    if(!pm_read(f,0,h,32) || xx_rt_memcmp(h,"RWAV",4) || xx_data_get_u16(h+4, 2, 0, true)!=0xfeff || xx_data_get_u16(h+6, 2, 0, true)!=0x102 || xx_data_get_u16(h+12, 2, 0, true)!=32 || xx_data_get_u16(h+14, 2, 0, true)!=2 || (total=xx_data_get_u32(h+8, 4, 0, true))>(uint64_t)pm_available(f)) return false;
+    io=xx_data_get_u32(h+16, 4, 0, true); in=xx_data_get_u32(h+20, 4, 0, true); da=xx_data_get_u32(h+24, 4, 0, true); dn=xx_data_get_u32(h+28, 4, 0, true); if(io<32 || da<32 || overlap(io,in,da,dn) || !section(f,io,total,"INFO",in,pd) || !section(f,da,total,"DATA",dn,pd) || in<36 || !pm_read(f,io,b,36)) return false;
+    codec=b[8]; ch=b[10]; n=xx_data_get_u32(b+20, 4, 0, true); table=xx_data_get_u32(b+24, 4, 0, true); base=xx_data_get_u32(b+28, 4, 0, true); if(codec>1 || b[9]>1 || !ch || ch>8 || b[11] || !xx_data_get_u16(b+12, 2, 0, true) || b[14] || b[15] || !n || n>16777216 || (b[9] && xx_data_get_u32(b+16, 4, 0, true)>=n) || xx_data_get_u32(b+32, 4, 0, true) || !reserve(ranges,&nr,10,table,(uint64_t)ch*4,28,in-8)) return false;
+    data=da+8U+(uint64_t)base; for(i=0;i<ch;++i) { uint32_t ci; if(stop(pd) || !pm_read(f,io+8+(int64_t)table+i*4,q,4) || !reserve(ranges,&nr,10,ci=xx_data_get_u32(q, 4, 0, true),28,28,in-8) || !pm_read(f,io+8+(int64_t)ci,p,28) || xx_data_get_u32(p+4, 4, 0, true) || xx_data_get_u32(p+24, 4, 0, true) || !span(data+xx_data_get_u32(p, 4, 0, true),(uint64_t)n*(codec+1),da+(uint64_t)dn)) return false;
+      xx_rt_snprintf(label,sizeof(label),"channel-%u.pcm",i); if(!emit(f,s,label,data+xx_data_get_u32(p, 4, 0, true),(uint64_t)n*(codec+1),total)) return false; }
     if(!emit(f,s,"info.bin",io,in,total)) { return false; } s->size=total; return true;
 
 }

@@ -36,6 +36,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Self-healing shim: the file compiles before the enum exists. */
 #ifdef CASIO_FZ_1_DISK
@@ -89,10 +90,6 @@ typedef struct fz1_stream_s {
 static void fz1_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint16_t fz1_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
 
 static bool fz1_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer,
                         size_t size) {
@@ -252,7 +249,7 @@ static bool fz1_read_entry(Abstractformat *self, const uint8_t *entry,
     xx_mem_zero(member, sizeof(*member));
     member->type = entry[12];
     member->part = entry[13];
-    sloc = fz1_le16(entry + 14);
+    sloc = xx_data_get_u16(entry + 14, 2, 0, false);
     if (member->type > FZ1_MAX_TYPE || member->part > FZ1_MAX_PART ||
         sloc < FZ1_FIRST_DATA_SECTOR || sloc >= FZ1_SECTOR_COUNT) {
         return false;
@@ -266,9 +263,9 @@ static bool fz1_read_entry(Abstractformat *self, const uint8_t *entry,
         return false;
     }
     member->head_sector = sloc;
-    member->banks = fz1_le16(head + FZ1_COUNTS_OFFSET);
-    member->voices = fz1_le16(head + FZ1_COUNTS_OFFSET + 2U);
-    member->waves = fz1_le16(head + FZ1_COUNTS_OFFSET + 4U);
+    member->banks = xx_data_get_u16(head + FZ1_COUNTS_OFFSET, 2, 0, false);
+    member->voices = xx_data_get_u16(head + FZ1_COUNTS_OFFSET + 2U, 2, 0, false);
+    member->waves = xx_data_get_u16(head + FZ1_COUNTS_OFFSET + 4U, 2, 0, false);
     if (member->type != FZ1_TYPE_SEQUENCE &&
         (member->banks > FZ1_MAX_BANKS || member->voices > FZ1_MAX_VOICES)) {
         return false;
@@ -276,8 +273,8 @@ static bool fz1_read_entry(Abstractformat *self, const uint8_t *entry,
 
     xx_mem_zero(seen, sizeof(seen));
     for (index = 0U; index < FZ1_DBP_COUNT; ++index) {
-        uint16_t start = fz1_le16(head + index * 4U);
-        uint16_t stop = fz1_le16(head + index * 4U + 2U);
+        uint16_t start = xx_data_get_u16(head + index * 4U, 2, 0, false);
+        uint16_t stop = xx_data_get_u16(head + index * 4U + 2U, 2, 0, false);
         uint32_t sector;
         if (start == 0U && stop == 0U) break;
         if (start < FZ1_FIRST_DATA_SECTOR || stop < start ||

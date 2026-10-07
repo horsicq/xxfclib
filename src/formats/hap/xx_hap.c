@@ -48,6 +48,7 @@
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/algo/hap/xx_hap.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_HAP_COPY_CHUNK (64 * 1024)
 
@@ -152,8 +153,6 @@ static bool xx_hap_add(xx_hap_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_hap_le16(const uint8_t *data);
-static uint32_t xx_hap_le32(const uint8_t *data);
 static int64_t xx_hap_i32(const uint8_t *data);
 static char xx_hap_hex_digit(uint8_t value);
 static char *xx_hap_make_name(const uint8_t *entry, size_t index);
@@ -169,19 +168,10 @@ static bool xx_hap_decode(Abstractformat *self, const xx_hap_member *member, uin
 static const uint8_t xx_hap_archive_magic[4] = {0x91U, 0x33U, 0x48U, 0x46U};
 static const uint8_t xx_hap_entry_magic[4] = {0x8EU, 0x68U, 0x4AU, 0x57U};
 
-static uint16_t xx_hap_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_hap_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
 /* Both size fields are signed in the reference, which then refuses a negative
  * one; sign extending keeps that test meaningful. */
 static int64_t xx_hap_i32(const uint8_t *data) {
-    return (int64_t)(int32_t)xx_hap_le32(data);
+    return (int64_t)(int32_t)xx_data_get_u32(data, 4, 0, false);
 }
 
 static char xx_hap_hex_digit(uint8_t value) {
@@ -326,8 +316,8 @@ static xx_hap_stream *xx_hap_parse(Abstractformat *self, xx_pd_struct *pd) {
         member.uncompressed_size = uncompressed_size;
         /* The container's own method byte, unchanged. */
         member.method = (uint32_t)method;
-        member.timestamp = ((uint64_t)xx_hap_le16(entry + 20) << 16) |
-                           (uint64_t)xx_hap_le16(entry + 18);
+        member.timestamp = ((uint64_t)xx_data_get_u16(entry + 20, 2, 0, false) << 16) |
+                           (uint64_t)xx_data_get_u16(entry + 18, 2, 0, false);
         member.is_folder = false;
 
         if (!xx_hap_add(stream, &member)) goto fail;

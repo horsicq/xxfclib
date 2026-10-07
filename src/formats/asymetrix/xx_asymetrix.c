@@ -52,6 +52,7 @@
 #include "xxfclib/algo/asymetrix/xx_asymetrix.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ASYMETRIX_COPY_CHUNK (64 * 1024)
 
@@ -171,7 +172,6 @@ static bool xx_asymetrix_add(xx_asymetrix_stream *stream,
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
 static uint32_t xx_asymetrix_le16(const uint8_t *data);
-static uint32_t xx_asymetrix_le32(const uint8_t *data);
 static bool xx_asymetrix_name_character(uint8_t value);
 static bool xx_asymetrix_read_name(const uint8_t *field, size_t field_size, char *out);
 static bool xx_asymetrix_measure(Abstractformat *self, int64_t data_offset, int64_t region_end, int64_t uncompressed, int64_t *stream_size, xx_pd_struct *pd);
@@ -193,11 +193,6 @@ static bool xx_asymetrix_decode(Abstractformat *self, const xx_asymetrix_member 
 
 static uint32_t xx_asymetrix_le16(const uint8_t *data) {
     return (uint32_t)data[0] | ((uint32_t)data[1] << 8);
-}
-
-static uint32_t xx_asymetrix_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
 }
 
 static bool xx_asymetrix_name_character(uint8_t value) {
@@ -274,7 +269,7 @@ static bool xx_asymetrix_measure(Abstractformat *self, int64_t data_offset,
             return false;
         }
         method = xx_asymetrix_le16(header);
-        block_size = xx_asymetrix_le32(header + 2);
+        block_size = xx_data_get_u32(header + 2, 4, 0, false);
         if (method != XX_ASYMETRIX_BLOCK_METHOD_STORED &&
             method != XX_ASYMETRIX_BLOCK_METHOD_IMPLODE) {
             return false;
@@ -340,8 +335,8 @@ static xx_asymetrix_stream *xx_asymetrix_parse(Abstractformat *self,
      * free field - the writer emits 0x6C and the directory walk below depends
      * on it - so checking only the first dword would let a file that merely
      * opens with those four bytes be parsed as a record chain. */
-    if (xx_asymetrix_le32(header) != XX_ASYMETRIX_MAGIC) return NULL;
-    if (xx_asymetrix_le32(header + 4) != (uint32_t)XX_ASYMETRIX_RECORD_STRIDE) {
+    if (xx_data_get_u32(header, 4, 0, false) != XX_ASYMETRIX_MAGIC) return NULL;
+    if (xx_data_get_u32(header + 4, 4, 0, false) != (uint32_t)XX_ASYMETRIX_RECORD_STRIDE) {
         return NULL;
     }
     /* The set name is a real, always-populated field; an empty or non-DOS one
@@ -393,7 +388,7 @@ static xx_asymetrix_stream *xx_asymetrix_parse(Abstractformat *self,
         return NULL;
     }
     first_method = xx_asymetrix_le16(probe);
-    first_size = xx_asymetrix_le32(probe + 2);
+    first_size = xx_data_get_u32(probe + 2, 4, 0, false);
     if (first_method != XX_ASYMETRIX_BLOCK_METHOD_STORED &&
         first_method != XX_ASYMETRIX_BLOCK_METHOD_IMPLODE) {
         return NULL;
@@ -455,11 +450,11 @@ static xx_asymetrix_stream *xx_asymetrix_parse(Abstractformat *self,
             goto fail;
         }
         member_volume =
-            xx_asymetrix_le32(record + XX_ASYMETRIX_RECORD_VOLUME) >> 16;
+            xx_data_get_u32(record + XX_ASYMETRIX_RECORD_VOLUME, 4, 0, false) >> 16;
         member_offset =
-            (int64_t)xx_asymetrix_le32(record + XX_ASYMETRIX_RECORD_OFFSET);
+            (int64_t)xx_data_get_u32(record + XX_ASYMETRIX_RECORD_OFFSET, 4, 0, false);
         member_size =
-            (int64_t)xx_asymetrix_le32(record + XX_ASYMETRIX_RECORD_SIZE);
+            (int64_t)xx_data_get_u32(record + XX_ASYMETRIX_RECORD_SIZE, 4, 0, false);
 
         /* Records are written sorted by (volume, offset).  That order is what
          * lets the next record delimit this member's block region in one pass
@@ -489,11 +484,11 @@ static xx_asymetrix_stream *xx_asymetrix_parse(Abstractformat *self,
                                       next, sizeof(next))) {
                 goto fail;
             }
-            if ((xx_asymetrix_le32(next + XX_ASYMETRIX_RECORD_VOLUME) >> 16) ==
+            if ((xx_data_get_u32(next + XX_ASYMETRIX_RECORD_VOLUME, 4, 0, false) >> 16) ==
                 volume) {
                 region_end =
-                    (int64_t)xx_asymetrix_le32(next +
-                                               XX_ASYMETRIX_RECORD_OFFSET);
+                    (int64_t)xx_data_get_u32(next +
+                                               XX_ASYMETRIX_RECORD_OFFSET, 4, 0, false);
                 if (region_end < member_offset || region_end > span) goto fail;
             }
         }

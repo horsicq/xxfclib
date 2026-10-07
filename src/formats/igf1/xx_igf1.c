@@ -46,6 +46,7 @@
 #include "xxfclib/algo/lzh/xx_lzh.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_IGF1_COPY_CHUNK (64 * 1024)
 
@@ -149,8 +150,6 @@ static bool xx_igf1_add(xx_igf1_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_igf1_le16(const uint8_t *data);
-static uint32_t xx_igf1_le32(const uint8_t *data);
 static bool xx_igf1_name_valid(const char *name);
 static xx_igf1_stream *xx_igf1_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_igf1_decode(Abstractformat *self, const xx_igf1_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
@@ -161,15 +160,6 @@ static bool xx_igf1_decode(Abstractformat *self, const xx_igf1_member *member, u
 /* The name is NUL terminated behind the header and padded out to the data
  * offset; MS-DOS/Win16 paths never come near this ceiling. */
 /* 1 GB sanity cap on the stated uncompressed size, as in the reference. */
-
-static uint16_t xx_igf1_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_igf1_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* Win16 installer paths: printable ASCII only, and none of the characters a
  * path cannot carry. A backslash is legal here and is folded to '/' by the
@@ -223,14 +213,14 @@ static xx_igf1_stream *xx_igf1_parse(Abstractformat *self, xx_pd_struct *pd) {
     }
     /* Two magic bytes say almost nothing; the redundancy checks below are
      * what actually identify the format. */
-    if (xx_igf1_le16(header) != XX_IGF1_MAGIC) return NULL;
+    if (xx_data_get_u16(header, 2, 0, false) != XX_IGF1_MAGIC) return NULL;
 
-    uncompressed_size = (int64_t)(int32_t)xx_igf1_le32(header + 0x1c);
-    compressed_size = (int64_t)(int32_t)xx_igf1_le32(header + 0x24);
-    data_offset_raw = xx_igf1_le32(header + 0x2c);
-    complement = xx_igf1_le32(header + 0x30);
-    size_again = (int64_t)(int32_t)xx_igf1_le32(header + 0x34);
-    file_time = xx_igf1_le32(header + 0x14);
+    uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(header + 0x1c, 4, 0, false);
+    compressed_size = (int64_t)(int32_t)xx_data_get_u32(header + 0x24, 4, 0, false);
+    data_offset_raw = xx_data_get_u32(header + 0x2c, 4, 0, false);
+    complement = xx_data_get_u32(header + 0x30, 4, 0, false);
+    size_again = (int64_t)(int32_t)xx_data_get_u32(header + 0x34, 4, 0, false);
+    file_time = xx_data_get_u32(header + 0x14, 4, 0, false);
 
     if (uncompressed_size < 0 || compressed_size < 0) return NULL;
     /* The one's-complement word at 0x30 is the real signature of this

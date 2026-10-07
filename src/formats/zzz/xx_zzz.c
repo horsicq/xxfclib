@@ -42,6 +42,7 @@
 #include "xxfclib/algo/dcl/xx_dcl.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef ZZZ
 #define XX_ZZZ_FILE_TYPE XX_FILE_TYPE_ZZZ
@@ -82,24 +83,6 @@ typedef struct xx_zzz_stream_s {
 static void xx_zzz_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static XXFC_MAYBE_UNUSED uint16_t xx_zzz_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_zzz_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static XXFC_MAYBE_UNUSED uint16_t xx_zzz_be16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[1] | ((uint16_t)data[0] << 8));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t xx_zzz_be32(const uint8_t *data) {
-    return (uint32_t)data[3] | ((uint32_t)data[2] << 8) |
-           ((uint32_t)data[1] << 16) | ((uint32_t)data[0] << 24);
-}
 
 static bool xx_zzz_read_at(Abstractformat *self, int64_t offset,
                               uint8_t *buffer, size_t size) {
@@ -263,8 +246,8 @@ static xx_zzz_stream *xx_zzz_parse(Abstractformat *self,
         /* The chain ends where the magic stops; whatever follows is slack. */
         if (xx_rt_memcmp(header, "ZZZ", 3U) != 0) break;
 
-        packed = (uint64_t)xx_zzz_le32(header + 3);
-        plain = (uint64_t)xx_zzz_le32(header + 7);
+        packed = (uint64_t)xx_data_get_u32(header + 3, 4, 0, false);
+        plain = (uint64_t)xx_data_get_u32(header + 7, 4, 0, false);
         /* Both sizes are stored as signed 32-bit by the writer, and the
          * payload is bounded against the real file before the cursor moves.
          * A truncated member is a reject here, not something to clamp. */

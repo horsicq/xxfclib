@@ -27,6 +27,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -200,11 +201,6 @@ static uint32_t dm_le16(const uint8_t *p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8U);
 }
 
-static uint32_t dm_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) |
-           ((uint32_t)p[2] << 16U) | ((uint32_t)p[3] << 24U);
-}
-
 static bool dm_read_at(xx_io_device *device, int64_t offset, void *buffer,
                        size_t size) {
     const size_t file_io_capacity = gb_sfx_jgsoft_deploymaster_package_capacity();
@@ -320,7 +316,7 @@ static bool dm_record_at(Abstractformat *format, int64_t offset, int64_t end,
         !dm_read_at(format->device, format->base_address + offset, head,
                     sizeof(head)))
         return false;
-    length = dm_le32(head);
+    length = xx_data_get_u32(head, 4, 0, false);
     if (length < DM_ZLIB_MIN || length > max_packed ||
         (int64_t)length > end - offset - 4 || !dm_zlib_start(head + 4))
         return false;
@@ -352,7 +348,7 @@ static bool dm_pe_extent(xx_io_device *device, int64_t base, int64_t size,
         !dm_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' ||
         dos[1] != 'Z')
         return false;
-    nt_offset = dm_le32(dos + 0x3C);
+    nt_offset = xx_data_get_u32(dos + 0x3C, 4, 0, false);
     if (nt_offset < 4U || (int64_t)nt_offset > size - (int64_t)sizeof(nt) ||
         !dm_read_at(device, base + nt_offset, nt, sizeof(nt)) ||
         xx_rt_memcmp(nt, "PE\0\0", 4U) != 0)
@@ -378,12 +374,12 @@ static bool dm_pe_extent(xx_io_device *device, int64_t base, int64_t size,
         directories = 112U;
     else
         return false;
-    raw_end = (int64_t)dm_le32(optional + 60); /* SizeOfHeaders */
+    raw_end = (int64_t)xx_data_get_u32(optional + 60, 4, 0, false); /* SizeOfHeaders */
     if (raw_end > size) return false;
     for (index = 0U; index < section_count; ++index) {
         const uint8_t *entry = sections + index * DM_PE_SECTION_SIZE;
-        int64_t raw_size = (int64_t)dm_le32(entry + 16);
-        int64_t raw_offset = (int64_t)dm_le32(entry + 20);
+        int64_t raw_size = (int64_t)xx_data_get_u32(entry + 16, 4, 0, false);
+        int64_t raw_offset = (int64_t)xx_data_get_u32(entry + 20, 4, 0, false);
         if (raw_size == 0) continue;
         if (raw_offset > size || raw_size > size - raw_offset) return false;
         if (raw_offset + raw_size > raw_end) raw_end = raw_offset + raw_size;
@@ -395,16 +391,16 @@ static bool dm_pe_extent(xx_io_device *device, int64_t base, int64_t size,
      * should the certificate be wrong. */
     security_entry = directories + 4U * 8U;
     if (optional_read >= security_entry + 8U &&
-        dm_le32(optional + directories - 4U) > 4U) {
-        int64_t cert_offset = (int64_t)dm_le32(optional + security_entry);
-        int64_t cert_size = (int64_t)dm_le32(optional + security_entry + 4U);
+        xx_data_get_u32(optional + directories - 4U, 4, 0, false) > 4U) {
+        int64_t cert_offset = (int64_t)xx_data_get_u32(optional + security_entry, 4, 0, false);
+        int64_t cert_size = (int64_t)xx_data_get_u32(optional + security_entry + 4U, 4, 0, false);
         if (cert_size > 0 && cert_offset > raw_end && cert_offset <= size &&
             cert_size <= size - cert_offset) {
             bool accept = cert_size == size - cert_offset;
             if (!accept) {
                 uint8_t head[8];
                 if (dm_read_at(device, base + cert_offset, head, sizeof(head))) {
-                    uint32_t length = dm_le32(head);
+                    uint32_t length = xx_data_get_u32(head, 4, 0, false);
                     uint32_t revision = dm_le16(head + 4);
                     uint32_t type = dm_le16(head + 6);
                     accept = length >= 8U && (int64_t)length <= cert_size &&
@@ -423,7 +419,7 @@ static bool dm_pe_extent(xx_io_device *device, int64_t base, int64_t size,
     *data_end_out = data_end;
     *cert_offset_out = cert_start;
     *cert_end_out = cert_end;
-    *alignment_out = dm_le32(optional + 36); /* FileAlignment */
+    *alignment_out = xx_data_get_u32(optional + 36, 4, 0, false); /* FileAlignment */
     return true;
 }
 
@@ -447,8 +443,8 @@ static bool dm_engine_end_ok(const uint8_t *probe, int64_t last,
         return false;
     /* The padding behind the CRC is zero. */
     if ((probe[0] & ((1U << shift) - 1U)) != 0U) return false;
-    if (dm_le32(probe + 1) != DM_MARKER) return false;
-    packed = dm_le32(probe + 5);
+    if (xx_data_get_u32(probe + 1, 4, 0, false) != DM_MARKER) return false;
+    packed = xx_data_get_u32(probe + 5, 4, 0, false);
     if (packed < DM_ZLIB_MIN || packed > DM_STRINGS_MAX_PACKED ||
         (int64_t)packed > end - candidate - 8 || !dm_zlib_start(probe + 9))
         return false;
@@ -538,7 +534,7 @@ static bool dm_try_overlay(Abstractformat *format, int64_t overlay,
         if (known_bz_end <= overlay || known_bz_end > end - 8 ||
             !dm_read_at(format->device, format->base_address + known_bz_end,
                         marker, sizeof(marker)) ||
-            dm_le32(marker) != DM_MARKER)
+            xx_data_get_u32(marker, 4, 0, false) != DM_MARKER)
             return false;
         bz_end = known_bz_end;
     } else if (!dm_engine_end(format, overlay, end, budget, &bz_end)) {
@@ -991,7 +987,7 @@ static bool dm_walk_settings(Abstractformat *format, const dm_layout *layout,
     for (index = 0U; index + 7U <= window_size && index <= DM_RESYNC_MAX &&
                      tries < DM_RESYNC_TRIES;
          ++index) {
-        uint32_t length = dm_le32(window + index);
+        uint32_t length = xx_data_get_u32(window + index, 4, 0, false);
         int64_t data = position + (int64_t)index + 4;
         if (length < DM_ZLIB_MIN || length > DM_FONT_MAX ||
             (int64_t)length > end - data || !dm_zlib_start(window + index + 4))
@@ -1083,10 +1079,10 @@ static bool dm_walk_settings(Abstractformat *format, const dm_layout *layout,
         goto fail;
     /* A special file's data is inline, so its offset is the marker. */
     for (special = 0U; special < walk->specials; ++special)
-        if (dm_le32(walk->table + 4U * special) != DM_MARKER) goto fail;
+        if (xx_data_get_u32(walk->table + 4U * special, 4, 0, false) != DM_MARKER) goto fail;
     for (file = 0U; file < walk->listed; ++file) {
-        uint32_t offset = dm_le32(walk->table +
-                                  4U * (walk->specials + file));
+        uint32_t offset = xx_data_get_u32(walk->table +
+                                  4U * (walk->specials + file), 4, 0, false);
         if ((file & 0xFFU) == 0U && pd && xx_pd_is_stopped(pd)) goto fail;
         if (offset == DM_MARKER) continue;       /* not in this file */
         /* Every file record lies behind the settings. */
@@ -1110,9 +1106,9 @@ static void dm_fill_from_table(dm_entry *entry, const dm_walk_t *walk,
                                uint32_t table_index) {
     const uint8_t *table = walk->table;
     uint32_t entries = walk->entries;
-    entry->dos_datetime = dm_le32(table + 4U * (entries + table_index));
-    entry->size = dm_le32(table + 16U * entries + 4U * table_index);
-    entry->crc = dm_le32(table + 20U * entries + 4U * table_index);
+    entry->dos_datetime = xx_data_get_u32(table + 4U * (entries + table_index), 4, 0, false);
+    entry->size = xx_data_get_u32(table + 16U * entries + 4U * table_index, 4, 0, false);
+    entry->crc = xx_data_get_u32(table + 20U * entries + 4U * table_index, 4, 0, false);
     entry->has_table_info = true;
 }
 

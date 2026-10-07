@@ -3,6 +3,7 @@
  */
 #include "xxfclib/formats/apple_a2r/xx_apple_a2r.h"
 #include "../nintendo_sdat/xx_twelfth_c.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool a2_meta(tc_blob *b,uint32_t a,uint32_t z) {
  uint32_t end=a+z,starts[256],lens[256],count=0;if(!z || b->p[end-1]!=10) return false;
@@ -22,7 +23,7 @@ static bool read_v3_components(Abstractformat *f,pm_stream *s,tc_blob *b) {
  while(a<b->n) {
   uint32_t z,start,end;
   if(!tc_span(b,a,8) || !tc_work(b,1)) return false;
-  z=pm_le32(p+a+4);start=a+8;
+  z=xx_data_get_u32(p+a+4, 4, 0, false);start=a+8;
   if(!tc_span(b,start,z)) return false;
   end=start+z;
   if(!xx_rt_memcmp(p+a,"INFO",4)) {
@@ -33,7 +34,7 @@ static bool read_v3_components(Abstractformat *f,pm_stream *s,tc_blob *b) {
       !tc_emit(f,s,b,"capture-info.bin",start,z)) return false;
   } else if(!xx_rt_memcmp(p+a,"RWCP",4)) {
    uint32_t at,chunk=rwcp++;
-   if(!info || z<17 || p[start]!=1 || !pm_le32(p+start+1) ||
+   if(!info || z<17 || p[start]!=1 || !xx_data_get_u32(p+start+1, 4, 0, false) ||
       !tc_zero(p+start+5,11)) return false;
    xx_rt_snprintf(label,sizeof(label),"rwcp-%04u-header.bin",chunk);
    if(!tc_emit(f,s,b,label,start,16)) return false;
@@ -42,12 +43,12 @@ static bool read_v3_components(Abstractformat *f,pm_stream *s,tc_blob *b) {
     uint32_t idx_bytes,size_at,size,entry,loc,i,previous=0;
     uint64_t ticks=0;uint8_t type,indexes;
     if(end-at<9 || !tc_work(b,1)) return false;
-    type=p[at+1];loc=pm_le16(p+at+2);indexes=p[at+4];
+    type=p[at+1];loc=xx_data_get_u16(p+at+2, 2, 0, false);indexes=p[at+4];
     idx_bytes=(uint32_t)indexes*4U;
     if(type<1 || type>3 || loc>159 ||
        ((drive==4 || drive==8) && loc>79) ||
        end-at<9U+idx_bytes) return false;
-    size_at=at+5U+idx_bytes;size=pm_le32(p+size_at);
+    size_at=at+5U+idx_bytes;size=xx_data_get_u32(p+size_at, 4, 0, false);
     entry=size_at+4U;
     if(!size || size>end-entry || !tc_work(b,size)) return false;
     if(type==2) {if(size!=16384U) return false;}
@@ -59,7 +60,7 @@ static bool read_v3_components(Abstractformat *f,pm_stream *s,tc_blob *b) {
      if(!ticks || p[entry+size-1U]==255U) return false;
     }
     for(i=0;i<indexes;++i) {
-     uint32_t current=pm_le32(p+at+5U+i*4U);
+     uint32_t current=xx_data_get_u32(p+at+5U+i*4U, 4, 0, false);
      if(!current || current<=previous) return false;
      previous=current;
     }
@@ -79,7 +80,7 @@ static bool read_v3_components(Abstractformat *f,pm_stream *s,tc_blob *b) {
     * or expand mirrored locations into synthetic captured tracks. */
    uint32_t at,chunk=slvd++;
    if(!info || z<17 || (p[start]!=1 && p[start]!=2) ||
-      !pm_le32(p+start+1) || !tc_zero(p+start+5,11)) return false;
+      !xx_data_get_u32(p+start+1, 4, 0, false) || !tc_zero(p+start+5,11)) return false;
    xx_rt_snprintf(label,sizeof(label),"slvd-%04u-header.bin",chunk);
    if(!tc_emit(f,s,b,label,start,16)) return false;
    at=start+16;
@@ -87,16 +88,16 @@ static bool read_v3_components(Abstractformat *f,pm_stream *s,tc_blob *b) {
     uint32_t loc,maximum,idx_bytes,size_at,size,entry,i,previous=0;
     uint64_t ticks=0;uint8_t indexes;
     if(end-at<16 || !tc_work(b,1)) return false;
-    loc=pm_le16(p+at+1);maximum=(drive==4 || drive==8)?79U:159U;
+    loc=xx_data_get_u16(p+at+1, 2, 0, false);maximum=(drive==4 || drive==8)?79U:159U;
     indexes=p[at+11];idx_bytes=(uint32_t)indexes*4U;
     if(loc>maximum || seen_solved[loc] || p[at+3]>loc ||
        (uint32_t)p[at+4]>maximum-loc || !tc_zero(p+at+5,6) ||
        end-at<16U+idx_bytes) return false;
-    seen_solved[loc]=1;size_at=at+12U+idx_bytes;size=pm_le32(p+size_at);entry=size_at+4U;
+    seen_solved[loc]=1;size_at=at+12U+idx_bytes;size=xx_data_get_u32(p+size_at, 4, 0, false);entry=size_at+4U;
     if(!size || size>end-entry || !tc_work(b,size)) return false;
     for(i=0;i<size;++i) {if(!(i&4095U) && !tc_poll(b)) return false;ticks+=p[entry+i];}
     if(!ticks || p[entry+size-1U]==255U) return false;
-    for(i=0;i<indexes;++i) {uint32_t current=pm_le32(p+at+12U+i*4U);
+    for(i=0;i<indexes;++i) {uint32_t current=xx_data_get_u32(p+at+12U+i*4U, 4, 0, false);
      if((i && current<=previous) || current>ticks) { return false; } previous=current;
     }
     xx_rt_snprintf(label,sizeof(label),"solved-%04u-%03u.descriptor.bin",solved,loc);
@@ -127,11 +128,11 @@ static bool read_components(Abstractformat *f,pm_stream *s,tc_blob *b) {
  if(b->n>=8 && !xx_rt_memcmp(p,"A2R3\xff\x0a\x0d\x0a",8))
   return read_v3_components(f,s,b);
  if(b->n<52 || xx_rt_memcmp(p,"A2R2\xff\x0a\x0d\x0a",8)) return false;
- while(a<b->n) {if(!tc_span(b,a,8) || !tc_work(b,1)) return false;z=pm_le32(p+a+4);start=a+8;if(!tc_span(b,start,z)) return false;
+ while(a<b->n) {if(!tc_span(b,a,8) || !tc_work(b,1)) return false;z=xx_data_get_u32(p+a+4, 4, 0, false);start=a+8;if(!tc_span(b,start,z)) return false;
   if(!xx_rt_memcmp(p+a,"INFO",4)) {if(info++ || a!=8 || z!=36 || p[start]!=1 || (p[start+33]!=1 && p[start+33]!=2) || p[start+34]>1 || p[start+35]>1 || !tc_utf8(b,start+1,32)) return false;if(!tc_emit(f,s,b,"capture-info.bin",start,z)) return false;}
   else if(!xx_rt_memcmp(p+a,"STRM",4)) {uint32_t at=start,end=start+z;if(!info || strm++ || !z) return false;
    while(at<end && p[at]!=255) {uint32_t n,loop,i;uint64_t ticks=0;uint8_t type;if(!tc_span(b,at,10) || end-at<10 || !tc_work(b,1)) return false;
-    type=p[at+1];n=pm_le32(p+at+2);loop=pm_le32(p+at+6);if(p[at]>159 || type<1 || type>3 || !n || n>end-at-10 || !loop) return false;
+    type=p[at+1];n=xx_data_get_u32(p+at+2, 4, 0, false);loop=xx_data_get_u32(p+at+6, 4, 0, false);if(p[at]>159 || type<1 || type>3 || !n || n>end-at-10 || !loop) return false;
     if(type==2) {if(n!=16384 || loop>n*8*32) return false;}else {for(i=0;i<n;++i) {if(!(i&4095) && !tc_poll(b)) return false;ticks+=p[at+10+i];}if(p[at+9+n]==255 || !ticks || loop>ticks) return false;}
     xx_rt_snprintf(label,sizeof(label),"capture-%04u-%03u.%s",count,p[at],type==2?"bits":"flux");if(!tc_emit(f,s,b,label,at+10,n)) return false;++count;at+=10+n;
    }if(at!=end-1 || p[at]!=255) return false;

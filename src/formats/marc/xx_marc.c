@@ -23,6 +23,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_MARC_COPY_CHUNK (64 * 1024)
 
@@ -149,11 +150,6 @@ static bool xx_marc_decode(Abstractformat *self,
 #define XX_MARC_VERSION 3U
 #define XX_MARC_MAX_ENTRIES 1000000
 
-static uint32_t xx_marc_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
 static xx_marc_stream *xx_marc_parse(Abstractformat *self, xx_pd_struct *pd) {
     xx_marc_stream *stream;
     uint8_t header[XX_MARC_HEADER_SIZE];
@@ -172,10 +168,10 @@ static xx_marc_stream *xx_marc_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (span < XX_MARC_HEADER_SIZE + XX_MARC_ENTRY_SIZE) return NULL;
     if (!xx_marc_read_at(self, self->base_address, header, sizeof(header)) ||
         header[0] != 'M' || header[1] != 'A' || header[2] != 'R' ||
-        header[3] != 'C' || xx_marc_le32(header + 4) != XX_MARC_VERSION) {
+        header[3] != 'C' || xx_data_get_u32(header + 4, 4, 0, false) != XX_MARC_VERSION) {
         return NULL;
     }
-    count = (int32_t)xx_marc_le32(header + 8);
+    count = (int32_t)xx_data_get_u32(header + 8, 4, 0, false);
     if (count < 1 || count > XX_MARC_MAX_ENTRIES) return NULL;
     directory_size = (int64_t)count * XX_MARC_ENTRY_SIZE;
     if (XX_MARC_HEADER_SIZE + directory_size > span) return NULL;
@@ -215,8 +211,8 @@ static xx_marc_stream *xx_marc_parse(Abstractformat *self, xx_pd_struct *pd) {
         }
         if (!terminated) goto fail;
 
-        size = (int64_t)(int32_t)xx_marc_le32(entry + 0x38);
-        offset = (int64_t)(int32_t)xx_marc_le32(entry + 0x40);
+        size = (int64_t)(int32_t)xx_data_get_u32(entry + 0x38, 4, 0, false);
+        offset = (int64_t)(int32_t)xx_data_get_u32(entry + 0x40, 4, 0, false);
         if (size < 0 || offset < data_start ||
             !xx_marc_range_within(span, offset, size)) {
             goto fail;

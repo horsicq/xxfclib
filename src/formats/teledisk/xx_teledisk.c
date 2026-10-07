@@ -17,6 +17,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef TELEDISK
 #define XX_TELEDISK_FILE_TYPE XX_FILE_TYPE_TELEDISK
@@ -44,14 +45,6 @@ typedef struct teledisk_stream_s {
     size_t index;
     int64_t archive_size;
 } teledisk_stream;
-
-static uint16_t teledisk_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t teledisk_le32(const uint8_t *b) {
-    return (uint32_t)teledisk_le16(b) | ((uint32_t)teledisk_le16(b + 2U) << 16U);
-}
 
 static bool teledisk_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -541,8 +534,8 @@ static bool teledisk_build(const uint8_t *plain, size_t plain_size,
         size_t comment_length;
         uint16_t stored, running;
         if (plain_size - position < 10U) return false;
-        stored = teledisk_le16(plain + position);
-        comment_length = teledisk_le16(plain + position + 2U);
+        stored = xx_data_get_u16(plain + position, 2, 0, false);
+        comment_length = xx_data_get_u16(plain + position + 2U, 2, 0, false);
         running = teledisk_crc16(plain + position + 2U, 8U, 0U);
         position += 10U;
         if (plain_size - position < comment_length) return false;
@@ -580,7 +573,7 @@ static bool teledisk_build(const uint8_t *plain, size_t plain_size,
                 size_t block_length;
                 uint8_t method;
                 if (plain_size - position < 3U) return false;
-                block_length = teledisk_le16(plain + position);
+                block_length = xx_data_get_u16(plain + position, 2, 0, false);
                 if (block_length == 0U) return false;
                 --block_length;
                 method = plain[position + 2U];
@@ -626,7 +619,7 @@ static bool teledisk_expand(Abstractformat *format, int64_t base, int64_t size,
     version = raw[4];
     if (version < 10U || version > 21U || (raw[5] & 0x7fU) > 2U ||
         raw[6] > 6U || (raw[9] != 1U && raw[9] != 2U) ||
-        teledisk_le16(raw + 10U) != teledisk_crc16(raw, 10U, 0U))
+        xx_data_get_u16(raw + 10U, 2, 0, false) != teledisk_crc16(raw, 10U, 0U))
         goto done;
     *has_comment = (raw[7] & 0x80U) != 0U;
     advanced = compressed && version >= 20U;

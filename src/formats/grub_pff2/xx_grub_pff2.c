@@ -9,7 +9,7 @@ static bool fg_quick(Abstractformat *f,uint64_t n) {uint8_t b[12];return n>=32&&
 static bool fg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  uint64_t p=12,data=0,index=0,indexlen=0;uint32_t seen=0,glyphs=0,lastcode=0;uint16_t maxw=0,maxh=0;unsigned i;char label[48];
  if(n<12||!fg_tag(b,"FILE\0\0\0\4PFF2",12)||!fg_emit(f,s,"file-type.pf2",0,12,n))return false;
- while(p<n){uint32_t z,bit=0;if(fg_stop(pd)||!fg_span(p,8,n))return false;z=pm_be32(b+p+4);
+ while(p<n){uint32_t z,bit=0;if(fg_stop(pd)||!fg_span(p,8,n))return false;z=xx_data_get_u32(b+p+4, 4, 0, true);
  if(fg_tag(b+p,"DATA",4)){if(z!=0xffffffffU||!index||!maxw||!maxh)return false;data=p+8;if(!fg_emit(f,s,"data-header.pf2",p,8,n))return false;break;}
  if(!fg_span(p+8,z,n))return false;
  if(fg_tag(b+p,"NAME",4))bit=1;else if(fg_tag(b+p,"FAMI",4))bit=2;else if(fg_tag(b+p,"WEIG",4))bit=4;else if(fg_tag(b+p,"SLAN",4))bit=8;
@@ -17,11 +17,11 @@ static bool fg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  if(seen&bit) {return false; } seen|=bit;
  if(bit<=8){uint32_t k;if(!z||z>1024||b[p+8+z-1])return false;for(k=0;k+1<z;++k)if(b[p+8+k]<32||b[p+8+k]>126)return false;}
  else if(bit==512){if(!z||z%9||z/9>4000)return false;index=p+8;indexlen=z;glyphs=z/9;}
- else {uint16_t v;if(z!=2)return false;v=pm_be16(b+p+8);if(bit==32)maxw=v;if(bit==64)maxh=v;if((bit==16||bit==32||bit==64)&&(!v||v>4096))return false;}
+ else {uint16_t v;if(z!=2)return false;v=xx_data_get_u16(b+p+8, 2, 0, true);if(bit==32)maxw=v;if(bit==64)maxh=v;if((bit==16||bit==32||bit==64)&&(!v||v>4096))return false;}
  xx_rt_snprintf(label,sizeof(label),"section-%u.pf2",(unsigned)s->count);if(!fg_emit(f,s,label,p,(uint64_t)z+8,n))return false;p+=(uint64_t)z+8;
  }
  if(!data||!(seen&1)||!indexlen||(seen&(32|64|128|256))!=(32|64|128|256)) {return false; } p=data;
- for(i=0;i<glyphs;++i){uint64_t at=index+(uint64_t)i*9,z;uint32_t code=pm_be32(b+at),offset=pm_be32(b+at+5);uint16_t w,h;if((i&&code<=lastcode)||code>0x10ffff||(code>=0xd800&&code<=0xdfff)||b[at+4]||offset!=p||!fg_span(p,10,n))return false;lastcode=code;w=pm_be16(b+p);h=pm_be16(b+p+2);if(w>maxw||h>maxh)return false;z=((uint64_t)w*h+7)/8;if(!fg_span(p+10,z,n))return false;xx_rt_snprintf(label,sizeof(label),"glyph-%08x.pf2",code);if(!fg_emit(f,s,label,p,z+10,n))return false;p+=z+10;}
+ for(i=0;i<glyphs;++i){uint64_t at=index+(uint64_t)i*9,z;uint32_t code=xx_data_get_u32(b+at, 4, 0, true),offset=xx_data_get_u32(b+at+5, 4, 0, true);uint16_t w,h;if((i&&code<=lastcode)||code>0x10ffff||(code>=0xd800&&code<=0xdfff)||b[at+4]||offset!=p||!fg_span(p,10,n))return false;lastcode=code;w=xx_data_get_u16(b+p, 2, 0, true);h=xx_data_get_u16(b+p+2, 2, 0, true);if(w>maxw||h>maxh)return false;z=((uint64_t)w*h+7)/8;if(!fg_span(p+10,z,n))return false;xx_rt_snprintf(label,sizeof(label),"glyph-%08x.pf2",code);if(!fg_emit(f,s,label,p,z+10,n))return false;p+=z+10;}
  return p==n;
 }
 

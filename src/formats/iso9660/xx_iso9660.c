@@ -14,6 +14,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ISO9660_SECTOR_SIZE 2048U
 #define XX_ISO9660_PVD_SECTOR 16U
@@ -109,21 +110,6 @@ typedef struct xx_iso9660_archive_stream_s {
 } xx_iso9660_archive_stream;
 
 static void xx_iso9660_vtable_destroy(Abstractformat *self);
-
-static uint16_t xx_iso9660_read16le(const uint8_t *data) {
-    return (uint16_t)data[0] | ((uint16_t)data[1] << 8U);
-}
-static uint16_t xx_iso9660_read16be(const uint8_t *data) {
-    return ((uint16_t)data[0] << 8U) | (uint16_t)data[1];
-}
-static uint32_t xx_iso9660_read32le(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
-static uint32_t xx_iso9660_read32be(const uint8_t *data) {
-    return ((uint32_t)data[0] << 24U) | ((uint32_t)data[1] << 16U) |
-           ((uint32_t)data[2] << 8U) | (uint32_t)data[3];
-}
 
 static bool xx_iso9660_read_at(xx_io_device *device, int64_t offset,
                                void *data, size_t size) {
@@ -393,10 +379,10 @@ static bool xx_iso9660_parse_directory(Abstractformat *self,
             (record[25] & UINT8_C(0x80)) != 0U) {
             return false;
         }
-        data_extent = xx_iso9660_read32le(record + 2U);
-        data_extent_be = xx_iso9660_read32be(record + 6U);
-        data_size = xx_iso9660_read32le(record + 10U);
-        data_size_be = xx_iso9660_read32be(record + 14U);
+        data_extent = xx_data_get_u32(record + 2U, 4, 0, false);
+        data_extent_be = xx_data_get_u32(record + 6U, 4, 0, true);
+        data_size = xx_data_get_u32(record + 10U, 4, 0, false);
+        data_size_be = xx_data_get_u32(record + 14U, 4, 0, true);
         if (data_extent != data_extent_be || data_size != data_size_be) {
             return false;
         }
@@ -510,10 +496,10 @@ static bool xx_iso9660_parse(Abstractformat *self, xx_iso9660_private *parsed,
         }
     }
     if (!have_pvd || !have_terminator) goto fail;
-    volume_space_le = xx_iso9660_read32le(pvd + 80U);
-    volume_space_be = xx_iso9660_read32be(pvd + 84U);
-    block_size_le = xx_iso9660_read16le(pvd + 128U);
-    block_size_be = xx_iso9660_read16be(pvd + 130U);
+    volume_space_le = xx_data_get_u32(pvd + 80U, 4, 0, false);
+    volume_space_be = xx_data_get_u32(pvd + 84U, 4, 0, true);
+    block_size_le = xx_data_get_u16(pvd + 128U, 2, 0, false);
+    block_size_be = xx_data_get_u16(pvd + 130U, 2, 0, true);
     if (volume_space_le == 0U || volume_space_le != volume_space_be ||
         block_size_le != XX_ISO9660_SECTOR_SIZE || block_size_le != block_size_be ||
         volume_space_le > UINT64_MAX / block_size_le ||
@@ -521,10 +507,10 @@ static bool xx_iso9660_parse(Abstractformat *self, xx_iso9660_private *parsed,
                          (uint64_t)volume_space_le * block_size_le,
                          &parsed->volume_end) || parsed->volume_end > total_size ||
         pvd[156] < 34U) goto fail;
-    root_extent = xx_iso9660_read32le(pvd + 158U);
-    root_extent_be = xx_iso9660_read32be(pvd + 162U);
-    root_size = xx_iso9660_read32le(pvd + 166U);
-    root_size_be = xx_iso9660_read32be(pvd + 170U);
+    root_extent = xx_data_get_u32(pvd + 158U, 4, 0, false);
+    root_extent_be = xx_data_get_u32(pvd + 162U, 4, 0, true);
+    root_size = xx_data_get_u32(pvd + 166U, 4, 0, false);
+    root_size_be = xx_data_get_u32(pvd + 170U, 4, 0, true);
     parsed->block_size = block_size_le;
     parsed->volume_space_size = volume_space_le;
     if (root_extent != root_extent_be || root_size != root_size_be ||

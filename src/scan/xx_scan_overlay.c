@@ -43,6 +43,7 @@ static bool xx_scan_read_overlay(xx_io_device *device, xx_file_type_t type,
     switch (type) {
         case XX_FILE_TYPE_PE32:
         case XX_FILE_TYPE_PE64:
+        case XX_FILE_TYPE_DOTNET:
             XX_SCAN_READ_OVERLAY(pe, format); break;
         case XX_FILE_TYPE_ELF32:
         case XX_FILE_TYPE_ELF64:
@@ -92,6 +93,7 @@ static bool xx_scan_has_overlay_reader(xx_file_type_t type) {
     switch (type) {
         case XX_FILE_TYPE_PE32:
         case XX_FILE_TYPE_PE64:
+        case XX_FILE_TYPE_DOTNET:
         case XX_FILE_TYPE_ELF32:
         case XX_FILE_TYPE_ELF64:
         case XX_FILE_TYPE_MACHO32:

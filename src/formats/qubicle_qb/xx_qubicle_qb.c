@@ -6,19 +6,20 @@
  */
 #include "xxfclib/formats/qubicle_qb/xx_qubicle_qb.h"
 #include "../wavefront_obj/xx_eleventh_media.h"
-static bool eg_quick(Abstractformat *f,uint64_t n) {uint8_t b[24];return n>=54&&pm_read(f,0,b,24)&&pm_le32(b)==0x101U;}
+#include "xxfclib/data/xx_data.h"
+static bool eg_quick(Abstractformat *f,uint64_t n) {uint8_t b[24];return n>=54&&pm_read(f,0,b,24)&&xx_data_get_u32(b, 4, 0, false)==0x101U;}
 static bool eg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  uint32_t matrices,i,compression;uint64_t p=24,budget=0;
- if(n<24||pm_le32(b)!=0x101U||pm_le32(b+4)>1||pm_le32(b+8)>1||(compression=pm_le32(b+12))>1||pm_le32(b+16)>1||(matrices=pm_le32(b+20))<1||matrices>1024||!eg_emit(f,s,"descriptor.qb",0,24,n))return false;
+ if(n<24||xx_data_get_u32(b, 4, 0, false)!=0x101U||xx_data_get_u32(b+4, 4, 0, false)>1||xx_data_get_u32(b+8, 4, 0, false)>1||(compression=xx_data_get_u32(b+12, 4, 0, false))>1||xx_data_get_u32(b+16, 4, 0, false)>1||(matrices=xx_data_get_u32(b+20, 4, 0, false))<1||matrices>1024||!eg_emit(f,s,"descriptor.qb",0,24,n))return false;
  for(i=0;i<matrices;++i){uint64_t start=p,data,voxels;uint32_t x,y,z,k;uint8_t name;char label[64];
   if(eg_stop(pd)||!eg_span(p,1,n)) {return false; } name=b[p++];if(!name||!eg_span(p,(uint64_t)name+24,n)||!eg_utf(b+p,name,false,pd))return false;p+=name;
-  x=pm_le32(b+p);y=pm_le32(b+p+4);z=pm_le32(b+p+8);p+=24;
+  x=xx_data_get_u32(b+p, 4, 0, false);y=xx_data_get_u32(b+p+4, 4, 0, false);z=xx_data_get_u32(b+p+8, 4, 0, false);p+=24;
   if(!x||!y||!z||x>4096||y>4096||z>4096) {return false; } voxels=(uint64_t)x*y*z;if(voxels>16777216||budget>16777216-voxels)return false;budget+=voxels;data=p;
   if(!compression){if(!eg_span(p,voxels*4,n))return false;p+=voxels*4;}
   else for(k=0;k<z;++k){uint64_t count=0,plane=(uint64_t)x*y;
-   for(;;){uint32_t u;if(eg_stop(pd)||!eg_span(p,4,n))return false;u=pm_le32(b+p);p+=4;
+   for(;;){uint32_t u;if(eg_stop(pd)||!eg_span(p,4,n))return false;u=xx_data_get_u32(b+p, 4, 0, false);p+=4;
     if(u==6){if(count!=plane) return false;break;}
-    if(u==2){uint32_t run;if(!eg_span(p,8,n))return false;run=pm_le32(b+p);p+=8;if(!run||run>plane-count)return false;count+=run;}
+    if(u==2){uint32_t run;if(!eg_span(p,8,n))return false;run=xx_data_get_u32(b+p, 4, 0, false);p+=8;if(!run||run>plane-count)return false;count+=run;}
     else{if(count==plane)return false;++count;}
    }
   }

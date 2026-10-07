@@ -45,6 +45,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* The enum entry is added by the coordinator; keep compiling until it is. */
 #ifdef BINARYII
@@ -117,10 +118,6 @@ typedef struct b2_stream_s {
     int64_t archive_size;
     uint8_t version;
 } b2_stream;
-
-static uint16_t b2_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
 
 static bool b2_read_at(xx_io_device *device, int64_t offset, void *buffer,
                        size_t size) {
@@ -272,14 +269,14 @@ static bool b2_parse_header(const uint8_t *header, int64_t header_offset,
 
     member->header_offset = header_offset;
     member->data_offset = header_offset + B2_HEADER_SIZE;
-    member->declared_size = (uint64_t)b2_le16(header + B2_OFF_EOF) |
+    member->declared_size = (uint64_t)xx_data_get_u16(header + B2_OFF_EOF, 2, 0, false) |
                             ((uint64_t)header[B2_OFF_EOF + 2U] << 16U) |
                             ((uint64_t)header[B2_OFF_EOF_HIGH] << 24U);
-    member->aux_type = (uint32_t)b2_le16(header + B2_OFF_AUXTYPE) |
-                       ((uint32_t)b2_le16(header + B2_OFF_AUXTYPE_HIGH) << 16U);
+    member->aux_type = (uint32_t)xx_data_get_u16(header + B2_OFF_AUXTYPE, 2, 0, false) |
+                       ((uint32_t)xx_data_get_u16(header + B2_OFF_AUXTYPE_HIGH, 2, 0, false) << 16U);
     member->block_count =
-        (uint32_t)b2_le16(header + B2_OFF_BLOCKCOUNT) |
-        ((uint32_t)b2_le16(header + B2_OFF_BLOCKCOUNT_HIGH) << 16U);
+        (uint32_t)xx_data_get_u16(header + B2_OFF_BLOCKCOUNT, 2, 0, false) |
+        ((uint32_t)xx_data_get_u16(header + B2_OFF_BLOCKCOUNT_HIGH, 2, 0, false) << 16U);
     member->file_type = (uint16_t)((uint16_t)header[B2_OFF_FILETYPE] |
                                    ((uint16_t)header[B2_OFF_FILETYPE_HIGH]
                                     << 8U));
@@ -288,13 +285,13 @@ static bool b2_parse_header(const uint8_t *header, int64_t header_offset,
                    ((uint16_t)header[B2_OFF_STORAGETYPE_HIGH] << 8U));
     member->access = (uint16_t)((uint16_t)header[B2_OFF_ACCESS] |
                                 ((uint16_t)header[B2_OFF_ACCESS_HIGH] << 8U));
-    member->native_type = b2_le16(header + B2_OFF_NATIVETYPE);
+    member->native_type = xx_data_get_u16(header + B2_OFF_NATIVETYPE, 2, 0, false);
     member->os_type = header[B2_OFF_OSTYPE];
     member->data_flags = header[B2_OFF_DATAFLAGS];
     member->version = header[B2_OFF_VERSION];
     member->files_to_follow = header[B2_OFF_FILESTOFOLLOW];
-    member->modified = b2_prodos_time(b2_le16(header + B2_OFF_MODDATE),
-                                      b2_le16(header + B2_OFF_MODTIME));
+    member->modified = b2_prodos_time(xx_data_get_u16(header + B2_OFF_MODDATE, 2, 0, false),
+                                      xx_data_get_u16(header + B2_OFF_MODTIME, 2, 0, false));
     member->folder =
         ((member->storage_type & 0xffU) == B2_STORAGETYPE_DIRECTORY);
     /* A declared EOF is only believed once it has been bounded by the

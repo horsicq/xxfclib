@@ -5,12 +5,13 @@
  */
 #include "xxfclib/formats/lynx_lnx/xx_lynx_lnx.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     (void)pd;
 
     uint8_t h[64]; uint16_t a,b; int64_t at=64;
-    if(!pm_read(f,0,h,sizeof(h)) || xx_rt_memcmp(h,"LYNX",4) || pm_le16(h+8)!=1 || h[58]>2) return false;
-    a=pm_le16(h+4); b=pm_le16(h+6);
+    if(!pm_read(f,0,h,sizeof(h)) || xx_rt_memcmp(h,"LYNX",4) || xx_data_get_u16(h+8, 2, 0, false)!=1 || h[58]>2) return false;
+    a=xx_data_get_u16(h+4, 2, 0, false); b=xx_data_get_u16(h+6, 2, 0, false);
     if((a!=256 && a!=512 && a!=1024 && a!=2048) || (b!=0 && b!=256 && b!=512 && b!=1024 && b!=2048)) return false;
     /* AUDIN doubles the banks in newer headers; support ordinary banks only. */
     if(h[59]&1) return false;

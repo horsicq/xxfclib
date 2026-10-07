@@ -4,6 +4,7 @@
  */
 /* Primary: https://www.rfc-editor.org/rfc/rfc3416.html */
 #include "xxfclib/formats/snmp_message/xx_snmp_message.h"
+#include "xxfclib/data/xx_data.h"
 #include "../xx_thirteenth_wrappers.h"
 
 static bool scalar(nh_blob *b,cm_tlv *v){uint64_t n=v->end-v->value;const uint8_t *p=b->p+(size_t)v->value;uint64_t u;if(v->tag==2)return n&&n<=4&&!(n>1&&((p[0]==0&&!(p[1]&128))||(p[0]==255&&(p[1]&128))));if(v->tag==4)return n<=65535;if(v->tag==5||v->tag==128||v->tag==129||v->tag==130)return !n;if(v->tag==6)return cm_oid(b,v);if(v->tag==64)return n==4;if(v->tag==65||v->tag==66||v->tag==67||v->tag==70){cm_tlv x=*v;x.tag=2;return th_uint(b,&x,&u)&&n<=(v->tag==70?9U:5U);}return false;}

@@ -30,7 +30,8 @@ static bool pe_context_init(pe_dump_context *context,
     if (!context || !format ||
         !xx_format_handle_base_info(format, NULL) ||
         (format->file_type != XX_FILE_TYPE_PE32 &&
-         format->file_type != XX_FILE_TYPE_PE64))
+         format->file_type != XX_FILE_TYPE_PE64 &&
+         format->file_type != XX_FILE_TYPE_DOTNET))
         return false;
     context->format = format;
     context->pe = (xx_pe *)format;

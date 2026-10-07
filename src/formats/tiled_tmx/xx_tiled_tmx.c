@@ -26,7 +26,7 @@ static bool tb_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
   if(x.type==XX_XML_COMMENT)continue;
   if(x.type==XX_XML_PI){TM(!state&&!done&&!decl&&x.text&&xx_rt_strlen(x.text)<128&&tm_declaration(x.text));decl=true;continue;}
   if(x.type==XX_XML_TEXT){TM(x.text);if(state==4&&!tm_white(x.text)){uint32_t i;TM(!data&&(uint64_t)lw*lh<=4194304&&total+(uint64_t)lw*lh*4<=16777216);pixels=(uint8_t *)xx_mem_alloc((size_t)lw*lh*4);TM(pixels&&tm_matrix(x.text,base64,pixels,lw*lh,pd));
-    for(i=0;i<lw*lh;++i){unsigned j;uint32_t gid=pm_le32(pixels+i*4);TM(!(gid&0x10000000U));gid&=0x0fffffffU;if(!gid)continue;for(j=0;j<sets;++j)if(gid>=first[j]&&gid<last[j])break;TM(j<sets);}
+    for(i=0;i<lw*lh;++i){unsigned j;uint32_t gid=xx_data_get_u32(pixels+i*4, 4, 0, false);TM(!(gid&0x10000000U));gid&=0x0fffffffU;if(!gid)continue;for(j=0;j<sets;++j)if(gid>=first[j]&&gid<last[j])break;TM(j<sets);}
     TM(pm_add(f,s,"tiles.le32",0,0));s->items[s->count-1].memory=pixels;s->items[s->count-1].size=(int64_t)lw*lh*4;s->items[s->count-1].packed_size=0;pixels=NULL;total+=lw*lh*4;data=true;
    }else TM(tm_white(x.text));continue;}
   if(x.type==XX_XML_END){TM(name);if(state==4){TM(!xx_rt_strcmp(name,"data")&&data);state=3;}else if(state==3){TM(!xx_rt_strcmp(name,"layer")&&data);state=1;}else if(state==2){TM(!xx_rt_strcmp(name,"tileset")&&image);state=1;}else if(state==1){TM(!xx_rt_strcmp(name,"map")&&layers&&sets);state=0;done=true;}else goto finish;continue;}

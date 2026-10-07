@@ -69,6 +69,13 @@ int xx_pe_inspect_section_number_by_rva(xx_pe_inspection *pPE, uint32_t nRVA)
     return -1;
 }
 
+static uint64_t inspect_rva_address(const xx_pe_inspection *pPE, uint64_t rva)
+{
+    if (!pPE || pPE->map.module_address == XX_INVALID_ADDRESS ||
+        rva >= XX_INVALID_ADDRESS - pPE->map.module_address) return XX_INVALID_ADDRESS;
+    return pPE->map.module_address + rva;
+}
+
 int64_t xx_pe_inspect_rva_to_offset(xx_pe_inspection *pPE, uint32_t nRVA)
 {
     if (!pPE) return -1;
@@ -76,7 +83,7 @@ int64_t xx_pe_inspect_rva_to_offset(xx_pe_inspection *pPE, uint32_t nRVA)
         return -1;
     }
 
-    return xx_memory_map_address_to_offset_ex(&pPE->map, pPE->nImageBase + nRVA, XX_MEMORY_MAP_LOOKUP_FIRST_MATCH);
+    return xx_memory_map_address_to_offset_ex(&pPE->map, inspect_rva_address(pPE, nRVA), XX_MEMORY_MAP_LOOKUP_FIRST_MATCH);
 }
 
 /* ------------------------------------------------------------- sections  */
@@ -113,87 +120,48 @@ static void parse_sections(xx_pe_inspection *pPE, const xx_pe *reader)
 
 }
 
-static void build_memory_map(xx_pe_inspection *pPE)
+static bool build_memory_map(xx_pe_inspection *pPE, const xx_pe *reader)
 {
-    int64_t nHeadersSize = 0;
-    int64_t nRawSize = 0;
-    int i = 0;
-
-    xx_memory_map_init(&pPE->map);
-    pPE->map.module_address = pPE->nImageBase;
-    pPE->map.binary_size = pPE->pInput->size;
-    pPE->map.file_type = pPE->bIs64 ? XX_FILE_TYPE_PE64 : XX_FILE_TYPE_PE32;
-    pPE->map.endian = XX_ENDIAN_LITTLE;
-    pPE->map.mode = XX_MEMORY_MAP_MODE_SECTIONS;
-    pPE->map.is_image = true;
-
-    nHeadersSize = pPE->nLfanew + 4 + 20 + pPE->nSizeOfOptionalHeader + (int64_t)pPE->nSectionCount * 40;
-    nHeadersSize = ALIGN_UP(nHeadersSize, (int64_t)pPE->nFileAlignment);
-
-    if (nHeadersSize > pPE->pInput->size) {
-        nHeadersSize = pPE->pInput->size;
+    const xx_memory_map *source;
+    size_t i;
+    int section;
+    int64_t base;
+    if (!reader || pPE->pInput->failed) return false;
+    base = reader->format.base_address;
+    source = xx_format_get_memory_map((Abstractformat *)&reader->format,
+                                     XX_MEMORY_MAP_MODE_UNKNOWN, pPE->pInput->pd);
+    if (!source) return false;
+    /* Own a copy of the reader's map with offsets relative to the borrowed
+     * input view. This keeps disk images, memory dumps and overlay extents
+     * identical across the reader and inspection APIs. */
+    pPE->map = *source;
+    pPE->map.records = NULL;
+    pPE->map.record_count = pPE->map.record_capacity = 0;
+    pPE->map.binary_offset = 0;
+    pPE->map.start_load_offset = source->start_load_offset >= base
+                                    ? source->start_load_offset - base : -1;
+    for (section = 0; section < pPE->nSectionCount; ++section) {
+        pPE->pSections[section].nMappedOffset = pPE->pInput->size;
+        pPE->pSections[section].nMappedSize = 0;
     }
-
-    /* nHeadersSize cannot be negative here: nLfanew is validated positive when
-     * the header is parsed, the other terms are unsigned header fields with
-     * nSectionCount capped at 4096, and the clamp above only lowers the value
-     * to the file size. The widening to the uint64_t virtual size is therefore
-     * value-preserving, and made explicit so it is not read as an oversight. */
-    xx_exec_map_part(&pPE->map, 0, nHeadersSize, pPE->nImageBase, (uint64_t)nHeadersSize, XX_FILE_PART_HEADER, "Header");
-    nRawSize = nHeadersSize;
-
-    for (i = 0; i < pPE->nSectionCount; i++) {
-        xx_pe_inspect_section *pSection = &pPE->pSections[i];
-        int64_t nOffset = pSection->nPointerToRawData;
-        int64_t nSize = pSection->nSizeOfRawData;
-        uint64_t nVirtualSize = pSection->nVirtualSize ? pSection->nVirtualSize : pSection->nSizeOfRawData;
-        size_t nRecordStart = pPE->map.record_count;
-        size_t nRecord;
-
-        nVirtualSize = (uint64_t)ALIGN_UP((int64_t)nVirtualSize, (int64_t)pPE->nSectionAlignment);
-
-        /* xx_pe_inspection's file-part map starts at the aligned raw offset. The leading
-         * alignment bytes belong to that mapping, while script section
-         * fields still expose the original PointerToRawData/SizeOfRawData. */
-        if ((nOffset <= pPE->pInput->size) && (pPE->nFileAlignment > 0)) {
-            int64_t nAlignment = (pPE->nFileAlignment > 0x10000) ? 0x200 : pPE->nFileAlignment;
-            int64_t nAlignedOffset = nOffset / nAlignment * nAlignment;
-            nSize += nOffset - nAlignedOffset;
-            nOffset = nAlignedOffset;
+    for (i = 0; i < source->record_count; ++i) {
+        xx_memory_record record = source->records[i];
+        if (!record.is_virtual) {
+            if (record.offset < base) return false;
+            record.offset -= base;
         }
-
-        if (nOffset > pPE->pInput->size) {
-            nOffset = pPE->pInput->size;
-            nSize = 0;
-        } else if (nOffset + nSize > pPE->pInput->size) {
-            nSize = pPE->pInput->size - nOffset;
-        }
-
-        pSection->nMappedOffset = nOffset;
-        pSection->nMappedSize = nSize;
-
-        xx_exec_map_part(&pPE->map, nOffset, nSize, pPE->nImageBase + pSection->nVirtualAddress, nVirtualSize, XX_FILE_PART_SECTION, pSection->sName);
-        for (nRecord = nRecordStart; nRecord < pPE->map.record_count; nRecord++) {
-            pPE->map.records[nRecord].file_part_number = i + 1;
-        }
-
-        /* The raw extent is tracked here rather than read back off the map:
-         * a section clamped to zero length still moves it -- its offset is
-         * the file size, which is what tells the overlay check there is
-         * nothing appended -- and the map cannot hold a zero-length record. */
-        if (nOffset + nSize > nRawSize) {
-            nRawSize = nOffset + nSize;
+        if (!xx_memory_map_add_record(&pPE->map, &record)) return false;
+        if (!record.is_virtual && record.file_part == XX_FILE_PART_SECTION &&
+            record.file_part_number > 0 && record.file_part_number <= pPE->nSectionCount) {
+            xx_pe_inspect_section *item = &pPE->pSections[record.file_part_number - 1];
+            item->nMappedOffset = record.offset;
+            item->nMappedSize = record.size;
         }
     }
-
-    if (nRawSize < pPE->pInput->size) {
-        xx_exec_map_part(&pPE->map, nRawSize, pPE->pInput->size - nRawSize, 0, 0, XX_FILE_PART_OVERLAY, "Overlay");
-        pPE->nOverlayOffset = nRawSize;
-        pPE->nOverlaySize = pPE->pInput->size - nRawSize;
-    } else {
-        pPE->nOverlayOffset = nRawSize;
-        pPE->nOverlaySize = 0;
-    }
+    pPE->nOverlayOffset = reader->format.overlay_offset >= base
+                             ? reader->format.overlay_offset - base : -1;
+    pPE->nOverlaySize = reader->format.overlay_size;
+    return xx_memory_map_finalize(&pPE->map);
 }
 
 /* -------------------------------------------------------------- imports  */
@@ -202,9 +170,9 @@ static void parse_imports(xx_pe_inspection *pPE)
 {
     uint32_t nImportRVA = pPE->pDirRVA[XX_PE_INSPECT_DIR_IMPORT];
     int64_t nOffset = nImportRVA ? xx_memory_map_address_to_offset(&pPE->map,
-        pPE->nImageBase + nImportRVA) : -1;
+        inspect_rva_address(pPE, nImportRVA)) : -1;
     int bPartialFirst = nImportRVA && xx_memory_map_address_to_offset(&pPE->map,
-        pPE->nImageBase + nImportRVA + 18) == -1;
+        inspect_rva_address(pPE, (uint64_t)nImportRVA + 18)) == -1;
     int nCount = 0;
     int i = 0;
     int nTotalPositions = 0;
@@ -217,10 +185,12 @@ static void parse_imports(xx_pe_inspection *pPE)
     xx_buf_init(&hashBuf);
 
     for (nCount = 0; nCount < 4096 && !xx_pd_is_stopped(pPE->pInput->pd); nCount++) {
-        int64_t nBase = nOffset + nCount * 20;
+        int64_t nBase = xx_memory_map_address_to_offset(&pPE->map,
+            inspect_rva_address(pPE, (uint64_t)nImportRVA + (uint64_t)nCount * 20));
+        if (nBase < 0 || nBase > pPE->pInput->size - 20) break;
         uint32_t nOriginalFirstThunk = xx_exec_u32(pPE->pInput, nBase, false);
         uint32_t nName = xx_exec_u32(pPE->pInput, nBase + 12, false);
-        uint64_t nDescriptorAddress = pPE->nImageBase + nImportRVA + (uint64_t)nCount * 20;
+        uint64_t nDescriptorAddress = inspect_rva_address(pPE, (uint64_t)nImportRVA + (uint64_t)nCount * 20);
         int64_t nNameOffset;
         char *pName;
 
@@ -236,7 +206,7 @@ static void parse_imports(xx_pe_inspection *pPE)
              xx_memory_map_address_to_offset(&pPE->map, nDescriptorAddress + 19) != nBase + 19)) {
             break;
         }
-        nNameOffset = xx_memory_map_address_to_offset(&pPE->map, pPE->nImageBase + nName);
+        nNameOffset = xx_memory_map_address_to_offset(&pPE->map, inspect_rva_address(pPE, nName));
         if (nNameOffset == -1) {
             break;
         }
@@ -259,14 +229,16 @@ static void parse_imports(xx_pe_inspection *pPE)
     pPE->nImportCount = nCount;
 
     for (i = 0; i < nCount && !pPE->pInput->failed && !xx_pd_is_stopped(pPE->pInput->pd); i++) {
-        int64_t nBase = nOffset + i * 20;
+        int64_t nBase = xx_memory_map_address_to_offset(&pPE->map,
+            inspect_rva_address(pPE, (uint64_t)nImportRVA + (uint64_t)i * 20));
+        if (nBase < 0) break;
         uint32_t nOriginalFirstThunk = xx_exec_u32(pPE->pInput, nBase, false);
         uint32_t nName = xx_exec_u32(pPE->pInput, nBase + 12, false);
         uint32_t nFirstThunk = xx_exec_u32(pPE->pInput, nBase + 16, false);
-        int64_t nNameOffset = xx_memory_map_address_to_offset(&pPE->map, pPE->nImageBase + nName);
+        int64_t nNameOffset = xx_memory_map_address_to_offset(&pPE->map, inspect_rva_address(pPE, nName));
         if (bPartialFirst) nFirstThunk &= 0xFFFF;
         uint32_t nThunkRVA = nOriginalFirstThunk ? nOriginalFirstThunk : nFirstThunk;
-        int64_t nThunkOffset = xx_memory_map_address_to_offset(&pPE->map, pPE->nImageBase + nThunkRVA);
+        int64_t nThunkOffset = xx_memory_map_address_to_offset(&pPE->map, inspect_rva_address(pPE, nThunkRVA));
         xx_list_s vecFunctions;
         int j = 0;
         int nRemaining = XX_PE_INSPECT_MAX_IMPORT_POSITIONS - nTotalPositions;
@@ -288,20 +260,20 @@ static void parse_imports(xx_pe_inspection *pPE)
             for (j = 0; j < nRemaining && !xx_pd_is_stopped(pPE->pInput->pd); j++) {
                 uint64_t nThunk = 0;
                 char *pFunctionName = NULL;
-                int64_t nCurrent = nThunkOffset + (int64_t)j * (pPE->bIs64 ? 8 : 4);
                 int64_t nWidth = pPE->bIs64 ? 8 : 4;
-                uint64_t nAddress = pPE->nImageBase + nThunkRVA + (uint64_t)j * nWidth;
+                uint64_t nAddress = inspect_rva_address(pPE, (uint64_t)nThunkRVA + (uint64_t)j * nWidth);
+                int64_t nCurrent = xx_memory_map_address_to_offset(&pPE->map, nAddress);
 
-                if (nCurrent > pPE->pInput->size - nWidth ||
+                if (nCurrent < 0 || nCurrent > pPE->pInput->size - nWidth ||
                     xx_memory_map_address_to_offset(&pPE->map, nAddress) != nCurrent ||
                     xx_memory_map_address_to_offset(&pPE->map, nAddress + nWidth - 1) != nCurrent + nWidth - 1) {
                     break;
                 }
 
                 if (pPE->bIs64) {
-                    nThunk = xx_exec_u64(pPE->pInput, nThunkOffset + j * 8, false);
+                    nThunk = xx_exec_u64(pPE->pInput, nCurrent, false);
                 } else {
-                    nThunk = xx_exec_u32(pPE->pInput, nThunkOffset + j * 4, false);
+                    nThunk = xx_exec_u32(pPE->pInput, nCurrent, false);
                 }
 
                 if (nThunk == 0) {
@@ -314,7 +286,7 @@ static void parse_imports(xx_pe_inspection *pPE)
                     xx_rt_snprintf(sBuf, sizeof(sBuf), "%llu", (unsigned long long)(nThunk & (pPE->bIs64 ? 0x7FFFFFFFFFFFFFFFull : 0x7FFFFFFFull)));
                     pFunctionName = xx_str_create(sBuf);
                 } else {
-                    int64_t nHintOffset = xx_memory_map_address_to_offset(&pPE->map, pPE->nImageBase + nThunk);
+                    int64_t nHintOffset = xx_memory_map_address_to_offset(&pPE->map, inspect_rva_address(pPE, nThunk));
 
                     if (nHintOffset < 0 || nHintOffset > pPE->pInput->size - 3) {
                         break;
@@ -408,28 +380,33 @@ static void parse_exports(xx_pe_inspection *pPE)
         return;
     }
 
-    nNamesOffset = xx_memory_map_address_to_offset(&pPE->map, pPE->nImageBase + nAddressOfNames);
-    nOrdinalsOffset = xx_memory_map_address_to_offset(&pPE->map, pPE->nImageBase + nAddressOfOrdinals);
+    nNamesOffset = xx_memory_map_address_to_offset(&pPE->map, inspect_rva_address(pPE, nAddressOfNames));
+    nOrdinalsOffset = xx_memory_map_address_to_offset(&pPE->map, inspect_rva_address(pPE, nAddressOfOrdinals));
 
     if ((nNamesOffset == -1) || (nOrdinalsOffset == -1) ||
-        (xx_memory_map_address_to_offset(&pPE->map, pPE->nImageBase + nAddressOfFunctions) == -1)) {
+        (xx_memory_map_address_to_offset(&pPE->map, inspect_rva_address(pPE, nAddressOfFunctions)) == -1)) {
         return;
     }
 
     pPE->ppExportFunctions = (char **)xx_mem_calloc(nNumberOfFunctions, sizeof(char *));
     if (!pPE->ppExportFunctions) { pPE->pInput->failed = true; return; }
     for (i = 0; i < nNumberOfFunctions; i++) {
-        pPE->ppExportFunctions[i] = xx_str_create("");
+        pPE->ppExportFunctions[i] = xx_exec_copy_string(pPE->pInput, "");
+        if (!pPE->ppExportFunctions[i]) {
+            pPE->nExportCount = (int)i;
+            pPE->pInput->failed = true;
+            return;
+        }
     }
 
     for (i = 0; i < nNumberOfNames; i++) {
         uint16_t nIndex = xx_exec_u16(pPE->pInput, nOrdinalsOffset + i * 2, false);
         uint32_t nNameRVA = xx_exec_u32(pPE->pInput, nNamesOffset + i * 4, false);
-        int64_t nNameOffset = xx_memory_map_address_to_offset(&pPE->map, pPE->nImageBase + nNameRVA);
+        int64_t nNameOffset = xx_memory_map_address_to_offset(&pPE->map, inspect_rva_address(pPE, nNameRVA));
 
         if (nIndex < nNumberOfFunctions) {
             xx_mem_free(pPE->ppExportFunctions[nIndex]);
-            pPE->ppExportFunctions[nIndex] = (nNameOffset != -1) ? xx_exec_string(pPE->pInput, nNameOffset, 2048) : xx_str_create("");
+            pPE->ppExportFunctions[nIndex] = (nNameOffset != -1) ? xx_exec_string(pPE->pInput, nNameOffset, 2048) : xx_exec_copy_string(pPE->pInput, "");
         }
     }
 
@@ -453,31 +430,10 @@ static ResIdName resource_id_name(xx_pe_inspection *pPE, int64_t nResourceOffset
     if (nName & 0x80000000u) {
         int64_t nStringOffset = nResourceOffset + (int64_t)(nName & 0x7FFFFFFFu);
         uint16_t nLength = xx_exec_u16(pPE->pInput, nStringOffset, false);
-        xx_buf_t buf;
-        uint16_t i = 0;
-
-        xx_buf_init(&buf);
-
         if (nLength > 1024) {
             nLength = 1024;
         }
-
-        for (i = 0; i < nLength; i++) {
-            uint16_t nChar = xx_exec_u16(pPE->pInput, nStringOffset + 2 + i * 2, false);
-
-            if (nChar < 0x80) {
-                xx_buf_append_char(&buf, (char)nChar);
-            } else if (nChar < 0x800) {
-                xx_buf_append_char(&buf, (char)(0xC0 | (nChar >> 6)));
-                xx_buf_append_char(&buf, (char)(0x80 | (nChar & 0x3F)));
-            } else {
-                xx_buf_append_char(&buf, (char)(0xE0 | (nChar >> 12)));
-                xx_buf_append_char(&buf, (char)(0x80 | ((nChar >> 6) & 0x3F)));
-                xx_buf_append_char(&buf, (char)(0x80 | (nChar & 0x3F)));
-            }
-        }
-
-        result.pName = xx_buf_detach(&buf, NULL);
+        result.pName = xx_exec_unicode_units(pPE->pInput, nStringOffset + 2, nLength, 0);
     } else {
         result.nId = nName;
     }
@@ -581,17 +537,17 @@ static void parse_resources(xx_pe_inspection *pPE)
                 xx_pe_inspect_resource *pResource = &resource;
 
                 pResource->nTypeId = irin0.nId;
-                pResource->pTypeName = irin0.pName ? xx_str_create(irin0.pName) : NULL;
+                pResource->pTypeName = irin0.pName ? xx_exec_copy_string(pPE->pInput, irin0.pName) : NULL;
                 pResource->nNameId = irin1.nId;
-                pResource->pName = irin1.pName ? xx_str_create(irin1.pName) : NULL;
+                pResource->pName = irin1.pName ? xx_exec_copy_string(pPE->pInput, irin1.pName) : NULL;
                 pResource->nLangId = irin2.nId;
                 /* A payload RVA of zero maps to the image header. Unlike an
                  * absent directory, it must not be turned into -1. */
                 pResource->nOffset = xx_memory_map_address_to_offset(&pPE->map,
-                    pPE->nImageBase + xx_exec_u32(pPE->pInput, nDataEntry, false));
+                    inspect_rva_address(pPE, xx_exec_u32(pPE->pInput, nDataEntry, false)));
                 pResource->nSize = xx_exec_u32(pPE->pInput, nDataEntry + 4, false);
 
-                if (!xx_list_append(&vec, pResource)) {
+                if (pPE->pInput->failed || !xx_list_append(&vec, pResource)) {
                     xx_mem_free(resource.pName); xx_mem_free(resource.pTypeName);
                     pPE->pInput->failed = true;
                 }
@@ -647,11 +603,21 @@ static xx_pe_inspect_resource *find_resource_by_type(xx_pe_inspection *pPE, uint
 
 static void version_add(xx_pe_inspection *pPE, const char *pKey, const char *pValue)
 {
-    xx_pe_inspect_version_record *records = (xx_pe_inspect_version_record *)xx_mem_realloc(pPE->pVersionRecords, (size_t)(pPE->nVersionCount + 1) * sizeof(xx_pe_inspect_version_record));
-    if (!records) { pPE->pInput->failed = true; return; }
+    xx_pe_inspect_version_record record;
+    xx_pe_inspect_version_record *records;
+    record.pKey = xx_exec_copy_string(pPE->pInput, pKey);
+    record.pValue = xx_exec_copy_string(pPE->pInput, pValue);
+    if (!record.pKey || !record.pValue) {
+        xx_mem_free(record.pKey); xx_mem_free(record.pValue);
+        pPE->pInput->failed = true; return;
+    }
+    records = (xx_pe_inspect_version_record *)xx_mem_realloc(pPE->pVersionRecords, (size_t)(pPE->nVersionCount + 1) * sizeof(xx_pe_inspect_version_record));
+    if (!records) {
+        xx_mem_free(record.pKey); xx_mem_free(record.pValue);
+        pPE->pInput->failed = true; return;
+    }
     pPE->pVersionRecords = records;
-    pPE->pVersionRecords[pPE->nVersionCount].pKey = xx_str_create(pKey);
-    pPE->pVersionRecords[pPE->nVersionCount].pValue = xx_str_create(pValue);
+    pPE->pVersionRecords[pPE->nVersionCount] = record;
     pPE->nVersionCount++;
 }
 
@@ -793,7 +759,9 @@ static void parse_manifest(xx_pe_inspection *pPE)
             nSize = 4000;
         }
 
-        pPE->pManifest = xx_exec_string(pPE->pInput, pResource->nOffset, nSize);
+        pPE->pManifest = nSize > 0
+                            ? xx_exec_string(pPE->pInput, pResource->nOffset, nSize)
+                            : xx_exec_copy_string(pPE->pInput, "");
     }
 }
 
@@ -898,720 +866,6 @@ static void parse_rich(xx_pe_inspection *pPE)
         nCurrent -= 4;
     }
 }
-
-/* ------------------------------------------------------------------ .NET */
-
-static uint32_t read_compressed_uint(xx_executable_input *pFile, int64_t nOffset, int *pnBytes)
-{
-    uint8_t nFirst = xx_exec_u8(pFile, nOffset);
-
-    if ((nFirst & 0x80) == 0) {
-        *pnBytes = 1;
-
-        return nFirst;
-    }
-
-    if ((nFirst & 0xC0) == 0x80) {
-        *pnBytes = 2;
-
-        return (uint32_t)(((nFirst & 0x3F) << 8) | xx_exec_u8(pFile, nOffset + 1));
-    }
-
-    *pnBytes = 4;
-
-    return (uint32_t)(((nFirst & 0x1F) << 24) | (xx_exec_u8(pFile, nOffset + 1) << 16) | (xx_exec_u8(pFile, nOffset + 2) << 8) | xx_exec_u8(pFile, nOffset + 3));
-}
-
-/* Computes the row sizes and absolute offsets of every metadata table,
- * mirroring xx_pe_inspection::getCliInfo.                                               */
-static void parse_net_tables(xx_pe_inspection *pPE)
-{
-    xx_pe_inspect_cli *pCli = &pPE->cli;
-    int64_t nOffset = pCli->nTablesOffset;
-    uint8_t nHeapOffsetSizes = 0;
-    uint64_t nValid = 0;
-    int i = 0;
-
-    if ((pCli->nTablesOffset <= 0) || (pCli->nTablesSize < 24)) {
-        return;
-    }
-
-    nHeapOffsetSizes = xx_exec_u8(pPE->pInput, nOffset + 6);
-    nValid = xx_exec_u64(pPE->pInput, nOffset + 8, false);
-
-    nOffset += 24;
-
-    for (i = 0; i < 64; i++) {
-        if (nValid & (((uint64_t)1) << i)) {
-            if (nOffset > pCli->nTablesOffset + pCli->nTablesSize - 4) { pCli->bValid = 0; return; }
-            pCli->pRows[i] = xx_exec_u32(pPE->pInput, nOffset, false);
-            nOffset += 4;
-        } else {
-            pCli->pRows[i] = 0;
-        }
-    }
-
-    pCli->nStringIndexSize = (nHeapOffsetSizes & 0x01) ? 4 : 2;
-    pCli->nGuidIndexSize = (nHeapOffsetSizes & 0x02) ? 4 : 2;
-    pCli->nBlobIndexSize = (nHeapOffsetSizes & 0x04) ? 4 : 2;
-
-    pCli->nResolutionScopeSize = 2;
-    pCli->nTypeDefOrRefSize = 2;
-    pCli->nMemberRefParentSize = 2;
-    pCli->nHasConstantSize = 2;
-    pCli->nHasCustomAttributeSize = 2;
-    pCli->nCustomAttributeTypeSize = 2;
-    pCli->nHasFieldMarshalSize = 2;
-    pCli->nHasDeclSecuritySize = 2;
-    pCli->nHasSemanticsSize = 2;
-    pCli->nMethodDefOrRefSize = 2;
-    pCli->nMemberForwardedSize = 2;
-
-    if ((pCli->pRows[XX_PE_MDT_Module] > 0x3FFF) || (pCli->pRows[XX_PE_MDT_ModuleRef] > 0x3FFF) || (pCli->pRows[XX_PE_MDT_AssemblyRef] > 0x3FFF) ||
-        (pCli->pRows[XX_PE_MDT_TypeRef] > 0x3FFF)) {
-        pCli->nResolutionScopeSize = 4;
-    }
-
-    if ((pCli->pRows[XX_PE_MDT_ModuleRef] > 0x3FFF) || (pCli->pRows[XX_PE_MDT_TypeDef] > 0x3FFF) || (pCli->pRows[XX_PE_MDT_TypeSpec] > 0x3FFF)) {
-        pCli->nTypeDefOrRefSize = 4;
-    }
-
-    if ((pCli->pRows[XX_PE_MDT_TypeDef] > 0x1FFF) || (pCli->pRows[XX_PE_MDT_TypeRef] > 0x1FFF) || (pCli->pRows[XX_PE_MDT_ModuleRef] > 0x1FFF) ||
-        (pCli->pRows[XX_PE_MDT_MethodDef] > 0x1FFF) || (pCli->pRows[XX_PE_MDT_TypeSpec] > 0x1FFF)) {
-        pCli->nMemberRefParentSize = 4;
-    }
-
-    if ((pCli->pRows[XX_PE_MDT_Field] > 0x3FFF) || (pCli->pRows[XX_PE_MDT_Param] > 0x3FFF) || (pCli->pRows[XX_PE_MDT_Property] > 0x3FFF)) {
-        pCli->nHasConstantSize = 4;
-    }
-
-    if ((pCli->pRows[XX_PE_MDT_MethodDef] > 0x7FF) || (pCli->pRows[XX_PE_MDT_Field] > 0x7FF) || (pCli->pRows[XX_PE_MDT_TypeRef] > 0x7FF) || (pCli->pRows[XX_PE_MDT_TypeDef] > 0x7FF) ||
-        (pCli->pRows[XX_PE_MDT_Param] > 0x7FF) || (pCli->pRows[XX_PE_MDT_InterfaceImpl] > 0x7FF) || (pCli->pRows[XX_PE_MDT_MemberRef] > 0x7FF) || (pCli->pRows[XX_PE_MDT_Module] > 0x7FF) ||
-        (pCli->pRows[XX_PE_MDT_Property] > 0x7FF) || (pCli->pRows[XX_PE_MDT_Event] > 0x7FF) || (pCli->pRows[XX_PE_MDT_StandAloneSig] > 0x7FF) || (pCli->pRows[XX_PE_MDT_ModuleRef] > 0x7FF) ||
-        (pCli->pRows[XX_PE_MDT_TypeSpec] > 0x7FF) || (pCli->pRows[XX_PE_MDT_Assembly] > 0x7FF)) {
-        pCli->nHasCustomAttributeSize = 4;
-    }
-
-    if ((pCli->pRows[XX_PE_MDT_MethodDef] > 0x1FFF) || (pCli->pRows[XX_PE_MDT_MemberRef] > 0x1FFF)) {
-        pCli->nCustomAttributeTypeSize = 4;
-    }
-
-    if ((pCli->pRows[XX_PE_MDT_MethodDef] > 0x7FFF) || (pCli->pRows[XX_PE_MDT_MemberRef] > 0x7FFF)) {
-        pCli->nMethodDefOrRefSize = 4;
-    }
-
-    if ((pCli->pRows[XX_PE_MDT_Field] > 0x7FFF) || (pCli->pRows[XX_PE_MDT_Param] > 0x7FFF)) {
-        pCli->nHasFieldMarshalSize = 4;
-    }
-
-    if ((pCli->pRows[XX_PE_MDT_TypeDef] > 0x3FFF) || (pCli->pRows[XX_PE_MDT_MethodDef] > 0x3FFF) || (pCli->pRows[XX_PE_MDT_Assembly] > 0x3FFF)) {
-        pCli->nHasDeclSecuritySize = 4;
-    }
-
-    if ((pCli->pRows[XX_PE_MDT_Event] > 0x7FFF) || (pCli->pRows[XX_PE_MDT_Property] > 0x7FFF)) {
-        pCli->nHasSemanticsSize = 4;
-    }
-
-    if ((pCli->pRows[XX_PE_MDT_Field] > 0x7FFF) || (pCli->pRows[XX_PE_MDT_MethodDef] > 0x7FFF)) {
-        pCli->nMemberForwardedSize = 4;
-    }
-
-    for (i = 0; i < 64; i++) {
-        pCli->pIndexSize[i] = (pCli->pRows[i] > 0xFFFF) ? 4 : 2;
-    }
-
-    {
-        int nStr = pCli->nStringIndexSize;
-        int nGuid = pCli->nGuidIndexSize;
-        int nBlob = pCli->nBlobIndexSize;
-
-        pCli->pElementSize[XX_PE_MDT_Module] = 2 + nStr + nGuid * 3;
-        pCli->pElementSize[XX_PE_MDT_TypeRef] = pCli->nResolutionScopeSize + nStr * 2;
-        pCli->pElementSize[XX_PE_MDT_TypeDef] = 4 + nStr * 2 + pCli->nTypeDefOrRefSize + pCli->pIndexSize[XX_PE_MDT_Field] + pCli->pIndexSize[XX_PE_MDT_MethodDef];
-        pCli->pElementSize[XX_PE_MDT_Field] = 2 + nStr + nBlob;
-        pCli->pElementSize[XX_PE_MDT_MethodPtr] = pCli->pIndexSize[XX_PE_MDT_MethodDef];
-        pCli->pElementSize[XX_PE_MDT_MethodDef] = 4 + 2 + 2 + nStr + nBlob + pCli->pIndexSize[XX_PE_MDT_Param];
-        pCli->pElementSize[XX_PE_MDT_ParamPtr] = pCli->pIndexSize[XX_PE_MDT_Param];
-        pCli->pElementSize[XX_PE_MDT_Param] = 2 + 2 + nStr;
-        pCli->pElementSize[XX_PE_MDT_InterfaceImpl] = pCli->pIndexSize[XX_PE_MDT_TypeDef] + pCli->nTypeDefOrRefSize;
-        pCli->pElementSize[XX_PE_MDT_MemberRef] = pCli->nMemberRefParentSize + nStr + nBlob;
-        pCli->pElementSize[XX_PE_MDT_Constant] = 2 + pCli->nHasConstantSize + nBlob;
-        pCli->pElementSize[XX_PE_MDT_CustomAttribute] = pCli->nHasCustomAttributeSize + pCli->nCustomAttributeTypeSize + nBlob;
-        pCli->pElementSize[XX_PE_MDT_FieldMarshal] = pCli->nHasFieldMarshalSize + nBlob;
-        pCli->pElementSize[XX_PE_MDT_DeclSecurity] = 2 + pCli->nHasDeclSecuritySize + nBlob;
-        pCli->pElementSize[XX_PE_MDT_ClassLayout] = 2 + 4 + pCli->pIndexSize[XX_PE_MDT_TypeDef];
-        pCli->pElementSize[XX_PE_MDT_FieldLayout] = 4 + pCli->pIndexSize[XX_PE_MDT_Field];
-        pCli->pElementSize[XX_PE_MDT_StandAloneSig] = nBlob;
-        pCli->pElementSize[XX_PE_MDT_EventMap] = pCli->pIndexSize[XX_PE_MDT_TypeDef] + pCli->pIndexSize[XX_PE_MDT_Event];
-        pCli->pElementSize[XX_PE_MDT_EventPtr] = pCli->pIndexSize[XX_PE_MDT_Event];
-        pCli->pElementSize[XX_PE_MDT_Event] = 2 + nStr + pCli->nTypeDefOrRefSize;
-        pCli->pElementSize[XX_PE_MDT_PropertyMap] = pCli->pIndexSize[XX_PE_MDT_TypeDef] + pCli->pIndexSize[XX_PE_MDT_Property];
-        pCli->pElementSize[XX_PE_MDT_PropertyPtr] = 2 + nStr + nBlob;
-        pCli->pElementSize[XX_PE_MDT_Property] = 2 + nStr + nBlob;
-        pCli->pElementSize[XX_PE_MDT_MethodSemantics] = 2 + pCli->pIndexSize[XX_PE_MDT_MethodDef] + pCli->nHasSemanticsSize;
-        pCli->pElementSize[XX_PE_MDT_MethodImpl] = pCli->pIndexSize[XX_PE_MDT_TypeDef] + pCli->nMethodDefOrRefSize * 2;
-        pCli->pElementSize[XX_PE_MDT_ModuleRef] = nStr;
-        pCli->pElementSize[XX_PE_MDT_TypeSpec] = nBlob;
-        pCli->pElementSize[XX_PE_MDT_ImplMap] = 2 + pCli->nMemberForwardedSize + nStr + pCli->pIndexSize[XX_PE_MDT_ModuleRef];
-        pCli->pElementSize[XX_PE_MDT_FieldRVA] = 4 + pCli->pIndexSize[XX_PE_MDT_Field];
-        pCli->pElementSize[XX_PE_MDT_ENCLog] = 4 + pCli->pIndexSize[XX_PE_MDT_MethodDef];
-        pCli->pElementSize[XX_PE_MDT_ENCMap] = 4 + pCli->pIndexSize[XX_PE_MDT_MethodDef];
-        pCli->pElementSize[XX_PE_MDT_Assembly] = 4 + 2 + 2 + 2 + 2 + 4 + nBlob + nStr * 2;
-        pCli->pElementSize[XX_PE_MDT_AssemblyProcessor] = 4;
-        pCli->pElementSize[XX_PE_MDT_AssemblyOS] = 4 * 3;
-        pCli->pElementSize[XX_PE_MDT_AssemblyRef] = 4 + 2 + 2 + 2 + 2 + 4 + nBlob + nStr * 2;
-        pCli->pElementSize[XX_PE_MDT_AssemblyRefProcessor] = 4 + pCli->pIndexSize[XX_PE_MDT_AssemblyRef];
-        pCli->pElementSize[XX_PE_MDT_AssemblyRefOS] = 4 * 3 + pCli->pIndexSize[XX_PE_MDT_AssemblyRef];
-        pCli->pElementSize[XX_PE_MDT_File] = 4 + nStr + nBlob;
-        pCli->pElementSize[XX_PE_MDT_ExportedType] = 4 + 4 + nStr * 2 + pCli->pIndexSize[XX_PE_MDT_File];
-        pCli->pElementSize[XX_PE_MDT_ManifestResource] = 4 + 4 + nStr + pCli->pIndexSize[XX_PE_MDT_File];
-        pCli->pElementSize[XX_PE_MDT_NestedClass] = pCli->pIndexSize[XX_PE_MDT_TypeDef] * 2;
-        pCli->pElementSize[XX_PE_MDT_GenericParam] = 2 + 2 + pCli->nTypeDefOrRefSize + nStr;
-        pCli->pElementSize[XX_PE_MDT_MethodSpec] = pCli->nMethodDefOrRefSize + nBlob;
-        /* Owner is an index into GenericParam, not the GenericParam row count. */
-        pCli->pElementSize[XX_PE_MDT_GenericParamConstraint] = pCli->pIndexSize[XX_PE_MDT_GenericParam] + pCli->nTypeDefOrRefSize;
-    }
-
-    if (nHeapOffsetSizes & 0x40) {
-        nOffset += 4;
-    }
-
-    for (i = 0; i < 64; i++) {
-        if (pCli->pRows[i]) {
-            int64_t table_size = (int64_t)pCli->pElementSize[i] * (int64_t)pCli->pRows[i];
-            if (!pCli->pElementSize[i] || nOffset > pCli->nTablesOffset + pCli->nTablesSize ||
-                table_size > pCli->nTablesOffset + pCli->nTablesSize - nOffset) {
-                pCli->bValid = 0; xx_rt_memset(pCli->pTableOffset, 0, sizeof(pCli->pTableOffset)); return;
-            }
-            pCli->pTableOffset[i] = nOffset;
-            nOffset += table_size;
-        }
-    }
-}
-
-/* Reads a heap/table index of 2 or 4 bytes. */
-static uint32_t md_index(xx_pe_inspection *pPE, int64_t nOffset, int nSize)
-{
-    if (nSize == 4) {
-        return xx_exec_u32(pPE->pInput, nOffset, false);
-    }
-
-    return xx_exec_u16(pPE->pInput, nOffset, false);
-}
-
-/* Reads a string from the #Strings heap (caller frees). */
-static char *md_string(xx_pe_inspection *pPE, uint32_t nIndex)
-{
-    xx_pe_inspect_cli *pCli = &pPE->cli;
-
-    if ((pCli->nStringsOffset <= 0) || ((int64_t)nIndex >= pCli->nStringsSize)) {
-        return xx_str_create("");
-    }
-
-    return xx_exec_string(pPE->pInput, pCli->nStringsOffset + (int64_t)nIndex, pCli->nStringsSize - (int64_t)nIndex);
-}
-
-static int64_t md_row_offset(xx_pe_inspection *pPE, int nTable, uint32_t nRow)
-{
-    xx_pe_inspect_cli *pCli = &pPE->cli;
-
-    if (!pCli->bValid || (nRow >= pCli->pRows[nTable]) || (pCli->pTableOffset[nTable] == 0)) {
-        return -1;
-    }
-
-    return pCli->pTableOffset[nTable] + (int64_t)pCli->pElementSize[nTable] * (int64_t)nRow;
-}
-
-typedef struct {
-    uint32_t nTypeName;
-    uint32_t nTypeNamespace;
-    uint32_t nFieldList;
-    uint32_t nMethodList;
-} MDTypeDef;
-
-static int md_typedef(xx_pe_inspection *pPE, uint32_t nRow, MDTypeDef *pOut)
-{
-    xx_pe_inspect_cli *pCli = &pPE->cli;
-    int64_t nOffset = md_row_offset(pPE, XX_PE_MDT_TypeDef, nRow);
-
-    xx_rt_memset(pOut, 0, sizeof(*pOut));
-
-    if (nOffset == -1) {
-        return 0;
-    }
-
-    nOffset += 4; /* Flags */
-    pOut->nTypeName = md_index(pPE, nOffset, pCli->nStringIndexSize);
-    nOffset += pCli->nStringIndexSize;
-    pOut->nTypeNamespace = md_index(pPE, nOffset, pCli->nStringIndexSize);
-    nOffset += pCli->nStringIndexSize;
-    nOffset += pCli->nTypeDefOrRefSize; /* Extends */
-    pOut->nFieldList = md_index(pPE, nOffset, pCli->pIndexSize[XX_PE_MDT_Field]);
-    nOffset += pCli->pIndexSize[XX_PE_MDT_Field];
-    pOut->nMethodList = md_index(pPE, nOffset, pCli->pIndexSize[XX_PE_MDT_MethodDef]);
-
-    return 1;
-}
-
-static uint32_t md_methoddef_name(xx_pe_inspection *pPE, uint32_t nRow)
-{
-    xx_pe_inspect_cli *pCli = &pPE->cli;
-    int64_t nOffset = md_row_offset(pPE, XX_PE_MDT_MethodDef, nRow);
-
-    if (nOffset == -1) {
-        return 0;
-    }
-
-    return md_index(pPE, nOffset + 4 + 2 + 2, pCli->nStringIndexSize);
-}
-
-static uint32_t md_methodptr(xx_pe_inspection *pPE, uint32_t nRow)
-{
-    xx_pe_inspect_cli *pCli = &pPE->cli;
-    int64_t nOffset = md_row_offset(pPE, XX_PE_MDT_MethodPtr, nRow);
-
-    if (nOffset == -1) {
-        return 0;
-    }
-
-    return md_index(pPE, nOffset, pCli->pIndexSize[XX_PE_MDT_MethodDef]);
-}
-
-static uint32_t md_field_name(xx_pe_inspection *pPE, uint32_t nRow)
-{
-    xx_pe_inspect_cli *pCli = &pPE->cli;
-    int64_t nOffset = md_row_offset(pPE, XX_PE_MDT_Field, nRow);
-
-    if (nOffset == -1) {
-        return 0;
-    }
-
-    return md_index(pPE, nOffset + 2, pCli->nStringIndexSize);
-}
-
-/* XCLIAssembly keeps every row count in a signed qint32, so a count above
- * INT_MAX turns negative there and the walk it drives never runs. Reproduce
- * that narrowing instead of walking 4.29e9 attacker-supplied rows.          */
-static int64_t md_row_count(uint32_t nRows)
-{
-    if (nRows > 0x7FFFFFFFu) {
-        return (int64_t)nRows - 0x100000000ll;
-    }
-
-    return (int64_t)nRows;
-}
-
-/* Locates a TypeDef row by namespace and name; returns -1 when absent.
- * An empty argument means "do not compare this component", matching the
- * reference implementation.                                                */
-static int64_t md_find_typedef(xx_pe_inspection *pPE, const char *pNamespace, const char *pTypeName, MDTypeDef *pOut)
-{
-    int64_t nCount = md_row_count(pPE->cli.pRows[XX_PE_MDT_TypeDef]);
-    int64_t i = 0;
-
-    for (i = 0; i < nCount && !pPE->pInput->failed && !xx_pd_is_stopped(pPE->pInput->pd); i++) {
-        MDTypeDef record;
-        char *pName = NULL;
-        char *pNs = NULL;
-        int bMatch = 0;
-
-        if (!md_typedef(pPE, (uint32_t)i, &record)) {
-            break;
-        }
-
-        pName = (pTypeName[0]) ? md_string(pPE, record.nTypeName) : xx_str_create("");
-        pNs = (pNamespace[0]) ? md_string(pPE, record.nTypeNamespace) : xx_str_create("");
-
-        bMatch = pNs && pName && ((xx_rt_strcmp(pNamespace, pNs) == 0) && (xx_rt_strcmp(pTypeName, pName) == 0));
-
-        xx_mem_free(pName);
-        xx_mem_free(pNs);
-
-        if (bMatch) {
-            *pOut = record;
-
-            return i;
-        }
-    }
-
-    return -1;
-}
-
-int xx_pe_inspect_net_type_present(xx_pe_inspection *pPE, const char *pNamespace, const char *pTypeName)
-{
-    if (!pPE || !pNamespace || !pTypeName) return 0;
-    if (!pPE->pInput) return 0;
-    pPE->pInput->read_work = 0;
-    MDTypeDef record;
-
-    if (!pPE->cli.bValid) {
-        return 0;
-    }
-
-    return (md_find_typedef(pPE, pNamespace, pTypeName, &record) != -1) ? 1 : 0;
-}
-
-int xx_pe_inspect_net_method_present(xx_pe_inspection *pPE, const char *pNamespace, const char *pTypeName, const char *pMethodName)
-{
-    if (!pPE || !pNamespace || !pTypeName || !pMethodName) return 0;
-    if (!pPE->pInput) return 0;
-    pPE->pInput->read_work = 0;
-    MDTypeDef record;
-    int64_t nRow = 0;
-    uint32_t nTypeCount = 0;
-    int64_t nMethodCount = 0;
-    int64_t j = 0;
-
-    if (!pPE->cli.bValid) {
-        return 0;
-    }
-
-    nTypeCount = pPE->cli.pRows[XX_PE_MDT_TypeDef];
-
-    if (nTypeCount > 0xFFFF) {
-        return 0;
-    }
-
-    nRow = md_find_typedef(pPE, pNamespace, pTypeName, &record);
-
-    if (nRow == -1) {
-        return 0;
-    }
-
-    if ((uint32_t)nRow < nTypeCount - 1) {
-        MDTypeDef next;
-
-        if (md_typedef(pPE, (uint32_t)nRow + 1, &next)) {
-            nMethodCount = (int64_t)next.nMethodList - (int64_t)record.nMethodList;
-        }
-    } else {
-        /* XCLIAssembly::isNetMethodPresent derives the last type's method
-         * count from the MethodPtr table alone.                           */
-        nMethodCount = md_row_count(pPE->cli.pRows[XX_PE_MDT_MethodPtr]) - (int64_t)record.nMethodList;
-    }
-
-    for (j = 0; j < nMethodCount && !pPE->pInput->failed && !xx_pd_is_stopped(pPE->pInput->pd); j++) {
-        uint32_t nNameIndex = 0;
-        char *pName = NULL;
-        int bMatch = 0;
-
-        if (record.nMethodList == 0) {
-            break;
-        }
-
-        if (pPE->cli.pRows[XX_PE_MDT_MethodPtr]) {
-            uint32_t nMethod = md_methodptr(pPE, record.nMethodList + (uint32_t)j - 1);
-
-            if ((nMethod == 0) || (nMethod > pPE->cli.pRows[XX_PE_MDT_MethodDef])) {
-                continue;
-            }
-
-            nNameIndex = md_methoddef_name(pPE, nMethod - 1);
-        } else {
-            nNameIndex = md_methoddef_name(pPE, record.nMethodList + (uint32_t)j - 1);
-        }
-
-        pName = md_string(pPE, nNameIndex);
-        bMatch = pName && (xx_rt_strcmp(pMethodName, pName) == 0);
-        xx_mem_free(pName);
-
-        if (bMatch) {
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
-int xx_pe_inspect_net_field_present(xx_pe_inspection *pPE, const char *pNamespace, const char *pTypeName, const char *pFieldName)
-{
-    if (!pPE || !pNamespace || !pTypeName || !pFieldName) return 0;
-    if (!pPE->pInput) return 0;
-    pPE->pInput->read_work = 0;
-    MDTypeDef record;
-    int64_t nRow = 0;
-    uint32_t nTypeCount = 0;
-    int64_t nFieldCount = 0;
-    int64_t j = 0;
-
-    if (!pPE->cli.bValid) {
-        return 0;
-    }
-
-    nTypeCount = pPE->cli.pRows[XX_PE_MDT_TypeDef];
-    nRow = md_find_typedef(pPE, pNamespace, pTypeName, &record);
-
-    if (nRow == -1) {
-        return 0;
-    }
-
-    if ((uint32_t)nRow < nTypeCount - 1) {
-        MDTypeDef next;
-
-        if (md_typedef(pPE, (uint32_t)nRow + 1, &next)) {
-            nFieldCount = (int64_t)next.nFieldList - (int64_t)record.nFieldList;
-        }
-    } else {
-        nFieldCount = md_row_count(pPE->cli.pRows[XX_PE_MDT_Field]) - (int64_t)record.nFieldList;
-    }
-
-    for (j = 0; j < nFieldCount && !pPE->pInput->failed && !xx_pd_is_stopped(pPE->pInput->pd); j++) {
-        char *pName = NULL;
-        int bMatch = 0;
-
-        if (record.nFieldList == 0) {
-            break;
-        }
-
-        pName = md_string(pPE, md_field_name(pPE, record.nFieldList + (uint32_t)j - 1));
-        bMatch = pName && (xx_rt_strcmp(pFieldName, pName) == 0);
-        xx_mem_free(pName);
-
-        if (bMatch) {
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
-int xx_pe_inspect_net_global_cctor_present(xx_pe_inspection *pPE)
-{
-    if (!pPE) return 0;
-    return xx_pe_inspect_net_method_present(pPE, "", "<Module>", ".cctor");
-}
-
-char *xx_pe_inspect_net_module_name(xx_pe_inspection *pPE)
-{
-    if (!pPE || !pPE->pInput) return xx_str_create("");
-    pPE->pInput->read_work = 0;
-    xx_pe_inspect_cli *pCli = &pPE->cli;
-    int64_t nOffset = 0;
-
-    if (!pCli->bValid) {
-        return xx_str_create("");
-    }
-
-    nOffset = md_row_offset(pPE, XX_PE_MDT_Module, 0);
-
-    if (nOffset == -1) {
-        return xx_str_create("");
-    }
-
-    return md_string(pPE, md_index(pPE, nOffset + 2, pCli->nStringIndexSize));
-}
-
-char *xx_pe_inspect_net_assembly_name(xx_pe_inspection *pPE)
-{
-    if (!pPE || !pPE->pInput) return xx_str_create("");
-    pPE->pInput->read_work = 0;
-    xx_pe_inspect_cli *pCli = &pPE->cli;
-    int64_t nOffset = 0;
-
-    if (!pCli->bValid) {
-        return xx_str_create("");
-    }
-
-    nOffset = md_row_offset(pPE, XX_PE_MDT_Assembly, 0);
-
-    if (nOffset == -1) {
-        return xx_str_create("");
-    }
-
-    /* HashAlgId(4) Major(2) Minor(2) Build(2) Revision(2) Flags(4) PublicKey */
-    nOffset += 4 + 2 + 2 + 2 + 2 + 4 + pCli->nBlobIndexSize;
-
-    return md_string(pPE, md_index(pPE, nOffset, pCli->nStringIndexSize));
-}
-
-static void parse_net(xx_pe_inspection *pPE)
-{
-    int64_t nCliOffset = xx_pe_inspect_rva_to_offset(pPE, pPE->pDirRVA[XX_PE_INSPECT_DIR_COMHEADER]);
-    uint32_t nMetaRVA = 0;
-    uint32_t nMetaSize = 0;
-    int64_t nMetaOffset = 0;
-    uint32_t nVersionLength = 0;
-    uint16_t nStreams = 0;
-    int64_t nStreamOffset = 0;
-    uint16_t i = 0;
-    int64_t nStringsOffset = -1;
-    int64_t nStringsSize = 0;
-    int64_t nUSOffset = -1;
-    int64_t nUSSize = 0;
-
-    if ((nCliOffset == -1) || (pPE->pDirSize[XX_PE_INSPECT_DIR_COMHEADER] < 72)) {
-        return;
-    }
-
-    nMetaRVA = xx_exec_u32(pPE->pInput, nCliOffset + 8, false);
-    nMetaSize = xx_exec_u32(pPE->pInput, nCliOffset + 12, false);
-    nMetaOffset = xx_pe_inspect_rva_to_offset(pPE, nMetaRVA);
-
-    if ((nMetaOffset == -1) || (nMetaSize == 0)) {
-        return;
-    }
-
-    if (xx_exec_u32(pPE->pInput, nMetaOffset, false) != 0x424A5342) {
-        return;
-    }
-
-    pPE->bIsNet = 1;
-    pPE->cli.bValid = 1;
-    pPE->cli.nMetaOffset = nMetaOffset;
-    pPE->cli.nEntryPointRVA = xx_exec_u32(pPE->pInput, nCliOffset + 20, false);
-
-    nVersionLength = xx_exec_u32(pPE->pInput, nMetaOffset + 12, false);
-
-    if (nVersionLength > 256) {
-        nVersionLength = 256;
-    }
-
-    pPE->pNetVersion = xx_exec_string(pPE->pInput, nMetaOffset + 16, nVersionLength);
-
-    nStreamOffset = nMetaOffset + 16 + ALIGN_UP((int64_t)nVersionLength, 4);
-    nStreams = xx_exec_u16(pPE->pInput, nStreamOffset + 2, false);
-    nStreamOffset += 4;
-
-    if (nStreams > 32) {
-        nStreams = 32;
-    }
-
-    for (i = 0; i < nStreams; i++) {
-        uint32_t nOffset = xx_exec_u32(pPE->pInput, nStreamOffset, false);
-        uint32_t nSize = xx_exec_u32(pPE->pInput, nStreamOffset + 4, false);
-        char *pName = xx_exec_string(pPE->pInput, nStreamOffset + 8, 64);
-        size_t nNameSize;
-        if (!pName) { pPE->pInput->failed = true; return; }
-        nNameSize = xx_rt_strlen(pName);
-        int64_t nStreamStart = nMetaOffset + (int64_t)nOffset;
-        int64_t nStreamSize = (int64_t)nSize;
-
-        /* A malformed file can point a stream outside the image; clamp it the
-         * way XCLIAssembly::getCliInfo does, so the heap walks below stay
-         * inside the file.                                                   */
-        if ((nStreamStart < 0) || (nStreamStart > pPE->pInput->size)) {
-            nStreamStart = 0;
-            nStreamSize = 0;
-        } else if (nStreamStart + nStreamSize > pPE->pInput->size) {
-            nStreamSize = pPE->pInput->size - nStreamStart;
-        }
-
-        if ((xx_rt_strcmp(pName, "#~") == 0) || (xx_rt_strcmp(pName, "#-") == 0)) {
-            pPE->cli.nTablesOffset = nStreamStart;
-            pPE->cli.nTablesSize = nStreamSize;
-        } else if (xx_rt_strcmp(pName, "#Strings") == 0) {
-            if (nStringsOffset == -1) {
-                nStringsOffset = nStreamStart;
-                nStringsSize = nStreamSize;
-                pPE->cli.nStringsOffset = nStringsOffset;
-                pPE->cli.nStringsSize = nStreamSize;
-            }
-        } else if (xx_rt_strcmp(pName, "#US") == 0) {
-            if (nUSOffset == -1) {
-                nUSOffset = nStreamStart;
-                nUSSize = nStreamSize;
-                pPE->cli.nUSOffset = nUSOffset;
-                pPE->cli.nUSSize = nStreamSize;
-            }
-        } else if (xx_rt_strcmp(pName, "#Blob") == 0) {
-            pPE->cli.nBlobOffset = nStreamStart;
-            pPE->cli.nBlobSize = nStreamSize;
-        } else if (xx_rt_strcmp(pName, "#GUID") == 0) {
-            pPE->cli.nGuidOffset = nStreamStart;
-            pPE->cli.nGuidSize = nStreamSize;
-        }
-
-        xx_mem_free(pName);
-        nStreamOffset += 8 + (int64_t)ALIGN_UP((int64_t)(nNameSize + 1), 4);
-    }
-
-    parse_net_tables(pPE);
-
-    if ((nStringsOffset != -1) && nStringsSize) {
-        xx_list_s vec;
-        int64_t nPos = 0;
-
-        xx_list_init(&vec, sizeof(void *), NULL);
-
-        while ((nPos < nStringsSize) && (vec.count < 100000) && !pPE->pInput->failed && !xx_pd_is_stopped(pPE->pInput->pd)) {
-            char *pString = xx_exec_string(pPE->pInput, nStringsOffset + nPos, nStringsSize - nPos);
-            size_t nSize;
-            if (!pString) { pPE->pInput->failed = true; break; }
-            nSize = xx_rt_strlen(pString);
-
-            if (nSize) {
-                if (!xx_list_append(&vec, &pString)) { xx_mem_free(pString); pPE->pInput->failed = true; break; }
-            } else {
-                xx_mem_free(pString);
-            }
-
-            nPos += (int64_t)nSize + 1;
-        }
-
-        pPE->nNetAnsiCount = (int)vec.count;
-        pPE->ppNetAnsiStrings = (char **)vec.data;
-        vec.data = NULL; vec.count = vec.capacity = 0;
-
-        xx_list_cleanup(&vec);
-    }
-
-    if ((nUSOffset != -1) && nUSSize) {
-        xx_list_s vec;
-        int64_t nPos = 0;
-
-        xx_list_init(&vec, sizeof(void *), NULL);
-
-        while ((nPos < nUSSize) && (vec.count < 100000) && !pPE->pInput->failed && !xx_pd_is_stopped(pPE->pInput->pd)) {
-            int nBytes = 0;
-            uint32_t nLength = read_compressed_uint(pPE->pInput, nUSOffset + nPos, &nBytes);
-
-            nPos += nBytes;
-
-            if (nPos > nUSSize || nLength == 0 || nLength > (uint64_t)(nUSSize - nPos) || nLength > 0x100000) {
-                if (nLength == 0) {
-                    continue;
-                }
-
-                break;
-            }
-
-            {
-                xx_buf_t buf;
-                uint32_t j = 0;
-
-                xx_buf_init(&buf);
-
-                for (j = 0; j + 1 < nLength; j += 2) {
-                    uint16_t nChar = xx_exec_u16(pPE->pInput, nUSOffset + nPos + j, false);
-
-                    if (nChar < 0x80) {
-                        xx_buf_append_char(&buf, (char)nChar);
-                    } else if (nChar < 0x800) {
-                        xx_buf_append_char(&buf, (char)(0xC0 | (nChar >> 6)));
-                        xx_buf_append_char(&buf, (char)(0x80 | (nChar & 0x3F)));
-                    } else {
-                        xx_buf_append_char(&buf, (char)(0xE0 | (nChar >> 12)));
-                        xx_buf_append_char(&buf, (char)(0x80 | ((nChar >> 6) & 0x3F)));
-                        xx_buf_append_char(&buf, (char)(0x80 | (nChar & 0x3F)));
-                    }
-                }
-
-                if (!xx_exec_account_string(pPE->pInput, buf.size)) { xx_buf_free(&buf); break; }
-                { char *item = xx_buf_detach(&buf, NULL); if (!item || !xx_list_append(&vec, &item)) { xx_mem_free(item); pPE->pInput->failed = true; break; } }
-            }
-
-            nPos += nLength;
-        }
-
-        pPE->nNetUnicodeCount = (int)vec.count;
-        pPE->ppNetUnicodeStrings = (char **)vec.data;
-        vec.data = NULL; vec.count = vec.capacity = 0;
-
-        xx_list_cleanup(&vec);
-    }
-}
-
-/* ------------------------------------------------------------------ main  */
 
 static int inspect_parse_input(xx_pe_inspection *pPE, xx_executable_input *pFile, const xx_pe *reader)
 {
@@ -1739,9 +993,9 @@ static int inspect_parse_input(xx_pe_inspection *pPE, xx_executable_input *pFile
     pPE->bValid = 1;
 
     parse_sections(pPE, reader);
-    build_memory_map(pPE);
+    if (!build_memory_map(pPE, reader)) { pFile->failed = true; return 0; }
 
-    pPE->nEntryPointAddress = pPE->nImageBase + pPE->nAddressOfEntryPoint;
+    pPE->nEntryPointAddress = inspect_rva_address(pPE, pPE->nAddressOfEntryPoint);
     pPE->nEntryPointOffset = pPE->nAddressOfEntryPoint ? xx_pe_inspect_rva_to_offset(pPE, pPE->nAddressOfEntryPoint) : -1;
 
     if ((pPE->nAddressOfEntryPoint == 0) && (pPE->nSectionCount == 0)) {
@@ -1755,7 +1009,6 @@ static int inspect_parse_input(xx_pe_inspection *pPE, xx_executable_input *pFile
     parse_manifest(pPE);
     parse_debug(pPE);
     parse_rich(pPE);
-    parse_net(pPE);
 
     return 1;
 }
@@ -1797,22 +1050,9 @@ void xx_pe_inspect_free(xx_pe_inspection *pPE)
 
     xx_mem_free(pPE->pVersionRecords);
 
-    for (i = 0; i < pPE->nNetAnsiCount; i++) {
-        xx_mem_free(pPE->ppNetAnsiStrings[i]);
-    }
-
-    xx_mem_free(pPE->ppNetAnsiStrings);
-
-    for (i = 0; i < pPE->nNetUnicodeCount; i++) {
-        xx_mem_free(pPE->ppNetUnicodeStrings[i]);
-    }
-
-    xx_mem_free(pPE->ppNetUnicodeStrings);
-
     xx_mem_free(pPE->pDebugRecords);
     xx_mem_free(pPE->pRichRecords);
     xx_mem_free(pPE->pManifest);
-    xx_mem_free(pPE->pNetVersion);
     xx_mem_free(pPE->pSections);
     xx_memory_map_cleanup(&pPE->map);
     xx_exec_input_free(pPE->pInput);
@@ -1828,7 +1068,8 @@ int xx_pe_inspect_parse(xx_pe_inspection *pPE, xx_pe *reader, xx_pd_struct *pd)
     xx_rt_memset(pPE, 0, sizeof(*pPE));
     if (!reader || !reader->format.device) return 0;
     saved = xx_io_tell(reader->format.device);
-    if (reader->format.handle_base_info && !reader->format.handle_base_info(&reader->format, pd)) {
+    if (!reader->format.base_info_handled &&
+        (!reader->format.handle_base_info || !reader->format.handle_base_info(&reader->format, pd))) {
         if (saved >= 0) xx_io_seek64(reader->format.device, saved, XX_RT_SEEK_SET);
         return 0;
     }
@@ -1843,7 +1084,10 @@ int xx_pe_inspect_parse(xx_pe_inspection *pPE, xx_pe *reader, xx_pd_struct *pd)
 
 int xx_pe_inspect_analyze_from_device(xx_pe_inspection *state, xx_io_device *device, int64_t base, xx_pd_struct *pd)
 {
-    xx_pe reader = {0};
-    reader.format.device = device; reader.format.base_address = base;
-    return xx_pe_inspect_parse(state, &reader, pd);
+    xx_pe reader;
+    int result;
+    xx_pe_init(&reader, device, base);
+    result = xx_pe_inspect_parse(state, &reader, pd);
+    xx_pe_destroy(&reader);
+    return result;
 }

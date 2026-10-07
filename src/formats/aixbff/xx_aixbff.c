@@ -12,6 +12,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_BFF_VOLUME_MAGIC UINT32_C(0xea6b0009)
 #define XX_BFF_VOLUME_HEADER_SIZE 0x48U
@@ -50,15 +51,6 @@ typedef struct xx_bff_stream_s {
     size_t index;
     int64_t archive_end;
 } xx_bff_stream;
-
-static uint16_t xx_bff_u16(const uint8_t *p) {
-    return (uint16_t)(p[0] | ((uint16_t)p[1] << 8U));
-}
-
-static uint32_t xx_bff_u32(const uint8_t *p) {
-    return (uint32_t)xx_bff_u16(p) |
-           ((uint32_t)xx_bff_u16(p + 2U) << 16U);
-}
 
 static int64_t xx_bff_align(int64_t value, int64_t alignment) {
     int64_t remainder;
@@ -118,7 +110,7 @@ static bool xx_bff_parse(Abstractformat *format, xx_bff_stream **result) {
                                   XX_BFF_FIXED_HEADER_SIZE + 8U) ||
         !xx_bff_read(format->device, format->base_address, volume,
                      sizeof(volume)) ||
-        xx_bff_u32(volume) != XX_BFF_VOLUME_MAGIC) return false;
+        xx_data_get_u32(volume, 4, 0, false) != XX_BFF_VOLUME_MAGIC) return false;
     stream = (xx_bff_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;
     offset = XX_BFF_VOLUME_HEADER_SIZE;
@@ -141,7 +133,7 @@ static bool xx_bff_parse(Abstractformat *format, xx_bff_stream **result) {
                          sizeof(lead))) goto fail;
         words = lead[0];
         type = lead[1];
-        magic = xx_bff_u16(lead + 2U);
+        magic = xx_data_get_u16(lead + 2U, 2, 0, false);
         if (magic != XX_BFF_MAGIC_STORED && magic != XX_BFF_MAGIC_PACKED)
             goto fail;
         if (type == XX_BFF_RECORD_TERMINATOR) {
@@ -224,20 +216,20 @@ static bool xx_bff_parse(Abstractformat *format, xx_bff_stream **result) {
         if (type == XX_BFF_RECORD_MEMBER_LEGACY) {
             /* AIX dumprestor.h FS_NAME uses the older 16-bit inode/mode/
              * ownership fields and has no ACL/PCL security trailer. */
-            member->mode = xx_bff_u16(header + 0x08U);
-            member->original_size = xx_bff_u32(header + 0x10U);
-            member->atime = xx_bff_u32(header + 0x14U);
-            member->mtime = xx_bff_u32(header + 0x18U);
-            member->ctime = xx_bff_u32(header + 0x1cU);
-            member->packed_size = xx_bff_u32(header + 0x28U);
+            member->mode = xx_data_get_u16(header + 0x08U, 2, 0, false);
+            member->original_size = xx_data_get_u32(header + 0x10U, 4, 0, false);
+            member->atime = xx_data_get_u32(header + 0x14U, 4, 0, false);
+            member->mtime = xx_data_get_u32(header + 0x18U, 4, 0, false);
+            member->ctime = xx_data_get_u32(header + 0x1cU, 4, 0, false);
+            member->packed_size = xx_data_get_u32(header + 0x28U, 4, 0, false);
         } else {
-            member->mode = xx_bff_u32(header + 0x0cU);
-            member->original_size = xx_bff_u32(header + 0x18U);
-            member->atime = xx_bff_u32(header + 0x1cU);
-            member->mtime = xx_bff_u32(header + 0x20U);
-            member->ctime = xx_bff_u32(header + 0x24U);
-            member->packed_size = xx_bff_u32(
-                header + (type == XX_BFF_RECORD_MEMBER ? 0x38U : 0x30U));
+            member->mode = xx_data_get_u32(header + 0x0cU, 4, 0, false);
+            member->original_size = xx_data_get_u32(header + 0x18U, 4, 0, false);
+            member->atime = xx_data_get_u32(header + 0x1cU, 4, 0, false);
+            member->mtime = xx_data_get_u32(header + 0x20U, 4, 0, false);
+            member->ctime = xx_data_get_u32(header + 0x24U, 4, 0, false);
+            member->packed_size = xx_data_get_u32(
+                header + (type == XX_BFF_RECORD_MEMBER ? 0x38U : 0x30U), 4, 0, false);
         }
         kind = member->mode & XX_BFF_MODE_MASK;
         member->folder = kind == XX_BFF_MODE_DIRECTORY;

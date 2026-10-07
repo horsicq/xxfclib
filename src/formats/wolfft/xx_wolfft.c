@@ -44,6 +44,7 @@
 #include <stdio.h>
 
 #include "xx_wolfft_palette.inc"
+#include "xxfclib/data/xx_data.h"
 
 #ifdef WOLFFT
 #define XX_WOLFFT_FILE_TYPE XX_FILE_TYPE_WOLFFT
@@ -100,24 +101,6 @@ typedef struct xx_wolfft_stream_s {
 static void xx_wolfft_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint16_t xx_wolfft_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_wolfft_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static XXFC_MAYBE_UNUSED uint16_t xx_wolfft_be16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[1] | ((uint16_t)data[0] << 8));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t xx_wolfft_be32(const uint8_t *data) {
-    return (uint32_t)data[3] | ((uint32_t)data[2] << 8) |
-           ((uint32_t)data[1] << 16) | ((uint32_t)data[0] << 24);
-}
 
 static bool xx_wolfft_read_at(Abstractformat *self, int64_t offset,
                               uint8_t *buffer, size_t size) {
@@ -208,27 +191,15 @@ static void xx_wolfft_stream_free(void *pointer) {
     xx_mem_free(stream);
 }
 
-static void xx_wolfft_put_le16(uint8_t *data, uint16_t value) {
-    data[0] = (uint8_t)value;
-    data[1] = (uint8_t)(value >> 8);
-}
-
-static void xx_wolfft_put_le32(uint8_t *data, uint32_t value) {
-    data[0] = (uint8_t)value;
-    data[1] = (uint8_t)(value >> 8);
-    data[2] = (uint8_t)(value >> 16);
-    data[3] = (uint8_t)(value >> 24);
-}
-
 static uint32_t xx_wolfft_chunk_offset(const xx_wolfft_stream *stream,
                                        uint32_t index) {
-    return xx_wolfft_le32(stream->table + (size_t)index * 4U);
+    return xx_data_get_u32(stream->table + (size_t)index * 4U, 4, 0, false);
 }
 
 static uint16_t xx_wolfft_chunk_length(const xx_wolfft_stream *stream,
                                        uint32_t index) {
-    return xx_wolfft_le16(stream->table + (size_t)stream->chunk_count * 4U +
-                          (size_t)index * 2U);
+    return xx_data_get_u16(stream->table + (size_t)stream->chunk_count * 4U +
+                          (size_t)index * 2U, 2, 0, false);
 }
 
 /* Grow the member vector one entry at a time.  The caller has already bounded
@@ -296,27 +267,27 @@ static bool xx_wolfft_sprite_pixels(const uint8_t *raw, size_t size,
                                     uint8_t *pixels) {
     uint32_t left, right, x;
     if (!raw || size < 6U) return false;
-    left = xx_wolfft_le16(raw);
-    right = xx_wolfft_le16(raw + 2U);
+    left = xx_data_get_u16(raw, 2, 0, false);
+    right = xx_data_get_u16(raw + 2U, 2, 0, false);
     if (left > right || right >= 64U ||
         size < 4U + (size_t)(right - left + 1U) * 2U) return false;
     for (x = left; x <= right; ++x) {
-        size_t command = xx_wolfft_le16(raw + 4U + (size_t)(x - left) * 2U);
+        size_t command = xx_data_get_u16(raw + 4U + (size_t)(x - left) * 2U, 2, 0, false);
         size_t minimum = 4U + (size_t)(right - left + 1U) * 2U;
         if (command < minimum) return false;
         for (;;) {
             uint32_t start, end, y;
             int32_t source;
             if (command > size || size - command < 2U) return false;
-            end = xx_wolfft_le16(raw + command);
+            end = xx_data_get_u16(raw + command, 2, 0, false);
             if (end == 0U) break;
             if (size - command < 6U) return false;
             {
-                uint32_t encoded = xx_wolfft_le16(raw + command + 2U);
+                uint32_t encoded = xx_data_get_u16(raw + command + 2U, 2, 0, false);
                 source = encoded < 0x8000U ? (int32_t)encoded
                                            : (int32_t)encoded - 0x10000;
             }
-            start = xx_wolfft_le16(raw + command + 4U);
+            start = xx_data_get_u16(raw + command + 4U, 2, 0, false);
             if ((start & 1U) || (end & 1U) || start >= end || end > 128U)
                 return false;
             for (y = start / 2U; y < end / 2U; ++y) {
@@ -388,8 +359,8 @@ static bool xx_wolfft_convert_sounds(Abstractformat *self,
                             info_size)) goto done;
     xx_mem_zero(waves, (size_t)entries * sizeof(*waves));
     for (ordinal = 0U; ordinal < entries; ++ordinal) {
-        uint32_t relative = xx_wolfft_le16(info + (size_t)ordinal * 4U);
-        uint32_t data_size = xx_wolfft_le16(info + (size_t)ordinal * 4U + 2U);
+        uint32_t relative = xx_data_get_u16(info + (size_t)ordinal * 4U, 2, 0, false);
+        uint32_t data_size = xx_data_get_u16(info + (size_t)ordinal * 4U + 2U, 2, 0, false);
         uint32_t page = stream->sound_start + relative;
         uint32_t first_page = page;
         uint32_t remaining = data_size;
@@ -515,9 +486,9 @@ static xx_wolfft_stream *xx_wolfft_parse(Abstractformat *self,
         return NULL;
     }
 
-    count = xx_wolfft_le16(head);
-    sprite_start = xx_wolfft_le16(head + 2);
-    sound_start = xx_wolfft_le16(head + 4);
+    count = xx_data_get_u16(head, 2, 0, false);
+    sprite_start = xx_data_get_u16(head + 2, 2, 0, false);
+    sound_start = xx_data_get_u16(head + 4, 2, 0, false);
     /* The two class boundaries have to be ordered and inside the pool; that
      * is the only self-consistency the header itself offers. */
     if (count == 0U || count > XX_WOLFFT_MAX_CHUNKS ||
@@ -543,8 +514,8 @@ static xx_wolfft_stream *xx_wolfft_parse(Abstractformat *self,
 
     previous_end = table_size;
     for (index = 0U; index < count; ++index) {
-        int64_t offset = (int64_t)xx_wolfft_le32(offsets + (size_t)index * 4U);
-        int64_t size = (int64_t)xx_wolfft_le16(lengths + (size_t)index * 2U);
+        int64_t offset = (int64_t)xx_data_get_u32(offsets + (size_t)index * 4U, 4, 0, false);
+        int64_t size = (int64_t)xx_data_get_u16(lengths + (size_t)index * 2U, 2, 0, false);
         xx_wolfft_member member;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
@@ -626,14 +597,14 @@ static void xx_wolfft_bmp_header(uint8_t *output) {
     xx_mem_zero(output, XX_WOLFFT_BMP_SIZE);
     output[0] = 'B';
     output[1] = 'M';
-    xx_wolfft_put_le32(output + 2U, XX_WOLFFT_BMP_SIZE);
-    xx_wolfft_put_le32(output + 10U, 54U);
-    xx_wolfft_put_le32(output + 14U, 40U);
-    xx_wolfft_put_le32(output + 18U, 64U);
-    xx_wolfft_put_le32(output + 22U, 64U);
-    xx_wolfft_put_le16(output + 26U, 1U);
-    xx_wolfft_put_le16(output + 28U, 32U);
-    xx_wolfft_put_le32(output + 34U, 64U * 64U * 4U);
+    xx_data_set_u32(output + 2U, 4, 0, XX_WOLFFT_BMP_SIZE, false);
+    xx_data_set_u32(output + 10U, 4, 0, 54U, false);
+    xx_data_set_u32(output + 14U, 4, 0, 40U, false);
+    xx_data_set_u32(output + 18U, 4, 0, 64U, false);
+    xx_data_set_u32(output + 22U, 4, 0, 64U, false);
+    xx_data_set_u16(output + 26U, 2, 0, 1U, false);
+    xx_data_set_u16(output + 28U, 2, 0, 32U, false);
+    xx_data_set_u32(output + 34U, 4, 0, 64U * 64U * 4U, false);
 }
 
 static void xx_wolfft_wav_header(uint8_t *output, uint32_t data_size) {
@@ -641,17 +612,17 @@ static void xx_wolfft_wav_header(uint8_t *output, uint32_t data_size) {
     xx_mem_zero(output, XX_WOLFFT_WAV_HEADER_SIZE);
     xx_rt_memcpy(output, "RIFF", 4U);
     /* U3's RIFF length includes the eight-byte RIFF header itself. */
-    xx_wolfft_put_le32(output + 4U, file_size);
+    xx_data_set_u32(output + 4U, 4, 0, file_size, false);
     xx_rt_memcpy(output + 8U, "WAVEfmt ", 8U);
-    xx_wolfft_put_le32(output + 16U, 18U);
-    xx_wolfft_put_le16(output + 20U, 1U);
-    xx_wolfft_put_le16(output + 22U, 1U);
-    xx_wolfft_put_le32(output + 24U, 7000U);
-    xx_wolfft_put_le32(output + 28U, 7000U);
-    xx_wolfft_put_le16(output + 32U, 1U);
-    xx_wolfft_put_le16(output + 34U, 8U);
+    xx_data_set_u32(output + 16U, 4, 0, 18U, false);
+    xx_data_set_u16(output + 20U, 2, 0, 1U, false);
+    xx_data_set_u16(output + 22U, 2, 0, 1U, false);
+    xx_data_set_u32(output + 24U, 4, 0, 7000U, false);
+    xx_data_set_u32(output + 28U, 4, 0, 7000U, false);
+    xx_data_set_u16(output + 32U, 2, 0, 1U, false);
+    xx_data_set_u16(output + 34U, 2, 0, 8U, false);
     xx_rt_memcpy(output + 38U, "data", 4U);
-    xx_wolfft_put_le32(output + 42U, data_size);
+    xx_data_set_u32(output + 42U, 4, 0, data_size, false);
 }
 
 /* Every source page was bounded by the structural parse.  Render recognized

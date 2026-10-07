@@ -10,6 +10,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 #ifdef UFS1
 #define U1_TYPE XX_FILE_TYPE_UFS1
 #else
@@ -65,20 +66,6 @@ typedef struct u1_view_s {
 } u1_view;
 typedef struct u1_cursor_s { u1_view *view; size_t index; } u1_cursor;
 static bool u1_stop(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
-static uint16_t u1_u16(const uint8_t *p, bool be) {
-    return be ? (uint16_t)(((uint16_t)p[0] << 8) | p[1])
-              : (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
-}
-static uint32_t u1_u32(const uint8_t *p, bool be) {
-    return be ? ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
-                ((uint32_t)p[2] << 8) | p[3]
-              : p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
-                ((uint32_t)p[3] << 24);
-}
-static uint64_t u1_u64(const uint8_t *p, bool be) {
-    return be ? ((uint64_t)u1_u32(p, true) << 32) | u1_u32(p + 4, true)
-              : u1_u32(p, false) | ((uint64_t)u1_u32(p + 4, false) << 32);
-}
 static bool u1_read(xx_io_device *dev, int64_t at, void *buf, size_t n,
                     xx_pd_struct *pd) {
     int64_t saved;
@@ -117,11 +104,11 @@ static bool u1_geometry(Abstractformat *f, u1_geo *g, xx_pd_struct *pd) {
     if (total < f->base_address || total - f->base_address < 8192 + 1376 ||
         !u1_read(f->device, f->base_address + 8192, b, sizeof(b), pd)) return false;
     xx_mem_zero(g, sizeof(*g));
-    if (u1_u32(b + 1372, false) == UINT32_C(0x011954)) g->be = false;
-    else if (u1_u32(b + 1372, true) == UINT32_C(0x011954)) g->be = true;
+    if (xx_data_get_u32(b + 1372, 4, 0, false) == UINT32_C(0x011954)) g->be = false;
+    else if (xx_data_get_u32(b + 1372, 4, 0, true) == UINT32_C(0x011954)) g->be = true;
     else return false;
     g->base = f->base_address;
-#define U1_FS(field, offset) g->field = u1_u32(b + offset, g->be)
+#define U1_FS(field, offset) g->field = xx_data_get_u32(b + offset, 4, 0, g->be)
     U1_FS(sblk,8); U1_FS(cblk,12); U1_FS(iblk,16); U1_FS(dblk,20);
     U1_FS(cgoffset,24); U1_FS(cgmask,28); U1_FS(blocks,36); U1_FS(groups,44);
     U1_FS(block,48); U1_FS(fragment,52); U1_FS(frag,56);
@@ -144,26 +131,26 @@ static bool u1_geometry(Abstractformat *f, u1_geo *g, xx_pd_struct *pd) {
         (uint64_t)g->iblk + ((uint64_t)g->ipg * 128U + g->fragment - 1U) /
            g->fragment > g->dblk ||
         g->cgsize < 104U || g->cgsize > g->block ||
-        u1_u32(b + 104, g->be) < sizeof(b) ||
-        u1_u32(b + 104, g->be) > 8192U ||
-        (uint64_t)(g->cblk - g->sblk) * g->fragment < u1_u32(b + 104, g->be) ||
-        (uint64_t)g->dblk * g->fragment < 8192U + u1_u32(b + 104, g->be) ||
-        u1_u32(b + 1324, g->be) != 2U || g->maxlink > 60U ||
+        xx_data_get_u32(b + 104, 4, 0, g->be) < sizeof(b) ||
+        xx_data_get_u32(b + 104, 4, 0, g->be) > 8192U ||
+        (uint64_t)(g->cblk - g->sblk) * g->fragment < xx_data_get_u32(b + 104, 4, 0, g->be) ||
+        (uint64_t)g->dblk * g->fragment < 8192U + xx_data_get_u32(b + 104, 4, 0, g->be) ||
+        xx_data_get_u32(b + 1324, 4, 0, g->be) != 2U || g->maxlink > 60U ||
         b[208] || b[209] != 1U || b[210] > 1U || (b[211] & ~0x80U) ||
-        ((b[211] & 0x80U) && (u1_u32(b + 1312, g->be) ||
-            u1_u64(b + 1104, g->be) || u1_u32(b + 1112, g->be)))) return false;
+        ((b[211] & 0x80U) && (xx_data_get_u32(b + 1312, 4, 0, g->be) ||
+            xx_data_get_u64(b + 1104, 8, 0, g->be) || xx_data_get_u32(b + 1112, 4, 0, g->be)))) return false;
     for (i = 0; i < 20U; ++i)
-        if (u1_u32(b + 1116U + i * 4U, g->be)) return false;
+        if (xx_data_get_u32(b + 1116U + i * 4U, 4, 0, g->be)) return false;
     for (x = g->block; x > 1U; x >>= 1) ++bshift;
     for (x = g->fragment; x > 1U; x >>= 1) ++fshift;
     for (x = g->frag; x > 1U; x >>= 1) ++fragshift;
-    if (u1_u32(b + 80, g->be) != bshift ||
-        u1_u32(b + 84, g->be) != fshift ||
-        u1_u32(b + 96, g->be) != fragshift ||
-        u1_u32(b + 100, g->be) != fshift - 9U) return false;
+    if (xx_data_get_u32(b + 80, 4, 0, g->be) != bshift ||
+        xx_data_get_u32(b + 84, 4, 0, g->be) != fshift ||
+        xx_data_get_u32(b + 96, 4, 0, g->be) != fragshift ||
+        xx_data_get_u32(b + 100, 4, 0, g->be) != fshift - 9U) return false;
     g->size = (uint64_t)g->blocks * g->fragment;
     if (g->size > (uint64_t)(total - g->base) ||
-        g->size < 8192U + u1_u32(b + 104, g->be) ||
+        g->size < 8192U + xx_data_get_u32(b + 104, 4, 0, g->be) ||
         !g->cssize || g->cssize < (uint64_t)g->groups * 16U ||
         g->cssize % g->fragment || g->csaddr >= g->blocks ||
         (uint64_t)g->csaddr + g->cssize / g->fragment > g->blocks) return false;
@@ -235,12 +222,12 @@ static bool u1_maps(xx_io_device *dev, u1_view *v, xx_pd_struct *pd) {
         nd = (uint32_t)(g->blocks - base < g->fpg ? g->blocks - base : g->fpg);
         if (u1_stop(pd) || !u1_rel(dev, g, (u1_cgstart(g,c) + g->cblk) *
                   g->fragment, buf, g->cgsize, pd) ||
-            u1_u32(buf + 4, g->be) != UINT32_C(0x090255) ||
-            u1_u32(buf + 12, g->be) != c || u1_u32(buf + 20, g->be) != nd)
+            xx_data_get_u32(buf + 4, 4, 0, g->be) != UINT32_C(0x090255) ||
+            xx_data_get_u32(buf + 12, 4, 0, g->be) != c || xx_data_get_u32(buf + 20, 4, 0, g->be) != nd)
             goto bad;
-        used = u1_u32(buf + 92, g->be);
-        free_at = u1_u32(buf + 96, g->be);
-        next = u1_u32(buf + 100, g->be);
+        used = xx_data_get_u32(buf + 92, 4, 0, g->be);
+        free_at = xx_data_get_u32(buf + 96, 4, 0, g->be);
+        next = xx_data_get_u32(buf + 100, 4, 0, g->be);
         if (used < 104U || used > g->cgsize || free_at > g->cgsize ||
             (uint64_t)used + (g->ipg + 7U) / 8U > free_at ||
             (uint64_t)free_at + (nd + 7U) / 8U > next || next > g->cgsize)
@@ -328,7 +315,7 @@ static bool u1_indirect(xx_io_device *dev, u1_view *v, u1_inode *node,
     if (!u1_rel(dev, &v->geo, (uint64_t)ptr * v->geo.fragment, buf,
                 v->geo.block, pd)) goto done;
     for (i = 0; i < v->geo.nindir; ++i) {
-        uint32_t child = u1_u32(buf + (size_t)i * 4U, v->geo.be);
+        uint32_t child = xx_data_get_u32(buf + (size_t)i * 4U, 4, 0, v->geo.be);
         uint64_t at = first + (uint64_t)i * span;
         if (++v->steps > U1_STEPS || u1_stop(pd)) goto done;
         if (at >= blocks) { if (child) goto done; continue; }
@@ -380,9 +367,9 @@ static bool u1_inode_get(xx_io_device *dev, u1_view *v, uint32_t ino,
     if (!u1_rel(dev,g,at,b,sizeof(b),pd)) return false;
     xx_mem_zero(&node,sizeof(node));
     node.number = ino; node.header = g->base + (int64_t)at;
-    node.mode = u1_u16(b,g->be); node.nlink = u1_u16(b+2,g->be);
-    node.size = u1_u64(b+8,g->be); node.flags = u1_u32(b+100,g->be);
-    node.disk_blocks = u1_u32(b+104,g->be);
+    node.mode = xx_data_get_u16(b, 2, 0, g->be); node.nlink = xx_data_get_u16(b+2, 2, 0, g->be);
+    node.size = xx_data_get_u64(b+8, 8, 0, g->be); node.flags = xx_data_get_u32(b+100, 4, 0, g->be);
+    node.disk_blocks = xx_data_get_u32(b+104, 4, 0, g->be);
     kind = node.mode & 0170000U;
     maxblocks = 12U + (uint64_t)g->nindir + (uint64_t)g->nindir*g->nindir +
                 (uint64_t)g->nindir*g->nindir*g->nindir;
@@ -391,8 +378,8 @@ static bool u1_inode_get(xx_io_device *dev, u1_view *v, uint32_t ino,
         (kind != U1_REG && kind != U1_DIR && kind != U1_LNK &&
          kind != 0010000U && kind != 0020000U && kind != 0060000U && kind != 0140000U) ||
         (kind == U1_DIR && (!node.size || node.size % 512U))) return false;
-    for (i=0;i<12U;++i) node.direct[i]=u1_u32(b+40U+i*4U,g->be);
-    for (i=0;i<3U;++i) node.indirect[i]=u1_u32(b+88U+i*4U,g->be);
+    for (i=0;i<12U;++i) node.direct[i]=xx_data_get_u32(b+40U+i*4U, 4, 0, g->be);
+    for (i=0;i<3U;++i) node.indirect[i]=xx_data_get_u32(b+88U+i*4U, 4, 0, g->be);
     if (kind == U1_REG || kind == U1_DIR ||
         (kind == U1_LNK && node.size >= g->maxlink)) {
         for (i=0;i<12U;++i)
@@ -613,7 +600,7 @@ static bool u1_walk(xx_io_device *dev,u1_view *v,uint32_t index,uint32_t parent,
             unsigned n,type;
             const char *child_path;
             if(++v->slots>U1_STEPS || u1_stop(pd) || sizeof(block)-pos<8U) goto done;
-            ino=u1_u32(entry,v->geo.be);rec=u1_u16(entry+4,v->geo.be);
+            ino=xx_data_get_u32(entry, 4, 0, v->geo.be);rec=xx_data_get_u16(entry+4, 2, 0, v->geo.be);
             if(rec<8U || rec%4U || rec>sizeof(block)-pos) goto done;
             pos+=rec;
             if(!ino) continue;

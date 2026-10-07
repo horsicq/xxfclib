@@ -12,7 +12,7 @@ static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  tg_space(&q);if(q.t==q.stop||(q.b[q.t]!='+'&&q.b[q.t]!='-'))return false;sign=q.b[q.t++]=='-';
  if(!tg_i(&q,&prec)||prec<1||prec>16||!tg_i(&q,&w)||!tg_i(&q,&h)||w<1||h<1||w>65536||h>65536||!tg_done(&q))return false;
  count=(uint64_t)w*h;bytes=prec<=8?1:2;z=count*bytes;if(count>16000000||z!=n-q.p)return false;
- for(i=0;i<count;++i){uint32_t u=bytes==1?b[q.p+i]:be?pm_be16(b+q.p+i*2):pm_le16(b+q.p+i*2);int32_t v=sign?(bytes==1?(int32_t)(int8_t)u:(int32_t)(int16_t)u):(int32_t)u;
+ for(i=0;i<count;++i){uint32_t u=bytes==1?b[q.p+i]:be?xx_data_get_u16(b+q.p+i*2, 2, 0, true):xx_data_get_u16(b+q.p+i*2, 2, 0, false);int32_t v=sign?(bytes==1?(int32_t)(int8_t)u:(int32_t)(int16_t)u):(int32_t)u;
   if((i&4095)==0&&tg_stop(pd)) {return false; } if(sign?(v<-(1<<(prec-1))||v>(1<<(prec-1))-1):(u>((1U<<prec)-1)))return false;}
  if(!tg_emit(f,s,"descriptor.pgx",0,q.p,n)||!tg_emit(f,s,"plane.pgx",q.p,z,n)) {return false; } s->size=(int64_t)n;return true;
 }

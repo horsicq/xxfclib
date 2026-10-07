@@ -36,6 +36,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_LBRCOBOL_COPY_CHUNK (64 * 1024)
 
@@ -168,20 +169,6 @@ static bool xx_lbrcobol_decode(Abstractformat *self,
 #define XX_LBRCOBOL_MAX_MEMBERS 0x10000
 #define XX_LBRCOBOL_MAX_NAME 255
 
-static uint16_t xx_lbrcobol_be16(const uint8_t *data) {
-    return (uint16_t)(((uint16_t)data[0] << 8) | (uint16_t)data[1]);
-}
-
-static uint32_t xx_lbrcobol_be32(const uint8_t *data) {
-    return ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16) |
-           ((uint32_t)data[2] << 8) | (uint32_t)data[3];
-}
-
-static uint32_t xx_lbrcobol_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
 /* Member names are plain COBOL module names plus '-', '.' and '_'. Anything
  * outside printable ASCII means the link field has walked off the directory
  * into payload bytes, which is the only way the chain can be seen to have
@@ -229,10 +216,10 @@ static xx_lbrcobol_stream *xx_lbrcobol_parse(Abstractformat *self,
         return NULL;
     }
     if (xx_rt_memcmp(header + 0x1e, "    ", 4) != 0) return NULL;
-    if (xx_lbrcobol_le32(header + XX_LBRCOBOL_MAGIC1_OFFSET) != 1U) return NULL;
-    if (xx_lbrcobol_le32(header + XX_LBRCOBOL_MAGIC2_OFFSET) != 1U) return NULL;
+    if (xx_data_get_u32(header + XX_LBRCOBOL_MAGIC1_OFFSET, 4, 0, false) != 1U) return NULL;
+    if (xx_data_get_u32(header + XX_LBRCOBOL_MAGIC2_OFFSET, 4, 0, false) != 1U) return NULL;
 
-    count = (int32_t)xx_lbrcobol_be16(header + XX_LBRCOBOL_COUNT_OFFSET);
+    count = (int32_t)xx_data_get_u16(header + XX_LBRCOBOL_COUNT_OFFSET, 2, 0, true);
     /* An empty library is not a thing worth accepting: with no records the
      * header alone would match, and the directory could not be checked. */
     if (count <= 0 || count > XX_LBRCOBOL_MAX_MEMBERS) return NULL;
@@ -266,10 +253,10 @@ static xx_lbrcobol_stream *xx_lbrcobol_parse(Abstractformat *self,
             goto fail;
         }
 
-        next = (int64_t)xx_lbrcobol_be32(record + 0);
-        data_offset = (int64_t)xx_lbrcobol_be32(record + 4)
+        next = (int64_t)xx_data_get_u32(record + 0, 4, 0, true);
+        data_offset = (int64_t)xx_data_get_u32(record + 4, 4, 0, true)
                       << XX_LBRCOBOL_BLOCK_SHIFT;
-        data_size = (int64_t)xx_lbrcobol_be32(record + 8);
+        data_size = (int64_t)xx_data_get_u32(record + 8, 4, 0, true);
 
         if (!xx_lbrcobol_range_within(span, data_offset, data_size)) goto fail;
         /* A payload can never overlap the fixed header. This is the cheapest
@@ -313,8 +300,8 @@ static xx_lbrcobol_stream *xx_lbrcobol_parse(Abstractformat *self,
          * swapping them silently yields nonsense stamps rather than an
          * error. The flags word at +0x10 carries nothing this reader
          * publishes, so it is not read at all. */
-        member.timestamp = ((uint64_t)xx_lbrcobol_be16(record + 14) << 16) |
-                           (uint64_t)xx_lbrcobol_be16(record + 12);
+        member.timestamp = ((uint64_t)xx_data_get_u16(record + 14, 2, 0, true) << 16) |
+                           (uint64_t)xx_data_get_u16(record + 12, 2, 0, true);
         member.is_folder = false;
 
         if (!xx_lbrcobol_add(stream, &member)) goto fail;

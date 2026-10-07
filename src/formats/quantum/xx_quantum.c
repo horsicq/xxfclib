@@ -44,6 +44,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_QUANTUM_HEADER_SIZE 8
 #define XX_QUANTUM_MIN_WINDOW_BITS 10U
@@ -89,15 +90,6 @@ typedef struct xx_quantum_stream_s {
 static void xx_quantum_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint16_t xx_quantum_read16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8U));
-}
-
-static uint32_t xx_quantum_read32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
 
 static bool xx_quantum_read_at(Abstractformat *self, int64_t offset,
                                uint8_t *buffer, size_t size) {
@@ -246,7 +238,7 @@ static xx_quantum_stream *xx_quantum_parse(Abstractformat *self,
     }
     if (header[0] != 'D' || header[1] != 'S' || header[2] != 0U) return NULL;
     if (header[3] == 0U) return NULL;
-    entries = xx_quantum_read16(header + 4);
+    entries = xx_data_get_u16(header + 4, 2, 0, false);
     if (entries == 0U) return NULL;
     if (header[6] < XX_QUANTUM_MIN_WINDOW_BITS ||
         header[6] > XX_QUANTUM_MAX_WINDOW_BITS) {
@@ -305,11 +297,11 @@ static xx_quantum_stream *xx_quantum_parse(Abstractformat *self,
         xx_mem_zero(&member, sizeof(member));
         member.header_offset = record_start;
         member.header_size = cursor + (int64_t)fixed_size - record_start;
-        member.uncompressed_size = (int64_t)xx_quantum_read32(fixed);
-        member.dos_time = xx_quantum_read16(fixed + 4);
-        member.dos_date = xx_quantum_read16(fixed + 6);
+        member.uncompressed_size = (int64_t)xx_data_get_u32(fixed, 4, 0, false);
+        member.dos_time = xx_data_get_u16(fixed + 4, 2, 0, false);
+        member.dos_date = xx_data_get_u16(fixed + 6, 2, 0, false);
         member.has_crc = stream->old_variant;
-        member.crc = stream->old_variant ? xx_quantum_read16(fixed + 8) : 0U;
+        member.crc = stream->old_variant ? xx_data_get_u16(fixed + 8, 2, 0, false) : 0U;
         cursor += (int64_t)fixed_size;
 
         member.name = xx_quantum_name_to_string(name_buffer, name_size);

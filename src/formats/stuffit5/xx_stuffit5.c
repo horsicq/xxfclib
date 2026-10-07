@@ -47,6 +47,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* The enum entry is added by the coordinator; keep compiling until it is. */
 #ifdef STUFFIT5
@@ -77,15 +78,6 @@
 #define SIT5_METHOD_RLE90 1U
 #define SIT5_METHOD_LZHUFF 13U
 #define SIT5_METHOD_ARSENIC 15U
-
-static uint16_t sit5_be16(const uint8_t *bytes) {
-    return (uint16_t)(((uint16_t)bytes[0] << 8U) | (uint16_t)bytes[1]);
-}
-
-static uint32_t sit5_be32(const uint8_t *bytes) {
-    return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
-           ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3];
-}
 
 static bool sit5_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
@@ -1502,8 +1494,8 @@ static bool sit5_parse(Abstractformat *format, sit5_stream **result) {
         xx_rt_memcmp(header, "StuffIt (c)1997-", 16U) != 0 ||
         header[82] != SIT5_VERSION)
         return false;
-    archive_size = (int64_t)sit5_be32(header + 84U);
-    first = sit5_be32(header + 94U);
+    archive_size = (int64_t)xx_data_get_u32(header + 84U, 4, 0, true);
+    first = xx_data_get_u32(header + 94U, 4, 0, true);
     if (archive_size > size || first < SIT5_HEADER_SIZE ||
         first > SIT5_MAX_PREAMBLE || (int64_t)first > archive_size)
         return false;
@@ -1518,7 +1510,7 @@ static bool sit5_parse(Abstractformat *format, sit5_stream **result) {
         if (match) {
             preamble[98] = preamble[99] = 0U;
             match = xx_crc16_arc_calc(0U, preamble, first) ==
-                    sit5_be16(header + 98U);
+                    xx_data_get_u16(header + 98U, 2, 0, true);
         }
         xx_mem_free(preamble);
         if (!match) return false;
@@ -1528,7 +1520,7 @@ static bool sit5_parse(Abstractformat *format, sit5_stream **result) {
     entry = (uint8_t *)xx_mem_alloc(SIT5_ENTRY_MAX + 1U);
     if (!stream || !entry) goto fail;
     stream->archive_size = archive_size;
-    stream->root_entries = sit5_be16(header + 92U);
+    stream->root_entries = xx_data_get_u16(header + 92U, 2, 0, true);
     stream->archive_flags = header[83];
     path[0] = NULL;
     remaining[0] = stream->root_entries;
@@ -1557,9 +1549,9 @@ static bool sit5_parse(Abstractformat *format, sit5_stream **result) {
             cursor > archive_size - (int64_t)SIT5_ENTRY_MIN ||
             !sit5_read_at(format->device, base + cursor, entry,
                           SIT5_ENTRY_MIN) ||
-            sit5_be32(entry) != SIT5_ENTRY_MAGIC)
+            xx_data_get_u32(entry, 4, 0, true) != SIT5_ENTRY_MAGIC)
             goto fail;
-        header_size = sit5_be16(entry + 6U);
+        header_size = xx_data_get_u16(entry + 6U, 2, 0, true);
         if (header_size < SIT5_ENTRY_MIN ||
             (int64_t)header_size > archive_size - cursor ||
             !sit5_read_at(format->device, base + cursor + SIT5_ENTRY_MIN,
@@ -1569,15 +1561,15 @@ static bool sit5_parse(Abstractformat *format, sit5_stream **result) {
         crc = xx_crc16_arc_calc(0U, entry, 32U);
         crc = xx_crc16_arc_calc(crc, "\0\0", 2U);
         crc = xx_crc16_arc_calc(crc, entry + 34U, header_size - 34U);
-        if (crc != sit5_be16(entry + 32U)) goto fail;
+        if (crc != xx_data_get_u16(entry + 32U, 2, 0, true)) goto fail;
         version = entry[4];
         flags = entry[9];
-        name_length = sit5_be16(entry + 30U);
+        name_length = xx_data_get_u16(entry + 30U, 2, 0, true);
 
         /* A folder closes with a bare marker entry; it is not one of the
          * parent's counted children. */
         if ((flags & SIT5_FLAG_FOLDER) != 0U &&
-            sit5_be32(entry + 34U) == SIT5_END_MARK) {
+            xx_data_get_u32(entry + 34U, 4, 0, true) == SIT5_END_MARK) {
             cursor += (int64_t)header_size;
             continue;
         }
@@ -1594,7 +1586,7 @@ static bool sit5_parse(Abstractformat *format, sit5_stream **result) {
             !sit5_read_at(format->device, base + data_start, second,
                           second_size))
             goto fail;
-        flags2 = sit5_be16(second);
+        flags2 = xx_data_get_u16(second, 2, 0, true);
         data_start += (int64_t)second_size;
 
         component = sit5_component(entry + name_offset, name_length);
@@ -1605,9 +1597,9 @@ static bool sit5_parse(Abstractformat *format, sit5_stream **result) {
 
         xx_mem_zero(&member, sizeof(member));
         member.header_offset = base + cursor;
-        member.modified = sit5_be32(entry + 14U);
-        member.mac_type = sit5_be32(second + 4U);
-        member.finder_flags = sit5_be16(second + 12U);
+        member.modified = xx_data_get_u32(entry + 14U, 4, 0, true);
+        member.mac_type = xx_data_get_u32(second + 4U, 4, 0, true);
+        member.finder_flags = xx_data_get_u16(second + 12U, 2, 0, true);
         member.encrypted = (flags & SIT5_FLAG_ENCRYPTED) != 0U;
 
         if ((flags & SIT5_FLAG_FOLDER) != 0U) {
@@ -1624,14 +1616,14 @@ static bool sit5_parse(Abstractformat *format, sit5_stream **result) {
             path[depth + 1U] = xx_str_dup(final);
             if (!path[depth + 1U]) goto fail;
             ++depth;
-            remaining[depth] = sit5_be16(entry + 46U);
+            remaining[depth] = xx_data_get_u16(entry + 46U, 2, 0, true);
             cursor = data_start;
             continue;
         }
 
         {
-            uint32_t data_unpacked = sit5_be32(entry + 34U);
-            uint32_t data_packed = sit5_be32(entry + 38U);
+            uint32_t data_unpacked = xx_data_get_u32(entry + 34U, 4, 0, true);
+            uint32_t data_packed = xx_data_get_u32(entry + 38U, 4, 0, true);
             uint32_t rsrc_unpacked = 0U;
             uint32_t rsrc_packed = 0U;
             uint16_t rsrc_crc = 0U;
@@ -1644,9 +1636,9 @@ static bool sit5_parse(Abstractformat *format, sit5_stream **result) {
                     xx_str_free(full);
                     goto fail;
                 }
-                rsrc_unpacked = sit5_be32(second + second_size);
-                rsrc_packed = sit5_be32(second + second_size + 4U);
-                rsrc_crc = sit5_be16(second + second_size + 8U);
+                rsrc_unpacked = xx_data_get_u32(second + second_size, 4, 0, true);
+                rsrc_packed = xx_data_get_u32(second + second_size + 4U, 4, 0, true);
+                rsrc_crc = xx_data_get_u16(second + second_size + 8U, 2, 0, true);
                 rsrc_method = second[second_size + 12U];
                 data_start += 14 + (int64_t)second[second_size + 13U];
             }
@@ -1666,7 +1658,7 @@ static bool sit5_parse(Abstractformat *format, sit5_stream **result) {
                 member.data_offset = base + data_start + (int64_t)rsrc_packed;
                 member.packed_size = data_packed;
                 member.unpacked_size = data_unpacked;
-                member.crc16 = sit5_be16(entry + 42U);
+                member.crc16 = xx_data_get_u16(entry + 42U, 2, 0, true);
                 member.method = entry[46];
                 member.resource = false;
                 if (!member.name || !sit5_add_member(stream, &member, NULL)) {

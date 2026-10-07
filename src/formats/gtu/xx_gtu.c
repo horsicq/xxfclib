@@ -62,6 +62,7 @@
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/algo/gtu/xx_gtu.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_GTU_COPY_CHUNK (64 * 1024)
 
@@ -169,8 +170,6 @@ static bool xx_gtu_add(xx_gtu_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_gtu_le16(const uint8_t *data);
-static uint32_t xx_gtu_le32(const uint8_t *data);
 static int64_t xx_gtu_i32(const uint8_t *data);
 static void xx_gtu_decode_name(uint8_t *data, int64_t length);
 static bool xx_gtu_name_is_valid(const uint8_t *data, int64_t length);
@@ -187,20 +186,11 @@ static bool xx_gtu_decode(Abstractformat *self, const xx_gtu_member *member, uin
 /* A u16 field, so this only refuses the absurd; OS/2 paths are far shorter. */
 /* Every frame but a member's last carries exactly 64 KiB of plaintext. */
 
-static uint16_t xx_gtu_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_gtu_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
 /* The sizes in the information block are signed in the reference, which then
  * tests them for being negative. Sign extending here keeps that test
  * meaningful instead of turning a high bit into a four-billion-byte extent. */
 static int64_t xx_gtu_i32(const uint8_t *data) {
-    return (int64_t)(int32_t)xx_gtu_le32(data);
+    return (int64_t)(int32_t)xx_data_get_u32(data, 4, 0, false);
 }
 
 /* Running-difference cipher, decoded in place over `length` bytes. The seed is
@@ -330,7 +320,7 @@ static xx_gtu_stream *xx_gtu_parse(Abstractformat *self, xx_pd_struct *pd) {
     /* The container's only global field, and the cheapest thing standing
      * between an arbitrary file and an index walk: the u32 at +0 states the
      * size of the file it sits in, and must match it exactly. */
-    if ((int64_t)xx_gtu_le32(size_field) != span) return NULL;
+    if ((int64_t)xx_data_get_u32(size_field, 4, 0, false) != span) return NULL;
 
     stream = (xx_gtu_stream *)xx_mem_alloc(sizeof(*stream));
     if (!stream) return NULL;
@@ -347,7 +337,7 @@ static xx_gtu_stream *xx_gtu_parse(Abstractformat *self, xx_pd_struct *pd) {
                             sizeof(record))) {
             goto fail;
         }
-        block_offset = (int64_t)xx_gtu_le32(record);
+        block_offset = (int64_t)xx_data_get_u32(record, 4, 0, false);
 
         /* The chain ends on the record that points at itself. There is no
          * count and no sentinel name; this self-reference is the terminator,
@@ -357,13 +347,13 @@ static xx_gtu_stream *xx_gtu_parse(Abstractformat *self, xx_pd_struct *pd) {
             break;
         }
 
-        kind = xx_gtu_le16(record + 6);
-        if (xx_gtu_le16(record + 4) != (uint16_t)XX_GTU_RECORD_TAG ||
+        kind = xx_data_get_u16(record + 6, 2, 0, false);
+        if (xx_data_get_u16(record + 4, 2, 0, false) != (uint16_t)XX_GTU_RECORD_TAG ||
             kind > (uint16_t)XX_GTU_MAX_RECORD_KIND ||
-            xx_gtu_le16(record + 8) != 0U) {
+            xx_data_get_u16(record + 8, 2, 0, false) != 0U) {
             goto fail;
         }
-        name_size = (int64_t)xx_gtu_le16(record + 10);
+        name_size = (int64_t)xx_data_get_u16(record + 10, 2, 0, false);
         if (name_size <= 0 || name_size > XX_GTU_MAX_NAME) goto fail;
         if (block_offset <= 0 || block_offset >= span) goto fail;
 
@@ -453,8 +443,8 @@ static xx_gtu_stream *xx_gtu_parse(Abstractformat *self, xx_pd_struct *pd) {
         /* The record's kind word, unchanged: the container has no method
          * field, and both kinds are the same framed LZARI. */
         member.method = (uint32_t)kind;
-        member.timestamp = ((uint64_t)xx_gtu_le16(info) << 16) |
-                           (uint64_t)xx_gtu_le16(info + 2);
+        member.timestamp = ((uint64_t)xx_data_get_u16(info, 2, 0, false) << 16) |
+                           (uint64_t)xx_data_get_u16(info + 2, 2, 0, false);
         member.is_folder = false;
 
         if (!xx_gtu_add(stream, &member)) goto fail;

@@ -25,6 +25,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_TWS_COPY_CHUNK (64 * 1024)
 
@@ -149,15 +150,6 @@ static bool xx_tws_decode(Abstractformat *self,
 #define XX_TWS_MAX_MEMBERS 100000
 #define XX_TWS_NAME_MAX 12
 
-static uint16_t xx_tws_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_tws_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
 static xx_tws_stream *xx_tws_parse(Abstractformat *self, xx_pd_struct *pd) {
     xx_tws_stream *stream;
     uint8_t record[XX_TWS_RECORD_SIZE];
@@ -180,11 +172,11 @@ static xx_tws_stream *xx_tws_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (record[0] < 1U || record[0] > XX_TWS_NAME_MAX) return NULL;
     /* Two fixed fields: without them a file whose first byte happens to be a
      * plausible name length would start parsing. */
-    if (xx_tws_le16(record + 13) != 1U || xx_tws_le16(record + 15) != 0U) {
+    if (xx_data_get_u16(record + 13, 2, 0, false) != 1U || xx_data_get_u16(record + 15, 2, 0, false) != 0U) {
         return NULL;
     }
-    count_minus_one = (int32_t)xx_tws_le32(record + 17);
-    payload_total = (int32_t)xx_tws_le32(record + 21);
+    count_minus_one = (int32_t)xx_data_get_u32(record + 17, 4, 0, false);
+    payload_total = (int32_t)xx_data_get_u32(record + 21, 4, 0, false);
     if (count_minus_one <= 0 || count_minus_one > XX_TWS_MAX_MEMBERS ||
         payload_total <= 0) {
         return NULL;
@@ -215,8 +207,8 @@ static xx_tws_stream *xx_tws_parse(Abstractformat *self, xx_pd_struct *pd) {
         }
         name_length = record[0];
         if (name_length < 1U || name_length > XX_TWS_NAME_MAX) goto fail;
-        data_offset = (int64_t)(int32_t)xx_tws_le32(record + 17);
-        data_size = (int64_t)(int32_t)xx_tws_le32(record + 21);
+        data_offset = (int64_t)(int32_t)xx_data_get_u32(record + 17, 4, 0, false);
+        data_size = (int64_t)(int32_t)xx_data_get_u32(record + 21, 4, 0, false);
         if (data_offset < 0 || data_size < 0 ||
             !xx_tws_range_within(span, data_offset, data_size)) {
             goto fail;
@@ -235,8 +227,8 @@ static xx_tws_stream *xx_tws_parse(Abstractformat *self, xx_pd_struct *pd) {
         member.data_offset = self->base_address + data_offset;
         member.compressed_size = data_size;
         member.uncompressed_size = data_size;
-        member.timestamp = (uint64_t)xx_tws_le16(record + 13) |
-                           ((uint64_t)xx_tws_le16(record + 15) << 16);
+        member.timestamp = (uint64_t)xx_data_get_u16(record + 13, 2, 0, false) |
+                           ((uint64_t)xx_data_get_u16(record + 15, 2, 0, false) << 16);
         if (!xx_tws_add(stream, &member)) {
             xx_str_free(member.name);
             goto fail;

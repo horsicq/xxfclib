@@ -51,6 +51,7 @@
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 #ifdef QLIE_PACK
 #define QP_FILE_TYPE XX_FILE_TYPE_QLIE_PACK
 #else
@@ -85,11 +86,6 @@ typedef struct qp_layout {
 } qp_layout;
 typedef struct qp_name_key { const char *name; uint32_t index; } qp_name_key;
 static bool qp_stopped(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
-static uint16_t qp_le16(const uint8_t *p) { return (uint16_t)(p[0] | (uint16_t)p[1] << 8); }
-static uint32_t qp_le32(const uint8_t *p) { return (uint32_t)p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24; }
-static uint64_t qp_le64(const uint8_t *p) { return qp_le32(p) | (uint64_t)qp_le32(p + 4) << 32; }
-static void qp_put32(uint8_t *p, uint32_t n) { p[0] = (uint8_t)n; p[1] = (uint8_t)(n >> 8); p[2] = (uint8_t)(n >> 16); p[3] = (uint8_t)(n >> 24); }
-static void qp_put64(uint8_t *p, uint64_t n) { qp_put32(p, (uint32_t)n); qp_put32(p + 4, (uint32_t)(n >> 32)); }
 static bool qp_read(xx_io_device *device, int64_t at, void *buffer, size_t size, xx_pd_struct *pd) {
     size_t done = 0U;
     if (!device || at < 0 || qp_stopped(pd) || xx_io_seek64(device, at, XX_RT_SEEK_SET)) return false;
@@ -209,7 +205,7 @@ static char *qp_unicode_name(const uint8_t *raw, size_t size) {
     size_t i, at = 0U;
     if (!out) return NULL;
     for (i = 0U; i < size; i += 2U) {
-        uint16_t c = qp_le16(raw + i);
+        uint16_t c = xx_data_get_u16(raw + i, 2, 0, false);
         if (c >= 32U && c < 127U && c != '%') out[at++] = c == '\\' ? '/' : (char)c;
         else if (c == '%') at += qp_escape(out + at, '%');
         else {
@@ -225,7 +221,7 @@ static bool qp_key_name(const qp_member *member, bool unicode) {
     size_t i, k, units = unicode ? member->raw_size / 2U : member->raw_size;
     for (i = 0U; i + sizeof(marker) - 1U <= units; ++i) {
         for (k = 0U; k < sizeof(marker) - 1U; ++k) {
-            uint16_t c = unicode ? qp_le16(member->raw_name + (i + k) * 2U) : member->raw_name[i + k];
+            uint16_t c = unicode ? xx_data_get_u16(member->raw_name + (i + k) * 2U, 2, 0, false) : member->raw_name[i + k];
             if (c != (uint8_t)marker[k]) break;
         }
         if (k == sizeof(marker) - 1U) return true;
@@ -252,7 +248,7 @@ static bool qp_hash(const uint8_t *bytes, size_t size, bool v31, uint32_t *out, 
     for (i = 0U; i + 8U <= size; i += 8U) {
         if (!(i & 65535U) && qp_stopped(pd)) return false;
         hash = qp_add(hash, v31 ? UINT64_C(0xA35793A7A35793A7) : UINT64_C(0x0307030703070307), 16U);
-        key = qp_add(key, qp_le64(bytes + i) ^ hash, 16U);
+        key = qp_add(key, xx_data_get_u64(bytes + i, 8, 0, false) ^ hash, 16U);
         if (v31) key = qp_rotate(key);
     }
     if (v31) {
@@ -268,7 +264,7 @@ static void qp_mt_init(qp_mt *mt, uint32_t seed) {
 }
 static void qp_mt_mix(qp_mt *mt, const uint8_t *bytes, size_t size) {
     size_t i, count = size / 4U; if (count > 64U) count = 64U;
-    for (i = 0U; i < count; ++i) mt->state[i] ^= qp_le32(bytes + i * 4U);
+    for (i = 0U; i < count; ++i) mt->state[i] ^= xx_data_get_u32(bytes + i * 4U, 4, 0, false);
 }
 static uint32_t qp_mt_rand(qp_mt *mt) {
     uint32_t y; unsigned i;
@@ -315,14 +311,14 @@ static bool qp_decrypt(qp_layout *layout, const qp_member *member, uint8_t *byte
         for (i = 0U; i + 8U <= member->size; i += 8U) {
             if (!(i & 65535U) && qp_stopped(pd)) return false;
             hash64 = qp_add(hash64, UINT64_C(0xCE24F523CE24F523), 32U) ^ feedback;
-            feedback = qp_le64(bytes + i) ^ hash64; qp_put64(bytes + i, feedback);
+            feedback = xx_data_get_u64(bytes + i, 8, 0, false) ^ hash64; xx_data_set_u64(bytes + i, 8, 0, feedback, false);
         }
         return !qp_stopped(pd);
     }
     hash = v31 && member->encryption == 2U ? 0x86F7E2U : 0x85F532U;
     seed = v31 && member->encryption == 2U ? 0x4437F1U : 0x33F641U;
     for (i = 0U; i < (v31 ? member->raw_size / 2U : member->raw_size); ++i) {
-        hash += v31 ? (uint32_t)qp_le16(member->raw_name + i * 2U) << (i & 7U) : ((uint32_t)i & 255U) * member->raw_name[i];
+        hash += v31 ? (uint32_t)xx_data_get_u16(member->raw_name + i * 2U, 2, 0, false) << (i & 7U) : ((uint32_t)i & 255U) * member->raw_name[i];
         seed ^= hash;
     }
     t = v31 && member->encryption == 2U ? 13U : 7U;
@@ -349,7 +345,7 @@ static bool qp_decrypt(qp_layout *layout, const qp_member *member, uint8_t *byte
         if (member->encryption == 2U) {
             for (i = 0U; i < 256U; ++i) {
                 int32_t value = (int32_t)((i + 7U) * (i + 3U));
-                if (i % 3U) { value = -value; } qp_put32(key_data + i * 4U, (uint32_t)value);
+                if (i % 3U) { value = -value; } xx_data_set_u32(key_data + i * 4U, 4, 0, (uint32_t)value, false);
             }
             if (key_size >= 128U) {
                 size_t k = key[49] % 73U + 128U, step = key[79] % 7U + 7U;
@@ -364,10 +360,10 @@ static bool qp_decrypt(qp_layout *layout, const qp_member *member, uint8_t *byte
         else {
             uint32_t index = member->encryption == 2U ? 2U * (t & 15U) : t;
             cell = table[index] | (uint64_t)table[index + 1U] << 32;
-            if (member->encryption == 2U) cell ^= qp_le64(key_data + 8U * t);
+            if (member->encryption == 2U) cell ^= xx_data_get_u64(key_data + 8U * t, 8, 0, false);
         }
-        hash64 = qp_add(hash64 ^ cell, cell, 32U); plain = qp_le64(bytes + i) ^ hash64;
-        qp_put64(bytes + i, plain); hash64 = qp_add(hash64, plain, 8U) ^ plain;
+        hash64 = qp_add(hash64 ^ cell, cell, 32U); plain = xx_data_get_u64(bytes + i, 8, 0, false) ^ hash64;
+        xx_data_set_u64(bytes + i, 8, 0, plain, false); hash64 = qp_add(hash64, plain, 8U) ^ plain;
         hash64 = qp_add(qp_shift(hash64, 1U), plain, 16U);
         t = v31 ? (member->encryption == 2U ? (t + 1U) & 127U : (t + 2U) & 31U) : (t + 1U) & 15U;
     }
@@ -410,7 +406,7 @@ static bool qp_bpe(const uint8_t *input, size_t size, uint8_t *output,
                    size_t wanted, xx_pd_struct *pd) {
     uint8_t left[256], right[256], stack[257]; uint64_t lengths[256];
     size_t src = 12U, dst = 0U; bool short_count;
-    if (size < 12U || qp_le32(input) != 0xFF435031U || qp_le32(input + 8U) != wanted) return false;
+    if (size < 12U || xx_data_get_u32(input, 4, 0, false) != 0xFF435031U || xx_data_get_u32(input + 8U, 4, 0, false) != wanted) return false;
     short_count = (input[4] & 1U) != 0U;
     while (src < size) {
         unsigned i; uint32_t count, k;
@@ -432,7 +428,7 @@ static bool qp_bpe(const uint8_t *input, size_t size, uint8_t *output,
             }
         }
         if (size - src < (short_count ? 2U : 4U)) return false;
-        count = short_count ? qp_le16(input + src) : qp_le32(input + src); src += short_count ? 2U : 4U;
+        count = short_count ? xx_data_get_u16(input + src, 2, 0, false) : xx_data_get_u32(input + src, 4, 0, false); src += short_count ? 2U : 4U;
         if ((uint64_t)count > size - src || !qp_bpe_lengths(left, right, lengths, (uint64_t)wanted + 1U, pd)) return false;
         for (k = 0U; k < count; ++k) {
             unsigned pending = 1U;
@@ -545,7 +541,7 @@ static qp_layout *qp_parse_inner(Abstractformat *format, const xx_list_s *option
     layout = (qp_layout *)xx_mem_alloc(sizeof(*layout)); if (!layout) return NULL;
     xx_mem_zero(layout, sizeof(*layout)); layout->device = format->device; layout->base = format->base_address;
     layout->format_size = size; layout->major = footer[11] - '0'; layout->minor = footer[13] - '0';
-    layout->count = qp_le32(footer + 16U); index = qp_le64(footer + 20U); position = index; bound = (uint64_t)size - 28U;
+    layout->count = xx_data_get_u32(footer + 16U, 4, 0, false); index = xx_data_get_u64(footer + 20U, 8, 0, false); position = index; bound = (uint64_t)size - 28U;
     profile = qp_option(format, options, XX_QLIE_PACK_OPT_LEGACY_PROFILE);
     layout->legacy = profile ? (uint32_t)xx_var_get_u64(profile) : ((xx_qlie_pack *)format)->legacy_profile;
     if (layout->count > QP_MAX_COUNT || index > bound || (layout->major == 1U && (!layout->legacy || layout->legacy > 3U))) goto done;
@@ -573,7 +569,7 @@ static qp_layout *qp_parse_inner(Abstractformat *format, const xx_list_s *option
         bool unicode = layout->major == 3U && layout->minor == 1U;
         if (qp_stopped(pd) || bound - position < 2U || position - index > QP_MAX_INDEX ||
             !qp_read(format->device, layout->base + (int64_t)position, length_bytes, 2U, pd)) goto done;
-        units = qp_le16(length_bytes); member->header_offset = layout->base + (int64_t)position; position += 2U;
+        units = xx_data_get_u16(length_bytes, 2, 0, false); member->header_offset = layout->base + (int64_t)position; position += 2U;
         if (!units || units > 256U) goto done;
         member->raw_size = (uint16_t)(units * (unicode ? 2U : 1U));
         if (bound - position < (uint64_t)member->raw_size + field_size ||
@@ -587,9 +583,9 @@ static qp_layout *qp_parse_inner(Abstractformat *format, const xx_list_s *option
         layout->retained_memory += (uint64_t)member->raw_size * 4U + 14U;
         if (name_memory > QP_MAX_INDEX || position - index + field_size > QP_MAX_INDEX ||
             !qp_read(format->device, layout->base + (int64_t)position, fields, field_size, pd)) goto done;
-        offset = qp_le64(fields); member->size = qp_le32(fields + 8U); member->unpacked_size = qp_le32(fields + 12U);
-        member->packed = qp_le32(fields + 16U) != 0U; member->encryption = qp_le32(fields + 20U);
-        member->hash = field_size == 28U ? qp_le32(fields + 24U) : 0U;
+        offset = xx_data_get_u64(fields, 8, 0, false); member->size = xx_data_get_u32(fields + 8U, 4, 0, false); member->unpacked_size = xx_data_get_u32(fields + 12U, 4, 0, false);
+        member->packed = xx_data_get_u32(fields + 16U, 4, 0, false) != 0U; member->encryption = xx_data_get_u32(fields + 20U, 4, 0, false);
+        member->hash = field_size == 28U ? xx_data_get_u32(fields + 24U, 4, 0, false) : 0U;
         if (offset > index || member->size > index - offset || member->size > QP_MAX_MEMBER ||
             member->unpacked_size > QP_MAX_MEMBER || (!member->packed && member->size != member->unpacked_size) ||
             (unicode && member->encryption > 2U)) goto done;

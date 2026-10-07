@@ -8,6 +8,7 @@
 #include <string.h>
 #include <limits.h>
 #include <wchar.h>
+#include "xxfclib/data/xx_data.h"
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -61,10 +62,6 @@ static bool gb_output(gb_process *p,const void *data,size_t count){size_t done=0
  ssize_t wrote=send(p->input,(const uint8_t *)data+done,want,MSG_NOSIGNAL);if(wrote<0&&errno==EINTR)continue;if(wrote<0&&(errno==EAGAIN||errno==EWOULDBLOCK)){struct pollfd poller={p->input,POLLOUT,0};(void)poll(&poller,1,5);continue;}if(wrote<=0){p->status=XX_GRUB_BACKEND_IO;return false;}done+=(size_t)wrote;
 #endif
  }return true;}
-static uint32_t gb_le32(const uint8_t *p){return (uint32_t)p[0]|(uint32_t)p[1]<<8|(uint32_t)p[2]<<16|(uint32_t)p[3]<<24;}
-static uint64_t gb_le64(const uint8_t *p){return gb_le32(p)|((uint64_t)gb_le32(p+4)<<32);}
-static void gb_put32(uint8_t *p,uint32_t v){p[0]=(uint8_t)v;p[1]=(uint8_t)(v>>8);p[2]=(uint8_t)(v>>16);p[3]=(uint8_t)(v>>24);}
-static void gb_put64(uint8_t *p,uint64_t v){gb_put32(p,(uint32_t)v);gb_put32(p+4,(uint32_t)(v>>32));}
 static void gb_close(gb_process *p){
 #ifdef _WIN32
  if(p->input) {CloseHandle(p->input); } if(p->output)CloseHandle(p->output);if(p->process){if(WaitForSingleObject(p->process,100)!=WAIT_OBJECT_0){TerminateProcess(p->process,2);WaitForSingleObject(p->process,1000);}CloseHandle(p->process);}if(p->job)CloseHandle(p->job);
@@ -94,12 +91,12 @@ static bool gb_run(xx_io_device *source,int64_t base,int64_t length,const char *
  p.input=p.output=-1;
 #endif
  if(!source||!filesystem||!(fsn=strlen(filesystem))||fsn>16U||pn>4096U||(path&&(!pn||path[0]!='/'))||(total=xx_io_size(source))<0||base<0||base>total) {goto done; } if(length<0)length=total-base;if(length>total-base)goto done;if(memory>256U*1024U*1024U)memory=256U*1024U*1024U;if(memory<65536U||expected>max){p.status=XX_GRUB_BACKEND_LIMIT;goto done;}if(!gb_live(&p))goto done;saved=xx_io_tell(source);
- if(!gb_start(&p,opts?opts->helper_path:NULL,memory)){p.status=XX_GRUB_BACKEND_UNAVAILABLE;goto done;}memcpy(h,"GFS1",4);gb_put32(h+4,operation);gb_put64(h+8,(uint64_t)length);gb_put64(h+16,memory);gb_put64(h+24,max);gb_put32(h+32,(uint32_t)fsn);gb_put32(h+36,(uint32_t)pn);if(!gb_output(&p,h,40)||!gb_output(&p,filesystem,fsn)||!gb_output(&p,path,pn))goto done;
- for(;;){uint32_t type;if(!gb_input(&p,h,4))goto done;type=gb_le32(h);
-  if(type==1U){uint64_t at;uint32_t count;size_t read=0;if(!gb_input(&p,h,12))goto done;at=gb_le64(h);count=gb_le32(h+8);if(!count||count>sizeof(buffer)||at>(uint64_t)length||count>(uint64_t)length-at){p.status=XX_GRUB_BACKEND_FORMAT;goto done;}if(xx_io_seek64(source,base+(int64_t)at,SEEK_SET)!=0){p.status=XX_GRUB_BACKEND_IO;goto done;}while(read<count){ssize_t n;if(!gb_live(&p))goto done;n=xx_io_read(source,buffer+read,count-read);if(n<=0||(size_t)n>count-read){p.status=XX_GRUB_BACKEND_IO;goto done;}read+=(size_t)n;}gb_put32(h,count);if(!gb_output(&p,h,4)||!gb_output(&p,buffer,count))goto done;
-  }else if(type==2U){uint32_t flags,count;xx_grub_backend_entry e;if(operation!=1U||!gb_input(&p,h,24))goto done;flags=gb_le32(h);e.size=gb_le64(h+4);e.mtime=(int64_t)gb_le64(h+12);count=gb_le32(h+20);if(flags>3U||!count||count>4096U||e.size>max||++listed>100000U){p.status=XX_GRUB_BACKEND_FORMAT;goto done;}if(!gb_input(&p,member,count))goto done;member[count]=0;if(strlen(member)!=count||member[0]!='/'){p.status=XX_GRUB_BACKEND_FORMAT;goto done;}e.path=member;e.directory=(flags&1U)!=0;e.has_mtime=(flags&2U)!=0;if(callback&&!callback(user,&e))goto done;
-  }else if(type==3U){uint32_t count;size_t wrote=0;if(operation!=2U||!gb_input(&p,h,4))goto done;count=gb_le32(h);if(!count||count>sizeof(buffer)||received>expected||count>expected-received){p.status=XX_GRUB_BACKEND_FORMAT;goto done;}if(!gb_input(&p,buffer,count))goto done;while(dest&&wrote<count){ssize_t n;if(!gb_live(&p))goto done;n=xx_io_write(dest,buffer+wrote,count-wrote);if(n<=0||(size_t)n>count-wrote){p.status=XX_GRUB_BACKEND_IO;goto done;}wrote+=(size_t)n;}received+=count;
-  }else if(type==4U){uint32_t code;uint64_t count;if(!gb_input(&p,h,12))goto done;code=gb_le32(h);count=gb_le64(h+4);if(code||count!=(operation==1U?listed:received)||(operation==2U&&received!=expected)){p.status=XX_GRUB_BACKEND_FORMAT;goto done;}p.status=XX_GRUB_BACKEND_OK;ok=gb_live(&p);break;
+ if(!gb_start(&p,opts?opts->helper_path:NULL,memory)){p.status=XX_GRUB_BACKEND_UNAVAILABLE;goto done;}memcpy(h,"GFS1",4);xx_data_set_u32(h+4, 4, 0, operation, false);xx_data_set_u64(h+8, 8, 0, (uint64_t)length, false);xx_data_set_u64(h+16, 8, 0, memory, false);xx_data_set_u64(h+24, 8, 0, max, false);xx_data_set_u32(h+32, 4, 0, (uint32_t)fsn, false);xx_data_set_u32(h+36, 4, 0, (uint32_t)pn, false);if(!gb_output(&p,h,40)||!gb_output(&p,filesystem,fsn)||!gb_output(&p,path,pn))goto done;
+ for(;;){uint32_t type;if(!gb_input(&p,h,4))goto done;type=xx_data_get_u32(h, 4, 0, false);
+  if(type==1U){uint64_t at;uint32_t count;size_t read=0;if(!gb_input(&p,h,12))goto done;at=xx_data_get_u64(h, 8, 0, false);count=xx_data_get_u32(h+8, 4, 0, false);if(!count||count>sizeof(buffer)||at>(uint64_t)length||count>(uint64_t)length-at){p.status=XX_GRUB_BACKEND_FORMAT;goto done;}if(xx_io_seek64(source,base+(int64_t)at,SEEK_SET)!=0){p.status=XX_GRUB_BACKEND_IO;goto done;}while(read<count){ssize_t n;if(!gb_live(&p))goto done;n=xx_io_read(source,buffer+read,count-read);if(n<=0||(size_t)n>count-read){p.status=XX_GRUB_BACKEND_IO;goto done;}read+=(size_t)n;}xx_data_set_u32(h, 4, 0, count, false);if(!gb_output(&p,h,4)||!gb_output(&p,buffer,count))goto done;
+  }else if(type==2U){uint32_t flags,count;xx_grub_backend_entry e;if(operation!=1U||!gb_input(&p,h,24))goto done;flags=xx_data_get_u32(h, 4, 0, false);e.size=xx_data_get_u64(h+4, 8, 0, false);e.mtime=(int64_t)xx_data_get_u64(h+12, 8, 0, false);count=xx_data_get_u32(h+20, 4, 0, false);if(flags>3U||!count||count>4096U||e.size>max||++listed>100000U){p.status=XX_GRUB_BACKEND_FORMAT;goto done;}if(!gb_input(&p,member,count))goto done;member[count]=0;if(strlen(member)!=count||member[0]!='/'){p.status=XX_GRUB_BACKEND_FORMAT;goto done;}e.path=member;e.directory=(flags&1U)!=0;e.has_mtime=(flags&2U)!=0;if(callback&&!callback(user,&e))goto done;
+  }else if(type==3U){uint32_t count;size_t wrote=0;if(operation!=2U||!gb_input(&p,h,4))goto done;count=xx_data_get_u32(h, 4, 0, false);if(!count||count>sizeof(buffer)||received>expected||count>expected-received){p.status=XX_GRUB_BACKEND_FORMAT;goto done;}if(!gb_input(&p,buffer,count))goto done;while(dest&&wrote<count){ssize_t n;if(!gb_live(&p))goto done;n=xx_io_write(dest,buffer+wrote,count-wrote);if(n<=0||(size_t)n>count-wrote){p.status=XX_GRUB_BACKEND_IO;goto done;}wrote+=(size_t)n;}received+=count;
+  }else if(type==4U){uint32_t code;uint64_t count;if(!gb_input(&p,h,12))goto done;code=xx_data_get_u32(h, 4, 0, false);count=xx_data_get_u64(h+4, 8, 0, false);if(code||count!=(operation==1U?listed:received)||(operation==2U&&received!=expected)){p.status=XX_GRUB_BACKEND_FORMAT;goto done;}p.status=XX_GRUB_BACKEND_OK;ok=gb_live(&p);break;
   }else{p.status=XX_GRUB_BACKEND_FORMAT;goto done;}
  }
 done:gb_close(&p);if(saved>=0&&xx_io_seek64(source,saved,SEEK_SET)!=0){p.status=XX_GRUB_BACKEND_IO;ok=false;}if(opts&&opts->status)*opts->status=p.status;return ok;}

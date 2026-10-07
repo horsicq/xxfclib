@@ -29,6 +29,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared, so the alias macro that
  * sits next to the enumerator is tested instead. */
@@ -58,15 +59,6 @@
 
 static const uint8_t cic_tag[CIC_TAG_SIZE] = {0x77, 0x77, 0x67, 0x54, 0x29,
                                               0x48};
-
-static uint16_t cic_le16(const uint8_t *p) {
-    return (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
-}
-
-static uint32_t cic_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
-           ((uint32_t)p[3] << 24);
-}
 
 static bool cic_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -492,18 +484,18 @@ static bool cic_pe_overlay(xx_io_device *device, int64_t base, int64_t total,
     if (size < 0x200U || !cic_read_at(device, base, mz, sizeof(mz)) ||
         mz[0] != 'M' || mz[1] != 'Z')
         return false;
-    lfanew = cic_le32(mz + 0x3C);
+    lfanew = xx_data_get_u32(mz + 0x3C, 4, 0, false);
     if (lfanew < 0x40U || lfanew > 0x10000U ||
         (uint64_t)lfanew + 24U + 2U > size ||
         !cic_read_at(device, base + (int64_t)lfanew, nt, sizeof(nt)) ||
         nt[0] != 'P' || nt[1] != 'E' || nt[2] != 0U || nt[3] != 0U)
         return false;
-    nsec = cic_le16(nt + 6);
-    optsz = cic_le16(nt + 20);
+    nsec = xx_data_get_u16(nt + 6, 2, 0, false);
+    optsz = xx_data_get_u16(nt + 20, 2, 0, false);
     if (nsec == 0U || nsec > CIC_MAX_SECTIONS || optsz < 2U ||
         !cic_read_at(device, base + (int64_t)lfanew + 24, magic, 2U))
         return false;
-    optmagic = cic_le16(magic);
+    optmagic = xx_data_get_u16(magic, 2, 0, false);
     if (optmagic == 0x10BU) {
         dd = 96U;
         nrva_at = 92U;
@@ -520,17 +512,17 @@ static bool cic_pe_overlay(xx_io_device *device, int64_t base, int64_t total,
         return false;
     for (index = 0U; index < nsec; ++index) {
         const uint8_t *s = sections + (size_t)index * 40U;
-        uint32_t raw_size = cic_le32(s + 16), raw_ptr = cic_le32(s + 20);
+        uint32_t raw_size = xx_data_get_u32(s + 16, 4, 0, false), raw_ptr = xx_data_get_u32(s + 20, 4, 0, false);
         if (raw_size && (uint64_t)raw_ptr + raw_size > max_end)
             max_end = (uint64_t)raw_ptr + raw_size;
     }
     if (max_end == 0U || max_end >= size) return false;
     if ((uint32_t)optsz >= dd + 5U * 8U &&
         cic_read_at(device, base + (int64_t)lfanew + 24 + nrva_at, dir, 4U) &&
-        cic_le32(dir) > 4U &&
+        xx_data_get_u32(dir, 4, 0, false) > 4U &&
         cic_read_at(device, base + (int64_t)lfanew + 24 + dd + 32, dir, 8U)) {
-        sec_off = cic_le32(dir);
-        sec_size = cic_le32(dir + 4);
+        sec_off = xx_data_get_u32(dir, 4, 0, false);
+        sec_size = xx_data_get_u32(dir + 4, 4, 0, false);
     }
     *overlay = base + (int64_t)max_end;
     *end = total;
@@ -568,13 +560,13 @@ static bool cic_walk(xx_io_device *device, int64_t base, cic_scan *scan) {
         uint32_t size;
         if (got < CIC_CHUNK_HEADER || !cic_read_at(device, p, head, got))
             return false;
-        id = cic_le16(head);
-        flags = cic_le16(head + 2);
-        size = cic_le32(head + 4);
+        id = xx_data_get_u16(head, 2, 0, false);
+        flags = xx_data_get_u16(head + 2, 2, 0, false);
+        size = xx_data_get_u32(head + 4, 4, 0, false);
         if (id == CIC_DATA_ID) {
             /* {7F7F, 0, size} then the size again, then the members. */
             if (index == 0U || flags != 0U || got < 12U ||
-                cic_le32(head + 8) != size ||
+                xx_data_get_u32(head + 8, 4, 0, false) != size ||
                 (uint64_t)size > (uint64_t)(room - 12))
                 return false;
             scan->region = p + 12;
@@ -593,13 +585,13 @@ static bool cic_walk(xx_io_device *device, int64_t base, cic_scan *scan) {
             if (flags == 1U) {
                 /* {u32 unpacked, stream}; a Clickteam-Deflate stream opens
                  * on block type 5, 6 or 7. */
-                if (size < 5U || got < 13U || cic_le32(head + 8) == 0U ||
+                if (size < 5U || got < 13U || xx_data_get_u32(head + 8, 4, 0, false) == 0U ||
                     (head[12] & 7U) < 5U)
                     return false;
             }
         } else if (flags != 0U) {
             /* {u32 unpacked, u8 method, stream} */
-            if (size < 6U || got < 13U || cic_le32(head + 8) == 0U ||
+            if (size < 6U || got < 13U || xx_data_get_u32(head + 8, 4, 0, false) == 0U ||
                 head[12] > 2U)
                 return false;
         }
@@ -637,7 +629,7 @@ static uint8_t *cic_load_chunk(xx_io_device *device, const cic_scan *scan,
         return body;
     }
     if (chunk->size < 5U) goto done;
-    unpacked = cic_le32(body);
+    unpacked = xx_data_get_u32(body, 4, 0, false);
     if (unpacked == 0U || unpacked > CIC_MAX_META ||
         (uint64_t)unpacked > *budget)
         goto done;
@@ -1056,7 +1048,7 @@ static bool cic_parse_list1(const uint8_t *b, size_t n, uint64_t region_size,
     uint64_t running = 0U;
     xx_mem_zero(list, sizeof(*list));
     if (n < 4U) return false;
-    count = cic_le32(b);
+    count = xx_data_get_u32(b, 4, 0, false);
     if (count == 0U || count > CIC_MAX_FILES ||
         (uint64_t)count * (CIC_LIST1_HEADER + 2U) > n)
         return false;
@@ -1067,13 +1059,13 @@ static bool cic_parse_list1(const uint8_t *b, size_t n, uint64_t region_size,
         size_t name_at, name_size;
         uint8_t flags;
         if (n - pos < CIC_LIST1_HEADER) goto fail;
-        size = cic_le32(b + pos);
+        size = xx_data_get_u32(b + pos, 4, 0, false);
         if (size <= CIC_LIST1_HEADER || size > CIC_LIST1_MAX_ENTRY ||
             size > n - pos)
             goto fail;
         flags = b[pos + 0x0D];
-        unpacked = cic_le32(b + pos + 0x12);
-        packed = cic_le32(b + pos + 0x16);
+        unpacked = xx_data_get_u32(b + pos + 0x12, 4, 0, false);
+        packed = xx_data_get_u32(b + pos + 0x16, 4, 0, false);
         if ((uint64_t)packed > region_size - running) goto fail;
         if (packed == 0U && unpacked != 0U) goto fail;
         name_at = CIC_LIST1_HEADER;
@@ -1123,8 +1115,8 @@ static const cic_layout2 cic_layouts2[] = {
 static bool cic_times_ok(const uint8_t *p) {
     uint32_t i;
     for (i = 0U; i < 3U; ++i) {
-        uint64_t t = (uint64_t)cic_le32(p + i * 8U) |
-                     ((uint64_t)cic_le32(p + i * 8U + 4U) << 32);
+        uint64_t t = (uint64_t)xx_data_get_u32(p + i * 8U, 4, 0, false) |
+                     ((uint64_t)xx_data_get_u32(p + i * 8U + 4U, 4, 0, false) << 32);
         if (t != 0U && (t < UINT64_C(0x019DB1DED53E8000) ||
                         t >= UINT64_C(0x029F8E129EF10000)))
             return false;
@@ -1172,14 +1164,14 @@ static bool cic_node2(const cic_layout2 *l, const uint8_t *node, size_t size,
             pk_at = l->packed_at, tm_at = l->time_at, nm_at = l->name_at;
     xx_mem_zero(out, sizeof(*out));
     if (size < (size_t)l->type_at + 2U) return false;
-    type = cic_le16(node + l->type_at);
+    type = xx_data_get_u16(node + l->type_at, 2, 0, false);
     if (type != 0U) {
         /* The v40 uninstaller node: sizes at +24/+28/+32, name at +40.  It
          * is kept when it reads cleanly and ignored otherwise; other
          * versions' non-file nodes are skipped. */
         if (l->version == 40U && type == 2U && size > 40U) {
-            uint32_t unpacked = cic_le32(node + 24), offset = cic_le32(node + 28),
-                     packed = cic_le32(node + 32);
+            uint32_t unpacked = xx_data_get_u32(node + 24, 4, 0, false), offset = xx_data_get_u32(node + 28, 4, 0, false),
+                     packed = xx_data_get_u32(node + 32, 4, 0, false);
             size_t name_size = cic_name_length(node + 40, size - 40U, false);
             if (name_size && name_size <= CIC_MAX_NAME &&
                 cic_record_ok(device, scan, offset, packed)) {
@@ -1215,9 +1207,9 @@ static bool cic_node2(const cic_layout2 *l, const uint8_t *node, size_t size,
     if ((size_t)un_at + 4U > size || (size_t)off_at + 4U > size ||
         (size_t)pk_at + 4U > size)
         return false;
-    out->unpacked = cic_le32(node + un_at);
-    out->offset = cic_le32(node + off_at);
-    out->packed = cic_le32(node + pk_at);
+    out->unpacked = xx_data_get_u32(node + un_at, 4, 0, false);
+    out->offset = xx_data_get_u32(node + off_at, 4, 0, false);
+    out->packed = xx_data_get_u32(node + pk_at, 4, 0, false);
     /* Even an empty file is stored as a record ({01} + an empty zlib
      * stream), so a node with data fields always points at one. */
     return cic_record_ok(device, scan, out->offset, out->packed);
@@ -1233,7 +1225,7 @@ static bool cic_walk_list2(const cic_layout2 *l, const uint8_t *b, size_t n,
         size_t size;
         cic_node node;
         if (n - pos < l->size_bytes) return false;
-        size = l->size_bytes == 2U ? cic_le16(b + pos) : cic_le32(b + pos);
+        size = l->size_bytes == 2U ? xx_data_get_u16(b + pos, 2, 0, false) : xx_data_get_u32(b + pos, 4, 0, false);
         if (size < (size_t)l->size_bytes + 2U || size > n - pos) return false;
         if (!cic_node2(l, b + pos, size, device, scan, &node)) return false;
         if (list && node.has_member &&
@@ -1288,7 +1280,7 @@ static bool cic_parse_list2(const uint8_t *b, size_t n, xx_io_device *device,
     uint32_t count, pass, k;
     xx_mem_zero(list, sizeof(*list));
     if (n < 4U) return false;
-    count = cic_le16(b); /* followed by two unused bytes */
+    count = xx_data_get_u16(b, 2, 0, false); /* followed by two unused bytes */
     /* Every node is at least a size field and a type field. */
     if (count == 0U || (uint64_t)count * 4U > n - 4U) return false;
     /* First pass: the nodes must fill the list exactly.  Second pass: a

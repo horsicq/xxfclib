@@ -32,6 +32,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -114,15 +115,6 @@ static const uint16_t twrx_cp437_high[128] = {
     0x2261, 0x00B1, 0x2265, 0x2264, 0x2320, 0x2321, 0x00F7, 0x2248,
     0x00B0, 0x2219, 0x00B7, 0x221A, 0x207F, 0x00B2, 0x25A0, 0x00A0
 };
-
-static uint16_t twrx_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t twrx_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
 
 static bool twrx_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
@@ -337,11 +329,11 @@ static bool twrx_parse(Abstractformat *format, twrx_stream **result) {
         if (xx_rt_memcmp(header, "TWRX", 4U) != 0) goto fail;
         /* Only one version word exists; anything else is a layout this
          * reader has never been validated against. */
-        if (twrx_le16(header + 4U) != TWRX_VERSION) goto fail;
-        if (twrx_le16(header + 6U) != 0U) goto fail;
-        packed = (int64_t)twrx_le32(header + 0x12U);
-        unpacked = (int64_t)twrx_le32(header + 0x16U);
-        name_length = (int64_t)twrx_le32(header + 0x1aU);
+        if (xx_data_get_u16(header + 4U, 2, 0, false) != TWRX_VERSION) goto fail;
+        if (xx_data_get_u16(header + 6U, 2, 0, false) != 0U) goto fail;
+        packed = (int64_t)xx_data_get_u32(header + 0x12U, 4, 0, false);
+        unpacked = (int64_t)xx_data_get_u32(header + 0x16U, 4, 0, false);
+        name_length = (int64_t)xx_data_get_u32(header + 0x1aU, 4, 0, false);
         if (name_length <= 0 || name_length > (int64_t)TWRX_MAX_NAME)
             goto fail;
         if (packed > TWRX_MAX_MEMBER || unpacked > TWRX_MAX_MEMBER) goto fail;
@@ -354,7 +346,7 @@ static bool twrx_parse(Abstractformat *format, twrx_stream **result) {
                               TWRX_BLOCK_HEADER_SIZE,
                           raw_name, (size_t)name_length)) goto fail;
         xx_mem_zero(&member, sizeof(member));
-        member.method = twrx_le16(header + 8U);
+        member.method = xx_data_get_u16(header + 8U, 2, 0, false);
         /* A stored member that disagrees with itself about its own length is
          * not a stored member.  This holds for every stored member of the
          * corpus. */
@@ -363,8 +355,8 @@ static bool twrx_parse(Abstractformat *format, twrx_stream **result) {
         member.name = twrx_make_name(raw_name, (size_t)name_length,
                                      &member.unsafe_name);
         if (!member.name) goto fail;
-        member.tag = twrx_le32(header + 0x0aU);
-        member.check = twrx_le32(header + 0x0eU);
+        member.tag = xx_data_get_u32(header + 0x0aU, 4, 0, false);
+        member.check = xx_data_get_u32(header + 0x0eU, 4, 0, false);
         member.header_offset = format->base_address + cursor;
         member.data_offset = format->base_address + data_offset;
         member.packed_size = packed;
@@ -484,8 +476,8 @@ static bool twrx_inflate(const uint8_t *packed, size_t packed_size,
     twrx_sink sink;
     size_t stream_size, consumed = 0U;
     if (packed_size <= TWRX_DEFLATE_PREFIX ||
-        twrx_le16(packed) != TWRX_METHOD_DEFLATE ||
-        (size_t)twrx_le32(packed + 2U) != packed_size - TWRX_DEFLATE_PREFIX)
+        xx_data_get_u16(packed, 2, 0, false) != TWRX_METHOD_DEFLATE ||
+        (size_t)xx_data_get_u32(packed + 2U, 4, 0, false) != packed_size - TWRX_DEFLATE_PREFIX)
         return false;
     stream_size = packed_size - TWRX_DEFLATE_PREFIX;
     xx_mem_zero(&device, sizeof(device));

@@ -43,6 +43,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef GRASP
 #define XX_GRASP_FILE_TYPE XX_FILE_TYPE_GRASP
@@ -76,15 +77,6 @@ typedef struct xx_grasp_stream_s {
 static void xx_grasp_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint32_t xx_grasp_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static uint16_t xx_grasp_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
 
 static bool xx_grasp_read_at(Abstractformat *self, int64_t offset,
                              uint8_t *buffer, size_t size) {
@@ -186,7 +178,7 @@ static xx_grasp_stream *xx_grasp_parse(Abstractformat *self,
 
     /* The index size is the first thing read and the first thing bounded;
      * every allocation below is derived from it. */
-    index_size = (int64_t)xx_grasp_le16(head);
+    index_size = (int64_t)xx_data_get_u16(head, 2, 0, false);
     if (index_size == 0 || index_size % XX_GRASP_ENTRY_SIZE != 0) return NULL;
     if (index_size > span - 2) return NULL;
     slots = (uint64_t)(index_size / XX_GRASP_ENTRY_SIZE);
@@ -212,7 +204,7 @@ static xx_grasp_stream *xx_grasp_parse(Abstractformat *self,
     for (position = 0U; position < slots; ++position) {
         const uint8_t *entry =
             index + (size_t)(position * XX_GRASP_ENTRY_SIZE);
-        int64_t block = (int64_t)xx_grasp_le32(entry);
+        int64_t block = (int64_t)xx_data_get_u32(entry, 4, 0, false);
         uint8_t length_bytes[4];
         int64_t length;
 
@@ -230,7 +222,7 @@ static xx_grasp_stream *xx_grasp_parse(Abstractformat *self,
                               sizeof(length_bytes))) {
             goto fail;
         }
-        length = (int64_t)xx_grasp_le32(length_bytes);
+        length = (int64_t)xx_data_get_u32(length_bytes, 4, 0, false);
         if (length < 0 || length > span - block - 4) goto fail;
 
         stream->items[position].name = xx_grasp_make_name(entry + 4);

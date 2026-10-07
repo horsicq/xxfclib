@@ -12,6 +12,7 @@
 #include "xxfclib/memory/xx_memory.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 static void xx_tar_xz_vtable_destroy(Abstractformat *self);
 
@@ -19,13 +20,6 @@ static void xx_tar_xz_vtable_destroy(Abstractformat *self);
 #define XX_TAR_XZ_BLOCK_HEADER_SIZE 12U
 #define XX_TAR_XZ_STREAM_FOOTER_SIZE 12U
 #define XX_TAR_XZ_CHECK_SIZE 4U
-
-static void xx_tar_xz_put_u32le(uint8_t *destination, uint32_t value) {
-    destination[0] = (uint8_t)value;
-    destination[1] = (uint8_t)(value >> 8U);
-    destination[2] = (uint8_t)(value >> 16U);
-    destination[3] = (uint8_t)(value >> 24U);
-}
 
 static bool xx_tar_xz_write_exact(xx_io_device *device, const void *data,
                                   size_t size, xx_pd_struct *pd) {
@@ -121,8 +115,8 @@ static bool xx_tar_xz_encode(Abstractformat *outer,
     xx_mem_copy(stream_header, stream_magic, sizeof(stream_magic));
     stream_header[6] = 0U;
     stream_header[7] = 1U; /* CRC32 integrity check. */
-    xx_tar_xz_put_u32le(stream_header + 8U,
-                        xx_crc32_calc(0U, stream_header + 6U, 2U));
+    xx_data_set_u32(stream_header + 8U, 4, 0,
+                        xx_crc32_calc(0U, stream_header + 6U, 2U), false);
     if (!xx_tar_xz_write_exact(outer->device, stream_header,
                                sizeof(stream_header), pd) ||
         !xx_tar_xz_write_exact(outer->device, block_header,
@@ -149,7 +143,7 @@ static bool xx_tar_xz_encode(Abstractformat *outer,
         !xx_tar_xz_write_exact(outer->device, zeroes, block_padding, pd)) {
         return false;
     }
-    xx_tar_xz_put_u32le(footer, tar_crc32);
+    xx_data_set_u32(footer, 4, 0, tar_crc32, false);
     if (!xx_tar_xz_write_exact(outer->device, footer,
                                XX_TAR_XZ_CHECK_SIZE, pd)) {
         return false;
@@ -165,21 +159,21 @@ static bool xx_tar_xz_encode(Abstractformat *outer,
     }
     while ((index_size & 3U) != 0U) index[index_size++] = 0U;
     if (index_size > sizeof(index) - 4U) return false;
-    xx_tar_xz_put_u32le(index + index_size,
-                        xx_crc32_calc(0U, index, index_size));
+    xx_data_set_u32(index + index_size, 4, 0,
+                        xx_crc32_calc(0U, index, index_size), false);
     index_size += 4U;
     if (!xx_tar_xz_write_exact(outer->device, index, index_size, pd)) {
         return false;
     }
 
-    xx_tar_xz_put_u32le(footer + 4U,
-                        (uint32_t)(index_size / 4U - 1U));
+    xx_data_set_u32(footer + 4U, 4, 0,
+                        (uint32_t)(index_size / 4U - 1U), false);
     footer[8] = 0U;
     footer[9] = 1U;
     footer[10] = 0x59U;
     footer[11] = 0x5aU;
-    xx_tar_xz_put_u32le(footer,
-                        xx_crc32_calc(0U, footer + 4U, 6U));
+    xx_data_set_u32(footer, 4, 0,
+                        xx_crc32_calc(0U, footer + 4U, 6U), false);
     if (!xx_tar_xz_write_exact(outer->device, footer, sizeof(footer), pd)) {
         return false;
     }
@@ -208,8 +202,8 @@ static bool xx_tar_xz_encode(Abstractformat *outer,
     block_header[2] = 0x21U; /* LZMA2 filter ID. */
     block_header[3] = 1U;    /* One filter-property byte. */
     block_header[4] = lzma2_property;
-    xx_tar_xz_put_u32le(block_header + 8U,
-                        xx_crc32_calc(0U, block_header, 8U));
+    xx_data_set_u32(block_header + 8U, 4, 0,
+                        xx_crc32_calc(0U, block_header, 8U), false);
     if (xx_io_seek(outer->device,
                    (long)(payload_offset -
                           (int64_t)XX_TAR_XZ_BLOCK_HEADER_SIZE),

@@ -6,12 +6,12 @@
 static bool signature(const uint8_t *p) {return !xx_rt_memcmp(p,"1FQ0",4) || !xx_rt_memcmp(p,"1TRC",4) || !xx_rt_memcmp(p,"1STF",4) || !xx_rt_memcmp(p,"1RES",4) || !xx_rt_memcmp(p,"1FRE",4) || !xx_rt_memcmp(p,"1ENV",4) || !xx_rt_memcmp(p,"1GAI",4) || !xx_rt_memcmp(p,"1SND",4);}
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[16];nh_blob b={0};bool ok=false;uint64_t at=16;uint32_t streams[128];uint64_t times[128];unsigned stream_count=0,frames=0;
-    if(!pm_read(f,0,h,16) || xx_rt_memcmp(h,"SDIF",4) || pm_be32(h+4)!=8 || pm_be32(h+8)!=3 || pm_be32(h+12)!=1) return false;
+    if(!pm_read(f,0,h,16) || xx_rt_memcmp(h,"SDIF",4) || xx_data_get_u32(h+4, 4, 0, true)!=8 || xx_data_get_u32(h+8, 4, 0, true)!=3 || xx_data_get_u32(h+12, 4, 0, true)!=1) return false;
     NH_NEED(nh_load(f,&b,pd) && nh_add(f,s,&b,"header",0,16));
-    while(at<b.n) {uint64_t end,time;uint32_t stream,count;unsigned j,i;NH_NEED(++frames<=1024 && nh_span(&b,at,24) && signature(b.p+(size_t)at));end=at+8+pm_be32(b.p+(size_t)at+4);time=fd_be64(b.p+(size_t)at+8);stream=pm_be32(b.p+(size_t)at+16);count=pm_be32(b.p+(size_t)at+20);
+    while(at<b.n) {uint64_t end,time;uint32_t stream,count;unsigned j,i;NH_NEED(++frames<=1024 && nh_span(&b,at,24) && signature(b.p+(size_t)at));end=at+8+xx_data_get_u32(b.p+(size_t)at+4, 4, 0, true);time=xx_data_get_u64(b.p+(size_t)at+8, 8, 0, true);stream=xx_data_get_u32(b.p+(size_t)at+16, 4, 0, true);count=xx_data_get_u32(b.p+(size_t)at+20, 4, 0, true);
         NH_NEED(end>=at+24 && end<=b.n && sv_finite64(time) && !(time>>63) && count && count<=32);
         for(j=0;j<stream_count && streams[j]!=stream;++j) {}if(j==stream_count) {NH_NEED(stream_count<128);streams[j]=stream;times[j]=0;++stream_count;}NH_NEED(sv_ordered64(time)>=sv_ordered64(times[j]));times[j]=time;at+=24;
-        for(i=0;i<count;++i) {uint32_t type,rows,cols,width;uint64_t bytes,pad;NH_NEED(eh_span(at,16,end) && signature(b.p+(size_t)at));type=pm_be32(b.p+(size_t)at+4);rows=pm_be32(b.p+(size_t)at+8);cols=pm_be32(b.p+(size_t)at+12);width=type&255;
+        for(i=0;i<count;++i) {uint32_t type,rows,cols,width;uint64_t bytes,pad;NH_NEED(eh_span(at,16,end) && signature(b.p+(size_t)at));type=xx_data_get_u32(b.p+(size_t)at+4, 4, 0, true);rows=xx_data_get_u32(b.p+(size_t)at+8, 4, 0, true);cols=xx_data_get_u32(b.p+(size_t)at+12, 4, 0, true);width=type&255;
             NH_NEED(rows && cols && rows<=1000000 && cols<=1024 && (width==1 || width==2 || width==4 || width==8) && ((type>>8)==1 || (type>>8)==2 || (! (type>>8) && (width==4 || width==8))) && fd_mul((uint64_t)rows*cols,width,&bytes));at+=16;pad=(8-bytes%8)%8;NH_NEED(eh_span(at,bytes+pad,end));if(!(type>>8)) NH_NEED(nh_floats(&b,at,bytes,width,true));NH_NEED(nh_zero(&b,at+bytes,pad) && nh_add(f,s,&b,"matrix",at,bytes));at+=bytes+pad;
         }NH_NEED(at==end);
     }NH_NEED(frames);s->size=(int64_t)b.n;ok=true;

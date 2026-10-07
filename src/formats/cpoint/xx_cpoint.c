@@ -18,6 +18,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define CPOINT_META_HEADER_SIZE 13U
 #define CPOINT_FILE_HEADER_SIZE 13U
@@ -42,11 +43,6 @@ typedef struct cpoint_stream_s {
     size_t index;
     int64_t archive_size;
 } cpoint_stream;
-
-static uint32_t cpoint_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
 
 static bool cpoint_read_at(xx_io_device *device, int64_t offset, void *buffer,
                            size_t size) {
@@ -136,9 +132,9 @@ static bool cpoint_parse(Abstractformat *format, cpoint_stream **result) {
             !cpoint_read_at(format->device, format->base_address + cursor,
                             header, sizeof(header))) return false;
         if (header[0] == 3U) break;
-        tag = cpoint_le32(header);
-        payload_size = cpoint_le32(header + 5U);
-        if (header[4] != 0U || cpoint_le32(header + 9U) != 0U ||
+        tag = xx_data_get_u32(header, 4, 0, false);
+        payload_size = xx_data_get_u32(header + 5U, 4, 0, false);
+        if (header[4] != 0U || xx_data_get_u32(header + 9U, 4, 0, false) != 0U ||
             payload_size > CPOINT_MAX_META_SIZE ||
             (int64_t)payload_size > size - cursor -
                                     (int64_t)sizeof(header) ||
@@ -160,8 +156,8 @@ static bool cpoint_parse(Abstractformat *format, cpoint_stream **result) {
         if (!cpoint_read_at(format->device, format->base_address + cursor,
                             header, sizeof(header))) goto fail;
         if (header[0] != 3U) break;
-        data_size = cpoint_le32(header + 1U);
-        name_size = cpoint_le32(header + 5U);
+        data_size = xx_data_get_u32(header + 1U, 4, 0, false);
+        name_size = xx_data_get_u32(header + 5U, 4, 0, false);
         if (name_size < 2U || name_size > CPOINT_MAX_NAME ||
             (int64_t)name_size > size - cursor -
                                  (int64_t)CPOINT_FILE_HEADER_SIZE)

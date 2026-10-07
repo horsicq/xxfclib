@@ -7,6 +7,7 @@
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "../xx_payload_members.h"
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef PCE_PRI
 #define PCE_PRI_FILE_TYPE XX_FILE_TYPE_PCE_PRI
@@ -22,11 +23,6 @@
 #define PRI_CYLINDERS 1024U
 #define PRI_HEADS 2U
 #define PRI_TRANSFER 32768U
-
-static uint32_t pri_be32(const uint8_t *p) {
-    return ((uint32_t)p[0] << 24U) | ((uint32_t)p[1] << 16U) |
-           ((uint32_t)p[2] << 8U) | (uint32_t)p[3];
-}
 
 static const xx_crc_model pri_crc_model = {
     32U, UINT64_C(0x1edc6f41), 0U, false, false, 0U, "PCE PRI"
@@ -53,7 +49,7 @@ static bool pri_chunk_crc(Abstractformat *format, int64_t offset,
     }
     return (!pd || !xx_pd_is_stopped(pd)) &&
            pm_read(format, at, trailer, sizeof(trailer)) &&
-           (uint32_t)xx_crc_context_final(&crc) == pri_be32(trailer);
+           (uint32_t)xx_crc_context_final(&crc) == xx_data_get_u32(trailer, 4, 0, true);
 }
 
 static bool pm_parse(Abstractformat *format, pm_stream *stream,
@@ -72,7 +68,7 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
         int64_t next;
         if (++chunks > PRI_MAX_CHUNKS || available - cursor < 12 ||
             !pm_read(format, cursor, header, sizeof(header))) return false;
-        length = pri_be32(header + 4U);
+        length = xx_data_get_u32(header + 4U, 4, 0, true);
         if ((uint64_t)length > (uint64_t)(available - cursor - 12))
             return false;
         next = cursor + 12 + (int64_t)length;
@@ -101,10 +97,10 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
             if (pending || length != 16U || tracks >= PRI_MAX_TRACKS ||
                 !pm_read(format, cursor + 8, fields, sizeof(fields)))
                 return false;
-            cylinder = pri_be32(fields);
-            head = pri_be32(fields + 4U);
-            bits = pri_be32(fields + 8U);
-            clock = pri_be32(fields + 12U);
+            cylinder = xx_data_get_u32(fields, 4, 0, true);
+            head = xx_data_get_u32(fields + 4U, 4, 0, true);
+            bits = xx_data_get_u32(fields + 8U, 4, 0, true);
+            clock = xx_data_get_u32(fields + 12U, 4, 0, true);
             if (cylinder >= PRI_CYLINDERS || head >= PRI_HEADS ||
                 bits > PRI_MAX_TRACK_BITS || clock == 0U) return false;
             index = cylinder * PRI_HEADS + head;

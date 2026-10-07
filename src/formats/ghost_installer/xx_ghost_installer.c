@@ -70,6 +70,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and not edited from here,
  * so the alias macro that sits next to the enumerator is tested instead. */
@@ -187,15 +188,6 @@ typedef struct gi_reader_s {
 
 /* ------------------------------------------------------------ reading -- */
 
-static uint16_t gi_u16(const uint8_t *p) {
-    return (uint16_t)((uint16_t)p[0] | ((uint16_t)p[1] << 8U));
-}
-
-static uint32_t gi_u32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) | ((uint32_t)p[2] << 16U) |
-           ((uint32_t)p[3] << 24U);
-}
-
 static bool gi_raw_read(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     size_t done = 0U;
@@ -298,21 +290,21 @@ static bool gi_pe_overlay(gi_reader *reader, int64_t base, int64_t *overlay) {
         !gi_get(reader, base, dos, sizeof(dos)) || dos[0] != 'M' ||
         dos[1] != 'Z')
         return false;
-    lfanew = gi_u32(dos + 0x3CU);
+    lfanew = xx_data_get_u32(dos + 0x3CU, 4, 0, false);
     if (lfanew < 4U || lfanew > GI_PE_MAX_LFANEW ||
         (int64_t)lfanew > reader->total - base - (int64_t)sizeof(pe))
         return false;
     if (!gi_get(reader, base + lfanew, pe, sizeof(pe)) || pe[0] != 'P' ||
         pe[1] != 'E' || pe[2] != 0U || pe[3] != 0U)
         return false;
-    sections = gi_u16(pe + 6U);
-    optional_size = gi_u16(pe + 20U);
+    sections = xx_data_get_u16(pe + 6U, 2, 0, false);
+    optional_size = xx_data_get_u16(pe + 20U, 2, 0, false);
     if (sections == 0U || sections > GI_PE_MAX_SECTIONS) return false;
     at = base + (int64_t)lfanew + (int64_t)sizeof(pe);
     if (optional_size >= 64U) {
         uint8_t headers[4];
         if (!gi_get(reader, at + 60, headers, sizeof(headers))) return false;
-        end = gi_u32(headers);
+        end = xx_data_get_u32(headers, 4, 0, false);
     }
     at += (int64_t)optional_size;
     if (at > reader->total ||
@@ -324,8 +316,8 @@ static bool gi_pe_overlay(gi_reader *reader, int64_t base, int64_t *overlay) {
         if (!gi_get(reader, at + (int64_t)index * (int64_t)GI_PE_SECTION,
                     section, sizeof(section)))
             return false;
-        raw_size = gi_u32(section + 16U);
-        raw_pointer = gi_u32(section + 20U);
+        raw_size = xx_data_get_u32(section + 16U, 4, 0, false);
+        raw_pointer = xx_data_get_u32(section + 20U, 4, 0, false);
         if (raw_size != 0U && raw_pointer != 0U &&
             (uint64_t)raw_pointer + raw_size > end)
             end = (uint64_t)raw_pointer + raw_size;
@@ -363,7 +355,7 @@ static bool gi_locate(gi_reader *reader, int64_t base, int64_t *payload,
         if (gi_get(reader, reader->total - (int64_t)GI_LONG_TRAILER, trailer,
                    sizeof(trailer)) &&
             xx_rt_memcmp(trailer + 28U, gi_end_marker, 6U) == 0) {
-            start = base + (int64_t)gi_u32(trailer);
+            start = base + (int64_t)xx_data_get_u32(trailer, 4, 0, false);
             if (start >= overlay && gi_has_magic(reader, start)) {
                 *payload = start;
                 return true;
@@ -916,13 +908,13 @@ static bool gi_parse_cabinet(gi_reader *reader, gi_reader *chain, int64_t at,
 
     if (!gi_get_cabinet(reader, at, header, sizeof(header)) ||
         header[0] != 'M' || header[1] != 'S' || header[2] != 'C' ||
-        header[3] != 'F' || gi_u32(header + 4U) != 0U)
+        header[3] != 'F' || xx_data_get_u32(header + 4U, 4, 0, false) != 0U)
         return false;
-    cabinet = gi_u32(header + 8U);
-    files_at = gi_u32(header + 16U);
-    folders = gi_u16(header + 26U);
-    files = gi_u16(header + 28U);
-    flags = gi_u16(header + 30U);
+    cabinet = xx_data_get_u32(header + 8U, 4, 0, false);
+    files_at = xx_data_get_u32(header + 16U, 4, 0, false);
+    folders = xx_data_get_u16(header + 26U, 2, 0, false);
+    files = xx_data_get_u16(header + 28U, 2, 0, false);
+    flags = xx_data_get_u16(header + 30U, 2, 0, false);
     if (cabinet < GI_SMALLEST_CABINET ||
         (int64_t)cabinet > reader->total - at || folders == 0U ||
         files == 0U || (flags & ~(GI_FLAG_PREV | GI_FLAG_NEXT | GI_FLAG_RESERVE)) != 0U ||
@@ -940,7 +932,7 @@ static bool gi_parse_cabinet(gi_reader *reader, gi_reader *chain, int64_t at,
         uint32_t header_reserve;
         if (!gi_get_cabinet(reader, position, reserve, sizeof(reserve)))
             return false;
-        header_reserve = gi_u16(reserve);
+        header_reserve = xx_data_get_u16(reserve, 2, 0, false);
         folder_reserve = reserve[2];
         data_reserve = reserve[3];
         position += 4;
@@ -979,11 +971,11 @@ static bool gi_parse_cabinet(gi_reader *reader, gi_reader *chain, int64_t at,
             goto fail;
         position += (int64_t)(GI_FOLDER + folder_reserve);
         xx_mem_zero(&folder, sizeof(folder));
-        folder.data_offset = at + (int64_t)gi_u32(entry);
-        folder.blocks = gi_u16(entry + 4U);
-        folder.type = gi_u16(entry + 6U);
+        folder.data_offset = at + (int64_t)xx_data_get_u32(entry, 4, 0, false);
+        folder.blocks = xx_data_get_u16(entry + 4U, 2, 0, false);
+        folder.type = xx_data_get_u16(entry + 6U, 2, 0, false);
         folder.data_reserve = (uint8_t)data_reserve;
-        if (gi_u32(entry) < GI_HEADER || gi_u32(entry) >= cabinet ||
+        if (xx_data_get_u32(entry, 4, 0, false) < GI_HEADER || xx_data_get_u32(entry, 4, 0, false) >= cabinet ||
             folder.data_offset <= previous_start || folder.blocks == 0U ||
             !gi_type_known(folder.type))
             goto fail;
@@ -999,8 +991,8 @@ static bool gi_parse_cabinet(gi_reader *reader, gi_reader *chain, int64_t at,
             if ((int64_t)(GI_DATA + data_reserve) > end - cursor ||
                 !gi_get_cabinet(chain, cursor, data, sizeof(data)))
                 goto fail;
-            packed = gi_u16(data + 4U);
-            plain = gi_u16(data + 6U);
+            packed = xx_data_get_u16(data + 4U, 2, 0, false);
+            plain = xx_data_get_u16(data + 6U, 2, 0, false);
             if (packed == 0U || plain == 0U || plain > GI_MAX_BLOCK ||
                 ((folder.type & 0x0FU) == GI_STORE && packed != plain))
                 goto fail;
@@ -1044,16 +1036,16 @@ static bool gi_parse_cabinet(gi_reader *reader, gi_reader *chain, int64_t at,
         names += gi_name_cost(name, length);
         if (names > GI_NAME_BUDGET) goto fail;
         position += (int64_t)length + 1;
-        folder = gi_u16(entry + 8U);
+        folder = xx_data_get_u16(entry + 8U, 2, 0, false);
         if (folder >= folders && folder < 0xFFFDU) goto fail;
         if (package) {
             gi_member member;
             xx_mem_zero(&member, sizeof(member));
-            member.size = gi_u32(entry);
-            member.folder_offset = gi_u32(entry + 4U);
-            member.date = gi_u16(entry + 10U);
-            member.time = gi_u16(entry + 12U);
-            member.attrs = gi_u16(entry + 14U);
+            member.size = xx_data_get_u32(entry, 4, 0, false);
+            member.folder_offset = xx_data_get_u32(entry + 4U, 4, 0, false);
+            member.date = xx_data_get_u16(entry + 10U, 2, 0, false);
+            member.time = xx_data_get_u16(entry + 12U, 2, 0, false);
+            member.attrs = xx_data_get_u16(entry + 14U, 2, 0, false);
             member.name = gi_make_name(name, length);
             if (!member.name) goto fail;
             if (folder < folders) {
@@ -1115,9 +1107,9 @@ static int64_t gi_damaged_end(gi_reader *reader, int64_t at) {
     if (reader->total - at >= (int64_t)sizeof(header) &&
         gi_get_cabinet(reader, at, header, sizeof(header)) &&
         header[0] == 'M' && header[1] == 'S' && header[2] == 'C' &&
-        header[3] == 'F' && gi_u32(header + 8U) >= GI_MAGIC_SIZE &&
-        (int64_t)gi_u32(header + 8U) <= reader->total - at)
-        return at + (int64_t)gi_u32(header + 8U);
+        header[3] == 'F' && xx_data_get_u32(header + 8U, 4, 0, false) >= GI_MAGIC_SIZE &&
+        (int64_t)xx_data_get_u32(header + 8U, 4, 0, false) <= reader->total - at)
+        return at + (int64_t)xx_data_get_u32(header + 8U, 4, 0, false);
     return reader->total;
 }
 
@@ -1233,7 +1225,7 @@ static uint32_t gi_checksum(const uint8_t *data, size_t size, uint32_t seed) {
     size_t words = size / 4U;
     size_t index;
     uint32_t tail = 0U;
-    for (index = 0U; index < words; ++index) sum ^= gi_u32(data + index * 4U);
+    for (index = 0U; index < words; ++index) sum ^= xx_data_get_u32(data + index * 4U, 4, 0, false);
     data += words * 4U;
     switch (size & 3U) {
     case 3U:
@@ -1375,9 +1367,9 @@ static bool gi_decode_folder(Abstractformat *format, gi_package *package,
         if (!gi_raw_read(format->device, cursor, header, sizeof(header)))
             goto done;
         gi_unmask(header, sizeof(header));
-        stored_sum = gi_u32(header);
-        size = gi_u16(header + 4U);
-        plain = gi_u16(header + 6U);
+        stored_sum = xx_data_get_u32(header, 4, 0, false);
+        size = xx_data_get_u16(header + 4U, 2, 0, false);
+        plain = xx_data_get_u16(header + 6U, 2, 0, false);
         if (size == 0U || plain == 0U || plain > GI_MAX_BLOCK ||
             size > (size_t)folder->packed_size - packed_used ||
             plain > (size_t)folder->plain_size - plain_used)

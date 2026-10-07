@@ -1119,7 +1119,7 @@ static int classify_file_prefix(DieFile *pFile, cd_i64 nMaximum,
     if (!pFile || pFile->nSize <= 0) return 0;
     x_memset(&input, 0, sizeof(input));
     input.file = pFile;
-    input.bytes = pFile->pData;
+    input.bytes = die_file_whole(pFile, 0);
     input.size = pFile->nSize < nMaximum ? pFile->nSize : nMaximum;
     input.capacity = die_file_buffer_size(pFile);
     if (input.bytes) input.verified = input.size;
@@ -1222,6 +1222,7 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
     ApiId id = (ApiId)(size_t)pUser;
     DieFile *pFile = &pEngine->file;
     xx_pe_inspection *pPE = &pEngine->pe;
+    xx_dotnet_inspection *pDotNet = &pEngine->dotnet;
     xx_memory_map *pMap = pEngine->pMap;
 
     (void)thisVal;
@@ -1709,9 +1710,13 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
                 if (nSize >= 0x100 && pFile) {
                     cd_i64 nFileSize = pFile->nSize;
                     if (nOffset >= 0 && nOffset < nFileSize) {
-                        if (nOffset + nSize > nFileSize) nSize = nFileSize - nOffset;
-                        if (pFile->pData) {
-                            pszAlgo = xx_kpa_scan_buffer_encrypted_pe(pFile->pData + nOffset, (size_t)nSize);
+                        const unsigned char *pWhole;
+                        /* nOffset is inside the file, so this cannot overflow
+                         * the way nOffset + nSize can for a huge nSize. */
+                        if (nSize > nFileSize - nOffset) nSize = nFileSize - nOffset;
+                        pWhole = die_file_whole(pFile, nSize);
+                        if (pWhole) {
+                            pszAlgo = xx_kpa_scan_buffer_encrypted_pe(pWhole + nOffset, (size_t)nSize);
                         } else {
                             uint8_t *pBytes = (uint8_t *)cd_malloc((size_t)nSize);
                             if (pBytes) {
@@ -2587,7 +2592,7 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
             }
         }
 
-        case A_isNET: return js_bool(pEngine->bHasPE && pPE->bIsNet);
+        case A_isNET: return js_bool(pEngine->bHasDotNet && pDotNet->bIsNet);
         case A_isPE32: return js_bool(pEngine->bHasPE && (!pPE->bIs64));
         case A_isPEPlus: return js_bool(pEngine->bHasPE && pPE->bIs64);
 
@@ -2703,9 +2708,9 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
             int i = 0;
             int bResult = 0;
 
-            if (pEngine->bHasPE) {
-                for (i = 0; i < pPE->nNetAnsiCount; i++) {
-                    if (x_strcmp(pPE->ppNetAnsiStrings[i], pString) == 0) {
+            if (pEngine->bHasDotNet) {
+                for (i = 0; i < pDotNet->nNetAnsiCount; i++) {
+                    if (x_strcmp(pDotNet->ppNetAnsiStrings[i], pString) == 0) {
                         bResult = 1;
                         break;
                     }
@@ -2722,9 +2727,9 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
             int i = 0;
             int bResult = 0;
 
-            if (pEngine->bHasPE) {
-                for (i = 0; i < pPE->nNetUnicodeCount; i++) {
-                    if (x_strcmp(pPE->ppNetUnicodeStrings[i], pString) == 0) {
+            if (pEngine->bHasDotNet) {
+                for (i = 0; i < pDotNet->nNetUnicodeCount; i++) {
+                    if (x_strcmp(pDotNet->ppNetUnicodeStrings[i], pString) == 0) {
                         bResult = 1;
                         break;
                     }
@@ -2736,12 +2741,12 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
             return js_bool(bResult);
         }
 
-        case A_isNetGlobalCctorPresent: return js_bool(pEngine->bHasPE && xx_pe_inspect_net_global_cctor_present(pPE));
+        case A_isNetGlobalCctorPresent: return js_bool(pEngine->bHasDotNet && xx_dotnet_inspect_net_global_cctor_present(pDotNet));
 
         case A_isNetTypePresent: {
             char *pNamespace = arg_string(pCtx, nArgc, pArgv, 0);
             char *pTypeName = arg_string(pCtx, nArgc, pArgv, 1);
-            int bResult = pEngine->bHasPE && xx_pe_inspect_net_type_present(pPE, pNamespace, pTypeName);
+            int bResult = pEngine->bHasDotNet && xx_dotnet_inspect_net_type_present(pDotNet, pNamespace, pTypeName);
 
             cd_free(pNamespace);
             cd_free(pTypeName);
@@ -2753,7 +2758,7 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
             char *pNamespace = arg_string(pCtx, nArgc, pArgv, 0);
             char *pTypeName = arg_string(pCtx, nArgc, pArgv, 1);
             char *pMethodName = arg_string(pCtx, nArgc, pArgv, 2);
-            int bResult = pEngine->bHasPE && xx_pe_inspect_net_method_present(pPE, pNamespace, pTypeName, pMethodName);
+            int bResult = pEngine->bHasDotNet && xx_dotnet_inspect_net_method_present(pDotNet, pNamespace, pTypeName, pMethodName);
 
             cd_free(pNamespace);
             cd_free(pTypeName);
@@ -2766,7 +2771,7 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
             char *pNamespace = arg_string(pCtx, nArgc, pArgv, 0);
             char *pTypeName = arg_string(pCtx, nArgc, pArgv, 1);
             char *pFieldName = arg_string(pCtx, nArgc, pArgv, 2);
-            int bResult = pEngine->bHasPE && xx_pe_inspect_net_field_present(pPE, pNamespace, pTypeName, pFieldName);
+            int bResult = pEngine->bHasDotNet && xx_dotnet_inspect_net_field_present(pDotNet, pNamespace, pTypeName, pFieldName);
 
             cd_free(pNamespace);
             cd_free(pTypeName);
@@ -2780,8 +2785,8 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
             char *pSignature = arg_string(pCtx, nArgc, pArgv, 0);
             cd_i64 nResult = -1;
 
-            if (pEngine->bHasPE && pPE->cli.bValid && (pPE->cli.nBlobSize > 0)) {
-                nResult = die_engine_signature_find(pEngine, pPE->cli.nBlobOffset, pPE->cli.nBlobSize, pSignature);
+            if (pEngine->bHasDotNet && pDotNet->cli.bValid && (pDotNet->cli.nBlobSize > 0)) {
+                nResult = die_engine_signature_find(pEngine, pDotNet->cli.nBlobOffset, pDotNet->cli.nBlobSize, pSignature);
             }
 
             cd_free(pSignature);
@@ -2794,18 +2799,18 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
         }
 
         case A_getNetModuleName:
-            if (!pEngine->bHasPE) {
+            if (!pEngine->bHasDotNet) {
                 return js_str(pCtx, "");
             }
 
-            return native_str_take(pCtx, xx_pe_inspect_net_module_name(pPE));
+            return native_str_take(pCtx, xx_dotnet_inspect_net_module_name(pDotNet));
 
         case A_getNetAssemblyName:
-            if (!pEngine->bHasPE) {
+            if (!pEngine->bHasDotNet) {
                 return js_str(pCtx, "");
             }
 
-            return native_str_take(pCtx, xx_pe_inspect_net_assembly_name(pPE));
+            return native_str_take(pCtx, xx_dotnet_inspect_net_assembly_name(pDotNet));
 
         case A_getNumberOfImports: return js_num((double)(pEngine->bHasPE ? pPE->nImportCount : 0));
 
@@ -2968,15 +2973,18 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
         case A_isDll: return js_bool(pEngine->bHasPE && (pe_type(pPE) == PETYPE_DLL));
         case A_isDriver: return js_bool(pEngine->bHasPE && (pe_type(pPE) == PETYPE_DRIVER));
 
-        case A_getNETVersion: return js_str(pCtx, (pEngine->bHasPE && pPE->pNetVersion) ? pPE->pNetVersion : "");
+        case A_getNETVersion: return js_str(pCtx, (pEngine->bHasDotNet && pDotNet->pNetVersion) ? pDotNet->pNetVersion : "");
 
         case A_compareEP_NET: {
             char *pSignature = arg_string(pCtx, nArgc, pArgv, 0);
             cd_i64 nOffset = arg_i64(pCtx, nArgc, pArgv, 1, 0);
             int bResult = 0;
 
-            if (pEngine->bHasPE && pPE->cli.bValid) {
-                cd_i64 nTarget = xx_memory_map_address_to_offset_ex(pMap, pPE->nImageBase + pPE->cli.nEntryPointRVA + (cd_u64)nOffset, XX_MEMORY_MAP_LOOKUP_FIRST_MATCH);
+            if (pEngine->bHasDotNet && pDotNet->cli.bValid && pDotNet->cli.nEntryPointRVA &&
+                nOffset >= -(cd_i64)pDotNet->cli.nEntryPointRVA &&
+                nOffset <= INT64_MAX - (cd_i64)pDotNet->cli.nEntryPointRVA) {
+                cd_i64 nTarget = xx_memory_map_relative_address_to_offset(pMap,
+                    (cd_i64)pDotNet->cli.nEntryPointRVA + nOffset);
 
                 if (nTarget != -1) {
                     bResult = die_engine_signature_compare(pEngine, nTarget, pSignature, 3, -1);

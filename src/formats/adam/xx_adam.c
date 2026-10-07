@@ -24,6 +24,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -119,11 +120,6 @@ static uint32_t adam_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static uint32_t adam_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
-
 static bool adam_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
     size_t done = 0U;
@@ -197,7 +193,7 @@ static bool adam_probe(Abstractformat *format, adam_volume *out) {
             return false;
     xx_mem_zero(&volume, sizeof(volume));
     /* window[4..7] is the descriptor's volume size (image offset 0x411). */
-    volume.declared_blocks = adam_le32(window + 4U);
+    volume.declared_blocks = xx_data_get_u32(window + 4U, 4, 0, false);
     if (adam_is_standard_size(size)) {
         volume.image_size = size;
     } else {
@@ -421,7 +417,7 @@ static bool adam_parse(Abstractformat *format, adam_stream **result) {
                 adam_member *member;
                 uint32_t used = adam_le16(slot + ADAM_E_USED);
                 uint32_t last = adam_le16(slot + ADAM_E_LAST);
-                uint32_t first = adam_le32(slot + ADAM_E_START);
+                uint32_t first = xx_data_get_u32(slot + ADAM_E_START, 4, 0, false);
                 if (count >= capacity) goto fail;
                 member = &items[count++];
                 adam_make_name(slot, length - 1U, slot[length - 1U],

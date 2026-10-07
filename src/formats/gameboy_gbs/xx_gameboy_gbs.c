@@ -4,10 +4,11 @@
  */
 #include "xxfclib/formats/gameboy_gbs/xx_gameboy_gbs.h"
 #include "../snes_spc/xx_tenth_retro.h"
+#include "xxfclib/data/xx_data.h"
 static bool read_components(Abstractformat *f,pm_stream *s,th_blob *b) {
  const uint8_t *p=b->p;unsigned i;
  if(b->n<=112 || b->n>4194416 || xx_rt_memcmp(p,"GBS\1",4) || !p[4] || !p[5] || p[5]>p[4] || (p[15]&0x78)) return false;
- for(i=6;i<=10;i+=2) {unsigned address=pm_le16(p+i);if(address<0x400 || address>0x7fff) return false;}
+ for(i=6;i<=10;i+=2) {unsigned address=xx_data_get_u16(p+i, 2, 0, false);if(address<0x400 || address>0x7fff) return false;}
  if(!th_emit(f,s,b,"music-descriptor.bin",0,112) || !th_emit(f,s,b,"program.bin",112,b->n-112)) { return false; } s->size=b->n;return true;
 }
 

@@ -56,6 +56,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef VMSPCSI
 #define XX_VMSPCSI_FILE_TYPE XX_FILE_TYPE_VMSPCSI
@@ -96,15 +97,6 @@ typedef struct pcsi_stream_s {
     size_t count;
 } pcsi_stream;
 
-static uint32_t pcsi_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
-
-static uint16_t pcsi_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
 static int64_t pcsi_round_up(int64_t value) {
     return (value + (PCSI_TABLE_OFFSET - 1)) & ~(int64_t)(PCSI_TABLE_OFFSET - 1);
 }
@@ -132,8 +124,8 @@ static bool pcsi_parse_header(const uint8_t *data, int64_t size,
         return false;
     if (xx_rt_memcmp(data, PCSI_BANNER, (size_t)PCSI_BANNER_SIZE) != 0)
         return false;
-    *table_size = pcsi_le32(data + 0x38);
-    count = pcsi_le32(data + 0x40);
+    *table_size = xx_data_get_u32(data + 0x38, 4, 0, false);
+    count = xx_data_get_u32(data + 0x40, 4, 0, false);
     /* A count of zero produces no output at all: a failure, not an empty
      * file. */
     if (count < 1U || count > (uint32_t)PCSI_MAX_RECORDS) return false;
@@ -157,13 +149,13 @@ static bool pcsi_parse_tables(const uint8_t *data, int64_t size,
     int32_t index;
     if (!tables) return false;
     if ((size - position) < PCSI_TABLE_HEADER_SIZE) return false;
-    if (pcsi_le32(data + position) != table_size ||
-        pcsi_le32(data + position + 0x04) != 0U ||
-        pcsi_le32(data + position + 0x08) != PCSI_DCX_MAGIC ||
-        pcsi_le32(data + position + 0x0c) != 0U ||
-        pcsi_le16(data + position + 0x12) != (uint16_t)PCSI_TABLE_HEADER_SIZE)
+    if (xx_data_get_u32(data + position, 4, 0, false) != table_size ||
+        xx_data_get_u32(data + position + 0x04, 4, 0, false) != 0U ||
+        xx_data_get_u32(data + position + 0x08, 4, 0, false) != PCSI_DCX_MAGIC ||
+        xx_data_get_u32(data + position + 0x0c, 4, 0, false) != 0U ||
+        xx_data_get_u16(data + position + 0x12, 2, 0, false) != (uint16_t)PCSI_TABLE_HEADER_SIZE)
         return false;
-    context_count = (int32_t)pcsi_le16(data + position + 0x10);
+    context_count = (int32_t)xx_data_get_u16(data + position + 0x10, 2, 0, false);
     if (context_count < 1) return false;
     /* Every block costs at least its own 0x0c-byte header on disk, so the
      * blob's size bounds the slot array and a crafted count cannot amplify
@@ -185,12 +177,12 @@ static bool pcsi_parse_tables(const uint8_t *data, int64_t size,
         uint8_t *slot;
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         if ((size - position) < PCSI_BLOCK_HEADER_SIZE) goto fail;
-        block_length = (int64_t)pcsi_le16(data + position);
+        block_length = (int64_t)xx_data_get_u16(data + position, 2, 0, false);
         first = data[position + 0x02];
         last = data[position + 0x03];
-        block_header = (int64_t)pcsi_le16(data + position + 0x06);
-        node_offset = (int64_t)pcsi_le16(data + position + 0x08);
-        map_offset = (int64_t)pcsi_le16(data + position + 0x0a);
+        block_header = (int64_t)xx_data_get_u16(data + position + 0x06, 2, 0, false);
+        node_offset = (int64_t)xx_data_get_u16(data + position + 0x08, 2, 0, false);
+        map_offset = (int64_t)xx_data_get_u16(data + position + 0x0a, 2, 0, false);
         if (first > last || data[position + 0x04] != 0U ||
             data[position + 0x05] != 0U ||
             block_header != PCSI_BLOCK_HEADER_SIZE)
@@ -236,7 +228,7 @@ static bool pcsi_parse_tables(const uint8_t *data, int64_t size,
         int32_t symbol;
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         for (symbol = 0; symbol < 256; ++symbol)
-            if ((int32_t)pcsi_le16(slot + PCSI_SLOT_MAP + symbol * 2) >=
+            if ((int32_t)xx_data_get_u16(slot + PCSI_SLOT_MAP + symbol * 2, 2, 0, false) >=
                 context_count)
                 goto fail;
     }
@@ -286,7 +278,7 @@ static bool pcsi_run_records(const uint8_t *data, int64_t size,
                 if (produced >= capacity) return false;
                 if (output) output[produced] = (uint8_t)symbol;
                 ++produced;
-                next = (int32_t)pcsi_le16(context + PCSI_SLOT_MAP + symbol * 2);
+                next = (int32_t)xx_data_get_u16(context + PCSI_SLOT_MAP + symbol * 2, 2, 0, false);
                 context = slots + (int64_t)next * PCSI_SLOT_SIZE;
                 node = 0;
             } else {

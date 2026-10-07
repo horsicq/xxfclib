@@ -8,6 +8,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 #ifdef CPM
 #define CPM_TYPE XX_FILE_TYPE_CPM
 #else
@@ -35,7 +36,6 @@ typedef struct cpm_view_s {
     size_t count, index;
     char volume_name[16];
 } cpm_view;
-static uint16_t cpm_u16(const uint8_t *p) { return (uint16_t)(p[0] | ((uint16_t)p[1] << 8)); }
 static bool cpm_stopped(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
 static bool cpm_work(cpm_view *v, xx_pd_struct *pd) { return !cpm_stopped(pd) && ++v->work <= CPM_WORK; }
 static uint64_t cpm_physical(const cpm_view *v, uint64_t logical) {
@@ -114,7 +114,7 @@ static bool cpm_date(const uint8_t *p) {
     /* Unset formatter metadata can retain the medium's erased-byte pattern. */
     if (p[0] == 0xE5U && p[1] == 0xE5U && p[2] == 0xE5U && p[3] == 0xE5U) return true;
     if (p[2] > 0x23U || (p[2] & 15U) > 9U || p[3] > 0x59U || (p[3] & 15U) > 9U) return false;
-    return cpm_u16(p) || (!p[2] && !p[3]);
+    return xx_data_get_u16(p, 2, 0, false) || (!p[2] && !p[3]);
 }
 static bool cpm_metadata(cpm_view *v, const uint8_t *entry, uint32_t slot, bool *label, const bool stamp_valid[3]) {
     unsigned i;
@@ -208,7 +208,7 @@ static cpm_view *cpm_parse(Abstractformat *self, xx_pd_struct *pd) {
         extent->used = (((logical & v->geometry.exm) * 128U) + records) * 128U; extent->byte_count = entry[13]; extent->user = entry[0]; extent->slot = slot;
         if (extent->used > v->span || (!extent->used && extent->group)) goto fail;
         for (i = 0U; i < v->pointer_count; ++i) {
-            uint32_t block = v->pointer_count == 16U ? entry[16U + i] : cpm_u16(entry + 16U + i * 2U);
+            uint32_t block = v->pointer_count == 16U ? entry[16U + i] : xx_data_get_u16(entry + 16U + i * 2U, 2, 0, false);
             if (!block) continue;
             if (!cpm_work(v, pd) || block >= v->blocks || v->claimed[block]) goto fail;
             v->claimed[block] = 1U; extent->pointers[i] = (uint16_t)block;

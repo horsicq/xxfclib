@@ -24,6 +24,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: picks up the real file type as soon as the
  * enumerator exists in xxfc_defs.h. */
@@ -71,11 +72,6 @@ typedef struct far_stream_s {
     far_walk walk;
     size_t index;
 } far_stream;
-
-static uint32_t far_le32(const uint8_t *b) {
-    return (uint32_t)b[0] | ((uint32_t)b[1] << 8U) | ((uint32_t)b[2] << 16U) |
-           ((uint32_t)b[3] << 24U);
-}
 
 static uint32_t far_le16(const uint8_t *b) {
     return (uint32_t)b[0] | ((uint32_t)b[1] << 8U);
@@ -129,10 +125,10 @@ static bool far_walk_entries(const uint8_t *manifest, size_t available,
         if ((index & FAR_POLL_MASK) == 0U && pd && xx_pd_is_stopped(pd))
             return false;
         if (available - position < FAR_ENTRY_FIXED + width) return false;
-        size = far_le32(manifest + position);
-        stored = far_le32(manifest + position + 4U);
-        offset = far_le32(manifest + position + 8U);
-        name_length = width == 4U ? far_le32(manifest + position + 12U)
+        size = xx_data_get_u32(manifest + position, 4, 0, false);
+        stored = xx_data_get_u32(manifest + position + 4U, 4, 0, false);
+        offset = xx_data_get_u32(manifest + position + 8U, 4, 0, false);
+        name_length = width == 4U ? xx_data_get_u32(manifest + position + 12U, 4, 0, false)
                                   : far_le16(manifest + position + 12U);
         if (name_length == 0U || name_length > FAR_MAX_NAME ||
             available - position - FAR_ENTRY_FIXED - width < name_length)
@@ -394,9 +390,9 @@ static bool far_parse(Abstractformat *format, far_walk *walk,
     if (!far_read_at(format->device, format->base_address, header,
                      sizeof(header)) ||
         xx_rt_memcmp(header, "FAR!byAZ", 8U) != 0 ||
-        far_le32(header + 8U) != FAR_VERSION)
+        xx_data_get_u32(header + 8U, 4, 0, false) != FAR_VERSION)
         return false;
-    manifest_offset = far_le32(header + 12U);
+    manifest_offset = xx_data_get_u32(header + 12U, 4, 0, false);
     if (manifest_offset < FAR_HEADER_SIZE ||
         (int64_t)manifest_offset > total - 4)
         return false;
@@ -409,7 +405,7 @@ static bool far_parse(Abstractformat *format, far_walk *walk,
                          format->base_address + (int64_t)manifest_offset,
                          first, 4U))
             return false;
-        count = far_le32(first);
+        count = xx_data_get_u32(first, 4, 0, false);
     }
     /* Every entry takes at least 12 + 2 + 1 bytes. */
     if (count > FAR_MAX_MEMBERS ||

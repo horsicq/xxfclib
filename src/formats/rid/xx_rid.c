@@ -52,6 +52,7 @@
 #include "xxfclib/algo/rid/xx_rid.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_RID_COPY_CHUNK (64 * 1024)
 
@@ -169,8 +170,6 @@ static bool xx_rid_add(xx_rid_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_rid_le16(const uint8_t *data);
-static uint32_t xx_rid_le32(const uint8_t *data);
 static bool xx_rid_is_name_character(uint8_t character);
 static char *xx_rid_read_name(const uint8_t *field);
 static bool xx_rid_probe(Abstractformat *self, int64_t data_offset, int64_t chain_size, int64_t uncompressed_size);
@@ -191,15 +190,6 @@ static bool xx_rid_decode(Abstractformat *self, const xx_rid_member *member, uin
  * decode allocation. */
 /* RID stores no method per member: the type lives per block inside the
  * chain. This constant is what member->method carries. */
-
-static uint16_t xx_rid_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_rid_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static bool xx_rid_is_name_character(uint8_t character) {
     if (character < 0x20U || character > 0x7eU) return false;
@@ -341,7 +331,7 @@ static xx_rid_stream *xx_rid_parse(Abstractformat *self, xx_pd_struct *pd) {
          * loop -- checking a few of the nineteen bytes, or only the first
          * member's -- is what would turn this reader into a matcher for
          * arbitrary zero-padded data. */
-        if (xx_rid_le16(header) == 0U) goto fail;
+        if (xx_data_get_u16(header, 2, 0, false) == 0U) goto fail;
         for (reserved = 0; reserved < XX_RID_RESERVED_SIZE; ++reserved) {
             if (header[XX_RID_RESERVED_OFFSET + reserved] != 0U) goto fail;
         }
@@ -352,13 +342,13 @@ static xx_rid_stream *xx_rid_parse(Abstractformat *self, xx_pd_struct *pd) {
             goto fail;
         }
 
-        dos_time = xx_rid_le16(header + XX_RID_DOSTIME_OFFSET);
-        dos_date = xx_rid_le16(header + XX_RID_DOSDATE_OFFSET);
+        dos_time = xx_data_get_u16(header + XX_RID_DOSTIME_OFFSET, 2, 0, false);
+        dos_date = xx_data_get_u16(header + XX_RID_DOSDATE_OFFSET, 2, 0, false);
         /* The writer always stamps a date; a zero one means these bytes are
          * not a header. */
         if (dos_date == 0U) goto fail;
 
-        raw_size = xx_rid_le32(header + XX_RID_SIZE_OFFSET);
+        raw_size = xx_data_get_u32(header + XX_RID_SIZE_OFFSET, 4, 0, false);
         if ((int64_t)raw_size > XX_RID_MAX_UNCOMPRESSED) goto fail;
 
         name = xx_rid_read_name(header + XX_RID_NAME_OFFSET);
@@ -390,7 +380,7 @@ static xx_rid_stream *xx_rid_parse(Abstractformat *self, xx_pd_struct *pd) {
                 xx_str_free(name);
                 goto fail;
             }
-            block_size = (int64_t)xx_rid_le16(frame);
+            block_size = (int64_t)xx_data_get_u16(frame, 2, 0, false);
             block_type = frame[2];
             chain_offset += XX_RID_FRAME_SIZE;
 

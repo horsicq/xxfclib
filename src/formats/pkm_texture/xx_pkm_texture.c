@@ -8,7 +8,7 @@
 #include "../astc_texture/xx_tenth_media.h"
 static bool tg_quick(Abstractformat *f,uint64_t n) {uint8_t b[16];return tg_probe(f,n,b,16)&&(pm_tag(b,"PKM 10",6)||pm_tag(b,"PKM 20",6));}
 static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
- uint32_t type=pm_be16(b+6),x=pm_be16(b+12),y=pm_be16(b+14),cx=pm_be16(b+8),cy=pm_be16(b+10),bytes;uint64_t size;
+ uint32_t type=xx_data_get_u16(b+6, 2, 0, true),x=xx_data_get_u16(b+12, 2, 0, true),y=xx_data_get_u16(b+14, 2, 0, true),cx=xx_data_get_u16(b+8, 2, 0, true),cy=xx_data_get_u16(b+10, 2, 0, true),bytes;uint64_t size;
  if(tg_stop(pd)||type>11||type==2||(b[4]=='1'&&type!=0)||!x||!y||cx!=(x+3)/4*4||cy!=(y+3)/4*4)return false;
  bytes=(type==3||type==6||type==8||type==10)?16U:8U;size=(uint64_t)(cx/4)*(cy/4)*bytes;if(n!=16+size)return false;
  if(!tg_emit(f,s,"pkm-header.bin",0,16,n)||!tg_emit(f,s,"texture-blocks.pkm",16,size,n)) {return false; } s->size=(int64_t)n;return true;

@@ -101,6 +101,8 @@ typedef struct pe_data_stream_s {
     xx_data_struct *items;
     size_t count;
     size_t capacity;
+    size_t *hash_slots;
+    size_t hash_capacity;
 } pe_data_stream;
 
 typedef struct pe_record_stream_s {
@@ -158,8 +160,8 @@ static const char *const pe_data_names[] = {
     "IMAGE_ENCLAVE_CONFIG32", "IMAGE_ENCLAVE_CONFIG64", "IMAGE_ENCLAVE_IMPORT",
     "IMAGE_VOLATILE_METADATA", "IMAGE_BOUND_IMPORT_DESCRIPTOR",
     "IMAGE_BOUND_FORWARDER_REF", "IMAGE_DELAYLOAD_DESCRIPTOR", "IAT32", "IAT64",
-    "IMAGE_COR20_HEADER", "STORAGESIGNATURE", "STORAGEHEADER", "STORAGESTREAM",
-    "IMAGE_COR_VTABLEFIXUP", "CLR_RAW", "RESERVED_DIRECTORY_RAW",
+    "RESERVED_112", "RESERVED_113", "RESERVED_114", "RESERVED_115",
+    "RESERVED_116", "RESERVED_117", "RESERVED_DIRECTORY_RAW",
     "ARM32_XDATA_HEADER", "ARM32_EPILOG_SCOPE",
     "DYNAMIC_RELOCATION_ARM64X", "ARM64X_FIXUP", "ARM64X_DELTA",
     "PDB_CHECKSUM", "R2R_PERFMAP", "CHPE_METADATA", "ARM64EC_METADATA",
@@ -266,20 +268,50 @@ static void pe_data_stream_free(void *pointer) {
     pe_data_stream *stream = (pe_data_stream *)pointer;
     if (!stream) return;
     if (stream->items) xx_mem_free(stream->items);
+    if (stream->hash_slots) xx_mem_free(stream->hash_slots);
     xx_mem_free(stream);
 }
 
-static bool pe_has_exact(const pe_data_stream *stream, uint32_t id,
-                         int64_t offset, uint64_t size) {
-    size_t index;
-    if (!stream || size > INT64_MAX) return false;
-    for (index = 0U; index < stream->count; ++index) {
-        const xx_data_struct *item = &stream->items[index];
+static size_t pe_data_hash(uint32_t id, int64_t offset, uint64_t size) {
+    uint64_t hash = (uint64_t)offset ^ (size * UINT64_C(0x9e3779b97f4a7c15)) ^ id;
+    hash ^= hash >> 30U;
+    hash *= UINT64_C(0xbf58476d1ce4e5b9);
+    hash ^= hash >> 27U;
+    hash *= UINT64_C(0x94d049bb133111eb);
+    return (size_t)(hash ^ (hash >> 31U));
+}
+
+static size_t pe_hash_slot(const pe_data_stream *stream, uint32_t id,
+                           int64_t offset, uint64_t size) {
+    size_t slot = pe_data_hash(id, offset, size) & (stream->hash_capacity - 1U);
+    while (stream->hash_slots[slot]) {
+        const xx_data_struct *item = &stream->items[stream->hash_slots[slot] - 1U];
         if (item->id == id && item->offset == offset &&
             item->total_size == (int64_t)size)
-            return true;
+            break;
+        slot = (slot + 1U) & (stream->hash_capacity - 1U);
     }
-    return false;
+    return slot;
+}
+
+static bool pe_hash_ensure(pe_data_stream *stream) {
+    size_t capacity;
+    size_t *slots;
+    size_t index;
+    if (stream->hash_capacity && stream->count < stream->hash_capacity / 2U)
+        return true;
+    capacity = stream->hash_capacity ? stream->hash_capacity * 2U : 128U;
+    slots = (size_t *)xx_mem_calloc(capacity, sizeof(*slots));
+    if (!slots) return false;
+    if (stream->hash_slots) xx_mem_free(stream->hash_slots);
+    stream->hash_slots = slots;
+    stream->hash_capacity = capacity;
+    for (index = 0U; index < stream->count; ++index) {
+        const xx_data_struct *item = &stream->items[index];
+        slots[pe_hash_slot(stream, item->id, item->offset,
+                           (uint64_t)item->total_size)] = index + 1U;
+    }
+    return true;
 }
 
 static bool pe_append_absolute(xx_pe *pe, pe_data_stream *stream,
@@ -291,11 +323,15 @@ static bool pe_append_absolute(xx_pe *pe, pe_data_stream *stream,
     xx_data_struct *item;
     uint64_t address;
     size_t capacity;
-    if (!pe || !stream || stream->count >= PE_DATA_MAX_ITEMS ||
+    if (!pe || !stream ||
         entry_size > INT64_MAX || total_size > INT64_MAX ||
         !pe_device_range(pe, offset, total_size))
         return false;
-    if (pe_has_exact(stream, id, offset, total_size)) return true;
+    if (stream->hash_capacity &&
+        stream->hash_slots[pe_hash_slot(stream, id, offset, total_size)])
+        return true;
+    if (stream->count >= PE_DATA_MAX_ITEMS || !pe_hash_ensure(stream))
+        return false;
     if (stream->count == stream->capacity) {
         capacity = stream->capacity ? stream->capacity * 2U : 64U;
         if (capacity < stream->capacity || capacity > PE_DATA_MAX_ITEMS)
@@ -317,6 +353,7 @@ static bool pe_append_absolute(xx_pe *pe, pe_data_stream *stream,
     item->total_size = (int64_t)total_size;
     item->count = count;
     item->type = type;
+    stream->hash_slots[pe_hash_slot(stream, id, offset, total_size)] = stream->count;
     return true;
 }
 
@@ -1156,53 +1193,6 @@ static const xx_data_struct_field_desc pe_delay_fields[] = {
     PE_FIELD("TimeDateStamp", "uint32", 28, 4, XX_DATA_STRUCT_RECORD_PROPERTY_TIMESTAMP)
 };
 
-static const xx_data_struct_field_desc pe_cor20_fields[] = {
-    PE_FIELD("cb", "uint32", 0, 4, XX_DATA_STRUCT_RECORD_PROPERTY_SIZE),
-    PE_FIELD("MajorRuntimeVersion", "uint16", 4, 2, XX_DATA_STRUCT_RECORD_PROPERTY_NONE),
-    PE_FIELD("MinorRuntimeVersion", "uint16", 6, 2, XX_DATA_STRUCT_RECORD_PROPERTY_NONE),
-    PE_FIELD("MetaData.VirtualAddress", "uint32", 8, 4, XX_DATA_STRUCT_RECORD_PROPERTY_VIRTUAL_ADDRESS),
-    PE_FIELD("MetaData.Size", "uint32", 12, 4, XX_DATA_STRUCT_RECORD_PROPERTY_SIZE),
-    PE_FIELD("Flags", "uint32", 16, 4, XX_DATA_STRUCT_RECORD_PROPERTY_FLAGS),
-    PE_FIELD("EntryPointTokenOrRVA", "uint32", 20, 4, XX_DATA_STRUCT_RECORD_PROPERTY_POINTER),
-    PE_FIELD("Resources.VirtualAddress", "uint32", 24, 4, XX_DATA_STRUCT_RECORD_PROPERTY_VIRTUAL_ADDRESS),
-    PE_FIELD("Resources.Size", "uint32", 28, 4, XX_DATA_STRUCT_RECORD_PROPERTY_SIZE),
-    PE_FIELD("StrongNameSignature.VirtualAddress", "uint32", 32, 4, XX_DATA_STRUCT_RECORD_PROPERTY_VIRTUAL_ADDRESS),
-    PE_FIELD("StrongNameSignature.Size", "uint32", 36, 4, XX_DATA_STRUCT_RECORD_PROPERTY_SIZE),
-    PE_FIELD("CodeManagerTable.VirtualAddress", "uint32", 40, 4, XX_DATA_STRUCT_RECORD_PROPERTY_VIRTUAL_ADDRESS),
-    PE_FIELD("CodeManagerTable.Size", "uint32", 44, 4, XX_DATA_STRUCT_RECORD_PROPERTY_SIZE),
-    PE_FIELD("VTableFixups.VirtualAddress", "uint32", 48, 4, XX_DATA_STRUCT_RECORD_PROPERTY_VIRTUAL_ADDRESS),
-    PE_FIELD("VTableFixups.Size", "uint32", 52, 4, XX_DATA_STRUCT_RECORD_PROPERTY_SIZE),
-    PE_FIELD("ExportAddressTableJumps.VirtualAddress", "uint32", 56, 4, XX_DATA_STRUCT_RECORD_PROPERTY_VIRTUAL_ADDRESS),
-    PE_FIELD("ExportAddressTableJumps.Size", "uint32", 60, 4, XX_DATA_STRUCT_RECORD_PROPERTY_SIZE),
-    PE_FIELD("ManagedNativeHeader.VirtualAddress", "uint32", 64, 4, XX_DATA_STRUCT_RECORD_PROPERTY_VIRTUAL_ADDRESS),
-    PE_FIELD("ManagedNativeHeader.Size", "uint32", 68, 4, XX_DATA_STRUCT_RECORD_PROPERTY_SIZE)
-};
-
-static const xx_data_struct_field_desc pe_clr_root_fields[] = {
-    PE_FIELD("Signature", "char[4]", 0, 4, XX_DATA_STRUCT_RECORD_PROPERTY_ID),
-    PE_FIELD("MajorVersion", "uint16", 4, 2, XX_DATA_STRUCT_RECORD_PROPERTY_NONE),
-    PE_FIELD("MinorVersion", "uint16", 6, 2, XX_DATA_STRUCT_RECORD_PROPERTY_NONE),
-    PE_FIELD("Reserved", "uint32", 8, 4, XX_DATA_STRUCT_RECORD_PROPERTY_RESERVED),
-    PE_FIELD("VersionLength", "uint32", 12, 4, XX_DATA_STRUCT_RECORD_PROPERTY_SIZE)
-};
-
-static const xx_data_struct_field_desc pe_clr_storage_fields[] = {
-    PE_FIELD("Flags", "uint8", 0, 1, XX_DATA_STRUCT_RECORD_PROPERTY_FLAGS),
-    PE_FIELD("Pad", "uint8", 1, 1, XX_DATA_STRUCT_RECORD_PROPERTY_RESERVED),
-    PE_FIELD("Streams", "uint16", 2, 2, XX_DATA_STRUCT_RECORD_PROPERTY_COUNT)
-};
-
-static const xx_data_struct_field_desc pe_clr_stream_fields[] = {
-    PE_FIELD("Offset", "uint32", 0, 4, XX_DATA_STRUCT_RECORD_PROPERTY_OFFSET),
-    PE_FIELD("Size", "uint32", 4, 4, XX_DATA_STRUCT_RECORD_PROPERTY_SIZE)
-};
-
-static const xx_data_struct_field_desc pe_clr_vtable_fields[] = {
-    PE_FIELD("RVA", "uint32", 0, 4, XX_DATA_STRUCT_RECORD_PROPERTY_VIRTUAL_ADDRESS),
-    PE_FIELD("Count", "uint16", 4, 2, XX_DATA_STRUCT_RECORD_PROPERTY_COUNT),
-    PE_FIELD("Type", "uint16", 6, 2, XX_DATA_STRUCT_RECORD_PROPERTY_FLAGS)
-};
-
 static const xx_data_struct_field_desc pe_arm64x_fixup_fields[] = {
     PE_FIELD("TypeOffsetArg", "uint16", 0, 2, XX_DATA_STRUCT_RECORD_PROPERTY_FLAGS)
 };
@@ -1334,10 +1324,12 @@ static bool pe_append_core(xx_pe *pe, pe_data_stream *stream,
 
     /* Expose alignment holes outside section payloads without labeling the
        payloads themselves as unparsed. */
+    if (pe->format.is_mapped) return true;
     cursor = section_relative + section_bytes;
     while (true) {
         uint64_t next = UINT64_MAX;
         uint64_t next_end = 0U;
+        if (xx_pd_is_stopped(pd)) return false;
         for (section = 0U; section < pe->number_of_sections; ++section) {
             const xx_pe_section *item = &pe->sections[section];
             uint64_t end;
@@ -1392,6 +1384,7 @@ static bool pe_append_coff(xx_pe *pe, pe_data_stream *stream,
     uint64_t symbols_size;
     uint64_t index = 0U;
     uint16_t section;
+    if (pe->format.is_mapped) return true;
     if (!pe_absolute_range(pe, file_relative, PE_FILE_HEADER_SIZE,
                            &file_offset))
         return true;
@@ -1449,6 +1442,7 @@ static bool pe_append_coff(xx_pe *pe, pe_data_stream *stream,
                             XX_DATA_STRUCT_TYPE_STRUCT))
                         return false;
                     while (cursor < table_size) {
+                        if (xx_pd_is_stopped(pd)) return false;
                         uint64_t length = pe_cstring_size(
                             pe, string_offset + (int64_t)cursor,
                             table_size - cursor);
@@ -1784,6 +1778,35 @@ static bool pe_append_location_string(xx_pe *pe, pe_data_stream *stream,
                                          XX_DATA_STRUCT_TYPE_RAW_DATA);
 }
 
+/* A table may span adjacent RVAs whose file backing is discontiguous. */
+static bool pe_append_location_table(xx_pe *pe, pe_data_stream *stream,
+                                      const xx_memory_map *map, uint32_t id,
+                                      uint64_t location, bool is_va,
+                                      uint64_t stride, uint64_t count,
+                                      xx_pd_struct *pd) {
+    int64_t run_offset = -1;
+    uint64_t run_count = 0U;
+    for (uint64_t index = 0U; index < count; ++index) {
+        int64_t current;
+        if (xx_pd_is_stopped(pd)) return false;
+        if (index > (UINT64_MAX - location) / stride ||
+            !pe_location_range(pe, map, location + index * stride,
+                                is_va, stride, &current))
+            break;
+        if (run_count && current != run_offset + (int64_t)(run_count * stride)) {
+            if (!pe_append_absolute(pe, stream, id, run_offset, stride,
+                                     run_count * stride, run_count,
+                                     XX_DATA_STRUCT_TYPE_ENTRY))
+                return false;
+            run_count = 0U;
+        }
+        if (!run_count) run_offset = current;
+        ++run_count;
+    }
+    return !run_count || pe_append_absolute(pe, stream, id, run_offset,
+        stride, run_count * stride, run_count, XX_DATA_STRUCT_TYPE_ENTRY);
+}
+
 static bool pe_append_thunks(xx_pe *pe, pe_data_stream *stream,
                              const xx_memory_map *map, uint64_t lookup,
                              uint64_t iat, bool location_is_va,
@@ -1794,7 +1817,6 @@ static bool pe_append_thunks(xx_pe *pe, pe_data_stream *stream,
                                 : UINT64_C(0x80000000);
     uint64_t count = 0U;
     int64_t lookup_offset;
-    int64_t iat_offset = -1;
     uint64_t bytes;
     if (!lookup || !pe_location_range(pe, map, lookup, location_is_va,
                                       stride, &lookup_offset))
@@ -1803,6 +1825,7 @@ static bool pe_append_thunks(xx_pe *pe, pe_data_stream *stream,
         uint64_t value;
         int64_t current;
         if (xx_pd_is_stopped(pd) ||
+            count > (UINT64_MAX - lookup) / stride ||
             !pe_location_range(pe, map, lookup + count * stride,
                                location_is_va, stride, &current))
             break;
@@ -1812,28 +1835,21 @@ static bool pe_append_thunks(xx_pe *pe, pe_data_stream *stream,
         ++count;
     }
     if (!count || !pe_u64_product(count, stride, &bytes)) return true;
-    if (!pe_append_absolute(
-            pe, stream,
-            stride == 8U ? XX_PE_DATA_STRUCT_THUNK64
-                         : XX_PE_DATA_STRUCT_THUNK32,
-            lookup_offset, stride, bytes, count, XX_DATA_STRUCT_TYPE_ENTRY))
-        return false;
-    if (iat && pe_location_range(pe, map, iat, location_is_va, bytes,
-                                 &iat_offset) &&
-        !pe_append_absolute(
-            pe, stream,
-            stride == 8U ? XX_PE_DATA_STRUCT_IAT64
-                         : XX_PE_DATA_STRUCT_IAT32,
-            iat_offset, stride, bytes, count, XX_DATA_STRUCT_TYPE_ENTRY))
+    if (!pe_append_location_table(pe, stream, map,
+            stride == 8U ? XX_PE_DATA_STRUCT_THUNK64 : XX_PE_DATA_STRUCT_THUNK32,
+            lookup, location_is_va, stride, count, pd) ||
+        (iat && !pe_append_location_table(pe, stream, map,
+            stride == 8U ? XX_PE_DATA_STRUCT_IAT64 : XX_PE_DATA_STRUCT_IAT32,
+            iat, location_is_va, stride, count, pd)))
         return false;
     for (uint64_t index = 0U; index < count; ++index) {
-        uint64_t value = stride == 8U
-                             ? xx_io_get_u64(pe->format.device,
-                                             lookup_offset +
-                                                 (int64_t)(index * stride),
-                                             false)
-                             : pe_u32(pe, lookup_offset +
-                                             (int64_t)(index * stride));
+        int64_t current;
+        uint64_t value;
+        if (!pe_location_range(pe, map, lookup + index * stride,
+                                location_is_va, stride, &current))
+            break;
+        value = stride == 8U ? xx_io_get_u64(pe->format.device, current, false)
+                             : pe_u32(pe, current);
         int64_t name_offset;
         uint64_t name_length;
         if (xx_pd_is_stopped(pd)) return false;
@@ -1868,6 +1884,7 @@ static bool pe_append_import(xx_pe *pe, pe_data_stream *stream,
             offset, size);
     while (count < size / 20U && count < PE_DATA_MAX_LINKED_ENTRIES) {
         int64_t current = offset + (int64_t)(count * 20U);
+        if (xx_pd_is_stopped(pd)) return false;
         if (pe_u32(pe, current) == 0U && pe_u32(pe, current + 4) == 0U &&
             pe_u32(pe, current + 8) == 0U && pe_u32(pe, current + 12) == 0U &&
             pe_u32(pe, current + 16) == 0U)
@@ -2248,6 +2265,7 @@ static bool pe_append_security(xx_pe *pe, pe_data_stream *stream,
     uint32_t size = pe->data_directory_size[PE_DIR_SECURITY];
     int64_t offset;
     uint64_t cursor = 0U;
+    if (pe->format.is_mapped) return true;
     if (!relative || !size) return true;
     if (!pe_absolute_range(pe, relative, size, &offset)) return true;
     while (cursor < size) {
@@ -3610,6 +3628,7 @@ static bool pe_append_delay_imports(xx_pe *pe, pe_data_stream *stream,
     while (count < size / 32U && count < PE_DATA_MAX_LINKED_ENTRIES) {
         int64_t current = offset + (int64_t)(count * 32U);
         bool zero = true;
+        if (xx_pd_is_stopped(pd)) return false;
         for (uint32_t word = 0U; word < 8U; ++word)
             if (pe_u32(pe, current + (int64_t)word * 4) != 0U) {
                 zero = false;
@@ -3670,152 +3689,6 @@ static bool pe_append_iat(xx_pe *pe, pe_data_stream *stream,
                offset + (int64_t)covered, size - covered);
 }
 
-static bool pe_append_clr_metadata(xx_pe *pe, pe_data_stream *stream,
-                                   const xx_memory_map *map, uint32_t rva,
-                                   uint32_t size, xx_pd_struct *pd) {
-    int64_t offset;
-    uint32_t version_length;
-    uint64_t storage_relative;
-    uint16_t streams;
-    uint64_t cursor;
-    if (!rva || size < 20U ||
-        !pe_rva_range(pe, map, rva, size, &offset))
-        return true;
-    if (pe_u32(pe, offset) != UINT32_C(0x424a5342))
-        return pe_append_raw_absolute(pe, stream, XX_PE_DATA_STRUCT_CLR_RAW,
-                                      offset, size);
-    version_length = pe_u32(pe, offset + 12);
-    if (version_length > size - 16U ||
-        !pe_align_up(16U + version_length, 4U, &storage_relative) ||
-        storage_relative > size - 4U)
-        return pe_append_raw_absolute(pe, stream, XX_PE_DATA_STRUCT_CLR_RAW,
-                                      offset, size);
-    if (!pe_append_absolute(pe, stream,
-                            XX_PE_DATA_STRUCT_CLR_METADATA_ROOT,
-                            offset, 16U, 16U, 1U,
-                            XX_DATA_STRUCT_TYPE_STRUCT) ||
-        (version_length && !pe_append_absolute(
-            pe, stream, XX_PE_DATA_STRUCT_ASCII_STRING,
-            offset + 16, 1U, version_length, version_length,
-            XX_DATA_STRUCT_TYPE_RAW_DATA)) ||
-        !pe_append_raw_absolute(
-            pe, stream, XX_DATA_STRUCT_ID_RAW_DATA,
-            offset + 16 + version_length,
-            storage_relative - 16U - version_length) ||
-        !pe_append_absolute(
-            pe, stream, XX_PE_DATA_STRUCT_CLR_METADATA_STORAGE_HEADER,
-            offset + (int64_t)storage_relative, 4U, 4U, 1U,
-            XX_DATA_STRUCT_TYPE_STRUCT))
-        return false;
-    streams = xx_io_get_u16(pe->format.device,
-                            offset + (int64_t)storage_relative + 2, false);
-    cursor = storage_relative + 4U;
-    for (uint16_t index = 0U; index < streams; ++index) {
-        uint64_t name_length;
-        uint64_t next;
-        uint32_t stream_offset;
-        uint32_t stream_size;
-        if (xx_pd_is_stopped(pd)) return false;
-        if (size - cursor < 9U) break;
-        name_length = pe_cstring_size(pe, offset + (int64_t)cursor + 8,
-                                      size - cursor - 8U);
-        if (!name_length ||
-            !pe_align_up(cursor + 8U + name_length, 4U, &next) ||
-            next > size)
-            break;
-        if (!pe_append_absolute(
-                pe, stream, XX_PE_DATA_STRUCT_CLR_STREAM_HEADER,
-                offset + (int64_t)cursor, next - cursor,
-                next - cursor, 1U, XX_DATA_STRUCT_TYPE_ENTRY))
-            return false;
-        stream_offset = pe_u32(pe, offset + (int64_t)cursor);
-        stream_size = pe_u32(pe, offset + (int64_t)cursor + 4);
-        if (stream_offset <= size && stream_size <= size - stream_offset &&
-            !pe_append_raw_absolute(pe, stream,
-                                    XX_PE_DATA_STRUCT_CLR_RAW,
-                                    offset + stream_offset, stream_size))
-            return false;
-        cursor = next;
-    }
-    return true;
-}
-
-static bool pe_append_clr_raw_directory(xx_pe *pe,
-                                        pe_data_stream *stream,
-                                        const xx_memory_map *map,
-                                        int64_t cor_offset,
-                                        uint32_t field_offset) {
-    uint32_t rva = pe_u32(pe, cor_offset + field_offset);
-    uint32_t size = pe_u32(pe, cor_offset + field_offset + 4);
-    if (!rva || !size || !pe_rva_range(pe, map, rva, size, NULL)) return true;
-    return pe_append_raw_rva(pe, stream, map, XX_PE_DATA_STRUCT_CLR_RAW,
-                             rva, size);
-}
-
-static bool pe_append_clr(xx_pe *pe, pe_data_stream *stream,
-                          const xx_memory_map *map, xx_pd_struct *pd) {
-    uint32_t rva = pe->data_directory_rva[PE_DIR_COM_DESCRIPTOR];
-    uint32_t size = pe->data_directory_size[PE_DIR_COM_DESCRIPTOR];
-    int64_t offset;
-    uint32_t cb;
-    uint32_t fixup_rva;
-    uint32_t fixup_size;
-    int64_t fixup_offset;
-    uint64_t fixup_count;
-    if (!rva || !size) return true;
-    if (size < 72U || !pe_rva_range(pe, map, rva, size, &offset))
-        return true;
-    cb = pe_u32(pe, offset);
-    if (cb < 72U) return pe_append_raw_absolute(
-        pe, stream, XX_PE_DATA_STRUCT_RESERVED_DIRECTORY_RAW, offset, size);
-    if (!pe_append_absolute(pe, stream, XX_PE_DATA_STRUCT_COR20_HEADER,
-                            offset, 72U, 72U, 1U,
-                            XX_DATA_STRUCT_TYPE_STRUCT) ||
-        !pe_append_raw_absolute(
-            pe, stream, XX_PE_DATA_STRUCT_RESERVED_DIRECTORY_RAW,
-            offset + 72, size - 72U) ||
-        !pe_append_clr_metadata(pe, stream, map,
-                                pe_u32(pe, offset + 8),
-                                pe_u32(pe, offset + 12), pd))
-        return false;
-    if (!pe_append_clr_raw_directory(pe, stream, map, offset, 24U) ||
-        !pe_append_clr_raw_directory(pe, stream, map, offset, 32U) ||
-        !pe_append_clr_raw_directory(pe, stream, map, offset, 40U) ||
-        !pe_append_clr_raw_directory(pe, stream, map, offset, 56U) ||
-        !pe_append_clr_raw_directory(pe, stream, map, offset, 64U))
-        return false;
-    fixup_rva = pe_u32(pe, offset + 48);
-    fixup_size = pe_u32(pe, offset + 52);
-    if (!fixup_rva || fixup_size < 8U ||
-        !pe_rva_range(pe, map, fixup_rva, fixup_size, &fixup_offset))
-        return true;
-    fixup_count = fixup_size / 8U;
-    if (!pe_append_absolute(pe, stream,
-                            XX_PE_DATA_STRUCT_CLR_VTABLE_FIXUP,
-                            fixup_offset, 8U, fixup_count * 8U,
-                            fixup_count, XX_DATA_STRUCT_TYPE_ENTRY))
-        return false;
-    for (uint64_t index = 0U; index < fixup_count; ++index) {
-        int64_t entry = fixup_offset + (int64_t)(index * 8U);
-        uint32_t table_rva = pe_u32(pe, entry);
-        uint16_t table_count = xx_io_get_u16(pe->format.device,
-                                             entry + 4, false);
-        uint16_t type = xx_io_get_u16(pe->format.device, entry + 6, false);
-        uint64_t stride = (type & 2U) ? 8U : 4U;
-        uint64_t bytes;
-        if (pe_u64_product(table_count, stride, &bytes) &&
-            pe_rva_range(pe, map, table_rva, bytes, NULL) &&
-            !pe_append_raw_rva(pe, stream, map,
-                               XX_PE_DATA_STRUCT_CLR_RAW,
-                               table_rva, bytes))
-            return false;
-    }
-    return pe_append_raw_absolute(
-        pe, stream, XX_PE_DATA_STRUCT_RESERVED_DIRECTORY_RAW,
-        fixup_offset + (int64_t)(fixup_count * 8U),
-        fixup_size - fixup_count * 8U);
-}
-
 static bool pe_append_directory_raw(xx_pe *pe, pe_data_stream *stream,
                                     const xx_memory_map *map,
                                     uint32_t directory) {
@@ -3828,7 +3701,7 @@ static bool pe_append_directory_raw(xx_pe *pe, pe_data_stream *stream,
 }
 
 static bool pe_data_build(xx_pe *pe, pe_data_stream *stream,
-                          xx_pd_struct *pd) {
+                          xx_pe_data_extension extension, xx_pd_struct *pd) {
     const xx_memory_map *map;
     if (!pe || !stream || xx_pd_is_stopped(pd)) return false;
     map = xx_format_get_memory_map(&pe->format,
@@ -3850,7 +3723,7 @@ static bool pe_data_build(xx_pe *pe, pe_data_stream *stream,
         !pe_append_bound_imports(pe, stream, map, pd) ||
         !pe_append_iat(pe, stream, map) ||
         !pe_append_delay_imports(pe, stream, map, pd) ||
-        !pe_append_clr(pe, stream, map, pd) ||
+        !pe_append_directory_raw(pe, stream, map, PE_DIR_COM_DESCRIPTOR) ||
         !pe_append_directory_raw(pe, stream, map, PE_DIR_RESERVED))
         return false;
     if (pe->format.overlay_offset >= pe->format.base_address &&
@@ -3859,7 +3732,8 @@ static bool pe_data_build(xx_pe *pe, pe_data_stream *stream,
                                 pe->format.overlay_offset,
                                 (uint64_t)pe->format.overlay_size))
         return false;
-    return !xx_pd_is_stopped(pd);
+    return !xx_pd_is_stopped(pd) &&
+           (!extension || extension(pe, stream, map, pd));
 }
 
 const char *xx_pe_data_struct_id_to_string(Abstractformat *format,
@@ -3880,18 +3754,18 @@ uint32_t xx_pe_data_struct_string_to_id(Abstractformat *format,
     return XX_PE_DATA_STRUCT_UNKNOWN;
 }
 
-xx_data_struct_state *xx_pe_create_data_structs_reading(
-    Abstractformat *format, xx_pd_struct *pd) {
+xx_data_struct_state *xx_pe_create_data_structs_reading_extended(
+    Abstractformat *format, xx_pe_data_extension extension, xx_pd_struct *pd) {
     xx_data_struct_state *state = NULL;
     pe_data_stream *stream = NULL;
     xx_pe *pe = (xx_pe *)format;
     if (!format || !format->device || xx_pd_is_stopped(pd) ||
         (!format->base_info_handled &&
-         !xx_pe_handle_base_info(format, pd)))
+         !xx_format_handle_base_info(format, pd)))
         return NULL;
     state = (xx_data_struct_state *)xx_mem_alloc(sizeof(*state));
     stream = (pe_data_stream *)xx_mem_calloc(1U, sizeof(*stream));
-    if (!state || !stream || !pe_data_build(pe, stream, pd) ||
+    if (!state || !stream || !pe_data_build(pe, stream, extension, pd) ||
         stream->count == 0U || stream->count > INT64_MAX)
         goto fail;
     xx_data_struct_state_init(state, format);
@@ -3906,6 +3780,11 @@ fail:
     if (stream) pe_data_stream_free(stream);
     if (state) xx_mem_free(state);
     return NULL;
+}
+
+xx_data_struct_state *xx_pe_create_data_structs_reading(
+    Abstractformat *format, xx_pd_struct *pd) {
+    return xx_pe_create_data_structs_reading_extended(format, NULL, pd);
 }
 
 const xx_data_struct *xx_pe_get_current_data_struct(
@@ -4092,11 +3971,6 @@ static bool pe_static_fields(
         case XX_PE_DATA_STRUCT_BOUND_IMPORT_DESCRIPTOR: PE_SELECT(pe_bound_fields);
         case XX_PE_DATA_STRUCT_BOUND_FORWARDER_REF: PE_SELECT(pe_bound_forwarder_fields);
         case XX_PE_DATA_STRUCT_DELAY_IMPORT_DESCRIPTOR: PE_SELECT(pe_delay_fields);
-        case XX_PE_DATA_STRUCT_COR20_HEADER: PE_SELECT(pe_cor20_fields);
-        case XX_PE_DATA_STRUCT_CLR_METADATA_ROOT: PE_SELECT(pe_clr_root_fields);
-        case XX_PE_DATA_STRUCT_CLR_METADATA_STORAGE_HEADER: PE_SELECT(pe_clr_storage_fields);
-        case XX_PE_DATA_STRUCT_CLR_STREAM_HEADER: PE_SELECT(pe_clr_stream_fields);
-        case XX_PE_DATA_STRUCT_CLR_VTABLE_FIXUP: PE_SELECT(pe_clr_vtable_fields);
         case XX_PE_DATA_STRUCT_ARM64X_FIXUP: PE_SELECT(pe_arm64x_fixup_fields);
         case XX_PE_DATA_STRUCT_ARM64X_DELTA: PE_SELECT(pe_arm64x_delta_fields);
         default: return false;
@@ -4279,6 +4153,53 @@ static bool pe_populate_record(Abstractformat *format,
         state->parent_struct.offset, field, false);
 }
 
+xx_data_struct_record_state *xx_pe_data_create_records_with_fields(
+    Abstractformat *format, const xx_data_struct *ds,
+    const xx_data_struct_field_desc *fields, size_t count, xx_pd_struct *pd) {
+    xx_data_struct_record_state *state;
+    pe_record_stream *stream;
+    int64_t limit;
+    size_t index;
+    if (!format || !format->device || !ds || !fields || !count ||
+        count > SIZE_MAX / sizeof(*fields) || xx_pd_is_stopped(pd) ||
+        ds->total_size <= 0 ||
+        !pe_device_range((const xx_pe *)format, ds->offset,
+                          (uint64_t)ds->total_size))
+        return NULL;
+    state = (xx_data_struct_record_state *)xx_mem_alloc(sizeof(*state));
+    stream = (pe_record_stream *)xx_mem_calloc(1U, sizeof(*stream));
+    if (!state || !stream) {
+        if (state) xx_mem_free(state);
+        if (stream) pe_record_stream_free(stream);
+        return NULL;
+    }
+    stream->fields = (xx_data_struct_field_desc *)xx_mem_alloc(count * sizeof(*fields));
+    if (!stream->fields) {
+        pe_record_stream_free(stream);
+        xx_mem_free(state);
+        return NULL;
+    }
+    limit = ds->entry_size > 0 && ds->entry_size < ds->total_size
+                ? ds->entry_size : ds->total_size;
+    for (index = 0U; index < count; ++index) {
+        if (fields[index].rel_offset >= 0 && fields[index].size > 0 &&
+            fields[index].rel_offset <= limit &&
+            fields[index].size <= limit - fields[index].rel_offset)
+            stream->fields[stream->count++] = fields[index];
+    }
+    xx_data_struct_record_state_init(state, format, ds);
+    state->internal_state = stream;
+    state->free_internal = pe_record_stream_free;
+    state->total_records = (int64_t)stream->count;
+    if (!stream->count || !pe_populate_record(format, state, 0U)) {
+        xx_data_struct_record_state_free(state);
+        return NULL;
+    }
+    state->current_index = 0;
+    state->has_record = true;
+    return state;
+}
+
 xx_data_struct_record_state *xx_pe_create_data_struct_records_reading(
     Abstractformat *format, const xx_data_struct *ds, xx_pd_struct *pd) {
     const xx_data_struct_field_desc *static_fields = NULL;
@@ -4291,12 +4212,12 @@ xx_data_struct_record_state *xx_pe_create_data_struct_records_reading(
     bool import_name;
     bool resource_name;
     bool pogo_entry;
-    bool clr_stream;
     xx_data_struct_record_state *state = NULL;
     pe_record_stream *stream = NULL;
     xx_pe *pe = (xx_pe *)format;
     if (!format || !format->device || !ds || xx_pd_is_stopped(pd) ||
-        ds->offset < 0 || ds->total_size <= 0)
+        ds->offset < 0 || ds->total_size <= 0 ||
+        !pe_device_range(pe, ds->offset, (uint64_t)ds->total_size))
         return NULL;
     simple_ascii = ds->id == XX_PE_DATA_STRUCT_COFF_STRING ||
                    ds->id == XX_PE_DATA_STRUCT_EXPORT_FORWARDER ||
@@ -4305,7 +4226,6 @@ xx_data_struct_record_state *xx_pe_create_data_struct_records_reading(
     import_name = ds->id == XX_PE_DATA_STRUCT_IMPORT_BY_NAME;
     resource_name = ds->id == XX_PE_DATA_STRUCT_RESOURCE_STRING;
     pogo_entry = ds->id == XX_PE_DATA_STRUCT_DEBUG_POGO_ENTRY;
-    clr_stream = ds->id == XX_PE_DATA_STRUCT_CLR_STREAM_HEADER;
     (void)pe_static_fields(pe, ds, &static_fields, &static_count);
     limit = ds->entry_size > 0 && ds->entry_size < ds->total_size
                 ? ds->entry_size : ds->total_size;
@@ -4319,7 +4239,7 @@ xx_data_struct_record_state *xx_pe_create_data_struct_records_reading(
     }
     if (simple_ascii) extra_count = 1U;
     else if (import_name || resource_name) extra_count = 2U;
-    else if (pogo_entry || clr_stream) extra_count = 1U;
+    else if (pogo_entry) extra_count = 1U;
     if (valid_count == 0U && extra_count == 0U) return NULL;
     state = (xx_data_struct_record_state *)xx_mem_alloc(sizeof(*state));
     stream = (pe_record_stream *)xx_mem_calloc(1U, sizeof(*stream));
@@ -4370,9 +4290,9 @@ xx_data_struct_record_state *xx_pe_create_data_struct_records_reading(
         name->size = ds->total_size - 2;
         name->property = XX_DATA_STRUCT_RECORD_PROPERTY_STRING;
         stream->unicode_string = true;
-    } else if (pogo_entry || clr_stream) {
+    } else if (pogo_entry) {
         xx_data_struct_field_desc *name = &stream->fields[stream->count++];
-        name->name = pogo_entry ? L"Name" : L"StreamName";
+        name->name = L"Name";
         name->type = L"char[]";
         name->rel_offset = 8;
         name->size = ds->total_size > 8 ? ds->total_size - 8 : 0;
@@ -4429,6 +4349,29 @@ void xx_pe_free_data_struct_records_reading(
     Abstractformat *format, xx_data_struct_record_state *state) {
     (void)format;
     xx_data_struct_record_state_free(state);
+}
+
+bool xx_pe_data_append_absolute(xx_pe *pe, xx_pe_data_stream *stream,
+                                uint32_t id, int64_t offset,
+                                uint64_t entry_size, uint64_t total_size,
+                                uint64_t count, xx_data_struct_type_t type) {
+    return pe_append_absolute(pe, stream, id, offset, entry_size, total_size,
+                               count, type);
+}
+
+bool xx_pe_data_append_raw(xx_pe *pe, xx_pe_data_stream *stream,
+                           uint32_t id, int64_t offset, uint64_t size) {
+    return pe_append_raw_absolute(pe, stream, id, offset, size);
+}
+
+bool xx_pe_data_rva_range(const xx_pe *pe, const xx_memory_map *map,
+                          uint64_t rva, uint64_t size, int64_t *offset) {
+    return pe_rva_range(pe, map, rva, size, offset);
+}
+
+uint64_t xx_pe_data_cstring_size(const xx_pe *pe, int64_t offset,
+                                uint64_t maximum) {
+    return pe_cstring_size(pe, offset, maximum);
 }
 
 void xx_pe_setup_data_struct_callbacks(xx_pe *pe) {

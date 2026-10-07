@@ -5,22 +5,23 @@
  */
 #include "xxfclib/formats/xbox_xbe/xx_xbox_xbe.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static XXFC_MAYBE_UNUSED uint16_t r16(const uint8_t *p,bool be) { return be ? pm_be16(p) : pm_le16(p); }
-static XXFC_MAYBE_UNUSED uint32_t r32(const uint8_t *p,bool be) { return be ? pm_be32(p) : pm_le32(p); }
-static XXFC_MAYBE_UNUSED uint64_t r64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint16_t r16(const uint8_t *p,bool be) { return be ? xx_data_get_u16(p, 2, 0, true) : xx_data_get_u16(p, 2, 0, false); }
+static XXFC_MAYBE_UNUSED uint32_t r32(const uint8_t *p,bool be) { return be ? xx_data_get_u32(p, 4, 0, true) : xx_data_get_u32(p, 4, 0, false); }
+static XXFC_MAYBE_UNUSED uint64_t r64(const uint8_t *p,bool be) { return be ? ((uint64_t)xx_data_get_u32(p, 4, 0, true)<<32)|xx_data_get_u32(p+4, 4, 0, true) : ((uint64_t)xx_data_get_u32(p+4, 4, 0, false)<<32)|xx_data_get_u32(p, 4, 0, false); }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[0x178],e[56]; uint32_t base,headers,count,table,i; int64_t end;
     if(!pm_read(f,0,h,sizeof(h)) || xx_rt_memcmp(h,"XBEH",4)) return false;
-    base=pm_le32(h+0x104); headers=pm_le32(h+0x108); count=pm_le32(h+0x11c); table=pm_le32(h+0x120);
-    if(!base || headers<sizeof(h) || headers>pm_available(f) || pm_le32(h+0x110)<sizeof(h) || pm_le32(h+0x110)>headers ||
+    base=xx_data_get_u32(h+0x104, 4, 0, false); headers=xx_data_get_u32(h+0x108, 4, 0, false); count=xx_data_get_u32(h+0x11c, 4, 0, false); table=xx_data_get_u32(h+0x120, 4, 0, false);
+    if(!base || headers<sizeof(h) || headers>pm_available(f) || xx_data_get_u32(h+0x110, 4, 0, false)<sizeof(h) || xx_data_get_u32(h+0x110, 4, 0, false)>headers ||
        !count || count>4096 || table<base || table-base>headers || (uint64_t)count*56>headers-(table-base)) return false;
     end=headers;
     for(i=0;i<count;++i) {
         uint32_t off,size,virtual_size; char label[40];
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,table-base+(int64_t)i*56,e,56)) return false;
-        virtual_size=pm_le32(e+8); off=pm_le32(e+12); size=pm_le32(e+16);
+        virtual_size=xx_data_get_u32(e+8, 4, 0, false); off=xx_data_get_u32(e+12, 4, 0, false); size=xx_data_get_u32(e+16, 4, 0, false);
         if(size>virtual_size || off<headers || size>(uint64_t)pm_available(f)-off || off>pm_available(f)) return false;
         xx_rt_snprintf(label,sizeof(label),"section-%u.bin",(unsigned)i);
         if(!pm_add(f,s,label,off,size)) { return false; } if((int64_t)off+size>end) end=(int64_t)off+size;

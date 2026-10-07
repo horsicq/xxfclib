@@ -54,6 +54,7 @@
 #include "xxfclib/algo/deflate/xx_deflate.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_MVA_COPY_CHUNK (64 * 1024)
 
@@ -161,8 +162,6 @@ static bool xx_mva_add(xx_mva_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_mva_le16(const uint8_t *data);
-static uint32_t xx_mva_le32(const uint8_t *data);
 static size_t xx_mva_field_length(const uint8_t *field);
 static bool xx_mva_path_valid(const uint8_t *field, size_t length);
 static char *xx_mva_base_name(const uint8_t *field, size_t length);
@@ -172,15 +171,6 @@ static bool xx_mva_decode(Abstractformat *self, const xx_mva_member *member, uin
 
 /* 1 GB: no member of a real installer volume approaches this, and the cap
  * keeps a garbage size from being carried into the chain arithmetic. */
-
-static uint16_t xx_mva_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_mva_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* The path is a fixed 260-byte buffer.  Some writers leave stale bytes after
  * the terminator, so only the run up to the first NUL is the name; a field
@@ -275,7 +265,7 @@ static xx_mva_stream *xx_mva_parse(Abstractformat *self, xx_pd_struct *pd) {
     /* A .MVB continuation volume repeats the "mflh" tag but carries the tail
      * of the previous volume's stream here instead of 1, so the version is
      * what separates a volume that can be parsed from one that cannot. */
-    if (xx_mva_le32(header + 4) != XX_MVA_CONTAINER_VERSION) return NULL;
+    if (xx_data_get_u32(header + 4, 4, 0, false) != XX_MVA_CONTAINER_VERSION) return NULL;
 
     stream = (xx_mva_stream *)xx_mem_alloc(sizeof(*stream));
     if (!stream) return NULL;
@@ -307,20 +297,20 @@ static xx_mva_stream *xx_mva_parse(Abstractformat *self, xx_pd_struct *pd) {
             header[3] != 'n') {
             break;
         }
-        if (xx_mva_le16(header + 4) != XX_MVA_MEMBER_VERSION) break;
+        if (xx_data_get_u16(header + 4, 2, 0, false) != XX_MVA_MEMBER_VERSION) break;
         /* The header describes its own length, and every writer emits 0x15a.
          * Requiring the exact value is what makes the four-byte member tag
          * meaningful. */
-        if ((int64_t)xx_mva_le16(header + 6) != XX_MVA_MEMBER_HEADER_SIZE) {
+        if ((int64_t)xx_data_get_u16(header + 6, 2, 0, false) != XX_MVA_MEMBER_HEADER_SIZE) {
             break;
         }
 
         /* Both sizes are signed in the container; a negative one is a
          * corrupt header, not a large member. */
         uncompressed =
-            (int64_t)(int32_t)xx_mva_le32(header + XX_MVA_SIZES_OFFSET);
+            (int64_t)(int32_t)xx_data_get_u32(header + XX_MVA_SIZES_OFFSET, 4, 0, false);
         compressed =
-            (int64_t)(int32_t)xx_mva_le32(header + XX_MVA_SIZES_OFFSET + 4);
+            (int64_t)(int32_t)xx_data_get_u32(header + XX_MVA_SIZES_OFFSET + 4, 4, 0, false);
         if (uncompressed < 0 || compressed < 0) break;
         if (uncompressed > XX_MVA_MAX_MEMBER_SIZE ||
             compressed > XX_MVA_MAX_MEMBER_SIZE) {
@@ -342,7 +332,7 @@ static xx_mva_stream *xx_mva_parse(Abstractformat *self, xx_pd_struct *pd) {
         member.data_offset = self->base_address + data_offset;
         member.compressed_size = compressed;
         member.uncompressed_size = uncompressed;
-        member.timestamp = (uint64_t)xx_mva_le32(header + 8);
+        member.timestamp = (uint64_t)xx_data_get_u32(header + 8, 4, 0, false);
         /* No method field exists: equal sizes mean the writer stored the
          * member verbatim, anything else is a zlib stream. */
         member.method = (compressed == uncompressed) ? XX_MVA_METHOD_STORE

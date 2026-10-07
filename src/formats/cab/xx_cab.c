@@ -13,6 +13,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define CAB_FLAG_PREV 1U
 #define CAB_FLAG_NEXT 2U
@@ -33,8 +34,6 @@ typedef struct cab_context_s {
     size_t decoded_size, decoded_index;
 } cab_context;
 
-static uint16_t cab_u16(const uint8_t *p){return (uint16_t)(p[0]|((uint16_t)p[1]<<8U));}
-static uint32_t cab_u32(const uint8_t *p){return (uint32_t)cab_u16(p)|((uint32_t)cab_u16(p+2)<<16U);}
 static bool cab_read(xx_io_device*d,int64_t o,void*p,size_t n){size_t x=0;if(!d||o<0||o>LONG_MAX||xx_io_seek(d,(long)o,SEEK_SET))return false;while(x<n){ssize_t r=xx_io_read(d,(uint8_t*)p+x,n-x);if(r<=0||(size_t)r>n-x)return false;x+=(size_t)r;}return true;}
 static void cab_free(void *p){cab_context*c=(cab_context*)p;size_t i;if(!c)return;if(c->files){for(i=0;i<c->file_count;i++)if(c->files[i].name)xx_str_free(c->files[i].name);xx_mem_free(c->files);}if(c->folders)xx_mem_free(c->folders);if(c->decoded_folder)xx_mem_free(c->decoded_folder);xx_mem_free(c);}
 static bool cab_cstring(Abstractformat*f,int64_t end,int64_t *at,char **value){size_t n=0;uint8_t b;if(!at||*at<0)return false;while(*at+(int64_t)n<end){if(!cab_read(f->device,*at+(int64_t)n,&b,1))return false;if(!b)break;if(b<0x20U)return false;n++;if(n>32767U)return false;}if(*at+(int64_t)n>=end)return false;if(value){*value=(char*)xx_mem_alloc(n+1U);if(!*value)return false;if(n&&!cab_read(f->device,*at,*value,n)){xx_mem_free(*value);*value=NULL;return false;}(*value)[n]=0;}*at+=(int64_t)n+1;return true;}
@@ -42,15 +41,15 @@ static bool cab_cstring(Abstractformat*f,int64_t end,int64_t *at,char **value){s
 static bool cab_parse(Abstractformat*f,cab_context **out){
     uint8_t h[36];uint32_t cabinet,files_at;uint16_t flags,nfolders,nfiles;int64_t at,end,total;cab_context*c;size_t i;
     if(!f||!f->device||!out||f->base_address<0) {return false; } total=xx_io_total_size(f->device);if(total-f->base_address<36||!cab_read(f->device,f->base_address,h,36)||xx_rt_memcmp(h,"MSCF",4))return false;
-    cabinet=cab_u32(h+8);files_at=cab_u32(h+16);nfolders=cab_u16(h+26);nfiles=cab_u16(h+28);flags=cab_u16(h+30);if(cabinet<36U||cabinet>(uint64_t)(total-f->base_address)||!nfolders||!nfiles||files_at>=cabinet)return false;end=f->base_address+cabinet;at=f->base_address+36;
+    cabinet=xx_data_get_u32(h+8, 4, 0, false);files_at=xx_data_get_u32(h+16, 4, 0, false);nfolders=xx_data_get_u16(h+26, 2, 0, false);nfiles=xx_data_get_u16(h+28, 2, 0, false);flags=xx_data_get_u16(h+30, 2, 0, false);if(cabinet<36U||cabinet>(uint64_t)(total-f->base_address)||!nfolders||!nfiles||files_at>=cabinet)return false;end=f->base_address+cabinet;at=f->base_address+36;
     c=(cab_context*)xx_mem_calloc(1,sizeof(*c));if(!c)return false;c->cabinet_size=cabinet;c->folder_count=nfolders;c->file_count=nfiles;c->folders=(cab_folder*)xx_mem_calloc(nfolders,sizeof(*c->folders));c->files=(cab_file*)xx_mem_calloc(nfiles,sizeof(*c->files));if(!c->folders||!c->files)goto fail;
-    if(flags&CAB_FLAG_RESERVE){uint8_t r[4];uint16_t hr;if(!cab_read(f->device,at,r,4))goto fail;hr=cab_u16(r);c->folder_reserve=r[2];c->data_reserve=r[3];at+=4;if(at>end||hr>(uint64_t)(end-at))goto fail;at+=hr;}
+    if(flags&CAB_FLAG_RESERVE){uint8_t r[4];uint16_t hr;if(!cab_read(f->device,at,r,4))goto fail;hr=xx_data_get_u16(r, 2, 0, false);c->folder_reserve=r[2];c->data_reserve=r[3];at+=4;if(at>end||hr>(uint64_t)(end-at))goto fail;at+=hr;}
     if(flags&CAB_FLAG_PREV){if(!cab_cstring(f,end,&at,NULL)||!cab_cstring(f,end,&at,NULL))goto fail;}
     if(flags&CAB_FLAG_NEXT){if(!cab_cstring(f,end,&at,NULL)||!cab_cstring(f,end,&at,NULL))goto fail;}
-    for(i=0;i<nfolders;i++){uint8_t b[8];if(at>end||8U+c->folder_reserve>(uint64_t)(end-at)||!cab_read(f->device,at,b,8))goto fail;c->folders[i].data_offset=cab_u32(b);c->folders[i].blocks=cab_u16(b+4);c->folders[i].type=cab_u16(b+6);if(c->folders[i].data_offset>=cabinet||!c->folders[i].blocks)goto fail;at+=8+c->folder_reserve;}
+    for(i=0;i<nfolders;i++){uint8_t b[8];if(at>end||8U+c->folder_reserve>(uint64_t)(end-at)||!cab_read(f->device,at,b,8))goto fail;c->folders[i].data_offset=xx_data_get_u32(b, 4, 0, false);c->folders[i].blocks=xx_data_get_u16(b+4, 2, 0, false);c->folders[i].type=xx_data_get_u16(b+6, 2, 0, false);if(c->folders[i].data_offset>=cabinet||!c->folders[i].blocks)goto fail;at+=8+c->folder_reserve;}
     at=f->base_address+files_at;
-    for(i=0;i<nfiles;i++){uint8_t b[16];char*name=NULL;if(at>end||end-at<16||!cab_read(f->device,at,b,16))goto fail;c->files[i].size=cab_u32(b);c->files[i].folder_offset=cab_u32(b+4);c->files[i].folder=cab_u16(b+8);c->files[i].date=cab_u16(b+10);c->files[i].time=cab_u16(b+12);c->files[i].attrs=cab_u16(b+14);at+=16;if(c->files[i].folder>=nfolders||!cab_cstring(f,end,&at,&name))goto fail;c->files[i].name=name;}
-    for(i=0;i<nfolders;i++){int64_t p=f->base_address+c->folders[i].data_offset;uint16_t j;uint64_t unpacked=0;for(j=0;j<c->folders[i].blocks;j++){uint8_t b[8];uint16_t packed,plain;if(p>end||8U+c->data_reserve>(uint64_t)(end-p)||!cab_read(f->device,p,b,8))goto fail;packed=cab_u16(b+4);plain=cab_u16(b+6);p+=8+c->data_reserve;if(p>end||packed>(uint64_t)(end-p)||!plain)goto fail;p+=packed;unpacked+=plain;if(unpacked>UINT32_MAX)goto fail;}}
+    for(i=0;i<nfiles;i++){uint8_t b[16];char*name=NULL;if(at>end||end-at<16||!cab_read(f->device,at,b,16))goto fail;c->files[i].size=xx_data_get_u32(b, 4, 0, false);c->files[i].folder_offset=xx_data_get_u32(b+4, 4, 0, false);c->files[i].folder=xx_data_get_u16(b+8, 2, 0, false);c->files[i].date=xx_data_get_u16(b+10, 2, 0, false);c->files[i].time=xx_data_get_u16(b+12, 2, 0, false);c->files[i].attrs=xx_data_get_u16(b+14, 2, 0, false);at+=16;if(c->files[i].folder>=nfolders||!cab_cstring(f,end,&at,&name))goto fail;c->files[i].name=name;}
+    for(i=0;i<nfolders;i++){int64_t p=f->base_address+c->folders[i].data_offset;uint16_t j;uint64_t unpacked=0;for(j=0;j<c->folders[i].blocks;j++){uint8_t b[8];uint16_t packed,plain;if(p>end||8U+c->data_reserve>(uint64_t)(end-p)||!cab_read(f->device,p,b,8))goto fail;packed=xx_data_get_u16(b+4, 2, 0, false);plain=xx_data_get_u16(b+6, 2, 0, false);p+=8+c->data_reserve;if(p>end||packed>(uint64_t)(end-p)||!plain)goto fail;p+=packed;unpacked+=plain;if(unpacked>UINT32_MAX)goto fail;}}
     *out=c;return true;fail:cab_free(c);return false;
 }
 
@@ -74,7 +73,7 @@ static bool cab_decode_folder_advanced(Abstractformat*f,const cab_context*c,
     for(i=0;i<folder->blocks;i++){
         uint8_t h[8];uint16_t packed,plain;
         if(!cab_read(f->device,p,h,8))goto done;
-        packed=cab_u16(h+4);plain=cab_u16(h+6);p+=8+c->data_reserve;
+        packed=xx_data_get_u16(h+4, 2, 0, false);plain=xx_data_get_u16(h+6, 2, 0, false);p+=8+c->data_reserve;
         if(!packed||!plain||plain>SIZE_MAX-total)goto done;
         blocks[i]=(uint8_t*)xx_mem_alloc(packed);
         if(!blocks[i]||!cab_read(f->device,p,blocks[i],packed))goto done;
@@ -108,7 +107,7 @@ static bool cab_decode_folder(Abstractformat*f,const cab_context*c,uint16_t fi,u
     if(method!=CAB_METHOD_STORE&&method!=CAB_METHOD_MSZIP)return false;
     for(j=0;j<folder->blocks;j++){
         uint8_t h[8];uint16_t packed,plain;uint8_t*in=NULL,*grown;size_t wrote=0;
-        if(!cab_read(f->device,p,h,8)) {goto fail; } packed=cab_u16(h+4);plain=cab_u16(h+6);p+=8+c->data_reserve;
+        if(!cab_read(f->device,p,h,8)) {goto fail; } packed=xx_data_get_u16(h+4, 2, 0, false);plain=xx_data_get_u16(h+6, 2, 0, false);p+=8+c->data_reserve;
         if(!packed||!plain) {goto fail; } in=(uint8_t*)xx_mem_alloc(packed);
         if(!in||!cab_read(f->device,p,in,packed)){if(in)xx_mem_free(in);goto fail;}p+=packed;
         if(used>SIZE_MAX-plain){xx_mem_free(in);goto fail;}

@@ -22,6 +22,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Self-healing file-type shim: the enum entry is added by the coordinator. */
 #ifdef GXL
@@ -55,15 +56,6 @@ typedef struct gxl_stream_s {
     int64_t archive_size;
     uint16_t format_version;
 } gxl_stream;
-
-static uint16_t gxl_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t gxl_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
 
 static bool gxl_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -154,10 +146,10 @@ static bool gxl_parse(Abstractformat *format, gxl_stream **result,
     /* Signature: 0x01 0xCA, the Genus copyright banner, version 100. */
     if (header[0] != 0x01U || header[1] != 0xcaU ||
         xx_rt_memcmp(header + 2, "Copyri", 6U) != 0 ||
-        gxl_le16(header + 52) != GXL_VERSION)
+        xx_data_get_u16(header + 52, 2, 0, false) != GXL_VERSION)
         return false;
 
-    count = gxl_le16(header + 94);
+    count = xx_data_get_u16(header + 94, 2, 0, false);
     if (count == 0U) return false;
     table_size = (int64_t)count * (int64_t)GXL_RECORD_SIZE;
     /* The declared member count must fit in the real file before it is used
@@ -169,7 +161,7 @@ static bool gxl_parse(Abstractformat *format, gxl_stream **result,
     stream->items = (gxl_member *)xx_mem_calloc((size_t)count,
                                                 sizeof(*stream->items));
     if (!stream->items) goto done;
-    stream->format_version = gxl_le16(header + 52);
+    stream->format_version = xx_data_get_u16(header + 52, 2, 0, false);
     end = (int64_t)GXL_HEADER_SIZE + table_size;
 
     for (index = 0U; index < count; ++index) {
@@ -187,10 +179,10 @@ static bool gxl_parse(Abstractformat *format, gxl_stream **result,
         if (record[0] != GXL_METHOD_STORED) goto done;
         if (!gxl_build_name(record + 1, member->name)) goto done;
 
-        data_offset = gxl_le32(record + 1U + GXL_NAME_FIELD);
-        data_size = gxl_le32(record + 1U + GXL_NAME_FIELD + 4U);
-        member->dos_time = gxl_le16(record + 1U + GXL_NAME_FIELD + 8U);
-        member->dos_date = gxl_le16(record + 1U + GXL_NAME_FIELD + 10U);
+        data_offset = xx_data_get_u32(record + 1U + GXL_NAME_FIELD, 4, 0, false);
+        data_size = xx_data_get_u32(record + 1U + GXL_NAME_FIELD + 4U, 4, 0, false);
+        member->dos_time = xx_data_get_u16(record + 1U + GXL_NAME_FIELD + 8U, 2, 0, false);
+        member->dos_date = xx_data_get_u16(record + 1U + GXL_NAME_FIELD + 10U, 2, 0, false);
 
         /* Both halves of the extent must lie inside the real file. */
         if ((int64_t)data_offset < (int64_t)GXL_HEADER_SIZE + table_size ||

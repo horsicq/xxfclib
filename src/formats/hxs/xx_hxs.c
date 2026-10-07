@@ -25,6 +25,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -235,15 +236,6 @@ static uint32_t hxs_le16(const uint8_t *p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8U);
 }
 
-static uint32_t hxs_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) | ((uint32_t)p[2] << 16U) |
-           ((uint32_t)p[3] << 24U);
-}
-
-static uint64_t hxs_le64(const uint8_t *p) {
-    return (uint64_t)hxs_le32(p) | ((uint64_t)hxs_le32(p + 4U) << 32U);
-}
-
 static bool hxs_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     const size_t file_io_capacity = gb_hxs_capacity();
@@ -355,7 +347,7 @@ static bool hxs_add_entry(hxs_context *context, const uint8_t *name,
  * length), and a closing entry count that must match. */
 static bool hxs_parse_listing(hxs_context *context, const uint8_t *chunk,
                               uint32_t chunk_size) {
-    uint32_t quickref = hxs_le32(chunk + 4U), count = 0U;
+    uint32_t quickref = xx_data_get_u32(chunk + 4U, 4, 0, false), count = 0U;
     size_t position = HXS_AOLL_HEADER, end;
     if (quickref < 2U || quickref > chunk_size - HXS_AOLL_HEADER) return false;
     end = chunk_size - quickref;
@@ -401,17 +393,17 @@ static bool hxs_parse_directory(Abstractformat *format, hxs_context *context,
                      sizeof(header)))
         return false;
     if (xx_rt_memcmp(header, "ITOLITLS", 8U) != 0 ||
-        hxs_le32(header + 8U) != 1U || hxs_le32(header + 12U) != HXS_HEADER ||
-        hxs_le32(header + 16U) != HXS_HEADER_SECTIONS ||
+        xx_data_get_u32(header + 8U, 4, 0, false) != 1U || xx_data_get_u32(header + 12U, 4, 0, false) != HXS_HEADER ||
+        xx_data_get_u32(header + 16U, 4, 0, false) != HXS_HEADER_SECTIONS ||
         xx_rt_memcmp(header + 24U, hxs_header_guid, 16U) != 0)
         return false;
     context->total = total;
-    context->post_size = hxs_le32(header + 20U);
+    context->post_size = xx_data_get_u32(header + 20U, 4, 0, false);
     if (context->post_size < HXS_POST_MIN || context->post_size > HXS_POST_MAX)
         return false;
     for (index = 0U; index < HXS_HEADER_SECTIONS; ++index) {
-        offsets[index] = hxs_le64(header + HXS_HEADER + index * 16U);
-        sizes[index] = hxs_le64(header + HXS_HEADER + index * 16U + 8U);
+        offsets[index] = xx_data_get_u64(header + HXS_HEADER + index * 16U, 8, 0, false);
+        sizes[index] = xx_data_get_u64(header + HXS_HEADER + index * 16U + 8U, 8, 0, false);
         if (!hxs_within((uint64_t)total, offsets[index], sizes[index]))
             return false;
     }
@@ -421,19 +413,19 @@ static bool hxs_parse_directory(Abstractformat *format, hxs_context *context,
     if (!hxs_read_at(format->device,
                      format->base_address + (int64_t)sizeof(header), post,
                      sizeof(post)) ||
-        hxs_le32(post) != 2U || hxs_le32(post + 4U) != HXS_CAOL_AT)
+        xx_data_get_u32(post, 4, 0, false) != 2U || xx_data_get_u32(post + 4U, 4, 0, false) != HXS_CAOL_AT)
         return false;
-    context->expected_entries = hxs_le64(post + 0x40U);
+    context->expected_entries = xx_data_get_u64(post + 0x40U, 8, 0, false);
     caol = post + HXS_CAOL_AT;
     itsf = caol + HXS_ITSF_AT;
-    if (xx_rt_memcmp(caol, "CAOL", 4U) != 0 || hxs_le32(caol + 4U) != 2U ||
-        hxs_le32(caol + 8U) != HXS_CAOL_SIZE ||
-        xx_rt_memcmp(itsf, "ITSF", 4U) != 0 || hxs_le32(itsf + 4U) != 4U ||
-        hxs_le32(itsf + 8U) != 0x20U || hxs_le32(itsf + 12U) > 1U ||
+    if (xx_rt_memcmp(caol, "CAOL", 4U) != 0 || xx_data_get_u32(caol + 4U, 4, 0, false) != 2U ||
+        xx_data_get_u32(caol + 8U, 4, 0, false) != HXS_CAOL_SIZE ||
+        xx_rt_memcmp(itsf, "ITSF", 4U) != 0 || xx_data_get_u32(itsf + 4U, 4, 0, false) != 4U ||
+        xx_data_get_u32(itsf + 8U, 4, 0, false) != 0x20U || xx_data_get_u32(itsf + 12U, 4, 0, false) > 1U ||
         context->expected_entries == 0U ||
         context->expected_entries > HXS_MAX_ENTRIES)
         return false;
-    value = hxs_le64(itsf + 16U);
+    value = xx_data_get_u64(itsf + 16U, 8, 0, false);
     if (value > (uint64_t)total) return false;
     context->content_offset = (int64_t)value;
     /* Header section 0: magic 0x1FE and the file size. */
@@ -441,9 +433,9 @@ static bool hxs_parse_directory(Abstractformat *format, hxs_context *context,
         !hxs_read_at(format->device,
                      format->base_address + (int64_t)offsets[0], section0,
                      sizeof(section0)) ||
-        hxs_le32(section0) != HXS_SECTION0_MAGIC)
+        xx_data_get_u32(section0, 4, 0, false) != HXS_SECTION0_MAGIC)
         return false;
-    context->declared_size = hxs_le64(section0 + 8U);
+    context->declared_size = xx_data_get_u64(section0 + 8U, 8, 0, false);
     /* Header section 1: the directory, an "IFCM" header (version 1, chunk
      * size, chunk count) and the chunks. */
     context->directory_offset = (int64_t)offsets[1];
@@ -452,11 +444,11 @@ static bool hxs_parse_directory(Abstractformat *format, hxs_context *context,
         !hxs_read_at(format->device,
                      format->base_address + context->directory_offset, ifcm,
                      sizeof(ifcm)) ||
-        xx_rt_memcmp(ifcm, "IFCM", 4U) != 0 || hxs_le32(ifcm + 4U) != 1U ||
-        hxs_le32(ifcm + 28U) != 0U)
+        xx_rt_memcmp(ifcm, "IFCM", 4U) != 0 || xx_data_get_u32(ifcm + 4U, 4, 0, false) != 1U ||
+        xx_data_get_u32(ifcm + 28U, 4, 0, false) != 0U)
         return false;
-    context->chunk_size = hxs_le32(ifcm + 8U);
-    context->chunk_count = hxs_le32(ifcm + 24U);
+    context->chunk_size = xx_data_get_u32(ifcm + 8U, 4, 0, false);
+    context->chunk_count = xx_data_get_u32(ifcm + 24U, 4, 0, false);
     if (context->chunk_size < HXS_MIN_CHUNK ||
         context->chunk_size > HXS_MAX_CHUNK || context->chunk_count == 0U ||
         context->chunk_count > HXS_MAX_CHUNKS ||
@@ -596,14 +588,14 @@ static void hxs_load_lzx(Abstractformat *format, hxs_context *context,
         return;
     data = hxs_read_stored(format, context, control, HXS_MAX_META, &size);
     if (!data) return;
-    if (size < 24U || hxs_le32(data) < 5U ||
+    if (size < 24U || xx_data_get_u32(data, 4, 0, false) < 5U ||
         xx_rt_memcmp(data + 4U, "LZXC", 4U) != 0 ||
-        (hxs_le32(data + 8U) != 2U && hxs_le32(data + 8U) != 3U)) {
+        (xx_data_get_u32(data + 8U, 4, 0, false) != 2U && xx_data_get_u32(data + 8U, 4, 0, false) != 3U)) {
         xx_mem_free(data);
         return;
     }
-    reset_bits = hxs_log2(hxs_le32(data + 12U));
-    window_bits = hxs_log2(hxs_le32(data + 16U));
+    reset_bits = hxs_log2(xx_data_get_u32(data + 12U, 4, 0, false));
+    window_bits = hxs_log2(xx_data_get_u32(data + 16U, 4, 0, false));
     xx_mem_free(data);
     if (reset_bits < 0 || reset_bits > 16 || window_bits < 0 ||
         window_bits > (int)(HXS_WINDOW_MAX - HXS_WINDOW_MIN))
@@ -620,15 +612,15 @@ static void hxs_load_lzx(Abstractformat *format, hxs_context *context,
         count = packed = span = frames = 0U;
     } else {
         if (size < HXS_RT_HEADER ||
-            (hxs_le32(data) != 2U && hxs_le32(data) != 3U) ||
-            hxs_le32(data + 8U) != 8U || hxs_le32(data + 12U) != HXS_RT_HEADER ||
-            hxs_le64(data + 32U) != HXS_FRAME) {
+            (xx_data_get_u32(data, 4, 0, false) != 2U && xx_data_get_u32(data, 4, 0, false) != 3U) ||
+            xx_data_get_u32(data + 8U, 4, 0, false) != 8U || xx_data_get_u32(data + 12U, 4, 0, false) != HXS_RT_HEADER ||
+            xx_data_get_u64(data + 32U, 8, 0, false) != HXS_FRAME) {
             xx_mem_free(data);
             return;
         }
-        count = hxs_le32(data + 4U);
-        span = hxs_le64(data + 16U);
-        packed = hxs_le64(data + 24U);
+        count = xx_data_get_u32(data + 4U, 4, 0, false);
+        span = xx_data_get_u64(data + 16U, 8, 0, false);
+        packed = xx_data_get_u64(data + 24U, 8, 0, false);
         frames = span / HXS_FRAME + (span % HXS_FRAME ? 1U : 0U);
         if ((uint64_t)size != HXS_RT_HEADER + 8U * count || count < frames ||
             count > frames + 2U || frames > HXS_MAX_FRAMES ||
@@ -645,7 +637,7 @@ static void hxs_load_lzx(Abstractformat *format, hxs_context *context,
             return;
         }
         for (index = 0U; index < (size_t)count; ++index) {
-            uint64_t at = hxs_le64(data + HXS_RT_HEADER + index * 8U);
+            uint64_t at = xx_data_get_u64(data + HXS_RT_HEADER + index * 8U, 8, 0, false);
             if ((index == 0U && at != 0U) || at > packed ||
                 (index > 0U && at < section->resets[index - 1U])) {
                 xx_mem_free(data);

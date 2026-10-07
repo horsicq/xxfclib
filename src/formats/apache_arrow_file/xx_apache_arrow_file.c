@@ -9,22 +9,22 @@ typedef struct af_col { char name[256]; uint8_t width,nullable,is_signed; } af_c
 typedef struct af_schema_info { uint32_t count; uint16_t endian; af_col fields[64]; } af_schema_info;
 typedef struct af_table { uint64_t at,vt; uint16_t size,vsize; } af_table;
 static bool af_read(af_buf *b,uint64_t at,void *p,size_t n) { return !fd_stop(b->pd) && at>=b->begin && fd_range(at,n,b->end) && pm_read(b->f,(int64_t)at,p,n); }
-static bool af_u32(af_buf *b,uint64_t at,uint32_t *v) { uint8_t h[4]; if(!af_read(b,at,h,4)) return false; *v=pm_le32(h); return true; }
+static bool af_u32(af_buf *b,uint64_t at,uint32_t *v) { uint8_t h[4]; if(!af_read(b,at,h,4)) return false; *v=xx_data_get_u32(h, 4, 0, false); return true; }
 static bool af_table_at(af_buf *b,uint64_t at,af_table *t) { uint8_t h[4]; int32_t displacement; uint64_t vt;
-    if(!af_read(b,at,h,4)) { return false; } displacement=(int32_t)pm_le32(h);
+    if(!af_read(b,at,h,4)) { return false; } displacement=(int32_t)xx_data_get_u32(h, 4, 0, false);
     if(displacement>=0) { if((uint64_t)displacement>at-b->begin) return false; vt=at-(uint32_t)displacement; }
     else { uint64_t n=(uint64_t)(-(int64_t)displacement); if(at>b->end || n>b->end-at) return false; vt=at+n; }
-    if(!af_read(b,vt,h,4)) { return false; } t->at=at; t->vt=vt; t->vsize=pm_le16(h); t->size=pm_le16(h+2);
+    if(!af_read(b,vt,h,4)) { return false; } t->at=at; t->vt=vt; t->vsize=xx_data_get_u16(h, 2, 0, false); t->size=xx_data_get_u16(h+2, 2, 0, false);
     return t->vsize>=4 && !(t->vsize&1) && t->size>=4 && fd_range(vt,t->vsize,b->end) && fd_range(at,t->size,b->end);
 }
 static bool af_root(af_buf *b,af_table *t) { uint32_t n; return af_u32(b,b->begin,&n) && n>=4 && n<=b->end-b->begin && af_table_at(b,b->begin+n,t); }
 static bool af_field(af_buf *b,af_table *t,unsigned field,unsigned width,uint64_t *at) { uint8_t h[2]; uint16_t off;
     if(4+field*2>=t->vsize) { *at=0; return true; }
-    if(!af_read(b,t->vt+4+field*2,h,2)) { return false; } off=pm_le16(h); if(!off) { *at=0; return true; }
+    if(!af_read(b,t->vt+4+field*2,h,2)) { return false; } off=xx_data_get_u16(h, 2, 0, false); if(!off) { *at=0; return true; }
     if(off<4 || off>t->size || width>(unsigned)(t->size-off)) { return false; } *at=t->at+off; return true;
 }
 static bool af_value(af_buf *b,af_table *t,unsigned field,unsigned width,uint64_t *v) { uint8_t h[8]; uint64_t at; if(!af_field(b,t,field,width,&at)) return false;
-    if(!at) { *v=0; return true; } if(!af_read(b,at,h,width)) return false; *v=width==1 ? h[0]:width==2 ? pm_le16(h):width==4 ? pm_le32(h):fd_le64(h); return true;
+    if(!at) { *v=0; return true; } if(!af_read(b,at,h,width)) return false; *v=width==1 ? h[0]:width==2 ? xx_data_get_u16(h, 2, 0, false):width==4 ? xx_data_get_u32(h, 4, 0, false):xx_data_get_u64(h, 8, 0, false); return true;
 }
 static bool af_ref(af_buf *b,af_table *t,unsigned field,uint64_t *at) { uint64_t field_at; uint32_t off;
     if(!af_field(b,t,field,4,&field_at)) { return false; } if(!field_at) { *at=0; return true; }
@@ -63,15 +63,15 @@ done: xx_mem_free(buffer); return ok;
 static bool af_message(Abstractformat *f,uint64_t at,uint64_t meta,uint64_t body,uint64_t end,unsigned kind,const af_schema_info *info,uint64_t expected_version,uint64_t *bitmap_work,xx_pd_struct *pd) {
     uint8_t h[8]; uint32_t n,prefix; af_buf b; af_table message,payload; uint64_t version,typ,p,bodylen,custom; uint32_t fields=info->count,ncustom;
     if((body&7) || meta<8 || !fd_range(at,meta+body,end) || !pm_read(f,(int64_t)at,h,8)) return false;
-    prefix=pm_le32(h)==UINT32_MAX ? 8:4; n=pm_le32(h+prefix-4); if(n!=meta-prefix || (meta&7)) return false;
+    prefix=xx_data_get_u32(h, 4, 0, false)==UINT32_MAX ? 8:4; n=xx_data_get_u32(h+prefix-4, 4, 0, false); if(n!=meta-prefix || (meta&7)) return false;
     b.f=f; b.begin=at+prefix; b.end=at+meta; b.pd=pd;
     if(!af_root(&b,&message) || !af_vector(&b,&message,4,4,&custom,&ncustom) || ncustom || !af_value(&b,&message,0,2,&version) || version!=expected_version || !af_value(&b,&message,1,1,&typ) || typ!=kind || !af_value(&b,&message,3,8,&bodylen) || bodylen!=body || !af_ref(&b,&message,2,&p) || !p || !af_table_at(&b,p,&payload)) return false;
     if(kind==1) { af_schema_info other; return !body && af_schema(&b,&payload,&other) && !xx_rt_memcmp(info,&other,sizeof(other)); }
     else { uint64_t rows,nodes,buffers,compression,variadic,starts[128],sizes[128],nullcounts[64]; uint32_t nnode,nbuf,nvar,i;
         if(!af_value(&b,&payload,0,8,&rows) || rows>INT64_MAX || !af_vector(&b,&payload,1,16,&nodes,&nnode) || nnode!=fields || !af_vector(&b,&payload,2,16,&buffers,&nbuf) || nbuf!=fields*2 || !af_ref(&b,&payload,3,&compression) || compression || !af_vector(&b,&payload,4,8,&variadic,&nvar) || nvar) return false;
-        for(i=0;i<fields;++i) { uint64_t len,nulls; if(!af_read(&b,nodes+i*16,h,8) || (len=fd_le64(h))!=rows || !af_read(&b,nodes+i*16+8,h,8) || (nulls=fd_le64(h))>rows || (nulls && !info->fields[i].nullable)) return false; nullcounts[i]=nulls; }
+        for(i=0;i<fields;++i) { uint64_t len,nulls; if(!af_read(&b,nodes+i*16,h,8) || (len=xx_data_get_u64(h, 8, 0, false))!=rows || !af_read(&b,nodes+i*16+8,h,8) || (nulls=xx_data_get_u64(h, 8, 0, false))>rows || (nulls && !info->fields[i].nullable)) return false; nullcounts[i]=nulls; }
         for(i=0;i<nbuf;++i) { uint64_t off,size,required; unsigned j;
-            if(!af_read(&b,buffers+i*16,h,8)) { return false; } off=fd_le64(h); if(!af_read(&b,buffers+i*16+8,h,8)) return false; size=fd_le64(h);
+            if(!af_read(&b,buffers+i*16,h,8)) { return false; } off=xx_data_get_u64(h, 8, 0, false); if(!af_read(&b,buffers+i*16+8,h,8)) return false; size=xx_data_get_u64(h, 8, 0, false);
             if(off&7 || !fd_range(off,size,body)) return false;
             if(i&1) { if(!fd_mul(rows,info->fields[i/2].width,&required) || size!=required) return false; }
             else { required=(rows+7)/8; if((size && size!=required) || (nullcounts[i/2] && !size)) return false; }
@@ -83,15 +83,15 @@ static bool af_message(Abstractformat *f,uint64_t at,uint64_t meta,uint64_t body
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint64_t end=(uint64_t)pm_available(f),footer,version,schema_at,dictionaries,batches,last=8,custom,bitmap_work=0; uint32_t footerlen,ndict,nbatch,i,ncustom; uint8_t h[24]; af_schema_info info; af_buf b; af_table ft,schema;
-    if(end<32 || !fd_equal(f,0,"ARROW1\0\0",8) || !fd_equal(f,(int64_t)end-6,"ARROW1",6) || !pm_read(f,(int64_t)end-10,h,4) || !(footerlen=pm_le32(h)) || footerlen>16777216 || footerlen>end-18) return false;
+    if(end<32 || !fd_equal(f,0,"ARROW1\0\0",8) || !fd_equal(f,(int64_t)end-6,"ARROW1",6) || !pm_read(f,(int64_t)end-10,h,4) || !(footerlen=xx_data_get_u32(h, 4, 0, false)) || footerlen>16777216 || footerlen>end-18) return false;
     footer=end-10-footerlen; b.f=f; b.begin=footer; b.end=end-10; b.pd=pd;
     if(!af_root(&b,&ft) || !af_vector(&b,&ft,4,4,&custom,&ncustom) || ncustom || !af_value(&b,&ft,0,2,&version) || version<3 || version>4 || !af_ref(&b,&ft,1,&schema_at) || !schema_at || !af_table_at(&b,schema_at,&schema) || !af_schema(&b,&schema,&info) || !af_vector(&b,&ft,2,24,&dictionaries,&ndict) || ndict || !af_vector(&b,&ft,3,24,&batches,&nbatch) || !nbatch || nbatch>1024) return false;
     if(!pm_read(f,8,h,8)) return false;
-    { uint32_t prefix=pm_le32(h)==UINT32_MAX ? 8:4,meta=pm_le32(h+prefix-4);
+    { uint32_t prefix=xx_data_get_u32(h, 4, 0, false)==UINT32_MAX ? 8:4,meta=xx_data_get_u32(h+prefix-4, 4, 0, false);
       if(meta>16777216 || !af_message(f,8,(uint64_t)prefix+meta,0,footer,1,&info,version,&bitmap_work,pd)) { return false; } last=8+prefix+meta;
     }
     for(i=0;i<nbatch;++i) { uint64_t at,body; uint32_t meta; char name[64];
-        if(fd_stop(pd) || !af_read(&b,batches+i*24,h,24)) { return false; } at=fd_le64(h); meta=pm_le32(h+8); body=fd_le64(h+16);
+        if(fd_stop(pd) || !af_read(&b,batches+i*24,h,24)) { return false; } at=xx_data_get_u64(h, 8, 0, false); meta=xx_data_get_u32(h+8, 4, 0, false); body=xx_data_get_u64(h+16, 8, 0, false);
         if(at!=last || at&7 || meta>16777216 || meta<8 || body>INT64_MAX || !fd_range(at,(uint64_t)meta+body,footer) || !af_message(f,at,meta,body,footer,3,&info,version,&bitmap_work,pd)) return false;
         xx_rt_snprintf(name,sizeof(name),"batch-%u-metadata.bin",i); if(!pm_add(f,s,name,(int64_t)at,meta)) return false;
         xx_rt_snprintf(name,sizeof(name),"batch-%u-body.bin",i); if(!pm_add(f,s,name,(int64_t)at+meta,(int64_t)body)) return false; last=at+meta+body;

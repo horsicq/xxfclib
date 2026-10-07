@@ -4,6 +4,7 @@
 #include "xxfclib/formats/atari_pasti_stx/xx_atari_pasti_stx.h"
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "../nintendo_sdat/xx_twelfth_c.h"
+#include "xxfclib/data/xx_data.h"
 
 static uint16_t stx_id_crc(const uint8_t *p) {
     uint8_t bytes[8] = {0xa1, 0xa1, 0xa1, 0xfe, 0, 0, 0, 0};
@@ -12,15 +13,15 @@ static uint16_t stx_id_crc(const uint8_t *p) {
 }
 static bool read_components(Abstractformat *f,pm_stream *s,tc_blob *b) {
  const uint8_t *p=b->p;uint32_t a=16,i,j,tracks;uint8_t seen[256]={0};char label[64];
- if(b->n<16 || xx_rt_memcmp(p,"RSY\0",4) || pm_le16(p+4)!=3 || (pm_le16(p+6)!=1 && pm_le16(p+6)!=0xcc) || pm_le16(p+8) || (p[11]!=0 && p[11]!=2) || !tc_zero(p+12,4) || !p[10]) return false;
+ if(b->n<16 || xx_rt_memcmp(p,"RSY\0",4) || xx_data_get_u16(p+4, 2, 0, false)!=3 || (xx_data_get_u16(p+6, 2, 0, false)!=1 && xx_data_get_u16(p+6, 2, 0, false)!=0xcc) || xx_data_get_u16(p+8, 2, 0, false) || (p[11]!=0 && p[11]!=2) || !tc_zero(p+12,4) || !p[10]) return false;
  tracks=p[10];if(!tc_emit(f,s,b,"stx-file-descriptor.bin",0,16)) return false;
  for(i=0;i<tracks;++i) {uint32_t z,n,flags,base,maxend,extcount=0;tc_extent ext[256];uint8_t track;
-  if(!tc_span(b,a,16) || !tc_work(b,1)) { return false; } z=pm_le32(p+a);n=pm_le16(p+a+8);flags=pm_le16(p+a+10);track=p[a+14];
-  if(z<16 || !tc_span(b,a,z) || !n || n>64 || (flags!=0 && flags!=1 && flags!=0x21) || pm_le32(p+a+4) || (track&127)>85 || seen[track] || p[a+15]) { return false; } seen[track]=1;
+  if(!tc_span(b,a,16) || !tc_work(b,1)) { return false; } z=xx_data_get_u32(p+a, 4, 0, false);n=xx_data_get_u16(p+a+8, 2, 0, false);flags=xx_data_get_u16(p+a+10, 2, 0, false);track=p[a+14];
+  if(z<16 || !tc_span(b,a,z) || !n || n>64 || (flags!=0 && flags!=1 && flags!=0x21) || xx_data_get_u32(p+a+4, 4, 0, false) || (track&127)>85 || seen[track] || p[a+15]) { return false; } seen[track]=1;
   base=a+16+((flags&1)?16*n:0);if(base>a+z) return false;maxend=base;
   xx_rt_snprintf(label,sizeof(label),"track-%03u-descriptor.bin",track);if(!tc_emit(f,s,b,label,a,base-a)) return false;
   for(j=0;j<n;++j) {uint32_t off,size;
-   if(flags&1) {uint32_t q=a+16+j*16;off=pm_le32(p+q);if(p[q+11]>3 || p[q+14] || p[q+15] || p[q+8]!=(track&127) || p[q+9]!=(track>>7) || !p[q+10] || pm_be16(p+q+12)!=stx_id_crc(p+q+8)) return false;size=128U<<p[q+11];}
+   if(flags&1) {uint32_t q=a+16+j*16;off=xx_data_get_u32(p+q, 4, 0, false);if(p[q+11]>3 || p[q+14] || p[q+15] || p[q+8]!=(track&127) || p[q+9]!=(track>>7) || !p[q+10] || xx_data_get_u16(p+q+12, 2, 0, true)!=stx_id_crc(p+q+8)) return false;size=128U<<p[q+11];}
    else {off=j*512;size=512;}
    if(off>a+z-base || size>a+z-base-off || !tc_claim(b,ext,&extcount,base+off,size,false)) return false;
    xx_rt_snprintf(label,sizeof(label),"track-%03u-sector-%02u.bin",track,j);if(!tc_emit(f,s,b,label,base+off,size)) return false;if(base+off+size>maxend) maxend=base+off+size;

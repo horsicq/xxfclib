@@ -44,6 +44,12 @@ typedef struct {
     size_t previous_valid;
     cd_i64 previous_base;
     int own_source, failed, resident;
+    /* Whole-file load (die_buffer_load): the bytes read from the source so
+     * far, the memory limit captured at open, and the window buffer the
+     * loaded file replaced, kept so a borrowed view stays readable. */
+    cd_u64 streamed, memory_limit;
+    unsigned char *window_buffer;
+    int loaded, load_failed;
 } DieBufferedFile;
 
 static ssize_t die_buffer_read(xx_io_device *device, void *data, size_t count);
@@ -62,12 +68,66 @@ size_t die_file_buffer_size(const DieFile *file)
     return capacity ? capacity : XX_DEFAULT_FILE_BUFFER_SIZE;
 }
 
+/* A streamed file is read again by every search over a range, so a scan that
+ * searches a 100 MB section forty times copies it forty times. Once the bytes
+ * read from the source plus the bytes the caller will certainly read next
+ * reach the file size, reading the whole file once costs no more than
+ * streaming has already cost: load it, within the memory limit captured at
+ * open, and serve every later view from memory. A scan that only reads
+ * headers never gets here. A search may stop at its first match, so it
+ * counts only the window it reads, never its whole range.
+ *
+ * The load is optional. x_malloc, not cd_try_malloc, so a refusal does not
+ * raise the scan's soft-OOM flag; on any failure the window keeps streaming
+ * and reports read errors itself, exactly as before. */
+static int die_buffer_load(DieBufferedFile *state, cd_u64 upcoming)
+{
+    unsigned char *whole;
+    size_t size;
+    size_t done = 0;
+    if (state->loaded) return 1;
+    if (state->resident || state->load_failed || state->failed || !state->memory_limit) return 0;
+    if ((cd_u64)state->size > state->memory_limit || (cd_u64)state->size >= (cd_u64)SIZE_MAX) return 0;
+    if (state->streamed < (cd_u64)state->size &&
+        upcoming < (cd_u64)state->size - state->streamed) return 0;
+    size = (size_t)state->size;
+    whole = (unsigned char *)x_malloc(size + 1);
+    if (!whole || xx_io_seek64(state->source, 0, SEEK_SET) != 0) {
+        cd_free(whole);
+        state->load_failed = 1;
+        return 0;
+    }
+    while (done < size) {
+        size_t request = size - done;
+        ssize_t got;
+        if (request > state->capacity) request = state->capacity;
+        if (request > ((size_t)-1 >> 1)) request = (size_t)-1 >> 1;
+        got = xx_io_read(state->source, whole + done, request);
+        if (got <= 0 || (size_t)got > request) {
+            cd_free(whole);
+            state->load_failed = 1;
+            return 0;
+        }
+        done += (size_t)got;
+    }
+    whole[size] = 0;
+    state->window_buffer = state->buffer;
+    state->buffer = whole;
+    state->base = 0;
+    state->valid = size;
+    state->previous_valid = 0;
+    state->loaded = 1;
+    return 1;
+}
+
 static int die_buffer_fill(DieBufferedFile *state, cd_i64 offset)
 {
     cd_i64 base;
     size_t wanted, done = 0;
     if (state->failed || offset < 0 || offset >= state->size) return 0;
     if (offset >= state->base && (cd_u64)(offset - state->base) < state->valid) return 1;
+    /* Loaded, the buffer holds every offset below the size. */
+    if (die_buffer_load(state, (cd_u64)state->capacity)) return 1;
     base = offset - (cd_i64)((cd_u64)offset % state->capacity);
     wanted = state->capacity;
     if ((cd_u64)(state->size - base) < wanted) wanted = (size_t)(state->size - base);
@@ -102,6 +162,7 @@ static int die_buffer_fill(DieBufferedFile *state, cd_i64 offset)
     }
     state->base = base;
     state->valid = done;
+    state->streamed += done;
     return 1;
 }
 
@@ -184,6 +245,7 @@ static int die_buffer_close(xx_io_device *device)
     DieBufferedFile *state = (DieBufferedFile *)device->priv;
     int result = state->own_source ? xx_io_close(state->source) : 0;
     if (!state->resident) cd_free(state->buffer);
+    cd_free(state->window_buffer);
     cd_free(state);
     return result;
 }
@@ -203,6 +265,9 @@ static int die_file_install_device(DieFile *file, xx_io_device *source,
     state->base = -1;
     state->own_source = take_ownership;
     state->resident = resident;
+    /* A memory device already holds the bytes: streaming it only copies
+     * windows, and a whole copy would double it. */
+    state->memory_limit = resident || xx_io_is_memory(source) ? 0 : xx_get_file_memory_limit();
     if (resident) {
         state->buffer = file->pData;
         state->valid = (size_t)file->nSize;
@@ -245,17 +310,36 @@ int die_file_read_failed(const DieFile *file)
     return state ? state->failed : 0;
 }
 
+cd_i64 die_file_search_access(const DieFile *file, cd_i64 range)
+{
+    cd_i64 window = (cd_i64)die_file_buffer_size(file);
+    return range < window ? range : window;
+}
+
+const unsigned char *die_file_whole(DieFile *file, cd_i64 access)
+{
+    DieBufferedFile *state;
+    if (!file) return NULL;
+    if (file->pData) return file->pData;
+    state = die_buffer_state(file);
+    if (!state) return NULL;
+    if (!state->loaded && access > 0) die_buffer_load(state, (cd_u64)access);
+    return state->loaded ? state->buffer : NULL;
+}
+
 int die_file_read_at(DieFile *file, cd_i64 offset, void *data, size_t count)
 {
     cd_i64 cursor;
     size_t done = 0;
     size_t capacity = die_file_buffer_size(file);
     int result = 1;
+    const unsigned char *whole;
     if (!file || offset < 0 || offset > file->nSize || (cd_u64)count > (cd_u64)(file->nSize - offset)) return 0;
     if (!count) return 1;
     if (!data) return 0;
-    if (file->pData) {
-        x_memcpy(data, file->pData + (size_t)offset, count);
+    whole = die_file_whole(file, (cd_i64)count);
+    if (whole) {
+        x_memcpy(data, whole + (size_t)offset, count);
         return 1;
     }
     cursor = xx_io_tell(file->pDevice);
@@ -278,11 +362,13 @@ const unsigned char *die_file_window(DieFile *file, cd_i64 offset, size_t *count
     DieBufferedFile *state;
     size_t wanted = *count;
     const unsigned char *view;
+    const unsigned char *whole;
     *count = 0;
     if (!wanted || !file || offset < 0 || offset >= file->nSize) return NULL;
     if (wanted > die_file_buffer_size(file)) wanted = die_file_buffer_size(file);
     if ((cd_u64)(file->nSize - offset) < wanted) wanted = (size_t)(file->nSize - offset);
-    if (file->pData) { *count = wanted; return file->pData + (size_t)offset; }
+    whole = die_file_whole(file, (cd_i64)wanted);
+    if (whole) { *count = wanted; return whole + (size_t)offset; }
     state = die_buffer_state(file);
     if (!state || !(view = die_buffer_view(state, offset, &wanted))) return NULL;
     *count = wanted;
@@ -718,6 +804,7 @@ cd_i64 die_find_bytes(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize,
                       const unsigned char *pNeedle, cd_i64 nNeedleSize)
 {
     cd_i64 nFound = 0;
+    const unsigned char *pWhole;
 
     if (!pNeedle || nNeedleSize <= 0 || (cd_u64)nNeedleSize > (cd_u64)(size_t)-1) {
         return -1;
@@ -731,11 +818,14 @@ cd_i64 die_find_bytes(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize,
         return -1;
     }
 
+    /* A match can end the search in its first window. */
+    pWhole = die_file_whole(pFile, die_file_search_access(pFile, nSize));
+
     /* xx_data_find_bytes_buffer_optimize searches to the end of whatever buffer it is given,
      * so the window is expressed by shortening the buffer rather than by a
      * length argument. The result is relative to that buffer. */
-    if (pFile->pData) {
-        nFound = xx_data_find_bytes_buffer_optimize(pFile->pData + nOffset, (size_t)nSize, 0,
+    if (pWhole) {
+        nFound = xx_data_find_bytes_buffer_optimize(pWhole + nOffset, (size_t)nSize, 0,
                                                     pNeedle, (size_t)nNeedleSize, NULL);
         return (nFound < 0) ? -1 : (nOffset + nFound);
     } else {
@@ -827,11 +917,16 @@ cd_i64 die_find_u32(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize, cd_u32 nValue)
 
 double die_entropy(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize)
 {
+    const unsigned char *pWhole;
+
     if ((!die_range_clamp(pFile, nOffset, &nSize)) || (nSize <= 0)) {
         return 0.0;
     }
 
-    if (pFile->pData) return xx_entropy_calculate(pFile->pData + nOffset, (size_t)nSize);
+    pWhole = die_file_whole(pFile, nSize);
+    /* xx_entropy_calculate totals its counts in 32 bits; a larger loaded
+     * range takes the 64-bit loop below, over the buffer. */
+    if (pWhole && (cd_u64)nSize <= 0xFFFFFFFFu) return xx_entropy_calculate(pWhole + nOffset, (size_t)nSize);
     else {
         cd_u64 counts[256] = {0};
         cd_i64 done = 0;
@@ -839,7 +934,8 @@ double die_entropy(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize)
         int k;
         while (done < nSize) {
             size_t count = (size_t)((cd_u64)(nSize - done) < die_file_buffer_size(pFile) ? (cd_u64)(nSize - done) : die_file_buffer_size(pFile)), i;
-            const unsigned char *view = die_file_window(pFile, nOffset + done, &count);
+            const unsigned char *view = pWhole ? pWhole + (size_t)(nOffset + done)
+                                               : die_file_window(pFile, nOffset + done, &count);
             if (!view) return 0.0;
             for (i = 0; i < count; ++i) ++counts[view[i]];
             done += (cd_i64)count;
@@ -898,12 +994,15 @@ char *die_md5_hex(const void *pData, size_t nSize)
 
 char *die_md5(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize)
 {
+    const unsigned char *pWhole;
+
     if (!die_range_clamp(pFile, nOffset, &nSize)) {
         nOffset = 0;
         nSize = 0;
     }
 
-    if (pFile->pData) return die_md5_hex(pFile->pData + nOffset, (size_t)nSize);
+    pWhole = die_file_whole(pFile, nSize);
+    if (pWhole) return die_md5_hex(pWhole + nOffset, (size_t)nSize);
     else {
         xx_hash_context context;
         unsigned char digest[XX_MD5_DIGEST_SIZE];
@@ -923,11 +1022,14 @@ char *die_md5(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize)
 
 cd_u32 die_crc32(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize, cd_u32 nInit)
 {
+    const unsigned char *pWhole;
+
     if (!die_range_clamp(pFile, nOffset, &nSize)) {
         return nInit;
     }
 
-    if (pFile->pData) return xx_crc32_calc(nInit, pFile->pData + nOffset, (size_t)nSize);
+    pWhole = die_file_whole(pFile, nSize);
+    if (pWhole) return xx_crc32_calc(nInit, pWhole + nOffset, (size_t)nSize);
 
     while (nSize > 0) {
         size_t count = (size_t)((cd_u64)nSize < die_file_buffer_size(pFile) ? (cd_u64)nSize : die_file_buffer_size(pFile));
@@ -941,11 +1043,14 @@ cd_u32 die_crc32(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize, cd_u32 nInit)
 
 cd_u32 die_adler32(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize)
 {
+    const unsigned char *pWhole;
+
     if (!die_range_clamp(pFile, nOffset, &nSize)) {
         return 1;
     }
 
-    if (pFile->pData) return xx_adler32(pFile->pData + nOffset, (size_t)nSize);
+    pWhole = die_file_whole(pFile, nSize);
+    if (pWhole) return xx_adler32(pWhole + nOffset, (size_t)nSize);
 
     {
         cd_u32 value = 1;
@@ -962,11 +1067,14 @@ cd_u32 die_adler32(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize)
 
 cd_u16 die_crc16(DieFile *pFile, cd_i64 nOffset, cd_i64 nSize, cd_u16 nInit)
 {
+    const unsigned char *pWhole;
+
     if (!die_range_clamp(pFile, nOffset, &nSize)) {
         return nInit;
     }
 
-    if (pFile->pData) return xx_crc16_arc_calc(nInit, pFile->pData + nOffset, (size_t)nSize);
+    pWhole = die_file_whole(pFile, nSize);
+    if (pWhole) return xx_crc16_arc_calc(nInit, pWhole + nOffset, (size_t)nSize);
 
     while (nSize > 0) {
         size_t count = (size_t)((cd_u64)nSize < die_file_buffer_size(pFile) ? (cd_u64)nSize : die_file_buffer_size(pFile));

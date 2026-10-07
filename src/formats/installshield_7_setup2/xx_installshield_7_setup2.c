@@ -28,6 +28,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -124,11 +125,6 @@ typedef struct is7b_decoder_s {
     uint8_t *input, *output;
     size_t io_capacity;
 } is7b_decoder;
-
-static uint32_t is7b_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
 
 static bool is7b_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
@@ -257,7 +253,7 @@ static bool is7b_parse_record(const uint8_t *view, size_t avail, int64_t room,
     if (xx_rt_memcmp(szdd, is7b_szdd_magic, sizeof(is7b_szdd_magic)) != 0 ||
         szdd[8] != IS7B_METHOD_LZSS)
         return false;
-    fields->unpacked = is7b_le32(szdd + 10U);
+    fields->unpacked = xx_data_get_u32(szdd + 10U, 4, 0, false);
     packed = fields->size - IS7B_SZDD_HEADER;
     /* packed < 10^18, so the product cannot overflow. */
     return (int64_t)fields->unpacked <= packed * IS7B_MAX_EXPANSION;

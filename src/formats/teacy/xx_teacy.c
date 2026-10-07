@@ -39,6 +39,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef TEACY
 #define XX_TEACY_FILE_TYPE XX_FILE_TYPE_TEACY
@@ -79,24 +80,6 @@ typedef struct xx_teacy_stream_s {
 static void xx_teacy_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint16_t xx_teacy_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_teacy_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static XXFC_MAYBE_UNUSED uint16_t xx_teacy_be16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[1] | ((uint16_t)data[0] << 8));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t xx_teacy_be32(const uint8_t *data) {
-    return (uint32_t)data[3] | ((uint32_t)data[2] << 8) |
-           ((uint32_t)data[1] << 16) | ((uint32_t)data[0] << 24);
-}
 
 static bool xx_teacy_read_at(Abstractformat *self, int64_t offset,
                               uint8_t *buffer, size_t size) {
@@ -254,7 +237,7 @@ static xx_teacy_stream *xx_teacy_parse(Abstractformat *self,
     }
 
     /* Two members are what the identifying arithmetic below needs. */
-    count = xx_teacy_le16(head);
+    count = xx_data_get_u16(head, 2, 0, false);
     if (count < 2U || count > XX_TEACY_MAX_MEMBERS) return NULL;
     /* Bound the directory against the real file before allocating it. */
     directory_size = (int64_t)count * XX_TEACY_ENTRY_SIZE;
@@ -275,8 +258,8 @@ static xx_teacy_stream *xx_teacy_parse(Abstractformat *self,
 
     for (index = 0U; index < count; ++index) {
         const uint8_t *entry = table + (size_t)index * XX_TEACY_ENTRY_SIZE;
-        int64_t size = (int64_t)(int32_t)xx_teacy_le32(entry + 0x10);
-        int64_t offset = (int64_t)(int32_t)xx_teacy_le32(entry + 0x14);
+        int64_t size = (int64_t)(int32_t)xx_data_get_u32(entry + 0x10, 4, 0, false);
+        int64_t offset = (int64_t)(int32_t)xx_data_get_u32(entry + 0x14, 4, 0, false);
         const uint8_t *raw = entry + XX_TEACY_NAME_OFFSET;
         size_t name_size = 0U;
         xx_teacy_member member;

@@ -39,6 +39,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef MEGATECHVOL
 #define XX_MEGATECHVOL_FILE_TYPE XX_FILE_TYPE_MEGATECHVOL
@@ -71,11 +72,6 @@ typedef struct xx_megatechvol_stream_s {
 static void xx_megatechvol_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint32_t xx_megatechvol_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static bool xx_megatechvol_read_at(Abstractformat *self, int64_t offset,
                              uint8_t *buffer, size_t size) {
@@ -181,7 +177,7 @@ static xx_megatechvol_stream *xx_megatechvol_parse(Abstractformat *self,
 
     /* table[0] is the table's own length, so the only number this reader
      * trusts before bounding it is immediately bounded by the file size. */
-    table_size = (int64_t)xx_megatechvol_le32(head);
+    table_size = (int64_t)xx_data_get_u32(head, 4, 0, false);
     if (table_size < XX_MEGATECHVOL_MIN_TABLE || table_size % 4 != 0) {
         return NULL;
     }
@@ -203,14 +199,14 @@ static xx_megatechvol_stream *xx_megatechvol_parse(Abstractformat *self,
     used = 0U;
     terminated = false;
     for (index = 0U; index < slots; ++index) {
-        int64_t value = (int64_t)xx_megatechvol_le32(table + (size_t)(index * 4));
+        int64_t value = (int64_t)xx_data_get_u32(table + (size_t)(index * 4), 4, 0, false);
 
         if (value > span || value < previous) goto fail;
         previous = value;
         ++used;
         if (value == span) {
             if (index + 1U == slots ||
-                xx_megatechvol_le32(table + (size_t)((index + 1U) * 4)) == 0U) {
+                xx_data_get_u32(table + (size_t)((index + 1U) * 4), 4, 0, false) == 0U) {
                 terminated = true;
                 break;
             }
@@ -218,7 +214,7 @@ static xx_megatechvol_stream *xx_megatechvol_parse(Abstractformat *self,
     }
     if (!terminated) goto fail;
     for (index = used; index < slots; ++index) {
-        if (xx_megatechvol_le32(table + (size_t)(index * 4)) != 0U) goto fail;
+        if (xx_data_get_u32(table + (size_t)(index * 4), 4, 0, false) != 0U) goto fail;
     }
     /* "used" counts the end sentinel, so there are used - 1 member slots. */
     if (used < 2U) goto fail;
@@ -233,9 +229,9 @@ static xx_megatechvol_stream *xx_megatechvol_parse(Abstractformat *self,
 
     number = 0U;
     for (index = 0U; index + 1U < used; ++index) {
-        int64_t offset = (int64_t)xx_megatechvol_le32(table + (size_t)(index * 4));
+        int64_t offset = (int64_t)xx_data_get_u32(table + (size_t)(index * 4), 4, 0, false);
         int64_t next =
-            (int64_t)xx_megatechvol_le32(table + (size_t)((index + 1U) * 4));
+            (int64_t)xx_data_get_u32(table + (size_t)((index + 1U) * 4), 4, 0, false);
         int64_t size = next - offset;
         uint8_t probe[4];
         size_t probe_size = 0U;

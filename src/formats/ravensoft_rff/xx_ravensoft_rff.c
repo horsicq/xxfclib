@@ -8,12 +8,12 @@
 
 static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[48]; uint16_t version; uint32_t table,count,i; uint64_t memory=0; int64_t limit=pm_available(f),end;
-    if(!pm_read(f,0,h,32) || xx_rt_memcmp(h,"RFF\x1a",4) || ((version=pm_le16(h+4))!=0x200 && version!=0x300 && version!=0x301)) return false;
-    table=pm_le32(h+8); count=pm_le32(h+12); if(!count || count>65536 || table<32 || !wg_range(limit,table,(uint64_t)count*48)) return false; end=(int64_t)table+(int64_t)count*48;
+    if(!pm_read(f,0,h,32) || xx_rt_memcmp(h,"RFF\x1a",4) || ((version=xx_data_get_u16(h+4, 2, 0, false))!=0x200 && version!=0x300 && version!=0x301)) return false;
+    table=xx_data_get_u32(h+8, 4, 0, false); count=xx_data_get_u32(h+12, 4, 0, false); if(!count || count>65536 || table<32 || !wg_range(limit,table,(uint64_t)count*48)) return false; end=(int64_t)table+(int64_t)count*48;
     for(i=0;i<count;++i) { uint32_t at,bytes; unsigned j; char name[48];
         if(wg_stop(pd) || !pm_read(f,table+(int64_t)i*48,h,48)) return false;
         if(version>=0x300) { uint16_t key=(uint16_t)(table*(1U+(version&255U))+(uint64_t)i*48); for(j=0;j<48;++j,++key) h[j]^=(uint8_t)(key>>1); }
-        at=pm_le32(h+16); bytes=pm_le32(h+20); if(at<32 || !wg_range(limit,at,bytes) || ((uint64_t)at< (uint64_t)table+count*48ULL && (uint64_t)at+bytes>table) || (h[32]&~29U) || !h[36]) return false;
+        at=xx_data_get_u32(h+16, 4, 0, false); bytes=xx_data_get_u32(h+20, 4, 0, false); if(at<32 || !wg_range(limit,at,bytes) || ((uint64_t)at< (uint64_t)table+count*48ULL && (uint64_t)at+bytes>table) || (h[32]&~29U) || !h[36]) return false;
         xx_rt_snprintf(name,sizeof(name),"resource-%u.bin",i); if(!pm_add(f,s,name,at,bytes)) return false;
         if(h[32]&16) { uint8_t *data; if(bytes>16777216 || memory+bytes>67108864) return false; memory+=bytes; data=(uint8_t *)xx_mem_alloc(bytes ? bytes : 1); if(!data || !pm_read(f,at,data,bytes)) { if(data) xx_mem_free(data); return false; }
             for(j=0;j<bytes && j<256;++j) { data[j]^=(uint8_t)(j>>1); } s->items[s->count-1].memory=data; }

@@ -14,6 +14,7 @@
 #include "xxfclib/rt/xx_rt.h"
 #include <limits.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 typedef struct ss_writer {
     bool written, finalized, failed;
@@ -167,10 +168,6 @@ static ssize_t ss_output_write(xx_io_device *device, const void *data, size_t si
 static int64_t ss_output_size(xx_io_device *device) {
     return (int64_t)((ss_output *)device->priv)->size;
 }
-static void ss_put32(uint8_t *bytes, uint32_t value) {
-    unsigned i;
-    for (i = 0; i < 4U; ++i) bytes[i] = (uint8_t)(value >> (i * 8U));
-}
 static bool ss_gzip(ss_source *source, ss_output *output, int level,
                     xx_pd_struct *pd) {
     uint8_t header[10] = {0x1f,0x8b,8,0,0,0,0,0,0,255};
@@ -185,8 +182,8 @@ static bool ss_gzip(ss_source *source, ss_output *output, int level,
         if (xx_io_write(&output->device, empty_deflate, sizeof(empty_deflate)) != sizeof(empty_deflate)) return false;
     } else if (!xx_deflate_pack_device(&source->device, 0, source->size,
                                       &output->device, level, false, pd)) return false;
-    ss_put32(trailer, source->crc);
-    ss_put32(trailer + 4, (uint32_t)source->size);
+    xx_data_set_u32(trailer, 4, 0, source->crc, false);
+    xx_data_set_u32(trailer + 4, 4, 0, (uint32_t)source->size, false);
     return xx_io_write(&output->device, trailer, sizeof(trailer)) == sizeof(trailer);
 }
 static xx_archive_write_state *ss_create(Abstractformat *self,

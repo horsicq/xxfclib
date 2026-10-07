@@ -11,6 +11,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_quake_wad2_MAX_MEMBERS 1000000U
 typedef struct xx_quake_wad2_member_s {
@@ -33,16 +34,6 @@ typedef struct xx_quake_wad2_stream_s {
 } xx_quake_wad2_stream;
 static void xx_quake_wad2_vtable_destroy(Abstractformat *self);
 
-static inline uint16_t xx_quake_wad2_u16(const uint8_t *p, bool be) {
-    return be ? (uint16_t)(((uint16_t)p[0] << 8) | p[1])
-              : (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
-}
-static inline uint32_t xx_quake_wad2_u32(const uint8_t *p, bool be) {
-    return be ? ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
-                ((uint32_t)p[2] << 8) | p[3]
-              : p[0] | ((uint32_t)p[1] << 8) |
-                ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
 static bool xx_quake_wad2_range_within(int64_t span, int64_t offset, int64_t size) {
     return offset >= 0 && size >= 0 && offset <= span && size <= span-offset;
 }
@@ -218,14 +209,14 @@ static xx_quake_wad2_stream *xx_quake_wad2_parse(Abstractformat *self,xx_pd_stru
 
     uint8_t h[12],entry[32]; uint32_t count,i; int64_t table,bytes;
     if(!xx_quake_wad2_read_rel(self,span,0,h,sizeof(h)) || xx_rt_memcmp(h,"WAD2",4U)) goto fail;
-    count=xx_quake_wad2_u32(h+4,false); table=xx_quake_wad2_u32(h+8,false); bytes=(int64_t)count*32;
+    count=xx_data_get_u32(h+4, 4, 0, false); table=xx_data_get_u32(h+8, 4, 0, false); bytes=(int64_t)count*32;
     if(count>XX_quake_wad2_MAX_MEMBERS || table<12 || !xx_quake_wad2_range_within(span,table,bytes)) goto fail;
     s->archive_size=table+bytes;
     for(i=0;i<count;++i) {
         char name[17]; int64_t off,packed,size;
         if((pd && xx_pd_is_stopped(pd)) || !xx_quake_wad2_read_rel(self,span,table+(int64_t)i*32,entry,sizeof(entry)) ||
            !xx_quake_wad2_fixed_name(entry+16,16U,name)) goto fail;
-        off=xx_quake_wad2_u32(entry,false); packed=xx_quake_wad2_u32(entry+4,false); size=xx_quake_wad2_u32(entry+8,false);
+        off=xx_data_get_u32(entry, 4, 0, false); packed=xx_data_get_u32(entry+4, 4, 0, false); size=xx_data_get_u32(entry+8, 4, 0, false);
         if(entry[13]>1U || (!entry[13] && packed!=size) ||
            !xx_quake_wad2_range_within(span,off,packed) || (packed && off<12) ||
            (packed && off<table+bytes && off+packed>table) ||

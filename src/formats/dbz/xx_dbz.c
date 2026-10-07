@@ -62,6 +62,7 @@
 #include "xxfclib/algo/deflate/xx_deflate.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef DBZ
 #define XX_DBZ_FILE_TYPE XX_FILE_TYPE_DBZ
@@ -105,24 +106,6 @@ typedef struct xx_dbz_stream_s {
 static void xx_dbz_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static XXFC_MAYBE_UNUSED uint16_t xx_dbz_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_dbz_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static XXFC_MAYBE_UNUSED uint16_t xx_dbz_be16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[1] | ((uint16_t)data[0] << 8));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t xx_dbz_be32(const uint8_t *data) {
-    return (uint32_t)data[3] | ((uint32_t)data[2] << 8) |
-           ((uint32_t)data[1] << 16) | ((uint32_t)data[0] << 24);
-}
 
 static bool xx_dbz_read_at(Abstractformat *self, int64_t offset,
                               uint8_t *buffer, size_t size) {
@@ -432,7 +415,7 @@ static xx_dbz_stream *xx_dbz_parse(Abstractformat *self,
             uint8_t trailer[4];
             if (xx_dbz_read_at(self, member.data_offset + size - 4, trailer,
                                sizeof(trailer))) {
-                member.unpacked_size = (uint64_t)xx_dbz_le32(trailer);
+                member.unpacked_size = (uint64_t)xx_data_get_u32(trailer, 4, 0, false);
             }
         }
         if (!xx_dbz_add(stream, &member)) {
@@ -467,8 +450,8 @@ static bool xx_dbz_decode_gzip(const uint8_t *packed, size_t packed_size,
     uint32_t crc;
 
     if (!xx_dbz_gzip_payload(packed, packed_size, &start)) return false;
-    declared = (size_t)xx_dbz_le32(packed + packed_size - 4U);
-    crc = xx_dbz_le32(packed + packed_size - 8U);
+    declared = (size_t)xx_data_get_u32(packed + packed_size - 4U, 4, 0, false);
+    crc = xx_data_get_u32(packed + packed_size - 8U, 4, 0, false);
     plain = (uint8_t *)xx_mem_alloc(declared != 0U ? declared : 1U);
     if (!plain) return false;
     if (!xx_deflate_decompress_memory(packed + start,

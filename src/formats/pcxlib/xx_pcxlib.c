@@ -41,6 +41,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef PCXLIB
 #define XX_PCXLIB_FILE_TYPE XX_FILE_TYPE_PCXLIB
@@ -75,15 +76,6 @@ typedef struct xx_pcxlib_stream_s {
 static void xx_pcxlib_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint32_t xx_pcxlib_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static uint16_t xx_pcxlib_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
 
 static bool xx_pcxlib_read_at(Abstractformat *self, int64_t offset,
                              uint8_t *buffer, size_t size) {
@@ -194,8 +186,8 @@ static xx_pcxlib_stream *xx_pcxlib_parse(Abstractformat *self,
             goto fail;
         }
         if (entry[0] != XX_PCXLIB_TAG) goto fail;
-        size = (int64_t)xx_pcxlib_le32(entry + 14);
-        method = xx_pcxlib_le16(entry + 22);
+        size = (int64_t)xx_data_get_u32(entry + 14, 4, 0, false);
+        method = xx_data_get_u16(entry + 22, 2, 0, false);
         /* Method 0 is the only one this container ever defines.  Anything
          * else is rejected rather than published as an undecodable member. */
         if (method != 0U) goto fail;

@@ -11,6 +11,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 #ifdef PARTIMAGE
 #define PI_TYPE XX_FILE_TYPE_PARTIMAGE
 #else
@@ -37,11 +38,6 @@ typedef struct pi_stream_s {
 } pi_stream;
 typedef struct pi_cursor_s { pi_view *view; bool at_end; } pi_cursor;
 static bool pi_stop(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
-static uint32_t pi_u32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1]<<8) |
-        ((uint32_t)p[2]<<16) | ((uint32_t)p[3]<<24);
-}
-static uint64_t pi_u64(const uint8_t *p) { return (uint64_t)pi_u32(p) | ((uint64_t)pi_u32(p+4U)<<32); }
 static uint32_t pi_crc(uint32_t crc,const uint8_t *p,size_t n) {
     /* Partimage keeps the unfinalized register between 64 KiB chunks. */
     return ~xx_crc32_calc(~crc, p, n);
@@ -82,7 +78,7 @@ static bool pi_magic(pi_stream *s,const char *magic) {
 static bool pi_header(pi_stream *s,uint8_t *out,size_t n) {
     uint8_t sum[4];
     return pi_take(s,out,n,true)&&pi_take(s,sum,sizeof(sum),true)&&
-        pi_u32(sum)==pi_signed_sum(out,n);
+        xx_data_get_u32(sum, 4, 0, false)==pi_signed_sum(out,n);
 }
 static bool pi_cstring(const uint8_t *p,size_t n,const char *expected) {
     size_t len=strlen(expected);
@@ -121,7 +117,7 @@ static bool pi_data(pi_stream *s,xx_io_device *dst) {
                 remaining-=part;written+=part;
                 if(filled==PI_COPY) {
                     if(!pi_take(s,check,sizeof(check),true)||memcmp(check,"CHK\0",4U)||
-                       pi_u32(check+4U)!=(crc^UINT32_MAX)||pi_u64(check+8U)!=start)return false;
+                       xx_data_get_u32(check+4U, 4, 0, false)!=(crc^UINT32_MAX)||xx_data_get_u64(check+8U, 8, 0, false)!=start)return false;
                     crc=UINT32_MAX;filled=0;
                 }
             }
@@ -144,7 +140,7 @@ static bool pi_tail(pi_stream *s) {
     if(!pi_magic(s,"MAGIC-BEGIN-TAIL"))return false;
     expected=s->sum;
     if(!pi_take(s,tail,sizeof(tail),false)||s->pos!=s->view->size)return false;
-    return pi_u64(tail)==expected&&pi_u32(tail+8U)==0U&&pi_zero(tail+12U,sizeof(tail)-12U);
+    return xx_data_get_u64(tail, 8, 0, false)==expected&&xx_data_get_u32(tail+8U, 4, 0, false)==0U&&pi_zero(tail+12U,sizeof(tail)-12U);
 }
 static void pi_release(pi_view *v) {
     if(!v||--v->refs)return;
@@ -161,26 +157,26 @@ static pi_view *pi_parse(Abstractformat *f,xx_pd_struct *pd) {
     memset(&s,0,sizeof(s));s.device=f->device;s.view=v;s.pd=pd;
     if(!pi_take(&s,volume,sizeof(volume),false)||
        !pi_cstring(volume,32U,"PaRtImAgE-VoLuMe")||
-       !pi_cstring(volume+32U,64U,"0.6.1")||pi_u32(volume+96U)!=0U)goto fail;
+       !pi_cstring(volume+32U,64U,"0.6.1")||xx_data_get_u32(volume+96U, 4, 0, false)!=0U)goto fail;
     if(!pi_header(&s,main,sizeof(main))||!memchr(main,0,512U)||
        !pi_cstring(main+9728U,64U,"0.6.1")||
-       pi_u32(main+9540U)!=0U||pi_u32(main+9544U)!=0U||
-       pi_u32(main+9792U)!=0U||pi_u32(main+9800U)!=0U||
+       xx_data_get_u32(main+9540U, 4, 0, false)!=0U||xx_data_get_u32(main+9544U, 4, 0, false)!=0U||
+       xx_data_get_u32(main+9792U, 4, 0, false)!=0U||xx_data_get_u32(main+9800U, 4, 0, false)!=0U||
        !pi_zero(main+9820U,40U))goto fail;
-    v->part_size=pi_u64(main+9592U);
+    v->part_size=xx_data_get_u64(main+9592U, 8, 0, false);
     if(!v->part_size||v->part_size>PI_IMAGE_MAX||!pi_magic(&s,"MAGIC-BEGIN-MBRBACKUP"))goto fail;
     for(i=0;i<10U;++i) {
         char marker[32];(void)xx_rt_snprintf(marker,sizeof(marker),"MAGIC-BEGIN-EXT%03u",(unsigned)i);
-        if(!pi_magic(&s,marker)||!pi_take(&s,length,sizeof(length),true)||pi_u32(length))goto fail;
+        if(!pi_magic(&s,marker)||!pi_take(&s,length,sizeof(length),true)||xx_data_get_u32(length, 4, 0, false))goto fail;
     }
     if(!pi_magic(&s,"MAGIC-BEGIN-LOCALHEADER")||!pi_header(&s,local,sizeof(local)))goto fail;
-    if(pi_u64(local)>UINT32_MAX||pi_u64(local)<512U||
-       (pi_u64(local)&(pi_u64(local)-1U))||pi_u64(local)>65536U)goto fail;
-    v->block_size=(uint32_t)pi_u64(local);
-    v->used=pi_u64(local+8U);v->blocks=pi_u64(local+16U);v->bitmap_size=pi_u64(local+24U);
+    if(xx_data_get_u64(local, 8, 0, false)>UINT32_MAX||xx_data_get_u64(local, 8, 0, false)<512U||
+       (xx_data_get_u64(local, 8, 0, false)&(xx_data_get_u64(local, 8, 0, false)-1U))||xx_data_get_u64(local, 8, 0, false)>65536U)goto fail;
+    v->block_size=(uint32_t)xx_data_get_u64(local, 8, 0, false);
+    v->used=xx_data_get_u64(local+8U, 8, 0, false);v->blocks=xx_data_get_u64(local+16U, 8, 0, false);v->bitmap_size=xx_data_get_u64(local+24U, 8, 0, false);
     if(!v->blocks||v->blocks>UINT64_MAX/v->block_size||
        v->blocks*v->block_size!=v->part_size||v->used>v->blocks||
-       pi_u64(local+32U)!=0U||v->blocks>UINT64_MAX-7U)goto fail;
+       xx_data_get_u64(local+32U, 8, 0, false)!=0U||v->blocks>UINT64_MAX-7U)goto fail;
     bitmap_min=(v->blocks+7U)/8U;
     if(v->bitmap_size<bitmap_min||v->bitmap_size>bitmap_min+16U||
        v->bitmap_size>PI_BITMAP_MAX||!pi_magic(&s,"MAGIC-BEGIN-BITMAP"))goto fail;

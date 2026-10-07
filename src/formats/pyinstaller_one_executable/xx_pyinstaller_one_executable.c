@@ -28,6 +28,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -156,21 +157,6 @@ static ssize_t gb_pyinstaller_one_executable_write(xx_io_device *device, const v
     return (ssize_t)done;
 }
 
-
-static uint32_t pyi_be32(const uint8_t *bytes) {
-    return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
-           ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3];
-}
-
-static uint32_t pyi_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
-
-static uint16_t pyi_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
 static bool pyi_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     const size_t file_io_capacity = gb_pyinstaller_one_executable_capacity();
@@ -230,10 +216,10 @@ static bool pyi_try_cookie(const uint8_t *cookie, size_t available,
     if (available < PYI_COOKIE_V20 ||
         xx_rt_memcmp(cookie, pyi_magic, PYI_MAGIC_SIZE) != 0)
         return false;
-    package_length = pyi_be32(cookie + 8);
-    toc_offset = pyi_be32(cookie + 12);
-    toc_length = pyi_be32(cookie + 16);
-    python_version = pyi_be32(cookie + 20);
+    package_length = xx_data_get_u32(cookie + 8, 4, 0, true);
+    toc_offset = xx_data_get_u32(cookie + 12, 4, 0, true);
+    toc_length = xx_data_get_u32(cookie + 16, 4, 0, true);
+    python_version = xx_data_get_u32(cookie + 20, 4, 0, true);
     if ((uint64_t)toc_offset + toc_length > package_length) return false;
     cookie_size = (uint64_t)package_length - toc_offset - toc_length;
     if (cookie_size != PYI_COOKIE_V21 && cookie_size != PYI_COOKIE_V20)
@@ -328,13 +314,13 @@ static bool pyi_pe_certificate(xx_io_device *device, int64_t base,
     if (size < 0x40 || !pyi_read_at(device, base, header, sizeof(header)) ||
         header[0] != 'M' || header[1] != 'Z')
         return false;
-    pe_offset = pyi_le32(header + 0x3c);
+    pe_offset = xx_data_get_u32(header + 0x3c, 4, 0, false);
     if (pe_offset < 0x40U || (int64_t)pe_offset > size - (int64_t)sizeof(nt) ||
         !pyi_read_at(device, base + pe_offset, nt, sizeof(nt)) ||
         xx_rt_memcmp(nt, "PE\0\0", 4U) != 0)
         return false;
-    optional_size = pyi_le16(nt + 20);
-    optional_magic = pyi_le16(nt + 24);
+    optional_size = xx_data_get_u16(nt + 20, 2, 0, false);
+    optional_magic = xx_data_get_u16(nt + 24, 2, 0, false);
     if (optional_magic == 0x10bU) {
         rva_count_at = 92U;
         security_at = 128U;
@@ -349,13 +335,13 @@ static bool pyi_pe_certificate(xx_io_device *device, int64_t base,
         !pyi_read_at(device, base + pe_offset + 24 + rva_count_at, directory,
                      4U))
         return false;
-    count = pyi_le32(directory);
+    count = xx_data_get_u32(directory, 4, 0, false);
     if (count < 5U ||
         !pyi_read_at(device, base + pe_offset + 24 + security_at, directory,
                      8U))
         return false;
-    cert_offset = pyi_le32(directory);
-    cert_size = pyi_le32(directory + 4);
+    cert_offset = xx_data_get_u32(directory, 4, 0, false);
+    cert_size = xx_data_get_u32(directory + 4, 4, 0, false);
     if (cert_offset == 0U || cert_size == 0U ||
         (int64_t)cert_offset + (int64_t)cert_size > size)
         return false;
@@ -425,10 +411,10 @@ static bool pyi_walk(Abstractformat *format, const pyi_layout *layout,
         if (layout->toc_size - position < PYI_ENTRY_FIXED ||
             count >= PYI_MAX_ENTRIES)
             return false;
-        entry_size = pyi_be32(entry);
-        data_offset = pyi_be32(entry + 4);
-        packed = pyi_be32(entry + 8);
-        size = pyi_be32(entry + 12);
+        entry_size = xx_data_get_u32(entry, 4, 0, true);
+        data_offset = xx_data_get_u32(entry + 4, 4, 0, true);
+        packed = xx_data_get_u32(entry + 8, 4, 0, true);
+        size = xx_data_get_u32(entry + 12, 4, 0, true);
         flag = entry[16];
         type = (char)entry[17];
         if (entry_size < PYI_ENTRY_FIXED + 1U ||
@@ -1084,7 +1070,7 @@ static bool pyi_decode(Abstractformat *format, const pyi_member *member,
                                   member->packed_size - 2, &sink.device,
                                   false, pd);
     return ok && !sink.failed && sink.count == (uint64_t)member->size &&
-           sink.adler == pyi_be32(trailer);
+           sink.adler == xx_data_get_u32(trailer, 4, 0, true);
 }
 
 /* ---------------------------------------------------------- lifecycle --- */

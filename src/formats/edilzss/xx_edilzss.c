@@ -52,6 +52,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef EDILZSS
 #define XX_EDILZSS_FILE_TYPE XX_FILE_TYPE_EDILZSS
@@ -120,11 +121,6 @@ static bool xx_edilzss_read_at(Abstractformat *self, int64_t offset,
         completed += (size_t)received;
     }
     return true;
-}
-
-static uint32_t xx_edilzss_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
 }
 
 static bool xx_edilzss_path_safe(const char *name) {
@@ -323,7 +319,7 @@ static xx_edilzss_stream *xx_edilzss_parse(Abstractformat *self,
          * fails either is not this format rather than a nameless variant. */
         if (!named || available < XX_EDILZSS_V2_DATA) return NULL;
         header_size = XX_EDILZSS_V2_DATA;
-        declared = (int64_t)xx_edilzss_le32(header + XX_EDILZSS_SIZE_OFFSET);
+        declared = (int64_t)xx_data_get_u32(header + XX_EDILZSS_SIZE_OFFSET, 4, 0, false);
         if (declared < 1 || declared > XX_EDILZSS_MAX_OUTPUT) return NULL;
     } else {
         header_size = named ? XX_EDILZSS_V1_NAMED_DATA : XX_EDILZSS_V1_BARE_DATA;

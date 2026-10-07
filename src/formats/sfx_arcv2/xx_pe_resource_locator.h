@@ -36,7 +36,7 @@ static bool xx_sfx_resource_table(Abstractformat *format, int64_t root,
     if (relative > resource_size || resource_size - relative < 16U ||
         !pm_read(format, root + relative, header, sizeof(header)))
         return false;
-    entries = (uint32_t)pm_le16(header + 12) + pm_le16(header + 14);
+    entries = (uint32_t)xx_data_get_u16(header + 12, 2, 0, false) + xx_data_get_u16(header + 14, 2, 0, false);
     if (entries > 4096U || entries * 8U > resource_size - relative - 16U)
         return false;
     *count = entries;
@@ -59,29 +59,29 @@ static bool xx_sfx_pe_resource_contains(Abstractformat *format,
         (total = pm_available(format)) < 64 ||
         !pm_read(format, 0, dos, sizeof(dos)) ||
         dos[0] != 'M' || dos[1] != 'Z' ||
-        (pe = pm_le32(dos + 60)) < 64U || pe > 1048576U ||
+        (pe = xx_data_get_u32(dos + 60, 4, 0, false)) < 64U || pe > 1048576U ||
         !wg_range(total, pe, sizeof(coff)) ||
         !pm_read(format, pe, coff, sizeof(coff)) ||
         xx_rt_memcmp(coff, "PE\0\0", 4) != 0)
         return false;
-    section_count = pm_le16(coff + 6);
-    optional_size = pm_le16(coff + 20);
+    section_count = xx_data_get_u16(coff + 6, 2, 0, false);
+    optional_size = xx_data_get_u16(coff + 20, 2, 0, false);
     if (section_count == 0U || section_count > 96U ||
         optional_size < 120U ||
         !wg_range(total, (uint64_t)pe + 24U, optional_size) ||
         !pm_read(format, (int64_t)pe + 24, optional, sizeof(optional)))
         return false;
-    magic = pm_le16(optional);
+    magic = xx_data_get_u16(optional, 2, 0, false);
     if (magic == 0x10bU) {
-        resource_rva = pm_le32(optional + 112);
-        resource_size = pm_le32(optional + 116);
+        resource_rva = xx_data_get_u32(optional + 112, 4, 0, false);
+        resource_size = xx_data_get_u32(optional + 116, 4, 0, false);
     } else if (magic == 0x20bU) {
         uint8_t data_directory[8];
         if (optional_size < 136U ||
             !pm_read(format, (int64_t)pe + 24 + 128,
                      data_directory, sizeof(data_directory))) return false;
-        resource_rva = pm_le32(data_directory);
-        resource_size = pm_le32(data_directory + 4);
+        resource_rva = xx_data_get_u32(data_directory, 4, 0, false);
+        resource_size = xx_data_get_u32(data_directory + 4, 4, 0, false);
     } else return false;
     if (resource_rva == 0U || resource_size < 16U) return false;
     section_table = (int64_t)pe + 24 + optional_size;
@@ -90,9 +90,9 @@ static bool xx_sfx_pe_resource_contains(Abstractformat *format,
     for (unsigned i = 0U; i < section_count; ++i) {
         if (!pm_read(format, section_table + (int64_t)i * 40,
                      section, sizeof(section))) return false;
-        sections[i].va = pm_le32(section + 12);
-        sections[i].raw_size = pm_le32(section + 16);
-        sections[i].raw = pm_le32(section + 20);
+        sections[i].va = xx_data_get_u32(section + 12, 4, 0, false);
+        sections[i].raw_size = xx_data_get_u32(section + 16, 4, 0, false);
+        sections[i].raw = xx_data_get_u32(section + 20, 4, 0, false);
     }
     if (!xx_sfx_resource_raw(sections, section_count, total, resource_rva,
                              resource_size, &root) ||
@@ -104,7 +104,7 @@ static bool xx_sfx_pe_resource_contains(Abstractformat *format,
         if (++visits > 16384U ||
             !pm_read(format, root + 16 + (int64_t)level0 * 8,
                      entry, sizeof(entry))) return false;
-        next0 = pm_le32(entry + 4);
+        next0 = xx_data_get_u32(entry + 4, 4, 0, false);
         if (!(next0 & 0x80000000U) ||
             !xx_sfx_resource_table(format, root, resource_size,
                                     next0 & 0x7fffffffU,
@@ -116,7 +116,7 @@ static bool xx_sfx_pe_resource_contains(Abstractformat *format,
                 !pm_read(format, root + dir1 + 16 +
                                      (int64_t)level1 * 8,
                          entry, sizeof(entry))) return false;
-            next1 = pm_le32(entry + 4);
+            next1 = xx_data_get_u32(entry + 4, 4, 0, false);
             if (!(next1 & 0x80000000U) ||
                 !xx_sfx_resource_table(format, root, resource_size,
                                         next1 & 0x7fffffffU,
@@ -129,14 +129,14 @@ static bool xx_sfx_pe_resource_contains(Abstractformat *format,
                     !pm_read(format, root + dir2 + 16 +
                                          (int64_t)level2 * 8,
                              entry, sizeof(entry))) return false;
-                next2 = pm_le32(entry + 4);
+                next2 = xx_data_get_u32(entry + 4, 4, 0, false);
                 if ((next2 & 0x80000000U) ||
                     next2 > resource_size ||
                     resource_size - next2 < 16U ||
                     !pm_read(format, root + next2, data, sizeof(data)))
                     continue;
-                data_rva = pm_le32(data);
-                data_size = pm_le32(data + 4);
+                data_rva = xx_data_get_u32(data, 4, 0, false);
+                data_size = xx_data_get_u32(data + 4, 4, 0, false);
                 if (data_size >= payload_size &&
                     xx_sfx_resource_raw(sections, section_count, total,
                                         data_rva, data_size, &file_at) &&

@@ -31,6 +31,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_LIZARD_MAGIC UINT32_C(0x184D2206)
 #define XX_LIZARD_SKIP_MAGIC UINT32_C(0x184D2A50)
@@ -60,20 +61,6 @@ typedef struct xx_lizard_streams {
     const uint8_t *literals_end;
 } xx_lizard_streams;
 
-static uint32_t xx_lizard_read24(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
-           ((uint32_t)p[2] << 16);
-}
-
-static uint32_t xx_lizard_read32(const uint8_t *p) {
-    return xx_lizard_read24(p) | ((uint32_t)p[3] << 24);
-}
-
-static uint64_t xx_lizard_read64(const uint8_t *p) {
-    return (uint64_t)xx_lizard_read32(p) |
-           ((uint64_t)xx_lizard_read32(p + 4) << 32);
-}
-
 static uint32_t xx_lizard_rotl(uint32_t value, unsigned bits) {
     return (value << bits) | (value >> (32U - bits));
 }
@@ -96,10 +83,10 @@ static uint32_t xx_lizard_xxh32(const uint8_t *data, size_t size) {
         uint32_t c = 0;
         uint32_t d = 0U - XX_LIZARD_XXH_P1;
         do {
-            a = xx_lizard_xxh_round(a, xx_lizard_read32(cursor));
-            b = xx_lizard_xxh_round(b, xx_lizard_read32(cursor + 4));
-            c = xx_lizard_xxh_round(c, xx_lizard_read32(cursor + 8));
-            d = xx_lizard_xxh_round(d, xx_lizard_read32(cursor + 12));
+            a = xx_lizard_xxh_round(a, xx_data_get_u32(cursor, 4, 0, false));
+            b = xx_lizard_xxh_round(b, xx_data_get_u32(cursor + 4, 4, 0, false));
+            c = xx_lizard_xxh_round(c, xx_data_get_u32(cursor + 8, 4, 0, false));
+            d = xx_lizard_xxh_round(d, xx_data_get_u32(cursor + 12, 4, 0, false));
             cursor += 16;
         } while (cursor <= limit);
         hash = xx_lizard_rotl(a, 1) + xx_lizard_rotl(b, 7) +
@@ -109,7 +96,7 @@ static uint32_t xx_lizard_xxh32(const uint8_t *data, size_t size) {
     }
     hash += (uint32_t)size;
     while ((size_t)(end - cursor) >= 4U) {
-        hash += xx_lizard_read32(cursor) * XX_LIZARD_XXH_P3;
+        hash += xx_data_get_u32(cursor, 4, 0, false) * XX_LIZARD_XXH_P3;
         hash = xx_lizard_rotl(hash, 17) * XX_LIZARD_XXH_P4;
         cursor += 4;
     }
@@ -139,7 +126,7 @@ static bool xx_lizard_read_length(const uint8_t **cursor,
         *cursor += 2;
     } else {
         if ((size_t)(end - *cursor) < 3U) return false;
-        extra = xx_lizard_read24(*cursor);
+        extra = xx_data_get_u24(*cursor, 3, 0, false);
         *cursor += 3;
     }
     if (base > SIZE_MAX - (size_t)extra) return false;
@@ -275,7 +262,7 @@ static bool xx_lizard_decode_v1_streams(xx_lizard_streams *streams,
             if ((size_t)(streams->offset24_end - streams->offset24) < 3U) {
                 return false;
             }
-            distance = xx_lizard_read24(streams->offset24);
+            distance = xx_data_get_u24(streams->offset24, 3, 0, false);
             streams->offset24 += 3;
             last_distance = distance;
             if (token < 31U) {
@@ -306,7 +293,7 @@ static bool xx_lizard_plain_stream(const uint8_t **input,
                                    const uint8_t **stream_end) {
     size_t length;
     if ((size_t)(input_end - *input) < 3U) return false;
-    length = (size_t)xx_lizard_read24(*input);
+    length = (size_t)xx_data_get_u24(*input, 3, 0, false);
     *input += 3;
     if (length > (size_t)(input_end - *input)) return false;
     *stream = *input;
@@ -325,8 +312,8 @@ static bool xx_lizard_read_stream(const uint8_t **input,
     }
     if ((size_t)(input_end - *input) < 6U) return false;
     {
-        size_t decoded_size = (size_t)xx_lizard_read24(*input);
-        size_t encoded_size = (size_t)xx_lizard_read24(*input + 3);
+        size_t decoded_size = (size_t)xx_data_get_u24(*input, 3, 0, false);
+        size_t encoded_size = (size_t)xx_data_get_u24(*input + 3, 3, 0, false);
         *input += 6;
         if (!scratch || decoded_size == 0U ||
             decoded_size > scratch_capacity ||
@@ -368,7 +355,7 @@ static bool xx_lizard_decode_block(const uint8_t *source, size_t source_size,
         if (control == XX_LIZARD_RAW_SUBBLOCK) {
             size_t length;
             if ((size_t)(end - input) < 3U) return false;
-            length = (size_t)xx_lizard_read24(input);
+            length = (size_t)xx_data_get_u24(input, 3, 0, false);
             input += 3;
             if (length > (size_t)(end - input) ||
                 length > destination_capacity - output) {
@@ -481,12 +468,12 @@ bool xx_lizard_decompress_memory(const void *source, size_t source_size,
         bool content_checksum;
 
         if ((size_t)(end - input) < 4U) return false;
-        magic = xx_lizard_read32(input);
+        magic = xx_data_get_u32(input, 4, 0, false);
         input += 4;
         if ((magic & UINT32_C(0xFFFFFFF0)) == XX_LIZARD_SKIP_MAGIC) {
             uint32_t skip_size;
             if ((size_t)(end - input) < 4U) return false;
-            skip_size = xx_lizard_read32(input);
+            skip_size = xx_data_get_u32(input, 4, 0, false);
             input += 4;
             if ((size_t)(end - input) < (size_t)skip_size) return false;
             input += skip_size;
@@ -508,7 +495,7 @@ bool xx_lizard_decompress_memory(const void *source, size_t source_size,
         content_checksum = (flags & UINT8_C(0x04)) != 0U;
         if (has_content_size) {
             if ((size_t)(end - input) < 8U) return false;
-            content_size = xx_lizard_read64(input);
+            content_size = xx_data_get_u64(input, 8, 0, false);
             input += 8;
         }
         if (input == end ||
@@ -527,7 +514,7 @@ bool xx_lizard_decompress_memory(const void *source, size_t source_size,
             size_t block_output = 0;
 
             if ((size_t)(end - input) < 4U) return false;
-            stored_size = xx_lizard_read32(input);
+            stored_size = xx_data_get_u32(input, 4, 0, false);
             input += 4;
             if (stored_size == 0U) break;
             uncompressed = (stored_size & UINT32_C(0x80000000)) != 0U;
@@ -540,7 +527,7 @@ bool xx_lizard_decompress_memory(const void *source, size_t source_size,
             input += block_size;
             if (block_checksum) {
                 if ((size_t)(end - input) < 4U ||
-                    xx_lizard_read32(input) !=
+                    xx_data_get_u32(input, 4, 0, false) !=
                         xx_lizard_xxh32(block_data, block_size)) {
                     return false;
                 }
@@ -574,7 +561,7 @@ bool xx_lizard_decompress_memory(const void *source, size_t source_size,
 
         if (content_checksum) {
             if ((size_t)(end - input) < 4U ||
-                xx_lizard_read32(input) != xx_lizard_xxh32(
+                xx_data_get_u32(input, 4, 0, false) != xx_lizard_xxh32(
                     output + frame_output_start,
                     output_position - frame_output_start)) {
                 return false;

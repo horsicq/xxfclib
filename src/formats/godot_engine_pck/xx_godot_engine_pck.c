@@ -40,6 +40,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and not edited from here,
  * so the alias macro that sits next to the enumerator is tested instead. */
@@ -150,20 +151,6 @@ typedef struct gdpck_stream_s {
 
 /* ---------------------------------------------------------------- bytes -- */
 
-static uint32_t gdpck_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8) |
-           ((uint32_t)bytes[2] << 16) | ((uint32_t)bytes[3] << 24);
-}
-
-static uint64_t gdpck_le64(const uint8_t *bytes) {
-    return (uint64_t)gdpck_le32(bytes) |
-           ((uint64_t)gdpck_le32(bytes + 4) << 32);
-}
-
-static uint16_t gdpck_le16(const uint8_t *bytes) {
-    return (uint16_t)(bytes[0] | ((uint16_t)bytes[1] << 8));
-}
-
 static bool gdpck_read_at(xx_io_device *device, int64_t offset, void *buffer,
                           size_t size) {
     const size_t io_capacity = xx_get_file_buffer_size();
@@ -205,7 +192,7 @@ bool xx_godot_engine_pck_probe_device(xx_io_device *device) {
         !gdpck_read_at(device, total - GDPCK_TRAILER, trailer,
                        sizeof(trailer)) ||
         xx_rt_memcmp(trailer + 8U, GDPCK_MAGIC, 4U) != 0) goto done;
-    size = gdpck_le64(trailer);
+    size = xx_data_get_u64(trailer, 8, 0, false);
     result = size >= GDPCK_MIN_PACK &&
              size <= (uint64_t)(total - GDPCK_TRAILER) &&
              gdpck_is_magic(device, total - GDPCK_TRAILER - (int64_t)size);
@@ -518,7 +505,7 @@ static bool gdpck_next_entry(gdpck_input *in, const gdpck_layout *layout,
     xx_mem_zero(entry, sizeof(*entry));
     entry->header_offset = in->position;
     if (!gdpck_input_read(in, word, sizeof(word))) return false;
-    path_size = gdpck_le32(word);
+    path_size = xx_data_get_u32(word, 4, 0, false);
     if (path_size == 0U || path_size > XX_GODOT_ENGINE_PCK_MAX_PATH ||
         !gdpck_input_read(in, path, path_size))
         return false;
@@ -528,10 +515,10 @@ static bool gdpck_next_entry(gdpck_input *in, const gdpck_layout *layout,
     entry->name_length = length;
     if (!gdpck_input_read(in, tail, tail_size)) return false;
     entry->header_size = in->position - entry->header_offset;
-    offset = gdpck_le64(tail);
-    entry->size = gdpck_le64(tail + 8);
+    offset = xx_data_get_u64(tail, 8, 0, false);
+    entry->size = xx_data_get_u64(tail + 8, 8, 0, false);
     xx_rt_memcpy(entry->md5, tail + 16, 16U);
-    entry->flags = layout->version >= 2U ? gdpck_le32(tail + 32) : 0U;
+    entry->flags = layout->version >= 2U ? xx_data_get_u32(tail + 32, 4, 0, false) : 0U;
     if (entry->flags & ~(layout->version >= 3U ? GDPCK_FILE_FLAGS_V3
                                                : GDPCK_FILE_FLAGS_V2))
         return false;
@@ -637,7 +624,7 @@ static bool gdpck_encrypted_directory(xx_io_device *device,
     if (layout->region_end - start < GDPCK_CRYPT_HEADER ||
         !gdpck_read_at(device, start, envelope, sizeof(envelope)))
         return false;
-    plain = gdpck_le64(envelope + 16);
+    plain = xx_data_get_u64(envelope + 16, 8, 0, false);
     if (plain > (uint64_t)INT64_MAX - 64U) return false;
     padded = (plain + 15U) & ~UINT64_C(15);
     if (plain < (uint64_t)layout->file_count * GDPCK_MIN_ENTRY_V2 ||
@@ -664,10 +651,10 @@ static bool gdpck_header(xx_io_device *device, gdpck_layout *layout) {
         !gdpck_read_at(device, layout->pack, header, 20U) ||
         xx_rt_memcmp(header, GDPCK_MAGIC, 4U) != 0)
         return false;
-    layout->version = gdpck_le32(header + 4);
-    layout->major = gdpck_le32(header + 8);
-    layout->minor = gdpck_le32(header + 12);
-    layout->patch = gdpck_le32(header + 16);
+    layout->version = xx_data_get_u32(header + 4, 4, 0, false);
+    layout->major = xx_data_get_u32(header + 8, 4, 0, false);
+    layout->minor = xx_data_get_u32(header + 12, 4, 0, false);
+    layout->patch = xx_data_get_u32(header + 16, 4, 0, false);
     /* Godot 4 packs (versions 2..4) come from engine 4 or later. */
     if (layout->version > 4U || layout->major == 0U || layout->major > 99U ||
         layout->minor > 999U || layout->patch > 9999U ||
@@ -691,8 +678,8 @@ static bool gdpck_header(xx_io_device *device, gdpck_layout *layout) {
                        reserved_end - 20U))
         return false;
     if (layout->version >= 2U) {
-        layout->flags = gdpck_le32(header + 0x14);
-        layout->stored_file_base = gdpck_le64(header + 0x18);
+        layout->flags = xx_data_get_u32(header + 0x14, 4, 0, false);
+        layout->stored_file_base = xx_data_get_u64(header + 0x18, 8, 0, false);
         if (layout->flags & ~(layout->version >= 3U ? GDPCK_PACK_FLAGS_V3
                                                     : GDPCK_PACK_FLAGS_V2))
             return false;
@@ -714,7 +701,7 @@ static bool gdpck_header(xx_io_device *device, gdpck_layout *layout) {
     for (index = reserved_start; index < reserved_end; ++index)
         if (header[index] != 0U) return false;
     if (layout->version >= 3U) {
-        uint64_t dir_offset = gdpck_le64(header + 0x20);
+        uint64_t dir_offset = xx_data_get_u64(header + 0x20, 8, 0, false);
         if (layout->stored_file_base < GDPCK_V3_HEADER ||
             dir_offset < layout->stored_file_base ||
             dir_offset > (uint64_t)(available - 4))
@@ -724,7 +711,7 @@ static bool gdpck_header(xx_io_device *device, gdpck_layout *layout) {
     if (layout->dir_start > layout->region_end - 4 ||
         !gdpck_read_at(device, layout->dir_start, word, sizeof(word)))
         return false;
-    layout->file_count = gdpck_le32(word);
+    layout->file_count = xx_data_get_u32(word, 4, 0, false);
     if (layout->file_count > XX_GODOT_ENGINE_PCK_MAX_ENTRIES) return false;
     if (!layout->dir_encrypted) {
         minimum_entry = layout->version >= 2U ? GDPCK_MIN_ENTRY_V2
@@ -749,13 +736,13 @@ static bool gdpck_pe_section(xx_io_device *device, gdpck_layout *layout) {
     if (total - base < 64 || !gdpck_read_at(device, base, dos, sizeof(dos)) ||
         dos[0] != 'M' || dos[1] != 'Z')
         return false;
-    lfanew = (int64_t)gdpck_le32(dos + 0x3C);
+    lfanew = (int64_t)xx_data_get_u32(dos + 0x3C, 4, 0, false);
     if (lfanew > INT64_C(0x10000000) || lfanew > total - base - 24 ||
         !gdpck_read_at(device, base + lfanew, nt, sizeof(nt)) ||
         xx_rt_memcmp(nt, "PE\0\0", 4U) != 0)
         return false;
-    count = gdpck_le16(nt + 6);
-    table_at = base + lfanew + 24 + (int64_t)gdpck_le16(nt + 20);
+    count = xx_data_get_u16(nt + 6, 2, 0, false);
+    table_at = base + lfanew + 24 + (int64_t)xx_data_get_u16(nt + 20, 2, 0, false);
     if (count == 0U || count > GDPCK_PE_MAX_SECTIONS ||
         table_at > total - (int64_t)count * 40 ||
         !gdpck_read_at(device, table_at, table, (size_t)count * 40U))
@@ -764,8 +751,8 @@ static bool gdpck_pe_section(xx_io_device *device, gdpck_layout *layout) {
         const uint8_t *section = table + (size_t)index * 40U;
         int64_t start, end;
         if (xx_rt_memcmp(section, "pck\0\0\0\0\0", 8U) != 0) continue;
-        start = base + (int64_t)gdpck_le32(section + 20);
-        end = start + (int64_t)gdpck_le32(section + 16);
+        start = base + (int64_t)xx_data_get_u32(section + 20, 4, 0, false);
+        end = start + (int64_t)xx_data_get_u32(section + 16, 4, 0, false);
         if (end > total) end = total;
         for (slack = 0U; slack < 8U; ++slack) {
             if (start + (int64_t)slack > end - GDPCK_MIN_PACK) break;
@@ -794,7 +781,7 @@ static bool gdpck_locate(xx_io_device *device, gdpck_layout *layout) {
         gdpck_read_at(device, total - GDPCK_TRAILER, trailer,
                       sizeof(trailer)) &&
         xx_rt_memcmp(trailer + 8, GDPCK_MAGIC, 4U) == 0) {
-        uint64_t size = gdpck_le64(trailer);
+        uint64_t size = xx_data_get_u64(trailer, 8, 0, false);
         if (size >= GDPCK_MIN_PACK &&
             size <= (uint64_t)(total - GDPCK_TRAILER - base) &&
             gdpck_is_magic(device, total - GDPCK_TRAILER - (int64_t)size)) {

@@ -59,6 +59,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ZPAQ_TAG_SIZE 13
 #define XX_ZPAQ_BLOCK_PREFIX_SIZE 7
@@ -1841,15 +1842,6 @@ static zp_entry *zp_journal_entry(struct xx_zpaq_scan *s, const char *name,
     return e;
 }
 
-static uint32_t zp_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
-           ((uint32_t)p[3] << 24);
-}
-
-static uint64_t zp_le64(const uint8_t *p) {
-    return (uint64_t)zp_le32(p) | ((uint64_t)zp_le32(p + 4) << 32);
-}
-
 /* "jDC" YYYYMMDDHHMMSS type NNNNNNNNNN */
 static bool zp_parse_jdc(const zp_seghead *head, char *type, uint32_t *number) {
     const char *n = head->name;
@@ -1908,7 +1900,7 @@ static bool zp_parse_h(struct xx_zpaq_scan *s, uint32_t first,
     zp_dblock *d;
     if (mb->size < 4U || (mb->size - 4U) % 24U != 0U) return false;
     k = (uint32_t)((mb->size - 4U) / 24U);
-    csize = zp_le32(mb->data);
+    csize = xx_data_get_u32(mb->data, 4, 0, false);
     if (first == 0U || (uint64_t)first + k > ZP_MAX_FRAGMENTS) return false;
     if (s->ndblocks == s->cdblocks) {
         uint32_t capacity = s->cdblocks ? s->cdblocks * 2U : 64U;
@@ -1942,7 +1934,7 @@ static bool zp_parse_h(struct xx_zpaq_scan *s, uint32_t first,
         const uint8_t *row = mb->data + 4U + (size_t)i * 24U;
         zp_frag *f = &s->frags[first + i];
         xx_mem_copy(f->sha, row, 20U);
-        f->size = zp_le32(row + 20);
+        f->size = xx_data_get_u32(row + 20, 4, 0, false);
         f->offset = (uint32_t)sum;
         f->dblock = s->ndblocks + 1U;
         sum += f->size;
@@ -1962,7 +1954,7 @@ static bool zp_parse_i(struct xx_zpaq_scan *s, const zp_membuf *mb) {
         size_t start, length;
         zp_entry *e;
         if (mb->size - p < 9U) return false;
-        date = zp_le64(d + p);
+        date = xx_data_get_u64(d + p, 8, 0, false);
         p += 8U;
         start = p;
         while (p < mb->size && d[p] != 0U) ++p;
@@ -1977,13 +1969,13 @@ static bool zp_parse_i(struct xx_zpaq_scan *s, const zp_membuf *mb) {
             uint32_t na, ni, j;
             const uint8_t *attr;
             if (mb->size - p < 4U) return false;
-            na = zp_le32(d + p);
+            na = xx_data_get_u32(d + p, 4, 0, false);
             p += 4U;
             if (na > mb->size - p) return false;
             attr = d + p;
             p += na;
             if (mb->size - p < 4U) return false;
-            ni = zp_le32(d + p);
+            ni = xx_data_get_u32(d + p, 4, 0, false);
             p += 4U;
             if (ni > (mb->size - p) / 4U) return false;
             e = zp_journal_entry(s, (const char *)d + start, length, true);
@@ -1994,13 +1986,13 @@ static bool zp_parse_i(struct xx_zpaq_scan *s, const zp_membuf *mb) {
             e->deleted = false;
             e->has_attr = false;
             if (na >= 5U && (attr[0] == 'w' || attr[0] == 'u')) {
-                e->attr = zp_le32(attr + 1);
+                e->attr = xx_data_get_u32(attr + 1, 4, 0, false);
                 e->has_attr = true;
             }
             if (ni) {
                 e->ids = (uint32_t *)xx_mem_alloc((size_t)ni * sizeof(uint32_t));
                 if (!e->ids) return false;
-                for (j = 0; j < ni; ++j) e->ids[j] = zp_le32(d + p + 4U * j);
+                for (j = 0; j < ni; ++j) e->ids[j] = xx_data_get_u32(d + p + 4U * j, 4, 0, false);
                 e->nids = ni;
             }
             p += 4U * (size_t)ni;
@@ -2064,7 +2056,7 @@ static bool zp_scan_block(struct xx_zpaq_scan *s, zp_in *in, int64_t pos,
         if (type == 'c') {
             int64_t csize, block_end = zp_in_tell(in);
             if (mb.size < 8U) goto done;
-            csize = (int64_t)zp_le64(mb.data);
+            csize = (int64_t)xx_data_get_u64(mb.data, 8, 0, false);
             *next = block_end;
             if (csize < 0 || csize > in->end - block_end) {
                 /* An unfinished (or cut) transaction: zpaq ignores it and

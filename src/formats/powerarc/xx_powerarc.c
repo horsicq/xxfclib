@@ -41,6 +41,7 @@
 #include "xxfclib/algo/bzip2/xx_bzip2.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_POWERARC_COPY_CHUNK (64 * 1024)
 
@@ -145,7 +146,6 @@ static bool xx_powerarc_add(xx_powerarc_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint32_t xx_powerarc_be32(const uint8_t *data);
 static uint32_t xx_powerarc_be16(const uint8_t *data);
 static bool xx_powerarc_block_magic_is_valid(const uint8_t *data);
 static xx_powerarc_stream *xx_powerarc_parse(Abstractformat *self, xx_pd_struct *pd);
@@ -160,11 +160,6 @@ static bool xx_powerarc_decode(Abstractformat *self, const xx_powerarc_member *m
  * a member listing should show, so it is the well-known bzip2 method id (12,
  * as in ZIP), not a library enum. */
 
-static uint32_t xx_powerarc_be32(const uint8_t *data) {
-    return ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16) |
-           ((uint32_t)data[2] << 8) | (uint32_t)data[3];
-}
-
 static uint32_t xx_powerarc_be16(const uint8_t *data) {
     return ((uint32_t)data[0] << 8) | (uint32_t)data[1];
 }
@@ -176,7 +171,7 @@ static uint32_t xx_powerarc_be16(const uint8_t *data) {
  * all. Nothing else can appear there.
  */
 static bool xx_powerarc_block_magic_is_valid(const uint8_t *data) {
-    uint32_t high = xx_powerarc_be32(data);
+    uint32_t high = xx_data_get_u32(data, 4, 0, true);
     uint32_t low = xx_powerarc_be16(data + 4);
 
     return (high == 0x31415926U && low == 0x5359U) ||

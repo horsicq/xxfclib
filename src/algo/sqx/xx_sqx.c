@@ -8,6 +8,7 @@
 #include "xxfclib/algo/sqx/xx_sqx.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/data/xx_data.h"
 
 #define SQX_NMAIN 0x136
 #define SQX_NPRE 0x13
@@ -68,11 +69,6 @@ typedef struct sqx_bits {
     int64_t bit_offset;
 } sqx_bits;
 
-static uint32_t sqx_read32(const uint8_t *p)
-{
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
-
 static bool sqx_peek(sqx_bits *bits, int32_t count, uint32_t *value)
 {
     int64_t word;
@@ -84,8 +80,8 @@ static bool sqx_peek(sqx_bits *bits, int32_t count, uint32_t *value)
     shift = (int32_t)(bits->bit_offset & 31);
     if ((word < 0) || ((word + 1) >= bits->word_count)) return false;
     p = bits->words + word * 4;
-    acc = sqx_read32(p) << shift;
-    if (shift) acc |= sqx_read32(p + 4) >> (32 - shift);
+    acc = xx_data_get_u32(p, 4, 0, false) << shift;
+    if (shift) acc |= xx_data_get_u32(p + 4, 4, 0, false) >> (32 - shift);
     *value = acc >> ((32 - count) & 31);
 
     return true;

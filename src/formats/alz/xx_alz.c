@@ -20,6 +20,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define ALZ_HEADER_SIZE 12U
 #define ALZ_ENTRY_FIXED_SIZE 9U
@@ -50,15 +51,6 @@ typedef struct alz_stream_s {
     size_t index;
     int64_t archive_size;
 } alz_stream;
-
-static uint16_t alz_le16(const uint8_t *bytes) {
-    return (uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U);
-}
-
-static uint32_t alz_le32(const uint8_t *bytes) {
-    return (uint32_t)alz_le16(bytes) |
-           ((uint32_t)alz_le16(bytes + 2U) << 16U);
-}
 
 static uint64_t alz_le(const uint8_t *bytes, unsigned count) {
     uint64_t result = 0U;
@@ -198,7 +190,7 @@ static bool alz_parse(Abstractformat *format, alz_stream **result) {
         if (size - cursor < 4 ||
             !alz_read_at(format->device, format->base_address + cursor,
                          magic_bytes, sizeof(magic_bytes))) goto fail;
-        magic = alz_le32(magic_bytes);
+        magic = xx_data_get_u32(magic_bytes, 4, 0, false);
         cursor += 4;
         if (magic == ALZ_MAGIC_CONTROL_1) {
             uint8_t ignored[8];
@@ -223,12 +215,12 @@ static bool alz_parse(Abstractformat *format, alz_stream **result) {
                 !alz_read_at(format->device, format->base_address + cursor,
                              fixed, sizeof(fixed))) goto fail;
             cursor += (int64_t)sizeof(fixed);
-            name_size = alz_le16(fixed);
+            name_size = xx_data_get_u16(fixed, 2, 0, false);
             width = (uint8_t)(fixed[7] >> 4U);
             if (width > 8U) goto fail;
             xx_mem_zero(&member, sizeof(member));
             member.attributes = fixed[2];
-            member.dos_time = alz_le32(fixed + 3U);
+            member.dos_time = xx_data_get_u32(fixed + 3U, 4, 0, false);
             member.descriptor = fixed[7];
             member.encrypted = (fixed[7] & 1U) != 0U;
             member.folder = width == 0U;
@@ -241,7 +233,7 @@ static bool alz_parse(Abstractformat *format, alz_stream **result) {
                                  variable, variable_size)) goto fail;
                 cursor += (int64_t)variable_size;
                 member.method = variable[0];
-                member.crc32 = alz_le32(variable + 2U);
+                member.crc32 = xx_data_get_u32(variable + 2U, 4, 0, false);
                 packed = alz_le(variable + 6U, width);
                 unpacked = alz_le(variable + 6U + width, width);
                 if (packed > INT64_MAX || unpacked > SIZE_MAX) goto fail;

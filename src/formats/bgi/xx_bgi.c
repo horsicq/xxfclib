@@ -20,6 +20,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef BGI
 #define XX_BGI_FILE_TYPE XX_FILE_TYPE_BGI
@@ -73,11 +74,6 @@ static size_t bgi_capacity(void) {
     if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
     if (n < 4096U) n = 4096U;
     return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
-}
-
-static uint32_t bgi_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
 }
 
 static bool bgi_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -307,7 +303,7 @@ static bool bgi_read_header(Abstractformat *format, bgi_layout *layout,
                       sizeof(header)) ||
         xx_rt_memcmp(header, BGI_MAGIC, BGI_MAGIC_SIZE) != 0)
         return false;
-    count = bgi_le32(header + BGI_MAGIC_SIZE);
+    count = xx_data_get_u32(header + BGI_MAGIC_SIZE, 4, 0, false);
     if (count == 0U || count > BGI_MAX_MEMBERS) return false;
     layout->count = count;
     layout->data_base =
@@ -344,8 +340,8 @@ static bool bgi_walk(Abstractformat *format, bgi_layout *layout,
         }
         for (i = 0U; i < take; ++i) {
             const uint8_t *entry = chunk + (size_t)i * BGI_ENTRY_SIZE;
-            int64_t offset = (int64_t)bgi_le32(entry + BGI_OFFSET_FIELD);
-            int64_t size = (int64_t)bgi_le32(entry + BGI_SIZE_FIELD);
+            int64_t offset = (int64_t)xx_data_get_u32(entry + BGI_OFFSET_FIELD, 4, 0, false);
+            int64_t size = (int64_t)xx_data_get_u32(entry + BGI_SIZE_FIELD, 4, 0, false);
             int64_t start = layout->data_base + offset;
             uint32_t index = done + i;
             if (start > archive_size || size > archive_size - start) {

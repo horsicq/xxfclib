@@ -29,12 +29,13 @@ void xx_dex_cleanup_analysis(xx_dex *dex) {
 static char *dex_string(xx_io_device *view, uint32_t offset, size_t budget, xx_pd_struct *pd) {
     int64_t size = xx_io_total_size(view), position = offset; uint32_t units = 0;
     unsigned i; uint8_t byte; xx_buf_t out; size_t maximum;
-    if (!offset || position >= size) return xx_str_create("");
+    if (!offset || position >= size) return NULL;
     for (i = 0; i < 5; ++i) {
-        if (dex_read_at(view, position++, &byte, 1) != 1 || (i == 4 && (byte & 0xF0))) return xx_str_create("");
+        if (dex_read_at(view, position++, &byte, 1) != 1 || (i == 4 && (byte & 0xF0))) return NULL;
         units |= (uint32_t)(byte & 0x7F) << (i * 7);
         if (!(byte & 0x80)) break;
     }
+    if (i == 5) return NULL;
     maximum = units > (budget - 1) / 3 ? budget : (size_t)units * 3 + 1;
     if ((uint64_t)maximum > (uint64_t)(size - position)) maximum = (size_t)(size - position);
     xx_buf_init(&out);

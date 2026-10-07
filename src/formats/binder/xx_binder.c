@@ -27,6 +27,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Self-healing file-type shim: the enum entry is added by the coordinator. */
 #ifdef BINDER
@@ -89,15 +90,6 @@ typedef struct binder_stream_s {
     size_t entry_count;
     int64_t archive_size;
 } binder_stream;
-
-static uint16_t binder_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t binder_le32(const uint8_t *bytes) {
-    return (uint32_t)binder_le16(bytes) |
-           ((uint32_t)binder_le16(bytes + 2U) << 16U);
-}
 
 static bool binder_read_at(xx_io_device *device, int64_t offset, void *buffer,
                            size_t size) {
@@ -213,11 +205,11 @@ static size_t binder_name_to_utf8(const uint8_t *raw, size_t raw_size,
                                   char *out, size_t out_capacity) {
     size_t input = 0U, output = 0U;
     while (input + 1U < raw_size) {
-        uint32_t code = binder_le16(raw + input);
+        uint32_t code = xx_data_get_u16(raw + input, 2, 0, false);
         input += 2U;
         if (code == 0U) break;
         if (code >= 0xD800U && code <= 0xDBFFU && input + 1U < raw_size) {
-            uint32_t low = binder_le16(raw + input);
+            uint32_t low = xx_data_get_u16(raw + input, 2, 0, false);
             if (low >= 0xDC00U && low <= 0xDFFFU) {
                 code = 0x10000U + ((code - 0xD800U) << 10U) + (low - 0xDC00U);
                 input += 2U;
@@ -360,14 +352,14 @@ static bool binder_walk_tree(binder_walk *walk, uint32_t index,
     walk->visited[index] = 1U;
 
     entry = walk->directory + (size_t)index * BINDER_DIR_ENTRY_SIZE;
-    name_length = binder_le16(entry + 0x40U);
+    name_length = xx_data_get_u16(entry + 0x40U, 2, 0, false);
     type = entry[0x42U];
-    left = binder_le32(entry + 0x44U);
-    right = binder_le32(entry + 0x48U);
-    child = binder_le32(entry + 0x4CU);
-    start = binder_le32(entry + 0x74U);
-    size = (uint64_t)binder_le32(entry + 0x78U) |
-           ((uint64_t)binder_le32(entry + 0x7CU) << 32U);
+    left = xx_data_get_u32(entry + 0x44U, 4, 0, false);
+    right = xx_data_get_u32(entry + 0x48U, 4, 0, false);
+    child = xx_data_get_u32(entry + 0x4CU, 4, 0, false);
+    start = xx_data_get_u32(entry + 0x74U, 4, 0, false);
+    size = (uint64_t)xx_data_get_u32(entry + 0x78U, 4, 0, false) |
+           ((uint64_t)xx_data_get_u32(entry + 0x7CU, 4, 0, false) << 32U);
     /* Version 3 writers leave the high word of the size uninitialized. */
     if (walk->stream->sector_size == 512U) size &= UINT32_C(0xFFFFFFFF);
 
@@ -454,7 +446,7 @@ static bool binder_load_fat(binder_stream *stream, const uint8_t *header,
     if (!difat || !sector) goto done;
 
     for (index = 0U; index < 109U && difat_count < capacity; ++index) {
-        uint32_t value = binder_le32(header + 0x4CU + index * 4U);
+        uint32_t value = xx_data_get_u32(header + 0x4CU + index * 4U, 4, 0, false);
         if (value == BINDER_FREESECT) break;
         if (value >= stream->sector_count) goto done;
         difat[difat_count++] = value;
@@ -473,12 +465,12 @@ static bool binder_load_fat(binder_stream *stream, const uint8_t *header,
             ++steps;
             for (index = 0U; index + 1U < per_sector && difat_count < capacity;
                  ++index) {
-                uint32_t value = binder_le32(sector + index * 4U);
+                uint32_t value = xx_data_get_u32(sector + index * 4U, 4, 0, false);
                 if (value == BINDER_FREESECT) break;
                 if (value >= stream->sector_count) goto done;
                 difat[difat_count++] = value;
             }
-            current = binder_le32(sector + (per_sector - 1U) * 4U);
+            current = xx_data_get_u32(sector + (per_sector - 1U) * 4U, 4, 0, false);
         }
     }
     if (difat_count != capacity) goto done;
@@ -498,7 +490,7 @@ static bool binder_load_fat(binder_stream *stream, const uint8_t *header,
             goto done;
         for (slot = 0U; slot < per_sector; ++slot)
             stream->fat[index * per_sector + slot] =
-                binder_le32(sector + slot * 4U);
+                xx_data_get_u32(sector + slot * 4U, 4, 0, false);
     }
     result = true;
 done:
@@ -536,7 +528,7 @@ static bool binder_load_minifat(binder_stream *stream, uint32_t start,
         }
         for (index = 0U; index < per_sector; ++index)
             stream->minifat[steps * per_sector + index] =
-                binder_le32(sector + index * 4U);
+                xx_data_get_u32(sector + index * 4U, 4, 0, false);
         ++steps;
         current = stream->fat[current];
         if (current == BINDER_ENDOFCHAIN) break;
@@ -578,18 +570,18 @@ static bool binder_parse(Abstractformat *format, binder_stream **result) {
         header[6] != 0x1AU || header[7] != 0xE1U)
         return false;
 
-    byte_order = binder_le16(header + 0x1CU);
-    major = binder_le16(header + 0x1AU);
-    sector_shift = binder_le16(header + 0x1EU);
-    mini_shift = binder_le16(header + 0x20U);
-    dir_count_field = binder_le32(header + 0x28U);
-    fat_sector_count = binder_le32(header + 0x2CU);
-    dir_start = binder_le32(header + 0x30U);
-    cutoff = binder_le32(header + 0x38U);
-    minifat_start = binder_le32(header + 0x3CU);
-    minifat_count = binder_le32(header + 0x40U);
-    difat_start = binder_le32(header + 0x44U);
-    difat_count = binder_le32(header + 0x48U);
+    byte_order = xx_data_get_u16(header + 0x1CU, 2, 0, false);
+    major = xx_data_get_u16(header + 0x1AU, 2, 0, false);
+    sector_shift = xx_data_get_u16(header + 0x1EU, 2, 0, false);
+    mini_shift = xx_data_get_u16(header + 0x20U, 2, 0, false);
+    dir_count_field = xx_data_get_u32(header + 0x28U, 4, 0, false);
+    fat_sector_count = xx_data_get_u32(header + 0x2CU, 4, 0, false);
+    dir_start = xx_data_get_u32(header + 0x30U, 4, 0, false);
+    cutoff = xx_data_get_u32(header + 0x38U, 4, 0, false);
+    minifat_start = xx_data_get_u32(header + 0x3CU, 4, 0, false);
+    minifat_count = xx_data_get_u32(header + 0x40U, 4, 0, false);
+    difat_start = xx_data_get_u32(header + 0x44U, 4, 0, false);
+    difat_count = xx_data_get_u32(header + 0x48U, 4, 0, false);
 
     if (byte_order != 0xFFFEU || mini_shift != 6U || cutoff != 4096U)
         return false;
@@ -654,9 +646,9 @@ static bool binder_parse(Abstractformat *format, binder_stream **result) {
         xx_rt_memcmp(directory + 0x50U, binder_root_clsid,
                      sizeof(binder_root_clsid)) != 0)
         goto fail;
-    root_start = binder_le32(directory + 0x74U);
-    root_size = (uint64_t)binder_le32(directory + 0x78U) |
-                ((uint64_t)binder_le32(directory + 0x7CU) << 32U);
+    root_start = xx_data_get_u32(directory + 0x74U, 4, 0, false);
+    root_size = (uint64_t)xx_data_get_u32(directory + 0x78U, 4, 0, false) |
+                ((uint64_t)xx_data_get_u32(directory + 0x7CU, 4, 0, false) << 32U);
     if (major == 3U) root_size &= UINT32_C(0xFFFFFFFF);
     if (root_size > (uint64_t)stream->sector_count *
                         (uint64_t)stream->sector_size)
@@ -688,7 +680,7 @@ static bool binder_parse(Abstractformat *format, binder_stream **result) {
     walk.visited = visited;
     walk.path = path;
     walk.visited[0] = 1U; /* the root itself is never a child */
-    if (!binder_walk_tree(&walk, binder_le32(directory + 0x4CU), 0U)) goto fail;
+    if (!binder_walk_tree(&walk, xx_data_get_u32(directory + 0x4CU, 4, 0, false), 0U)) goto fail;
     /* Discriminator: a Binder always keeps its layout in a root-level
      * "Binder" stream.  Without it this is some other compound document. */
     if (!walk.has_binder_stream || stream->count == 0U) goto fail;

@@ -63,6 +63,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_SQX_COPY_CHUNK (64 * 1024)
 
@@ -185,8 +186,6 @@ typedef struct xx_sqx_member {
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_sqx_le16(const uint8_t *data);
-static uint32_t xx_sqx_le32(const uint8_t *data);
 static bool xx_sqx_is_end_type(uint8_t type);
 static bool xx_sqx_name_byte_ok(uint8_t byte);
 static bool xx_sqx_table_add(xx_sqx_codec_member **table, size_t *count, const xx_sqx_codec_member *entry);
@@ -211,15 +210,6 @@ XXFC_API bool xx_sqx_decode_memory(const uint8_t *input, size_t input_size,
                                    size_t member_count, size_t target_index,
                                    uint8_t *output, size_t output_size,
                                    size_t *written);
-
-static uint16_t xx_sqx_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_sqx_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static bool xx_sqx_is_end_type(uint8_t type) {
     return type == XX_SQX_TYPE_END_A || type == XX_SQX_TYPE_END_S ||
@@ -281,7 +271,7 @@ static bool xx_sqx_walk(Abstractformat *self, xx_pd_struct *pd,
      * exactly 25 are what stop the five characters appearing inside unrelated
      * data from being taken for an archive start. */
     if (head[2] != (uint8_t)'R') return false;
-    if (xx_sqx_le16(head + 5) != (uint16_t)XX_SQX_FIRST_HEADER) return false;
+    if (xx_data_get_u16(head + 5, 2, 0, false) != (uint16_t)XX_SQX_FIRST_HEADER) return false;
     if (head[7] != (uint8_t)'-' || head[8] != (uint8_t)'s' ||
         head[9] != (uint8_t)'q' || head[10] != (uint8_t)'x' ||
         head[11] != (uint8_t)'-') {
@@ -289,7 +279,7 @@ static bool xx_sqx_walk(Abstractformat *self, xx_pd_struct *pd,
     }
     /* Encrypted headers: not even the member list can be produced, and
      * guessing would publish names read out of ciphertext. */
-    if (xx_sqx_le16(head + 3) & XX_SQX_MAIN_FLAG_ENCRYPTED) return false;
+    if (xx_data_get_u16(head + 3, 2, 0, false) & XX_SQX_MAIN_FLAG_ENCRYPTED) return false;
 
     body = (uint8_t *)xx_mem_alloc((size_t)XX_SQX_MAX_BODY);
     name = (char *)xx_mem_alloc((size_t)XX_SQX_MAX_NAME + 1U);
@@ -321,8 +311,8 @@ static bool xx_sqx_walk(Abstractformat *self, xx_pd_struct *pd,
             goto done;
         }
         type = stub[2];
-        flags = xx_sqx_le16(stub + 3);
-        header_size = (int64_t)xx_sqx_le16(stub + 5);
+        flags = xx_data_get_u16(stub + 3, 2, 0, false);
+        header_size = (int64_t)xx_data_get_u16(stub + 5, 2, 0, false);
 
         if (xx_sqx_is_end_type(type)) break;
         /* A record that does not cover its own stub, or that runs past EOF,
@@ -346,10 +336,10 @@ static bool xx_sqx_walk(Abstractformat *self, xx_pd_struct *pd,
                                     sizeof(stub))) {
                     goto done;
                 }
-                chain_size = (int64_t)xx_sqx_le16(stub + 5);
+                chain_size = (int64_t)xx_data_get_u16(stub + 5, 2, 0, false);
                 if (chain_size < XX_SQX_RECORD_STUB) break;
                 offset += chain_size;
-                chain_flags = xx_sqx_le16(stub + 3);
+                chain_flags = xx_data_get_u16(stub + 3, 2, 0, false);
             }
             continue;
         }
@@ -365,18 +355,18 @@ static bool xx_sqx_walk(Abstractformat *self, xx_pd_struct *pd,
             goto done;
         }
 
-        attributes = xx_sqx_le32(body + 10);
-        packed = (int64_t)xx_sqx_le32(body + 18);
-        unpacked = (int64_t)xx_sqx_le32(body + 22);
+        attributes = xx_data_get_u32(body + 10, 4, 0, false);
+        packed = (int64_t)xx_data_get_u32(body + 18, 4, 0, false);
+        unpacked = (int64_t)xx_data_get_u32(body + 22, 4, 0, false);
         cursor = 26;
         if (flags & XX_SQX_FLAG_LARGE) {
             if ((cursor + 8) > body_size) break;
-            packed |= ((int64_t)xx_sqx_le32(body + 26)) << 32;
-            unpacked |= ((int64_t)xx_sqx_le32(body + 30)) << 32;
+            packed |= ((int64_t)xx_data_get_u32(body + 26, 4, 0, false)) << 32;
+            unpacked |= ((int64_t)xx_data_get_u32(body + 30, 4, 0, false)) << 32;
             cursor = 34;
         }
         if ((cursor + 2) > body_size) break;
-        name_size = (int32_t)xx_sqx_le16(body + cursor);
+        name_size = (int32_t)xx_data_get_u16(body + cursor, 2, 0, false);
         cursor += 2;
         name_available = name_size;
         if ((int64_t)name_available > (body_size - cursor)) {
@@ -412,10 +402,10 @@ static bool xx_sqx_walk(Abstractformat *self, xx_pd_struct *pd,
                                 sizeof(stub))) {
                 goto done;
             }
-            chain_size = (int64_t)xx_sqx_le16(stub + 5);
+            chain_size = (int64_t)xx_data_get_u16(stub + 5, 2, 0, false);
             if (chain_size < XX_SQX_RECORD_STUB) break;
             offset += chain_size;
-            chain_flags = xx_sqx_le16(stub + 3);
+            chain_flags = xx_data_get_u16(stub + 3, 2, 0, false);
         }
 
         if (packed < 0 || unpacked < 0) break;
@@ -439,7 +429,7 @@ static bool xx_sqx_walk(Abstractformat *self, xx_pd_struct *pd,
             /* The container's own method byte, unchanged: the mapping to a
              * codec lives only in the decode. */
             member.method = (uint32_t)body[5];
-            member.timestamp = (uint64_t)xx_sqx_le32(body + 14);
+            member.timestamp = (uint64_t)xx_data_get_u32(body + 14, 4, 0, false);
             member.is_folder = is_folder;
             if (!xx_sqx_add(stream, &member)) {
                 xx_str_free(member.name);

@@ -11,6 +11,7 @@
 #include "xxfclib/algo/lzpis2/xx_lzpis2.h"
 
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_LZPIS2_MAGIC_SIZE 6U
 #define XX_LZPIS2_CHUNK_HEADER_SIZE 4U
@@ -41,10 +42,6 @@ typedef struct xx_lzpis2_huffman_s {
     uint16_t child[XX_LZPIS2_TREE_NODE_COUNT];
     uint16_t parent[XX_LZPIS2_TREE_NODE_COUNT + XX_LZPIS2_SYMBOL_COUNT];
 } xx_lzpis2_huffman;
-
-static uint16_t xx_lzpis2_read16le(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8U));
-}
 
 /*
  * The encoder flushes whole bytes, so the final token of a chunk may legally
@@ -383,8 +380,8 @@ bool xx_lzpis2_parse_memory(const uint8_t *input, size_t input_size,
         if (input_size - position < XX_LZPIS2_CHUNK_HEADER_SIZE) {
             return false;
         }
-        unpacked_size = xx_lzpis2_read16le(input + position);
-        packed_size = xx_lzpis2_read16le(input + position + 2U);
+        unpacked_size = xx_data_get_u16(input + position, 2, 0, false);
+        packed_size = xx_data_get_u16(input + position + 2U, 2, 0, false);
         position += XX_LZPIS2_CHUNK_HEADER_SIZE;
         if (unpacked_size == 0U ||
             unpacked_size > XX_LZPIS2_MAX_CHUNK_OUTPUT || packed_size == 0U ||
@@ -424,9 +421,9 @@ bool xx_lzpis2_decompress_memory(
         return false;
     }
     for (index = 0U; index < parsed.chunk_count; ++index) {
-        uint16_t unpacked_size = xx_lzpis2_read16le(input + input_position);
+        uint16_t unpacked_size = xx_data_get_u16(input + input_position, 2, 0, false);
         uint16_t packed_size =
-            xx_lzpis2_read16le(input + input_position + 2U);
+            xx_data_get_u16(input + input_position + 2U, 2, 0, false);
         input_position += XX_LZPIS2_CHUNK_HEADER_SIZE;
         if ((size_t)unpacked_size > output_size - output_position ||
             !xx_lzpis2_decode_chunk(input + input_position,

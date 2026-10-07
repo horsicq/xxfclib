@@ -32,6 +32,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_SEADATA_COPY_CHUNK (64 * 1024)
 
@@ -161,11 +162,6 @@ static bool xx_seadata_decode(Abstractformat *self,
 #define XX_SEADATA_MAX_NAME 255
 #define XX_SEADATA_MAX_MEMBERS 1000000
 
-static uint32_t xx_seadata_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
 /* The name field is raw producer-chosen bytes, and the reference corpus does
  * contain members whose names are not printable ASCII, so bytes outside the
  * safe set are not a rejection here. They are escaped as %XX instead of being
@@ -218,11 +214,11 @@ static xx_seadata_stream *xx_seadata_parse(Abstractformat *self,
     if (!xx_seadata_read_at(self, self->base_address, header, sizeof(header))) {
         return NULL;
     }
-    if (xx_seadata_le32(header) != XX_SEADATA_MAGIC) return NULL;
+    if (xx_data_get_u32(header, 4, 0, false) != XX_SEADATA_MAGIC) return NULL;
     /* The first record must follow the magic immediately: four magic bytes
      * alone are weak, and this second word is what stops an unrelated file
      * that happens to open with 0x12213443 from being walked as a chain. */
-    if (xx_seadata_le32(header + 4) != XX_SEADATA_RECORD_TAG) return NULL;
+    if (xx_data_get_u32(header + 4, 4, 0, false) != XX_SEADATA_RECORD_TAG) return NULL;
 
     stream = (xx_seadata_stream *)xx_mem_alloc(sizeof(*stream));
     if (!stream) return NULL;
@@ -248,7 +244,7 @@ static xx_seadata_stream *xx_seadata_parse(Abstractformat *self,
             !xx_seadata_read_at(self, self->base_address + offset, fixed, 4U)) {
             goto fail;
         }
-        tag = xx_seadata_le32(fixed);
+        tag = xx_data_get_u32(fixed, 4, 0, false);
         /* A zero word closes the chain; whatever follows is padding, not a
          * record, and is not an error. */
         if (tag == 0U) break;
@@ -259,8 +255,8 @@ static xx_seadata_stream *xx_seadata_parse(Abstractformat *self,
                                 sizeof(fixed))) {
             goto fail;
         }
-        next_offset = (int64_t)(int32_t)xx_seadata_le32(fixed);
-        name_length = (int64_t)(int32_t)xx_seadata_le32(fixed + 4);
+        next_offset = (int64_t)(int32_t)xx_data_get_u32(fixed, 4, 0, false);
+        name_length = (int64_t)(int32_t)xx_data_get_u32(fixed + 4, 4, 0, false);
 
         if (name_length < 1 || name_length > XX_SEADATA_MAX_NAME) goto fail;
         /* The chain only ever moves forward, and never past the end of the

@@ -5,10 +5,10 @@
  */
 #include "xxfclib/formats/mmd_pmx/xx_mmd_pmx.h"
 #include "../gimp_gpl/xx_twelfth_b.h"
-static bool tb_quick(Abstractformat *f,uint64_t n) {uint8_t b[9];return n>=17&&pm_read(f,0,b,9)&&tb_tag(b,"PMX ",4)&&pm_le32(b+4)==0x40000000U&&b[8]==8;}
+static bool tb_quick(Abstractformat *f,uint64_t n) {uint8_t b[9];return n>=17&&pm_read(f,0,b,9)&&tb_tag(b,"PMX ",4)&&xx_data_get_u32(b+4, 4, 0, false)==0x40000000U&&b[8]==8;}
 static bool mx_text(tb_bin *q,bool utf8) {
  uint32_t z;const uint8_t *b;unsigned i;if(!tb_count(q,1048576,&z)||!tb_take(q,z,&b))return false;if(utf8)return tb_utf(b,z,false,q->pd);if(z&1)return false;
- for(i=0;i<z;i+=2){uint16_t c=pm_le16(b+i);if(!c)return false;if(c>=0xd800&&c<=0xdbff){if(i+3>=z||(c=pm_le16(b+i+2))<0xdc00||c>0xdfff)return false;i+=2;}else if(c>=0xdc00&&c<=0xdfff)return false;}return true;
+ for(i=0;i<z;i+=2){uint16_t c=xx_data_get_u16(b+i, 2, 0, false);if(!c)return false;if(c>=0xd800&&c<=0xdbff){if(i+3>=z||(c=xx_data_get_u16(b+i+2, 2, 0, false))<0xdc00||c>0xdfff)return false;i+=2;}else if(c>=0xdc00&&c<=0xdfff)return false;}return true;
 }
 static bool mx_ref(tb_bin *q,unsigned size,uint32_t limit,bool nullable,int32_t *value) {return tb_index(q,size,false,value)&&(*value==-1?nullable:(uint32_t)*value<limit);}
 static bool mx_bone(tb_bin *q,unsigned size,int32_t *maximum,int32_t *value) {if(!tb_index(q,size,false,value))return false;if(*value>*maximum)*maximum=*value;return true;}
@@ -16,7 +16,7 @@ static bool tb_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  tb_bin q={b,17,n,pd};unsigned sz[6],i,j;uint32_t vertices,indices,textures,materials,bones,morphs,displays,rigids,joints,aux;uint64_t start,covered=0;int32_t maximum=-1,mmorph=-1,index,*parents=NULL;uint8_t *marks=NULL;bool utf8,result=false;
  const uint8_t *p;double value;
 #define MX(x) do{if(!(x))goto done;}while(0)
- MX(tb_tag(b,"PMX ",4)&&pm_le32(b+4)==0x40000000U&&b[8]==8&&b[9]<=1&&b[10]<=4);utf8=b[9]!=0;
+ MX(tb_tag(b,"PMX ",4)&&xx_data_get_u32(b+4, 4, 0, false)==0x40000000U&&b[8]==8&&b[9]<=1&&b[10]<=4);utf8=b[9]!=0;
  for(i=0;i<6;++i){sz[i]=b[11+i];MX(sz[i]==1||sz[i]==2||sz[i]==4);}
  for(i=0;i<4;++i) {MX(mx_text(&q,utf8)); } MX(tb_emit(f,s,"descriptor.pmx",0,q.p,n));
  start=q.p;MX(tb_count(&q,1000000,&vertices)&&vertices>=3);
@@ -36,7 +36,7 @@ static bool tb_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  }MX(covered==indices&&tb_emit(f,s,"materials.pmx",start,q.p-start,n));
  start=q.p;MX(tb_count(&q,65536,&bones));MX(maximum<0||(uint32_t)maximum<bones);
  parents=(int32_t *)xx_mem_alloc((bones?bones:1)*sizeof(*parents));marks=(uint8_t *)xx_mem_alloc(bones?bones:1);MX(parents&&marks);xx_mem_zero(marks,bones);
- for(i=0;i<bones;++i){uint16_t flags;MX(mx_text(&q,utf8)&&mx_text(&q,utf8)&&tb_floats(&q,3)&&mx_ref(&q,sz[3],bones,true,&parents[i])&&parents[i]!=(int32_t)i&&tb_count(&q,1000000,&aux)&&tb_take(&q,2,&p));flags=pm_le16(p);MX(!(flags&~0x3f3fU));
+ for(i=0;i<bones;++i){uint16_t flags;MX(mx_text(&q,utf8)&&mx_text(&q,utf8)&&tb_floats(&q,3)&&mx_ref(&q,sz[3],bones,true,&parents[i])&&parents[i]!=(int32_t)i&&tb_count(&q,1000000,&aux)&&tb_take(&q,2,&p));flags=xx_data_get_u16(p, 2, 0, false);MX(!(flags&~0x3f3fU));
   if(flags&1)MX(mx_ref(&q,sz[3],bones,true,&index));else MX(tb_floats(&q,3));
   if(flags&0x300)MX(mx_ref(&q,sz[3],bones,true,&index)&&tb_floats(&q,1));
   if(flags&0x400) {MX(tb_floats(&q,3)); } if(flags&0x800)MX(tb_floats(&q,6));if(flags&0x2000)MX(tb_take(&q,4,NULL));

@@ -6,10 +6,11 @@
  */
 #include "xxfclib/formats/softimage_pic/xx_softimage_pic.h"
 #include "../wavefront_obj/xx_eleventh_media.h"
-static bool eg_quick(Abstractformat *f,uint64_t n) {uint8_t b[4];return n>=108&&pm_read(f,0,b,4)&&pm_be32(b)==0x5380f634U;}
+#include "xxfclib/data/xx_data.h"
+static bool eg_quick(Abstractformat *f,uint64_t n) {uint8_t b[4];return n>=108&&pm_read(f,0,b,4)&&xx_data_get_u32(b, 4, 0, true)==0x5380f634U;}
 static bool eg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
- uint32_t w=pm_be16(b+92),h=pm_be16(b+94),version=pm_be32(b+4),seen=0,packets=0,y,i;uint8_t sizes[4],types[4];uint64_t p=104;char label[64];bool next=true;
- if(pm_be32(b)!=0x5380f634U||(version!=0x3f800000U&&version!=0x3fcccccdU)||!eg_tag(b+88,"PICT",4)||!w||!h||w>16384||h>2048||(uint64_t)w*h>8388608||!eg_f32(pm_be32(b+96))||(pm_be32(b+96)&0x80000000U)||!(pm_be32(b+96)&0x7fffffffU)||pm_be16(b+100)>3||pm_be16(b+102))return false;
+ uint32_t w=xx_data_get_u16(b+92, 2, 0, true),h=xx_data_get_u16(b+94, 2, 0, true),version=xx_data_get_u32(b+4, 4, 0, true),seen=0,packets=0,y,i;uint8_t sizes[4],types[4];uint64_t p=104;char label[64];bool next=true;
+ if(xx_data_get_u32(b, 4, 0, true)!=0x5380f634U||(version!=0x3f800000U&&version!=0x3fcccccdU)||!eg_tag(b+88,"PICT",4)||!w||!h||w>16384||h>2048||(uint64_t)w*h>8388608||!eg_f32(xx_data_get_u32(b+96, 4, 0, true))||(xx_data_get_u32(b+96, 4, 0, true)&0x80000000U)||!(xx_data_get_u32(b+96, 4, 0, true)&0x7fffffffU)||xx_data_get_u16(b+100, 2, 0, true)>3||xx_data_get_u16(b+102, 2, 0, true))return false;
  while(next){uint8_t bits,mask;unsigned channels=0,k;if(packets==4||!eg_span(p,4,n)||b[p]>1)return false;next=b[p]!=0;bits=b[p+1];types[packets]=b[p+2];mask=b[p+3];p+=4;
   if((bits!=8&&bits!=16)||types[packets]>2||!mask||(mask&15)||(mask&seen))return false;
   for(k=0;k<4;++k) {if(mask&(128U>>k))++channels; } seen|=mask;sizes[packets]=(uint8_t)(channels*(bits/8));++packets;
@@ -22,7 +23,7 @@ static bool eg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
     if(eg_stop(pd)||!eg_span(p,1,n)) {return false; } code=b[p++];
     if(types[i]==1){count=code;bytes=sizes[i];}
     else if(code<128){count=code+1U;bytes=(uint64_t)count*sizes[i];}
-    else{if(code==128){if(!eg_span(p,2,n))return false;count=pm_be16(b+p);p+=2;}else count=code-127U;bytes=sizes[i];}
+    else{if(code==128){if(!eg_span(p,2,n))return false;count=xx_data_get_u16(b+p, 2, 0, true);p+=2;}else count=code-127U;bytes=sizes[i];}
     if(!count||count>w-x||!eg_span(p,bytes,n)) {return false; } p+=bytes;x+=count;
    }
   }

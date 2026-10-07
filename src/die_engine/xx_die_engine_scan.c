@@ -68,31 +68,6 @@ static int die_file_type_contains(const DieFileTypeSet *set, XFileType type)
     return set && (cd_u32)type < (cd_u32)XFT_COUNT && set->bTypes[type];
 }
 
-static int die_file_is_cli_assembly(DieFile *file)
-{
-    cd_i64 pe_offset;
-    cd_i64 optional_offset;
-    cd_i64 data_directory;
-    cd_u16 magic;
-    cd_u32 directory_count;
-    if (!file || file->nSize < 0x40) return 0;
-    pe_offset = (cd_i64)xx_io_get_u32(file->pDevice, 0x3c, false);
-    if (pe_offset < 0 || pe_offset > file->nSize - 24 ||
-        xx_io_get_u32(file->pDevice, pe_offset, false) != 0x00004550) return 0;
-    optional_offset = pe_offset + 24;
-    magic = xx_io_get_u16(file->pDevice, optional_offset, false);
-    if (magic == 0x10b) {
-        directory_count = xx_io_get_u32(file->pDevice, optional_offset + 92, false);
-        data_directory = optional_offset + 96;
-    } else if (magic == 0x20b) {
-        directory_count = xx_io_get_u32(file->pDevice, optional_offset + 108, false);
-        data_directory = optional_offset + 112;
-    } else return 0;
-    if (directory_count <= 14 || data_directory > file->nSize - (14 * 8 + 8)) return 0;
-    return xx_io_get_u32(file->pDevice, data_directory + 14 * 8, false) != 0 &&
-           xx_io_get_u32(file->pDevice, data_directory + 14 * 8 + 4, false) != 0;
-}
-
 static int die_file_type_set_detect(DieFile *file, DieFileTypeSet *set)
 {
     xx_scan_options options;
@@ -114,15 +89,20 @@ static int die_file_type_set_detect(DieFile *file, DieFileTypeSet *set)
     for (index = 0; index < xx_list_count(types); ++index) {
         xx_file_type_t type = *(xx_file_type_t *)xx_list_at(types, index);
         switch (type) {
+            case XX_FILE_TYPE_DOTNET: {
+                cd_i64 optional = (cd_i64)xx_io_get_u32(file->pDevice, 0x3c, false) + 24;
+                die_file_type_add(set, XFT_MSDOS); die_file_type_add(set, XFT_PE);
+                die_file_type_add(set, xx_io_get_u16(file->pDevice, optional, false) == XX_PE_MAGIC_64 ? XFT_PE64 : XFT_PE32);
+                die_file_type_add(set, XFT_CLI_ASSEMBLY);
+                break;
+            }
             case XX_FILE_TYPE_PE32:
                 die_file_type_add(set, XFT_MSDOS); die_file_type_add(set, XFT_PE);
                 die_file_type_add(set, XFT_PE32);
-                if (die_file_is_cli_assembly(file)) die_file_type_add(set, XFT_CLI_ASSEMBLY);
                 break;
             case XX_FILE_TYPE_PE64:
                 die_file_type_add(set, XFT_MSDOS); die_file_type_add(set, XFT_PE);
                 die_file_type_add(set, XFT_PE64);
-                if (die_file_is_cli_assembly(file)) die_file_type_add(set, XFT_CLI_ASSEMBLY);
                 break;
             case XX_FILE_TYPE_ELF32:
                 die_file_type_add(set, XFT_ELF); die_file_type_add(set, XFT_ELF32); break;
@@ -483,8 +463,9 @@ int die_engine_signature_compare(DieEngine *pEngine, cd_i64 nOffset,
             signature_set_error(pEngine, pNormalized);
         }
     } else {
-        bResult = pEngine->file.pData ?
-            xx_data_signature_match(pEngine->file.pData, (size_t)pEngine->file.nSize,
+        const unsigned char *pWhole = die_file_whole(&pEngine->file, 0);
+        bResult = pWhole ?
+            xx_data_signature_match(pWhole, (size_t)pEngine->file.nSize,
                 nOffset, &signature, &pEngine->sigContext, NULL) :
             xx_io_signature_match(pEngine->file.pDevice, nOffset, &signature,
                 &pEngine->sigContext, NULL);
@@ -527,8 +508,10 @@ cd_i64 die_engine_signature_find(DieEngine *pEngine, cd_i64 nOffset,
                                            signature.records[0].data,
                                            signature.records[0].data_size);
     } else if (signature.count > 0) {
-        nResult = pEngine->file.pData ?
-            xx_data_signature_find_text(pEngine->file.pData, (size_t)pEngine->file.nSize,
+        const unsigned char *pWhole = die_file_whole(&pEngine->file,
+            die_file_search_access(&pEngine->file, nSize < 0 ? pEngine->file.nSize - nOffset : nSize));
+        nResult = pWhole ?
+            xx_data_signature_find_text(pWhole, (size_t)pEngine->file.nSize,
                 nOffset, nSize, pText, &pEngine->sigContext) :
             xx_io_signature_find_text(pEngine->file.pDevice, nOffset, nSize, pText,
                 &pEngine->sigContext);
@@ -885,6 +868,9 @@ static int scan_run_pass(DieFile *pOpenedFile, XFileType fileType, int bIsCliAss
 
     if ((pEngine->fileType == XFT_PE32) || (pEngine->fileType == XFT_PE64)) {
         pEngine->bHasPE = xx_pe_inspect_analyze_from_device(&pEngine->pe, pEngine->file.pDevice, 0, NULL);
+        if (pEngine->bHasPE && pEngine->bIsCliAssembly) {
+            pEngine->bHasDotNet = xx_dotnet_inspect_analyze_from_device(&pEngine->dotnet, pEngine->file.pDevice, 0, NULL);
+        }
     } else if (pEngine->fileType == XFT_JPEG) {
         xx_jpeg_init(&pEngine->jpeg, pEngine->file.pDevice, 0);
         pEngine->bHasJpeg = xx_jpeg_analyze(&pEngine->jpeg, NULL);
@@ -1041,6 +1027,7 @@ static int scan_run_pass(DieFile *pOpenedFile, XFileType fileType, int bIsCliAss
     die_engine_profile_free(pEngine);
 
     xx_pe_inspect_free(&pEngine->pe);
+    xx_dotnet_inspect_free(&pEngine->dotnet);
     if (!pEngine->bHasPE) xx_memory_map_cleanup(&binaryMap);
 
     xx_jpeg_destroy(&pEngine->jpeg);
@@ -1376,4 +1363,3 @@ int die_engine_scan_memory(const void *pData, cd_i64 nSize, DBase *pDb, ScanOpti
 
     return scan_engine_run(&file, pDb, pOptions, XFT_UNKNOWN, pResult);
 }
-

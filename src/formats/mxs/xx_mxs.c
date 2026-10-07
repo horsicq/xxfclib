@@ -53,6 +53,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* The alias macro is defined next to the enumerator in xxfc_defs.h, so testing
  * for it picks up the real file type as soon as MXS is registered there.
@@ -435,11 +436,6 @@ static void xx_mxs_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
 
-static uint32_t xx_mxs_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
 static bool xx_mxs_read_at(Abstractformat *self, int64_t offset,
                            uint8_t *buffer, size_t size) {
     size_t completed = 0U;
@@ -619,7 +615,7 @@ static xx_mxs_stream *xx_mxs_parse(Abstractformat *self, xx_pd_struct *pd) {
         /* Bounded before it is used for anything: the packed length has to fit
          * in what is left of the file, or this is not a member header. */
         {
-            uint32_t declared = xx_mxs_le32(header);
+            uint32_t declared = xx_data_get_u32(header, 4, 0, false);
             if (declared > (uint32_t)XX_MXS_MAX_DECODED) goto fail;
             packed = (int64_t)declared;
         }
@@ -641,7 +637,7 @@ static xx_mxs_stream *xx_mxs_parse(Abstractformat *self, xx_pd_struct *pd) {
                 xx_str_free(name);
                 goto fail;
             }
-            uncompressed = (int64_t)xx_mxs_le32(prefix);
+            uncompressed = (int64_t)xx_data_get_u32(prefix, 4, 0, false);
         }
         if (uncompressed > XX_MXS_MAX_DECODED) {
             xx_str_free(name);

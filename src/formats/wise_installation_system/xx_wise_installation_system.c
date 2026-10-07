@@ -57,6 +57,7 @@
 #include "../../algo/deflate/xx_deflate_internal.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: picks up the real file type as soon as the
  * enumerator is registered in xxfc_defs.h. */
@@ -211,15 +212,6 @@ typedef struct wise_window_s {
 
 /* ---------------------------------------------------------------------- */
 /* Small helpers                                                           */
-
-static uint16_t wise_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t wise_le32(const uint8_t *bytes) {
-    return (uint32_t)wise_le16(bytes) |
-           ((uint32_t)wise_le16(bytes + 2U) << 16U);
-}
 
 static bool wise_range(int64_t total, int64_t offset, int64_t size) {
     return offset >= 0 && size >= 0 && offset <= total &&
@@ -446,7 +438,7 @@ static int wise_find_crc(xx_io_device *device, int64_t base, int64_t limit,
     if (!wise_read_at(device, base + at, bytes, available)) return -1;
     for (pad = 0U; pad <= 3U && pad + 4U <= available; ++pad) {
         if (pad > 0U && bytes[pad - 1U] != 0U) break;
-        if (wise_le32(bytes + pad) == crc32) return (int)pad;
+        if (xx_data_get_u32(bytes + pad, 4, 0, false) == crc32) return (int)pad;
     }
     return -1;
 }
@@ -466,13 +458,13 @@ static bool wise_pe_image_end(xx_io_device *device, int64_t base,
         !wise_read_at(device, base + nt, header, sizeof(header)) ||
         !wise_read_at(device, base + nt + 24, optional, sizeof(optional)))
         return false;
-    count = wise_le16(header + 6U);
-    optional_size = wise_le16(header + 20U);
-    magic = wise_le16(optional);
+    count = xx_data_get_u16(header + 6U, 2, 0, false);
+    optional_size = xx_data_get_u16(header + 20U, 2, 0, false);
+    magic = xx_data_get_u16(optional, 2, 0, false);
     if (count == 0U || count > WISE_MAX_SECTIONS || optional_size < 64U ||
         (magic != 0x010BU && magic != 0x020BU))
         return false;
-    image_end = (int64_t)wise_le32(optional + 60U); /* SizeOfHeaders */
+    image_end = (int64_t)xx_data_get_u32(optional + 60U, 4, 0, false); /* SizeOfHeaders */
     table = nt + 24 + optional_size;
     if (!wise_range(total, table, (int64_t)count * 40)) return false;
     sections = (uint8_t *)xx_mem_alloc((size_t)count * 40U);
@@ -483,8 +475,8 @@ static bool wise_pe_image_end(xx_io_device *device, int64_t base,
     }
     for (index = 0U; index < count; ++index) {
         const uint8_t *section = sections + (size_t)index * 40U;
-        int64_t raw_size = (int64_t)wise_le32(section + 16U);
-        int64_t raw_offset = (int64_t)wise_le32(section + 20U);
+        int64_t raw_size = (int64_t)xx_data_get_u32(section + 16U, 4, 0, false);
+        int64_t raw_offset = (int64_t)xx_data_get_u32(section + 20U, 4, 0, false);
         if (raw_size == 0) continue;
         if (!wise_range(total, raw_offset, raw_size)) {
             xx_mem_free(sections);
@@ -510,13 +502,13 @@ static bool wise_ne_image_end(xx_io_device *device, int64_t base,
         !wise_read_at(device, base + ne, header, sizeof(header)) ||
         header[0] != 'N' || header[1] != 'E')
         return false;
-    segment_count = wise_le16(header + 0x1CU);
-    nonresident_size = wise_le16(header + 0x20U);
-    segment_table = (uint32_t)ne + wise_le16(header + 0x22U);
-    resource_table = (uint32_t)ne + wise_le16(header + 0x24U);
-    resident_names = (uint32_t)ne + wise_le16(header + 0x26U);
-    nonresident_offset = (int64_t)wise_le32(header + 0x2CU);
-    shift = wise_le16(header + 0x32U);
+    segment_count = xx_data_get_u16(header + 0x1CU, 2, 0, false);
+    nonresident_size = xx_data_get_u16(header + 0x20U, 2, 0, false);
+    segment_table = (uint32_t)ne + xx_data_get_u16(header + 0x22U, 2, 0, false);
+    resource_table = (uint32_t)ne + xx_data_get_u16(header + 0x24U, 2, 0, false);
+    resident_names = (uint32_t)ne + xx_data_get_u16(header + 0x26U, 2, 0, false);
+    nonresident_offset = (int64_t)xx_data_get_u32(header + 0x2CU, 4, 0, false);
+    shift = xx_data_get_u16(header + 0x32U, 2, 0, false);
     if (shift == 0U) shift = 9U;
     if (shift > 15U || segment_count > WISE_MAX_SEGMENTS) return false;
     image_end = ne + 64;
@@ -536,11 +528,11 @@ static bool wise_ne_image_end(xx_io_device *device, int64_t base,
             goto done;
         for (index = 0U; index < segment_count; ++index) {
             const uint8_t *segment = table + (size_t)index * 8U;
-            int64_t start = (int64_t)wise_le16(segment) << shift;
-            int64_t length = wise_le16(segment + 2U);
-            uint16_t flags = wise_le16(segment + 4U);
+            int64_t start = (int64_t)xx_data_get_u16(segment, 2, 0, false) << shift;
+            int64_t length = xx_data_get_u16(segment + 2U, 2, 0, false);
+            uint16_t flags = xx_data_get_u16(segment + 4U, 2, 0, false);
             int64_t stop;
-            if (wise_le16(segment) == 0U) continue;
+            if (xx_data_get_u16(segment, 2, 0, false) == 0U) continue;
             if (length == 0) length = 0x10000;
             if (!wise_range(total, start, length)) goto done;
             stop = start + length;
@@ -550,7 +542,7 @@ static bool wise_ne_image_end(xx_io_device *device, int64_t base,
                 if (!wise_range(total, stop, 2) ||
                     !wise_read_at(device, base + stop, count_bytes, 2U))
                     goto done;
-                relocations = (int64_t)wise_le16(count_bytes) * 8;
+                relocations = (int64_t)xx_data_get_u16(count_bytes, 2, 0, false) * 8;
                 if (!wise_range(total, stop, 2 + relocations)) goto done;
                 stop += 2 + relocations;
             }
@@ -567,19 +559,19 @@ static bool wise_ne_image_end(xx_io_device *device, int64_t base,
         table = (uint8_t *)xx_mem_alloc(size);
         if (!table || !wise_read_at(device, base + resource_table, table, size))
             goto done;
-        resource_shift = wise_le16(table);
+        resource_shift = xx_data_get_u16(table, 2, 0, false);
         if (resource_shift > 15U) goto done;
-        while (at + 2U <= size && wise_le16(table + at) != 0U) {
+        while (at + 2U <= size && xx_data_get_u16(table + at, 2, 0, false) != 0U) {
             uint16_t count;
             uint16_t item;
             if (at + 8U > size) goto done;
-            count = wise_le16(table + at + 2U);
+            count = xx_data_get_u16(table + at + 2U, 2, 0, false);
             at += 8U;
             for (item = 0U; item < count; ++item) {
                 int64_t start, length;
                 if (at + 12U > size) goto done;
-                start = (int64_t)wise_le16(table + at) << resource_shift;
-                length = (int64_t)wise_le16(table + at + 2U) << resource_shift;
+                start = (int64_t)xx_data_get_u16(table + at, 2, 0, false) << resource_shift;
+                length = (int64_t)xx_data_get_u16(table + at + 2U, 2, 0, false) << resource_shift;
                 if (!wise_range(total, start, length)) goto done;
                 if (start + length > image_end) image_end = start + length;
                 at += 12U;
@@ -700,13 +692,13 @@ static bool wise_pk_walk(xx_io_device *device, int64_t base, int64_t total,
         }
         if (!wise_read_at(device, base + position, header, sizeof(header)))
             goto done;
-        if (wise_le32(header) != 0x04034B50U) break;
-        flags = wise_le16(header + 6U);
-        method = wise_le16(header + 8U);
-        packed = (int64_t)wise_le32(header + 18U);
-        raw = (int64_t)wise_le32(header + 22U);
-        name_size = wise_le16(header + 26U);
-        extra_size = wise_le16(header + 28U);
+        if (xx_data_get_u32(header, 4, 0, false) != 0x04034B50U) break;
+        flags = xx_data_get_u16(header + 6U, 2, 0, false);
+        method = xx_data_get_u16(header + 8U, 2, 0, false);
+        packed = (int64_t)xx_data_get_u32(header + 18U, 4, 0, false);
+        raw = (int64_t)xx_data_get_u32(header + 22U, 4, 0, false);
+        name_size = xx_data_get_u16(header + 26U, 2, 0, false);
+        extra_size = xx_data_get_u16(header + 28U, 2, 0, false);
         header_size = 30 + (int64_t)name_size + extra_size;
         if ((flags & 0x0009U) != 0U || (method != 0U && method != 8U) ||
             (method == 0U && packed != raw) ||
@@ -731,10 +723,10 @@ static bool wise_pk_walk(xx_io_device *device, int64_t base, int64_t total,
             member->packed_size = packed;
             member->span = packed;
             member->raw_size = (uint64_t)raw;
-            member->crc32 = wise_le32(header + 14U);
+            member->crc32 = xx_data_get_u32(header + 14U, 4, 0, false);
             member->method = method;
-            member->dos_time = wise_le16(header + 10U);
-            member->dos_date = wise_le16(header + 12U);
+            member->dos_time = xx_data_get_u16(header + 10U, 2, 0, false);
+            member->dos_date = xx_data_get_u16(header + 12U, 2, 0, false);
             member->has_time = true;
             if (name_size != 0U) {
                 member->name = (char *)xx_mem_alloc((size_t)name_size + 1U);
@@ -759,21 +751,21 @@ static bool wise_pk_walk(xx_io_device *device, int64_t base, int64_t total,
     if (!tail || !wise_read_at(device, base + scan_start, tail, tail_size))
         goto done;
     for (at = tail_size - 22U + 1U; at-- > 0U;) {
-        if (wise_le32(tail + at) == 0x06054B50U &&
-            at + 22U + wise_le16(tail + at + 20U) <= tail_size) {
+        if (xx_data_get_u32(tail + at, 4, 0, false) == 0x06054B50U &&
+            at + 22U + xx_data_get_u16(tail + at + 20U, 2, 0, false) <= tail_size) {
             eocd = scan_start + (int64_t)at;
             break;
         }
     }
     if (eocd < 0) goto done;
     at = (size_t)(eocd - scan_start);
-    entries = wise_le16(tail + at + 10U);
-    cd_size = (int64_t)wise_le32(tail + at + 12U);
-    cd_offset = (int64_t)wise_le32(tail + at + 16U);
-    comment = wise_le16(tail + at + 20U);
+    entries = xx_data_get_u16(tail + at + 10U, 2, 0, false);
+    cd_size = (int64_t)xx_data_get_u32(tail + at + 12U, 4, 0, false);
+    cd_offset = (int64_t)xx_data_get_u32(tail + at + 16U, 4, 0, false);
+    comment = xx_data_get_u16(tail + at + 20U, 2, 0, false);
     /* Absolute offsets; the unindexed first member(s) are not counted. */
-    if (wise_le16(tail + at + 4U) != 0U || wise_le16(tail + at + 6U) != 0U ||
-        wise_le16(tail + at + 8U) != entries || entries == 0U ||
+    if (xx_data_get_u16(tail + at + 4U, 2, 0, false) != 0U || xx_data_get_u16(tail + at + 6U, 2, 0, false) != 0U ||
+        xx_data_get_u16(tail + at + 8U, 2, 0, false) != entries || entries == 0U ||
         entries > count || count - entries > 4U || cd_offset != position ||
         cd_size != eocd - cd_offset || cd_size > WISE_CD_MAX ||
         cd_size < (int64_t)entries * 46)
@@ -793,15 +785,15 @@ static bool wise_pk_walk(xx_io_device *device, int64_t base, int64_t total,
         while (cursor < (size_t)cd_size) {
             size_t record;
             if ((size_t)cd_size - cursor < 46U ||
-                wise_le32(directory + cursor) != 0x02014B50U)
+                xx_data_get_u32(directory + cursor, 4, 0, false) != 0x02014B50U)
                 goto done;
-            record = 46U + (size_t)wise_le16(directory + cursor + 28U) +
-                     wise_le16(directory + cursor + 30U) +
-                     wise_le16(directory + cursor + 32U);
+            record = 46U + (size_t)xx_data_get_u16(directory + cursor + 28U, 2, 0, false) +
+                     xx_data_get_u16(directory + cursor + 30U, 2, 0, false) +
+                     xx_data_get_u16(directory + cursor + 32U, 2, 0, false);
             if (record > (size_t)cd_size - cursor ||
                 !wise_offset_known(offsets, count,
-                                   (int64_t)wise_le32(directory + cursor +
-                                                      42U)))
+                                   (int64_t)xx_data_get_u32(directory + cursor +
+                                                      42U, 4, 0, false)))
                 goto done;
             cursor += record;
             if (++seen > entries) goto done;
@@ -934,7 +926,7 @@ static bool wise_locate(Abstractformat *format, wise_found *found,
         !wise_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' ||
         dos[1] != 'Z')
         return false;
-    nt = (int64_t)wise_le32(dos + 0x3CU);
+    nt = (int64_t)xx_data_get_u32(dos + 0x3CU, 4, 0, false);
     if (nt < (int64_t)WISE_DOS_HEADER || nt >= WISE_MAX_IMAGE ||
         !wise_range(total, nt, 64) ||
         !wise_read_at(device, base + nt, signature, sizeof(signature)))
@@ -1262,7 +1254,7 @@ static const char *wise_extension(const uint8_t *head, size_t size) {
 }
 
 static bool wise_is_dib(const wise_member *member) {
-    return member->head_size >= 4U && wise_le32(member->head) == 40U;
+    return member->head_size >= 4U && xx_data_get_u32(member->head, 4, 0, false) == 40U;
 }
 
 static char *wise_dup(const char *text) {
@@ -1354,8 +1346,8 @@ static bool wise_vote_base(const wise_table *table, const wise_span *spans,
     votes = (wise_vote *)xx_mem_calloc(WISE_VOTE_SLOTS, sizeof(*votes));
     if (!votes) return false;
     for (at = 0U; at + 8U <= size && work < WISE_VOTE_WORK; ++at) {
-        uint32_t start = wise_le32(script + at);
-        uint32_t stop = wise_le32(script + at + 4U);
+        uint32_t start = xx_data_get_u32(script + at, 4, 0, false);
+        uint32_t stop = xx_data_get_u32(script + at + 4U, 4, 0, false);
         size_t hit, same = 0U;
         if (stop <= start) continue;
         hit = wise_span_find(spans, table->count, (int64_t)(stop - start));
@@ -1460,8 +1452,8 @@ static void wise_names_from_script(xx_io_device *device, int64_t base,
     }
     for (index = 0U; index + 8U <= best_size && match_count < match_capacity;
          ++index) {
-        uint32_t start = wise_le32(best_script + index);
-        uint32_t stop = wise_le32(best_script + index + 4U);
+        uint32_t start = xx_data_get_u32(best_script + index, 4, 0, false);
+        uint32_t stop = xx_data_get_u32(best_script + index + 4U, 4, 0, false);
         size_t member;
         if (stop <= start) continue;
         member = wise_member_at(table, best_base + (int64_t)start);

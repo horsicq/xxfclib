@@ -6,19 +6,19 @@
 #include "xxfclib/formats/amiga_diskobject/xx_amiga_diskobject.h"
 #include "../adobe_acb/xx_thirteenth_games.h"
 static bool tg_quick(Abstractformat *f,uint64_t n) {uint8_t b[4];return n>=78&&pm_read(f,0,b,4)&&tg_tag(b,"\xe3\x10\0\1",4);}
-static bool icon_string(Abstractformat *f,pm_stream *s,tg_bin *q,const char *label) {const uint8_t *p;uint64_t start=q->p;uint32_t z,i;if(!tg_take(q,4,&p)||(z=pm_be32(p))<1||z>8192||!tg_take(q,z,&p)||p[z-1])return false;for(i=0;i+1<z;++i)if(!p[i]||p[i]<32)return false;return tg_emit(f,s,label,start,q->p-start,q->n);}
-static bool icon_image(Abstractformat *f,pm_stream *s,tg_bin *q,const char *label) {const uint8_t *p;uint64_t start=q->p,z;uint16_t w,h,d;unsigned i,bits=0;if(!tg_take(q,20,&p))return false;w=pm_be16(p+4);h=pm_be16(p+6);d=pm_be16(p+8);if(!w||!h||w>8192||h>8192||d<1||d>8||!pm_be32(p+10)||pm_be32(p+16))return false;for(i=0;i<8;++i)bits+=(p[14]>>i)&1;if(bits>d)return false;z=((uint64_t)w+15)/16*2*h*d;return tg_take(q,z,NULL)&&tg_emit(f,s,label,start,q->p-start,q->n);}
+static bool icon_string(Abstractformat *f,pm_stream *s,tg_bin *q,const char *label) {const uint8_t *p;uint64_t start=q->p;uint32_t z,i;if(!tg_take(q,4,&p)||(z=xx_data_get_u32(p, 4, 0, true))<1||z>8192||!tg_take(q,z,&p)||p[z-1])return false;for(i=0;i+1<z;++i)if(!p[i]||p[i]<32)return false;return tg_emit(f,s,label,start,q->p-start,q->n);}
+static bool icon_image(Abstractformat *f,pm_stream *s,tg_bin *q,const char *label) {const uint8_t *p;uint64_t start=q->p,z;uint16_t w,h,d;unsigned i,bits=0;if(!tg_take(q,20,&p))return false;w=xx_data_get_u16(p+4, 2, 0, true);h=xx_data_get_u16(p+6, 2, 0, true);d=xx_data_get_u16(p+8, 2, 0, true);if(!w||!h||w>8192||h>8192||d<1||d>8||!xx_data_get_u32(p+10, 4, 0, true)||xx_data_get_u32(p+16, 4, 0, true))return false;for(i=0;i<8;++i)bits+=(p[14]>>i)&1;if(bits>d)return false;z=((uint64_t)w+15)/16*2*h*d;return tg_take(q,z,NULL)&&tg_emit(f,s,label,start,q->p-start,q->n);}
 static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  tg_bin q={b,78,n,pd};const uint8_t *p;uint32_t types,i;uint16_t flags;bool drawer;
- if(n<78||!tg_tag(b,"\xe3\x10\0\1",4)||pm_be32(b+4)||pm_be16(b+12)<1||pm_be16(b+14)<1||b[48]<1||b[48]>8||pm_be32(b+30)||pm_be32(b+38)||!pm_be32(b+22)||pm_be32(b+74)>16777216)return false;
- flags=pm_be16(b+16);drawer=pm_be32(b+66)!=0;if(!(flags&4)||((flags&2)==0&&pm_be32(b+26)))return false;
+ if(n<78||!tg_tag(b,"\xe3\x10\0\1",4)||xx_data_get_u32(b+4, 4, 0, true)||xx_data_get_u16(b+12, 2, 0, true)<1||xx_data_get_u16(b+14, 2, 0, true)<1||b[48]<1||b[48]>8||xx_data_get_u32(b+30, 4, 0, true)||xx_data_get_u32(b+38, 4, 0, true)||!xx_data_get_u32(b+22, 4, 0, true)||xx_data_get_u32(b+74, 4, 0, true)>16777216)return false;
+ flags=xx_data_get_u16(b+16, 2, 0, true);drawer=xx_data_get_u32(b+66, 4, 0, true)!=0;if(!(flags&4)||((flags&2)==0&&xx_data_get_u32(b+26, 4, 0, true)))return false;
  if(!tg_emit(f,s,"diskobject.info",0,78,n))return false;
- if(drawer){uint64_t start=q.p;if(!tg_take(&q,56,&p)||pm_be32(p+26)||pm_be32(p+30)||pm_be32(p+34)||!tg_emit(f,s,"drawer.info",start,56,n))return false;}
- if(!icon_image(f,s,&q,"normal-planar.info")||(pm_be32(b+26)&&!icon_image(f,s,&q,"selected-planar.info")))return false;
- if(pm_be32(b+50)&&!icon_string(f,s,&q,"default-tool.info"))return false;
- if(pm_be32(b+54)){uint64_t start=q.p;if(!tg_take(&q,4,&p)||(types=pm_be32(p))<4||types>4*2048||(types&3)||!tg_emit(f,s,"tooltypes-count.info",start,4,n))return false;types=types/4-1;for(i=0;i<types;++i)if(!icon_string(f,s,&q,"tooltype.info"))return false;}
- if(pm_be32(b+70)&&!icon_string(f,s,&q,"tool-window.info"))return false;
- if(drawer&&(pm_be32(b+44)&255)){uint64_t start=q.p;if((pm_be32(b+44)&255)!=1||!tg_take(&q,6,&p)||pm_be32(p)>2||pm_be16(p+4)>5||!tg_emit(f,s,"new-drawer.info",start,6,n))return false;}
+ if(drawer){uint64_t start=q.p;if(!tg_take(&q,56,&p)||xx_data_get_u32(p+26, 4, 0, true)||xx_data_get_u32(p+30, 4, 0, true)||xx_data_get_u32(p+34, 4, 0, true)||!tg_emit(f,s,"drawer.info",start,56,n))return false;}
+ if(!icon_image(f,s,&q,"normal-planar.info")||(xx_data_get_u32(b+26, 4, 0, true)&&!icon_image(f,s,&q,"selected-planar.info")))return false;
+ if(xx_data_get_u32(b+50, 4, 0, true)&&!icon_string(f,s,&q,"default-tool.info"))return false;
+ if(xx_data_get_u32(b+54, 4, 0, true)){uint64_t start=q.p;if(!tg_take(&q,4,&p)||(types=xx_data_get_u32(p, 4, 0, true))<4||types>4*2048||(types&3)||!tg_emit(f,s,"tooltypes-count.info",start,4,n))return false;types=types/4-1;for(i=0;i<types;++i)if(!icon_string(f,s,&q,"tooltype.info"))return false;}
+ if(xx_data_get_u32(b+70, 4, 0, true)&&!icon_string(f,s,&q,"tool-window.info"))return false;
+ if(drawer&&(xx_data_get_u32(b+44, 4, 0, true)&255)){uint64_t start=q.p;if((xx_data_get_u32(b+44, 4, 0, true)&255)!=1||!tg_take(&q,6,&p)||xx_data_get_u32(p, 4, 0, true)>2||xx_data_get_u16(p+4, 2, 0, true)>5||!tg_emit(f,s,"new-drawer.info",start,6,n))return false;}
  if(q.p!=n) {return false; } s->size=(int64_t)n;return true;
 }
 

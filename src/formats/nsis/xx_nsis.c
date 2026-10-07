@@ -36,7 +36,7 @@ static bool ns_decode(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *out,
     }
     if(method==2U) {
         if(packed>=8U && in[0]<=1U && ns_lzma(in+1U,packed-1U)) { if(in[0]) return ac_error(b,"NSIS BCJ filter is unsupported"); ++in; --packed; }
-        if(packed<5U || pm_le32(in+1U)>16U*1024U*1024U || (uint64_t)pm_le32(in+1U)+1024U*1024U>b->limit-b->used) return false;
+        if(packed<5U || xx_data_get_u32(in+1U, 4, 0, false)>16U*1024U*1024U || (uint64_t)xx_data_get_u32(in+1U, 4, 0, false)+1024U*1024U>b->limit-b->used) return false;
     }
     src=xx_io_mem_open_ro(in,packed); if(!src) return false;
     if(method==2U) ok=xx_lzma_unpack_device_to_memory(src,5,packed-5U,in,5,-1,out,cap,&n,b->pd);
@@ -51,7 +51,7 @@ static bool ns_name(char name[96],const uint8_t *header,uint32_t strings,uint32_
     uint32_t at; unsigned n=0;
     if(offset>(end-strings)/(unicode?2U:1U)) { return false; } at=strings+offset*(unicode?2U:1U);
     while(at<end) {
-        uint32_t value=unicode?(at+1U<end?pm_le16(header+at):UINT32_MAX):header[at]; at+=unicode?2U:1U;
+        uint32_t value=unicode?(at+1U<end?xx_data_get_u16(header+at, 2, 0, false):UINT32_MAX):header[at]; at+=unicode?2U:1U;
         if(!value) { if(!n) return false; name[n]=0; return true; }
         if(n>=90U) return false;
         /* Variable-expansion instructions are retained as safe placeholders;
@@ -67,20 +67,20 @@ static bool ns_parse(Abstractformat *f,pm_stream *s,ac_blob *b) {
     if(b->n<32U) return false;
     if(b->p[0]=='M' && b->p[1]=='Z') {
         bool found=false; for(start=512U;start<=b->n-28U;start+=512U) { if(!ac_poll(b)) return false;
-            if(pm_le32(b->p+start+4U)==0xDEADBEEFU && !xx_rt_memcmp(b->p+start+8U,"NullsoftInst",12U)) { found=true; break; } }
+            if(xx_data_get_u32(b->p+start+4U, 4, 0, false)==0xDEADBEEFU && !xx_rt_memcmp(b->p+start+8U,"NullsoftInst",12U)) { found=true; break; } }
         if(!found) return false;
     }
-    if(pm_le32(b->p+start+4U)!=0xDEADBEEFU || xx_rt_memcmp(b->p+start+8U,"NullsoftInst",12U)) return false;
-    flags=pm_le32(b->p+start); header_size=pm_le32(b->p+start+20U); size=pm_le32(b->p+start+24U);
+    if(xx_data_get_u32(b->p+start+4U, 4, 0, false)!=0xDEADBEEFU || xx_rt_memcmp(b->p+start+8U,"NullsoftInst",12U)) return false;
+    flags=xx_data_get_u32(b->p+start, 4, 0, false); header_size=xx_data_get_u32(b->p+start+20U, 4, 0, false); size=xx_data_get_u32(b->p+start+24U, 4, 0, false);
     if(flags&~15U || size<32U || !header_size || header_size>16U*1024U*1024U || !ac_span(b,start,size)) return false;
     data_size=size-28U;
     if((flags&8U) || !(flags&4U)) {
         uint32_t check_start=start?512U:0U;
-        if(data_size<4U || (ac_crc32(b->p+check_start,start+size-4U-check_start,UINT32_MAX)^UINT32_MAX) != pm_le32(b->p+start+size-4U)) return ac_error(b,"NSIS archive CRC mismatch");
+        if(data_size<4U || (ac_crc32(b->p+check_start,start+size-4U-check_start,UINT32_MAX)^UINT32_MAX) != xx_data_get_u32(b->p+start+size-4U, 4, 0, false)) return ac_error(b,"NSIS archive CRC mismatch");
         data_size-=4U;
     }
     if(data_size<4U) return false;
-    data=b->p+start+28U; header_packed=pm_le32(data);
+    data=b->p+start+28U; header_packed=xx_data_get_u32(data, 4, 0, false);
     /* An 8MiB solid LZMA dictionary makes properties byte3==0x80 too.
      * Authenticate the properties grammar BEFORE interpreting the framing
      * high bit as a non-solid compressed-header length. */
@@ -90,33 +90,33 @@ static bool ns_parse(Abstractformat *f,pm_stream *s,ac_blob *b) {
     if(non_solid) {
         header_packed&=0x7FFFFFFFU; if(header_packed>data_size-4U) return false;
         header=ac_alloc(b,header_size); if(!header) return false;
-        if(!ns_decode(b,data+4U,header_packed,header,header_size,&header_n,(pm_le32(data)&0x80000000U)?method:0U) || header_n!=header_size) goto fail;
+        if(!ns_decode(b,data+4U,header_packed,header,header_size,&header_n,(xx_data_get_u32(data, 4, 0, false)&0x80000000U)?method:0U) || header_n!=header_size) goto fail;
         pos=4U+header_packed;
     } else {
         cap=32U*1024U*1024U; if(b->used>=b->limit) return false; if(cap>b->limit-b->used) cap=(uint32_t)(b->limit-b->used);
         solid_capacity=cap; solid=ac_alloc(b,cap); if(!solid) return false;
-        if(!ns_decode(b,data,data_size,solid,cap,&solid_n,method) || solid_n<4U+header_size || pm_le32(solid)!=header_size) { failure="NSIS solid stream decode failed"; goto fail; }
+        if(!ns_decode(b,data,data_size,solid,cap,&solid_n,method) || solid_n<4U+header_size || xx_data_get_u32(solid, 4, 0, false)!=header_size) { failure="NSIS solid stream decode failed"; goto fail; }
         header=solid+4U; header_n=header_size; pos=4U+header_size;
     }
     if(header_n<68U) goto fail;
     if(header_n>=100U) {
-        bool wide=true; for(i=0;i<8U;++i) if(pm_le32(header+8U+i*12U)) wide=false; if(wide) stride=12U;
+        bool wide=true; for(i=0;i<8U;++i) if(xx_data_get_u32(header+8U+i*12U, 4, 0, false)) wide=false; if(wide) stride=12U;
     }
     if(header_n<4U+stride*8U) goto fail;
-    entries=pm_le32(header+4U+stride*2U); count=pm_le32(header+stride*3U);
-    strings=pm_le32(header+4U+stride*3U); lang=pm_le32(header+4U+stride*4U);
+    entries=xx_data_get_u32(header+4U+stride*2U, 4, 0, false); count=xx_data_get_u32(header+stride*3U, 4, 0, false);
+    strings=xx_data_get_u32(header+4U+stride*3U, 4, 0, false); lang=xx_data_get_u32(header+4U+stride*4U, 4, 0, false);
     if(entries>header_n || count>(header_n-entries)/28U || strings>=lang || lang>header_n || lang-strings<2U || header[lang-1U]) goto fail;
-    unicode=pm_le16(header+strings)==0U;
+    unicode=xx_data_get_u16(header+strings, 2, 0, false)==0U;
     if(unicode && (((lang-strings)&1U) || header[lang-2U])) goto fail;
     for(i=0;i<count;++i) {
         const uint8_t *command=header+entries+i*28U; char name[96]; uint32_t offset,packed,n,at; uint8_t *out;
         failure="NSIS extract-file command/name/payload invalid"; if(!ac_poll(b)) goto fail;
-        if(pm_le32(command)!=20U) continue;
-        if(!ns_name(name,header,strings,lang,pm_le32(command+8U),unicode)) goto fail;
-        offset=pm_le32(command+12U);
+        if(xx_data_get_u32(command, 4, 0, false)!=20U) continue;
+        if(!ns_name(name,header,strings,lang,xx_data_get_u32(command+8U, 4, 0, false),unicode)) goto fail;
+        offset=xx_data_get_u32(command+12U, 4, 0, false);
         if(non_solid) {
             if(offset>data_size-pos || data_size-pos-offset<4U) { goto fail; } at=pos+offset;
-            packed=pm_le32(data+at); n=packed&0x7FFFFFFFU;
+            packed=xx_data_get_u32(data+at, 4, 0, false); n=packed&0x7FFFFFFFU;
             if(n>data_size-at-4U) goto fail;
             if(!(packed&0x80000000U)) { if(!ac_emit(f,s,b,name,start+28U+at+4U,n)) goto fail; continue; }
             cap=16U*1024U*1024U;
@@ -127,7 +127,7 @@ static bool ns_parse(Abstractformat *f,pm_stream *s,ac_blob *b) {
             if(!ac_compact(b,&out,cap,packed)) { ac_release(b,out,cap); goto fail; }
             if(!ac_memory(f,s,b,name,out,packed,n,(uint16_t)method)) goto fail;
         } else {
-            if(offset>solid_n-pos || solid_n-pos-offset<4U) { goto fail; } at=pos+offset; n=pm_le32(solid+at);
+            if(offset>solid_n-pos || solid_n-pos-offset<4U) { goto fail; } at=pos+offset; n=xx_data_get_u32(solid+at, 4, 0, false);
             if(n>solid_n-at-4U) { goto fail; } out=ac_alloc(b,n); if(!out) goto fail; xx_rt_memcpy(out,solid+at+4U,n);
             if(!ac_memory(f,s,b,name,out,n,0,(uint16_t)method)) goto fail;
         }

@@ -40,6 +40,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef RES
 #define XX_RES_FILE_TYPE XX_FILE_TYPE_RES
@@ -79,24 +80,6 @@ typedef struct xx_res_stream_s {
 static void xx_res_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint16_t xx_res_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_res_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static XXFC_MAYBE_UNUSED uint16_t xx_res_be16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[1] | ((uint16_t)data[0] << 8));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t xx_res_be32(const uint8_t *data) {
-    return (uint32_t)data[3] | ((uint32_t)data[2] << 8) |
-           ((uint32_t)data[1] << 16) | ((uint32_t)data[0] << 24);
-}
 
 static bool xx_res_read_at(Abstractformat *self, int64_t offset,
                               uint8_t *buffer, size_t size) {
@@ -233,7 +216,7 @@ static xx_res_stream *xx_res_parse(Abstractformat *self,
 
     /* U3's predicate refuses a single-member file outright: two entries are
      * what the identifying arithmetic needs. */
-    count = xx_res_le16(head);
+    count = xx_data_get_u16(head, 2, 0, false);
     if (count < 2U || count > XX_RES_MAX_MEMBERS) return NULL;
     /* Bound the table against the real file before allocating it. */
     table_size = (int64_t)count * XX_RES_ENTRY_SIZE;
@@ -254,8 +237,8 @@ static xx_res_stream *xx_res_parse(Abstractformat *self,
     for (index = 0U; index < count; ++index) {
         const uint8_t *entry = table + (size_t)index * XX_RES_ENTRY_SIZE;
         uint32_t name_size = entry[0];
-        int64_t offset = (int64_t)xx_res_le32(entry + 13);
-        int64_t size = (int64_t)xx_res_le32(entry + 17);
+        int64_t offset = (int64_t)xx_data_get_u32(entry + 13, 4, 0, false);
+        int64_t size = (int64_t)xx_data_get_u32(entry + 17, 4, 0, false);
         xx_res_member member;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;

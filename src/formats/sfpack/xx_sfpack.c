@@ -46,6 +46,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_SFPACK_HEADER_SIZE 0x10
 /* "SFPK", the version, the flags, the declared size and the zero word, plus
@@ -69,15 +70,6 @@ typedef struct xx_sfpack_context_s {
 static void xx_sfpack_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint16_t xx_sfpack_read16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8U));
-}
-
-static uint32_t xx_sfpack_read32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
 
 static bool xx_sfpack_read_at(Abstractformat *self, int64_t offset,
                               uint8_t *buffer, size_t size) {
@@ -151,18 +143,18 @@ static bool xx_sfpack_parse(Abstractformat *self, xx_sfpack_context *context,
         return false;
     }
     if (xx_rt_memcmp(header, "SFPK", 4U) != 0) return false;
-    if (xx_sfpack_read16(header + 4) != XX_SFPACK_VERSION) return false;
+    if (xx_data_get_u16(header + 4, 2, 0, false) != XX_SFPACK_VERSION) return false;
     /* The reserved word is a real discriminator: four bytes of magic plus a
      * version would still match too much. */
-    if (xx_sfpack_read32(header + 0x0c) != 0U) return false;
+    if (xx_data_get_u32(header + 0x0c, 4, 0, false) != 0U) return false;
 
-    declared = (int64_t)(int32_t)xx_sfpack_read32(header + 8);
+    declared = (int64_t)(int32_t)xx_data_get_u32(header + 8, 4, 0, false);
     if (declared <= 0) return false;
 
     context->input_size = span;
     context->declared_size = declared;
-    context->version = xx_sfpack_read16(header + 4);
-    context->flags = xx_sfpack_read16(header + 6);
+    context->version = xx_data_get_u16(header + 4, 2, 0, false);
+    context->flags = xx_data_get_u16(header + 6, 2, 0, false);
     /* Encrypted containers are refused rather than listed: the codec will not
      * produce them and a record that can never extract is worse than none. */
     if ((context->flags & XX_SFPACK_FLAG_ENCRYPTED) != 0U) return false;

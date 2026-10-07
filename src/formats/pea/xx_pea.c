@@ -28,6 +28,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_PEA_ARCHIVE_HEADER_SIZE 10
 #define XX_PEA_STREAM_FIXED_SIZE 10
@@ -114,23 +115,6 @@ static bool pea_write_all(xx_io_device *device, const uint8_t *buffer,
     return true;
 }
 
-static uint16_t pea_u16(const uint8_t *p, bool big) {
-    return big ? (uint16_t)(((uint16_t)p[0] << 8) | p[1])
-               : (uint16_t)(((uint16_t)p[1] << 8) | p[0]);
-}
-
-static uint32_t pea_u32(const uint8_t *p, bool big) {
-    return big ? ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
-                     ((uint32_t)p[2] << 8) | (uint32_t)p[3]
-               : ((uint32_t)p[3] << 24) | ((uint32_t)p[2] << 16) |
-                     ((uint32_t)p[1] << 8) | (uint32_t)p[0];
-}
-
-static uint64_t pea_u64(const uint8_t *p, bool big) {
-    return big ? ((uint64_t)pea_u32(p, true) << 32) | pea_u32(p + 4, true)
-               : ((uint64_t)pea_u32(p + 4, false) << 32) | pea_u32(p, false);
-}
-
 static bool xx_pea_probe(Abstractformat *self, xx_pea *out) {
     uint8_t header[XX_PEA_ARCHIVE_HEADER_SIZE];
     uint8_t name_size_raw[2];
@@ -168,7 +152,7 @@ static bool xx_pea_probe(Abstractformat *self, xx_pea *out) {
                         name_size_raw, sizeof(name_size_raw))) {
         return false;
     }
-    name_size = pea_u16(name_size_raw, big_endian);
+    name_size = xx_data_get_u16(name_size_raw, 2, 0, big_endian);
     /* The stream opens with a nameless trigger object. */
     if (name_size != 0U) {
         return false;
@@ -418,7 +402,7 @@ static bool pea_read_info(Abstractformat *format, pea_info *info,
     }
     if (info->compression != 0U) {
         if (!pea_read_dev(format->device, info->objects, raw, 4U)) return false;
-        info->block_size = pea_u32(raw, info->big);
+        info->block_size = xx_data_get_u32(raw, 4, 0, info->big);
         info->objects += 4;
     }
     return true;
@@ -460,7 +444,7 @@ static bool pea_run(Abstractformat *format, pea_walk *walk, xx_pd_struct *pd) {
         if ((walk->count & PEA_POLL_MASK) == 0U && pd && xx_pd_is_stopped(pd))
             goto done;
         if (end - at < 2 || !pea_read_dev(format->device, at, raw, 2U)) break;
-        name_size = pea_u16(raw, walk->info.big);
+        name_size = xx_data_get_u16(raw, 2, 0, walk->info.big);
         if (name_size == 0U) {
             int stream_tag = pea_tag_size(walk->info.stream_control);
             int volume_tag = pea_tag_size(walk->info.volume_control);
@@ -479,15 +463,15 @@ static bool pea_run(Abstractformat *format, pea_walk *walk, xx_pd_struct *pd) {
         if (end - at - 2 < (int64_t)name_size + 8 ||
             !pea_read_dev(format->device, at + 2, raw, (size_t)name_size + 8U))
             break;
-        member.date_time = pea_u32(raw + name_size, walk->info.big);
-        member.attributes = pea_u32(raw + name_size + 4U, walk->info.big);
+        member.date_time = xx_data_get_u32(raw + name_size, 4, 0, walk->info.big);
+        member.attributes = xx_data_get_u32(raw + name_size + 4U, 4, 0, walk->info.big);
         member.folder = (member.attributes & PEA_ATTR_DIRECTORY) != 0U;
         member.header_size = 2U + (uint32_t)name_size + 8U;
         at += member.header_size;
         if (!member.folder) {
             if (end - at < 8 || !pea_read_dev(format->device, at, fixed, 8U))
                 break;
-            member.size = pea_u64(fixed, walk->info.big);
+            member.size = xx_data_get_u64(fixed, 8, 0, walk->info.big);
             member.header_size += 8U;
             at += 8;
         }
@@ -510,7 +494,7 @@ static bool pea_run(Abstractformat *format, pea_walk *walk, xx_pd_struct *pd) {
                     member.truncated = true;
                     break;
                 }
-                packed = pea_u32(fixed, walk->info.big);
+                packed = xx_data_get_u32(fixed, 4, 0, walk->info.big);
                 if (packed == 0U || packed > block) { bad = true; break; }
                 at += 4;
                 if ((int64_t)packed > end - at) { member.truncated = true; break; }
@@ -522,7 +506,7 @@ static bool pea_run(Abstractformat *format, pea_walk *walk, xx_pd_struct *pd) {
             if (!member.truncated && member.size != 0U) {
                 if (end - at < 4 || !pea_read_dev(format->device, at, fixed, 4U))
                     member.truncated = true;
-                else if (pea_u32(fixed, walk->info.big) != last)
+                else if (xx_data_get_u32(fixed, 4, 0, walk->info.big) != last)
                     break;
                 else
                     at += 4;
@@ -766,7 +750,7 @@ static bool pea_extract(Abstractformat *format, const pea_info *info,
             if ((pd && xx_pd_is_stopped(pd)) ||
                 !pea_read_checked(device, at, fixed, 4U, &check))
                 goto done;
-            packed = pea_u32(fixed, info->big);
+            packed = xx_data_get_u32(fixed, 4, 0, info->big);
             at += 4;
             if (packed == 0U || packed > block ||
                 !pea_read_dev(device, at, in, packed))
@@ -791,14 +775,14 @@ static bool pea_extract(Abstractformat *format, const pea_info *info,
         }
         if (m->size != 0U) {
             if (!pea_read_checked(device, at, fixed, 4U, &check) ||
-                pea_u32(fixed, info->big) != last)
+                xx_data_get_u32(fixed, 4, 0, info->big) != last)
                 goto done;
             at += 4;
         }
     }
     if (verify) {
         if (!pea_read_dev(device, at, fixed, 4U) ||
-            pea_u32(fixed, false) != check.value)
+            xx_data_get_u32(fixed, 4, 0, false) != check.value)
             goto done;
     }
     ok = true;

@@ -12,6 +12,7 @@
 #include "../ue2_indexed.h"
 #include "../7zip/xx_7zip_branch.h"
 #include "../7zip/xx_7zip_defs.h"
+#include "xxfclib/data/xx_data.h"
 
 #define EI_TYPE ((xx_file_type_t)2767)
 #define EI_LIMIT (UINT64_C(256) * 1024 * 1024)
@@ -43,9 +44,9 @@ static bool ei_stream_header(Abstractformat *f, int64_t at, int64_t end,
     unsigned lc, lp, prop;
     if (!ue2_range(end, at, 18) || !ue2_read(f, at, header, 13)) return false;
     prop = header[8]; lc = prop % 9U; lp = (prop / 9U) % 5U;
-    *dictionary = ue2_u32(header + 9);
+    *dictionary = xx_data_get_u32(header + 9, 4, 0, false);
     return prop < 225U && lc + lp <= 4U && *dictionary <= EI_DICT_LIMIT &&
-           ue2_u64(header) > 0 && ue2_u64(header) <= EI_LIMIT;
+           xx_data_get_u64(header, 8, 0, false) > 0 && xx_data_get_u64(header, 8, 0, false) <= EI_LIMIT;
 }
 static uint8_t *ei_decode(Abstractformat *f, int64_t at, int64_t end,
                           uint64_t cap, uint64_t *length, xx_pd_struct *pd) {
@@ -53,7 +54,7 @@ static uint8_t *ei_decode(Abstractformat *f, int64_t at, int64_t end,
     uint64_t dictionary, n;
     size_t written = 0;
     if ((pd && xx_pd_is_stopped(pd)) || !ei_stream_header(f, at, end, h, &dictionary)) return NULL;
-    n = ue2_u64(h);
+    n = xx_data_get_u64(h, 8, 0, false);
     if (n > cap || dictionary > cap - n || EI_MODEL_BUDGET > cap - n - dictionary) return NULL;
     out = (uint8_t *)xx_mem_alloc((size_t)n);
     if (!out) return NULL;
@@ -85,19 +86,19 @@ static int64_t ei_header_device(xx_io_device *device, int64_t base) {
     if (base < 0 || base > total || total - base < 64 || !ei_read_at(device, base, h, 12)) return -1;
     if (!xx_rt_memcmp(h, "ExcelsiorII1", 12)) return base;
     if (!ei_read_at(device, base, h, 64) || h[0] != 'M' || h[1] != 'Z') return -1;
-    peoff = ue2_u32(h + 60);
+    peoff = xx_data_get_u32(h + 60, 4, 0, false);
     if (peoff > 16U * 1024U * 1024U || !ue2_range(total - base, peoff, 24) || !ei_read_at(device, base + peoff, pe, 24) ||
         xx_rt_memcmp(pe, "PE\0\0", 4)) return -1;
-    count = ue2_u16(pe + 6); optional = ue2_u16(pe + 20);
+    count = xx_data_get_u16(pe + 6, 2, 0, false); optional = xx_data_get_u16(pe + 20, 2, 0, false);
     if (!count || count > 96 || optional < 64 || optional > 4096 ||
         !ue2_range(total - base, (int64_t)peoff + 24, (int64_t)optional + count * 40) ||
         !ei_read_at(device, base + peoff + 24 + 60, h, 4)) return -1;
-    end = ue2_u32(h);
+    end = xx_data_get_u32(h, 4, 0, false);
     if (end > total - base) return -1;
     for (i = 0; i < count; ++i) {
         uint64_t finish;
         if (!ei_read_at(device, base + peoff + 24 + optional + i * 40, sec, 40)) return -1;
-        finish = (uint64_t)ue2_u32(sec + 20) + ue2_u32(sec + 16);
+        finish = (uint64_t)xx_data_get_u32(sec + 20, 4, 0, false) + xx_data_get_u32(sec + 16, 4, 0, false);
         if (finish > (uint64_t)(total - base)) return -1;
         if ((int64_t)finish > end) end = (int64_t)finish;
     }
@@ -106,7 +107,7 @@ static int64_t ei_header_device(xx_io_device *device, int64_t base) {
 static char *ei_name(const uint8_t *table, size_t size, uint64_t at, uint64_t room, uint64_t *allocation) {
     size_t i, n = 0; char *out;
     if (at >= size || (at & 1U)) return NULL;
-    for (i = (size_t)at; i + 1 < size && ue2_u16(table + i); i += 2) {
+    for (i = (size_t)at; i + 1 < size && xx_data_get_u16(table + i, 2, 0, false); i += 2) {
         if (i - at > 8192) return NULL;
     }
     if (i + 1 >= size) return NULL;
@@ -114,11 +115,11 @@ static char *ei_name(const uint8_t *table, size_t size, uint64_t at, uint64_t ro
     if (*allocation > room) return NULL;
     out = (char *)xx_mem_alloc((size_t)*allocation);
     if (!out) return NULL;
-    for (i = (size_t)at; ue2_u16(table + i); i += 2) {
-        uint32_t c = ue2_u16(table + i);
+    for (i = (size_t)at; xx_data_get_u16(table + i, 2, 0, false); i += 2) {
+        uint32_t c = xx_data_get_u16(table + i, 2, 0, false);
         if (c >= 0xD800 && c <= 0xDBFF) {
             uint32_t low;
-            if (i + 3 >= size || (low = ue2_u16(table + i + 2)) < 0xDC00 || low > 0xDFFF) goto bad;
+            if (i + 3 >= size || (low = xx_data_get_u16(table + i + 2, 2, 0, false)) < 0xDC00 || low > 0xDFFF) goto bad;
             c = 0x10000 + ((c - 0xD800) << 10) + low - 0xDC00; i += 2;
         } else if (c >= 0xDC00 && c <= 0xDFFF) goto bad;
         if (c == '\\') c = '/';
@@ -139,28 +140,28 @@ static ei_index *ei_parse(Abstractformat *f, const xx_list_s *opts, xx_pd_struct
     uint64_t index_at, table_size = 0, count, records, data, datasize, dictionary, stream, packed, i, names_at, budget=ei_budget(f,opts);
     at = ei_header_device(f->device, f->base_address);
     if (at < 0 || !ue2_read(f, at, h, 40)) goto done;
-    index_at = ue2_u64(h + 16);
+    index_at = xx_data_get_u64(h + 16, 8, 0, false);
     if (index_at > (uint64_t)(total - base) || index_at < (uint64_t)(at - base + 40) ||
-        ue2_u32(h + 24) > EI_TABLE_LIMIT || ue2_u32(h + 28) > EI_LIMIT) goto done;
+        xx_data_get_u32(h + 24, 4, 0, false) > EI_TABLE_LIMIT || xx_data_get_u32(h + 28, 4, 0, false) > EI_LIMIT) goto done;
     table = ei_decode(f, base + (int64_t)index_at, total, budget, &table_size, pd);
-    if (!table || table_size != ue2_u32(h + 24) || table_size < 0x128 ||
-        xx_rt_memcmp(table, "ExcelsiorII1", 12) || ue2_u32(table + 12) != 0x01000001 ||
-        ue2_u32(table + 20) != 1 || ue2_u64(table + 24) != (UINT64_C(1) << 32)) goto done;
-    stream = ue2_u64(table + 32); packed = ue2_u64(table + 40);
-    count = ue2_u64(table + 80); data = ue2_u64(table + 88); datasize = ue2_u64(table + 96); records = ue2_u64(table + 104);
+    if (!table || table_size != xx_data_get_u32(h + 24, 4, 0, false) || table_size < 0x128 ||
+        xx_rt_memcmp(table, "ExcelsiorII1", 12) || xx_data_get_u32(table + 12, 4, 0, false) != 0x01000001 ||
+        xx_data_get_u32(table + 20, 4, 0, false) != 1 || xx_data_get_u64(table + 24, 8, 0, false) != (UINT64_C(1) << 32)) goto done;
+    stream = xx_data_get_u64(table + 32, 8, 0, false); packed = xx_data_get_u64(table + 40, 8, 0, false);
+    count = xx_data_get_u64(table + 80, 8, 0, false); data = xx_data_get_u64(table + 88, 8, 0, false); datasize = xx_data_get_u64(table + 96, 8, 0, false); records = xx_data_get_u64(table + 104, 8, 0, false);
     if (!count || count > 100000 || records < 0x128 || records > table_size || count > (table_size - records) / 32 ||
-        stream != ue2_u64(h + 32) || stream >= index_at || packed != index_at - stream ||
+        stream != xx_data_get_u64(h + 32, 8, 0, false) || stream >= index_at || packed != index_at - stream ||
         !ei_stream_header(f, base + (int64_t)stream, base + (int64_t)index_at, dh, &dictionary) ||
-        data > ue2_u64(dh) || datasize > ue2_u64(dh) - data || data != (uint64_t)ue2_u32(h + 28) + ue2_u64(table + 64)) goto done;
+        data > xx_data_get_u64(dh, 8, 0, false) || datasize > xx_data_get_u64(dh, 8, 0, false) - data || data != (uint64_t)xx_data_get_u32(h + 28, 4, 0, false) + xx_data_get_u64(table + 64, 8, 0, false)) goto done;
     names_at = records + count * 32;
     if (table_size > budget || sizeof(*ix) > budget - table_size) goto done;
     ix = (ei_index *)xx_mem_calloc(1, sizeof(*ix));
     if (!ix) goto done;
     ix->records.size = total - base; ix->stream = base + (int64_t)stream; ix->packed = (int64_t)packed;
-    ix->unpacked = ue2_u64(dh); ix->dictionary = dictionary; ix->owned = sizeof(*ix);ix->source_device=f->device;ix->source_base=f->base_address;
+    ix->unpacked = xx_data_get_u64(dh, 8, 0, false); ix->dictionary = dictionary; ix->owned = sizeof(*ix);ix->source_device=f->device;ix->source_base=f->base_address;
     for (i = 0; i < count; ++i) {
         const uint8_t *r = table + (size_t)records + (size_t)i * 32;
-        uint64_t size = ue2_u64(r + 16), name_at = ue2_u64(r);
+        uint64_t size = xx_data_get_u64(r + 16, 8, 0, false), name_at = xx_data_get_u64(r, 8, 0, false);
         char *name; uint64_t temporary, name_bytes; size_t old_capacity=ix->records.capacity, new_capacity=old_capacity;
         if ((pd && xx_pd_is_stopped(pd)) || name_at < names_at || ix->owned > budget - table_size ||
             !(name = ei_name(table, (size_t)table_size, name_at, budget - table_size - ix->owned, &temporary))) goto bad;
@@ -169,7 +170,7 @@ static ei_index *ei_parse(Abstractformat *f, const xx_list_s *opts, xx_pd_struct
         if (temporary > budget-table_size-ix->owned || name_bytes > budget-table_size-ix->owned-temporary ||
             (new_capacity!=old_capacity && new_capacity*sizeof(ue2_member)>budget-table_size-ix->owned-temporary-name_bytes)) {xx_str_free(name);goto bad;}
         if (size != UINT64_MAX && size > datasize) { xx_str_free(name); goto bad; }
-        if (!ue2_add(&ix->records, name, (int64_t)data, size == UINT64_MAX ? 0 : (int64_t)size, ue2_u64(r + 8))) { xx_str_free(name); goto bad; }
+        if (!ue2_add(&ix->records, name, (int64_t)data, size == UINT64_MAX ? 0 : (int64_t)size, xx_data_get_u64(r + 8, 8, 0, false))) { xx_str_free(name); goto bad; }
         ix->owned += name_bytes+(new_capacity-old_capacity)*sizeof(ue2_member); xx_str_free(name);
         ix->records.members[ix->records.count - 1].is_folder = size == UINT64_MAX;
         if (size != UINT64_MAX) { data += size; datasize -= size; }

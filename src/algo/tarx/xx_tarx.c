@@ -12,6 +12,7 @@
 #include <string.h>
 #include "xxfclib/global/xx_global.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/data/xx_data.h"
 
 #define XX_TARX1_KEY_WINDOW_SIZE 100U
 #define XX_TARX1_ANCHOR_OFFSET 95U
@@ -35,11 +36,6 @@ static void xx_tarx1_make_tables(xx_tarx1_tables *tables) {
         tables->inverse_top_byte[tables->transform[index] >> 24U] =
             (uint8_t)index;
     }
-}
-
-static uint32_t xx_tarx1_read_u32le(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
 }
 
 /* Reverse the one-byte carry fold used while the seed is recovered. */
@@ -68,7 +64,7 @@ static bool xx_tarx1_recover_seed(const uint8_t *window, uint32_t *seed) {
     unsigned candidate;
     if (!window || !seed) return false;
     xx_tarx1_make_tables(&tables);
-    anchor = xx_tarx1_read_u32le(window + XX_TARX1_ANCHOR_OFFSET);
+    anchor = xx_data_get_u32(window + XX_TARX1_ANCHOR_OFFSET, 4, 0, false);
     for (candidate = 0U; candidate < 256U; ++candidate) {
         uint32_t state_words[4];
         uint32_t signature;

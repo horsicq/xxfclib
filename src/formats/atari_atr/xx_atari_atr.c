@@ -3,11 +3,12 @@
  */
 #include "xxfclib/formats/atari_atr/xx_atari_atr.h"
 #include "../nintendo_sdat/xx_twelfth_c.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool read_components(Abstractformat *f,pm_stream *s,tc_blob *b) {
  const uint8_t *p=b->p;uint32_t units,z,size,count,a=16,i;char label[64];
  if(b->n<16 || p[0]!=0x96 || p[1]!=2 || !tc_zero(p+8,7) || p[15]>1) return false;
- units=(uint32_t)pm_le16(p+2)|((uint32_t)pm_le16(p+6)<<16);size=pm_le16(p+4);
+ units=(uint32_t)xx_data_get_u16(p+2, 2, 0, false)|((uint32_t)xx_data_get_u16(p+6, 2, 0, false)<<16);size=xx_data_get_u16(p+4, 2, 0, false);
  if(!units || units>(TC_LIMIT-16)/16 || (size!=128 && size!=256)) { return false; } z=units*16;
  if(z!=b->n-16 || z<384 || (size==128 ? z%128 : (z-384)%256)) return false;
  count=size==128 ? z/128 : 3+(z-384)/256;if(count>4095) return false;

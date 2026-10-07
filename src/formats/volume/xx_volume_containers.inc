@@ -12,18 +12,18 @@ static bool vr_machine(uint16_t m) {
 static bool vr_coff(Abstractformat *f,pm_stream *s,xx_pd_struct *pd,bool te) {
     uint8_t h[40],e[40]; unsigned count,i; int64_t sections,adjust=0; uint64_t sym=0,symbol_count=0,strings=0; uint32_t string_size=0; xx_volume *r=(xx_volume *)f;
     if(!pm_read(f,0,h,te?40:20)) return false;
-    if(te) { if(pm_le16(h)!=0x5A56 || !vr_machine(pm_le16(h+2)) || h[4]==0 || h[4]>96 || pm_le16(h+6)<40) return false;
-        count=h[4]; sections=40; adjust=40-(int64_t)pm_le16(h+6); }
-    else { if(!vr_machine(pm_le16(h)) || !(count=pm_le16(h+2)) || count>1024 || pm_le16(h+16)!=0 || (pm_le16(h+18)&2)) return false;
-        sections=20; sym=pm_le32(h+8); symbol_count=pm_le32(h+12);
+    if(te) { if(xx_data_get_u16(h, 2, 0, false)!=0x5A56 || !vr_machine(xx_data_get_u16(h+2, 2, 0, false)) || h[4]==0 || h[4]>96 || xx_data_get_u16(h+6, 2, 0, false)<40) return false;
+        count=h[4]; sections=40; adjust=40-(int64_t)xx_data_get_u16(h+6, 2, 0, false); }
+    else { if(!vr_machine(xx_data_get_u16(h, 2, 0, false)) || !(count=xx_data_get_u16(h+2, 2, 0, false)) || count>1024 || xx_data_get_u16(h+16, 2, 0, false)!=0 || (xx_data_get_u16(h+18, 2, 0, false)&2)) return false;
+        sections=20; sym=xx_data_get_u32(h+8, 4, 0, false); symbol_count=xx_data_get_u32(h+12, 4, 0, false);
         if(symbol_count && (sym>(uint64_t)pm_available(f) || symbol_count>((uint64_t)pm_available(f)-sym)/18)) return false;
         if(sym) { uint8_t length[4]; strings=sym+symbol_count*18;
-            if(strings>INT64_MAX || !pm_read(f,(int64_t)strings,length,4) || (string_size=pm_le32(length))<4 || string_size>(uint64_t)pm_available(f)-strings) return false; }
+            if(strings>INT64_MAX || !pm_read(f,(int64_t)strings,length,4) || (string_size=xx_data_get_u32(length, 4, 0, false))<4 || string_size>(uint64_t)pm_available(f)-strings) return false; }
     }
     if((uint64_t)sections+(uint64_t)count*40>(uint64_t)pm_available(f)) return false;
     for(i=0;i<count;++i) { uint32_t bytes,raw; int64_t offset; char name[128],section[80];
         if(!vr_poll(pd) || !pm_read(f,sections+(int64_t)i*40,e,40)) return false;
-        bytes=pm_le32(e+16); raw=pm_le32(e+20);
+        bytes=xx_data_get_u32(e+16, 4, 0, false); raw=xx_data_get_u32(e+20, 4, 0, false);
         if(!te && e[0]=='/') { uint32_t value=0; unsigned j; size_t length=0; uint8_t text[sizeof(section)];
             for(j=1;j<8 && e[j];++j) { if(e[j]<'0' || e[j]>'9' || value>(UINT32_MAX-9)/10) return false; value=value*10+(e[j]-'0'); }
             if(j==1 || value<4 || value>=string_size) return false;
@@ -43,36 +43,36 @@ static bool vr_coff(Abstractformat *f,pm_stream *s,xx_pd_struct *pd,bool te) {
 }
 typedef struct vr_lp_table { uint32_t offset,count,stride; } vr_lp_table;
 static bool vr_lp_desc(vr_lp_table *t,const uint8_t *p,uint32_t limit,uint32_t minimum) {
-    t->offset=pm_le32(p); t->count=pm_le32(p+4); t->stride=pm_le32(p+8);
+    t->offset=xx_data_get_u32(p, 4, 0, false); t->count=xx_data_get_u32(p+4, 4, 0, false); t->stride=xx_data_get_u32(p+8, 4, 0, false);
     return t->stride>=minimum && t->count<=1000000 && t->offset<=limit && (uint64_t)t->count*t->stride<=limit-t->offset;
 }
 static bool vr_lp(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t geom[52],h[256],digest[32],*tables=NULL; uint32_t maximum,slots,header,bytes,i; vr_lp_table pt,et,gt,dt; bool ok=false; xx_volume *r=(xx_volume *)f;
-    if(!pm_read(f,4096,geom,52) || pm_le32(geom)!=UINT32_C(0x616C4467) || pm_le32(geom+4)!=52) return false;
+    if(!pm_read(f,4096,geom,52) || xx_data_get_u32(geom, 4, 0, false)!=UINT32_C(0x616C4467) || xx_data_get_u32(geom+4, 4, 0, false)!=52) return false;
     xx_rt_memcpy(digest,geom+8,32); xx_mem_zero(geom+8,32);
     { uint8_t actual[32]; if(!xx_sha256_memory(geom,52,actual) || xx_rt_memcmp(digest,actual,32)) return false; }
-    maximum=pm_le32(geom+40); slots=pm_le32(geom+44);
-    if(!maximum || maximum>16U*1024U*1024U || (maximum&511) || !slots || slots>32 || !vr_power(pm_le32(geom+48)) || pm_le32(geom+48)<512) return false;
-    if(!pm_read(f,12288,h,128) || pm_le32(h)!=UINT32_C(0x414C5030) || pm_le16(h+4)!=10 || pm_le16(h+6)>2) return false;
-    header=pm_le32(h+8); if(header!=128 && header!=256) return false; if(header==256 && !pm_read(f,12288,h,256)) return false;
+    maximum=xx_data_get_u32(geom+40, 4, 0, false); slots=xx_data_get_u32(geom+44, 4, 0, false);
+    if(!maximum || maximum>16U*1024U*1024U || (maximum&511) || !slots || slots>32 || !vr_power(xx_data_get_u32(geom+48, 4, 0, false)) || xx_data_get_u32(geom+48, 4, 0, false)<512) return false;
+    if(!pm_read(f,12288,h,128) || xx_data_get_u32(h, 4, 0, false)!=UINT32_C(0x414C5030) || xx_data_get_u16(h+4, 2, 0, false)!=10 || xx_data_get_u16(h+6, 2, 0, false)>2) return false;
+    header=xx_data_get_u32(h+8, 4, 0, false); if(header!=128 && header!=256) return false; if(header==256 && !pm_read(f,12288,h,256)) return false;
     xx_rt_memcpy(digest,h+12,32); xx_mem_zero(h+12,32);
     { uint8_t actual[32]; if(!xx_sha256_memory(h,header,actual) || xx_rt_memcmp(digest,actual,32)) return false; }
-    bytes=pm_le32(h+44); if(bytes>maximum-header || bytes>16U*1024U*1024U) return false;
+    bytes=xx_data_get_u32(h+44, 4, 0, false); if(bytes>maximum-header || bytes>16U*1024U*1024U) return false;
     if(!vr_lp_desc(&pt,h+80,bytes,52) || !vr_lp_desc(&et,h+92,bytes,24) || !vr_lp_desc(&gt,h+104,bytes,48) || !vr_lp_desc(&dt,h+116,bytes,64) || !dt.count || !pt.count) return false;
     { const xx_var *v=xx_format_resolve_extra_parameter(f,r->parse_options,XX_META_ID_OPT_MEMORY_LIMIT); if(v && bytes>xx_var_get_u64(v)) return false; }
     tables=(uint8_t *)xx_mem_alloc(bytes?bytes:1); if(!tables) return false;
     if(!pm_read(f,12288+header,tables,bytes) || !xx_sha256_memory(tables,bytes,digest) || xx_rt_memcmp(digest,h+48,32)) goto done;
-    for(i=0;i<pt.count;++i) { const uint8_t *p=tables+pt.offset+(size_t)i*pt.stride; uint32_t first=pm_le32(p+40),count=pm_le32(p+44),j; char name[64]; mm_map *map;
-        if(!vr_poll(pd) || !vr_name(name,sizeof(name),p,36) || first>et.count || count>et.count-first || pm_le32(p+48)>=gt.count || (pm_le32(p+36)&~15U)) goto done;
-        if(!count || (pm_le32(p+36)&8)) { continue; } map=mm_create(); if(!map) goto done;
-        for(j=0;j<count;++j) { const uint8_t *e=tables+et.offset+(size_t)(first+j)*et.stride; uint64_t sectors=mm_le64(e),sector=mm_le64(e+12); uint32_t type=pm_le32(e+8),dev=pm_le32(e+20);
-            if(!vr_poll(pd) || !sectors || sectors>INT64_MAX/512 || type>1 || (type==0 && (dev!=0 || sector>INT64_MAX/512 || sector<mm_le64(tables+dt.offset)))) { mm_free(map); xx_pd_set_error(pd,1,"LP extent requires an absent block device or unsupported target"); goto done; }
+    for(i=0;i<pt.count;++i) { const uint8_t *p=tables+pt.offset+(size_t)i*pt.stride; uint32_t first=xx_data_get_u32(p+40, 4, 0, false),count=xx_data_get_u32(p+44, 4, 0, false),j; char name[64]; mm_map *map;
+        if(!vr_poll(pd) || !vr_name(name,sizeof(name),p,36) || first>et.count || count>et.count-first || xx_data_get_u32(p+48, 4, 0, false)>=gt.count || (xx_data_get_u32(p+36, 4, 0, false)&~15U)) goto done;
+        if(!count || (xx_data_get_u32(p+36, 4, 0, false)&8)) { continue; } map=mm_create(); if(!map) goto done;
+        for(j=0;j<count;++j) { const uint8_t *e=tables+et.offset+(size_t)(first+j)*et.stride; uint64_t sectors=xx_data_get_u64(e, 8, 0, false),sector=xx_data_get_u64(e+12, 8, 0, false); uint32_t type=xx_data_get_u32(e+8, 4, 0, false),dev=xx_data_get_u32(e+20, 4, 0, false);
+            if(!vr_poll(pd) || !sectors || sectors>INT64_MAX/512 || type>1 || (type==0 && (dev!=0 || sector>INT64_MAX/512 || sector<xx_data_get_u64(tables+dt.offset, 8, 0, false)))) { mm_free(map); xx_pd_set_error(pd,1,"LP extent requires an absent block device or unsupported target"); goto done; }
             if(!mm_add(f,map,type==1?-1:(int64_t)(sector*512),sectors*512)) { mm_free(map); goto done; }
         }
         { const xx_var *v=xx_format_resolve_extra_parameter(f,r->parse_options,XX_META_ID_OPT_MAX_MEMBER_SIZE); if(v && map->size>xx_var_get_u64(v)) { mm_free(map); goto done; } }
         if(!mm_emit(f,s,name,map)) goto done;
     }
-    r->version=10; r->block_size=pm_le32(geom+48); r->capability="logical partition reconstruction with linear and zero extents; SHA-256 metadata validation";
+    r->version=10; r->block_size=xx_data_get_u32(geom+48, 4, 0, false); r->capability="logical partition reconstruction with linear and zero extents; SHA-256 metadata validation";
     ok=s->count && vr_info(f,s,"Metadata slot: 0\nLinear extents must reside in the supplied super image; absent external block devices are rejected.\n");
 done: xx_mem_free(tables); return ok;
 }
@@ -106,20 +106,20 @@ static bool vr_lvm(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t label[512],mda[512]; uint32_t pvheader; uint64_t meta=0,metasize=0,offset,size,extent=0,pe_start=0,pe_count=0,limit=UINT64_C(256)*1024*1024,used; size_t pos,i; char *text=NULL; vr_cfg cfg; int group=-1,pvs,lvs,pv=-1; bool ok=false; xx_volume *r=(xx_volume *)f;
     xx_mem_zero(&cfg,sizeof(cfg));
     for(i=0;i<4;++i) if(pm_read(f,(int64_t)i*512,label,512) && !xx_rt_memcmp(label,"LABELONE",8)) break;
-    if(i==4 || mm_le64(label+8)!=i || xx_rt_memcmp(label+24,"LVM2 001",8) || pm_le32(label+16)!=vr_crc(UINT32_C(0xF597A6CF),label+20,492)) return false;
-    pvheader=pm_le32(label+20); if(pvheader<32 || pvheader>440) return false; pos=pvheader+40;
-    if(mm_le64(label+pvheader+32)>(uint64_t)pm_available(f)) return false;
-    while(pos<=496 && (mm_le64(label+pos) || mm_le64(label+pos+8))) pos+=16;
-    pos+=16; if(pos>496) return false; meta=mm_le64(label+pos); metasize=mm_le64(label+pos+8);
-    if(meta>INT64_MAX || metasize<512 || metasize>64U*1024U*1024U || !pm_read(f,(int64_t)meta,mda,512) || xx_rt_memcmp(mda+4," LVM2 x[5A%r0N*>",16) || pm_le32(mda+20)!=1 || pm_le32(mda)!=vr_crc(UINT32_C(0xF597A6CF),mda+4,508) || mm_le64(mda+24)!=meta || mm_le64(mda+32)!=metasize) return false;
-    offset=mm_le64(mda+40); size=mm_le64(mda+48); if(offset<512 || offset>=metasize || !size || size>16U*1024U*1024U || size>metasize-512) return false;
+    if(i==4 || xx_data_get_u64(label+8, 8, 0, false)!=i || xx_rt_memcmp(label+24,"LVM2 001",8) || xx_data_get_u32(label+16, 4, 0, false)!=vr_crc(UINT32_C(0xF597A6CF),label+20,492)) return false;
+    pvheader=xx_data_get_u32(label+20, 4, 0, false); if(pvheader<32 || pvheader>440) return false; pos=pvheader+40;
+    if(xx_data_get_u64(label+pvheader+32, 8, 0, false)>(uint64_t)pm_available(f)) return false;
+    while(pos<=496 && (xx_data_get_u64(label+pos, 8, 0, false) || xx_data_get_u64(label+pos+8, 8, 0, false))) pos+=16;
+    pos+=16; if(pos>496) return false; meta=xx_data_get_u64(label+pos, 8, 0, false); metasize=xx_data_get_u64(label+pos+8, 8, 0, false);
+    if(meta>INT64_MAX || metasize<512 || metasize>64U*1024U*1024U || !pm_read(f,(int64_t)meta,mda,512) || xx_rt_memcmp(mda+4," LVM2 x[5A%r0N*>",16) || xx_data_get_u32(mda+20, 4, 0, false)!=1 || xx_data_get_u32(mda, 4, 0, false)!=vr_crc(UINT32_C(0xF597A6CF),mda+4,508) || xx_data_get_u64(mda+24, 8, 0, false)!=meta || xx_data_get_u64(mda+32, 8, 0, false)!=metasize) return false;
+    offset=xx_data_get_u64(mda+40, 8, 0, false); size=xx_data_get_u64(mda+48, 8, 0, false); if(offset<512 || offset>=metasize || !size || size>16U*1024U*1024U || size>metasize-512) return false;
     { const xx_var *v=xx_format_resolve_extra_parameter(f,r->parse_options,XX_META_ID_OPT_MEMORY_LIMIT); if(v) limit=xx_var_get_u64(v); }
     used=2*size+16384*sizeof(vr_cfg_node)+65536U;
     if(used>limit) return false;
     text=(char *)xx_mem_alloc((size_t)size+1); cfg.nodes=(vr_cfg_node *)xx_mem_alloc(16384*sizeof(*cfg.nodes)); if(!text || !cfg.nodes) goto done;
     if(size<=metasize-offset) { if(!pm_read(f,(int64_t)(meta+offset),text,(size_t)size)) goto done; }
     else { size_t first=(size_t)(metasize-offset); if(!pm_read(f,(int64_t)(meta+offset),text,first) || !pm_read(f,(int64_t)(meta+512),text+first,(size_t)size-first)) goto done; }
-    if(pm_le32(mda+56)!=vr_crc(UINT32_C(0xF597A6CF),(uint8_t *)text,(size_t)size)) goto done;
+    if(xx_data_get_u32(mda+56, 4, 0, false)!=vr_crc(UINT32_C(0xF597A6CF),(uint8_t *)text,(size_t)size)) goto done;
     text[size]=0; cfg.p=text; cfg.end=text+xx_rt_strlen(text); if(!vr_cfg_block(&cfg,-1) || cfg.p!=cfg.end || !vr_poll(pd)) goto done;
     for(i=0;i<cfg.count;++i) if(cfg.nodes[i].parent==-1 && cfg.nodes[i].kind==0) { if(group>=0) goto done; group=(int)i; }
     if(group<0 || !vr_cfg_num(&cfg,group,"extent_size",&extent) || !vr_power(extent) || extent>INT64_MAX/512) goto done;

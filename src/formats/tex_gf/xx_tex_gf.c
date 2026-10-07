@@ -6,6 +6,7 @@
  */
 #include "xxfclib/formats/tex_gf/xx_tex_gf.h"
 #include "../wavefront_obj/xx_eleventh_media.h"
+#include "xxfclib/data/xx_data.h"
 static bool eg_quick(Abstractformat *f,uint64_t n) {uint8_t b[3];return n>=55&&pm_read(f,0,b,3)&&b[0]==247&&b[1]==131;}
 static bool gf_special(const uint8_t *b,uint64_t *p,uint64_t n,uint8_t op) {
  uint32_t z;if(op>=239&&op<=242){unsigned bytes=op-238;if(!eg_span(*p,bytes,n))return false;z=eg_uint(b+*p,bytes);*p+=bytes;if(z>1048576||!eg_span(*p,z,n))return false;*p+=z;return true;}
@@ -17,12 +18,12 @@ static bool eg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  for(i=0;i<256;++i){boc[i]=prefix[i]=-1;loc[i]=false;}if(!eg_emit(f,s,"preamble.gf",0,p,n))return false;
  while(p<n){uint64_t start=p;uint8_t op=b[p++];int32_t code,minm,maxm,minn,maxn;int64_t m,row;bool black=false;
   if(eg_stop(pd)||++ops>2000000)return false;
-  if(op==248){post=start;if(!eg_span(p,36,n)||pm_be32(b+p)!=(uint32_t)after||!pm_be32(b+p+4)||(pm_be32(b+p+4)&0x80000000U)||!pm_be32(b+p+12)||(pm_be32(b+p+12)&0x80000000U)||!pm_be32(b+p+16)||(pm_be32(b+p+16)&0x80000000U))return false;
+  if(op==248){post=start;if(!eg_span(p,36,n)||xx_data_get_u32(b+p, 4, 0, true)!=(uint32_t)after||!xx_data_get_u32(b+p+4, 4, 0, true)||(xx_data_get_u32(b+p+4, 4, 0, true)&0x80000000U)||!xx_data_get_u32(b+p+12, 4, 0, true)||(xx_data_get_u32(b+p+12, 4, 0, true)&0x80000000U)||!xx_data_get_u32(b+p+16, 4, 0, true)||(xx_data_get_u32(b+p+16, 4, 0, true)&0x80000000U))return false;
    if(section<start&&!eg_emit(f,s,"font-specials.gf",section,start-section,n))return false;
-    {int32_t m0=(int32_t)pm_be32(b+p+20),m1=(int32_t)pm_be32(b+p+24),n0=(int32_t)pm_be32(b+p+28),n1=(int32_t)pm_be32(b+p+32);if(m0>m1||n0>n1||m0< -1048576||m1>1048576||n0< -1048576||n1>1048576||(painted&&(m0>gm0||m1<gm1||n0>gn0||n1<gn1)))return false;}
+    {int32_t m0=(int32_t)xx_data_get_u32(b+p+20, 4, 0, true),m1=(int32_t)xx_data_get_u32(b+p+24, 4, 0, true),n0=(int32_t)xx_data_get_u32(b+p+28, 4, 0, true),n1=(int32_t)xx_data_get_u32(b+p+32, 4, 0, true);if(m0>m1||n0>n1||m0< -1048576||m1>1048576||n0< -1048576||n1>1048576||(painted&&(m0>gm0||m1<gm1||n0>gn0||n1<gn1)))return false;}
    p+=36;if(!eg_emit(f,s,"postamble.gf",start,p-start,n))return false;break;}
   if(gf_special(b,&p,n,op))continue;
-  if(op==67){int32_t prev;if(!eg_span(p,24,n))return false;code=(int32_t)pm_be32(b+p);prev=(int32_t)pm_be32(b+p+4);minm=(int32_t)pm_be32(b+p+8);maxm=(int32_t)pm_be32(b+p+12);minn=(int32_t)pm_be32(b+p+16);maxn=(int32_t)pm_be32(b+p+20);p+=24;
+  if(op==67){int32_t prev;if(!eg_span(p,24,n))return false;code=(int32_t)xx_data_get_u32(b+p, 4, 0, true);prev=(int32_t)xx_data_get_u32(b+p+4, 4, 0, true);minm=(int32_t)xx_data_get_u32(b+p+8, 4, 0, true);maxm=(int32_t)xx_data_get_u32(b+p+12, 4, 0, true);minn=(int32_t)xx_data_get_u32(b+p+16, 4, 0, true);maxn=(int32_t)xx_data_get_u32(b+p+20, 4, 0, true);p+=24;
    if(prev!=boc[(uint32_t)code&255]&&prev!=prefix[(uint32_t)code&255])return false;}
   else if(op==68){if(!eg_span(p,5,n))return false;code=b[p];maxm=b[p+2];minm=maxm-b[p+1];maxn=b[p+4];minn=maxn-b[p+3];p+=5;
    if(boc[(uint32_t)code&255]!=-1)return false;}
@@ -40,11 +41,11 @@ static bool eg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  if(!post||!glyphs)return false;
  while(p<n){uint64_t start=p;uint8_t op=b[p++];uint32_t code;int32_t ref;
   if(eg_stop(pd))return false;
-  if(op==249){if(!eg_span(p,5,n)||pm_be32(b+p)!=(uint32_t)post||b[p+4]!=131)return false;p+=5;
+  if(op==249){if(!eg_span(p,5,n)||xx_data_get_u32(b+p, 4, 0, true)!=(uint32_t)post||b[p+4]!=131)return false;p+=5;
    if(n-p<4||(n&3)) {return false; } for(i=0;i<n-p;++i)if(b[p+i]!=223)return false;
    for(i=0;i<256;++i) {if(boc[i]>=0&&!loc[i])return false; } if(!locs||!eg_emit(f,s,"postpost.gf",start,n-start,n))return false;s->size=(int64_t)n;return true;}
   if(op==244){if(!eg_emit(f,s,"postamble-nop.gf",start,1,n))return false;continue;}
-  if(op!=245&&op!=246) {return false; } if(!eg_span(p,op==245?17:10,n))return false;code=b[p];ref=(int32_t)pm_be32(b+p+(op==245?13:6));p+=op==245?17:10;
+  if(op!=245&&op!=246) {return false; } if(!eg_span(p,op==245?17:10,n))return false;code=b[p];ref=(int32_t)xx_data_get_u32(b+p+(op==245?13:6), 4, 0, true);p+=op==245?17:10;
   if(loc[code]||(ref!=boc[code]&&ref!=prefix[code])||(ref==-1&&boc[code]!=-1)) {return false; } loc[code]=true;++locs;
   if(!eg_emit(f,s,"character-locator.gf",start,p-start,n))return false;
  }

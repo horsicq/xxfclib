@@ -47,6 +47,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -120,15 +121,6 @@ typedef struct lva_stream_s {
     uint32_t variant;
     uint64_t plain_size; /* stream variant */
 } lva_stream;
-
-static uint16_t lva_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t lva_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
 
 static bool lva_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -458,7 +450,7 @@ static bool lva_parse_container(Abstractformat *format, int64_t size,
     if (header[10] != 0x00U || header[11] != 0xfdU || header[12] != 0x00U ||
         header[13] != 0xdfU || header[14] != 0x00U || header[15] != 0xffU)
         return false;
-    count = lva_le16(header + 16U);
+    count = xx_data_get_u16(header + 16U, 2, 0, false);
     if (count == 0U) return false;
     if (header[9] == '1') {
         entry_size = LVA_V1_ENTRY_SIZE;
@@ -492,7 +484,7 @@ static bool lva_parse_container(Abstractformat *format, int64_t size,
             ++terminator;
         /* An entry whose name field never terminates is not this layout. */
         if (terminator == 0U || terminator >= name_size) goto fail;
-        descriptor_offset = (int64_t)lva_le32(entry + name_size);
+        descriptor_offset = (int64_t)xx_data_get_u32(entry + name_size, 4, 0, false);
         /* Members follow the index in index order and never overlap: on
          * every real volume the first descriptor starts at the end of the
          * index and each next one exactly where the previous payload ends.
@@ -505,7 +497,7 @@ static bool lva_parse_container(Abstractformat *format, int64_t size,
         if (!lva_read_at(format->device,
                          format->base_address + descriptor_offset, descriptor,
                          descriptor_size)) goto fail;
-        payload_size = (int64_t)lva_le32(descriptor + size_offset);
+        payload_size = (int64_t)xx_data_get_u32(descriptor + size_offset, 4, 0, false);
         if (payload_size > LVA_MAX_PAYLOAD) goto fail;
         data_offset = descriptor_offset + (int64_t)descriptor_size;
         if (payload_size > size - data_offset) goto fail;
@@ -515,8 +507,8 @@ static bool lva_parse_container(Abstractformat *format, int64_t size,
         member->descriptor_offset = format->base_address + descriptor_offset;
         member->data_offset = format->base_address + data_offset;
         member->size = payload_size;
-        member->timestamp = lva_le32(descriptor + size_offset + 4U);
-        member->method = lva_le16(descriptor + size_offset + 8U);
+        member->timestamp = xx_data_get_u32(descriptor + size_offset + 4U, 4, 0, false);
+        member->method = xx_data_get_u16(descriptor + size_offset + 8U, 2, 0, false);
         next_free = data_offset + payload_size;
     }
     /* Bytes after the last member are overlay, not part of the volume. */
@@ -605,8 +597,8 @@ static bool lva_finear_header(Abstractformat *format, const lva_member *member,
         return false;
     if (xx_rt_memcmp(header, "FINEAR", 6U) != 0 || header[6] != 0xddU ||
         header[7] != 0x88U || header[8] != 0xddU) return false;
-    *checksum = lva_le32(header + 9U);
-    *unpacked = lva_le32(header + 13U);
+    *checksum = xx_data_get_u32(header + 9U, 4, 0, false);
+    *unpacked = xx_data_get_u32(header + 13U, 4, 0, false);
     /* The checksum field is a 16-bit CRC written into a 32-bit slot. */
     return *checksum <= 0xffffU;
 }

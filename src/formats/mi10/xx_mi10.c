@@ -35,6 +35,7 @@
 #include "xxfclib/algo/mi10/xx_mi10.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_MI10_COPY_CHUNK (64 * 1024)
 
@@ -139,7 +140,6 @@ static bool xx_mi10_add(xx_mi10_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint32_t xx_mi10_be32(const uint8_t *data);
 static xx_mi10_stream *xx_mi10_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_mi10_decode(Abstractformat *self, const xx_mi10_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
@@ -148,11 +148,6 @@ static bool xx_mi10_decode(Abstractformat *self, const xx_mi10_member *member, u
  * limit. */
 
 /* "9999999999.bin" and a terminator. */
-
-static uint32_t xx_mi10_be32(const uint8_t *data) {
-    return ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16) |
-           ((uint32_t)data[2] << 8) | (uint32_t)data[3];
-}
 
 static xx_mi10_stream *xx_mi10_parse(Abstractformat *self, xx_pd_struct *pd) {
     static const uint8_t magic[4] = {(uint8_t)'M', (uint8_t)'I', (uint8_t)'1',
@@ -205,9 +200,9 @@ static xx_mi10_stream *xx_mi10_parse(Abstractformat *self, xx_pd_struct *pd) {
         }
         if (xx_rt_memcmp(header, magic, sizeof(magic)) != 0) goto fail;
 
-        checksum = xx_mi10_be32(header + 4);
-        uncompressed = xx_mi10_be32(header + 8);
-        declared = xx_mi10_be32(header + 12);
+        checksum = xx_data_get_u32(header + 4, 4, 0, true);
+        uncompressed = xx_data_get_u32(header + 8, 4, 0, true);
+        declared = xx_data_get_u32(header + 12, 4, 0, true);
         if (uncompressed == 0U || declared == 0U) goto fail;
         if ((int64_t)uncompressed > XX_MI10_MAX_COMPRESSED ||
             (int64_t)declared >

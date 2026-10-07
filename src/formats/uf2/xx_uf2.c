@@ -5,20 +5,21 @@
  */
 #include "xxfclib/formats/uf2/xx_uf2.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     (void)pd;
 
     uint8_t h[512]; int64_t at,total=pm_available(f); uint32_t blocks,seen=0; uint8_t *numbers=NULL; bool ok=false;
     if(total<=0 || total%512 || total/512>65536 || !pm_read(f,0,h,512)) return false;
-    blocks=pm_le32(h+24);
+    blocks=xx_data_get_u32(h+24, 4, 0, false);
     if(blocks==0 || blocks>65536 || blocks!=(uint64_t)(total/512)) return false;
     numbers=(uint8_t *)xx_mem_alloc(blocks); if(!numbers) return false; xx_mem_zero(numbers,blocks);
     for(at=0;at<total;at+=512) {
         uint32_t flags,n,bytes,addr; char name[64];
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,at,h,512)) goto done;
-        flags=pm_le32(h+8); addr=pm_le32(h+12); bytes=pm_le32(h+16); n=pm_le32(h+20);
-        if(pm_le32(h)!=0x0a324655 || pm_le32(h+4)!=0x9e5d5157 || pm_le32(h+508)!=0x0ab16f30 ||
-            pm_le32(h+24)!=blocks || n>=blocks || numbers[n] || bytes==0 || bytes>476 ||
+        flags=xx_data_get_u32(h+8, 4, 0, false); addr=xx_data_get_u32(h+12, 4, 0, false); bytes=xx_data_get_u32(h+16, 4, 0, false); n=xx_data_get_u32(h+20, 4, 0, false);
+        if(xx_data_get_u32(h, 4, 0, false)!=0x0a324655 || xx_data_get_u32(h+4, 4, 0, false)!=0x9e5d5157 || xx_data_get_u32(h+508, 4, 0, false)!=0x0ab16f30 ||
+            xx_data_get_u32(h+24, 4, 0, false)!=blocks || n>=blocks || numbers[n] || bytes==0 || bytes>476 ||
             flags & ~(uint32_t)0x00002001 || addr>UINT32_MAX-bytes) goto done;
         numbers[n]=1; ++seen;
         xx_rt_snprintf(name,sizeof(name),"block-%u-address-%08x%s.bin",(unsigned)n,(unsigned)addr,(flags&1) ? "-comment" : "");

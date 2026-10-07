@@ -5,8 +5,9 @@
  */
 #include "xxfclib/formats/sony_tim/xx_sony_tim.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static XXFC_MAYBE_UNUSED uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)xx_data_get_u32(p, 4, 0, true)<<32)|xx_data_get_u32(p+4, 4, 0, true) : ((uint64_t)xx_data_get_u32(p+4, 4, 0, false)<<32)|xx_data_get_u32(p, 4, 0, false); }
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uint64_t n,uint64_t total) {
     size_t i;
@@ -24,11 +25,11 @@ static XXFC_MAYBE_UNUSED bool zname(Abstractformat *f,uint64_t at,uint64_t end) 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[8],e[12]; uint32_t flags,i,blocks; uint64_t at=8,total=(uint64_t)pm_available(f);
-    if(!pm_read(f,0,h,8) || pm_le32(h)!=16) { return false; } flags=pm_le32(h+4);
+    if(!pm_read(f,0,h,8) || xx_data_get_u32(h, 4, 0, false)!=16) { return false; } flags=xx_data_get_u32(h+4, 4, 0, false);
     if(flags&~15U || (flags&7)>3 || (((flags&7)<2)!=!!(flags&8))) { return false; } blocks=(flags&8) ? 2 : 1;
     for(i=0;i<blocks;++i) { uint64_t n,bytes; uint32_t w,he,x,y;
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,(int64_t)at,e,12)) return false;
-        n=pm_le32(e); x=pm_le16(e+4); y=pm_le16(e+6); w=pm_le16(e+8); he=pm_le16(e+10); bytes=(uint64_t)w*he*2;
+        n=xx_data_get_u32(e, 4, 0, false); x=xx_data_get_u16(e+4, 2, 0, false); y=xx_data_get_u16(e+6, 2, 0, false); w=xx_data_get_u16(e+8, 2, 0, false); he=xx_data_get_u16(e+10, 2, 0, false); bytes=(uint64_t)w*he*2;
         if(!w || !he || x+w>1024 || y+he>512 || n!=bytes+12 || !span(at,n,total)) return false;
         if(i==0 && (flags&8) && w!=((flags&7)==0 ? 16U : 256U)) return false;
         if(!emit(f,s,(i==0 && (flags&8)) ? "clut.bin" : "pixels.bin",at+12,bytes,total)) { return false; } at+=n; }

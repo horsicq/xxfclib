@@ -5,6 +5,7 @@
 #include "xx_7zip_branch.h"
 #include "xx_7zip_defs.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/data/xx_data.h"
 
 typedef struct xx_7zip_bcj2_decoder_s {
     const uint8_t *main_data;
@@ -26,37 +27,13 @@ typedef struct xx_7zip_bcj2_decoder_s {
     uint8_t previous;
 } xx_7zip_bcj2_decoder;
 
-static uint32_t xx_7zip_branch_read_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) |
-           ((uint32_t)p[2] << 16U) | ((uint32_t)p[3] << 24U);
-}
-
-static uint32_t xx_7zip_branch_read_be32(const uint8_t *p) {
-    return ((uint32_t)p[0] << 24U) | ((uint32_t)p[1] << 16U) |
-           ((uint32_t)p[2] << 8U) | (uint32_t)p[3];
-}
-
-static void xx_7zip_branch_write_le32(uint8_t *p, uint32_t value) {
-    p[0] = (uint8_t)value;
-    p[1] = (uint8_t)(value >> 8U);
-    p[2] = (uint8_t)(value >> 16U);
-    p[3] = (uint8_t)(value >> 24U);
-}
-
-static void xx_7zip_branch_write_be32(uint8_t *p, uint32_t value) {
-    p[0] = (uint8_t)(value >> 24U);
-    p[1] = (uint8_t)(value >> 16U);
-    p[2] = (uint8_t)(value >> 8U);
-    p[3] = (uint8_t)value;
-}
-
 bool xx_7zip_branch_properties_supported(size_t properties_size) {
     return properties_size == 0U || properties_size == 4U;
 }
 
 static uint32_t xx_7zip_branch_start_ip(const uint8_t *properties,
                                          size_t properties_size) {
-    return properties_size == 4U ? xx_7zip_branch_read_le32(properties) : 0U;
+    return properties_size == 4U ? xx_data_get_u32(properties, 4, 0, false) : 0U;
 }
 
 bool xx_7zip_branch_method_supported(uint64_t method, size_t properties_size) {
@@ -116,7 +93,7 @@ static size_t xx_7zip_filter_bcj(uint8_t *data, size_t size, uint32_t ip,
             ++pos;
             continue;
         }
-        value = xx_7zip_branch_read_le32(data + candidate + 1U);
+        value = xx_data_get_u32(data + candidate + 1U, 4, 0, false);
         current = ip + (uint32_t)candidate;
         value -= current;
         if (mask != 0U) {
@@ -143,10 +120,10 @@ static void xx_7zip_filter_arm(uint8_t *data, size_t size, uint32_t ip) {
     for (pos = 0U; pos + 4U <= size; pos += 4U) {
         uint32_t value;
         if (data[pos + 3U] != 0xEBU) continue;
-        value = xx_7zip_branch_read_le32(data + pos);
+        value = xx_data_get_u32(data + pos, 4, 0, false);
         value = (value << 2U) - (ip + (uint32_t)pos + 8U);
         value = (value >> 2U) & UINT32_C(0x00FFFFFF);
-        xx_7zip_branch_write_le32(data + pos, value | UINT32_C(0xEB000000));
+        xx_data_set_u32(data + pos, 4, 0, value | UINT32_C(0xEB000000), false);
     }
 }
 
@@ -176,9 +153,9 @@ static void xx_7zip_filter_ppc(uint8_t *data, size_t size, uint32_t ip) {
     for (pos = 0U; pos + 4U <= size; pos += 4U) {
         uint32_t value;
         if ((data[pos] & 0xFCU) != 0x48U || (data[pos + 3U] & 3U) != 1U) continue;
-        value = xx_7zip_branch_read_be32(data + pos);
+        value = xx_data_get_u32(data + pos, 4, 0, true);
         value = (value - (ip + (uint32_t)pos)) & UINT32_C(0x03FFFFFF);
-        xx_7zip_branch_write_be32(data + pos, value | UINT32_C(0x48000000));
+        xx_data_set_u32(data + pos, 4, 0, value | UINT32_C(0x48000000), true);
     }
 }
 
@@ -189,12 +166,12 @@ static void xx_7zip_filter_sparc(uint8_t *data, size_t size, uint32_t ip) {
         uint32_t value;
         if (!((data[pos] == 0x40U && (data[pos + 1U] & 0xC0U) == 0U) ||
               (data[pos] == 0x7FU && data[pos + 1U] >= 0xC0U))) continue;
-        value = xx_7zip_branch_read_be32(data + pos);
+        value = xx_data_get_u32(data + pos, 4, 0, true);
         value = (value << 2U) - (ip + (uint32_t)pos);
         value = ((value & UINT32_C(0x01FFFFFF)) - UINT32_C(0x01000000)) ^
                 UINT32_C(0xFF000000);
         value = (value >> 2U) | UINT32_C(0x40000000);
-        xx_7zip_branch_write_be32(data + pos, value);
+        xx_data_set_u32(data + pos, 4, 0, value, true);
     }
 }
 
@@ -212,7 +189,7 @@ static void xx_7zip_filter_ia64(uint8_t *data, size_t size, uint32_t ip) {
             p = data + bundle + (size_t)slot * 5U - 8U;
             if (((p[3] >> slot) & 15U) != 5U ||
                 ((((uint32_t)p[-1] | ((uint32_t)p[0] << 8U)) >> slot) & 0x70U) != 0U) continue;
-            raw = xx_7zip_branch_read_le32(p);
+            raw = xx_data_get_u32(p, 4, 0, false);
             value = raw >> slot;
             value = (value & UINT32_C(0xFFFFF)) | ((value & UINT32_C(0x800000)) >> 3U);
             value = (value << 4U) - (ip + (uint32_t)bundle);
@@ -220,7 +197,7 @@ static void xx_7zip_filter_ia64(uint8_t *data, size_t size, uint32_t ip) {
             value = (value + UINT32_C(0x700000)) & UINT32_C(0x8FFFFF);
             raw &= ~(UINT32_C(0x8FFFFF) << slot);
             raw |= value << slot;
-            xx_7zip_branch_write_le32(p, raw);
+            xx_data_set_u32(p, 4, 0, raw, false);
         } while (++slot <= 4U);
     }
 }
@@ -231,11 +208,11 @@ static void xx_7zip_filter_arm64(uint8_t *data, size_t size, uint32_t ip) {
     const uint32_t adrp_mask = (UINT32_C(1) << 24U) - (flag << 1U);
     if (!data) return;
     for (pos = 0U; pos + 4U <= size; pos += 4U) {
-        uint32_t value = xx_7zip_branch_read_le32(data + pos);
+        uint32_t value = xx_data_get_u32(data + pos, 4, 0, false);
         uint32_t pc = ip + (uint32_t)pos;
         if (((value - UINT32_C(0x94000000)) & UINT32_C(0xFC000000)) == 0U) {
             value = (value - (pc >> 2U)) & UINT32_C(0x03FFFFFF);
-            xx_7zip_branch_write_le32(data + pos, UINT32_C(0x94000000) | value);
+            xx_data_set_u32(data + pos, 4, 0, UINT32_C(0x94000000) | value, false);
         } else {
             uint32_t page_value = value - UINT32_C(0x90000000);
             uint32_t target;
@@ -249,7 +226,7 @@ static void xx_7zip_filter_arm64(uint8_t *data, size_t size, uint32_t ip) {
             value |= target << 26U;
             value |= UINT32_C(0x00FFFFE0) &
                      ((target & ((flag << 1U) - 1U)) - flag);
-            xx_7zip_branch_write_le32(data + pos, value);
+            xx_data_set_u32(data + pos, 4, 0, value, false);
         }
     }
 }
@@ -258,9 +235,6 @@ static void xx_7zip_filter_arm64(uint8_t *data, size_t size, uint32_t ip) {
  * Its wire representation permutes JAL target bytes and escapes AUIPC pairs.
  * Format and scan rules follow Igor Pavlov's public-domain Bra.c in 7-Zip
  * 26.03: https://github.com/ip7z/7zip/blob/26.03/C/Bra.c. */
-static uint16_t xx_7zip_branch_read_le16(const uint8_t *p) {
-    return (uint16_t)((uint16_t)p[0] | ((uint16_t)p[1] << 8U));
-}
 
 static bool xx_7zip_riscv_pair_a(uint32_t first, uint32_t tag) {
     return (((tag - 3U) ^ ((uint32_t)first << 8U)) & UINT32_C(0x000F8003)) == 0U;
@@ -286,7 +260,7 @@ static size_t xx_7zip_filter_riscv(uint8_t *data, size_t size, uint32_t ip) {
     if (!data || size <= 6U) return 0U;
     limit = size - 6U;
     while (pos < limit) {
-        uint32_t first = ((uint32_t)xx_7zip_branch_read_le16(data + pos) ^ 0x10U) + 1U;
+        uint32_t first = ((uint32_t)xx_data_get_u16(data + pos, 2, 0, false) ^ 0x10U) + 1U;
         uint32_t instruction;
         uint32_t pc;
         if ((first & 0x77U) != 0U) { pos += 2U; continue; }
@@ -300,34 +274,34 @@ static size_t xx_7zip_filter_riscv(uint8_t *data, size_t size, uint32_t ip) {
                        ((uint32_t)data[pos + 2U] << 9U) |
                        ((first & UINT32_C(0xF000)) << 5U);
             relative = absolute - pc;
-            xx_7zip_branch_write_le32(data + pos,
-                xx_7zip_riscv_jal_with_immediate(saved, relative));
+            xx_data_set_u32(data + pos, 4, 0,
+                xx_7zip_riscv_jal_with_immediate(saved, relative), false);
             pos += 4U;
             continue;
         }
-        instruction = xx_7zip_branch_read_le32(data + pos);
+        instruction = xx_data_get_u32(data + pos, 4, 0, false);
         if ((first & UINT32_C(0xE80)) == 0U) {
             uint32_t register_bits = instruction >> 27U;
             if (xx_7zip_riscv_pair_b(first, register_bits)) {
-                uint32_t absolute = xx_7zip_branch_read_be32(data + pos + 4U);
+                uint32_t absolute = xx_data_get_u32(data + pos + 4U, 4, 0, true);
                 uint32_t second = instruction >> 12U;
                 uint32_t first_out;
                 absolute -= pc;
                 first_out = (register_bits << 7U) | UINT32_C(0x17);
                 first_out += (absolute + UINT32_C(0x800)) & UINT32_C(0xFFFFF000);
                 second |= absolute << 20U;
-                xx_7zip_branch_write_le32(data + pos, first_out);
-                xx_7zip_branch_write_le32(data + pos + 4U, second);
+                xx_data_set_u32(data + pos, 4, 0, first_out, false);
+                xx_data_set_u32(data + pos + 4U, 4, 0, second, false);
                 pos += 8U;
             } else pos += 4U;
         } else {
-            uint32_t second = xx_7zip_branch_read_le32(data + pos + 4U);
+            uint32_t second = xx_data_get_u32(data + pos + 4U, 4, 0, false);
             if (xx_7zip_riscv_pair_a(first, second)) {
                 uint32_t first_out = (instruction & UINT32_C(0xFFFFF000)) |
                                      (second >> 20U);
                 uint32_t second_out = (second << 12U) | UINT32_C(0x117);
-                xx_7zip_branch_write_le32(data + pos, second_out);
-                xx_7zip_branch_write_le32(data + pos + 4U, first_out);
+                xx_data_set_u32(data + pos, 4, 0, second_out, false);
+                xx_data_set_u32(data + pos + 4U, 4, 0, first_out, false);
                 pos += 8U;
             } else pos += 6U;
         }
@@ -492,11 +466,11 @@ bool xx_7zip_bcj2_decode(const uint8_t *const inputs[4],
                 }
                 if (*target_pos > target_size || target_size - *target_pos < 4U ||
                     output_size - output_pos < 4U) return false;
-                value = xx_7zip_branch_read_be32(target + *target_pos);
+                value = xx_data_get_u32(target + *target_pos, 4, 0, true);
                 *target_pos += 4U;
                 decoder.ip += 4U;
                 value -= decoder.ip;
-                xx_7zip_branch_write_le32(output + output_pos, value);
+                xx_data_set_u32(output + output_pos, 4, 0, value, false);
                 output_pos += 4U;
                 decoder.previous = (uint8_t)(value >> 24U);
                 continue;

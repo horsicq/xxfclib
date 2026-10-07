@@ -41,6 +41,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef GKSETUP
 #define XX_GKSETUP_FILE_TYPE XX_FILE_TYPE_GKSETUP
@@ -89,14 +90,6 @@ typedef struct gk_stream_s {
     int64_t archive_size;
     bool has_padding;
 } gk_stream;
-
-static uint16_t gk_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t gk_le32(const uint8_t *bytes) {
-    return (uint32_t)gk_le16(bytes) | ((uint32_t)gk_le16(bytes + 2U) << 16U);
-}
 
 static bool gk_read_at(xx_io_device *device, int64_t offset, void *buffer,
                        size_t size) {
@@ -212,8 +205,8 @@ static bool gk_read_record(xx_io_device *device, int64_t offset,
     for (index = 0U; index < length; ++index)
         if (record[index] < 0x20U) return false;
     *name_length = length;
-    *attributes = gk_le32(record + GK_ATTRIBUTES_OFFSET);
-    declared = (int32_t)gk_le32(record + GK_SIZE_OFFSET);
+    *attributes = xx_data_get_u32(record + GK_ATTRIBUTES_OFFSET, 4, 0, false);
+    declared = (int32_t)xx_data_get_u32(record + GK_SIZE_OFFSET, 4, 0, false);
     if (declared < 0) return false;
     *size = (int64_t)declared;
     return true;
@@ -240,7 +233,7 @@ static bool gk_probe_padding(xx_io_device *device, int64_t base,
         if (!gk_range_within(available, after, size) ||
             !gk_range_within(available, after, 4) ||
             !gk_read_at(device, base + after, padding, sizeof(padding)) ||
-            gk_le32(padding) != 0U)
+            xx_data_get_u32(padding, 4, 0, false) != 0U)
             return false;
         cursor = after + 4 + size;
     }
@@ -271,7 +264,7 @@ static bool gk_parse(Abstractformat *format, gk_stream **result) {
 
     stream = (gk_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;
-    stream->data_offset = (int64_t)gk_le32(header + GK_DATAOFFSET_OFFSET);
+    stream->data_offset = (int64_t)xx_data_get_u32(header + GK_DATAOFFSET_OFFSET, 4, 0, false);
     if (stream->data_offset != GK_DATAOFFSET_A &&
         stream->data_offset != GK_DATAOFFSET_B)
         goto fail;
@@ -297,7 +290,7 @@ static bool gk_parse(Abstractformat *format, gk_stream **result) {
             if (!gk_range_within(available, payload, 4) ||
                 !gk_read_at(format->device, base + payload, padding,
                             sizeof(padding)) ||
-                gk_le32(padding) != 0U)
+                xx_data_get_u32(padding, 4, 0, false) != 0U)
                 break;
             payload += 4;
         }

@@ -54,6 +54,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 /* The enumerator is added by the coordinator, not by this file. */
 #ifdef PSDC
@@ -91,11 +92,6 @@ typedef struct xx_psdc_stream_s {
 } xx_psdc_stream;
 
 /* ------------------------------------------------------------ helpers --- */
-
-static uint32_t xx_psdc_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
 
 static bool xx_psdc_read_at(Abstractformat *self, int64_t offset,
                             void *buffer, size_t size) {
@@ -203,7 +199,7 @@ static xx_psdc_stream *xx_psdc_parse(Abstractformat *self, xx_pd_struct *pd) {
         header[XX_PSDC_HEADER_SIZE + 1] < 4U ||
         header[XX_PSDC_HEADER_SIZE + 1] > 6U)
         return NULL;
-    declared = xx_psdc_le32(header + XX_PSDC_SIZE_OFFSET);
+    declared = xx_data_get_u32(header + XX_PSDC_SIZE_OFFSET, 4, 0, false);
     /* The declared length is the container's own length and U3 requires it
      * to match the file exactly.  Bounding it against the real extent this
      * way means no later size can be derived from an unchecked field. */

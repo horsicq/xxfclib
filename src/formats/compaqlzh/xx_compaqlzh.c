@@ -34,6 +34,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef COMPAQLZH
 #define XX_COMPAQLZH_FILE_TYPE XX_FILE_TYPE_COMPAQLZH
@@ -62,15 +63,6 @@ typedef struct compaqlzh_stream_s {
     size_t index;
     int64_t archive_size;
 } compaqlzh_stream;
-
-static uint16_t compaqlzh_le16(const uint8_t *bytes) {
-    return (uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U);
-}
-
-static uint32_t compaqlzh_le32(const uint8_t *bytes) {
-    return (uint32_t)compaqlzh_le16(bytes) |
-           ((uint32_t)compaqlzh_le16(bytes + 2U) << 16U);
-}
 
 static bool compaqlzh_read_at(xx_io_device *device, int64_t offset,
                               void *buffer, size_t size) {
@@ -158,7 +150,7 @@ static bool compaqlzh_parse(Abstractformat *format,
                            sizeof(header)) ||
         xx_rt_memcmp(header, "CPQ_LZH", 7U) != 0)
         return false;
-    unpacked = compaqlzh_le32(header + 0x19U);
+    unpacked = xx_data_get_u32(header + 0x19U, 4, 0, false);
     if (unpacked == 0U || unpacked > COMPAQLZH_MAX_UNPACKED) return false;
     stream = (compaqlzh_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;
@@ -169,8 +161,8 @@ static bool compaqlzh_parse(Abstractformat *format,
         return false;
     }
     stream->member.attributes = header[0x14U];
-    stream->member.dos_time = ((uint32_t)compaqlzh_le16(header + 0x17U) << 16U) |
-                              compaqlzh_le16(header + 0x15U);
+    stream->member.dos_time = ((uint32_t)xx_data_get_u16(header + 0x17U, 2, 0, false) << 16U) |
+                              xx_data_get_u16(header + 0x15U, 2, 0, false);
     stream->member.data_offset = format->base_address +
                                  (int64_t)COMPAQLZH_HEADER_SIZE;
     stream->member.packed_size = size - (int64_t)COMPAQLZH_HEADER_SIZE;

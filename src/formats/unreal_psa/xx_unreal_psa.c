@@ -5,8 +5,9 @@
  */
 #include "xxfclib/formats/unreal_psa/xx_unreal_psa.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static uint32_t g32(const uint8_t *p,bool be) { return be ? pm_be32(p) : pm_le32(p); }
+static uint32_t g32(const uint8_t *p,bool be) { return be ? xx_data_get_u32(p, 4, 0, true) : xx_data_get_u32(p, 4, 0, false); }
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool overlap(uint64_t a,uint64_t n,uint64_t b,uint64_t m) { return n && m && a<b+m && b<a+n; }
 static bool stop(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
@@ -18,8 +19,8 @@ static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uin
 }
 static bool finite32(const uint8_t *p,bool be) { return (g32(p,be)&0x7f800000U)!=0x7f800000U; }
 typedef struct rg { uint64_t at,n; } rg;
-static bool psx_chunk(Abstractformat *f,uint64_t *at,uint64_t total,const char *name,uint32_t stride,uint32_t maximum,uint32_t *count,xx_pd_struct *pd) { uint8_t h[32]; size_t n=xx_rt_strlen(name); if(!take(f,at,total,h,32,pd) || xx_rt_memcmp(h,name,n) || !xx_rt_memchr(h+n,0,20-n) || pm_le32(h+20)!=1999801 || pm_le32(h+24)!=stride || (*count=pm_le32(h+28))>maximum || !span(*at,(uint64_t)*count*stride,total)) return false; return true; }
-static bool psx_bones(Abstractformat *f,uint64_t at,uint32_t count,xx_pd_struct *pd) { uint8_t b[120]; uint32_t i,j,children[256]={0},declared[256]; if(!count || count>256) return false; for(i=0;i<count;++i) { int32_t parent; if(stop(pd) || !pm_read(f,(int64_t)(at+(uint64_t)i*120),b,120) || !xx_rt_memchr(b,0,64) || (declared[i]=pm_le32(b+68))>count) return false; parent=(int32_t)pm_le32(b+72); if(!i) { if(parent!=0 && parent!=-1) return false; } else { if(parent<0 || (uint32_t)parent>=i) return false; ++children[parent]; } for(j=76;j<120;j+=4) if(!finite32(b+j,false)) return false; }
+static bool psx_chunk(Abstractformat *f,uint64_t *at,uint64_t total,const char *name,uint32_t stride,uint32_t maximum,uint32_t *count,xx_pd_struct *pd) { uint8_t h[32]; size_t n=xx_rt_strlen(name); if(!take(f,at,total,h,32,pd) || xx_rt_memcmp(h,name,n) || !xx_rt_memchr(h+n,0,20-n) || xx_data_get_u32(h+20, 4, 0, false)!=1999801 || xx_data_get_u32(h+24, 4, 0, false)!=stride || (*count=xx_data_get_u32(h+28, 4, 0, false))>maximum || !span(*at,(uint64_t)*count*stride,total)) return false; return true; }
+static bool psx_bones(Abstractformat *f,uint64_t at,uint32_t count,xx_pd_struct *pd) { uint8_t b[120]; uint32_t i,j,children[256]={0},declared[256]; if(!count || count>256) return false; for(i=0;i<count;++i) { int32_t parent; if(stop(pd) || !pm_read(f,(int64_t)(at+(uint64_t)i*120),b,120) || !xx_rt_memchr(b,0,64) || (declared[i]=xx_data_get_u32(b+68, 4, 0, false))>count) return false; parent=(int32_t)xx_data_get_u32(b+72, 4, 0, false); if(!i) { if(parent!=0 && parent!=-1) return false; } else { if(parent<0 || (uint32_t)parent>=i) return false; ++children[parent]; } for(j=76;j<120;j+=4) if(!finite32(b+j,false)) return false; }
     for(i=0;i<count;++i) { if(children[i]!=declared[i]) return false; } return true; }
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
@@ -29,8 +30,8 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(!psx_chunk(f,&at,total,"ANIMINFO",168,1024,&ni,pd) || !ni) { return false; } info=at; at+=(uint64_t)ni*168;
     if(!psx_chunk(f,&at,total,"ANIMKEYS",32,262144,&nk,pd) || !nk) { return false; } keys=at; at+=(uint64_t)nk*32;
     if(at!=total || !psx_bones(f,bones,nb,pd)) return false;
-    for(i=0;i<ni;++i) { uint32_t frames,first; if(stop(pd) || !pm_read(f,(int64_t)(info+(uint64_t)i*168),p,168) || !xx_rt_memchr(p,0,64) || !xx_rt_memchr(p+64,0,64) || pm_le32(p+128)!=nb || pm_le32(p+132)>1 || pm_le32(p+136) || pm_le32(p+156) || !finite32(p+144,false) || !finite32(p+148,false) || !finite32(p+152,false) || (pm_le32(p+152)&0x80000000U) || !pm_le32(p+152) || !(frames=pm_le32(p+164)) || !span((uint64_t)(first=pm_le32(p+160))*nb,(uint64_t)frames*nb,nk)) return false; }
-    for(i=0;i<nk;++i) { if(stop(pd) || !pm_read(f,(int64_t)(keys+(uint64_t)i*32),p,32)) return false; for(j=0;j<32;j+=4) if(!finite32(p+j,false)) return false; if(pm_le32(p+28)&0x80000000U) return false; }
+    for(i=0;i<ni;++i) { uint32_t frames,first; if(stop(pd) || !pm_read(f,(int64_t)(info+(uint64_t)i*168),p,168) || !xx_rt_memchr(p,0,64) || !xx_rt_memchr(p+64,0,64) || xx_data_get_u32(p+128, 4, 0, false)!=nb || xx_data_get_u32(p+132, 4, 0, false)>1 || xx_data_get_u32(p+136, 4, 0, false) || xx_data_get_u32(p+156, 4, 0, false) || !finite32(p+144,false) || !finite32(p+148,false) || !finite32(p+152,false) || (xx_data_get_u32(p+152, 4, 0, false)&0x80000000U) || !xx_data_get_u32(p+152, 4, 0, false) || !(frames=xx_data_get_u32(p+164, 4, 0, false)) || !span((uint64_t)(first=xx_data_get_u32(p+160, 4, 0, false))*nb,(uint64_t)frames*nb,nk)) return false; }
+    for(i=0;i<nk;++i) { if(stop(pd) || !pm_read(f,(int64_t)(keys+(uint64_t)i*32),p,32)) return false; for(j=0;j<32;j+=4) if(!finite32(p+j,false)) return false; if(xx_data_get_u32(p+28, 4, 0, false)&0x80000000U) return false; }
     if(!emit(f,s,"bones.bin",bones,(uint64_t)nb*120,total) || !emit(f,s,"sequences.bin",info,(uint64_t)ni*168,total) || !emit(f,s,"keys.bin",keys,(uint64_t)nk*32,total)) { return false; } s->size=(int64_t)total; return true;
 
 }

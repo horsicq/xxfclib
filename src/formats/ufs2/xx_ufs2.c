@@ -25,6 +25,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder. xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -132,19 +133,6 @@ static uint32_t ufs2_u16(bool big, const uint8_t *p) {
     return big ? ((uint32_t)p[0] << 8) | p[1] : ((uint32_t)p[1] << 8) | p[0];
 }
 
-static uint32_t ufs2_u32(bool big, const uint8_t *p) {
-    return big ? ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
-                     ((uint32_t)p[2] << 8) | p[3]
-               : ((uint32_t)p[3] << 24) | ((uint32_t)p[2] << 16) |
-                     ((uint32_t)p[1] << 8) | p[0];
-}
-
-static uint64_t ufs2_u64(bool big, const uint8_t *p) {
-    uint64_t hi = big ? ufs2_u32(big, p) : ufs2_u32(big, p + 4);
-    uint64_t lo = big ? ufs2_u32(big, p + 4) : ufs2_u32(big, p);
-    return (hi << 32) | lo;
-}
-
 static bool ufs2_pow2(uint32_t value) {
     return value != 0U && (value & (value - 1U)) == 0U;
 }
@@ -157,8 +145,8 @@ static uint32_t ufs2_log2(uint32_t value) {
 
 /* 1 = little-endian magic, 2 = big-endian magic, 0 = none. */
 static int ufs2_magic_order(const uint8_t *magic) {
-    uint32_t le = ufs2_u32(false, magic);
-    uint32_t be = ufs2_u32(true, magic);
+    uint32_t le = xx_data_get_u32(magic, 4, 0, false);
+    uint32_t be = xx_data_get_u32(magic, 4, 0, true);
     if (le == UFS2_MAGIC || le == UFS2_MAGIC_EA) return 1;
     if (be == UFS2_MAGIC || be == UFS2_MAGIC_EA) return 2;
     return 0;
@@ -189,27 +177,27 @@ static bool ufs2_try_geometry(Abstractformat *self, int64_t total,
     if (!ufs2_read_at(self->device, self->base_address + location, sb,
                       UFS2_SUPER_SIZE))
         return false;
-    if (ufs2_u64(big, sb + 0x3E8) != (uint64_t)location) return false;
+    if (xx_data_get_u64(sb + 0x3E8, 8, 0, big) != (uint64_t)location) return false;
     geo->big = big;
     geo->base = self->base_address;
     geo->super_offset = location;
-    geo->iblkno = ufs2_u32(big, sb + 0x10);
-    geo->ncg = ufs2_u32(big, sb + 0x2C);
-    geo->bsize = ufs2_u32(big, sb + 0x30);
-    geo->fsize = ufs2_u32(big, sb + 0x34);
-    geo->frag = ufs2_u32(big, sb + 0x38);
-    geo->nindir = ufs2_u32(big, sb + 0x74);
-    geo->ipg = ufs2_u32(big, sb + 0xB8);
-    geo->fpg = ufs2_u32(big, sb + 0xBC);
-    geo->size = ufs2_u64(big, sb + 0x438);
+    geo->iblkno = xx_data_get_u32(sb + 0x10, 4, 0, big);
+    geo->ncg = xx_data_get_u32(sb + 0x2C, 4, 0, big);
+    geo->bsize = xx_data_get_u32(sb + 0x30, 4, 0, big);
+    geo->fsize = xx_data_get_u32(sb + 0x34, 4, 0, big);
+    geo->frag = xx_data_get_u32(sb + 0x38, 4, 0, big);
+    geo->nindir = xx_data_get_u32(sb + 0x74, 4, 0, big);
+    geo->ipg = xx_data_get_u32(sb + 0xB8, 4, 0, big);
+    geo->fpg = xx_data_get_u32(sb + 0xBC, 4, 0, big);
+    geo->size = xx_data_get_u64(sb + 0x438, 8, 0, big);
     if (!ufs2_pow2(geo->bsize) || geo->bsize < 4096U || geo->bsize > 65536U ||
         !ufs2_pow2(geo->fsize) || geo->fsize < 512U ||
         geo->fsize > geo->bsize || geo->frag != geo->bsize / geo->fsize ||
         geo->frag > 8U ||
-        ufs2_u32(big, sb + 0x50) != ufs2_log2(geo->bsize) ||
-        ufs2_u32(big, sb + 0x54) != ufs2_log2(geo->fsize) ||
+        xx_data_get_u32(sb + 0x50, 4, 0, big) != ufs2_log2(geo->bsize) ||
+        xx_data_get_u32(sb + 0x54, 4, 0, big) != ufs2_log2(geo->fsize) ||
         geo->nindir != geo->bsize / 8U ||
-        ufs2_u32(big, sb + 0x78) != geo->bsize / UFS2_INODE_SIZE)
+        xx_data_get_u32(sb + 0x78, 4, 0, big) != geo->bsize / UFS2_INODE_SIZE)
         return false;
     if (geo->ncg == 0U || geo->ipg == 0U || geo->fpg == 0U ||
         geo->size == 0U || geo->fpg % geo->frag != 0U ||
@@ -260,11 +248,11 @@ static bool ufs2_read_inode(xx_io_device *device, const ufs2_geometry *geo,
         !ufs2_read_at(device, geo->base + (int64_t)offset, raw, sizeof(raw)))
         return false;
     inode->mode = ufs2_u16(geo->big, raw);
-    inode->size = ufs2_u64(geo->big, raw + 16);
+    inode->size = xx_data_get_u64(raw + 16, 8, 0, geo->big);
     for (index = 0U; index < UFS2_NDADDR; ++index)
-        inode->db[index] = ufs2_u64(geo->big, raw + 112 + index * 8U);
+        inode->db[index] = xx_data_get_u64(raw + 112 + index * 8U, 8, 0, geo->big);
     for (index = 0U; index < UFS2_NIADDR; ++index)
-        inode->ib[index] = ufs2_u64(geo->big, raw + 208 + index * 8U);
+        inode->ib[index] = xx_data_get_u64(raw + 208 + index * 8U, 8, 0, geo->big);
     return true;
 }
 
@@ -293,7 +281,7 @@ static bool ufs2_pointer(xx_io_device *device, const ufs2_geometry *geo,
                                   (int64_t)(index * 8U),
                       raw, 8U))
         return false;
-    *out = ufs2_u64(geo->big, raw);
+    *out = xx_data_get_u64(raw, 8, 0, geo->big);
     return true;
 }
 
@@ -603,7 +591,7 @@ static void ufs2_walk(xx_io_device *device, ufs2_parsed *parsed,
             if (end > length) end = length;
             while (end - pos >= UFS2_DIRENT_HEADER) {
                 const uint8_t *entry = block + pos;
-                uint32_t number = ufs2_u32(geo->big, entry);
+                uint32_t number = xx_data_get_u32(entry, 4, 0, geo->big);
                 uint32_t reclen = ufs2_u16(geo->big, entry + 4);
                 uint32_t namlen = entry[7];
                 if (reclen < UFS2_DIRENT_HEADER || (reclen & 3U) != 0U ||
@@ -643,10 +631,10 @@ static bool ufs2_check(Abstractformat *self, ufs2_geometry *geo,
         return false;
     /* "."  : ino 2, reclen 12, namlen 1, ".\0"  */
     /* ".." : ino 2, namlen 2, "..\0"            */
-    return ufs2_u32(geo->big, raw) == UFS2_ROOT_INODE &&
+    return xx_data_get_u32(raw, 4, 0, geo->big) == UFS2_ROOT_INODE &&
            ufs2_u16(geo->big, raw + 4) == 12U && raw[7] == 1U &&
            raw[8] == '.' && raw[9] == 0U &&
-           ufs2_u32(geo->big, raw + 12) == UFS2_ROOT_INODE &&
+           xx_data_get_u32(raw + 12, 4, 0, geo->big) == UFS2_ROOT_INODE &&
            raw[19] == 2U && raw[20] == '.' && raw[21] == '.' && raw[22] == 0U;
 }
 

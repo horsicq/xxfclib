@@ -55,6 +55,7 @@
 #include "xxfclib/algo/lzh/xx_lzh.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_SWAG_COPY_CHUNK (64 * 1024)
 
@@ -164,8 +165,6 @@ static bool xx_swag_add(xx_swag_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_swag_le16(const uint8_t *data);
-static uint32_t xx_swag_le32(const uint8_t *data);
 static bool xx_swag_name_valid(const uint8_t *name, size_t size);
 static xx_swag_stream *xx_swag_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_swag_decode(Abstractformat *self, const xx_swag_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
@@ -177,16 +176,6 @@ static bool xx_swag_decode(Abstractformat *self, const xx_swag_member *member, u
 /* header size is a single byte, so the whole header block fits this. */
 /* The footer count is a u16; this only keeps a corrupt one bounded. */
 /* 64 MB per-member sanity cap, as in the reference. */
-
-
-static uint16_t xx_swag_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_swag_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* SWAG member names are plain MS-DOS 8.3 with no directory component, so
  * printable ASCII only and none of the characters a DOS path cannot carry.
@@ -233,7 +222,7 @@ static xx_swag_stream *xx_swag_parse(Abstractformat *self, xx_pd_struct *pd) {
                          footer, (size_t)XX_SWAG_FOOTER_SIZE)) {
         return NULL;
     }
-    declared_count = (int32_t)xx_swag_le16(footer + XX_SWAG_FOOTER_COUNT_OFFSET);
+    declared_count = (int32_t)xx_data_get_u16(footer + XX_SWAG_FOOTER_COUNT_OFFSET, 2, 0, false);
     /* A collection with no members is not something the archiver writes, and
      * accepting zero here would make the walk below decide nothing at all. */
     if (declared_count <= 0 || declared_count > XX_SWAG_MAX_MEMBERS) {
@@ -288,8 +277,8 @@ static xx_swag_stream *xx_swag_parse(Abstractformat *self, xx_pd_struct *pd) {
         for (scan = 0; scan < header_size; ++scan) sum += header[2 + scan];
         if ((uint8_t)(sum & 0xFFU) != header[1]) break;
 
-        compressed_size = (int64_t)(int32_t)xx_swag_le32(header + 7);
-        uncompressed_size = (int64_t)(int32_t)xx_swag_le32(header + 0x0B);
+        compressed_size = (int64_t)(int32_t)xx_data_get_u32(header + 7, 4, 0, false);
+        uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(header + 0x0B, 4, 0, false);
         if (compressed_size < 0 || uncompressed_size < 0) break;
         if (uncompressed_size > XX_SWAG_MAX_UNCOMPRESSED) break;
 
@@ -328,8 +317,8 @@ static xx_swag_stream *xx_swag_parse(Abstractformat *self, xx_pd_struct *pd) {
         }
         member.extracted_size = -1;
         /* Raw MS-DOS time and date, packed time | (date << 16). */
-        member.timestamp = (uint64_t)xx_swag_le16(header + 0x0F) |
-                           ((uint64_t)xx_swag_le16(header + 0x11) << 16);
+        member.timestamp = (uint64_t)xx_data_get_u16(header + 0x0F, 2, 0, false) |
+                           ((uint64_t)xx_data_get_u16(header + 0x11, 2, 0, false) << 16);
         member.is_folder = false;
         if (!xx_swag_add(stream, &member)) {
             xx_str_free(member.name);

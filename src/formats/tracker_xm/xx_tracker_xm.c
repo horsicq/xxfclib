@@ -24,25 +24,25 @@ static bool sm_xm_pattern(Abstractformat *f,uint64_t at,uint32_t n,uint32_t rows
 }
 static bool sm_xm_envelope(const uint8_t *p,unsigned count,uint8_t sustain,uint8_t begin,uint8_t end,uint8_t flags) {
     unsigned i; uint16_t last=0; if(count>12 || flags>7 || ((flags&1) && !count) || ((flags&2) && sustain>=count) || ((flags&4) && (begin>end || end>=count))) return false;
-    for(i=0;i<count;++i) { uint16_t x=pm_le16(p+i*4),y=pm_le16(p+i*4+2); if(y>64 || (i && x<=last)) return false; last=x; } return true;
+    for(i=0;i<count;++i) { uint16_t x=xx_data_get_u16(p+i*4, 2, 0, false),y=xx_data_get_u16(p+i*4+2, 2, 0, false); if(y>64 || (i && x<=last)) return false; last=x; } return true;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[336]={0},b[263],sample[40]; uint32_t patterns,instruments,channels,orders,i,j,count,len,head,lengths[16],sample_total=0; uint64_t at,measured=0,start,end=(uint64_t)pm_available(f); char label[64];
-    if(fd_stop(pd) || !pm_read(f,0,h,80) || xx_rt_memcmp(h,"Extended Module: ",17) || h[37]!=26 || pm_le16(h+58)!=0x104) return false;
-    orders=pm_le16(h+64); channels=pm_le16(h+68); patterns=pm_le16(h+70); instruments=pm_le16(h+72);
-    if(!orders || orders>256 || pm_le16(h+66)>=orders || !channels || channels>32 || !patterns || patterns>128 || instruments>128 || pm_le16(h+74)>1 || !pm_le16(h+76) || pm_le16(h+76)>31 || pm_le16(h+78)<32 || pm_le16(h+78)>255) return false;
-    head=pm_le32(h+60); if(head<20+orders || head>276 || !pm_read(f,80,h+80,head-20)) return false; for(i=0;i<orders;++i) if(h[80+i]>=patterns) return false; at=60+head; if(!sm_emit(f,s,"xm-descriptor.bin",0,at,&measured)) return false;
-    for(i=0;i<patterns;++i) { uint32_t rows,packed; if(fd_stop(pd) || !fd_range(at,9,end) || !pm_read(f,(int64_t)at,b,9)) return false; head=pm_le32(b); rows=pm_le16(b+5); packed=pm_le16(b+7);
+    if(fd_stop(pd) || !pm_read(f,0,h,80) || xx_rt_memcmp(h,"Extended Module: ",17) || h[37]!=26 || xx_data_get_u16(h+58, 2, 0, false)!=0x104) return false;
+    orders=xx_data_get_u16(h+64, 2, 0, false); channels=xx_data_get_u16(h+68, 2, 0, false); patterns=xx_data_get_u16(h+70, 2, 0, false); instruments=xx_data_get_u16(h+72, 2, 0, false);
+    if(!orders || orders>256 || xx_data_get_u16(h+66, 2, 0, false)>=orders || !channels || channels>32 || !patterns || patterns>128 || instruments>128 || xx_data_get_u16(h+74, 2, 0, false)>1 || !xx_data_get_u16(h+76, 2, 0, false) || xx_data_get_u16(h+76, 2, 0, false)>31 || xx_data_get_u16(h+78, 2, 0, false)<32 || xx_data_get_u16(h+78, 2, 0, false)>255) return false;
+    head=xx_data_get_u32(h+60, 4, 0, false); if(head<20+orders || head>276 || !pm_read(f,80,h+80,head-20)) return false; for(i=0;i<orders;++i) if(h[80+i]>=patterns) return false; at=60+head; if(!sm_emit(f,s,"xm-descriptor.bin",0,at,&measured)) return false;
+    for(i=0;i<patterns;++i) { uint32_t rows,packed; if(fd_stop(pd) || !fd_range(at,9,end) || !pm_read(f,(int64_t)at,b,9)) return false; head=xx_data_get_u32(b, 4, 0, false); rows=xx_data_get_u16(b+5, 2, 0, false); packed=xx_data_get_u16(b+7, 2, 0, false);
         if(head!=9 || b[4] || !rows || rows>256 || !fd_range(at+9,packed,end) || !sm_xm_pattern(f,at+9,packed,rows,channels,instruments,pd)) return false;
         xx_rt_snprintf(label,sizeof(label),"pattern-%u.bin",i); if(!sm_emit(f,s,label,at,9+packed,&measured)) return false; at+=9+packed;
     }
-    for(i=0;i<instruments;++i) { if(fd_stop(pd) || !fd_range(at,29,end) || !pm_read(f,(int64_t)at,b,29)) return false; start=at; head=pm_le32(b); count=pm_le16(b+27);
+    for(i=0;i<instruments;++i) { if(fd_stop(pd) || !fd_range(at,29,end) || !pm_read(f,(int64_t)at,b,29)) return false; start=at; head=xx_data_get_u32(b, 4, 0, false); count=xx_data_get_u16(b+27, 2, 0, false);
         if(b[26] || count>16 || (count ? head!=263 : (head!=29 && head!=263)) || !fd_range(at,head,end) || !pm_read(f,(int64_t)at,b,head)) return false;
-        if(count) { if(pm_le32(b+29)!=40 || sample_total>2048-count) return false; sample_total+=count; for(j=0;j<96;++j) if(b[33+j]>=count) return false;
+        if(count) { if(xx_data_get_u32(b+29, 4, 0, false)!=40 || sample_total>2048-count) return false; sample_total+=count; for(j=0;j<96;++j) if(b[33+j]>=count) return false;
             if(!sm_xm_envelope(b+129,b[225],b[227],b[228],b[229],b[233]) || !sm_xm_envelope(b+177,b[226],b[230],b[231],b[232],b[234]) || b[235]>3 || b[237]>15 || b[238]>63) return false;
         }
         xx_rt_snprintf(label,sizeof(label),"instrument-%u.bin",i+1); if(!sm_emit(f,s,label,start,head,&measured)) return false; at+=head;
-        for(j=0;j<count;++j) { uint32_t a,z; if(fd_stop(pd) || !fd_range(at,40,end) || !pm_read(f,(int64_t)at,sample,40)) return false; len=pm_le32(sample); a=pm_le32(sample+4); z=pm_le32(sample+8);
+        for(j=0;j<count;++j) { uint32_t a,z; if(fd_stop(pd) || !fd_range(at,40,end) || !pm_read(f,(int64_t)at,sample,40)) return false; len=xx_data_get_u32(sample, 4, 0, false); a=xx_data_get_u32(sample+4, 4, 0, false); z=xx_data_get_u32(sample+8, 4, 0, false);
             if(len>16777216 || sample[12]>64 || (sample[14]&~0x13U) || (sample[14]&3)==3 || sample[17] || a>len || z>len-a || ((sample[14]&3) && !z) || ((sample[14]&16) && ((len|a|z)&1))) return false;
             lengths[j]=len; xx_rt_snprintf(label,sizeof(label),"instrument-%u-sample-%u-descriptor.bin",i+1,j+1); if(!sm_emit(f,s,label,at,40,&measured)) return false; at+=40;
         }

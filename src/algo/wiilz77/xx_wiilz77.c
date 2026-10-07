@@ -8,20 +8,11 @@
 #include "xxfclib/algo/wiilz77/xx_wiilz77.h"
 
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_WIILZ77_TAG_SIZE 4U
 #define XX_WIILZ77_SHORT_HEADER_SIZE 4U
 #define XX_WIILZ77_EXTENDED_HEADER_SIZE 8U
-
-static uint32_t xx_wiilz77_read24le(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U);
-}
-
-static uint32_t xx_wiilz77_read32le(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
 
 bool xx_wiilz77_parse_header(const uint8_t *input, size_t input_size,
                              xx_wiilz77_header *header) {
@@ -43,7 +34,7 @@ bool xx_wiilz77_parse_header(const uint8_t *input, size_t input_size,
     } else {
         return false;
     }
-    size24 = xx_wiilz77_read24le(input + offset + 1U);
+    size24 = xx_data_get_u24(input + offset + 1U, 3, 0, false);
     if (size24 != 0U) {
         uncompressed_size = size24;
         header->header_size = offset + XX_WIILZ77_SHORT_HEADER_SIZE;
@@ -51,7 +42,7 @@ bool xx_wiilz77_parse_header(const uint8_t *input, size_t input_size,
         if (input_size - offset < XX_WIILZ77_EXTENDED_HEADER_SIZE) {
             return false;
         }
-        uncompressed_size = xx_wiilz77_read32le(input + offset + 4U);
+        uncompressed_size = xx_data_get_u32(input + offset + 4U, 4, 0, false);
         header->header_size = offset + XX_WIILZ77_EXTENDED_HEADER_SIZE;
     }
     if (uncompressed_size == 0U) return false;

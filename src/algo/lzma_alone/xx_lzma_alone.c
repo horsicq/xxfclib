@@ -10,6 +10,7 @@
 
 #include <limits.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 typedef struct xx_lzma_alone_counter_s {
     xx_io_device *destination;
@@ -18,15 +19,6 @@ typedef struct xx_lzma_alone_counter_s {
     uint64_t written;
     bool failed;
 } xx_lzma_alone_counter;
-
-static uint64_t xx_lzma_alone_read_u64le(const uint8_t *data) {
-    uint64_t result = 0U;
-    unsigned index;
-    for (index = 0U; index < 8U; ++index) {
-        result |= (uint64_t)data[index] << (index * 8U);
-    }
-    return result;
-}
 
 static bool xx_lzma_alone_read_exact_at(xx_io_device *device, int64_t offset,
                                         void *buffer, size_t size, size_t io_capacity) {
@@ -73,7 +65,7 @@ bool xx_lzma_alone_has_header(const uint8_t *data, size_t size) {
         !xx_lzma_alone_properties_are_valid(data)) {
         return false;
     }
-    declared_size = xx_lzma_alone_read_u64le(data + 5U);
+    declared_size = xx_data_get_u64(data + 5U, 8, 0, false);
     return declared_size == UINT64_MAX || declared_size <= (uint64_t)INT64_MAX;
 }
 
@@ -130,7 +122,7 @@ bool xx_lzma_alone_decode_device(xx_io_device *source, int64_t source_offset,
         !xx_lzma_alone_has_header(header, sizeof(header))) {
         return false;
     }
-    declared_size = xx_lzma_alone_read_u64le(header + 5U);
+    declared_size = xx_data_get_u64(header + 5U, 8, 0, false);
     compressed_offset = source_offset + (int64_t)sizeof(header);
     compressed_size = source_size - (int64_t)sizeof(header);
     xx_rt_memset(&counter, 0, sizeof(counter));

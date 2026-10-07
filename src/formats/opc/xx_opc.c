@@ -26,6 +26,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef OPC
 #define XX_OPC_FILE_TYPE XX_FILE_TYPE_OPC
@@ -64,14 +65,6 @@ typedef struct opc_stream_s {
     size_t index;
     int64_t archive_size;
 } opc_stream;
-
-static uint16_t opc_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t opc_le32(const uint8_t *bytes) {
-    return (uint32_t)opc_le16(bytes) | ((uint32_t)opc_le16(bytes + 2U) << 16U);
-}
 
 static bool opc_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -211,7 +204,7 @@ static bool opc_parse(Abstractformat *format, opc_stream **result) {
         for (at = zip_size - OPC_EOCD_SIZE; at >= start; --at) {
             const uint8_t *p = zip + at;
             if (p[0] == 'P' && p[1] == 'K' && p[2] == 5U && p[3] == 6U) {
-                int64_t comment = (int64_t)opc_le16(p + 20U);
+                int64_t comment = (int64_t)xx_data_get_u16(p + 20U, 2, 0, false);
                 if (at + OPC_EOCD_SIZE + comment <= zip_size) {
                     eocd_offset = at;
                     break;
@@ -224,9 +217,9 @@ static bool opc_parse(Abstractformat *format, opc_stream **result) {
         return false;
     }
     eocd = zip + eocd_offset;
-    entry_count = (int32_t)opc_le16(eocd + 10U);
-    directory_size = (int64_t)opc_le32(eocd + 12U);
-    directory_offset = (int64_t)opc_le32(eocd + 16U);
+    entry_count = (int32_t)xx_data_get_u16(eocd + 10U, 2, 0, false);
+    directory_size = (int64_t)xx_data_get_u32(eocd + 12U, 4, 0, false);
+    directory_offset = (int64_t)xx_data_get_u32(eocd + 16U, 4, 0, false);
     if (entry_count < 1 || entry_count > OPC_MAX_ENTRIES ||
         !opc_range_within(zip_size, directory_offset, directory_size) ||
         directory_size < (int64_t)entry_count * OPC_CDENTRY_SIZE ||
@@ -254,15 +247,15 @@ static bool opc_parse(Abstractformat *format, opc_stream **result) {
         record = zip + directory_offset + cursor;
         if (record[0] != 'P' || record[1] != 'K' || record[2] != 1U ||
             record[3] != 2U) goto fail;
-        flags = opc_le16(record + 8U);
-        method = opc_le16(record + 10U);
-        crc32 = opc_le32(record + 16U);
-        compressed = (int64_t)opc_le32(record + 20U);
-        uncompressed = (int64_t)opc_le32(record + 24U);
-        name_size = (int64_t)opc_le16(record + 28U);
-        extra_size = (int64_t)opc_le16(record + 30U);
-        comment_size = (int64_t)opc_le16(record + 32U);
-        local_offset = (int64_t)opc_le32(record + 42U);
+        flags = xx_data_get_u16(record + 8U, 2, 0, false);
+        method = xx_data_get_u16(record + 10U, 2, 0, false);
+        crc32 = xx_data_get_u32(record + 16U, 4, 0, false);
+        compressed = (int64_t)xx_data_get_u32(record + 20U, 4, 0, false);
+        uncompressed = (int64_t)xx_data_get_u32(record + 24U, 4, 0, false);
+        name_size = (int64_t)xx_data_get_u16(record + 28U, 2, 0, false);
+        extra_size = (int64_t)xx_data_get_u16(record + 30U, 2, 0, false);
+        comment_size = (int64_t)xx_data_get_u16(record + 32U, 2, 0, false);
+        local_offset = (int64_t)xx_data_get_u32(record + 42U, 4, 0, false);
         entry_size = OPC_CDENTRY_SIZE + name_size + extra_size + comment_size;
         if (cursor + entry_size > directory_size) goto fail;
         if (name_size < 1 || name_size > OPC_MAX_NAME) goto fail;
@@ -275,8 +268,8 @@ static bool opc_parse(Abstractformat *format, opc_stream **result) {
         if (local[0] != 'P' || local[1] != 'K' || local[2] != 3U ||
             local[3] != 4U) goto fail;
         data_offset = local_offset + OPC_LOCAL_SIZE +
-                      (int64_t)opc_le16(local + 26U) +
-                      (int64_t)opc_le16(local + 28U);
+                      (int64_t)xx_data_get_u16(local + 26U, 2, 0, false) +
+                      (int64_t)xx_data_get_u16(local + 28U, 2, 0, false);
         /* Every declared extent is bounded against the real image before it
          * is used to read or allocate. */
         if (!opc_range_within(zip_size, data_offset, compressed)) goto fail;

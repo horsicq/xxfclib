@@ -48,6 +48,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_MINIDUMP_COPY_CHUNK (64 * 1024)
 
@@ -208,11 +209,6 @@ static const xx_minidump_stream_name xx_minidump_stream_names[] = {
     {24U, "ThreadNamesStream"}
 };
 
-static uint32_t xx_minidump_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
 static const char *xx_minidump_type_name(uint32_t type) {
     size_t index;
     size_t total = sizeof(xx_minidump_stream_names) /
@@ -249,19 +245,19 @@ static xx_minidump_stream *xx_minidump_parse(Abstractformat *self,
     }
 
     /* 'MDMP', little-endian 0x504D444D. */
-    if (xx_minidump_le32(header + 0x00) != 0x504D444DU) return NULL;
+    if (xx_data_get_u32(header + 0x00, 4, 0, false) != 0x504D444DU) return NULL;
     /* Only the low word is the version; the high word is a build number that
      * varies between producers.  Four ASCII magic bytes are easy to hit by
      * accident inside arbitrary data, so this constant is the check that
      * actually keeps a stray 'MDMP' from being claimed as a dump - do not
      * loosen it to a bare magic test. */
-    if ((xx_minidump_le32(header + 0x04) & 0xFFFFU) != 0xA793U) return NULL;
+    if ((xx_data_get_u32(header + 0x04, 4, 0, false) & 0xFFFFU) != 0xA793U) return NULL;
 
-    count = (int64_t)xx_minidump_le32(header + 0x08);
+    count = (int64_t)xx_data_get_u32(header + 0x08, 4, 0, false);
     if (count <= 0 || count >= XX_MINIDUMP_MAX_MEMBERS) return NULL;
 
     /* A directory at offset 0 would overlap the header it was named by. */
-    directory_offset = (int64_t)xx_minidump_le32(header + 0x0c);
+    directory_offset = (int64_t)xx_data_get_u32(header + 0x0c, 4, 0, false);
     if (directory_offset < XX_MINIDUMP_HEADER_SIZE ||
         directory_offset >= span) {
         return NULL;
@@ -298,10 +294,10 @@ static xx_minidump_stream *xx_minidump_parse(Abstractformat *self,
             goto fail;
         }
 
-        stream_type = xx_minidump_le32(entry + 0x00);
+        stream_type = xx_data_get_u32(entry + 0x00, 4, 0, false);
         /* Size first, offset second, as in MINIDUMP_LOCATION_DESCRIPTOR. */
-        data_size = (int64_t)xx_minidump_le32(entry + 0x04);
-        data_offset = (int64_t)xx_minidump_le32(entry + 0x08);
+        data_size = (int64_t)xx_data_get_u32(entry + 0x04, 4, 0, false);
+        data_offset = (int64_t)xx_data_get_u32(entry + 0x08, 4, 0, false);
         /* A stream running past EOF is a rejection, not a short read.  An
          * all-zero entry (UnusedStream, size 0, rva 0) passes this and is
          * kept: writers pad the directory with them deliberately. */

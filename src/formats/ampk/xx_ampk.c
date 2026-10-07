@@ -18,6 +18,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define AMPK_HEADER_SIZE 20U
 #define AMPK_MIN_SIZE 40U
@@ -50,14 +51,6 @@ typedef struct ampk_stream_s {
     uint8_t version;
     bool complete;
 } ampk_stream;
-
-static uint16_t ampk_be16(const uint8_t *bytes) {
-    return ((uint16_t)bytes[0] << 8U) | bytes[1];
-}
-
-static uint32_t ampk_be32(const uint8_t *bytes) {
-    return ((uint32_t)ampk_be16(bytes) << 16U) | ampk_be16(bytes + 2U);
-}
 
 static bool ampk_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
@@ -205,10 +198,10 @@ static bool ampk_parse(Abstractformat *format, ampk_stream **result) {
                       sizeof(header)) || xx_rt_memcmp(header, "AMPK", 4U) != 0 ||
         header[4] < 1U || header[4] > 4U || header[5] != 0U)
         return false;
-    declared_directories = ampk_be16(header + 6U);
-    declared_files = ampk_be16(header + 8U);
-    declared_original = ampk_be32(header + 10U);
-    declared_data = ampk_be32(header + 14U);
+    declared_directories = xx_data_get_u16(header + 6U, 2, 0, true);
+    declared_files = xx_data_get_u16(header + 8U, 2, 0, true);
+    declared_original = xx_data_get_u32(header + 10U, 4, 0, true);
+    declared_data = xx_data_get_u32(header + 14U, 4, 0, true);
     if (declared_files == 0U || declared_original == 0U || declared_data == 0U ||
         declared_data > (uint64_t)(size - (int64_t)AMPK_HEADER_SIZE) ||
         size - (int64_t)declared_data <
@@ -255,7 +248,7 @@ static bool ampk_parse(Abstractformat *format, ampk_stream **result) {
             ampk_member member;
             uint64_t data_size;
             uint8_t comment_size;
-            if (name_size == 0U || ampk_be32(prefix + 2U) != 0U ||
+            if (name_size == 0U || xx_data_get_u32(prefix + 2U, 4, 0, true) != 0U ||
                 size - cursor < (int64_t)AMPK_PREFIX_SIZE + name_size +
                                     AMPK_TRAILER_SIZE) break;
             header_size = AMPK_PREFIX_SIZE + name_size + AMPK_TRAILER_SIZE;
@@ -265,8 +258,8 @@ static bool ampk_parse(Abstractformat *format, ampk_stream **result) {
                 break;
             trailer = record + AMPK_PREFIX_SIZE + name_size;
             xx_mem_zero(&member, sizeof(member));
-            member.original_size = ampk_be32(trailer);
-            member.declared_packed_size = ampk_be32(trailer + 4U);
+            member.original_size = xx_data_get_u32(trailer, 4, 0, true);
+            member.declared_packed_size = xx_data_get_u32(trailer + 4U, 4, 0, true);
             member.method = trailer[8];
             member.attributes = trailer[13];
             comment_size = trailer[16];

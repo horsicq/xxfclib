@@ -30,10 +30,6 @@ typedef struct pm_member {
 } pm_member;
 typedef struct pm_stream { pm_member *items; size_t count, capacity, index; int64_t size; } pm_stream;
 static bool pm_parse(Abstractformat *, pm_stream *, xx_pd_struct *);
-static XXFC_MAYBE_UNUSED uint16_t pm_le16(const uint8_t *p) { return (uint16_t)(p[0] | p[1]<<8); }
-static XXFC_MAYBE_UNUSED uint16_t pm_be16(const uint8_t *p) { return (uint16_t)(p[0]<<8 | p[1]); }
-static XXFC_MAYBE_UNUSED uint32_t pm_le32(const uint8_t *p) { return (uint32_t)p[0] | (uint32_t)p[1]<<8 | (uint32_t)p[2]<<16 | (uint32_t)p[3]<<24; }
-static XXFC_MAYBE_UNUSED uint32_t pm_be32(const uint8_t *p) { return (uint32_t)p[0]<<24 | (uint32_t)p[1]<<16 | (uint32_t)p[2]<<8 | p[3]; }
 static int64_t pm_available(Abstractformat *f) {
     int64_t n;
     if (!f || !f->device || f->base_address<0 || (n=xx_io_size(f->device))<f->base_address) return -1;

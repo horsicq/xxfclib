@@ -4,27 +4,25 @@
 #include "dgca_lzp.h"
 #include "dgca_transform.h"
 #include <string.h>
-static uint32_t u32(const unsigned char *p) {
-    return (uint32_t)p[0]|(uint32_t)p[1]<<8|(uint32_t)p[2]<<16|(uint32_t)p[3]<<24;
-}
+#include "xxfclib/data/xx_data.h"
 static int stop(const dg_callbacks *cb) { return cb->cancelled&&cb->cancelled(cb->opaque); }
 static dg_status copy(const dg_callbacks *cb,unsigned char *out,const unsigned char *in,size_t n) {
     while(n){size_t part=n>4096?4096:n;if(stop(cb))return DG_CANCELLED;memcpy(out,in,part);out+=part;in+=part;n-=part;}return DG_OK;
 }
 static int unit_size(const unsigned char *in,size_t size,size_t *total,size_t *raw) {
     uint32_t method;uint64_t n;
-    if(size<8) {return 0; } method=u32(in);*raw=u32(in+4);
+    if(size<8) {return 0; } method=xx_data_get_u32(in, 4, 0, false);*raw=xx_data_get_u32(in+4, 4, 0, false);
     if(!method)n=8+(uint64_t)*raw;
-    else if(method==1&&size>=32)n=32+(uint64_t)u32(in+24)+u32(in+28);
+    else if(method==1&&size>=32)n=32+(uint64_t)xx_data_get_u32(in+24, 4, 0, false)+xx_data_get_u32(in+28, 4, 0, false);
     else return 0;
     if(n>size||n>SIZE_MAX) {return 0; } *total=(size_t)n;return 1;
 }
 dg_status dg_codec_output_size(const dg_callbacks *cb,const unsigned char *in,size_t size,size_t *raw) {
     size_t total,part,at=8,sum=0;uint32_t method,count,i;
-    if(!cb||!in||!raw||size<8) {return DG_FORMAT; } if(stop(cb))return DG_CANCELLED;method=u32(in);
+    if(!cb||!in||!raw||size<8) {return DG_FORMAT; } if(stop(cb))return DG_CANCELLED;method=xx_data_get_u32(in, 4, 0, false);
     if(method<2){if(!unit_size(in,size,&total,raw)||total!=size)return DG_FORMAT;return DG_OK;}
     if(method!=2)return DG_UNSUPPORTED_CODEC;
-    count=u32(in+4);if(!count||count>(size-8)/8)return DG_FORMAT;
+    count=xx_data_get_u32(in+4, 4, 0, false);if(!count||count>(size-8)/8)return DG_FORMAT;
     for(i=0;i<count;i++) {
         if(!(i&4095)&&stop(cb))return DG_CANCELLED;
         if(at>size||!unit_size(in+at,size-at,&total,&part)||part>SIZE_MAX-sum)return DG_FORMAT;
@@ -38,9 +36,9 @@ static dg_status unit(const dg_callbacks *cb,const unsigned char *in,size_t size
     uint32_t method,flags,params=0,primary;size_t total,declared,count,a,b,i;
     dg_status status=DG_FORMAT;
     if(!unit_size(in,size,&total,&declared)||total!=size||declared!=raw)return DG_FORMAT;
-    method=u32(in);
+    method=xx_data_get_u32(in, 4, 0, false);
     if(!method)return copy(cb,out,in+8,raw);
-    flags=u32(in+8);params=u32(in+12);primary=u32(in+16);count=u32(in+20);a=u32(in+24);b=u32(in+28);
+    flags=xx_data_get_u32(in+8, 4, 0, false);params=xx_data_get_u32(in+12, 4, 0, false);primary=xx_data_get_u32(in+16, 4, 0, false);count=xx_data_get_u32(in+20, 4, 0, false);a=xx_data_get_u32(in+24, 4, 0, false);b=xx_data_get_u32(in+28, 4, 0, false);
     if((flags&~UINT32_C(0x000f0007))||((flags>>16)&15)>2||count>raw||a<2||(!(flags&4)&&(count!=raw||b)))return DG_FORMAT;
     if(stop(cb))return DG_CANCELLED;
     if(count) {
@@ -79,10 +77,10 @@ dg_status dg_codec_decode(const dg_callbacks *cb,const unsigned char *in,size_t 
     uint32_t method,stride,plane;size_t at,part,total,unit_raw,combined=0;
     dg_status status;
     if(!cb||!cb->allocate||!cb->release||!in||size<8||(raw&&!out))return DG_FORMAT;
-    if(stop(cb)) {return DG_CANCELLED; } method=u32(in);
+    if(stop(cb)) {return DG_CANCELLED; } method=xx_data_get_u32(in, 4, 0, false);
     if(method<2)return unit(cb,in,size,out,raw,0);
     if(method!=2)return DG_UNSUPPORTED_CODEC;
-    stride=u32(in+4);if(!stride||stride>(size-8)/8||(raw&&stride>raw))return DG_FORMAT;
+    stride=xx_data_get_u32(in+4, 4, 0, false);if(!stride||stride>(size-8)/8||(raw&&stride>raw))return DG_FORMAT;
     at=8;
     for(plane=0;plane<stride;plane++) {
         size_t wanted=raw/stride+(plane<raw%stride);

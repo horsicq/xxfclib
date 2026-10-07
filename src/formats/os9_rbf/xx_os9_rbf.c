@@ -8,6 +8,7 @@
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/algo/store/xx_store.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 #ifdef OS9_RBF
 #define RB_TYPE XX_FILE_TYPE_OS9_RBF
 #else
@@ -43,9 +44,6 @@ typedef struct rb_view_s {
     size_t count, capacity, index;
     char volume_name[40];
 } rb_view;
-static uint16_t rb_be16(const uint8_t *p) { return (uint16_t)(((unsigned)p[0] << 8U) | p[1]); }
-static uint32_t rb_be24(const uint8_t *p) { return ((uint32_t)p[0] << 16U) | ((uint32_t)p[1] << 8U) | p[2]; }
-static uint32_t rb_be32(const uint8_t *p) { return ((uint32_t)p[0] << 24U) | ((uint32_t)p[1] << 16U) | ((uint32_t)p[2] << 8U) | p[3]; }
 static bool rb_stopped(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
 static bool rb_work(rb_view *v, xx_pd_struct *pd) { return !rb_stopped(pd) && ++v->work <= RB_MAX_WORK; }
 static bool rb_read(rb_view *v, uint64_t offset, void *dst, size_t size, xx_pd_struct *pd) {
@@ -123,7 +121,7 @@ static bool rb_claim(rb_view *v, uint32_t lsn, uint32_t owner) {
 static bool rb_variant_ok(xx_os9_rbf_variant variant, const uint8_t id[RB_SECTOR], uint32_t sectors, uint32_t cluster) {
     unsigned geometry = id[16] & 0x0FU;
     if (variant == XX_OS9_RBF_CLASSIC) return true;
-    if (id[3] != 18U || rb_be16(id + 17U) != 18U) {
+    if (id[3] != 18U || xx_data_get_u16(id + 17U, 2, 0, true) != 18U) {
         return variant == XX_OS9_RBF_HD4096_C4 && sectors == 4096U && cluster == 4U;
     }
     switch (variant) {
@@ -138,13 +136,13 @@ static bool rb_variant_ok(xx_os9_rbf_variant variant, const uint8_t id[RB_SECTOR
 static bool rb_fd(rb_view *v, uint32_t lsn, bool directory, rb_member *out, xx_pd_struct *pd) {
     uint8_t data[RB_SECTOR]; uint64_t capacity = 0U; unsigned i; bool zero = false;
     if (lsn < 1U || lsn >= v->sectors || !rb_claim(v, lsn, lsn) || !rb_sector(v, lsn, data, pd)) return false;
-    out->fd = lsn; out->attr = data[0]; out->link_count = data[8]; out->size = rb_be32(data + 9U);
+    out->fd = lsn; out->attr = data[0]; out->link_count = data[8]; out->size = xx_data_get_u32(data + 9U, 4, 0, true);
     out->directory = (data[0] & 0x80U) != 0U;
     if (!out->link_count || out->directory != directory ||
         (directory && (out->size == 0U || out->size > RB_MAX_DIR_BYTES || out->size % 32U))) return false;
     for (i = 0U; i < RB_SEGMENTS; ++i) {
-        uint32_t first = rb_be24(data + 16U + i * 5U);
-        uint16_t count = rb_be16(data + 19U + i * 5U); uint32_t j;
+        uint32_t first = xx_data_get_u24(data + 16U + i * 5U, 3, 0, true);
+        uint16_t count = xx_data_get_u16(data + 19U + i * 5U, 2, 0, true); uint32_t j;
         if (!first && !count) { zero = true; continue; }
         if (zero || !first || !count || first >= v->sectors || count > v->sectors - first) return false;
         out->segments[out->segment_count].start = first;
@@ -215,7 +213,7 @@ static bool rb_visit(rb_view *v, uint32_t fd_lsn, uint32_t parent_fd, const char
         if (!rb_work(v, pd) || !rb_logical_read(v, &directory, position, entry, sizeof(entry), pd)) return false;
         if (!entry[0]) continue; /* An unused/deleted directory slot. */
         if (!rb_name(entry, raw, safe)) return false;
-        child = rb_be24(entry + 29U);
+        child = xx_data_get_u24(entry + 29U, 3, 0, true);
         if (child == 0U || child >= v->sectors) return false;
         if (!xx_str_cmp(raw, ".")) { if (dot || child != fd_lsn) return false; dot = true; continue; }
         if (!xx_str_cmp(raw, "..")) { if (dotdot || child != parent_fd) return false; dotdot = true; continue; }
@@ -242,7 +240,7 @@ static bool rb_visit(rb_view *v, uint32_t fd_lsn, uint32_t parent_fd, const char
             is_dir = (descriptor[0] & 0x80U) != 0U;
             if (is_dir) {
                 member.fd = child; member.attr = descriptor[0]; member.directory = true;
-                member.link_count = descriptor[8]; member.size = rb_be32(descriptor + 9U);
+                member.link_count = descriptor[8]; member.size = xx_data_get_u32(descriptor + 9U, 4, 0, true);
                 if (v->dir_seen[child]) { xx_str_free(path); return false; }
             } else {
                 if (!rb_fd(v, child, false, &member, pd)) { xx_str_free(path); return false; }
@@ -271,11 +269,11 @@ static rb_view *rb_parse(Abstractformat *self, xx_pd_struct *pd) {
     xx_mem_zero(v, sizeof(*v)); v->device = self->device; v->base = self->base_address;
     v->bytes = (uint64_t)(total - v->base);
     if (v->bytes < RB_SECTOR || !rb_read(v, 0U, id, sizeof(id), pd)) goto fail;
-    v->sectors = rb_be24(id); v->cluster = rb_be16(id + 6U);
-    v->map_bytes = rb_be16(id + 4U); v->root_fd = rb_be24(id + 8U);
+    v->sectors = xx_data_get_u24(id, 3, 0, true); v->cluster = xx_data_get_u16(id + 6U, 2, 0, true);
+    v->map_bytes = xx_data_get_u16(id + 4U, 2, 0, true); v->root_fd = xx_data_get_u24(id + 8U, 3, 0, true);
     if (v->sectors < 8U || v->sectors > RB_MAX_SECTORS || v->bytes < (uint64_t)v->sectors * RB_SECTOR ||
         !v->cluster || v->cluster > 32U || (v->cluster & (v->cluster - 1U)) ||
-        !id[3] || !rb_be16(id + 17U) || (id[16] & 0xF0U) ||
+        !id[3] || !xx_data_get_u16(id + 17U, 2, 0, true) || (id[16] & 0xF0U) ||
         (id[96] == 'C' && id[97] == 'R' && id[98] == 'U' && id[99] == 'Z') ||
         !rb_variant_ok(disk->variant, id, v->sectors, v->cluster)) goto fail;
     clusters = (v->sectors + v->cluster - 1U) / v->cluster;

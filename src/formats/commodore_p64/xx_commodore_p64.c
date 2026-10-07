@@ -7,16 +7,17 @@
  */
 #include "xxfclib/formats/commodore_p64/xx_commodore_p64.h"
 #include "../vice_x64/xx_ninth_retro.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
  uint32_t at=24,end,n=0; uint8_t seen[256]={0}; bool ok; char name[48];
- if(!nh_range(b,0,24) || xx_rt_memcmp(b->p,"P64-1541",8) || pm_le32(b->p+8) || pm_le32(b->p+12)>3 || !nh_range(b,24,pm_le32(b->p+16))) return false;
- end=24+pm_le32(b->p+16); if(nh_crc(b,24,end-24,&ok)!=pm_le32(b->p+20) || !ok || !nh_emit(f,s,b,"flux-descriptor.bin",0,24)) return false;
+ if(!nh_range(b,0,24) || xx_rt_memcmp(b->p,"P64-1541",8) || xx_data_get_u32(b->p+8, 4, 0, false) || xx_data_get_u32(b->p+12, 4, 0, false)>3 || !nh_range(b,24,xx_data_get_u32(b->p+16, 4, 0, false))) return false;
+ end=24+xx_data_get_u32(b->p+16, 4, 0, false); if(nh_crc(b,24,end-24,&ok)!=xx_data_get_u32(b->p+20, 4, 0, false) || !ok || !nh_emit(f,s,b,"flux-descriptor.bin",0,24)) return false;
  while(at<end) {
   uint32_t z; uint8_t id;
-  if(end-at<12 || (z=pm_le32(b->p+at+4))>end-at-12 || nh_crc(b,at+12,z,&ok)!=pm_le32(b->p+at+8) || !ok) return false;
+  if(end-at<12 || (z=xx_data_get_u32(b->p+at+4, 4, 0, false))>end-at-12 || nh_crc(b,at+12,z,&ok)!=xx_data_get_u32(b->p+at+8, 4, 0, false) || !ok) return false;
   if(!xx_rt_memcmp(b->p+at,"DONE",4)) { if(z || at+12!=end || !n) return false; if(!nh_emit(f,s,b,"done.bin",at,12)) return false; s->size=end; return true; }
-  if(xx_rt_memcmp(b->p+at,"HTP",3) || seen[id=b->p[at+3]] || (id&127U)<2 || (id&127U)>85 || ((id&128U) && !(b->p[12]&2U)) || z<8 || pm_le32(b->p+at+12)>4000000U || pm_le32(b->p+at+16)!=z-8 || (pm_le32(b->p+at+12) && z<12)) return false;
+  if(xx_rt_memcmp(b->p+at,"HTP",3) || seen[id=b->p[at+3]] || (id&127U)<2 || (id&127U)>85 || ((id&128U) && !(b->p[12]&2U)) || z<8 || xx_data_get_u32(b->p+at+12, 4, 0, false)>4000000U || xx_data_get_u32(b->p+at+16, 4, 0, false)!=z-8 || (xx_data_get_u32(b->p+at+12, 4, 0, false) && z<12)) return false;
   seen[id]=1; ++n; xx_rt_snprintf(name,sizeof(name),"halftrack-%u.flux",id); if(!nh_emit(f,s,b,name,at,12+z)) return false; at+=12+z;
  }
  return false;

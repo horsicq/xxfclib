@@ -3,6 +3,7 @@
  */
 /* Primary: https://ethereum.org/developers/docs/data-structures-and-encoding/rlp */
 #include "xxfclib/formats/ethereum_rlp/xx_ethereum_rlp.h"
+#include "xxfclib/data/xx_data.h"
 #include "../xx_sixteenth_wrappers.h"
 
 typedef struct rlp_work {uint64_t items;unsigned root_children;} rlp_work;

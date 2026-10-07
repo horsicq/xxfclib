@@ -37,6 +37,7 @@
 #include "xxfclib/algo/lzw15v/xx_lzw15v.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_WINTERSOFT_COPY_CHUNK (64 * 1024)
 
@@ -145,7 +146,6 @@ static bool xx_wintersoft_add(xx_wintersoft_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint32_t xx_wintersoft_le32(const uint8_t *data);
 static xx_wintersoft_stream *xx_wintersoft_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_wintersoft_decode(Abstractformat *self, const xx_wintersoft_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
@@ -157,11 +157,6 @@ static bool xx_wintersoft_decode(Abstractformat *self, const xx_wintersoft_membe
 
 /* No names are stored; members are numbered. 32 bytes holds "99999.bin" and
  * everything shorter with room to spare. */
-
-static uint32_t xx_wintersoft_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static xx_wintersoft_stream *xx_wintersoft_parse(Abstractformat *self,
                                                  xx_pd_struct *pd) {
@@ -235,8 +230,8 @@ static xx_wintersoft_stream *xx_wintersoft_parse(Abstractformat *self,
 
         /* Both sizes are written as u32 but read as signed; a negative one is
          * a rejection, not a four-gigabyte member. */
-        uncompressed_size = (int64_t)(int32_t)xx_wintersoft_le32(record);
-        compressed_size = (int64_t)(int32_t)xx_wintersoft_le32(record + 4);
+        uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(record, 4, 0, false);
+        compressed_size = (int64_t)(int32_t)xx_data_get_u32(record + 4, 4, 0, false);
         if ((uncompressed_size < 0) || (compressed_size < 0)) goto fail;
         if (uncompressed_size > XX_WINTERSOFT_MAX_DECODED) goto fail;
 

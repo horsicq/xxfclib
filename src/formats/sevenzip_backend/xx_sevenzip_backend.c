@@ -9,6 +9,7 @@
 #include <string.h>
 #include <limits.h>
 #include <wchar.h>
+#include "xxfclib/data/xx_data.h"
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -74,10 +75,6 @@ static bool sb_output(sb_process *p,const void *data,size_t count){size_t done=0
  ssize_t wrote=send(p->input,(const uint8_t *)data+done,want,MSG_NOSIGNAL);if(wrote<0&&errno==EINTR)continue;if(wrote<0&&(errno==EAGAIN||errno==EWOULDBLOCK)){struct pollfd poller={p->input,POLLOUT,0};(void)poll(&poller,1,5);continue;}if(wrote<=0){p->status=XX_SEVENZIP_BACKEND_IO;return false;}done+=(size_t)wrote;
 #endif
  }return true;}
-static uint32_t sb_le32(const uint8_t *p){return (uint32_t)p[0]|(uint32_t)p[1]<<8|(uint32_t)p[2]<<16|(uint32_t)p[3]<<24;}
-static uint64_t sb_le64(const uint8_t *p){return sb_le32(p)|((uint64_t)sb_le32(p+4)<<32);}
-static void sb_put32(uint8_t *p,uint32_t v){p[0]=(uint8_t)v;p[1]=(uint8_t)(v>>8);p[2]=(uint8_t)(v>>16);p[3]=(uint8_t)(v>>24);}
-static void sb_put64(uint8_t *p,uint64_t v){sb_put32(p,(uint32_t)v);sb_put32(p+4,(uint32_t)(v>>32));}
 static void sb_close(sb_process *p){
 #ifdef _WIN32
  if(p->input) {CloseHandle(p->input); } if(p->output)CloseHandle(p->output);if(p->write_event)CloseHandle(p->write_event);if(p->process){if(WaitForSingleObject(p->process,100)!=WAIT_OBJECT_0){TerminateProcess(p->process,2);WaitForSingleObject(p->process,1000);}CloseHandle(p->process);}if(p->job)CloseHandle(p->job);
@@ -114,7 +111,7 @@ failed:if(in[0]>=0)close(in[0]);if(in[1]>=0)close(in[1]);if(out[0]>=0)close(out[
 }
 
 static bool sb_frame(sb_process *p,uint32_t type,const void *data,uint32_t count){
- uint8_t h[12];sb_put32(h,UINT32_C(0x3150375a));sb_put32(h+4,type);sb_put32(h+8,count);
+ uint8_t h[12];xx_data_set_u32(h, 4, 0, UINT32_C(0x3150375a), false);xx_data_set_u32(h+4, 4, 0, type, false);xx_data_set_u32(h+8, 4, 0, count, false);
  return sb_output(p,h,12)&&sb_output(p,data,count);
 }
 static bool sb_run(xx_io_device *source,int64_t base,int64_t length,const char *handler,uint32_t index,uint64_t expected,xx_io_device *dest,const xx_sevenzip_backend_options *opts,xx_sevenzip_backend_entry_fn callback,void *user){
@@ -147,28 +144,28 @@ static bool sb_run(xx_io_device *source,int64_t base,int64_t length,const char *
  if(operation==2)decode_level=xx_pd_enter_level(p.pd,expected==UINT64_MAX?0:expected,"7-Zip decode");
  if(!sb_live(&p))goto done;
  if(!sb_start(&p,opts?opts->helper_path:NULL,memory)){p.status=XX_SEVENZIP_BACKEND_UNAVAILABLE;goto done;}
- sb_put32(h,operation);sb_put32(h+4,(sn?1U:0U)|(opts&&opts->start_only?2U:0U));sb_put64(h+8,(uint64_t)length);sb_put64(h+16,memory);
+ xx_data_set_u32(h, 4, 0, operation, false);xx_data_set_u32(h+4, 4, 0, (sn?1U:0U)|(opts&&opts->start_only?2U:0U), false);xx_data_set_u64(h+8, 8, 0, (uint64_t)length, false);xx_data_set_u64(h+16, 8, 0, memory, false);
  /* Helper zero means unlimited, parent enforces the literal zero ceiling. */
- sb_put64(h+24,max?max:UINT64_MAX);sb_put32(h+32,index);sb_put32(h+36,(uint32_t)hn);sb_put32(h+40,(uint32_t)pn);
- {uint8_t f[12];sb_put32(f,UINT32_C(0x3150375a));sb_put32(f+4,1);sb_put32(f+8,44U+(uint32_t)hn+(uint32_t)pn+(sn?4U+(uint32_t)sn:0));
+ xx_data_set_u64(h+24, 8, 0, max?max:UINT64_MAX, false);xx_data_set_u32(h+32, 4, 0, index, false);xx_data_set_u32(h+36, 4, 0, (uint32_t)hn, false);xx_data_set_u32(h+40, 4, 0, (uint32_t)pn, false);
+ {uint8_t f[12];xx_data_set_u32(f, 4, 0, UINT32_C(0x3150375a), false);xx_data_set_u32(f+4, 4, 0, 1, false);xx_data_set_u32(f+8, 4, 0, 44U+(uint32_t)hn+(uint32_t)pn+(sn?4U+(uint32_t)sn:0), false);
  if(!sb_output(&p,f,12)||!sb_output(&p,h,44)||!sb_output(&p,handler,hn)||!sb_output(&p,password,pn))goto done;
- if(sn){sb_put32(f,(uint32_t)sn);if(!sb_output(&p,f,4)||!sb_output(&p,source_name,sn))goto done;}}
+ if(sn){xx_data_set_u32(f, 4, 0, (uint32_t)sn, false);if(!sb_output(&p,f,4)||!sb_output(&p,source_name,sn))goto done;}}
  for(;;){uint32_t type,count;if(!sb_input(&p,h,12))goto done;
- if(sb_le32(h)!=UINT32_C(0x3150375a)){p.status=XX_SEVENZIP_BACKEND_FORMAT;goto done;}
- type=sb_le32(h+4);count=sb_le32(h+8);if(count>1048576){p.status=XX_SEVENZIP_BACKEND_FORMAT;goto done;}
+ if(xx_data_get_u32(h, 4, 0, false)!=UINT32_C(0x3150375a)){p.status=XX_SEVENZIP_BACKEND_FORMAT;goto done;}
+ type=xx_data_get_u32(h+4, 4, 0, false);count=xx_data_get_u32(h+8, 4, 0, false);if(count>1048576){p.status=XX_SEVENZIP_BACKEND_FORMAT;goto done;}
  if(type==2){uint64_t at,extent;uint32_t want,id=0;size_t read=0;xx_io_device *input;
   if((count!=12&&count!=16)||!sb_input(&p,body,count))goto done;
-  if(count==16) {id=sb_le32(body); } at=sb_le64(body+(count==16?4:0));want=sb_le32(body+(count==16?12:8));
+  if(count==16) {id=xx_data_get_u32(body, 4, 0, false); } at=xx_data_get_u64(body+(count==16?4:0), 8, 0, false);want=xx_data_get_u32(body+(count==16?12:8), 4, 0, false);
   if(id>volume_count){p.status=XX_SEVENZIP_BACKEND_FORMAT;goto done;}
   input=id?volumes[id-1]:source;extent=id?(uint64_t)xx_io_size(input):(uint64_t)length;
   if(!want||want>65536||at>extent||want>extent-at){p.status=XX_SEVENZIP_BACKEND_FORMAT;goto done;}
   if(xx_io_seek64(input,(id?0:base)+(int64_t)at,SEEK_SET)!=0){p.status=XX_SEVENZIP_BACKEND_IO;goto done;}
   while(read<want){ssize_t n;if(!sb_live(&p))goto done;n=xx_io_read(input,buffer+read,want-read);if(n<=0||(size_t)n>want-read){p.status=XX_SEVENZIP_BACKEND_IO;goto done;}read+=(size_t)n;}
-  sb_put32(h,UINT32_C(0x3150375a));sb_put32(h+4,3);sb_put32(h+8,8+want);sb_put32(body,0);sb_put32(body+4,want);
+  xx_data_set_u32(h, 4, 0, UINT32_C(0x3150375a), false);xx_data_set_u32(h+4, 4, 0, 3, false);xx_data_set_u32(h+8, 4, 0, 8+want, false);xx_data_set_u32(body, 4, 0, 0, false);xx_data_set_u32(body+4, 4, 0, want, false);
   if(!sb_output(&p,h,12)||!sb_output(&p,body,8)||!sb_output(&p,buffer,want))goto done;
  }else if(type==4){xx_sevenzip_backend_entry e;uint32_t flags,n;
   if(operation!=1||count<36||!sb_input(&p,body,36))goto done;
-  e.index=sb_le32(body);flags=sb_le32(body+4);e.size=sb_le64(body+8);e.packed_size=sb_le64(body+16);e.mtime=(int64_t)sb_le64(body+24);n=sb_le32(body+32);
+  e.index=xx_data_get_u32(body, 4, 0, false);flags=xx_data_get_u32(body+4, 4, 0, false);e.size=xx_data_get_u64(body+8, 8, 0, false);e.packed_size=xx_data_get_u64(body+16, 8, 0, false);e.mtime=(int64_t)xx_data_get_u64(body+24, 8, 0, false);n=xx_data_get_u32(body+32, 4, 0, false);
   if(!n||n>65536||count!=36+n||flags>7||++listed>1000000||(e.size!=UINT64_MAX&&e.size>max)){p.status=XX_SEVENZIP_BACKEND_LIMIT;goto done;}
   if(!sb_input(&p,name,n)) {goto done; } name[n]=0;if(xx_rt_strlen(name)!=n){p.status=XX_SEVENZIP_BACKEND_FORMAT;goto done;}
   e.path=name;e.directory=(flags&1)!=0;e.encrypted=(flags&2)!=0;
@@ -203,9 +200,9 @@ static bool sb_run(xx_io_device *source,int64_t base,int64_t length,const char *
     }
    }
   }
-  sb_put32(body,id);sb_put64(body+4,extent);if(!sb_frame(&p,10,body,12))goto done;
+  xx_data_set_u32(body, 4, 0, id, false);xx_data_set_u64(body+4, 8, 0, extent, false);if(!sb_frame(&p,10,body,12))goto done;
  }else if(type==6){uint32_t code;uint32_t remain;
-  if(count<4||!sb_input(&p,body,4)) {goto done; } code=sb_le32(body);remain=count-4;
+  if(count<4||!sb_input(&p,body,4)) {goto done; } code=xx_data_get_u32(body, 4, 0, false);remain=count-4;
   while(remain){uint32_t chunk=remain>65536?65536:remain;if(!sb_input(&p,buffer,chunk))goto done;remain-=chunk;}
   p.status=code==0?XX_SEVENZIP_BACKEND_OK:code==2?XX_SEVENZIP_BACKEND_UNSUPPORTED:code==3?XX_SEVENZIP_BACKEND_PASSWORD:code==4?XX_SEVENZIP_BACKEND_LIMIT:code==5?XX_SEVENZIP_BACKEND_CANCELLED:code==6?XX_SEVENZIP_BACKEND_IO:XX_SEVENZIP_BACKEND_FORMAT;
   if(code==0&&operation==2&&expected!=UINT64_MAX&&received!=expected)p.status=XX_SEVENZIP_BACKEND_FORMAT;

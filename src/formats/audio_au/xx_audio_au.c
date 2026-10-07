@@ -22,9 +22,9 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     else if(!xx_rt_memcmp(h,"dns.",4) || !xx_rt_memcmp(h,"\0ds.",4))
         be=false;
     else return false;
-    offset=fd_u32(h+4,be); declared=fd_u32(h+8,be);
-    encoding=fd_u32(h+12,be); rate=fd_u32(h+16,be);
-    channels=fd_u32(h+20,be);
+    offset=xx_data_get_u32(h+4, 4, 0, be); declared=xx_data_get_u32(h+8, 4, 0, be);
+    encoding=xx_data_get_u32(h+12, 4, 0, be); rate=xx_data_get_u32(h+16, 4, 0, be);
+    channels=xx_data_get_u32(h+20, 4, 0, be);
     if(offset<24 || offset>available || encoding>29 || !rate ||
        rate>768000 || !channels || channels>256) return false;
     n=declared==UINT32_MAX ? (uint64_t)available-offset : declared;

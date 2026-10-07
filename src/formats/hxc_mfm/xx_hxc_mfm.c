@@ -1,13 +1,14 @@
 /* SPDX-License-Identifier: MIT. Original validated components; no playback/emulation. */
 #include "xxfclib/formats/hxc_mfm/xx_hxc_mfm.h"
 #include "../asylum_amf/xx_thirteenth_media.h"
+#include "xxfclib/data/xx_data.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
  tm_blob b={0};tm_range ranges[1024];unsigned nr=0;uint32_t tracks,sides,list,count,i;uint64_t maximum;bool ok=false;
- TM_NEED(tm_load(f,&b,pd)&&tm_tag(&b,0,"HXCMFM\0",7)&&tm_span(&b,0,19));tracks=pm_le16(b.p+7);sides=b.p[9];list=pm_le32(b.p+15);count=tracks*sides;
- TM_NEED(tracks&&tracks<=170&&sides&&sides<=2&&(pm_le16(b.p+10)==0||(pm_le16(b.p+10)>=150&&pm_le16(b.p+10)<=600))&&pm_le16(b.p+12)>=125&&pm_le16(b.p+12)<=1000&&b.p[14]<=15&&list==19);
+ TM_NEED(tm_load(f,&b,pd)&&tm_tag(&b,0,"HXCMFM\0",7)&&tm_span(&b,0,19));tracks=xx_data_get_u16(b.p+7, 2, 0, false);sides=b.p[9];list=xx_data_get_u32(b.p+15, 4, 0, false);count=tracks*sides;
+ TM_NEED(tracks&&tracks<=170&&sides&&sides<=2&&(xx_data_get_u16(b.p+10, 2, 0, false)==0||(xx_data_get_u16(b.p+10, 2, 0, false)>=150&&xx_data_get_u16(b.p+10, 2, 0, false)<=600))&&xx_data_get_u16(b.p+12, 2, 0, false)>=125&&xx_data_get_u16(b.p+12, 2, 0, false)<=1000&&b.p[14]<=15&&list==19);
  TM_NEED(tm_claim(&b,ranges,&nr,0,19+(uint64_t)count*11)&&tm_emit(f,s,&b,"descriptor.mfm",0,19)&&tm_emit(f,s,&b,"track-index.mfm",19,(uint64_t)count*11));maximum=19+(uint64_t)count*11;
- for(i=0;i<count;++i){const uint8_t *q=b.p+19+i*11;uint32_t len=pm_le32(q+3),off=pm_le32(q+7);TM_NEED(pm_le16(q)==i/sides&&q[2]==i%sides&&len>=128&&len<=1048576&&off>=19+(uint64_t)count*11&&tm_claim(&b,ranges,&nr,off,len)&&tm_emit(f,s,&b,"track-bitcells.mfm",off,len));if((uint64_t)off+len>maximum)maximum=(uint64_t)off+len;}
+ for(i=0;i<count;++i){const uint8_t *q=b.p+19+i*11;uint32_t len=xx_data_get_u32(q+3, 4, 0, false),off=xx_data_get_u32(q+7, 4, 0, false);TM_NEED(xx_data_get_u16(q, 2, 0, false)==i/sides&&q[2]==i%sides&&len>=128&&len<=1048576&&off>=19+(uint64_t)count*11&&tm_claim(&b,ranges,&nr,off,len)&&tm_emit(f,s,&b,"track-bitcells.mfm",off,len));if((uint64_t)off+len>maximum)maximum=(uint64_t)off+len;}
  TM_NEED(maximum==b.n);s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }

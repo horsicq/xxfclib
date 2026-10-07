@@ -5,6 +5,7 @@
  */
 #include "xxfclib/formats/audio_riff_ima/xx_audio_riff_ima.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 #ifndef XX_FILE_TYPE_AUDIO_RIFF_IMA
 #define XX_FILE_TYPE_AUDIO_RIFF_IMA ((xx_file_type_t)1523)
@@ -19,13 +20,13 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd)
     char label[64];
     if (available<0x2c+0x80 || !pm_read(f,0,h,sizeof(h)) ||
         xx_rt_memcmp(h,"RIFF",4) || xx_rt_memcmp(h+8,"IMA ",4) ||
-        pm_le32(h+4)!=(uint64_t)available) return false;
-    rate=pm_le32(h+0x0c); channels=pm_le32(h+0x24);
+        xx_data_get_u32(h+4, 4, 0, false)!=(uint64_t)available) return false;
+    rate=xx_data_get_u32(h+0x0c, 4, 0, false); channels=xx_data_get_u32(h+0x24, 4, 0, false);
     data_size=(uint64_t)available-0x2cU;
     packets=(data_size+0x7fU)/0x80U;
     if (rate<4000 || rate>192000 || !channels || channels>8 ||
         packets<channels ||
-        pm_le32(h+0x20)>pm_le32(h+0x28)) return false;
+        xx_data_get_u32(h+0x20, 4, 0, false)>xx_data_get_u32(h+0x28, 4, 0, false)) return false;
     group_packets=(packets+8190U)/8191U;
     if (!pm_add(f,s,"header.bin",0,0x2c)) return false;
     while (p<packets) {

@@ -29,6 +29,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -128,11 +129,6 @@ typedef struct ardi_stream_s {
 
 /* ---------------------------------------------------------------------- */
 /* Helpers                                                                 */
-
-static uint32_t ardi_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) | ((uint32_t)p[2] << 16U) |
-           ((uint32_t)p[3] << 24U);
-}
 
 static bool ardi_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
@@ -236,16 +232,16 @@ static bool ardi_image_end(Abstractformat *format, int64_t size,
     uint32_t pages, shift, count, index;
     if (!ardi_read_at(format->device, format->base_address + 0x3C, word, 4U))
         return false;
-    lfa = (int64_t)ardi_le32(word);
+    lfa = (int64_t)xx_data_get_u32(word, 4, 0, false);
     if (lfa < ARDI_STUB_MIN || lfa > size - (int64_t)ARDI_LX_HEADER ||
         !ardi_read_at(format->device, format->base_address + lfa, lx,
                       sizeof(lx)) ||
         lx[0] != 'L' || lx[1] != 'X' || lx[2] != 0U || lx[3] != 0U)
         return false;
-    pages = ardi_le32(lx + 0x14);
-    shift = ardi_le32(lx + 0x2C);
-    table_offset = lfa + (int64_t)ardi_le32(lx + 0x48);
-    data_pages = (int64_t)ardi_le32(lx + 0x80);
+    pages = xx_data_get_u32(lx + 0x14, 4, 0, false);
+    shift = xx_data_get_u32(lx + 0x2C, 4, 0, false);
+    table_offset = lfa + (int64_t)xx_data_get_u32(lx + 0x48, 4, 0, false);
+    data_pages = (int64_t)xx_data_get_u32(lx + 0x80, 4, 0, false);
     if (pages == 0U || pages > ARDI_LX_MAX_PAGES || shift > 15U) return false;
     count = pages < ARDI_LX_PAGES ? pages : ARDI_LX_PAGES;
     table_offset += (int64_t)(pages - count) * 8;
@@ -257,7 +253,7 @@ static bool ardi_image_end(Abstractformat *format, int64_t size,
     for (index = 0U; index < count; ++index) {
         const uint8_t *entry = table + (size_t)index * 8U;
         int64_t page_end = data_pages +
-                           ((int64_t)ardi_le32(entry) << shift) +
+                           ((int64_t)xx_data_get_u32(entry, 4, 0, false) << shift) +
                            (int64_t)((uint32_t)entry[4] |
                                      ((uint32_t)entry[5] << 8U));
         if (page_end > end) end = page_end;
@@ -281,7 +277,7 @@ static bool ardi_read_header(Abstractformat *format, int64_t offset,
     if (size < ARDI_HEADER_MIN || size > ARDI_HEADER_MAX ||
         !ardi_read_at(format->device, format->base_address + offset, block,
                       size - 4U) ||
-        ardi_le32(block) != ARDI_TAG_HEADER)
+        xx_data_get_u32(block, 4, 0, false) != ARDI_TAG_HEADER)
         return false;
     length = size - 12U;
     for (index = 0U; index < length; ++index) {
@@ -341,7 +337,7 @@ static bool ardi_walk(Abstractformat *format, ardi_layout *layout,
         if (!ardi_image_end(format, found.size, &image_end) ||
             !ardi_read_at(format->device, format->base_address + image_end,
                           word, 4U) ||
-            ardi_le32(word) != ARDI_SENTINEL)
+            xx_data_get_u32(word, 4, 0, false) != ARDI_SENTINEL)
             return false;
     }
     header = (uint8_t *)xx_mem_alloc(ARDI_HEADER_MAX);
@@ -363,7 +359,7 @@ static bool ardi_walk(Abstractformat *format, ardi_layout *layout,
             !ardi_read_at(format->device, format->base_address + position,
                           word, 4U))
             goto done;
-        length = ardi_le32(word);
+        length = xx_data_get_u32(word, 4, 0, false);
         if (length == ARDI_SENTINEL) {
             if (position != image_end) goto done;
             break;
@@ -376,7 +372,7 @@ static bool ardi_walk(Abstractformat *format, ardi_layout *layout,
         if (!ardi_read_at(format->device, format->base_address + tag_offset,
                           word, 4U))
             goto done;
-        tag = ardi_le32(word);
+        tag = xx_data_get_u32(word, 4, 0, false);
         ++found.blocks;
         if (tag == ARDI_TAG_DATA) {
             /* Two data blocks in a row: one of them has no header. */
@@ -710,7 +706,7 @@ static bool ardi_build(Abstractformat *format, ardi_stream *stream,
         if (!ardi_read_header(format, member->pair.header,
                               member->pair.header_size, header, &text, &bang))
             goto done;
-        member->time = ardi_le32(header + 4);
+        member->time = xx_data_get_u32(header + 4, 4, 0, false);
         named = bang <= ARDI_NAME_MAX &&
                 ardi_decode(header + 8, bang, name, sizeof(name));
         stream->count = index + 1U;

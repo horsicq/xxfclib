@@ -33,6 +33,7 @@
 #include "xxfclib/algo/hzl/xx_hzl.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_HZL_COPY_CHUNK (64 * 1024)
 
@@ -137,7 +138,6 @@ static bool xx_hzl_add(xx_hzl_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint32_t xx_hzl_le32(const uint8_t *data);
 static bool xx_hzl_extension_char(uint8_t character);
 static xx_hzl_stream *xx_hzl_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_hzl_decode(Abstractformat *self, const xx_hzl_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
@@ -145,11 +145,6 @@ static bool xx_hzl_decode(Abstractformat *self, const xx_hzl_member *member, uin
 
 /* The base name is not stored anywhere in the container, only the
  * extension, so this placeholder is the only truthful thing to publish. */
-
-static uint32_t xx_hzl_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* A DOS extension character, or one of the two pad bytes that stand in for a
  * shorter extension. Keeping this set tight is half of what stops a chance
@@ -204,7 +199,7 @@ static xx_hzl_stream *xx_hzl_parse(Abstractformat *self, xx_pd_struct *pd) {
 
     /* Signed on purpose: the container writes a 32-bit value and a negative
      * one is a corrupt field. */
-    uncompressed_size = (int64_t)(int32_t)xx_hzl_le32(header + 4);
+    uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(header + 4, 4, 0, false);
     if (uncompressed_size < 0 ||
         uncompressed_size > XX_HZL_MAX_UNCOMPRESSED) {
         return NULL;

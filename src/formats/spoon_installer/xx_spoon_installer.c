@@ -26,6 +26,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -151,12 +152,6 @@ static ssize_t gb_spoon_installer_write(xx_io_device *device, const void *buffer
         done += (size_t)n;
     }
     return (ssize_t)done;
-}
-
-
-static uint32_t spoon_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) |
-           ((uint32_t)p[2] << 16U) | ((uint32_t)p[3] << 24U);
 }
 
 static bool spoon_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -488,7 +483,7 @@ static int64_t spoon_certificate_start(xx_io_device *device,
     if (layout->total < (int64_t)sizeof(mz) ||
         !spoon_read_at(device, layout->base, mz, sizeof(mz)))
         return -1;
-    pe_offset = spoon_le32(mz + 0x3CU);
+    pe_offset = xx_data_get_u32(mz + 0x3CU, 4, 0, false);
     if (pe_offset < sizeof(mz) ||
         (int64_t)pe_offset > layout->total - (int64_t)(4U + 20U + 2U))
         return -1;
@@ -511,9 +506,9 @@ static int64_t spoon_certificate_start(xx_io_device *device,
     if (optional_size < directory + 5U * 8U ||
         amount < 24U + directory + 5U * 8U)
         return -1;
-    count = spoon_le32(pe + 24U + directory - 4U);
-    start = spoon_le32(pe + 24U + directory + 4U * 8U);
-    size = spoon_le32(pe + 24U + directory + 4U * 8U + 4U);
+    count = xx_data_get_u32(pe + 24U + directory - 4U, 4, 0, false);
+    start = xx_data_get_u32(pe + 24U + directory + 4U * 8U, 4, 0, false);
+    size = xx_data_get_u32(pe + 24U + directory + 4U * 8U + 4U, 4, 0, false);
     if (count < 5U || start < pe_offset || size < 8U ||
         (int64_t)start + (int64_t)size != layout->total)
         return -1;
@@ -570,10 +565,10 @@ static bool spoon_locate(Abstractformat *format, spoon_layout *layout) {
         mz[0] != 'M' || mz[1] != 'Z' ||
         !spoon_find_footer(format->device, layout, footer))
         return false;
-    layout->value0 = spoon_le32(footer);
-    layout->value1 = spoon_le32(footer + 4U);
-    layout->directory = (int64_t)spoon_le32(footer + 8U);
-    layout->count = spoon_le32(footer + 12U);
+    layout->value0 = xx_data_get_u32(footer, 4, 0, false);
+    layout->value1 = xx_data_get_u32(footer + 4U, 4, 0, false);
+    layout->directory = (int64_t)xx_data_get_u32(footer + 8U, 4, 0, false);
+    layout->count = xx_data_get_u32(footer + 12U, 4, 0, false);
     directory_end = layout->footer_end - SPOON_FOOTER_SIZE;
     if (layout->count == 0U || layout->count > SPOON_MAX_FILES ||
         layout->directory < (int64_t)(SPOON_MIN_PAYLOAD + SPOON_MIN_STREAM) ||
@@ -688,10 +683,10 @@ static bool spoon_walk(Abstractformat *format, spoon_layout *layout,
                                   : SPOON_MAX_RECORD))
             goto done;
         record = window.data + (position - window.start);
-        offset = spoon_le32(record);
-        packed = spoon_le32(record + 4U);
-        unpacked = spoon_le32(record + 8U);
-        checksum = spoon_le32(record + 12U);
+        offset = xx_data_get_u32(record, 4, 0, false);
+        packed = xx_data_get_u32(record + 4U, 4, 0, false);
+        unpacked = xx_data_get_u32(record + 8U, 4, 0, false);
+        checksum = xx_data_get_u32(record + 12U, 4, 0, false);
         length = record[16];
         if (length < SPOON_MIN_NAME ||
             size - position - SPOON_RECORD_FIXED < length ||

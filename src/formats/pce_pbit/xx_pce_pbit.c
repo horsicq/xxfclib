@@ -6,6 +6,7 @@
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "../xx_payload_members.h"
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef PCE_PBIT
 #define PBIT_FILE_TYPE XX_FILE_TYPE_PCE_PBIT
@@ -21,11 +22,6 @@
 #define PBIT_CYLINDERS 1024U
 #define PBIT_HEADS 2U
 #define PBIT_TRANSFER 32768U
-
-static uint32_t pbit_be32(const uint8_t *p) {
-    return ((uint32_t)p[0] << 24U) | ((uint32_t)p[1] << 16U) |
-           ((uint32_t)p[2] << 8U) | p[3];
-}
 
 static const xx_crc_model pbit_crc_model = {
     32U, UINT64_C(0x1edc6f41), 0U, false, false, 0U, "PCE PBIT"
@@ -50,7 +46,7 @@ static bool pbit_chunk_crc(Abstractformat *format, int64_t at,
     }
     return (!pd || !xx_pd_is_stopped(pd)) &&
            pm_read(format, cursor, trailer, sizeof(trailer)) &&
-           (uint32_t)xx_crc_context_final(&crc) == pbit_be32(trailer);
+           (uint32_t)xx_crc_context_final(&crc) == xx_data_get_u32(trailer, 4, 0, true);
 }
 
 /* PCE's PBIT loader strips surrounding CR/LF/NUL and folds line endings. */
@@ -116,7 +112,7 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
         int64_t next;
         if (++chunks > PBIT_MAX_CHUNKS || available - cursor < 12 ||
             !pm_read(format, cursor, header, sizeof(header))) return false;
-        length = pbit_be32(header + 4U);
+        length = xx_data_get_u32(header + 4U, 4, 0, true);
         if ((uint64_t)length > (uint64_t)(available - cursor - 12))
             return false;
         next = cursor + 12 + (int64_t)length;
@@ -126,7 +122,7 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
             uint8_t fields[8];
             if (memcmp(header, "PBIT", 4U) != 0 || length != 8U ||
                 !pm_read(format, cursor + 8, fields, sizeof(fields)) ||
-                pbit_be32(fields) != 0U) return false;
+                xx_data_get_u32(fields, 4, 0, true) != 0U) return false;
             header_seen = true;
         } else if (memcmp(header, "TEXT", 4U) == 0) {
             if (pending || !pbit_comment(format, stream, cursor + 8,
@@ -139,10 +135,10 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
             if (pending || length != 20U || tracks >= PBIT_MAX_TRACKS ||
                 !pm_read(format, cursor + 8, fields, sizeof(fields)))
                 return false;
-            cylinder = pbit_be32(fields);
-            head = pbit_be32(fields + 4U);
-            bits = pbit_be32(fields + 8U);
-            clock = pbit_be32(fields + 12U);
+            cylinder = xx_data_get_u32(fields, 4, 0, true);
+            head = xx_data_get_u32(fields + 4U, 4, 0, true);
+            bits = xx_data_get_u32(fields + 8U, 4, 0, true);
+            clock = xx_data_get_u32(fields + 12U, 4, 0, true);
             if (cylinder >= PBIT_CYLINDERS || head >= PBIT_HEADS ||
                 bits > PBIT_MAX_TRACK_BITS || clock == 0U) return false;
             index = cylinder * PBIT_HEADS + head;

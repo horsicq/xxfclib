@@ -68,6 +68,7 @@
 #include "xxfclib/algo/zoo/xx_zoo.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ZOO_COPY_CHUNK (64 * 1024)
 
@@ -175,23 +176,10 @@ static bool xx_zoo_add(xx_zoo_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_zoo_le16(const uint8_t *data);
-static uint32_t xx_zoo_le32(const uint8_t *data);
 static bool xx_zoo_name_byte_ok(uint8_t byte);
 static bool xx_zoo_append_name(char *name, size_t *used, const uint8_t *source, int32_t limit);
 static xx_zoo_stream *xx_zoo_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_zoo_decode(Abstractformat *self, const xx_zoo_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
-
-
-
-static uint16_t xx_zoo_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_zoo_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* ZOO names are DOS or Unix file names written as plain ASCII; nothing in the
  * container declares a code page, and no writer emits high bytes. A byte
@@ -243,9 +231,9 @@ static xx_zoo_stream *xx_zoo_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (!xx_zoo_read_at(self, self->base_address, header, sizeof(header))) {
         return NULL;
     }
-    if (xx_zoo_le32(header + 20) != XX_ZOO_MAGIC) return NULL;
-    zoo_start = xx_zoo_le32(header + 24);
-    zoo_minus = xx_zoo_le32(header + 28);
+    if (xx_data_get_u32(header + 20, 4, 0, false) != XX_ZOO_MAGIC) return NULL;
+    zoo_start = xx_data_get_u32(header + 24, 4, 0, false);
+    zoo_minus = xx_data_get_u32(header + 28, 4, 0, false);
     /* zoo's own damaged-archive check: the two fields are a value and its
      * two's complement, so their 32-bit sum is zero. Together with the magic
      * this is what keeps an unrelated file that happens to carry four
@@ -291,7 +279,7 @@ static xx_zoo_stream *xx_zoo_parse(Abstractformat *self, xx_pd_struct *pd) {
          * that makes the chain self-validating: a "next" pointer that lands
          * anywhere but on a real entry stops the walk instead of letting
          * arbitrary bytes become a member. */
-        if (xx_zoo_le32(entry) != XX_ZOO_MAGIC) goto fail;
+        if (xx_data_get_u32(entry, 4, 0, false) != XX_ZOO_MAGIC) goto fail;
 
         type = entry[4];
         /* 1 = fixed part only, 2 = a variable part follows. Nothing else has
@@ -300,10 +288,10 @@ static xx_zoo_stream *xx_zoo_parse(Abstractformat *self, xx_pd_struct *pd) {
         if (type != 1U && type != 2U) goto fail;
 
         method = (uint32_t)entry[5];
-        next_position = (int64_t)xx_zoo_le32(entry + 6);
-        data_offset = (int64_t)xx_zoo_le32(entry + 10);
-        uncompressed_size = (int64_t)xx_zoo_le32(entry + 20);
-        compressed_size = (int64_t)xx_zoo_le32(entry + 24);
+        next_position = (int64_t)xx_data_get_u32(entry + 6, 4, 0, false);
+        data_offset = (int64_t)xx_data_get_u32(entry + 10, 4, 0, false);
+        uncompressed_size = (int64_t)xx_data_get_u32(entry + 20, 4, 0, false);
+        compressed_size = (int64_t)xx_data_get_u32(entry + 24, 4, 0, false);
         deleted = entry[30];
 
         entry_size = XX_ZOO_ENTRY_FIXED;
@@ -325,7 +313,7 @@ static xx_zoo_stream *xx_zoo_parse(Abstractformat *self, xx_pd_struct *pd) {
             }
             /* var_dir_len counts from the timezone byte at 0x35 onward, so
              * the entry runs to 53 + var_dir_len. */
-            var_length = (int32_t)xx_zoo_le16(entry + 51);
+            var_length = (int32_t)xx_data_get_u16(entry + 51, 2, 0, false);
             entry_size = XX_ZOO_ENTRY_VAR_LEN + (int64_t)var_length;
             if (!xx_zoo_range_within(span, position, entry_size)) goto fail;
             if (var_length >= XX_ZOO_VAR_MIN) {
@@ -407,8 +395,8 @@ static xx_zoo_stream *xx_zoo_parse(Abstractformat *self, xx_pd_struct *pd) {
              * clock, and the timezone byte in the variable part says only
              * how to interpret it, not what it is. */
             member.timestamp =
-                ((uint64_t)xx_zoo_le16(entry + 14) << 16) |
-                (uint64_t)xx_zoo_le16(entry + 16);
+                ((uint64_t)xx_data_get_u16(entry + 14, 2, 0, false) << 16) |
+                (uint64_t)xx_data_get_u16(entry + 16, 2, 0, false);
             member.is_folder = false;
             if (!xx_zoo_add(stream, &member)) {
                 xx_str_free(member.name);

@@ -6,6 +6,7 @@
  */
 #include "xxfclib/formats/font_type1_pfb/xx_font_type1_pfb.h"
 #include "../wavefront_obj/xx_eleventh_media.h"
+#include "xxfclib/data/xx_data.h"
 static bool eg_quick(Abstractformat *f,uint64_t n) {uint8_t b[8];return n>=30&&pm_read(f,0,b,8)&&b[0]==128&&b[1]==1&&b[6]=='%'&&b[7]=='!';}
 static bool pf_find(const uint8_t *b,uint64_t z,const char *text) {uint64_t p;size_t n=xx_rt_strlen(text);for(p=0;n<=z&&p<=z-n;++p)if(eg_tag(b+p,text,n))return true;return false;}
 static bool eg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
@@ -13,7 +14,7 @@ static bool eg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  while(p<n){uint64_t start=p;uint32_t z;uint8_t type;const char *label;
   if(eg_stop(pd)||!eg_span(p,2,n)||b[p++]!=128) {return false; } type=b[p++];
   if(type==3){if(p!=n||!binary||!trailer||!eg_emit(f,s,"terminator.pfb",start,2,n))return false;s->size=(int64_t)n;return true;}
-  if(type<1||type>2||++segments>1024||!eg_span(p,4,n)) {return false; } z=pm_le32(b+p);p+=4;if(!z||!eg_span(p,z,n))return false;
+  if(type<1||type>2||++segments>1024||!eg_span(p,4,n)) {return false; } z=xx_data_get_u32(b+p, 4, 0, false);p+=4;if(!z||!eg_span(p,z,n))return false;
   if(type==2){if(phase==0||phase==3||z<4)return false;phase=2;binary=true;label="encrypted-font-program.pfb";}
   else{uint64_t i;if(!phase){if(z<15||!eg_tag(b+p,"%!PS-AdobeFont-",14)||!pf_find(b+p,z,"currentfile eexec"))return false;phase=1;label="font-definition.pfb";}
    else{if(!binary)return false;phase=3;trailer=pf_find(b+p,z,"cleartomark");label="closing-program.pfb";}

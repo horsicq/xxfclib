@@ -5,8 +5,9 @@
  */
 #include "xxfclib/formats/nintendo_cia/xx_nintendo_cia.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
+static uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)xx_data_get_u32(p, 4, 0, true)<<32)|xx_data_get_u32(p+4, 4, 0, true) : ((uint64_t)xx_data_get_u32(p+4, 4, 0, false)<<32)|xx_data_get_u32(p, 4, 0, false); }
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uint64_t n,uint64_t total) {
     size_t i;
@@ -24,20 +25,20 @@ static XXFC_MAYBE_UNUSED bool zname(Abstractformat *f,uint64_t at,uint64_t end) 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[0x2020],t[0xb04],e[48],seen[8192],digest[32]; uint64_t cert,ticket,tmd,content,meta,total,content_size,at; uint32_t ts,ms; unsigned count,i;
-    if(!pm_read(f,0,h,sizeof(h)) || pm_le32(h)!=0x2020 || pm_le32(h+4) || pm_le32(h+8)!=0xa00 || pm_le32(h+12)!=0x350) return false;
-    ts=pm_le32(h+16); ms=pm_le32(h+20); content_size=g64(h+24,false);
+    if(!pm_read(f,0,h,sizeof(h)) || xx_data_get_u32(h, 4, 0, false)!=0x2020 || xx_data_get_u32(h+4, 4, 0, false) || xx_data_get_u32(h+8, 4, 0, false)!=0xa00 || xx_data_get_u32(h+12, 4, 0, false)!=0x350) return false;
+    ts=xx_data_get_u32(h+16, 4, 0, false); ms=xx_data_get_u32(h+20, 4, 0, false); content_size=g64(h+24,false);
     if(ts<0xb04 || ts>0xb04+1024*48 || (ms && ms!=0x3ac0) || !content_size || content_size>INT64_MAX) return false;
     cert=0x2040; ticket=cert+0xa00; tmd=(ticket+0x350+63)&~UINT64_C(63); content=(tmd+ts+63)&~UINT64_C(63);
     if(!span(content,content_size,(uint64_t)pm_available(f))) return false;
     meta=(content+content_size+63)&~UINT64_C(63); total=ms ? meta+ms : content+content_size;
-    if(total>(uint64_t)pm_available(f) || !pm_read(f,(int64_t)tmd,t,sizeof(t)) || pm_be32(t)!=0x10004) return false;
-    count=pm_be16(t+0x1de); if(!count || count>1024 || ts!=0xb04+count*48) return false;
+    if(total>(uint64_t)pm_available(f) || !pm_read(f,(int64_t)tmd,t,sizeof(t)) || xx_data_get_u32(t, 4, 0, true)!=0x10004) return false;
+    count=xx_data_get_u16(t+0x1de, 2, 0, true); if(!count || count>1024 || ts!=0xb04+count*48) return false;
     xx_mem_zero(seen,sizeof(seen));
     if(!emit(f,s,"certificates.bin",cert,0xa00,total) || !emit(f,s,"ticket.bin",ticket,0x350,total) || !emit(f,s,"tmd.bin",tmd,ts,total)) return false;
     at=content;
     for(i=0;i<count;++i) { uint16_t index,type; uint64_t n; char label[40];
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,(int64_t)(tmd+0xb04+i*48),e,48)) return false;
-        index=pm_be16(e+4); type=pm_be16(e+6); n=g64(e+8,true);
+        index=xx_data_get_u16(e+4, 2, 0, true); type=xx_data_get_u16(e+6, 2, 0, true); n=g64(e+8,true);
         if(seen[index/8]&(1U<<(7-index%8))) { return false; } seen[index/8]|=(uint8_t)(1U<<(7-index%8));
         if(!(h[32+index/8]&(1U<<(7-index%8)))) continue;
         if((type&1) || !n || !span(at,n,content+content_size) || !xx_hash_device(XX_HASH_SHA256,f->device,f->base_address+(int64_t)at,(int64_t)n,digest,32,pd) || !xx_hash_equal(digest,e+16,32)) return false;

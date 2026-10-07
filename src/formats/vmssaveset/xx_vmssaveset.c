@@ -45,6 +45,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef VMSSAVESET
 #define XX_VMSSAVESET_FILE_TYPE XX_FILE_TYPE_VMSSAVESET
@@ -85,27 +86,6 @@ typedef struct vmssaveset_stream_s {
     uint64_t aux1;
     uint64_t aux2;
 } vmssaveset_stream;
-
-static uint16_t vmssaveset_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static uint32_t vmssaveset_le32(const uint8_t *b) {
-    return (uint32_t)vmssaveset_le16(b) | ((uint32_t)vmssaveset_le16(b + 2U) << 16U);
-}
-
-static uint64_t vmssaveset_le64(const uint8_t *b) {
-    return (uint64_t)vmssaveset_le32(b) | ((uint64_t)vmssaveset_le32(b + 4U) << 32U);
-}
-
-static uint32_t vmssaveset_be32(const uint8_t *b) {
-    return ((uint32_t)b[0] << 24U) | ((uint32_t)b[1] << 16U) |
-           ((uint32_t)b[2] << 8U) | (uint32_t)b[3];
-}
-
-static XXFC_MAYBE_UNUSED uint64_t vmssaveset_be64(const uint8_t *b) {
-    return ((uint64_t)vmssaveset_be32(b) << 32U) | (uint64_t)vmssaveset_be32(b + 4U);
-}
 
 static bool vmssaveset_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -383,17 +363,17 @@ static bool vmssaveset_opsys_ok(uint16_t opsys) {
 }
 
 static bool vmssaveset_block_header_ok(const uint8_t *header) {
-    return vmssaveset_le16(header) == 0x100U &&
-           vmssaveset_opsys_ok(vmssaveset_le16(header + 2U)) &&
-           vmssaveset_le16(header + 4U) == 1U &&
-           vmssaveset_le16(header + 6U) == 1U &&
-           (int32_t)vmssaveset_le32(header + 0x28U) > 0x100 &&
-           vmssaveset_le64(header + 0x10U) == 0U &&
-           vmssaveset_le64(header + 0x18U) == 0U &&
-           vmssaveset_le32(header + 0x20U) == 0x10101U &&
-           vmssaveset_le64(header + 0xecU) == 0U &&
-           vmssaveset_le64(header + 0xf4U) == 0U &&
-           vmssaveset_le16(header + 0xfcU) == 0U;
+    return xx_data_get_u16(header, 2, 0, false) == 0x100U &&
+           vmssaveset_opsys_ok(xx_data_get_u16(header + 2U, 2, 0, false)) &&
+           xx_data_get_u16(header + 4U, 2, 0, false) == 1U &&
+           xx_data_get_u16(header + 6U, 2, 0, false) == 1U &&
+           (int32_t)xx_data_get_u32(header + 0x28U, 4, 0, false) > 0x100 &&
+           xx_data_get_u64(header + 0x10U, 8, 0, false) == 0U &&
+           xx_data_get_u64(header + 0x18U, 8, 0, false) == 0U &&
+           xx_data_get_u32(header + 0x20U, 4, 0, false) == 0x10101U &&
+           xx_data_get_u64(header + 0xecU, 8, 0, false) == 0U &&
+           xx_data_get_u64(header + 0xf4U, 8, 0, false) == 0U &&
+           xx_data_get_u16(header + 0xfcU, 2, 0, false) == 0U;
 }
 
 /* Records remain inside their declared physical block. A clean end is
@@ -416,19 +396,19 @@ static bool vmssaveset_next_record(vmssaveset_walker *walker,
             if (!vmssaveset_cursor_read(walker->cursor,
                                         VMSSAVESET_BLOCK_HEADER_SIZE, header))
                 return false;
-            applic = vmssaveset_le16(header + 6U);
-            block = (int32_t)vmssaveset_le32(header + 0x28U);
+            applic = xx_data_get_u16(header + 6U, 2, 0, false);
+            block = (int32_t)xx_data_get_u32(header + 0x28U, 4, 0, false);
             if (walker->block_size == 0) walker->block_size = block;
-            if (vmssaveset_le16(header) != 0x100U ||
-                !vmssaveset_opsys_ok(vmssaveset_le16(header + 2U)) ||
-                vmssaveset_le16(header + 4U) != 1U)
+            if (xx_data_get_u16(header, 2, 0, false) != 0x100U ||
+                !vmssaveset_opsys_ok(xx_data_get_u16(header + 2U, 2, 0, false)) ||
+                xx_data_get_u16(header + 4U, 2, 0, false) != 1U)
                 return false;
             if (applic != 1U && applic != 2U) return false;
-            if (vmssaveset_le64(header + 0x10U) != 0U ||
-                vmssaveset_le64(header + 0x18U) != 0U ||
-                vmssaveset_le64(header + 0xecU) != 0U ||
-                vmssaveset_le64(header + 0xf4U) != 0U ||
-                vmssaveset_le16(header + 0xfcU) != 0U)
+            if (xx_data_get_u64(header + 0x10U, 8, 0, false) != 0U ||
+                xx_data_get_u64(header + 0x18U, 8, 0, false) != 0U ||
+                xx_data_get_u64(header + 0xecU, 8, 0, false) != 0U ||
+                xx_data_get_u64(header + 0xf4U, 8, 0, false) != 0U ||
+                xx_data_get_u16(header + 0xfcU, 2, 0, false) != 0U)
                 return false;
             if (applic == 2U && block == 0) block = walker->block_size;
             if (block < 0x101) return false;
@@ -446,9 +426,9 @@ static bool vmssaveset_next_record(vmssaveset_walker *walker,
                                     VMSSAVESET_RECORD_HEADER_SIZE, record))
             return false;
         walker->remaining -= VMSSAVESET_RECORD_HEADER_SIZE;
-        if (vmssaveset_le32(record + 0x0cU) != 0U) return false;
-        *record_size = (int32_t)vmssaveset_le16(record);
-        *record_type = (int32_t)vmssaveset_le16(record + 2U);
+        if (xx_data_get_u32(record + 0x0cU, 4, 0, false) != 0U) return false;
+        *record_size = (int32_t)xx_data_get_u16(record, 2, 0, false);
+        *record_type = (int32_t)xx_data_get_u16(record + 2U, 2, 0, false);
         if (*record_size > walker->remaining) return false;
         walker->remaining -= *record_size;
     }
@@ -480,8 +460,8 @@ static bool vmssaveset_attributes(vmssaveset_cursor *cursor,
     while (left > 3) {
         int32_t length, tag;
         if (!vmssaveset_cursor_read(cursor, 4U, scratch)) return false;
-        length = (int32_t)vmssaveset_le16(scratch);
-        tag = (int32_t)vmssaveset_le16(scratch + 2U);
+        length = (int32_t)xx_data_get_u16(scratch, 2, 0, false);
+        tag = (int32_t)xx_data_get_u16(scratch + 2U, 2, 0, false);
         if (left - 4 < length) return false;
         left = left - 4 - length;
         if (tag == 0x2a) {
@@ -509,22 +489,22 @@ static bool vmssaveset_attributes(vmssaveset_cursor *cursor,
             if (length != 6 || seen_fid) return false;
             seen_fid = true;
             if (!vmssaveset_cursor_read(cursor, 6U, scratch)) return false;
-            file_id[0] = vmssaveset_le16(scratch);
-            file_id[1] = vmssaveset_le16(scratch + 2U);
-            file_id[2] = vmssaveset_le16(scratch + 4U);
+            file_id[0] = xx_data_get_u16(scratch, 2, 0, false);
+            file_id[1] = xx_data_get_u16(scratch + 2U, 2, 0, false);
+            file_id[2] = xx_data_get_u16(scratch + 4U, 2, 0, false);
         } else if (tag == 0x33) {
             if (length != 4 || seen_characteristics) return false;
             seen_characteristics = true;
             if (!vmssaveset_cursor_read(cursor, 4U, scratch)) return false;
-            *characteristics = vmssaveset_le32(scratch);
+            *characteristics = xx_data_get_u32(scratch, 4, 0, false);
             *is_directory = (*characteristics & VMSSAVESET_FCH_DIRECTORY) != 0U;
         } else if (tag == 0x34) {
             uint64_t high, low, first_free, end_block;
             if (length != 0x20) return false;
             if (!vmssaveset_cursor_read(cursor, 0x20U, scratch)) return false;
-            high = vmssaveset_le16(scratch + 8U);
-            low = vmssaveset_le16(scratch + 10U);
-            first_free = vmssaveset_le16(scratch + 12U);
+            high = xx_data_get_u16(scratch + 8U, 2, 0, false);
+            low = xx_data_get_u16(scratch + 10U, 2, 0, false);
+            first_free = xx_data_get_u16(scratch + 12U, 2, 0, false);
             /* efblk is a VAX word-swapped longword. */
             end_block = high * 0x10000U + low;
             if (end_block == 0U) return false;
@@ -629,7 +609,7 @@ static bool vmssaveset_varrec_push(vmssaveset_varrec *state,
             state->header[state->header_have++] = data[at++];
             if (state->header_have < 2U) continue;
             state->header_have = 0U;
-            state->remaining = vmssaveset_le16(state->header);
+            state->remaining = xx_data_get_u16(state->header, 2, 0, false);
             state->pad = (state->remaining & 1U) != 0U;
             state->phase = 1U;
             if (state->remaining != 0U) continue;
@@ -732,7 +712,7 @@ static bool vmssaveset_parse(Abstractformat *format,
 
     stream = (vmssaveset_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;
-    stream->aux0 = vmssaveset_le32(header + 0x28U);
+    stream->aux0 = xx_data_get_u32(header + 0x28U, 4, 0, false);
 
     cursor.device = format->device;
     cursor.base = format->base_address;

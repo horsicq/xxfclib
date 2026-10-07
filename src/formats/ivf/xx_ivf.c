@@ -6,6 +6,7 @@
  */
 #include "xxfclib/formats/ivf/xx_ivf.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 #define IVF_HEADER_SIZE 32U
 #define IVF_FRAME_HEADER_SIZE 12U
@@ -28,12 +29,12 @@ static bool pm_parse(Abstractformat *self, pm_stream *stream,
     if (available < (int64_t)IVF_HEADER_SIZE ||
         !pm_read(self, 0, header, sizeof(header)) ||
         xx_rt_memcmp(header, "DKIF", 4U) != 0 ||
-        pm_le16(header + 4U) != 0U ||
-        pm_le16(header + 6U) != IVF_HEADER_SIZE ||
-        pm_le16(header + 12U) == 0U ||
-        pm_le16(header + 14U) == 0U ||
-        pm_le32(header + 16U) == 0U ||
-        pm_le32(header + 20U) == 0U)
+        xx_data_get_u16(header + 4U, 2, 0, false) != 0U ||
+        xx_data_get_u16(header + 6U, 2, 0, false) != IVF_HEADER_SIZE ||
+        xx_data_get_u16(header + 12U, 2, 0, false) == 0U ||
+        xx_data_get_u16(header + 14U, 2, 0, false) == 0U ||
+        xx_data_get_u32(header + 16U, 4, 0, false) == 0U ||
+        xx_data_get_u32(header + 20U, 4, 0, false) == 0U)
         return false;
     extension = ivf_codec_extension(header + 8U);
     at = IVF_HEADER_SIZE;
@@ -46,9 +47,9 @@ static bool pm_parse(Abstractformat *self, pm_stream *stream,
             available - at < (int64_t)IVF_FRAME_HEADER_SIZE ||
             !pm_read(self, at, frame, sizeof(frame)))
             return false;
-        size = pm_le32(frame);
-        pts = (uint64_t)pm_le32(frame + 4U) |
-              ((uint64_t)pm_le32(frame + 8U) << 32);
+        size = xx_data_get_u32(frame, 4, 0, false);
+        pts = (uint64_t)xx_data_get_u32(frame + 4U, 4, 0, false) |
+              ((uint64_t)xx_data_get_u32(frame + 8U, 4, 0, false) << 32);
         at += IVF_FRAME_HEADER_SIZE;
         if (size > IVF_MAX_PACKET_SIZE || (int64_t)size > available - at)
             return false;

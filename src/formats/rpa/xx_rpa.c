@@ -29,6 +29,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: the alias macro next to the enumerator in
  * xxfc_defs.h is tested, so the real file type is picked up as soon as RPA
@@ -341,15 +342,6 @@ static bool rpa_blob_reserve(rpa_vm *vm, size_t size, size_t *offset) {
 
 static bool rpa_need(const rpa_vm *vm, uint64_t count) {
     return count <= (uint64_t)(vm->size - vm->at);
-}
-
-static uint32_t rpa_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
-           ((uint32_t)p[3] << 24);
-}
-
-static uint64_t rpa_le64(const uint8_t *p) {
-    return (uint64_t)rpa_le32(p) | ((uint64_t)rpa_le32(p + 4) << 32);
 }
 
 /* A string whose bytes stay in the pickle. */
@@ -772,7 +764,7 @@ static bool rpa_vm_run(rpa_vm *vm) {
             break;
         case 'J': /* BININT */
             if (!rpa_need(vm, 4U)) return false;
-            value = (int64_t)(int32_t)rpa_le32(vm->code + vm->at);
+            value = (int64_t)(int32_t)xx_data_get_u32(vm->code + vm->at, 4, 0, false);
             vm->at += 4U;
             if (!rpa_push_int(vm, value)) return false;
             break;
@@ -793,7 +785,7 @@ static bool rpa_vm_run(rpa_vm *vm) {
             break;
         case 0x8B: /* LONG4 */
             if (!rpa_need(vm, 4U)) return false;
-            value = (int64_t)(int32_t)rpa_le32(vm->code + vm->at);
+            value = (int64_t)(int32_t)xx_data_get_u32(vm->code + vm->at, 4, 0, false);
             vm->at += 4U;
             if (value < 0 || !rpa_push_long(vm, (uint64_t)value)) return false;
             break;
@@ -812,14 +804,14 @@ static bool rpa_vm_run(rpa_vm *vm) {
         case 'X': /* BINUNICODE */
         case 'B': /* BINBYTES */
             if (!rpa_need(vm, 4U)) return false;
-            n = rpa_le32(vm->code + vm->at);
+            n = xx_data_get_u32(vm->code + vm->at, 4, 0, false);
             vm->at += 4U;
             if (!rpa_push_slice(vm, op == 'X' ? RPO_TEXT : RPO_BYTES, n))
                 return false;
             break;
         case 'T': /* BINSTRING */
             if (!rpa_need(vm, 4U)) return false;
-            value = (int64_t)(int32_t)rpa_le32(vm->code + vm->at);
+            value = (int64_t)(int32_t)xx_data_get_u32(vm->code + vm->at, 4, 0, false);
             vm->at += 4U;
             if (value < 0 || !rpa_push_slice(vm, RPO_BYTES, (uint64_t)value))
                 return false;
@@ -836,7 +828,7 @@ static bool rpa_vm_run(rpa_vm *vm) {
         case 0x8E: /* BINBYTES8 */
         case 0x96: /* BYTEARRAY8 */
             if (!rpa_need(vm, 8U)) return false;
-            n = rpa_le64(vm->code + vm->at);
+            n = xx_data_get_u64(vm->code + vm->at, 8, 0, false);
             vm->at += 8U;
             if (!rpa_push_slice(vm, op == 0x8D ? RPO_TEXT : RPO_BYTES, n))
                 return false;
@@ -878,7 +870,7 @@ static bool rpa_vm_run(rpa_vm *vm) {
             break;
         case 'r': /* LONG_BINPUT */
             if (!rpa_need(vm, 4U)) return false;
-            n = rpa_le32(vm->code + vm->at);
+            n = xx_data_get_u32(vm->code + vm->at, 4, 0, false);
             vm->at += 4U;
             if (!rpa_memo_put(vm, n)) return false;
             break;
@@ -897,7 +889,7 @@ static bool rpa_vm_run(rpa_vm *vm) {
             break;
         case 'j': /* LONG_BINGET */
             if (!rpa_need(vm, 4U)) return false;
-            n = rpa_le32(vm->code + vm->at);
+            n = xx_data_get_u32(vm->code + vm->at, 4, 0, false);
             vm->at += 4U;
             if (!rpa_memo_get(vm, n)) return false;
             break;

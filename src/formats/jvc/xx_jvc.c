@@ -25,6 +25,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef JVC
 #define XX_JVC_FILE_TYPE XX_FILE_TYPE_JVC
@@ -102,13 +103,6 @@ static void xx_jvc_vtable_destroy(Abstractformat *self);
 
 static uint32_t jvc_be16(const uint8_t *p) {
     return ((uint32_t)p[0] << 8U) | (uint32_t)p[1];
-}
-static uint32_t jvc_be24(const uint8_t *p) {
-    return ((uint32_t)p[0] << 16U) | ((uint32_t)p[1] << 8U) | (uint32_t)p[2];
-}
-static uint32_t jvc_be32(const uint8_t *p) {
-    return ((uint32_t)p[0] << 24U) | ((uint32_t)p[1] << 16U) |
-           ((uint32_t)p[2] << 8U) | (uint32_t)p[3];
 }
 
 static bool jvc_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -502,7 +496,7 @@ static bool os9_segments(const jvc_stream *s, const uint8_t *fd,
     *inside = true;
     for (k = 0U; k < OS9_MAX_SEGMENTS; ++k) {
         const uint8_t *p = fd + 0x10U + k * 5U;
-        uint32_t lsn = jvc_be24(p), n_sec = jvc_be16(p + 3);
+        uint32_t lsn = xx_data_get_u24(p, 3, 0, true), n_sec = jvc_be16(p + 3);
         if (n_sec == 0U) break;
         if (lsn == 0U || lsn >= s->total_sectors ||
             n_sec > s->total_sectors - lsn)
@@ -530,11 +524,11 @@ static bool os9_identify(Abstractformat *f, jvc_stream *s, uint32_t *root) {
     size_t count;
     bool inside;
     if (!jvc_read_sectors(f, s, 0U, 1U, sector)) return false;
-    tot = jvc_be24(sector);
+    tot = xx_data_get_u24(sector, 3, 0, true);
     tks = sector[3];
     map = jvc_be16(sector + 4);
     bit = jvc_be16(sector + 6);
-    dir = jvc_be24(sector + 8);
+    dir = xx_data_get_u24(sector + 8, 3, 0, true);
     if (tot < 4U || tot > s->data_sectors || tks == 0U) return false;
     if (bit == 0U || (bit & (bit - 1U)) != 0U || bit > 256U) return false;
     clusters = (tot + bit - 1U) / bit;
@@ -544,7 +538,7 @@ static bool os9_identify(Abstractformat *f, jvc_stream *s, uint32_t *root) {
     s->total_sectors = tot;
     if (!jvc_read_sectors(f, s, dir, 1U, fd)) return false;
     if ((fd[0] & OS9_ATT_DIR) == 0U) return false;
-    size = jvc_be32(fd + 9);
+    size = xx_data_get_u32(fd + 9, 4, 0, true);
     if (size < 2U * OS9_ENTRY || size % OS9_ENTRY != 0U ||
         size > OS9_MAX_DIR_BYTES)
         return false;
@@ -552,11 +546,11 @@ static bool os9_identify(Abstractformat *f, jvc_stream *s, uint32_t *root) {
     if (!os9_segments(s, fd, NULL, &count, &sectors, &inside) || !inside ||
         count == 0U || sectors * JVC_SECTOR < size)
         return false;
-    if (!jvc_read_sectors(f, s, jvc_be24(fd + 0x10), 1U, sector))
+    if (!jvc_read_sectors(f, s, xx_data_get_u24(fd + 0x10, 3, 0, true), 1U, sector))
         return false;
     /* ".." then ".", both naming the root itself. */
     if (sector[0] != '.' || sector[1] != 0xAEU || sector[32] != 0xAEU ||
-        jvc_be24(sector + 29) != dir || jvc_be24(sector + 61) != dir)
+        xx_data_get_u24(sector + 29, 3, 0, true) != dir || xx_data_get_u24(sector + 61, 3, 0, true) != dir)
         return false;
     *root = dir;
     return true;
@@ -631,7 +625,7 @@ static bool os9_parse(Abstractformat *f, jvc_stream *s, xx_pd_struct *pd) {
             xx_mem_free(cur.prefix);
             goto done;
         }
-        size = jvc_be32(fd + 9);
+        size = xx_data_get_u32(fd + 9, 4, 0, true);
         if (size % OS9_ENTRY != 0U || size > OS9_MAX_DIR_BYTES ||
             !os9_segments(s, fd, segs, &nseg, &sectors, &inside) ||
             !inside || sectors * JVC_SECTOR < size) {
@@ -665,7 +659,7 @@ static bool os9_parse(Abstractformat *f, jvc_stream *s, xx_pd_struct *pd) {
                     if ((length == 1U && raw[0] == '.') ||
                         (length == 2U && raw[0] == '.' && raw[1] == '.'))
                         continue;
-                    child = jvc_be24(e + 29);
+                    child = xx_data_get_u24(e + 29, 3, 0, true);
                     if (child == 0U || child >= s->total_sectors ||
                         !jvc_read_sectors(f, s, child, 1U, cfd)) {
                         fail = true;
@@ -693,7 +687,7 @@ static bool os9_parse(Abstractformat *f, jvc_stream *s, xx_pd_struct *pd) {
                     } else {
                         uint64_t fsec;
                         bool fin;
-                        uint32_t fsize = jvc_be32(cfd + 9);
+                        uint32_t fsize = xx_data_get_u32(cfd + 9, 4, 0, true);
                         char *name;
                         if (!os9_segments(s, cfd, NULL, NULL, &fsec, &fin)) {
                             fail = true;
@@ -793,7 +787,7 @@ static bool jvc_member_extents(Abstractformat *f, const jvc_stream *s,
             !os9_segments(s, fd, extents, count, &sectors, &inside) ||
             !inside)
             return false;
-        *size = (int64_t)jvc_be32(fd + 9);
+        *size = (int64_t)xx_data_get_u32(fd + 9, 4, 0, true);
         return sectors * JVC_SECTOR >= (uint64_t)*size;
     }
     return false;

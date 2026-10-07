@@ -9,6 +9,7 @@
 #include "xxfclib/strings/xx_string.h"
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef SOLITAIRE_DELUXE
 #define SD_TYPE XX_FILE_TYPE_SOLITAIRE_DELUXE
@@ -38,13 +39,6 @@ typedef struct sd_view_s {
 
 static bool sd_stopped(xx_pd_struct *pd) {
     return pd && xx_pd_is_stopped(pd);
-}
-static uint16_t sd_u16(const uint8_t *p) {
-    return (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
-}
-static uint32_t sd_u32(const uint8_t *p) {
-    return p[0] | ((uint32_t)p[1] << 8) |
-           ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
 static bool sd_read(xx_io_device *device, int64_t at, void *out,
                     size_t size) {
@@ -141,10 +135,10 @@ static sd_view *sd_parse(Abstractformat *f, xx_pd_struct *pd) {
         (uint64_t)(total - f->base_address) > SD_MAX_VOLUME ||
         !sd_read(f->device, f->base_address, h, sizeof(h)) ||
         xx_rt_memcmp(h, "Solitaire Deluxe.", 17U) ||
-        h[100] != 0x1aU || sd_u32(h + 101U) != UINT32_C(0x12345678) ||
+        h[100] != 0x1aU || xx_data_get_u32(h + 101U, 4, 0, false) != UINT32_C(0x12345678) ||
         h[105] != 'P' || h[106] != 'E') return NULL;
-    category_count = sd_u16(h + 115U);
-    file_count = sd_u16(h + 117U);
+    category_count = xx_data_get_u16(h + 115U, 2, 0, false);
+    file_count = xx_data_get_u16(h + 117U, 2, 0, false);
     if (!file_count || file_count > SD_MAX_FILES ||
         category_count > SD_MAX_CATEGORIES) return NULL;
     table_end = SD_HEADER + (uint64_t)file_count * SD_FILE_ENTRY +
@@ -167,10 +161,10 @@ static sd_view *sd_parse(Abstractformat *f, xx_pd_struct *pd) {
         ++view->declared;
         for (j = 0U; j < i; ++j)
             if (sd_same(item->name, view->items[j].name)) goto bad;
-        item->raw_size = sd_u32(raw + 13U);
-        item->packed_size = sd_u32(raw + 17U);
-        item->attributes = sd_u16(raw + 21U);
-        item->value = sd_u16(raw + 23U);
+        item->raw_size = xx_data_get_u32(raw + 13U, 4, 0, false);
+        item->packed_size = xx_data_get_u32(raw + 17U, 4, 0, false);
+        item->attributes = xx_data_get_u16(raw + 21U, 2, 0, false);
+        item->value = xx_data_get_u16(raw + 23U, 2, 0, false);
         item->header_at = f->base_address + (int64_t)header_at;
         item->data_at = f->base_address + (int64_t)cursor;
         if (!item->raw_size || !item->packed_size) goto bad;

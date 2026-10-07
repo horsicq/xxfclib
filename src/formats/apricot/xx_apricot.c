@@ -43,6 +43,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef APRICOT
 #define XX_APRICOT_FILE_TYPE XX_FILE_TYPE_APRICOT
@@ -88,24 +89,6 @@ typedef struct xx_apricot_stream_s {
 static void xx_apricot_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint16_t xx_apricot_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_apricot_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static XXFC_MAYBE_UNUSED uint16_t xx_apricot_be16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[1] | ((uint16_t)data[0] << 8));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t xx_apricot_be32(const uint8_t *data) {
-    return (uint32_t)data[3] | ((uint32_t)data[2] << 8) |
-           ((uint32_t)data[1] << 16) | ((uint32_t)data[0] << 24);
-}
 
 static bool xx_apricot_read_at(Abstractformat *self, int64_t offset,
                               uint8_t *buffer, size_t size) {
@@ -228,11 +211,11 @@ static bool xx_apricot_walk(const uint8_t *data, size_t size, uint8_t *output,
     if (!data || (int64_t)size < XX_APRICOT_PREAMBLE) return false;
     while ((int64_t)size - cursor >= XX_APRICOT_CHUNK_HEADER) {
         const uint8_t *head = data + (size_t)cursor;
-        uint32_t kind = xx_apricot_le16(head);
-        uint32_t tag = xx_apricot_le16(head + 2);
-        uint32_t subtype = xx_apricot_le16(head + 4);
-        uint32_t header_length = xx_apricot_le16(head + 6);
-        int64_t data_length = (int64_t)(int32_t)xx_apricot_le32(head + 8);
+        uint32_t kind = xx_data_get_u16(head, 2, 0, false);
+        uint32_t tag = xx_data_get_u16(head + 2, 2, 0, false);
+        uint32_t subtype = xx_data_get_u16(head + 4, 2, 0, false);
+        uint32_t header_length = xx_data_get_u16(head + 6, 2, 0, false);
+        int64_t data_length = (int64_t)(int32_t)xx_data_get_u32(head + 8, 4, 0, false);
 
         if (pd && xx_pd_is_stopped(pd)) return false;
         if (tag != XX_APRICOT_TAG || kind > 3U ||
@@ -265,7 +248,7 @@ static bool xx_apricot_walk(const uint8_t *data, size_t size, uint8_t *output,
         } else if (subtype == XX_APRICOT_RUN) {
             int64_t count;
             if (data_length != 3 || (int64_t)size - cursor < 3) return false;
-            count = (int64_t)xx_apricot_le16(data + cursor);
+            count = (int64_t)xx_data_get_u16(data + cursor, 2, 0, false);
             if (count > XX_APRICOT_MAX_CHUNK) return false;
             if (output) {
                 if ((uint64_t)total + (uint64_t)count > output_size) {

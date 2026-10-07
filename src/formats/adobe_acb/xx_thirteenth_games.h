@@ -6,6 +6,7 @@
 #define XX_THIRTEENTH_GAMES_H
 #include "../xx_payload_members.h"
 #include "xxfclib/algo/crc/xx_crc.h"
+#include "xxfclib/data/xx_data.h"
 static bool tg_parse(Abstractformat *,pm_stream *,const uint8_t *,uint64_t,xx_pd_struct *);
 static bool tg_quick(Abstractformat *,uint64_t);
 static __inline bool tg_span(uint64_t p,uint64_t z,uint64_t n) {return p<=n && z<=n-p;}
@@ -17,10 +18,10 @@ static __inline bool tg_cover(Abstractformat *f,pm_stream *s,const char *label,u
 static __inline bool tg_f32(uint32_t u) {return (u&0x7f800000U)!=0x7f800000U;}
 typedef struct tg_bin {const uint8_t *b;uint64_t p,n;xx_pd_struct *pd;} tg_bin;
 static __inline bool tg_take(tg_bin *q,uint64_t n,const uint8_t **value) {if(tg_stop(q->pd)||!tg_span(q->p,n,q->n))return false;if(value)*value=q->b+q->p;q->p+=n;return true;}
-static __inline bool tg_count(tg_bin *q,uint32_t maximum,uint32_t *value) {const uint8_t *p;if(!tg_take(q,4,&p))return false;*value=pm_le32(p);return *value<=maximum;}
-static __inline bool tg_floats(tg_bin *q,unsigned count) {const uint8_t *p;unsigned i;if(!tg_take(q,(uint64_t)count*4,&p))return false;for(i=0;i<count;++i)if(!tg_f32(pm_le32(p+i*4)))return false;return true;}
-static __inline bool tg_float(tg_bin *q,double *value) {const uint8_t *p;union {uint32_t u;float f;} v;if(!tg_take(q,4,&p)||!tg_f32(v.u=pm_le32(p)))return false;*value=v.f;return true;}
-static __inline bool tg_index(tg_bin *q,unsigned size,bool unsign,int32_t *value) {const uint8_t *p;uint32_t u;if(!tg_take(q,size,&p))return false;u=size==1?p[0]:size==2?pm_le16(p):pm_le32(p);if(!unsign&&size<4&&(u&(1U<<(size*8-1))))u|=~0U<<(size*8);if(unsign&&u>0x7fffffffU)return false;*value=(int32_t)u;return unsign||*value>=-1;}
+static __inline bool tg_count(tg_bin *q,uint32_t maximum,uint32_t *value) {const uint8_t *p;if(!tg_take(q,4,&p))return false;*value=xx_data_get_u32(p, 4, 0, false);return *value<=maximum;}
+static __inline bool tg_floats(tg_bin *q,unsigned count) {const uint8_t *p;unsigned i;if(!tg_take(q,(uint64_t)count*4,&p))return false;for(i=0;i<count;++i)if(!tg_f32(xx_data_get_u32(p+i*4, 4, 0, false)))return false;return true;}
+static __inline bool tg_float(tg_bin *q,double *value) {const uint8_t *p;union {uint32_t u;float f;} v;if(!tg_take(q,4,&p)||!tg_f32(v.u=xx_data_get_u32(p, 4, 0, false)))return false;*value=v.f;return true;}
+static __inline bool tg_index(tg_bin *q,unsigned size,bool unsign,int32_t *value) {const uint8_t *p;uint32_t u;if(!tg_take(q,size,&p))return false;u=size==1?p[0]:size==2?xx_data_get_u16(p, 2, 0, false):xx_data_get_u32(p, 4, 0, false);if(!unsign&&size<4&&(u&(1U<<(size*8-1))))u|=~0U<<(size*8);if(unsign&&u>0x7fffffffU)return false;*value=(int32_t)u;return unsign||*value>=-1;}
 typedef struct tg_ids {uint32_t *values,size,work;} tg_ids;
 static __inline bool tg_ids_init(tg_ids *set,uint32_t count) {uint32_t size=8;while(size<count*2)size*=2;set->size=size;set->work=0;set->values=(uint32_t *)xx_mem_alloc((size_t)size*4);if(!set->values)return false;xx_mem_zero(set->values,(size_t)size*4);return true;}
 static __inline bool tg_id(tg_ids *set,uint32_t value,bool insert,xx_pd_struct *pd) {uint32_t i,start=value*2654435761U;if(!value)return false;for(i=0;i<set->size;++i){uint32_t at=(start+i)&(set->size-1);if(++set->work>16000000||tg_stop(pd))return false;if(!set->values[at]){if(!insert)return false;set->values[at]=value;return true;}if(set->values[at]==value)return !insert;}return false;}
@@ -100,8 +101,8 @@ static __inline bool tg_integer(tg_lex *q,int32_t *v) {uint64_t start,p;tg_text 
 static __inline bool tg_quoted(tg_lex *q,uint8_t delim,uint64_t *at,uint64_t *size) {uint64_t p;if(!tg_skip(q)||q->p==q->n||q->b[q->p++]!=delim)return false;p=q->p;while(q->p<q->n){uint8_t c=q->b[q->p++];if(q->p-p>8192||tg_stop(q->pd))return false;if(c==delim){if(delim=='\''&&q->p<q->n&&q->b[q->p]==delim){++q->p;continue;}if(at)*at=p;if(size)*size=q->p-p-1;return true;}if(delim=='"'&&c=='\\'){if(q->p==q->n||(q->b[q->p]!='"'&&q->b[q->p]!='\\'))return false;++q->p;}else if(delim=='\''&&c=='\\')return false;}return false;}
 static __inline bool tg_end(tg_lex *q) {return tg_skip(q)&&q->p==q->n;}
 static __inline bool tg_memory(Abstractformat *f,pm_stream *s,const char *label,uint8_t *memory,uint64_t n) {pm_member *m;if(!memory||!n||n>33554432||s->count>=4096||!pm_add(f,s,label,0,0)){if(memory)xx_mem_free(memory);return false;}m=&s->items[s->count-1];m->memory=memory;m->size=(int64_t)n;m->packed_size=0;return true;}
-static __inline bool tg_u16(const uint8_t *p,uint32_t units) {uint32_t i;for(i=0;i<units;++i){uint16_t a=pm_be16(p+i*2);if(!a)return false;if(a>=0xd800&&a<=0xdbff){uint16_t b;if(++i==units)return false;b=pm_be16(p+i*2);if(b<0xdc00||b>0xdfff)return false;}else if(a>=0xdc00&&a<=0xdfff)return false;}return true;}
-static __inline bool tg_pstring(tg_bin *q) {const uint8_t *p;uint32_t z;if(!tg_take(q,4,&p)||(z=pm_be32(p))>4096||!tg_take(q,(uint64_t)z*2,&p))return false;return tg_u16(p,z);}
+static __inline bool tg_u16(const uint8_t *p,uint32_t units) {uint32_t i;for(i=0;i<units;++i){uint16_t a=xx_data_get_u16(p+i*2, 2, 0, true);if(!a)return false;if(a>=0xd800&&a<=0xdbff){uint16_t b;if(++i==units)return false;b=xx_data_get_u16(p+i*2, 2, 0, true);if(b<0xdc00||b>0xdfff)return false;}else if(a>=0xdc00&&a<=0xdfff)return false;}return true;}
+static __inline bool tg_pstring(tg_bin *q) {const uint8_t *p;uint32_t z;if(!tg_take(q,4,&p)||(z=xx_data_get_u32(p, 4, 0, true))>4096||!tg_take(q,(uint64_t)z*2,&p))return false;return tg_u16(p,z);}
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  int64_t available=pm_available(f);uint8_t *b;uint64_t p=0;bool ok=false;
  if(available<1||available>33554432||tg_stop(pd)||!tg_quick(f,(uint64_t)available))return false;

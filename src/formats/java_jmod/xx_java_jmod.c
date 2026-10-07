@@ -7,8 +7,8 @@
 static bool jmod_origin(Abstractformat *f,int64_t end,xx_pd_struct *pd) {
     uint8_t h[22];int64_t at=end-22,low=end>65561?end-65557:4;
     for(;at>=low;--at) {if(fd_stop(pd) || !pm_read(f,at,h,4)) return false;
-        if(xx_rt_memcmp(h,"PK\5\6",4) || !pm_read(f,at,h,22) || at+22+pm_le16(h+20)!=end) continue;
-        return (uint64_t)pm_le32(h+12)+pm_le32(h+16)+4U==(uint64_t)at;
+        if(xx_rt_memcmp(h,"PK\5\6",4) || !pm_read(f,at,h,22) || at+22+xx_data_get_u16(h+20, 2, 0, false)!=end) continue;
+        return (uint64_t)xx_data_get_u32(h+12, 4, 0, false)+xx_data_get_u32(h+16, 4, 0, false)+4U==(uint64_t)at;
     }return false;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {

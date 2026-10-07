@@ -8,6 +8,7 @@
  */
 #include "xxfclib/formats/epf/xx_epf.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 #define EPF_HEADER_SIZE 11U
 #define EPF_ENTRY_SIZE 22U
@@ -123,8 +124,8 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
         !pm_read(format, 0, header, sizeof(header)) ||
         xx_rt_memcmp(header, "EPFS", 4U) != 0 || header[8] != 0U)
         return false;
-    fat = pm_le32(header + 4U);
-    count = pm_le16(header + 9U);
+    fat = xx_data_get_u32(header + 4U, 4, 0, false);
+    count = xx_data_get_u16(header + 9U, 2, 0, false);
     if (fat < EPF_HEADER_SIZE || (int64_t)fat > span ||
         (uint64_t)count * EPF_ENTRY_SIZE > (uint64_t)(span - (int64_t)fat))
         return false;
@@ -139,8 +140,8 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
         if (!pm_read(format, (int64_t)fat + (int64_t)i * EPF_ENTRY_SIZE,
                      entry, sizeof(entry)) || !epf_name(entry, name) ||
             entry[13] > 1U) return false;
-        packed = pm_le32(entry + 14U);
-        plain = pm_le32(entry + 18U);
+        packed = xx_data_get_u32(entry + 14U, 4, 0, false);
+        plain = xx_data_get_u32(entry + 18U, 4, 0, false);
         if (payload > (int64_t)fat ||
             packed > (uint32_t)((int64_t)fat - payload) ||
             plain > EPF_MAX_MEMBER_SIZE ||

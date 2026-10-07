@@ -7,6 +7,7 @@
 #include "xxfclib/algo/deflate/xx_deflate.h"
 #include "xxfclib/algo/adler32/xx_adler32.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     (void)pd;
 
@@ -51,7 +52,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             cap=cap>ceiling/2 ? ceiling : cap*2;
             if(pd && xx_pd_is_stopped(pd)) break;
         }
-        if(decoded) decoded=written>=1024 && written%512==0 && xx_adler32_update(1,out,written)==pm_be32(input+(size_t)bytes-4);
+        if(decoded) decoded=written>=1024 && written%512==0 && xx_adler32_update(1,out,written)==xx_data_get_u32(input+(size_t)bytes-4, 4, 0, true);
         xx_mem_free(input);
         if(!decoded || !pm_add(f,s,"backup.tar",(int64_t)at,0)) { if(out) xx_mem_free(out); return false; }
         s->items[0].memory=out; s->items[0].size=(int64_t)written; s->items[0].packed_size=bytes;

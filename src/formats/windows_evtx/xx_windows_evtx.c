@@ -9,14 +9,14 @@
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     nh_blob b;uint64_t at,chunks,j,record,lastid=0;uint32_t count;bool ok=false;
     if(!nh_load(f,&b,pd)) return false;
-    NH_NEED(nh_span(&b,0,4096) && !xx_rt_memcmp(b.p,"ElfFile\0",8) && pm_le32(b.p+32)==128 && pm_le16(b.p+36)==1 && pm_le16(b.p+38)==3 && pm_le16(b.p+40)==4096);
-    count=pm_le32(b.p+42);chunks=(b.n-4096)/65536;NH_NEED((b.n-4096)%65536==0 && count==chunks && chunks && chunks<=1023 && !(pm_le32(b.p+120)&~3U));
-    NH_NEED(fd_le64(b.p+16)>=fd_le64(b.p+8) && fd_le64(b.p+16)-fd_le64(b.p+8)+1==chunks && th_crc(&b,0,120,pm_le32(b.p+124),false));NH_NEED(nh_add(f,s,&b,"file-header",0,4096));
-    for(j=0;j<chunks;++j) {uint32_t freepos,lastpos,crc;uint64_t last=0,n,first=0,num=0;at=4096+j*65536;NH_NEED(nh_span(&b,at,65536) && !xx_rt_memcmp(b.p+(size_t)at,"ElfChnk\0",8) && pm_le32(b.p+(size_t)at+40)==128);
-        freepos=pm_le32(b.p+(size_t)at+48);lastpos=pm_le32(b.p+(size_t)at+44);NH_NEED(freepos>=512 && freepos<=65536 && lastpos>=512 && lastpos<freepos);
-        crc=xx_crc32_calc(0,b.p+(size_t)at,120);crc=xx_crc32_calc(crc,b.p+(size_t)at+128,384);NH_NEED(crc==pm_le32(b.p+(size_t)at+124) && th_crc(&b,at+512,freepos-512,pm_le32(b.p+(size_t)at+52),false));NH_NEED(nh_add(f,s,&b,"chunk-header",at,512));
-        for(record=at+512;record<at+freepos;record+=n) {uint64_t id;NH_NEED(nh_span(&b,record,28) && !xx_rt_memcmp(b.p+(size_t)record,"\x2a\x2a\0\0",4));n=pm_le32(b.p+(size_t)record+4);NH_NEED(n>=28 && !(n&7) && eh_span(record,n,at+freepos) && pm_le32(b.p+(size_t)(record+n-4))==n);id=fd_le64(b.p+(size_t)record+8);if(!num) first=id;lastid=id;last=record-at;++num;NH_NEED(nh_add(f,s,&b,"event-record",record,n));}
-        NH_NEED(last==lastpos && first==fd_le64(b.p+(size_t)at+24) && lastid==fd_le64(b.p+(size_t)at+32) && fd_le64(b.p+(size_t)at+16)>=fd_le64(b.p+(size_t)at+8) && fd_le64(b.p+(size_t)at+16)-fd_le64(b.p+(size_t)at+8)+1==num);
+    NH_NEED(nh_span(&b,0,4096) && !xx_rt_memcmp(b.p,"ElfFile\0",8) && xx_data_get_u32(b.p+32, 4, 0, false)==128 && xx_data_get_u16(b.p+36, 2, 0, false)==1 && xx_data_get_u16(b.p+38, 2, 0, false)==3 && xx_data_get_u16(b.p+40, 2, 0, false)==4096);
+    count=xx_data_get_u32(b.p+42, 4, 0, false);chunks=(b.n-4096)/65536;NH_NEED((b.n-4096)%65536==0 && count==chunks && chunks && chunks<=1023 && !(xx_data_get_u32(b.p+120, 4, 0, false)&~3U));
+    NH_NEED(xx_data_get_u64(b.p+16, 8, 0, false)>=xx_data_get_u64(b.p+8, 8, 0, false) && xx_data_get_u64(b.p+16, 8, 0, false)-xx_data_get_u64(b.p+8, 8, 0, false)+1==chunks && th_crc(&b,0,120,xx_data_get_u32(b.p+124, 4, 0, false),false));NH_NEED(nh_add(f,s,&b,"file-header",0,4096));
+    for(j=0;j<chunks;++j) {uint32_t freepos,lastpos,crc;uint64_t last=0,n,first=0,num=0;at=4096+j*65536;NH_NEED(nh_span(&b,at,65536) && !xx_rt_memcmp(b.p+(size_t)at,"ElfChnk\0",8) && xx_data_get_u32(b.p+(size_t)at+40, 4, 0, false)==128);
+        freepos=xx_data_get_u32(b.p+(size_t)at+48, 4, 0, false);lastpos=xx_data_get_u32(b.p+(size_t)at+44, 4, 0, false);NH_NEED(freepos>=512 && freepos<=65536 && lastpos>=512 && lastpos<freepos);
+        crc=xx_crc32_calc(0,b.p+(size_t)at,120);crc=xx_crc32_calc(crc,b.p+(size_t)at+128,384);NH_NEED(crc==xx_data_get_u32(b.p+(size_t)at+124, 4, 0, false) && th_crc(&b,at+512,freepos-512,xx_data_get_u32(b.p+(size_t)at+52, 4, 0, false),false));NH_NEED(nh_add(f,s,&b,"chunk-header",at,512));
+        for(record=at+512;record<at+freepos;record+=n) {uint64_t id;NH_NEED(nh_span(&b,record,28) && !xx_rt_memcmp(b.p+(size_t)record,"\x2a\x2a\0\0",4));n=xx_data_get_u32(b.p+(size_t)record+4, 4, 0, false);NH_NEED(n>=28 && !(n&7) && eh_span(record,n,at+freepos) && xx_data_get_u32(b.p+(size_t)(record+n-4), 4, 0, false)==n);id=xx_data_get_u64(b.p+(size_t)record+8, 8, 0, false);if(!num) first=id;lastid=id;last=record-at;++num;NH_NEED(nh_add(f,s,&b,"event-record",record,n));}
+        NH_NEED(last==lastpos && first==xx_data_get_u64(b.p+(size_t)at+24, 8, 0, false) && lastid==xx_data_get_u64(b.p+(size_t)at+32, 8, 0, false) && xx_data_get_u64(b.p+(size_t)at+16, 8, 0, false)>=xx_data_get_u64(b.p+(size_t)at+8, 8, 0, false) && xx_data_get_u64(b.p+(size_t)at+16, 8, 0, false)-xx_data_get_u64(b.p+(size_t)at+8, 8, 0, false)+1==num);
     }s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }

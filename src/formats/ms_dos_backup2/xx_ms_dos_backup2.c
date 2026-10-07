@@ -29,6 +29,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -101,11 +102,6 @@ typedef struct dbk_set_s {
 
 static uint32_t dbk_le16(const uint8_t *b) {
     return (uint32_t)b[0] | ((uint32_t)b[1] << 8U);
-}
-
-static uint32_t dbk_le32(const uint8_t *b) {
-    return (uint32_t)b[0] | ((uint32_t)b[1] << 8U) | ((uint32_t)b[2] << 16U) |
-           ((uint32_t)b[3] << 24U);
 }
 
 static bool dbk_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -434,7 +430,7 @@ static bool dbk_add_member(dbk_set *set, const char *key, const uint8_t *item,
         return false;
     }
     member->safe = safe;
-    member->total_size = dbk_le32(item + 0x0E);
+    member->total_size = xx_data_get_u32(item + 0x0E, 4, 0, false);
     member->attributes = (uint16_t)dbk_le16(item + 0x1C);
     member->dos_time = (uint16_t)dbk_le16(item + 0x1E);
     member->dos_date = (uint16_t)dbk_le16(item + 0x20);
@@ -487,7 +483,7 @@ static bool dbk_parse_volume(dbk_set *set, xx_io_device *device,
             break;
         dir = buffer + position;
         entries = dbk_le16(dir + 0x40);
-        next = dbk_le32(dir + 0x42);
+        next = xx_data_get_u32(dir + 0x42, 4, 0, false);
         position += DBK_DIR_ITEM;
         *end = (int64_t)position;
         first = false;
@@ -507,7 +503,7 @@ static bool dbk_parse_volume(dbk_set *set, xx_io_device *device,
                 if (number >= 2U && pending &&
                     number == (uint32_t)pending->last_number + 1U &&
                     pending->stored < pending->total_size &&
-                    pending->total_size == dbk_le32(item + 0x0E) &&
+                    pending->total_size == xx_data_get_u32(item + 0x0E, 4, 0, false) &&
                     dbk_names_equal(pending->key, key)) {
                     /* The continuation of the file split at the end of the
                      * previous volume. */
@@ -522,8 +518,8 @@ static bool dbk_parse_volume(dbk_set *set, xx_io_device *device,
                     pending->first_number = (uint16_t)number;
                 }
                 pending->last_number = (uint16_t)number;
-                if (!dbk_add_fragment(set, pending, volume, dbk_le32(item + 0x14),
-                                      dbk_le32(item + 0x18)))
+                if (!dbk_add_fragment(set, pending, volume, xx_data_get_u32(item + 0x14, 4, 0, false),
+                                      xx_data_get_u32(item + 0x18, 4, 0, false)))
                     goto finished;
             }
             position += DBK_FILE_ITEM;

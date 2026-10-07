@@ -18,7 +18,6 @@ extern "C" {
 
 typedef struct xx_apk xx_apk;
 typedef struct xx_apk xx_apk_t;
-typedef struct xx_apk XAPK;
 
 /**
  * @brief APK format object.
@@ -57,27 +56,6 @@ static inline xx_zip *xx_apk_to_zip(xx_apk *apk) {
 
 static inline const xx_zip *xx_apk_to_zip_const(const xx_apk *apk) {
     return apk ? &apk->zip : NULL;
-}
-
-static inline void XAPK_init(xx_apk *apk, xx_io_device *dev,
-                             int64_t base_address) {
-    xx_apk_init(apk, dev, base_address);
-}
-
-static inline xx_apk *XAPK_create(xx_io_device *dev, int64_t base_address) {
-    return xx_apk_create(dev, base_address);
-}
-
-static inline void XAPK_free(xx_apk *apk) {
-    xx_apk_free(apk);
-}
-
-static inline bool XAPK_is_valid(xx_apk *apk, xx_pd_struct *pd) {
-    return apk ? xx_format_is_valid(&apk->zip.format, pd) : false;
-}
-
-static inline bool XAPK_handle_base_info(xx_apk *apk, xx_pd_struct *pd) {
-    return apk ? xx_format_handle_base_info(&apk->zip.format, pd) : false;
 }
 
 #ifdef __cplusplus

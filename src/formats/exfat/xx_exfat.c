@@ -10,6 +10,7 @@
 #include "xxfclib/strings/xx_string.h"
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef EXFAT
 #define EXFAT_TYPE XX_FILE_TYPE_EXFAT
@@ -83,16 +84,6 @@ typedef struct exfat_cursor_s {
     size_t index;
 } exfat_cursor;
 
-static uint16_t exfat_u16(const uint8_t *p) {
-    return (uint16_t)((uint16_t)p[0] | ((uint16_t)p[1] << 8));
-}
-static uint32_t exfat_u32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
-           ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
-static uint64_t exfat_u64(const uint8_t *p) {
-    return exfat_u32(p) | ((uint64_t)exfat_u32(p + 4) << 32);
-}
 static uint32_t exfat_sum32(uint32_t sum, uint8_t value) {
     return (sum >> 1) + (sum << 31) + value;
 }
@@ -155,18 +146,18 @@ static bool exfat_boot(Abstractformat *self, uint64_t location,
         first[510] != 0x55U || first[511] != 0xAAU ||
         first[108] < 9U || first[108] > 12U ||
         first[109] > 25U - first[108] ||
-        exfat_u16(first + 104) != 0x0100U) return false;
+        xx_data_get_u16(first + 104, 2, 0, false) != 0x0100U) return false;
     for (i = 11U; i < 64U; ++i) if (first[i]) return false;
     sector = UINT32_C(1) << first[108];
     if (expected_sector && sector != expected_sector) return false;
     cluster = sector << first[109];
-    sectors = exfat_u64(first + 72);
-    fat_offset = exfat_u32(first + 80);
-    fat_length = exfat_u32(first + 84);
-    heap = exfat_u32(first + 88);
-    clusters = exfat_u32(first + 92);
-    root = exfat_u32(first + 96);
-    flags = exfat_u16(first + 106);
+    sectors = xx_data_get_u64(first + 72, 8, 0, false);
+    fat_offset = xx_data_get_u32(first + 80, 4, 0, false);
+    fat_length = xx_data_get_u32(first + 84, 4, 0, false);
+    heap = xx_data_get_u32(first + 88, 4, 0, false);
+    clusters = xx_data_get_u32(first + 92, 4, 0, false);
+    root = xx_data_get_u32(first + 96, 4, 0, false);
+    flags = xx_data_get_u16(first + 106, 2, 0, false);
     if ((first[110] != 1U && first[110] != 2U) ||
         ((flags & 1U) && first[110] == 1U) ||
         (first[112] > 100U && first[112] != 0xFFU) ||
@@ -193,9 +184,9 @@ static bool exfat_boot(Abstractformat *self, uint64_t location,
             sum = exfat_sum32(sum, region[i]);
     }
     for (i = (size_t)sector * 11U; i < (size_t)sector * 12U; i += 4U)
-        if (exfat_u32(region + i) != sum) goto done;
+        if (xx_data_get_u32(region + i, 4, 0, false) != sum) goto done;
     for (i = 1U; i <= 8U; ++i)
-        if (exfat_u32(region + (i + 1U) * sector - 4U) !=
+        if (xx_data_get_u32(region + (i + 1U) * sector - 4U, 4, 0, false) !=
             UINT32_C(0xAA550000)) goto done;
     xx_mem_zero(geo, sizeof(*geo));
     geo->base = self->base_address;
@@ -204,7 +195,7 @@ static bool exfat_boot(Abstractformat *self, uint64_t location,
     geo->cluster = cluster;
     geo->clusters = clusters;
     geo->root = root;
-    geo->serial = exfat_u32(first + 100);
+    geo->serial = xx_data_get_u32(first + 100, 4, 0, false);
     geo->fats = first[110];
     geo->active = (uint8_t)(flags & 1U);
     geo->backup = location != 0U;
@@ -252,7 +243,7 @@ static bool exfat_fat_next(xx_io_device *device, const exfat_geo *geo,
     if (cluster < 2U || cluster - 2U >= geo->clusters ||
         !exfat_rel_read(device, geo, geo->fat + (uint64_t)cluster * 4U,
                          raw, sizeof(raw), pd)) return false;
-    *next = exfat_u32(raw);
+    *next = xx_data_get_u32(raw, 4, 0, false);
     return true;
 }
 static bool exfat_claim(exfat_parsed *parsed, uint32_t cluster,
@@ -409,14 +400,14 @@ static bool exfat_system(xx_io_device *device, exfat_parsed *parsed,
         if (raw[0] == 0x81U) {
             unsigned id = raw[1] & 1U;
             if (id >= parsed->geo.fats || bitmap_first[id]) goto done;
-            bitmap_first[id] = exfat_u32(raw + 20);
-            bitmap_length[id] = exfat_u64(raw + 24);
+            bitmap_first[id] = xx_data_get_u32(raw + 20, 4, 0, false);
+            bitmap_length[id] = xx_data_get_u64(raw + 24, 8, 0, false);
             if (!bitmap_first[id]) goto done;
         } else if (raw[0] == 0x82U) {
             if (upcase_first) goto done;
-            upcase_sum = exfat_u32(raw + 4);
-            upcase_first = exfat_u32(raw + 20);
-            upcase_length = exfat_u64(raw + 24);
+            upcase_sum = xx_data_get_u32(raw + 4, 4, 0, false);
+            upcase_first = xx_data_get_u32(raw + 20, 4, 0, false);
+            upcase_length = xx_data_get_u64(raw + 24, 8, 0, false);
             if (!upcase_first) goto done;
         } else if (raw[0] == 0x83U) {
             if (raw[1] > 11U) goto done;
@@ -459,12 +450,12 @@ static bool exfat_system(xx_io_device *device, exfat_parsed *parsed,
         uint32_t value;
         if (position >= (size_t)upcase_length ||
             (pd && xx_pd_is_stopped(pd))) goto done;
-        value = exfat_u16(table + position);
+        value = xx_data_get_u16(table + position, 2, 0, false);
         position += 2U;
         if (value == 0xFFFFU && character < 65535U) {
             uint32_t count;
             if (position >= (size_t)upcase_length) goto done;
-            count = exfat_u16(table + position);
+            count = xx_data_get_u16(table + position, 2, 0, false);
             position += 2U;
             if (!count || count > 65536U - character) goto done;
             while (count--) {
@@ -674,7 +665,7 @@ static bool exfat_walk(xx_io_device *device, exfat_parsed *parsed,
         }
         for (j = 0U; j < (secondaries + 1U) * 32U; ++j)
             if (j != 2U && j != 3U) checksum = exfat_sum16(checksum, set[j]);
-        if (checksum != exfat_u16(set + 2)) goto done;
+        if (checksum != xx_data_get_u16(set + 2, 2, 0, false)) goto done;
         if (set[0] != 0x85U) { slot += secondaries; continue; }
         if (secondaries < 2U || set[32] != 0xC0U ||
             !(set[33] & 1U) || !set[35]) goto done;
@@ -687,22 +678,22 @@ static bool exfat_walk(xx_io_device *device, exfat_parsed *parsed,
             const uint8_t *entry = set + (j + 2U) * 32U;
             if (entry[0] != 0xC1U || (entry[1] & 3U)) goto done;
             for (n = 0U; n < 15U && k < length; ++n, ++k)
-                wide[k] = exfat_u16(entry + 2U + n * 2U);
+                wide[k] = xx_data_get_u16(entry + 2U + n * 2U, 2, 0, false);
         }
         for (j = 0U; j < length; ++j) {
             uint16_t up = parsed->upcase[wide[j]];
             name_hash = exfat_sum16(name_hash, (uint8_t)up);
             name_hash = exfat_sum16(name_hash, (uint8_t)(up >> 8));
         }
-        if (name_hash != exfat_u16(set + 36) ||
+        if (name_hash != xx_data_get_u16(set + 36, 2, 0, false) ||
             !exfat_name(wide, length, parsed->upcase, false, name) ||
             !exfat_name(wide, length, parsed->upcase, true, key)) goto done;
         xx_mem_zero(&member, sizeof(member));
-        member.attributes = exfat_u16(set + 4);
+        member.attributes = xx_data_get_u16(set + 4, 2, 0, false);
         member.folder = (member.attributes & 0x10U) != 0U;
-        first = exfat_u32(set + 52);
-        valid = exfat_u64(set + 40);
-        size = exfat_u64(set + 56);
+        first = xx_data_get_u32(set + 52, 4, 0, false);
+        valid = xx_data_get_u64(set + 40, 8, 0, false);
+        size = xx_data_get_u64(set + 56, 8, 0, false);
         if (member.folder && (valid != size || size > EXFAT_MAX_DIRECTORY ||
                               size % parsed->geo.cluster)) goto done;
         if (!exfat_make_data(device, parsed, first, size, valid,
@@ -779,7 +770,7 @@ static exfat_parsed *exfat_parse(Abstractformat *self, xx_pd_struct *pd) {
     parsed->claimed = (uint8_t *)xx_mem_calloc(parsed->bitmap_size, 1U);
     if (!parsed->claimed || !exfat_rel_read(self->device, &parsed->geo,
           parsed->geo.fat, reserved, sizeof(reserved), pd) ||
-        (exfat_u32(reserved) & UINT32_C(0xFFFFFF00)) !=
+        (xx_data_get_u32(reserved, 4, 0, false) & UINT32_C(0xFFFFFF00)) !=
                                  UINT32_C(0xFFFFFF00)) goto bad;
     if (!exfat_make_data(self->device, parsed, parsed->geo.root, 0U, 0U,
                           false, true, &root, pd)) goto bad;

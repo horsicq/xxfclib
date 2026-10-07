@@ -49,6 +49,7 @@
 #include "xxfclib/algo/lzhuf/xx_lzhuf.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ZTC_COPY_CHUNK (64 * 1024)
 
@@ -154,8 +155,6 @@ static bool xx_ztc_add(xx_ztc_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_ztc_le16(const uint8_t *data);
-static uint32_t xx_ztc_le32(const uint8_t *data);
 static xx_ztc_stream *xx_ztc_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_ztc_decode(Abstractformat *self, const xx_ztc_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
@@ -166,15 +165,6 @@ static bool xx_ztc_decode(Abstractformat *self, const xx_ztc_member *member, uin
 /* The archive closes with a two byte FFFF trailer. */
 /* No method field exists: every member is the paged LZHUF stream, and this
  * number is synthesised so the decode switch has something to key on. */
-
-static uint16_t xx_ztc_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_ztc_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static xx_ztc_stream *xx_ztc_parse(Abstractformat *self, xx_pd_struct *pd) {
     xx_ztc_stream *stream;
@@ -192,7 +182,7 @@ static xx_ztc_stream *xx_ztc_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (!xx_ztc_read_at(self, self->base_address, header, sizeof(header))) {
         return NULL;
     }
-    if (xx_ztc_le32(header) != (uint32_t)XX_ZTC_MAGIC) return NULL;
+    if (xx_data_get_u32(header, 4, 0, false) != (uint32_t)XX_ZTC_MAGIC) return NULL;
 
     stream = (xx_ztc_stream *)xx_mem_alloc(sizeof(*stream));
     if (!stream) return NULL;
@@ -225,10 +215,10 @@ static xx_ztc_stream *xx_ztc_parse(Abstractformat *self, xx_pd_struct *pd) {
 
         /* Signed on purpose: a size field with the top bit set is corrupt,
          * not a two-gigabyte quantity. */
-        uncompressed_size = (int64_t)(int32_t)xx_ztc_le32(record);
-        stamp = (int32_t)xx_ztc_le32(record + 4);
-        total_size = (int64_t)(int32_t)xx_ztc_le32(record + 8);
-        name_size = (int64_t)xx_ztc_le16(record + 0x10);
+        uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(record, 4, 0, false);
+        stamp = (int32_t)xx_data_get_u32(record + 4, 4, 0, false);
+        total_size = (int64_t)(int32_t)xx_data_get_u32(record + 8, 4, 0, false);
+        name_size = (int64_t)xx_data_get_u16(record + 0x10, 2, 0, false);
 
         if (uncompressed_size < 0) goto fail;
         /* Every member is named; a zero length name means the cursor is not
@@ -276,7 +266,7 @@ static xx_ztc_stream *xx_ztc_parse(Abstractformat *self, xx_pd_struct *pd) {
         for (cursor = 0; cursor < name_size; ++cursor) {
             wanted += (uint32_t)name_field[cursor];
         }
-        if (xx_ztc_le32(check) != wanted) goto fail;
+        if (xx_data_get_u32(check, 4, 0, false) != wanted) goto fail;
 
         data_offset = offset + XX_ZTC_RECORD_OVERHEAD + name_size;
         compressed_size = total_size - name_size - XX_ZTC_RECORD_OVERHEAD;

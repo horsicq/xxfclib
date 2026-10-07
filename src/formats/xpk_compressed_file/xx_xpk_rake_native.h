@@ -14,6 +14,7 @@
 #include <stdint.h>
 
 #include "xx_xpk_rake_table.h"
+#include "xxfclib/data/xx_data.h"
 
 typedef struct xpk_rake_node_s {
     uint16_t child[2];
@@ -28,16 +29,11 @@ typedef struct xpk_rake_bits_s {
     unsigned available;
 } xpk_rake_bits;
 
-static uint32_t xpk_rake_be32(const uint8_t *p) {
-    return ((uint32_t)p[0] << 24U) | ((uint32_t)p[1] << 16U) |
-           ((uint32_t)p[2] << 8U) | (uint32_t)p[3];
-}
-
 static bool xpk_rake_bit(xpk_rake_bits *bits, uint32_t *value) {
     if (!bits->available) {
         if (bits->cursor > bits->size || bits->size - bits->cursor < 4U)
             return false;
-        bits->word = xpk_rake_be32(bits->data + bits->cursor);
+        bits->word = xx_data_get_u32(bits->data + bits->cursor, 4, 0, true);
         bits->cursor += 4U;
         bits->available = 32U;
     }
@@ -118,7 +114,7 @@ static bool xpk_rake_native(const uint8_t *packed, size_t size,
     bits.data = packed;
     bits.size = size;
     bits.cursor = middle + (middle & 1U);
-    bits.word = xpk_rake_be32(packed + bits.cursor);
+    bits.word = xx_data_get_u32(packed + bits.cursor, 4, 0, true);
     bits.cursor += 4U;
     bits.word = pad == 32U ? 0U : bits.word >> pad;
     bits.available = 32U - pad;

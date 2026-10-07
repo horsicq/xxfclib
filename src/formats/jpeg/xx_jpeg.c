@@ -395,15 +395,6 @@ static void xx_jpeg_analysis_destroy(xx_jpeg *jpeg) {
     jpeg->analysis = NULL;
 }
 
-static uint16_t xx_jpeg_tiff_u16(const uint8_t *p, bool be) {
-    return be ? (uint16_t)((uint16_t)p[0] << 8 | p[1])
-              : (uint16_t)((uint16_t)p[1] << 8 | p[0]);
-}
-static uint32_t xx_jpeg_tiff_u32(const uint8_t *p, bool be) {
-    return be ? (uint32_t)p[0] << 24 | (uint32_t)p[1] << 16 | (uint32_t)p[2] << 8 | p[3]
-              : (uint32_t)p[3] << 24 | (uint32_t)p[2] << 16 | (uint32_t)p[1] << 8 | p[0];
-}
-
 static bool xx_jpeg_tiff_read(xx_jpeg *jpeg, int64_t offset,
                               void *data, size_t size, bool *failed) {
     if (xx_jpeg_read_at(jpeg->format.device, offset, data, size)) return true;
@@ -423,13 +414,13 @@ static char *xx_jpeg_tiff_ascii(xx_jpeg *jpeg, const xx_jpeg_analysis *info,
         !xx_jpeg_tiff_read(jpeg, info->exif_offset, header, sizeof(header), failed)) return NULL;
     be = header[0] == 'M' && header[1] == 'M' && header[2] == 0 && header[3] == 42;
     if (!be && !(header[0] == 'I' && header[1] == 'I' && header[2] == 42 && header[3] == 0)) return NULL;
-    table = xx_jpeg_tiff_u32(header + 4, be);
+    table = xx_data_get_u32(header + 4, 4, 0, be);
     for (guard = 0; table > 0 && table <= info->exif_size - 2 && guard < 64; ++guard) {
         uint16_t count, i;
         int64_t current, next;
         if (xx_pd_is_stopped(pd) || !xx_jpeg_tiff_read(jpeg,
                 info->exif_offset + table, bytes, 2, failed)) return NULL;
-        count = xx_jpeg_tiff_u16(bytes, be); current = table + 2;
+        count = xx_data_get_u16(bytes, 2, 0, be); current = table + 2;
         /* An IFD entry and its next-table pointer must remain in this APP1. */
         if ((int64_t)count * 12 + 4 > info->exif_size - current) return NULL;
         for (i = 0; i < count; ++i, current += 12) {
@@ -439,10 +430,10 @@ static char *xx_jpeg_tiff_ascii(xx_jpeg *jpeg, const xx_jpeg_analysis *info,
             size_t at;
             if (xx_pd_is_stopped(pd) || !xx_jpeg_tiff_read(jpeg,
                     info->exif_offset + current, entry, sizeof(entry), failed)) return NULL;
-            if (xx_jpeg_tiff_u16(entry, be) != wanted) continue;
-            type = xx_jpeg_tiff_u16(entry + 2, be);
-            length = type < sizeof(widths) ? (int64_t)widths[type] * xx_jpeg_tiff_u32(entry + 4, be) : 0;
-            offset = length > 4 ? xx_jpeg_tiff_u32(entry + 8, be) : current + 8;
+            if (xx_data_get_u16(entry, 2, 0, be) != wanted) continue;
+            type = xx_data_get_u16(entry + 2, 2, 0, be);
+            length = type < sizeof(widths) ? (int64_t)widths[type] * xx_data_get_u32(entry + 4, 4, 0, be) : 0;
+            offset = length > 4 ? xx_data_get_u32(entry + 8, 4, 0, be) : current + 8;
             if (length <= 0 || offset < 0 || offset >= info->exif_size) return NULL;
             if (length > info->exif_size - offset) length = info->exif_size - offset;
             text = xx_str_create_len((size_t)length);
@@ -454,7 +445,7 @@ static char *xx_jpeg_tiff_ascii(xx_jpeg *jpeg, const xx_jpeg_analysis *info,
             text[at] = 0; return text;
         }
         if (!xx_jpeg_tiff_read(jpeg, info->exif_offset + current, bytes, 4, failed)) return NULL;
-        next = xx_jpeg_tiff_u32(bytes, be);
+        next = xx_data_get_u32(bytes, 4, 0, be);
         if (next < current + 8) break;
         table = next;
     }

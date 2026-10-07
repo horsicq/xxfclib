@@ -34,7 +34,7 @@ static uint32_t sc_base(unsigned n) { return n<15U?((4U<<n)-4U):0U; }
 static bool sc_decode(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *out,uint32_t n,unsigned method) {
     sc_decoder d; uint8_t *ring; uint32_t window,at=0,next=0; unsigned i;
     if(method<1U || method>7U || packed<4U) return false;
-    xx_mem_zero(&d,sizeof(d)); d.p=in; d.n=packed; d.at=4; d.value=pm_be32(in); d.range=0x80000000U;
+    xx_mem_zero(&d,sizeof(d)); d.p=in; d.n=packed; d.at=4; d.value=xx_data_get_u32(in, 4, 0, true); d.range=0x80000000U;
     for(i=0;i<261U;++i) d.weight[504U+i]=(uint16_t)((i<32U || i>126U)?1:3);
     d.weight[897]=1;
     for(i=503U;i;--i) d.weight[i]=(uint16_t)(d.weight[i*2U]+d.weight[i*2U+1U]);

@@ -35,6 +35,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef SQUEEZE1
 #define XX_SQUEEZE1_FILE_TYPE XX_FILE_TYPE_SQUEEZE1
@@ -82,12 +83,8 @@ typedef struct squeeze1_bit_reader_s {
 
 static void squeeze1_vtable_destroy(Abstractformat *self);
 
-static uint16_t squeeze1_read16le(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8U));
-}
-
 static int32_t squeeze1_read_signed16le(const uint8_t *data) {
-    uint16_t value = squeeze1_read16le(data);
+    uint16_t value = xx_data_get_u16(data, 2, 0, false);
     return (value & UINT16_C(0x8000)) != 0U
                ? (int32_t)value - INT32_C(65536)
                : (int32_t)value;
@@ -169,7 +166,7 @@ static bool squeeze1_parse_header(const uint8_t *input, size_t input_size,
                             context->file_name, &offset))
         return false;
     if (input_size - offset < 2U) return false;
-    node_count = squeeze1_read16le(input + offset);
+    node_count = xx_data_get_u16(input + offset, 2, 0, false);
     offset += 2U;
     if (node_count > XX_SQUEEZE1_MAX_NODES) return false;
     table_size = (size_t)node_count * 4U;
@@ -183,11 +180,11 @@ static bool squeeze1_parse_header(const uint8_t *input, size_t input_size,
     /* An empty member is the only case with no tree at all; anything else
      * must still have room for at least one payload byte. */
     if (node_count == 0U) {
-        if (squeeze1_read16le(input + 2U) != 0U) return false;
+        if (xx_data_get_u16(input + 2U, 2, 0, false) != 0U) return false;
     } else if (input_size - offset - table_size == 0U) {
         return false;
     }
-    context->checksum = squeeze1_read16le(input + 2U);
+    context->checksum = xx_data_get_u16(input + 2U, 2, 0, false);
     context->node_count = node_count;
     context->tree_offset = (uint32_t)offset;
     context->data_offset = (uint32_t)(offset + table_size);

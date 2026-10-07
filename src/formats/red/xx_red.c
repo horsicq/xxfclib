@@ -46,6 +46,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef RED
 #define XX_RED_FILE_TYPE XX_FILE_TYPE_RED
@@ -84,14 +85,6 @@ typedef struct red_stream_s {
     size_t index;
     int64_t archive_size;
 } red_stream;
-
-static uint16_t red_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t red_le32(const uint8_t *bytes) {
-    return (uint32_t)red_le16(bytes) | ((uint32_t)red_le16(bytes + 2U) << 16U);
-}
 
 /* CRC-16/IBM-3740: poly 0x1021, init 0xFFFF, no reflection, no final xor. */
 static uint16_t red_crc16(const uint8_t *data, size_t size) {
@@ -211,17 +204,17 @@ static bool red_parse(Abstractformat *format, red_stream **result) {
         calculated = red_crc16(header + 2, (size_t)(header_size - 4));
         if (reported != calculated) goto fail;
 
-        packed = (int64_t)red_le32(header + 8U);
+        packed = (int64_t)xx_data_get_u32(header + 8U, 4, 0, false);
         if (packed < 0 || packed > size - cursor - header_size) goto fail;
 
         xx_mem_zero(&member, sizeof(member));
-        member.unpacked_size = red_le32(header + 12U);
-        member.crc = red_le16(header + 18U);
-        member.fragment = red_le16(header + 20U);
-        member.last_fragment = red_le16(header + 22U);
-        member.method = red_le16(header + 24U);
-        member.dos_time = ((uint32_t)red_le16(header + 6U) << 16U) |
-                          (uint32_t)red_le16(header + 4U);
+        member.unpacked_size = xx_data_get_u32(header + 12U, 4, 0, false);
+        member.crc = xx_data_get_u16(header + 18U, 2, 0, false);
+        member.fragment = xx_data_get_u16(header + 20U, 2, 0, false);
+        member.last_fragment = xx_data_get_u16(header + 22U, 2, 0, false);
+        member.method = xx_data_get_u16(header + 24U, 2, 0, false);
+        member.dos_time = ((uint32_t)xx_data_get_u16(header + 6U, 2, 0, false) << 16U) |
+                          (uint32_t)xx_data_get_u16(header + 4U, 2, 0, false);
         if (member.method != RED_METHOD_STORE &&
             member.method != RED_METHOD_LH5)
             goto fail;

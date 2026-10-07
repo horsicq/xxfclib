@@ -30,6 +30,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ZFSF_COPY_CHUNK (64 * 1024)
 
@@ -156,11 +157,6 @@ static bool xx_zfsf_decode(Abstractformat *self,
 #define XX_ZFSF_FIRST_GROUP 0x1c
 #define XX_ZFSF_MAX_GROUPS 100000
 
-static uint32_t xx_zfsf_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
 static xx_zfsf_stream *xx_zfsf_parse(Abstractformat *self, xx_pd_struct *pd) {
     xx_zfsf_stream *stream;
     uint8_t header[XX_ZFSF_HEADER_SIZE];
@@ -180,13 +176,13 @@ static xx_zfsf_stream *xx_zfsf_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (span < XX_ZFSF_HEADER_SIZE) return NULL;
     if (!xx_zfsf_read_at(self, self->base_address, header, sizeof(header)) ||
         header[0] != 'Z' || header[1] != 'F' || header[2] != 'S' ||
-        header[3] != 'F' || xx_zfsf_le32(header + 4) != 1U ||
-        xx_zfsf_le32(header + 8) != 0x10U ||
-        xx_zfsf_le32(header + 24) != (uint32_t)XX_ZFSF_FIRST_GROUP) {
+        header[3] != 'F' || xx_data_get_u32(header + 4, 4, 0, false) != 1U ||
+        xx_data_get_u32(header + 8, 4, 0, false) != 0x10U ||
+        xx_data_get_u32(header + 24, 4, 0, false) != (uint32_t)XX_ZFSF_FIRST_GROUP) {
         return NULL;
     }
-    group_capacity = (int32_t)xx_zfsf_le32(header + 12);
-    remaining = (int32_t)xx_zfsf_le32(header + 16);
+    group_capacity = (int32_t)xx_data_get_u32(header + 12, 4, 0, false);
+    remaining = (int32_t)xx_data_get_u32(header + 16, 4, 0, false);
     if (group_capacity <= 0 || remaining < 0) return NULL;
     /* Every entry is a distinct record in the file, so a count that cannot
      * physically fit is a rejection rather than something to clamp. */
@@ -227,8 +223,8 @@ static xx_zfsf_stream *xx_zfsf_parse(Abstractformat *self, xx_pd_struct *pd) {
                                  entry, sizeof(entry))) {
                 goto fail;
             }
-            data_offset = (int64_t)(int32_t)xx_zfsf_le32(entry + 0x10);
-            data_size = (int64_t)(int32_t)xx_zfsf_le32(entry + 0x18);
+            data_offset = (int64_t)(int32_t)xx_data_get_u32(entry + 0x10, 4, 0, false);
+            data_size = (int64_t)(int32_t)xx_data_get_u32(entry + 0x18, 4, 0, false);
             if (data_offset < 0 || data_size < 0 ||
                 !xx_zfsf_range_within(span, data_offset, data_size)) {
                 goto fail;
@@ -258,7 +254,7 @@ static xx_zfsf_stream *xx_zfsf_parse(Abstractformat *self, xx_pd_struct *pd) {
             --remaining;
         }
         if (remaining > 0) {
-            group_offset = (int64_t)xx_zfsf_le32(link);
+            group_offset = (int64_t)xx_data_get_u32(link, 4, 0, false);
             if (group_offset <= 0) goto fail;
         }
     }

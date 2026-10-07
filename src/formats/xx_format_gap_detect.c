@@ -4,6 +4,7 @@
 #include "xxfclib/rt/xx_rt.h"
 #include <stdio.h>
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 #include "xx_archive_additions_detect.inc"
 #include "xx_disk_additions_detect.inc"
 #include "xx_apple_additions_detect.inc"

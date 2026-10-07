@@ -26,6 +26,7 @@ option(XXFC_BUILD_DISASM_TESTS "Build the focused DIE disassembly regression tes
 option(XXFC_BUILD_SCAN_TESTS "Build the focused scan and subdevice regression tests" OFF)
 option(XXFC_BUILD_ZIP_SUPPORT_TESTS "Build the focused ZIP method regression tests" OFF)
 option(XXFC_BUILD_PDF_TESTS "Build the focused native PDF reader and extractor regression tests" OFF)
+option(XXFC_BUILD_PYC_TESTS "Build the focused native Python bytecode reader and extractor regression tests" OFF)
 option(XXFC_BUILD_FORMAT_EXPANSION_TESTS "Build additional reader registration and extraction tests" OFF)
 option(XXFC_BUILD_SAMPLES "Build xxfclib sample programs" OFF)
 
@@ -263,6 +264,7 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/terminal/xx_terminal.h
     include/xxfclib/settings/xx_settings.h
     include/xxfclib/formats/xx_executable_inspect.h
+    include/xxfclib/formats/xx_format_streams.h
     include/xxfclib/formats/xx_format.h
     include/xxfclib/formats/xx_format_extractor.h
     include/xxfclib/algo/crc/xx_crc.h
@@ -689,6 +691,8 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/formats/atarist/xx_atarist.h
     include/xxfclib/formats/amigahunk/xx_amigahunk.h
     include/xxfclib/formats/pe/xx_pe_inspect.h
+    include/xxfclib/formats/dotnet/xx_dotnet.h
+    include/xxfclib/formats/dotnet/xx_dotnet_inspect.h
     include/xxfclib/formats/pe/xx_pe.h
     include/xxfclib/formats/elf/xx_elf_inspect.h
     include/xxfclib/formats/elf/xx_elf.h
@@ -1795,6 +1799,14 @@ set(XXFCLIB_SOURCES
     src/die_engine/xx_die_engine_xdisasm.c
     src/die_engine/xx_die_engine_inflate.c
     src/formats/pe/xx_pe_inspect.c
+    src/formats/pe/xx_pe_stream_symbols.c
+    src/formats/pe/xx_pe_stream_coff.c
+    src/formats/pe/xx_pe_stream_metadata.c
+    src/formats/pe/xx_pe_stream_common.c
+    src/formats/dotnet/xx_dotnet.c
+    src/formats/dotnet/xx_dotnet_inspect.c
+    src/formats/dotnet/xx_dotnet_data.c
+    src/formats/dotnet/xx_dotnet_extractor.c
     src/formats/apk/xx_apk_inspect.c
     src/formats/pdf/xxpdf.c
     src/formats/pdf/xxpdf_decode.c
@@ -2002,6 +2014,7 @@ set(XXFCLIB_SOURCES
     src/algo/quantum/xx_quantum.c
     src/formats/xx_format.c
     src/formats/xx_format_base.c
+    src/formats/xx_format_streams.c
     src/formats/xx_format_catalog.c
     src/formats/xx_format_detect_fast.c
     src/formats/xx_format_extractor.c
@@ -5343,6 +5356,27 @@ if(XXFC_BUILD_PDF_TESTS)
     unset(_xxfc_pdf_test_library)
 endif()
 
+if(XXFC_BUILD_PYC_TESTS)
+    if(TARGET xxfclib_static)
+        set(_xxfc_pyc_test_library xxfclib_static)
+    elseif(TARGET xxfclib AND NOT BUILD_SHARED_LIBS)
+        set(_xxfc_pyc_test_library xxfclib)
+    else()
+        message(FATAL_ERROR "XXFC_BUILD_PYC_TESTS requires a static xxfclib target")
+    endif()
+    enable_testing()
+    add_executable(test_pyc tests/pyc/test_pyc.c)
+    target_link_libraries(test_pyc PRIVATE ${_xxfc_pyc_test_library})
+    if(MSVC)
+        target_compile_definitions(test_pyc PRIVATE _CRT_SECURE_NO_WARNINGS)
+        target_compile_options(test_pyc PRIVATE /UNDEBUG)
+    else()
+        target_compile_options(test_pyc PRIVATE -UNDEBUG)
+    endif()
+    add_test(NAME test_pyc COMMAND test_pyc)
+    unset(_xxfc_pyc_test_library)
+endif()
+
 if(XXFC_BUILD_ZIP_SUPPORT_TESTS)
     set(XXFC_ZIP_TEST_LIBRARY xxfclib::xxfclib)
     include("${CMAKE_CURRENT_SOURCE_DIR}/tests/zip_support/RegisterTests.cmake")
@@ -5394,6 +5428,24 @@ endif()
 
 if(XXFC_BUILD_TESTS)
     enable_testing()
+    add_executable(test_executable_inspection tests/executable_inspect/test_executable_inspection.c)
+    target_link_libraries(test_executable_inspection PRIVATE xxfclib::xxfclib)
+    add_test(NAME test_executable_inspection COMMAND test_executable_inspection)
+    add_executable(test_pe_streams tests/executable_inspect/test_pe_streams.c)
+    target_link_libraries(test_pe_streams PRIVATE xxfclib::xxfclib)
+    add_test(NAME test_pe_streams COMMAND test_pe_streams)
+    add_executable(test_pe_symbols tests/executable_inspect/test_pe_symbols.c)
+    target_link_libraries(test_pe_symbols PRIVATE xxfclib::xxfclib)
+    add_test(NAME test_pe_symbols COMMAND test_pe_symbols)
+    add_executable(test_pe_inspection_regressions tests/executable_inspect/test_pe_inspection_regressions.c)
+    target_link_libraries(test_pe_inspection_regressions PRIVATE xxfclib::xxfclib)
+    add_test(NAME test_pe_inspection_regressions COMMAND test_pe_inspection_regressions)
+    add_executable(test_pe_data_regressions tests/dotnet/test_pe_regressions.c)
+    target_link_libraries(test_pe_data_regressions PRIVATE xxfclib::xxfclib)
+    add_test(NAME test_pe_data_regressions COMMAND test_pe_data_regressions)
+    add_executable(test_dotnet_registration tests/executable_inspect/test_dotnet_registration.c)
+    target_link_libraries(test_dotnet_registration PRIVATE xxfclib::xxfclib)
+    add_test(NAME test_dotnet_registration COMMAND test_dotnet_registration)
     add_executable(test_die_native_api tests/test_die_native_api.c)
     target_include_directories(test_die_native_api PRIVATE src)
     target_link_libraries(test_die_native_api PRIVATE xxfclib::xxfclib)

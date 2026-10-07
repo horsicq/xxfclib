@@ -14,6 +14,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 #define EMT_MAX_PACKED (64U * 1024U * 1024U)
 #define EMT_MAX_IMAGE (32U * 1024U * 1024U)
@@ -212,11 +213,11 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
                                       record, sizeof(record)) ||
         !emt_track_header(record, 0U)) goto done;
 
-    bytes_per_sector = pm_le16(record + 126U + 11U);
-    sectors_per_track = pm_le16(record + 126U + 24U);
-    total_sectors = pm_le16(record + 126U + 19U);
+    bytes_per_sector = xx_data_get_u16(record + 126U + 11U, 2, 0, false);
+    sectors_per_track = xx_data_get_u16(record + 126U + 24U, 2, 0, false);
+    total_sectors = xx_data_get_u16(record + 126U + 19U, 2, 0, false);
     if (total_sectors == 0U)
-        total_sectors = pm_le32(record + 126U + 32U);
+        total_sectors = xx_data_get_u32(record + 126U + 32U, 4, 0, false);
     if (bytes_per_sector < 128U || bytes_per_sector > 4096U ||
         (bytes_per_sector & (bytes_per_sector - 1U)) != 0U ||
         sectors_per_track < 1U || sectors_per_track > 63U ||

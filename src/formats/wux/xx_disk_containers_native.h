@@ -54,16 +54,6 @@ static bool dc_dmk_sector(Abstractformat *f, const dc_image *image,
                           uint32_t encoded, uint8_t *plain, xx_pd_struct *pd);
 #endif
 
-static XXFC_MAYBE_UNUSED uint16_t dc_le16(const uint8_t *p) {
-    return (uint16_t)((uint16_t)p[0] | ((uint16_t)p[1] << 8U));
-}
-static uint32_t dc_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) |
-           ((uint32_t)p[2] << 16U) | ((uint32_t)p[3] << 24U);
-}
-static XXFC_MAYBE_UNUSED uint64_t dc_le64(const uint8_t *p) {
-    return (uint64_t)dc_le32(p) | ((uint64_t)dc_le32(p + 4U) << 32U);
-}
 static bool dc_span(uint64_t at, uint64_t size, uint64_t total) {
     return at <= total && size <= total - at;
 }

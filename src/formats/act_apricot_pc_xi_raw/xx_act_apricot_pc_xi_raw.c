@@ -52,6 +52,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -184,15 +185,6 @@ static const uint16_t aprc_cp437[128] = {
 /* ---------------------------------------------------------------------- */
 /* Small helpers                                                           */
 
-static uint16_t aprc_le16(const uint8_t *p) {
-    return (uint16_t)((uint16_t)p[0] | ((uint16_t)p[1] << 8U));
-}
-
-static uint32_t aprc_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) | ((uint32_t)p[2] << 16U) |
-           ((uint32_t)p[3] << 24U);
-}
-
 static bool aprc_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
     uint8_t *out = (uint8_t *)buffer;
@@ -252,9 +244,9 @@ static bool aprc_parse_label(const uint8_t *s, aprc_geometry *g) {
         g->label[index] = (char)s[index];
     }
     g->label[8] = '\0';
-    if (aprc_le16(s + 0x0E) != APRC_SECTOR) return false;
-    g->spt = aprc_le16(s + 0x10);
-    g->cylinders = aprc_le32(s + 0x12);
+    if (xx_data_get_u16(s + 0x0E, 2, 0, false) != APRC_SECTOR) return false;
+    g->spt = xx_data_get_u16(s + 0x10, 2, 0, false);
+    g->cylinders = xx_data_get_u32(s + 0x12, 4, 0, false);
     g->heads = s[0x16];
     if (g->spt < APRC_MIN_SPT || g->spt > APRC_MAX_SPT ||
         g->cylinders < APRC_MIN_CYL || g->cylinders > APRC_MAX_CYL ||
@@ -262,14 +254,14 @@ static bool aprc_parse_label(const uint8_t *s, aprc_geometry *g) {
         return false;
     geometry_total = g->cylinders * g->heads * g->spt; /* <= 3096 */
 
-    bps = aprc_le16(s + 0x50);
+    bps = xx_data_get_u16(s + 0x50, 2, 0, false);
     spc = s[0x52];
-    g->reserved = aprc_le16(s + 0x53);
+    g->reserved = xx_data_get_u16(s + 0x53, 2, 0, false);
     g->fats = s[0x55];
-    g->root_entries = aprc_le16(s + 0x56);
-    g->total_sectors = aprc_le16(s + 0x58);
+    g->root_entries = xx_data_get_u16(s + 0x56, 2, 0, false);
+    g->total_sectors = xx_data_get_u16(s + 0x58, 2, 0, false);
     g->media = s[0x5A];
-    g->fat_sectors = aprc_le16(s + 0x5B);
+    g->fat_sectors = xx_data_get_u16(s + 0x5B, 2, 0, false);
     if (bps != APRC_SECTOR || spc == 0U || spc > APRC_MAX_SPC ||
         (spc & (spc - 1U)) != 0U || g->reserved == 0U ||
         g->reserved > APRC_MAX_RESERVED || g->fats == 0U || g->fats > 2U ||
@@ -660,10 +652,10 @@ static bool aprc_entry(aprc_walk *walk, const uint8_t *raw, int64_t offset,
     member->entry_offset = offset;
     member->attributes = attributes;
     member->folder = (attributes & APRC_ATTR_DIRECTORY) != 0U;
-    member->first_cluster = aprc_le16(raw + 26U);
-    member->size = member->folder ? 0U : aprc_le32(raw + 28U);
-    member->dos_time = aprc_le16(raw + 22U);
-    member->dos_date = aprc_le16(raw + 24U);
+    member->first_cluster = xx_data_get_u16(raw + 26U, 2, 0, false);
+    member->size = member->folder ? 0U : xx_data_get_u32(raw + 28U, 4, 0, false);
+    member->dos_time = xx_data_get_u16(raw + 22U, 2, 0, false);
+    member->dos_date = xx_data_get_u16(raw + 24U, 2, 0, false);
     member->parent = parent;
     member->key_length = (uint8_t)length;
     xx_rt_memcpy(member->key, key, length);

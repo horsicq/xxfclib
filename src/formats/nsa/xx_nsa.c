@@ -23,6 +23,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef NSA
 #define XX_NSA_FILE_TYPE XX_FILE_TYPE_NSA
@@ -97,15 +98,6 @@ static size_t nsa_capacity(void) {
     if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
     if (n < 4096U) n = 4096U;
     return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
-}
-
-static uint16_t nsa_be16(const uint8_t *bytes) {
-    return (uint16_t)(((uint16_t)bytes[0] << 8U) | (uint16_t)bytes[1]);
-}
-
-static uint32_t nsa_be32(const uint8_t *bytes) {
-    return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
-           ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3];
 }
 
 static bool nsa_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -381,8 +373,8 @@ static bool nsa_read_header(Abstractformat *format, nsa_layout *layout) {
         return false;
     /* GARbro also opens archives whose header follows two zero bytes. */
     if (header[0] == 0U && header[1] == 0U) prefix = 2U;
-    count = (uint32_t)nsa_be16(header + prefix);
-    base = (int64_t)nsa_be32(header + prefix + 2U);
+    count = (uint32_t)xx_data_get_u16(header + prefix, 2, 0, true);
+    base = (int64_t)xx_data_get_u32(header + prefix + 2U, 4, 0, true);
     header_at = format->base_address + (int64_t)prefix;
     size -= (int64_t)prefix;
     if (count == 0U || base > size) return false;
@@ -451,9 +443,9 @@ static size_t nsa_parse_entry(const uint8_t *view, size_t avail,
         return 0U;
     entry->name_length = (uint32_t)at;
     entry->codec = view[at + 1U];
-    entry->offset = nsa_be32(view + at + 2U);
-    entry->packed = nsa_be32(view + at + 6U);
-    entry->unpacked = nsa_be32(view + at + 10U);
+    entry->offset = xx_data_get_u32(view + at + 2U, 4, 0, true);
+    entry->packed = xx_data_get_u32(view + at + 6U, 4, 0, true);
+    entry->unpacked = xx_data_get_u32(view + at + 10U, 4, 0, true);
     if (entry->codec != NSA_CODEC_STORED && entry->codec != NSA_CODEC_SPB &&
         entry->codec != NSA_CODEC_LZSS && entry->codec != NSA_CODEC_NBZ)
         return 0U;
@@ -641,8 +633,8 @@ static int64_t nsa_output_size(xx_io_device *device, const nsa_member *member) {
     if (member->packed < 4 ||
         !nsa_read_at(device, member->data_offset, prefix, sizeof(prefix)))
         return -1;
-    if (member->codec == NSA_CODEC_NBZ) return (int64_t)nsa_be32(prefix);
-    return nsa_spb_size(nsa_be16(prefix), nsa_be16(prefix + 2U));
+    if (member->codec == NSA_CODEC_NBZ) return (int64_t)xx_data_get_u32(prefix, 4, 0, true);
+    return nsa_spb_size(xx_data_get_u16(prefix, 2, 0, true), xx_data_get_u16(prefix + 2U, 2, 0, true));
 }
 
 static bool nsa_unpack_lzss(xx_io_device *source, const nsa_member *member,
@@ -718,13 +710,6 @@ static bool nsa_unpack_lzss(xx_io_device *source, const nsa_member *member,
     return ok;
 }
 
-static void nsa_put_le32(uint8_t *data, uint32_t value) {
-    data[0] = (uint8_t)value;
-    data[1] = (uint8_t)(value >> 8U);
-    data[2] = (uint8_t)(value >> 16U);
-    data[3] = (uint8_t)(value >> 24U);
-}
-
 static bool nsa_unpack_spb(xx_io_device *source, const nsa_member *member,
                            xx_io_device *destination, xx_pd_struct *pd) {
     uint8_t prefix[4];
@@ -737,8 +722,8 @@ static bool nsa_unpack_spb(xx_io_device *source, const nsa_member *member,
     if (member->packed < 4 ||
         !nsa_read_at(source, member->data_offset, prefix, sizeof(prefix)))
         return false;
-    width = nsa_be16(prefix);
-    height = nsa_be16(prefix + 2U);
+    width = xx_data_get_u16(prefix, 2, 0, true);
+    height = xx_data_get_u16(prefix + 2U, 2, 0, true);
     total = nsa_spb_size(width, height);
     if (total < 0) return false;
     pixels = (uint64_t)width * height;
@@ -759,11 +744,11 @@ static bool nsa_unpack_spb(xx_io_device *source, const nsa_member *member,
     }
     image[0] = (uint8_t)'B';
     image[1] = (uint8_t)'M';
-    nsa_put_le32(image + 2, (uint32_t)total);
+    xx_data_set_u32(image + 2, 4, 0, (uint32_t)total, false);
     image[10] = 54U;
     image[14] = 40U;
-    nsa_put_le32(image + 18, width);
-    nsa_put_le32(image + 22, height);
+    xx_data_set_u32(image + 18, 4, 0, width, false);
+    xx_data_set_u32(image + 22, 4, 0, height, false);
     image[26] = 1U;
     image[28] = 24U;
     for (plane_index = 0U; plane_index < 3U; ++plane_index) {
@@ -850,7 +835,7 @@ static bool nsa_unpack_nbz(xx_io_device *source, const nsa_member *member,
     if (member->packed < 4 ||
         !nsa_read_at(source, member->data_offset, prefix, sizeof(prefix)))
         return false;
-    expected = (int64_t)nsa_be32(prefix);
+    expected = (int64_t)xx_data_get_u32(prefix, 4, 0, true);
     if (expected > NSA_NBZ_MAX_OUTPUT) return false;
     xx_mem_zero(&limit, sizeof(limit));
     limit.device.write = nsa_limit_write;

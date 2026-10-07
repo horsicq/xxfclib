@@ -6,16 +6,13 @@
 #include "xxfclib/formats/lua_bytecode51/xx_lua_bytecode51.h"
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 static __inline bool span(uint64_t a,uint64_t n,uint64_t e) { return a<=e && n<=e-a; }
 static __inline bool stop(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
-static __inline uint64_t u64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
-static __inline uint32_t u32(const uint8_t *p,bool be) { return be ? pm_be32(p):pm_le32(p); }
-static __inline uint16_t u16(const uint8_t *p,bool be) { return be ? pm_be16(p):pm_le16(p); }
-static __inline uint32_t be24(const uint8_t *p) { return (uint32_t)p[0]<<16 | (uint32_t)p[1]<<8 | p[2]; }
 static __inline bool zero(const uint8_t *b,uint64_t n) { uint64_t i; for(i=0;i<n;++i) if(b[i]) return false; return true; }
-static __inline bool finite32(const uint8_t *p,bool be) { return (u32(p,be)&0x7f800000U)!=0x7f800000U; }
-static __inline bool finite64(const uint8_t *p,bool be) { return (u64(p,be)&0x7ff0000000000000ULL)!=0x7ff0000000000000ULL; }
+static __inline bool finite32(const uint8_t *p,bool be) { return (xx_data_get_u32(p, 4, 0, be)&0x7f800000U)!=0x7f800000U; }
+static __inline bool finite64(const uint8_t *p,bool be) { return (xx_data_get_u64(p, 8, 0, be)&0x7ff0000000000000ULL)!=0x7ff0000000000000ULL; }
 static __inline bool floats(const uint8_t *b,uint64_t at,uint64_t count,bool be,uint64_t n) { uint64_t i; if(!span(at,count*4,n)) return false; for(i=0;i<count;++i) if(!finite32(b+at+i*4,be)) return false; return true; }
 static __inline bool emit(Abstractformat *f,pm_stream *s,const char *label,uint64_t a,uint64_t n,uint64_t e) { return span(a,n,e) && s->count<4096 && pm_add(f,s,label,(int64_t)a,(int64_t)n); }
 static __inline bool cstr(const uint8_t *b,uint64_t *at,uint64_t end,uint64_t maximum,bool empty) { uint64_t start=*at; while(*at<end && *at-start<=maximum) { uint8_t c=b[(*at)++]; if(!c) return empty || *at>start+1; if(c<32 || c==127) return false; } return false; }
@@ -24,14 +21,14 @@ static __inline bool reserve(range *r,unsigned *nr,unsigned max,uint64_t at,uint
 static __inline uint32_t crc32_bytes(const uint8_t *b,uint64_t n) { return xx_crc32_calc(0U, b, (size_t)n); }
 
 typedef struct lua_scan {const uint8_t *b;uint64_t n,p;unsigned size_t_width,protos;uint64_t instructions;xx_pd_struct *pd;} lua_scan;
-static bool lua_string(lua_scan *q){uint64_t len;if(!span(q->p,q->size_t_width,q->n))return false;len=q->size_t_width==8?u64(q->b+q->p,false):pm_le32(q->b+q->p);q->p+=q->size_t_width;if(len>16777216||!span(q->p,len,q->n)||(len&&q->b[q->p+len-1]))return false;q->p+=len;return true;}
-static bool lua_count(lua_scan *q,uint32_t *c,uint32_t max){if(!span(q->p,4,q->n))return false;*c=pm_le32(q->b+q->p);q->p+=4;return *c<=max;}
+static bool lua_string(lua_scan *q){uint64_t len;if(!span(q->p,q->size_t_width,q->n))return false;len=q->size_t_width==8?xx_data_get_u64(q->b+q->p, 8, 0, false):xx_data_get_u32(q->b+q->p, 4, 0, false);q->p+=q->size_t_width;if(len>16777216||!span(q->p,len,q->n)||(len&&q->b[q->p+len-1]))return false;q->p+=len;return true;}
+static bool lua_count(lua_scan *q,uint32_t *c,uint32_t max){if(!span(q->p,4,q->n))return false;*c=xx_data_get_u32(q->b+q->p, 4, 0, false);q->p+=4;return *c<=max;}
 static bool lua_proto(lua_scan *q,unsigned depth){uint32_t first,last,code,constants,children,lines,locals,upvalues,i;uint8_t nups,params,stack;if(depth>32||++q->protos>1024||stop(q->pd)||!lua_string(q)||!span(q->p,12,q->n))return false;
- first=pm_le32(q->b+q->p);last=pm_le32(q->b+q->p+4);nups=q->b[q->p+8];params=q->b[q->p+9];stack=q->b[q->p+11];if(first>last||nups>60||params>stack||stack<2||stack>250||q->b[q->p+10]>7)return false;q->p+=12;
- if(!lua_count(q,&code,65536)||!code||q->instructions+code>1000000||!span(q->p,(uint64_t)code*4,q->n)) {return false; } q->instructions+=code;for(i=0;i<code;++i)if((pm_le32(q->b+q->p+(uint64_t)i*4)&63)>37)return false;q->p+=(uint64_t)code*4;
+ first=xx_data_get_u32(q->b+q->p, 4, 0, false);last=xx_data_get_u32(q->b+q->p+4, 4, 0, false);nups=q->b[q->p+8];params=q->b[q->p+9];stack=q->b[q->p+11];if(first>last||nups>60||params>stack||stack<2||stack>250||q->b[q->p+10]>7)return false;q->p+=12;
+ if(!lua_count(q,&code,65536)||!code||q->instructions+code>1000000||!span(q->p,(uint64_t)code*4,q->n)) {return false; } q->instructions+=code;for(i=0;i<code;++i)if((xx_data_get_u32(q->b+q->p+(uint64_t)i*4, 4, 0, false)&63)>37)return false;q->p+=(uint64_t)code*4;
  if(!lua_count(q,&constants,65536)) {return false; } for(i=0;i<constants;++i){uint8_t t;if(q->p>=q->n)return false;t=q->b[q->p++];if(t==0)continue;if(t==1){if(q->p>=q->n||q->b[q->p++]>1)return false;}else if(t==3){if(!span(q->p,8,q->n)||!finite64(q->b+q->p,false))return false;q->p+=8;}else if(t==4){if(!lua_string(q))return false;}else return false;}
  if(!lua_count(q,&children,1024)) {return false; } for(i=0;i<children;++i)if(!lua_proto(q,depth+1))return false;
- if(!lua_count(q,&lines,65536)||(lines&&lines!=code)||!span(q->p,(uint64_t)lines*4,q->n)) {return false; } q->p+=(uint64_t)lines*4;if(!lua_count(q,&locals,65536))return false;for(i=0;i<locals;++i){uint32_t a,e;if(!lua_string(q)||!span(q->p,8,q->n))return false;a=pm_le32(q->b+q->p);e=pm_le32(q->b+q->p+4);q->p+=8;if(a>e||e>code)return false;}
+ if(!lua_count(q,&lines,65536)||(lines&&lines!=code)||!span(q->p,(uint64_t)lines*4,q->n)) {return false; } q->p+=(uint64_t)lines*4;if(!lua_count(q,&locals,65536))return false;for(i=0;i<locals;++i){uint32_t a,e;if(!lua_string(q)||!span(q->p,8,q->n))return false;a=xx_data_get_u32(q->b+q->p, 4, 0, false);e=xx_data_get_u32(q->b+q->p+4, 4, 0, false);q->p+=8;if(a>e||e>code)return false;}
  if(!lua_count(q,&upvalues,60)||(upvalues&&upvalues!=nups)) {return false; } for(i=0;i<upvalues;++i)if(!lua_string(q))return false;return true;
 }
 

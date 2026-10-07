@@ -6,8 +6,8 @@
 #include "xxfclib/formats/flac/xx_flac.h"
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static uint64_t fl_be64(const uint8_t *p) { return (uint64_t)pm_be32(p)<<32 | pm_be32(p+4); }
 typedef struct fl_bits { Abstractformat *f; int64_t bit,end,cache_at; size_t cached,capacity; uint8_t *cache; xx_pd_struct *pd; } fl_bits;
 static bool fl_get(fl_bits *r,unsigned n,uint32_t *v) {
     unsigned i; uint32_t value=0;
@@ -72,10 +72,10 @@ static bool fl_frame(Abstractformat *f,int64_t at,int64_t limit,uint32_t rate,un
     if(number!=((h[1]&1) ? preceding : frame)) { buffer_result = (false); goto buffer_done; }
     bs=bc==1 ? 192U : bc<=5 ? 576U<<(bc-2) : bc>=8 ? 256U<<(bc-8) : 0;
     if(bc==6) { if(n>=size) { buffer_result = (false); goto buffer_done; } bs=(uint32_t)h[n++]+1; }
-    if(bc==7) { if(n+2>size) { buffer_result = (false); goto buffer_done; } bs=(uint32_t)pm_be16(h+n)+1; n+=2; if(bs==65536) { buffer_result = (false); goto buffer_done; } }
+    if(bc==7) { if(n+2>size) { buffer_result = (false); goto buffer_done; } bs=(uint32_t)xx_data_get_u16(h+n, 2, 0, true)+1; n+=2; if(bs==65536) { buffer_result = (false); goto buffer_done; } }
     sr=rc<12 ? rates[rc] : 0;
     if(rc==12) { if(n>=size) { buffer_result = (false); goto buffer_done; } sr=(uint32_t)h[n++]*1000; }
-    if(rc==13 || rc==14) { if(n+2>size) { buffer_result = (false); goto buffer_done; } sr=pm_be16(h+n); n+=2; if(rc==14) sr*=10; }
+    if(rc==13 || rc==14) { if(n+2>size) { buffer_result = (false); goto buffer_done; } sr=xx_data_get_u16(h+n, 2, 0, true); n+=2; if(rc==14) sr*=10; }
     if((rc && sr!=rate) || n>=size || !fl_crc(f,at,at+(int64_t)n,8,h[n])) { buffer_result = (false); goto buffer_done; }
     ++n; xx_mem_zero(&r,sizeof(r)); r.f=f; r.bit=(at+(int64_t)n)*8; r.end=limit*8; r.cache_at=-1; r.pd=pd;r.capacity=io_capacity;
     for(i=0;i<channels;++i) {
@@ -103,7 +103,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(limit<42 || limit>INT64_MAX/8 || !pm_read(f,0,h,4) || xx_rt_memcmp(h,"fLaC",4)) return false;
     do { char name[40]; if(!pm_read(f,at,h,4)) return false; last=h[0]>>7; type=h[0]&127; size=(uint32_t)h[1]<<16|(uint32_t)h[2]<<8|h[3]; at+=4;
         if(size>(uint64_t)(limit-at) || type>6 || (!rate && type!=0)) return false;
-        if(type==0) { uint64_t v; if(rate || size!=34 || !pm_read(f,at,h,34)) return false; minblock=pm_be16(h); maxblock=pm_be16(h+2); v=fl_be64(h+10); rate=(uint32_t)(v>>44); channels=(unsigned)((v>>41)&7)+1; depth=(unsigned)((v>>36)&31)+1; total=v&0xFFFFFFFFFULL;
+        if(type==0) { uint64_t v; if(rate || size!=34 || !pm_read(f,at,h,34)) return false; minblock=xx_data_get_u16(h, 2, 0, true); maxblock=xx_data_get_u16(h+2, 2, 0, true); v=xx_data_get_u64(h+10, 8, 0, true); rate=(uint32_t)(v>>44); channels=(unsigned)((v>>41)&7)+1; depth=(unsigned)((v>>36)&31)+1; total=v&0xFFFFFFFFFULL;
             if(minblock<16 || maxblock<minblock || !rate || depth<4) return false;
         }
         if(type==2 && size<4) return false;

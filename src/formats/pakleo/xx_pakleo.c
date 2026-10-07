@@ -43,6 +43,7 @@
 #include "xxfclib/algo/pakleo/xx_pakleo.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_PAKLEO_COPY_CHUNK (64 * 1024)
 
@@ -147,8 +148,6 @@ static bool xx_pakleo_add(xx_pakleo_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_pakleo_le16(const uint8_t *data);
-static uint32_t xx_pakleo_le32(const uint8_t *data);
 static bool xx_pakleo_name_string(const uint8_t *field, size_t length, size_t member_index, char **out_name);
 static xx_pakleo_stream *xx_pakleo_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_pakleo_decode(Abstractformat *self, const xx_pakleo_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
@@ -158,15 +157,6 @@ static bool xx_pakleo_decode(Abstractformat *self, const xx_pakleo_member *membe
  * limit; it matches the reference's own ceiling. */
 
 /* Worst case every name byte escapes to "%XX". */
-
-static uint16_t xx_pakleo_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_pakleo_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* Build the member name. Backslash is PAKLEO's path separator and becomes
  * '/'; anything else outside printable ASCII is escaped as %XX rather than
@@ -287,8 +277,8 @@ static xx_pakleo_stream *xx_pakleo_parse(Abstractformat *self,
 
         /* Signed on purpose: a size with the top bit set is a corrupt field,
          * not a two-gigabyte member. */
-        compressed_size = (int64_t)(int32_t)xx_pakleo_le32(record + 0x07);
-        uncompressed_size = (int64_t)(int32_t)xx_pakleo_le32(record + 0x0b);
+        compressed_size = (int64_t)(int32_t)xx_data_get_u32(record + 0x07, 4, 0, false);
+        uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(record + 0x0b, 4, 0, false);
         if (compressed_size < 0 || uncompressed_size < 0) break;
         if (compressed_size > XX_PAKLEO_MAX_COMPRESSED ||
             uncompressed_size > XX_PAKLEO_MAX_DECODED) {
@@ -334,8 +324,8 @@ static xx_pakleo_stream *xx_pakleo_parse(Abstractformat *self,
         member.method = (uint32_t)(record[5] - (uint8_t)'0');
         /* DOS date/time; the record stores time first, date second. */
         member.timestamp =
-            ((uint64_t)xx_pakleo_le16(record + 0x11) << 16) |
-            (uint64_t)xx_pakleo_le16(record + 0x0f);
+            ((uint64_t)xx_data_get_u16(record + 0x11, 2, 0, false) << 16) |
+            (uint64_t)xx_data_get_u16(record + 0x0f, 2, 0, false);
         /* The format has no directory entries; a path is expressed entirely
          * by backslashes inside a member name. */
         member.is_folder = false;

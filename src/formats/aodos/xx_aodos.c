@@ -17,6 +17,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define AODOS_BLOCK_SIZE 512U
 #define AODOS_SYSTEM_SIZE (20U * AODOS_BLOCK_SIZE)
@@ -88,10 +89,6 @@ static const uint16_t aodos_koi8r_high[128] = {
     0x041f,0x042f,0x0420,0x0421,0x0422,0x0423,0x0416,0x0412,
     0x042c,0x042b,0x0417,0x0428,0x042d,0x0429,0x0427,0x042a
 };
-
-static uint16_t aodos_le16(const uint8_t *bytes) {
-    return (uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U);
-}
 
 static bool aodos_read_at(xx_io_device *device, int64_t offset, void *buffer,
                           size_t size) {
@@ -431,12 +428,12 @@ static bool aodos_parse(Abstractformat *format, aodos_stream **result) {
         xx_mem_zero(&value, sizeof(value));
         value.entry_offset = (int64_t)AODOS_DIRECTORY_OFFSET +
                              (int64_t)index * AODOS_ENTRY_SIZE;
-        value.word = aodos_le16(entry);
+        value.word = xx_data_get_u16(entry, 2, 0, false);
         xx_rt_memcpy(value.name, entry + 2U, AODOS_NAME_SIZE);
-        value.start_block = aodos_le16(entry + 16U);
-        value.block_count = aodos_le16(entry + 18U);
-        value.load_address = aodos_le16(entry + 20U);
-        value.byte_size = aodos_le16(entry + 22U);
+        value.start_block = xx_data_get_u16(entry + 16U, 2, 0, false);
+        value.block_count = xx_data_get_u16(entry + 18U, 2, 0, false);
+        value.load_address = xx_data_get_u16(entry + 20U, 2, 0, false);
+        value.byte_size = xx_data_get_u16(entry + 22U, 2, 0, false);
         if (aodos_all_f6(value.name, sizeof(value.name)) ||
             aodos_all_zero(value.name, sizeof(value.name))) {
             if (raw_count == 0U ||

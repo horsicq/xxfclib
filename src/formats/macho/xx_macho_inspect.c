@@ -21,7 +21,7 @@
  * SOFTWARE.
  */
 
-/* xmach.c - Mach-O reader, ported from xx_macho_inspection.
+/* Native Mach-O inspection helpers used by DIE and other metadata queries.
  *
  * Walks the load commands to collect the LC_LOAD_DYLIB libraries (matched by
  * basename, as MACH_Script does), the sections (by sectname), and the

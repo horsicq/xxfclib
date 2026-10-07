@@ -5,15 +5,16 @@
  */
 #include "xxfclib/formats/btsnoop/xx_btsnoop.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[24]; int64_t at=16,left=pm_available(f); uint32_t link;
-    if(!pm_read(f,0,h,16) || xx_rt_memcmp(h,"btsnoop\0",8) || pm_be32(h+8)!=1) return false;
-    link=pm_be32(h+12); if(link!=1001 && link!=1002 && link!=1003 && link!=1004 && link!=2001) return false;
+    if(!pm_read(f,0,h,16) || xx_rt_memcmp(h,"btsnoop\0",8) || xx_data_get_u32(h+8, 4, 0, true)!=1) return false;
+    link=xx_data_get_u32(h+12, 4, 0, true); if(link!=1001 && link!=1002 && link!=1003 && link!=1004 && link!=2001) return false;
     while(at<left) {
         uint32_t original,cap; char name[48];
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,at,h,24)) return false;
-        original=pm_be32(h); cap=pm_be32(h+4);
+        original=xx_data_get_u32(h, 4, 0, true); cap=xx_data_get_u32(h+4, 4, 0, true);
         if(cap>original || cap>(uint64_t)(left-at-24)) return false;
         xx_rt_snprintf(name,sizeof(name),"packet-%u.bin",(unsigned)s->count);
         if(!pm_add(f,s,name,at+24,cap)) return false;

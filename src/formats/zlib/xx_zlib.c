@@ -12,6 +12,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ZLIB_PAYLOAD_NAME "payload"
 #define XX_ZLIB_MAX_INPUT ((uint64_t)1024U * 1024U * 1024U)
@@ -65,11 +66,6 @@ static bool xx_zlib_header_is_valid(const uint8_t *input, size_t input_size) {
     return (input[0] & UINT8_C(0x0f)) == UINT8_C(8) &&
            (input[0] >> 4U) <= 7U && (header % 31U) == 0U &&
            (input[1] & UINT8_C(0x20)) == 0U;
-}
-
-static uint32_t xx_zlib_read32be(const uint8_t *input) {
-    return ((uint32_t)input[0] << 24U) | ((uint32_t)input[1] << 16U) |
-           ((uint32_t)input[2] << 8U) | (uint32_t)input[3];
 }
 
 static uint32_t xx_zlib_adler32(const uint8_t *data, size_t size) {
@@ -171,7 +167,7 @@ static bool xx_zlib_decode_stream(Abstractformat *self,
     }
     trailer_offset = 2U + raw_size;
     if (trailer_offset > (size_t)input_size - 4U) goto cleanup;
-    expected_adler = xx_zlib_read32be(input + trailer_offset);
+    expected_adler = xx_data_get_u32(input + trailer_offset, 4, 0, true);
     if (xx_zlib_adler32(output.data, output.size) != expected_adler ||
         (destination && !xx_zlib_write_all(destination, output.data,
                                             output.size, pd))) {

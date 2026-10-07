@@ -6,6 +6,7 @@
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/json/xx_json.h"
 #include "xxfclib/buf/xx_buf.h"
+#include <wchar.h>
 
 #define ZIP_INSPECT_LIMIT ((size_t)16 * 1024 * 1024)
 typedef struct { xx_list_s names; char *manifest, *package; char jvm[24]; } zip_analysis;
@@ -30,9 +31,7 @@ bool xx_zip_analyze(xx_zip *zip, xx_pd_struct *pd) {
     xx_archive_record_state *state = NULL;
     size_t total = 0;
     bool ok = false;
-    bool tried_manifest = false, tried_package = false;
-    unsigned class_attempts = 0;
-    bool found_class_header = false;
+    size_t name_index;
     if (!zip || xx_pd_is_stopped(pd)) return false;
     if (zip->analysis) return true;
     if (!xx_zip_handle_base_info(&zip->format, pd)) return false;
@@ -43,32 +42,67 @@ bool xx_zip_analyze(xx_zip *zip, xx_pd_struct *pd) {
     if (!state) goto done;
     while (state->has_record && !xx_pd_is_stopped(pd)) {
         const xx_archive_record *record = xx_zip_get_current_archive_record(&zip->format, state);
-        const char *name = xx_archive_record_get_meta_str(record, XX_META_ID_ORIGINAL_NAME);
-        char *owned; size_t n; uint8_t *data = NULL; size_t size = 0;
-        if (!name || a->names.count >= 100000) goto done;
+        const char *name = xx_archive_record_get_original_name(record);
+        char *converted_name = NULL;
+        char *owned; size_t n;
+        if (!name) {
+            const wchar_t *wide_name = xx_archive_record_get_original_name_w(record);
+            if (wide_name) converted_name = xx_str_unicode_to_utf8(wide_name);
+            name = converted_name;
+        }
+        if (!name || a->names.count >= 100000) { xx_str_free(converted_name); goto done; }
         n = xx_rt_strlen(name) + 1;
-        if (n > ZIP_INSPECT_LIMIT * 2 - total) goto done;
-        owned = xx_str_create(name); if (!owned) goto done;
+        if (total > ZIP_INSPECT_LIMIT * 2 || n > ZIP_INSPECT_LIMIT * 2 - total) {
+            xx_str_free(converted_name); goto done;
+        }
+        owned = xx_str_create(name); xx_str_free(converted_name); if (!owned) goto done;
         if (!xx_list_append(&a->names, &owned)) { xx_str_free(owned); goto done; }
         total += n;
-        if (!tried_manifest && !xx_rt_strcmp(name, "META-INF/MANIFEST.MF")) {
-            tried_manifest = true;
-            if (xx_zip_read_file(zip, name, ZIP_INSPECT_LIMIT, &data, &size, pd)) a->manifest = (char *)data;
-        } else if (!tried_package && !xx_rt_strcmp(name, "package/package.json")) {
-            tried_package = true;
-            if (xx_zip_read_file(zip, name, ZIP_INSPECT_LIMIT, &data, &size, pd)) a->package = (char *)data;
-        } else if (!found_class_header && class_attempts < 8 &&
-                   ((!xx_rt_strcmp(name, "class")) || (n >= 7 && !xx_rt_strcmp(name + n - 7, ".class")))) {
-            ++class_attempts;
-            if (xx_zip_read_file(zip, name, ZIP_INSPECT_LIMIT, &data, &size, pd)) {
-                found_class_header = size > 10 && !xx_rt_memcmp(data, "\xCA\xFE\xBA\xBE", 4);
-                zip_jvm_version(data, size, a->jvm); xx_mem_free(data);
-            }
-        }
-        /* Selected reads borrow the input but do not alter this iterator. */
+        /* The iterator reuses its current-record storage after every advance. */
         if (!xx_zip_archive_record_move_to_next(&zip->format, state, NULL)) break;
     }
     ok = !xx_pd_is_stopped(pd) && a->names.count == zip->number_of_records;
+    if (state) {
+        xx_zip_free_archive_records_reading(&zip->format, state);
+        state = NULL;
+    }
+    if (ok) {
+        bool tried_manifest = false, tried_package = false;
+        bool found_class_header = false;
+        unsigned class_attempts = 0;
+        /* Open member readers only after the central-directory state is gone.
+         * Each selected read creates its own ZIP view over the shared device. */
+        for (name_index = 0; name_index < a->names.count &&
+                             !xx_pd_is_stopped(pd); ++name_index) {
+            const char *name = *(char **)xx_list_at(&a->names, name_index);
+            size_t n = xx_rt_strlen(name) + 1U;
+            uint8_t *data = NULL;
+            size_t size = 0;
+            if (!tried_manifest && !xx_rt_strcmp(name, "META-INF/MANIFEST.MF")) {
+                tried_manifest = true;
+                if (xx_zip_read_file(zip, name, ZIP_INSPECT_LIMIT,
+                                     &data, &size, pd))
+                    a->manifest = (char *)data;
+            } else if (!tried_package &&
+                       !xx_rt_strcmp(name, "package/package.json")) {
+                tried_package = true;
+                if (xx_zip_read_file(zip, name, ZIP_INSPECT_LIMIT,
+                                     &data, &size, pd))
+                    a->package = (char *)data;
+            } else if (!found_class_header && class_attempts < 8U &&
+                       ((!xx_rt_strcmp(name, "class")) ||
+                        (n >= 7U && !xx_rt_strcmp(name + n - 7U, ".class")))) {
+                ++class_attempts;
+                if (xx_zip_read_file(zip, name, ZIP_INSPECT_LIMIT,
+                                     &data, &size, pd)) {
+                    found_class_header = size > 10U &&
+                        !xx_rt_memcmp(data, "\xCA\xFE\xBA\xBE", 4U);
+                    zip_jvm_version(data, size, a->jvm);
+                    xx_mem_free(data);
+                }
+            }
+        }
+    }
 done:
     if (state) xx_zip_free_archive_records_reading(&zip->format, state);
     if (!ok) xx_zip_cleanup_analysis(zip);

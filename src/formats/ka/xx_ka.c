@@ -9,6 +9,7 @@
  */
 #include "xxfclib/formats/ka/xx_ka.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 #define KA_HEADER_SIZE 22U
 #define KA_ENTRY_SIZE 21U
@@ -47,7 +48,7 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
         xx_rt_memcmp(header, "KA Archive\0", 11U) != 0)
         return false;
     for (i = 11U; i < 20U; ++i) if (header[i] != 0U) return false;
-    count = pm_le16(header + 20U);
+    count = xx_data_get_u16(header + 20U, 2, 0, false);
     table_end = (int64_t)KA_HEADER_SIZE + (int64_t)count * KA_ENTRY_SIZE;
     if (count == 0U || table_end > span) return false;
     largest = table_end;
@@ -59,8 +60,8 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
                         (int64_t)i * KA_ENTRY_SIZE, row, sizeof(row)) ||
             !ka_name(row, name))
             return false;
-        offset = (int64_t)pm_le32(row + KA_NAME_SIZE);
-        size = (int64_t)pm_le32(row + KA_NAME_SIZE + 4U);
+        offset = (int64_t)xx_data_get_u32(row + KA_NAME_SIZE, 4, 0, false);
+        size = (int64_t)xx_data_get_u32(row + KA_NAME_SIZE + 4U, 4, 0, false);
         if (offset < table_end || offset > span || size > span - offset) {
             /* Damaged entry: its declared bytes do not exist.  Never emit
              * the truncated tail as a valid member. */

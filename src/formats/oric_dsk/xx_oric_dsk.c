@@ -7,7 +7,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  hx_blob b;uint32_t tracks,sides,geometry,size,i;bool raw,ok=false;char name[96],info[256];
  if(!hx_load(f,&b,pd))return false;
  raw=hx_tag(&b,0,"MFM_DISK",8);HX_NEED((raw||hx_tag(&b,0,"ORICDISK",8))&&hx_span(&b,0,256));
- sides=pm_le32(b.p+8);tracks=pm_le32(b.p+12);geometry=pm_le32(b.p+16);HX_NEED(sides&&sides<=2&&tracks&&tracks<=170);
+ sides=xx_data_get_u32(b.p+8, 4, 0, false);tracks=xx_data_get_u32(b.p+12, 4, 0, false);geometry=xx_data_get_u32(b.p+16, 4, 0, false);HX_NEED(sides&&sides<=2&&tracks&&tracks<=170);
  if(raw){HX_NEED(geometry==1||geometry==2);HX_NEED((b.n-256)%(tracks*sides)==0);size=(uint32_t)((b.n-256)/(tracks*sides));HX_NEED(size>=128&&size<=65536&&!(size&255U));}
  else{HX_NEED(geometry&&geometry<=64);size=geometry*256U;}
  HX_NEED(b.n==256+(uint64_t)tracks*sides*size&&hx_emit(f,s,&b,"descriptor.oric-dsk",0,256));

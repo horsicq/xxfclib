@@ -50,6 +50,7 @@
 #include "xxfclib/algo/genius/xx_genius.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_GENIUS_COPY_CHUNK (64 * 1024)
 
@@ -161,8 +162,6 @@ static bool xx_genius_add(xx_genius_stream *stream,
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
 static uint32_t xx_genius_le16(const uint8_t *data);
-static uint32_t xx_genius_le32(const uint8_t *data);
-static uint64_t xx_genius_le64(const uint8_t *data);
 static bool xx_genius_validate_name(uint8_t *field, size_t size);
 static xx_genius_stream *xx_genius_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_genius_decode(Abstractformat *self, const xx_genius_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
@@ -174,16 +173,6 @@ static bool xx_genius_decode(Abstractformat *self, const xx_genius_member *membe
 
 static uint32_t xx_genius_le16(const uint8_t *data) {
     return (uint32_t)data[0] | ((uint32_t)data[1] << 8);
-}
-
-static uint32_t xx_genius_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static uint64_t xx_genius_le64(const uint8_t *data) {
-    return (uint64_t)xx_genius_le32(data) |
-           ((uint64_t)xx_genius_le32(data + 4) << 32);
 }
 
 /* The name field is counted, not NUL terminated, but the writer stores the NUL
@@ -250,7 +239,7 @@ static xx_genius_stream *xx_genius_parse(Abstractformat *self,
     }
     if (header[XX_GENIUS_SIGNATURE_SIZE] != 0U) return NULL;
 
-    count = xx_genius_le32(header + XX_GENIUS_COUNT_OFFSET);
+    count = xx_data_get_u32(header + XX_GENIUS_COUNT_OFFSET, 4, 0, false);
     if (count < 1U || count > (uint32_t)XX_GENIUS_MAX_MEMBERS) return NULL;
 
     stream = (xx_genius_stream *)xx_mem_alloc(sizeof(*stream));
@@ -279,11 +268,11 @@ static xx_genius_stream *xx_genius_parse(Abstractformat *self,
                                sizeof(entry))) {
             goto fail;
         }
-        declared_offset = (int64_t)xx_genius_le64(entry);
+        declared_offset = (int64_t)xx_data_get_u64(entry, 8, 0, false);
         compressed =
-            (int64_t)xx_genius_le64(entry + XX_GENIUS_ENTRY_COMPRESSED);
+            (int64_t)xx_data_get_u64(entry + XX_GENIUS_ENTRY_COMPRESSED, 8, 0, false);
         uncompressed =
-            (int64_t)xx_genius_le64(entry + XX_GENIUS_ENTRY_UNCOMPRESSED);
+            (int64_t)xx_data_get_u64(entry + XX_GENIUS_ENTRY_UNCOMPRESSED, 8, 0, false);
         name_size = xx_genius_le16(entry + XX_GENIUS_ENTRY_NAMESIZE);
 
         /* These are u64 fields read into a signed type; a value with the top
@@ -353,7 +342,7 @@ static xx_genius_stream *xx_genius_parse(Abstractformat *self,
         member.method = (uint32_t)entry[XX_GENIUS_ENTRY_METHOD];
         /* A 64-bit write time whose epoch the reference does not interpret
          * either; published unchanged. */
-        member.timestamp = xx_genius_le64(entry + XX_GENIUS_ENTRY_TIME);
+        member.timestamp = xx_data_get_u64(entry + XX_GENIUS_ENTRY_TIME, 8, 0, false);
         member.is_folder = false;
         added = xx_genius_add(stream, &member);
         if (!added) {

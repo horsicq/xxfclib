@@ -69,6 +69,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef QRST
 #define XX_QRST_FILE_TYPE XX_FILE_TYPE_QRST
@@ -108,15 +109,6 @@ typedef struct qrst_stream_s {
     size_t index;
     int64_t archive_size;
 } qrst_stream;
-
-static uint16_t qrst_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t qrst_le32(const uint8_t *bytes) {
-    return (uint32_t)qrst_le16(bytes) |
-           ((uint32_t)qrst_le16(bytes + 2U) << 16U);
-}
 
 static bool qrst_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
@@ -232,7 +224,7 @@ static bool qrst_measure_tracks(xx_io_device *device, int64_t base,
             if (limit - cursor < 5 ||
                 !qrst_read_at(device, base + cursor, record, 5U))
                 return false;
-            size = (int64_t)qrst_le16(record + 3U);
+            size = (int64_t)xx_data_get_u16(record + 3U, 2, 0, false);
             /* Bound the declared record against what is actually there
              * before it is used for anything. */
             if (limit - cursor - 5 < size) return false;
@@ -268,7 +260,7 @@ static bool qrst_parse(Abstractformat *format, qrst_stream **result) {
             !qrst_read_at(format->device, format->base_address + cursor,
                           header, sizeof(header)) ||
             xx_rt_memcmp(header, "QRST", 4U) != 0) goto fail;
-        version = qrst_le32(header + 4U);
+        version = xx_data_get_u32(header + 4U, 4, 0, false);
         if (version != QRST_VERSION_1_0 && version != QRST_VERSION_5_0)
             goto fail;
         if (!qrst_geometry(header[12], &track_size, &image_size)) goto fail;
@@ -285,10 +277,10 @@ static bool qrst_parse(Abstractformat *format, qrst_stream **result) {
              * present only when its offset is non-zero. */
             for (which = 0U; which < 2U; ++which) {
                 int64_t offset =
-                    (int64_t)qrst_le32(directory + 1U + which * 12U);
+                    (int64_t)xx_data_get_u32(directory + 1U + which * 12U, 4, 0, false);
                 int64_t packed =
-                    (int64_t)qrst_le32(directory + 5U + which * 12U);
-                uint32_t crc = qrst_le32(directory + 9U + which * 12U);
+                    (int64_t)xx_data_get_u32(directory + 5U + which * 12U, 4, 0, false);
+                uint32_t crc = xx_data_get_u32(directory + 9U + which * 12U, 4, 0, false);
                 if (which != 0U && offset == 0) break;
                 /* Both halves of the declared extent are bounded against
                  * what the file really holds before either is recorded. */
@@ -489,7 +481,7 @@ static bool qrst_decode(Abstractformat *format, const qrst_section *section,
             int64_t size, at, out = 0;
             bool literal = true;
             if (section->data_size - cursor < 5) goto fail;
-            size = (int64_t)qrst_le16(packed + cursor + 3);
+            size = (int64_t)xx_data_get_u16(packed + cursor + 3, 2, 0, false);
             if (section->data_size - cursor - 5 < size) goto fail;
             at = cursor + 5;
             while (at < cursor + 5 + size) {

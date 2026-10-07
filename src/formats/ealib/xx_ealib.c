@@ -48,6 +48,7 @@
 #include "xxfclib/algo/dcl/xx_dcl.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_EALIB_COPY_CHUNK (64 * 1024)
 
@@ -155,8 +156,6 @@ static bool xx_ealib_add(xx_ealib_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_ealib_le16(const uint8_t *data);
-static uint32_t xx_ealib_le32(const uint8_t *data);
 static bool xx_ealib_raw_name_valid(const uint8_t *entry);
 static void xx_ealib_name_to_string(const uint8_t *entry, size_t index, char *out);
 static xx_ealib_stream *xx_ealib_parse(Abstractformat *self, xx_pd_struct *pd);
@@ -166,15 +165,6 @@ static bool xx_ealib_decode(Abstractformat *self, const xx_ealib_member *member,
 /* The count field is 16 bit, so this is the producer's hard limit and not a
  * policy choice; the sentinel entry rides on top of it. */
 /* Worst case each of the 13 name bytes escapes to three characters. */
-
-static uint16_t xx_ealib_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_ealib_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* The 13-byte name field is NUL padded and byte 12 is always the terminator.
  * Every member of the reference corpus is plain printable ASCII with CLEAN
@@ -256,21 +246,21 @@ static bool xx_ealib_tail_valid(Abstractformat *self, int64_t start,
         !xx_ealib_read_at(self, start, header, sizeof(header)) ||
         xx_rt_memcmp(header, "EALIB", 5U) != 0)
         return false;
-    count = xx_ealib_le16(header + 5);
+    count = xx_data_get_u16(header + 5, 2, 0, false);
     if (count == 0U) return false;
     directory_end = XX_EALIB_HEADER_SIZE +
                     (int64_t)(count + 1U) * XX_EALIB_ENTRY_SIZE;
     if (directory_end > trailing_size ||
         !xx_ealib_read_at(self, start + XX_EALIB_HEADER_SIZE +
                                XX_EALIB_OFFSET_OFFSET, offset, sizeof(offset)) ||
-        (int64_t)(int32_t)xx_ealib_le32(offset) != directory_end)
+        (int64_t)(int32_t)xx_data_get_u32(offset, 4, 0, false) != directory_end)
         return false;
     if (!xx_ealib_read_at(self, start + XX_EALIB_HEADER_SIZE +
                                   (int64_t)count * XX_EALIB_ENTRY_SIZE +
                                   XX_EALIB_OFFSET_OFFSET,
                           offset, sizeof(offset)))
         return false;
-    nested_end = (int64_t)(int32_t)xx_ealib_le32(offset);
+    nested_end = (int64_t)(int32_t)xx_data_get_u32(offset, 4, 0, false);
     return nested_end >= directory_end && nested_end <= trailing_size;
 }
 
@@ -303,7 +293,7 @@ static xx_ealib_stream *xx_ealib_parse(Abstractformat *self,
     }
     if (xx_rt_memcmp(header, "EALIB", 5U) != 0) return NULL;
 
-    member_count = (int32_t)xx_ealib_le16(header + 5);
+    member_count = (int32_t)xx_data_get_u16(header + 5, 2, 0, false);
     /* An archive with no members is not representable: the directory would
      * be the sentinel alone and the tiling rules below would be vacuous. */
     if (member_count < 1 || member_count > XX_EALIB_MAX_MEMBERS) return NULL;
@@ -336,17 +326,17 @@ static xx_ealib_stream *xx_ealib_parse(Abstractformat *self,
             xx_mem_free(directory);
             return NULL;
         }
-        if ((int32_t)xx_ealib_le32(entry + XX_EALIB_OFFSET_OFFSET) < 0) {
+        if ((int32_t)xx_data_get_u32(entry + XX_EALIB_OFFSET_OFFSET, 4, 0, false) < 0) {
             xx_mem_free(directory);
             return NULL;
         }
     }
 
     first_offset =
-        (int64_t)(int32_t)xx_ealib_le32(directory + XX_EALIB_OFFSET_OFFSET);
-    sentinel_offset = (int64_t)(int32_t)xx_ealib_le32(
+        (int64_t)(int32_t)xx_data_get_u32(directory + XX_EALIB_OFFSET_OFFSET, 4, 0, false);
+    sentinel_offset = (int64_t)(int32_t)xx_data_get_u32(
         directory + (size_t)member_count * XX_EALIB_ENTRY_SIZE +
-        XX_EALIB_OFFSET_OFFSET);
+        XX_EALIB_OFFSET_OFFSET, 4, 0, false);
     /* The first entry starts behind the directory.  The sentinel bounds the
      * payload; any remaining bytes must be a short trailer or the start of
      * another structurally valid EALIB archive. */
@@ -378,9 +368,9 @@ static xx_ealib_stream *xx_ealib_parse(Abstractformat *self,
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         entry_offset =
-            (int64_t)(int32_t)xx_ealib_le32(entry + XX_EALIB_OFFSET_OFFSET);
-        next_offset = (int64_t)(int32_t)xx_ealib_le32(
-            entry + XX_EALIB_ENTRY_SIZE + XX_EALIB_OFFSET_OFFSET);
+            (int64_t)(int32_t)xx_data_get_u32(entry + XX_EALIB_OFFSET_OFFSET, 4, 0, false);
+        next_offset = (int64_t)(int32_t)xx_data_get_u32(
+            entry + XX_EALIB_ENTRY_SIZE + XX_EALIB_OFFSET_OFFSET, 4, 0, false);
         size = next_offset - entry_offset;
         /* Offsets must not run backwards: a negative size would otherwise
          * let two members claim overlapping payloads. */
@@ -409,7 +399,7 @@ static xx_ealib_stream *xx_ealib_parse(Abstractformat *self,
                                   prefix, 4U)) {
                 goto fail;
             }
-            uncompressed = (int64_t)(int32_t)xx_ealib_le32(prefix);
+            uncompressed = (int64_t)(int32_t)xx_data_get_u32(prefix, 4, 0, false);
             if (uncompressed < 0) goto fail;
             member.data_offset = self->base_address + entry_offset + 4;
             member.compressed_size = size - 4;

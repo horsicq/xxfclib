@@ -13,6 +13,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #define RVZ_FILE_HEADER 0x48U
 #define RVZ_MIN_HEADER 0xd5U
@@ -49,12 +50,8 @@ typedef struct rvz_context {
 } rvz_context;
 
 static bool rvz_stopped(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
-static uint32_t rvz_be32(const uint8_t *p) {
-    return (uint32_t)p[0] << 24U | (uint32_t)p[1] << 16U |
-           (uint32_t)p[2] << 8U | (uint32_t)p[3];
-}
 static bool rvz_be64_checked(const uint8_t *p, int64_t *result) {
-    uint64_t value = (uint64_t)rvz_be32(p) << 32U | rvz_be32(p + 4U);
+    uint64_t value = (uint64_t)xx_data_get_u32(p, 4, 0, true) << 32U | xx_data_get_u32(p + 4U, 4, 0, true);
     if (value > INT64_MAX) return false;
     *result = (int64_t)value;
     return true;
@@ -170,9 +167,9 @@ static rvz_context *rvz_parse(Abstractformat *format, xx_pd_struct *pd) {
     if (available < RVZ_FILE_HEADER ||
         !rvz_read(format, 0, file_header, sizeof(file_header), pd) ||
         xx_rt_memcmp(file_header, "RVZ\x01", 4U) != 0) return NULL;
-    version = rvz_be32(file_header + 4U);
-    compatible = rvz_be32(file_header + 8U);
-    header_size = rvz_be32(file_header + 12U);
+    version = xx_data_get_u32(file_header + 4U, 4, 0, true);
+    compatible = xx_data_get_u32(file_header + 8U, 4, 0, true);
+    header_size = xx_data_get_u32(file_header + 12U, 4, 0, true);
     if (version != UINT32_C(0x01000000) ||
         compatible > UINT32_C(0x01000000) ||
         header_size < RVZ_MIN_HEADER || header_size > RVZ_MAX_HEADER ||
@@ -188,14 +185,14 @@ static rvz_context *rvz_parse(Abstractformat *format, xx_pd_struct *pd) {
         !xx_sha1_memory(header, header_size, digest) ||
         xx_rt_memcmp(digest, file_header + 0x10U, 20U) != 0)
         return NULL;
-    disc_type = rvz_be32(header);
-    compression = rvz_be32(header + 4U);
-    chunk = rvz_be32(header + 12U);
-    partitions = rvz_be32(header + 0x90U);
-    raw_count = rvz_be32(header + 0xb4U);
-    raw_size = rvz_be32(header + 0xc0U);
-    group_count = rvz_be32(header + 0xc4U);
-    group_size = rvz_be32(header + 0xd0U);
+    disc_type = xx_data_get_u32(header, 4, 0, true);
+    compression = xx_data_get_u32(header + 4U, 4, 0, true);
+    chunk = xx_data_get_u32(header + 12U, 4, 0, true);
+    partitions = xx_data_get_u32(header + 0x90U, 4, 0, true);
+    raw_count = xx_data_get_u32(header + 0xb4U, 4, 0, true);
+    raw_size = xx_data_get_u32(header + 0xc0U, 4, 0, true);
+    group_count = xx_data_get_u32(header + 0xc4U, 4, 0, true);
+    group_size = xx_data_get_u32(header + 0xd0U, 4, 0, true);
     if (disc_type != 1U || partitions != 0U ||
         (compression != 0U && compression != 5U) ||
         header[0xd4U] != 0U ||
@@ -252,8 +249,8 @@ static rvz_context *rvz_parse(Abstractformat *format, xx_pd_struct *pd) {
         raw->logical = end - raw->aligned;
         raw->skip = expected_output - raw->aligned;
         raw->output = end - expected_output;
-        raw->first_group = rvz_be32(record + 16U);
-        raw->group_count = rvz_be32(record + 20U);
+        raw->first_group = xx_data_get_u32(record + 16U, 4, 0, true);
+        raw->group_count = xx_data_get_u32(record + 20U, 4, 0, true);
         required = (raw->logical + chunk - 1U) / chunk;
         if (raw->logical < 1 || raw->skip < 0 ||
             raw->skip >= raw->logical || raw->output < 1 || required < 1 ||
@@ -268,10 +265,10 @@ static rvz_context *rvz_parse(Abstractformat *format, xx_pd_struct *pd) {
     for (i = 0U; i < group_count; ++i) {
         const uint8_t *record = group_table + (size_t)i * RVZ_GROUP_ENTRY;
         rvz_group *group = &context->groups[i];
-        uint32_t word = rvz_be32(record + 4U);
-        group->data_offset = (int64_t)rvz_be32(record) * 4;
+        uint32_t word = xx_data_get_u32(record + 4U, 4, 0, true);
+        group->data_offset = (int64_t)xx_data_get_u32(record, 4, 0, true) * 4;
         group->data_size = word & ~RVZ_HIGH_BIT;
-        group->packed_size = rvz_be32(record + 8U);
+        group->packed_size = xx_data_get_u32(record + 8U, 4, 0, true);
         group->compressed = (word & RVZ_HIGH_BIT) != 0U;
     }
     for (i = 0U; i < raw_count; ++i) {
@@ -352,7 +349,7 @@ static bool rvz_junk_fill(const uint8_t *seed, int64_t absolute,
     rvz_junk junk = {0};
     size_t i, skip;
     if (!seed || !output || absolute < 0) return false;
-    for (i = 0U; i < 17U; ++i) junk.words[i] = rvz_be32(seed + i * 4U);
+    for (i = 0U; i < 17U; ++i) junk.words[i] = xx_data_get_u32(seed + i * 4U, 4, 0, true);
     for (i = 17U; i < 521U; ++i)
         junk.words[i] = (junk.words[i - 17U] << 23U) ^
                         (junk.words[i - 16U] >> 9U) ^ junk.words[i - 1U];
@@ -372,7 +369,7 @@ static bool rvz_decode_packed(const uint8_t *packed, size_t packed_size,
     while (in < packed_size && !rvz_stopped(pd)) {
         uint32_t word, amount;
         if (packed_size - in < 4U) return false;
-        word = rvz_be32(packed + in);
+        word = xx_data_get_u32(packed + in, 4, 0, true);
         in += 4U;
         amount = word & ~RVZ_HIGH_BIT;
         if (!amount || amount > output_size - out) return false;

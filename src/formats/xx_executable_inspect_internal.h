@@ -14,9 +14,18 @@
 #define XX_EXEC_MAX_READ_WORK (64U * 1024U * 1024U)
 static inline bool xx_exec_account_string(xx_executable_input *input, size_t size) {
     if (!input || !input->parsing) return true;
-    if (size > XX_EXEC_MAX_STRING_BYTES - input->string_bytes) { input->failed = true; return false; }
+    if (input->string_bytes > XX_EXEC_MAX_STRING_BYTES ||
+        size > XX_EXEC_MAX_STRING_BYTES - input->string_bytes) { input->failed = true; return false; }
     input->string_bytes += size;
     return true;
+}
+
+static inline char *xx_exec_copy_string(xx_executable_input *input, const char *string) {
+    char *result;
+    if (!string || !xx_exec_account_string(input, xx_rt_strlen(string))) return NULL;
+    result = xx_str_create(string);
+    if (!result && input) input->failed = true;
+    return result;
 }
 
 static inline bool xx_exec_read(xx_executable_input *input, int64_t offset,
@@ -105,36 +114,75 @@ static inline char *xx_exec_string(xx_executable_input *input, int64_t offset,
     }
 }
 
-static inline char *xx_exec_unicode_n(xx_executable_input *input, int64_t offset,
-                                      int64_t maximum, int big_endian, int64_t *units) {
+static inline bool xx_exec_append_codepoint(xx_buf_t *buffer, uint32_t code) {
+    if (code < 0x80)
+        return xx_buf_append_char(buffer, (char)code);
+    if (code < 0x800)
+        return xx_buf_append_char(buffer, (char)(0xc0 | (code >> 6))) &&
+               xx_buf_append_char(buffer, (char)(0x80 | (code & 63)));
+    if (code < 0x10000)
+        return xx_buf_append_char(buffer, (char)(0xe0 | (code >> 12))) &&
+               xx_buf_append_char(buffer, (char)(0x80 | ((code >> 6) & 63))) &&
+               xx_buf_append_char(buffer, (char)(0x80 | (code & 63)));
+    return xx_buf_append_char(buffer, (char)(0xf0 | (code >> 18))) &&
+           xx_buf_append_char(buffer, (char)(0x80 | ((code >> 12) & 63))) &&
+           xx_buf_append_char(buffer, (char)(0x80 | ((code >> 6) & 63))) &&
+           xx_buf_append_char(buffer, (char)(0x80 | (code & 63)));
+}
+
+/* Exact lengths are used for counted resource names and the CLI #US heap.
+ * Unpaired UTF-16 surrogates are represented by the Unicode replacement
+ * character; supplementary characters are emitted as one UTF-8 sequence. */
+static inline char *xx_exec_decode_unicode(xx_executable_input *input, int64_t offset,
+                                          int64_t maximum, int big_endian,
+                                          bool terminated, int64_t *units) {
     xx_buf_t buffer;
     int64_t i = 0;
     xx_buf_init(&buffer);
-    if (maximum <= 0 || maximum > 0x10000) maximum = 0x10000;
-    if (!input || offset < 0 || offset > input->size) maximum = 0;
-    else if (maximum > (input->size - offset) / 2) maximum = (input->size - offset) / 2;
-    for (i = 0; i < maximum; ++i) {
-        uint8_t bytes[2]; uint16_t code;
-        if (!xx_exec_read(input, offset + i * 2, bytes, 2)) break;
-        code = big_endian ? (uint16_t)((bytes[0] << 8) | bytes[1]) : (uint16_t)((bytes[1] << 8) | bytes[0]);
-        if (!code) break;
-        if (code < 0x80) xx_buf_append_char(&buffer, (char)code);
-        else if (code < 0x800) {
-            xx_buf_append_char(&buffer, (char)(0xc0 | (code >> 6)));
-            xx_buf_append_char(&buffer, (char)(0x80 | (code & 63)));
-        } else {
-            xx_buf_append_char(&buffer, (char)(0xe0 | (code >> 12)));
-            xx_buf_append_char(&buffer, (char)(0x80 | ((code >> 6) & 63)));
-            xx_buf_append_char(&buffer, (char)(0x80 | (code & 63)));
+    if (!input || offset < 0 || offset > input->size || maximum < 0 ||
+        maximum > (input->size - offset) / 2) {
+        if (input) input->failed = true;
+        if (units) *units = 0;
+        return NULL;
+    }
+    while (i < maximum && !input->failed) {
+        uint32_t code = xx_exec_u16(input, offset + i * 2, big_endian != 0);
+        if (!code && terminated) break;
+        ++i;
+        if (code >= 0xd800 && code <= 0xdbff) {
+            uint32_t low = i < maximum
+                               ? xx_exec_u16(input, offset + i * 2, big_endian != 0)
+                               : 0;
+            if (low >= 0xdc00 && low <= 0xdfff) {
+                code = 0x10000 + ((code - 0xd800) << 10) + low - 0xdc00;
+                ++i;
+            } else {
+                code = 0xfffd;
+            }
+        } else if (code >= 0xdc00 && code <= 0xdfff) {
+            code = 0xfffd;
         }
+        if (!xx_exec_append_codepoint(&buffer, code)) input->failed = true;
     }
     if (units) *units = i;
-    if (input && (!xx_buf_ok(&buffer) || !xx_exec_account_string(input, buffer.size))) input->failed = true;
+    if (!xx_buf_ok(&buffer) || !xx_exec_account_string(input, buffer.size)) input->failed = true;
+    if (input->failed) { xx_buf_free(&buffer); return NULL; }
     {
         char *result = xx_buf_detach(&buffer, NULL);
-        if (!result && input) input->failed = true;
+        if (!result) input->failed = true;
         return result;
     }
+}
+static inline char *xx_exec_unicode_units(xx_executable_input *input, int64_t offset,
+                                         int64_t count, int big_endian) {
+    return xx_exec_decode_unicode(input, offset, count, big_endian, false, NULL);
+}
+static inline char *xx_exec_unicode_n(xx_executable_input *input, int64_t offset,
+                                      int64_t maximum, int big_endian, int64_t *units) {
+    if (maximum <= 0 || maximum > 0x10000) maximum = 0x10000;
+    if (input && offset >= 0 && offset <= input->size &&
+        maximum > (input->size - offset) / 2) maximum = (input->size - offset) / 2;
+    return xx_exec_decode_unicode(input, offset, maximum, big_endian, true, units);
 }
 static inline char *xx_exec_unicode(xx_executable_input *input, int64_t offset,
                                     int64_t maximum, int big_endian) {

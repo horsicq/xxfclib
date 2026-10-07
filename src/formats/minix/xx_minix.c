@@ -23,6 +23,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder. xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -129,11 +130,6 @@ static uint32_t minix_u32(const minix_geometry *geo, const uint8_t *p) {
                           ((uint32_t)p[1] << 8) | p[0];
 }
 
-static uint16_t minix_raw16(const uint8_t *p, bool big) {
-    return big ? (uint16_t)(((unsigned)p[0] << 8) | p[1])
-               : (uint16_t)(((unsigned)p[1] << 8) | p[0]);
-}
-
 /* Decode and validate the superblock. Everything later relies on these
  * bounds: ninodes and zones fit the file, the inode table lies before the
  * first data zone and every block size is a sane power of two. */
@@ -156,8 +152,8 @@ static bool minix_read_geometry(Abstractformat *self, minix_geometry *geo) {
     geo->base = self->base_address;
     for (order = 0U; order < 2U && geo->version == 0U; ++order) {
         bool big = order == 1U;
-        uint16_t magic = minix_raw16(sb + 16, big);
-        uint16_t state = minix_raw16(sb + 18, big);
+        uint16_t magic = xx_data_get_u16(sb + 16, 2, 0, big);
+        uint16_t state = xx_data_get_u16(sb + 18, 2, 0, big);
         if (magic == 0x137FU || magic == 0x138FU || magic == 0x2468U ||
             magic == 0x2478U) {
             if (state > 3U) return false;
@@ -165,7 +161,7 @@ static bool minix_read_geometry(Abstractformat *self, minix_geometry *geo) {
             geo->name_length =
                 (magic == 0x137FU || magic == 0x2468U) ? 14U : 30U;
             geo->big = big;
-        } else if (minix_raw16(sb + 24, big) == 0x4D5AU) {
+        } else if (xx_data_get_u16(sb + 24, 2, 0, big) == 0x4D5AU) {
             geo->version = 3U;
             geo->name_length = 60U;
             geo->big = big;

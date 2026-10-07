@@ -44,6 +44,7 @@
 #include "xxfclib/algo/dcl/xx_dcl.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_TRC_COPY_CHUNK (64 * 1024)
 
@@ -145,8 +146,6 @@ static bool xx_trc_add(xx_trc_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_trc_le16(const uint8_t *data);
-static uint32_t xx_trc_le32(const uint8_t *data);
 static xx_trc_stream *xx_trc_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_trc_decode(Abstractformat *self, const xx_trc_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
@@ -154,15 +153,6 @@ static bool xx_trc_decode(Abstractformat *self, const xx_trc_member *member, uin
 /* XX_TRC_VERSION is defined above, with the decode that switches on it. */
 /* The container holds exactly one member; the cap exists so the shape of
  * this reader matches the others, not because a directory could grow. */
-
-static uint16_t xx_trc_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_trc_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static xx_trc_stream *xx_trc_parse(Abstractformat *self, xx_pd_struct *pd) {
     static const uint8_t magic[12] = {0xb0, 0xb1, 0xb2, 'T', 'R', 'C', 'Z',
@@ -193,7 +183,7 @@ static xx_trc_stream *xx_trc_parse(Abstractformat *self, xx_pd_struct *pd) {
     /* The magic is a palindrome of guard bytes around "TRCZip"; the trailing
      * B2 B1 B0 is as much a part of it as the leading one. */
     if (xx_rt_memcmp(header, magic, sizeof(magic)) != 0) return NULL;
-    if (xx_trc_le16(header + 0x0c) != XX_TRC_VERSION) return NULL;
+    if (xx_data_get_u16(header + 0x0c, 2, 0, false) != XX_TRC_VERSION) return NULL;
     /* A literal '*' separator - cheap, but it is a fixed byte and costs a
      * further 1-in-256 to hit by chance. */
     if (header[0x12] != (uint8_t)'*') return NULL;
@@ -207,15 +197,15 @@ static xx_trc_stream *xx_trc_parse(Abstractformat *self, xx_pd_struct *pd) {
 
     /* The CRC and the uncompressed size are each written twice, far apart.
      * Both copies must agree - a mismatch means this is not a TRC header. */
-    crc = xx_trc_le32(header + 0x0e);
-    if (xx_trc_le32(header + 0x57) != crc) return NULL;
+    crc = xx_data_get_u32(header + 0x0e, 4, 0, false);
+    if (xx_data_get_u32(header + 0x57, 4, 0, false) != crc) return NULL;
 
     /* Signed on purpose: these are i32 fields, and a top-bit-set value is a
      * corrupt field rather than a two-gigabyte member. */
-    uncompressed = (int64_t)(int32_t)xx_trc_le32(header + 0x43);
-    compressed = (int64_t)(int32_t)xx_trc_le32(header + 0x47);
+    uncompressed = (int64_t)(int32_t)xx_data_get_u32(header + 0x43, 4, 0, false);
+    compressed = (int64_t)(int32_t)xx_data_get_u32(header + 0x47, 4, 0, false);
     if (uncompressed < 0 || compressed < 0) return NULL;
-    if ((int64_t)(int32_t)xx_trc_le32(header + 0x9f) != uncompressed) {
+    if ((int64_t)(int32_t)xx_data_get_u32(header + 0x9f, 4, 0, false) != uncompressed) {
         return NULL;
     }
     /* A payload running past EOF is a rejection, not a truncated read. */

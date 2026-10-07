@@ -30,6 +30,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -115,11 +116,6 @@ static uint32_t iss_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static uint32_t iss_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
-
 static bool iss_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     const size_t io_capacity = xx_get_file_buffer_size();
@@ -163,7 +159,7 @@ static bool iss_pe_overlay(xx_io_device *device, int64_t base, int64_t size,
         !iss_read_at(device, base, mz, sizeof(mz)) || mz[0] != 'M' ||
         mz[1] != 'Z')
         return false;
-    lfanew = (int64_t)iss_le32(mz + 0x3CU);
+    lfanew = (int64_t)xx_data_get_u32(mz + 0x3CU, 4, 0, false);
     if (lfanew > size - (int64_t)sizeof(pe) ||
         !iss_read_at(device, base + lfanew, pe, sizeof(pe)) || pe[0] != 'P' ||
         pe[1] != 'E' || pe[2] != 0U || pe[3] != 0U)
@@ -182,11 +178,11 @@ static bool iss_pe_overlay(xx_io_device *device, int64_t base, int64_t size,
     if (optional_size >= 40U &&
         iss_read_at(device, base + lfanew + (int64_t)sizeof(pe) + 36,
                     alignment_field, sizeof(alignment_field)))
-        alignment = iss_le32(alignment_field);
+        alignment = xx_data_get_u32(alignment_field, 4, 0, false);
     for (index = 0U; index < sections; ++index) {
         const uint8_t *section = table + (size_t)index * ISS_SECTION_SIZE;
-        uint32_t raw_size = iss_le32(section + 16U);
-        uint32_t raw_pointer = iss_le32(section + 20U);
+        uint32_t raw_size = xx_data_get_u32(section + 16U, 4, 0, false);
+        uint32_t raw_pointer = xx_data_get_u32(section + 20U, 4, 0, false);
         int64_t section_end = (int64_t)raw_pointer + (int64_t)raw_size;
         if (raw_size != 0U && section_end > end) end = section_end;
     }
@@ -250,7 +246,7 @@ static int64_t iss_pe_certificate_end(xx_io_device *device, int64_t base,
     if (total - base < (int64_t)sizeof(mz) ||
         !iss_read_at(device, base, mz, sizeof(mz)))
         return end;
-    lfanew = (int64_t)iss_le32(mz + 0x3CU);
+    lfanew = (int64_t)xx_data_get_u32(mz + 0x3CU, 4, 0, false);
     if (lfanew > total - base - 24 ||
         !iss_read_at(device, base + lfanew + 20, optional, sizeof(optional)))
         return end;
@@ -270,12 +266,12 @@ static int64_t iss_pe_certificate_end(xx_io_device *device, int64_t base,
     if (optional_size < dirs_at + 5U * 8U ||
         !iss_read_at(device, optional_offset + count_at, count_field,
                      sizeof(count_field)) ||
-        iss_le32(count_field) < 5U)
+        xx_data_get_u32(count_field, 4, 0, false) < 5U)
         return end;
     directory = optional_offset + (int64_t)dirs_at + 4 * 8;
     if (!iss_read_at(device, directory, entry, sizeof(entry))) return end;
-    offset = base + (int64_t)iss_le32(entry);
-    size = (int64_t)iss_le32(entry + 4U);
+    offset = base + (int64_t)xx_data_get_u32(entry, 4, 0, false);
+    size = (int64_t)xx_data_get_u32(entry + 4U, 4, 0, false);
     if (size == 0 || offset < end || offset - end >= 8 ||
         size > total - offset)
         return end;
@@ -314,17 +310,17 @@ static bool iss_read_layout(Abstractformat *format, iss_layout *layout) {
 static bool iss_record_fields(const uint8_t *record, uint32_t *name_bytes,
                               uint32_t *selector, uint32_t *stream_size,
                               uint16_t *storage) {
-    uint32_t names = iss_le32(record);
-    uint32_t size = iss_le32(record + 10U);
+    uint32_t names = xx_data_get_u32(record, 4, 0, false);
+    uint32_t size = xx_data_get_u32(record + 10U, 4, 0, false);
     uint32_t method = iss_le16(record + 22U);
     if (names == 0U || (names & 1U) != 0U || names > ISS_MAX_NAME_BYTES)
         return false;
-    if (iss_le16(record + 8U) != 0U || iss_le32(record + 14U) != 0U ||
-        iss_le32(record + 18U) != 0U)
+    if (iss_le16(record + 8U) != 0U || xx_data_get_u32(record + 14U, 4, 0, false) != 0U ||
+        xx_data_get_u32(record + 18U, 4, 0, false) != 0U)
         return false;
     if (size > ISS_MAX_STREAM || method > 1U) return false;
     *name_bytes = names;
-    *selector = iss_le32(record + 4U);
+    *selector = xx_data_get_u32(record + 4U, 4, 0, false);
     *stream_size = size;
     *storage = (uint16_t)method;
     return true;

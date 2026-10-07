@@ -43,6 +43,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef T98_NEXT_NFD
 #define XX_T98_NEXT_NFD_FILE_TYPE XX_FILE_TYPE_T98_NEXT_NFD
@@ -96,15 +97,6 @@ typedef struct nfd_pending_s {
     uint32_t size;
     uint8_t r;
 } nfd_pending;
-
-static uint16_t nfd_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static uint32_t nfd_le32(const uint8_t *b) {
-    return (uint32_t)b[0] | ((uint32_t)b[1] << 8U) | ((uint32_t)b[2] << 16U) |
-           ((uint32_t)b[3] << 24U);
-}
 
 static bool nfd_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -185,7 +177,7 @@ static bool nfd_parse(Abstractformat *format, nfd_info *out,
         return false;
     xx_mem_zero(&info, sizeof(info));
     info.revision = (uint32_t)(head[13] - '0');
-    info.header_size = nfd_le32(head + 0x110U);
+    info.header_size = xx_data_get_u32(head + 0x110U, 4, 0, false);
     info.heads = head[0x115];
     info.header_offset = format->base_address;
     if (info.header_size > NFD_MAX_HEADER ||
@@ -240,7 +232,7 @@ static bool nfd_parse(Abstractformat *format, nfd_info *out,
             goto done;
         entries = table + 16U;
         for (track = 0U; track < NFD_R1_TRACKS; ++track) {
-            uint32_t where = nfd_le32(head + NFD_FILE_HEAD + 4U * track);
+            uint32_t where = xx_data_get_u32(head + NFD_FILE_HEAD + 4U * track, 4, 0, false);
             uint32_t nsec, ndiag, index, present = 0U;
             if (where == 0U) continue;
             /* Track headers sit in the header area, after the file header. */
@@ -250,8 +242,8 @@ static bool nfd_parse(Abstractformat *format, nfd_info *out,
                              format->base_address + (int64_t)where, table,
                              16U))
                 goto done;
-            nsec = nfd_le16(table);
-            ndiag = nfd_le16(table + 2U);
+            nsec = xx_data_get_u16(table, 2, 0, false);
+            ndiag = xx_data_get_u16(table + 2U, 2, 0, false);
             if (nsec > NFD_R1_MAX_SECTORS || ndiag > NFD_R1_MAX_DIAG ||
                 (uint64_t)16U * (1U + nsec + ndiag) >
                     (uint64_t)(info.header_size - where) ||
@@ -275,7 +267,7 @@ static bool nfd_parse(Abstractformat *format, nfd_info *out,
             }
             for (index = 0U; index < ndiag; ++index) {
                 const uint8_t *id = entries + 16U * (nsec + index);
-                uint64_t span = (uint64_t)nfd_le32(id + 10U) *
+                uint64_t span = (uint64_t)xx_data_get_u32(id + 10U, 4, 0, false) *
                                 ((uint64_t)id[9] + 1U);
                 if (span > limit || cursor > limit - span) goto done;
                 cursor += span;

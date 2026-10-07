@@ -9,8 +9,8 @@
 static bool w6_sz_at(Abstractformat *f,pm_stream *s,int64_t at,xx_pd_struct *pd) {
     uint8_t h[14],window[4096],*input;size_t header,n,pos=0,out=0;uint32_t raw;unsigned wp=4080;bool ok=false;int64_t available=pm_available(f)-at;
     if(!pm_read(f,at,h,14)) return false;
-    if(!xx_rt_memcmp(h,"SZDD\x88\xf0\x27\x33",8) && h[8]=='A') { header=14;raw=pm_le32(h+10); }
-    else if(!xx_rt_memcmp(h,"ZDD\x88\xf0\x27\x33" "A",8)) { header=12;raw=pm_le32(h+8); } else return false;
+    if(!xx_rt_memcmp(h,"SZDD\x88\xf0\x27\x33",8) && h[8]=='A') { header=14;raw=xx_data_get_u32(h+10, 4, 0, false); }
+    else if(!xx_rt_memcmp(h,"ZDD\x88\xf0\x27\x33" "A",8)) { header=12;raw=xx_data_get_u32(h+8, 4, 0, false); } else return false;
     if(!raw || raw>67108864 || available<=(int64_t)header) { return false; } n=available-(int64_t)header>33554432 ? 33554432U:(size_t)(available-(int64_t)header);
     input=(uint8_t *)xx_mem_alloc(n);if(!input || !pm_read(f,at+(int64_t)header,input,n)) { if(input) xx_mem_free(input);return false; }xx_rt_memset(window,32,sizeof(window));
     while(out<raw) { unsigned bit;uint8_t flags;if(wg_stop(pd) || pos==n) goto done;flags=input[pos++];

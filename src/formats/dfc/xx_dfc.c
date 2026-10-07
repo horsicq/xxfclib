@@ -11,6 +11,7 @@
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/algo/dcl/xx_dcl.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 #define DFC_ENTRY_SIZE 35U
 #define DFC_COPY_CHUNK 16384U
@@ -49,8 +50,8 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
     size_t i, j;
     if (span < (int64_t)(DFC_ENTRY_SIZE + sizeof(prefix)) ||
         !pm_read(format, 0, prefix, sizeof(prefix))) return false;
-    count = pm_le16(prefix);
-    if (pm_le16(prefix + 2U) != 1U) return false;
+    count = xx_data_get_u16(prefix, 2, 0, false);
+    if (xx_data_get_u16(prefix + 2U, 2, 0, false) != 1U) return false;
     if (count == 0U || (uint64_t)count * DFC_ENTRY_SIZE + 4U > (uint64_t)span)
         return false;
     expected = (int64_t)count * DFC_ENTRY_SIZE + 4;
@@ -64,9 +65,9 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
         if (!pm_read(format, 4 + (int64_t)i * DFC_ENTRY_SIZE,
                      entry, sizeof(entry)) || !dfc_name(entry, name))
             return false;
-        offset = pm_le32(entry + 13U);
-        plain = pm_le32(entry + 17U);
-        packed = pm_le32(entry + 21U);
+        offset = xx_data_get_u32(entry + 13U, 4, 0, false);
+        plain = xx_data_get_u32(entry + 17U, 4, 0, false);
+        packed = xx_data_get_u32(entry + 21U, 4, 0, false);
         method = entry[31U];
         if ((int64_t)offset != expected ||
             (int64_t)packed > span - expected ||
@@ -109,7 +110,7 @@ static bool dfc_record(xx_archive_record_state *state) {
     uint32_t complemented_crc;
     if (!pm_read(state->format, 4 + (int64_t)stream->index * DFC_ENTRY_SIZE,
                  entry, sizeof(entry))) return false;
-    complemented_crc = pm_le32(entry + 25U);
+    complemented_crc = xx_data_get_u32(entry + 25U, 4, 0, false);
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = state->format->base_address + 4 +
@@ -188,7 +189,7 @@ static bool dfc_unpack(Abstractformat *format, xx_archive_record_state *state,
     if (!pm_read(format, 4 + (int64_t)stream->index * DFC_ENTRY_SIZE,
                  entry, sizeof(entry)))
         return false;
-    wanted = pm_le32(entry + 25U);
+    wanted = xx_data_get_u32(entry + 25U, 4, 0, false);
     if (entry[31U] == DFC_METHOD_STORED) {
         if (!dfc_stored_crc(format, member, wanted, pd)) return false;
     } else if (entry[31U] == DFC_METHOD_DCL) {

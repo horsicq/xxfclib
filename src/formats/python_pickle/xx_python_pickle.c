@@ -9,22 +9,22 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     xx_mem_zero(memo,sizeof(memo));NH_NEED(nh_load(f,&b,pd) && b.n>=4 && b.p[0]==128 && b.p[1]>=2 && b.p[1]<=5);proto=b.p[1];
     while(at<b.n) {uint8_t op;uint64_t end,bytes=0;uint32_t n=0;unsigned mark;
         NH_NEED(++ops<=262144 && nh_span(&b,at,1));if(frame && at==frame) frame=0;if(frame) NH_NEED(at<frame);op=b.p[(size_t)at++];end=frame ? frame:b.n;
-        if(op==0x95) {NH_NEED(proto>=4 && !frame && nh_span(&b,at,8));bytes=fd_le64(b.p+(size_t)at);at+=8;NH_NEED(bytes && eh_span(at,bytes,b.n));frame=at+bytes;continue;}
+        if(op==0x95) {NH_NEED(proto>=4 && !frame && nh_span(&b,at,8));bytes=xx_data_get_u64(b.p+(size_t)at, 8, 0, false);at+=8;NH_NEED(bytes && eh_span(at,bytes,b.n));frame=at+bytes;continue;}
         switch(op) {
         case '.':NH_NEED(top==1 && stack[0]!=6 && (!frame || at==frame) && at==b.n);NH_NEED(nh_add(f,s,&b,"protocol",0,2) && nh_add(f,s,&b,"program",2,b.n-2));s->size=(int64_t)b.n;ok=true;goto done;
         case 'N':case 0x88:case 0x89:NH_NEED(top<4096);stack[top++]=1;break;
         case 'K':bytes=1;goto atom;case 'M':bytes=2;goto atom;case 'J':bytes=4;goto atom;
         case 'G':bytes=8;NH_NEED(eh_span(at,8,end) && nh_floats(&b,at,8,8,true));goto atom;
         case 0x8a:NH_NEED(eh_span(at,1,end));bytes=b.p[(size_t)at++];goto atom;
-        case 0x8b:NH_NEED(eh_span(at,4,end));bytes=pm_le32(b.p+(size_t)at);at+=4;NH_NEED(bytes<=4096);goto atom;
+        case 0x8b:NH_NEED(eh_span(at,4,end));bytes=xx_data_get_u32(b.p+(size_t)at, 4, 0, false);at+=4;NH_NEED(bytes<=4096);goto atom;
         case 'U':case 'C':case 0x8c: {
             NH_NEED((op!='C' || proto>=3) && (op!=0x8c || proto>=4) && eh_span(at,1,end));bytes=b.p[(size_t)at++];if(op==0x8c) NH_NEED(eh_span(at,bytes,end) && fourth_utf8(b.p+(size_t)at,(size_t)bytes,pd));goto atom;
         }
         case 'T':case 'B':case 'X': {
-            NH_NEED((op!='B' || proto>=3) && eh_span(at,4,end));bytes=pm_le32(b.p+(size_t)at);at+=4;if(op=='X') NH_NEED(eh_span(at,bytes,end) && fourth_utf8(b.p+(size_t)at,(size_t)bytes,pd));goto atom;
+            NH_NEED((op!='B' || proto>=3) && eh_span(at,4,end));bytes=xx_data_get_u32(b.p+(size_t)at, 4, 0, false);at+=4;if(op=='X') NH_NEED(eh_span(at,bytes,end) && fourth_utf8(b.p+(size_t)at,(size_t)bytes,pd));goto atom;
         }
         case 0x8d:case 0x8e:case 0x96: {
-            NH_NEED(proto>=4 && (op!=0x96 || proto>=5) && eh_span(at,8,end));bytes=fd_le64(b.p+(size_t)at);at+=8;if(op==0x8d) NH_NEED(eh_span(at,bytes,end) && bytes<=16777216 && fourth_utf8(b.p+(size_t)at,(size_t)bytes,pd));goto atom;
+            NH_NEED(proto>=4 && (op!=0x96 || proto>=5) && eh_span(at,8,end));bytes=xx_data_get_u64(b.p+(size_t)at, 8, 0, false);at+=8;if(op==0x8d) NH_NEED(eh_span(at,bytes,end) && bytes<=16777216 && fourth_utf8(b.p+(size_t)at,(size_t)bytes,pd));goto atom;
         }
         case ']':case '}':case ')':case 0x8f:NH_NEED(top<4096 && (op!=0x8f || proto>=4));stack[top++]=op==']' ? 2:op=='}' ? 3:op==')' ? 4:5;break;
         case '(':NH_NEED(top<4096);stack[top++]=6;break;
@@ -41,10 +41,10 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         case 'a':NH_NEED(top>=2 && stack[top-2]==2 && stack[top-1]!=6);--top;break;
         case 's':NH_NEED(top>=3 && stack[top-3]==3 && (stack[top-2]==1 || stack[top-2]==4) && stack[top-1]!=6);top-=2;break;
         case 'q':case 'r':case 0x94:
-            NH_NEED(top && stack[top-1]!=6);if(op==0x94) {NH_NEED(proto>=4);n=memos;}else {unsigned width=op=='q' ? 1:4;NH_NEED(eh_span(at,width,end));n=width==1 ? b.p[(size_t)at]:pm_le32(b.p+(size_t)at);at+=width;}
+            NH_NEED(top && stack[top-1]!=6);if(op==0x94) {NH_NEED(proto>=4);n=memos;}else {unsigned width=op=='q' ? 1:4;NH_NEED(eh_span(at,width,end));n=width==1 ? b.p[(size_t)at]:xx_data_get_u32(b.p+(size_t)at, 4, 0, false);at+=width;}
             NH_NEED(n<4096);if(!memo[n]) ++memos;memo[n]=stack[top-1];break;
         case 'h':case 'j': {
-            unsigned width=op=='h' ? 1:4;NH_NEED(eh_span(at,width,end));n=width==1 ? b.p[(size_t)at]:pm_le32(b.p+(size_t)at);at+=width;NH_NEED(n<4096 && memo[n] && top<4096);stack[top++]=memo[n];break;
+            unsigned width=op=='h' ? 1:4;NH_NEED(eh_span(at,width,end));n=width==1 ? b.p[(size_t)at]:xx_data_get_u32(b.p+(size_t)at, 4, 0, false);at+=width;NH_NEED(n<4096 && memo[n] && top<4096);stack[top++]=memo[n];break;
         }
         default:goto done;
         }

@@ -3,10 +3,10 @@
  * Original short-header Squeeze decoder shared by native Apple archives. */
 #ifndef XX_APPLE_SQUEEZE_PRIVATE_H
 #define XX_APPLE_SQUEEZE_PRIVATE_H
-static int32_t as_signed(const uint8_t *p){uint16_t v=pm_le16(p);return v&0x8000U?(int32_t)v-65536:(int32_t)v;}
+static int32_t as_signed(const uint8_t *p){uint16_t v=xx_data_get_u16(p, 2, 0, false);return v&0x8000U?(int32_t)v-65536:(int32_t)v;}
 static bool as_decode(af_work *w,const uint8_t *p,size_t n,uint8_t *out,uint32_t wanted){
     int32_t tree[256][2];uint32_t count,i,used=0;size_t at;unsigned bit=0;uint8_t previous=0;bool have=false,escape=false;
-    if(n<2U || (count=pm_le16(p))>256U || n<2U+count*4U)return false;
+    if(n<2U || (count=xx_data_get_u16(p, 2, 0, false))>256U || n<2U+count*4U)return false;
     if(!count)return wanted==0U && n==2U;
     for(i=0;i<count;++i){tree[i][0]=as_signed(p+2U+i*4U);tree[i][1]=as_signed(p+4U+i*4U);
         if(tree[i][0]>=(int32_t)count || tree[i][0]<-257 || tree[i][1]>=(int32_t)count || tree[i][1]<-257)return false;}

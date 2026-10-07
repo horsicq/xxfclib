@@ -80,15 +80,6 @@ static bool xx_rar_split_header(xx_rar_split_view *view, size_t index,
     return true;
 }
 
-static void xx_rar_split_u16(uint8_t *p, uint16_t n) {
-    p[0] = (uint8_t)n; p[1] = (uint8_t)(n >> 8);
-}
-
-static void xx_rar_split_u32(uint8_t *p, uint32_t n) {
-    unsigned i;
-    for (i = 0; i < 4; ++i) p[i] = (uint8_t)(n >> (8U * i));
-}
-
 static size_t xx_rar_split_vint(uint8_t *p, uint64_t n) {
     size_t count = 0;
     do {
@@ -109,7 +100,7 @@ static bool xx_rar_split_block5(xx_rar_split_view *view, size_t index,
     if (!header) return false;
     width = xx_rar_split_vint(header + 4, size);
     xx_rt_memcpy(header + 4 + width, body, size);
-    xx_rar_split_u32(header, xx_crc32_calc(0, header + 4, width + size));
+    xx_data_set_u32(header, 4, 0, xx_crc32_calc(0, header + 4, width + size), false);
     if (!xx_rar_split_header(view, index, header, 4U + width + size)) {
         xx_rar_secure_clear(header, size + 14U);
         xx_mem_free(header);
@@ -131,8 +122,8 @@ static bool xx_rar_split_marker(xx_rar_split_view *view,
     bytes = (uint8_t *)xx_mem_calloc(size, 1U);
     if (!bytes) return false;
     bytes[2] = end ? XX_RAR4_HEADER_END : XX_RAR4_HEADER_MAIN;
-    xx_rar_split_u16(bytes + 5, (uint16_t)size);
-    xx_rar_split_u16(bytes, (uint16_t)xx_crc32_calc(0, bytes + 2, size - 2U));
+    xx_data_set_u16(bytes + 5, 2, 0, (uint16_t)size, false);
+    xx_data_set_u16(bytes, 2, 0, (uint16_t)xx_crc32_calc(0, bytes + 2, size - 2U), false);
     if (!xx_rar_split_header(view, view->count, bytes, size)) {
         xx_mem_free(bytes);
         return false;
@@ -179,10 +170,10 @@ static bool xx_rar_split_file_header(xx_rar_split_view *view, size_t index,
         n += xx_rar_split_vint(body + n, last->unpacked_size);
         n += xx_rar_split_vint(body + n, first->attributes);
         if (first->file_flags & XX_RAR5_FILE_FLAG_MTIME) {
-            xx_rar_split_u32(body + n, (uint32_t)first->timestamp); n += 4;
+            xx_data_set_u32(body + n, 4, 0, (uint32_t)first->timestamp, false); n += 4;
         }
         if (first->has_crc) {
-            xx_rar_split_u32(body + n, last->data_crc); n += 4;
+            xx_data_set_u32(body + n, 4, 0, last->data_crc, false); n += 4;
         }
         n += xx_rar_split_vint(body + n, first->compression_info);
         n += xx_rar_split_vint(body + n, first->host_os);
@@ -206,25 +197,25 @@ static bool xx_rar_split_file_header(xx_rar_split_view *view, size_t index,
             { xx_rar_secure_clear(body,first->name_size+192U);
               xx_mem_free(body); return false; }
         body[2] = XX_RAR4_HEADER_FILE;
-        xx_rar_split_u16(body + 3, flags);
-        xx_rar_split_u16(body + 5, (uint16_t)(n + first->name_size +
-                            ((flags & XX_RAR4_FILE_FLAG_SALT) ? 8U : 0U)));
-        xx_rar_split_u32(body + 7, (uint32_t)packed);
-        xx_rar_split_u32(body + 11, (uint32_t)last->unpacked_size);
+        xx_data_set_u16(body + 3, 2, 0, flags, false);
+        xx_data_set_u16(body + 5, 2, 0, (uint16_t)(n + first->name_size +
+                            ((flags & XX_RAR4_FILE_FLAG_SALT) ? 8U : 0U)), false);
+        xx_data_set_u32(body + 7, 4, 0, (uint32_t)packed, false);
+        xx_data_set_u32(body + 11, 4, 0, (uint32_t)last->unpacked_size, false);
         body[15] = (uint8_t)first->host_os;
-        xx_rar_split_u32(body + 16, last->data_crc);
-        xx_rar_split_u32(body + 20, (uint32_t)first->timestamp);
+        xx_data_set_u32(body + 16, 4, 0, last->data_crc, false);
+        xx_data_set_u32(body + 20, 4, 0, (uint32_t)first->timestamp, false);
         body[24] = (uint8_t)first->unpack_version;
         body[25] = (uint8_t)first->method;
-        xx_rar_split_u16(body + 26, (uint16_t)first->name_size);
-        xx_rar_split_u32(body + 28, (uint32_t)first->attributes);
+        xx_data_set_u16(body + 26, 2, 0, (uint16_t)first->name_size, false);
+        xx_data_set_u32(body + 28, 4, 0, (uint32_t)first->attributes, false);
         if (large) {
-            xx_rar_split_u32(body + 32, (uint32_t)((uint64_t)packed >> 32));
-            xx_rar_split_u32(body + 36, (uint32_t)(last->unpacked_size >> 32));
+            xx_data_set_u32(body + 32, 4, 0, (uint32_t)((uint64_t)packed >> 32), false);
+            xx_data_set_u32(body + 36, 4, 0, (uint32_t)(last->unpacked_size >> 32), false);
         }
         xx_rt_memcpy(body + n, name, first->name_size); n += first->name_size;
         if (flags & XX_RAR4_FILE_FLAG_SALT) { xx_rt_memcpy(body + n, first->crypto_salt, 8); n += 8; }
-        xx_rar_split_u16(body, (uint16_t)xx_crc32_calc(0, body + 2, n - 2));
+        xx_data_set_u16(body, 2, 0, (uint16_t)xx_crc32_calc(0, body + 2, n - 2), false);
         if (!xx_rar_split_header(view, index, body, n)) {
             xx_rar_secure_clear(body,first->name_size+192U);
             xx_mem_free(body); return false;

@@ -24,6 +24,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -137,15 +138,6 @@ static int sil_source_byte(sil_source *source, uint8_t *value) {
     *value = source->chunk[source->chunk_pos++];
     ++source->consumed;
     return 1;
-}
-
-static uint32_t sil_u32(const uint8_t *bytes, bool big_endian) {
-    return big_endian ? (((uint32_t)bytes[0] << 24U) |
-                         ((uint32_t)bytes[1] << 16U) |
-                         ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3])
-                      : (((uint32_t)bytes[3] << 24U) |
-                         ((uint32_t)bytes[2] << 16U) |
-                         ((uint32_t)bytes[1] << 8U) | (uint32_t)bytes[0]);
 }
 
 /* Byte-run method 0x81.  Two token shapes, byte aligned, no end marker - the
@@ -349,7 +341,7 @@ static bool sil_parse(Abstractformat *format, sil_context *out) {
         context.big_endian = true;
     else
         return false;
-    packed = sil_u32(header, context.big_endian);
+    packed = xx_data_get_u32(header, 4, 0, context.big_endian);
     context.method = packed >> 24U;
     raw_size = (int64_t)(packed & 0x00ffffffU);
     if (context.method != SIL_METHOD_BYTERUN &&

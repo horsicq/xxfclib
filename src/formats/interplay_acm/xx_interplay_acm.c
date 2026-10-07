@@ -10,8 +10,8 @@
 static bool pm_parse(Abstractformat*f,pm_stream*s,xx_pd_struct*pd) {
     uint8_t h[14]; uint32_t samples; uint16_t ch,rate,shape; unsigned levels,subblocks; int64_t n;
     if(fd_stop(pd) || (n=pm_available(f))<=14 || !pm_read(f,0,h,sizeof(h)) ||
-       pm_le32(h)!=UINT32_C(0x01032897)) return false;
-    samples=pm_le32(h+4); ch=pm_le16(h+8); rate=pm_le16(h+10); shape=pm_le16(h+12);
+       xx_data_get_u32(h, 4, 0, false)!=UINT32_C(0x01032897)) return false;
+    samples=xx_data_get_u32(h+4, 4, 0, false); ch=xx_data_get_u16(h+8, 2, 0, false); rate=xx_data_get_u16(h+10, 2, 0, false); shape=xx_data_get_u16(h+12, 2, 0, false);
     levels=shape&15U; subblocks=shape>>4;
     if(!samples || ch<1 || ch>2 || rate<6000 || rate>49716 ||
        !subblocks || subblocks>2048 || ((uint32_t)subblocks<<levels)>UINT32_C(1048576))

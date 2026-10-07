@@ -34,6 +34,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef RECOGNITA
 #define XX_RECOGNITA_FILE_TYPE XX_FILE_TYPE_RECOGNITA
@@ -66,15 +67,6 @@ typedef struct recognita_stream_s {
     size_t index;
     int64_t archive_size;
 } recognita_stream;
-
-static uint16_t recognita_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t recognita_le32(const uint8_t *bytes) {
-    return (uint32_t)recognita_le16(bytes) |
-           ((uint32_t)recognita_le16(bytes + 2U) << 16U);
-}
 
 static bool recognita_read_at(xx_io_device *device, int64_t offset,
                               void *buffer, size_t size) {
@@ -244,10 +236,10 @@ static bool recognita_parse(Abstractformat *format,
         if (size - offset < (int64_t)sizeof(header) ||
             !recognita_read_at(format->device, format->base_address + offset,
                                header, sizeof(header))) goto fail;
-        unpacked = (int64_t)(int32_t)recognita_le32(header + 13U);
-        dos_time = recognita_le16(header + 17U);
-        dos_date = recognita_le16(header + 19U);
-        next_offset = (int64_t)(int32_t)recognita_le32(header + 21U);
+        unpacked = (int64_t)(int32_t)xx_data_get_u32(header + 13U, 4, 0, false);
+        dos_time = xx_data_get_u16(header + 17U, 2, 0, false);
+        dos_date = xx_data_get_u16(header + 19U, 2, 0, false);
+        next_offset = (int64_t)(int32_t)xx_data_get_u32(header + 21U, 4, 0, false);
         /* These are the DETECTION rules and belong to the first record
          * only. */
         if (first) {

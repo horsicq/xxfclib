@@ -11,15 +11,15 @@ static bool hs_pulses(hx_blob *b,const uint8_t *p,uint32_t z,uint32_t expected){
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd){hx_blob b;uint64_t at=0;uint32_t packets=0,previous=0,streams=0;bool ok=false;char name[96],info[384];
  if(!hx_load(f,&b,pd))return false;
  while(at<b.n){uint32_t z,number,blocks=0;uint64_t p,end;
-  HX_NEED(packets<1024&&hx_tag(&b,at,"CHKH",4)&&hx_span(&b,at,16));z=pm_le32(b.p+at+4);number=pm_le32(b.p+at+8);
-  HX_NEED(z>=24&&!(z&3U)&&hx_span(&b,at,z)&&(!packets||number>previous)&&hx_pauline_crc(&b,at,z-4U,pm_le32(b.p+at+z-4)));previous=number;end=at+z-4;p=at+12;
+  HX_NEED(packets<1024&&hx_tag(&b,at,"CHKH",4)&&hx_span(&b,at,16));z=xx_data_get_u32(b.p+at+4, 4, 0, false);number=xx_data_get_u32(b.p+at+8, 4, 0, false);
+  HX_NEED(z>=24&&!(z&3U)&&hx_span(&b,at,z)&&(!packets||number>previous)&&hx_pauline_crc(&b,at,z-4U,xx_data_get_u32(b.p+at+z-4, 4, 0, false)));previous=number;end=at+z-4;p=at+12;
   xx_rt_snprintf(name,sizeof(name),"packet-%04u.original.hxcstream",number);HX_NEED(hx_emit(f,s,&b,name,at,z));
-  while(p<end){uint32_t type,payload,packed,plain,over;HX_NEED(++blocks<=64&&end-p>=8);type=pm_le32(b.p+p);payload=pm_le32(b.p+p+4);HX_NEED(!(payload&3U)&&payload<=end-p-8U);
+  while(p<end){uint32_t type,payload,packed,plain,over;HX_NEED(++blocks<=64&&end-p>=8);type=xx_data_get_u32(b.p+p, 4, 0, false);payload=xx_data_get_u32(b.p+p+4, 4, 0, false);HX_NEED(!(payload&3U)&&payload<=end-p-8U);
    if(type==0){HX_NEED(payload);xx_rt_snprintf(name,sizeof(name),"packet-%04u-metadata.bin",number);HX_NEED(hx_emit(f,s,&b,name,p+8,payload));}
-   else if(type==1||type==2){over=type==1?8U:12U;HX_NEED(payload>=over&&end-p>=8U+over);packed=pm_le32(b.p+p+8);plain=pm_le32(b.p+p+12);
+   else if(type==1||type==2){over=type==1?8U:12U;HX_NEED(payload>=over&&end-p>=8U+over);packed=xx_data_get_u32(b.p+p+8, 4, 0, false);plain=xx_data_get_u32(b.p+p+12, 4, 0, false);
     HX_NEED(packed&&payload==over+((packed+3U)&~3U)&&packed<=payload-over);if(type==1)HX_NEED(!(plain&1U));
     xx_rt_snprintf(name,sizeof(name),"packet-%04u-block-%02u.%s",number,blocks,type==1?"io-u16le":"flux-delta-encoded");HX_NEED(hx_decode(f,s,&b,name,p+8+over,packed,plain,true));
-    if(type==2){pm_member *m=&s->items[s->count-1];HX_NEED(hs_pulses(&b,m->memory,plain,pm_le32(b.p+p+16)));++streams;}
+    if(type==2){pm_member *m=&s->items[s->count-1];HX_NEED(hs_pulses(&b,m->memory,plain,xx_data_get_u32(b.p+p+16, 4, 0, false)));++streams;}
    }else goto done;
    p+=8U+payload;
   }HX_NEED(p==end&&blocks);at+=z;++packets;

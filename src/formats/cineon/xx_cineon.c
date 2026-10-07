@@ -5,15 +5,15 @@
  */
 #include "xxfclib/formats/cineon/xx_cineon.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static uint32_t cn_u32(const uint8_t *p,bool little) { return little ? pm_le32(p) : pm_be32(p); }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[1024]; bool little; unsigned count,i,width=0,height=0,depth=0,cell,interleave,packing; uint32_t total,image,industry,user,eol,eoc; uint64_t header_end,row,plane,needed; char label[48];
-    if(!pm_read(f,0,h,sizeof(h)) || (pm_be32(h)!=0x802A5FD7U && pm_le32(h)!=0x802A5FD7U)) return false;
-    little=h[0]==0xD7; total=cn_u32(h+20,little); image=cn_u32(h+4,little); industry=cn_u32(h+12,little); user=cn_u32(h+16,little);
-    count=h[193]; interleave=h[680]; packing=h[681]; eol=cn_u32(h+684,little); eoc=cn_u32(h+688,little); header_end=1024U+(uint64_t)industry+user;
-    if(xx_rt_memcmp(h+24,"V4.5",4) || cn_u32(h+8,little)!=1024 || (industry!=0 && industry!=1024) || user>1048576 || header_end>image || total<image || total>(uint64_t)pm_available(f) || h[192]>7 || !count || count>8 || h[682] || h[683]>1 || (interleave!=0 && interleave!=2) || eol>1048576 || eoc>1048576) return false;
-    for(i=0;i<count;++i) { const uint8_t *c=h+196+28*i; unsigned w=cn_u32(c+4,little),y=cn_u32(c+8,little);
+    if(!pm_read(f,0,h,sizeof(h)) || (xx_data_get_u32(h, 4, 0, true)!=0x802A5FD7U && xx_data_get_u32(h, 4, 0, false)!=0x802A5FD7U)) return false;
+    little=h[0]==0xD7; total=xx_data_get_u32(h+20, 4, 0, !little); image=xx_data_get_u32(h+4, 4, 0, !little); industry=xx_data_get_u32(h+12, 4, 0, !little); user=xx_data_get_u32(h+16, 4, 0, !little);
+    count=h[193]; interleave=h[680]; packing=h[681]; eol=xx_data_get_u32(h+684, 4, 0, !little); eoc=xx_data_get_u32(h+688, 4, 0, !little); header_end=1024U+(uint64_t)industry+user;
+    if(xx_rt_memcmp(h+24,"V4.5",4) || xx_data_get_u32(h+8, 4, 0, !little)!=1024 || (industry!=0 && industry!=1024) || user>1048576 || header_end>image || total<image || total>(uint64_t)pm_available(f) || h[192]>7 || !count || count>8 || h[682] || h[683]>1 || (interleave!=0 && interleave!=2) || eol>1048576 || eoc>1048576) return false;
+    for(i=0;i<count;++i) { const uint8_t *c=h+196+28*i; unsigned w=xx_data_get_u32(c+4, 4, 0, !little),y=xx_data_get_u32(c+8, 4, 0, !little);
         if((pd && xx_pd_is_stopped(pd)) || !w || !y || w>32768 || y>32768 || (uint64_t)w*y>67108864) return false;
         if(!i) { width=w; height=y; depth=c[2]; } else if(w!=width || y!=height || c[2]!=depth) return false;
     }

@@ -16,8 +16,8 @@ static XXFC_MAYBE_UNUSED bool sm_loop(uint32_t begin,uint32_t end,uint32_t lengt
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[48],b[32],orders[128]; uint32_t patterns,i,j,n,ptr[31],length[31],count=0; uint64_t measured=0,start,pattern_end; char label[48]; fd_cursor c={f,0,(uint64_t)pm_available(f),pd,0};
     if(!fd_get(&c,h,48) || xx_rt_memcmp(h+20,"!Scream!",8) || h[28]!=26 || h[29]!=2 || h[30]!=2 || h[31]!=21 || !(patterns=h[33]) || patterns>64 || h[34]>64) return false;
-    for(i=0;i<31;++i) { uint32_t a,z; if(!fd_get(&c,b,32)) return false; length[i]=pm_le16(b+16); ptr[i]=(uint32_t)pm_le16(b+14)*16; a=pm_le16(b+18); z=pm_le16(b+20);
-        if(b[22]>64 || a>length[i] || (z!=65535 && (z>length[i] || (z && a>=z))) || (length[i] && !pm_le16(b+24))) return false; }
+    for(i=0;i<31;++i) { uint32_t a,z; if(!fd_get(&c,b,32)) return false; length[i]=xx_data_get_u16(b+16, 2, 0, false); ptr[i]=(uint32_t)xx_data_get_u16(b+14, 2, 0, false)*16; a=xx_data_get_u16(b+18, 2, 0, false); z=xx_data_get_u16(b+20, 2, 0, false);
+        if(b[22]>64 || a>length[i] || (z!=65535 && (z>length[i] || (z && a>=z))) || (length[i] && !xx_data_get_u16(b+24, 2, 0, false))) return false; }
     if(!fd_get(&c,orders,128)) { return false; } for(i=0;i<128;++i) { if(orders[i]>=99) break; if(orders[i]>=patterns) return false; ++count; } if(!count) return false;
     if(!sm_emit(f,s,"stm-descriptor.bin",0,c.at,&measured)) return false;
     for(i=0;i<patterns;++i) { start=c.at;

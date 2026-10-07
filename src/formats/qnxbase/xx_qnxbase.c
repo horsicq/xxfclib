@@ -57,6 +57,7 @@
 #include "xxfclib/algo/qnxbase/xx_qnxbase.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_QNXBASE_COPY_CHUNK (64 * 1024)
 
@@ -177,8 +178,6 @@ typedef struct xx_qnxbase_header_s {
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_qnxbase_le16(const uint8_t *data);
-static uint32_t xx_qnxbase_le32(const uint8_t *data);
 static bool xx_qnxbase_find_header(Abstractformat *self, int64_t span, xx_pd_struct *pd, xx_qnxbase_header *header);
 static bool xx_qnxbase_measure_chain(Abstractformat *self, int64_t span, xx_pd_struct *pd, int64_t chain_offset, int64_t *chain_size);
 static bool xx_qnxbase_load_image(Abstractformat *self, xx_pd_struct *pd, uint8_t **image, int64_t *image_size, int64_t *chain_offset, int64_t *chain_size);
@@ -200,17 +199,6 @@ static bool xx_qnxbase_decode(Abstractformat *self, const xx_qnxbase_member *mem
 
 
 /* One codec, no stored method number. */
-
-
-
-static uint16_t xx_qnxbase_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_qnxbase_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* Locate struct startup_header.
  *
@@ -262,13 +250,13 @@ static bool xx_qnxbase_find_header(Abstractformat *self, int64_t span,
         int64_t chain_offset;
 
         if (pd && xx_pd_is_stopped(pd)) break;
-        if (xx_qnxbase_le32(data) != XX_QNXBASE_STARTUP_SIGNATURE) continue;
-        if ((int64_t)xx_qnxbase_le32(data + 0x30) != offset) continue;
+        if (xx_data_get_u32(data, 4, 0, false) != XX_QNXBASE_STARTUP_SIGNATURE) continue;
+        if ((int64_t)xx_data_get_u32(data + 0x30, 4, 0, false) != offset) continue;
 
         /* Both fields are written as u32 but read as signed by the reference;
          * a negative one is a rejection, not a four-gigabyte value. */
-        startup_size = (int64_t)(int32_t)xx_qnxbase_le32(data + 0x20);
-        imagefs_size = (int64_t)(int32_t)xx_qnxbase_le32(data + 0x2c);
+        startup_size = (int64_t)(int32_t)xx_data_get_u32(data + 0x20, 4, 0, false);
+        imagefs_size = (int64_t)(int32_t)xx_data_get_u32(data + 0x2c, 4, 0, false);
         if (startup_size <= 0) continue;
         if ((imagefs_size <= 0) || (imagefs_size > XX_QNXBASE_MAX_IMAGEFS_SIZE)) {
             continue;
@@ -282,7 +270,7 @@ static bool xx_qnxbase_find_header(Abstractformat *self, int64_t span,
         header->startup_size = startup_size;
         header->imagefs_size = imagefs_size;
         header->chain_offset = chain_offset;
-        header->version = xx_qnxbase_le16(data + 0x04);
+        header->version = xx_data_get_u16(data + 0x04, 2, 0, false);
         found = true;
         break;
     }
@@ -422,9 +410,9 @@ static xx_qnxbase_stream *xx_qnxbase_parse(Abstractformat *self,
      * happens to decode to imagefs_size bytes of anything would be accepted. */
     if (xx_rt_memcmp(image, "imagefs", 7U) != 0) goto fail;
     if ((image[7] != 0U) && (image[7] != 4U)) goto fail;
-    if ((int64_t)xx_qnxbase_le32(image + 8) != image_size) goto fail;
+    if ((int64_t)xx_data_get_u32(image + 8, 4, 0, false) != image_size) goto fail;
 
-    dir_offset = (int64_t)(int32_t)xx_qnxbase_le32(image + 0x10);
+    dir_offset = (int64_t)(int32_t)xx_data_get_u32(image + 0x10, 4, 0, false);
     /* ">=" on the lower bound rejected every real image: mkifs puts the first
      * record exactly at 0x5c. */
     if ((dir_offset < XX_QNXBASE_MIN_IMAGE_SIZE) ||
@@ -453,7 +441,7 @@ static xx_qnxbase_stream *xx_qnxbase_parse(Abstractformat *self,
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
 
-        record_size = (int64_t)xx_qnxbase_le16(image + offset);
+        record_size = (int64_t)xx_data_get_u16(image + offset, 2, 0, false);
         if (record_size == 0) {
             terminated = true;
             break;
@@ -463,7 +451,7 @@ static xx_qnxbase_stream *xx_qnxbase_parse(Abstractformat *self,
             goto fail;
         }
 
-        mode = (uint32_t)xx_qnxbase_le16(image + offset + 8);
+        mode = (uint32_t)xx_data_get_u16(image + offset + 8, 2, 0, false);
         type = mode & XX_QNXBASE_MODE_TYPE_MASK;
         if ((type == XX_QNXBASE_MODE_DIR) || (type == XX_QNXBASE_MODE_LNK)) {
             /* Directories and symlinks carry no offset/size pair; the
@@ -480,9 +468,9 @@ static xx_qnxbase_stream *xx_qnxbase_parse(Abstractformat *self,
         }
         if (record_size < XX_QNXBASE_DIRENT_FILE_SIZE) goto fail;
 
-        mtime = xx_qnxbase_le32(image + offset + 0x14);
-        file_offset = (int64_t)xx_qnxbase_le32(image + offset + 0x18);
-        file_size = (int64_t)xx_qnxbase_le32(image + offset + 0x1c);
+        mtime = xx_data_get_u32(image + offset + 0x14, 4, 0, false);
+        file_offset = (int64_t)xx_data_get_u32(image + offset + 0x18, 4, 0, false);
+        file_size = (int64_t)xx_data_get_u32(image + offset + 0x1c, 4, 0, false);
         /* Bounded by the IMAGE: a member has no extent in the file at all. */
         if (!xx_qnxbase_range_within(image_size, file_offset, file_size)) {
             goto fail;

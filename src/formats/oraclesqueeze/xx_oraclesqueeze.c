@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ORACLESQUEEZE_FIXED_HEADER_SIZE 8U
 #define XX_ORACLESQUEEZE_MAX_NAME 255U
@@ -26,15 +27,6 @@ typedef struct xx_oraclesqueeze_context_s {
 } xx_oraclesqueeze_context;
 
 static void xx_oraclesqueeze_vtable_destroy(Abstractformat *self);
-
-static uint16_t xx_oraclesqueeze_read16le(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8U));
-}
-
-static uint32_t xx_oraclesqueeze_read32le(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
 
 static bool xx_oraclesqueeze_read_exact_at(xx_io_device *device,
                                            int64_t offset, void *data,
@@ -138,7 +130,7 @@ static bool xx_oraclesqueeze_parse_buffer(const uint8_t *input,
                                                                    input_size)) {
         return false;
     }
-    uncompressed_size = xx_oraclesqueeze_read32le(input + 2U);
+    uncompressed_size = xx_data_get_u32(input + 2U, 4, 0, false);
     if (uncompressed_size == 0U ||
         uncompressed_size > XX_ORACLESQUEEZE_MAX_OUTPUT ||
         uncompressed_size > (uint64_t)SIZE_MAX ||
@@ -152,7 +144,7 @@ static bool xx_oraclesqueeze_parse_buffer(const uint8_t *input,
     (void)end_offset;
     context->uncompressed_size = uncompressed_size;
     context->tree_offset = (uint32_t)tree_offset;
-    context->checksum = xx_oraclesqueeze_read16le(input + 6U);
+    context->checksum = xx_data_get_u16(input + 6U, 2, 0, false);
     context->stream_size = (int64_t)input_size;
     return true;
 }

@@ -28,6 +28,7 @@
 #include "xx_ppmd_codec.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: picks up the real file type as soon as PPMD is
  * registered in xxfc_defs.h. */
@@ -125,15 +126,6 @@ uint8_t xx_ppmdfile_source_byte(xx_ppmdfile_source *source) {
 /* Header                                                                   */
 /* ------------------------------------------------------------------------ */
 
-static uint32_t ppmd_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
-
-static uint16_t ppmd_le16(const uint8_t *bytes) {
-    return (uint16_t)((unsigned)bytes[0] | ((unsigned)bytes[1] << 8U));
-}
-
 static bool ppmd_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
     size_t done = 0U;
@@ -158,9 +150,9 @@ static bool ppmd_read_header(xx_io_device *device, int64_t offset, int64_t end,
     if (offset < 0 || end - offset < (int64_t)PPMD_HEADER_SIZE + 4 ||
         !ppmd_read_at(device, offset, header, sizeof(header)))
         return false;
-    if (ppmd_le32(header) != PPMD_SIGNATURE) return false;
-    info = ppmd_le16(header + 8U);
-    raw_length = ppmd_le16(header + 10U);
+    if (xx_data_get_u32(header, 4, 0, false) != PPMD_SIGNATURE) return false;
+    info = xx_data_get_u16(header + 8U, 2, 0, false);
+    raw_length = xx_data_get_u16(header + 10U, 2, 0, false);
     xx_mem_zero(member, sizeof(*member));
     member->variant = info >> 12U;
     member->order = (info & 0x0FU) + 1U;
@@ -178,8 +170,8 @@ static bool ppmd_read_header(xx_io_device *device, int64_t offset, int64_t end,
     }
     if (member->order < 2U || member->name_length > XX_PPMD_MAX_NAME)
         return false;
-    member->attrib = ppmd_le32(header + 4U);
-    member->time = ppmd_le32(header + 12U);
+    member->attrib = xx_data_get_u32(header + 4U, 4, 0, false);
+    member->time = xx_data_get_u32(header + 12U, 4, 0, false);
     member->header_offset = offset;
     member->data_offset =
         offset + (int64_t)PPMD_HEADER_SIZE + (int64_t)member->name_length;
@@ -197,7 +189,7 @@ static bool ppmd_read_header(xx_io_device *device, int64_t offset, int64_t end,
     /* Both coders start with code = the first four bytes, and a code of
      * 0xFFFFFFFF cannot lie below any range. */
     if (!ppmd_read_at(device, member->data_offset, code, sizeof(code)) ||
-        ppmd_le32(code) == UINT32_C(0xFFFFFFFF))
+        xx_data_get_u32(code, 4, 0, false) == UINT32_C(0xFFFFFFFF))
         return false;
     return true;
 }

@@ -31,7 +31,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(!ended || !ne || c.at>65536 || !pm_add(f,s,"ply-header.txt",0,(int64_t)c.at)) goto done;
     for(i=0;i<ne;++i) {ply_element *e=elements+i;uint64_t begin=c.at;char label[96];if(!e->properties || e->rows*e->properties>2000000) goto done;
         for(j=0;j<e->rows;++j) {if(fd_stop(pd)) goto done;for(k=0;k<e->properties;++k) {ply_prop *p=e->props+k;uint64_t n=p->width;
-                if(p->is_list) {uint8_t b[4];uint64_t count;if(!fd_get(&c,b,p->count_width)) goto done;count=p->count_width==1?b[0]:(p->count_width==2?fd_u16(b,be):fd_u32(b,be));if(count>65536 || !fd_mul(count,p->width,&n)) goto done;}
+                if(p->is_list) {uint8_t b[4];uint64_t count;if(!fd_get(&c,b,p->count_width)) goto done;count=p->count_width==1?b[0]:(p->count_width==2?xx_data_get_u16(b, 2, 0, be):xx_data_get_u32(b, 4, 0, be));if(count>65536 || !fd_mul(count,p->width,&n)) goto done;}
                 if(!fd_skip(&c,n)) goto done;
             }}
         xx_rt_snprintf(label,sizeof(label),"element-%u.bin",i);if(!pm_add(f,s,label,(int64_t)begin,(int64_t)(c.at-begin))) goto done;

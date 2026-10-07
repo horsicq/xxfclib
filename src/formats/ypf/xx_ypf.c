@@ -22,6 +22,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef YPF
 #define XX_YPF_FILE_TYPE XX_FILE_TYPE_YPF
@@ -145,11 +146,6 @@ static size_t ypf_capacity(void) {
     if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
     if (n < 4096U) n = 4096U;
     return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
-}
-
-static uint32_t ypf_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
 }
 
 static bool ypf_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -375,8 +371,8 @@ static bool ypf_read_header(Abstractformat *format, ypf_layout *layout) {
         header[0] != (uint8_t)'Y' || header[1] != (uint8_t)'P' ||
         header[2] != (uint8_t)'F' || header[3] != 0U)
         return false;
-    count = ypf_le32(header + 8);
-    dir_size = (int64_t)ypf_le32(header + 12);
+    count = xx_data_get_u32(header + 8, 4, 0, false);
+    dir_size = (int64_t)xx_data_get_u32(header + 12, 4, 0, false);
     /* GARbro: a sane count and room for count minimal entries.  Writers
      * store 0x20 + index length here, so GARbro's "dir_size bytes after the
      * header" test rejects small archives whose data is shorter than 0x20
@@ -389,7 +385,7 @@ static bool ypf_read_header(Abstractformat *format, ypf_layout *layout) {
     layout->size = size;
     layout->index_limit = dir_size < size - YPF_HEADER_SIZE
                               ? dir_size : size - YPF_HEADER_SIZE;
-    layout->version = ypf_le32(header + 4);
+    layout->version = xx_data_get_u32(header + 4, 4, 0, false);
     layout->count = count;
     layout->extra = ypf_extra_size(layout->version);
     return true;
@@ -446,9 +442,9 @@ static bool ypf_walk(Abstractformat *format, ypf_layout *layout,
             plain[k] = c;
         }
         tail = view + 5U + name_length;
-        unpacked = ypf_le32(tail + 2);
-        packed = ypf_le32(tail + 6);
-        offset = ypf_le32(tail + 10);
+        unpacked = xx_data_get_u32(tail + 2, 4, 0, false);
+        packed = xx_data_get_u32(tail + 6, 4, 0, false);
+        offset = xx_data_get_u32(tail + 10, 4, 0, false);
         if ((int64_t)offset > layout->size ||
             (int64_t)packed > layout->size - (int64_t)offset)
             goto done;

@@ -24,6 +24,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef TELLTALE_TTARCH
 #define XX_TELLTALE_TTARCH_FILE_TYPE XX_FILE_TYPE_TELLTALE_TTARCH
@@ -89,19 +90,6 @@ typedef struct tt_stream {
     uint32_t index;
 } tt_stream;
 
-static uint32_t tt_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
-           ((uint32_t)p[3] << 24);
-}
-
-static uint64_t tt_le64(const uint8_t *p) {
-    return (uint64_t)tt_le32(p) | ((uint64_t)tt_le32(p + 4) << 32);
-}
-
-static uint16_t tt_le16(const uint8_t *p) {
-    return (uint16_t)(p[0] | (p[1] << 8));
-}
-
 static bool tt_read_at(xx_io_device *device, int64_t offset, void *buffer,
                        size_t size) {
     size_t done = 0U;
@@ -148,8 +136,8 @@ static bool tt_chunk_span(tt_ctx *ctx, uint32_t index, int64_t *pos,
         !tt_read_at(ctx->device, ctx->table_abs + (int64_t)index * 8, pair,
                     sizeof(pair)))
         return false;
-    a = tt_le64(pair);
-    b = tt_le64(pair + 8);
+    a = xx_data_get_u64(pair, 8, 0, false);
+    b = xx_data_get_u64(pair + 8, 8, 0, false);
     if (a < ctx->off0 || b <= a || b - a > tt_max_packed(ctx->chunk_size) ||
         a - ctx->off0 > (uint64_t)(ctx->avail))
         return false;
@@ -225,8 +213,8 @@ static bool tt_inner_read(tt_ctx *ctx, int64_t offset, void *buffer,
  * chunk plausibly sized, and the chunks must fit in the file. */
 static bool tt_parse_chunked(tt_ctx *ctx, const uint8_t *head) {
     uint8_t block[TT_TABLE_BLOCK * 8U];
-    uint32_t n = tt_le32(head + 8), done = 0U;
-    uint32_t cs = tt_le32(head + 4);
+    uint32_t n = xx_data_get_u32(head + 8, 4, 0, false), done = 0U;
+    uint32_t cs = xx_data_get_u32(head + 4, 4, 0, false);
     uint64_t prev = 0U, table_bytes;
     int64_t room;
     if (cs < TT_MIN_CHUNK || cs > TT_MAX_CHUNK || (cs & (cs - 1U)) != 0U ||
@@ -246,7 +234,7 @@ static bool tt_parse_chunked(tt_ctx *ctx, const uint8_t *head) {
                         (size_t)take * 8U))
             return false;
         for (i = 0U; i < take; ++i) {
-            uint64_t v = tt_le64(block + (size_t)i * 8U);
+            uint64_t v = xx_data_get_u64(block + (size_t)i * 8U, 8, 0, false);
             if (done + i == 0U) {
                 ctx->off0 = v;
             } else if (v <= prev || v - prev > tt_max_packed(cs)) {
@@ -273,14 +261,14 @@ static bool tt_parse_inner(tt_ctx *ctx) {
     if (xx_rt_memcmp(h, "4ATT", 4U) == 0) {
         ctx->version = 4U;
         hdr = 12U;
-        ctx->names_size = tt_le32(h + 4);
-        ctx->count = tt_le32(h + 8);
+        ctx->names_size = xx_data_get_u32(h + 4, 4, 0, false);
+        ctx->count = xx_data_get_u32(h + 8, 4, 0, false);
     } else if (xx_rt_memcmp(h, "3ATT", 4U) == 0) {
         if (ctx->inner_size < 16) return false;
         ctx->version = 3U;
         hdr = 16U;
-        ctx->names_size = tt_le32(h + 8);
-        ctx->count = tt_le32(h + 12);
+        ctx->names_size = xx_data_get_u32(h + 8, 4, 0, false);
+        ctx->count = xx_data_get_u32(h + 12, 4, 0, false);
     } else {
         return false;
     }
@@ -299,9 +287,9 @@ static bool tt_parse_inner(tt_ctx *ctx) {
  * otherwise the name is read from the stream.  @p name gets TT_MAX_NAME. */
 static bool tt_entry(tt_ctx *ctx, const uint8_t *e, const uint8_t *names,
                      char *name, int64_t *offset, int64_t *size, bool *bad) {
-    uint64_t off = tt_le64(e + 8);
-    uint32_t sz = tt_le32(e + 16);
-    uint32_t at = (uint32_t)tt_le16(e + 24) * TT_NAME_PAGE + tt_le16(e + 26);
+    uint64_t off = xx_data_get_u64(e + 8, 8, 0, false);
+    uint32_t sz = xx_data_get_u32(e + 16, 4, 0, false);
+    uint32_t at = (uint32_t)xx_data_get_u16(e + 24, 2, 0, false) * TT_NAME_PAGE + xx_data_get_u16(e + 26, 2, 0, false);
     uint32_t avail, i;
     int64_t space = ctx->inner_size - ctx->data_at;
     if (at >= ctx->names_size) return false;
@@ -346,7 +334,7 @@ static bool tt_open(Abstractformat *format, tt_ctx *ctx, bool deep) {
     } else if (!xx_rt_memcmp(head, "NCTT", 4U)) {
         uint64_t size;
         if (ctx->avail < 24) return false;
-        size = tt_le64(head + 4);
+        size = xx_data_get_u64(head + 4, 8, 0, false);
         if (size < 12U || size > (uint64_t)(ctx->avail - 12)) return false;
         ctx->wrapper = XX_TELLTALE_TTARCH_WRAP_NCTT;
         ctx->inner_abs = ctx->base + 12;
@@ -400,9 +388,9 @@ static bool tt_open(Abstractformat *format, tt_ctx *ctx, bool deep) {
                 return false;
             for (i = 0U; i < take; ++i) {
                 const uint8_t *e = block + (size_t)i * TT_ENTRY_SIZE;
-                uint64_t off = tt_le64(e + 8);
+                uint64_t off = xx_data_get_u64(e + 8, 8, 0, false);
                 uint64_t space = (uint64_t)(ctx->inner_size - ctx->data_at);
-                uint32_t sz = tt_le32(e + 16);
+                uint32_t sz = xx_data_get_u32(e + 16, 4, 0, false);
                 if (off <= space && sz <= space - off &&
                     ctx->data_at + (int64_t)(off + sz) > end)
                     end = ctx->data_at + (int64_t)(off + sz);

@@ -12,7 +12,7 @@ static bool pm_parse(Abstractformat*f,pm_stream*s,xx_pd_struct*pd) {
     if(fd_stop(pd) || (n=pm_available(f))<28 || !pm_read(f,0,h,sizeof(h)) ||
        h[0]!=0x80 || h[1]!=0 || (h[4]!=0x10 && h[4]!=0x11) ||
        h[5] || h[6] || h[7]!=1 || h[18]!=6) return false;
-    start=(uint32_t)pm_be16(h+2)+4U; rate=pm_be32(h+8); samples=pm_be32(h+12);
+    start=(uint32_t)xx_data_get_u16(h+2, 2, 0, true)+4U; rate=xx_data_get_u32(h+8, 4, 0, true); samples=xx_data_get_u32(h+12, 4, 0, true);
     if(start<24 || start>65539U || start+4U>(uint64_t)n || !rate ||
        rate>384000 || !samples || samples>UINT32_C(1000000000) ||
        !pm_read(f,(int64_t)start-6,mark,6) || xx_rt_memcmp(mark,"(c)CRI",6)) return false;

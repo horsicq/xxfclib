@@ -10,15 +10,15 @@ static unsigned voxel_bits(unsigned t) {
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[352],b[8];bool be;unsigned dim,i,bits;uint64_t count=1,at,n,end;int64_t available=pm_available(f);
     if(fd_stop(pd) || available<352 || !pm_read(f,0,h,sizeof(h)) || xx_rt_memcmp(h+344,"n+1\0",4)) return false;
-    be=pm_be32(h)==348;if(!be && pm_le32(h)!=348) return false;
-    dim=fd_u16(h+40,be);bits=voxel_bits(fd_u16(h+70,be));
-    if(dim<1 || dim>7 || !bits || bits!=fd_u16(h+72,be) || !sd_float32_uint(fd_u32(h+108,be),&at) || at<352) return false;
-    for(i=0;i<dim;++i) {uint16_t d=fd_u16(h+42+i*2,be);if(!d || d>32767 || !fd_mul(count,d,&count)) return false;}
+    be=xx_data_get_u32(h, 4, 0, true)==348;if(!be && xx_data_get_u32(h, 4, 0, false)!=348) return false;
+    dim=xx_data_get_u16(h+40, 2, 0, be);bits=voxel_bits(xx_data_get_u16(h+70, 2, 0, be));
+    if(dim<1 || dim>7 || !bits || bits!=xx_data_get_u16(h+72, 2, 0, be) || !sd_float32_uint(xx_data_get_u32(h+108, 4, 0, be),&at) || at<352) return false;
+    for(i=0;i<dim;++i) {uint16_t d=xx_data_get_u16(h+42+i*2, 2, 0, be);if(!d || d>32767 || !fd_mul(count,d,&count)) return false;}
     if(!fd_mul(count,bits/8,&n) || !fd_range(at,n,(uint64_t)available)) { return false; } end=at+n;
     if(h[348]>1 || h[349] || h[350] || h[351] || !pm_add(f,s,"nifti-header.bin",0,h[348]?352:(int64_t)at)) return false;
     if(h[348]) {uint64_t p=352;unsigned extensions=0;
         while(p<at) {uint32_t z,code;char label[64];if(fd_stop(pd) || ++extensions>4096 || !fd_range(p,8,at) || !pm_read(f,(int64_t)p,b,8)) return false;
-            z=fd_u32(b,be);code=fd_u32(b+4,be);if(z<16 || z%16 || code>INT32_MAX || !fd_range(p,z,at)) return false;
+            z=xx_data_get_u32(b, 4, 0, be);code=xx_data_get_u32(b+4, 4, 0, be);if(z<16 || z%16 || code>INT32_MAX || !fd_range(p,z,at)) return false;
             xx_rt_snprintf(label,sizeof(label),"extension-%u-code-%u.bin",extensions-1,code);if(!pm_add(f,s,label,(int64_t)p,z)) return false;p+=z;
         }
     }

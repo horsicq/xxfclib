@@ -82,15 +82,6 @@ static bool xx_bmp_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static uint16_t xx_bmp_u16(const uint8_t *p) {
-    return (uint16_t)((uint16_t)p[0] | ((uint16_t)p[1] << 8U));
-}
-
-static uint32_t xx_bmp_u32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) | ((uint32_t)p[2] << 16U) |
-           ((uint32_t)p[3] << 24U);
-}
-
 /* The DIB header sizes binwalk's get_dib_header_size() accepts. */
 static bool xx_bmp_dib_size_is_known(uint32_t size) {
     return size == XX_BMP_CORE_HEADER_SIZE || size == XX_BMP_INFO_HEADER_SIZE ||
@@ -163,9 +154,9 @@ static bool xx_bmp_parse(Abstractformat *self, xx_bmp_parsed *parsed,
         return false;
     }
     if (prefix[0] != 0x42U || prefix[1] != 0x4DU) return false; /* "BM" */
-    parsed->file_size = xx_bmp_u32(prefix + 2);
-    parsed->data_offset = xx_bmp_u32(prefix + 10);
-    parsed->dib_header_size = xx_bmp_u32(prefix + 14);
+    parsed->file_size = xx_data_get_u32(prefix + 2, 4, 0, false);
+    parsed->data_offset = xx_data_get_u32(prefix + 10, 4, 0, false);
+    parsed->dib_header_size = xx_data_get_u32(prefix + 14, 4, 0, false);
 
     /* bfSize: nonzero and no larger than what is there. */
     if (parsed->file_size == 0U ||
@@ -200,26 +191,26 @@ static bool xx_bmp_parse(Abstractformat *self, xx_bmp_parsed *parsed,
     if (parsed->dib_header_size == XX_BMP_CORE_HEADER_SIZE) {
         /* BITMAPCOREHEADER: u16 width, u16 height (always bottom-up),
          * u16 planes, u16 depth. */
-        parsed->width = xx_bmp_u16(dib + 4);
-        parsed->height = xx_bmp_u16(dib + 6);
+        parsed->width = xx_data_get_u16(dib + 4, 2, 0, false);
+        parsed->height = xx_data_get_u16(dib + 6, 2, 0, false);
         parsed->top_down = false;
-        parsed->planes = xx_bmp_u16(dib + 8);
-        parsed->bits_per_pixel = xx_bmp_u16(dib + 10);
+        parsed->planes = xx_data_get_u16(dib + 8, 2, 0, false);
+        parsed->bits_per_pixel = xx_data_get_u16(dib + 10, 2, 0, false);
         parsed->compression = XX_BMP_BI_RGB;
     } else {
-        int32_t width = (int32_t)xx_bmp_u32(dib + 4);
-        int32_t height = (int32_t)xx_bmp_u32(dib + 8);
+        int32_t width = (int32_t)xx_data_get_u32(dib + 4, 4, 0, false);
+        int32_t height = (int32_t)xx_data_get_u32(dib + 8, 4, 0, false);
 
         if (width <= 0 || height == 0 || height == INT32_MIN) return false;
         parsed->width = (uint32_t)width;
         parsed->top_down = height < 0;
         parsed->height = height < 0 ? (uint32_t)(-(int64_t)height)
                                     : (uint32_t)height;
-        parsed->planes = xx_bmp_u16(dib + 12);
-        parsed->bits_per_pixel = xx_bmp_u16(dib + 14);
-        parsed->compression = xx_bmp_u32(dib + 16);
-        parsed->image_size = xx_bmp_u32(dib + 20);
-        parsed->colors_used = xx_bmp_u32(dib + 32);
+        parsed->planes = xx_data_get_u16(dib + 12, 2, 0, false);
+        parsed->bits_per_pixel = xx_data_get_u16(dib + 14, 2, 0, false);
+        parsed->compression = xx_data_get_u32(dib + 16, 4, 0, false);
+        parsed->image_size = xx_data_get_u32(dib + 20, 4, 0, false);
+        parsed->colors_used = xx_data_get_u32(dib + 32, 4, 0, false);
     }
 
     if (parsed->planes != 1U) return false;

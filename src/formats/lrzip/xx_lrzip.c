@@ -14,7 +14,7 @@ static uint64_t lr_uint(const uint8_t *p,unsigned width){uint64_t v=0;for(unsign
 static int lr_order(const void *a,const void *b){uint32_t x=((const lr_block *)a)->at,y=((const lr_block *)b)->at;return x<y?-1:x>y?1:0;}
 static bool lr_decode(ac_blob *b,uint8_t type,uint32_t at,uint32_t packed,uint8_t *out,uint32_t plain){size_t wrote=0;xx_io_device *src=NULL,*dst=NULL;bool ok=false;uint64_t workspace=0;
  if(!ac_poll(b)) {return false; } if(type==3){if(packed!=plain)return false;memcpy(out,b->p+at,plain);return true;}
- if(type==4)workspace=12U*1024U*1024U;else if(type==6){uint32_t dict=pm_le32(b->p+17);if(dict>16U*1024U*1024U)return false;workspace=(uint64_t)dict+1024U*1024U;}else if(type==7)workspace=128U*1024U;else if(type!=5)return ac_error(b,"LRZIP block codec unsupported (ZPAQ/filter variant)");
+ if(type==4)workspace=12U*1024U*1024U;else if(type==6){uint32_t dict=xx_data_get_u32(b->p+17, 4, 0, false);if(dict>16U*1024U*1024U)return false;workspace=(uint64_t)dict+1024U*1024U;}else if(type==7)workspace=128U*1024U;else if(type!=5)return ac_error(b,"LRZIP block codec unsupported (ZPAQ/filter variant)");
  if(workspace>b->limit-b->used) {return ac_error(b,"LRZIP codec workspace exceeds memory limit"); } b->used+=workspace;
  if(type==5)ok=xx_lzo1x_decompress(b->p+at,packed,out,plain,&wrote);
  else{src=xx_io_mem_open_ro(b->p+at,packed);dst=xx_io_mem_open(out,plain);if(src&&dst){if(type==4)ok=xx_bzip2_unpack_device(src,0,packed,dst,b->pd);
@@ -44,7 +44,7 @@ static bool lr_parse(Abstractformat *f,pm_stream *s,ac_blob *b){uint32_t cursor=
     else{uint64_t offset;if(streamsize[0]-at<width)goto chunk_done;offset=lr_uint(streams[0]+at,width);at+=width;if(!offset||offset>total)goto chunk_done;while(length--){out[total]=out[total-(uint32_t)offset];++total;}}
    }
    if(total-start!=chunk_size||literal!=streamsize[1])goto chunk_done;
-   if(!md5){if(streamsize[0]-at!=4U||pm_le32(streams[0]+at)!=ac_crc32(out+start,total-start,0))goto chunk_done;at+=4;}
+   if(!md5){if(streamsize[0]-at!=4U||xx_data_get_u32(streams[0]+at, 4, 0, false)!=ac_crc32(out+start,total-start,0))goto chunk_done;at+=4;}
    if(at!=streamsize[0])goto chunk_done;
   }
   cursor=readend;chunk_ok=true;

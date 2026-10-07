@@ -70,6 +70,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef GENTEE_INSTALLER
 #define XX_GENTEE_INSTALLER_FILE_TYPE XX_FILE_TYPE_GENTEE_INSTALLER
@@ -137,19 +138,6 @@ static const uint8_t g_gi_dist_bits[GI_DIST_SLOTS] = {
 /* ---------------------------------------------------------------------- */
 /* Small helpers                                                           */
 
-static uint16_t gi_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static uint32_t gi_le32(const uint8_t *b) {
-    return (uint32_t)b[0] | ((uint32_t)b[1] << 8U) | ((uint32_t)b[2] << 16U) |
-           ((uint32_t)b[3] << 24U);
-}
-
-static uint64_t gi_le64(const uint8_t *b) {
-    return (uint64_t)gi_le32(b) | ((uint64_t)gi_le32(b + 4U) << 32U);
-}
-
 static bool gi_read_at(xx_io_device *device, int64_t offset, void *buffer,
                        size_t size) {
     size_t done = 0U;
@@ -181,7 +169,7 @@ typedef struct gi_location_s {
 } gi_location;
 
 static bool gi_payload_header_ok(const uint8_t *h, uint32_t *runtime) {
-    uint32_t size = gi_le32(h);
+    uint32_t size = xx_data_get_u32(h, 4, 0, false);
     if (size == 0U || size >= GI_MAX_RUNTIME ||
         xx_rt_memcmp(h + 4U, g_gi_signature, sizeof(g_gi_signature)) != 0)
         return false;
@@ -209,14 +197,14 @@ static bool gi_locate(Abstractformat *format, gi_location *out) {
     if (!gi_read_at(format->device, base, mz, sizeof(mz)) || mz[0] != 'M' ||
         mz[1] != 'Z')
         return false;
-    lfanew = gi_le32(mz + 0x3C);
+    lfanew = xx_data_get_u32(mz + 0x3C, 4, 0, false);
     if (lfanew < 0x40U || lfanew > GI_MAX_LFANEW ||
         (int64_t)lfanew + (int64_t)sizeof(nt) > total ||
         !gi_read_at(format->device, base + lfanew, nt, sizeof(nt)) ||
         nt[0] != 'P' || nt[1] != 'E' || nt[2] != 0 || nt[3] != 0)
         return false;
-    nsec = gi_le16(nt + 6);
-    optsz = gi_le16(nt + 20);
+    nsec = xx_data_get_u16(nt + 6, 2, 0, false);
+    optsz = xx_data_get_u16(nt + 20, 2, 0, false);
     if (nsec == 0U || nsec > GI_MAX_SECTIONS) return false;
     table = (int64_t)lfanew + 24 + (int64_t)optsz;
     if (table + (int64_t)nsec * 40 > total ||
@@ -224,8 +212,8 @@ static bool gi_locate(Abstractformat *format, gi_location *out) {
         return false;
     for (index = 0U; index < nsec; ++index) {
         const uint8_t *s = sections + index * 40U;
-        int64_t raw_size = (int64_t)gi_le32(s + 16);
-        int64_t raw_ptr = (int64_t)gi_le32(s + 20);
+        int64_t raw_size = (int64_t)xx_data_get_u32(s + 16, 4, 0, false);
+        int64_t raw_ptr = (int64_t)xx_data_get_u32(s + 20, 4, 0, false);
         if (raw_size != 0 && raw_ptr + raw_size > overlay)
             overlay = raw_ptr + raw_size;
     }
@@ -237,7 +225,7 @@ static bool gi_locate(Abstractformat *format, gi_location *out) {
         uint8_t locator[GI_LOCATOR_SIZE];
         if (gi_read_at(format->device, base + GI_LOCATOR_OFFSET, locator,
                        sizeof(locator))) {
-            candidate = (int64_t)gi_le32(locator);
+            candidate = (int64_t)xx_data_get_u32(locator, 4, 0, false);
             if (candidate >= overlay &&
                 candidate + (int64_t)GI_PAYLOAD_HEADER <= total &&
                 gi_read_at(format->device, base + candidate, head,
@@ -323,7 +311,7 @@ static bool gi_in_u32(gi_input *in, uint32_t *value) {
     gi_in_align(in);
     for (index = 0U; index < 4U; ++index)
         if (!gi_in_byte(in, &b[index])) return false;
-    *value = gi_le32(b);
+    *value = xx_data_get_u32(b, 4, 0, false);
     return true;
 }
 
@@ -988,7 +976,7 @@ static bool gi_walk(Abstractformat *format, gi_list **result, bool names,
         size_t index;
         for (index = 0U; index < sizeof(header); ++index)
             if (!gi_in_byte(in, &header[index])) goto stop;
-        if (gi_le16(header + GI_ARCHIVE_HEADER_FLAG) != 0U) goto stop;
+        if (xx_data_get_u16(header + GI_ARCHIVE_HEADER_FLAG, 2, 0, false) != 0U) goto stop;
     }
     {
         uint32_t index;
@@ -1015,7 +1003,7 @@ static bool gi_walk(Abstractformat *format, gi_list **result, bool names,
         if (!gi_unpack(cmd, in, size, &sink, pd) || sink.length != size)
             break;
         gi_in_align(in);
-        tag = gi_le16(buffer);
+        tag = xx_data_get_u16(buffer, 2, 0, false);
         if (tag == GI_TAG_END) {
             list->complete = true;
             last_good = gi_in_tell(in);
@@ -1036,10 +1024,10 @@ static bool gi_walk(Abstractformat *format, gi_list **result, bool names,
             name_end - GI_RECORD_NAME_OFFSET > GI_MAX_NAME)
             break;
         xx_mem_zero(&member, sizeof(member));
-        member.attributes = gi_le32(record);
-        member.size = gi_le32(record + GI_RECORD_SIZE_OFFSET);
+        member.attributes = xx_data_get_u32(record, 4, 0, false);
+        member.size = xx_data_get_u32(record + GI_RECORD_SIZE_OFFSET, 4, 0, false);
         if (member.size > 0x7FFFFFFFU) break;
-        member.filetime = gi_le64(record + GI_RECORD_TIME_OFFSET);
+        member.filetime = xx_data_get_u64(record + GI_RECORD_TIME_OFFSET, 8, 0, false);
         member.stored = record[GI_RECORD_STORED_OFFSET] == 0U;
         member.command_offset = command_offset;
         member.command_size = gi_in_tell(in) - command_offset;
@@ -1063,7 +1051,7 @@ static bool gi_walk(Abstractformat *format, gi_list **result, bool names,
                 member.broken = true;
                 gi_in_seek(in, in->end);
             } else {
-                block_size = gi_le32(word);
+                block_size = xx_data_get_u32(word, 4, 0, false);
                 if (block_size != member.size) {
                     member.broken = true;
                 } else if (!gi_block(data, in, 0U, NULL, NULL, pd)) {

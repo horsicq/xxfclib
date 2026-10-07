@@ -4,13 +4,14 @@
  */
 #include "xxfclib/formats/snes_spc/xx_snes_spc.h"
 #include "../snes_spc/xx_tenth_retro.h"
+#include "xxfclib/data/xx_data.h"
 static bool read_components(Abstractformat *f,pm_stream *s,th_blob *b) {
  uint32_t a=66048,count=0;const uint8_t *p=b->p;
  if(b->n<66048 || xx_rt_memcmp(p,"SNES-SPC700 Sound File Data v0.30",33) || p[33]!=26 || p[34]!=26 || (p[35]!=26 && p[35]!=27) || p[36]!=30) return false;
  if(!th_emit(f,s,b,"snapshot-descriptor.bin",0,256) || !th_emit(f,s,b,"spc700-ram.bin",256,65536) || !th_emit(f,s,b,"dsp-registers.bin",65792,128) || !th_emit(f,s,b,"reserved.bin",65920,64) || !th_emit(f,s,b,"ipl-rom.bin",65984,64)) return false;
  if(a<b->n) {
-  uint32_t end,z;if(!th_range(b,a,8) || xx_rt_memcmp(p+a,"xid6",4)) return false;z=pm_le32(p+a+4);if(!th_range(b,a+8,z) || a+8+z!=b->n || z>1048576) return false;end=a+8+z;a+=8;
-  while(a<end) {uint32_t n,after;unsigned type;if(!th_poll(b) || ++count>4096 || end-a<4) return false;type=p[a+1];n=type ? pm_le16(p+a+2):0;if(type>4 || (type!=0 && type!=1 && type!=4) || (type==4 && n!=4) || n>end-a-4) return false;after=a+4+n;if(type==1 && (!n || p[after-1])) return false;a=(after+3)&~3U;if(a>end || !th_zero(p+after,a-after)) return false;}
+  uint32_t end,z;if(!th_range(b,a,8) || xx_rt_memcmp(p+a,"xid6",4)) return false;z=xx_data_get_u32(p+a+4, 4, 0, false);if(!th_range(b,a+8,z) || a+8+z!=b->n || z>1048576) return false;end=a+8+z;a+=8;
+  while(a<end) {uint32_t n,after;unsigned type;if(!th_poll(b) || ++count>4096 || end-a<4) return false;type=p[a+1];n=type ? xx_data_get_u16(p+a+2, 2, 0, false):0;if(type>4 || (type!=0 && type!=1 && type!=4) || (type==4 && n!=4) || n>end-a-4) return false;after=a+4+n;if(type==1 && (!n || p[after-1])) return false;a=(after+3)&~3U;if(a>end || !th_zero(p+after,a-after)) return false;}
   if(!th_emit(f,s,b,"extended-tags.xid6",66048,b->n-66048)) return false;
  }
  s->size=b->n;return true;

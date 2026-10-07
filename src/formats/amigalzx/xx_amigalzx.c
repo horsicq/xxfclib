@@ -52,6 +52,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_AMIGALZX_COPY_CHUNK (64 * 1024)
 
@@ -172,18 +173,11 @@ static bool xx_amigalzx_add(xx_amigalzx_stream *stream,
  * limit, since no member count is stored; XX_AMIGALZX_MAX_GROUP_OUTPUT bounds
  * a running sum of attacker-supplied u32s so a crafted chain cannot overflow
  * it, matching the reference reader's 1 GiB ceiling. */
-static uint32_t xx_amigalzx_le32(const uint8_t *data);
 static bool xx_amigalzx_name_byte_valid(uint8_t value);
 static int64_t xx_amigalzx_normalize_name(uint8_t *name, int64_t length);
 static bool xx_amigalzx_close_group(xx_amigalzx_stream *stream, int64_t span, size_t group_start, int64_t group_plain, int64_t data_offset, int64_t packed_size, int64_t base_address, uint32_t method);
 static xx_amigalzx_stream *xx_amigalzx_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_amigalzx_decode(Abstractformat *self, const xx_amigalzx_member *member, xx_amigalzx_stream *stream, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
-
-
-static uint32_t xx_amigalzx_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* Amiga file names are Latin-1, so bytes above 0x9F are legitimate accented
  * characters and are kept. What is rejected is the control ranges: C0
@@ -365,8 +359,8 @@ static xx_amigalzx_stream *xx_amigalzx_parse(Abstractformat *self,
             goto fail;
         }
 
-        unpacked_size = (int64_t)xx_amigalzx_le32(header + 2);
-        packed_size = (int64_t)xx_amigalzx_le32(header + 6);
+        unpacked_size = (int64_t)xx_data_get_u32(header + 2, 4, 0, false);
+        packed_size = (int64_t)xx_data_get_u32(header + 6, 4, 0, false);
         method = (uint32_t)header[11];
         comment_length = (int64_t)header[14];
         name_length = (int64_t)header[30];
@@ -422,11 +416,11 @@ static xx_amigalzx_stream *xx_amigalzx_parse(Abstractformat *self,
         /* CRC-32 of this member's plaintext, standard zlib/PKZIP parameters.
          * It is the only end-to-end check the format offers and decode below
          * refuses a member whose bytes do not reproduce it. */
-        member.crc32 = xx_amigalzx_le32(header + 22);
+        member.crc32 = xx_data_get_u32(header + 22, 4, 0, false);
         /* The packed Amiga date/time word is stored verbatim rather than
          * converted: its field layout is not the UNIX epoch and re-deriving
          * it here would invent precision the container does not have. */
-        member.timestamp = (uint64_t)xx_amigalzx_le32(header + 18);
+        member.timestamp = (uint64_t)xx_data_get_u32(header + 18, 4, 0, false);
         /* LZX stores directories only as the path prefix of a member. */
         member.is_folder = false;
         /* The header CRC-32 at 0x1a (over the header with those four bytes

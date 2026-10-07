@@ -62,6 +62,7 @@
 #include "xxfclib/algo/pkt/xx_pkt.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_PKT_COPY_CHUNK (64 * 1024)
 
@@ -163,7 +164,6 @@ static bool xx_pkt_add(xx_pkt_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_pkt_le16(const uint8_t *data);
 static xx_pkt_stream *xx_pkt_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_pkt_decode(Abstractformat *self, const xx_pkt_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
@@ -174,10 +174,6 @@ static bool xx_pkt_decode(Abstractformat *self, const xx_pkt_member *member, uin
  * NUL, and bounds the window parse reads per record. */
 /* The rendering is a little longer than the record, never wildly so; the
  * ceiling is what the scan is told to refuse. */
-
-static uint16_t xx_pkt_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
 
 static xx_pkt_stream *xx_pkt_parse(Abstractformat *self, xx_pd_struct *pd) {
     xx_pkt_stream *stream = NULL;
@@ -213,19 +209,19 @@ static xx_pkt_stream *xx_pkt_parse(Abstractformat *self, xx_pd_struct *pd) {
      * and net pair the packet header names -- which is true of every packet
      * a FidoNet mailer ever wrote and essentially never true by accident.
      * Dropping any single one of them makes random binary data match. */
-    if (xx_pkt_le16(header + 0x12) != XX_PKT_TYPE_2) return NULL;
-    if (xx_pkt_le16(header + 0x3a) != XX_PKT_TYPE_2) return NULL;
-    if (xx_pkt_le16(header + 0x00) != xx_pkt_le16(header + 0x3c)) return NULL;
-    if (xx_pkt_le16(header + 0x02) != xx_pkt_le16(header + 0x3e)) return NULL;
-    if (xx_pkt_le16(header + 0x14) != xx_pkt_le16(header + 0x40)) return NULL;
-    if (xx_pkt_le16(header + 0x16) != xx_pkt_le16(header + 0x42)) return NULL;
+    if (xx_data_get_u16(header + 0x12, 2, 0, false) != XX_PKT_TYPE_2) return NULL;
+    if (xx_data_get_u16(header + 0x3a, 2, 0, false) != XX_PKT_TYPE_2) return NULL;
+    if (xx_data_get_u16(header + 0x00, 2, 0, false) != xx_data_get_u16(header + 0x3c, 2, 0, false)) return NULL;
+    if (xx_data_get_u16(header + 0x02, 2, 0, false) != xx_data_get_u16(header + 0x3e, 2, 0, false)) return NULL;
+    if (xx_data_get_u16(header + 0x14, 2, 0, false) != xx_data_get_u16(header + 0x40, 2, 0, false)) return NULL;
+    if (xx_data_get_u16(header + 0x16, 2, 0, false) != xx_data_get_u16(header + 0x42, 2, 0, false)) return NULL;
 
-    year = xx_pkt_le16(header + 0x04);
-    month = xx_pkt_le16(header + 0x06);
-    day = xx_pkt_le16(header + 0x08);
-    hour = xx_pkt_le16(header + 0x0a);
-    minute = xx_pkt_le16(header + 0x0c);
-    second = xx_pkt_le16(header + 0x0e);
+    year = xx_data_get_u16(header + 0x04, 2, 0, false);
+    month = xx_data_get_u16(header + 0x06, 2, 0, false);
+    day = xx_data_get_u16(header + 0x08, 2, 0, false);
+    hour = xx_data_get_u16(header + 0x0a, 2, 0, false);
+    minute = xx_data_get_u16(header + 0x0c, 2, 0, false);
+    second = xx_data_get_u16(header + 0x0e, 2, 0, false);
     /* Second half of the detector: the packet date has to be a date. The
      * month is 0 based in FTS-0001, so 11 is December and 12 is wrong. */
     if (year <= 1899U || year >= 3000U) return NULL;
@@ -235,9 +231,9 @@ static xx_pkt_stream *xx_pkt_parse(Abstractformat *self, xx_pd_struct *pd) {
 
     /* A packet always has a destination and both nets; zero in any of them
      * is a field that was never filled in, not an address. */
-    if (xx_pkt_le16(header + 0x02) == 0U) return NULL;
-    if (xx_pkt_le16(header + 0x14) == 0U) return NULL;
-    if (xx_pkt_le16(header + 0x16) == 0U) return NULL;
+    if (xx_data_get_u16(header + 0x02, 2, 0, false) == 0U) return NULL;
+    if (xx_data_get_u16(header + 0x14, 2, 0, false) == 0U) return NULL;
+    if (xx_data_get_u16(header + 0x16, 2, 0, false) == 0U) return NULL;
 
     /* One scratch window, reused for every record: the scan needs the
      * record's bytes, and nothing before the fifth NUL says how many that
@@ -278,11 +274,11 @@ static xx_pkt_stream *xx_pkt_parse(Abstractformat *self, xx_pd_struct *pd) {
             goto fail;
         }
         /* The explicit end of the packet. */
-        if (xx_pkt_le16(type_word) == 0U) break;
+        if (xx_data_get_u16(type_word, 2, 0, false) == 0U) break;
         /* Past the terminator every record must be a type 2 message: a word
          * that is neither 0 nor 2 means the chain has desynchronised, and
          * continuing would publish members carved out of noise. */
-        if (xx_pkt_le16(type_word) != XX_PKT_TYPE_2) goto fail;
+        if (xx_data_get_u16(type_word, 2, 0, false) != XX_PKT_TYPE_2) goto fail;
         if (!xx_pkt_range_within(span, offset, XX_PKT_MESSAGE_HEADER_SIZE)) {
             goto fail;
         }

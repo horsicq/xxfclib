@@ -13,11 +13,9 @@
 #include "xxfclib/formats/zlib/xx_zlib.h"
 #include "xxfclib/formats/grub_backend/xx_grub_backend.h"
 #include <stdlib.h>
+#include "xxfclib/data/xx_data.h"
 static bool vr_poll(xx_pd_struct *pd) { return !pd || !xx_pd_is_stopped(pd); }
 static bool vr_power(uint64_t n) { return n && !(n&(n-1)); }
-static uint16_t vr_u16(const uint8_t *p,bool be) { return be?pm_be16(p):pm_le16(p); }
-static uint32_t vr_u32(const uint8_t *p,bool be) { return be?pm_be32(p):pm_le32(p); }
-static uint64_t vr_u64(const uint8_t *p,bool be) { return be?mm_be64(p):mm_le64(p); }
 static bool vr_label(xx_volume *r,const uint8_t *p,size_t n) {
     size_t i; if(n>=sizeof(r->label)) n=sizeof(r->label)-1;
     for(i=0;i<n && p[i];++i) r->label[i]=(p[i]>=32 && p[i]<127)?(char)p[i]:'_';

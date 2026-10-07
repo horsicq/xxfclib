@@ -62,6 +62,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* The enum entry is added by the coordinator; keep compiling until it is. */
 #ifdef STUFFIT
@@ -649,9 +650,6 @@ static bool sit_rle90_decode(const uint8_t *input, size_t input_size,
     return out_pos == output_size;
 }
 
-static uint16_t sit_be16(const uint8_t *bytes);
-static uint32_t sit_be32(const uint8_t *bytes);
-
 /* ------------------------------------------------------------------ */
 /* Method 2: LZW.                                                     */
 /* ------------------------------------------------------------------ */
@@ -992,13 +990,6 @@ static void sit_packbits_put(sit_packbits *pb, uint8_t byte) {
     }
 }
 
-static int32_t sit_be32s(const uint8_t *bytes) {
-    uint32_t value = ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
-                     ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3];
-    return value <= INT32_MAX ? (int32_t)value
-                              : -(int32_t)(UINT32_MAX - value) - 1;
-}
-
 static bool sit_fixedhuff_decode(const uint8_t *input, size_t input_size,
                                  uint8_t *output, size_t output_size) {
     sit_huff_tree *tree;
@@ -1017,7 +1008,7 @@ static bool sit_fixedhuff_decode(const uint8_t *input, size_t input_size,
     pb.size = output_size;
     /* Every block consumes at least four bytes, so this loop is bounded. */
     while (pb.pos < output_size && input_size - pos >= 4U) {
-        int32_t raw = sit_be32s(input + pos);
+        int32_t raw = xx_data_get_i32(input + pos, 4, 0, true);
         size_t block_end;
         pb.literal = pb.repeat = 0U;
         if (raw >= 0) {
@@ -1029,8 +1020,8 @@ static bool sit_fixedhuff_decode(const uint8_t *input, size_t input_size,
             if (raw < 10) break;
             if ((uint32_t)raw > input_size - pos) goto done;
             block_end = pos + (size_t)raw;
-            intermediate = sit_be32(input + pos + 4U);
-            definitions = sit_be16(input + pos + 8U);
+            intermediate = xx_data_get_u32(input + pos + 4U, 4, 0, true);
+            definitions = xx_data_get_u16(input + pos + 8U, 2, 0, true);
             if (definitions > 256U || definitions > block_end - pos - 10U)
                 goto done;
             for (index = 0U; index < definitions; ++index)
@@ -1113,15 +1104,6 @@ typedef struct sit_stream_s {
     uint32_t declared_members;
     uint8_t version;
 } sit_stream;
-
-static uint16_t sit_be16(const uint8_t *bytes) {
-    return (uint16_t)(((uint16_t)bytes[0] << 8U) | (uint16_t)bytes[1]);
-}
-
-static uint32_t sit_be32(const uint8_t *bytes) {
-    return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
-           ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3];
-}
 
 static bool sit_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -1450,14 +1432,14 @@ static bool sit_parse(Abstractformat *format, sit_stream **result) {
 
     /* The declared archive size is the anchor: bound it against the real
      * file before anything is walked. */
-    archive_size = (int64_t)sit_be32(header + 6U);
+    archive_size = (int64_t)xx_data_get_u32(header + 6U, 4, 0, true);
     if (archive_size < SIT_MASTER_HEADER_SIZE + SIT_MEMBER_HEADER_SIZE ||
         archive_size > size)
         return false;
 
     stream = (sit_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;
-    stream->declared_members = sit_be16(header + 4U);
+    stream->declared_members = xx_data_get_u16(header + 4U, 2, 0, true);
     stream->version = header[14];
     path[0] = NULL;
 
@@ -1480,7 +1462,7 @@ static bool sit_parse(Abstractformat *format, sit_stream **result) {
         if (!sit_read_at(format->device, format->base_address + cursor, entry,
                          sizeof(entry)))
             goto fail;
-        if (xx_crc16_arc_calc(0U, entry, 110U) != sit_be16(entry + 110U))
+        if (xx_crc16_arc_calc(0U, entry, 110U) != xx_data_get_u16(entry + 110U, 2, 0, true))
             goto fail;
 
         rsrc_method = entry[0];
@@ -1520,7 +1502,7 @@ static bool sit_parse(Abstractformat *format, sit_stream **result) {
             member.data_offset = format->base_address + cursor +
                                  SIT_MEMBER_HEADER_SIZE;
             member.folder = true;
-            member.modified = sit_be32(entry + 80U);
+            member.modified = xx_data_get_u32(entry + 80U, 4, 0, true);
             if (!member.name || !sit_add_member(stream, &member)) {
                 if (member.name) xx_str_free(member.name);
                 xx_str_free(full);
@@ -1536,10 +1518,10 @@ static bool sit_parse(Abstractformat *format, sit_stream **result) {
         rsrc_method = (uint8_t)(rsrc_method & 15U);
         data_method = (uint8_t)(data_method & 15U);
 
-        rsrc_unpacked = sit_be32(entry + 84U);
-        data_unpacked = sit_be32(entry + 88U);
-        rsrc_packed = sit_be32(entry + 92U);
-        data_packed = sit_be32(entry + 96U);
+        rsrc_unpacked = xx_data_get_u32(entry + 84U, 4, 0, true);
+        data_unpacked = xx_data_get_u32(entry + 88U, 4, 0, true);
+        rsrc_packed = xx_data_get_u32(entry + 92U, 4, 0, true);
+        data_packed = xx_data_get_u32(entry + 96U, 4, 0, true);
         /* Bound both packed extents against what is really there before they
          * are recorded or used.  Unpacked sizes are only claims; the decoder
          * caps what it will allocate for them. */
@@ -1554,10 +1536,10 @@ static bool sit_parse(Abstractformat *format, sit_stream **result) {
         xx_mem_zero(&member, sizeof(member));
         member.header_offset = format->base_address + cursor -
                                SIT_MEMBER_HEADER_SIZE;
-        member.mac_type = sit_be32(entry + 66U);
-        member.mac_creator = sit_be32(entry + 70U);
-        member.finder_flags = sit_be16(entry + 74U);
-        member.modified = sit_be32(entry + 80U);
+        member.mac_type = xx_data_get_u32(entry + 66U, 4, 0, true);
+        member.mac_creator = xx_data_get_u32(entry + 70U, 4, 0, true);
+        member.finder_flags = xx_data_get_u16(entry + 74U, 2, 0, true);
+        member.modified = xx_data_get_u32(entry + 80U, 4, 0, true);
 
         /* Data fork first, resource fork second, matching the MacBinary and
          * AppleSingle readers' ".rsrc" member naming. */
@@ -1566,7 +1548,7 @@ static bool sit_parse(Abstractformat *format, sit_stream **result) {
                              (int64_t)rsrc_packed;
         member.packed_size = (int64_t)data_packed;
         member.unpacked_size = data_unpacked;
-        member.crc16 = sit_be16(entry + 102U);
+        member.crc16 = xx_data_get_u16(entry + 102U, 2, 0, true);
         member.method = data_method;
         member.encrypted = data_encrypted;
         member.resource = false;
@@ -1581,7 +1563,7 @@ static bool sit_parse(Abstractformat *format, sit_stream **result) {
             member.data_offset = format->base_address + cursor;
             member.packed_size = (int64_t)rsrc_packed;
             member.unpacked_size = rsrc_unpacked;
-            member.crc16 = sit_be16(entry + 100U);
+            member.crc16 = xx_data_get_u16(entry + 100U, 2, 0, true);
             member.method = rsrc_method;
             member.encrypted = rsrc_encrypted;
             member.resource = true;

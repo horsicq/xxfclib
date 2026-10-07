@@ -40,6 +40,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef RNC
 #define XX_RNC_FILE_TYPE XX_FILE_TYPE_RNC
@@ -123,15 +124,6 @@ static bool xx_rnc_write_all(xx_io_device *device, const void *data,
 
 static uint16_t xx_rnc_crc16(const uint8_t *data, size_t size) {
     return xx_crc16_arc_calc(0U, data, size);
-}
-
-static uint32_t xx_rnc_be32(const uint8_t *bytes) {
-    return ((uint32_t)bytes[0] << 24) | ((uint32_t)bytes[1] << 16) |
-           ((uint32_t)bytes[2] << 8) | (uint32_t)bytes[3];
-}
-
-static uint16_t xx_rnc_be16(const uint8_t *bytes) {
-    return (uint16_t)(((uint16_t)bytes[0] << 8) | (uint16_t)bytes[1]);
 }
 
 static void xx_rnc_output_init(xx_rnc_output *output, uint8_t *data,
@@ -514,10 +506,10 @@ static bool xx_rnc_parse_header(Abstractformat *self, xx_rnc_header *header) {
         return false;
     }
     header->method = raw[3];
-    header->unpacked_size = xx_rnc_be32(raw + 4U);
-    header->packed_size = xx_rnc_be32(raw + 8U);
-    header->unpacked_crc = xx_rnc_be16(raw + 12U);
-    header->packed_crc = xx_rnc_be16(raw + 14U);
+    header->unpacked_size = xx_data_get_u32(raw + 4U, 4, 0, true);
+    header->packed_size = xx_data_get_u32(raw + 8U, 4, 0, true);
+    header->unpacked_crc = xx_data_get_u16(raw + 12U, 2, 0, true);
+    header->packed_crc = xx_data_get_u16(raw + 14U, 2, 0, true);
     header->leeway = raw[16];
     header->chunk_count = raw[17];
     header->total_size = available + header->prefix_size;

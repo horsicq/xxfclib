@@ -14,6 +14,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ARJ_MAX_HEADER 2600U
 #define XX_ARJ_FLAG_GARBLED 0x01U
@@ -39,15 +40,6 @@ typedef struct xx_arj_stream_s {
     size_t count;
     size_t index;
 } xx_arj_stream;
-
-static uint16_t xx_arj_u16(const uint8_t *data) {
-    return (uint16_t)(data[0] | ((uint16_t)data[1] << 8U));
-}
-
-static uint32_t xx_arj_u32(const uint8_t *data) {
-    return (uint32_t)xx_arj_u16(data) |
-           ((uint32_t)xx_arj_u16(data + 2U) << 16U);
-}
 
 static bool xx_arj_read_at(xx_io_device *device, int64_t offset,
                            void *buffer, size_t size) {
@@ -86,7 +78,7 @@ static bool xx_arj_read_header(xx_io_device *device, int64_t total,
         !xx_arj_read_at(device, *offset, prefix, sizeof(prefix)) ||
         prefix[0] != 0x60U || prefix[1] != 0xeaU) return false;
     *body = NULL;
-    size = xx_arj_u16(prefix + 2U);
+    size = xx_data_get_u16(prefix + 2U, 2, 0, false);
     if (size == 0U) {
         *offset += 4;
         *body_size = 0U;
@@ -97,7 +89,7 @@ static bool xx_arj_read_header(xx_io_device *device, int64_t total,
     *body = (uint8_t *)xx_mem_alloc(size);
     if (!*body || !xx_arj_read_at(device, *offset + 4, *body, size) ||
         !xx_arj_read_at(device, *offset + 4 + size, crc_bytes, 4U) ||
-        xx_crc32_calc(0U, *body, size) != xx_arj_u32(crc_bytes)) {
+        xx_crc32_calc(0U, *body, size) != xx_data_get_u32(crc_bytes, 4, 0, false)) {
         if (*body) xx_mem_free(*body);
         *body = NULL;
         return false;
@@ -108,7 +100,7 @@ static bool xx_arj_read_header(xx_io_device *device, int64_t total,
         uint16_t extended_size;
         if (cursor > total || total - cursor < 2 ||
             !xx_arj_read_at(device, cursor, size_bytes, 2U)) goto fail;
-        extended_size = xx_arj_u16(size_bytes);
+        extended_size = xx_data_get_u16(size_bytes, 2, 0, false);
         cursor += 2;
         if (extended_size == 0U) break;
         if (cursor > total || total - cursor < (int64_t)extended_size + 4)
@@ -154,7 +146,7 @@ static bool xx_arj_parse(Abstractformat *format, xx_arj_stream **result,
                                 &body_size)) goto fail;
         if (body_size == 0U) break;
         if (body[0] < 30U || body[0] >= body_size) goto fail;
-        packed_size = xx_arj_u32(body + 12U);
+        packed_size = xx_data_get_u32(body + 12U, 4, 0, false);
         data_offset = offset;
         if (data_offset > total ||
             (uint64_t)packed_size > (uint64_t)(total - data_offset)) goto fail;
@@ -175,9 +167,9 @@ static bool xx_arj_parse(Abstractformat *format, xx_arj_stream **result,
         member->header_offset = header_offset;
         member->data_offset = data_offset;
         member->packed_size = packed_size;
-        member->original_size = xx_arj_u32(body + 16U);
-        member->crc32 = xx_arj_u32(body + 20U);
-        member->timestamp = xx_arj_u32(body + 8U);
+        member->original_size = xx_data_get_u32(body + 16U, 4, 0, false);
+        member->crc32 = xx_data_get_u32(body + 20U, 4, 0, false);
+        member->timestamp = xx_data_get_u32(body + 8U, 4, 0, false);
         member->method = body[5];
         member->flags = body[4];
         member->file_type = body[6];

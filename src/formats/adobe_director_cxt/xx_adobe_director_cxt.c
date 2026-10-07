@@ -20,7 +20,7 @@ static bool pm_parse(Abstractformat*f,pm_stream*s,xx_pd_struct*pd) {
     if(!xx_rt_memcmp(h,"RIFX",4))be=true;
     else if(!xx_rt_memcmp(h,"XFIR",4))be=false;
     else return false;
-    total=8U+(uint64_t)fd_u32(h+4,be);
+    total=8U+(uint64_t)xx_data_get_u32(h+4, 4, 0, be);
     if(total<12 || total>(uint64_t)n || !is_form(h+8,be) ||
        !pm_add(f,s,"rifx-header.bin",0,12))return false;
     p=12;
@@ -28,7 +28,7 @@ static bool pm_parse(Abstractformat*f,pm_stream*s,xx_pd_struct*pd) {
         uint32_t size;uint64_t next;char label[48],tag[5];unsigned i;
         if(fd_stop(pd)||++chunks>4096 || !fd_range(p,8,total) ||
            !pm_read(f,(int64_t)p,c,8))return false;
-        size=fd_u32(c+4,be);next=p+8U+(uint64_t)size+(size&1U);
+        size=xx_data_get_u32(c+4, 4, 0, be);next=p+8U+(uint64_t)size+(size&1U);
         if(next>total)return false;
         if(!xx_rt_memcmp(c,"CAS",3))seen|=1U;
         if(!xx_rt_memcmp(c,"KEY*",4))seen|=2U;

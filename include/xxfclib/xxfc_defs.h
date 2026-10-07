@@ -1559,7 +1559,10 @@ typedef enum xx_file_type_e {
 #include "formats/xx_uniextract_enums.inc"
 #include "formats/xx_format_gap_enums.inc"
 #include "formats/die_music/xx_die_music_enums.inc"
+    XX_FILE_TYPE_DOTNET = 2802,
 } xx_file_type_t;
+
+#define FILE_TYPE_DOTNET XX_FILE_TYPE_DOTNET
 
 #define AMIGA_EXT_ADF XX_FILE_TYPE_AMIGA_EXT_ADF
 #define CHROMIUM_PAK XX_FILE_TYPE_CHROMIUM_PAK

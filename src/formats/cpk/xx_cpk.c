@@ -21,6 +21,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef CPK
 #define XX_CPK_FILE_TYPE XX_FILE_TYPE_CPK
@@ -133,20 +134,6 @@ static uint32_t cpk_be16(const uint8_t *b) {
     return ((uint32_t)b[0] << 8U) | (uint32_t)b[1];
 }
 
-static uint32_t cpk_be32(const uint8_t *b) {
-    return ((uint32_t)b[0] << 24U) | ((uint32_t)b[1] << 16U) |
-           ((uint32_t)b[2] << 8U) | (uint32_t)b[3];
-}
-
-static uint32_t cpk_le32(const uint8_t *b) {
-    return (uint32_t)b[0] | ((uint32_t)b[1] << 8U) | ((uint32_t)b[2] << 16U) |
-           ((uint32_t)b[3] << 24U);
-}
-
-static uint64_t cpk_le64(const uint8_t *b) {
-    return (uint64_t)cpk_le32(b) | ((uint64_t)cpk_le32(b + 4) << 32U);
-}
-
 static bool cpk_read_at(Abstractformat *format, int64_t offset, void *buffer,
                         size_t size) {
     size_t done = 0U;
@@ -245,16 +232,16 @@ static bool cpk_utf_open(const uint8_t *table, size_t size, cpk_utf *utf) {
     size_t at;
     if (!table || size < CPK_UTF_HEAD || xx_rt_memcmp(table, "@UTF", 4U) != 0)
         return false;
-    declared = (uint64_t)cpk_be32(table + 4) + 8U;
+    declared = (uint64_t)xx_data_get_u32(table + 4, 4, 0, true) + 8U;
     if (declared < CPK_UTF_HEAD || declared > (uint64_t)size) return false;
     utf->table = table;
     utf->size = (size_t)declared;
     rows_at = 8U + (uint64_t)cpk_be16(table + 0x0A);
-    strings_at = 8U + (uint64_t)cpk_be32(table + 0x0C);
-    data_at = 8U + (uint64_t)cpk_be32(table + 0x10);
+    strings_at = 8U + (uint64_t)xx_data_get_u32(table + 0x0C, 4, 0, true);
+    data_at = 8U + (uint64_t)xx_data_get_u32(table + 0x10, 4, 0, true);
     utf->columns = cpk_be16(table + 0x18);
     utf->width = cpk_be16(table + 0x1A);
-    utf->rows = cpk_be32(table + 0x1C);
+    utf->rows = xx_data_get_u32(table + 0x1C, 4, 0, true);
     if (rows_at < CPK_UTF_HEAD || strings_at < rows_at ||
         data_at < strings_at || data_at > declared || utf->columns == 0U ||
         utf->columns > CPK_MAX_COLUMNS || utf->rows > CPK_MAX_ROWS)
@@ -274,7 +261,7 @@ static bool cpk_utf_open(const uint8_t *table, size_t size, cpk_utf *utf) {
         flags = table[at];
         column->storage = (uint8_t)(flags & 0xF0U);
         column->type = (uint8_t)(flags & 0x0FU);
-        column->name = cpk_be32(table + at + 1U);
+        column->name = xx_data_get_u32(table + at + 1U, 4, 0, true);
         at += 5U;
         if (column->type > CPK_TYPE_DATA ||
             !cpk_utf_string(utf, column->name, &text, &length))
@@ -346,10 +333,10 @@ static bool cpk_utf_int(const cpk_utf *utf, uint32_t row, int32_t column_index,
     case 1: *value = (int8_t)cell[0]; break;
     case 2: *value = (int64_t)cpk_be16(cell); break;
     case 3: *value = (int16_t)cpk_be16(cell); break;
-    case 4: *value = (int64_t)cpk_be32(cell); break;
-    case 5: *value = (int32_t)cpk_be32(cell); break;
+    case 4: *value = (int64_t)xx_data_get_u32(cell, 4, 0, true); break;
+    case 5: *value = (int32_t)xx_data_get_u32(cell, 4, 0, true); break;
     default: {
-        uint64_t v = ((uint64_t)cpk_be32(cell) << 32U) | cpk_be32(cell + 4);
+        uint64_t v = ((uint64_t)xx_data_get_u32(cell, 4, 0, true) << 32U) | xx_data_get_u32(cell + 4, 4, 0, true);
         if (v > (uint64_t)INT64_MAX) return false;
         *value = (int64_t)v;
         break;
@@ -367,7 +354,7 @@ static bool cpk_utf_str(const cpk_utf *utf, uint32_t row, int32_t column_index,
     if (utf->column[column_index].type != CPK_TYPE_STRING) return false;
     cell = cpk_utf_cell(utf, row, column_index);
     if (!cell) return true;
-    return cpk_utf_string(utf, cpk_be32(cell), text, length);
+    return cpk_utf_string(utf, xx_data_get_u32(cell, 4, 0, true), text, length);
 }
 
 static bool cpk_utf_data(const cpk_utf *utf, uint32_t row, int32_t column_index,
@@ -380,8 +367,8 @@ static bool cpk_utf_data(const cpk_utf *utf, uint32_t row, int32_t column_index,
     if (utf->column[column_index].type != CPK_TYPE_DATA) return false;
     cell = cpk_utf_cell(utf, row, column_index);
     if (!cell) return true;
-    at = (uint64_t)utf->data_at + cpk_be32(cell);
-    size = cpk_be32(cell + 4);
+    at = (uint64_t)utf->data_at + xx_data_get_u32(cell, 4, 0, true);
+    size = xx_data_get_u32(cell + 4, 4, 0, true);
     if (at > (uint64_t)utf->size || size > (uint64_t)utf->size - at)
         return false;
     *data = utf->table + (size_t)at;
@@ -404,7 +391,7 @@ static bool cpk_load_packet(Abstractformat *format, int64_t available,
         !cpk_read_at(format, offset, head, sizeof(head)) ||
         xx_rt_memcmp(head, signature, 4U) != 0)
         return false;
-    length = cpk_le64(head + 8);
+    length = xx_data_get_u64(head + 8, 8, 0, false);
     if (length < CPK_UTF_HEAD || length > cap ||
         length > (uint64_t)(available - offset) - CPK_PACKET_HEAD)
         return false;
@@ -440,7 +427,7 @@ static bool cpk_probe_packet(Abstractformat *format, int64_t available,
         !cpk_read_at(format, offset, head, sizeof(head)) ||
         xx_rt_memcmp(head, signature, 4U) != 0)
         return false;
-    length = cpk_le64(head + 8);
+    length = xx_data_get_u64(head + 8, 8, 0, false);
     if (length < CPK_UTF_HEAD || length > CPK_MAX_INDEX_TABLE ||
         length > (uint64_t)(available - offset) - CPK_PACKET_HEAD)
         return false;
@@ -933,8 +920,8 @@ bool xx_cpk_crilayla_decode(const uint8_t *input, size_t input_size,
     if (!input || !output || input_size < 16U ||
         xx_rt_memcmp(input, "CRILAYLA", 8U) != 0)
         return false;
-    unpacked = cpk_le32(input + 8);
-    packed = cpk_le32(input + 12);
+    unpacked = xx_data_get_u32(input + 8, 4, 0, false);
+    packed = xx_data_get_u32(input + 12, 4, 0, false);
     if (packed > input_size - 16U) return false;
     prefix = input_size - 16U - packed;
     if ((size_t)unpacked > SIZE_MAX - prefix ||
@@ -990,8 +977,8 @@ static bool cpk_member_packed(Abstractformat *format, const cpk_member *member,
         !cpk_read_at(format, member->offset, head, sizeof(head)) ||
         xx_rt_memcmp(head, "CRILAYLA", 8U) != 0)
         return false;
-    unpacked = cpk_le32(head + 8);
-    packed = cpk_le32(head + 12);
+    unpacked = xx_data_get_u32(head + 8, 4, 0, false);
+    packed = xx_data_get_u32(head + 12, 4, 0, false);
     if (unpacked > 0x7fffffffU || (int64_t)packed > member->size - 16)
         return false;
     *output = (uint64_t)(member->size - 16 - (int64_t)packed) + unpacked;

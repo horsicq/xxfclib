@@ -46,6 +46,7 @@
 #include "xxfclib/algo/lzh/xx_lzh.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_SPIS_COPY_CHUNK (64 * 1024)
 
@@ -167,8 +168,6 @@ static uint32_t xx_spis_tag_method(const uint8_t *tag);
 static char *xx_spis_make_name(const uint8_t *raw, size_t size);
 static bool xx_spis_parse_single(Abstractformat *self, int64_t span, uint32_t method, uint32_t total_raw, uint32_t checksum, xx_spis_stream *stream);
 static xx_spis_stream *xx_spis_parse(Abstractformat *self, xx_pd_struct *pd);
-static uint16_t xx_spis_le16(const uint8_t *data);
-static uint32_t xx_spis_le32(const uint8_t *data);
 static bool xx_spis_rle_decode(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written, bool partial);
 static bool xx_spis_checksum_matches(uint32_t method, uint32_t flags, uint32_t stored, uint32_t sum, uint32_t key);
 static bool xx_spis_member_guard(Abstractformat *self, const xx_spis_member *member, uint32_t *flags, uint32_t *checksum);
@@ -397,10 +396,10 @@ static xx_spis_stream *xx_spis_parse(Abstractformat *self, xx_pd_struct *pd) {
      * recognised - a looser magic here would claim files at random. */
     if (xx_rt_memcmp(header, "SPIS\x1a", 5) != 0) return NULL;
     method = xx_spis_tag_method(header + 5);
-    total_raw = xx_spis_le32(header + 8);
+    total_raw = xx_data_get_u32(header + 8, 4, 0, false);
     archive_type = header[12];
-    checksum = xx_spis_le32(header + 13);
-    flags = xx_spis_le32(header + 17);
+    checksum = xx_data_get_u32(header + 13, 4, 0, false);
+    flags = xx_data_get_u32(header + 17, 4, 0, false);
     /* The word at +17 is a FLAGS field, not a reserved zero. */
     if (method == XX_SPIS_METHOD_INVALID || archive_type > 1U ||
         flags > XX_SPIS_FLAG_MAX || total_raw == 0U ||
@@ -443,8 +442,8 @@ static xx_spis_stream *xx_spis_parse(Abstractformat *self, xx_pd_struct *pd) {
             }
             if (xx_rt_memcmp(header, "SPIS\x1a", 5) == 0) {
                 uint32_t inner_method = xx_spis_tag_method(header + 5);
-                uint32_t inner_total = xx_spis_le32(header + 8);
-                uint32_t inner_flags = xx_spis_le32(header + 17);
+                uint32_t inner_total = xx_data_get_u32(header + 8, 4, 0, false);
+                uint32_t inner_flags = xx_data_get_u32(header + 17, 4, 0, false);
 
                 if (inner_headers >= XX_SPIS_MAX_MEMBERS) goto fail;
                 /* A segment holding only empty members declares a total of
@@ -473,11 +472,11 @@ static xx_spis_stream *xx_spis_parse(Abstractformat *self, xx_pd_struct *pd) {
                              (size_t)XX_SPIS_RECORD_HEADER_SIZE)) {
             goto fail;
         }
-        name_size = xx_spis_le16(header);
-        raw_size = xx_spis_le32(header + 8);
-        packed_size = xx_spis_le32(header + 12);
+        name_size = xx_data_get_u16(header, 2, 0, false);
+        raw_size = xx_data_get_u32(header + 8, 4, 0, false);
+        packed_size = xx_data_get_u32(header + 12, 4, 0, false);
         record_method = (uint32_t)header[16];
-        record_flags = xx_spis_le32(header + 21);
+        record_flags = xx_data_get_u32(header + 21, 4, 0, false);
 
         /* A zero-length member is real: GP-Install setups ship placeholder
          * data files with no bytes at all. Both sizes are then zero - either
@@ -531,7 +530,7 @@ static xx_spis_stream *xx_spis_parse(Abstractformat *self, xx_pd_struct *pd) {
         member.method = record_method;
         /* Already packed date-high / time-low by the container, so it is
          * stored verbatim rather than re-assembled. */
-        member.timestamp = (uint64_t)xx_spis_le32(header + 2);
+        member.timestamp = (uint64_t)xx_data_get_u32(header + 2, 4, 0, false);
         /* The format is flat: directories are implied by the names alone. */
         member.is_folder = false;
         if (!xx_spis_add(stream, &member)) {
@@ -576,15 +575,6 @@ fail:
  * member's data offset. Stored members are never masked. */
 
 /* The escape byte of the format's RLE. */
-
-static uint16_t xx_spis_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_spis_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /*
  * The SPIS RLE. This is not a general-purpose codec with a library entry
@@ -698,8 +688,8 @@ static bool xx_spis_member_guard(Abstractformat *self,
         return false;
     }
     if (xx_rt_memcmp(header, "SPIS\x1a", 5) == 0) {
-        *checksum = xx_spis_le32(header + 13);
-        *flags = xx_spis_le32(header + 17);
+        *checksum = xx_data_get_u32(header + 13, 4, 0, false);
+        *flags = xx_data_get_u32(header + 17, 4, 0, false);
         return true;
     }
     if (member->header_size < XX_SPIS_RECORD_HEADER_SIZE) return false;
@@ -707,8 +697,8 @@ static bool xx_spis_member_guard(Abstractformat *self,
                          (size_t)XX_SPIS_RECORD_HEADER_SIZE)) {
         return false;
     }
-    *checksum = xx_spis_le32(header + 17);
-    *flags = xx_spis_le32(header + 21);
+    *checksum = xx_data_get_u32(header + 17, 4, 0, false);
+    *flags = xx_data_get_u32(header + 21, 4, 0, false);
     return true;
 }
 

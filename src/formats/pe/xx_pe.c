@@ -24,6 +24,7 @@
 #define XX_PE_DIRECTORY_IMPORT 1U
 #define XX_PE_DIRECTORY_RESOURCE 2U
 #define XX_PE_DIRECTORY_SECURITY 4U
+#define XX_PE_DIRECTORY_DEBUG 6U
 
 typedef struct xx_pe_parsed_s {
     uint32_t pe_offset;
@@ -77,14 +78,15 @@ static int64_t xx_pe_relative_range_to_offset(
 
 static uint64_t xx_pe_count_imports(const xx_pe *pe,
                                     const xx_memory_map *memory_map,
-                                    xx_io_device *device, int64_t total) {
+                                    xx_io_device *device, int64_t total,
+                                    xx_pd_struct *pd) {
     uint32_t rva = pe->data_directory_rva[XX_PE_DIRECTORY_IMPORT];
     uint32_t size = pe->data_directory_size[XX_PE_DIRECTORY_IMPORT];
     uint64_t limit = size / 20U;
     uint64_t count = 0U;
     if (!rva || size < 20U) return 0U;
     if (limit > XX_PE_MAX_IMPORTS) limit = XX_PE_MAX_IMPORTS;
-    while (count < limit) {
+    while (count < limit && !xx_pd_is_stopped(pd)) {
         uint64_t descriptor_rva = (uint64_t)rva + count * 20U;
         int64_t descriptor_offset;
         if (descriptor_rva > UINT32_MAX) break;
@@ -131,12 +133,13 @@ static uint64_t xx_pe_count_resource_dir(const xx_memory_map *memory_map,
                                          xx_io_device *device, int64_t total,
                                          uint32_t root_rva,
                                          uint32_t dir_size, uint32_t relative,
-                                         uint32_t depth, uint64_t *budget) {
+                                         uint32_t depth, uint64_t *budget,
+                                         xx_pd_struct *pd) {
     int64_t offset;
     uint32_t entries;
     uint32_t i;
     uint64_t result = 0U;
-    if (!budget || !*budget || depth > XX_PE_MAX_RESOURCE_DEPTH ||
+    if (xx_pd_is_stopped(pd) || !budget || !*budget || depth > XX_PE_MAX_RESOURCE_DEPTH ||
         relative > dir_size || dir_size - relative < 16U ||
         root_rva > UINT32_MAX - relative) return 0U;
     offset = xx_pe_relative_range_to_offset(
@@ -145,7 +148,7 @@ static uint64_t xx_pe_count_resource_dir(const xx_memory_map *memory_map,
     entries = (uint32_t)xx_io_get_u16(device, offset + 12, false) +
               xx_io_get_u16(device, offset + 14, false);
     if (entries > (dir_size - relative - 16U) / 8U) return 0U;
-    for (i = 0U; i < entries && *budget; ++i) {
+    for (i = 0U; i < entries && *budget && !xx_pd_is_stopped(pd); ++i) {
         int64_t entry_offset;
         uint32_t child;
         --*budget;
@@ -160,7 +163,7 @@ static uint64_t xx_pe_count_resource_dir(const xx_memory_map *memory_map,
             result += xx_pe_count_resource_dir(memory_map, device, total,
                                                root_rva, dir_size,
                                                child & UINT32_C(0x7fffffff),
-                                               depth + 1U, budget);
+                                               depth + 1U, budget, pd);
         } else if (child <= dir_size && dir_size - child >= 16U &&
                    root_rva <= UINT32_MAX - child &&
                    xx_pe_relative_range_to_offset(
@@ -173,13 +176,55 @@ static uint64_t xx_pe_count_resource_dir(const xx_memory_map *memory_map,
 
 static uint64_t xx_pe_count_resources(const xx_pe *pe,
                                       const xx_memory_map *memory_map,
-                                      xx_io_device *device, int64_t total) {
+                                      xx_io_device *device, int64_t total,
+                                      xx_pd_struct *pd) {
     uint64_t budget = UINT64_C(1000000);
     uint32_t rva = pe->data_directory_rva[XX_PE_DIRECTORY_RESOURCE];
     uint32_t size = pe->data_directory_size[XX_PE_DIRECTORY_RESOURCE];
     if (!rva || size < 16U) return 0U;
     return xx_pe_count_resource_dir(memory_map, device, total, rva, size, 0U,
-                                    0U, &budget);
+                                    0U, &budget, pd);
+}
+
+static void xx_pe_extend_file_extent(uint64_t pointer, uint64_t size,
+                                     int64_t available, int64_t *extent) {
+    if (pointer && size && pointer <= (uint64_t)available &&
+        size <= (uint64_t)available - pointer &&
+        pointer + size > (uint64_t)*extent)
+        *extent = (int64_t)(pointer + size);
+}
+
+/* Locate one physically contiguous range before the reader's map exists. */
+static bool xx_pe_parsed_rva_offset(const xx_pe_parsed *parsed,
+                                    uint32_t rva, uint32_t size,
+                                    uint64_t *relative) {
+    const xx_pe_section *winner = NULL;
+    uint64_t delta;
+    uint16_t index;
+    if (!size) return false;
+    for (index = 0U; index < parsed->section_count; ++index) {
+        const xx_pe_section *section = &parsed->sections[index];
+        if (rva >= section->virtual_address &&
+            (uint64_t)rva - section->virtual_address < section->raw_size &&
+            (!winner || section->virtual_address >= winner->virtual_address))
+            winner = section;
+    }
+    if (winner) {
+        delta = (uint64_t)rva - winner->virtual_address;
+        if (size > winner->raw_size - delta) return false;
+        *relative = (uint64_t)winner->raw_offset + delta;
+    } else {
+        if (rva > parsed->headers_size || size > parsed->headers_size - rva)
+            return false;
+        *relative = rva;
+    }
+    for (index = 0U; index < parsed->section_count; ++index) {
+        const xx_pe_section *section = &parsed->sections[index];
+        if (section->raw_size && section->virtual_address > rva &&
+            section->virtual_address < (uint64_t)rva + size)
+            return false;
+    }
+    return true;
 }
 
 static bool xx_pe_parse(Abstractformat *format, xx_pe_parsed *parsed,
@@ -273,13 +318,16 @@ static bool xx_pe_parse(Abstractformat *format, xx_pe_parsed *parsed,
     parsed->sections = (xx_pe_section *)xx_mem_calloc(parsed->section_count,
                                                        sizeof(*parsed->sections));
     if (!parsed->sections) goto done;
-    image_end = parsed->headers_size;
+    image_end = section_offset - format->base_address +
+                (int64_t)parsed->section_count * XX_PE_SECTION_HEADER_SIZE;
+    if (image_end < parsed->headers_size) image_end = parsed->headers_size;
     for (i = 0U; i < parsed->section_count; ++i) {
         xx_pe_section *section = &parsed->sections[i];
         int64_t entry_offset = section_offset +
                                (int64_t)i * XX_PE_SECTION_HEADER_SIZE;
         int64_t raw_end;
         size_t name_index;
+        if (xx_pd_is_stopped(pd)) goto done;
         for (name_index = 0U; name_index < 8U; ++name_index)
             section->name[name_index] = (char)xx_io_get_u8(
                 format->device, entry_offset + (int64_t)name_index);
@@ -300,6 +348,55 @@ static bool xx_pe_parse(Abstractformat *format, xx_pe_parsed *parsed,
                     (uint64_t)relative_size - section->raw_offset) goto done;
             raw_end = (int64_t)section->raw_offset + section->raw_size;
             if (raw_end > image_end) image_end = raw_end;
+        }
+        if (!format->is_mapped) {
+            uint32_t reloc_pointer = xx_io_get_u32(format->device, entry_offset + 24, false);
+            uint32_t line_pointer = xx_io_get_u32(format->device, entry_offset + 28, false);
+            uint32_t reloc_count = xx_io_get_u16(format->device, entry_offset + 32, false);
+            uint32_t line_count = xx_io_get_u16(format->device, entry_offset + 34, false);
+            if (reloc_count == UINT16_MAX &&
+                (section->characteristics & UINT32_C(0x01000000)) &&
+                reloc_pointer <= (uint64_t)relative_size &&
+                (uint64_t)relative_size - reloc_pointer >= 10U)
+                reloc_count = xx_io_get_u32(format->device,
+                    format->base_address + reloc_pointer, false);
+            xx_pe_extend_file_extent(reloc_pointer, (uint64_t)reloc_count * 10U,
+                                       relative_size, &image_end);
+            xx_pe_extend_file_extent(line_pointer, (uint64_t)line_count * 6U,
+                                       relative_size, &image_end);
+        }
+    }
+    if (!format->is_mapped) {
+        uint32_t symbols = xx_io_get_u32(format->device, nt_offset + 12, false);
+        uint32_t symbol_count = xx_io_get_u32(format->device, nt_offset + 16, false);
+        uint64_t symbol_bytes = (uint64_t)symbol_count * 18U;
+        uint64_t strings = (uint64_t)symbols + symbol_bytes;
+        xx_pe_extend_file_extent(symbols, symbol_bytes, relative_size, &image_end);
+        if (symbols && strings <= (uint64_t)relative_size &&
+            (uint64_t)relative_size - strings >= 4U) {
+            uint32_t string_size = xx_io_get_u32(format->device,
+                format->base_address + (int64_t)strings, false);
+            if (string_size >= 4U)
+                xx_pe_extend_file_extent(strings, string_size, relative_size, &image_end);
+        }
+        if (parsed->directory_count > XX_PE_DIRECTORY_DEBUG) {
+            uint64_t debug_relative;
+            uint32_t debug_size = parsed->directory_size[XX_PE_DIRECTORY_DEBUG];
+            if (parsed->directory_rva[XX_PE_DIRECTORY_DEBUG] &&
+                xx_pe_parsed_rva_offset(parsed,
+                    parsed->directory_rva[XX_PE_DIRECTORY_DEBUG], debug_size,
+                    &debug_relative) && debug_relative <= (uint64_t)relative_size &&
+                debug_size <= (uint64_t)relative_size - debug_relative) {
+                for (uint64_t index = 0U; index < debug_size / 28U; ++index) {
+                    int64_t entry = format->base_address + (int64_t)debug_relative +
+                                    (int64_t)(index * 28U);
+                    if (xx_pd_is_stopped(pd)) goto done;
+                    xx_pe_extend_file_extent(
+                        xx_io_get_u32(format->device, entry + 24, false),
+                        xx_io_get_u32(format->device, entry + 16, false),
+                        relative_size, &image_end);
+                }
+            }
         }
     }
     if (!format->is_mapped &&
@@ -552,6 +649,10 @@ bool xx_pe_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode,
     }
     xx_mem_free(section_indices);
 
+    if (format->format_size > 0 &&
+        (uint64_t)format->format_size > maximum_physical_end &&
+        format->format_size <= binary_size)
+        maximum_physical_end = (uint64_t)format->format_size;
     if (maximum_physical_end < (uint64_t)binary_size) {
         int64_t overlay_offset;
         if (!xx_pe_map_offset(format->base_address, maximum_physical_end,
@@ -585,6 +686,28 @@ void xx_pe_init(xx_pe *pe, xx_io_device *device, int64_t base_address) {
     pe->format.get_number_of_imports = xx_pe_get_number_of_imports;
     pe->format.get_number_of_exports = xx_pe_get_number_of_exports;
     pe->format.get_number_of_resources = xx_pe_get_number_of_resources;
+    pe->format.get_number_of_metadata = xx_pe_get_number_of_metadata;
+    pe->format.get_number_of_symbols = xx_pe_get_number_of_symbols;
+    pe->format.create_symbols_reading = xx_pe_create_symbols_reading;
+    pe->format.get_current_symbol = xx_pe_get_current_symbol;
+    pe->format.symbol_move_to_next = xx_pe_symbol_move_to_next;
+    pe->format.free_symbols_reading = xx_pe_free_symbols_reading;
+    pe->format.create_imports_reading = xx_pe_create_imports_reading;
+    pe->format.get_current_import = xx_pe_get_current_import;
+    pe->format.import_move_to_next = xx_pe_import_move_to_next;
+    pe->format.free_imports_reading = xx_pe_free_imports_reading;
+    pe->format.create_exports_reading = xx_pe_create_exports_reading;
+    pe->format.get_current_export = xx_pe_get_current_export;
+    pe->format.export_move_to_next = xx_pe_export_move_to_next;
+    pe->format.free_exports_reading = xx_pe_free_exports_reading;
+    pe->format.create_resources_reading = xx_pe_create_resources_reading;
+    pe->format.get_current_resource = xx_pe_get_current_resource;
+    pe->format.resource_move_to_next = xx_pe_resource_move_to_next;
+    pe->format.free_resources_reading = xx_pe_free_resources_reading;
+    pe->format.create_metadata_reading = xx_pe_create_metadata_reading;
+    pe->format.get_current_metadata = xx_pe_get_current_metadata;
+    pe->format.metadata_move_to_next = xx_pe_metadata_move_to_next;
+    pe->format.free_metadata_reading = xx_pe_free_metadata_reading;
     xx_pe_setup_data_struct_callbacks(pe);
     pe->format.get_memory_map = xx_pe_get_memory_map;
     pe->format.destroy = xx_pe_vtable_destroy;
@@ -687,12 +810,18 @@ bool xx_pe_handle_base_info(Abstractformat *format, xx_pd_struct *pd) {
         return false;
     }
     format->number_of_imports = xx_pe_count_imports(
-        pe, memory_map, format->device, total);
+        pe, memory_map, format->device, total, pd);
     format->number_of_exports = xx_pe_count_exports(
         pe, memory_map, format->device, total);
     format->number_of_resources = xx_pe_count_resources(
-        pe, memory_map, format->device, total);
+        pe, memory_map, format->device, total, pd);
     xx_pe_parsed_cleanup(&parsed);
+    if (xx_pd_is_stopped(pd)) {
+        format->is_valid = false;
+        format->base_info_handled = false;
+        xx_format_invalidate_memory_map(format);
+        return false;
+    }
     return true;
 }
 

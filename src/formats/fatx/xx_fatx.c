@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef FATX
 #define FX_TYPE XX_FILE_TYPE_FATX
@@ -53,13 +54,6 @@ typedef struct fx_view_s {
     size_t task_count, task_capacity;
 } fx_view;
 
-static uint32_t fx_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) |
-           ((uint32_t)p[2] << 16U) | ((uint32_t)p[3] << 24U);
-}
-static uint16_t fx_le16(const uint8_t *p) {
-    return (uint16_t)((unsigned)p[0] | ((unsigned)p[1] << 8U));
-}
 static bool fx_stopped(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
 static bool fx_work(fx_view *v, xx_pd_struct *pd) {
     return !fx_stopped(pd) && ++v->work <= FX_MAX_WORK;
@@ -109,7 +103,7 @@ static bool fx_next(fx_view *v, uint32_t cluster, uint32_t *next,
     if (!next || !end || cluster < 1U || cluster > v->cluster_count ||
         offset > v->data_offset || v->fat_width > v->data_offset - offset ||
         !fx_work(v, pd) || !fx_read(v, offset, raw, v->fat_width, pd)) return false;
-    value = v->fat_width == 2U ? fx_le16(raw) : fx_le32(raw);
+    value = v->fat_width == 2U ? xx_data_get_u16(raw, 2, 0, false) : xx_data_get_u32(raw, 4, 0, false);
     *end = value == (v->fat_width == 2U ? UINT32_C(0xffff) : UINT32_MAX);
     if (!*end && (value < 1U || value > v->cluster_count)) return false;
     *next = value;
@@ -297,8 +291,8 @@ static bool fx_walk_directory(fx_view *v, const fx_task *task,
                 continue;
             if (length > 42U || !fx_component(entry + 2U, length, leaf))
                 return false;
-            first = fx_le32(entry + 44U);
-            size = fx_le32(entry + 48U);
+            first = xx_data_get_u32(entry + 44U, 4, 0, false);
+            size = xx_data_get_u32(entry + 48U, 4, 0, false);
             directory = (attr & 0x10U) != 0U;
             if (directory ? (first < 1U || first > v->cluster_count) :
                 !fx_verify_file(v, first, size, pd)) return false;
@@ -341,8 +335,8 @@ static fx_view *fx_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (v->bytes < FX_SUPER + FX_SUPER + FX_SECTOR ||
         v->bytes % FX_SECTOR || !fx_read(v, 0U, header, sizeof(header), pd) ||
         memcmp(header, "FATX", 4U)) goto fail;
-    sectors = fx_le32(header + 8U);
-    root = fx_le32(header + 12U);
+    sectors = xx_data_get_u32(header + 8U, 4, 0, false);
+    root = xx_data_get_u32(header + 12U, 4, 0, false);
     if (!sectors || sectors > 1024U || (sectors & (sectors - 1U)) ||
         root < 1U) goto fail;
     v->cluster_bytes = sectors * FX_SECTOR;

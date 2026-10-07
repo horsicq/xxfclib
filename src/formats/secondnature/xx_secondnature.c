@@ -55,6 +55,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_SECONDNATURE_COPY_CHUNK (64 * 1024)
 
@@ -227,15 +228,6 @@ static bool xx_secondnature_wrapped_jpeg(Abstractformat *self,
            jpeg_end[0] == 0xffU && jpeg_end[1] == 0xd9U;
 }
 
-static uint16_t xx_secondnature_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_secondnature_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
 /* .SNX and .REF store the whole header/directory region as its one's
  * complement; member payloads are plain in every kind, which is why the JPEG
  * streams are visible unaltered in a raw dump of a .REF. */
@@ -347,7 +339,7 @@ static xx_secondnature_stream *xx_secondnature_parse(Abstractformat *self,
             return NULL;
         }
         xx_secondnature_unmask(counts, 2U, complemented);
-        count = (int64_t)xx_secondnature_le16(counts);
+        count = (int64_t)xx_data_get_u16(counts, 2, 0, false);
         if (count < 1 || count > XX_SECONDNATURE_MAX_MEMBERS) return NULL;
         dir_offset = XX_SECONDNATURE_BMX_DIR_OFFSET;
         entry_size = XX_SECONDNATURE_BMX_ENTRY_SIZE;
@@ -364,8 +356,8 @@ static xx_secondnature_stream *xx_secondnature_parse(Abstractformat *self,
         /* Two counts - text members first, then image members - but the
          * entries themselves are one run in that same order, so the sum is
          * the entry count. */
-        text_count = (int64_t)xx_secondnature_le16(counts);
-        image_count = (int64_t)xx_secondnature_le16(counts + 2);
+        text_count = (int64_t)xx_data_get_u16(counts, 2, 0, false);
+        image_count = (int64_t)xx_data_get_u16(counts + 2, 2, 0, false);
         if (text_count > XX_SECONDNATURE_REF_MAX_MEMBERS) return NULL;
         if (image_count > XX_SECONDNATURE_REF_MAX_MEMBERS) return NULL;
         count = text_count + image_count;
@@ -418,8 +410,8 @@ static xx_secondnature_stream *xx_secondnature_parse(Abstractformat *self,
         value_offset = (kind == XX_SECONDNATURE_KIND_REF)
                            ? (XX_SECONDNATURE_NAME_FIELD + 2)
                            : XX_SECONDNATURE_NAME_FIELD;
-        data_offset = (int64_t)xx_secondnature_le32(entry + value_offset);
-        data_size = (int64_t)xx_secondnature_le32(entry + value_offset + 4);
+        data_offset = (int64_t)xx_data_get_u32(entry + value_offset, 4, 0, false);
+        data_size = (int64_t)xx_data_get_u32(entry + value_offset + 4, 4, 0, false);
 
         /* Some SNX writers leave all-one offset/size sentinels in unused
          * picture slots and companion REF slots. Accept only those exact

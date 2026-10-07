@@ -19,20 +19,9 @@
 #include "../catsystem_kif/xx_kif_crypto_private.h"
 #include "xxfclib/algo/hash/xx_hash.h"
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/data/xx_data.h"
 
 typedef ki_blowfish nss_blowfish;
-
-static uint32_t nss_crypto_u32le(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) |
-           ((uint32_t)p[2] << 16U) | ((uint32_t)p[3] << 24U);
-}
-
-static void nss_crypto_put_u32le(uint8_t *p, uint32_t v) {
-    p[0] = (uint8_t)v;
-    p[1] = (uint8_t)(v >> 8U);
-    p[2] = (uint8_t)(v >> 16U);
-    p[3] = (uint8_t)(v >> 24U);
-}
 
 static bool nss_crypto_init_key(nss_blowfish *cipher,
                                 const uint8_t key[4]) {
@@ -83,11 +72,11 @@ static bool nss_crypto_decrypt_member(const nss_blowfish *cipher,
     xx_rt_memcpy(previous, iv, sizeof(previous));
     for (at = 0U; at < ciphertext_size; at += 8U) {
         xx_rt_memcpy(current, ciphertext + at, sizeof(current));
-        left = nss_crypto_u32le(current);
-        right = nss_crypto_u32le(current + 4U);
+        left = xx_data_get_u32(current, 4, 0, false);
+        right = xx_data_get_u32(current + 4U, 4, 0, false);
         ki_bf_decrypt(cipher, &left, &right);
-        nss_crypto_put_u32le(plain, left);
-        nss_crypto_put_u32le(plain + 4U, right);
+        xx_data_set_u32(plain, 4, 0, left, false);
+        xx_data_set_u32(plain + 4U, 4, 0, right, false);
         for (j = 0U; j < 8U; ++j) plain[j] ^= previous[j];
         if (at == 0U) {
             if (xx_rt_memcmp(plain, verifier, sizeof(verifier)) != 0) {

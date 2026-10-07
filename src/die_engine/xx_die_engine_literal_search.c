@@ -871,6 +871,7 @@ cd_i64 die_engine_literal_find(DieEngine *pEngine, cd_i64 nOffset,
                               cd_i64 nNeedleSize)
 {
     const unsigned char *pData;
+    const unsigned char *pWhole;
     cd_i64 nFound;
 
     if (!pEngine) {
@@ -883,7 +884,8 @@ cd_i64 die_engine_literal_find(DieEngine *pEngine, cd_i64 nOffset,
         nNeedleSize > nSize) {
         return -1;
     }
-    if (!pEngine->file.pData) {
+    pWhole = die_file_whole(&pEngine->file, die_file_search_access(&pEngine->file, nSize));
+    if (!pWhole) {
         if ((cd_u64)nNeedleSize > (cd_u64)SIZE_MAX) return -1;
         return literal_stream_find(pEngine, nOffset, nSize, pNeedle, (size_t)nNeedleSize);
     }
@@ -899,12 +901,12 @@ cd_i64 die_engine_literal_find(DieEngine *pEngine, cd_i64 nOffset,
         return die_find_bytes(&pEngine->file, nOffset, nSize, pNeedle, nNeedleSize);
     }
     literal_cache_set_owner(pEngine->pLiteralSearchCache,
-                            pEngine->file.pData, pEngine->file.nSize);
+                            pWhole, pEngine->file.nSize);
     if (literal_aux_find(pEngine->pLiteralSearchCache, nOffset, (size_t)nSize,
                          pNeedle, (size_t)nNeedleSize, &nFound)) {
         return nFound;
     }
-    pData = pEngine->file.pData + nOffset;
+    pData = pWhole + nOffset;
     nFound = literal_find_indexed(pEngine->pLiteralSearchCache, pData, (size_t)nSize,
                                 pNeedle, (size_t)nNeedleSize, nOffset);
     return nFound < 0 ? -1 : nOffset + nFound;

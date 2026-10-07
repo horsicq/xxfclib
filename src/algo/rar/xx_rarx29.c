@@ -46,6 +46,7 @@
 #include <limits.h>
 #include <stdint.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_RAR29_MAIN_SYMBOLS 299u
 #define XX_RAR29_DISTANCE_SYMBOLS 60u
@@ -944,18 +945,6 @@ done:
     return status;
 }
 
-static uint32_t xx_rar29_load32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static void xx_rar29_store32(uint8_t *data, uint32_t value) {
-    data[0] = (uint8_t)value;
-    data[1] = (uint8_t)(value >> 8);
-    data[2] = (uint8_t)(value >> 16);
-    data[3] = (uint8_t)(value >> 24);
-}
-
 static void xx_rar29_filter_e8(uint8_t *data, size_t size, size_t file_offset,
                                bool include_e9) {
     const uint32_t file_span = 0x1000000u;
@@ -963,14 +952,14 @@ static void xx_rar29_filter_e8(uint8_t *data, size_t size, size_t file_offset,
     while (pos + 4u < size) {
         uint8_t opcode = data[pos++];
         if (opcode == 0xe8u || (include_e9 && opcode == 0xe9u)) {
-            uint32_t address = xx_rar29_load32(data + pos);
+            uint32_t address = xx_data_get_u32(data + pos, 4, 0, false);
             uint32_t offset = (uint32_t)(((file_offset % file_span) +
                                           (pos % file_span)) % file_span);
             if ((address & 0x80000000u) != 0) {
                 if (((address + offset) & 0x80000000u) == 0)
-                    xx_rar29_store32(data + pos, address + file_span);
+                    xx_data_set_u32(data + pos, 4, 0, address + file_span, false);
             } else if (address < file_span) {
-                xx_rar29_store32(data + pos, address - offset);
+                xx_data_set_u32(data + pos, 4, 0, address - offset, false);
             }
             pos += 4u;
         }

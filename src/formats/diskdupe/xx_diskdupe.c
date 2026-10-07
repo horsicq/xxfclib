@@ -15,6 +15,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef DISKDUPE
 #define XX_DISKDUPE_FILE_TYPE XX_FILE_TYPE_DISKDUPE
@@ -42,14 +43,6 @@ typedef struct diskdupe_stream_s {
     size_t index;
     int64_t archive_size;
 } diskdupe_stream;
-
-static uint16_t diskdupe_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t diskdupe_le32(const uint8_t *b) {
-    return (uint32_t)diskdupe_le16(b) | ((uint32_t)diskdupe_le16(b + 2U) << 16U);
-}
 
 static bool diskdupe_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -193,7 +186,7 @@ static bool diskdupe_parse(Abstractformat *format, diskdupe_stream **result) {
         xx_rt_memcmp(header, magic, sizeof(magic)) != 0)
         return false;
     track_count = header[0x43];
-    block_size = diskdupe_le16(header + 0x44U);
+    block_size = xx_data_get_u16(header + 0x44U, 2, 0, false);
     if (track_count < 2U || block_size < 128U || block_size > 4096U ||
         (block_size & (block_size - 1U)) != 0U)
         return false;
@@ -256,7 +249,7 @@ static bool diskdupe_decode(Abstractformat *format, const diskdupe_member *membe
                           sizeof(header)))
         return false;
     track_count = header[0x43];
-    block_size = diskdupe_le16(header + 0x44U);
+    block_size = xx_data_get_u16(header + 0x44U, 2, 0, false);
     table_size = (int64_t)track_count * DISKDUPE_ENTRY_SIZE;
     if (member->header_size != DISKDUPE_TABLE_OFFSET + table_size) return false;
     table = (uint8_t *)xx_mem_alloc((size_t)table_size);

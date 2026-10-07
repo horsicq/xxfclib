@@ -46,6 +46,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and not edited from here,
  * so the alias macro that sits next to the enumerator is tested instead. */
@@ -129,15 +130,6 @@ static bool aib_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static uint16_t aib_u16(const uint8_t *p) {
-    return (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
-}
-
-static uint32_t aib_u32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
-           ((uint32_t)p[3] << 24);
-}
-
 static bool aib_is_hex(uint8_t c) {
     return (c >= (uint8_t)'0' && c <= (uint8_t)'9') ||
            (c >= (uint8_t)'A' && c <= (uint8_t)'F') ||
@@ -186,9 +178,9 @@ static bool aib_cert_table_ok(xx_io_device *device, int64_t base,
             !aib_read_at(device, base + position, header, sizeof(header))) {
             return false;
         }
-        length = aib_u32(header);
-        revision = aib_u16(header + 4);
-        type = aib_u16(header + 6);
+        length = xx_data_get_u32(header, 4, 0, false);
+        revision = xx_data_get_u16(header + 4, 2, 0, false);
+        type = xx_data_get_u16(header + 6, 2, 0, false);
         if (length < 8U || (int64_t)length > remaining ||
             (revision != 0x0100U && revision != 0x0200U) || type < 1U ||
             type > 4U) {
@@ -218,14 +210,14 @@ static bool aib_parse_pe(xx_io_device *device, int64_t base, int64_t avail,
         dos[1] != 'Z') {
         return false;
     }
-    e_lfanew = aib_u32(dos + 0x3C);
+    e_lfanew = xx_data_get_u32(dos + 0x3C, 4, 0, false);
     if (e_lfanew < 4U || (int64_t)e_lfanew > avail - (int64_t)sizeof(nt) ||
         !aib_read_at(device, base + e_lfanew, nt, sizeof(nt)) ||
         nt[0] != 'P' || nt[1] != 'E' || nt[2] != 0U || nt[3] != 0U) {
         return false;
     }
-    optional_size = aib_u16(nt + 20);
-    magic = aib_u16(nt + 24);
+    optional_size = xx_data_get_u16(nt + 20, 2, 0, false);
+    magic = xx_data_get_u16(nt + 24, 2, 0, false);
     if (magic == AIB_PE_MAGIC32) {
         directory_offset = 96U;
     } else if (magic == AIB_PE_MAGIC64) {
@@ -241,9 +233,9 @@ static bool aib_parse_pe(xx_io_device *device, int64_t base, int64_t avail,
         (int64_t)e_lfanew + 24 + directory_offset + 40 <= avail &&
         aib_read_at(device, base + e_lfanew + 24 + directory_offset - 4U,
                     dirs, sizeof(dirs)) &&
-        aib_u32(dirs) >= 5U) {
-        uint32_t cert_offset = aib_u32(dirs + 4 + 32);
-        uint32_t cert_size = aib_u32(dirs + 4 + 36);
+        xx_data_get_u32(dirs, 4, 0, false) >= 5U) {
+        uint32_t cert_offset = xx_data_get_u32(dirs + 4 + 32, 4, 0, false);
+        uint32_t cert_size = xx_data_get_u32(dirs + 4 + 36, 4, 0, false);
         if (cert_size != 0U && (int64_t)cert_offset >= pe->headers_end &&
             aib_cert_table_ok(device, base, cert_offset, cert_size, avail)) {
             pe->has_cert = true;
@@ -292,10 +284,10 @@ static char *aib_name_to_utf8(const uint8_t *units, size_t count,
     size_t length = 0U;
     if (!out) return NULL;
     while (index < count) {
-        uint32_t code = aib_u16(units + index * 2U);
+        uint32_t code = xx_data_get_u16(units + index * 2U, 2, 0, false);
         ++index;
         if (code >= 0xD800U && code <= 0xDBFFU && index < count) {
-            uint32_t low = aib_u16(units + index * 2U);
+            uint32_t low = xx_data_get_u16(units + index * 2U, 2, 0, false);
             if (low >= 0xDC00U && low <= 0xDFFFU) {
                 code = 0x10000U + ((code - 0xD800U) << 10) + (low - 0xDC00U);
                 ++index;
@@ -546,13 +538,13 @@ static bool aib_check_footer(const uint8_t *raw, int64_t footer,
     unsigned index;
     uint32_t metadata_end;
     if (footer < 0 || footer > (int64_t)UINT32_MAX) return false;
-    out->mode = aib_u32(raw + 0);
-    out->external = aib_u32(raw + 4);
-    out->count = aib_u32(raw + 8);
-    metadata_end = aib_u32(raw + 16);
-    out->info = aib_u32(raw + 20);
-    out->data = aib_u32(raw + 24);
-    if (out->mode > 1U || aib_u32(raw + 12) != AIB_VERSION ||
+    out->mode = xx_data_get_u32(raw + 0, 4, 0, false);
+    out->external = xx_data_get_u32(raw + 4, 4, 0, false);
+    out->count = xx_data_get_u32(raw + 8, 4, 0, false);
+    metadata_end = xx_data_get_u32(raw + 16, 4, 0, false);
+    out->info = xx_data_get_u32(raw + 20, 4, 0, false);
+    out->data = xx_data_get_u32(raw + 24, 4, 0, false);
+    if (out->mode > 1U || xx_data_get_u32(raw + 12, 4, 0, false) != AIB_VERSION ||
         out->count == 0U || out->count > AIB_MAX_FILES ||
         (int64_t)metadata_end != footer || (int64_t)out->info >= footer ||
         out->data > out->info || (int64_t)out->data < pe->headers_end) {
@@ -587,10 +579,10 @@ static bool aib_read_external(xx_io_device *device, int64_t base,
     size_t index;
     bool unsafe = false;
     if (!aib_read_at(device, base + footer->external, header, sizeof(header)) ||
-        aib_u32(header) != 0U) {
+        xx_data_get_u32(header, 4, 0, false) != 0U) {
         return false;
     }
-    count = aib_u32(header + 4);
+    count = xx_data_get_u32(header + 4, 4, 0, false);
     if (count == 0U || count > AIB_MAX_NAME ||
         (int64_t)footer->external + 8 + (int64_t)count * 2 != footer_offset) {
         return false;
@@ -603,7 +595,7 @@ static bool aib_read_external(xx_io_device *device, int64_t base,
         return false;
     }
     for (index = 0U; index < count; ++index) {
-        if (aib_u16(units + index * 2U) == 0U) {
+        if (xx_data_get_u16(units + index * 2U, 2, 0, false) == 0U) {
             xx_mem_free(units);
             return false;
         }
@@ -642,7 +634,7 @@ static bool aib_read_table(xx_io_device *device, int64_t base,
             xx_mem_free(units);
             return false;
         }
-        name_units = aib_u32(record + 20);
+        name_units = xx_data_get_u32(record + 20, 4, 0, false);
         if (name_units == 0U || name_units > AIB_MAX_NAME ||
             position + (int64_t)AIB_RECORD_SIZE + (int64_t)name_units * 2 >
                 footer->table_end ||
@@ -652,16 +644,16 @@ static bool aib_read_table(xx_io_device *device, int64_t base,
             return false;
         }
         for (unit = 0U; unit < name_units; ++unit) {
-            if (aib_u16(units + unit * 2U) == 0U) {
+            if (xx_data_get_u16(units + unit * 2U, 2, 0, false) == 0U) {
                 xx_mem_free(units);
                 return false;
             }
         }
-        member->type = aib_u32(record);
-        member->index = aib_u32(record + 4);
-        member->xor_flag = aib_u32(record + 8);
-        size = aib_u32(record + 12);
-        offset = aib_u32(record + 16);
+        member->type = xx_data_get_u32(record, 4, 0, false);
+        member->index = xx_data_get_u32(record + 4, 4, 0, false);
+        member->xor_flag = xx_data_get_u32(record + 8, 4, 0, false);
+        size = xx_data_get_u32(record + 12, 4, 0, false);
+        offset = xx_data_get_u32(record + 16, 4, 0, false);
         if ((member->xor_flag != 0U && member->xor_flag != 2U) ||
             offset < footer->data || offset > footer->info ||
             size > footer->info - offset) {

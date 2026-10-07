@@ -5,9 +5,9 @@
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[178];uint32_t color,depth,frames,i;uint64_t pixels,bytes,end,total=(uint64_t)pm_available(f);char label[48];
-    if(total>67108864 || !pm_read(f,0,h,sizeof(h)) || xx_rt_memcmp(h,"LUCAM-RECORDER",14) || pm_le32(h+22)>1) return false;
-    color=pm_le32(h+18);depth=pm_le32(h+34);frames=pm_le32(h+38);
-    if(!(color==0 || (color>=8 && color<=11) || (color>=16 && color<=19) || color==100 || color==101) || !depth || depth>16 || !frames || frames>4094 || !pm_le32(h+26) || !pm_le32(h+30) || !fd_mul(pm_le32(h+26),pm_le32(h+30),&pixels) || pixels>1048576 || !fd_mul(pixels,depth>8 ? 2:1,&bytes) || !fd_mul(bytes,color>=100 ? 3:1,&bytes) || !fd_mul(bytes,frames,&end) || end>total-178) return false;
+    if(total>67108864 || !pm_read(f,0,h,sizeof(h)) || xx_rt_memcmp(h,"LUCAM-RECORDER",14) || xx_data_get_u32(h+22, 4, 0, false)>1) return false;
+    color=xx_data_get_u32(h+18, 4, 0, false);depth=xx_data_get_u32(h+34, 4, 0, false);frames=xx_data_get_u32(h+38, 4, 0, false);
+    if(!(color==0 || (color>=8 && color<=11) || (color>=16 && color<=19) || color==100 || color==101) || !depth || depth>16 || !frames || frames>4094 || !xx_data_get_u32(h+26, 4, 0, false) || !xx_data_get_u32(h+30, 4, 0, false) || !fd_mul(xx_data_get_u32(h+26, 4, 0, false),xx_data_get_u32(h+30, 4, 0, false),&pixels) || pixels>1048576 || !fd_mul(pixels,depth>8 ? 2:1,&bytes) || !fd_mul(bytes,color>=100 ? 3:1,&bytes) || !fd_mul(bytes,frames,&end) || end>total-178) return false;
     end+=178;
     if(total!=end && total!=end+(uint64_t)frames*8) return false;
     if(!pm_add(f,s,"ser-header.bin",0,178)) return false;

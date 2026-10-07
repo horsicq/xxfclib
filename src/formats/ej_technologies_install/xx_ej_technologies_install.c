@@ -40,6 +40,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -182,22 +183,8 @@ static uint32_t ejti_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static uint32_t ejti_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
-
 static uint32_t ejti_be16(const uint8_t *bytes) {
     return ((uint32_t)bytes[0] << 8U) | (uint32_t)bytes[1];
-}
-
-static uint32_t ejti_be32(const uint8_t *bytes) {
-    return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
-           ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3];
-}
-
-static uint64_t ejti_be64(const uint8_t *bytes) {
-    return ((uint64_t)ejti_be32(bytes) << 32U) | (uint64_t)ejti_be32(bytes + 4);
 }
 
 static bool ejti_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -249,11 +236,11 @@ static bool ejti_get(ejti_cursor *cursor, int64_t offset, void *out, size_t size
 /* The sixteen bytes the reference implementation (and U3) recognise the
  * container by. */
 static bool ejti_head_ok(const uint8_t *head) {
-    int32_t count = (int32_t)ejti_le32(head + 4);
-    int32_t first = (int32_t)ejti_le32(head + 12);
-    return ejti_le32(head) == EJTI_MAGIC_HEAD && count > 0 &&
+    int32_t count = (int32_t)xx_data_get_u32(head + 4, 4, 0, false);
+    int32_t first = (int32_t)xx_data_get_u32(head + 12, 4, 0, false);
+    return xx_data_get_u32(head, 4, 0, false) == EJTI_MAGIC_HEAD && count > 0 &&
            count < EJTI_MAX_COUNT &&
-           (int32_t)ejti_le32(head + 8) == EJTI_KEY_PRODUCT && first > 0 &&
+           (int32_t)xx_data_get_u32(head + 8, 4, 0, false) == EJTI_KEY_PRODUCT && first > 0 &&
            first < EJTI_MAX_COUNT;
 }
 
@@ -288,7 +275,7 @@ static bool ejti_locate(ejti_cursor *cursor, int64_t *container) {
         !ejti_get(cursor, 0, dos, sizeof(dos)) || dos[0] != 'M' ||
         dos[1] != 'Z')
         return false;
-    lfanew = ejti_le32(dos + 0x3C);
+    lfanew = xx_data_get_u32(dos + 0x3C, 4, 0, false);
     if (lfanew < 4U || (int64_t)lfanew > cursor->size - (int64_t)sizeof(nt) ||
         !ejti_get(cursor, (int64_t)lfanew, nt, sizeof(nt)) || nt[0] != 'P' ||
         nt[1] != 'E' || nt[2] != 0U || nt[3] != 0U)
@@ -302,8 +289,8 @@ static bool ejti_locate(ejti_cursor *cursor, int64_t *container) {
         return false;
     magic = ejti_le16(optional);
     if (magic != EJTI_PE32_MAGIC && magic != EJTI_PE64_MAGIC) return false;
-    alignment = ejti_le32(optional + 36);
-    raw_end = ejti_le32(optional + 60);
+    alignment = xx_data_get_u32(optional + 36, 4, 0, false);
+    raw_end = xx_data_get_u32(optional + 60, 4, 0, false);
     table = (uint64_t)lfanew + sizeof(nt) + optional_size;
     if (table > (uint64_t)cursor->size ||
         (uint64_t)count * EJTI_SECTION_SIZE > (uint64_t)cursor->size - table ||
@@ -312,8 +299,8 @@ static bool ejti_locate(ejti_cursor *cursor, int64_t *container) {
         return false;
     for (index = 0U; index < count; ++index) {
         const uint8_t *section = sections + (size_t)index * EJTI_SECTION_SIZE;
-        uint32_t raw_size = ejti_le32(section + 16);
-        uint32_t raw_pointer = ejti_le32(section + 20);
+        uint32_t raw_size = xx_data_get_u32(section + 16, 4, 0, false);
+        uint32_t raw_pointer = xx_data_get_u32(section + 20, 4, 0, false);
         uint64_t end = (uint64_t)raw_pointer + raw_size;
         if (raw_size != 0U && end > raw_end) raw_end = end;
     }
@@ -626,7 +613,7 @@ static bool ejti_parse_variables(ejti_cursor *cursor, ejti_stream *stream,
         uint8_t word[8];
         int32_t count, index;
         if (!ejti_get(cursor, position, word, 4U)) goto fail;
-        count = (int32_t)ejti_le32(word);
+        count = (int32_t)xx_data_get_u32(word, 4, 0, false);
         position += 4;
         if (table == 0U) {
             if (count <= 0 || count >= EJTI_MAX_COUNT) goto fail;
@@ -640,8 +627,8 @@ static bool ejti_parse_variables(ejti_cursor *cursor, ejti_stream *stream,
             if ((pd && xx_pd_is_stopped(pd)) ||
                 !ejti_get(cursor, position, word, 8U))
                 goto fail;
-            key = (int32_t)ejti_le32(word);
-            length = (int32_t)ejti_le32(word + 4);
+            key = (int32_t)xx_data_get_u32(word, 4, 0, false);
+            length = (int32_t)xx_data_get_u32(word + 4, 4, 0, false);
             position += 8;
             if (key < 0 || length < 0 ||
                 (int64_t)length > cursor->size - position)
@@ -698,9 +685,9 @@ static int ejti_parse_trailer(ejti_cursor *cursor, ejti_walk *walk,
     uint32_t count, index;
     int64_t position = walk->end;
     if (position > cursor->size - 8 || !ejti_get(cursor, position, word, 8U) ||
-        ejti_le32(word) != EJTI_MAGIC_TAIL)
+        xx_data_get_u32(word, 4, 0, false) != EJTI_MAGIC_TAIL)
         return EJTI_WALK_COMPLETE;
-    count = ejti_be32(word + 4);
+    count = xx_data_get_u32(word + 4, 4, 0, true);
     if ((uint64_t)count > (uint64_t)(walk->capacity - walk->count))
         return EJTI_WALK_BAD;
     walk->has_trailer = true;
@@ -726,7 +713,7 @@ static int ejti_parse_trailer(ejti_cursor *cursor, ejti_walk *walk,
         position += (int64_t)name_length;
         if (position > cursor->size - 8 || !ejti_get(cursor, position, word, 8U))
             return EJTI_WALK_TRUNCATED;
-        size = ejti_be64(word);
+        size = xx_data_get_u64(word, 8, 0, true);
         position += 8;
         if (size > (uint64_t)(cursor->size - position))
             return EJTI_WALK_TRUNCATED;
@@ -769,7 +756,7 @@ static void ejti_walk_members(ejti_cursor *cursor, const ejti_stream *stream,
             walk->result = EJTI_WALK_TRUNCATED;
             break;
         }
-        size = ejti_le32(word);
+        size = xx_data_get_u32(word, 4, 0, false);
         position += 4;
         if (padded) {
             if (position > cursor->size - 4 ||
@@ -777,7 +764,7 @@ static void ejti_walk_members(ejti_cursor *cursor, const ejti_stream *stream,
                 walk->result = EJTI_WALK_TRUNCATED;
                 break;
             }
-            if (ejti_le32(word) != 0U) {
+            if (xx_data_get_u32(word, 4, 0, false) != 0U) {
                 walk->result = EJTI_WALK_LAYOUT;
                 return;
             }
@@ -910,7 +897,7 @@ static bool ejti_parse(Abstractformat *format, ejti_stream **result,
     if (stream->records_offset <= cursor->size - 8) {
         uint8_t word[8];
         if (ejti_get(cursor, stream->records_offset, word, 8U) &&
-            ejti_le32(word + 4) == 0U)
+            xx_data_get_u32(word + 4, 4, 0, false) == 0U)
             padded = true;
     }
     ejti_walk_members(cursor, stream, padded, format->base_address, &walk,

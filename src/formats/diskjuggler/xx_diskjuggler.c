@@ -16,6 +16,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef DISKJUGGLER
 #define XX_DISKJUGGLER_FILE_TYPE XX_FILE_TYPE_DISKJUGGLER
@@ -50,14 +51,6 @@ typedef struct diskjuggler_stream_s {
     size_t index;
     int64_t archive_size;
 } diskjuggler_stream;
-
-static uint16_t diskjuggler_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static uint32_t diskjuggler_le32(const uint8_t *b) {
-    return (uint32_t)diskjuggler_le16(b) | ((uint32_t)diskjuggler_le16(b + 2U) << 16U);
-}
 
 static bool diskjuggler_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -317,7 +310,7 @@ static bool diskjuggler_add_iso_track(Abstractformat *format,
         }
     }
     if (user_offset == UINT32_MAX) return false;
-    root_extent = diskjuggler_le32(sector + user_offset + 158U);
+    root_extent = xx_data_get_u32(sector + user_offset + 158U, 4, 0, false);
     if (root_extent < track->track_lba ||
         !diskjuggler_view_init(&view, format->device, track, user_offset))
         return false;
@@ -442,8 +435,8 @@ static bool diskjuggler_parse(Abstractformat *format,
         !diskjuggler_read_at(format->device, format->base_address + size - 8,
                              footer, sizeof(footer)))
         return false;
-    version = diskjuggler_le32(footer);
-    header_offset = diskjuggler_le32(footer + 4U);
+    version = xx_data_get_u32(footer, 4, 0, false);
+    header_offset = xx_data_get_u32(footer + 4U, 4, 0, false);
     if (version != 0x80000004U && version != 0x80000005U &&
         version != 0x80000006U)
         return false;
@@ -459,7 +452,7 @@ static bool diskjuggler_parse(Abstractformat *format,
                              format->base_address + header_position, header,
                              (size_t)header_size))
         goto fail;
-    sessions = (int32_t)diskjuggler_le16(header);
+    sessions = (int32_t)xx_data_get_u16(header, 2, 0, false);
     if (sessions < 1 || sessions > 99) goto fail;
     stream = (diskjuggler_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) goto fail;
@@ -478,32 +471,32 @@ static bool diskjuggler_parse(Abstractformat *format,
         name_length = header[track_head + 0x10];
         index_count_position = track_head + 0x30 + name_length;
         if (!diskjuggler_within(header_size, index_count_position, 2)) continue;
-        index_count = (int32_t)diskjuggler_le16(header + index_count_position);
+        index_count = (int32_t)xx_data_get_u16(header + index_count_position, 2, 0, false);
         if (index_count > 64) continue;
         indices_size = (int64_t)index_count * 4;
         if (!diskjuggler_within(header_size, index_count_position + 2,
                                 indices_size + 4))
             continue;
         cd_text_count =
-            diskjuggler_le32(header + index_count_position + 2 + indices_size);
+            xx_data_get_u32(header + index_count_position + 2 + indices_size, 4, 0, false);
         if (cd_text_count > 4096U) continue;
         cd_text_size = (int64_t)cd_text_count * 18;
         fixed = track_head + 0x36 + name_length + indices_size + cd_text_size;
         if (!diskjuggler_within(header_size, fixed, 0x2e)) continue;
         mode = header[fixed + 2];
-        read_mode = diskjuggler_le32(header + fixed + 0x2a);
+        read_mode = xx_data_get_u32(header + fixed + 0x2a, 4, 0, false);
         if (mode > 2 || read_mode > 2U) continue;
-        session = (int32_t)diskjuggler_le32(header + fixed + 0x0a);
-        number = (int32_t)diskjuggler_le32(header + fixed + 0x0e);
+        session = (int32_t)xx_data_get_u32(header + fixed + 0x0a, 4, 0, false);
+        number = (int32_t)xx_data_get_u32(header + fixed + 0x0e, 4, 0, false);
         if (session < 0 || session >= sessions || number < 0 || number > 999)
             continue;
         pregap = index_count != 0
-                     ? (int64_t)diskjuggler_le32(header + index_count_position + 2)
+                     ? (int64_t)xx_data_get_u32(header + index_count_position + 2, 4, 0, false)
                      : 0;
         sectors = (index_count >= 2)
-                      ? (int64_t)diskjuggler_le32(header +
-                                                  index_count_position + 6)
-                      : (int64_t)diskjuggler_le32(header + fixed + 0x16);
+                      ? (int64_t)xx_data_get_u32(header +
+                                                  index_count_position + 6, 4, 0, false)
+                      : (int64_t)xx_data_get_u32(header + fixed + 0x16, 4, 0, false);
         if (sectors <= 0 || sectors > 1000000 || pregap > 1000000) continue;
         sector_size = read_mode == 0U ? 2048 : (read_mode == 1U ? 2336 : 2352);
         if (session == expected_session + 1 && number == 0) {
@@ -542,7 +535,7 @@ static bool diskjuggler_parse(Abstractformat *format,
         member.packed_size = packed_bytes;
         member.unpacked_size = (uint64_t)packed_bytes;
         member.method = (uint32_t)sector_size;
-        member.track_lba = diskjuggler_le32(header + fixed + 0x12);
+        member.track_lba = xx_data_get_u32(header + fixed + 0x12, 4, 0, false);
         member.track_sectors = (uint32_t)sectors;
         member.sector_size = (uint32_t)sector_size;
         member.track_offset = member.data_offset;

@@ -44,6 +44,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef STUFFIT_SPLIT_FILE
 #define XX_STUFFIT_SPLIT_FILE_FILE_TYPE XX_FILE_TYPE_STUFFIT_SPLIT_FILE
@@ -109,15 +110,6 @@ static const uint16_t k_ssf_mac_roman_high[128] = {
     0xF8FF, 0x00D2, 0x00DA, 0x00DB, 0x00D9, 0x0131, 0x02C6, 0x02DC,
     0x00AF, 0x02D8, 0x02D9, 0x02DA, 0x00B8, 0x02DD, 0x02DB, 0x02C7
 };
-
-static uint32_t ssf_be32(const uint8_t *bytes) {
-    return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
-           ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3];
-}
-
-static uint16_t ssf_be16(const uint8_t *bytes) {
-    return (uint16_t)(((uint16_t)bytes[0] << 8U) | (uint16_t)bytes[1]);
-}
 
 static bool ssf_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -267,7 +259,7 @@ static bool ssf_parse(Abstractformat *format, ssf_stream **result) {
         return false;
 
     if (header[0] != 0xB0U || header[1] != 0x56U) return false;
-    part = ssf_be16(header + SSF_OFF_PART);
+    part = xx_data_get_u16(header + SSF_OFF_PART, 2, 0, true);
     if (part == 0U || part > 0xFFU) return false;
     name_length = header[SSF_OFF_NAME_LENGTH];
     if (name_length == 0U || name_length > SSF_MAX_NAME) return false;
@@ -278,8 +270,8 @@ static bool ssf_parse(Abstractformat *format, ssf_stream **result) {
         if (c == 0x0DU && index + 1U == name_length && index != 0U) continue;
         if (c < 0x20U) return false;
     }
-    rsrc_length = ssf_be32(header + SSF_OFF_RSRC_LENGTH);
-    data_length = ssf_be32(header + SSF_OFF_DATA_LENGTH);
+    rsrc_length = xx_data_get_u32(header + SSF_OFF_RSRC_LENGTH, 4, 0, true);
+    data_length = xx_data_get_u32(header + SSF_OFF_DATA_LENGTH, 4, 0, true);
     if (rsrc_length > SSF_MAX_FORK || data_length > SSF_MAX_FORK) return false;
 
     payload = size - (int64_t)SSF_HEADER_SIZE;
@@ -296,10 +288,10 @@ static bool ssf_parse(Abstractformat *format, ssf_stream **result) {
     if (!stream) return false;
     stream->header_offset = format->base_address;
     stream->part = part;
-    stream->type = ssf_be32(header + SSF_OFF_TYPE);
-    stream->creator = ssf_be32(header + SSF_OFF_CREATOR);
-    stream->finder_flags = ssf_be16(header + SSF_OFF_FINDER_FLAGS);
-    stream->modified = ssf_be32(header + SSF_OFF_MODIFIED);
+    stream->type = xx_data_get_u32(header + SSF_OFF_TYPE, 4, 0, true);
+    stream->creator = xx_data_get_u32(header + SSF_OFF_CREATOR, 4, 0, true);
+    stream->finder_flags = xx_data_get_u16(header + SSF_OFF_FINDER_FLAGS, 2, 0, true);
+    stream->modified = xx_data_get_u32(header + SSF_OFF_MODIFIED, 4, 0, true);
     stream->rsrc_length = rsrc_length;
     stream->data_length = data_length;
     stream->complete = complete;

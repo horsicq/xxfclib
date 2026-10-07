@@ -59,6 +59,7 @@
 #include "xxfclib/algo/lzh/xx_lzh.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_JETBBS_COPY_CHUNK (64 * 1024)
 
@@ -162,8 +163,6 @@ static bool xx_jetbbs_add(xx_jetbbs_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_jetbbs_le16(const uint8_t *data);
-static uint32_t xx_jetbbs_le32(const uint8_t *data);
 static uint16_t xx_jetbbs_crc16(const uint8_t *data, size_t size, size_t skip_offset);
 static bool xx_jetbbs_checksum_ok(const uint8_t *header, int32_t base_size);
 static bool xx_jetbbs_name_byte_ok(uint8_t byte);
@@ -175,15 +174,6 @@ static bool xx_jetbbs_decode(Abstractformat *self, const xx_jetbbs_member *membe
 /* Base header plus every extended header of one member. The reference caps
  * this at 1 MiB; 64 KiB is already far past anything a JetBBS writer emits
  * and keeps the per-parse scratch buffer small. */
-
-static uint16_t xx_jetbbs_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_jetbbs_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* CRC-16/ARC, the polynomial LHA uses for its common extended header. */
 static uint16_t xx_jetbbs_crc16(const uint8_t *data, size_t size, size_t skip_offset) {
@@ -310,8 +300,8 @@ static xx_jetbbs_stream *xx_jetbbs_parse(Abstractformat *self,
         name_pos = 22;
         name_size = name_length;
 
-        compressed_size = (int64_t)xx_jetbbs_le32(header + 7);
-        uncompressed_size = (int64_t)xx_jetbbs_le32(header + 11);
+        compressed_size = (int64_t)xx_data_get_u32(header + 7, 4, 0, false);
+        uncompressed_size = (int64_t)xx_data_get_u32(header + 11, 4, 0, false);
         header_total = base_size;
 
         if (level == 1U) {
@@ -322,7 +312,7 @@ static xx_jetbbs_stream *xx_jetbbs_parse(Abstractformat *self,
                 int32_t next_size;
 
                 if (pd && xx_pd_is_stopped(pd)) goto fail;
-                next_size = (int32_t)xx_jetbbs_le16(header + header_total - 2);
+                next_size = (int32_t)xx_data_get_u16(header + header_total - 2, 2, 0, false);
                 if (next_size == 0) break;
                 /* size word + type byte + next-size word is the minimum. */
                 if (next_size < 3) goto fail;
@@ -358,7 +348,7 @@ static xx_jetbbs_stream *xx_jetbbs_parse(Abstractformat *self,
 
                 if (pd && xx_pd_is_stopped(pd)) goto fail;
                 if (index > (header_total - 2)) goto fail;
-                ext_size = (int32_t)xx_jetbbs_le16(header + index);
+                ext_size = (int32_t)xx_data_get_u16(header + index, 2, 0, false);
                 if (ext_size == 0) break;
                 if (ext_size < 3) goto fail;
                 if (ext_size > (header_total - index - 2)) goto fail;
@@ -370,7 +360,7 @@ static xx_jetbbs_stream *xx_jetbbs_parse(Abstractformat *self,
                      * them would make "which one" undefined. */
                     if (data_size < 2 || crc_pos >= 0) goto fail;
                     crc_pos = data_pos;
-                    common_crc = xx_jetbbs_le16(header + data_pos);
+                    common_crc = xx_data_get_u16(header + data_pos, 2, 0, false);
                 } else if (type == 0x01U) {
                     name_pos = data_pos;
                     name_size = data_size;
@@ -383,13 +373,13 @@ static xx_jetbbs_stream *xx_jetbbs_parse(Abstractformat *self,
                      * that needs the upper word) would make the extent this
                      * reader publishes a lie. */
                     if (data_size < 16) goto fail;
-                    if (xx_jetbbs_le32(header + data_pos + 4) != 0U) goto fail;
-                    if (xx_jetbbs_le32(header + data_pos + 12) != 0U) goto fail;
-                    if ((int64_t)xx_jetbbs_le32(header + data_pos) !=
+                    if (xx_data_get_u32(header + data_pos + 4, 4, 0, false) != 0U) goto fail;
+                    if (xx_data_get_u32(header + data_pos + 12, 4, 0, false) != 0U) goto fail;
+                    if ((int64_t)xx_data_get_u32(header + data_pos, 4, 0, false) !=
                         compressed_size) {
                         goto fail;
                     }
-                    if ((int64_t)xx_jetbbs_le32(header + data_pos + 8) !=
+                    if ((int64_t)xx_data_get_u32(header + data_pos + 8, 4, 0, false) !=
                         uncompressed_size) {
                         goto fail;
                     }
@@ -456,7 +446,7 @@ static xx_jetbbs_stream *xx_jetbbs_parse(Abstractformat *self,
         member.uncompressed_size = uncompressed_size;
         member.method = method;
         /* Raw MS-DOS time|date word pair, as stored. */
-        member.timestamp = (uint64_t)xx_jetbbs_le32(header + 15);
+        member.timestamp = (uint64_t)xx_data_get_u32(header + 15, 4, 0, false);
         member.is_folder = false;
         if (!xx_jetbbs_add(stream, &member)) {
             xx_str_free(member.name);

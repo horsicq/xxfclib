@@ -6,6 +6,7 @@
  */
 #include "xxfclib/formats/opera_fs/xx_opera_fs.h"
 #include "../apple_family/xx_apple_family_private.h"
+#include "xxfclib/data/xx_data.h"
 typedef struct op_file {uint32_t block,blocks,bytes,burst,gap,avatar;} op_file;
 typedef struct op_ctx {af_work *w;uint32_t volume_block,volume_count;uint64_t *seen;uint32_t directories;} op_ctx;
 static bool op_bounds(op_ctx *c,const op_file *f,uint32_t avatar) {
@@ -30,17 +31,17 @@ static bool op_walk(op_ctx *c,const op_file *dir,const char *parent,unsigned dep
     block=af_alloc(c->w,dir->block,false);if(!block)return false;
     while(current!=UINT32_MAX){uint32_t next,first,free_at,at;bool end=false;
         if(++walked>dir->blocks || !op_block(c,dir,current,block))goto done;
-        next=pm_be32(block);first=pm_be32(block+16);free_at=pm_be32(block+12);
-        if(pm_be32(block+4)!=previous || first<20U || first>free_at || free_at>dir->block ||
+        next=xx_data_get_u32(block, 4, 0, true);first=xx_data_get_u32(block+16, 4, 0, true);free_at=xx_data_get_u32(block+12, 4, 0, true);
+        if(xx_data_get_u32(block+4, 4, 0, true)!=previous || first<20U || first>free_at || free_at>dir->block ||
            (next!=UINT32_MAX && next>=dir->blocks))goto done;
         at=first;
         while(at<free_at){const uint8_t *e=block+at;op_file file;uint32_t flags,avatars,j,n;char leaf[96],name[96];size_t len;uint8_t *out=NULL,*buf=NULL;
             if(free_at-at<72U || !af_poll(c->w))goto done;
-            flags=pm_be32(e);avatars=pm_be32(e+64);if(avatars>=256U || 72U+avatars*4U>free_at-at)goto done;n=72U+avatars*4U;
-            file.block=pm_be32(e+12);file.bytes=pm_be32(e+16);file.blocks=pm_be32(e+20);file.burst=pm_be32(e+24);file.gap=pm_be32(e+28);file.avatar=pm_be32(e+68);
+            flags=xx_data_get_u32(e, 4, 0, true);avatars=xx_data_get_u32(e+64, 4, 0, true);if(avatars>=256U || 72U+avatars*4U>free_at-at)goto done;n=72U+avatars*4U;
+            file.block=xx_data_get_u32(e+12, 4, 0, true);file.bytes=xx_data_get_u32(e+16, 4, 0, true);file.blocks=xx_data_get_u32(e+20, 4, 0, true);file.burst=xx_data_get_u32(e+24, 4, 0, true);file.gap=xx_data_get_u32(e+28, 4, 0, true);file.avatar=xx_data_get_u32(e+68, 4, 0, true);
             len=0;while(len<32U && e[32+len])++len;if(!af_leaf(leaf,sizeof(leaf),e+32,len))goto done;
             if(parent && *parent){if(xx_rt_strlen(parent)+xx_rt_strlen(leaf)+2U>=sizeof(name))goto done;xx_rt_snprintf(name,sizeof(name),"%s/%s",parent,leaf);}else xx_rt_strncpy(name,leaf,sizeof(name));
-            for(j=0;j<=avatars;++j)if(!op_bounds(c,&file,pm_be32(e+68+j*4U)))goto done;
+            for(j=0;j<=avatars;++j)if(!op_bounds(c,&file,xx_data_get_u32(e+68+j*4U, 4, 0, true)))goto done;
             if(flags&1U){if(file.bytes && file.bytes<(uint64_t)file.blocks*file.block)goto done;
                 if(!af_add(c->w,name,0,0,NULL)) {goto done; } c->w->s->items[c->w->s->count-1U].compression_method=65535U;
                 if(!op_walk(c,&file,name,depth+1U))goto done;
@@ -67,11 +68,11 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     af_work w;op_ctx c;op_file root;uint8_t h[132];uint32_t avatars,i;int64_t n;bool ok=false;
     if(!af_init(&w,f,s,pd) || (n=pm_available(f))<2048 || !af_read(&w,0,h,sizeof(h)))return false;
     if(h[0]!=1 || xx_rt_memcmp(h+1,"ZZZZZ",5) || h[6]!=1)return false;
-    xx_mem_zero(&c,sizeof(c));c.w=&w;c.volume_block=pm_be32(h+76);c.volume_count=pm_be32(h+80);avatars=pm_be32(h+96);
+    xx_mem_zero(&c,sizeof(c));c.w=&w;c.volume_block=xx_data_get_u32(h+76, 4, 0, true);c.volume_count=xx_data_get_u32(h+80, 4, 0, true);avatars=xx_data_get_u32(h+96, 4, 0, true);
     if(c.volume_block<512U || c.volume_block>65536U || (c.volume_block&(c.volume_block-1U)) ||
        !c.volume_count || (uint64_t)c.volume_count*c.volume_block>(uint64_t)n || avatars>7U)return false;
-    root.block=pm_be32(h+92);root.blocks=pm_be32(h+88);root.bytes=0;root.burst=root.gap=0;root.avatar=pm_be32(h+100);
-    for(i=0;i<=avatars;++i)if(!op_bounds(&c,&root,pm_be32(h+100+i*4U)))return false;
+    root.block=xx_data_get_u32(h+92, 4, 0, true);root.blocks=xx_data_get_u32(h+88, 4, 0, true);root.bytes=0;root.burst=root.gap=0;root.avatar=xx_data_get_u32(h+100, 4, 0, true);
+    for(i=0;i<=avatars;++i)if(!op_bounds(&c,&root,xx_data_get_u32(h+100+i*4U, 4, 0, true)))return false;
     c.seen=(uint64_t *)af_alloc(&w,8192U*sizeof(uint64_t),false);if(!c.seen)return false;
     ok=op_walk(&c,&root,"",0);af_release(&w,c.seen,8192U*sizeof(uint64_t));
     if(ok){xx_opera_fs *r=(xx_opera_fs *)f;s->size=(int64_t)c.volume_count*c.volume_block;r->number_of_records=s->count;

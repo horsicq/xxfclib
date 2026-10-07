@@ -5,8 +5,9 @@
  */
 #include "xxfclib/formats/nintendo_ncsd/xx_nintendo_ncsd.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static XXFC_MAYBE_UNUSED uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)xx_data_get_u32(p, 4, 0, true)<<32)|xx_data_get_u32(p+4, 4, 0, true) : ((uint64_t)xx_data_get_u32(p+4, 4, 0, false)<<32)|xx_data_get_u32(p, 4, 0, false); }
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uint64_t n,uint64_t total) {
     size_t i;
@@ -25,12 +26,12 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[512],p[512]; uint64_t total; unsigned i; char label[40];
     if(!pm_read(f,0,h,512) || xx_rt_memcmp(h+256,"NCSD",4)) return false;
-    total=(uint64_t)pm_le32(h+0x104)*512; if(total<0x4000 || total>(uint64_t)pm_available(f)) return false;
-    for(i=0;i<8;++i) { uint64_t at=(uint64_t)pm_le32(h+0x120+i*8)*512,n=(uint64_t)pm_le32(h+0x124+i*8)*512,inner;
+    total=(uint64_t)xx_data_get_u32(h+0x104, 4, 0, false)*512; if(total<0x4000 || total>(uint64_t)pm_available(f)) return false;
+    for(i=0;i<8;++i) { uint64_t at=(uint64_t)xx_data_get_u32(h+0x120+i*8, 4, 0, false)*512,n=(uint64_t)xx_data_get_u32(h+0x124+i*8, 4, 0, false)*512,inner;
         if(pd && xx_pd_is_stopped(pd)) return false;
         if(!n) { if(at) return false; continue; }
         if(h[0x110+i] || at<0x4000 || n<512 || !span(at,n,total) || !pm_read(f,(int64_t)at,p,512) || xx_rt_memcmp(p+256,"NCCH",4) || !(p[0x18f]&4) || (p[0x18f]&0x21) || p[0x18e]) return false;
-        inner=(uint64_t)pm_le32(p+0x104)*512; if(inner<512 || inner>n || pm_le16(p+0x112)>2) return false;
+        inner=(uint64_t)xx_data_get_u32(p+0x104, 4, 0, false)*512; if(inner<512 || inner>n || xx_data_get_u16(p+0x112, 2, 0, false)>2) return false;
         xx_rt_snprintf(label,sizeof(label),"partition-%u.ncch",i); if(!emit(f,s,label,at,n,total)) return false; }
     s->size=(int64_t)total; return s->count!=0;
 

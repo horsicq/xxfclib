@@ -6,6 +6,7 @@
 #include "../ue2_indexed.h"
 #include "xxfclib/algo/lzh/xx_lzh.h"
 #include "xxfclib/algo/crc/xx_crc.h"
+#include "xxfclib/data/xx_data.h"
 #define SD_MEMBERS 16384U
 #define SD_TAIL 65536U
 #define SD_WORKSPACE 32768U
@@ -23,14 +24,14 @@ static int64_t sd_archive_end(Abstractformat *f) {
     uint8_t h[64],p[176];int64_t total=xx_io_total_size(f->device),pe,cert;unsigned off;
     if(f->base_address<0||total<f->base_address)return -1;
     if(!ue2_read(f,f->base_address,h,sizeof(h))||h[0]!='M'||h[1]!='Z')return total;
-    if((uint64_t)ue2_u32(h+60)>(uint64_t)(total-f->base_address))return total;
-    pe=f->base_address+(int64_t)ue2_u32(h+60);
+    if((uint64_t)xx_data_get_u32(h+60, 4, 0, false)>(uint64_t)(total-f->base_address))return total;
+    pe=f->base_address+(int64_t)xx_data_get_u32(h+60, 4, 0, false);
     if(!ue2_read(f,pe,p,sizeof(p))||xx_rt_memcmp(p,"PE\0\0",4))return total;
-    off=ue2_u16(p+24)==0x10b?152U:ue2_u16(p+24)==0x20b?168U:0U;
-    if(!off||ue2_u16(p+20)<off-24+8)return total;
-    if((uint64_t)ue2_u32(p+off)>(uint64_t)(total-f->base_address))return total;
-    cert=f->base_address+(int64_t)ue2_u32(p+off);
-    if(ue2_u32(p+off+4)&&cert>f->base_address&&ue2_range(total,cert,ue2_u32(p+off+4)))return cert;
+    off=xx_data_get_u16(p+24, 2, 0, false)==0x10b?152U:xx_data_get_u16(p+24, 2, 0, false)==0x20b?168U:0U;
+    if(!off||xx_data_get_u16(p+20, 2, 0, false)<off-24+8)return total;
+    if((uint64_t)xx_data_get_u32(p+off, 4, 0, false)>(uint64_t)(total-f->base_address))return total;
+    cert=f->base_address+(int64_t)xx_data_get_u32(p+off, 4, 0, false);
+    if(xx_data_get_u32(p+off+4, 4, 0, false)&&cert>f->base_address&&ue2_range(total,cert,xx_data_get_u32(p+off+4, 4, 0, false)))return cert;
     return total;
 }
 static bool sd_footer(Abstractformat *f,int64_t *location,uint32_t *size,uint32_t *start,uint32_t *count,bool *modern) {
@@ -41,8 +42,8 @@ static bool sd_footer(Abstractformat *f,int64_t *location,uint32_t *size,uint32_
     if(!ue2_read(f,at,tail,n))goto done;
     for(i=n-33+1;i-- >0;){const uint8_t *p=tail+i;
         if(xx_rt_memcmp(p,"_SUPERDAT_HEADER\0",17))continue;
-        *size=ue2_u32(p+17);*start=ue2_u32(p+21);*count=ue2_u32(p+25);*modern=*count==0;
-        if(*modern){if(n-i<37)continue;*count=ue2_u32(p+29);}
+        *size=xx_data_get_u32(p+17, 4, 0, false);*start=xx_data_get_u32(p+21, 4, 0, false);*count=xx_data_get_u32(p+25, 4, 0, false);*modern=*count==0;
+        if(*modern){if(n-i<37)continue;*count=xx_data_get_u32(p+29, 4, 0, false);}
         if(!*size||!*count||*count>SD_MEMBERS||*start>(uint64_t)(at+(int64_t)i-f->base_address))continue;
         *location=at+(int64_t)i;ok=true;break;
     }
@@ -52,7 +53,7 @@ bool xx_superdat_has_candidate_device(xx_io_device *io,int64_t base) {
     Abstractformat *f;int64_t at,saved;uint32_t size,start,count;bool modern,ok;
     if(!io||base<0) {return false; } f=xx_mem_calloc(1,sizeof(*f));if(!f)return false;f->device=io;f->base_address=base;saved=xx_io_tell(io);
     ok=sd_footer(f,&at,&size,&start,&count,&modern);
-    if(ok){uint8_t h[18];ok=ue2_read(f,base+start,h,sizeof(h))&&ue2_u32(h)==0xdeadbeefU&&!xx_rt_memcmp(h+4,"__NAILZHUFLIB\0",14);}
+    if(ok){uint8_t h[18];ok=ue2_read(f,base+start,h,sizeof(h))&&xx_data_get_u32(h, 4, 0, false)==0xdeadbeefU&&!xx_rt_memcmp(h+4,"__NAILZHUFLIB\0",14);}
     if(saved>=0&&xx_io_seek64(io,saved,XX_RT_SEEK_SET)) {ok=false; } xx_mem_free(f);return ok;
 }
 static bool sd_name(uint8_t *p,size_t capacity) {
@@ -73,14 +74,14 @@ static sd_index *sd_parse(Abstractformat *f,xx_pd_struct *pd,uint64_t limit) {
     if(limit<SD_TAIL||limit<SD_WORKSPACE+sizeof(*ix)){sd_fail(pd,"SuperDAT decoder exceeds configured memory limit");return NULL;}saved=xx_io_tell(f->device);
     if(!sd_footer(f,&footer,&declared,&start,&count,&modern))goto done;
     ix=xx_mem_calloc(1,sizeof(*ix));if(!ix)goto done;ix->device=f->device;ix->base=f->base_address;at=f->base_address+start;
-    for(;;){if(++groups>8||!ue2_read(f,at,h,4)||ue2_u32(h)!=0xdeadbeefU)goto done;
+    for(;;){if(++groups>8||!ue2_read(f,at,h,4)||xx_data_get_u32(h, 4, 0, false)!=0xdeadbeefU)goto done;
         group_start=at;group_first=ix->records.count;at+=4;
         for(;;){uint32_t plain,packed;size_t k,capacity,old_capacity,name_size;sd_item *items;uint64_t needed;
             if(at>footer-17||!ue2_read(f,at,h,17))goto done;
             if(!xx_rt_memcmp(h,"NAISIGN\0",8))break;
             if(xx_rt_memcmp(h,"__NAILZHUFLIB\0",14)||at>footer-292||!ue2_read(f,at,h,sizeof(h)))goto done;
-            plain=ue2_u32(h+274);packed=ue2_u32(h+278);
-            if(packed<4||plain!=ue2_u32(h+288)||!ue2_range(footer,at+288,packed)||!sd_name(h+14,260)||ix->records.count>=SD_MEMBERS)goto done;
+            plain=xx_data_get_u32(h+274, 4, 0, false);packed=xx_data_get_u32(h+278, 4, 0, false);
+            if(packed<4||plain!=xx_data_get_u32(h+288, 4, 0, false)||!ue2_range(footer,at+288,packed)||!sd_name(h+14,260)||ix->records.count>=SD_MEMBERS)goto done;
             for(k=0;k<ix->records.count;++k)if(!sd_compare(ix->records.members[k].name,(char*)h+14))goto done;
             old_capacity=capacity=ix->records.capacity;name_size=xx_rt_strlen((char*)h+14)+1;
             if(ix->records.count==capacity)capacity=capacity?capacity*2U:32U;
@@ -95,9 +96,9 @@ static sd_index *sd_parse(Abstractformat *f,xx_pd_struct *pd,uint64_t limit) {
             at+=288+(int64_t)packed;if(xx_pd_is_stopped(pd))goto done;
         }
         group_count=ix->records.count-group_first;
-        if(!group_count||h[8]||h[9]||h[10]!=1||ue2_u16(h+15)!=17)goto done;
+        if(!group_count||h[8]||h[9]||h[10]!=1||xx_data_get_u16(h+15, 2, 0, false)!=17)goto done;
         at+=17;if(!ue2_read(f,at,h,4))goto done;
-        if(ue2_u32(h)!=0xdeadbeefU)break;
+        if(xx_data_get_u32(h, 4, 0, false)!=0xdeadbeefU)break;
     }
     table=at;
     if(group_count!=count+2U||table-group_start-4!=declared||
@@ -105,8 +106,8 @@ static sd_index *sd_parse(Abstractformat *f,xx_pd_struct *pd,uint64_t limit) {
     for(i=0;i<count;++i){uint8_t record[178];const ue2_member *m=NULL;
         if(!ue2_read(f,table+(int64_t)i*178,record,sizeof(record))||!sd_name(record,144))goto done;
         for(j=group_first+2;j<ix->records.count;++j)if(!sd_compare(ix->records.members[j].name,(char*)record)){m=&ix->records.members[j];break;}
-        if(!m||ix->items[j].has_crc||m->original_size!=ue2_u32(record+160))goto done;
-        ix->items[j].has_crc=true;ix->items[j].crc=ue2_u32(record+144);
+        if(!m||ix->items[j].has_crc||m->original_size!=xx_data_get_u32(record+160, 4, 0, false))goto done;
+        ix->items[j].has_crc=true;ix->items[j].crc=xx_data_get_u32(record+144, 4, 0, false);
     }
     ix->records.size=xx_io_total_size(f->device)-f->base_address;ok=true;
 done:

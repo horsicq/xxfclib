@@ -3,13 +3,14 @@
  */
 #include "xxfclib/formats/zx_ayemul/xx_zx_ayemul.h"
 #include "../nintendo_sdat/xx_twelfth_c.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool ay_ptr(tc_blob *b,uint32_t a,uint32_t z,uint32_t *out) {
- int32_t v;if(!tc_span(b,a,2)) return false;v=(int16_t)pm_be16(b->p+a);if(!v || (int64_t)a+v<20 || (int64_t)a+v>UINT32_MAX) return false;*out=(uint32_t)((int64_t)a+v);return tc_span(b,*out,z);
+ int32_t v;if(!tc_span(b,a,2)) return false;v=(int16_t)xx_data_get_u16(b->p+a, 2, 0, true);if(!v || (int64_t)a+v<20 || (int64_t)a+v>UINT32_MAX) return false;*out=(uint32_t)((int64_t)a+v);return tc_span(b,*out,z);
 }
 static bool read_components(Abstractformat *f,pm_stream *s,tc_blob *b) {
  uint32_t table,i,at,z,maxend=20,n,count=0,trackcounts;tc_extent ext[4096];const uint8_t *p=b->p;char label[64];
- if(b->n<20 || xx_rt_memcmp(p,"ZXAYEMUL",8) || p[8]>2 || pm_be16(p+10) || p[17]>p[16]) { return false; } trackcounts=(uint32_t)p[16]+1;
+ if(b->n<20 || xx_rt_memcmp(p,"ZXAYEMUL",8) || p[8]>2 || xx_data_get_u16(p+10, 2, 0, true) || p[17]>p[16]) { return false; } trackcounts=(uint32_t)p[16]+1;
  if(!tc_claim(b,ext,&count,0,20,false) || !tc_emit(f,s,b,"ay-file-descriptor.bin",0,20)) return false;
  for(i=12;i<=14;i+=2) {if(!ay_ptr(b,i,1,&at) || !tc_string(b,at,b->n,&z,false) || !tc_claim(b,ext,&count,at,z,true) || !tc_emit(f,s,b,i==12?"author.bin":"comment.bin",at,z)) return false;if(at+z>maxend) maxend=at+z;}
  if(!ay_ptr(b,18,trackcounts*4,&table) || !tc_claim(b,ext,&count,table,trackcounts*4,false) || !tc_emit(f,s,b,"song-index.bin",table,trackcounts*4)) { return false; } if(table+trackcounts*4>maxend) maxend=table+trackcounts*4;
@@ -20,8 +21,8 @@ static bool read_components(Abstractformat *f,pm_stream *s,tc_blob *b) {
   xx_rt_snprintf(label,sizeof(label),"song-%03u-descriptor.bin",i);if(!tc_emit(f,s,b,label,data,14)) return false;
   xx_rt_snprintf(label,sizeof(label),"song-%03u-cpu-state.bin",i);if(!tc_emit(f,s,b,label,state,6)) return false;
   if(data+14>maxend) { maxend=data+14; } if(state+6>maxend) maxend=state+6;start=blocks;
-  for(;;) {uint32_t address;if(!tc_work(b,1) || !tc_span(b,blocks,2)) return false;address=pm_be16(p+blocks);if(!address) {blocks+=2;break;}
-   if(entries>=256 || !tc_span(b,blocks,6)) { return false; } n=pm_be16(p+blocks+2);
+  for(;;) {uint32_t address;if(!tc_work(b,1) || !tc_span(b,blocks,2)) return false;address=xx_data_get_u16(p+blocks, 2, 0, true);if(!address) {blocks+=2;break;}
+   if(entries>=256 || !tc_span(b,blocks,6)) { return false; } n=xx_data_get_u16(p+blocks+2, 2, 0, true);
    if(!n || n>65536-address || !ay_ptr(b,blocks+4,n,&at) || !tc_claim(b,ext,&count,at,n,true)) return false;
    xx_rt_snprintf(label,sizeof(label),"song-%03u-memory-%04x.bin",i,address);if(!tc_emit(f,s,b,label,at,n)) return false;if(at+n>maxend) maxend=at+n;blocks+=6;++entries;
   }if(!entries || !tc_claim(b,ext,&count,start,blocks-start,true)) return false;

@@ -18,6 +18,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define MAR_MAX_INDEX (32U * 1024U * 1024U)
 #define MAR_MAX_MEMBERS 1000000U
@@ -40,15 +41,6 @@ typedef struct mar_stream_s {
     int64_t index_offset;
     int64_t size;
 } mar_stream;
-
-static uint32_t mar_be32(const uint8_t *p) {
-    return ((uint32_t)p[0] << 24U) | ((uint32_t)p[1] << 16U) |
-           ((uint32_t)p[2] << 8U) | (uint32_t)p[3];
-}
-
-static uint64_t mar_be64(const uint8_t *p) {
-    return ((uint64_t)mar_be32(p) << 32U) | mar_be32(p + 4U);
-}
 
 static bool mar_read_at(Abstractformat *self, int64_t relative,
                         void *buffer, size_t length) {
@@ -93,8 +85,8 @@ static bool mar_data_start(Abstractformat *self, int64_t index_offset,
     *start = 8;
     if (index_offset < 24) return true;
     if (!mar_read_at(self, 0, header, sizeof(header))) return false;
-    declared_matches = mar_be64(header + 8U) == (uint64_t)archive_size;
-    count = mar_be32(header + 16U);
+    declared_matches = xx_data_get_u64(header + 8U, 8, 0, true) == (uint64_t)archive_size;
+    count = xx_data_get_u32(header + 16U, 4, 0, true);
     if (count > 8U) return !declared_matches;
     for (i = 0U; i < count; ++i) {
         uint8_t signature[8];
@@ -102,21 +94,21 @@ static bool mar_data_start(Abstractformat *self, int64_t index_offset,
         if (at > index_offset - 8 ||
             !mar_read_at(self, at, signature, sizeof(signature)))
             return !declared_matches;
-        length = mar_be32(signature + 4U);
+        length = xx_data_get_u32(signature + 4U, 4, 0, true);
         if (length > 2048U || (int64_t)length > index_offset - at - 8)
             return !declared_matches;
         at += 8 + (int64_t)length;
     }
     if (at > index_offset - 4 || !mar_read_at(self, at, header, 4U))
         return !declared_matches;
-    count = mar_be32(header);
+    count = xx_data_get_u32(header, 4, 0, true);
     at += 4;
     if (count > 1024U) return !declared_matches;
     for (i = 0U; i < count; ++i) {
         uint32_t length;
         if (at > index_offset - 8 ||
             !mar_read_at(self, at, header, 8U)) return !declared_matches;
-        length = mar_be32(header);
+        length = xx_data_get_u32(header, 4, 0, true);
         if (length < 8U || (int64_t)length > index_offset - at)
             return !declared_matches;
         at += length;
@@ -140,11 +132,11 @@ static mar_stream *mar_parse(Abstractformat *self, xx_pd_struct *pd) {
     available = xx_io_size(self->device) - self->base_address;
     if (available < 12 || !mar_read_at(self, 0, header, sizeof(header)) ||
         xx_rt_memcmp(header, "MAR1", 4U) != 0) goto done;
-    index_offset = mar_be32(header + 4U);
+    index_offset = xx_data_get_u32(header + 4U, 4, 0, true);
     if (index_offset < 8U || (int64_t)index_offset > available - 4 ||
         !mar_read_at(self, index_offset, index_header, sizeof(index_header)))
         goto done;
-    index_size = mar_be32(index_header);
+    index_size = xx_data_get_u32(index_header, 4, 0, true);
     if (index_size > MAR_MAX_INDEX ||
         (int64_t)index_size > available - (int64_t)index_offset - 4)
         goto done;
@@ -164,8 +156,8 @@ static mar_stream *mar_parse(Abstractformat *self, xx_pd_struct *pd) {
         size_t name_at, end;
         if ((count & 0x3FFU) == 0U && pd && xx_pd_is_stopped(pd)) goto fail;
         if (index_size - at < 14U) goto fail;
-        offset = mar_be32(stream->index + at);
-        length = mar_be32(stream->index + at + 4U);
+        offset = xx_data_get_u32(stream->index + at, 4, 0, true);
+        length = xx_data_get_u32(stream->index + at + 4U, 4, 0, true);
         if ((int64_t)offset > index_offset ||
             (int64_t)length > (int64_t)index_offset - offset ||
             (length != 0U && (int64_t)offset < data_start)) goto fail;
@@ -189,9 +181,9 @@ static mar_stream *mar_parse(Abstractformat *self, xx_pd_struct *pd) {
     for (i = 0U; i < count; ++i) {
         mar_member *member = &stream->members[i];
         member->entry_at = (uint32_t)at;
-        member->offset = mar_be32(stream->index + at);
-        member->length = mar_be32(stream->index + at + 4U);
-        member->flags = mar_be32(stream->index + at + 8U);
+        member->offset = xx_data_get_u32(stream->index + at, 4, 0, true);
+        member->length = xx_data_get_u32(stream->index + at + 4U, 4, 0, true);
+        member->flags = xx_data_get_u32(stream->index + at + 8U, 4, 0, true);
         member->name = (char *)(stream->index + at + 12U);
         at += 12U + xx_rt_strlen(member->name) + 1U;
     }

@@ -4,6 +4,7 @@
  */
 /* Primary: https://www.rfc-editor.org/rfc/rfc5280.html */
 #include "xxfclib/formats/x509_crl/xx_x509_crl.h"
+#include "xxfclib/data/xx_data.h"
 #include "../xx_thirteenth_wrappers.h"
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd){nh_blob b;cm_tlv root,tbs,alg,sig,x,y,before,after;uint64_t at=0,p,q,version;unsigned work=0,count=0;bool ok=false;if(!nh_load(f,&b,pd))return false;NH_NEED(th_tree(&b,0,b.n,0,&work)&&cm_take(&b,&at,b.n,48,&root)&&at==b.n);p=root.value;NH_NEED(cm_take(&b,&p,root.end,48,&tbs)&&cm_take(&b,&p,root.end,48,&alg)&&cm_alg(&b,&alg)&&cm_take(&b,&p,root.end,3,&sig)&&ci_bits(&b,&sig,true)&&p==root.end);p=tbs.value;NH_NEED(cm_take(&b,&p,tbs.end,2,&x)&&th_uint(&b,&x,&version)&&version==1&&cm_take(&b,&p,tbs.end,48,&x)&&cm_alg(&b,&x)&&x.end-x.start==alg.end-alg.start&&!xx_rt_memcmp(b.p+(size_t)x.start,b.p+(size_t)alg.start,(size_t)(x.end-x.start))&&cm_take(&b,&p,tbs.end,48,&x)&&ci_name(&b,&x,false)&&th_tlv_add(f,s,&b,"issuer",&x)&&cm_read(&b,&p,tbs.end,&before)&&(before.tag==23||before.tag==24)&&cm_read(&b,&p,tbs.end,&after)&&(after.tag==23||after.tag==24)&&ci_time(&b,&before)<=ci_time(&b,&after)&&th_tlv_add(f,s,&b,"this-update",&before)&&th_tlv_add(f,s,&b,"next-update",&after));

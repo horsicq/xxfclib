@@ -5,6 +5,7 @@
  */
 #include "xxfclib/formats/lego_alp/xx_lego_alp.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 #ifndef LEGO_ALP
 #define XX_FILE_TYPE_LEGO_ALP ((xx_file_type_t)1543)
 #endif
@@ -16,13 +17,13 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(available<=16 || !pm_read(f,0,h,16) ||
        xx_rt_memcmp(h,"ALP ",4) ||
        xx_rt_memcmp(h+8,"ADPCM",5) || h[13]!=0) return false;
-    header_size=pm_le32(h+4);
+    header_size=xx_data_get_u32(h+4, 4, 0, false);
     if(header_size!=8 && header_size!=12) return false;
     channels=h[15];
     if(channels<1 || channels>2 || available<=8+(int64_t)header_size) return false;
     if(header_size==12) {
         if(!pm_read(f,16,h+16,4)) return false;
-        rate=pm_le32(h+16);
+        rate=xx_data_get_u32(h+16, 4, 0, false);
         if(!rate || rate>44100) return false;
     } else rate=22050;
     (void)rate;

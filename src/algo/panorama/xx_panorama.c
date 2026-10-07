@@ -4,6 +4,7 @@
  * Port of XArchive/Algos/xpanoramadecoder.cpp.
  */
 #include "xxfclib/algo/panorama/xx_panorama.h"
+#include "xxfclib/data/xx_data.h"
 
 #define PANORAMA_MULTIPLIER 0x8088405U
 #define PANORAMA_RAR_SIGNATURE_LOW 0x21726152U  /* "Rar!"      */
@@ -26,12 +27,6 @@ static void panorama_build_keystream(uint32_t seed, uint8_t *keystream)
     }
 }
 
-static uint32_t panorama_read_u32le(const uint8_t *p)
-{
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
-           ((uint32_t)p[3] << 24);
-}
-
 bool xx_panorama_seed_from_header(const uint8_t *header, size_t header_size,
                                   uint32_t *seed)
 {
@@ -39,8 +34,8 @@ bool xx_panorama_seed_from_header(const uint8_t *header, size_t header_size,
 
     if (!header || !seed || (header_size < 8U)) return false;
 
-    low = panorama_read_u32le(header);
-    high = panorama_read_u32le(header + 4);
+    low = xx_data_get_u32(header, 4, 0, false);
+    high = xx_data_get_u32(header + 4, 4, 0, false);
     candidate = low ^ PANORAMA_RAR_SIGNATURE_LOW;
     /* Deliberate, and matches the reference: a zero seed is refused even
      * though it is arithmetically valid, because it would mean the file is

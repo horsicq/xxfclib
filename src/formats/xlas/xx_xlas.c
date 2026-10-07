@@ -26,6 +26,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef XLAS
 #define XX_XLAS_FILE_TYPE XX_FILE_TYPE_XLAS
@@ -54,14 +55,6 @@ typedef struct xlas_stream_s {
     size_t index;
     int64_t archive_size;
 } xlas_stream;
-
-static uint16_t xlas_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t xlas_le32(const uint8_t *bytes) {
-    return (uint32_t)xlas_le16(bytes) | ((uint32_t)xlas_le16(bytes + 2U) << 16U);
-}
 
 static bool xlas_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -212,8 +205,8 @@ static bool xlas_parse(Abstractformat *format, xlas_stream **result) {
                       sizeof(header)) ||
         xx_rt_memcmp(header, "XLAS", 4U) != 0)
         return false;
-    directory_offset = (int64_t)xlas_le32(header + 4U);
-    count = xlas_le32(header + 8U);
+    directory_offset = (int64_t)xx_data_get_u32(header + 4U, 4, 0, false);
+    count = xx_data_get_u32(header + 8U, 4, 0, false);
     if (count == 0U || count > XLAS_MAX_MEMBERS ||
         directory_offset < (int64_t)XLAS_HEADER_SIZE ||
         directory_offset > size ||
@@ -236,10 +229,10 @@ static bool xlas_parse(Abstractformat *format, xlas_stream **result) {
     for (index = 0U; index < count; ++index) {
         const uint8_t *entry = directory + (size_t)index * XLAS_ENTRY_SIZE;
         xlas_member member;
-        uint32_t data_offset = xlas_le32(entry + 12U);
-        uint32_t unpacked = xlas_le32(entry + 16U);
-        uint32_t packed = xlas_le32(entry + 20U);
-        uint16_t method = xlas_le16(entry + 24U);
+        uint32_t data_offset = xx_data_get_u32(entry + 12U, 4, 0, false);
+        uint32_t unpacked = xx_data_get_u32(entry + 16U, 4, 0, false);
+        uint32_t packed = xx_data_get_u32(entry + 20U, 4, 0, false);
+        uint16_t method = xx_data_get_u16(entry + 24U, 2, 0, false);
         if (method != XLAS_METHOD_STORE && method != XLAS_METHOD_LZSS)
             goto fail;
         if (!xlas_plausible_raw_name(entry, XLAS_NAME_SIZE)) goto fail;

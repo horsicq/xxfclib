@@ -43,6 +43,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 typedef struct xx_tps_member_s {
     char *name;
@@ -150,11 +151,6 @@ static bool xx_tps_add(xx_tps_stream *stream, const xx_tps_member *member) {
 #define XX_TPS_METHOD_LZHUF 1U
 
 static const uint8_t XX_TPS_MAGIC[XX_TPS_MAGIC_SIZE] = {'T', 'P', 'S', 0x1AU};
-
-static uint32_t xx_tps_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* The on-disk length of a member whose coded payload is @p coded bytes: the
  * coded bytes themselves, one check byte per block, and the 0x01 end marker.
@@ -267,11 +263,11 @@ static xx_tps_stream *xx_tps_parse(Abstractformat *self, xx_pd_struct *pd) {
         /* Signed on purpose: the field is genuinely negative in the wild and
          * the reference takes its magnitude. The cast through uint32_t keeps
          * the conversion implementation-defined-free. */
-        raw = (int32_t)xx_tps_le32(entry + XX_TPS_OFFSET_CODED);
+        raw = (int32_t)xx_data_get_u32(entry + XX_TPS_OFFSET_CODED, 4, 0, false);
         absolute = raw < 0 ? -(int64_t)raw : (int64_t)raw;
         coded = absolute - XX_TPS_SIZE_DWORD;
         uncompressed =
-            xx_tps_le32(entry + XX_TPS_OFFSET_UNCOMPRESSED) ^ XX_TPS_SIZE_MASK;
+            xx_data_get_u32(entry + XX_TPS_OFFSET_UNCOMPRESSED, 4, 0, false) ^ XX_TPS_SIZE_MASK;
         /* A plaintext length with the top bit set is a de-masking failure,
          * not a two-gigabyte member. */
         if (coded < 0 || (uncompressed & 0x80000000U) != 0U) break;

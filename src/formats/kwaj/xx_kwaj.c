@@ -37,6 +37,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and not edited from here,
  * so the alias macro that sits next to the enumerator is tested instead. */
@@ -115,15 +116,6 @@ typedef struct kwaj_stream_s {
     size_t index;
     size_t count;
 } kwaj_stream;
-
-static uint16_t kwaj_le16(const uint8_t *bytes) {
-    return (uint16_t)(bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t kwaj_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
 
 static bool kwaj_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
@@ -248,9 +240,9 @@ static bool kwaj_parse_header(xx_io_device *device, int64_t base,
         xx_rt_memcmp(raw, kwaj_magic, sizeof(kwaj_magic)) != 0)
         return false;
     xx_mem_zero(&header, sizeof(header));
-    header.method = kwaj_le16(raw + 8U);
-    header.data_offset = (int64_t)kwaj_le16(raw + 10U);
-    header.flags = kwaj_le16(raw + 12U);
+    header.method = xx_data_get_u16(raw + 8U, 2, 0, false);
+    header.data_offset = (int64_t)xx_data_get_u16(raw + 10U, 2, 0, false);
+    header.flags = xx_data_get_u16(raw + 12U, 2, 0, false);
     /* The data cannot overlap the fixed header, and it must be present. */
     if (header.method > KWAJ_METHOD_MSZIP ||
         header.data_offset < KWAJ_HEADER_SIZE || header.data_offset > size)
@@ -261,7 +253,7 @@ static bool kwaj_parse_header(xx_io_device *device, int64_t base,
             !kwaj_read_at(device, base + position, word, 4U))
             return false;
         header.has_length = true;
-        header.length = kwaj_le32(word);
+        header.length = xx_data_get_u32(word, 4, 0, false);
         if ((uint64_t)header.length > KWAJ_MAX_OUTPUT) return false;
         position += 4;
     }
@@ -272,7 +264,7 @@ static bool kwaj_parse_header(xx_io_device *device, int64_t base,
         if (header.data_offset - position < 2 ||
             !kwaj_read_at(device, base + position, word, 2U))
             goto names_done;
-        position += 2 + (int64_t)kwaj_le16(word);
+        position += 2 + (int64_t)xx_data_get_u16(word, 2, 0, false);
     }
     if (header.flags & KWAJ_FLAG_NAME) {
         base_length = kwaj_read_field(device, base, position,
@@ -680,7 +672,7 @@ static bool kwaj_decode_mszip(xx_io_device *device, int64_t start,
         size_t source_size, produced, index;
         if (kwaj_output_full(out) || remaining < 2) break;
         if (!kwaj_read_at(device, position, head, 2U)) return false;
-        if (kwaj_le16(head) == 0U) {
+        if (xx_data_get_u16(head, 2, 0, false) == 0U) {
             position += 2;
             break;
         }
@@ -688,7 +680,7 @@ static bool kwaj_decode_mszip(xx_io_device *device, int64_t start,
         if (!kwaj_read_at(device, position + 2, head + 2, 2U) ||
             head[2] != 'C' || head[3] != 'K')
             return false;
-        packed = kwaj_le16(head);
+        packed = xx_data_get_u16(head, 2, 0, false);
         if (packed <= 2U || (int64_t)packed - 2 > remaining - 4) return false;
         packed -= 2U;
         if (!kwaj_read_at(device, position + 4, work->input + KWAJ_MSZIP_DATA,

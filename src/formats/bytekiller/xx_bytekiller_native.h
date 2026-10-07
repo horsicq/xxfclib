@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "xxfclib/data/xx_data.h"
 
 #define BK_MAX_PACKED (16U * 1024U * 1024U)
 #define BK_MAX_RAW (64U * 1024U * 1024U)
@@ -30,13 +31,9 @@ typedef struct bk_bits {
     unsigned available;
 } bk_bits;
 
-static uint32_t bk_be32(const uint8_t *data) {
-    return ((uint32_t)data[0]<<24U)|((uint32_t)data[1]<<16U)|
-           ((uint32_t)data[2]<<8U)|(uint32_t)data[3];
-}
 static bool bk_get32(const uint8_t *data,size_t size,size_t at,uint32_t *value) {
     if(!data || at>size || size-at<4U)return false;
-    *value=bk_be32(data+at);return true;
+    *value=xx_data_get_u32(data+at, 4, 0, true);return true;
 }
 static bool bk_parse_native(const uint8_t *data,size_t size,bk_context *ctx) {
     uint32_t head,footer,value,checksum=0U,word;
@@ -64,7 +61,7 @@ static bool bk_parse_native(const uint8_t *data,size_t size,bk_context *ctx) {
         ctx->stream_end=ctx->packed_size;
         if(ctx->variant==BK_PRO &&
            (ctx->packed_size>size-4U ||
-            bk_be32(data+ctx->packed_size)!=BK_FOURCC('d','a','t','a')))return false;
+            xx_data_get_u32(data+ctx->packed_size, 4, 0, true)!=BK_FOURCC('d','a','t','a')))return false;
         break;
     case BK_ACE:
         if(!bk_get32(data,size,4U,&value) || !value || (value&3U) ||
@@ -115,7 +112,7 @@ static bool bk_parse_native(const uint8_t *data,size_t size,bk_context *ctx) {
        ctx->stream_end<ctx->stream_start ||
        (ctx->stream_end-ctx->stream_start)&3U)return false;
     for(i=ctx->stream_start;i<ctx->stream_end;i+=4U)
-        checksum^=bk_be32(data+i);
+        checksum^=xx_data_get_u32(data+i, 4, 0, true);
     if(!bk_get32(data,size,
          ctx->variant==BK_STANDARD || ctx->variant==BK_PRO?8U:
          ctx->variant==BK_ACE?12U:ctx->stream_end,&word) || word!=checksum)
@@ -126,7 +123,7 @@ static bool bk_parse_native(const uint8_t *data,size_t size,bk_context *ctx) {
 static bool bk_word(bk_bits *bits,uint32_t *word) {
     if(bits->at<bits->start+4U)return false;
     bits->at-=4U;
-    *word=bk_be32(bits->data+bits->at);
+    *word=xx_data_get_u32(bits->data+bits->at, 4, 0, true);
     return true;
 }
 static bool bk_bit(bk_bits *bits,uint32_t *value) {

@@ -5,6 +5,7 @@
 #include "xxfclib/formats/pce_tc/xx_pce_tc.h"
 #include "../xx_payload_members.h"
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef PCE_TC
 #define TC_FILE_TYPE XX_FILE_TYPE_PCE_TC
@@ -35,8 +36,8 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
     for (cylinder = 0U; cylinder < cylinders; ++cylinder) {
         for (head = 0U; head < heads; ++head) {
             uint32_t index = cylinder * 2U + head;
-            uint32_t raw_offset = pm_be16(header + 0x305U + index * 2U);
-            uint32_t length = pm_le16(header + 0x505U + index * 2U);
+            uint32_t raw_offset = xx_data_get_u16(header + 0x305U + index * 2U, 2, 0, true);
+            uint32_t length = xx_data_get_u16(header + 0x505U + index * 2U, 2, 0, false);
             uint64_t offset = (uint64_t)raw_offset << 8U;
             size_t prior;
             char name[64];

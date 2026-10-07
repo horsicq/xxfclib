@@ -3,6 +3,7 @@
 #include "dgca_codec.h"
 #include "dgca_cipher.h"
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 typedef struct dg_chunk {
     unsigned char header[32];
@@ -17,10 +18,6 @@ typedef struct dg_block_cache {
 } dg_block_cache;
 typedef struct dg_key { const char *password;size_t size;int encrypted; } dg_key;
 
-static uint32_t dg_u32(const unsigned char *p) {
-    return (uint32_t)p[0]|(uint32_t)p[1]<<8|(uint32_t)p[2]<<16|(uint32_t)p[3]<<24;
-}
-static uint64_t dg_u64(const unsigned char *p) { return dg_u32(p)|(uint64_t)dg_u32(p+4)<<32; }
 static uint32_t dg_crc_update(uint32_t crc, const unsigned char *p, size_t count) {
     size_t i; unsigned j;
     for(i=0;i<count;++i) { crc^=p[i]; for(j=0;j<8;++j) crc=(crc>>1)^((0U-(crc&1U))&UINT32_C(0xEDB88320)); }
@@ -70,9 +67,9 @@ static dg_status dg_decrypt(dg_result *r,const dg_key *key,const void *seed,size
 static dg_status dg_header_fields(dg_result *r,uint64_t offset,uint64_t bound,dg_chunk *out) {
     unsigned char header[32];uint64_t padded;
     memcpy(header,out->header,32);memset(header+28,0,4);
-    if(dg_u32(header+4)!=32||dg_u32(header+20)!=16)return dg_fail(r,DG_FORMAT,"DGCA chunk layout");
-    if(dg_crc(header,32)!=dg_u32(out->header+28))return dg_fail(r,DG_CHECKSUM,"DGCA header CRC32 or password");
-    out->offset=offset;out->payload=offset+32;out->size=dg_u64(header+8);out->flags=dg_u32(header+16);
+    if(xx_data_get_u32(header+4, 4, 0, false)!=32||xx_data_get_u32(header+20, 4, 0, false)!=16)return dg_fail(r,DG_FORMAT,"DGCA chunk layout");
+    if(dg_crc(header,32)!=xx_data_get_u32(out->header+28, 4, 0, false))return dg_fail(r,DG_CHECKSUM,"DGCA header CRC32 or password");
+    out->offset=offset;out->payload=offset+32;out->size=xx_data_get_u64(header+8, 8, 0, false);out->flags=xx_data_get_u32(header+16, 4, 0, false);
     if(out->size>bound-out->payload||out->size>UINT64_MAX-15)return dg_fail(r,DG_FORMAT,"DGCA chunk size");
     out->end=out->payload+out->size;padded=(out->size+15)&~UINT64_C(15);
     if(padded>bound-out->payload)return dg_fail(r,DG_FORMAT,"DGCA chunk padding");
@@ -93,7 +90,7 @@ static dg_status dg_chunk_read(dg_result *r,uint64_t offset,uint64_t bound,dg_ch
         if(dg_read(r,pos,buffer,n)!=DG_OK) return r->status;
         crc=dg_crc_update(crc,buffer,n);remaining-=n;pos+=n;
     }
-    if(~crc!=dg_u32(out->header+24)) return dg_fail(r,DG_CHECKSUM,"DGCA payload CRC32");
+    if(~crc!=xx_data_get_u32(out->header+24, 4, 0, false)) return dg_fail(r,DG_CHECKSUM,"DGCA payload CRC32");
     return DG_OK;
 }
 static dg_status dg_codec_header(dg_result *r,uint64_t offset,uint64_t bound,const dg_key *key,dg_chunk *out) {
@@ -124,7 +121,7 @@ static dg_status dg_codec(dg_result *r,const dg_chunk *chunk,const dg_key *key,u
     if(dg_read(r,chunk->payload,packed,(size_t)chunk->size)!=DG_OK)goto done;
     if(key->encrypted&&dg_decrypt(r,key,chunk->header,32,packed,(size_t)chunk->size)!=DG_OK)goto done;
     if(dg_memory_crc(r,packed,(size_t)chunk->size,&crc)!=DG_OK)goto done;
-    if(crc!=dg_u32(chunk->header+24)){dg_fail(r,DG_CHECKSUM,"DGCA codec CRC32 or password");goto done;}
+    if(crc!=xx_data_get_u32(chunk->header+24, 4, 0, false)){dg_fail(r,DG_CHECKSUM,"DGCA codec CRC32 or password");goto done;}
     status=dg_codec_output_size(&r->callbacks,packed,(size_t)chunk->size,&raw_size);
     if(status!=DG_OK){dg_fail(r,status,"DGCA invalid codec size");goto done;}
     if(expected==UINT64_MAX)expected=raw_size;
@@ -195,20 +192,20 @@ dg_status dg_native_decode(const dg_callbacks *callbacks,uint64_t input_size,con
     if(dg_find(r,&info,"IARC",&iarc)!=DG_OK) goto fail;
     if(iarc.size!=80 || iarc.flags) { dg_fail(r,DG_FORMAT,"DGCA IARC layout");goto fail; }
     if(dg_read(r,iarc.payload,metadata,80)!=DG_OK) goto fail;
-    if(dg_u32(metadata)&1U) {
+    if(xx_data_get_u32(metadata, 4, 0, false)&1U) {
         key.encrypted=1;
         if(!password_utf8){dg_fail(r,DG_PASSWORD_REQUIRED,"DGCA password required");goto fail;}
         if(dg_decrypt(r,&key,zero,sizeof(zero),metadata+32,48)!=DG_OK)goto fail;
-        if(dg_u64(metadata+32)){dg_fail(r,DG_CHECKSUM,"DGCA incorrect password");goto fail;}
+        if(xx_data_get_u64(metadata+32, 8, 0, false)){dg_fail(r,DG_CHECKSUM,"DGCA incorrect password");goto fail;}
     }
     if(memcmp(metadata+4," 001",4)&&memcmp(metadata+4," 990",4)&&memcmp(metadata+4," a90",4)) {
         dg_fail(r,DG_FORMAT,"DGCA archive version");goto fail;
     }
-    count=dg_u64(metadata+40);
+    count=xx_data_get_u64(metadata+40, 8, 0, false);
     if(count>max_members || count>SIZE_MAX/sizeof(dg_member) || count>SIZE_MAX/64) { dg_fail(r,DG_MEMBER_LIMIT,"DGCA record limit");goto fail; }
     if(dg_find(r,&info,"IFDT",&ifdt)!=DG_OK || dg_find(r,&info,"IFNM",&ifnm)!=DG_OK) goto fail;
-    if(dg_nested_codec(r,&ifdt,&key,count*64,&table,&table_size)!=DG_OK || dg_nested_codec(r,&ifnm,&key,dg_u64(metadata+64),&names,&names_size)!=DG_OK) goto fail;
-    if(table_size!=count*64 || table_size!=dg_u64(metadata+56) || names_size!=dg_u64(metadata+64)) { dg_fail(r,DG_FORMAT,"DGCA directory size");goto fail; }
+    if(dg_nested_codec(r,&ifdt,&key,count*64,&table,&table_size)!=DG_OK || dg_nested_codec(r,&ifnm,&key,xx_data_get_u64(metadata+64, 8, 0, false),&names,&names_size)!=DG_OK) goto fail;
+    if(table_size!=count*64 || table_size!=xx_data_get_u64(metadata+56, 8, 0, false) || names_size!=xx_data_get_u64(metadata+64, 8, 0, false)) { dg_fail(r,DG_FORMAT,"DGCA directory size");goto fail; }
     if(count) {
         r->members=(dg_member *)dg_alloc(r,(size_t)count*sizeof(*r->members));
         if(!r->members) goto fail;
@@ -218,19 +215,19 @@ dg_status dg_native_decode(const dg_callbacks *callbacks,uint64_t input_size,con
         dg_member *member=&r->members[i];uint32_t name_size;uint64_t skip;
         if(dg_cancel(r)) { dg_fail(r,DG_CANCELLED,"DGCA cancelled");goto fail; }
         for(j=0;j<64;++j) record[j]=table[j*(size_t)count+i];
-        member->crc32=dg_u32(record);member->attributes=dg_u32(record+4);member->timestamp=dg_u64(record+8);
-        member->size=dg_u64(record+24);member->compressed_size=dg_u64(record+32);member->data_offset=dg_u64(record+40);
-        skip=dg_u64(record+48);
+        member->crc32=xx_data_get_u32(record, 4, 0, false);member->attributes=xx_data_get_u32(record+4, 4, 0, false);member->timestamp=xx_data_get_u64(record+8, 8, 0, false);
+        member->size=xx_data_get_u64(record+24, 8, 0, false);member->compressed_size=xx_data_get_u64(record+32, 8, 0, false);member->data_offset=xx_data_get_u64(record+40, 8, 0, false);
+        skip=xx_data_get_u64(record+48, 8, 0, false);
         if(member->size>member_limit || member->size>SIZE_MAX) { dg_fail(r,DG_MEMBER_LIMIT,"DGCA member size limit");goto fail; }
         if(member->size>UINT64_MAX-total_raw){dg_fail(r,DG_FORMAT,"DGCA total size overflow");goto fail;}total_raw+=member->size;
-        if(skip>dg_u64(metadata+48)||member->size>dg_u64(metadata+48)-skip){dg_fail(r,DG_FORMAT,"DGCA solid member extent");goto fail;}
+        if(skip>xx_data_get_u64(metadata+48, 8, 0, false)||member->size>xx_data_get_u64(metadata+48, 8, 0, false)-skip){dg_fail(r,DG_FORMAT,"DGCA solid member extent");goto fail;}
         /* A retained block can replace the next decode, so it has the same
          * live-memory peak as that decode. Drop it before allocating another
          * member when it cannot be reused, including empty/dir records. */
         if(cache.valid&&(!member->size||(member->attributes&0x10)||member->data_offset>data.size||
            cache.chunk.offset!=data.payload+member->data_offset||skip>=cache.raw))dg_cache_clear(r,&cache);
         if(names_pos>names_size || names_size-names_pos<4) { dg_fail(r,DG_FORMAT,"DGCA missing member name");goto fail; }
-        name_size=dg_u32(names+names_pos);names_pos+=4;
+        name_size=xx_data_get_u32(names+names_pos, 4, 0, false);names_pos+=4;
         if(!name_size || name_size>32768 || name_size>names_size-names_pos || memchr(names+names_pos,0,name_size)) { dg_fail(r,DG_FORMAT,"DGCA member name size");goto fail; }
         member->name=(char *)dg_alloc(r,(size_t)name_size+1);if(!member->name) goto fail;
         memcpy(member->name,names+names_pos,name_size);member->name[name_size]=0;names_pos+=name_size;
@@ -245,7 +242,7 @@ dg_status dg_native_decode(const dg_callbacks *callbacks,uint64_t input_size,con
         if(crc!=member->crc32) { dg_fail(r,DG_CHECKSUM,"DGCA member CRC32");goto fail; }}
     }
     if(names_pos!=names_size) { dg_fail(r,DG_FORMAT,"DGCA trailing member names");goto fail; }
-    if(total_raw!=dg_u64(metadata+48)){dg_fail(r,DG_FORMAT,"DGCA total raw size");goto fail;}
+    if(total_raw!=xx_data_get_u64(metadata+48, 8, 0, false)){dg_fail(r,DG_FORMAT,"DGCA total raw size");goto fail;}
     dg_cache_clear(r,&cache);dg_release(r,table);dg_release(r,names);r->status=DG_OK;r->detail="DGCA native decode";return DG_OK;
 fail:
     status=r->status;dg_cache_clear(r,&cache);dg_release(r,table);dg_release(r,names);dg_native_result_free(r);return status;

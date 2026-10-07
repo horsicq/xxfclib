@@ -60,6 +60,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef FREEARC
 #define XX_FREEARC_FILE_TYPE XX_FILE_TYPE_FREEARC
@@ -121,11 +122,6 @@ static uint32_t fa_crc32(const uint8_t *data, size_t size) {
     return xx_crc32(XX_CRC_TYPE_CRC32, data, size);
 }
 
-static uint32_t fa_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
-           ((uint32_t)p[3] << 24);
-}
-
 static bool fa_stopped(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
 
 /* -------------------------------------------------------------- cursor */
@@ -163,7 +159,7 @@ static bool fa_num(fa_cursor *c, uint64_t *value) {
 
 static bool fa_u32(fa_cursor *c, uint32_t *value) {
     if (c->size - c->pos < 4U || c->pos > c->size) return false;
-    *value = fa_le32(c->p + c->pos);
+    *value = xx_data_get_u32(c->p + c->pos, 4, 0, false);
     c->pos += 4U;
     return true;
 }
@@ -442,12 +438,12 @@ static bool fa_rep(const uint8_t *in, size_t in_size, size_t cap,
     size_t cursor = 4U, produced = 0U;
     uint32_t window;
     if (in_size < 8U) return false;
-    window = fa_le32(in);
+    window = xx_data_get_u32(in, 4, 0, false);
     if (!window || window > 0x7fffffffU) return false;
     buffer = fa_alloc(cap);
     if (!buffer) return false;
     while (in_size - cursor >= 4U) {
-        uint32_t length = fa_le32(in + cursor), count, i;
+        uint32_t length = xx_data_get_u32(in + cursor, 4, 0, false), count, i;
         size_t end, lengths, distances, literal_lengths, literals;
         cursor += 4U;
         if (!length) {
@@ -458,14 +454,14 @@ static bool fa_rep(const uint8_t *in, size_t in_size, size_t cap,
         }
         if (fa_stopped(pd) || length < 8U || length > in_size - cursor) break;
         end = cursor + length;
-        count = fa_le32(in + cursor);
+        count = xx_data_get_u32(in + cursor, 4, 0, false);
         if (count > (length - 8U) / 12U) break;
         lengths = cursor + 4U;
         distances = lengths + (size_t)count * 4U;
         literal_lengths = distances + (size_t)count * 4U;
         literals = literal_lengths + ((size_t)count + 1U) * 4U;
         for (i = 0U; i <= count; ++i) {
-            uint32_t literal_size = fa_le32(in + literal_lengths + (size_t)i * 4U);
+            uint32_t literal_size = xx_data_get_u32(in + literal_lengths + (size_t)i * 4U, 4, 0, false);
             uint32_t match_size, distance, j;
             if (literal_size > end - literals ||
                 literal_size > cap - produced) goto fail;
@@ -473,8 +469,8 @@ static bool fa_rep(const uint8_t *in, size_t in_size, size_t cap,
             produced += literal_size;
             literals += literal_size;
             if (i == count) break;
-            match_size = fa_le32(in + lengths + (size_t)i * 4U);
-            distance = fa_le32(in + distances + (size_t)i * 4U);
+            match_size = xx_data_get_u32(in + lengths + (size_t)i * 4U, 4, 0, false);
+            distance = xx_data_get_u32(in + distances + (size_t)i * 4U, 4, 0, false);
             if (match_size > cap - produced) goto fail;
             if (match_size &&
                 (!distance || distance > window || distance > produced))
@@ -498,8 +494,8 @@ fail:
  * Derived independently from mirror/freearc Compression/LZP/C_LZP.cpp,
  * commit 71f3ab36df26401fff4301b4c8600a31a90d8da9. */
 static uint32_t fa_lzp_hash(const uint8_t *out, size_t pos, uint32_t mask) {
-    uint32_t c = fa_le32(out + pos - 4U);
-    uint32_t prior = fa_le32(out + pos - 5U);
+    uint32_t c = xx_data_get_u32(out + pos - 4U, 4, 0, false);
+    uint32_t prior = xx_data_get_u32(out + pos - 5U, 4, 0, false);
     uint32_t rotate = (c >> 17U) | (c << 15U);
     return (c + 5U * rotate + 3U * prior) & mask;
 }
@@ -516,14 +512,14 @@ static bool fa_lzp_block(const uint8_t *input, size_t size, uint8_t *output,
         table[i] = 5U;
     }
     xx_rt_memcpy(output, input, 12U);
-    context = fa_le32(output + pos - 4U);
+    context = xx_data_get_u32(output + pos - 4U, 4, 0, false);
     key = fa_lzp_hash(output, pos, mask);
     while (front < back) {
         uint8_t symbol = input[front++];
         uint32_t predictor = table[key];
         if (fa_stopped(pd)) return false;
         if (--n == 0U) { table[key] = (uint32_t)pos; n = n1; }
-        if (symbol != 0xB5U || context != fa_le32(output + predictor - 4U)) {
+        if (symbol != 0xB5U || context != xx_data_get_u32(output + predictor - 4U, 4, 0, false)) {
             if (pos == cap) return false;
             output[pos++] = symbol;
         } else {
@@ -561,7 +557,7 @@ static bool fa_lzp_block(const uint8_t *input, size_t size, uint8_t *output,
             }
         }
         if (pos < 12U || pos > cap) return false;
-        context = fa_le32(output + pos - 4U);
+        context = xx_data_get_u32(output + pos - 4U, 4, 0, false);
         key = fa_lzp_hash(output, pos, mask);
     }
     if (front != back || fa_stopped(pd)) return false;
@@ -581,7 +577,7 @@ static bool fa_lzp(const fa_stage *stage, const uint8_t *in, size_t in_size,
     while (cursor < in_size) {
         int32_t signed_length; size_t frame_length;
         if (fa_stopped(pd) || in_size - cursor < 4U) goto fail;
-        signed_length = (int32_t)fa_le32(in + cursor); cursor += 4U;
+        signed_length = (int32_t)xx_data_get_u32(in + cursor, 4, 0, false); cursor += 4U;
         if (!signed_length || signed_length == INT32_MIN) goto fail;
         frame_length = signed_length < 0 ? (size_t)(-(int64_t)signed_length) : (size_t)signed_length;
         if (frame_length > in_size - cursor || frame_length > stage->dictionary ||
@@ -635,8 +631,8 @@ static bool fa_delta(const uint8_t *in, size_t in_size, size_t cap,
         size_t skips, types, rows, position = 0U;
         uint8_t *block;
         if (fa_stopped(pd) || in_size - cursor < 8U) goto fail;
-        size = fa_le32(in + cursor);
-        table_bytes = fa_le32(in + cursor + 4U);
+        size = xx_data_get_u32(in + cursor, 4, 0, false);
+        table_bytes = xx_data_get_u32(in + cursor + 4U, 4, 0, false);
         cursor += 8U;
         if ((table_bytes & 3U) || table_bytes > 0x7fffffffU ||
             (uint64_t)table_bytes * 3U + size > (uint64_t)(in_size - cursor) ||
@@ -650,9 +646,9 @@ static bool fa_delta(const uint8_t *in, size_t in_size, size_t cap,
         xx_rt_memcpy(block, in + cursor, size);
         cursor += size;
         for (t = 0U; t < table_bytes / 4U; ++t) {
-            uint32_t type = fa_le32(in + types + (size_t)t * 4U);
-            uint32_t skip = fa_le32(in + skips + (size_t)t * 4U);
-            uint32_t row_count = fa_le32(in + rows + (size_t)t * 4U);
+            uint32_t type = xx_data_get_u32(in + types + (size_t)t * 4U, 4, 0, false);
+            uint32_t skip = xx_data_get_u32(in + skips + (size_t)t * 4U, 4, 0, false);
+            uint32_t row_count = xx_data_get_u32(in + rows + (size_t)t * 4U, 4, 0, false);
             bool immutable[31];
             unsigned width = 0U, immutable_count = 0U, column;
             uint64_t bytes;
@@ -735,7 +731,7 @@ static void fa_exe(uint8_t *data, size_t size) {
         }
         previous = position;
         if (fa_ms_byte(data[position + 4U])) {
-            uint32_t source = fa_le32(data + position + 1U), target;
+            uint32_t source = xx_data_get_u32(data + position + 1U, 4, 0, false), target;
             for (;;) {
                 unsigned shift;
                 target = source - (ip + (uint32_t)position);

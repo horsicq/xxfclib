@@ -12,9 +12,9 @@ static bool pcompress_parse(Abstractformat *f,pm_stream *s,ac_blob *b) {
         if(!ac_poll(b)) return false;
         while(at<b->n && b->p[at]!='\n') { if((b->p[at]&0x7FU)<32U || at-start>=90U) return false; ++at; }
         if(!ac_span(b,at,5U) || !ac_name(name,sizeof(name),b->p+start,at-start)) return false;
-        size=pm_be32(b->p+at+1U); at+=5U; if(!ac_span(b,at,size)) return false;
+        size=xx_data_get_u32(b->p+at+1U, 4, 0, true); at+=5U; if(!ac_span(b,at,size)) return false;
         if(size>14U && b->p[at]=='L' && b->p[at+1]=='H' && b->p[at+2]==0U && b->p[at+6]==0U) {
-            uint32_t written=0,used=0; n=pm_be32(b->p+at+2); packed=pm_be32(b->p+at+6); crc=pm_be32(b->p+at+10);
+            uint32_t written=0,used=0; n=xx_data_get_u32(b->p+at+2, 4, 0, true); packed=xx_data_get_u32(b->p+at+6, 4, 0, true); crc=xx_data_get_u32(b->p+at+10, 4, 0, true);
             if(packed!=size-14U) { return false; } out=ac_alloc(b,n); if(!out) return false;
             /* PCompress checks the packed bytes, then decodes its 317-symbol
              * Zoom LH alphabet with an explicit EOF (distinct from LH1). */

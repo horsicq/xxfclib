@@ -44,6 +44,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the file-type constant resolves to UNKNOWN until the enumerator
@@ -80,15 +81,6 @@ typedef struct is7inx_stream_s {
     char *name;
     size_t index;
 } is7inx_stream;
-
-static uint16_t is7inx_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t is7inx_le32(const uint8_t *bytes) {
-    return (uint32_t)is7inx_le16(bytes) |
-           ((uint32_t)is7inx_le16(bytes + 2U) << 16U);
-}
 
 static bool is7inx_read_at(xx_io_device *device, int64_t offset, void *buffer,
                            size_t size) {
@@ -131,7 +123,7 @@ static bool is7inx_parse(Abstractformat *format, is7inx_parsed *parsed) {
     if (size < (int64_t)IS7INX_HEADER_SIZE ||
         !is7inx_read_at(format->device, format->base_address, header,
                         sizeof(header)) ||
-        is7inx_le32(header) != IS7INX_SIGNATURE)
+        xx_data_get_u32(header, 4, 0, false) != IS7INX_SIGNATURE)
         return false;
     is7inx_deobfuscate(header, sizeof(header), 0U);
     /* Three independent anchors have to agree before the file is accepted:
@@ -143,14 +135,14 @@ static bool is7inx_parse(Abstractformat *format, is7inx_parsed *parsed) {
         return false;
     for (index = 0x4FU; index < IS7INX_FIXED_FIELD_OFFSET; ++index)
         if (header[index] != 0U) return false;
-    if (is7inx_le32(header + IS7INX_FIXED_FIELD_OFFSET) !=
+    if (xx_data_get_u32(header + IS7INX_FIXED_FIELD_OFFSET, 4, 0, false) !=
         IS7INX_FIXED_FIELD_VALUE)
         return false;
     xx_mem_zero(parsed, sizeof(*parsed));
     parsed->fixed_field = IS7INX_FIXED_FIELD_VALUE;
     for (index = 0U; index < IS7INX_OFFSET_COUNT; ++index) {
         uint32_t value =
-            is7inx_le32(header + IS7INX_FIXED_FIELD_OFFSET + 4U + index * 4U);
+            xx_data_get_u32(header + IS7INX_FIXED_FIELD_OFFSET + 4U + index * 4U, 4, 0, false);
         /* Every section offset the header publishes must land inside the
          * file; a table that points outside it makes the file invalid
          * rather than truncated. */

@@ -5,6 +5,7 @@
  */
 #include "xxfclib/formats/nintendo_bch/xx_nintendo_bch.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool overlap(uint64_t a,uint64_t n,uint64_t b,uint64_t m) { return n && m && a<b+m && b<a+n; }
@@ -18,14 +19,14 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[68],p[4]; uint32_t offs[6],lens[6],locations[4096],i,j; uint64_t total=68; const char *names[]={"contents.bin","strings.bin","commands.bin","raw-data.bin","raw-extra.bin","relocations.bin"};
     static const uint8_t sections[]={0,1,2,2,3,3,3,3,3,4,4,4,4,4};
-    if(!pm_read(f,0,h,68) || xx_rt_memcmp(h,"BCH\0",4) || h[4]!=0x21 || h[5]!=0x21 || (h[64]&~5U) || h[65] || pm_le32(h+56)!=(uint32_t)pm_le16(h+66)*4 || (pm_le32(h+60)&3)) return false;
-    for(i=0;i<6;++i) { offs[i]=pm_le32(h+8+i*4); lens[i]=pm_le32(h+32+i*4); if(!lens[i]) { if(offs[i] && (offs[i]<68 || offs[i]>(uint64_t)pm_available(f))) return false; continue; }
+    if(!pm_read(f,0,h,68) || xx_rt_memcmp(h,"BCH\0",4) || h[4]!=0x21 || h[5]!=0x21 || (h[64]&~5U) || h[65] || xx_data_get_u32(h+56, 4, 0, false)!=(uint32_t)xx_data_get_u16(h+66, 2, 0, false)*4 || (xx_data_get_u32(h+60, 4, 0, false)&3)) return false;
+    for(i=0;i<6;++i) { offs[i]=xx_data_get_u32(h+8+i*4, 4, 0, false); lens[i]=xx_data_get_u32(h+32+i*4, 4, 0, false); if(!lens[i]) { if(offs[i] && (offs[i]<68 || offs[i]>(uint64_t)pm_available(f))) return false; continue; }
       if(offs[i]<68 || (offs[i]&3) || !span(offs[i],lens[i],(uint64_t)pm_available(f))) { return false; } for(j=0;j<i;++j) if(overlap(offs[i],lens[i],offs[j],lens[j])) return false; if((uint64_t)offs[i]+lens[i]>total) total=(uint64_t)offs[i]+lens[i]; }
     if(!lens[0] || !lens[3] || (lens[5]&3) || lens[5]>16384) return false;
     for(i=0;i<lens[5]/4;++i) { uint32_t entry,source,target,ptr,relative,location;
-      if(stop(pd) || !pm_read(f,offs[5]+(int64_t)i*4,p,4)) { return false; } entry=pm_le32(p); source=entry>>29; target=(entry>>25)&15; ptr=entry&0x1ffffffU;
+      if(stop(pd) || !pm_read(f,offs[5]+(int64_t)i*4,p,4)) { return false; } entry=xx_data_get_u32(p, 4, 0, false); source=entry>>29; target=(entry>>25)&15; ptr=entry&0x1ffffffU;
       if(source>7 || target>=14) { return false; } if(target!=1) ptr*=4; source=sections[source]; target=sections[target];
-      if(!span(ptr,4,lens[source]) || !pm_read(f,offs[source]+(int64_t)ptr,p,4)) { return false; } relative=pm_le32(p); if(relative>=lens[target]) return false; location=offs[source]+ptr;
+      if(!span(ptr,4,lens[source]) || !pm_read(f,offs[source]+(int64_t)ptr,p,4)) { return false; } relative=xx_data_get_u32(p, 4, 0, false); if(relative>=lens[target]) return false; location=offs[source]+ptr;
       for(j=0;j<i;++j) { if(locations[j]==location) return false; } locations[i]=location; }
     for(i=0;i<6;++i) { if(lens[i] && (stop(pd) || !emit(f,s,names[i],offs[i],lens[i],total))) return false; } s->size=(int64_t)total; return true;
 

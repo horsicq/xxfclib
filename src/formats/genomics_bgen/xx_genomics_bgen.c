@@ -6,15 +6,15 @@
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[24];nh_blob b={0};bool ok=false;uint32_t offset,header,variants,samples,flags,i;uint64_t at;
     if(!pm_read(f,0,h,sizeof(h)) || xx_rt_memcmp(h+16,"bgen",4)) return false;
-    offset=pm_le32(h);header=pm_le32(h+4);variants=pm_le32(h+8);samples=pm_le32(h+12);
+    offset=xx_data_get_u32(h, 4, 0, false);header=xx_data_get_u32(h+4, 4, 0, false);variants=xx_data_get_u32(h+8, 4, 0, false);samples=xx_data_get_u32(h+12, 4, 0, false);
     NH_NEED(header>=20 && header<=65536 && offset>=header && offset<=1048576 && variants && variants<=1024 && samples && samples<=1000000 && nh_load(f,&b,pd) && nh_span(&b,0,(uint64_t)offset+4));
-    flags=pm_le32(b.p+header);NH_NEED((flags&0x7fffffffU)==4);at=(uint64_t)header+4;
-    if(flags>>31) {uint64_t end;uint32_t count;NH_NEED(nh_span(&b,at,8));end=at+pm_le32(b.p+(size_t)at);count=pm_le32(b.p+(size_t)at+4);at+=8;NH_NEED(end<=offset+4U && count==samples);for(i=0;i<count;++i) NH_NEED(nh_string(&b,&at,end,2,false,false));NH_NEED(at==end);}
+    flags=xx_data_get_u32(b.p+header, 4, 0, false);NH_NEED((flags&0x7fffffffU)==4);at=(uint64_t)header+4;
+    if(flags>>31) {uint64_t end;uint32_t count;NH_NEED(nh_span(&b,at,8));end=at+xx_data_get_u32(b.p+(size_t)at, 4, 0, false);count=xx_data_get_u32(b.p+(size_t)at+4, 4, 0, false);at+=8;NH_NEED(end<=offset+4U && count==samples);for(i=0;i<count;++i) NH_NEED(nh_string(&b,&at,end,2,false,false));NH_NEED(at==end);}
     NH_NEED(nh_zero(&b,at,(uint64_t)offset+4-at) && nh_add(f,s,&b,"header",0,(uint64_t)offset+4));at=(uint64_t)offset+4;
-    for(i=0;i<variants;++i) {uint64_t start=at,n;uint32_t j;NH_NEED(nh_span(&b,at,4) && pm_le32(b.p+(size_t)at)==samples);at+=4;
-        NH_NEED(nh_string(&b,&at,b.n,2,false,true) && nh_string(&b,&at,b.n,2,false,false) && nh_string(&b,&at,b.n,2,false,false) && nh_span(&b,at,4) && pm_le32(b.p+(size_t)at));at+=4;
+    for(i=0;i<variants;++i) {uint64_t start=at,n;uint32_t j;NH_NEED(nh_span(&b,at,4) && xx_data_get_u32(b.p+(size_t)at, 4, 0, false)==samples);at+=4;
+        NH_NEED(nh_string(&b,&at,b.n,2,false,true) && nh_string(&b,&at,b.n,2,false,false) && nh_string(&b,&at,b.n,2,false,false) && nh_span(&b,at,4) && xx_data_get_u32(b.p+(size_t)at, 4, 0, false));at+=4;
         NH_NEED(nh_string(&b,&at,b.n,4,false,false) && nh_string(&b,&at,b.n,4,false,false));n=(uint64_t)samples*6;NH_NEED(nh_span(&b,at,n));
-        for(j=0;j<samples;++j) {const uint8_t *p=b.p+(size_t)at+(size_t)j*6;uint32_t sum=(uint32_t)pm_le16(p)+pm_le16(p+2)+pm_le16(p+4);NH_NEED(!(j&4095U) ? !fd_stop(pd):true);NH_NEED(pm_le16(p)<=32768 && pm_le16(p+2)<=32768 && pm_le16(p+4)<=32768 && (!sum || (sum>=32767 && sum<=32769)));}
+        for(j=0;j<samples;++j) {const uint8_t *p=b.p+(size_t)at+(size_t)j*6;uint32_t sum=(uint32_t)xx_data_get_u16(p, 2, 0, false)+xx_data_get_u16(p+2, 2, 0, false)+xx_data_get_u16(p+4, 2, 0, false);NH_NEED(!(j&4095U) ? !fd_stop(pd):true);NH_NEED(xx_data_get_u16(p, 2, 0, false)<=32768 && xx_data_get_u16(p+2, 2, 0, false)<=32768 && xx_data_get_u16(p+4, 2, 0, false)<=32768 && (!sum || (sum>=32767 && sum<=32769)));}
         at+=n;NH_NEED(nh_add(f,s,&b,"variant",start,at-start));
     }NH_NEED(at==b.n);s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;

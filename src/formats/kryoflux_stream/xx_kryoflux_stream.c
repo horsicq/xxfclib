@@ -34,6 +34,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef KRYOFLUX_STREAM
 #define XX_KRYOFLUX_STREAM_FILE_TYPE XX_FILE_TYPE_KRYOFLUX_STREAM
@@ -66,10 +67,6 @@
 
 static uint32_t kf_le16(const uint8_t *b) {
     return (uint32_t)b[0] | ((uint32_t)b[1] << 8U);
-}
-
-static uint32_t kf_le32(const uint8_t *b) {
-    return kf_le16(b) | (kf_le16(b + 2U) << 16U);
 }
 
 static bool kf_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -183,11 +180,11 @@ static bool kf_scan(xx_io_device *device, int64_t base, int64_t available,
             case KF_OOB_STREAM_INFO:
             case KF_OOB_STREAM_END:
                 if (size < 8U || !kf_input_bytes(&in, payload, 8U)) goto done;
-                if (kf_le32(payload) != position) ++mismatches;
+                if (xx_data_get_u32(payload, 4, 0, false) != position) ++mismatches;
                 if (type == KF_OOB_STREAM_END) {
                     if (have_end) goto done;
                     have_end = true;
-                    summary->end_result = kf_le32(payload + 4U);
+                    summary->end_result = xx_data_get_u32(payload + 4U, 4, 0, false);
                 }
                 size -= 8U;
                 break;

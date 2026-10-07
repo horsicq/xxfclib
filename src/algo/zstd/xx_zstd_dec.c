@@ -29,6 +29,7 @@
 #include "xxfclib/memory/xx_memory.h"
 
 #include <stdint.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ZSTD_MAGIC UINT32_C(0xFD2FB528)
 #define XX_ZSTD_SKIP_MAGIC UINT32_C(0x184D2A50)
@@ -92,20 +93,6 @@ static const int16_t xx_zstd_ml_default[53] = {
     -1, -1, -1, -1, -1, -1
 };
 
-static uint32_t xx_zstd_read24(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16);
-}
-
-static uint32_t xx_zstd_read32(const uint8_t *data) {
-    return xx_zstd_read24(data) | ((uint32_t)data[3] << 24);
-}
-
-static uint64_t xx_zstd_read64(const uint8_t *data) {
-    return (uint64_t)xx_zstd_read32(data) |
-           ((uint64_t)xx_zstd_read32(data + 4) << 32);
-}
-
 static uint64_t xx_zstd_rotl64(uint64_t value, unsigned count) {
     return (value << count) | (value >> (64U - count));
 }
@@ -128,10 +115,10 @@ static uint64_t xx_zstd_xxh64(const uint8_t *data, size_t size) {
         uint64_t d = 0U - UINT64_C(11400714785074694791);
         const uint8_t *limit = end - 32U;
         do {
-            a = xx_zstd_xxh64_round(a, xx_zstd_read64(cursor)); cursor += 8;
-            b = xx_zstd_xxh64_round(b, xx_zstd_read64(cursor)); cursor += 8;
-            c = xx_zstd_xxh64_round(c, xx_zstd_read64(cursor)); cursor += 8;
-            d = xx_zstd_xxh64_round(d, xx_zstd_read64(cursor)); cursor += 8;
+            a = xx_zstd_xxh64_round(a, xx_data_get_u64(cursor, 8, 0, false)); cursor += 8;
+            b = xx_zstd_xxh64_round(b, xx_data_get_u64(cursor, 8, 0, false)); cursor += 8;
+            c = xx_zstd_xxh64_round(c, xx_data_get_u64(cursor, 8, 0, false)); cursor += 8;
+            d = xx_zstd_xxh64_round(d, xx_data_get_u64(cursor, 8, 0, false)); cursor += 8;
         } while (cursor <= limit);
         hash = xx_zstd_rotl64(a, 1) + xx_zstd_rotl64(b, 7) +
                xx_zstd_rotl64(c, 12) + xx_zstd_rotl64(d, 18);
@@ -152,14 +139,14 @@ static uint64_t xx_zstd_xxh64(const uint8_t *data, size_t size) {
     }
     hash += size;
     while ((size_t)(end - cursor) >= 8U) {
-        uint64_t value = xx_zstd_xxh64_round(0, xx_zstd_read64(cursor));
+        uint64_t value = xx_zstd_xxh64_round(0, xx_data_get_u64(cursor, 8, 0, false));
         hash ^= value;
         hash = xx_zstd_rotl64(hash, 27) * UINT64_C(11400714785074694791) +
                UINT64_C(9650029242287828579);
         cursor += 8;
     }
     if ((size_t)(end - cursor) >= 4U) {
-        hash ^= (uint64_t)xx_zstd_read32(cursor) *
+        hash ^= (uint64_t)xx_data_get_u32(cursor, 4, 0, false) *
                 UINT64_C(11400714785074694791);
         hash = xx_zstd_rotl64(hash, 23) * UINT64_C(14029467366897019727) +
                UINT64_C(1609587929392839161);
@@ -465,7 +452,7 @@ static bool xx_zstd_decode_compressed_block(xx_zstd_context *context,
         } else {
             if (source_size < 3U) return false;
             literal_header_size = 3U;
-            literal_size = (size_t)xx_zstd_read24(input) >> 4;
+            literal_size = (size_t)xx_data_get_u24(input, 3, 0, false) >> 4;
         }
         literal_compressed_size = literal_type == 0U ? literal_size : 1U;
     } else {
@@ -475,9 +462,9 @@ static bool xx_zstd_decode_compressed_block(xx_zstd_context *context,
         unsigned size_bits = following * 4U - 2U;
         uint32_t mask = ((uint32_t)16U << size_bits) - 1U;
         if (source_size < (size_t)following + 1U) return false;
-        packed = xx_zstd_read32(input + 1U);
+        packed = xx_data_get_u32(input + 1U, 4, 0, false);
         literal_header_size = (size_t)following + 1U;
-        literal_size = (size_t)((xx_zstd_read32(input) >> 4) & mask);
+        literal_size = (size_t)((xx_data_get_u32(input, 4, 0, false) >> 4) & mask);
         literal_compressed_size = (size_t)((packed >> size_bits) & mask);
         stream_mode = (input[0] & 12U) == 0U ? 1U : 4U;
         if (literal_compressed_size == 0U) return false;
@@ -623,12 +610,12 @@ static bool xx_zstd_decode_frames_internal(const void *source, size_t source_siz
         bool last_block = false;
 
         if ((size_t)(end - input) < 4U) goto error;
-        magic = xx_zstd_read32(input);
+        magic = xx_data_get_u32(input, 4, 0, false);
         input += 4;
         if ((magic & UINT32_C(0xFFFFFFF0)) == XX_ZSTD_SKIP_MAGIC) {
             uint32_t skip_size;
             if ((size_t)(end - input) < 4U) goto error;
-            skip_size = xx_zstd_read32(input);
+            skip_size = xx_data_get_u32(input, 4, 0, false);
             input += 4;
             if ((size_t)(end - input) < skip_size) goto error;
             input += skip_size;
@@ -689,7 +676,7 @@ static bool xx_zstd_decode_frames_internal(const void *source, size_t source_siz
                                      window_size : XX_ZSTD_BLOCK_MAX;
             size_t block_start = output_position;
             if ((size_t)(end - input) < 3U) goto error;
-            header = xx_zstd_read24(input);
+            header = xx_data_get_u24(input, 3, 0, false);
             input += 3;
             last_block = (header & 1U) != 0U;
             block_type = (header >> 1) & 3U;
@@ -730,7 +717,7 @@ static bool xx_zstd_decode_frames_internal(const void *source, size_t source_siz
             frame_content_size != output_position - frame_start) goto error;
         if (checksum) {
             if ((size_t)(end - input) < 4U ||
-                xx_zstd_read32(input) != (uint32_t)xx_zstd_xxh64(
+                xx_data_get_u32(input, 4, 0, false) != (uint32_t)xx_zstd_xxh64(
                     output + frame_start, output_position - frame_start)) {
                 goto error;
             }

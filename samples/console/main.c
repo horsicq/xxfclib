@@ -89,6 +89,7 @@ static const char *file_type_name(xx_file_type_t type) {
         case XX_FILE_TYPE_TAR_ZSTD: return "TAR.ZSTD";
         case XX_FILE_TYPE_PE32: return "PE32";
         case XX_FILE_TYPE_PE64: return "PE64";
+        case XX_FILE_TYPE_DOTNET: return "DotNet";
         case XX_FILE_TYPE_CPIO: return "CPIO";
         case XX_FILE_TYPE_MTREE: return "MTREE";
         case XX_FILE_TYPE_TAR_NEXTSTEP: return "TAR.NEXTSTEP";
@@ -180,6 +181,8 @@ static Abstractformat *create_format(xx_io_device *device,
         case XX_FILE_TYPE_PE32:
         case XX_FILE_TYPE_PE64:
             return (Abstractformat *)xx_pe_create(device, 0);
+        case XX_FILE_TYPE_DOTNET:
+            return (Abstractformat *)xx_dotnet_create(device, 0);
         case XX_FILE_TYPE_MSDOS:
             return (Abstractformat *)xx_msdos_create(device, 0);
         case XX_FILE_TYPE_ARJ:
@@ -560,7 +563,8 @@ static bool dump_pe_directory(Abstractformat *format, dump_command command) {
 
     printf("%s: %llu\n", count_label, (unsigned long long)count);
     if (format->file_type == XX_FILE_TYPE_PE32 ||
-        format->file_type == XX_FILE_TYPE_PE64) {
+        format->file_type == XX_FILE_TYPE_PE64 ||
+        format->file_type == XX_FILE_TYPE_DOTNET) {
         const xx_pe *pe = (const xx_pe *)format;
         uint32_t rva = 0U;
         uint32_t size = 0U;
@@ -637,7 +641,8 @@ static int run_command(dump_command command, const char *path) {
         case DUMP_COMMAND_IMPORTS:
         case DUMP_COMMAND_EXPORTS: {
             bool is_pe = detected == XX_FILE_TYPE_PE32 ||
-                         detected == XX_FILE_TYPE_PE64;
+                         detected == XX_FILE_TYPE_PE64 ||
+                         detected == XX_FILE_TYPE_DOTNET;
             if (!is_pe) {
                 ok = dump_pe_directory(format, command);
             } else if (command == DUMP_COMMAND_IMPORTS) {

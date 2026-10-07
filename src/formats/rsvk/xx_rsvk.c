@@ -46,6 +46,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* REGISTRATION PENDING.  xxfc_defs.h carries no XX_FILE_TYPE_RSVK yet and this
  * port must not edit that shared header.  Delete this block when the enum is
@@ -92,15 +93,6 @@ typedef struct xx_rsvk_stream_s {
 static void xx_rsvk_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint32_t xx_rsvk_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static uint16_t xx_rsvk_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
 
 static bool xx_rsvk_read_at(Abstractformat *self, int64_t offset,
                             uint8_t *buffer, size_t size) {
@@ -265,7 +257,7 @@ static bool xx_rsvk_measure_chain(Abstractformat *self, int64_t base,
             return false;
         }
         if (!xx_rsvk_is_tag(header, "DATA")) return false;
-        packed = (int64_t)xx_rsvk_le32(header + 8U);
+        packed = (int64_t)xx_data_get_u32(header + 8U, 4, 0, false);
         if (packed <= 0 ||
             packed > directory_offset - cursor -
                          (int64_t)XX_RSVK_BLOCK_HEADER_SIZE) {
@@ -311,7 +303,7 @@ static xx_rsvk_stream *xx_rsvk_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (!xx_rsvk_is_tag(header + 4U, "DATA")) return NULL;
     /* The first block's packed size is written as u32 but read signed, as the
      * reference detector does; a negative one is a rejection. */
-    if ((int32_t)xx_rsvk_le32(header + 12U) < 0) return NULL;
+    if ((int32_t)xx_data_get_u32(header + 12U, 4, 0, false) < 0) return NULL;
 
     if (!xx_rsvk_read_at(self, self->base_address + span -
                                    (int64_t)XX_RSVK_TRAILER_SIZE,
@@ -321,7 +313,7 @@ static xx_rsvk_stream *xx_rsvk_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (!xx_rsvk_is_tag(trailer, "ECDR") && !xx_rsvk_is_tag(trailer, "DEND")) {
         return NULL;
     }
-    directory_offset = (int64_t)xx_rsvk_le32(trailer + 8U);
+    directory_offset = (int64_t)xx_data_get_u32(trailer + 8U, 4, 0, false);
     if (directory_offset < (int64_t)XX_RSVK_FIRST_BLOCK_OFFSET ||
         directory_offset > span - (int64_t)XX_RSVK_TRAILER_SIZE -
                                (int64_t)XX_RSVK_DIR_ENTRY_SIZE) {
@@ -363,10 +355,10 @@ static xx_rsvk_stream *xx_rsvk_parse(Abstractformat *self, xx_pd_struct *pd) {
         }
 
         /* Every size in the entry is written as u32 and read signed. */
-        packed_hint = (int64_t)(int32_t)xx_rsvk_le32(entry + 4U);
-        uncompressed_size = (int64_t)(int32_t)xx_rsvk_le32(entry + 8U);
-        block_count = (int64_t)(int32_t)xx_rsvk_le32(entry + 12U);
-        data_offset = (int64_t)(int32_t)xx_rsvk_le32(entry + 16U);
+        packed_hint = (int64_t)(int32_t)xx_data_get_u32(entry + 4U, 4, 0, false);
+        uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(entry + 8U, 4, 0, false);
+        block_count = (int64_t)(int32_t)xx_data_get_u32(entry + 12U, 4, 0, false);
+        data_offset = (int64_t)(int32_t)xx_data_get_u32(entry + 16U, 4, 0, false);
         if (packed_hint < 0 || uncompressed_size < 0 ||
             uncompressed_size > XX_RSVK_MAX_UNCOMPRESSED || block_count <= 0 ||
             block_count > (int64_t)XX_RSVK_MAX_BLOCKS ||
@@ -412,9 +404,9 @@ static xx_rsvk_stream *xx_rsvk_parse(Abstractformat *self, xx_pd_struct *pd) {
         /* An empty member carries no blocks worth decoding. */
         member.method = (uncompressed_size == 0) ? XX_RSVK_METHOD_STORE
                                                  : XX_RSVK_METHOD_BWT;
-        member.attributes = xx_rsvk_le32(entry + 24U);
-        member.timestamp = ((uint64_t)xx_rsvk_le16(entry + 22U) << 16) |
-                           (uint64_t)xx_rsvk_le16(entry + 20U);
+        member.attributes = xx_data_get_u32(entry + 24U, 4, 0, false);
+        member.timestamp = ((uint64_t)xx_data_get_u16(entry + 22U, 2, 0, false) << 16) |
+                           (uint64_t)xx_data_get_u16(entry + 20U, 2, 0, false);
         member.is_folder = false;
 
         if (!xx_rsvk_add(stream, &member)) goto fail;

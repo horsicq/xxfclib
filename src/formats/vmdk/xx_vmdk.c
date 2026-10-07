@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -97,15 +98,6 @@ typedef struct vmdk_disk {
     bool table_loaded, grain_loaded;
 } vmdk_disk;
 
-static uint16_t vmdk_le16(const uint8_t *p) {
-    return (uint16_t)((uint16_t)p[0] | ((uint16_t)p[1] << 8U));
-}
-static uint32_t vmdk_le32(const uint8_t *p) {
-    return (uint32_t)vmdk_le16(p) | ((uint32_t)vmdk_le16(p + 2U) << 16U);
-}
-static uint64_t vmdk_le64(const uint8_t *p) {
-    return (uint64_t)vmdk_le32(p) | ((uint64_t)vmdk_le32(p + 4U) << 32U);
-}
 static bool vmdk_stopped(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
 static bool vmdk_span(uint64_t at, uint64_t size, uint64_t total) {
     return at <= total && size <= total - at;
@@ -334,7 +326,7 @@ done:
 }
 static bool vmdk_descriptor(Abstractformat *f, vmdk_stream *s, const uint8_t *header,
                              const xx_list_s *options, xx_pd_struct *pd) {
-    uint64_t sector = vmdk_le64(header + 28U), sectors = vmdk_le64(header + 36U);
+    uint64_t sector = xx_data_get_u64(header + 28U, 8, 0, false), sectors = xx_data_get_u64(header + 36U, 8, 0, false);
     char *text = NULL;
     size_t used, at = 0U;
     unsigned parent_count = 0U, extent_count = 0U, create_count = 0U;
@@ -420,8 +412,8 @@ static bool vmdk_metadata_marker(Abstractformat *f, const vmdk_stream *s,
     uint8_t marker[16];
     return offset >= VMDK_SECTOR &&
            vmdk_read(f, s, offset - VMDK_SECTOR, marker, sizeof(marker), pd) &&
-           vmdk_le64(marker) == vmdk_round_sector(bytes) / VMDK_SECTOR &&
-           !vmdk_le32(marker + 8U) && vmdk_le32(marker + 12U) == type;
+           xx_data_get_u64(marker, 8, 0, false) == vmdk_round_sector(bytes) / VMDK_SECTOR &&
+           !xx_data_get_u32(marker + 8U, 4, 0, false) && xx_data_get_u32(marker + 12U, 4, 0, false) == type;
 }
 
 typedef struct vmdk_inflate_output {
@@ -478,7 +470,7 @@ static bool vmdk_walk(Abstractformat *f, const vmdk_stream *s,
         level = xx_pd_enter_level(pd, s->capacity, "Reconstructing VMDK disk");
     }
     for (grain = 0U; grain < s->grains; ++grain) {
-        uint32_t table_sector = vmdk_le32(directory + (size_t)(grain / s->gtes) * 4U);
+        uint32_t table_sector = xx_data_get_u32(directory + (size_t)(grain / s->gtes) * 4U, 4, 0, false);
         uint32_t data_sector = 0U;
         uint64_t output = s->capacity - produced;
         if (output > s->grain_bytes) output = s->grain_bytes;
@@ -494,7 +486,7 @@ static bool vmdk_walk(Abstractformat *f, const vmdk_stream *s,
                 if (!vmdk_read(f, s, table_at, table, (size_t)bytes, pd)) goto done;
                 cached = table_sector;
             }
-            data_sector = vmdk_le32(table + (size_t)(grain % s->gtes) * 4U);
+            data_sector = xx_data_get_u32(table + (size_t)(grain % s->gtes) * 4U, 4, 0, false);
         }
         if (data_sector == 1U && !(s->flags & VMDK_FLAG_ZERO)) goto done;
         if (!data_sector || data_sector == 1U) {
@@ -522,8 +514,8 @@ static bool vmdk_walk(Abstractformat *f, const vmdk_stream *s,
                 uint32_t length;
                 uint64_t maximum = s->grain_bytes * 2U + 64U;
                 if (!vmdk_read(f, s, data_at, marker, sizeof(marker), pd) ||
-                    vmdk_le64(marker) != grain * (s->grain_bytes / VMDK_SECTOR)) goto done;
-                length = vmdk_le32(marker + 8U);
+                    xx_data_get_u64(marker, 8, 0, false) != grain * (s->grain_bytes / VMDK_SECTOR)) goto done;
+                length = xx_data_get_u32(marker + 8U, 4, 0, false);
                 if (length < 7U || length > maximum ||
                     !vmdk_span(data_at, 12U + (uint64_t)length, data_limit) ||
                     (s->footer && !vmdk_span(data_at, vmdk_round_sector(12U + (uint64_t)length), data_limit)) ||
@@ -590,21 +582,21 @@ static vmdk_stream *vmdk_parse(Abstractformat *f, const xx_list_s *options, xx_p
         xx_mem_free(layout);
         return s;
     }
-    gd_sector = vmdk_le64(header + 56U);
+    gd_sector = xx_data_get_u64(header + 56U, 8, 0, false);
     if (gd_sector == UINT64_MAX) {
         uint8_t marker[16], eos[16];
         if (s->available < 2048U || s->available % VMDK_SECTOR ||
             !vmdk_read(f, s, s->available - 1536U, marker, sizeof(marker), pd) ||
-            vmdk_le64(marker) != 1U || vmdk_le32(marker + 8U) || vmdk_le32(marker + 12U) != 3U ||
+            xx_data_get_u64(marker, 8, 0, false) != 1U || xx_data_get_u32(marker + 8U, 4, 0, false) || xx_data_get_u32(marker + 12U, 4, 0, false) != 3U ||
             !vmdk_read(f, s, s->available - 512U, eos, sizeof(eos), pd) ||
-            vmdk_le64(eos) || vmdk_le32(eos + 8U) || vmdk_le32(eos + 12U) ||
+            xx_data_get_u64(eos, 8, 0, false) || xx_data_get_u32(eos + 8U, 4, 0, false) || xx_data_get_u32(eos + 12U, 4, 0, false) ||
             !vmdk_read(f, s, s->available - 1024U, header, sizeof(header), pd) ||
             xx_rt_memcmp(header, "KDMV", 4U)) goto fail;
         s->footer = true; s->data_end = s->available - 1536U;
-        gd_sector = vmdk_le64(header + 56U); /* Footer is authoritative. */
+        gd_sector = xx_data_get_u64(header + 56U, 8, 0, false); /* Footer is authoritative. */
     }
-    s->version = vmdk_le32(header + 4U); s->flags = vmdk_le32(header + 8U);
-    algorithm = vmdk_le16(header + 77U); s->compressed = (s->flags & VMDK_FLAG_COMPRESSED) != 0U;
+    s->version = xx_data_get_u32(header + 4U, 4, 0, false); s->flags = xx_data_get_u32(header + 8U, 4, 0, false);
+    algorithm = xx_data_get_u16(header + 77U, 2, 0, false); s->compressed = (s->flags & VMDK_FLAG_COMPRESSED) != 0U;
     if (s->version < 1U || s->version > 3U ||
         (s->flags & ~(VMDK_FLAG_NEWLINE | VMDK_FLAG_REDUNDANT | VMDK_FLAG_ZERO |
                       VMDK_FLAG_COMPRESSED | VMDK_FLAG_MARKERS)) ||
@@ -612,8 +604,8 @@ static vmdk_stream *vmdk_parse(Abstractformat *f, const xx_list_s *options, xx_p
         (s->compressed ? algorithm != 1U || !(s->flags & VMDK_FLAG_MARKERS) :
             algorithm != 0U || (s->flags & VMDK_FLAG_MARKERS)) ||
         (s->footer && (!s->compressed || (s->flags & VMDK_FLAG_REDUNDANT)))) goto fail;
-    s->capacity = vmdk_le64(header + 12U); grain_sectors = vmdk_le64(header + 20U);
-    s->gtes = vmdk_le32(header + 44U); overhead = vmdk_le64(header + 64U);
+    s->capacity = xx_data_get_u64(header + 12U, 8, 0, false); grain_sectors = xx_data_get_u64(header + 20U, 8, 0, false);
+    s->gtes = xx_data_get_u32(header + 44U, 4, 0, false); overhead = xx_data_get_u64(header + 64U, 8, 0, false);
     if (!s->capacity || s->capacity > (UINT64_C(1) << 40U) || !grain_sectors ||
         grain_sectors > VMDK_MAX_GRAIN_SECTORS || (grain_sectors & (grain_sectors - 1U)) ||
         !s->gtes || s->gtes > VMDK_MAX_GTES || !gd_sector ||
@@ -625,7 +617,7 @@ static vmdk_stream *vmdk_parse(Abstractformat *f, const xx_list_s *options, xx_p
     s->gd_offset = gd_sector * VMDK_SECTOR;
     if (!vmdk_span(s->gd_offset, s->entries * 4U, s->data_end) ||
         !vmdk_descriptor(f, s, header, options, pd) || s->gd_offset < s->descriptor_end) goto fail;
-    if (((xx_vmdk *)f)->parentless_extent && !vmdk_le64(header + 28U))
+    if (((xx_vmdk *)f)->parentless_extent && !xx_data_get_u64(header + 28U, 8, 0, false))
         s->standalone = true;
     s->data_start = overhead * VMDK_SECTOR;
     if (s->data_start < s->descriptor_end) s->data_start = s->descriptor_end;
@@ -687,8 +679,8 @@ static int vmdk_disk_seek_cb(xx_io_device *device, long offset, int whence) {
 static bool vmdk_disk_sector(vmdk_disk *disk, uint64_t grain,
                              uint32_t *sector, uint64_t *limit) {
     const vmdk_stream *s = &disk->layout;
-    uint32_t table_sector = vmdk_le32(disk->directory +
-                                      (size_t)(grain / s->gtes) * 4U);
+    uint32_t table_sector = xx_data_get_u32(disk->directory +
+                                      (size_t)(grain / s->gtes) * 4U, 4, 0, false);
     *sector = 0U;
     *limit = s->data_end;
     if (!table_sector) return true;
@@ -707,7 +699,7 @@ static bool vmdk_disk_sector(vmdk_disk *disk, uint64_t grain,
         disk->table_end = at + bytes;
         disk->table_loaded = true;
     }
-    *sector = vmdk_le32(disk->table + (size_t)(grain % s->gtes) * 4U);
+    *sector = xx_data_get_u32(disk->table + (size_t)(grain % s->gtes) * 4U, 4, 0, false);
     *limit = s->footer ? disk->table_at - VMDK_SECTOR : s->data_end;
     return true;
 }
@@ -743,9 +735,9 @@ static bool vmdk_disk_read_part(vmdk_disk *disk, uint64_t position,
         size_t inflate_buffer = xx_get_file_buffer_size();
         uint64_t budget;
         if (!vmdk_read(disk->source, s, at, marker, sizeof(marker), NULL) ||
-            vmdk_le64(marker) != grain * (s->grain_bytes / VMDK_SECTOR))
+            xx_data_get_u64(marker, 8, 0, false) != grain * (s->grain_bytes / VMDK_SECTOR))
             return false;
-        length = vmdk_le32(marker + 8U);
+        length = xx_data_get_u32(marker + 8U, 4, 0, false);
         if (length < 7U || length > s->grain_bytes * 2U + 64U ||
             !vmdk_span(at, 12U + (uint64_t)length, limit) ||
             (s->footer &&
@@ -1076,11 +1068,11 @@ static bool vmdk_fat_partition(xx_io_device *disk,
         mbr[510] != 0x55U || mbr[511] != 0xAAU) return false;
     for (i = 0U; i < 4U; ++i) {
         const uint8_t *entry = mbr + 446U + i * 16U;
-        uint64_t count = vmdk_le32(entry + 12U);
+        uint64_t count = xx_data_get_u32(entry + 12U, 4, 0, false);
         if (!count) continue;
         if (++present != 1U || (entry[0] != 0U && entry[0] != 0x80U))
             return false;
-        start = vmdk_le32(entry + 8U);
+        start = xx_data_get_u32(entry + 8U, 4, 0, false);
         sectors = count;
         type = entry[4U];
         *number = i + 1U;

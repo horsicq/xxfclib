@@ -40,6 +40,7 @@
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/algo/deflate/xx_deflate.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_PYZ_COPY_CHUNK (64 * 1024)
 
@@ -180,48 +181,14 @@ typedef struct xx_pyz_marshal_s {
  * knows how many it expects and reads them itself, which is what lets this
  * reader refuse an unexpected shape instead of skipping over it. */
 
-
-
-
-static uint16_t xx_pyz_le16(const uint8_t *data)
-{
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_pyz_le32(const uint8_t *data)
-{
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-/* The TOC offset is the one big-endian field in the container. */
-static uint32_t xx_pyz_be32(const uint8_t *data)
-{
-    return ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16) |
-           ((uint32_t)data[2] << 8) | (uint32_t)data[3];
-}
-
 /* marshal writes its lengths and small integers signed, so a value with the
  * top bit set is a malformed blob, not a 2GB+ one. */
 static int64_t xx_pyz_le_i32(const uint8_t *data)
 {
-    uint32_t value = xx_pyz_le32(data);
+    uint32_t value = xx_data_get_u32(data, 4, 0, false);
 
     if (value & 0x80000000u) {
         return (int64_t)value - (int64_t)0x100000000LL;
-    }
-    return (int64_t)value;
-}
-
-static int64_t xx_pyz_le_i64(const uint8_t *data)
-{
-    uint64_t value =
-        (uint64_t)xx_pyz_le32(data) | ((uint64_t)xx_pyz_le32(data + 4) << 32);
-
-    /* Two's complement without a conversion whose result the standard leaves
-     * implementation-defined. */
-    if (value > (uint64_t)XX_PYZ_INT64_MAX) {
-        return -(int64_t)(~value) - 1;
     }
     return (int64_t)value;
 }
@@ -325,7 +292,7 @@ static bool xx_pyz_read_object(xx_pyz_marshal *reader, xx_pyz_value *value,
             return false;
         }
         value->kind = XX_PYZ_KIND_INT;
-        value->number = (type == 'i') ? xx_pyz_le_i32(raw) : xx_pyz_le_i64(raw);
+        value->number = (type == 'i') ? xx_pyz_le_i32(raw) : xx_data_get_i64(raw, 8, 0, false);
     } else if (type == 'l') {
         if (!xx_pyz_take(reader, 4, &raw)) {
             return false;
@@ -342,7 +309,7 @@ static bool xx_pyz_read_object(xx_pyz_marshal *reader, xx_pyz_value *value,
             if (!xx_pyz_take(reader, 2, &raw)) {
                 return false;
             }
-            digit = xx_pyz_le16(raw);
+            digit = xx_data_get_u16(raw, 2, 0, false);
             if (digit >= 0x8000u) {
                 return false;
             }
@@ -534,12 +501,12 @@ static xx_pyz_stream *xx_pyz_parse(Abstractformat *self, xx_pd_struct *pd)
     }
     /* header[4..7] is the writing interpreter's bytecode magic. It changes
      * with every Python release, so there is no value to check it against. */
-    toc_offset = (int64_t)xx_pyz_be32(header + 8);
+    toc_offset = (int64_t)xx_data_get_u32(header + 8, 4, 0, true);
     /* Early PYZ archives used the writing host's byte order. Only take that
      * route when the modern offset is impossible, then validate the entire
      * TOC, each member extent, and each zlib header exactly as usual. */
     if ((toc_offset < XX_PYZ_HEADER_SIZE) || (toc_offset >= span)) {
-        toc_offset = (int64_t)xx_pyz_le32(header + 8);
+        toc_offset = (int64_t)xx_data_get_u32(header + 8, 4, 0, false);
     }
     /* The table of contents lives after the header and ends at EOF; a TOC
      * that starts inside the header, or at or past EOF, is not a PYZ. */

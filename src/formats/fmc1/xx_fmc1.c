@@ -39,6 +39,7 @@
 #include "xxfclib/algo/ampk/xx_ampk.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_FMC1_COPY_CHUNK (64 * 1024)
 
@@ -155,8 +156,6 @@ typedef struct xx_fmc1_scan_s {
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_fmc1_le16(const uint8_t *data);
-static uint32_t xx_fmc1_le32(const uint8_t *data);
 static bool xx_fmc1_scan_byte(xx_fmc1_scan *scan, int64_t position, uint8_t *out);
 static bool xx_fmc1_name_length(const uint8_t *field, size_t *out_length);
 static bool xx_fmc1_name_string(const uint8_t *field, size_t length, size_t member_index, char **out_name);
@@ -172,17 +171,6 @@ static bool xx_fmc1_decode(Abstractformat *self, const xx_fmc1_member *member, u
  * at a time, and a member may be hundreds of kilobytes. */
 
 /* Worst case every name byte escapes to "%XX". */
-
-
-
-static uint16_t xx_fmc1_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_fmc1_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* Fetch one payload byte, refilling the window when the cursor leaves it. */
 static bool xx_fmc1_scan_byte(xx_fmc1_scan *scan, int64_t position,
@@ -397,11 +385,11 @@ static xx_fmc1_stream *xx_fmc1_parse(Abstractformat *self, xx_pd_struct *pd) {
         /* Reserved word, zero in every member of the reference corpus.
          * Together with the name check it is the cheapest way to stop a
          * random four-byte magic hit from walking into a bogus chain. */
-        if ((int16_t)xx_fmc1_le16(record + 0x12) != 0) goto fail;
+        if ((int16_t)xx_data_get_u16(record + 0x12, 2, 0, false) != 0) goto fail;
 
         /* Signed on purpose: a size with the top bit set is a corrupt field,
          * not a four-gigabyte member. */
-        compressed_size = (int64_t)(int32_t)xx_fmc1_le32(record + 0x14);
+        compressed_size = (int64_t)(int32_t)xx_data_get_u32(record + 0x14, 4, 0, false);
         if (compressed_size <= 0 ||
             compressed_size > XX_FMC1_MAX_COMPRESSED) {
             goto fail;
@@ -442,8 +430,8 @@ static xx_fmc1_stream *xx_fmc1_parse(Abstractformat *self, xx_pd_struct *pd) {
          * time word first and the date word second, the reverse of the
          * obvious order; swapping them yields plausible nonsense rather than
          * an error. */
-        member.timestamp = ((uint64_t)xx_fmc1_le16(record + 0x0e) << 16) |
-                           (uint64_t)xx_fmc1_le16(record + 0x0c);
+        member.timestamp = ((uint64_t)xx_data_get_u16(record + 0x0e, 2, 0, false) << 16) |
+                           (uint64_t)xx_data_get_u16(record + 0x0c, 2, 0, false);
         /* The format has no directory entries. */
         member.is_folder = false;
 

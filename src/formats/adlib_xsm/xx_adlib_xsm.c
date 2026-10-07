@@ -1,9 +1,10 @@
 /* SPDX-License-Identifier: MIT. Original music framing derived independently from primary AdPlug loader. */
 #include "xxfclib/formats/adlib_xsm/xx_adlib_xsm.h"
 #include "../xx_sixteenth_media.h"
+#include "xxfclib/data/xx_data.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  m16_blob b={0};uint32_t n,i,j;uint64_t at=8;bool ok=false;
- M16_NEED(m16_load(f,&b,pd)&&m16_tag(&b,0,"ofTAZ!",6)&&m16_span(&b,0,152));n=pm_le16(b.p+6);M16_NEED(n&&n<=3200&&b.n==152+(uint64_t)n*9&&m16_emit(f,s,&b,"descriptor.xsm",0,8));
+ M16_NEED(m16_load(f,&b,pd)&&m16_tag(&b,0,"ofTAZ!",6)&&m16_span(&b,0,152));n=xx_data_get_u16(b.p+6, 2, 0, false);M16_NEED(n&&n<=3200&&b.n==152+(uint64_t)n*9&&m16_emit(f,s,&b,"descriptor.xsm",0,8));
  for(i=0;i<9;++i){M16_NEED(m16_emit(f,s,&b,"instrument.xsm",at,16));at+=16;}for(i=0;i<9;++i){for(j=0;j<n;++j)M16_NEED(m16_work(&b,1)&&b.p[(size_t)at+j]<=96);M16_NEED(m16_emit(f,s,&b,"note-stream.xsm",at,n));at+=n;}s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }

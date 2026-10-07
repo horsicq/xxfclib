@@ -5,20 +5,21 @@
  */
 #include "xxfclib/formats/xcursor/xx_xcursor.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[36],toc[12]; uint32_t head,count,i; int64_t starts[1024],ends[1024],end; unsigned images=0;
-    if(!pm_read(f,0,h,16) || xx_rt_memcmp(h,"Xcur",4) || (head=pm_le32(h+4))<16 || pm_le32(h+8)!=0x10000U || (count=pm_le32(h+12))==0 || count>1024 || head>(uint64_t)pm_available(f) || (uint64_t)count*12>(uint64_t)(pm_available(f)-head)) return false;
+    if(!pm_read(f,0,h,16) || xx_rt_memcmp(h,"Xcur",4) || (head=xx_data_get_u32(h+4, 4, 0, false))<16 || xx_data_get_u32(h+8, 4, 0, false)!=0x10000U || (count=xx_data_get_u32(h+12, 4, 0, false))==0 || count>1024 || head>(uint64_t)pm_available(f) || (uint64_t)count*12>(uint64_t)(pm_available(f)-head)) return false;
     end=head+(int64_t)count*12;
     for(i=0;i<count;++i) { uint32_t type,subtype,off,size,j; uint64_t bytes; char name[48];
-        if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,head+(int64_t)i*12,toc,12)) { return false; } type=pm_le32(toc); subtype=pm_le32(toc+4); off=pm_le32(toc+8);
-        if(off<head+(uint64_t)count*12 || !pm_read(f,off,h,16) || (size=pm_le32(h))<16 || pm_le32(h+4)!=type || pm_le32(h+8)!=subtype || pm_le32(h+12)!=1) return false;
+        if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,head+(int64_t)i*12,toc,12)) { return false; } type=xx_data_get_u32(toc, 4, 0, false); subtype=xx_data_get_u32(toc+4, 4, 0, false); off=xx_data_get_u32(toc+8, 4, 0, false);
+        if(off<head+(uint64_t)count*12 || !pm_read(f,off,h,16) || (size=xx_data_get_u32(h, 4, 0, false))<16 || xx_data_get_u32(h+4, 4, 0, false)!=type || xx_data_get_u32(h+8, 4, 0, false)!=subtype || xx_data_get_u32(h+12, 4, 0, false)!=1) return false;
         if(type==0xFFFD0002U) { uint32_t w,height;
-            if(size<36 || !subtype || !pm_read(f,off+16,h+16,20) || !(w=pm_le32(h+16)) || !(height=pm_le32(h+20)) || w>32767 || height>32767 || pm_le32(h+24)>=w || pm_le32(h+28)>=height) return false;
+            if(size<36 || !subtype || !pm_read(f,off+16,h+16,20) || !(w=xx_data_get_u32(h+16, 4, 0, false)) || !(height=xx_data_get_u32(h+20, 4, 0, false)) || w>32767 || height>32767 || xx_data_get_u32(h+24, 4, 0, false)>=w || xx_data_get_u32(h+28, 4, 0, false)>=height) return false;
             bytes=(uint64_t)w*height*4; ++images;
             xx_rt_snprintf(name,sizeof(name),"image-%u-descriptor.bin",i); if(!pm_add(f,s,name,off+16,size-16)) return false;
             xx_rt_snprintf(name,sizeof(name),"image-%u-argb.bin",i);
-        } else if(type==0xFFFE0001U) { if(size<20 || subtype<1 || subtype>3 || !pm_read(f,off+16,h+16,4)) return false; bytes=pm_le32(h+16); if(bytes>1024U*1024U) return false; xx_rt_snprintf(name,sizeof(name),"comment-%u.txt",i); }
+        } else if(type==0xFFFE0001U) { if(size<20 || subtype<1 || subtype>3 || !pm_read(f,off+16,h+16,4)) return false; bytes=xx_data_get_u32(h+16, 4, 0, false); if(bytes>1024U*1024U) return false; xx_rt_snprintf(name,sizeof(name),"comment-%u.txt",i); }
         else return false;
         if(bytes>(uint64_t)INT64_MAX || !pm_add(f,s,name,(int64_t)off+size,(int64_t)bytes)) { return false; } starts[i]=off; ends[i]=(int64_t)off+size+(int64_t)bytes;
         for(j=0;j<i;++j) if(starts[i]<ends[j] && ends[i]>starts[j]) return false;

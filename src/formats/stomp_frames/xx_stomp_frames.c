@@ -3,6 +3,7 @@
  */
 /* Primary: https://stomp.github.io/stomp-specification-1.2.html */
 #include "xxfclib/formats/stomp_frames/xx_stomp_frames.h"
+#include "xxfclib/data/xx_data.h"
 #include "../xx_fourteenth_wrappers.h"
 
 static bool unescape(nh_blob *b,uint64_t p,uint64_t n,char *out,size_t cap,bool escaped){size_t z=0;for(uint64_t i=0;i<n;++i){uint8_t c=b->p[(size_t)(p+i)];if(c<32||c==127||z+1>=cap)return false;if(escaped&&c==92){if(++i==n)return false;c=b->p[(size_t)(p+i)];if(c=='n')c=10;else if(c=='r')c=13;else if(c=='c')c=':';else if(c!=92)return false;}out[z++]=(char)c;}out[z]=0;return fourth_utf8((uint8_t *)out,z,b->pd);}

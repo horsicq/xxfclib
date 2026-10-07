@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_SOFTRONICS_SIGNATURE_OFFSET 2U
 #define XX_SOFTRONICS_SIGNATURE_SIZE 40U
@@ -34,11 +35,6 @@ typedef struct xx_softronics_context_s {
 } xx_softronics_context;
 
 static void xx_softronics_vtable_destroy(Abstractformat *self);
-
-static uint32_t xx_softronics_read32le(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
 
 static bool xx_softronics_read_exact_at(xx_io_device *device,
                                         int64_t offset, void *data,
@@ -122,8 +118,8 @@ static bool xx_softronics_parse_buffer(const uint8_t *input,
                xx_softronics_signature, XX_SOFTRONICS_SIGNATURE_SIZE) != 0) {
         return false;
     }
-    compressed_size = xx_softronics_read32le(
-        input + XX_SOFTRONICS_COMPRESSED_SIZE_OFFSET);
+    compressed_size = xx_data_get_u32(
+        input + XX_SOFTRONICS_COMPRESSED_SIZE_OFFSET, 4, 0, false);
     if (compressed_size == 0U ||
         !xx_softronics_parse_name(input, input_size, context->file_name,
                                   &name_size)) {
@@ -137,7 +133,7 @@ static bool xx_softronics_parse_buffer(const uint8_t *input,
         return false;
     }
     tail_offset = XX_SOFTRONICS_NAME_OFFSET + name_size + 1U;
-    uncompressed_size = xx_softronics_read32le(input + tail_offset);
+    uncompressed_size = xx_data_get_u32(input + tail_offset, 4, 0, false);
     if (uncompressed_size == 0U ||
         (uint64_t)uncompressed_size > XX_SOFTRONICS_MAX_OUTPUT) {
         return false;
@@ -145,7 +141,7 @@ static bool xx_softronics_parse_buffer(const uint8_t *input,
     context->uncompressed_size = uncompressed_size;
     context->header_size = (uint32_t)header_size;
     context->compressed_size = compressed_size;
-    context->dos_datetime = xx_softronics_read32le(input + tail_offset + 4U);
+    context->dos_datetime = xx_data_get_u32(input + tail_offset + 4U, 4, 0, false);
     context->stream_size = (int64_t)input_size;
     return true;
 }

@@ -8,8 +8,8 @@
 static bool lhwarp_parse(Abstractformat *f,pm_stream *s,ac_blob *b) {
     uint32_t rev,low,high,at,comment,packed,c,block,total,labeltotal; uint8_t *image,*labels=NULL;
     if(b->n<16U || b->p[0]!=1U || b->p[1]>3U || b->p[2]>9U || (!b->p[1] && !b->p[2]) || b->p[3]) return false;
-    rev=b->p[1]; low=pm_be16(b->p+4); high=pm_be16(b->p+6);
-    comment=pm_be32(b->p+8); packed=pm_be32(b->p+12); at=rev<3U?16U:20U;
+    rev=b->p[1]; low=xx_data_get_u16(b->p+4, 2, 0, true); high=xx_data_get_u16(b->p+6, 2, 0, true);
+    comment=xx_data_get_u32(b->p+8, 4, 0, true); packed=xx_data_get_u32(b->p+12, 4, 0, true); at=rev<3U?16U:20U;
     if(low>high || high>=80U || comment>65535U || packed>comment || !ac_span(b,at,packed)) return false;
     if(comment) { uint8_t *text=ac_alloc(b,comment); uint32_t written=0;
         if(!text) return false;
@@ -26,7 +26,7 @@ static bool lhwarp_parse(Abstractformat *f,pm_stream *s,ac_blob *b) {
         method=rev?b->p[at]:0U;
         bitmap=rev?b->p[at+4]|(uint32_t)b->p[at+5]<<8U|(uint32_t)b->p[at+6]<<16U:0x3FFFFFU;
         if(b->p[at+2]!=c || (rev && (b->p[at+1]!=0U && b->p[at+1]!=2U)) || (bitmap&~0x3FFFFFU)) goto fail;
-        n=pm_be32(b->p+at+(rev?8U:4U)); stored=pm_be32(b->p+at+(rev?12U:8U)); crc=pm_be32(b->p+at+(rev?16U:12U));
+        n=xx_data_get_u32(b->p+at+(rev?8U:4U), 4, 0, true); stored=xx_data_get_u32(b->p+at+(rev?12U:8U), 4, 0, true); crc=xx_data_get_u32(b->p+at+(rev?16U:12U), 4, 0, true);
         block=rev?528U:512U;
         for(i=0;i<22U;++i) if(bitmap&(1U<<i)) j+=block;
         if(n!=j || !ac_span(b,at+header,stored)) goto fail;

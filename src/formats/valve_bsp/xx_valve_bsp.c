@@ -5,14 +5,15 @@
  */
 #include "xxfclib/formats/valve_bsp/xx_valve_bsp.h"
 #include "../bethesda_bsa/xx_game_table.h"
+#include "xxfclib/data/xx_data.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[8],r[16]; uint32_t ver,i; uint64_t floor=1036; int64_t total=pm_available(f);
     if(!gm_read(f,total,0,h,8) || xx_rt_memcmp(h,"VBSP",4) || !gm_range(total,0,floor)) return false;
-    ver=pm_le32(h+4); if(ver<19 || ver>21) return false; s->size=(int64_t)floor;
+    ver=xx_data_get_u32(h+4, 4, 0, false); if(ver<19 || ver>21) return false; s->size=(int64_t)floor;
     for(i=0;i<64;++i) { uint32_t at,n; char label[32];
         if(gm_stopped(pd) || !gm_read(f,total,8+(uint64_t)i*16,r,16)) return false;
-        at=pm_le32(r); n=pm_le32(r+4); if(pm_le32(r+12)!=0) return false; if(!n) continue;
+        at=xx_data_get_u32(r, 4, 0, false); n=xx_data_get_u32(r+4, 4, 0, false); if(xx_data_get_u32(r+12, 4, 0, false)!=0) return false; if(!n) continue;
         xx_rt_snprintf(label,sizeof(label),i==40 ? "lump-%02u.zip" : "lump-%02u.bin",i);
         if(!gm_add(f,s,label,at,n,floor,total)) return false;
     }

@@ -74,6 +74,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and not edited from here,
  * so the alias macro that sits next to the enumerator is tested instead. */
@@ -145,15 +146,6 @@ typedef struct zpi_layout_s {
 } zpi_layout;
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint16_t zpi_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t zpi_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static bool zpi_read(Abstractformat *self, int64_t relative, uint8_t *buffer,
                      size_t size) {
@@ -525,8 +517,8 @@ static bool zpi_walk_v1(Abstractformat *self, const zpi_layout *layout,
             if (entry[tail] != 0U) return false;
         }
         if (!zpi_name_printable(entry, terminator)) return false;
-        packed = (int64_t)(int32_t)zpi_le32(entry + ZPI_V1_NAME);
-        if (zpi_le32(entry + ZPI_V1_NAME + 4) != 0U) return false;
+        packed = (int64_t)(int32_t)xx_data_get_u32(entry + ZPI_V1_NAME, 4, 0, false);
+        if (xx_data_get_u32(entry + ZPI_V1_NAME + 4, 4, 0, false) != 0U) return false;
         if (packed < ZPI_MIN_PACKED || packed > directory - offset) {
             return false;
         }
@@ -537,8 +529,8 @@ static bool zpi_walk_v1(Abstractformat *self, const zpi_layout *layout,
         fields.data_offset = self->base_address + offset;
         fields.compressed_size = packed;
         fields.timestamp =
-            ((uint32_t)zpi_le16(entry + ZPI_V1_NAME + 8) << 16) |
-            (uint32_t)zpi_le16(entry + ZPI_V1_NAME + 10);
+            ((uint32_t)xx_data_get_u16(entry + ZPI_V1_NAME + 8, 2, 0, false) << 16) |
+            (uint32_t)xx_data_get_u16(entry + ZPI_V1_NAME + 10, 2, 0, false);
         fields.record = index;
         if (!zpi_emit(stream, entry, terminator, &fields)) return false;
         offset += packed;
@@ -566,9 +558,9 @@ static bool zpi_walk_v2(Abstractformat *self, const zpi_layout *layout,
             record[0] != ZPI_V2_TAG) {
             return false;
         }
-        packed = (int64_t)(int32_t)zpi_le32(record + 2);
+        packed = (int64_t)(int32_t)xx_data_get_u32(record + 2, 4, 0, false);
         /* record + 6 is writer scratch, deliberately not read. */
-        name_size = (int64_t)(int16_t)zpi_le16(record + 14);
+        name_size = (int64_t)(int16_t)xx_data_get_u16(record + 14, 2, 0, false);
         if (packed < ZPI_MIN_PACKED || name_size <= 0 ||
             name_size > ZPI_MAX_NAME ||
             name_size > layout->trailer - offset - ZPI_V2_RECORD) {
@@ -589,8 +581,8 @@ static bool zpi_walk_v2(Abstractformat *self, const zpi_layout *layout,
         fields.header_size = ZPI_V2_RECORD + name_size;
         fields.data_offset = self->base_address + data;
         fields.compressed_size = packed;
-        fields.timestamp = ((uint32_t)zpi_le16(record + 10) << 16) |
-                           (uint32_t)zpi_le16(record + 12);
+        fields.timestamp = ((uint32_t)xx_data_get_u16(record + 10, 2, 0, false) << 16) |
+                           (uint32_t)xx_data_get_u16(record + 12, 2, 0, false);
         fields.record = index;
         if (!zpi_emit(stream, name, length, &fields)) return false;
         offset = data + packed;
@@ -615,11 +607,11 @@ static bool zpi_locate(Abstractformat *self, int64_t span, uint16_t version,
         return false;
     }
     if (version == 2U) {
-        count = (int64_t)(int32_t)zpi_le32(trailer);
-        header_offset = (int64_t)zpi_le32(trailer + 4);
+        count = (int64_t)(int32_t)xx_data_get_u32(trailer, 4, 0, false);
+        header_offset = (int64_t)xx_data_get_u32(trailer + 4, 4, 0, false);
     } else {
-        count = (int64_t)zpi_le16(trailer);
-        header_offset = (int64_t)zpi_le32(trailer + 2);
+        count = (int64_t)xx_data_get_u16(trailer, 2, 0, false);
+        header_offset = (int64_t)xx_data_get_u32(trailer + 2, 4, 0, false);
     }
     if (count < 1 || count > ZPI_MAX_MEMBERS) return false;
     /* A self-extractor always has a stub in front of its archive; the bare
@@ -630,7 +622,7 @@ static bool zpi_locate(Abstractformat *self, int64_t span, uint16_t version,
     }
     if (!zpi_read(self, header_offset, header, sizeof(header)) ||
         xx_rt_memcmp(header, "-ZPAK", 5U) != 0 || header[5] != 0U ||
-        zpi_le16(header + 6) != version) {
+        xx_data_get_u16(header + 6, 2, 0, false) != version) {
         return false;
     }
     if (version == 2U ? header[8] != ZPI_V2_TAG

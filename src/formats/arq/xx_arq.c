@@ -51,6 +51,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ARQ_CONTAINER_MAGIC 0x02045767U
 #define XX_ARQ_MEMBER_MAGIC 0x01045767U
@@ -112,15 +113,6 @@ static bool xx_arq_read_at(Abstractformat *self, int64_t offset,
         completed += (size_t)received;
     }
     return true;
-}
-
-static uint32_t xx_arq_u32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static uint16_t xx_arq_u16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
 }
 
 static bool xx_arq_range_within(int64_t total, int64_t offset, int64_t size) {
@@ -288,13 +280,13 @@ static xx_arq_stream *xx_arq_parse(Abstractformat *self, xx_pd_struct *pd) {
         return NULL;
     }
 
-    leading_magic = xx_arq_u32(container);
+    leading_magic = xx_data_get_u32(container, 4, 0, false);
     if (leading_magic == XX_ARQ_CONTAINER_MAGIC) {
         /* The wrapped shape: a declared total, then a field that must be
          * zero. */
-        if (xx_arq_u32(container + 8) != 0U) return NULL;
+        if (xx_data_get_u32(container + 8, 4, 0, false) != 0U) return NULL;
         has_container = true;
-        declared = xx_arq_u32(container + 4);
+        declared = xx_data_get_u32(container + 4, 4, 0, false);
     } else if (leading_magic != XX_ARQ_MEMBER_MAGIC) {
         return NULL;
     }
@@ -322,10 +314,10 @@ static xx_arq_stream *xx_arq_parse(Abstractformat *self, xx_pd_struct *pd) {
                             sizeof(prefix))) {
             goto fail;
         }
-        if (xx_arq_u32(prefix) != XX_ARQ_MEMBER_MAGIC) goto fail;
-        signature = xx_arq_u16(prefix + 4);
+        if (xx_data_get_u32(prefix, 4, 0, false) != XX_ARQ_MEMBER_MAGIC) goto fail;
+        signature = xx_data_get_u16(prefix + 4, 2, 0, false);
         if (!xx_arq_signature_ok(signature)) goto fail;
-        name_size = xx_arq_u16(prefix + 6);
+        name_size = xx_data_get_u16(prefix + 6, 2, 0, false);
 
         if (name_size == 0U) {
             /* The terminating index record. It must be present in full, and
@@ -365,8 +357,8 @@ static xx_arq_stream *xx_arq_parse(Abstractformat *self, xx_pd_struct *pd) {
         }
         trailer = header + XX_ARQ_MEMBER_PREFIX_SIZE + name_size;
 
-        reserved = xx_arq_u32(trailer + 6);
-        method_code = (uint8_t)(xx_arq_u16(trailer + 22) & 0xFFU);
+        reserved = xx_data_get_u32(trailer + 6, 4, 0, false);
+        method_code = (uint8_t)(xx_data_get_u16(trailer + 22, 2, 0, false) & 0xFFU);
         /* Byte +24 is a per-member flag with several observed values; only
          * the eight bytes after it are structurally required to be zero. */
         for (zero = 0; zero < 8; ++zero) {
@@ -393,12 +385,12 @@ static xx_arq_stream *xx_arq_parse(Abstractformat *self, xx_pd_struct *pd) {
         members[count].header_offset = offset;
         members[count].header_size = header_size;
         members[count].data_offset = offset + header_size;
-        members[count].mtime = xx_arq_u32(trailer);
-        members[count].attributes = xx_arq_u16(trailer + 4);
-        members[count].compressed_size = xx_arq_u32(trailer + 10);
-        members[count].uncompressed_size = xx_arq_u32(trailer + 14);
-        members[count].packed_crc32 = xx_arq_u32(trailer + 18);
-        members[count].method = xx_arq_u16(trailer + 22);
+        members[count].mtime = xx_data_get_u32(trailer, 4, 0, false);
+        members[count].attributes = xx_data_get_u16(trailer + 4, 2, 0, false);
+        members[count].compressed_size = xx_data_get_u32(trailer + 10, 4, 0, false);
+        members[count].uncompressed_size = xx_data_get_u32(trailer + 14, 4, 0, false);
+        members[count].packed_crc32 = xx_data_get_u32(trailer + 18, 4, 0, false);
+        members[count].method = xx_data_get_u16(trailer + 22, 2, 0, false);
         /* The name is not NUL-terminated inside the header buffer, and
          * xxfclib has no length-limited dup, so copy it explicitly. */
         members[count].name = (char *)xx_mem_alloc((size_t)name_size + 1U);

@@ -11,7 +11,7 @@
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  uint8_t h[1084],p[1024]; uint32_t lengths[31],i,j,count,patterns=0; fd_cursor c={f,0,(uint64_t)pm_available(f),pd,0}; char label[40];
  if(!fd_get(&c,h,sizeof(h)) || (xx_rt_memcmp(h+1080,"M.K.",4) && xx_rt_memcmp(h+1080,"M!K!",4) && xx_rt_memcmp(h+1080,"4CHN",4) && xx_rt_memcmp(h+1080,"FLT4",4)) || !(count=h[950]) || count>128 || (h[951]>127 && h[951]!=255)) return false;
- for(i=0;i<31;++i) { uint8_t *b=h+20+i*30; uint32_t n=(uint32_t)pm_be16(b+22)*2,a=(uint32_t)pm_be16(b+26)*2,z=(uint32_t)pm_be16(b+28)*2; if(b[24]>15 || b[25]>64 || (z>2 && !em_loop(a,z,n))) return false; lengths[i]=n; }
+ for(i=0;i<31;++i) { uint8_t *b=h+20+i*30; uint32_t n=(uint32_t)xx_data_get_u16(b+22, 2, 0, true)*2,a=(uint32_t)xx_data_get_u16(b+26, 2, 0, true)*2,z=(uint32_t)xx_data_get_u16(b+28, 2, 0, true)*2; if(b[24]>15 || b[25]>64 || (z>2 && !em_loop(a,z,n))) return false; lengths[i]=n; }
  for(i=0;i<128;++i) { if(h[952+i]>127) return false; if(i<count && patterns<=h[952+i]) patterns=h[952+i]+1U; }
  if(!em_emit(f,s,"descriptor.bin",0,1084,c.end)) return false;
  for(i=0;i<patterns;++i) { uint64_t at=c.at; if(!fd_get(&c,p,sizeof(p))) return false; for(j=0;j<256;++j) { uint8_t *b=p+j*4; uint32_t sample=(b[0]&0xf0U)|(b[2]>>4),period=((uint32_t)b[0]&15U)*256+b[1]; if(sample>31 || (period && (period<28 || period>3424))) return false; } xx_rt_snprintf(label,sizeof(label),"pattern-%u.bin",i); if(!em_emit(f,s,label,at,1024,c.end)) return false; }

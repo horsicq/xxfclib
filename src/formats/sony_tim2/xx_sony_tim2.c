@@ -5,9 +5,10 @@
  */
 #include "xxfclib/formats/sony_tim2/xx_sony_tim2.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static XXFC_MAYBE_UNUSED uint16_t g16(const uint8_t *p,bool be) { return be ? pm_be16(p) : pm_le16(p); }
-static XXFC_MAYBE_UNUSED uint32_t g32(const uint8_t *p,bool be) { return be ? pm_be32(p) : pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint16_t g16(const uint8_t *p,bool be) { return be ? xx_data_get_u16(p, 2, 0, true) : xx_data_get_u16(p, 2, 0, false); }
+static XXFC_MAYBE_UNUSED uint32_t g32(const uint8_t *p,bool be) { return be ? xx_data_get_u32(p, 4, 0, true) : xx_data_get_u32(p, 4, 0, false); }
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool overlap(uint64_t a,uint64_t n,uint64_t b,uint64_t m) { return n && m && a<b+m && b<a+n; }
 static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uint64_t n,uint64_t total) {
@@ -26,13 +27,13 @@ static XXFC_MAYBE_UNUSED bool bom(const uint8_t *p,bool *be) { *be=p[0]==0xfe &&
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[16],p[48]; uint32_t count,i,j; uint64_t at=16,total=(uint64_t)pm_available(f); char label[40];
-    if(!pm_read(f,0,h,16) || xx_rt_memcmp(h,"TIM2",4) || h[4]!=4 || h[5] || !(count=pm_le16(h+6)) || count>1024) return false;
+    if(!pm_read(f,0,h,16) || xx_rt_memcmp(h,"TIM2",4) || h[4]!=4 || h[5] || !(count=xx_data_get_u16(h+6, 2, 0, false)) || count>1024) return false;
     for(j=8;j<16;++j) if(h[j]) return false;
     for(i=0;i<count;++i) {
         uint32_t size,clut,image,type,palette,w,he,colors; uint64_t wanted;
         if((pd && xx_pd_is_stopped(pd)) || !span(at,48,total) || !pm_read(f,(int64_t)at,p,48)) return false;
-        size=pm_le32(p); clut=pm_le32(p+4); image=pm_le32(p+8); colors=pm_le16(p+14); palette=p[18]&63U; type=p[19]; w=pm_le16(p+20); he=pm_le16(p+22);
-        if(pm_le16(p+12)!=48 || p[16] || p[17]!=1 || !w || !he || type<1 || type>5 || !span(at,size,total) || (uint64_t)size!=48U+(uint64_t)image+clut) return false;
+        size=xx_data_get_u32(p, 4, 0, false); clut=xx_data_get_u32(p+4, 4, 0, false); image=xx_data_get_u32(p+8, 4, 0, false); colors=xx_data_get_u16(p+14, 2, 0, false); palette=p[18]&63U; type=p[19]; w=xx_data_get_u16(p+20, 2, 0, false); he=xx_data_get_u16(p+22, 2, 0, false);
+        if(xx_data_get_u16(p+12, 2, 0, false)!=48 || p[16] || p[17]!=1 || !w || !he || type<1 || type>5 || !span(at,size,total) || (uint64_t)size!=48U+(uint64_t)image+clut) return false;
         wanted=(uint64_t)w*he; wanted=type==1 ? wanted*2 : type==2 ? wanted*3 : type==3 ? wanted*4 : type==4 ? (wanted+1)/2 : wanted;
         if(image!=wanted || !image) return false;
         if(type<=3) { if(clut || colors || p[18]) return false; }

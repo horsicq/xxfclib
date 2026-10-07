@@ -47,6 +47,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef MPQ
 #define XX_MPQ_FILE_TYPE XX_FILE_TYPE_MPQ
@@ -87,27 +88,6 @@ typedef struct mpq_stream_s {
     uint64_t aux1;
     uint64_t aux2;
 } mpq_stream;
-
-static uint16_t mpq_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static uint32_t mpq_le32(const uint8_t *b) {
-    return (uint32_t)mpq_le16(b) | ((uint32_t)mpq_le16(b + 2U) << 16U);
-}
-
-static uint64_t mpq_le64(const uint8_t *b) {
-    return (uint64_t)mpq_le32(b) | ((uint64_t)mpq_le32(b + 4U) << 32U);
-}
-
-static uint32_t mpq_be32(const uint8_t *b) {
-    return ((uint32_t)b[0] << 24U) | ((uint32_t)b[1] << 16U) |
-           ((uint32_t)b[2] << 8U) | (uint32_t)b[3];
-}
-
-static XXFC_MAYBE_UNUSED uint64_t mpq_be64(const uint8_t *b) {
-    return ((uint64_t)mpq_be32(b) << 32U) | (uint64_t)mpq_be32(b + 4U);
-}
 
 static bool mpq_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -388,7 +368,7 @@ static void mpq_decrypt_block(const uint32_t *table, uint8_t *data,
     for (at = 0U; at + 4U <= size; at += 4U) {
         uint32_t value;
         seed += table[0x400U + (key & 0xffU)];
-        value = mpq_le32(data + at) ^ (key + seed);
+        value = xx_data_get_u32(data + at, 4, 0, false) ^ (key + seed);
         key = ((~key << 21U) + 0x11111111U) | (key >> 11U);
         seed = value + seed + (seed << 5U) + 3U;
         data[at] = (uint8_t)(value & 0xffU);
@@ -442,14 +422,14 @@ static bool mpq_parse_inner(Abstractformat *format, mpq_stream **result) {
                          header, want))
             return false;
         if (xx_rt_memcmp(header, "MPQ\x1a", 4U) != 0) continue;
-        header_size = mpq_le32(header + 4U);
-        archive_size = mpq_le32(header + 8U);
-        version = mpq_le16(header + 12U);
-        sector_shift = mpq_le16(header + 14U);
-        hash_offset = mpq_le32(header + 16U);
-        block_offset = mpq_le32(header + 20U);
-        hash_entries = mpq_le32(header + 24U);
-        block_entries = mpq_le32(header + 28U);
+        header_size = xx_data_get_u32(header + 4U, 4, 0, false);
+        archive_size = xx_data_get_u32(header + 8U, 4, 0, false);
+        version = xx_data_get_u16(header + 12U, 2, 0, false);
+        sector_shift = xx_data_get_u16(header + 14U, 2, 0, false);
+        hash_offset = xx_data_get_u32(header + 16U, 4, 0, false);
+        block_offset = xx_data_get_u32(header + 20U, 4, 0, false);
+        hash_entries = xx_data_get_u32(header + 24U, 4, 0, false);
+        block_entries = xx_data_get_u32(header + 28U, 4, 0, false);
         if (version > 3U || header_size < MPQ_HEADER_SIZE ||
             (uint64_t)header_size > archive_size || archive_size > available ||
             sector_shift > 15U || hash_entries == 0U ||
@@ -460,8 +440,8 @@ static bool mpq_parse_inner(Abstractformat *format, mpq_stream **result) {
         if (version >= 1U) {
             if (header_size < MPQ_HEADER_SIZE_V1 || want < MPQ_HEADER_SIZE_V1)
                 continue;
-            hash_offset |= (uint64_t)mpq_le16(header + 40U) << 32U;
-            block_offset |= (uint64_t)mpq_le16(header + 42U) << 32U;
+            hash_offset |= (uint64_t)xx_data_get_u16(header + 40U, 2, 0, false) << 32U;
+            block_offset |= (uint64_t)xx_data_get_u16(header + 42U, 2, 0, false) << 32U;
         }
         if (version >= 2U) {
             /* Narrow V3/V4 support uses their complete legacy tables and
@@ -469,16 +449,16 @@ static bool mpq_parse_inner(Abstractformat *format, mpq_stream **result) {
              * separate index/offset implementation. */
             if (header_size < MPQ_HEADER_SIZE_V2 ||
                 want < MPQ_HEADER_SIZE_V2 ||
-                mpq_le64(header + 44U) != archive_size ||
-                mpq_le64(header + 32U) != 0U ||
+                xx_data_get_u64(header + 44U, 8, 0, false) != archive_size ||
+                xx_data_get_u64(header + 32U, 8, 0, false) != 0U ||
                 hash_offset > UINT32_MAX || block_offset > UINT32_MAX)
                 continue;
         }
         if (version == 3U &&
             (header_size < MPQ_HEADER_SIZE_V3 ||
              want < MPQ_HEADER_SIZE_V3 ||
-             mpq_le64(header + 68U) != (uint64_t)hash_entries * 16U ||
-             mpq_le64(header + 76U) != (uint64_t)block_entries * 16U))
+             xx_data_get_u64(header + 68U, 8, 0, false) != (uint64_t)hash_entries * 16U ||
+             xx_data_get_u64(header + 76U, 8, 0, false) != (uint64_t)block_entries * 16U))
             continue;
         hash_bytes = (uint64_t)hash_entries * 16U;
         block_bytes = (uint64_t)block_entries * 16U;
@@ -517,7 +497,7 @@ static bool mpq_parse_inner(Abstractformat *format, mpq_stream **result) {
 
     for (at = 0U; at < hash_entries; ++at) {
         const uint8_t *slot = hash_table + (size_t)at * 16U;
-        uint32_t block_index = mpq_le32(slot + 12U);
+        uint32_t block_index = xx_data_get_u32(slot + 12U, 4, 0, false);
         const uint8_t *entry;
         mpq_member member;
         uint64_t file_offset, packed, unpacked;
@@ -527,10 +507,10 @@ static bool mpq_parse_inner(Abstractformat *format, mpq_stream **result) {
             continue;
         if (block_index >= block_entries) goto fail;
         entry = block_table + (size_t)block_index * 16U;
-        file_offset = mpq_le32(entry);
-        packed = mpq_le32(entry + 4U);
-        unpacked = mpq_le32(entry + 8U);
-        flags = mpq_le32(entry + 12U);
+        file_offset = xx_data_get_u32(entry, 4, 0, false);
+        packed = xx_data_get_u32(entry + 4U, 4, 0, false);
+        unpacked = xx_data_get_u32(entry + 8U, 4, 0, false);
+        flags = xx_data_get_u32(entry + 12U, 4, 0, false);
         if ((flags & MPQ_FILE_EXISTS) == 0U ||
             (flags & MPQ_FILE_DELETE_MARKER) != 0U)
             continue;
@@ -549,7 +529,7 @@ static bool mpq_parse_inner(Abstractformat *format, mpq_stream **result) {
         member.flags = flags;
         member.encrypted = (flags & MPQ_FILE_ENCRYPTED) != 0U;
         member.method = flags & (MPQ_FILE_IMPLODE | MPQ_FILE_COMPRESS);
-        member.attributes = mpq_le16(slot + 8U); /* locale */
+        member.attributes = xx_data_get_u16(slot + 8U, 2, 0, false); /* locale */
         member.aux0 = block_index;
         if (!mpq_add_member(stream, &member)) {
             xx_mem_free(member.name);
@@ -599,24 +579,24 @@ static bool mpq_sector_table_valid(const uint8_t *offsets, size_t count,
                                     size_t raw_size, size_t sector_size,
                                     bool has_checksums) {
     size_t i;
-    if (mpq_le32(offsets) != table_size) return false;
+    if (xx_data_get_u32(offsets, 4, 0, false) != table_size) return false;
     for (i = 0U; i < count; ++i) {
-        uint32_t begin = mpq_le32(offsets + i * 4U);
-        uint32_t end = mpq_le32(offsets + (i + 1U) * 4U);
+        uint32_t begin = xx_data_get_u32(offsets + i * 4U, 4, 0, false);
+        uint32_t end = xx_data_get_u32(offsets + (i + 1U) * 4U, 4, 0, false);
         size_t want = raw_size - i * sector_size;
         if (want > sector_size) want = sector_size;
         if (begin > packed_size || end > packed_size || end <= begin ||
             (size_t)(end - begin) > want) return false;
     }
     if (has_checksums) {
-        uint32_t begin = mpq_le32(offsets + count * 4U);
-        uint32_t end = mpq_le32(offsets + (count + 1U) * 4U);
+        uint32_t begin = xx_data_get_u32(offsets + count * 4U, 4, 0, false);
+        uint32_t end = xx_data_get_u32(offsets + (count + 1U) * 4U, 4, 0, false);
         /* A compressed checksum table needs an additional codec chain.
          * Support the uncompressed table and verify each non-sentinel sum. */
         return end == packed_size && end >= begin &&
                (size_t)(end - begin) == count * 4U;
     }
-    return mpq_le32(offsets + count * 4U) == packed_size;
+    return xx_data_get_u32(offsets + count * 4U, 4, 0, false) == packed_size;
 }
 
 /* Recover only uniquely validated keys, with no filename/key dictionary.
@@ -629,7 +609,7 @@ static bool mpq_sector_key(const uint32_t *crypt, const uint8_t *packed,
                             uint8_t *offsets, uint32_t *file_key) {
     unsigned i;
     unsigned matches = 0U;
-    uint32_t cipher = mpq_le32(packed);
+    uint32_t cipher = xx_data_get_u32(packed, 4, 0, false);
     for (i = 0U; i < 256U; ++i) {
         uint32_t key = (cipher ^ (uint32_t)table_size) -
                        (0xeeeeeeeeU + crypt[0x400U + i]);
@@ -656,16 +636,16 @@ static bool mpq_wave_key(const uint32_t *crypt, const uint8_t *packed,
     uint8_t first[12];
     uint32_t cipher;
     if (packed_size < sizeof(first) || raw_size < sizeof(first)) return false;
-    cipher = mpq_le32(packed);
+    cipher = xx_data_get_u32(packed, 4, 0, false);
     for (i = 0U; i < 256U; ++i) {
         uint32_t key = (cipher ^ 0x46464952U) -
                        (0xeeeeeeeeU + crypt[0x400U + i]);
         if ((key & 255U) != i) continue;
         xx_mem_copy(first, packed, sizeof(first));
         mpq_decrypt_block(crypt, first, sizeof(first), key);
-        if (mpq_le32(first) == 0x46464952U &&
-            mpq_le32(first + 4U) == raw_size - 8U &&
-            mpq_le32(first + 8U) == 0x45564157U) {
+        if (xx_data_get_u32(first, 4, 0, false) == 0x46464952U &&
+            xx_data_get_u32(first + 4U, 4, 0, false) == raw_size - 8U &&
+            xx_data_get_u32(first + 8U, 4, 0, false) == 0x45564157U) {
             *file_key = key;
             if (++matches > 1U) return false;
         }
@@ -908,8 +888,8 @@ static bool mpq_decode_multi_sector(const uint8_t *packed, size_t packed_size,
         xx_io_device *out;
         int64_t actual;
         if (body_size < 15U || body[0] != 0U) return false;
-        declared = (uint64_t)mpq_le32(body + 6U) |
-                   ((uint64_t)mpq_le32(body + 10U) << 32U);
+        declared = (uint64_t)xx_data_get_u32(body + 6U, 4, 0, false) |
+                   ((uint64_t)xx_data_get_u32(body + 10U, 4, 0, false) << 32U);
         if (declared != plain_size) return false;
         out = xx_io_mem_open(plain, plain_size);
         if (!out) return false;
@@ -1009,15 +989,15 @@ static bool mpq_write_member(Abstractformat *format, mpq_stream *stream,
         size_t begin, end, size;
         if (pd && xx_pd_is_stopped(pd)) goto done;
         if (!single && want > sector_size) want = sector_size;
-        begin = offsets ? mpq_le32(offsets + i * 4U) : raw_at;
-        end = offsets ? mpq_le32(offsets + (i + 1U) * 4U) :
+        begin = offsets ? xx_data_get_u32(offsets + i * 4U, 4, 0, false) : raw_at;
+        end = offsets ? xx_data_get_u32(offsets + (i + 1U) * 4U, 4, 0, false) :
                          (single ? packed_size : raw_at + want);
         if (begin > end || end > packed_size) goto done;
         size = end - begin;
         if (member->encrypted) mpq_decrypt_block(crypt, packed + begin, size, key + (uint32_t)i);
         if (checksums) {
-            size_t crc_at = mpq_le32(offsets + count * 4U) + i * 4U;
-            uint32_t expected = mpq_le32(packed + crc_at);
+            size_t crc_at = xx_data_get_u32(offsets + count * 4U, 4, 0, false) + i * 4U;
+            uint32_t expected = xx_data_get_u32(packed + crc_at, 4, 0, false);
             if (expected != 0U && expected != UINT32_MAX &&
                 expected != mpq_sector_adler(packed + begin, size)) {
                 reason = "MPQ sector Adler-32 checksum mismatch"; goto done;

@@ -2,9 +2,6 @@
  * Metadata bit positions checked against FMOD's published sample structures
  * and vgmstream's FSB5 parser. No third-party extraction code is copied.
  */
-static void fsba_u16(uint8_t *p, uint16_t value) { p[0] = (uint8_t)value; p[1] = (uint8_t)(value >> 8U); }
-static void fsba_u32(uint8_t *p, uint32_t value) { unsigned i; for (i = 0; i < 4U; ++i) p[i] = (uint8_t)(value >> (8U * i)); }
-static void fsba_u64(uint8_t *p, uint64_t value) { fsba_u32(p, (uint32_t)value); fsba_u32(p + 4, (uint32_t)(value >> 32U)); }
 
 static uint64_t fsba_option_bytes(const xx_list_s *options) {
     uint64_t bytes; size_t i;
@@ -69,30 +66,30 @@ static bool fsb_prepare_audio(fsb_member *m) {
     m->output_size = raw + padding + header;
     xx_mem_zero(m->wave_header, sizeof(m->wave_header));
     xx_rt_memcpy(m->wave_header, rf64 ? "RF64" : "RIFF", 4U);
-    fsba_u32(m->wave_header + 4U, rf64 ? UINT32_MAX : (uint32_t)(m->output_size - 8U));
+    xx_data_set_u32(m->wave_header + 4U, 4, 0, rf64 ? UINT32_MAX : (uint32_t)(m->output_size - 8U), false);
     xx_rt_memcpy(m->wave_header + 8U, "WAVE", 4U); at = 12U;
     if (rf64) {
-        xx_rt_memcpy(m->wave_header + at, "ds64", 4U); fsba_u32(m->wave_header + at + 4U, 28U);
-        fsba_u64(m->wave_header + at + 8U, m->output_size - 8U); fsba_u64(m->wave_header + at + 16U, raw);
-        fsba_u64(m->wave_header + at + 24U, m->samples); at += 36U;
+        xx_rt_memcpy(m->wave_header + at, "ds64", 4U); xx_data_set_u32(m->wave_header + at + 4U, 4, 0, 28U, false);
+        xx_data_set_u64(m->wave_header + at + 8U, 8, 0, m->output_size - 8U, false); xx_data_set_u64(m->wave_header + at + 16U, 8, 0, raw, false);
+        xx_data_set_u64(m->wave_header + at + 24U, 8, 0, m->samples, false); at += 36U;
     }
     align = (uint32_t)m->channels * m->byte_width;
-    xx_rt_memcpy(m->wave_header + at, "fmt ", 4U); fsba_u32(m->wave_header + at + 4U, format_size);
-    fsba_u16(m->wave_header + at + 8U, extended ? 0xfffeU : floating ? 3U : 1U);
-    fsba_u16(m->wave_header + at + 10U, m->channels); fsba_u32(m->wave_header + at + 12U, m->rate);
-    fsba_u32(m->wave_header + at + 16U, m->rate * align); fsba_u16(m->wave_header + at + 20U, (uint16_t)align);
-    fsba_u16(m->wave_header + at + 22U, m->bits);
+    xx_rt_memcpy(m->wave_header + at, "fmt ", 4U); xx_data_set_u32(m->wave_header + at + 4U, 4, 0, format_size, false);
+    xx_data_set_u16(m->wave_header + at + 8U, 2, 0, extended ? 0xfffeU : floating ? 3U : 1U, false);
+    xx_data_set_u16(m->wave_header + at + 10U, 2, 0, m->channels, false); xx_data_set_u32(m->wave_header + at + 12U, 4, 0, m->rate, false);
+    xx_data_set_u32(m->wave_header + at + 16U, 4, 0, m->rate * align, false); xx_data_set_u16(m->wave_header + at + 20U, 2, 0, (uint16_t)align, false);
+    xx_data_set_u16(m->wave_header + at + 22U, 2, 0, m->bits, false);
     if (extended) {
         static const uint8_t guid[16] = {1,0,0,0,0,0,0x10,0,0x80,0,0,0xaa,0,0x38,0x9b,0x71};
         if (m->channels == 6U) mask = 0x3fU;
         if (m->channels == 8U) mask = 0x63fU;
-        fsba_u16(m->wave_header + at + 24U, 22U); fsba_u16(m->wave_header + at + 26U, m->bits);
-        fsba_u32(m->wave_header + at + 28U, mask); xx_rt_memcpy(m->wave_header + at + 32U, guid, sizeof(guid));
+        xx_data_set_u16(m->wave_header + at + 24U, 2, 0, 22U, false); xx_data_set_u16(m->wave_header + at + 26U, 2, 0, m->bits, false);
+        xx_data_set_u32(m->wave_header + at + 28U, 4, 0, mask, false); xx_rt_memcpy(m->wave_header + at + 32U, guid, sizeof(guid));
         if (floating) m->wave_header[at + 32U] = 3U;
     }
     at += 8U + format_size;
-    if (floating) { xx_rt_memcpy(m->wave_header + at, "fact", 4U); fsba_u32(m->wave_header + at + 4U, 4U); fsba_u32(m->wave_header + at + 8U, m->samples); at += 12U; }
-    xx_rt_memcpy(m->wave_header + at, "data", 4U); fsba_u32(m->wave_header + at + 4U, rf64 ? UINT32_MAX : (uint32_t)raw);
+    if (floating) { xx_rt_memcpy(m->wave_header + at, "fact", 4U); xx_data_set_u32(m->wave_header + at + 4U, 4, 0, 4U, false); xx_data_set_u32(m->wave_header + at + 8U, 4, 0, m->samples, false); at += 12U; }
+    xx_rt_memcpy(m->wave_header + at, "data", 4U); xx_data_set_u32(m->wave_header + at + 4U, 4, 0, rf64 ? UINT32_MAX : (uint32_t)raw, false);
     return fsba_extension(m, ".wav");
 }
 

@@ -5,8 +5,9 @@
  */
 #include "xxfclib/formats/idtech_iqm/xx_idtech_iqm.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static uint32_t g32(const uint8_t *p,bool be) { return be ? pm_be32(p) : pm_le32(p); }
+static uint32_t g32(const uint8_t *p,bool be) { return be ? xx_data_get_u32(p, 4, 0, true) : xx_data_get_u32(p, 4, 0, false); }
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool overlap(uint64_t a,uint64_t n,uint64_t b,uint64_t m) { return n && m && a<b+m && b<a+n; }
 static bool stop(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
@@ -30,19 +31,19 @@ buffer_done:
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[124],m[24],p[20],q[12]; uint32_t total,text,to,meshes,mo,arrays,verts,ao,tris,tro,adj,i,j,nr=0; uint64_t at,covered=0; bool position=false; char label[40]; rg ranges[256];
-    if(!pm_read(f,0,h,124) || xx_rt_memcmp(h,"INTERQUAKEMODEL\0",16) || pm_le32(h+16)!=2 || (total=pm_le32(h+20))>(uint64_t)pm_available(f) || pm_le32(h+24) || !zeros(f,68,40,pd) || pm_le32(h+116) || pm_le32(h+120)) return false;
-    text=pm_le32(h+28); to=pm_le32(h+32); meshes=pm_le32(h+36); mo=pm_le32(h+40); arrays=pm_le32(h+44); verts=pm_le32(h+48); ao=pm_le32(h+52); tris=pm_le32(h+56); tro=pm_le32(h+60); adj=pm_le32(h+64);
+    if(!pm_read(f,0,h,124) || xx_rt_memcmp(h,"INTERQUAKEMODEL\0",16) || xx_data_get_u32(h+16, 4, 0, false)!=2 || (total=xx_data_get_u32(h+20, 4, 0, false))>(uint64_t)pm_available(f) || xx_data_get_u32(h+24, 4, 0, false) || !zeros(f,68,40,pd) || xx_data_get_u32(h+116, 4, 0, false) || xx_data_get_u32(h+120, 4, 0, false)) return false;
+    text=xx_data_get_u32(h+28, 4, 0, false); to=xx_data_get_u32(h+32, 4, 0, false); meshes=xx_data_get_u32(h+36, 4, 0, false); mo=xx_data_get_u32(h+40, 4, 0, false); arrays=xx_data_get_u32(h+44, 4, 0, false); verts=xx_data_get_u32(h+48, 4, 0, false); ao=xx_data_get_u32(h+52, 4, 0, false); tris=xx_data_get_u32(h+56, 4, 0, false); tro=xx_data_get_u32(h+60, 4, 0, false); adj=xx_data_get_u32(h+64, 4, 0, false);
     if(!text || text>1048576 || !meshes || meshes>256 || !arrays || arrays>7 || !verts || verts>65536 || !tris || tris>65536 || to<124 || mo<124 || ao<124 || tro<124 || (mo&3) || (ao&3) || (tro&3) || !emit(f,s,"text.bin",to,text,total) || !emit(f,s,"meshes.bin",mo,(uint64_t)meshes*24,total) || !emit(f,s,"vertex-descriptors.bin",ao,(uint64_t)arrays*20,total) || !emit(f,s,"triangles.bin",tro,(uint64_t)tris*12,total)) return false;
-    for(i=0;i<meshes;++i) { uint32_t first,n,ft,nt; if(stop(pd) || !pm_read(f,mo+(int64_t)i*24,m,24)) return false; at=to+(uint64_t)pm_le32(m); if(at>=to+(uint64_t)text || !cstring(f,&at,to+(uint64_t)text,4096,true,pd)) return false; at=to+(uint64_t)pm_le32(m+4); if(at>=to+(uint64_t)text || !cstring(f,&at,to+(uint64_t)text,4096,true,pd)) return false;
-      first=pm_le32(m+8); n=pm_le32(m+12); ft=pm_le32(m+16); nt=pm_le32(m+20); if(!n || !nt || !span(first,n,verts) || !reserve(ranges,&nr,256,ft,nt,0,tris)) return false; covered+=nt;
-      for(j=0;j<nt;++j) { unsigned k; if(stop(pd) || !pm_read(f,tro+(int64_t)(ft+j)*12,q,12)) return false; for(k=0;k<3;++k) if(pm_le32(q+k*4)<first || pm_le32(q+k*4)-first>=n) return false; }
+    for(i=0;i<meshes;++i) { uint32_t first,n,ft,nt; if(stop(pd) || !pm_read(f,mo+(int64_t)i*24,m,24)) return false; at=to+(uint64_t)xx_data_get_u32(m, 4, 0, false); if(at>=to+(uint64_t)text || !cstring(f,&at,to+(uint64_t)text,4096,true,pd)) return false; at=to+(uint64_t)xx_data_get_u32(m+4, 4, 0, false); if(at>=to+(uint64_t)text || !cstring(f,&at,to+(uint64_t)text,4096,true,pd)) return false;
+      first=xx_data_get_u32(m+8, 4, 0, false); n=xx_data_get_u32(m+12, 4, 0, false); ft=xx_data_get_u32(m+16, 4, 0, false); nt=xx_data_get_u32(m+20, 4, 0, false); if(!n || !nt || !span(first,n,verts) || !reserve(ranges,&nr,256,ft,nt,0,tris)) return false; covered+=nt;
+      for(j=0;j<nt;++j) { unsigned k; if(stop(pd) || !pm_read(f,tro+(int64_t)(ft+j)*12,q,12)) return false; for(k=0;k<3;++k) if(xx_data_get_u32(q+k*4, 4, 0, false)<first || xx_data_get_u32(q+k*4, 4, 0, false)-first>=n) return false; }
     }
-    { unsigned used=0; for(i=0;i<arrays;++i) { uint32_t kind,format,size,offset; if(!pm_read(f,ao+(int64_t)i*20,p,20)) return false; kind=pm_le32(p); format=pm_le32(p+8); size=pm_le32(p+12); offset=pm_le32(p+16); if(kind>6 || kind==4 || kind==5 || (used&(1U<<kind)) || pm_le32(p+4) || offset<124) return false; used|=1U<<kind;
+    { unsigned used=0; for(i=0;i<arrays;++i) { uint32_t kind,format,size,offset; if(!pm_read(f,ao+(int64_t)i*20,p,20)) return false; kind=xx_data_get_u32(p, 4, 0, false); format=xx_data_get_u32(p+8, 4, 0, false); size=xx_data_get_u32(p+12, 4, 0, false); offset=xx_data_get_u32(p+16, 4, 0, false); if(kind>6 || kind==4 || kind==5 || (used&(1U<<kind)) || xx_data_get_u32(p+4, 4, 0, false) || offset<124) return false; used|=1U<<kind;
       if(kind==6) { if(format!=1 || size!=4) return false; }
       else { if(format!=7 || size!=(kind==1 ? 2U:kind==3 ? 4U:3U) || (offset&3) || !span(offset,(uint64_t)verts*size*4,total) || !floats(f,offset,(uint64_t)verts*size,false,pd)) return false; }
       xx_rt_snprintf(label,sizeof(label),"vertex-array-%u.bin",kind); if(!emit(f,s,label,offset,(uint64_t)verts*size*(format==7 ? 4:1),total)) return false; if(!kind) position=true; } }
-    if(adj) { if(adj<124 || (adj&3) || !emit(f,s,"adjacency.bin",adj,(uint64_t)tris*12,total)) return false; for(i=0;i<tris;++i) { if(stop(pd) || !pm_read(f,adj+(int64_t)i*12,q,12)) return false; for(j=0;j<3;++j) if(pm_le32(q+j*4)!=UINT32_MAX && pm_le32(q+j*4)>=tris) return false; } }
-    if(pm_le32(h+108)) { if(pm_le32(h+108)>1048576 || pm_le32(h+112)<124 || !emit(f,s,"comment.bin",pm_le32(h+112),pm_le32(h+108),total)) return false; } else if(pm_le32(h+112)) return false;
+    if(adj) { if(adj<124 || (adj&3) || !emit(f,s,"adjacency.bin",adj,(uint64_t)tris*12,total)) return false; for(i=0;i<tris;++i) { if(stop(pd) || !pm_read(f,adj+(int64_t)i*12,q,12)) return false; for(j=0;j<3;++j) if(xx_data_get_u32(q+j*4, 4, 0, false)!=UINT32_MAX && xx_data_get_u32(q+j*4, 4, 0, false)>=tris) return false; } }
+    if(xx_data_get_u32(h+108, 4, 0, false)) { if(xx_data_get_u32(h+108, 4, 0, false)>1048576 || xx_data_get_u32(h+112, 4, 0, false)<124 || !emit(f,s,"comment.bin",xx_data_get_u32(h+112, 4, 0, false),xx_data_get_u32(h+108, 4, 0, false),total)) return false; } else if(xx_data_get_u32(h+112, 4, 0, false)) return false;
     if(!position || covered!=tris) { return false; } s->size=total; return true;
 
 }

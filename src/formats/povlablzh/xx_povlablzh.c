@@ -42,6 +42,7 @@
 #include "xxfclib/algo/lzh/xx_lzh.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_POVLABLZH_COPY_CHUNK (64 * 1024)
 
@@ -149,8 +150,6 @@ static bool xx_povlablzh_add(xx_povlablzh_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_povlablzh_le16(const uint8_t *data);
-static uint32_t xx_povlablzh_le32(const uint8_t *data);
 static bool xx_povlablzh_checksum_valid(const uint8_t *header, int64_t base_size);
 static bool xx_povlablzh_name_valid(const uint8_t *name, int64_t length);
 static bool xx_povlablzh_read_member(Abstractformat *self, int64_t span, int64_t offset, xx_povlablzh_member *member, xx_pd_struct *pd);
@@ -163,15 +162,6 @@ static bool xx_povlablzh_decode(Abstractformat *self, const xx_povlablzh_member 
 /* An extended header is at least its own length word plus a type byte. */
 /* The extended-header chain is attacker-controlled and self-referential; cap
  * the bytes it may consume so a crafted chain cannot walk the whole file. */
-
-static uint16_t xx_povlablzh_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_povlablzh_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* The additive header checksum: every base-header byte from index 2 to the
  * end, modulo 256. This one byte is what makes a random "-ARA-" pair inside
@@ -275,8 +265,8 @@ static bool xx_povlablzh_read_member(Abstractformat *self, int64_t span,
     }
     if (!xx_povlablzh_checksum_valid(header, base_size)) return false;
 
-    skip_size = (int64_t)xx_povlablzh_le32(header + 7);
-    original_size = (int64_t)xx_povlablzh_le32(header + 11);
+    skip_size = (int64_t)xx_data_get_u32(header + 7, 4, 0, false);
+    original_size = (int64_t)xx_data_get_u32(header + 11, 4, 0, false);
     if (original_size > XX_POVLABLZH_MAX_UNCOMPRESSED) return false;
 
     if (!xx_povlablzh_name_valid(header + XX_POVLABLZH_NAME_OFFSET,
@@ -292,7 +282,7 @@ static bool xx_povlablzh_read_member(Abstractformat *self, int64_t span,
     length_word[1] = header[base_size - 1];
     for (;;) {
         if (pd && xx_pd_is_stopped(pd)) return false;
-        next_size = (int64_t)xx_povlablzh_le16(length_word);
+        next_size = (int64_t)xx_data_get_u16(length_word, 2, 0, false);
         if (next_size == 0) break;
         if (next_size < XX_POVLABLZH_MIN_EXT_SIZE) return false;
         /* The chain lives inside skip_size; a header claiming more than what
@@ -354,7 +344,7 @@ static bool xx_povlablzh_read_member(Abstractformat *self, int64_t span,
     member->method = method;
     /* Already packed date-high / time-low by the container, so it is stored
      * verbatim rather than re-assembled. */
-    member->timestamp = (uint64_t)xx_povlablzh_le32(header + 15);
+    member->timestamp = (uint64_t)xx_data_get_u32(header + 15, 4, 0, false);
     /* Names can include relative DOS subdirectories; these are file records. */
     member->is_folder = false;
     /* The CRC-16 behind the name covers the UNPACKED member, so verifying it

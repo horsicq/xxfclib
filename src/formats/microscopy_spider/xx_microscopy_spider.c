@@ -6,10 +6,10 @@
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[108];nh_blob b={0};bool be,ok=false;uint64_t z,y,form,x,records,header,row,total;
     if(!pm_read(f,0,h,sizeof(h))) return false;
-    if(pm_le32(h+16)==0x3f800000U || pm_le32(h+16)==0x40400000U) be=false;else if(pm_be32(h+16)==0x3f800000U || pm_be32(h+16)==0x40400000U) be=true;else return false;
-    NH_NEED(sd_float32_uint(fd_u32(h,be),&z) && sd_float32_uint(fd_u32(h+4,be),&y) && sd_float32_uint(fd_u32(h+16,be),&form) && sd_float32_uint(fd_u32(h+44,be),&x));
-    NH_NEED(sd_float32_uint(fd_u32(h+48,be),&records) && sd_float32_uint(fd_u32(h+84,be),&header) && sd_float32_uint(fd_u32(h+88,be),&row));
-    NH_NEED(z && y && x && records && header>=108 && header<=1048576 && row==x*4 && records*row==header && (form==1 ? z==1:form==3) && fd_u32(h+92,be)==0 && fd_u32(h+104,be)==0);
+    if(xx_data_get_u32(h+16, 4, 0, false)==0x3f800000U || xx_data_get_u32(h+16, 4, 0, false)==0x40400000U) be=false;else if(xx_data_get_u32(h+16, 4, 0, true)==0x3f800000U || xx_data_get_u32(h+16, 4, 0, true)==0x40400000U) be=true;else return false;
+    NH_NEED(sd_float32_uint(xx_data_get_u32(h, 4, 0, be),&z) && sd_float32_uint(xx_data_get_u32(h+4, 4, 0, be),&y) && sd_float32_uint(xx_data_get_u32(h+16, 4, 0, be),&form) && sd_float32_uint(xx_data_get_u32(h+44, 4, 0, be),&x));
+    NH_NEED(sd_float32_uint(xx_data_get_u32(h+48, 4, 0, be),&records) && sd_float32_uint(xx_data_get_u32(h+84, 4, 0, be),&header) && sd_float32_uint(xx_data_get_u32(h+88, 4, 0, be),&row));
+    NH_NEED(z && y && x && records && header>=108 && header<=1048576 && row==x*4 && records*row==header && (form==1 ? z==1:form==3) && xx_data_get_u32(h+92, 4, 0, be)==0 && xx_data_get_u32(h+104, 4, 0, be)==0);
     NH_NEED(nh_load(f,&b,pd) && fd_mul(x,y,&total) && fd_mul(total,z,&total) && fd_mul(total,4,&total) && b.n==header+total && nh_floats(&b,0,header,4,be) && nh_floats(&b,header,total,4,be));
     NH_NEED(nh_add(f,s,&b,"header",0,header) && nh_add(f,s,&b,"pixels",header,total));s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;

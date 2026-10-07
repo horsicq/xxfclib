@@ -34,10 +34,8 @@ in this Software without prior written authorization of the copyright holder.
 
 #include "xxfclib/rt/xx_rt.h"
 #include <stdint.h>
+#include "xxfclib/data/xx_data.h"
 typedef struct mb_cipher { uint32_t P[18],S[4][256]; } mb_cipher;
-static uint32_t mb_le32(const uint8_t*p){return (uint32_t)p[0]|(uint32_t)p[1]<<8|(uint32_t)p[2]<<16|(uint32_t)p[3]<<24;}
-static void mb_put32(uint8_t*p,uint32_t v){p[0]=(uint8_t)v;p[1]=(uint8_t)(v>>8);p[2]=(uint8_t)(v>>16);p[3]=(uint8_t)(v>>24);}
-
 
 #ifdef __cplusplus
 extern "C" {
@@ -335,8 +333,8 @@ static void mb_encrypt8(const mb_cipher* self, void* block8)
 	uint32_t  temp;
 	int     i;
 
-	L = mb_le32((const uint8_t*)block8);
-	R = mb_le32((const uint8_t*)block8+4);
+	L = xx_data_get_u32((const uint8_t*)block8, 4, 0, false);
+	R = xx_data_get_u32((const uint8_t*)block8+4, 4, 0, false);
 
 	for (i = 0; i < 16; ++i)
 	{
@@ -355,8 +353,8 @@ static void mb_encrypt8(const mb_cipher* self, void* block8)
 	R = R ^ self->P[16];
 	L = L ^ self->P[16 + 1];
 
-	mb_put32((uint8_t*)block8,L);
-	mb_put32((uint8_t*)block8+4,R);
+	xx_data_set_u32((uint8_t*)block8, 4, 0, L, false);
+	xx_data_set_u32((uint8_t*)block8+4, 4, 0, R, false);
 }
 
 static void mb_decrypt8(const mb_cipher* self, void* block8)
@@ -366,8 +364,8 @@ static void mb_decrypt8(const mb_cipher* self, void* block8)
 	uint32_t  temp;
 	int     i;
 
-	L = mb_le32((const uint8_t*)block8);
-	R = mb_le32((const uint8_t*)block8+4);
+	L = xx_data_get_u32((const uint8_t*)block8, 4, 0, false);
+	R = xx_data_get_u32((const uint8_t*)block8+4, 4, 0, false);
 
 	for (i = 16 + 1; i > 1; --i)
 	{
@@ -386,8 +384,8 @@ static void mb_decrypt8(const mb_cipher* self, void* block8)
 	R = R ^ self->P[1];
 	L = L ^ self->P[0];
 
-	mb_put32((uint8_t*)block8,L);
-	mb_put32((uint8_t*)block8+4,R);
+	xx_data_set_u32((uint8_t*)block8, 4, 0, L, false);
+	xx_data_set_u32((uint8_t*)block8+4, 4, 0, R, false);
 }
 
 static void mb_cipher_init(mb_cipher* self, const void* key, size_t key_len)
@@ -415,8 +413,8 @@ static void mb_cipher_init(mb_cipher* self, const void* key, size_t key_len)
 	for (i = 0; i < 16 + 2; i += 2)
 	{
 		mb_encrypt8(self, LR);
-		self->P[i] = mb_le32(LR);
-		self->P[i + 1] = mb_le32(LR+4);
+		self->P[i] = xx_data_get_u32(LR, 4, 0, false);
+		self->P[i + 1] = xx_data_get_u32(LR+4, 4, 0, false);
 	}
 
 	for (i = 0; i < 4; ++i)
@@ -424,8 +422,8 @@ static void mb_cipher_init(mb_cipher* self, const void* key, size_t key_len)
 		for (j = 0; j < 256; j += 2)
 		{
 			mb_encrypt8(self, LR);
-			self->S[i][j] = mb_le32(LR);
-			self->S[i][j + 1] = mb_le32(LR+4);
+			self->S[i][j] = xx_data_get_u32(LR, 4, 0, false);
+			self->S[i][j + 1] = xx_data_get_u32(LR+4, 4, 0, false);
 		}
 	}
 

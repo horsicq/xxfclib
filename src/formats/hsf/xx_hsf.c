@@ -28,6 +28,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -84,24 +85,10 @@ typedef struct hsf_stream_s {
 
 static void xx_hsf_vtable_destroy(Abstractformat *self);
 
-static uint16_t hsf_le16(const uint8_t *p) {
-    return (uint16_t)(p[0] | ((uint16_t)p[1] << 8U));
-}
-static uint16_t hsf_be16(const uint8_t *p) {
-    return (uint16_t)(((uint16_t)p[0] << 8U) | p[1]);
-}
-static uint32_t hsf_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) | ((uint32_t)p[2] << 16U) |
-           ((uint32_t)p[3] << 24U);
-}
-static uint32_t hsf_be32(const uint8_t *p) {
-    return ((uint32_t)p[0] << 24U) | ((uint32_t)p[1] << 16U) |
-           ((uint32_t)p[2] << 8U) | (uint32_t)p[3];
-}
 /* A both-endian u32 whose halves agree. */
 static bool hsf_both32(const uint8_t *p, uint32_t *out) {
-    uint32_t v = hsf_le32(p);
-    if (v != hsf_be32(p + 4U)) return false;
+    uint32_t v = xx_data_get_u32(p, 4, 0, false);
+    if (v != xx_data_get_u32(p + 4U, 4, 0, true)) return false;
     *out = v;
     return true;
 }
@@ -425,8 +412,8 @@ static bool hsf_parse(Abstractformat *self, hsf_parsed *parsed,
      * "CDROM" and version 1. */
     offset = self->base_address + (int64_t)HSF_FIRST_DESCRIPTOR * HSF_SECTOR;
     if (!hsf_read_at(self->device, offset, head, sizeof(head)) ||
-        hsf_le32(head) != HSF_FIRST_DESCRIPTOR ||
-        hsf_be32(head + 4U) != HSF_FIRST_DESCRIPTOR ||
+        xx_data_get_u32(head, 4, 0, false) != HSF_FIRST_DESCRIPTOR ||
+        xx_data_get_u32(head + 4U, 4, 0, true) != HSF_FIRST_DESCRIPTOR ||
         xx_rt_memcmp(head + 9U, "CDROM", 5U) != 0 || head[14] != 1U)
         return false;
     for (index = 0U; index < HSF_MAX_DESCRIPTORS; ++index) {
@@ -434,7 +421,7 @@ static bool hsf_parse(Abstractformat *self, hsf_parsed *parsed,
         offset = self->base_address + (int64_t)sector * HSF_SECTOR;
         if (offset > parsed->total_size - (int64_t)HSF_SECTOR ||
             !hsf_read_at(self->device, offset, vd, sizeof(vd)) ||
-            hsf_le32(vd) != sector || hsf_be32(vd + 4U) != sector ||
+            xx_data_get_u32(vd, 4, 0, false) != sector || xx_data_get_u32(vd + 4U, 4, 0, true) != sector ||
             xx_rt_memcmp(vd + 9U, "CDROM", 5U) != 0 || vd[14] != 1U)
             break;
         last_sector = sector;
@@ -445,8 +432,8 @@ static bool hsf_parse(Abstractformat *self, hsf_parsed *parsed,
         if (vd[8] == 255U) break;
     }
     if (!have_sfsvd || !hsf_both32(sfsvd + 88U, &vs) || vs == 0U) goto fail;
-    bs = hsf_le16(sfsvd + 136U);
-    if (bs != hsf_be16(sfsvd + 138U) ||
+    bs = xx_data_get_u16(sfsvd + 136U, 2, 0, false);
+    if (bs != xx_data_get_u16(sfsvd + 138U, 2, 0, true) ||
         (bs != 512U && bs != 1024U && bs != 2048U))
         goto fail;
     parsed->block_size = bs;

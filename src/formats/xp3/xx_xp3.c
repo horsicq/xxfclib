@@ -24,6 +24,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef XP3
 #define XX_XP3_FILE_TYPE XX_FILE_TYPE_XP3
@@ -112,19 +113,6 @@ static size_t xp3_capacity(void) {
     return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
 }
 
-static uint16_t xp3_le16(const uint8_t *p) {
-    return (uint16_t)((uint16_t)p[0] | ((uint16_t)p[1] << 8U));
-}
-
-static uint32_t xp3_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) | ((uint32_t)p[2] << 16U) |
-           ((uint32_t)p[3] << 24U);
-}
-
-static uint64_t xp3_le64(const uint8_t *p) {
-    return (uint64_t)xp3_le32(p) | ((uint64_t)xp3_le32(p + 4) << 32U);
-}
-
 static bool xp3_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     size_t done = 0U;
@@ -179,19 +167,19 @@ static bool xp3_read_layout(Abstractformat *format, xp3_layout *layout) {
         !xp3_read_at(format->device, format->base_address, head, sizeof(head)) ||
         xx_rt_memcmp(head, xp3_signature, XP3_SIGNATURE_SIZE) != 0)
         return false;
-    at = xp3_le64(head + XP3_SIGNATURE_SIZE);
+    at = xx_data_get_u64(head + XP3_SIGNATURE_SIZE, 8, 0, false);
     layout->version = 1U;
     if (at < XP3_HEADER_SIZE || !xp3_fits(layout->size, at, 9U) ||
         !xp3_read_at(format->device, format->base_address + (int64_t)at,
                      record, 9U))
         return false;
-    if (xp3_le32(record) == XP3_CONTINUE) {
+    if (xx_data_get_u32(record, 4, 0, false) == XP3_CONTINUE) {
         /* Version 2: {0x80, u64 0, u64 real index position}. */
         if (!xp3_fits(layout->size, at, 17U) ||
             !xp3_read_at(format->device, format->base_address + (int64_t)at,
                          record, 17U))
             return false;
-        at = xp3_le64(record + 9);
+        at = xx_data_get_u64(record + 9, 8, 0, false);
         layout->version = 2U;
         if (at < XP3_HEADER_SIZE || !xp3_fits(layout->size, at, 9U) ||
             !xp3_read_at(format->device, format->base_address + (int64_t)at,
@@ -201,7 +189,7 @@ static bool xp3_read_layout(Abstractformat *format, xp3_layout *layout) {
     layout->index_at = (int64_t)at;
     layout->method = record[0];
     if (layout->method == XP3_METHOD_STORED) {
-        layout->index_size = xp3_le64(record + 1);
+        layout->index_size = xx_data_get_u64(record + 1, 8, 0, false);
         layout->index_packed = layout->index_size;
         if (layout->index_size > (uint64_t)XP3_MAX_INDEX ||
             !xp3_fits(layout->size, at + 9U, layout->index_size))
@@ -213,8 +201,8 @@ static bool xp3_read_layout(Abstractformat *format, xp3_layout *layout) {
         !xp3_read_at(format->device, format->base_address + (int64_t)at,
                      record, 17U))
         return false;
-    layout->index_packed = xp3_le64(record + 1);
-    layout->index_size = xp3_le64(record + 9);
+    layout->index_packed = xx_data_get_u64(record + 1, 8, 0, false);
+    layout->index_size = xx_data_get_u64(record + 9, 8, 0, false);
     if (layout->index_packed < 2U ||
         layout->index_packed > (uint64_t)XP3_MAX_INDEX ||
         layout->index_size > (uint64_t)XP3_MAX_INDEX ||
@@ -276,9 +264,9 @@ static size_t xp3_name_utf8(const uint8_t *units, size_t count, char *out,
                             bool *unsafe) {
     size_t at = 0U, i;
     for (i = 0U; i < count; ++i) {
-        uint32_t c = xp3_le16(units + i * 2U);
+        uint32_t c = xx_data_get_u16(units + i * 2U, 2, 0, false);
         if (c >= 0xd800U && c <= 0xdbffU && i + 1U < count) {
-            uint32_t low = xp3_le16(units + (i + 1U) * 2U);
+            uint32_t low = xx_data_get_u16(units + (i + 1U) * 2U, 2, 0, false);
             if (low >= 0xdc00U && low <= 0xdfffU) {
                 c = 0x10000U + ((c - 0xd800U) << 10U) + (low - 0xdc00U);
                 ++i;
@@ -295,7 +283,7 @@ static size_t xp3_name_utf8(const uint8_t *units, size_t count, char *out,
             c = '_';
         }
         if (c == '%' && i + 1U < count &&
-            xp3_le16(units + (i + 1U) * 2U) == (uint32_t)'_') {
+            xx_data_get_u16(units + (i + 1U) * 2U, 2, 0, false) == (uint32_t)'_') {
             if (out) { out[at] = '%'; out[at + 1] = '2'; out[at + 2] = '5'; }
             at += 3U;
         } else if (c < 0x80U) {
@@ -421,8 +409,8 @@ static bool xp3_parse_file(const uint8_t *body, uint64_t size,
         uint64_t section;
         uint32_t tag;
         if (left < 12U) break;
-        tag = xp3_le32(at);
-        section = xp3_le64(at + 4);
+        tag = xx_data_get_u32(at, 4, 0, false);
+        section = xx_data_get_u64(at + 4, 8, 0, false);
         left -= 12U;
         if (section > left) {
             if (tag != 0x6f666e69U) break; /* only "info" is clamped */
@@ -439,12 +427,12 @@ static bool xp3_parse_file(const uint8_t *body, uint64_t size,
                 segm_size = section;
             }
         } else if (tag == 0x726c6461U) { /* "adlr" */
-            if (section == 4U) adler = xp3_le32(at + 12);
+            if (section == 4U) adler = xx_data_get_u32(at + 12, 4, 0, false);
         }
         at += 12U + section;
     }
     if (!info || info_size < XP3_INFO_FIXED || !segm) return false;
-    units = xp3_le16(info + 20);
+    units = xx_data_get_u16(info + 20, 2, 0, false);
     if (units == 0U || units > XP3_MAX_NAME_UNITS ||
         (uint64_t)XP3_INFO_FIXED + (uint64_t)units * 2U > info_size)
         return false;
@@ -452,9 +440,9 @@ static bool xp3_parse_file(const uint8_t *body, uint64_t size,
     if (segments == 0U) return false;
     for (index = 0U; index < segments; ++index) {
         const uint8_t *s = segm + index * XP3_SEGMENT_SIZE;
-        uint32_t flags = xp3_le32(s);
-        uint64_t offset = xp3_le64(s + 4), orig = xp3_le64(s + 12),
-                 pk = xp3_le64(s + 20), span;
+        uint32_t flags = xx_data_get_u32(s, 4, 0, false);
+        uint64_t offset = xx_data_get_u64(s + 4, 8, 0, false), orig = xx_data_get_u64(s + 12, 8, 0, false),
+                 pk = xx_data_get_u64(s + 20, 8, 0, false), span;
         uint32_t method = flags & XP3_METHOD_MASK;
         if (method == XP3_METHOD_STORED)
             span = orig;
@@ -499,7 +487,7 @@ static bool xp3_parse_file(const uint8_t *body, uint64_t size,
         member->segment_count = segments;
         member->original = original;
         member->packed = packed;
-        member->flags = xp3_le32(info);
+        member->flags = xx_data_get_u32(info, 4, 0, false);
         member->adler = adler;
         member->header_offset = header_offset;
         member->unsafe = unsafe;
@@ -507,10 +495,10 @@ static bool xp3_parse_file(const uint8_t *body, uint64_t size,
         for (index = 0U; index < segments; ++index) {
             const uint8_t *s = segm + index * XP3_SEGMENT_SIZE;
             xp3_segment *out = &stream->segments[stream->segment_count++];
-            out->flags = xp3_le32(s);
-            out->offset = xp3_le64(s + 4);
-            out->original = xp3_le64(s + 12);
-            out->packed = xp3_le64(s + 20);
+            out->flags = xx_data_get_u32(s, 4, 0, false);
+            out->offset = xx_data_get_u64(s + 4, 8, 0, false);
+            out->original = xx_data_get_u64(s + 12, 8, 0, false);
+            out->packed = xx_data_get_u64(s + 20, 8, 0, false);
         }
         ++stream->count;
     }
@@ -527,9 +515,9 @@ static bool xp3_walk(const uint8_t *index, uint64_t size,
         uint64_t chunk;
         if ((++step & XP3_POLL_MASK) == 0U && xp3_stopped(pd)) return false;
         if (size - pos < 12U) return false;
-        chunk = xp3_le64(index + pos + 4);
+        chunk = xx_data_get_u64(index + pos + 4, 8, 0, false);
         if (chunk > size - pos - 12U) return false;
-        if (xp3_le32(index + pos) == 0x656c6946U) /* "File" */
+        if (xx_data_get_u32(index + pos, 4, 0, false) == 0x656c6946U) /* "File" */
             (void)xp3_parse_file(index + pos + 12U, chunk, layout,
                                  (int64_t)pos, stream, counts);
         pos += 12U + chunk;

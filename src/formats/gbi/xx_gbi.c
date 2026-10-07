@@ -36,6 +36,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and not edited from here;
  * the alias macro next to the enumerator switches this over once GBI is
@@ -98,15 +99,6 @@ typedef struct gbi_stream_s {
     size_t count;
 } gbi_stream;
 
-static uint32_t gbi_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) | ((uint32_t)p[2] << 16U) |
-           ((uint32_t)p[3] << 24U);
-}
-
-static uint64_t gbi_le64(const uint8_t *p) {
-    return (uint64_t)gbi_le32(p) | ((uint64_t)gbi_le32(p + 4) << 32U);
-}
-
 static bool gbi_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     size_t done = 0U;
@@ -151,15 +143,15 @@ static bool gbi_read_header(Abstractformat *format, gbi_layout *layout) {
         if (h[i] != 0U) return false;
     xx_mem_zero(layout, sizeof(*layout));
     layout->available = total - format->base_address;
-    layout->version = gbi_le32(h + 0x14);
+    layout->version = xx_data_get_u32(h + 0x14, 4, 0, false);
     if (layout->version != GBI_VERSION_1 && layout->version != GBI_VERSION_2)
         return false;
-    layout->crc = gbi_le32(h + 0x48);
+    layout->crc = xx_data_get_u32(h + 0x48, 4, 0, false);
     if (xx_crc32_calc(0U, h, GBI_CRC_SPAN) != layout->crc) return false;
-    layout->table_offset = gbi_le32(h + 0x10);
-    layout->data_offset = gbi_le32(h + 0x18);
-    layout->size_field = gbi_le32(h + 0x24);
-    layout->image_size = gbi_le64(h + 0x28);
+    layout->table_offset = xx_data_get_u32(h + 0x10, 4, 0, false);
+    layout->data_offset = xx_data_get_u32(h + 0x18, 4, 0, false);
+    layout->size_field = xx_data_get_u32(h + 0x24, 4, 0, false);
+    layout->image_size = xx_data_get_u64(h + 0x28, 8, 0, false);
     if (layout->version == GBI_VERSION_2) {
         unsigned swap, real;
         static const uint8_t tables[4][3] = {
@@ -224,15 +216,15 @@ static bool gbi_read_descriptors(Abstractformat *format, gbi_layout *layout) {
             !gbi_read_at(format->device, format->base_address + position, d,
                          8U))
             return false;
-        type = gbi_le32(d);
-        length = gbi_le32(d + 4);
+        type = xx_data_get_u32(d, 4, 0, false);
+        length = xx_data_get_u32(d + 4, 4, 0, false);
         if (length < 8U || length > layout->table_offset - position)
             return false;
         if (type == GBI_DESC_SPLIT && length >= 16U) {
             if (!gbi_read_at(format->device,
                              format->base_address + position + 8U, d + 8, 8U))
                 return false;
-            if (gbi_le32(d + 8) > 1U) layout->multi_volume = true;
+            if (xx_data_get_u32(d + 8, 4, 0, false) > 1U) layout->multi_volume = true;
         } else if (type == GBI_DESC_ENCRYPTION) {
             layout->encrypted = true;
         }
@@ -675,7 +667,7 @@ static void gbi_bcj_decode(uint8_t *data, size_t size) {
             ++pos;
             continue;
         }
-        value = gbi_le32(data + candidate + 1U);
+        value = xx_data_get_u32(data + candidate + 1U, 4, 0, false);
         current = ip + (uint32_t)candidate;
         value -= current;
         if (mask != 0U) {
@@ -723,7 +715,7 @@ static bool gbi_decode_chunk(const gbi_layout *layout, int kind,
         /* A chunk never reaches back past its own start, so a dictionary
          * of one chunk is exact and spares the decoder a large one. */
         uint8_t props[5];
-        uint32_t dictionary = gbi_le32(layout->lzma_props + 1);
+        uint32_t dictionary = xx_data_get_u32(layout->lzma_props + 1, 4, 0, false);
         props[0] = layout->lzma_props[0];
         if (dictionary > layout->chunk_size) dictionary = layout->chunk_size;
         props[1] = (uint8_t)dictionary;

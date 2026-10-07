@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <limits.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_PTERO_BIGF_HEADER_SIZE 64U
 #define XX_PTERO_BIGF_ENTRY_FIXED 40U
@@ -165,17 +166,6 @@ static bool xx_ptero_bigf_add(xx_ptero_bigf_stream *stream,
     return true;
 }
 
-
-static uint32_t xx_ptero_bigf_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static uint64_t xx_ptero_bigf_le64(const uint8_t *data) {
-    return (uint64_t)xx_ptero_bigf_le32(data) |
-           ((uint64_t)xx_ptero_bigf_le32(data + 4) << 32);
-}
-
 static bool xx_ptero_bigf_bits(const uint8_t *source, size_t source_size,
                                size_t *bit_position, unsigned width,
                                uint32_t *code) {
@@ -313,8 +303,8 @@ static bool xx_ptero_bigf_decode(Abstractformat *self,
                 !xx_ptero_bigf_range_within(end, cursor, 12) ||
                 !xx_ptero_bigf_read_at(self, cursor, header, sizeof(header)) ||
                 memcmp(header, "[..]", 4) != 0) goto fail;
-            packed_size = xx_ptero_bigf_le32(header + 4);
-            plain_size = xx_ptero_bigf_le32(header + 8);
+            packed_size = xx_data_get_u32(header + 4, 4, 0, false);
+            plain_size = xx_data_get_u32(header + 8, 4, 0, false);
             if (!xx_ptero_bigf_range_within(end, cursor + 12,
                                              packed_size) ||
                 plain_size > (size_t)member->uncompressed_size - produced ||
@@ -355,8 +345,8 @@ static bool xx_ptero_bigf_validate_blocks(Abstractformat *self,
             !xx_ptero_bigf_range_within(end, cursor, 12) ||
             !xx_ptero_bigf_read_at(self, cursor, block, sizeof(block)) ||
             memcmp(block, "[..]", 4) != 0) return false;
-        packed = xx_ptero_bigf_le32(block + 4);
-        plain = xx_ptero_bigf_le32(block + 8);
+        packed = xx_data_get_u32(block + 4, 4, 0, false);
+        plain = xx_data_get_u32(block + 8, 4, 0, false);
         if (!xx_ptero_bigf_range_within(end, cursor + 12, packed) ||
             packed > XX_PTERO_BIGF_MAX_BLOCK_OUTPUT ||
             plain > XX_PTERO_BIGF_MAX_BLOCK_OUTPUT ||
@@ -385,15 +375,15 @@ static xx_ptero_bigf_stream *xx_ptero_bigf_parse(Abstractformat *self,
                                sizeof(header)) ||
         memcmp(header, "BIGF", 4) != 0 || header[4] != 0U ||
         memcmp(header + 5, "ZBL", 3) != 0 ||
-        xx_ptero_bigf_le64(header + 8) > INT64_MAX ||
-        xx_ptero_bigf_le64(header + 20) > INT64_MAX ||
-        xx_ptero_bigf_le64(header + 28) > XX_PTERO_BIGF_MAX_DIRECTORY ||
-        xx_ptero_bigf_le64(header + 36) > INT64_MAX) return NULL;
-    archive_size = (int64_t)xx_ptero_bigf_le64(header + 8);
-    directory_offset = (int64_t)xx_ptero_bigf_le64(header + 20);
-    directory_size = (size_t)xx_ptero_bigf_le64(header + 28);
-    data_offset = (int64_t)xx_ptero_bigf_le64(header + 36);
-    count = xx_ptero_bigf_le32(header + 16);
+        xx_data_get_u64(header + 8, 8, 0, false) > INT64_MAX ||
+        xx_data_get_u64(header + 20, 8, 0, false) > INT64_MAX ||
+        xx_data_get_u64(header + 28, 8, 0, false) > XX_PTERO_BIGF_MAX_DIRECTORY ||
+        xx_data_get_u64(header + 36, 8, 0, false) > INT64_MAX) return NULL;
+    archive_size = (int64_t)xx_data_get_u64(header + 8, 8, 0, false);
+    directory_offset = (int64_t)xx_data_get_u64(header + 20, 8, 0, false);
+    directory_size = (size_t)xx_data_get_u64(header + 28, 8, 0, false);
+    data_offset = (int64_t)xx_data_get_u64(header + 36, 8, 0, false);
+    count = xx_data_get_u32(header + 16, 4, 0, false);
     if (archive_size < XX_PTERO_BIGF_HEADER_SIZE || archive_size > span ||
         data_offset < XX_PTERO_BIGF_HEADER_SIZE ||
         data_offset > directory_offset ||
@@ -434,11 +424,11 @@ static xx_ptero_bigf_stream *xx_ptero_bigf_parse(Abstractformat *self,
         if (name_length == 0U || name_length > XX_PTERO_BIGF_MAX_NAME)
             goto fail;
         position = name_start + name_length + 1U;
-        relative_offset = xx_ptero_bigf_le64(record);
-        plain_size = xx_ptero_bigf_le64(record + 20);
-        packed_size = xx_ptero_bigf_le32(record + 28);
-        flag = xx_ptero_bigf_le32(record + 32);
-        if (xx_ptero_bigf_le32(record + 8) != 32U || flag > 1U ||
+        relative_offset = xx_data_get_u64(record, 8, 0, false);
+        plain_size = xx_data_get_u64(record + 20, 8, 0, false);
+        packed_size = xx_data_get_u32(record + 28, 4, 0, false);
+        flag = xx_data_get_u32(record + 32, 4, 0, false);
+        if (xx_data_get_u32(record + 8, 4, 0, false) != 32U || flag > 1U ||
             relative_offset > INT64_MAX || plain_size > INT64_MAX ||
             relative_offset < (uint64_t)data_offset ||
             relative_offset > (uint64_t)directory_offset) goto fail;
@@ -463,7 +453,7 @@ static xx_ptero_bigf_stream *xx_ptero_bigf_parse(Abstractformat *self,
         member.uncompressed_size = (int64_t)plain_size;
         member.compressed = flag == 1U;
         member.method = flag;
-        member.timestamp = xx_ptero_bigf_le64(record + 12);
+        member.timestamp = xx_data_get_u64(record + 12, 8, 0, false);
         member.compressed_size = member.compressed ? (int64_t)packed_size
                                                    : (int64_t)plain_size;
         if (!xx_ptero_bigf_range_within(directory_offset,

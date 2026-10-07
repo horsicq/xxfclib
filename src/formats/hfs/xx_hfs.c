@@ -8,6 +8,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 #ifdef HFS
 #define HFS_TYPE XX_FILE_TYPE_HFS
 #else
@@ -58,8 +59,6 @@ typedef struct hfs_tree_s {
     uint8_t *bitmap, *visited;
     uint32_t previous[9], next[9];
 } hfs_tree;
-static uint16_t hfs_u16(const uint8_t *p) { return (uint16_t)((p[0] << 8) | p[1]); }
-static uint32_t hfs_u32(const uint8_t *p) { return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | p[3]; }
 static bool hfs_stopped(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
 static bool hfs_work(hfs_view *v, xx_pd_struct *pd) { return !hfs_stopped(pd) && ++v->work <= HFS_WORK; }
 static bool hfs_bit(const uint8_t *map, uint32_t n) { return (map[n / 8U] & (0x80U >> (n % 8U))) != 0U; }
@@ -153,17 +152,17 @@ static bool hfs_key_read(const uint8_t *raw, size_t size, bool catalog, bool ind
     if (*payload > size) return false;
     if (catalog) {
         if (size < 8U || length < 6U || length > 37U || (index && length != 37U) || raw[1] || raw[6] > 31U || raw[6] > length - 6U) return false;
-        key->id = hfs_u32(raw + 2); key->length = raw[6]; xx_mem_copy(key->name, raw + 7, key->length);
+        key->id = xx_data_get_u32(raw + 2, 4, 0, true); key->length = raw[6]; xx_mem_copy(key->name, raw + 7, key->length);
     } else {
         if (size < 8U || length != 7U || (raw[1] != 0U && raw[1] != 0xFFU)) return false;
-        key->id = hfs_u32(raw + 2); key->fork = raw[1]; key->block = hfs_u16(raw + 6);
+        key->id = xx_data_get_u32(raw + 2, 4, 0, true); key->fork = raw[1]; key->block = xx_data_get_u16(raw + 6, 2, 0, true);
     }
     return key->id != 0U;
 }
 static bool hfs_extent_valid(hfs_view *v, const uint8_t *data) {
     unsigned i; bool end = false;
     for (i = 0U; i < 3U; ++i) {
-        uint32_t start = hfs_u16(data + i * 4U), count = hfs_u16(data + i * 4U + 2U);
+        uint32_t start = xx_data_get_u16(data + i * 4U, 2, 0, true), count = xx_data_get_u16(data + i * 4U + 2U, 2, 0, true);
         if (!count) { if (start) return false; end = true; }
         else if (end || start >= v->units || count > v->units - start) return false;
     }
@@ -173,7 +172,7 @@ static bool hfs_extent_add(hfs_view *v, hfs_fork *fork, const uint8_t *data, uin
     unsigned i;
     if (!hfs_extent_valid(v, data)) return false;
     for (i = 0U; i < 3U; ++i) {
-        uint32_t start = hfs_u16(data + i * 4U), count = hfs_u16(data + i * 4U + 2U), k;
+        uint32_t start = xx_data_get_u16(data + i * 4U, 2, 0, true), count = xx_data_get_u16(data + i * 4U + 2U, 2, 0, true), k;
         if (!count) break;
         if (*logical > target || count > target - *logical || v->run_count >= v->units) return false;
         for (k = start; k < start + count; ++k) {
@@ -213,11 +212,11 @@ static bool hfs_fork_build(hfs_view *v, hfs_fork *fork, uint32_t id, uint8_t typ
 static bool hfs_node_read(hfs_tree *tree, uint32_t id, hfs_node *node, xx_pd_struct *pd) {
     uint32_t i, previous = 0U, table;
     if (id >= tree->nodes || !hfs_work(tree->view, pd) || !hfs_fork_read(tree->view, &tree->fork, id * 512U, node->bytes, 512U, pd)) return false;
-    node->count = hfs_u16(node->bytes + 10);
-    if (hfs_u16(node->bytes + 12) || node->count > 248U) return false;
+    node->count = xx_data_get_u16(node->bytes + 10, 2, 0, true);
+    if (xx_data_get_u16(node->bytes + 12, 2, 0, true) || node->count > 248U) return false;
     table = 512U - 2U * (node->count + 1U);
     for (i = 0U; i <= node->count; ++i) {
-        uint16_t at = hfs_u16(node->bytes + 510U - i * 2U);
+        uint16_t at = xx_data_get_u16(node->bytes + 510U - i * 2U, 2, 0, true);
         if (at < 14U || at > table || (at & 1U) || (i && at <= previous)) return false;
         node->offsets[i] = at; previous = at;
     }
@@ -227,30 +226,30 @@ static bool hfs_leaf(hfs_tree *tree, const hfs_key *key, const uint8_t *data, si
     hfs_view *v = tree->view;
     if (!tree->catalog) {
         hfs_overflow *extra;
-        if (size != 12U || !hfs_extent_valid(v, data) || !hfs_u16(data + 2) || v->overflow_count >= v->units || key->id < 3U || key->id == 3U || (key->id < 16U && key->id != 4U && key->id != 5U) || (key->id != 5U && !key->block)) return false;
+        if (size != 12U || !hfs_extent_valid(v, data) || !xx_data_get_u16(data + 2, 2, 0, true) || v->overflow_count >= v->units || key->id < 3U || key->id == 3U || (key->id < 16U && key->id != 4U && key->id != 5U) || (key->id != 5U && !key->block)) return false;
         extra = v->overflow + v->overflow_count++; extra->key = *key; xx_mem_copy(extra->extents, data, 12U); return true;
     } else {
         uint16_t type;
-        if (size < 2U || (type = hfs_u16(data)) < 0x100U || type > 0x400U || (type & 0xFFU)) return false;
+        if (size < 2U || (type = xx_data_get_u16(data, 2, 0, true)) < 0x100U || type > 0x400U || (type & 0xFFU)) return false;
         if (type >= 0x300U) {
             hfs_thread *thread;
             if (key->length || size != 46U || !data[14] || data[14] > 31U || v->thread_count >= (size_t)v->files + v->folders + 1U) return false;
-            thread = v->threads + v->thread_count++; thread->id = key->id; thread->parent = hfs_u32(data + 10); thread->type = type;
+            thread = v->threads + v->thread_count++; thread->id = key->id; thread->parent = xx_data_get_u32(data + 10, 4, 0, true); thread->type = type;
             xx_mem_copy(thread->name, data + 14, 32U); return thread->parent != 0U;
         } else {
             hfs_entry *entry;
             if (!key->length || size != (type == 0x100U ? 70U : 102U) || v->entry_count >= (size_t)v->files + v->folders + 1U) return false;
             entry = v->entries + v->entry_count++; entry->type = type; entry->parent = key->id; entry->name[0] = key->length;
             xx_mem_copy(entry->name + 1, key->name, key->length); entry->header = address; entry->record_size = (uint16_t)size;
-            if (type == 0x100U) { entry->flags = hfs_u16(data + 2); entry->valence = hfs_u16(data + 4); entry->id = hfs_u32(data + 6); }
+            if (type == 0x100U) { entry->flags = xx_data_get_u16(data + 2, 2, 0, true); entry->valence = xx_data_get_u16(data + 4, 2, 0, true); entry->id = xx_data_get_u32(data + 6, 4, 0, true); }
             else {
                 /* A live catalog key identifies the file. Bit7 was described
                  * as 'used' in early Apple documentation, but healthy classic
                  * volumes produced by hfsutils leave it clear. */
                 if ((data[2] & 0x7CU) || data[3]) return false;
-                entry->flags = data[2]; entry->id = hfs_u32(data + 20);
-                entry->data.size = hfs_u32(data + 26); entry->data.physical = hfs_u32(data + 30);
-                entry->resource.size = hfs_u32(data + 36); entry->resource.physical = hfs_u32(data + 40);
+                entry->flags = data[2]; entry->id = xx_data_get_u32(data + 20, 4, 0, true);
+                entry->data.size = xx_data_get_u32(data + 26, 4, 0, true); entry->data.physical = xx_data_get_u32(data + 30, 4, 0, true);
+                entry->resource.size = xx_data_get_u32(data + 36, 4, 0, true); entry->resource.physical = xx_data_get_u32(data + 40, 4, 0, true);
                 xx_mem_copy(entry->extents, data + 74, 24U);
             }
             return entry->id == 2U ? type == 0x100U && key->id == 1U : entry->id >= 16U;
@@ -262,9 +261,9 @@ static bool hfs_walk_node(hfs_tree *tree, uint32_t id, uint16_t height, hfs_key 
     if (!id || id >= tree->nodes || !height || height > 8U || !hfs_bit(tree->bitmap, id) || tree->visited[id] || !hfs_node_read(tree, id, &node, pd)) return false;
     tree->visited[id] = 1U;
     if (!node.count || node.bytes[9] != height || node.bytes[8] != (height == 1U ? 0xFFU : 0U) ||
-        hfs_u32(node.bytes + 4) != tree->previous[height] || (tree->previous[height] && tree->next[height] != id)) return false;
+        xx_data_get_u32(node.bytes + 4, 4, 0, true) != tree->previous[height] || (tree->previous[height] && tree->next[height] != id)) return false;
     if (height == 1U && !tree->previous[1] && id != tree->first) return false;
-    tree->previous[height] = id; tree->next[height] = hfs_u32(node.bytes);
+    tree->previous[height] = id; tree->next[height] = xx_data_get_u32(node.bytes, 4, 0, true);
     if (tree->next[height] >= tree->nodes) return false;
     for (i = 0U; i < node.count; ++i) {
         size_t payload, size = node.offsets[i + 1U] - node.offsets[i];
@@ -276,7 +275,7 @@ static bool hfs_walk_node(hfs_tree *tree, uint32_t id, uint16_t height, hfs_key 
             end = key;
         } else {
             hfs_key child_first;
-            if (size - payload != 4U || !hfs_walk_node(tree, hfs_u32(record + payload), height - 1U, &child_first, &end, pd) || hfs_key_compare(&child_first, &key, tree->catalog)) return false;
+            if (size - payload != 4U || !hfs_walk_node(tree, xx_data_get_u32(record + payload, 4, 0, true), height - 1U, &child_first, &end, pd) || hfs_key_compare(&child_first, &key, tree->catalog)) return false;
         }
         if (!have) *first = key;
         previous = end; *last = end; have = true;
@@ -289,27 +288,27 @@ static bool hfs_tree_read(hfs_view *v, const hfs_fork *fork, bool catalog, xx_pd
     const uint8_t *record;
     xx_mem_zero(&tree, sizeof(tree)); tree.view = v; tree.fork = *fork; tree.catalog = catalog;
     tree.nodes = fork->size / 512U;
-    if (!tree.nodes || tree.nodes > HFS_NODES || fork->size % 512U || !hfs_node_read(&tree, 0U, &header, pd) || header.bytes[8] != 1U || header.bytes[9] || hfs_u32(header.bytes + 4) || header.count != 3U ||
+    if (!tree.nodes || tree.nodes > HFS_NODES || fork->size % 512U || !hfs_node_read(&tree, 0U, &header, pd) || header.bytes[8] != 1U || header.bytes[9] || xx_data_get_u32(header.bytes + 4, 4, 0, true) || header.count != 3U ||
         header.offsets[1] - header.offsets[0] != 106U || header.offsets[2] - header.offsets[1] != 128U || header.offsets[3] - header.offsets[2] != 256U) goto done;
-    record = header.bytes + 14; tree.depth = hfs_u16(record); tree.root = hfs_u32(record + 2); tree.records = hfs_u32(record + 6);
-    tree.first = hfs_u32(record + 10); tree.last = hfs_u32(record + 14); tree.free_nodes = hfs_u32(record + 26);
-    if (hfs_u16(record + 18) != 512U || hfs_u16(record + 20) != (catalog ? 37U : 7U) || hfs_u32(record + 22) != tree.nodes || tree.depth > 8U || tree.records > HFS_RECORDS || tree.root >= tree.nodes || tree.first >= tree.nodes || tree.last >= tree.nodes || tree.free_nodes >= tree.nodes) goto done;
+    record = header.bytes + 14; tree.depth = xx_data_get_u16(record, 2, 0, true); tree.root = xx_data_get_u32(record + 2, 4, 0, true); tree.records = xx_data_get_u32(record + 6, 4, 0, true);
+    tree.first = xx_data_get_u32(record + 10, 4, 0, true); tree.last = xx_data_get_u32(record + 14, 4, 0, true); tree.free_nodes = xx_data_get_u32(record + 26, 4, 0, true);
+    if (xx_data_get_u16(record + 18, 2, 0, true) != 512U || xx_data_get_u16(record + 20, 2, 0, true) != (catalog ? 37U : 7U) || xx_data_get_u32(record + 22, 4, 0, true) != tree.nodes || tree.depth > 8U || tree.records > HFS_RECORDS || tree.root >= tree.nodes || tree.first >= tree.nodes || tree.last >= tree.nodes || tree.free_nodes >= tree.nodes) goto done;
     tree.bitmap = (uint8_t *)xx_mem_alloc((tree.nodes + 7U) / 8U); tree.visited = (uint8_t *)xx_mem_alloc(tree.nodes);
     if (!tree.bitmap || !tree.visited) goto done;
     xx_mem_zero(tree.bitmap, (tree.nodes + 7U) / 8U); xx_mem_zero(tree.visited, tree.nodes); tree.visited[0] = 2U;
     covered = tree.nodes < 2048U ? tree.nodes : 2048U;
     xx_mem_copy(tree.bitmap, header.bytes + header.offsets[2], (covered + 7U) / 8U);
-    map_node = hfs_u32(header.bytes);
+    map_node = xx_data_get_u32(header.bytes, 4, 0, true);
     while (map_node) {
         uint32_t more, map_bytes;
-        if (map_node >= tree.nodes || tree.visited[map_node] || covered >= tree.nodes || !hfs_node_read(&tree, map_node, &map, pd) || map.bytes[8] != 2U || map.bytes[9] || map.count != 1U || hfs_u32(map.bytes + 4) != previous) goto done;
+        if (map_node >= tree.nodes || tree.visited[map_node] || covered >= tree.nodes || !hfs_node_read(&tree, map_node, &map, pd) || map.bytes[8] != 2U || map.bytes[9] || map.count != 1U || xx_data_get_u32(map.bytes + 4, 4, 0, true) != previous) goto done;
         map_bytes = map.offsets[1] - map.offsets[0];
         /* Apple specifies494 bitmap bytes; hfsutils produces the healthy
          *492-byte variant with two unused bytes before the offset table. */
         if (map_bytes != 492U && map_bytes != 494U) goto done;
         tree.visited[map_node] = 2U; more = tree.nodes - covered; if (more > map_bytes * 8U) more = map_bytes * 8U;
         xx_mem_copy(tree.bitmap + covered / 8U, map.bytes + 14, (more + 7U) / 8U); covered += more;
-        previous = map_node; map_node = hfs_u32(map.bytes);
+        previous = map_node; map_node = xx_data_get_u32(map.bytes, 4, 0, true);
     }
     if (covered < tree.nodes || !hfs_bit(tree.bitmap, 0U)) goto done;
     if (!tree.depth) {
@@ -521,12 +520,12 @@ static hfs_view *hfs_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (!self || !self->device || self->base_address < 0 || hfs_stopped(pd) || (total = xx_io_total_size(self->device)) < self->base_address) return NULL;
     v = (hfs_view *)xx_mem_alloc(sizeof(*v)); if (!v) return NULL; xx_mem_zero(v, sizeof(*v));
     v->device = self->device; v->base = self->base_address; v->bytes = (uint64_t)(total - v->base);
-    if (!hfs_read(v, 1024U, mdb, sizeof(mdb), pd) || hfs_u16(mdb) != 0x4244U || hfs_u16(mdb + 124) == 0x482BU || hfs_u16(mdb + 124) == 0x4858U) goto fail;
-    v->attributes = hfs_u16(mdb + 10); v->units = hfs_u16(mdb + 18); v->unit_size = hfs_u32(mdb + 20); v->heap = (uint64_t)hfs_u16(mdb + 28) * 512U;
-    bitmap_sector = hfs_u16(mdb + 14); v->files = hfs_u32(mdb + 84); v->folders = hfs_u32(mdb + 88);
-    v->root_files = hfs_u16(mdb + 12); v->root_folders = hfs_u16(mdb + 82);
+    if (!hfs_read(v, 1024U, mdb, sizeof(mdb), pd) || xx_data_get_u16(mdb, 2, 0, true) != 0x4244U || xx_data_get_u16(mdb + 124, 2, 0, true) == 0x482BU || xx_data_get_u16(mdb + 124, 2, 0, true) == 0x4858U) goto fail;
+    v->attributes = xx_data_get_u16(mdb + 10, 2, 0, true); v->units = xx_data_get_u16(mdb + 18, 2, 0, true); v->unit_size = xx_data_get_u32(mdb + 20, 4, 0, true); v->heap = (uint64_t)xx_data_get_u16(mdb + 28, 2, 0, true) * 512U;
+    bitmap_sector = xx_data_get_u16(mdb + 14, 2, 0, true); v->files = xx_data_get_u32(mdb + 84, 4, 0, true); v->folders = xx_data_get_u32(mdb + 88, 4, 0, true);
+    v->root_files = xx_data_get_u16(mdb + 12, 2, 0, true); v->root_folders = xx_data_get_u16(mdb + 82, 2, 0, true);
     if ((v->attributes & 0x6800U) || !v->units || v->unit_size < 512U || v->unit_size > 16U * 1024U * 1024U || v->unit_size % 512U ||
-        bitmap_sector < 3U || (uint64_t)bitmap_sector * 512U + ((v->units + 4095U) / 4096U) * 512U > v->heap || hfs_u16(mdb + 16) >= v->units ||
+        bitmap_sector < 3U || (uint64_t)bitmap_sector * 512U + ((v->units + 4095U) / 4096U) * 512U > v->heap || xx_data_get_u16(mdb + 16, 2, 0, true) >= v->units ||
         v->files >= HFS_OBJECTS || v->folders >= HFS_OBJECTS || v->files + v->folders >= HFS_OBJECTS || !hfs_name(mdb + 36, v->volume_name, false)) goto fail;
     end = v->heap + (uint64_t)v->units * v->unit_size; if (end > v->bytes || end > (uint64_t)(INT64_MAX - v->base)) goto fail;
     objects = v->files + v->folders + 1U; v->capacity = (size_t)v->files * 2U + v->folders;
@@ -543,17 +542,17 @@ static hfs_view *hfs_parse(Abstractformat *self, xx_pd_struct *pd) {
     xx_mem_zero(v->members, (v->capacity ? v->capacity : 1U) * sizeof(*v->members)); xx_mem_zero(v->names, v->name_capacity * sizeof(*v->names));
     if (!hfs_read(v, (uint64_t)bitmap_sector * 512U, v->bitmap, (v->units + 7U) / 8U, pd)) goto fail;
     for (i = 0U; i < v->units; ++i) if (!hfs_bit(v->bitmap, i)) ++free_count;
-    if (free_count != hfs_u16(mdb + 34)) goto fail;
-    xx_mem_zero(&extents, sizeof(extents)); extents.size = hfs_u32(mdb + 130); extents.physical = extents.size;
-    xx_mem_zero(&catalog, sizeof(catalog)); catalog.size = hfs_u32(mdb + 146); catalog.physical = catalog.size;
+    if (free_count != xx_data_get_u16(mdb + 34, 2, 0, true)) goto fail;
+    xx_mem_zero(&extents, sizeof(extents)); extents.size = xx_data_get_u32(mdb + 130, 4, 0, true); extents.physical = extents.size;
+    xx_mem_zero(&catalog, sizeof(catalog)); catalog.size = xx_data_get_u32(mdb + 146, 4, 0, true); catalog.physical = catalog.size;
     if (!hfs_fork_build(v, &extents, 3U, 0U, mdb + 134, true, pd) || !hfs_tree_read(v, &extents, false, pd) ||
         !hfs_fork_build(v, &catalog, 4U, 0U, mdb + 150, false, pd) || !hfs_tree_read(v, &catalog, true, pd) || !hfs_catalog_finish(v, mdb + 36, pd)) goto fail;
     /* A backup MDB is optional; a matching geometry locates the volume end
      * without treating a caller's prefix or trailing overlay as disk bytes. */
     for (at = end; at <= end + v->unit_size && at <= v->bytes && v->bytes - at >= 1024U; at += 512U) {
         if (!hfs_work(v, pd) || !hfs_read(v, at, backup, sizeof(backup), pd)) goto fail;
-        if (hfs_u16(backup) == 0x4244U && hfs_u16(backup + 14) == bitmap_sector && hfs_u16(backup + 18) == v->units && hfs_u32(backup + 20) == v->unit_size &&
-            hfs_u16(backup + 28) == hfs_u16(mdb + 28) && backup[36] == mdb[36] && !xx_mem_compare(backup + 37, mdb + 37, mdb[36])) { end = at + 1024U; break; }
+        if (xx_data_get_u16(backup, 2, 0, true) == 0x4244U && xx_data_get_u16(backup + 14, 2, 0, true) == bitmap_sector && xx_data_get_u16(backup + 18, 2, 0, true) == v->units && xx_data_get_u32(backup + 20, 4, 0, true) == v->unit_size &&
+            xx_data_get_u16(backup + 28, 2, 0, true) == xx_data_get_u16(mdb + 28, 2, 0, true) && backup[36] == mdb[36] && !xx_mem_compare(backup + 37, mdb + 37, mdb[36])) { end = at + 1024U; break; }
     }
     v->bytes = end;
     v->retained_memory = sizeof(*v) + (uint64_t)v->units * sizeof(*v->runs) + (uint64_t)objects * sizeof(*v->entries) +

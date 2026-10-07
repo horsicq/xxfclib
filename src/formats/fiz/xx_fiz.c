@@ -34,6 +34,7 @@
 #include "xxfclib/algo/lzh/xx_lzh.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_FIZ_COPY_CHUNK (64 * 1024)
 
@@ -137,8 +138,6 @@ static bool xx_fiz_add(xx_fiz_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_fiz_le16(const uint8_t *data);
-static uint32_t xx_fiz_le32(const uint8_t *data);
 static xx_fiz_stream *xx_fiz_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_fiz_decode(Abstractformat *self, const xx_fiz_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
@@ -147,15 +146,6 @@ static bool xx_fiz_decode(Abstractformat *self, const xx_fiz_member *member, uin
  * a format limit; it matches the reference implementation's bound. */
 /* An -lh5- stream always carries at least a 16-bit block count, so a
  * non-empty member cannot have a payload shorter than two bytes. */
-
-static uint16_t xx_fiz_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_fiz_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static xx_fiz_stream *xx_fiz_parse(Abstractformat *self, xx_pd_struct *pd) {
     xx_fiz_stream *stream;
@@ -215,8 +205,8 @@ static xx_fiz_stream *xx_fiz_parse(Abstractformat *self, xx_pd_struct *pd) {
         name_size = (int64_t)header[5];
         if (name_size < 1 || name_size > XX_FIZ_MAX_NAME_SIZE) goto fail;
 
-        uncompressed_size = (int64_t)xx_fiz_le32(header + 8);
-        compressed_size = (int64_t)xx_fiz_le32(header + 12);
+        uncompressed_size = (int64_t)xx_data_get_u32(header + 8, 4, 0, false);
+        compressed_size = (int64_t)xx_data_get_u32(header + 12, 4, 0, false);
         if (uncompressed_size > XX_FIZ_MAX_UNCOMPRESSED ||
             compressed_size > XX_FIZ_MAX_UNCOMPRESSED) {
             goto fail;
@@ -281,8 +271,8 @@ static xx_fiz_stream *xx_fiz_parse(Abstractformat *self, xx_pd_struct *pd) {
         /* DOS date/time. The header stores the TIME word first (0x10) and the
          * date word second (0x12), the reverse of the obvious order; swapping
          * them yields plausible nonsense rather than an error. */
-        member.timestamp = ((uint64_t)xx_fiz_le16(header + 0x12) << 16) |
-                           (uint64_t)xx_fiz_le16(header + 0x10);
+        member.timestamp = ((uint64_t)xx_data_get_u16(header + 0x12, 2, 0, false) << 16) |
+                           (uint64_t)xx_data_get_u16(header + 0x10, 2, 0, false);
         /* The format is flat: there are no directory entries. */
         member.is_folder = false;
         /* The CRC-16 at 0x06 covers the UNPACKED member, so verifying it here

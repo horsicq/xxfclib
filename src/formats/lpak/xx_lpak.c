@@ -5,11 +5,12 @@
  */
 #include "xxfclib/formats/lpak/xx_lpak.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t header[8],window[4096],*packed=NULL,*plain=NULL;
     size_t out=0,pos=0,expected,wp=4078,i;int64_t size=pm_available(f);bool ok=false;
     if(size<8 || size>134217728 || !pm_read(f,0,header,8) || xx_rt_memcmp(header,"LPAK",4))return false;
-    expected=pm_be32(header+4);if(expected>268435456 || (size==8 && expected))return false;
+    expected=xx_data_get_u32(header+4, 4, 0, true);if(expected>268435456 || (size==8 && expected))return false;
     packed=(uint8_t *)xx_mem_alloc(size>8?(size_t)size-8:1);
     plain=(uint8_t *)xx_mem_alloc(expected?expected:1);
     if(!packed || !plain || !pm_read(f,8,packed,(size_t)size-8))goto done;

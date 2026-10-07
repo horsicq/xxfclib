@@ -42,6 +42,7 @@
 #include "xxfclib/algo/zcmp/xx_zcmp.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ZCMP_COPY_CHUNK (64 * 1024)
 
@@ -148,8 +149,6 @@ static bool xx_zcmp_add(xx_zcmp_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint32_t xx_zcmp_be32(const uint8_t *data);
-static uint64_t xx_zcmp_be64(const uint8_t *data);
 static xx_zcmp_stream *xx_zcmp_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_zcmp_decode(Abstractformat *self, const xx_zcmp_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
@@ -159,16 +158,6 @@ static bool xx_zcmp_decode(Abstractformat *self, const xx_zcmp_member *member, u
 /* The container names no method.  The number a listing should show is the
  * well-known deflate id, since every block is a zlib-wrapped deflate stream;
  * it is not a library enum. */
-
-static uint32_t xx_zcmp_be32(const uint8_t *data) {
-    return ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16) |
-           ((uint32_t)data[2] << 8) | (uint32_t)data[3];
-}
-
-static uint64_t xx_zcmp_be64(const uint8_t *data) {
-    return ((uint64_t)xx_zcmp_be32(data) << 32) |
-           (uint64_t)xx_zcmp_be32(data + 4);
-}
 
 static xx_zcmp_stream *xx_zcmp_parse(Abstractformat *self, xx_pd_struct *pd) {
     static const uint8_t signature[XX_ZCMP_SIGNATURE_SIZE] = {'Z', 'c', 'm',
@@ -204,16 +193,16 @@ static xx_zcmp_stream *xx_zcmp_parse(Abstractformat *self, xx_pd_struct *pd) {
      * zero-padded table - would be parsed with attacker-chosen sizes, and the
      * size checks below are all that would stand between that and a bogus
      * member. */
-    if (xx_zcmp_be32(header) != 0U) return NULL;
+    if (xx_data_get_u32(header, 4, 0, true) != 0U) return NULL;
     if (xx_rt_memcmp(header + XX_ZCMP_SIGNATURE_OFFSET, signature,
                      XX_ZCMP_SIGNATURE_SIZE) != 0) {
         return NULL;
     }
-    if (xx_zcmp_be64(header + 8) != (uint64_t)1) return NULL;
-    if (xx_zcmp_be64(header + 16) != (uint64_t)1) return NULL;
+    if (xx_data_get_u64(header + 8, 8, 0, true) != (uint64_t)1) return NULL;
+    if (xx_data_get_u64(header + 16, 8, 0, true) != (uint64_t)1) return NULL;
 
-    uncompressed = (int64_t)xx_zcmp_be64(header + XX_ZCMP_UNCOMPRESSED_OFFSET);
-    block_size = (int64_t)xx_zcmp_be64(header + XX_ZCMP_BLOCKSIZE_OFFSET);
+    uncompressed = (int64_t)xx_data_get_u64(header + XX_ZCMP_UNCOMPRESSED_OFFSET, 8, 0, true);
+    block_size = (int64_t)xx_data_get_u64(header + XX_ZCMP_BLOCKSIZE_OFFSET, 8, 0, true);
     if (uncompressed < 0 || uncompressed > XX_ZCMP_MAX_OUTPUT) return NULL;
     /* A zero block size would make the block count divide by zero and is not
      * something the writer emits. */

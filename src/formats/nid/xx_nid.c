@@ -46,6 +46,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Pending registration in xxfc_defs.h.  Once the enumerator XX_FILE_TYPE_NID
  * and its short alias NID are added there this fallback switches itself
@@ -102,15 +103,6 @@ typedef struct xx_nid_stream_s {
 static void xx_nid_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint16_t xx_nid_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_nid_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static bool xx_nid_read_at(Abstractformat *self, int64_t offset,
                            uint8_t *buffer, size_t size) {
@@ -293,8 +285,8 @@ static bool xx_nid_measure_member(Abstractformat *self, xx_nid_member *member,
                             sizeof(frame))) {
             return false;
         }
-        flags = xx_nid_le16(frame + 1);
-        block_size = (int64_t)xx_nid_le16(frame + 3);
+        flags = xx_data_get_u16(frame + 1, 2, 0, false);
+        block_size = (int64_t)xx_data_get_u16(frame + 3, 2, 0, false);
         if (blocks == 0) {
             first_stored = (flags & XX_NID_BLOCK_COMPRESSED) == 0U;
             first_block_size = block_size;
@@ -348,7 +340,7 @@ static xx_nid_stream *xx_nid_parse(Abstractformat *self, xx_pd_struct *pd) {
         header[3] != 0x01U) {
         return NULL;
     }
-    count = (int32_t)xx_nid_le16(header + 6);
+    count = (int32_t)xx_data_get_u16(header + 6, 2, 0, false);
     if (count < 1 || count > XX_NID_MAX_ENTRIES) return NULL;
 
     directory_offset = XX_NID_HEADER_SIZE;
@@ -367,11 +359,11 @@ static xx_nid_stream *xx_nid_parse(Abstractformat *self, xx_pd_struct *pd) {
     /* Header and directory tile the front of the volume: the first entry's
      * data offset (one based) is fixed by the entry count.  This is the check
      * that makes the four-byte magic safe to detect on. */
-    first_offset = (int64_t)(int32_t)xx_nid_le32(directory + 1);
+    first_offset = (int64_t)(int32_t)xx_data_get_u32(directory + 1, 4, 0, false);
     if (first_offset != directory_offset + directory_size + 1) goto fail;
     if (directory[0] != 1U) goto fail;
     if (!xx_nid_valid_fcb_name(directory + 9)) goto fail;
-    if ((int32_t)xx_nid_le32(directory + 25) < 0) goto fail;
+    if ((int32_t)xx_data_get_u32(directory + 25, 4, 0, false) < 0) goto fail;
 
     stream = (xx_nid_stream *)xx_mem_alloc(sizeof(*stream));
     if (!stream) goto fail;
@@ -396,8 +388,8 @@ static xx_nid_stream *xx_nid_parse(Abstractformat *self, xx_pd_struct *pd) {
         /* The reference stops the walk here rather than failing: the
          * continuation entries of the next volume carry method 2. */
         if (entry[0] != 1U) break;
-        offset = (int64_t)(int32_t)xx_nid_le32(entry + 1);
-        size = (int64_t)(int32_t)xx_nid_le32(entry + 25);
+        offset = (int64_t)(int32_t)xx_data_get_u32(entry + 1, 4, 0, false);
+        size = (int64_t)(int32_t)xx_data_get_u32(entry + 25, 4, 0, false);
         if (offset < 1 || size < 0) break;
 
         xx_mem_zero(&member, sizeof(member));
@@ -406,10 +398,10 @@ static xx_nid_stream *xx_nid_parse(Abstractformat *self, xx_pd_struct *pd) {
         /* The stored offset is one based. */
         member.data_offset = self->base_address + (offset - 1);
         member.uncompressed_size = size;
-        member.folder_key = xx_nid_le32(entry + 5);
+        member.folder_key = xx_data_get_u32(entry + 5, 4, 0, false);
         member.attributes = entry[0x14];
-        member.dos_time = xx_nid_le16(entry + 0x15);
-        member.dos_date = xx_nid_le16(entry + 0x17);
+        member.dos_time = xx_data_get_u16(entry + 0x15, 2, 0, false);
+        member.dos_date = xx_data_get_u16(entry + 0x17, 2, 0, false);
 
         if (!xx_nid_folder_index(stream, member.folder_key, &folder_index)) {
             goto fail;

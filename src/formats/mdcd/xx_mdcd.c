@@ -28,6 +28,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef MDCD
 #define XX_MDCD_FILE_TYPE XX_FILE_TYPE_MDCD
@@ -56,14 +57,6 @@ typedef struct mdcd_stream_s {
     size_t index;
     int64_t archive_size;
 } mdcd_stream;
-
-static uint16_t mdcd_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t mdcd_le32(const uint8_t *bytes) {
-    return (uint32_t)mdcd_le16(bytes) | ((uint32_t)mdcd_le16(bytes + 2U) << 16U);
-}
 
 static bool mdcd_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -217,14 +210,14 @@ static bool mdcd_parse(Abstractformat *format, mdcd_stream **result) {
                           sizeof(fixed)) ||
             xx_rt_memcmp(fixed, "MDmd", 4U) != 0 || fixed[5] != 1U)
             goto done;
-        header_len = mdcd_le16(fixed + 6U);
+        header_len = xx_data_get_u16(fixed + 6U, 2, 0, false);
         /* A header that claims to be shorter than its own fixed part, or that
          * does not fit in what is left of the file, is not a member. */
         if (header_len < MDCD_MIN_HEADER_SIZE ||
             (int64_t)header_len > size - cursor)
             goto done;
-        original_len = mdcd_le32(fixed + 25U);
-        compressed_len = mdcd_le32(fixed + 29U);
+        original_len = xx_data_get_u32(fixed + 25U, 4, 0, false);
+        compressed_len = xx_data_get_u32(fixed + 29U, 4, 0, false);
         if ((int64_t)compressed_len > size - cursor - (int64_t)header_len)
             goto done;
         name_len = fixed[41U];
@@ -252,9 +245,9 @@ static bool mdcd_parse(Abstractformat *format, mdcd_stream **result) {
         member.packed_size = (int64_t)compressed_len;
         member.unpacked_size = original_len;
         member.method = fixed[24U];
-        member.crc = mdcd_le16(fixed + 39U);
-        member.dos_time = ((uint32_t)mdcd_le16(fixed + 37U) << 16U) |
-                          mdcd_le16(fixed + 35U);
+        member.crc = xx_data_get_u16(fixed + 39U, 2, 0, false);
+        member.dos_time = ((uint32_t)xx_data_get_u16(fixed + 37U, 2, 0, false) << 16U) |
+                          xx_data_get_u16(fixed + 35U, 2, 0, false);
         if (!mdcd_add_member(stream, &member)) {
             xx_str_free(member.name);
             goto done;

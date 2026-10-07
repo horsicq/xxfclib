@@ -9,30 +9,30 @@
 
 typedef struct w6_cab_folder_s { uint32_t at;uint16_t blocks,type;uint64_t raw; } w6_cab_folder;
 typedef struct w6_cab_file_s { uint32_t at,size;uint16_t folder; } w6_cab_file;
-static uint32_t w6_cab_xor(const uint8_t *p,size_t n,uint32_t seed) { size_t i=0;uint32_t tail=0;while(n-i>=4) { seed^=pm_le32(p+i);i+=4; }while(i<n) tail=(tail<<8)|p[i++];return seed^tail; }
+static uint32_t w6_cab_xor(const uint8_t *p,size_t n,uint32_t seed) { size_t i=0;uint32_t tail=0;while(n-i>=4) { seed^=xx_data_get_u32(p+i, 4, 0, false);i+=4; }while(i<n) tail=(tail<<8)|p[i++];return seed^tail; }
 static bool w6_cab_at(Abstractformat *f,pm_stream *s,int64_t base,xx_pd_struct *pd) {
     const size_t io_capacity=xx_get_file_buffer_size();
     uint8_t h[36],*payload=NULL;uint32_t size,files_at;uint16_t nf,nn,flags;unsigned i,fr=0,dr=0;int64_t cursor,end,meta;uint64_t namebytes=0,blocks=0,checks=0;w6_cab_folder *folders=NULL;w6_cab_file *files=NULL;wg_extent *ranges=NULL;bool ok=false;
-    if(!pm_read(f,base,h,36) || pm_le32(h+4) || pm_le32(h+12) || pm_le32(h+20) || h[24]!=3 || h[25]!=1 || (flags=pm_le16(h+30))&~4U || !(nf=pm_le16(h+26)) || nf>4096 || !(nn=pm_le16(h+28)) || nn>4096 || (size=pm_le32(h+8))<36 || !wg_range(pm_available(f),base,size) || (files_at=pm_le32(h+16))>=size) return false;
+    if(!pm_read(f,base,h,36) || xx_data_get_u32(h+4, 4, 0, false) || xx_data_get_u32(h+12, 4, 0, false) || xx_data_get_u32(h+20, 4, 0, false) || h[24]!=3 || h[25]!=1 || (flags=xx_data_get_u16(h+30, 2, 0, false))&~4U || !(nf=xx_data_get_u16(h+26, 2, 0, false)) || nf>4096 || !(nn=xx_data_get_u16(h+28, 2, 0, false)) || nn>4096 || (size=xx_data_get_u32(h+8, 4, 0, false))<36 || !wg_range(pm_available(f),base,size) || (files_at=xx_data_get_u32(h+16, 4, 0, false))>=size) return false;
     end=base+size;cursor=base+36;
-    if(flags&4) { unsigned reserve;if(end-cursor<4 || !pm_read(f,cursor,h,4) || (reserve=pm_le16(h))>4096 || !wg_range(end,cursor+4,reserve)) return false;fr=h[2];dr=h[3];cursor+=4+reserve; }
+    if(flags&4) { unsigned reserve;if(end-cursor<4 || !pm_read(f,cursor,h,4) || (reserve=xx_data_get_u16(h, 2, 0, false))>4096 || !wg_range(end,cursor+4,reserve)) return false;fr=h[2];dr=h[3];cursor+=4+reserve; }
     payload=(uint8_t *)xx_mem_alloc(io_capacity);
     folders=(w6_cab_folder *)xx_mem_calloc(nf,sizeof(*folders));files=(w6_cab_file *)xx_mem_calloc(nn,sizeof(*files));ranges=(wg_extent *)xx_mem_alloc(nf*sizeof(*ranges));if(!payload || !folders || !files || !ranges) goto done;
-    for(i=0;i<nf;++i) { if(wg_stop(pd) || !wg_range(end,cursor,8U+fr) || !pm_read(f,cursor,h,8)) goto done;folders[i].at=pm_le32(h);folders[i].blocks=pm_le16(h+4);folders[i].type=pm_le16(h+6);if(!folders[i].blocks || (folders[i].type&15)>3 || ((folders[i].type&15)<2 && folders[i].type>1) || (blocks+=folders[i].blocks)>65536) goto done;cursor+=8+fr; }
+    for(i=0;i<nf;++i) { if(wg_stop(pd) || !wg_range(end,cursor,8U+fr) || !pm_read(f,cursor,h,8)) goto done;folders[i].at=xx_data_get_u32(h, 4, 0, false);folders[i].blocks=xx_data_get_u16(h+4, 2, 0, false);folders[i].type=xx_data_get_u16(h+6, 2, 0, false);if(!folders[i].blocks || (folders[i].type&15)>3 || ((folders[i].type&15)<2 && folders[i].type>1) || (blocks+=folders[i].blocks)>65536) goto done;cursor+=8+fr; }
     if(base+files_at<cursor) { goto done; } cursor=base+files_at;
-    for(i=0;i<nn;++i) { bool nul=false;unsigned length=0;if(wg_stop(pd) || end-cursor<16 || !pm_read(f,cursor,h,16)) goto done;files[i].size=pm_le32(h);files[i].at=pm_le32(h+4);files[i].folder=pm_le16(h+8);if(files[i].folder>=nf) goto done;cursor+=16;
+    for(i=0;i<nn;++i) { bool nul=false;unsigned length=0;if(wg_stop(pd) || end-cursor<16 || !pm_read(f,cursor,h,16)) goto done;files[i].size=xx_data_get_u32(h, 4, 0, false);files[i].at=xx_data_get_u32(h+4, 4, 0, false);files[i].folder=xx_data_get_u16(h+8, 2, 0, false);if(files[i].folder>=nf) goto done;cursor+=16;
         while(cursor<end && !nul) { uint8_t *buf=payload;size_t n=(uint64_t)(end-cursor)>io_capacity ? io_capacity:(size_t)(end-cursor),j;if(wg_stop(pd) || !pm_read(f,cursor,buf,n)) goto done;for(j=0;j<n;++j) { ++cursor;if(!buf[j]) { nul=true;break; }if(buf[j]<32 || ++length>4096 || ++namebytes>1048576) goto done; } }
         if(!nul || !length) goto done;
     }meta=cursor;
     for(i=0;i<nf;++i) { unsigned j;int64_t p=base+folders[i].at;if(p<meta || p>=end) goto done;ranges[i].lo=p;
-        for(j=0;j<folders[i].blocks;++j) { uint16_t packed,raw;uint32_t checksum;if(wg_stop(pd) || !wg_range(end,p,8U+dr) || !pm_read(f,p,h,8)) goto done;checksum=pm_le32(h);packed=pm_le16(h+4);raw=pm_le16(h+6);if(!packed || !raw || raw>32768 || ((folders[i].type&15)==0 && packed!=raw) || !wg_range(end,p+8,(uint64_t)dr+packed) || (folders[i].raw+=raw)>UINT32_MAX) goto done;
+        for(j=0;j<folders[i].blocks;++j) { uint16_t packed,raw;uint32_t checksum;if(wg_stop(pd) || !wg_range(end,p,8U+dr) || !pm_read(f,p,h,8)) goto done;checksum=xx_data_get_u32(h, 4, 0, false);packed=xx_data_get_u16(h+4, 2, 0, false);raw=xx_data_get_u16(h+6, 2, 0, false);if(!packed || !raw || raw>32768 || ((folders[i].type&15)==0 && packed!=raw) || !wg_range(end,p+8,(uint64_t)dr+packed) || (folders[i].raw+=raw)>UINT32_MAX) goto done;
             if(checksum) {
                 size_t n=packed,done=0,held=0;uint8_t word[4];uint32_t value=w6_cab_xor(h+4,4,0),tail=0;
                 if(n>67108864-checks) { goto done; } checks+=n;
                 while(done<n) {
                     size_t amount=n-done,k;if(amount>io_capacity) amount=io_capacity;
                     if(wg_stop(pd) || !pm_read(f,p+8+dr+(int64_t)done,payload,amount)) goto done;
-                    for(k=0;k<amount;++k) {word[held++]=payload[k];if(held==sizeof(word)) {value^=pm_le32(word);held=0;}}
+                    for(k=0;k<amount;++k) {word[held++]=payload[k];if(held==sizeof(word)) {value^=xx_data_get_u32(word, 4, 0, false);held=0;}}
                     done+=amount;
                 }
                 for(done=0;done<held;++done) tail=(tail<<8)|word[done];
@@ -64,16 +64,16 @@ static bool sfx_cab_probe_at(Abstractformat *format, pm_stream *unused,
     if (at < 0 || at > total - 36 ||
         !pm_read(format, at, header, sizeof(header)) ||
         xx_rt_memcmp(header, "MSCF", 4) != 0 ||
-        pm_le32(header + 4) != 0U ||
-        pm_le32(header + 12) != 0U ||
-        pm_le32(header + 20) != 0U ||
+        xx_data_get_u32(header + 4, 4, 0, false) != 0U ||
+        xx_data_get_u32(header + 12, 4, 0, false) != 0U ||
+        xx_data_get_u32(header + 20, 4, 0, false) != 0U ||
         header[24] != 3U || header[25] != 1U ||
-        pm_le16(header + 26) == 0U ||
-        pm_le16(header + 28) == 0U ||
-        (pm_le16(header + 30) & ~7U) != 0U ||
-        pm_le32(header + 8) < 36U ||
-        pm_le32(header + 8) > (uint64_t)(total - at) ||
-        pm_le32(header + 16) >= pm_le32(header + 8)) return false;
+        xx_data_get_u16(header + 26, 2, 0, false) == 0U ||
+        xx_data_get_u16(header + 28, 2, 0, false) == 0U ||
+        (xx_data_get_u16(header + 30, 2, 0, false) & ~7U) != 0U ||
+        xx_data_get_u32(header + 8, 4, 0, false) < 36U ||
+        xx_data_get_u32(header + 8, 4, 0, false) > (uint64_t)(total - at) ||
+        xx_data_get_u32(header + 16, 4, 0, false) >= xx_data_get_u32(header + 8, 4, 0, false)) return false;
     xx_cab_init(&candidate, format->device, format->base_address + at);
     valid = xx_cab_handle_base_info(&candidate.format, pd) &&
             candidate.number_of_records != 0U &&

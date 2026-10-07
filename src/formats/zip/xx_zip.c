@@ -619,7 +619,7 @@ bool xx_zip_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
 
     int64_t eocd_found_pos = xx_zip_find_tail_record(self->device, false, 1);
 
-    if (eocd_found_pos < 0) {
+    if (eocd_found_pos < self->base_address || eocd_found_pos > total_size - 22) {
         self->is_valid = false;
         return false;
     }
@@ -632,11 +632,28 @@ bool xx_zip_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     uint32_t cd_size = xx_io_get_u32(self->device, eocd_found_pos + 12, false);
     uint32_t cd_offset = xx_io_get_u32(self->device, eocd_found_pos + 16, false);
     uint16_t comment_len = xx_io_get_u16(self->device, eocd_found_pos + 20, false);
+    if ((int64_t)comment_len > total_size - eocd_found_pos - 22) {
+        self->is_valid = false;
+        return false;
+    }
 
     if (!zip->is_split) {
         zip->number_of_records = total_records;
-        zip->cd_size = cd_size;
-        zip->cd_offset = cd_offset;
+        if (cd_size == UINT32_MAX || cd_offset == UINT32_MAX) {
+            /* ZIP64 values replace these sentinels below. */
+            zip->cd_size = -1;
+            zip->cd_offset = -1;
+        } else {
+            zip->cd_size = cd_size;
+            if (self->base_address < 0 ||
+                (uint64_t)cd_offset > (uint64_t)(INT64_MAX - self->base_address) ||
+                (uint64_t)cd_offset > (uint64_t)(eocd_found_pos - self->base_address) ||
+                (uint64_t)cd_size > (uint64_t)(eocd_found_pos - self->base_address) - cd_offset) {
+                self->is_valid = false;
+                return false;
+            }
+            zip->cd_offset = self->base_address + (int64_t)cd_offset;
+        }
     }
 
     /* Read archive comment */
@@ -676,34 +693,54 @@ bool xx_zip_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
         uint32_t loc_sig = xx_io_get_u32(self->device, locator_offset, false);
         if (loc_sig == XX_ZIP_ZIP64_EOCD_LOCATOR_SIGNATURE) {
             zip->is_zip64 = true;
-            uint64_t zip64_eocd_offset = xx_io_get_u64(self->device, locator_offset + 8, false);
-            if (zip64_eocd_offset > INT64_MAX || zip64_eocd_offset > (uint64_t)locator_offset ||
-                (uint64_t)locator_offset - zip64_eocd_offset < 56) {
+            uint64_t zip64_eocd_relative = xx_io_get_u64(self->device, locator_offset + 8, false);
+            if (self->base_address < 0 || locator_offset < self->base_address ||
+                zip64_eocd_relative > INT64_MAX ||
+                zip64_eocd_relative > (uint64_t)(INT64_MAX - self->base_address) ||
+                zip64_eocd_relative > (uint64_t)(locator_offset - self->base_address) ||
+                (uint64_t)(locator_offset - self->base_address) - zip64_eocd_relative < 56) {
                 self->is_valid = false;
                 return false;
             }
-            uint32_t eocd64_sig = xx_io_get_u32(self->device, (int64_t)zip64_eocd_offset, false);
-            if (eocd64_sig == XX_ZIP_ZIP64_EOCD_SIGNATURE) {
-                uint64_t directory_size = xx_io_get_u64(self->device, (int64_t)zip64_eocd_offset + 40, false);
-                uint64_t directory_offset = xx_io_get_u64(self->device, (int64_t)zip64_eocd_offset + 48, false);
-                uint64_t record_size = xx_io_get_u64(self->device, (int64_t)zip64_eocd_offset + 4, false);
-                if (directory_size > INT64_MAX || directory_offset > INT64_MAX ||
-                    record_size < 44 || record_size > INT64_MAX - 12 ||
-                    record_size + 12 > (uint64_t)locator_offset - zip64_eocd_offset) {
-                    self->is_valid = false;
-                    return false;
-                }
-                zip->number_of_records = xx_io_get_u64(self->device, (int64_t)zip64_eocd_offset + 32, false);
-                zip->cd_size = (int64_t)directory_size;
-                zip->cd_offset = (int64_t)directory_offset;
-                zip->zip64_eocd_offset = (int64_t)zip64_eocd_offset;
-                zip->zip64_eocd_size = (int64_t)record_size + 12;
+            int64_t zip64_eocd_offset = self->base_address + (int64_t)zip64_eocd_relative;
+            uint32_t eocd64_sig = xx_io_get_u32(self->device, zip64_eocd_offset, false);
+            uint64_t directory_size = xx_io_get_u64(self->device, zip64_eocd_offset + 40, false);
+            uint64_t directory_offset = xx_io_get_u64(self->device, zip64_eocd_offset + 48, false);
+            uint64_t record_size = xx_io_get_u64(self->device, zip64_eocd_offset + 4, false);
+            uint64_t zip64_records = xx_io_get_u64(self->device, zip64_eocd_offset + 32, false);
+            if (eocd64_sig != XX_ZIP_ZIP64_EOCD_SIGNATURE ||
+                directory_size > INT64_MAX || directory_offset > INT64_MAX ||
+                directory_offset > (uint64_t)(INT64_MAX - self->base_address) ||
+                zip64_records > INT64_MAX || record_size < 44 || record_size > INT64_MAX - 12 ||
+                record_size + 12 > (uint64_t)locator_offset - zip64_eocd_offset ||
+                directory_offset > zip64_eocd_relative ||
+                directory_size > zip64_eocd_relative - directory_offset ||
+                (total_records != UINT16_MAX && total_records != zip64_records) ||
+                (cd_size != UINT32_MAX && cd_size != directory_size) ||
+                (cd_offset != UINT32_MAX && cd_offset != directory_offset)) {
+                self->is_valid = false;
+                return false;
             }
+            zip->number_of_records = zip64_records;
+            zip->cd_size = (int64_t)directory_size;
+            zip->cd_offset = self->base_address + (int64_t)directory_offset;
+            zip->zip64_eocd_offset = zip64_eocd_offset;
+            zip->zip64_eocd_size = (int64_t)record_size + 12;
         }
     }
 
     if (!zip->is_zip64 && (total_records == 0xFFFF || cd_size == 0xFFFFFFFF || cd_offset == 0xFFFFFFFF)) {
         zip->is_zip64 = true;
+    }
+
+    if (!zip->is_split &&
+        ((zip->is_zip64 && zip->zip64_eocd_offset < 0) ||
+         zip->number_of_records > INT64_MAX || zip->cd_offset < self->base_address ||
+         zip->cd_size < 0 || zip->cd_offset > eocd_found_pos ||
+         zip->cd_size > eocd_found_pos - zip->cd_offset ||
+         zip->number_of_records > (uint64_t)zip->cd_size / 46U)) {
+        self->is_valid = false;
+        return false;
     }
 
     self->file_type = zip->is_zip64 ? XX_FILE_TYPE_ZIP64 : XX_FILE_TYPE_ZIP;
@@ -801,8 +838,14 @@ static bool xx_zip_parse_cd_entry(xx_zip *zip, xx_io_device *device, int64_t dev
     uint32_t disk_number_start = values.disk;
 
     int64_t local_offset = rel_offset;
-    if (zip->is_split && !xx_zip_disk_offset(zip, disk_number_start,
-                                            (uint64_t)rel_offset, 30, &local_offset)) return false;
+    if (zip->is_split) {
+        if (!xx_zip_disk_offset(zip, disk_number_start,
+                                (uint64_t)rel_offset, 30, &local_offset)) return false;
+    } else {
+        if (zip->format.base_address < 0 ||
+            rel_offset > INT64_MAX - zip->format.base_address) return false;
+        local_offset += zip->format.base_address;
+    }
     xx_archive_record_init(rec);
 
     rec->header_offset = local_offset;
@@ -3952,7 +3995,7 @@ typedef struct xx_zip_ds_name_entry {
     const char *name;
 } xx_zip_ds_name_entry;
 
-static const xx_zip_ds_name_entry _TABLE_XZip_DataStructNames[] = {
+static const xx_zip_ds_name_entry _TABLE_XX_ZIP_DataStructNames[] = {
     {XX_ZIP_DS_UNKNOWN, "UNKNOWN"},
     {XX_ZIP_DS_LOCAL_FILE_HEADER, "LOCAL_FILE_HEADER"},
     {XX_ZIP_DS_DATA, "DATA"},
@@ -3963,13 +4006,13 @@ static const xx_zip_ds_name_entry _TABLE_XZip_DataStructNames[] = {
     {XX_ZIP_DS_ZIP64_END_OF_CENTRAL_DIRECTORY_LOCATOR, "ZIP64_END_OF_CENTRAL_DIRECTORY_LOCATOR"},
 };
 
-#define _XX_ZIP_DS_NAME_COUNT (sizeof(_TABLE_XZip_DataStructNames) / sizeof(_TABLE_XZip_DataStructNames[0]))
+#define _XX_ZIP_DS_NAME_COUNT (sizeof(_TABLE_XX_ZIP_DataStructNames) / sizeof(_TABLE_XX_ZIP_DataStructNames[0]))
 
 const char *xx_zip_data_struct_id_to_string(Abstractformat *self, uint32_t id) {
     (void)self;
     for (size_t i = 0; i < _XX_ZIP_DS_NAME_COUNT; ++i) {
-        if ((uint32_t)_TABLE_XZip_DataStructNames[i].id == id) {
-            return _TABLE_XZip_DataStructNames[i].name;
+        if ((uint32_t)_TABLE_XX_ZIP_DataStructNames[i].id == id) {
+            return _TABLE_XX_ZIP_DataStructNames[i].name;
         }
     }
     return "UNKNOWN";
@@ -3981,8 +4024,8 @@ uint32_t xx_zip_data_struct_string_to_id(Abstractformat *self, const char *name)
         return (uint32_t)XX_ZIP_DS_UNKNOWN;
     }
     for (size_t i = 0; i < _XX_ZIP_DS_NAME_COUNT; ++i) {
-        if (xx_str_cmp(name, _TABLE_XZip_DataStructNames[i].name) == 0) {
-            return (uint32_t)_TABLE_XZip_DataStructNames[i].id;
+        if (xx_str_cmp(name, _TABLE_XX_ZIP_DataStructNames[i].name) == 0) {
+            return (uint32_t)_TABLE_XX_ZIP_DataStructNames[i].id;
         }
     }
     return (uint32_t)XX_ZIP_DS_UNKNOWN;
@@ -4111,7 +4154,7 @@ xx_data_struct_state *xx_zip_create_data_structs_reading(Abstractformat *self, x
     }
 
     if (zip->cd_offset >= 0 && zip->number_of_records > 0) {
-        int64_t addr = is_mapped ? (self->base_address + zip->cd_offset) : -1;
+        int64_t addr = is_mapped ? zip->cd_offset : -1;
         xx_zip_ds_append(dstate, XX_ZIP_DS_CENTRAL_DIRECTORY_HEADER, zip->cd_offset, addr, -1, zip->cd_size,
                         zip->number_of_records, XX_DATA_STRUCT_TYPE_STRUCT);
     }
@@ -4121,13 +4164,13 @@ xx_data_struct_state *xx_zip_create_data_structs_reading(Abstractformat *self, x
         if (zip->eocd_offset >= 0 && locator_offset >= 0) {
             uint32_t loc_sig = xx_io_get_u32(self->device, locator_offset, false);
             if (loc_sig == XX_ZIP_ZIP64_EOCD_LOCATOR_SIGNATURE) {
-                int64_t addr = is_mapped ? (self->base_address + locator_offset) : -1;
+                int64_t addr = is_mapped ? locator_offset : -1;
                 xx_zip_ds_append(dstate, XX_ZIP_DS_ZIP64_END_OF_CENTRAL_DIRECTORY_LOCATOR, locator_offset, addr,
                                 sizeof(xx_zip_zip64_locator_t), sizeof(xx_zip_zip64_locator_t), 1, XX_DATA_STRUCT_TYPE_LOCATOR);
 
                 int64_t zip64_eocd_offset = zip->zip64_eocd_offset;
                 if (zip64_eocd_offset >= 0) {
-                    int64_t addr64 = is_mapped ? (self->base_address + zip64_eocd_offset) : -1;
+                    int64_t addr64 = is_mapped ? zip64_eocd_offset : -1;
                     xx_zip_ds_append(dstate, XX_ZIP_DS_ZIP64_END_OF_CENTRAL_DIRECTORY, zip64_eocd_offset,
                                     addr64, sizeof(xx_zip_zip64_eocd_t), zip->zip64_eocd_size, 1, XX_DATA_STRUCT_TYPE_STRUCT);
                 }
@@ -4136,7 +4179,7 @@ xx_data_struct_state *xx_zip_create_data_structs_reading(Abstractformat *self, x
     }
 
     if (zip->eocd_offset >= 0) {
-        int64_t addr = is_mapped ? (self->base_address + zip->eocd_offset) : -1;
+        int64_t addr = is_mapped ? zip->eocd_offset : -1;
         int64_t eocd_total_size = (self->format_size >= zip->eocd_offset) ? (self->format_size - zip->eocd_offset) : (int64_t)sizeof(xx_zip_eocd_t);
         xx_zip_ds_append(dstate, XX_ZIP_DS_END_OF_CENTRAL_DIRECTORY, zip->eocd_offset, addr,
                         sizeof(xx_zip_eocd_t), eocd_total_size, 1, XX_DATA_STRUCT_TYPE_STRUCT);
@@ -4195,7 +4238,7 @@ void xx_zip_free_data_structs_reading(Abstractformat *self, xx_data_struct_state
 /* ========================================================================= */
 
 /* Fixed-layout ZIP struct field descriptors (uses global xx_data_struct_field_desc / xx_zip_field_desc) */
-static const xx_data_struct_field_desc _TABLE_XZip_Fields_LocalFileHeader[] = {
+static const xx_data_struct_field_desc _TABLE_XX_ZIP_Fields_LocalFileHeader[] = {
     {L"signature", L"uint32", 0, 4, XX_DATA_STRUCT_RECORD_PROPERTY_ID},
     {L"version_needed", L"uint16", 4, 2, XX_DATA_STRUCT_RECORD_PROPERTY_NONE},
     {L"flags", L"uint16", 6, 2, XX_DATA_STRUCT_RECORD_PROPERTY_FLAGS},
@@ -4209,7 +4252,7 @@ static const xx_data_struct_field_desc _TABLE_XZip_Fields_LocalFileHeader[] = {
     {L"extra_field_length", L"uint16", 28, 2, XX_DATA_STRUCT_RECORD_PROPERTY_SIZE},
 };
 
-static const xx_zip_field_desc _TABLE_XZip_Fields_CentralDirectoryHeader[] = {
+static const xx_zip_field_desc _TABLE_XX_ZIP_Fields_CentralDirectoryHeader[] = {
     {L"signature", L"uint32", 0, 4, XX_DATA_STRUCT_RECORD_PROPERTY_ID},
     {L"version_made_by", L"uint16", 4, 2, XX_DATA_STRUCT_RECORD_PROPERTY_NONE},
     {L"version_needed", L"uint16", 6, 2, XX_DATA_STRUCT_RECORD_PROPERTY_NONE},
@@ -4229,7 +4272,7 @@ static const xx_zip_field_desc _TABLE_XZip_Fields_CentralDirectoryHeader[] = {
     {L"relative_offset_local_header", L"uint32", 42, 4, XX_DATA_STRUCT_RECORD_PROPERTY_POINTER},
 };
 
-static const xx_zip_field_desc _TABLE_XZip_Fields_Eocd[] = {
+static const xx_zip_field_desc _TABLE_XX_ZIP_Fields_Eocd[] = {
     {L"signature", L"uint32", 0, 4, XX_DATA_STRUCT_RECORD_PROPERTY_ID},
     {L"disk_number", L"uint16", 4, 2, XX_DATA_STRUCT_RECORD_PROPERTY_NONE},
     {L"cd_start_disk", L"uint16", 6, 2, XX_DATA_STRUCT_RECORD_PROPERTY_NONE},
@@ -4240,14 +4283,14 @@ static const xx_zip_field_desc _TABLE_XZip_Fields_Eocd[] = {
     {L"comment_length", L"uint16", 20, 2, XX_DATA_STRUCT_RECORD_PROPERTY_SIZE},
 };
 
-static const xx_zip_field_desc _TABLE_XZip_Fields_Zip64Locator[] = {
+static const xx_zip_field_desc _TABLE_XX_ZIP_Fields_Zip64Locator[] = {
     {L"signature", L"uint32", 0, 4, XX_DATA_STRUCT_RECORD_PROPERTY_ID},
     {L"disk_with_zip64_eocd", L"uint32", 4, 4, XX_DATA_STRUCT_RECORD_PROPERTY_NONE},
     {L"zip64_eocd_offset", L"uint64", 8, 8, XX_DATA_STRUCT_RECORD_PROPERTY_POINTER},
     {L"total_disks", L"uint32", 16, 4, XX_DATA_STRUCT_RECORD_PROPERTY_COUNT},
 };
 
-static const xx_zip_field_desc _TABLE_XZip_Fields_Zip64Eocd[] = {
+static const xx_zip_field_desc _TABLE_XX_ZIP_Fields_Zip64Eocd[] = {
     {L"signature", L"uint32", 0, 4, XX_DATA_STRUCT_RECORD_PROPERTY_ID},
     {L"record_size", L"uint64", 4, 8, XX_DATA_STRUCT_RECORD_PROPERTY_SIZE},
     {L"version_made_by", L"uint16", 12, 2, XX_DATA_STRUCT_RECORD_PROPERTY_NONE},
@@ -4293,24 +4336,24 @@ xx_data_struct_record_state *xx_zip_create_data_struct_records_reading(Abstractf
 
     switch ((xx_zip_data_struct_id_t)ds->id) {
         case XX_ZIP_DS_LOCAL_FILE_HEADER:
-            table = _TABLE_XZip_Fields_LocalFileHeader;
-            table_count = _XX_ZIP_FIELDS_COUNT(_TABLE_XZip_Fields_LocalFileHeader);
+            table = _TABLE_XX_ZIP_Fields_LocalFileHeader;
+            table_count = _XX_ZIP_FIELDS_COUNT(_TABLE_XX_ZIP_Fields_LocalFileHeader);
             break;
         case XX_ZIP_DS_CENTRAL_DIRECTORY_HEADER:
-            table = _TABLE_XZip_Fields_CentralDirectoryHeader;
-            table_count = _XX_ZIP_FIELDS_COUNT(_TABLE_XZip_Fields_CentralDirectoryHeader);
+            table = _TABLE_XX_ZIP_Fields_CentralDirectoryHeader;
+            table_count = _XX_ZIP_FIELDS_COUNT(_TABLE_XX_ZIP_Fields_CentralDirectoryHeader);
             break;
         case XX_ZIP_DS_END_OF_CENTRAL_DIRECTORY:
-            table = _TABLE_XZip_Fields_Eocd;
-            table_count = _XX_ZIP_FIELDS_COUNT(_TABLE_XZip_Fields_Eocd);
+            table = _TABLE_XX_ZIP_Fields_Eocd;
+            table_count = _XX_ZIP_FIELDS_COUNT(_TABLE_XX_ZIP_Fields_Eocd);
             break;
         case XX_ZIP_DS_ZIP64_END_OF_CENTRAL_DIRECTORY_LOCATOR:
-            table = _TABLE_XZip_Fields_Zip64Locator;
-            table_count = _XX_ZIP_FIELDS_COUNT(_TABLE_XZip_Fields_Zip64Locator);
+            table = _TABLE_XX_ZIP_Fields_Zip64Locator;
+            table_count = _XX_ZIP_FIELDS_COUNT(_TABLE_XX_ZIP_Fields_Zip64Locator);
             break;
         case XX_ZIP_DS_ZIP64_END_OF_CENTRAL_DIRECTORY:
-            table = _TABLE_XZip_Fields_Zip64Eocd;
-            table_count = _XX_ZIP_FIELDS_COUNT(_TABLE_XZip_Fields_Zip64Eocd);
+            table = _TABLE_XX_ZIP_Fields_Zip64Eocd;
+            table_count = _XX_ZIP_FIELDS_COUNT(_TABLE_XX_ZIP_Fields_Zip64Eocd);
             break;
         default:
             return NULL;
@@ -4379,6 +4422,21 @@ void xx_zip_free_data_struct_records_reading(Abstractformat *self, xx_data_struc
     xx_data_struct_record_state_free(state);
 }
 
+static bool xx_zip_record_name_equals(const xx_archive_record *record,
+                                      const char *name) {
+    const char *original = xx_archive_record_get_original_name(record);
+    char *owned_name = NULL;
+    bool matches;
+    if (!original) {
+        const wchar_t *wide_name = xx_archive_record_get_original_name_w(record);
+        if (wide_name) owned_name = xx_str_unicode_to_utf8(wide_name);
+        original = owned_name;
+    }
+    matches = original && !xx_rt_strcmp(original, name);
+    xx_str_free(owned_name);
+    return matches;
+}
+
 bool xx_zip_read_file(xx_zip *zip, const char *name, size_t limit,
                        uint8_t **data, size_t *size, xx_pd_struct *pd) {
     xx_zip probe;
@@ -4396,8 +4454,7 @@ bool xx_zip_read_file(xx_zip *zip, const char *name, size_t limit,
     state = xx_zip_create_archive_records_reading(&probe.format, NULL, NULL);
     while (state && state->has_record && visited++ < 100000U && !xx_pd_is_stopped(pd)) {
         const xx_archive_record *record = xx_zip_get_current_archive_record(&probe.format, state);
-        const char *original = xx_archive_record_get_meta_str(record, XX_META_ID_ORIGINAL_NAME);
-        if (original && !xx_rt_strcmp(original, name)) {
+        if (xx_zip_record_name_equals(record, name)) {
             uint64_t expected = xx_archive_record_get_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, UINT64_MAX);
             xx_zip_buffer_sink sink; xx_io_device destination;
             if (expected > limit || expected >= SIZE_MAX || record->compressed_size < 0 ||

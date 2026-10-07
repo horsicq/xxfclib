@@ -24,6 +24,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder. xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -133,19 +134,6 @@ static uint32_t sufs_u16(bool big, const uint8_t *p) {
     return big ? ((uint32_t)p[0] << 8) | p[1] : ((uint32_t)p[1] << 8) | p[0];
 }
 
-static uint32_t sufs_u32(bool big, const uint8_t *p) {
-    return big ? ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
-                     ((uint32_t)p[2] << 8) | p[3]
-               : ((uint32_t)p[3] << 24) | ((uint32_t)p[2] << 16) |
-                     ((uint32_t)p[1] << 8) | p[0];
-}
-
-static uint64_t sufs_u64(bool big, const uint8_t *p) {
-    uint64_t hi = big ? sufs_u32(big, p) : sufs_u32(big, p + 4);
-    uint64_t lo = big ? sufs_u32(big, p + 4) : sufs_u32(big, p);
-    return (hi << 32) | lo;
-}
-
 static bool sufs_pow2(uint32_t value) {
     return value != 0U && (value & (value - 1U)) == 0U;
 }
@@ -183,8 +171,8 @@ static bool sufs_read_geometry(Abstractformat *self, sufs_geometry *geo) {
                       self->base_address + SUFS_SUPER_OFFSET + 0x55C, magic,
                       4U))
         return false;
-    if (sufs_u32(false, magic) == SUFS_MAGIC) big = false;
-    else if (sufs_u32(true, magic) == SUFS_MAGIC) big = true;
+    if (xx_data_get_u32(magic, 4, 0, false) == SUFS_MAGIC) big = false;
+    else if (xx_data_get_u32(magic, 4, 0, true) == SUFS_MAGIC) big = true;
     else return false;
     if (!sufs_read_at(self->device, self->base_address + SUFS_SUPER_OFFSET,
                       sb, SUFS_SUPER_SIZE))
@@ -193,35 +181,35 @@ static bool sufs_read_geometry(Abstractformat *self, sufs_geometry *geo) {
         /* NeXTSTEP's 4.3BSD FFS records -1 for the old inode and
          * rotational-table formats. Its cached fshift field does not
          * describe fs_fsize, so geometry below derives it instead. */
-        if (sufs_u32(big, sb + 0x550) != UINT32_MAX ||
-            sufs_u32(big, sb + 0x52C) != UINT32_MAX || !big)
+        if (xx_data_get_u32(sb + 0x550, 4, 0, big) != UINT32_MAX ||
+            xx_data_get_u32(sb + 0x52C, 4, 0, big) != UINT32_MAX || !big)
             return false;
-    } else if (sufs_u32(big, sb + 0x550) != SUFS_NRPOS ||
-               sufs_u32(big, sb + 0x52C) == SUFS_BSD44_INODEFMT)
+    } else if (xx_data_get_u32(sb + 0x550, 4, 0, big) != SUFS_NRPOS ||
+               xx_data_get_u32(sb + 0x52C, 4, 0, big) == SUFS_BSD44_INODEFMT)
         return false;
     geo->big = big;
     geo->legacy = ((xx_sufs *)self)->nextstep_legacy;
     geo->base = self->base_address;
-    geo->iblkno = sufs_u32(big, sb + 0x10);
-    geo->cgoffset = sufs_u32(big, sb + 0x18);
-    geo->cgmask = sufs_u32(big, sb + 0x1C);
-    geo->size = sufs_u32(big, sb + 0x24);
-    geo->ncg = sufs_u32(big, sb + 0x2C);
-    geo->bsize = sufs_u32(big, sb + 0x30);
-    geo->fsize = sufs_u32(big, sb + 0x34);
-    geo->frag = sufs_u32(big, sb + 0x38);
-    geo->nindir = sufs_u32(big, sb + 0x74);
-    geo->ipg = sufs_u32(big, sb + 0xB8);
-    geo->fpg = sufs_u32(big, sb + 0xBC);
+    geo->iblkno = xx_data_get_u32(sb + 0x10, 4, 0, big);
+    geo->cgoffset = xx_data_get_u32(sb + 0x18, 4, 0, big);
+    geo->cgmask = xx_data_get_u32(sb + 0x1C, 4, 0, big);
+    geo->size = xx_data_get_u32(sb + 0x24, 4, 0, big);
+    geo->ncg = xx_data_get_u32(sb + 0x2C, 4, 0, big);
+    geo->bsize = xx_data_get_u32(sb + 0x30, 4, 0, big);
+    geo->fsize = xx_data_get_u32(sb + 0x34, 4, 0, big);
+    geo->frag = xx_data_get_u32(sb + 0x38, 4, 0, big);
+    geo->nindir = xx_data_get_u32(sb + 0x74, 4, 0, big);
+    geo->ipg = xx_data_get_u32(sb + 0xB8, 4, 0, big);
+    geo->fpg = xx_data_get_u32(sb + 0xBC, 4, 0, big);
     if (!sufs_pow2(geo->bsize) || geo->bsize < 4096U || geo->bsize > 65536U ||
         !sufs_pow2(geo->fsize) || geo->fsize < 512U ||
         geo->fsize > geo->bsize || geo->frag != geo->bsize / geo->fsize ||
         geo->frag > 8U ||
-        sufs_u32(big, sb + 0x50) != sufs_log2(geo->bsize) ||
+        xx_data_get_u32(sb + 0x50, 4, 0, big) != sufs_log2(geo->bsize) ||
         (!((xx_sufs *)self)->nextstep_legacy &&
-         sufs_u32(big, sb + 0x54) != sufs_log2(geo->fsize)) ||
+         xx_data_get_u32(sb + 0x54, 4, 0, big) != sufs_log2(geo->fsize)) ||
         geo->nindir != geo->bsize / 4U ||
-        sufs_u32(big, sb + 0x78) != geo->bsize / SUFS_INODE_SIZE)
+        xx_data_get_u32(sb + 0x78, 4, 0, big) != geo->bsize / SUFS_INODE_SIZE)
         return false;
     if (geo->ncg == 0U || geo->ipg == 0U || geo->fpg == 0U ||
         geo->size == 0U || geo->fpg % geo->frag != 0U ||
@@ -260,11 +248,11 @@ static bool sufs_read_inode(xx_io_device *device, const sufs_geometry *geo,
         !sufs_read_at(device, geo->base + (int64_t)offset, raw, sizeof(raw)))
         return false;
     inode->mode = sufs_u16(geo->big, raw);
-    inode->size = sufs_u64(geo->big, raw + 8);
+    inode->size = xx_data_get_u64(raw + 8, 8, 0, geo->big);
     for (index = 0U; index < SUFS_NDADDR; ++index)
-        inode->db[index] = sufs_u32(geo->big, raw + 0x28 + index * 4U);
+        inode->db[index] = xx_data_get_u32(raw + 0x28 + index * 4U, 4, 0, geo->big);
     for (index = 0U; index < SUFS_NIADDR; ++index)
-        inode->ib[index] = sufs_u32(geo->big, raw + 0x58 + index * 4U);
+        inode->ib[index] = xx_data_get_u32(raw + 0x58 + index * 4U, 4, 0, geo->big);
     return true;
 }
 
@@ -289,7 +277,7 @@ static bool sufs_pointer(xx_io_device *device, const sufs_geometry *geo,
                                             index * 4U),
                       raw, 4U))
         return false;
-    *out = sufs_u32(geo->big, raw);
+    *out = xx_data_get_u32(raw, 4, 0, geo->big);
     return true;
 }
 
@@ -604,7 +592,7 @@ static void sufs_walk(xx_io_device *device, sufs_parsed *parsed,
             if (end > length) end = length;
             while (end - pos >= SUFS_DIRENT_HEADER) {
                 const uint8_t *entry = block + pos;
-                uint32_t number = sufs_u32(geo->big, entry);
+                uint32_t number = xx_data_get_u32(entry, 4, 0, geo->big);
                 uint32_t reclen = sufs_u16(geo->big, entry + 4);
                 uint32_t namlen = sufs_u16(geo->big, entry + 6);
                 if (reclen < SUFS_DIRENT_HEADER || (reclen & 3U) != 0U ||
@@ -658,10 +646,10 @@ static bool sufs_check(Abstractformat *self, sufs_geometry *geo,
         return false;
     /* "."  : ino 2, reclen 12, namlen 1, ".\0"  */
     /* ".." : ino 2, namlen 2, "..\0"            */
-    return sufs_u32(geo->big, raw) == SUFS_ROOT_INODE &&
+    return xx_data_get_u32(raw, 4, 0, geo->big) == SUFS_ROOT_INODE &&
            sufs_u16(geo->big, raw + 4) == 12U &&
            sufs_u16(geo->big, raw + 6) == 1U && raw[8] == '.' &&
-           raw[9] == 0U && sufs_u32(geo->big, raw + 12) == SUFS_ROOT_INODE &&
+           raw[9] == 0U && xx_data_get_u32(raw + 12, 4, 0, geo->big) == SUFS_ROOT_INODE &&
            sufs_u16(geo->big, raw + 18) == 2U && raw[20] == '.' &&
            raw[21] == '.' && raw[22] == 0U;
 }

@@ -58,6 +58,7 @@
 #include "xxfclib/algo/dcl/xx_dcl.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_QUALITAS_COPY_CHUNK (64 * 1024)
 
@@ -165,8 +166,6 @@ static bool xx_qualitas_add(xx_qualitas_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_qualitas_le16(const uint8_t *data);
-static uint32_t xx_qualitas_le32(const uint8_t *data);
 static xx_qualitas_stream *xx_qualitas_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_qualitas_decode(Abstractformat *self, const xx_qualitas_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
@@ -176,15 +175,6 @@ static bool xx_qualitas_decode(Abstractformat *self, const xx_qualitas_member *m
 /* The count field is 16 bit; nothing larger can be expressed. */
 /* Payload = the 4 byte CRC word + at least one implode byte. */
 /* Disk 1 means "the data is in this file". */
-
-static uint16_t xx_qualitas_le16(const uint8_t *data) {
-    return (uint16_t)((uint32_t)data[0] | ((uint32_t)data[1] << 8));
-}
-
-static uint32_t xx_qualitas_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static xx_qualitas_stream *xx_qualitas_parse(Abstractformat *self,
                                              xx_pd_struct *pd) {
@@ -218,12 +208,12 @@ static xx_qualitas_stream *xx_qualitas_parse(Abstractformat *self,
      * arithmetic below is the entire gate, so every one of these checks is
      * load bearing - dropping any of them makes this reader claim files it
      * has no business claiming. */
-    if (xx_qualitas_le16(header + 4) != XX_QUALITAS_HEADER_TAG) return NULL;
+    if (xx_data_get_u16(header + 4, 2, 0, false) != XX_QUALITAS_HEADER_TAG) return NULL;
 
-    directory_size = (int64_t)xx_qualitas_le16(header + 6);
+    directory_size = (int64_t)xx_data_get_u16(header + 6, 2, 0, false);
     if (directory_size == 0) return NULL;
 
-    count = (int64_t)xx_qualitas_le16(header + 10);
+    count = (int64_t)xx_data_get_u16(header + 10, 2, 0, false);
     if (count < 1 || count > XX_QUALITAS_MAX_MEMBERS) return NULL;
     /* Every advertised file must fit in the declared directory. */
     if (count * XX_QUALITAS_MIN_RECORD_TOTAL > directory_size) return NULL;
@@ -276,12 +266,12 @@ static xx_qualitas_stream *xx_qualitas_parse(Abstractformat *self,
         if (position + XX_QUALITAS_RECORD_SIZE > directory_size) break;
 
         record = directory + position;
-        next_record = (int64_t)(int32_t)xx_qualitas_le32(record + 0);
-        data_offset = (int64_t)(int32_t)xx_qualitas_le32(record + 6);
-        dos_time = xx_qualitas_le16(record + 10);
-        dos_date = xx_qualitas_le16(record + 12);
-        uncompressed_size = (int64_t)(int32_t)xx_qualitas_le32(record + 14);
-        compressed_size = (int64_t)(int32_t)xx_qualitas_le32(record + 18);
+        next_record = (int64_t)(int32_t)xx_data_get_u32(record + 0, 4, 0, false);
+        data_offset = (int64_t)(int32_t)xx_data_get_u32(record + 6, 4, 0, false);
+        dos_time = xx_data_get_u16(record + 10, 2, 0, false);
+        dos_date = xx_data_get_u16(record + 12, 2, 0, false);
+        uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(record + 14, 4, 0, false);
+        compressed_size = (int64_t)(int32_t)xx_data_get_u32(record + 18, 4, 0, false);
         disk_number = record[24];
         method = record[25];
 

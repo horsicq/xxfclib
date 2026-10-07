@@ -28,6 +28,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef BND
 #define XX_BND_FILE_TYPE XX_FILE_TYPE_BND
@@ -59,14 +60,6 @@ typedef struct bnd_stream_s {
     size_t index;
     int64_t archive_size;
 } bnd_stream;
-
-static uint16_t bnd_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t bnd_le32(const uint8_t *bytes) {
-    return (uint32_t)bnd_le16(bytes) | ((uint32_t)bnd_le16(bytes + 2U) << 16U);
-}
 
 static bool bnd_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -237,8 +230,8 @@ static bool bnd_parse(Abstractformat *format, bnd_stream **result) {
                      trailer, sizeof(trailer)) ||
         xx_rt_memcmp(trailer, "[20/20]\x00", 8U) != 0)
         return false;
-    first = bnd_le32(trailer + 8U);
-    last = bnd_le32(trailer + 12U);
+    first = xx_data_get_u32(trailer + 8U, 4, 0, false);
+    last = xx_data_get_u32(trailer + 12U, 4, 0, false);
     if ((int64_t)first != BND_VOLUME_HEADER_SIZE ||
         (int64_t)last < BND_VOLUME_HEADER_SIZE ||
         (int64_t)last > trailer_offset - BND_RECORD_HEADER_SIZE)
@@ -268,8 +261,8 @@ static bool bnd_parse(Abstractformat *format, bnd_stream **result) {
             !bnd_read_at(format->device, format->base_address + cursor, record,
                          sizeof(record)))
             goto fail;
-        next = (int64_t)bnd_le32(record);
-        stored = (int64_t)bnd_le32(record + 0x10U);
+        next = (int64_t)xx_data_get_u32(record, 4, 0, false);
+        stored = (int64_t)xx_data_get_u32(record + 0x10U, 4, 0, false);
         member_offset = cursor + BND_RECORD_HEADER_SIZE;
         /* Bound the member against the trailer before anything reads it. */
         if (member_offset > trailer_offset ||
@@ -280,10 +273,10 @@ static bool bnd_parse(Abstractformat *format, bnd_stream **result) {
         if (!bnd_read_at(format->device, format->base_address + member_offset,
                          member_header, BND_MEMBER_PROLOGUE_SIZE))
             goto fail;
-        record_type = bnd_le16(member_header + 0x12U);
-        if (bnd_le16(member_header + 0x0eU) != 0x0074U ||
-            bnd_le16(member_header + 0x10U) != 0x0001U ||
-            bnd_le16(member_header + 0x14U) != 0x0005U ||
+        record_type = xx_data_get_u16(member_header + 0x12U, 2, 0, false);
+        if (xx_data_get_u16(member_header + 0x0eU, 2, 0, false) != 0x0074U ||
+            xx_data_get_u16(member_header + 0x10U, 2, 0, false) != 0x0001U ||
+            xx_data_get_u16(member_header + 0x14U, 2, 0, false) != 0x0005U ||
             (record_type != BND_RECORD_FULL &&
              record_type != BND_RECORD_CONTINUATION))
             goto fail;
@@ -303,9 +296,9 @@ static bool bnd_parse(Abstractformat *format, bnd_stream **result) {
                              member_header, BND_MEMBER_HEADER_SIZE))
                 goto fail;
             if (!bnd_fixed_name_ok(member_header + 0x3aU, BND_LONG_NAME_SIZE) ||
-                bnd_le32(member_header + 0xbeU) != 0U)
+                xx_data_get_u32(member_header + 0xbeU, 4, 0, false) != 0U)
                 goto fail;
-            declared = (int64_t)bnd_le32(member_header + 0xc2U);
+            declared = (int64_t)xx_data_get_u32(member_header + 0xc2U, 4, 0, false);
             member.name = bnd_normalize_name(member_header + 0x3aU,
                                              BND_LONG_NAME_SIZE);
             member.header_size = BND_RECORD_HEADER_SIZE +
@@ -313,10 +306,10 @@ static bool bnd_parse(Abstractformat *format, bnd_stream **result) {
             member.data_offset += BND_MEMBER_HEADER_SIZE;
             member.packed_size = stored - BND_MEMBER_HEADER_SIZE;
             member.unpacked_size = 0U;
-            member.crc = bnd_le32(member_header + 0xbaU);
-            member.dos_time = ((bnd_le32(member_header + 0xcaU) & 0xffffU)
+            member.crc = xx_data_get_u32(member_header + 0xbaU, 4, 0, false);
+            member.dos_time = ((xx_data_get_u32(member_header + 0xcaU, 4, 0, false) & 0xffffU)
                                << 16U) |
-                              (bnd_le32(member_header + 0xc6U) & 0xffffU);
+                              (xx_data_get_u32(member_header + 0xc6U, 4, 0, false) & 0xffffU);
             /* The record may hold less than the whole stream (the last member
              * of a volume continues on the next disk).  It may never hold
              * more, and only a complete member may be decoded. */

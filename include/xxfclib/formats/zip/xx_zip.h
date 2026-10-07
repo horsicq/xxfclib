@@ -37,9 +37,7 @@ extern "C" {
 /* Forward declarations and types */
 typedef struct xx_zip xx_zip;
 typedef struct xx_zip xx_zip_t;
-typedef struct xx_zip XZip;
 typedef struct xx_data_struct_field_desc xx_zip_field_desc;
-typedef struct xx_data_struct_field_desc XZipFieldDesc;
 
 /**
  * @brief Encryption method used when writing a ZIP entry.
@@ -208,131 +206,6 @@ static inline Abstractformat *xx_zip_to_format(xx_zip *zip) {
 
 static inline const Abstractformat *xx_zip_to_format_const(const xx_zip *zip) {
     return zip ? &zip->format : NULL;
-}
-
-/* User-facing aliases without xx_ prefix */
-static inline void XZip_init(xx_zip *zip, xx_io_device *dev, int64_t base_address) {
-    xx_zip_init(zip, dev, base_address);
-}
-
-static inline xx_zip *XZip_create(xx_io_device *dev, int64_t base_address) {
-    return xx_zip_create(dev, base_address);
-}
-
-static inline void XZip_free(xx_zip *zip) {
-    xx_zip_free(zip);
-}
-
-static inline bool XZip_check_is_valid(xx_zip *zip, xx_pd_struct *pd) {
-    return zip ? xx_zip_check_is_valid(&zip->format, pd) : false;
-}
-
-static inline bool XZip_handle_base_info(xx_zip *zip, xx_pd_struct *pd) {
-    return zip ? xx_zip_handle_base_info(&zip->format, pd) : false;
-}
-
-static inline bool XZip_is_valid(xx_zip *zip, xx_pd_struct *pd) {
-    return zip ? xx_format_is_valid(&zip->format, pd) : false;
-}
-
-static inline bool XZip_is_zip64(const xx_zip *zip) {
-    return xx_zip_is_zip64(zip);
-}
-
-static inline uint64_t XZip_get_number_of_records(const xx_zip *zip) {
-    return xx_zip_get_number_of_records(zip);
-}
-
-static inline int64_t XZip_get_cd_offset(const xx_zip *zip) {
-    return xx_zip_get_cd_offset(zip);
-}
-
-static inline int64_t XZip_get_cd_size(const xx_zip *zip) {
-    return xx_zip_get_cd_size(zip);
-}
-
-static inline int64_t XZip_get_eocd_offset(const xx_zip *zip) {
-    return xx_zip_get_eocd_offset(zip);
-}
-
-static inline const char *XZip_get_comment(const xx_zip *zip) {
-    return xx_zip_get_comment(zip);
-}
-
-static inline xx_archive_record_state *XZip_create_archive_records_reading(xx_zip *zip, const xx_list_s *options, xx_pd_struct *pd) {
-    return zip ? xx_zip_create_archive_records_reading(&zip->format, options, pd) : NULL;
-}
-
-static inline const xx_archive_record *XZip_get_current_archive_record(xx_zip *zip, xx_archive_record_state *state) {
-    return zip ? xx_zip_get_current_archive_record(&zip->format, state) : NULL;
-}
-
-static inline bool XZip_unpack_current_archive_record(xx_zip *zip, xx_archive_record_state *state, xx_pd_struct *pd) {
-    return zip ? xx_zip_unpack_current_archive_record(&zip->format, state, pd) : false;
-}
-
-static inline bool XZip_archive_record_move_to_next(xx_zip *zip, xx_archive_record_state *state, xx_pd_struct *pd) {
-    return zip ? xx_zip_archive_record_move_to_next(&zip->format, state, pd) : false;
-}
-
-static inline void XZip_free_archive_records_reading(xx_zip *zip, xx_archive_record_state *state) {
-    if (zip) xx_zip_free_archive_records_reading(&zip->format, state);
-}
-
-static inline xx_archive_write_state *XZip_create_archive_records_writing(xx_zip *zip, const xx_list_s *options, xx_pd_struct *pd) {
-    return zip ? xx_zip_create_archive_records_writing(&zip->format, options, pd) : NULL;
-}
-
-static inline bool XZip_pack_archive_record(xx_zip *zip, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source_dev, xx_pd_struct *pd) {
-    return zip ? xx_zip_pack_archive_record(&zip->format, state, record, source_dev, pd) : false;
-}
-
-static inline bool XZip_finalize_archive_records_writing(xx_zip *zip, xx_archive_write_state *state, xx_pd_struct *pd) {
-    return zip ? xx_zip_finalize_archive_records_writing(&zip->format, state, pd) : false;
-}
-
-static inline void XZip_free_archive_records_writing(xx_zip *zip, xx_archive_write_state *state) {
-    if (zip) xx_zip_free_archive_records_writing(&zip->format, state);
-}
-
-static inline const char *XZip_data_struct_id_to_string(xx_zip *zip, uint32_t id) {
-    return zip ? xx_zip_data_struct_id_to_string(&zip->format, id) : "UNKNOWN";
-}
-
-static inline uint32_t XZip_data_struct_string_to_id(xx_zip *zip, const char *name) {
-    return zip ? xx_zip_data_struct_string_to_id(&zip->format, name) : (uint32_t)XX_ZIP_DS_UNKNOWN;
-}
-
-static inline xx_data_struct_state *XZip_create_data_structs_reading(xx_zip *zip, xx_pd_struct *pd) {
-    return zip ? xx_zip_create_data_structs_reading(&zip->format, pd) : NULL;
-}
-
-static inline const xx_data_struct *XZip_get_current_data_struct(xx_zip *zip, xx_data_struct_state *state) {
-    return zip ? xx_zip_get_current_data_struct(&zip->format, state) : NULL;
-}
-
-static inline bool XZip_data_struct_move_to_next(xx_zip *zip, xx_data_struct_state *state, xx_pd_struct *pd) {
-    return zip ? xx_zip_data_struct_move_to_next(&zip->format, state, pd) : false;
-}
-
-static inline void XZip_free_data_structs_reading(xx_zip *zip, xx_data_struct_state *state) {
-    if (zip) xx_zip_free_data_structs_reading(&zip->format, state);
-}
-
-static inline xx_data_struct_record_state *XZip_create_data_struct_records_reading(xx_zip *zip, const xx_data_struct *ds, xx_pd_struct *pd) {
-    return zip ? xx_zip_create_data_struct_records_reading(&zip->format, ds, pd) : NULL;
-}
-
-static inline const xx_data_struct_record *XZip_get_current_data_struct_record(xx_zip *zip, xx_data_struct_record_state *state) {
-    return zip ? xx_zip_get_current_data_struct_record(&zip->format, state) : NULL;
-}
-
-static inline bool XZip_data_struct_record_move_to_next(xx_zip *zip, xx_data_struct_record_state *state, xx_pd_struct *pd) {
-    return zip ? xx_zip_data_struct_record_move_to_next(&zip->format, state, pd) : false;
-}
-
-static inline void XZip_free_data_struct_records_reading(xx_zip *zip, xx_data_struct_record_state *state) {
-    if (zip) xx_zip_free_data_struct_records_reading(&zip->format, state);
 }
 
 #ifdef __cplusplus

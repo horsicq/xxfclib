@@ -6,8 +6,8 @@
 #include "xxfclib/formats/icu_data_package/xx_icu_data_package.h"
 #include "../sfx_arc/xx_fifth_wrapper_table.h"
 
-static uint32_t ic32(bool be,const uint8_t *p) { return be ? pm_be32(p) : pm_le32(p); }
-static uint16_t ic16(bool be,const uint8_t *p) { return be ? pm_be16(p) : pm_le16(p); }
+static uint32_t ic32(bool be,const uint8_t *p) { return be ? xx_data_get_u32(p, 4, 0, true) : xx_data_get_u32(p, 4, 0, false); }
+static uint16_t ic16(bool be,const uint8_t *p) { return be ? xx_data_get_u16(p, 2, 0, true) : xx_data_get_u16(p, 2, 0, false); }
 static bool w5_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[32]; bool be; uint16_t header; uint32_t count,i,previous=0; int64_t limit=pm_available(f),toc,first; char prior[4097]; prior[0]=0;
     if(!pm_read(f,0,h,24) || h[2]!=0xda || h[3]!=0x27 || h[8]>1 || h[9] || h[10]!=2 || h[11] || xx_rt_memcmp(h+12,"CmnD",4) || h[16]!=1 || h[17] || h[18] || h[19]) return false;

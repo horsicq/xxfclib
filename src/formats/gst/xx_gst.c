@@ -35,6 +35,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef GST
 #define XX_GST_FILE_TYPE XX_FILE_TYPE_GST
@@ -70,14 +71,6 @@ typedef struct gst_stream_s {
     size_t index;
     int64_t archive_size;
 } gst_stream;
-
-static uint16_t gst_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t gst_le32(const uint8_t *bytes) {
-    return (uint32_t)gst_le16(bytes) | ((uint32_t)gst_le16(bytes + 2U) << 16U);
-}
 
 static bool gst_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -181,8 +174,8 @@ static bool gst_parse(Abstractformat *format, gst_stream **result) {
             goto fail;
         if (!((header[0] == 0xe9U && header[1] == 0xc8U) ||
               (header[0] == 0xeaU && header[1] == 0xc9U))) goto fail;
-        unpacked = gst_le32(header + 8U);
-        packed = gst_le32(header + 12U);
+        unpacked = xx_data_get_u32(header + 8U, 4, 0, false);
+        packed = xx_data_get_u32(header + 12U, 4, 0, false);
         /* Bound the declared payload against what the file actually holds
          * before it is used for anything at all. */
         if ((uint64_t)packed >
@@ -191,14 +184,14 @@ static bool gst_parse(Abstractformat *format, gst_stream **result) {
         if ((uint64_t)unpacked > GST_MAX_UNPACKED_SIZE) goto fail;
         xx_mem_zero(&member, sizeof(member));
         member.alternate_magic = header[0] == 0xeaU;
-        member.stamp = gst_le32(header + 2U);
+        member.stamp = xx_data_get_u32(header + 2U, 4, 0, false);
         member.flags = header[6];
         if (member.flags != 0U && member.flags != 1U && member.flags != 0x20U)
             goto fail;
         member.method = header[7];
         member.unpacked_size = unpacked;
         member.packed_size = (int64_t)packed;
-        member.crc32 = gst_le32(header + 28U);
+        member.crc32 = xx_data_get_u32(header + 28U, 4, 0, false);
         if (member.method != GST_METHOD_STORE &&
             member.method != GST_METHOD_DCL)
             goto fail;

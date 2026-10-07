@@ -34,6 +34,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* The alias macro is defined next to the enumerator in xxfc_defs.h, so testing
  * for it picks up the real file type as soon as C64WRAPTOR is registered
@@ -75,11 +76,6 @@ typedef struct xx_c64wraptor_stream_s {
 static void xx_c64wraptor_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint32_t xx_c64wraptor_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static bool xx_c64wraptor_read_at(Abstractformat *self, int64_t offset,
                                   uint8_t *buffer, size_t size) {
@@ -176,7 +172,7 @@ static xx_c64wraptor_stream *xx_c64wraptor_parse(Abstractformat *self,
         goto fail;
     }
     /* Cheap gate before the expensive walk: the first member's magic. */
-    if (xx_c64wraptor_le32(data) != XX_C64WRAPTOR_MEMBER_MAGIC) goto fail;
+    if (xx_data_get_u32(data, 4, 0, false) != XX_C64WRAPTOR_MEMBER_MAGIC) goto fail;
 
     stream = (xx_c64wraptor_stream *)xx_mem_alloc(sizeof(*stream));
     if (!stream) goto fail;
@@ -194,7 +190,7 @@ static xx_c64wraptor_stream *xx_c64wraptor_parse(Abstractformat *self,
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         if (stream->count >= (size_t)XX_C64WRAPTOR_MAX_MEMBERS) goto fail;
 
-        tag = xx_c64wraptor_le32(data + position);
+        tag = xx_data_get_u32(data + position, 4, 0, false);
         if (tag == XX_C64WRAPTOR_END_MARKER) {
             end_marker = true;
             break;

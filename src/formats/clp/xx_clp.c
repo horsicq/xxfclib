@@ -64,6 +64,7 @@
 #include "xxfclib/algo/sclsectors/xx_sclsectors.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_CLP_COPY_CHUNK (64 * 1024)
 
@@ -190,12 +191,8 @@ static bool xx_clp_add(xx_clp_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_clp_le16(const uint8_t *data);
-static uint32_t xx_clp_le32(const uint8_t *data);
 static bool xx_clp_text_length(Abstractformat *self, int64_t offset, int64_t size, bool wide, xx_pd_struct *pd, int64_t *out_length);
 static xx_clp_stream *xx_clp_parse(Abstractformat *self, xx_pd_struct *pd);
-static void xx_clp_put_le16(uint8_t *data, uint16_t value);
-static void xx_clp_put_le32(uint8_t *data, uint32_t value);
 static void xx_clp_bmp_prefix(const uint8_t *info, int64_t data_size, uint8_t *prefix);
 static bool xx_clp_metafile_extent(Abstractformat *self, int64_t offset, int64_t size, int64_t *out_size);
 static bool xx_clp_decode(Abstractformat *self, const xx_clp_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
@@ -203,15 +200,6 @@ static bool xx_clp_decode(Abstractformat *self, const xx_clp_member *member, uin
 
 /* Text members use a captured global-sized window; a UTF-16 code unit
  * is retained across refills when the capacity is odd or one byte. */
-
-static uint16_t xx_clp_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_clp_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* Length of the string inside a text block: up to the first NUL for the
  * single-byte ids, up to the first aligned NUL pair for CF_UNICODETEXT. The
@@ -257,10 +245,10 @@ static bool xx_clp_metafile_extent(Abstractformat *self, int64_t offset,
                         sizeof(header))) {
         return false;
     }
-    type = xx_clp_le16(header);
-    header_words = xx_clp_le16(header + 2);
-    version = xx_clp_le16(header + 4);
-    words = xx_clp_le32(header + 6);
+    type = xx_data_get_u16(header, 2, 0, false);
+    header_words = xx_data_get_u16(header + 2, 2, 0, false);
+    version = xx_data_get_u16(header + 4, 2, 0, false);
+    words = xx_data_get_u32(header + 6, 4, 0, false);
     /* mtType 1 is a memory metafile, 2 a disk one; mtHeaderSize is fixed at
      * nine words and mtVersion is 0x0100 or 0x0300. */
     if ((type != 1U && type != 2U) || header_words != 9U ||
@@ -300,11 +288,11 @@ static xx_clp_stream *xx_clp_parse(Abstractformat *self, xx_pd_struct *pd) {
      * in-range 32-bit pairs, which is common enough that it shadowed two
      * dozen archives of other formats that have working readers of their
      * own. This is the check a later reader will be tempted to loosen. */
-    if (xx_clp_le16(header) != (uint16_t)XX_CLP_ID_WIN3 &&
-        xx_clp_le16(header) != (uint16_t)XX_CLP_ID_WINNT) {
+    if (xx_data_get_u16(header, 2, 0, false) != (uint16_t)XX_CLP_ID_WIN3 &&
+        xx_data_get_u16(header, 2, 0, false) != (uint16_t)XX_CLP_ID_WINNT) {
         return NULL;
     }
-    count = (int64_t)xx_clp_le16(header + 2);
+    count = (int64_t)xx_data_get_u16(header + 2, 2, 0, false);
     if (count <= 0 || count > XX_CLP_MAX_MEMBERS) return NULL;
     /* The whole table has to be inside the file before any of it is read. */
     if (!xx_clp_range_within(span, XX_CLP_HEADER_SIZE,
@@ -333,12 +321,12 @@ static xx_clp_stream *xx_clp_parse(Abstractformat *self, xx_pd_struct *pd) {
             goto fail;
         }
 
-        format = xx_clp_le16(record);
+        format = xx_data_get_u16(record, 2, 0, false);
         /* Signed on purpose: the reference reads both fields as int32, so a
          * value with the top bit set is a corrupt record, not a two-gigabyte
          * block. */
-        data_size = (int64_t)(int32_t)xx_clp_le32(record + 2);
-        data_offset = (int64_t)(int32_t)xx_clp_le32(record + 6);
+        data_size = (int64_t)(int32_t)xx_data_get_u32(record + 2, 4, 0, false);
+        data_offset = (int64_t)(int32_t)xx_data_get_u32(record + 6, 4, 0, false);
         if (data_size < 0 || data_offset < 0) goto fail;
         /* An id in neither the standard nor the registered range is not a
          * clipboard record, so the file is not a clipboard file. Together
@@ -462,18 +450,6 @@ fail:
 /* A clipboard block is attacker-controlled in size; refuse rather than
  * attempt the allocation. */
 
-static void xx_clp_put_le16(uint8_t *data, uint16_t value) {
-    data[0] = (uint8_t)(value & 0xFFU);
-    data[1] = (uint8_t)((value >> 8) & 0xFFU);
-}
-
-static void xx_clp_put_le32(uint8_t *data, uint32_t value) {
-    data[0] = (uint8_t)(value & 0xFFU);
-    data[1] = (uint8_t)((value >> 8) & 0xFFU);
-    data[2] = (uint8_t)((value >> 8 >> 8) & 0xFFU);
-    data[3] = (uint8_t)((value >> 8 >> 8 >> 8) & 0xFFU);
-}
-
 /* Build the BITMAPFILEHEADER a DIB block does not carry.
  *
  * bfOffBits is derived the way the reference derives it: from the END of the
@@ -483,18 +459,18 @@ static void xx_clp_put_le32(uint8_t *data, uint32_t value) {
  * palette entry count nor where the pixels begin. */
 static void xx_clp_bmp_prefix(const uint8_t *info, int64_t data_size,
                               uint8_t *prefix) {
-    int32_t width = (int32_t)xx_clp_le32(info + 4);
-    int32_t height = (int32_t)xx_clp_le32(info + 8);
-    uint16_t bit_count = xx_clp_le16(info + 14);
+    int32_t width = (int32_t)xx_data_get_u32(info + 4, 4, 0, false);
+    int32_t height = (int32_t)xx_data_get_u32(info + 8, 4, 0, false);
+    uint16_t bit_count = xx_data_get_u16(info + 14, 2, 0, false);
     int32_t file_size = (int32_t)(uint32_t)(data_size + XX_CLP_BMP_PREFIX_SIZE);
     int32_t pixel_bytes =
         (int32_t)(uint32_t)(((int64_t)width * height * bit_count) / 8);
 
-    xx_clp_put_le16(prefix, 0x4D42U);               /* 'BM' */
-    xx_clp_put_le32(prefix + 2, (uint32_t)file_size);
-    xx_clp_put_le16(prefix + 6, 0U);                /* bfReserved1 */
-    xx_clp_put_le16(prefix + 8, 0U);                /* bfReserved2 */
-    xx_clp_put_le32(prefix + 10, (uint32_t)(file_size - pixel_bytes));
+    xx_data_set_u16(prefix, 2, 0, 0x4D42U, false);               /* 'BM' */
+    xx_data_set_u32(prefix + 2, 4, 0, (uint32_t)file_size, false);
+    xx_data_set_u16(prefix + 6, 2, 0, 0U, false);                /* bfReserved1 */
+    xx_data_set_u16(prefix + 8, 2, 0, 0U, false);                /* bfReserved2 */
+    xx_data_set_u32(prefix + 10, 4, 0, (uint32_t)(file_size - pixel_bytes), false);
 }
 
 /* Nothing in this container is compressed. The text ids are a verbatim copy

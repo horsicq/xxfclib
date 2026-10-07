@@ -32,6 +32,7 @@
 
 #include <limits.h>
 #include <stdint.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_RARX50_LEVEL_SYMBOLS       20u
 #define XX_RARX50_MAIN_SYMBOLS        306u
@@ -94,20 +95,6 @@ struct xx_rarx50_state {
 
 static bool xx_rarx50_cancelled(xx_pd_struct *progress) {
     return progress && xx_pd_is_stopped(progress);
-}
-
-static uint32_t xx_rarx50_get_le32(const uint8_t *data) {
-    return (uint32_t)data[0] |
-           ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) |
-           ((uint32_t)data[3] << 24);
-}
-
-static void xx_rarx50_put_le32(uint8_t *data, uint32_t value) {
-    data[0] = (uint8_t)value;
-    data[1] = (uint8_t)(value >> 8);
-    data[2] = (uint8_t)(value >> 16);
-    data[3] = (uint8_t)(value >> 24);
 }
 
 static xx_rarx_status_t xx_rarx50_read_bits(xx_rarx50_bits *bits,
@@ -649,13 +636,13 @@ static xx_rarx_status_t xx_rarx50_filter_x86(
             size_t address_position = position + 1u;
             uint32_t offset = (file_offset + (uint32_t)address_position) &
                               (XX_RARX50_X86_FILE_SIZE - 1u);
-            uint32_t address = xx_rarx50_get_le32(data + address_position);
+            uint32_t address = xx_data_get_u32(data + address_position, 4, 0, false);
             if (address < XX_RARX50_X86_FILE_SIZE) {
                 address -= offset;
-                xx_rarx50_put_le32(data + address_position, address);
+                xx_data_set_u32(data + address_position, 4, 0, address, false);
             } else if (address > UINT32_MAX - offset) {
                 address += XX_RARX50_X86_FILE_SIZE;
-                xx_rarx50_put_le32(data + address_position, address);
+                xx_data_set_u32(data + address_position, 4, 0, address, false);
             }
             position += 5u;
         } else {

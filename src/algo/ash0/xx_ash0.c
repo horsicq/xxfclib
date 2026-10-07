@@ -11,6 +11,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ASH0_HEADER_SIZE 12U
 #define XX_ASH0_MIN_SIZE 20U
@@ -38,11 +39,6 @@ typedef struct xx_ash0_tree_s {
     uint32_t root;
 } xx_ash0_tree;
 
-static uint32_t xx_ash0_read32be(const uint8_t *data) {
-    return ((uint32_t)data[0] << 24U) | ((uint32_t)data[1] << 16U) |
-           ((uint32_t)data[2] << 8U) | (uint32_t)data[3];
-}
-
 bool xx_ash0_parse_header(const uint8_t *input, size_t input_size,
                           xx_ash0_header *header) {
     uint32_t size_word;
@@ -52,8 +48,8 @@ bool xx_ash0_parse_header(const uint8_t *input, size_t input_size,
         input[3] != '0') {
         return false;
     }
-    size_word = xx_ash0_read32be(input + 4U);
-    distance_offset = xx_ash0_read32be(input + 8U);
+    size_word = xx_data_get_u32(input + 4U, 4, 0, true);
+    distance_offset = xx_data_get_u32(input + 8U, 4, 0, true);
     if ((size_word & XX_ASH0_MAX_UNCOMPRESSED) == 0U ||
         distance_offset < XX_ASH0_MIN_DISTANCE_OFFSET ||
         distance_offset > input_size - XX_ASH0_WORD_SIZE) {

@@ -63,6 +63,7 @@
 #include "xxfclib/algo/store/xx_store.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef BEATTHEHOUSE
 #define XX_BEATTHEHOUSE_FILE_TYPE XX_FILE_TYPE_BEATTHEHOUSE
@@ -107,11 +108,6 @@ typedef struct xx_beatthehouse_stream_s {
 static void xx_beatthehouse_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint32_t xx_beatthehouse_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static bool xx_beatthehouse_read_at(Abstractformat *self, int64_t offset,
                             uint8_t *buffer, size_t size) {
@@ -188,7 +184,7 @@ static xx_beatthehouse_stream *xx_beatthehouse_parse(Abstractformat *self,
     kind = header[3];
     if (kind < 'A' || kind > 'Z') return NULL;
 
-    raw_size = xx_beatthehouse_le32(header + 4);
+    raw_size = xx_data_get_u32(header + 4, 4, 0, false);
 
     /* Bounded before it is used for anything: the length drives the eventual
      * output allocation, so it is capped against the ratio the payload can

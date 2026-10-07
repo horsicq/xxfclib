@@ -64,6 +64,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef SAVEDSKF
 #define XX_SAVEDSKF_FILE_TYPE XX_FILE_TYPE_SAVEDSKF
@@ -144,10 +145,6 @@ static bool xx_savedskf_read_at(Abstractformat *self, int64_t offset,
         completed += (size_t)received;
     }
     return true;
-}
-
-static uint16_t xx_savedskf_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
 }
 
 static bool xx_savedskf_path_safe(const char *name) {
@@ -386,7 +383,7 @@ static xx_savedskf_stream *xx_savedskf_parse(Abstractformat *self,
         return NULL;
     }
 
-    signature = xx_savedskf_le16(header);
+    signature = xx_data_get_u16(header, 2, 0, false);
     if (signature == XX_SAVEDSKF_SIG_OLD || signature == XX_SAVEDSKF_SIG_NEW) {
         method = XX_SAVEDSKF_METHOD_STORE;
     } else if (signature == XX_SAVEDSKF_SIG_COMPRESSED) {
@@ -395,13 +392,13 @@ static xx_savedskf_stream *xx_savedskf_parse(Abstractformat *self,
         return NULL;
     }
 
-    sector_size = xx_savedskf_le16(header + XX_SAVEDSKF_OFF_SECTOR_SIZE);
-    cylinders = xx_savedskf_le16(header + XX_SAVEDSKF_OFF_CYLINDERS);
-    heads = xx_savedskf_le16(header + XX_SAVEDSKF_OFF_HEADS);
+    sector_size = xx_data_get_u16(header + XX_SAVEDSKF_OFF_SECTOR_SIZE, 2, 0, false);
+    cylinders = xx_data_get_u16(header + XX_SAVEDSKF_OFF_CYLINDERS, 2, 0, false);
+    heads = xx_data_get_u16(header + XX_SAVEDSKF_OFF_HEADS, 2, 0, false);
     sectors_per_track =
-        xx_savedskf_le16(header + XX_SAVEDSKF_OFF_SECTORS_PER_TRACK);
-    stored_sectors = xx_savedskf_le16(header + XX_SAVEDSKF_OFF_STORED_SECTORS);
-    data_offset = xx_savedskf_le16(header + XX_SAVEDSKF_OFF_DATA);
+        xx_data_get_u16(header + XX_SAVEDSKF_OFF_SECTORS_PER_TRACK, 2, 0, false);
+    stored_sectors = xx_data_get_u16(header + XX_SAVEDSKF_OFF_STORED_SECTORS, 2, 0, false);
+    data_offset = xx_data_get_u16(header + XX_SAVEDSKF_OFF_DATA, 2, 0, false);
 
     /* Sixteen bits of signature is not enough on its own, so the geometry
      * has to hang together too: a power-of-two sector size, a plausible

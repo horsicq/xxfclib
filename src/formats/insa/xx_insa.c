@@ -11,6 +11,7 @@
 #include "xxfclib/formats/insa/xx_insa.h"
 #include "xxfclib/algo/lzh/xx_lzh.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 #define INSA_MAX_PACKED (16U * 1024U * 1024U)
 #define INSA_MAX_MEMBER (64U * 1024U * 1024U)
@@ -30,7 +31,7 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
     uint64_t total_plain = 0U;
     if (span < 7 || span > INSA_MAX_PACKED ||
         !pm_read(format, 0, version, sizeof(version)) ||
-        pm_le16(version) != 1U)
+        xx_data_get_u16(version, 2, 0, false) != 1U)
         return false;
     while (pos < span) {
         uint8_t field[4];
@@ -43,7 +44,7 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
             stream->count >= INSA_MAX_RECORDS || span - pos < 5 ||
             !pm_read(format, pos, field, sizeof(field)))
             return false;
-        raw = pm_le32(field);
+        raw = xx_data_get_u32(field, 4, 0, false);
         pos += 4;
         remaining = (size_t)(span - pos);
         if (raw == 0U || raw > INSA_MAX_MEMBER ||

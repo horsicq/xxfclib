@@ -162,15 +162,6 @@ typedef struct xpk_stream_s {
     size_t count;
 } xpk_stream;
 
-static uint32_t xpk_be32(const uint8_t *p) {
-    return ((uint32_t)p[0] << 24U) | ((uint32_t)p[1] << 16U) |
-           ((uint32_t)p[2] << 8U) | (uint32_t)p[3];
-}
-
-static uint16_t xpk_be16(const uint8_t *p) {
-    return (uint16_t)(((uint16_t)p[0] << 8U) | (uint16_t)p[1]);
-}
-
 static bool xpk_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size, xx_pd_struct *pd) {
     size_t done = 0U;
@@ -211,17 +202,17 @@ static bool xpk_parse_header(Abstractformat *format, xpk_context *ctx, xx_pd_str
         return false;
     for (index = 0U; index < XPK_HEADER_SIZE; ++index) check ^= header[index];
     if (check != 0U) return false;
-    ctx->packed_len = xpk_be32(header + 4);
+    ctx->packed_len = xx_data_get_u32(header + 4, 4, 0, true);
     if ((uint64_t)ctx->packed_len + 8U > (uint64_t)ctx->avail ||
         ctx->packed_len < XPK_HEADER_SIZE) return false;
     ctx->avail = (int64_t)ctx->packed_len + 8;
-    ctx->method = xpk_be32(header + 8);
-    ctx->unpacked_len = xpk_be32(header + 12);
+    ctx->method = xx_data_get_u32(header + 8, 4, 0, true);
+    ctx->unpacked_len = xx_data_get_u32(header + 12, 4, 0, true);
     xx_rt_memcpy(ctx->reference, header + 16, sizeof(ctx->reference));
     ctx->flags = header[32];
     ctx->stream_start = XPK_HEADER_SIZE;
     if (ctx->flags & XPK_FLAG_EXTHEADER) {
-        int64_t extra = (int64_t)xpk_be16(header + XPK_HEADER_SIZE);
+        int64_t extra = (int64_t)xx_data_get_u16(header + XPK_HEADER_SIZE, 2, 0, true);
         ctx->stream_start = XPK_HEADER_SIZE + 2 + extra;
         if (ctx->stream_start > ctx->avail) return false;
     }
@@ -247,14 +238,14 @@ static int xpk_read_chunk(xx_io_device *device, const xpk_context *ctx,
     if (check != 0U) return -1;
     xx_mem_zero(chunk, sizeof(*chunk));
     chunk->type = header[0];
-    chunk->data_check = xpk_be16(header + 2);
+    chunk->data_check = xx_data_get_u16(header + 2, 2, 0, true);
     chunk->header_pos = at;
     if (header_size == 12U) {
-        chunk->clen = (int64_t)xpk_be32(header + 4);
-        chunk->ulen = (int64_t)xpk_be32(header + 8);
+        chunk->clen = (int64_t)xx_data_get_u32(header + 4, 4, 0, true);
+        chunk->ulen = (int64_t)xx_data_get_u32(header + 8, 4, 0, true);
     } else {
-        chunk->clen = (int64_t)xpk_be16(header + 4);
-        chunk->ulen = (int64_t)xpk_be16(header + 6);
+        chunk->clen = (int64_t)xx_data_get_u16(header + 4, 2, 0, true);
+        chunk->ulen = (int64_t)xx_data_get_u16(header + 6, 2, 0, true);
     }
     chunk->data_pos = at + (int64_t)header_size;
     if (chunk->clen > ctx->avail - chunk->data_pos) return -1;
@@ -541,7 +532,7 @@ static bool xpk_deflate(const uint8_t *packed, size_t size, uint8_t *output,
             a = (a + output[i]) % 65521U;
             b = (b + a) % 65521U;
         }
-        valid = ((b << 16U) | a) == xpk_be32(packed + size - 4U);
+        valid = ((b << 16U) | a) == xx_data_get_u32(packed + size - 4U, 4, 0, true);
     }
     return valid;
 }
@@ -561,7 +552,7 @@ static bool xpk_fast(const uint8_t *packed, size_t size, uint8_t *output,
         if (!available_bits) {
             if (back - front < 2U) return false;
             back -= 2U;
-            flags = xpk_be16(packed + back);
+            flags = xx_data_get_u16(packed + back, 2, 0, true);
             available_bits = 16U;
         }
         match = (flags & 0x8000U) != 0U;
@@ -575,7 +566,7 @@ static bool xpk_fast(const uint8_t *packed, size_t size, uint8_t *output,
             size_t distance, count;
             if (back - front < 2U) return false;
             back -= 2U;
-            code = xpk_be16(packed + back);
+            code = xx_data_get_u16(packed + back, 2, 0, true);
             distance = code >> 4U;
             count = 18U - (code & 15U);
             if (!distance || distance > produced) return false;
@@ -630,7 +621,7 @@ static bool xpk_sqsh(const uint8_t *packed, size_t size, uint8_t *output,
     unsigned previous = 0U;
     size_t produced = 1U;
     uint8_t sample;
-    if (size < 3U || !wanted || wanted > 65535U || xpk_be16(packed) != wanted)
+    if (size < 3U || !wanted || wanted > 65535U || xx_data_get_u16(packed, 2, 0, true) != wanted)
         return false;
     xx_mem_zero(&input, sizeof(input)); input.data = packed; input.size = size; input.pos = 3U;
     sample = packed[2]; output[0] = sample;
@@ -705,10 +696,10 @@ static bool xpk_blzw(const uint8_t *packed, size_t size, uint8_t *output,
     unsigned max_bits;
     bool valid = false;
     if (size < 6U || !wanted || (pd && xx_pd_is_stopped(pd))) return false;
-    max_bits = xpk_be16(packed);
+    max_bits = xx_data_get_u16(packed, 2, 0, true);
     if (max_bits < 9U || max_bits > 20U) return false;
     capacity = UINT32_C(1) << max_bits;
-    stack_size = (size_t)xpk_be16(packed + 2U) + 5U;
+    stack_size = (size_t)xx_data_get_u16(packed + 2U, 2, 0, true) + 5U;
     prefix = (uint32_t *)xx_mem_alloc((size_t)capacity * sizeof(*prefix));
     suffix = (uint8_t *)xx_mem_alloc(capacity);
     stack = (uint8_t *)xx_mem_alloc(stack_size);
@@ -777,7 +768,7 @@ static bool xpk_smpl(const uint8_t *packed, size_t size, uint8_t *output,
     uint8_t accumulated = 0U;
     size_t produced;
     bool valid = false;
-    if (size < 130U || xpk_be16(packed) != 1U ||
+    if (size < 130U || xx_data_get_u16(packed, 2, 0, true) != 1U ||
         (pd && xx_pd_is_stopped(pd))) return false;
     nodes = (xpk_smpl_node *)xx_mem_alloc((size_t)max_nodes * sizeof(*nodes));
     if (!nodes) return false;
@@ -923,7 +914,7 @@ static bool xpk_decode_inner(Abstractformat *format, const xpk_context *ctx,
         /* Data check: XOR of big-endian 16-bit words, over the data padded
          * to 4 with whatever bytes follow it in the file. */
         for (index = 0U; index < (size_t)padded; index += 2U)
-            check ^= xpk_be16(packed + index);
+            check ^= xx_data_get_u16(packed + index, 2, 0, true);
         if (check != chunk.data_check) goto done;
         if (chunk.type == XPK_CHUNK_RAW || ctx->method == XPK_CODE_NONE) {
             if (chunk.clen != chunk.ulen ||

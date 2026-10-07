@@ -35,6 +35,7 @@
 #include "xxfclib/algo/chieflz/xx_chieflz.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_CHIEFLZ_COPY_CHUNK (64 * 1024)
 
@@ -137,23 +138,12 @@ static bool xx_chieflz_add(xx_chieflz_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_chieflz_le16(const uint8_t *data);
-static uint32_t xx_chieflz_le32(const uint8_t *data);
 static xx_chieflz_stream *xx_chieflz_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_chieflz_decode(Abstractformat *self, const xx_chieflz_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
 
 /* Used when the header carries no name; the container has no other place to
  * keep one, so a fixed placeholder is the honest answer. */
-
-static uint16_t xx_chieflz_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_chieflz_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static xx_chieflz_stream *xx_chieflz_parse(Abstractformat *self,
                                            xx_pd_struct *pd) {
@@ -204,14 +194,14 @@ static xx_chieflz_stream *xx_chieflz_parse(Abstractformat *self,
     /* The size is written as a 32-bit word but the reference treats it as
      * signed and rejects negatives, so the top bit set is a rejection here
      * too rather than a four-gigabyte member. */
-    raw_size = xx_chieflz_le32(header + 0x0b);
+    raw_size = xx_data_get_u32(header + 0x0b, 4, 0, false);
     if (raw_size > 0x7fffffffU) return NULL;
     uncompressed_size = (int64_t)raw_size;
     if (uncompressed_size <= 0) return NULL;
     if (uncompressed_size > XX_CHIEFLZ_MAX_DECODED) return NULL;
 
-    dos_date = xx_chieflz_le16(header + 0x13);
-    dos_time = xx_chieflz_le16(header + 0x15);
+    dos_date = xx_data_get_u16(header + 0x13, 2, 0, false);
+    dos_time = xx_data_get_u16(header + 0x15, 2, 0, false);
 
     /* The name is length-prefixed, not NUL terminated, and the prefix must
      * leave the text inside the fixed header. */

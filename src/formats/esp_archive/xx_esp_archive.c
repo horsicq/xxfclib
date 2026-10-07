@@ -17,9 +17,9 @@ static bool es_at(Abstractformat *f,pm_stream *s,int64_t base,xx_pd_struct *pd) 
     char *paths=NULL;size_t path_size=0,dsize=0,count,i,stream_size=0,position=0,prefix_size=0;
     int64_t limit=pm_available(f),directory,body_size;bool ok=false;uint64_t aggregate=0;
     if(!pm_read(f,base,h,10) || xx_rt_memcmp(h,"ESP>",4) || (h[5]&7)>4 ||
-       (h[5]&0x50) || ((h[5]&8) && h[4]>=0x19) || pm_le32(h+6)<10 ||
-       !wg_range(limit,base,pm_le32(h+6)))return false;
-    directory=base+pm_le32(h+6);body_size=directory-base-10;
+       (h[5]&0x50) || ((h[5]&8) && h[4]>=0x19) || xx_data_get_u32(h+6, 4, 0, false)<10 ||
+       !wg_range(limit,base,xx_data_get_u32(h+6, 4, 0, false)))return false;
+    directory=base+xx_data_get_u32(h+6, 4, 0, false);body_size=directory-base-10;
     if(limit-directory<=0 || limit-directory>4194304 || body_size>67108864)return false;
     packed=(uint8_t *)xx_mem_alloc((size_t)(limit-directory));
     dir=(uint8_t *)xx_mem_alloc(2097152);paths=(char *)xx_mem_alloc(65536);
@@ -30,7 +30,7 @@ static bool es_at(Abstractformat *f,pm_stream *s,int64_t base,xx_pd_struct *pd) 
     /* Bound both the solid stream and the potentially larger prefix-spliced
      * output before allocating either. Directory rows consume no body bytes. */
     for(i=0;i<count;++i){
-        const uint8_t *row=dir+i*28;uint32_t shared=pm_le32(row),bytes=pm_le32(row+24);
+        const uint8_t *row=dir+i*28;uint32_t shared=xx_data_get_u32(row, 4, 0, false),bytes=xx_data_get_u32(row+24, 4, 0, false);
         if(wg_stop(pd) || bytes>16777216 || shared>bytes || (row[19]&0xc0))goto done;
         if(row[19]&0x10)continue;
         stream_size+=bytes-shared;aggregate+=bytes;
@@ -50,8 +50,8 @@ static bool es_at(Abstractformat *f,pm_stream *s,int64_t base,xx_pd_struct *pd) 
         if(h[5]&8){uint8_t accumulator=0;for(i=0;i<stream_size;++i){accumulator=(uint8_t)(accumulator+plain[i]);plain[i]=accumulator;}}
     }
     for(i=0;i<count;++i){
-        const uint8_t *row=dir+i*28;uint32_t shared=pm_le32(row),bytes=pm_le32(row+24),next=i+1<count?pm_le32(dir+(i+1)*28):0;
-        uint16_t parent=pm_le16(row+4);size_t name=0,parent_size=0;char label[96];uint8_t *data;size_t fresh=bytes-shared;
+        const uint8_t *row=dir+i*28;uint32_t shared=xx_data_get_u32(row, 4, 0, false),bytes=xx_data_get_u32(row+24, 4, 0, false),next=i+1<count?xx_data_get_u32(dir+(i+1)*28, 4, 0, false):0;
+        uint16_t parent=xx_data_get_u16(row+4, 2, 0, false);size_t name=0,parent_size=0;char label[96];uint8_t *data;size_t fresh=bytes-shared;
         if(wg_stop(pd))goto done;
         while(name<13 && row[6+name]){if(row[6+name]<32 || row[6+name]>126)goto done;++name;}
         if(!name)goto done;

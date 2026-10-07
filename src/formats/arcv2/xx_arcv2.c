@@ -17,6 +17,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define ARCV2_ARCHIVE_HEADER_SIZE 14U
 #define ARCV2_BLOCK_PREFIX_SIZE 17U
@@ -62,15 +63,6 @@ typedef struct arcv2_stream_s {
     uint16_t disk_number;
     arcv2_scramble scramble;
 } arcv2_stream;
-
-static uint16_t arcv2_le16(const uint8_t *bytes) {
-    return (uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U);
-}
-
-static uint32_t arcv2_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
 
 static bool arcv2_read_at(xx_io_device *device, int64_t offset, void *buffer,
                           size_t size) {
@@ -244,14 +236,14 @@ static bool arcv2_parse(Abstractformat *format, arcv2_stream **result,
         !arcv2_read_at(format->device, format->base_address, archive_header,
                        sizeof(archive_header)) ||
         xx_rt_memcmp(archive_header, "ARCV", 4U) != 0 ||
-        arcv2_le16(archive_header + 4U) != 0x0200U ||
-        arcv2_le16(archive_header + 6U) != ARCV2_ARCHIVE_HEADER_SIZE ||
-        !arcv2_valid_volume_flags(arcv2_le32(archive_header + 8U)))
+        xx_data_get_u16(archive_header + 4U, 2, 0, false) != 0x0200U ||
+        xx_data_get_u16(archive_header + 6U, 2, 0, false) != ARCV2_ARCHIVE_HEADER_SIZE ||
+        !arcv2_valid_volume_flags(xx_data_get_u32(archive_header + 8U, 4, 0, false)))
         return false;
     stream = (arcv2_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;
-    stream->volume_flags = arcv2_le32(archive_header + 8U);
-    stream->disk_number = arcv2_le16(archive_header + 12U);
+    stream->volume_flags = xx_data_get_u32(archive_header + 8U, 4, 0, false);
+    stream->disk_number = xx_data_get_u16(archive_header + 12U, 2, 0, false);
     stream->scramble = ARCV2_SCRAMBLE_NONE;
     offset = ARCV2_ARCHIVE_HEADER_SIZE;
     while (offset < size) {
@@ -269,11 +261,11 @@ static bool arcv2_parse(Abstractformat *format, arcv2_stream **result,
             !arcv2_read_at(format->device, format->base_address + offset,
                            prefix, sizeof(prefix)) ||
             xx_rt_memcmp(prefix, "BLCK", 4U) != 0 ||
-            arcv2_le16(prefix + 4U) != 0x0200U)
+            xx_data_get_u16(prefix + 4U, 2, 0, false) != 0x0200U)
             goto fail;
-        header_size = arcv2_le16(prefix + 6U);
-        flags = arcv2_le32(prefix + 8U);
-        bytes_on_volume = arcv2_le32(prefix + 12U);
+        header_size = xx_data_get_u16(prefix + 6U, 2, 0, false);
+        flags = xx_data_get_u32(prefix + 8U, 4, 0, false);
+        bytes_on_volume = xx_data_get_u32(prefix + 12U, 4, 0, false);
         name_size = prefix[16U];
         if (name_size == 0U || header_size != ARCV2_BLOCK_FIXED_SIZE + name_size ||
             !arcv2_valid_flags(flags) ||
@@ -289,12 +281,12 @@ static bool arcv2_parse(Abstractformat *format, arcv2_stream **result,
         relative_data_offset = offset + header_size;
         member.data_offset = format->base_address + relative_data_offset;
         member.data_size = bytes_on_volume;
-        member.original_size = arcv2_le32(tail);
-        member.compressed_size = arcv2_le32(tail + 4U);
-        member.attributes = arcv2_le32(tail + 8U);
-        member.dos_datetime = arcv2_le32(tail + 12U);
+        member.original_size = xx_data_get_u32(tail, 4, 0, false);
+        member.compressed_size = xx_data_get_u32(tail + 4U, 4, 0, false);
+        member.attributes = xx_data_get_u32(tail + 8U, 4, 0, false);
+        member.dos_datetime = xx_data_get_u32(tail + 12U, 4, 0, false);
         member.flags = flags;
-        member.packed_crc32 = arcv2_le32(tail + 24U);
+        member.packed_crc32 = xx_data_get_u32(tail + 24U, 4, 0, false);
         if (!member.name || !arcv2_safe_output_name(member.name) ||
             relative_data_offset > size ||
             member.data_size > (uint64_t)(size - relative_data_offset) ||

@@ -33,6 +33,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* The alias macro is defined next to the enumerator in xxfc_defs.h, so testing
  * for it picks up the real file type as soon as CLAYLZ is registered there.
@@ -73,15 +74,6 @@ typedef struct xx_claylz_stream_s {
 static void xx_claylz_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint16_t xx_claylz_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_claylz_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static bool xx_claylz_read_at(Abstractformat *self, int64_t offset,
                               uint8_t *buffer, size_t size) {
@@ -216,16 +208,16 @@ static xx_claylz_stream *xx_claylz_parse(Abstractformat *self,
         /* The magic is the whole of the chain's framing: no length field
          * points here, so a member that does not open with it is simply not
          * part of the archive and everything from here on is overlay. */
-        if (xx_claylz_le32(header) != XX_CLAYLZ_MAGIC) break;
+        if (xx_data_get_u32(header, 4, 0, false) != XX_CLAYLZ_MAGIC) break;
 
-        raw = xx_claylz_le32(header + 4);
+        raw = xx_data_get_u32(header + 4, 4, 0, false);
         if (raw > (uint32_t)XX_CLAYLZ_MAX_SIZE) break;
         compressed = (int64_t)raw;
-        raw = xx_claylz_le32(header + 8);
+        raw = xx_data_get_u32(header + 8, 4, 0, false);
         if (raw > (uint32_t)XX_CLAYLZ_MAX_SIZE) break;
         uncompressed = (int64_t)raw;
 
-        name_size = (int64_t)xx_claylz_le16(header + 0x10);
+        name_size = (int64_t)xx_data_get_u16(header + 0x10, 2, 0, false);
         if (name_size <= 0 || name_size > (int64_t)XX_CLAYLZ_MAX_NAME_SIZE) {
             break;
         }
@@ -256,8 +248,8 @@ static xx_claylz_stream *xx_claylz_parse(Abstractformat *self,
         member.data_offset = self->base_address + data_offset;
         member.compressed_size = compressed;
         member.uncompressed_size = uncompressed;
-        member.timestamp = ((uint64_t)xx_claylz_le16(header + 0x0c) << 16) |
-                           (uint64_t)xx_claylz_le16(header + 0x0e);
+        member.timestamp = ((uint64_t)xx_data_get_u16(header + 0x0c, 2, 0, false) << 16) |
+                           (uint64_t)xx_data_get_u16(header + 0x0e, 2, 0, false);
 
         /* A member whose stream runs past the end of the file still lists; it
          * just cannot be decoded past that end, which the codec reports on its

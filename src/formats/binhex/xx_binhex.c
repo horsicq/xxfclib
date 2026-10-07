@@ -45,6 +45,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* The enum entry is added by the coordinator; keep compiling until it is. */
 #ifdef BINHEX
@@ -82,15 +83,6 @@ typedef struct hqx_stream_s {
     uint16_t finder_flags;
     bool complete;
 } hqx_stream;
-
-static uint16_t hqx_be16(const uint8_t *bytes) {
-    return (uint16_t)(((uint16_t)bytes[0] << 8U) | (uint16_t)bytes[1]);
-}
-
-static uint32_t hqx_be32(const uint8_t *bytes) {
-    return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
-           ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3];
-}
 
 static bool hqx_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -378,11 +370,11 @@ static bool hqx_parse(Abstractformat *format, hqx_stream **result) {
     header_size = 20U + name_length;
     /* The header CRC is what establishes that this is really BinHex. */
     if (xx_crc16_xmodem_calc(0U, decoded, header_size) !=
-        hqx_be16(decoded + header_size))
+        xx_data_get_u16(decoded + header_size, 2, 0, true))
         goto fail;
 
-    data_size = hqx_be32(decoded + 12U + name_length);
-    resource_size = hqx_be32(decoded + 16U + name_length);
+    data_size = xx_data_get_u32(decoded + 12U + name_length, 4, 0, true);
+    resource_size = xx_data_get_u32(decoded + 16U + name_length, 4, 0, true);
     payload_offset = 22U + name_length;
     if ((uint64_t)data_size + (uint64_t)resource_size >
         (uint64_t)HQX_MAX_DECODED)
@@ -402,19 +394,19 @@ static bool hqx_parse(Abstractformat *format, hqx_stream **result) {
 
     stream = (hqx_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) goto fail;
-    stream->mac_type = hqx_be32(decoded + 2U + name_length);
-    stream->mac_creator = hqx_be32(decoded + 6U + name_length);
-    stream->finder_flags = hqx_be16(decoded + 10U + name_length);
+    stream->mac_type = xx_data_get_u32(decoded + 2U + name_length, 4, 0, true);
+    stream->mac_creator = xx_data_get_u32(decoded + 6U + name_length, 4, 0, true);
+    stream->finder_flags = xx_data_get_u16(decoded + 10U + name_length, 2, 0, true);
     stream->archive_size = size;
     stream->payload_offset = format->base_address + (int64_t)colon;
 
     if (complete &&
         xx_crc16_xmodem_calc(0U, decoded + payload_offset, data_size) ==
-            hqx_be16(decoded + payload_offset + data_size)) {
+            xx_data_get_u16(decoded + payload_offset + data_size, 2, 0, true)) {
         size_t resource_offset = payload_offset + data_size + 2U;
         if (xx_crc16_xmodem_calc(0U, decoded + resource_offset,
                                  resource_size) !=
-            hqx_be16(decoded + resource_offset + resource_size))
+            xx_data_get_u16(decoded + resource_offset + resource_size, 2, 0, true))
             goto fail;
         if (!hqx_add_member(stream, name, decoded + payload_offset, data_size,
                             data_size, false, true))

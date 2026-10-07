@@ -5,28 +5,29 @@
  */
 #include "xxfclib/formats/sqlite_wal/xx_sqlite_wal.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 static void wal_checksum(const uint8_t *p,size_t n,bool be,uint32_t *a,uint32_t *b) {
-    size_t i; for(i=0;i<n;i+=8) { *a+=(be?pm_be32(p+i):pm_le32(p+i))+*b; *b+=(be?pm_be32(p+i+4):pm_le32(p+i+4))+*a; }
+    size_t i; for(i=0;i<n;i+=8) { *a+=(be?xx_data_get_u32(p+i, 4, 0, true):xx_data_get_u32(p+i, 4, 0, false))+*b; *b+=(be?xx_data_get_u32(p+i+4, 4, 0, true):xx_data_get_u32(p+i+4, 4, 0, false))+*a; }
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[32],e[24],buffer[8192]; uint32_t page,a=0,b=0,magic; int64_t at=32,left=pm_available(f); bool be;
     if(!pm_read(f,0,h,32)) return false;
-    magic=pm_be32(h); be=magic==0x377f0683U;
-    if((magic!=0x377f0682U && !be) || pm_be32(h+4)!=3007000U) return false;
-    page=pm_be32(h+8); if(page<512 || page>65536 || (page&(page-1))) return false;
-    wal_checksum(h,24,be,&a,&b); if(a!=pm_be32(h+24) || b!=pm_be32(h+28)) return false;
+    magic=xx_data_get_u32(h, 4, 0, true); be=magic==0x377f0683U;
+    if((magic!=0x377f0682U && !be) || xx_data_get_u32(h+4, 4, 0, true)!=3007000U) return false;
+    page=xx_data_get_u32(h+8, 4, 0, true); if(page<512 || page>65536 || (page&(page-1))) return false;
+    wal_checksum(h,24,be,&a,&b); if(a!=xx_data_get_u32(h+24, 4, 0, true) || b!=xx_data_get_u32(h+28, 4, 0, true)) return false;
     while(at<left) {
         uint32_t number,offset=0; char name[56];
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,at,e,24) || page>(uint64_t)(left-at-24)) return false;
-        number=pm_be32(e); if(!number || number>0xfffffffeU || pm_be32(e+4)>0xfffffffeU || xx_rt_memcmp(e+8,h+16,8)) return false;
+        number=xx_data_get_u32(e, 4, 0, true); if(!number || number>0xfffffffeU || xx_data_get_u32(e+4, 4, 0, true)>0xfffffffeU || xx_rt_memcmp(e+8,h+16,8)) return false;
         wal_checksum(e,8,be,&a,&b);
         while(offset<page) {
             size_t n=page-offset>sizeof(buffer)?sizeof(buffer):page-offset;
             if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,at+24+offset,buffer,n)) return false;
             wal_checksum(buffer,n,be,&a,&b); offset+=(uint32_t)n;
         }
-        if(a!=pm_be32(e+16) || b!=pm_be32(e+20)) return false;
+        if(a!=xx_data_get_u32(e+16, 4, 0, true) || b!=xx_data_get_u32(e+20, 4, 0, true)) return false;
         xx_rt_snprintf(name,sizeof(name),"frame-%u-page-%u.bin",(unsigned)s->count,(unsigned)number);
         if(!pm_add(f,s,name,at+24,page)) return false;
         at+=24+page;

@@ -6,10 +6,10 @@
 #endif
 static bool e8_parse(e8_blob*c) {
  size_t p=12;unsigned seen=0;uint64_t expected=0,body=0;
- if(!e8_eq(c,0,"FORM",4) || !e8_eq(c,8,"8SVX",4) || pm_be32(c->b+4)!=c->n-8 || !e8_add(c,"header.bin",0,12))return false;
- while(p<c->n){uint32_t z;size_t at=p+8;char name[24];if(!e8_range(c,p,8) || (z=pm_be32(c->b+p+4))>c->n-at)return false;
-  if(e8_eq(c,p,"VHDR",4)){if(seen&1 || z!=20 || !pm_be16(c->b+at+12) || c->b[at+14]!=1 || c->b[at+15] || pm_be32(c->b+at+16)>65536)return false;seen|=1;expected=(uint64_t)pm_be32(c->b+at)+pm_be32(c->b+at+4);if(!expected)return false;}
-  else if(e8_eq(c,p,"BODY",4)){if(seen&2 || !z)return false;seen|=2;body=z;}else if(e8_eq(c,p,"CHAN",4)){if(seen&4 || z!=4 || pm_be32(c->b+at)!=2)return false;seen|=4;}else if(!e8_eq(c,p,"NAME",4) && !e8_eq(c,p,"AUTH",4) && !e8_eq(c,p,"ANNO",4) && !e8_eq(c,p,"(c) ",4))return false;
+ if(!e8_eq(c,0,"FORM",4) || !e8_eq(c,8,"8SVX",4) || xx_data_get_u32(c->b+4, 4, 0, true)!=c->n-8 || !e8_add(c,"header.bin",0,12))return false;
+ while(p<c->n){uint32_t z;size_t at=p+8;char name[24];if(!e8_range(c,p,8) || (z=xx_data_get_u32(c->b+p+4, 4, 0, true))>c->n-at)return false;
+  if(e8_eq(c,p,"VHDR",4)){if(seen&1 || z!=20 || !xx_data_get_u16(c->b+at+12, 2, 0, true) || c->b[at+14]!=1 || c->b[at+15] || xx_data_get_u32(c->b+at+16, 4, 0, true)>65536)return false;seen|=1;expected=(uint64_t)xx_data_get_u32(c->b+at, 4, 0, true)+xx_data_get_u32(c->b+at+4, 4, 0, true);if(!expected)return false;}
+  else if(e8_eq(c,p,"BODY",4)){if(seen&2 || !z)return false;seen|=2;body=z;}else if(e8_eq(c,p,"CHAN",4)){if(seen&4 || z!=4 || xx_data_get_u32(c->b+at, 4, 0, true)!=2)return false;seen|=4;}else if(!e8_eq(c,p,"NAME",4) && !e8_eq(c,p,"AUTH",4) && !e8_eq(c,p,"ANNO",4) && !e8_eq(c,p,"(c) ",4))return false;
   xx_rt_snprintf(name,sizeof(name),"%.4s.bin",c->b+p);if(!e8_add(c,name,p,8U+z))return false;p=at+z;if(z&1){if(!e8_zero(c,p,1))return false;++p;}
  }return p==c->n && (seen&3)==3 && body==expected;
 }

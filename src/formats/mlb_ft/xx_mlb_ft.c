@@ -13,6 +13,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef MLB_FT
 #define XX_MLB_FT_FILE_TYPE XX_FILE_TYPE_MLB_FT
@@ -47,24 +48,6 @@ typedef struct xx_mlb_ft_stream_s {
 static void xx_mlb_ft_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static XXFC_MAYBE_UNUSED uint16_t xx_mlb_ft_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_mlb_ft_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static XXFC_MAYBE_UNUSED uint16_t xx_mlb_ft_be16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[1] | ((uint16_t)data[0] << 8));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t xx_mlb_ft_be32(const uint8_t *data) {
-    return (uint32_t)data[3] | ((uint32_t)data[2] << 8) |
-           ((uint32_t)data[1] << 16) | ((uint32_t)data[0] << 24);
-}
 
 static bool xx_mlb_ft_read_at(Abstractformat *self, int64_t offset,
                               uint8_t *buffer, size_t size) {
@@ -237,8 +220,8 @@ static xx_mlb_ft_stream *xx_mlb_ft_parse(Abstractformat *self, xx_pd_struct *pd)
         if ((pd && xx_pd_is_stopped(pd)) ||
             !xx_mlb_ft_read_at(self,self->base_address+4+(int64_t)i*21,entry,21))
             goto fail;
-        offset=(int64_t)xx_mlb_ft_le32(entry);
-        size=(int64_t)xx_mlb_ft_le32(entry+4);
+        offset=(int64_t)xx_data_get_u32(entry, 4, 0, false);
+        size=(int64_t)xx_data_get_u32(entry+4, 4, 0, false);
         if (offset < table_end || offset > span || size > span-offset) goto fail;
         while (length<13U && entry[8+length]) ++length;
         if (!length || length==13U) goto fail;

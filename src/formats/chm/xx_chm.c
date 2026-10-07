@@ -24,6 +24,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -208,15 +209,6 @@ static uint32_t chm_le16(const uint8_t *p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8U);
 }
 
-static uint32_t chm_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) | ((uint32_t)p[2] << 16U) |
-           ((uint32_t)p[3] << 24U);
-}
-
-static uint64_t chm_le64(const uint8_t *p) {
-    return (uint64_t)chm_le32(p) | ((uint64_t)chm_le32(p + 4U) << 32U);
-}
-
 static bool chm_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     const size_t file_io_capacity = gb_chm_capacity();
@@ -328,7 +320,7 @@ static bool chm_add_entry(chm_context *context, const uint8_t *name,
  * a closing entry count that is exact or zero. */
 static bool chm_parse_listing(chm_context *context, const uint8_t *chunk,
                               uint32_t chunk_size) {
-    uint32_t free_space = chm_le32(chunk + 4U), count = 0U, stored;
+    uint32_t free_space = xx_data_get_u32(chunk + 4U, 4, 0, false), count = 0U, stored;
     size_t position = CHM_PMGL_HEADER, end;
     if (free_space < 2U || free_space > chunk_size - CHM_PMGL_HEADER)
         return false;
@@ -375,35 +367,35 @@ static bool chm_parse_directory(Abstractformat *format, chm_context *context,
         return false;
     if (xx_rt_memcmp(header, "ITSF", 4U) != 0) return false;
     context->total = total;
-    context->version = chm_le32(header + 4U);
-    context->header_size = chm_le32(header + 8U);
+    context->version = xx_data_get_u32(header + 4U, 4, 0, false);
+    context->header_size = xx_data_get_u32(header + 8U, 4, 0, false);
     if (!((context->version == 3U && context->header_size == CHM_HEADER_V3) ||
           (context->version == 2U && context->header_size == CHM_HEADER_V2)) ||
-        chm_le32(header + 12U) > 1U || total < (int64_t)context->header_size)
+        xx_data_get_u32(header + 12U, 4, 0, false) > 1U || total < (int64_t)context->header_size)
         return false;
     if (context->version == 3U &&
         !chm_read_at(format->device, format->base_address + CHM_HEADER_V2,
                      header + CHM_HEADER_V2, CHM_HEADER_V3 - CHM_HEADER_V2))
         return false;
     /* Header section 0: magic 0x1FE and the file size. */
-    value = chm_le64(header + 0x38U);
+    value = xx_data_get_u64(header + 0x38U, 8, 0, false);
     if (value > (uint64_t)total) return false;
     section0_offset = (int64_t)value;
-    value = chm_le64(header + 0x40U);
+    value = xx_data_get_u64(header + 0x40U, 8, 0, false);
     if (value < CHM_SECTION0_MIN ||
         !chm_within((uint64_t)total, (uint64_t)section0_offset, value))
         return false;
     section0_size = (int64_t)value;
     if (!chm_read_at(format->device, format->base_address + section0_offset,
                      section0, sizeof(section0)) ||
-        chm_le32(section0) != CHM_SECTION0_MAGIC)
+        xx_data_get_u32(section0, 4, 0, false) != CHM_SECTION0_MAGIC)
         return false;
-    context->declared_size = chm_le64(section0 + 8U);
+    context->declared_size = xx_data_get_u64(section0 + 8U, 8, 0, false);
     /* Directory. */
-    value = chm_le64(header + 0x48U);
+    value = xx_data_get_u64(header + 0x48U, 8, 0, false);
     if (value > (uint64_t)total) return false;
     context->directory_offset = (int64_t)value;
-    value = chm_le64(header + 0x50U);
+    value = xx_data_get_u64(header + 0x50U, 8, 0, false);
     if (value < CHM_ITSP_SIZE ||
         !chm_within((uint64_t)total, (uint64_t)context->directory_offset,
                     value) ||
@@ -411,7 +403,7 @@ static bool chm_parse_directory(Abstractformat *format, chm_context *context,
         return false;
     context->directory_size = (int64_t)value;
     if (context->version == 3U) {
-        value = chm_le64(header + 0x58U);
+        value = xx_data_get_u64(header + 0x58U, 8, 0, false);
         if (value > (uint64_t)total) return false;
         context->content_offset = (int64_t)value;
     } else {
@@ -421,11 +413,11 @@ static bool chm_parse_directory(Abstractformat *format, chm_context *context,
     if (!chm_read_at(format->device,
                      format->base_address + context->directory_offset, itsp,
                      sizeof(itsp)) ||
-        xx_rt_memcmp(itsp, "ITSP", 4U) != 0 || chm_le32(itsp + 4U) != 1U ||
-        chm_le32(itsp + 8U) != CHM_ITSP_SIZE)
+        xx_rt_memcmp(itsp, "ITSP", 4U) != 0 || xx_data_get_u32(itsp + 4U, 4, 0, false) != 1U ||
+        xx_data_get_u32(itsp + 8U, 4, 0, false) != CHM_ITSP_SIZE)
         return false;
-    context->chunk_size = chm_le32(itsp + 0x10U);
-    context->chunk_count = chm_le32(itsp + 0x2CU);
+    context->chunk_size = xx_data_get_u32(itsp + 0x10U, 4, 0, false);
+    context->chunk_count = xx_data_get_u32(itsp + 0x2CU, 4, 0, false);
     if (context->chunk_size < CHM_MIN_CHUNK ||
         context->chunk_size > CHM_MAX_CHUNK || context->chunk_count == 0U ||
         context->chunk_count > CHM_MAX_CHUNKS ||
@@ -531,14 +523,14 @@ static void chm_load_lzx(Abstractformat *format, chm_context *context,
         return;
     data = chm_read_stored(format, context, control, CHM_MAX_META, &size);
     if (!data) return;
-    if (size < 24U || chm_le32(data) < 5U ||
+    if (size < 24U || xx_data_get_u32(data, 4, 0, false) < 5U ||
         xx_rt_memcmp(data + 4U, "LZXC", 4U) != 0 ||
-        (chm_le32(data + 8U) != 2U && chm_le32(data + 8U) != 3U)) {
+        (xx_data_get_u32(data + 8U, 4, 0, false) != 2U && xx_data_get_u32(data + 8U, 4, 0, false) != 3U)) {
         xx_mem_free(data);
         return;
     }
-    reset_bits = chm_log2(chm_le32(data + 12U));
-    window_bits = chm_log2(chm_le32(data + 16U));
+    reset_bits = chm_log2(xx_data_get_u32(data + 12U, 4, 0, false));
+    window_bits = chm_log2(xx_data_get_u32(data + 16U, 4, 0, false));
     xx_mem_free(data);
     if (reset_bits < 0 || reset_bits > 16 || window_bits < 0 ||
         window_bits > (int)(CHM_WINDOW_MAX - CHM_WINDOW_MIN))
@@ -555,15 +547,15 @@ static void chm_load_lzx(Abstractformat *format, chm_context *context,
         count = packed = span = frames = 0U;
     } else {
         if (size < CHM_RT_HEADER ||
-            (chm_le32(data) != 2U && chm_le32(data) != 3U) ||
-            chm_le32(data + 8U) != 8U || chm_le32(data + 12U) != CHM_RT_HEADER ||
-            chm_le64(data + 32U) != CHM_FRAME) {
+            (xx_data_get_u32(data, 4, 0, false) != 2U && xx_data_get_u32(data, 4, 0, false) != 3U) ||
+            xx_data_get_u32(data + 8U, 4, 0, false) != 8U || xx_data_get_u32(data + 12U, 4, 0, false) != CHM_RT_HEADER ||
+            xx_data_get_u64(data + 32U, 8, 0, false) != CHM_FRAME) {
             xx_mem_free(data);
             return;
         }
-        count = chm_le32(data + 4U);
-        span = chm_le64(data + 16U);
-        packed = chm_le64(data + 24U);
+        count = xx_data_get_u32(data + 4U, 4, 0, false);
+        span = xx_data_get_u64(data + 16U, 8, 0, false);
+        packed = xx_data_get_u64(data + 24U, 8, 0, false);
         frames = span / CHM_FRAME + (span % CHM_FRAME ? 1U : 0U);
         if ((uint64_t)size != CHM_RT_HEADER + 8U * count || count < frames ||
             count > frames + 2U || frames > CHM_MAX_FRAMES ||
@@ -580,7 +572,7 @@ static void chm_load_lzx(Abstractformat *format, chm_context *context,
             return;
         }
         for (index = 0U; index < (size_t)count; ++index) {
-            uint64_t at = chm_le64(data + CHM_RT_HEADER + index * 8U);
+            uint64_t at = xx_data_get_u64(data + CHM_RT_HEADER + index * 8U, 8, 0, false);
             if ((index == 0U && at != 0U) || at > packed ||
                 (index > 0U && at < section->resets[index - 1U])) {
                 xx_mem_free(data);

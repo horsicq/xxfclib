@@ -42,6 +42,7 @@
 #include "xxfclib/algo/rtpatch/xx_rtpatch.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_RTA_COPY_CHUNK (64 * 1024)
 
@@ -150,22 +151,10 @@ static bool xx_rta_add(xx_rta_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_rta_le16(const uint8_t *data);
-static uint32_t xx_rta_le32(const uint8_t *data);
 static bool xx_rta_decode_name(const uint8_t *data, size_t size, char **out_name);
 static bool xx_rta_check_extra(const uint8_t *data, size_t size);
 static xx_rta_stream *xx_rta_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_rta_decode(Abstractformat *self, const xx_rta_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
-
-
-static uint16_t xx_rta_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_rta_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* The name is taken verbatim; only the OS/2 - DOS separator is normalised.
  * Nothing is stripped and nothing is folded onto '_', so two distinct members
@@ -327,8 +316,8 @@ static xx_rta_stream *xx_rta_parse(Abstractformat *self, xx_pd_struct *pd) {
         /* Signed on purpose: the reference reads both sizes as int32, so a
          * value with the top bit set is a corrupt field, not a
          * four-gigabyte member. */
-        uncompressed_size = (int64_t)(int32_t)xx_rta_le32(fixed + 5);
-        compressed_size = (int64_t)(int32_t)xx_rta_le32(fixed + 9);
+        uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(fixed + 5, 4, 0, false);
+        compressed_size = (int64_t)(int32_t)xx_data_get_u32(fixed + 9, 4, 0, false);
         position += XX_RTA_FIXED_HEADER_SIZE;
 
         if (uncompressed_size < 0 || compressed_size < 0 ||
@@ -378,8 +367,8 @@ static xx_rta_stream *xx_rta_parse(Abstractformat *self, xx_pd_struct *pd) {
                                                : XX_RTA_METHOD_RTPATCH;
         /* DOS date/time, packed date-high / time-low. The record stores the
          * date word first and the time word second. */
-        member.timestamp = ((uint64_t)xx_rta_le16(fixed + 1) << 16) |
-                           (uint64_t)xx_rta_le16(fixed + 3);
+        member.timestamp = ((uint64_t)xx_data_get_u16(fixed + 1, 2, 0, false) << 16) |
+                           (uint64_t)xx_data_get_u16(fixed + 3, 2, 0, false);
         /* Directory records are refused above, so every member is a file. */
         member.is_folder = false;
 

@@ -18,6 +18,7 @@
 #include "xxfclib/algo/rompaq/xx_rompaq.h"
 
 #include "xxfclib/algo/dcl/xx_dcl.h"
+#include "xxfclib/data/xx_data.h"
 
 #define ROMPAQ_HEADER_SIZE 0x48U
 #define ROMPAQ_OFFSET_VERSION 0x0aU
@@ -33,15 +34,6 @@
 /* The reference stores the image size in a qint32 and refuses anything wider,
  * so a 64-bit caller cannot ask for more than this either. */
 #define ROMPAQ_MAX_IMAGE_SIZE 0x7fffffffU
-
-static uint16_t rompaq_read16(const uint8_t *data) {
-    return (uint16_t)((uint32_t)data[0] | ((uint32_t)data[1] << 8));
-}
-
-static uint32_t rompaq_read32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 bool xx_rompaq_decode_memory(const uint8_t *input, size_t input_size,
                              uint8_t *output, size_t output_size,
@@ -65,14 +57,14 @@ bool xx_rompaq_decode_memory(const uint8_t *input, size_t input_size,
 
         if (offset > input_size - ROMPAQ_HEADER_SIZE) return false;
 
-        version = rompaq_read16(input + offset + ROMPAQ_OFFSET_VERSION);
+        version = xx_data_get_u16(input + offset + ROMPAQ_OFFSET_VERSION, 2, 0, false);
         if ((version != ROMPAQ_VERSION_100) &&
             (version != ROMPAQ_VERSION_101)) {
             return false;
         }
 
         method = input[offset + ROMPAQ_OFFSET_METHOD];
-        part_raw = rompaq_read32(input + offset + ROMPAQ_OFFSET_PARTSIZE);
+        part_raw = xx_data_get_u32(input + offset + ROMPAQ_OFFSET_PARTSIZE, 4, 0, false);
         /* The reference keeps the part size in a qint32 and rejects a
          * negative one in both method branches (`nPartSize <= 0` for implode,
          * `nPartSize < 0` for stored), so hoisting the sign test here only
@@ -90,7 +82,7 @@ bool xx_rompaq_decode_memory(const uint8_t *input, size_t input_size,
              * header (00 04/05/06) and must be kept.  Deliberate: do not
              * "fix" this into an unconditional skip. */
             if (payload > input_size - 2U) return false;
-            if (rompaq_read16(input + payload) == 0U) payload += 2U;
+            if (xx_data_get_u16(input + payload, 2, 0, false) == 0U) payload += 2U;
             if ((part_size == 0U) || (part_size > input_size - payload)) {
                 return false;
             }

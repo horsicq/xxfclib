@@ -81,6 +81,7 @@
 #include "xxfclib/algo/compactpro/xx_compactpro.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_COMPACTPRO_HEADER_SIZE 8
 #define XX_COMPACTPRO_VERSION 1U
@@ -164,15 +165,6 @@ typedef struct xx_compactpro_scan_s {
 static void xx_compactpro_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint16_t xx_compactpro_be16(const uint8_t *data) {
-    return (uint16_t)(((uint16_t)data[0] << 8) | (uint16_t)data[1]);
-}
-
-static uint32_t xx_compactpro_be32(const uint8_t *data) {
-    return ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16) |
-           ((uint32_t)data[2] << 8) | (uint32_t)data[3];
-}
 
 static bool xx_compactpro_read_at(Abstractformat *self, int64_t offset,
                                   uint8_t *buffer, size_t size) {
@@ -667,9 +659,9 @@ static bool xx_compactpro_forks_disjoint(xx_compactpro_scan *scan) {
         int64_t packed;
         if (entry->folder) continue;
         meta = scan->catalog + entry->record + 1U + entry->name_length;
-        offset = (int64_t)xx_compactpro_be32(meta + 1);
-        packed = (int64_t)xx_compactpro_be32(meta + 37) +
-                 (int64_t)xx_compactpro_be32(meta + 41);
+        offset = (int64_t)xx_data_get_u32(meta + 1, 4, 0, true);
+        packed = (int64_t)xx_data_get_u32(meta + 37, 4, 0, true) +
+                 (int64_t)xx_data_get_u32(meta + 41, 4, 0, true);
         if (packed == 0) continue;
         if (offset < (int64_t)XX_COMPACTPRO_HEADER_SIZE) {
             result = false;
@@ -726,7 +718,7 @@ static bool xx_compactpro_scan_run(Abstractformat *self, xx_pd_struct *pd,
     if (header[0] != (uint8_t)XX_COMPACTPRO_VERSION) return false;
 
     /* The catalogue follows the 8-byte header and all member data. */
-    scan->origin = (int64_t)xx_compactpro_be32(header + 4);
+    scan->origin = (int64_t)xx_data_get_u32(header + 4, 4, 0, true);
     if (scan->origin < (int64_t)XX_COMPACTPRO_HEADER_SIZE ||
         scan->origin > scan->span - (int64_t)XX_COMPACTPRO_CATALOG_HEAD) {
         return false;
@@ -735,8 +727,8 @@ static bool xx_compactpro_scan_run(Abstractformat *self, xx_pd_struct *pd,
     if (!xx_compactpro_ensure(scan, (size_t)XX_COMPACTPRO_CATALOG_HEAD)) {
         return false;
     }
-    stored_crc = xx_compactpro_be32(scan->catalog);
-    root_records = (uint32_t)xx_compactpro_be16(scan->catalog + 4);
+    stored_crc = xx_data_get_u32(scan->catalog, 4, 0, true);
+    root_records = (uint32_t)xx_data_get_u16(scan->catalog + 4, 2, 0, true);
     comment_size = (size_t)scan->catalog[6];
     if (root_records == 0U) return false;
 
@@ -780,8 +772,8 @@ static bool xx_compactpro_scan_run(Abstractformat *self, xx_pd_struct *pd,
                               (size_t)XX_COMPACTPRO_DIR_RECORD_SIZE)) {
                 return false;
             }
-            children = (uint32_t)xx_compactpro_be16(scan->catalog + position +
-                                                    1U + name_size);
+            children = (uint32_t)xx_data_get_u16(scan->catalog + position +
+                                                    1U + name_size, 2, 0, true);
             /* A directory's descendants come out of its parent's budget, so
              * a count that does not fit means the walk has lost sync. */
             if (children > remaining[depth]) return false;
@@ -807,11 +799,11 @@ static bool xx_compactpro_scan_run(Abstractformat *self, xx_pd_struct *pd,
                 return false;
             }
             meta = scan->catalog + position + 1U + name_size;
-            offset = (int64_t)xx_compactpro_be32(meta + 1);
-            resource_raw = (int64_t)xx_compactpro_be32(meta + 29);
-            data_raw = (int64_t)xx_compactpro_be32(meta + 33);
-            resource_packed = (int64_t)xx_compactpro_be32(meta + 37);
-            data_packed = (int64_t)xx_compactpro_be32(meta + 41);
+            offset = (int64_t)xx_data_get_u32(meta + 1, 4, 0, true);
+            resource_raw = (int64_t)xx_data_get_u32(meta + 29, 4, 0, true);
+            data_raw = (int64_t)xx_data_get_u32(meta + 33, 4, 0, true);
+            resource_packed = (int64_t)xx_data_get_u32(meta + 37, 4, 0, true);
+            data_packed = (int64_t)xx_data_get_u32(meta + 41, 4, 0, true);
             /* Both forks, back to back, before the catalogue. Every term is
              * below 2^32, so the sum cannot overflow. */
             if (offset + resource_packed + data_packed > scan->origin) {
@@ -1094,12 +1086,12 @@ static xx_compactpro_stream *xx_compactpro_build_stream(
         } else {
             const uint8_t *meta =
                 scan->catalog + entry->record + 1U + entry->name_length;
-            int64_t offset = (int64_t)xx_compactpro_be32(meta + 1);
-            uint32_t flags = (uint32_t)xx_compactpro_be16(meta + 27);
-            int64_t resource_raw = (int64_t)xx_compactpro_be32(meta + 29);
-            int64_t data_raw = (int64_t)xx_compactpro_be32(meta + 33);
-            int64_t resource_packed = (int64_t)xx_compactpro_be32(meta + 37);
-            int64_t data_packed = (int64_t)xx_compactpro_be32(meta + 41);
+            int64_t offset = (int64_t)xx_data_get_u32(meta + 1, 4, 0, true);
+            uint32_t flags = (uint32_t)xx_data_get_u16(meta + 27, 2, 0, true);
+            int64_t resource_raw = (int64_t)xx_data_get_u32(meta + 29, 4, 0, true);
+            int64_t data_raw = (int64_t)xx_data_get_u32(meta + 33, 4, 0, true);
+            int64_t resource_packed = (int64_t)xx_data_get_u32(meta + 37, 4, 0, true);
+            int64_t data_packed = (int64_t)xx_data_get_u32(meta + 41, 4, 0, true);
             bool want_rsrc = resource_raw != 0;
             bool want_data = data_raw != 0 || resource_raw == 0;
             int64_t record_size =
@@ -1136,10 +1128,10 @@ static xx_compactpro_stream *xx_compactpro_build_stream(
                 member->method = raw == 0 ? XX_COMPACTPRO_METHOD_STORED
                                           : (lzh ? XX_COMPACTPRO_METHOD_LZH
                                                  : XX_COMPACTPRO_METHOD_RLE);
-                member->mac_type = xx_compactpro_be32(meta + 5);
-                member->modified = xx_compactpro_be32(meta + 17);
-                member->finder_flags = (uint32_t)xx_compactpro_be16(meta + 21);
-                member->file_crc = xx_compactpro_be32(meta + 23);
+                member->mac_type = xx_data_get_u32(meta + 5, 4, 0, true);
+                member->modified = xx_data_get_u32(meta + 17, 4, 0, true);
+                member->finder_flags = (uint32_t)xx_data_get_u16(meta + 21, 2, 0, true);
+                member->file_crc = xx_data_get_u32(meta + 23, 4, 0, true);
                 member->encrypted =
                     (flags & XX_COMPACTPRO_FLAG_ENCRYPTED) != 0U;
                 member->empty_file = resource_raw == 0 && data_raw == 0;

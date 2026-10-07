@@ -18,6 +18,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -52,15 +53,6 @@ typedef struct qip2_stream_s {
     int64_t archive_size;
     uint32_t format_version;
 } qip2_stream;
-
-static uint16_t qip2_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t qip2_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
 
 static bool qip2_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
@@ -133,16 +125,16 @@ static bool qip2_parse(Abstractformat *format, qip2_stream **result,
     if (xx_rt_memcmp(header, XX_QIP2_SIGNATURE, XX_QIP2_SIGNATURE_SIZE) != 0)
         return false;
 
-    count = qip2_le16(header + 2);
-    declared_table = qip2_le32(header + 4);
+    count = xx_data_get_u16(header + 2, 2, 0, false);
+    declared_table = xx_data_get_u32(header + 4, 4, 0, false);
     if (count == 0U) return false;
     /* U3's own four tests on the index size.  The last one ties it to the
      * count, which is what makes this two-byte magic usable at all. */
     if (declared_table == 0U || (declared_table & 0x80000000U) != 0U) return false;
     if ((declared_table & 0xfU) != 0U) return false;
     if ((declared_table >> 4U) != (uint32_t)count) return false;
-    version = qip2_le32(header + 8);
-    if ((version != 1U && version != 2U) || qip2_le32(header + 12) != 0U)
+    version = xx_data_get_u32(header + 8, 4, 0, false);
+    if ((version != 1U && version != 2U) || xx_data_get_u32(header + 12, 4, 0, false) != 0U)
         return false;
     /* The indexed generation-1 variant uses the original 32-byte QD
      * descriptor. Generation 2 inserts an opaque u32 before the plain size. */
@@ -175,7 +167,7 @@ static bool qip2_parse(Abstractformat *format, qip2_stream **result,
             !qip2_read_at(format->device, format->base_address + index_offset,
                           index_entry, sizeof(index_entry)))
             goto done;
-        record_offset = (int64_t)qip2_le32(index_entry);
+        record_offset = (int64_t)xx_data_get_u32(index_entry, 4, 0, false);
         /* A record has to sit after the index and leave room for itself. */
         if (record_offset < (int64_t)XX_QIP2_HEADER_SIZE + table_size ||
             record_offset > span - (int64_t)record_size ||
@@ -189,10 +181,10 @@ static bool qip2_parse(Abstractformat *format, qip2_stream **result,
         /* Only file records are indexed.  A path record here would mean the
          * index does not describe what this reader thinks it describes, so
          * it is rejected rather than skipped. */
-        if (qip2_le16(record + 2) != XX_QIP2_KIND_FILE) goto done;
+        if (xx_data_get_u16(record + 2, 2, 0, false) != XX_QIP2_KIND_FILE) goto done;
 
-        packed_size = qip2_le32(record + 4);
-        unpacked_size = qip2_le32(record + (version == 1U ? 0x0f : 0x13));
+        packed_size = xx_data_get_u32(record + 4, 4, 0, false);
+        unpacked_size = xx_data_get_u32(record + (version == 1U ? 0x0f : 0x13), 4, 0, false);
         /* Both halves of the extent must lie inside the real file. */
         if ((int64_t)packed_size <
                 (int64_t)QIP2_MIN_PACKED_SIZE ||
@@ -216,13 +208,13 @@ static bool qip2_parse(Abstractformat *format, qip2_stream **result,
                               (int64_t)record_size;
         member->packed_size = packed_size;
         member->unpacked_size = unpacked_size;
-        member->sequence = qip2_le16(record + 8);
+        member->sequence = xx_data_get_u16(record + 8, 2, 0, false);
         member->flags = record[10];
         if (version == 1U && member->flags != 0U && member->flags != 0x20U)
             goto done;
-        member->dos_time = qip2_le16(record + 11);
-        member->dos_date = qip2_le16(record + 13);
-        member->opaque = version == 1U ? 0U : qip2_le32(record + 15);
+        member->dos_time = xx_data_get_u16(record + 11, 2, 0, false);
+        member->dos_date = xx_data_get_u16(record + 13, 2, 0, false);
+        member->opaque = version == 1U ? 0U : xx_data_get_u32(record + 15, 4, 0, false);
 
         if (record_offset + (int64_t)record_size +
                 (int64_t)packed_size >

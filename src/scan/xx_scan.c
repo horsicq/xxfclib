@@ -103,6 +103,7 @@ static xx_scan_format_callback xx_scan_select_callback(
         case XX_FILE_TYPE_BINARY: callback = engine->scan_binary; break;
         case XX_FILE_TYPE_PE32:
         case XX_FILE_TYPE_PE64:
+        case XX_FILE_TYPE_DOTNET:
             return engine->scan_pe;
         case XX_FILE_TYPE_ELF32:
         case XX_FILE_TYPE_ELF64: callback = engine->scan_elf; break;
@@ -149,6 +150,7 @@ static size_t xx_scan_build_plan(const xx_scan_options *options,
         switch (options->file_type) {
             case XX_FILE_TYPE_PE32:
             case XX_FILE_TYPE_PE64:
+            case XX_FILE_TYPE_DOTNET:
             case XX_FILE_TYPE_NE:
             case XX_FILE_TYPE_LE:
             case XX_FILE_TYPE_LX:
@@ -190,6 +192,7 @@ static xx_scan_result *xx_scan_run_plan(xx_scan_engine *engine,
             xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
                             types[index] == XX_FILE_TYPE_PE32 ||
                             types[index] == XX_FILE_TYPE_PE64
+                            || types[index] == XX_FILE_TYPE_DOTNET
                                 ? "Missing PE scan callback" : "Missing scan callback");
             return NULL;
         }
@@ -434,6 +437,7 @@ static xx_scan_result *xx_scan_internal(xx_scan_engine *engine, xx_io_device *de
         xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
                         options->file_type == XX_FILE_TYPE_PE32 ||
                         options->file_type == XX_FILE_TYPE_PE64
+                        || options->file_type == XX_FILE_TYPE_DOTNET
                             ? "Missing PE scan callback" : "Missing scan callback");
         return NULL;
     }

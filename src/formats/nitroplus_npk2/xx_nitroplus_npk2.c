@@ -14,6 +14,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 #ifdef NITROPLUS_NPK2
 #define NP_FILE_TYPE XX_FILE_TYPE_NITROPLUS_NPK2
@@ -56,13 +57,6 @@ typedef struct np_sink {
 } np_sink;
 
 static bool np_stopped(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
-static uint32_t np_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | (uint32_t)p[1] << 8U |
-           (uint32_t)p[2] << 16U | (uint32_t)p[3] << 24U;
-}
-static uint64_t np_le64(const uint8_t *p) {
-    return (uint64_t)np_le32(p) | (uint64_t)np_le32(p + 4U) << 32U;
-}
 static const xx_var *np_option(Abstractformat *format, const xx_list_s *options, uint32_t id) {
     return xx_format_resolve_extra_parameter(format, options, id);
 }
@@ -89,7 +83,7 @@ static bool np_header(Abstractformat *format, uint8_t header[32], xx_pd_struct *
     if (total < format->base_address || total - format->base_address < 48 ||
         !np_read(format->device, format->base_address, header, 32U, pd) ||
         xx_rt_memcmp(header, "NPK2", 4U)) return false;
-    count = np_le32(header + 24U); size = np_le32(header + 28U);
+    count = xx_data_get_u32(header + 24U, 4, 0, false); size = xx_data_get_u32(header + 28U, 4, 0, false);
     return count && count <= NP_MAX_COUNT && size && !(size & 15U) &&
         size <= NP_MAX_INDEX && size <= (uint64_t)(total - format->base_address - 32);
 }
@@ -233,11 +227,11 @@ static np_layout *np_parse_inner(Abstractformat *format, const xx_list_s *option
     bool ok = false;
     if (!np_header(format, header, pd) ||
         !np_key((xx_nitroplus_npk2 *)format, options, key, &key_size)) return NULL;
-    encrypted_size = np_le32(header + 28U);
+    encrypted_size = xx_data_get_u32(header + 28U, 4, 0, false);
     available = xx_io_total_size(format->device) - format->base_address;
     layout = (np_layout *)xx_mem_calloc(1U, sizeof(*layout));
     if (!layout) goto done;
-    layout->count = np_le32(header + 24U);
+    layout->count = xx_data_get_u32(header + 24U, 4, 0, false);
     layout->encrypted_index_size = encrypted_size;
     layout->format_size = 32 + (int64_t)encrypted_size;
     layout->key_size = key_size;
@@ -265,9 +259,9 @@ static np_layout *np_parse_inner(Abstractformat *format, const xx_list_s *option
         if (!member->name) goto done;
         at += name_length;
         if (plain_size - at < 40U) goto done;
-        member->unpacked_size = np_le32(index + at);
+        member->unpacked_size = xx_data_get_u32(index + at, 4, 0, false);
         xx_mem_copy(member->hash, index + at + 4U, 32U);
-        member->count = np_le32(index + at + 36U);
+        member->count = xx_data_get_u32(index + at + 36U, 4, 0, false);
         at += 40U;
         if ((uint64_t)member->count * 20U > plain_size - at ||
             (uint64_t)member->count * sizeof(*member->segments) > SIZE_MAX ||
@@ -278,11 +272,11 @@ static np_layout *np_parse_inner(Abstractformat *format, const xx_list_s *option
         }
         for (j = 0U; j < member->count; ++j) {
             np_segment *segment = &member->segments[j];
-            uint64_t offset = np_le64(index + at);
+            uint64_t offset = xx_data_get_u64(index + at, 8, 0, false);
             if (np_stopped(pd)) goto done;
-            segment->encrypted_size = np_le32(index + at + 8U);
-            segment->size = np_le32(index + at + 12U);
-            segment->unpacked_size = np_le32(index + at + 16U);
+            segment->encrypted_size = xx_data_get_u32(index + at + 8U, 4, 0, false);
+            segment->size = xx_data_get_u32(index + at + 12U, 4, 0, false);
+            segment->unpacked_size = xx_data_get_u32(index + at + 16U, 4, 0, false);
             at += 20U;
             if (offset < 32U + encrypted_size || offset > (uint64_t)available ||
                 !segment->encrypted_size || (segment->encrypted_size & 15U) ||
@@ -391,7 +385,7 @@ bool xx_nitroplus_npk2_handle_base_info(Abstractformat *format, xx_pd_struct *pd
     if (cursor >= 0 && xx_io_seek64(format->device, cursor, XX_RT_SEEK_SET)) header_ok = false;
     if (!header_ok) { np_layout_free(layout); return false; }
     archive = (xx_nitroplus_npk2 *)format;
-    archive->number_of_records = layout->count; archive->encrypted_index_size = np_le32(header + 28U);
+    archive->number_of_records = layout->count; archive->encrypted_index_size = xx_data_get_u32(header + 28U, 4, 0, false);
     xx_mem_copy(archive->iv, header + 8U, 16U);
     format->number_of_archive_records = layout->count; format->format_size = layout->format_size;
     format->is_valid = true; format->base_info_handled = true;

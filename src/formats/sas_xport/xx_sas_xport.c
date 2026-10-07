@@ -12,7 +12,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(available<720 || available%80 || !xp_header(f,0,"LIBRARY ",h) || !fd_equal(f,80,"SAS     SAS     SASLIB  ",24) || !xp_header(f,240,"MEMBER  ",h) || !xp_digits(h+75,3,&descriptor) || descriptor!=140 || !xp_header(f,320,"DSCRPTR ",h) || !fd_equal(f,400,"SAS     ",8) || !fd_equal(f,416,"SASDATA ",8) || !xp_header(f,560,"NAMESTR ",h) || !xp_digits(h+54,4,&count) || !count || count>4096) return false;
     dictend=640+(uint64_t)count*140; obs=((dictend+79)/80)*80;
     if(!fd_range(640,(uint64_t)count*140,available) || !xp_header(f,(int64_t)obs,"OBS     ",h)) return false;
-    for(i=0;i<count;++i) { uint32_t j; uint16_t type,len; if(fd_stop(pd) || !pm_read(f,640+(int64_t)i*140,h,140) || ((type=pm_be16(h))!=1 && type!=2) || pm_be16(h+2) || !(len=pm_be16(h+4)) || pm_be16(h+6)!=i+1 || pm_be32(h+84)!=width || !h[8] || h[8]==' ') return false;
+    for(i=0;i<count;++i) { uint32_t j; uint16_t type,len; if(fd_stop(pd) || !pm_read(f,640+(int64_t)i*140,h,140) || ((type=xx_data_get_u16(h, 2, 0, true))!=1 && type!=2) || xx_data_get_u16(h+2, 2, 0, true) || !(len=xx_data_get_u16(h+4, 2, 0, true)) || xx_data_get_u16(h+6, 2, 0, true)!=i+1 || xx_data_get_u32(h+84, 4, 0, true)!=width || !h[8] || h[8]==' ') return false;
         if(type==1 && (len<2 || len>8)) return false;
         for(j=0;j<8;++j) if(h[8+j]<32 || h[8+j]>126) return false;
         for(j=0;j<i;++j) { if(!xx_rt_memcmp(names[j],h+8,8)) return false; } xx_rt_memcpy(names[i],h+8,8); width+=len;

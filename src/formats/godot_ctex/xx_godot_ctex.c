@@ -5,6 +5,7 @@
  */
 #include "xxfclib/formats/godot_ctex/xx_godot_ctex.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool overlap(uint64_t a,uint64_t n,uint64_t b,uint64_t m) { return n && m && a<b+m && b<a+n; }
@@ -17,9 +18,9 @@ static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uin
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[52]; uint32_t w,height,mips,fmt,bpp,i,mw,mh; uint64_t at=52,n,total=(uint64_t)pm_available(f); char label[40];
-    if(!pm_read(f,0,h,52) || xx_rt_memcmp(h,"GST2",4) || pm_le32(h+4)!=1 || pm_le32(h+36)) return false;
-    w=pm_le16(h+40); height=pm_le16(h+42); mips=pm_le32(h+44); fmt=pm_le32(h+48);
-    if(!w || !height || w>8192 || height>8192 || pm_le32(h+8)!=w || pm_le32(h+12)!=height || mips>15 || fmt>5 || (pm_le32(h+16)&~0x0d800000U) || (!!mips!=!!(pm_le32(h+16)&0x800000))) return false;
+    if(!pm_read(f,0,h,52) || xx_rt_memcmp(h,"GST2",4) || xx_data_get_u32(h+4, 4, 0, false)!=1 || xx_data_get_u32(h+36, 4, 0, false)) return false;
+    w=xx_data_get_u16(h+40, 2, 0, false); height=xx_data_get_u16(h+42, 2, 0, false); mips=xx_data_get_u32(h+44, 4, 0, false); fmt=xx_data_get_u32(h+48, 4, 0, false);
+    if(!w || !height || w>8192 || height>8192 || xx_data_get_u32(h+8, 4, 0, false)!=w || xx_data_get_u32(h+12, 4, 0, false)!=height || mips>15 || fmt>5 || (xx_data_get_u32(h+16, 4, 0, false)&~0x0d800000U) || (!!mips!=!!(xx_data_get_u32(h+16, 4, 0, false)&0x800000))) return false;
     for(i=24;i<36;++i) { if(h[i]) return false; } bpp=fmt==0 || fmt==2 ? 1 : fmt==1 || fmt==3 ? 2 : fmt==4 ? 3 : 4; mw=w; mh=height; if(mips) { uint32_t levels=0,a=w,b=height; while(a>1 || b>1) { if(a>1) a/=2; if(b>1) b/=2; ++levels; } if(mips!=levels) return false; }
     for(i=0;i<=mips;++i) { if(stop(pd) || (i<mips && mw==1 && mh==1)) return false; n=(uint64_t)mw*mh*bpp; xx_rt_snprintf(label,sizeof(label),"mip-%u.pixels",i);
       if(!emit(f,s,label,at,n,total)) { return false; } at+=n; if(mw>1) mw/=2; if(mh>1) mh/=2; }

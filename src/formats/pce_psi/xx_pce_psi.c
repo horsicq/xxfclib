@@ -1,13 +1,14 @@
 /* SPDX-License-Identifier: MIT. Original validated components; no playback/emulation. */
 #include "xxfclib/formats/pce_psi/xx_pce_psi.h"
 #include "../asylum_amf/xx_thirteenth_media.h"
+#include "xxfclib/data/xx_data.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
  tm_blob b={0};uint64_t at=0;uint32_t sectors=0,keys[1024],size=0,curkey=0;bool filled=true,ibm=false,ended=false,ok=false;
  TM_NEED(tm_load(f,&b,pd)&&tm_tag(&b,0,"PSI ",4));
- while(at<b.n){uint64_t q=at+8;uint32_t n,crc;TM_NEED(tm_work(&b,1)&&tm_span(&b,at,12));n=pm_be32(b.p+(size_t)at+4);TM_NEED(tm_span(&b,q,(uint64_t)n+4)&&tm_crc(&b,at,8+(uint64_t)n,&crc)&&crc==pm_be32(b.p+(size_t)q+n));
- if(!at){uint16_t enc;TM_NEED(n==4&&!pm_be16(b.p+(size_t)q));enc=pm_be16(b.p+(size_t)q+2);TM_NEED(enc==0||enc==256||enc==512||enc==513||enc==514);}
- else if(tm_tag(&b,at,"SECT",4)){uint32_t j;uint8_t flags;TM_NEED(filled&&n==8&&sectors<1024&&b.p[(size_t)q+2]<=1);curkey=((uint32_t)pm_be16(b.p+(size_t)q)<<16)|((uint32_t)b.p[(size_t)q+2]<<8)|b.p[(size_t)q+3];size=pm_be16(b.p+(size_t)q+4);flags=b.p[(size_t)q+6];TM_NEED(size>=128&&size<=16384&&!(size&(size-1))&&flags<=1);for(j=0;j<sectors;++j)TM_NEED(tm_work(&b,1)&&keys[j]!=curkey);keys[sectors++]=curkey;filled=(flags&1)!=0;ibm=false;
+ while(at<b.n){uint64_t q=at+8;uint32_t n,crc;TM_NEED(tm_work(&b,1)&&tm_span(&b,at,12));n=xx_data_get_u32(b.p+(size_t)at+4, 4, 0, true);TM_NEED(tm_span(&b,q,(uint64_t)n+4)&&tm_crc(&b,at,8+(uint64_t)n,&crc)&&crc==xx_data_get_u32(b.p+(size_t)q+n, 4, 0, true));
+ if(!at){uint16_t enc;TM_NEED(n==4&&!xx_data_get_u16(b.p+(size_t)q, 2, 0, true));enc=xx_data_get_u16(b.p+(size_t)q+2, 2, 0, true);TM_NEED(enc==0||enc==256||enc==512||enc==513||enc==514);}
+ else if(tm_tag(&b,at,"SECT",4)){uint32_t j;uint8_t flags;TM_NEED(filled&&n==8&&sectors<1024&&b.p[(size_t)q+2]<=1);curkey=((uint32_t)xx_data_get_u16(b.p+(size_t)q, 2, 0, true)<<16)|((uint32_t)b.p[(size_t)q+2]<<8)|b.p[(size_t)q+3];size=xx_data_get_u16(b.p+(size_t)q+4, 2, 0, true);flags=b.p[(size_t)q+6];TM_NEED(size>=128&&size<=16384&&!(size&(size-1))&&flags<=1);for(j=0;j<sectors;++j)TM_NEED(tm_work(&b,1)&&keys[j]!=curkey);keys[sectors++]=curkey;filled=(flags&1)!=0;ibm=false;
  if(filled){uint8_t *v=(uint8_t *)xx_mem_alloc(size);TM_NEED(v);xx_rt_memset(v,b.p[(size_t)q+7],size);if(!tm_bytes(f,s,&b,"sector.raw",v,size)){xx_mem_free(v);goto done;}xx_mem_free(v);}}
  else if(tm_tag(&b,at,"DATA",4)){TM_NEED(sectors&&!filled&&n==size&&tm_emit(f,s,&b,"sector.raw",q,n));filled=true;}
  else if(tm_tag(&b,at,"IBMF",4)||tm_tag(&b,at,"IBMM",4)){const uint8_t *v=b.p+(size_t)q;TM_NEED(sectors&&!ibm&&n==6&&v[0]==(curkey>>16)&&v[1]==((curkey>>8)&255)&&v[2]==(curkey&255)&&v[3]<=7&&(128U<<v[3])==size&&!(v[4]&~4U)&&v[5]<=(tm_tag(&b,at,"IBMF",4)?1:2));ibm=true;}

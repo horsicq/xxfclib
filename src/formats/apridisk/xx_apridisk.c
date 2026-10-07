@@ -12,6 +12,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 #ifdef APRIDISK
 #define APRI_TYPE XX_FILE_TYPE_APRIDISK
 #else
@@ -44,9 +45,6 @@ typedef struct apri_cursor_s { apri_view *view; uint32_t index; } apri_cursor;
 static bool apri_stop(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
 static uint32_t apri_le16(const uint8_t *p) {
     return (uint32_t)p[0]|((uint32_t)p[1]<<8);
-}
-static uint32_t apri_le32(const uint8_t *p) {
-    return apri_le16(p)|(apri_le16(p+2U)<<16);
 }
 static void apri_release(apri_view *v) { if (v && !--v->refs) xx_mem_free(v); }
 static bool apri_read(xx_io_device *d,int64_t at,uint8_t *p,size_t n,
@@ -91,8 +89,8 @@ static apri_view *apri_parse(Abstractformat *f,xx_pd_struct *pd) {
         uint32_t type,encoding,hsize,size,head,sector,cyl,index;
         int64_t data;
         if (total-pos<16 || !apri_read(d,pos,record,sizeof(record),pd)) goto done;
-        type=apri_le32(record); encoding=apri_le16(record+4U);
-        hsize=apri_le16(record+6U); size=apri_le32(record+8U);
+        type=xx_data_get_u32(record, 4, 0, false); encoding=apri_le16(record+4U);
+        hsize=apri_le16(record+6U); size=xx_data_get_u32(record+8U, 4, 0, false);
         head=record[12]; sector=record[13]; cyl=apri_le16(record+14U);
         if (hsize<16U || hsize>APRI_RECORD_HEADER_MAX ||
             (uint64_t)hsize+size>(uint64_t)(total-pos)) goto done;

@@ -28,6 +28,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 
 #define ARCFS_HEADER_SIZE 96U
@@ -146,11 +147,6 @@ static ssize_t gb_arcfs_write(xx_io_device *device, const void *buffer, size_t s
 
 static uint16_t arcfs_crc16(uint16_t crc, const uint8_t *data, size_t size) {
     return xx_crc16_arc_calc(crc, data, size);
-}
-
-static uint32_t arcfs_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
 }
 
 static bool arcfs_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -578,8 +574,8 @@ static bool arcfs_parse(Abstractformat *format, arcfs_stream **result,
                        sizeof(header)) ||
         xx_rt_memcmp(header, "Archive\0", 8U) != 0)
         return false;
-    directory_size = (int64_t)arcfs_le32(header + 8U);
-    data_base = (int64_t)arcfs_le32(header + 12U);
+    directory_size = (int64_t)xx_data_get_u32(header + 8U, 4, 0, false);
+    data_base = (int64_t)xx_data_get_u32(header + 12U, 4, 0, false);
     if (directory_size <= 0 || directory_size % ARCFS_ENTRY_SIZE != 0 ||
         data_base < (int64_t)ARCFS_HEADER_SIZE || data_base > size ||
         directory_size > size - (int64_t)ARCFS_HEADER_SIZE)
@@ -635,14 +631,14 @@ static bool arcfs_parse(Abstractformat *format, arcfs_stream **result,
         }
         member.header_offset = format->base_address + entry_offset;
         member.method = status;
-        member.original_size = arcfs_le32(entry + 12U);
-        member.timestamp = arcfs_timestamp(arcfs_le32(entry + 16U),
-                                           arcfs_le32(entry + 20U));
-        member.attributes = arcfs_le32(entry + 24U);
+        member.original_size = xx_data_get_u32(entry + 12U, 4, 0, false);
+        member.timestamp = arcfs_timestamp(xx_data_get_u32(entry + 16U, 4, 0, false),
+                                           xx_data_get_u32(entry + 20U, 4, 0, false));
+        member.attributes = xx_data_get_u32(entry + 24U, 4, 0, false);
         member.max_bits = (uint8_t)((member.attributes >> 8U) & 0xffU);
         member.crc = (uint16_t)(member.attributes >> 16U);
-        member.declared_packed = arcfs_le32(entry + 28U);
-        raw_offset = arcfs_le32(entry + 32U);
+        member.declared_packed = xx_data_get_u32(entry + 28U, 4, 0, false);
+        raw_offset = xx_data_get_u32(entry + 32U, 4, 0, false);
         if (raw_offset & UINT32_C(0x80000000)) {
             char *copy = NULL;
             member.folder = true;

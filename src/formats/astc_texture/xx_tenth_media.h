@@ -6,14 +6,14 @@
 #define XX_TENTH_MEDIA_H
 #include "../xx_payload_members.h"
 #include "xxfclib/algo/crc/xx_crc.h"
+#include "xxfclib/data/xx_data.h"
 static bool tg_parse(Abstractformat *,pm_stream *,const uint8_t *,uint64_t,xx_pd_struct *);
 static bool tg_quick(Abstractformat *,uint64_t);
 static __inline bool tg_span(uint64_t at,uint64_t bytes,uint64_t end) { return at<=end && bytes<=end-at; }
 static __inline bool pm_tag(const uint8_t *p,const char *tag,size_t n) { return xx_rt_memcmp(p,tag,n)==0; }
 static __inline bool tg_stop(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
-static __inline uint64_t tg_le64(const uint8_t *p) { return (uint64_t)pm_le32(p) | (uint64_t)pm_le32(p+4)<<32; }
 static __inline bool tg_zero(const uint8_t *p,uint64_t n) { uint64_t i;for(i=0;i<n;++i)if(p[i])return false;return true; }
-static __inline bool tg_finite32(const uint8_t *p) { return (pm_le32(p)&0x7f800000U)!=0x7f800000U; }
+static __inline bool tg_finite32(const uint8_t *p) { return (xx_data_get_u32(p, 4, 0, false)&0x7f800000U)!=0x7f800000U; }
 static __inline bool tg_emit(Abstractformat *f,pm_stream *s,const char *label,uint64_t at,uint64_t n,uint64_t end) { return s->count<4096 && tg_span(at,n,end) && pm_add(f,s,label,(int64_t)at,(int64_t)n); }
 typedef struct tg_bits { const uint8_t *b;uint64_t bit,end; } tg_bits;
 static __inline bool tg_bits_get(tg_bits *q,unsigned count,uint32_t *v) {
@@ -24,7 +24,6 @@ static __inline bool tg_bits_skip(tg_bits *q,uint64_t count) { if(q->bit>q->end|
 static __inline uint16_t tg_crc16(const uint8_t *b,uint64_t n) { return xx_crc16(XX_CRC_TYPE_CRC16_BUYPASS,b,(size_t)n); }
 static __inline uint32_t tg_crc_mpeg(const uint8_t *b,uint64_t n) { return xx_crc32(XX_CRC_TYPE_CRC32_MPEG2,b,(size_t)n); }
 static __inline bool tg_probe(Abstractformat *f,uint64_t n,uint8_t *b,size_t count) { return count<=n && pm_read(f,0,b,count); }
-static __inline uint32_t tg_le24(const uint8_t *p) { return (uint32_t)p[0]|((uint32_t)p[1]<<8)|((uint32_t)p[2]<<16); }
 static __inline uint32_t tg_uint(const uint8_t *p,unsigned bytes) { uint32_t n=0;unsigned i;for(i=0;i<bytes;++i)n=(n<<8)|p[i];return n; }
 static __inline bool tg_scalar(uint32_t c) { return c<=0x10ffffU && (c<0xd800U || c>0xdfffU); }
 static __inline bool tg_utf(const uint8_t *b,uint64_t *at,uint64_t end,bool modified) {
@@ -39,7 +38,7 @@ static __inline bool tg_utf(const uint8_t *b,uint64_t *at,uint64_t end,bool modi
  *at=p;return true;
 }
 static __inline bool tg_nul(const uint8_t *b,uint64_t at,uint64_t end,uint64_t *after) {uint64_t p=at;if(p>=end)return false;while(p<end && b[p])++p;if(p==end)return false;*after=p+1;return true;}
-static __inline bool tg_name16(const uint8_t *b,uint64_t *at,uint64_t end) {uint64_t p=*at,stop;if(!tg_span(p,2,end))return false;stop=p+2+pm_be16(b+p);p+=2;if(stop>end||stop-p>4096)return false;while(p<stop)if(!tg_utf(b,&p,stop,true))return false;*at=stop;return true;}
+static __inline bool tg_name16(const uint8_t *b,uint64_t *at,uint64_t end) {uint64_t p=*at,stop;if(!tg_span(p,2,end))return false;stop=p+2+xx_data_get_u16(b+p, 2, 0, true);p+=2;if(stop>end||stop-p>4096)return false;while(p<stop)if(!tg_utf(b,&p,stop,true))return false;*at=stop;return true;}
 static __inline bool tg_float_array(const uint8_t *b,uint64_t at,uint64_t count,uint64_t end,xx_pd_struct *pd) {uint64_t i;if(count>16777216 || !tg_span(at,count*4,end))return false;for(i=0;i<count;++i){if((i&1023)==0&&tg_stop(pd))return false;if(!tg_finite32(b+at+i*4))return false;}return true;}
 typedef struct tg_text { const uint8_t *b;uint64_t p,end,start,len; } tg_text;
 static __inline bool tg_line(tg_text *q) {uint64_t p=q->p;q->start=p;while(p<q->end&&q->b[p]!=10&&q->b[p]!=13){if(q->b[p]<32&&q->b[p]!=9)return false;if(q->b[p]>126||p-q->start>8192)return false;++p;}q->len=p-q->start;if(p<q->end&&q->b[p]==13)++p;if(p<q->end&&q->b[p]==10)++p;if(p==q->p)return false;q->p=p;return true;}

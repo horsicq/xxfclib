@@ -36,6 +36,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef HXC_HFE_EXTENDED
 #define XX_HXC_HFE_EXTENDED_FILE_TYPE XX_FILE_TYPE_HXC_HFE_EXTENDED
@@ -89,10 +90,6 @@ typedef struct xhfe_stream_s {
     bool done;
 } xhfe_stream;
 
-static uint16_t xhfe_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
 static bool xhfe_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
     size_t done = 0U;
@@ -117,7 +114,7 @@ static bool xhfe_header(const uint8_t *file, size_t size, xhfe_geometry *out) {
     xx_rt_memset(out, 0, sizeof(*out));
     out->tracks = (int32_t)file[9];
     out->sides = (int32_t)file[10];
-    out->lut_offset = (int64_t)xhfe_le16(file + 0x12) * XHFE_BLOCK;
+    out->lut_offset = (int64_t)xx_data_get_u16(file + 0x12, 2, 0, false) * XHFE_BLOCK;
     if (out->lut_offset < XHFE_HEADER_SIZE || out->lut_offset > (int64_t)size)
         return false;
     lut_size = (int64_t)out->tracks * 4;
@@ -129,8 +126,8 @@ static bool xhfe_side_bits(const uint8_t *file, size_t size,
                            const xhfe_geometry *geometry, int32_t track,
                            int32_t side, uint8_t *bits, size_t *cells) {
     const int64_t entry = geometry->lut_offset + (int64_t)track * 4;
-    const int64_t offset = (int64_t)xhfe_le16(file + entry) * XHFE_BLOCK;
-    const int64_t per_side = (int64_t)xhfe_le16(file + entry + 2) / 2;
+    const int64_t offset = (int64_t)xx_data_get_u16(file + entry, 2, 0, false) * XHFE_BLOCK;
+    const int64_t per_side = (int64_t)xx_data_get_u16(file + entry + 2, 2, 0, false) / 2;
     int64_t done = 0;
     size_t used = 0U;
     if (per_side <= 0 || offset < XHFE_HEADER_SIZE || offset >= (int64_t)size)

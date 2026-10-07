@@ -6,6 +6,7 @@
 #define XX_SIXTEENTH_GAMES_H
 #include "../xx_payload_members.h"
 #include "xxfclib/algo/crc/xx_crc.h"
+#include "xxfclib/data/xx_data.h"
 static bool hg_parse(Abstractformat *,pm_stream *,const uint8_t *,uint64_t,xx_pd_struct *);
 static bool hg_quick(Abstractformat *,uint64_t);
 static __inline bool hg_span(uint64_t p,uint64_t z,uint64_t n) {return p<=n && z<=n-p;}
@@ -18,10 +19,10 @@ static __inline bool hg_cover(Abstractformat *f,pm_stream *s,const char *label,u
 static __inline bool hg_f32(uint32_t u) {return (u&0x7f800000U)!=0x7f800000U;}
 typedef struct hg_bin {const uint8_t *b;uint64_t p,n;xx_pd_struct *pd;} hg_bin;
 static __inline bool hg_take(hg_bin *q,uint64_t n,const uint8_t **value) {if(hg_stop(q->pd)||!hg_span(q->p,n,q->n))return false;if(value)*value=q->b+q->p;q->p+=n;return true;}
-static __inline bool hg_count(hg_bin *q,uint32_t maximum,uint32_t *value) {const uint8_t *p;if(!hg_take(q,4,&p))return false;*value=pm_le32(p);return *value<=maximum;}
-static __inline bool hg_floats(hg_bin *q,unsigned count) {const uint8_t *p;unsigned i;if(!hg_take(q,(uint64_t)count*4,&p))return false;for(i=0;i<count;++i)if(!hg_f32(pm_le32(p+i*4)))return false;return true;}
-static __inline bool hg_float(hg_bin *q,double *value) {const uint8_t *p;union {uint32_t u;float f;} v;if(!hg_take(q,4,&p)||!hg_f32(v.u=pm_le32(p)))return false;*value=v.f;return true;}
-static __inline bool hg_index(hg_bin *q,unsigned size,bool unsign,int32_t *value) {const uint8_t *p;uint32_t u;if(!hg_take(q,size,&p))return false;u=size==1?p[0]:size==2?pm_le16(p):pm_le32(p);if(!unsign&&size<4&&(u&(1U<<(size*8-1))))u|=~0U<<(size*8);if(unsign&&u>0x7fffffffU)return false;*value=(int32_t)u;return unsign||*value>=-1;}
+static __inline bool hg_count(hg_bin *q,uint32_t maximum,uint32_t *value) {const uint8_t *p;if(!hg_take(q,4,&p))return false;*value=xx_data_get_u32(p, 4, 0, false);return *value<=maximum;}
+static __inline bool hg_floats(hg_bin *q,unsigned count) {const uint8_t *p;unsigned i;if(!hg_take(q,(uint64_t)count*4,&p))return false;for(i=0;i<count;++i)if(!hg_f32(xx_data_get_u32(p+i*4, 4, 0, false)))return false;return true;}
+static __inline bool hg_float(hg_bin *q,double *value) {const uint8_t *p;union {uint32_t u;float f;} v;if(!hg_take(q,4,&p)||!hg_f32(v.u=xx_data_get_u32(p, 4, 0, false)))return false;*value=v.f;return true;}
+static __inline bool hg_index(hg_bin *q,unsigned size,bool unsign,int32_t *value) {const uint8_t *p;uint32_t u;if(!hg_take(q,size,&p))return false;u=size==1?p[0]:size==2?xx_data_get_u16(p, 2, 0, false):xx_data_get_u32(p, 4, 0, false);if(!unsign&&size<4&&(u&(1U<<(size*8-1))))u|=~0U<<(size*8);if(unsign&&u>0x7fffffffU)return false;*value=(int32_t)u;return unsign||*value>=-1;}
 typedef struct hg_ids {uint32_t *values,size,work;} hg_ids;
 static __inline bool hg_ids_init(hg_ids *set,uint32_t count) {uint32_t size=8;while(size<count*2)size*=2;set->size=size;set->work=0;set->values=(uint32_t *)xx_mem_alloc((size_t)size*4);if(!set->values)return false;xx_mem_zero(set->values,(size_t)size*4);return true;}
 static __inline bool hg_id(hg_ids *set,uint32_t value,bool insert,xx_pd_struct *pd) {uint32_t i,start=value*2654435761U;if(!value)return false;for(i=0;i<set->size;++i){uint32_t at=(start+i)&(set->size-1);if(++set->work>16000000||hg_stop(pd))return false;if(!set->values[at]){if(!insert)return false;set->values[at]=value;return true;}if(set->values[at]==value)return !insert;}return false;}
@@ -101,8 +102,8 @@ static __inline bool hg_number(hg_lex *q,double *v) {
 static __inline bool hg_integer(hg_lex *q,int32_t *v) {uint64_t start,p;hg_text t;bool ok;if(!hg_skip(q))return false;start=p=q->p;if(p<q->n&&(q->b[p]=='+'||q->b[p]=='-'))++p;while(p<q->n&&q->b[p]>='0'&&q->b[p]<='9'){if(p-start>=12)return false;++p;}t.b=q->b;t.p=start;t.end=p;t.start=start;t.stop=p;t.t=start;ok=hg_i(&t,v)&&t.t==p;if(ok&&p<q->n&&!((q->b[p]==32)||(q->b[p]==9)||(q->b[p]==10)||(q->b[p]==13)||(q->b[p]==']')||(q->b[p]=='}')||(q->b[p]==',')||(q->b[p]=='#')))ok=false;if(ok)q->p=p;return ok;}
 static __inline bool hg_quoted(hg_lex *q,uint8_t delim,uint64_t *at,uint64_t *size) {uint64_t p;if(!hg_skip(q)||q->p==q->n||q->b[q->p++]!=delim)return false;p=q->p;while(q->p<q->n){uint8_t c=q->b[q->p++];if(q->p-p>8192||hg_stop(q->pd))return false;if(c==delim){if(delim=='\''&&q->p<q->n&&q->b[q->p]==delim){++q->p;continue;}if(at)*at=p;if(size)*size=q->p-p-1;return true;}if(delim=='"'&&c=='\\'){if(q->p==q->n||(q->b[q->p]!='"'&&q->b[q->p]!='\\'))return false;++q->p;}else if(delim=='\''&&c=='\\')return false;}return false;}
 static __inline bool hg_end(hg_lex *q) {return hg_skip(q)&&q->p==q->n;}
-static __inline bool hg_u16(const uint8_t *p,uint32_t units) {uint32_t i;for(i=0;i<units;++i){uint16_t a=pm_be16(p+i*2);if(!a)return false;if(a>=0xd800&&a<=0xdbff){uint16_t b;if(++i==units)return false;b=pm_be16(p+i*2);if(b<0xdc00||b>0xdfff)return false;}else if(a>=0xdc00&&a<=0xdfff)return false;}return true;}
-static __inline bool hg_pstring(hg_bin *q) {const uint8_t *p;uint32_t z;if(!hg_take(q,4,&p)||(z=pm_be32(p))>4096||!hg_take(q,(uint64_t)z*2,&p))return false;return hg_u16(p,z);}
+static __inline bool hg_u16(const uint8_t *p,uint32_t units) {uint32_t i;for(i=0;i<units;++i){uint16_t a=xx_data_get_u16(p+i*2, 2, 0, true);if(!a)return false;if(a>=0xd800&&a<=0xdbff){uint16_t b;if(++i==units)return false;b=xx_data_get_u16(p+i*2, 2, 0, true);if(b<0xdc00||b>0xdfff)return false;}else if(a>=0xdc00&&a<=0xdfff)return false;}return true;}
+static __inline bool hg_pstring(hg_bin *q) {const uint8_t *p;uint32_t z;if(!hg_take(q,4,&p)||(z=xx_data_get_u32(p, 4, 0, true))>4096||!hg_take(q,(uint64_t)z*2,&p))return false;return hg_u16(p,z);}
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  int64_t available=pm_available(f);uint8_t *b;uint64_t p=0;bool ok=false;
  if(available<1||available>33554432||hg_stop(pd)||!hg_quick(f,(uint64_t)available))return false;

@@ -7,11 +7,11 @@
 static bool e8_parse(e8_blob*c) {
  size_t header,at,end;uint32_t samples,rate;unsigned channels,encoding,version;
  uint64_t expected,bytes;bool eof=false,encrypted;
- if(!e8_range(c,0,20) || pm_be16(c->b)!=0x8000 ||
-    (header=4U+pm_be16(c->b+2))<26 || header>65535 ||
+ if(!e8_range(c,0,20) || xx_data_get_u16(c->b, 2, 0, true)!=0x8000 ||
+    (header=4U+xx_data_get_u16(c->b+2, 2, 0, true))<26 || header>65535 ||
     !e8_range(c,0,header) || !e8_eq(c,header-6,"(c)CRI",6))return false;
- encoding=c->b[4];channels=c->b[7];rate=pm_be32(c->b+8);
- samples=pm_be32(c->b+12);version=pm_be16(c->b+18);
+ encoding=c->b[4];channels=c->b[7];rate=xx_data_get_u32(c->b+8, 4, 0, true);
+ samples=xx_data_get_u32(c->b+12, 4, 0, true);version=xx_data_get_u16(c->b+18, 2, 0, true);
  encrypted=version==0x0408 || version==0x0409;
  if((encoding!=2 && encoding!=3 && encoding!=4) || c->b[5]!=18 ||
     c->b[6]!=4 || !channels || channels>8 || rate<4000 || rate>384000 ||
@@ -19,10 +19,10 @@ static bool e8_parse(e8_blob*c) {
     (version!=0x0300 && version!=0x0400 && version!=0x0408 &&
      version!=0x0409 && version!=0x0500) ||
     (version!=0x0300 && header<30) ||
-    (encoding==3 && !encrypted && pm_be16(c->b+16)>=rate/2U))return false;
+    (encoding==3 && !encrypted && xx_data_get_u16(c->b+16, 2, 0, true)>=rate/2U))return false;
  end=c->n;
- if(end>=header+18 && pm_be16(c->b+end-18)==0x8001 &&
-    pm_be16(c->b+end-16)==14) {
+ if(end>=header+18 && xx_data_get_u16(c->b+end-18, 2, 0, true)==0x8001 &&
+    xx_data_get_u16(c->b+end-16, 2, 0, true)==14) {
     if(!e8_zero(c,end-14,14))return false;
     end-=18;eof=true;
  }
@@ -35,7 +35,7 @@ static bool e8_parse(e8_blob*c) {
     coefficient/scale bits. Encryption also transforms that word. */
  if(encoding==3 && !encrypted)
     for(at=header;at<end;at+=18)
-        if(pm_be16(c->b+at)&0x8000)return false;
+        if(xx_data_get_u16(c->b+at, 2, 0, true)&0x8000)return false;
  if(!e8_add(c,"header.bin",0,header) ||
     !e8_add(c,"adpcm-frames.bin",header,(size_t)bytes))return false;
  return !eof || e8_add(c,"terminator.bin",end,18);

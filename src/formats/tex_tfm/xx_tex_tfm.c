@@ -6,14 +6,14 @@
  */
 #include "xxfclib/formats/tex_tfm/xx_tex_tfm.h"
 #include "../astc_texture/xx_tenth_media.h"
-static bool tg_quick(Abstractformat *f,uint64_t n) {uint8_t b[24];return tg_probe(f,n,b,24)&&pm_be16(b)*4U==n&&pm_be16(b+2)>=2&&pm_be16(b+4)<=255&&pm_be16(b+6)<=255;}
+static bool tg_quick(Abstractformat *f,uint64_t n) {uint8_t b[24];return tg_probe(f,n,b,24)&&xx_data_get_u16(b, 2, 0, true)*4U==n&&xx_data_get_u16(b+2, 2, 0, true)>=2&&xx_data_get_u16(b+4, 2, 0, true)<=255&&xx_data_get_u16(b+6, 2, 0, true)<=255;}
 static bool tf_char(const uint8_t *b,uint64_t chars,uint32_t bc,uint32_t ec,uint32_t c) {return c>=bc&&c<=ec&&b[chars+(c-bc)*4]!=0;}
 static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  static const char *labels[10]={"tfm-header.bin","character-info.bin","widths.bin","heights.bin","depths.bin","italics.bin","ligature-kern.bin","kerns.bin","extensible-recipes.bin","parameters.bin"};
- uint32_t counts[10],bc=pm_be16(b+4),ec=pm_be16(b+6),i,j;uint64_t at[10],p=24,total=6;uint32_t h=pm_be16(b+2),nc=ec>=bc?ec-bc+1:0;
- counts[0]=h;counts[1]=nc;for(i=2;i<10;++i)counts[i]=pm_be16(b+4+i*2);for(i=0;i<10;++i){at[i]=p;p+=(uint64_t)counts[i]*4;total+=counts[i];}
- if(total*4!=n||h>1024||!counts[2]||!counts[3]||!counts[4]||!counts[5]||counts[2]>256||counts[3]>16||counts[4]>16||counts[5]>64||counts[8]>256||counts[9]>256||pm_be32(b+28)<0x100000U||pm_be32(b+28)>0x7fffffffU)return false;
- for(i=2;i<=5;++i)if(pm_be32(b+at[i])!=0)return false;
+ uint32_t counts[10],bc=xx_data_get_u16(b+4, 2, 0, true),ec=xx_data_get_u16(b+6, 2, 0, true),i,j;uint64_t at[10],p=24,total=6;uint32_t h=xx_data_get_u16(b+2, 2, 0, true),nc=ec>=bc?ec-bc+1:0;
+ counts[0]=h;counts[1]=nc;for(i=2;i<10;++i)counts[i]=xx_data_get_u16(b+4+i*2, 2, 0, true);for(i=0;i<10;++i){at[i]=p;p+=(uint64_t)counts[i]*4;total+=counts[i];}
+ if(total*4!=n||h>1024||!counts[2]||!counts[3]||!counts[4]||!counts[5]||counts[2]>256||counts[3]>16||counts[4]>16||counts[5]>64||counts[8]>256||counts[9]>256||xx_data_get_u32(b+28, 4, 0, true)<0x100000U||xx_data_get_u32(b+28, 4, 0, true)>0x7fffffffU)return false;
+ for(i=2;i<=5;++i)if(xx_data_get_u32(b+at[i], 4, 0, true)!=0)return false;
  for(i=0;i<nc;++i){const uint8_t *c=b+at[1]+(uint64_t)i*4;uint32_t tag=c[2]&3,rem=c[3];if(tg_stop(pd)||c[0]>=counts[2]||(uint32_t)(c[1]>>4)>=counts[3]||(uint32_t)(c[1]&15)>=counts[4]||(uint32_t)(c[2]>>2)>=counts[5])return false;if(!c[0]){if(c[1]||c[2]||c[3])return false;continue;}if(tag==1&&rem>=counts[6])return false;if(tag==3&&rem>=counts[8])return false;if(tag==2){uint32_t target=rem,steps=0;while(true){const uint8_t *next;if(!tf_char(b,at[1],bc,ec,target)||++steps>nc)return false;next=b+at[1]+(target-bc)*4;if((next[2]&3)!=2)break;target=next[3];}}}
  for(i=0;i<counts[6];++i){const uint8_t *l=b+at[6]+(uint64_t)i*4;uint32_t rem=l[3];if(tg_stop(pd))return false;if(l[0]>128){uint32_t jump=(uint32_t)l[2]*256+rem;if(jump>=counts[6]&&!(i==0||i+1==counts[6]))return false;}else{if(l[0]<128&&i+l[0]+1>=counts[6])return false;if(!tf_char(b,at[1],bc,ec,l[1]))return false;if(l[2]>=128){if((uint32_t)(l[2]-128)*256+rem>=counts[7])return false;}else if(!tf_char(b,at[1],bc,ec,rem))return false;}}
  for(i=0;i<counts[8];++i)for(j=0;j<4;++j){uint32_t c=b[at[8]+(uint64_t)i*4+j];if((c||j==3)&&!tf_char(b,at[1],bc,ec,c))return false;}

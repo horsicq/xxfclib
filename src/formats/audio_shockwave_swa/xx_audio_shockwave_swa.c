@@ -7,6 +7,7 @@
  */
 #include "xxfclib/formats/audio_shockwave_swa/xx_audio_shockwave_swa.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 #ifndef XX_FILE_TYPE_AUDIO_SHOCKWAVE_SWA
 #define XX_FILE_TYPE_AUDIO_SHOCKWAVE_SWA ((xx_file_type_t)1525)
@@ -18,7 +19,7 @@ static bool swa_mpeg_frame(const uint8_t *p, uint32_t expected_rate,
     static const uint16_t mpeg1_bitrates[16]={0,32,40,48,56,64,80,96,112,128,160,192,224,256,320,0};
     static const uint16_t mpeg2_bitrates[16]={0,8,16,24,32,40,48,56,64,80,96,112,128,144,160,0};
     static const uint32_t rates[4][3]={{11025,12000,8000},{0,0,0},{22050,24000,16000},{44100,48000,32000}};
-    uint32_t word=pm_be32(p),rate,bitrate;
+    uint32_t word=xx_data_get_u32(p, 4, 0, true),rate,bitrate;
     unsigned version=(word>>19)&3U,layer=(word>>17)&3U;
     unsigned bitrate_index=(word>>12)&15U,rate_index=(word>>10)&3U;
     unsigned padding=(word>>9)&1U;
@@ -41,10 +42,10 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd)
     unsigned version=4U;
     uint64_t frames=0;
     if (available<64 || !pm_read(f,0,header,sizeof(header))) return false;
-    header_length=pm_be32(header);
-    rate=pm_be32(header+8);
+    header_length=xx_data_get_u32(header, 4, 0, true);
+    rate=xx_data_get_u32(header+8, 4, 0, true);
     if (header_length<60U || header_length>1048576U ||
-        pm_be32(header+4)!=3U || xx_rt_memcmp(header+36,"MACRZ",5) ||
+        xx_data_get_u32(header+4, 4, 0, true)!=3U || xx_rt_memcmp(header+36,"MACRZ",5) ||
         (uint64_t)header_length+8U>(uint64_t)available) return false;
     at=(int64_t)header_length+4;
     while (at<available) {

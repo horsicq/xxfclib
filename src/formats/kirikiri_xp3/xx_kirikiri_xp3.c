@@ -22,9 +22,9 @@ static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     while(at<end) { int64_t fileend,p; uint64_t size,raw=0,packed=0,offset=0; uint32_t check=0; unsigned mask=0; char label[48];
         if(wg_stop(pd) || end-at<12 || !pm_read(f,at,h,12) || xx_rt_memcmp(h,"File",4) || (size=wg64(h+4))>(uint64_t)(end-at-12)) { return false; } p=at+12; fileend=p+(int64_t)size;
         while(p<fileend) { uint64_t bytes; int64_t body; if(fileend-p<12 || !pm_read(f,p,h,12) || (bytes=wg64(h+4))>(uint64_t)(fileend-p-12)) return false; body=p+12;
-            if(!xx_rt_memcmp(h,"info",4)) { uint16_t names; if(mask&1 || bytes<22 || !pm_read(f,body,h,22) || pm_le32(h)) return false; raw=wg64(h+4); packed=wg64(h+12); names=pm_le16(h+20); if(!names || names>4096 || bytes!=22U+2U*names) return false; mask|=1; }
-            else if(!xx_rt_memcmp(h,"segm",4)) { if(mask&2 || bytes!=28 || !pm_read(f,body,h,28) || pm_le32(h)) return false; offset=wg64(h+4); if(wg64(h+12)!=wg64(h+20)) return false; n=wg64(h+12); mask|=2; }
-            else if(!xx_rt_memcmp(h,"adlr",4)) { if(mask&4 || bytes!=4 || !pm_read(f,body,h,4)) return false; check=pm_le32(h); mask|=4; }
+            if(!xx_rt_memcmp(h,"info",4)) { uint16_t names; if(mask&1 || bytes<22 || !pm_read(f,body,h,22) || xx_data_get_u32(h, 4, 0, false)) return false; raw=wg64(h+4); packed=wg64(h+12); names=xx_data_get_u16(h+20, 2, 0, false); if(!names || names>4096 || bytes!=22U+2U*names) return false; mask|=1; }
+            else if(!xx_rt_memcmp(h,"segm",4)) { if(mask&2 || bytes!=28 || !pm_read(f,body,h,28) || xx_data_get_u32(h, 4, 0, false)) return false; offset=wg64(h+4); if(wg64(h+12)!=wg64(h+20)) return false; n=wg64(h+12); mask|=2; }
+            else if(!xx_rt_memcmp(h,"adlr",4)) { if(mask&4 || bytes!=4 || !pm_read(f,body,h,4)) return false; check=xx_data_get_u32(h, 4, 0, false); mask|=4; }
             else { return false; } p=body+(int64_t)bytes;
         }
         if(mask!=7 || raw!=packed || raw!=n || offset<19 || !wg_range(limit,offset,n) || (offset<(uint64_t)end && offset+n>index) || !xp_adler(f,(int64_t)offset,(int64_t)n,check,pd)) return false;

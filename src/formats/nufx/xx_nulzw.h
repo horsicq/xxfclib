@@ -39,17 +39,17 @@ static bool nl_decode(af_work *w,const uint8_t *p,size_t n,uint8_t *out,uint32_t
     if(n<at || !(s=(nl_state *)af_alloc(w,sizeof(*s),false)))return false;
     marker=p[at-1U];nl_reset(s);
     while(done<wanted){uint32_t raw;bool lzw;size_t take,used=0,header,declared=0;const uint8_t *rle;uint32_t copy=wanted-done>4096U?4096U:wanted-done;
-        if(!af_poll(w) || at>n || n-at<2U) {goto end; } header=at;raw=pm_le16(p+at);at+=2U;
+        if(!af_poll(w) || at>n || n-at<2U) {goto end; } header=at;raw=xx_data_get_u16(p+at, 2, 0, false);at+=2U;
         if(method==2U){if(n-at<1U || p[at]>1U || raw<1U || raw>4096U)goto end;lzw=p[at++]!=0;nl_reset(s);}
         else {lzw=(raw&0x8000U)!=0;if(raw&0x6000U)goto end;raw&=0x1fffU;if(raw<1U || raw>4096U)goto end;
-            if(lzw){if(n-at<2U)goto end;declared=pm_le16(p+at);at+=2U;if(declared<5U || declared>n-header){declared=pm_be16(p+at-2U);if(declared<5U || declared>n-header)goto end;}}}
+            if(lzw){if(n-at<2U)goto end;declared=xx_data_get_u16(p+at, 2, 0, false);at+=2U;if(declared<5U || declared>n-header){declared=xx_data_get_u16(p+at-2U, 2, 0, true);if(declared<5U || declared>n-header)goto end;}}}
         if(lzw){take=method==3U?declared-4U:n-at;if(!nl_codes(w,s,p+at,take,raw,&used) || (method==3U && used!=take))goto end;rle=s->rle;at+=used;}
         else {take=raw;if(take>n-at)goto end;rle=p+at;at+=take;nl_reset(s);}
         if(!nl_rle(s,rle,raw,marker))goto end;
         if(method==2U)crc=af_crc16(w,s->chunk,4096U,crc);
         xx_rt_memcpy(out+done,s->chunk,copy);done+=copy;
     }
-    ok=at<=n && n-at<=1U && (method!=2U || crc==pm_le16(p)) && af_poll(w);
+    ok=at<=n && n-at<=1U && (method!=2U || crc==xx_data_get_u16(p, 2, 0, false)) && af_poll(w);
 end:af_release(w,s,sizeof(*s));return ok;
 }
 #endif

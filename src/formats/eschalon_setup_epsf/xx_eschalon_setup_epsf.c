@@ -201,16 +201,6 @@ static ssize_t gb_eschalon_setup_epsf_write(xx_io_device *device, const void *bu
     return (ssize_t)done;
 }
 
-
-static uint16_t epsf_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t epsf_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
-
 static bool epsf_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
     const size_t file_io_capacity = gb_eschalon_setup_epsf_capacity();
@@ -253,14 +243,14 @@ static bool epsf_locate(Abstractformat *format, epsf_layout *out) {
     if (!epsf_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' ||
         dos[1] != 'Z')
         return false;
-    lfanew = epsf_le32(dos + 0x3cU);
+    lfanew = xx_data_get_u32(dos + 0x3cU, 4, 0, false);
     if ((uint64_t)lfanew + EPSF_NT_HEADER_SIZE > (uint64_t)size ||
         !epsf_read_at(device, base + (int64_t)lfanew, nt, sizeof(nt)) ||
         nt[0] != 'P' || nt[1] != 'E' || nt[2] != 0U || nt[3] != 0U)
         return false;
-    section_count = epsf_le16(nt + 6U);
-    optional_size = epsf_le16(nt + 20U);
-    optional_magic = epsf_le16(nt + 24U);
+    section_count = xx_data_get_u16(nt + 6U, 2, 0, false);
+    optional_size = xx_data_get_u16(nt + 20U, 2, 0, false);
+    optional_magic = xx_data_get_u16(nt + 24U, 2, 0, false);
     if (section_count == 0U || section_count > EPSF_MAX_SECTIONS ||
         optional_size < 2U ||
         (optional_magic != 0x10bU && optional_magic != 0x20bU))
@@ -273,8 +263,8 @@ static bool epsf_locate(Abstractformat *format, epsf_layout *out) {
         return false;
     for (index = 0U; index < section_count; ++index) {
         const uint8_t *section = sections + (size_t)index * EPSF_SECTION_SIZE;
-        uint32_t raw_size = epsf_le32(section + 16U);
-        uint32_t raw_pointer = epsf_le32(section + 20U);
+        uint32_t raw_size = xx_data_get_u32(section + 16U, 4, 0, false);
+        uint32_t raw_pointer = xx_data_get_u32(section + 20U, 4, 0, false);
         if (raw_size != 0U &&
             (uint64_t)raw_pointer + raw_size > raw_end)
             raw_end = (uint64_t)raw_pointer + raw_size;
@@ -285,11 +275,11 @@ static bool epsf_locate(Abstractformat *format, epsf_layout *out) {
         !epsf_read_at(device, base + (int64_t)raw_end, header,
                       sizeof(header)) ||
         xx_rt_memcmp(header, "EPSF", 4U) != 0 ||
-        epsf_le16(header + 4U) != EPSF_VERSION)
+        xx_data_get_u16(header + 4U, 2, 0, false) != EPSF_VERSION)
         return false;
-    runtime_size = epsf_le32(header + 6U);
-    runtime_packed = epsf_le32(header + 10U);
-    runtime_sum = epsf_le32(header + 14U);
+    runtime_size = xx_data_get_u32(header + 6U, 4, 0, false);
+    runtime_packed = xx_data_get_u32(header + 10U, 4, 0, false);
+    runtime_sum = xx_data_get_u32(header + 14U, 4, 0, false);
     if (runtime_size == 0U || runtime_packed == 0U ||
         runtime_size > EPSF_MAX_RUNTIME || runtime_packed > EPSF_MAX_RUNTIME ||
         (uint64_t)runtime_packed >
@@ -338,7 +328,7 @@ static bool epsf_gate_archive(xx_io_device *device, const epsf_layout *layout,
         !epsf_read_at(device, candidate, header, sizeof(header)) ||
         xx_rt_memcmp(header, epsf_arcv4_tag, EPSF_TAG_SIZE) != 0)
         return false;
-    subvariant = epsf_le16(header + 6U);
+    subvariant = xx_data_get_u16(header + 6U, 2, 0, false);
     if ((subvariant != 1U && subvariant != 5U) ||
         !epsf_filled(header + EPSF_ARCV_ZERO_OFFSET, EPSF_ARCV_ZERO_SIZE, 0U) ||
         !epsf_filled(header + EPSF_ARCV_AA_OFFSET, EPSF_ARCV_AA_SIZE, 0xaaU) ||
@@ -347,10 +337,10 @@ static bool epsf_gate_archive(xx_io_device *device, const epsf_layout *layout,
         !epsf_read_at(device, candidate + (int64_t)EPSF_ARCV_HEADER_SIZE,
                       prologue, sizeof(prologue)) ||
         xx_rt_memcmp(prologue, "FILE", 4U) != 0 ||
-        (epsf_le32(prologue + 4U) & 0xffU) != 1U ||
-        epsf_le32(prologue + 8U) != EPSF_ARCV_PROLOGUE_SIZE)
+        (xx_data_get_u32(prologue + 4U, 4, 0, false) & 0xffU) != 1U ||
+        xx_data_get_u32(prologue + 8U, 4, 0, false) != EPSF_ARCV_PROLOGUE_SIZE)
         return false;
-    record_size = epsf_le32(prologue + 12U);
+    record_size = xx_data_get_u32(prologue + 12U, 4, 0, false);
     if (record_size < 40U || record_size > EPSF_ARCV_MAX_BODY ||
         (int64_t)(EPSF_ARCV_HEADER_SIZE + EPSF_ARCV_PROLOGUE_SIZE +
                   EPSF_ARCV_DATA_SIZE) + (int64_t)record_size > room ||
@@ -360,12 +350,12 @@ static bool epsf_gate_archive(xx_io_device *device, const epsf_layout *layout,
                           (int64_t)record_size,
                       data, sizeof(data)))
         return false;
-    data_type = epsf_le32(data + 4U) & 0xffU;
+    data_type = xx_data_get_u32(data + 4U, 4, 0, false) & 0xffU;
     return xx_rt_memcmp(data, "DATA", 4U) == 0 &&
            (data_type == 1U || data_type == 5U) &&
-           epsf_le32(data + 8U) == EPSF_ARCV_DATA_SIZE &&
-           epsf_le32(data + 16U) == 0U && epsf_le32(data + 24U) == 0U &&
-           epsf_le32(data + 28U) == 0U;
+           xx_data_get_u32(data + 8U, 4, 0, false) == EPSF_ARCV_DATA_SIZE &&
+           xx_data_get_u32(data + 16U, 4, 0, false) == 0U && xx_data_get_u32(data + 24U, 4, 0, false) == 0U &&
+           xx_data_get_u32(data + 28U, 4, 0, false) == 0U;
 }
 
 static bool epsf_try_archive(Abstractformat *format, epsf_layout *layout,

@@ -4,15 +4,16 @@
  */
 #include "xxfclib/formats/nintendo_unif/xx_nintendo_unif.h"
 #include "../snes_spc/xx_tenth_retro.h"
+#include "xxfclib/data/xx_data.h"
 static bool read_components(Abstractformat *f,pm_stream *s,th_blob *b) {
  const uint8_t *p=b->p;uint32_t a=32,count=0,i,rom_at[32],rom_size[32],checks[32];bool havecrc[32],map=false,prg=false;
  xx_mem_zero(rom_at,sizeof(rom_at));xx_mem_zero(rom_size,sizeof(rom_size));xx_mem_zero(havecrc,sizeof(havecrc));
- if(b->n<41 || xx_rt_memcmp(p,"UNIF",4) || !pm_le32(p+4) || pm_le32(p+4)>7 || !th_zero(p+8,24) || !th_emit(f,s,b,"cartridge-descriptor.bin",0,32)) return false;
- while(a<b->n) {uint32_t z,bank=0;bool rom,crc;char name[64];if(!th_poll(b) || ++count>2048 || !th_range(b,a,8)) return false;z=pm_le32(p+a+4);if(!th_range(b,a+8,z)) return false;for(i=0;i<4;++i) if(p[a+i]<32 || p[a+i]>126) return false;
+ if(b->n<41 || xx_rt_memcmp(p,"UNIF",4) || !xx_data_get_u32(p+4, 4, 0, false) || xx_data_get_u32(p+4, 4, 0, false)>7 || !th_zero(p+8,24) || !th_emit(f,s,b,"cartridge-descriptor.bin",0,32)) return false;
+ while(a<b->n) {uint32_t z,bank=0;bool rom,crc;char name[64];if(!th_poll(b) || ++count>2048 || !th_range(b,a,8)) return false;z=xx_data_get_u32(p+a+4, 4, 0, false);if(!th_range(b,a+8,z)) return false;for(i=0;i<4;++i) if(p[a+i]<32 || p[a+i]>126) return false;
   rom=!xx_rt_memcmp(p+a,"PRG",3) || !xx_rt_memcmp(p+a,"CHR",3);crc=!xx_rt_memcmp(p+a,"PCK",3) || !xx_rt_memcmp(p+a,"CCK",3);
   if(rom || crc) {unsigned c=p[a+3];if(c>='0' && c<='9') bank=c-'0';else if(c>='A' && c<='F') bank=c-'A'+10;else return false;if(p[a]=='C') bank+=16;
    if(rom) {if(!z || rom_size[bank]) return false;rom_at[bank]=a+8;rom_size[bank]=z;if(bank<16) prg=true;}
-   else {if(z!=4 || havecrc[bank]) return false;checks[bank]=pm_le32(p+a+8);havecrc[bank]=true;}
+   else {if(z!=4 || havecrc[bank]) return false;checks[bank]=xx_data_get_u32(p+a+8, 4, 0, false);havecrc[bank]=true;}
   }
   if(!xx_rt_memcmp(p+a,"MAPR",4)) {if(map || !z || z>256 || p[a+8+z-1]) return false;map=true;}
   if(!xx_rt_memcmp(p+a,"MIRR",4) && (z!=1 || p[a+8]>5)) return false;

@@ -5,19 +5,20 @@
  */
 #include "xxfclib/formats/android_dtbo/xx_android_dtbo.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[32],e[32],dt[8]; uint32_t total,hs,es,count,at,i; int64_t tableend;
-    if(!pm_read(f,0,h,32) || pm_be32(h)!=0xd7b7ab1eU) return false;
-    total=pm_be32(h+4); hs=pm_be32(h+8); es=pm_be32(h+12); count=pm_be32(h+16); at=pm_be32(h+20);
-    if(hs!=32 || es!=32 || !count || count>65536 || at<hs || pm_be32(h+28)!=0 || total>pm_available(f)) return false;
+    if(!pm_read(f,0,h,32) || xx_data_get_u32(h, 4, 0, true)!=0xd7b7ab1eU) return false;
+    total=xx_data_get_u32(h+4, 4, 0, true); hs=xx_data_get_u32(h+8, 4, 0, true); es=xx_data_get_u32(h+12, 4, 0, true); count=xx_data_get_u32(h+16, 4, 0, true); at=xx_data_get_u32(h+20, 4, 0, true);
+    if(hs!=32 || es!=32 || !count || count>65536 || at<hs || xx_data_get_u32(h+28, 4, 0, true)!=0 || total>pm_available(f)) return false;
     tableend=(int64_t)at+(int64_t)count*es; if(tableend>total) return false;
     for(i=0;i<count;++i) {
         uint32_t off,size; char name[64];
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,at+(int64_t)i*es,e,32)) return false;
-        size=pm_be32(e); off=pm_be32(e+4);
-        if(size<40 || off<tableend || off>total || size>total-off || !pm_read(f,off,dt,8) || pm_be32(dt)!=0xd00dfeed || pm_be32(dt+4)!=size) return false;
+        size=xx_data_get_u32(e, 4, 0, true); off=xx_data_get_u32(e+4, 4, 0, true);
+        if(size<40 || off<tableend || off>total || size>total-off || !pm_read(f,off,dt,8) || xx_data_get_u32(dt, 4, 0, true)!=0xd00dfeed || xx_data_get_u32(dt+4, 4, 0, true)!=size) return false;
         xx_rt_snprintf(name,sizeof(name),"device-tree-%u.dtb",i);
         if(!pm_add(f,s,name,off,size)) return false;
     }

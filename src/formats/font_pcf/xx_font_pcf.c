@@ -6,18 +6,18 @@
  */
 #include "xxfclib/formats/font_pcf/xx_font_pcf.h"
 #include "../astc_texture/xx_tenth_media.h"
-static bool tg_quick(Abstractformat *f,uint64_t n) {uint8_t b[8];return tg_probe(f,n,b,8)&&pm_tag(b,"\1fcp",4)&&pm_le32(b+4)>=3&&pm_le32(b+4)<=9;}
+static bool tg_quick(Abstractformat *f,uint64_t n) {uint8_t b[8];return tg_probe(f,n,b,8)&&pm_tag(b,"\1fcp",4)&&xx_data_get_u32(b+4, 4, 0, false)>=3&&xx_data_get_u32(b+4, 4, 0, false)<=9;}
 typedef struct pc_table {uint32_t type,format,declared;uint64_t at,end;} pc_table;
-static uint32_t pc_u32(const uint8_t *p,uint32_t fmt) {return fmt&4?pm_be32(p):pm_le32(p);}
-static uint32_t pc_u16(const uint8_t *p,uint32_t fmt) {return fmt&4?pm_be16(p):pm_le16(p);}
+static uint32_t pc_u32(const uint8_t *p,uint32_t fmt) {return fmt&4?xx_data_get_u32(p, 4, 0, true):xx_data_get_u32(p, 4, 0, false);}
+static uint32_t pc_u16(const uint8_t *p,uint32_t fmt) {return fmt&4?xx_data_get_u16(p, 2, 0, true):xx_data_get_u16(p, 2, 0, false);}
 static bool pc_metric(const uint8_t *b,uint64_t at,bool compressed,uint32_t fmt,int32_t *w,int32_t *h) {int32_t left,right,asc,desc;if(compressed){left=b[at]-128;right=b[at+1]-128;asc=b[at+3]-128;desc=b[at+4]-128;}else{left=(int16_t)pc_u16(b+at,fmt);right=(int16_t)pc_u16(b+at+2,fmt);asc=(int16_t)pc_u16(b+at+6,fmt);desc=(int16_t)pc_u16(b+at+8,fmt);}*w=right-left;*h=asc+desc;return *w>=-4096&&*w<=4096&&*h>=-4096&&*h<=4096;}
 static bool pc_padding(const uint8_t *b,uint64_t p,uint64_t end) {return p<=end&&end-p<=3&&tg_zero(b+p,end-p);}
 static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
- pc_table t[9];uint32_t tc=pm_le32(b+4),seen=0,i,j,glyphs=0;int32_t *dims=NULL;uint64_t p=8+(uint64_t)tc*16;bool result=false;char label[64];
- if(p>n) {return false; } for(i=0;i<tc;++i){const uint8_t *d=b+8+i*16;uint32_t type=pm_le32(d),fmt=pm_le32(d+4),decl=pm_le32(d+8);uint64_t at=pm_le32(d+12);if(tg_stop(pd)||!type||type>256||(type&(type-1))||(seen&type)||(fmt&~319U)||at!=p||at&3||decl<4)return false;seen|=type;t[i].type=type;t[i].format=fmt;t[i].declared=decl;t[i].at=at;
+ pc_table t[9];uint32_t tc=xx_data_get_u32(b+4, 4, 0, false),seen=0,i,j,glyphs=0;int32_t *dims=NULL;uint64_t p=8+(uint64_t)tc*16;bool result=false;char label[64];
+ if(p>n) {return false; } for(i=0;i<tc;++i){const uint8_t *d=b+8+i*16;uint32_t type=xx_data_get_u32(d, 4, 0, false),fmt=xx_data_get_u32(d+4, 4, 0, false),decl=xx_data_get_u32(d+8, 4, 0, false);uint64_t at=xx_data_get_u32(d+12, 4, 0, false);if(tg_stop(pd)||!type||type>256||(type&(type-1))||(seen&type)||(fmt&~319U)||at!=p||at&3||decl<4)return false;seen|=type;t[i].type=type;t[i].format=fmt;t[i].declared=decl;t[i].at=at;
   /* Original bdftopcf reserves100 bytes for accelerators but writes72 at EOF. */
   if(!tg_span(at,decl,n)){if(i+1!=tc||(type!=2&&type!=256)||(fmt&256)==0||decl!=100||!tg_span(at,72,n)||at+72!=n)return false;t[i].end=n;p=n;}else{t[i].end=at+decl;p=t[i].end;}
-  if(pm_le32(b+at)!=fmt)return false;
+  if(xx_data_get_u32(b+at, 4, 0, false)!=fmt)return false;
  }
  if(p!=n||(seen&44)!=44||!tg_emit(f,s,"pcf-directory.bin",0,8+(uint64_t)tc*16,n))return false;
  for(i=0;i<tc;++i)if(t[i].type==4){bool compressed=(t[i].format&256)!=0;uint64_t q=t[i].at+4,bytes;if(!tg_span(q,compressed?2U:4U,t[i].end))return false;glyphs=compressed?pc_u16(b+q,t[i].format):pc_u32(b+q,t[i].format);q+=compressed?2U:4U;bytes=(uint64_t)glyphs*(compressed?5U:12U);if(!glyphs||glyphs>65535||!tg_span(q,bytes,t[i].end)||!pc_padding(b,q+bytes,t[i].end))return false;dims=(int32_t *)xx_mem_alloc((size_t)glyphs*2*sizeof(*dims));if(!dims)return false;for(j=0;j<glyphs;++j)if(tg_stop(pd)||!pc_metric(b,q+(uint64_t)j*(compressed?5U:12U),compressed,t[i].format,&dims[j*2],&dims[j*2+1])||dims[j*2]<0||dims[j*2+1]<0)goto done;}

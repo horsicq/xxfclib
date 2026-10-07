@@ -5,16 +5,13 @@
  */
 #include "xxfclib/formats/sony_psp_pbp/xx_sony_psp_pbp.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 static __inline bool span(uint64_t a,uint64_t n,uint64_t e) { return a<=e && n<=e-a; }
 static __inline bool stop(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
-static __inline uint64_t u64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
-static __inline uint32_t u32(const uint8_t *p,bool be) { return be ? pm_be32(p):pm_le32(p); }
-static __inline uint16_t u16(const uint8_t *p,bool be) { return be ? pm_be16(p):pm_le16(p); }
-static __inline uint32_t be24(const uint8_t *p) { return (uint32_t)p[0]<<16 | (uint32_t)p[1]<<8 | p[2]; }
 static __inline bool zero(const uint8_t *b,uint64_t n) { uint64_t i; for(i=0;i<n;++i) if(b[i]) return false; return true; }
-static __inline bool finite32(const uint8_t *p,bool be) { return (u32(p,be)&0x7f800000U)!=0x7f800000U; }
-static __inline bool finite64(const uint8_t *p,bool be) { return (u64(p,be)&0x7ff0000000000000ULL)!=0x7ff0000000000000ULL; }
+static __inline bool finite32(const uint8_t *p,bool be) { return (xx_data_get_u32(p, 4, 0, be)&0x7f800000U)!=0x7f800000U; }
+static __inline bool finite64(const uint8_t *p,bool be) { return (xx_data_get_u64(p, 8, 0, be)&0x7ff0000000000000ULL)!=0x7ff0000000000000ULL; }
 static __inline bool floats(const uint8_t *b,uint64_t at,uint64_t count,bool be,uint64_t n) { uint64_t i; if(!span(at,count*4,n)) return false; for(i=0;i<count;++i) if(!finite32(b+at+i*4,be)) return false; return true; }
 static __inline bool emit(Abstractformat *f,pm_stream *s,const char *label,uint64_t a,uint64_t n,uint64_t e) { return span(a,n,e) && s->count<4096 && pm_add(f,s,label,(int64_t)a,(int64_t)n); }
 static __inline bool cstr(const uint8_t *b,uint64_t *at,uint64_t end,uint64_t maximum,bool empty) { uint64_t start=*at; while(*at<end && *at-start<=maximum) { uint8_t c=b[(*at)++]; if(!c) return empty || *at>start+1; if(c<32 || c==127) return false; } return false; }
@@ -24,16 +21,16 @@ static __inline bool reserve(range *r,unsigned *nr,unsigned max,uint64_t at,uint
 static bool parse_data(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
 
  uint32_t offsets[9],i,count;uint64_t sf,end;char label[40];static const char *names[]={"PARAM.SFO","ICON0.PNG","ICON1.PMF","PIC0.PNG","PIC1.PNG","SND0.AT3","DATA.PSP","DATA.PSAR"};
- if(n<40||xx_rt_memcmp(b,"\0PBP",4)||pm_le32(b+4)!=0x10000) {return false; } for(i=0;i<8;++i){offsets[i]=pm_le32(b+8+i*4);if(offsets[i]<40||offsets[i]>n||(i&&offsets[i]<offsets[i-1]))return false;}offsets[8]=(uint32_t)n;if(offsets[0]!=40||offsets[1]-offsets[0]<20||offsets[7]==offsets[6])return false;
- if(offsets[7]!=n) {return false; } sf=offsets[0];end=offsets[1];if(xx_rt_memcmp(b+sf,"\0PSF",4)||pm_le32(b+sf+4)!=0x101||!(count=pm_le32(b+sf+16))||count>256||!span(sf+20,(uint64_t)count*16,end))return false;
- {uint32_t keys=pm_le32(b+sf+8),data=pm_le32(b+sf+12);range r[256];unsigned nr=0;if(keys<20+count*16||data<=keys||sf+data>end)return false;
- for(i=0;i<count;++i){const uint8_t *e=b+sf+20+i*16;uint16_t type=pm_le16(e+2);uint32_t len=pm_le32(e+4),max=pm_le32(e+8),off=pm_le32(e+12);uint64_t key=sf+keys+pm_le16(e);
+ if(n<40||xx_rt_memcmp(b,"\0PBP",4)||xx_data_get_u32(b+4, 4, 0, false)!=0x10000) {return false; } for(i=0;i<8;++i){offsets[i]=xx_data_get_u32(b+8+i*4, 4, 0, false);if(offsets[i]<40||offsets[i]>n||(i&&offsets[i]<offsets[i-1]))return false;}offsets[8]=(uint32_t)n;if(offsets[0]!=40||offsets[1]-offsets[0]<20||offsets[7]==offsets[6])return false;
+ if(offsets[7]!=n) {return false; } sf=offsets[0];end=offsets[1];if(xx_rt_memcmp(b+sf,"\0PSF",4)||xx_data_get_u32(b+sf+4, 4, 0, false)!=0x101||!(count=xx_data_get_u32(b+sf+16, 4, 0, false))||count>256||!span(sf+20,(uint64_t)count*16,end))return false;
+ {uint32_t keys=xx_data_get_u32(b+sf+8, 4, 0, false),data=xx_data_get_u32(b+sf+12, 4, 0, false);range r[256];unsigned nr=0;if(keys<20+count*16||data<=keys||sf+data>end)return false;
+ for(i=0;i<count;++i){const uint8_t *e=b+sf+20+i*16;uint16_t type=xx_data_get_u16(e+2, 2, 0, false);uint32_t len=xx_data_get_u32(e+4, 4, 0, false),max=xx_data_get_u32(e+8, 4, 0, false),off=xx_data_get_u32(e+12, 4, 0, false);uint64_t key=sf+keys+xx_data_get_u16(e, 2, 0, false);
  if(stop(pd)||key>=sf+data||!cstr(b,&key,sf+data,1024,false)||!len||len>max||!reserve(r,&nr,256,sf+data+off,max,sf+data,end)||(type!=0x4&&type!=0x204&&type!=0x404)||(type==0x404&&len!=4)||(type==0x204&&b[sf+data+off+len-1]))return false;}}
  {const uint8_t *e=b+offsets[6];uint64_t size=offsets[7]-offsets[6],extent=52;uint32_t ph,sh,entry;uint16_t pn,sn;bool found=false;
- if(size<84||xx_rt_memcmp(e,"\x7f" "ELF",4)||e[4]!=1||e[5]!=1||e[6]!=1||pm_le16(e+16)!=2||pm_le16(e+18)!=8||pm_le32(e+20)!=1||pm_le16(e+40)!=52||pm_le16(e+42)!=32||!(pn=pm_le16(e+44))||pn>32||(sn=pm_le16(e+48))>256)return false;
- entry=pm_le32(e+24);ph=pm_le32(e+28);sh=pm_le32(e+32);if(ph<52||!span(ph,(uint64_t)pn*32,size)||(sn&&(pm_le16(e+46)!=40||sh<52||!span(sh,(uint64_t)sn*40,size))))return false;extent=ph+(uint64_t)pn*32;if(sn&&sh+(uint64_t)sn*40>extent)extent=sh+(uint64_t)sn*40;
- for(i=0;i<pn;++i){const uint8_t *p=e+ph+i*32;uint32_t off=pm_le32(p+4),addr=pm_le32(p+8),len=pm_le32(p+16),mem=pm_le32(p+20);if(!span(off,len,size)||len>mem)return false;if(off+(uint64_t)len>extent)extent=off+(uint64_t)len;if(pm_le32(p)==1&&entry>=addr&&(uint64_t)entry-addr<len)found=true;}
- for(i=0;i<sn;++i){const uint8_t *p=e+sh+i*40;if(pm_le32(p+4)!=8){uint32_t off=pm_le32(p+16),len=pm_le32(p+20);if(!span(off,len,size))return false;if(off+(uint64_t)len>extent)extent=off+(uint64_t)len;}}if(!found||extent!=size)return false;}
+ if(size<84||xx_rt_memcmp(e,"\x7f" "ELF",4)||e[4]!=1||e[5]!=1||e[6]!=1||xx_data_get_u16(e+16, 2, 0, false)!=2||xx_data_get_u16(e+18, 2, 0, false)!=8||xx_data_get_u32(e+20, 4, 0, false)!=1||xx_data_get_u16(e+40, 2, 0, false)!=52||xx_data_get_u16(e+42, 2, 0, false)!=32||!(pn=xx_data_get_u16(e+44, 2, 0, false))||pn>32||(sn=xx_data_get_u16(e+48, 2, 0, false))>256)return false;
+ entry=xx_data_get_u32(e+24, 4, 0, false);ph=xx_data_get_u32(e+28, 4, 0, false);sh=xx_data_get_u32(e+32, 4, 0, false);if(ph<52||!span(ph,(uint64_t)pn*32,size)||(sn&&(xx_data_get_u16(e+46, 2, 0, false)!=40||sh<52||!span(sh,(uint64_t)sn*40,size))))return false;extent=ph+(uint64_t)pn*32;if(sn&&sh+(uint64_t)sn*40>extent)extent=sh+(uint64_t)sn*40;
+ for(i=0;i<pn;++i){const uint8_t *p=e+ph+i*32;uint32_t off=xx_data_get_u32(p+4, 4, 0, false),addr=xx_data_get_u32(p+8, 4, 0, false),len=xx_data_get_u32(p+16, 4, 0, false),mem=xx_data_get_u32(p+20, 4, 0, false);if(!span(off,len,size)||len>mem)return false;if(off+(uint64_t)len>extent)extent=off+(uint64_t)len;if(xx_data_get_u32(p, 4, 0, false)==1&&entry>=addr&&(uint64_t)entry-addr<len)found=true;}
+ for(i=0;i<sn;++i){const uint8_t *p=e+sh+i*40;if(xx_data_get_u32(p+4, 4, 0, false)!=8){uint32_t off=xx_data_get_u32(p+16, 4, 0, false),len=xx_data_get_u32(p+20, 4, 0, false);if(!span(off,len,size))return false;if(off+(uint64_t)len>extent)extent=off+(uint64_t)len;}}if(!found||extent!=size)return false;}
  for(i=0;i<8;++i) {if(offsets[i+1]>offsets[i]){xx_rt_snprintf(label,sizeof(label),"%s",names[i]);if(!emit(f,s,label,offsets[i],offsets[i+1]-offsets[i],n))return false;} } s->size=(int64_t)n;return true;
 
 }

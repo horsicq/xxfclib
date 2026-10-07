@@ -42,6 +42,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 
 #define XX_ASAR_HEADER_SIZE 16
@@ -528,11 +529,6 @@ static bool xx_asar_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-static uint32_t xx_asar_u32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
 static void xx_asar_stream_free(void *pointer) {
     xx_asar_stream *stream = (xx_asar_stream *)pointer;
     size_t index;
@@ -574,10 +570,10 @@ static xx_asar_stream *xx_asar_parse(Abstractformat *self, xx_pd_struct *pd) {
         return NULL;
     }
 
-    field0 = xx_asar_u32(header);
-    header_size = xx_asar_u32(header + 4);
-    json_string_size = xx_asar_u32(header + 8);
-    json_size = xx_asar_u32(header + 12);
+    field0 = xx_data_get_u32(header, 4, 0, false);
+    header_size = xx_data_get_u32(header + 4, 4, 0, false);
+    json_string_size = xx_data_get_u32(header + 8, 4, 0, false);
+    json_size = xx_data_get_u32(header + 12, 4, 0, false);
 
     /* The first pickle always encodes a single uint32. */
     if (field0 != 4U) return NULL;

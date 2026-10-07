@@ -11,6 +11,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_build_grp_MAX_MEMBERS 1000000U
 typedef struct xx_build_grp_member_s {
@@ -33,16 +34,6 @@ typedef struct xx_build_grp_stream_s {
 } xx_build_grp_stream;
 static void xx_build_grp_vtable_destroy(Abstractformat *self);
 
-static inline uint16_t xx_build_grp_u16(const uint8_t *p, bool be) {
-    return be ? (uint16_t)(((uint16_t)p[0] << 8) | p[1])
-              : (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
-}
-static inline uint32_t xx_build_grp_u32(const uint8_t *p, bool be) {
-    return be ? ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
-                ((uint32_t)p[2] << 8) | p[3]
-              : p[0] | ((uint32_t)p[1] << 8) |
-                ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
 static bool xx_build_grp_range_within(int64_t span, int64_t offset, int64_t size) {
     return offset >= 0 && size >= 0 && offset <= span && size <= span-offset;
 }
@@ -221,14 +212,14 @@ static xx_build_grp_stream *xx_build_grp_parse(Abstractformat *self,xx_pd_struct
 
     uint8_t h[16],entry[16]; uint32_t count,i; int64_t off;
     if(!xx_build_grp_read_rel(self,span,0,h,sizeof(h)) || xx_rt_memcmp(h,"KenSilverman",12U)) goto fail;
-    count=xx_build_grp_u32(h+12,false); off=16+(int64_t)count*16;
+    count=xx_data_get_u32(h+12, 4, 0, false); off=16+(int64_t)count*16;
     if(count>XX_build_grp_MAX_MEMBERS || off>span) goto fail;
     s->archive_size=off;
     for(i=0;i<count;++i) {
         char name[13]; int64_t size;
         if((pd && xx_pd_is_stopped(pd)) || !xx_build_grp_read_rel(self,span,16+(int64_t)i*16,entry,sizeof(entry)) ||
            !xx_build_grp_fixed_name(entry,12U,name)) goto fail;
-        size=xx_build_grp_u32(entry+12,false);
+        size=xx_data_get_u32(entry+12, 4, 0, false);
         if(!xx_build_grp_add_member(self,s,name,16+(int64_t)i*16,16,off,size,
                                     false,!xx_build_grp_range_within(span,off,size))) goto fail;
         off+=size;

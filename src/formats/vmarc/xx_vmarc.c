@@ -56,6 +56,7 @@
 #include "xxfclib/algo/vmarc/xx_vmarc.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_VMARC_COPY_CHUNK (64 * 1024)
 
@@ -168,7 +169,6 @@ static bool xx_vmarc_add(xx_vmarc_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_vmarc_be16(const uint8_t *data);
 static bool xx_vmarc_is_header(const uint8_t *data, int64_t size, int64_t offset);
 static int64_t xx_vmarc_align_up(int64_t value);
 static bool xx_vmarc_field(const uint8_t *field, char *out, size_t *length);
@@ -223,10 +223,6 @@ static const uint8_t xx_vmarc_cp037[256] = {
     0x59, 0x5A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
     0x38, 0x39, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-
-static uint16_t xx_vmarc_be16(const uint8_t *data) {
-    return (uint16_t)(((uint16_t)data[0] << 8) | (uint16_t)data[1]);
-}
 
 /* The 9-byte member signature. It is the format's only magic, and the walk
  * tries it at every 80-byte boundary, so it has to carry all nine bytes. */
@@ -381,7 +377,7 @@ static xx_vmarc_stream *xx_vmarc_parse(Abstractformat *self,
         if (!xx_vmarc_range_within(span, offset, data_offset - offset)) break;
         if (data_offset >= span) break;
 
-        params.lrecl = xx_vmarc_be16(header + XX_VMARC_LRECL_OFFSET);
+        params.lrecl = xx_data_get_u16(header + XX_VMARC_LRECL_OFFSET, 2, 0, true);
         /* 'F' versus 'V' is not cosmetic: it decides whether ONE or TWO
          * consecutive end-of-record symbols terminate the member, so getting
          * it wrong changes where the member ends and therefore where the
@@ -500,7 +496,7 @@ static bool xx_vmarc_decode(Abstractformat *self,
         return false;
     }
 
-    params.lrecl = xx_vmarc_be16(header + XX_VMARC_LRECL_OFFSET);
+    params.lrecl = xx_data_get_u16(header + XX_VMARC_LRECL_OFFSET, 2, 0, true);
     params.fixed =
         (header[XX_VMARC_RECFM_OFFSET] == (uint8_t)XX_VMARC_RECFM_FIXED);
     params.mode = (flags & XX_VMARC_FLAG_STORED) ? XX_VMARC_MODE_STORED

@@ -4,9 +4,10 @@
  */
 #include "xxfclib/formats/atari_cas/xx_atari_cas.h"
 #include "../atari_7800_a78/xx_eleventh_retro.h"
+#include "xxfclib/data/xx_data.h"
 static bool read_components(Abstractformat *f,pm_stream *s,er_blob *b) {
  uint32_t a=0,count=0,records=0;const uint8_t *p=b->p;
- while(a<b->n) {uint32_t z;uint16_t aux;char label[40];if(!er_poll(b) || ++count>2048 || !er_range(b,a,8)) return false;z=pm_le16(p+a+4);aux=pm_le16(p+a+6);if(!er_range(b,a+8,z)) return false;
+ while(a<b->n) {uint32_t z;uint16_t aux;char label[40];if(!er_poll(b) || ++count>2048 || !er_range(b,a,8)) return false;z=xx_data_get_u16(p+a+4, 2, 0, false);aux=xx_data_get_u16(p+a+6, 2, 0, false);if(!er_range(b,a+8,z)) return false;
   if(!a) {uint32_t i;if(xx_rt_memcmp(p,"FUJI",4) || aux || z>4096) return false;for(i=0;i<z;++i) if(p[8+i]<32 || p[8+i]>126) return false;if(!er_emit(f,s,b,"cassette-description.bin",0,8+z)) return false;}
   else if(!xx_rt_memcmp(p+a,"baud",4)) {if(z || !aux) return false;}
   else if(!xx_rt_memcmp(p+a,"data",4) || !xx_rt_memcmp(p+a,"fsk ",4)) {bool fsk=p[a]=='f';if(!z || (fsk && (z&1U))) return false;xx_rt_snprintf(label,sizeof(label),"record-%04u.%s",records++,fsk ? "fsk":"bin");if(!er_emit(f,s,b,label,a+8,z)) return false;}

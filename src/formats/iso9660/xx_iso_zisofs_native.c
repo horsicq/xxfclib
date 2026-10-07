@@ -9,6 +9,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ZF_POINTER_TABLE_LIMIT (16U * 1024U * 1024U)
 static const uint8_t XX_ZF_MAGIC_V1[8] = {
@@ -17,15 +18,6 @@ static const uint8_t XX_ZF_MAGIC_V1[8] = {
 static const uint8_t XX_ZF_MAGIC_V2[8] = {
     0xefU, 0x22U, 0x55U, 0xa1U, 0xbcU, 0x1bU, 0x95U, 0xa0U
 };
-
-static uint32_t xx_zf_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) |
-           ((uint32_t)p[2] << 16U) | ((uint32_t)p[3] << 24U);
-}
-
-static uint64_t xx_zf_le64(const uint8_t *p) {
-    return (uint64_t)xx_zf_le32(p) | ((uint64_t)xx_zf_le32(p + 4U) << 32U);
-}
 
 static bool xx_zf_read_at(xx_io_device *source, int64_t offset,
                           uint8_t *buffer, size_t size) {
@@ -78,17 +70,17 @@ bool xx_iso_zisofs_parse_record(const uint8_t *record, size_t record_size,
             if (version == 1U) {
                 if (entry[4] != 'p' || entry[5] != 'z' ||
                     entry[6] != 4U || entry[7] < 15U || entry[7] > 17U ||
-                    xx_zf_le32(entry + 8U) !=
+                    xx_data_get_u32(entry + 8U, 4, 0, false) !=
                         (((uint32_t)entry[12] << 24U) |
                          ((uint32_t)entry[13] << 16U) |
                          ((uint32_t)entry[14] << 8U) |
                          (uint32_t)entry[15])) return false;
-                found_info.uncompressed_size = xx_zf_le32(entry + 8U);
+                found_info.uncompressed_size = xx_data_get_u32(entry + 8U, 4, 0, false);
             } else {
                 if (entry[4] != 'P' || entry[5] != 'Z' ||
                     entry[6] != 6U || entry[7] < 15U || entry[7] > 20U)
                     return false;
-                found_info.uncompressed_size = xx_zf_le64(entry + 8U);
+                found_info.uncompressed_size = xx_data_get_u64(entry + 8U, 8, 0, false);
             }
             found_info.version = version;
             found_info.algorithm = 1U;
@@ -140,36 +132,36 @@ bool xx_iso_zisofs_extract(xx_io_device *source, int64_t data_offset,
     if (!xx_zf_read_at(source, data_offset, header, header_size)) goto done;
     if (info->version == 1U) {
         if (xx_mem_compare(header, XX_ZF_MAGIC_V1, 8U) != 0 ||
-            xx_zf_le32(header + 8U) != info->uncompressed_size ||
+            xx_data_get_u32(header + 8U, 4, 0, false) != info->uncompressed_size ||
             header[12] != 4U || header[13] != info->block_shift ||
             header[14] != 0U || header[15] != 0U) goto done;
     } else {
         if (xx_mem_compare(header, XX_ZF_MAGIC_V2, 8U) != 0 ||
             header[8] != 0U || header[9] != 6U || header[10] != 1U ||
             header[11] != info->block_shift ||
-            xx_zf_le64(header + 12U) != info->uncompressed_size)
+            xx_data_get_u64(header + 12U, 8, 0, false) != info->uncompressed_size)
             goto done;
     }
     pointers = (uint8_t *)xx_mem_alloc(table_size);
     if (!pointers || !xx_zf_read_at(source, data_offset + (int64_t)header_size,
                                     pointers, table_size)) goto done;
-    if ((info->version == 1U ? (uint64_t)xx_zf_le32(pointers)
-                               : xx_zf_le64(pointers)) != header_size + table_size)
+    if ((info->version == 1U ? (uint64_t)xx_data_get_u32(pointers, 4, 0, false)
+                               : xx_data_get_u64(pointers, 8, 0, false)) != header_size + table_size)
         goto done;
     for (i = 0U; i < blocks; ++i) {
         uint64_t a = info->version == 1U
-            ? (uint64_t)xx_zf_le32(pointers + (size_t)i * pointer_size)
-            : xx_zf_le64(pointers + (size_t)i * pointer_size);
+            ? (uint64_t)xx_data_get_u32(pointers + (size_t)i * pointer_size, 4, 0, false)
+            : xx_data_get_u64(pointers + (size_t)i * pointer_size, 8, 0, false);
         uint64_t b = info->version == 1U
-            ? (uint64_t)xx_zf_le32(pointers + (size_t)(i + 1U) * pointer_size)
-            : xx_zf_le64(pointers + (size_t)(i + 1U) * pointer_size);
+            ? (uint64_t)xx_data_get_u32(pointers + (size_t)(i + 1U) * pointer_size, 4, 0, false)
+            : xx_data_get_u64(pointers + (size_t)(i + 1U) * pointer_size, 8, 0, false);
         if (a > b || b > data_size || b - a > block_size * 2U + 65536U)
             goto done;
         if (b - a > max_packed) max_packed = (size_t)(b - a);
     }
     if ((info->version == 1U
-             ? (uint64_t)xx_zf_le32(pointers + (size_t)blocks * pointer_size)
-             : xx_zf_le64(pointers + (size_t)blocks * pointer_size)) != data_size)
+             ? (uint64_t)xx_data_get_u32(pointers + (size_t)blocks * pointer_size, 4, 0, false)
+             : xx_data_get_u64(pointers + (size_t)blocks * pointer_size, 8, 0, false)) != data_size)
         goto done;
     packed = (uint8_t *)xx_mem_alloc(max_packed ? max_packed : 1U);
     plain = (uint8_t *)xx_mem_alloc((size_t)block_size);
@@ -177,11 +169,11 @@ bool xx_iso_zisofs_extract(xx_io_device *source, int64_t data_offset,
     position = 0U;
     for (i = 0U; i < blocks; ++i) {
         uint64_t a = info->version == 1U
-            ? (uint64_t)xx_zf_le32(pointers + (size_t)i * pointer_size)
-            : xx_zf_le64(pointers + (size_t)i * pointer_size);
+            ? (uint64_t)xx_data_get_u32(pointers + (size_t)i * pointer_size, 4, 0, false)
+            : xx_data_get_u64(pointers + (size_t)i * pointer_size, 8, 0, false);
         uint64_t b = info->version == 1U
-            ? (uint64_t)xx_zf_le32(pointers + (size_t)(i + 1U) * pointer_size)
-            : xx_zf_le64(pointers + (size_t)(i + 1U) * pointer_size);
+            ? (uint64_t)xx_data_get_u32(pointers + (size_t)(i + 1U) * pointer_size, 4, 0, false)
+            : xx_data_get_u64(pointers + (size_t)(i + 1U) * pointer_size, 8, 0, false);
         size_t wanted = (size_t)(info->uncompressed_size - position < block_size
             ? info->uncompressed_size - position : block_size);
         size_t written = 0U;

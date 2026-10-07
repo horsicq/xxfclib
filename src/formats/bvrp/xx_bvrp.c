@@ -27,6 +27,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef BVRP
 #define XX_BVRP_FILE_TYPE XX_FILE_TYPE_BVRP
@@ -55,14 +56,6 @@ typedef struct bvrp_stream_s {
     size_t index;
     int64_t archive_size;
 } bvrp_stream;
-
-static uint16_t bvrp_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t bvrp_le32(const uint8_t *bytes) {
-    return (uint32_t)bvrp_le16(bytes) | ((uint32_t)bvrp_le16(bytes + 2U) << 16U);
-}
 
 static bool bvrp_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -218,10 +211,10 @@ static bool bvrp_parse(Abstractformat *format, bvrp_stream **result) {
           (header[6] == 0xa9U && header[7] == ' ' &&
            xx_rt_memcmp(header + 8U, "BVRP Software", 13U) == 0)) ||
         xx_rt_memcmp(header + 0x4cU, "\x00\x0d\x0a\x1a", 4U) != 0 ||
-        bvrp_le16(header + 0x50U) != BVRP_SIGNATURE)
+        xx_data_get_u16(header + 0x50U, 2, 0, false) != BVRP_SIGNATURE)
         return false;
-    first = bvrp_le32(header + 0x5cU);
-    count = bvrp_le16(header + 0x60U);
+    first = xx_data_get_u32(header + 0x5cU, 4, 0, false);
+    count = xx_data_get_u16(header + 0x60U, 2, 0, false);
     if (count == 0U || count > BVRP_MAX_MEMBERS || first < 0x62U ||
         (int64_t)first > size - (int64_t)BVRP_ENTRY_SIZE)
         return false;
@@ -241,13 +234,13 @@ static bool bvrp_parse(Abstractformat *format, bvrp_stream **result) {
         if (!bvrp_plausible_raw_name(entry, BVRP_NAME_SIZE) ||
             entry[0x1fU] != 0U)
             goto fail;
-        next = bvrp_le32(entry + 0x13U);
+        next = xx_data_get_u32(entry + 0x13U, 4, 0, false);
         /* Strict forward progress both derives the payload slice and
          * guarantees the walk terminates. */
         if ((int64_t)next < cursor + (int64_t)BVRP_ENTRY_SIZE ||
             (int64_t)next > size)
             goto fail;
-        crc_field = bvrp_le32(entry + 0x1bU);
+        crc_field = xx_data_get_u32(entry + 0x1bU, 4, 0, false);
         tail_size = crc_field >> 16U;
         while (name_size < BVRP_NAME_SIZE && entry[name_size] != 0U)
             ++name_size;
@@ -283,11 +276,11 @@ static bool bvrp_parse(Abstractformat *format, bvrp_stream **result) {
         member.data_offset = member.header_offset + (int64_t)BVRP_ENTRY_SIZE;
         member.packed_size = (int64_t)next - cursor -
                              (int64_t)BVRP_ENTRY_SIZE - tail_size;
-        member.unpacked_size = bvrp_le32(entry + 0x17U);
+        member.unpacked_size = xx_data_get_u32(entry + 0x17U, 4, 0, false);
         member.method = entry[0x12U];
         member.crc = crc_field & 0xffffU;
-        member.dos_time = ((uint32_t)bvrp_le16(entry + 0x0eU) << 16U) |
-                          bvrp_le16(entry + 0x10U);
+        member.dos_time = ((uint32_t)xx_data_get_u16(entry + 0x0eU, 2, 0, false) << 16U) |
+                          xx_data_get_u16(entry + 0x10U, 2, 0, false);
         if (!bvrp_add_member(stream, &member)) {
             xx_str_free(member.name);
             goto fail;

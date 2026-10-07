@@ -7,6 +7,7 @@
  */
 #include "xxfclib/formats/apple_rdos/xx_apple_rdos.h"
 #include "../apple_family/xx_apple_family_private.h"
+#include "xxfclib/data/xx_data.h"
 static bool rd_label(char *out,size_t cap,const uint8_t *p,bool leaf) {
     static const char hex[]="0123456789ABCDEF";size_t n=24,i,at=0;
     while(n && (p[n-1U]&0x7fU)==' ') {--n; } if(!n)return false;
@@ -39,7 +40,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if(e[0]==0x80U || !e[0])continue;
         type=e[24]&0x7fU;if(type==' ')continue;
         if(!rd_label(name,sizeof(name),e,true) || (type!='A' && type!='B' && type!='T' && type!='S'))goto done;
-        count=e[25];size=pm_le16(e+28);first=pm_le16(e+30);
+        count=e[25];size=xx_data_get_u16(e+28, 2, 0, false);first=xx_data_get_u16(e+30, 2, 0, false);
         if(!count || size>count*256U || first>=35U*logical || count>35U*logical-first || (i && first<last))goto done;
         last=first+count;out=af_alloc(&w,count*256U,true);if(!out)goto done;
         if(!rd_copy(&w,&b,variant,first,count,out)) {af_release(&w,out,count*256U);goto done;}

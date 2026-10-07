@@ -37,6 +37,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef RNCA
 #define XX_RNCA_FILE_TYPE XX_FILE_TYPE_RNCA
@@ -74,15 +75,6 @@ typedef struct rnca_stream_s {
     int64_t directory_size;
     int64_t archive_size;
 } rnca_stream;
-
-static uint16_t rnca_be16(const uint8_t *bytes) {
-    return (uint16_t)(((uint16_t)bytes[0] << 8U) | (uint16_t)bytes[1]);
-}
-
-static uint32_t rnca_be32(const uint8_t *bytes) {
-    return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
-           ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3];
-}
 
 static bool rnca_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
@@ -209,7 +201,7 @@ static bool rnca_fill_member(xx_io_device *device, rnca_member *member,
     member->method = raw[3];
     member->span = span;
     if (member->method == 0U) {
-        member->unpacked_size = rnca_be32(raw + 4U);
+        member->unpacked_size = xx_data_get_u32(raw + 4U, 4, 0, true);
         member->packed_size = member->unpacked_size;
         member->data_offset =
             member->header_offset + (int64_t)XX_RNCA_STORED_HEADER;
@@ -220,8 +212,8 @@ static bool rnca_fill_member(xx_io_device *device, rnca_member *member,
     if (span < (int64_t)XX_RNCA_PACKED_HEADER ||
         !rnca_read_at(device, member->header_offset, raw, sizeof(raw)))
         return false;
-    member->unpacked_size = rnca_be32(raw + 4U);
-    member->packed_size = rnca_be32(raw + 8U);
+    member->unpacked_size = xx_data_get_u32(raw + 4U, 4, 0, true);
+    member->packed_size = xx_data_get_u32(raw + 8U, 4, 0, true);
     member->data_offset =
         member->header_offset + (int64_t)XX_RNCA_PACKED_HEADER;
     return member->packed_size != 0U && member->unpacked_size != 0U &&
@@ -248,11 +240,11 @@ static bool rnca_parse(Abstractformat *format, rnca_stream **result) {
         xx_rt_memcmp(header, "RNCA", 4U) != 0)
         return false;
 
-    directory_size = rnca_be16(header + 4U);
+    directory_size = xx_data_get_u16(header + 4U, 2, 0, true);
     /* The two copies of the first-member offset must agree, the trailing byte
      * of the fixed header must be zero, and the directory must both hold at
      * least one entry and end before the end of the file. */
-    if (directory_size != (uint32_t)rnca_be16(header + 8U) ||
+    if (directory_size != (uint32_t)xx_data_get_u16(header + 8U, 2, 0, true) ||
         header[10] != 0U || directory_size < XX_RNCA_MIN_DIRECTORY ||
         (uint64_t)directory_size >= (uint64_t)size)
         return false;
@@ -279,7 +271,7 @@ static bool rnca_parse(Abstractformat *format, rnca_stream **result) {
             (uint64_t)cursor + 5U > (uint64_t)directory_size ||
             cursor - name_start > XX_RNCA_MAX_NAME || cursor == name_start)
             goto fail;
-        offset = rnca_be32(directory + cursor + 1U);
+        offset = xx_data_get_u32(directory + cursor + 1U, 4, 0, true);
         cursor += 5U;
         xx_mem_zero(&member, sizeof(member));
         if ((uint64_t)offset < (uint64_t)directory_size ||

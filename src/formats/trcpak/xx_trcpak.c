@@ -34,6 +34,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_TRCPAK_COPY_CHUNK (64 * 1024)
 
@@ -159,11 +160,6 @@ static bool xx_trcpak_decode(Abstractformat *self,
 #define XX_TRCPAK_NAME_SIZE 0x104
 #define XX_TRCPAK_MAX_MEMBERS 1000000
 
-static uint32_t xx_trcpak_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
 static xx_trcpak_stream *xx_trcpak_parse(Abstractformat *self,
                                          xx_pd_struct *pd) {
     static const uint8_t magic[7] = {'T', 'R', 'C', 'P', 'A', 'K', 0x00};
@@ -189,7 +185,7 @@ static xx_trcpak_stream *xx_trcpak_parse(Abstractformat *self,
 
     /* Signed on purpose: a count with the top bit set is a corrupt field, not
      * a two-billion-entry directory. */
-    count = (int64_t)(int32_t)xx_trcpak_le32(header + 0x0c);
+    count = (int64_t)(int32_t)xx_data_get_u32(header + 0x0c, 4, 0, false);
     if (count <= 0 || count > XX_TRCPAK_MAX_MEMBERS) return NULL;
     /* The whole defence against a false positive: seven magic bytes are cheap
      * to hit by accident, but a directory of count * 0x10c bytes that also
@@ -222,8 +218,8 @@ static xx_trcpak_stream *xx_trcpak_parse(Abstractformat *self,
         }
 
         /* Size first, offset second - the reverse of the usual ordering. */
-        data_size = (int64_t)(int32_t)xx_trcpak_le32(entry + 0x104);
-        data_offset = (int64_t)(int32_t)xx_trcpak_le32(entry + 0x108);
+        data_size = (int64_t)(int32_t)xx_data_get_u32(entry + 0x104, 4, 0, false);
+        data_offset = (int64_t)(int32_t)xx_data_get_u32(entry + 0x108, 4, 0, false);
         if (data_size < 0 || data_offset < 0) goto fail;
         /* A member extending past EOF is a rejection, not a truncated read. */
         if (!xx_trcpak_range_within(span, data_offset, data_size)) goto fail;

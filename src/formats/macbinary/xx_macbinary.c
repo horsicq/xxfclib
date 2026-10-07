@@ -64,6 +64,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* The enum entry is added by the coordinator; keep compiling until it is. */
 #ifdef MACBINARY
@@ -150,15 +151,6 @@ static const uint16_t k_mb_mac_roman_high[128] = {
     0xF8FF, 0x00D2, 0x00DA, 0x00DB, 0x00D9, 0x0131, 0x02C6, 0x02DC,
     0x00AF, 0x02D8, 0x02D9, 0x02DA, 0x00B8, 0x02DD, 0x02DB, 0x02C7
 };
-
-static uint32_t mb_be32(const uint8_t *bytes) {
-    return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
-           ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3];
-}
-
-static uint16_t mb_be16(const uint8_t *bytes) {
-    return (uint16_t)(((uint16_t)bytes[0] << 8U) | (uint16_t)bytes[1]);
-}
 
 static bool mb_read_at(xx_io_device *device, int64_t offset, void *buffer,
                        size_t size) {
@@ -363,13 +355,13 @@ static bool mb_parse(Abstractformat *format, bool verified_only,
     version_needed = header[MB_OFF_VERSION_NEEDED];
     verified = version_written >= MB_VERSION_II &&
                xx_crc16_xmodem_calc(0U, header, MB_OFF_CRC) ==
-                   mb_be16(header + MB_OFF_CRC);
+                   xx_data_get_u16(header + MB_OFF_CRC, 2, 0, true);
     if (verified) {
         /* A reader of revision III must refuse a file that says it needs a
          * later one; its layout is then not known. */
         if (version_needed > MB_VERSION_III) return false;
-        secondary_length = mb_be16(header + MB_OFF_SECONDARY);
-        comment_length = mb_be16(header + MB_OFF_COMMENT_LENGTH);
+        secondary_length = xx_data_get_u16(header + MB_OFF_SECONDARY, 2, 0, true);
+        comment_length = xx_data_get_u16(header + MB_OFF_COMMENT_LENGTH, 2, 0, true);
     } else {
         if (verified_only) return false;
         if (version_written >= MB_VERSION_II) {
@@ -379,9 +371,9 @@ static bool mb_parse(Abstractformat *format, bool verified_only,
              * says it does.  Without the CRC a secondary header length
              * cannot be trusted to move the data fork. */
             if (version_needed > version_written ||
-                mb_be16(header + MB_OFF_SECONDARY) != 0U)
+                xx_data_get_u16(header + MB_OFF_SECONDARY, 2, 0, true) != 0U)
                 return false;
-            comment_length = mb_be16(header + MB_OFF_COMMENT_LENGTH);
+            comment_length = xx_data_get_u16(header + MB_OFF_COMMENT_LENGTH, 2, 0, true);
             needs_exact_fit = true;
         } else if (!mb_all_zero(header + MB_OFF_COMMENT_LENGTH,
                                 MB_OFF_RESERVED - MB_OFF_COMMENT_LENGTH)) {
@@ -395,8 +387,8 @@ static bool mb_parse(Abstractformat *format, bool verified_only,
         if (!mb_header_is_plausible(header, name_length)) return false;
     }
 
-    data_length = mb_be32(header + MB_OFF_DATA_LENGTH);
-    rsrc_length = mb_be32(header + MB_OFF_RSRC_LENGTH);
+    data_length = xx_data_get_u32(header + MB_OFF_DATA_LENGTH, 4, 0, true);
+    rsrc_length = xx_data_get_u32(header + MB_OFF_RSRC_LENGTH, 4, 0, true);
     fork_limit = verified ? MB_MAX_FORK_VERIFIED : MB_MAX_FORK_UNVERIFIED;
     if (data_length > fork_limit || rsrc_length > fork_limit) return false;
     /* An unverified header describing no content at all is just a run of
@@ -432,10 +424,10 @@ static bool mb_parse(Abstractformat *format, bool verified_only,
     stream = (mb_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;
     stream->header_offset = format->base_address;
-    stream->type = mb_be32(header + MB_OFF_TYPE);
-    stream->creator = mb_be32(header + MB_OFF_CREATOR);
-    stream->created = mb_be32(header + MB_OFF_CREATED);
-    stream->modified = mb_be32(header + MB_OFF_MODIFIED);
+    stream->type = xx_data_get_u32(header + MB_OFF_TYPE, 4, 0, true);
+    stream->creator = xx_data_get_u32(header + MB_OFF_CREATOR, 4, 0, true);
+    stream->created = xx_data_get_u32(header + MB_OFF_CREATED, 4, 0, true);
+    stream->modified = xx_data_get_u32(header + MB_OFF_MODIFIED, 4, 0, true);
     stream->finder_flags = header[MB_OFF_FINDER_FLAGS];
     stream->protected_flag = header[MB_OFF_PROTECTED];
     stream->version_written = version_written;

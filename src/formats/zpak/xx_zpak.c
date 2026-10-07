@@ -52,6 +52,7 @@
 #include "xxfclib/algo/dcl/xx_dcl.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ZPAK_COPY_CHUNK (64 * 1024)
 
@@ -163,8 +164,6 @@ static bool xx_zpak_add(xx_zpak_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_zpak_le16(const uint8_t *data);
-static uint32_t xx_zpak_le32(const uint8_t *data);
 static bool xx_zpak_copy_name(const uint8_t *record, char *buffer);
 static xx_zpak_stream *xx_zpak_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_zpak_unchunk(const uint8_t *payload, size_t size, uint8_t **out, size_t *out_size);
@@ -174,15 +173,6 @@ static bool xx_zpak_decode(Abstractformat *self, const xx_zpak_member *member, u
 /* The payload of the first member can never start inside the header plus its
  * own directory record, so the reference rejects an offset at or below this.
  * It is one of only three value checks standing behind a four-byte magic. */
-
-static uint16_t xx_zpak_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_zpak_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* The name field is twelve bytes, NUL-padded. The reference keeps the raw
  * bytes as Latin-1; this reader refuses anything outside printable ASCII,
@@ -248,7 +238,7 @@ static xx_zpak_stream *xx_zpak_parse(Abstractformat *self, xx_pd_struct *pd) {
     }
     method = is_v2 ? XX_ZPAK_METHOD_DCL : XX_ZPAK_METHOD_LZW;
 
-    count = (uint32_t)xx_zpak_le16(probe + 4);
+    count = (uint32_t)xx_data_get_u16(probe + 4, 2, 0, false);
     /* An empty archive is not a thing this format writes, and a count of
      * zero would make every later check vacuous. */
     if (count == 0U || count > (uint32_t)XX_ZPAK_MAX_MEMBERS) return NULL;
@@ -259,17 +249,17 @@ static xx_zpak_stream *xx_zpak_parse(Abstractformat *self, xx_pd_struct *pd) {
      * further down - they are not: they run before a single directory byte
      * is read, so they are what stops a 64 KB directory being allocated for
      * a file that merely begins "zpak". */
-    if ((int32_t)xx_zpak_le32(probe + XX_ZPAK_HEADER_SIZE +
-                              XX_ZPAK_REC_DATAOFFSET) <=
+    if ((int32_t)xx_data_get_u32(probe + XX_ZPAK_HEADER_SIZE +
+                              XX_ZPAK_REC_DATAOFFSET, 4, 0, false) <=
         (int32_t)XX_ZPAK_MIN_DATA_OFFSET) {
         return NULL;
     }
-    if ((int32_t)xx_zpak_le32(probe + XX_ZPAK_HEADER_SIZE +
-                              XX_ZPAK_REC_COMPRESSED) < 0) {
+    if ((int32_t)xx_data_get_u32(probe + XX_ZPAK_HEADER_SIZE +
+                              XX_ZPAK_REC_COMPRESSED, 4, 0, false) < 0) {
         return NULL;
     }
-    if ((int32_t)xx_zpak_le32(probe + XX_ZPAK_HEADER_SIZE +
-                              XX_ZPAK_REC_UNCOMPRESSED) < 0) {
+    if ((int32_t)xx_data_get_u32(probe + XX_ZPAK_HEADER_SIZE +
+                              XX_ZPAK_REC_UNCOMPRESSED, 4, 0, false) < 0) {
         return NULL;
     }
 
@@ -307,17 +297,17 @@ static xx_zpak_stream *xx_zpak_parse(Abstractformat *self, xx_pd_struct *pd) {
         /* All three sizes are read as SIGNED 32-bit values, matching the
          * reference: a negative one is a malformed archive, not a member
          * four gigabytes long. */
-        if ((int32_t)xx_zpak_le32(record + XX_ZPAK_REC_DATAOFFSET) < 0 ||
-            (int32_t)xx_zpak_le32(record + XX_ZPAK_REC_COMPRESSED) < 0 ||
-            (int32_t)xx_zpak_le32(record + XX_ZPAK_REC_UNCOMPRESSED) < 0) {
+        if ((int32_t)xx_data_get_u32(record + XX_ZPAK_REC_DATAOFFSET, 4, 0, false) < 0 ||
+            (int32_t)xx_data_get_u32(record + XX_ZPAK_REC_COMPRESSED, 4, 0, false) < 0 ||
+            (int32_t)xx_data_get_u32(record + XX_ZPAK_REC_UNCOMPRESSED, 4, 0, false) < 0) {
             goto fail;
         }
         data_offset =
-            (int64_t)(int32_t)xx_zpak_le32(record + XX_ZPAK_REC_DATAOFFSET);
+            (int64_t)(int32_t)xx_data_get_u32(record + XX_ZPAK_REC_DATAOFFSET, 4, 0, false);
         compressed_size =
-            (int64_t)(int32_t)xx_zpak_le32(record + XX_ZPAK_REC_COMPRESSED);
+            (int64_t)(int32_t)xx_data_get_u32(record + XX_ZPAK_REC_COMPRESSED, 4, 0, false);
         uncompressed_size =
-            (int64_t)(int32_t)xx_zpak_le32(record + XX_ZPAK_REC_UNCOMPRESSED);
+            (int64_t)(int32_t)xx_data_get_u32(record + XX_ZPAK_REC_UNCOMPRESSED, 4, 0, false);
 
         /* The payload offset is absolute, so a record can point anywhere;
          * this containment test is the only thing that keeps a member's
@@ -351,8 +341,8 @@ static xx_zpak_stream *xx_zpak_parse(Abstractformat *self, xx_pd_struct *pd) {
         /* Published as (date << 16) | time; the record stores the date word
          * first, the reverse of the packed DOS order. */
         member.timestamp =
-            ((uint64_t)xx_zpak_le16(record + XX_ZPAK_REC_DOSDATE) << 16) |
-            (uint64_t)xx_zpak_le16(record + XX_ZPAK_REC_DOSTIME);
+            ((uint64_t)xx_data_get_u16(record + XX_ZPAK_REC_DOSDATE, 2, 0, false) << 16) |
+            (uint64_t)xx_data_get_u16(record + XX_ZPAK_REC_DOSTIME, 2, 0, false);
         /* The directory has no attribute byte: ZPAK stores flat names. */
         member.is_folder = false;
 

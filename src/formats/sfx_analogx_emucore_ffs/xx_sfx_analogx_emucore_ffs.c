@@ -39,6 +39,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* xxfc_defs.h is shared and is not edited from here, so the file-type
  * constant is resolved through the alias macro that the enumerator defines. */
@@ -126,11 +127,6 @@ static uint32_t lzh_d_len(uint32_t byte) {
 
 /* --- small helpers --------------------------------------------------------- */
 
-static uint32_t ffs_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
-
 static bool ffs_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     size_t done = 0U;
@@ -185,9 +181,9 @@ static bool ffs_header_at(xx_io_device *device, int64_t base, int64_t at,
         !ffs_read_at(device, base + at, header, sizeof(header)) ||
         xx_rt_memcmp(header, ffs_magic, sizeof(ffs_magic)) != 0)
         return false;
-    count = ffs_le32(header + 4);
+    count = xx_data_get_u32(header + 4, 4, 0, false);
     if (count == 0U || count > FFS_MAX_COUNT ||
-        count != (uint32_t)~ffs_le32(header + 8))
+        count != (uint32_t)~xx_data_get_u32(header + 8, 4, 0, false))
         return false;
     /* Every file needs a table entry and at least a record header. */
     if ((int64_t)count * (FFS_ENTRY + FFS_RECORD_HEADER) >
@@ -195,7 +191,7 @@ static bool ffs_header_at(xx_io_device *device, int64_t base, int64_t at,
         return false;
     info->ffs = at;
     info->count = count;
-    info->flags = ffs_le32(header + 12);
+    info->flags = xx_data_get_u32(header + 12, 4, 0, false);
     return true;
 }
 
@@ -234,7 +230,7 @@ static bool ffs_scan(Abstractformat *format, ffs_info *info,
                          format->base_address + info->size - FFS_TRAILER,
                          trailer, sizeof(trailer)))
             return false;
-        pointer = (int64_t)ffs_le32(trailer);
+        pointer = (int64_t)xx_data_get_u32(trailer, 4, 0, false);
         info->limit = info->size - FFS_TRAILER;
         if (pointer < 2 ||
             !ffs_header_at(format->device, format->base_address, pointer,
@@ -253,8 +249,8 @@ static bool ffs_scan(Abstractformat *format, ffs_info *info,
                      (size_t)info->count * FFS_ENTRY))
         goto done;
     for (index = 0U; index < info->count; ++index) {
-        table[index].hash = ffs_le32(raw + (size_t)index * FFS_ENTRY);
-        table[index].offset = ffs_le32(raw + (size_t)index * FFS_ENTRY + 4U);
+        table[index].hash = xx_data_get_u32(raw + (size_t)index * FFS_ENTRY, 4, 0, false);
+        table[index].offset = xx_data_get_u32(raw + (size_t)index * FFS_ENTRY + 4U, 4, 0, false);
         /* The stub binary-searches the hashes. */
         if (index != 0U && table[index].hash <= table[index - 1U].hash)
             goto done;
@@ -274,9 +270,9 @@ static bool ffs_scan(Abstractformat *format, ffs_info *info,
         if (at < table_end || info->limit - at < FFS_RECORD_HEADER ||
             !ffs_read_at(format->device, format->base_address + at, record,
                          sizeof(record)) ||
-            ffs_le32(record) != table[index].hash)
+            xx_data_get_u32(record, 4, 0, false) != table[index].hash)
             goto done;
-        end = at + FFS_RECORD_HEADER + (int64_t)ffs_le32(record + 4);
+        end = at + FFS_RECORD_HEADER + (int64_t)xx_data_get_u32(record + 4, 4, 0, false);
         if (end > info->limit) goto done;
         if (end > max_end) max_end = end;
     }
@@ -288,7 +284,7 @@ static bool ffs_scan(Abstractformat *format, ffs_info *info,
         if (info->origin != 0 && info->size - max_end >= FFS_TRAILER &&
             ffs_read_at(format->device, format->base_address + max_end,
                         trailer, sizeof(trailer)) &&
-            (int64_t)ffs_le32(trailer) == info->origin)
+            (int64_t)xx_data_get_u32(trailer, 4, 0, false) == info->origin)
             info->end = max_end + FFS_TRAILER;
     }
     result = true;
@@ -822,7 +818,7 @@ static void ffs_classify(const uint8_t *head, uint32_t length,
         uint32_t size;
         *method = FFS_METHOD_BROKEN;
         if (length < FFS_PAYLOAD_HEADER) return;
-        size = ~ffs_le32(head + 4U);
+        size = ~xx_data_get_u32(head + 4U, 4, 0, false);
         /* The stub refuses a size that is not positive as an int. */
         if (size == 0U || size > (uint32_t)INT32_MAX ||
             (uint64_t)size > ((uint64_t)length - FFS_PAYLOAD_HEADER +
@@ -834,7 +830,7 @@ static void ffs_classify(const uint8_t *head, uint32_t length,
         uint32_t size;
         *method = FFS_METHOD_BROKEN;
         if (length < FFS_PAYLOAD_HEADER) return;
-        size = ffs_le32(head + 4U);
+        size = xx_data_get_u32(head + 4U, 4, 0, false);
         if (size == 0U || size > (uint32_t)INT32_MAX) return;
         *method = XX_SFX_ANALOGX_EMUCORE_FFS_METHOD_CMP1;
         *unpacked = size;
@@ -1182,7 +1178,7 @@ static bool ffs_build_members(Abstractformat *format, const ffs_info *info,
         if (!ffs_read_at(format->device, format->base_address + member->record,
                          head, FFS_RECORD_HEADER))
             return false;
-        length = ffs_le32(head + 4U);
+        length = xx_data_get_u32(head + 4U, 4, 0, false);
         member->length = length;
         want = length < FFS_PAYLOAD_HEADER ? (size_t)length : FFS_PAYLOAD_HEADER;
         if (want != 0U &&

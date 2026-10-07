@@ -196,7 +196,7 @@ static bool pq_rowgroups(pq_cursor *c,unsigned type,Abstractformat *f,pm_stream 
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint64_t end=(uint64_t)pm_available(f),footer; uint8_t tail[8],*bytes=NULL; uint32_t length,seen=0; pq_info *info=NULL; pq_cursor c,schema,groups; int id,last=0; unsigned type; int64_t rows=-1,version=0; bool ok=false,have_schema=false,have_groups=false;
-    if(end<16 || !fd_equal(f,0,"PAR1",4) || !pm_read(f,(int64_t)end-8,tail,8) || xx_rt_memcmp(tail+4,"PAR1",4) || !(length=pm_le32(tail)) || length>8388608 || length>end-12) { return false; } footer=end-8-length;
+    if(end<16 || !fd_equal(f,0,"PAR1",4) || !pm_read(f,(int64_t)end-8,tail,8) || xx_rt_memcmp(tail+4,"PAR1",4) || !(length=xx_data_get_u32(tail, 4, 0, false)) || length>8388608 || length>end-12) { return false; } footer=end-8-length;
     bytes=(uint8_t *)xx_mem_alloc(length);info=(pq_info *)xx_mem_alloc(sizeof(*info)); if(!bytes || !info || !pm_read(f,(int64_t)footer,bytes,length)) goto done; xx_rt_memset(info,0,sizeof(*info));
     xx_mem_zero(&c,sizeof(c));c.p=bytes;c.at=0;c.end=length;c.pd=pd;c.work=&info->work;
     for(;;) { if(!pq_field(&c,&last,&id,&type,&seen)) goto done; if(!id) break;

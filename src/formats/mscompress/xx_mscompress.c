@@ -13,6 +13,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_MSCOMPRESS_PAYLOAD_NAME "payload"
 #define XX_MSCOMPRESS_MAX_INPUT ((uint64_t)1024U * 1024U * 1024U)
@@ -27,11 +28,6 @@ typedef struct xx_mscompress_header_s {
 } xx_mscompress_header;
 
 static void xx_mscompress_vtable_destroy(Abstractformat *self);
-
-static uint32_t xx_mscompress_read32le(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
 
 static bool xx_mscompress_read_exact_at(xx_io_device *device, int64_t offset,
                                         void *data, size_t size) {
@@ -77,7 +73,7 @@ static bool xx_mscompress_parse_header(const uint8_t *input, size_t size,
     if (size >= 14U && xx_rt_memcmp(input, szdd_magic, sizeof(szdd_magic)) == 0) {
         if (input[8] != 'A') return false;
         header->variant = XX_MSCOMPRESS_VARIANT_SZDD;
-        header->uncompressed_size = xx_mscompress_read32le(input + 10U);
+        header->uncompressed_size = xx_data_get_u32(input + 10U, 4, 0, false);
         header->data_offset = 14U;
         header->position_bias = 16U;
         header->missing_filename_char = input[9];
@@ -86,7 +82,7 @@ static bool xx_mscompress_parse_header(const uint8_t *input, size_t size,
          * assembly is deliberately a caller-level operation. */
         if (input[7] != 0xd1U) return false;
         header->variant = XX_MSCOMPRESS_VARIANT_SZ;
-        header->uncompressed_size = xx_mscompress_read32le(input + 8U);
+        header->uncompressed_size = xx_data_get_u32(input + 8U, 4, 0, false);
         header->data_offset = 12U;
         header->position_bias = 18U;
     } else {

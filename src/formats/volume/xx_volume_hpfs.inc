@@ -75,12 +75,12 @@ static bool vh_path(const char *parent,const uint8_t *name,size_t n,char *out,si
 }
 static bool vh_tree(vh_state *v,const uint8_t *b,size_t bt,size_t array,unsigned maxleaf,unsigned maxnode,mm_map *m,uint64_t size,uint64_t *next,unsigned depth) {
     unsigned i,n=b[bt+5]; bool internal=(b[bt]&0x80)!=0; uint32_t previous=0;
-    if(depth>32 || n>(internal?maxnode:maxleaf) || !n || b[bt+4]+n!=(internal?maxnode:maxleaf) || pm_le16(b+bt+6)!=8+n*(internal?8:12)) return false;
-    for(i=0;i<n;++i) { const uint8_t *e=b+array+i*(internal?8:12); uint32_t file=pm_le32(e);
+    if(depth>32 || n>(internal?maxnode:maxleaf) || !n || b[bt+4]+n!=(internal?maxnode:maxleaf) || xx_data_get_u16(b+bt+6, 2, 0, false)!=8+n*(internal?8:12)) return false;
+    for(i=0;i<n;++i) { const uint8_t *e=b+array+i*(internal?8:12); uint32_t file=xx_data_get_u32(e, 4, 0, false);
         if(!vr_poll(v->pd) || (i && file<=previous)) { return false; } previous=file;
         if(internal) {
-            uint8_t a[512]; uint32_t child=pm_le32(e+4);
-            if(!vh_seen(v,child) || !vh_read(v,child,a,sizeof(a)) || pm_le32(a)!=UINT32_C(0x37E40AAE) || pm_le32(a+4)!=child) return false;
+            uint8_t a[512]; uint32_t child=xx_data_get_u32(e+4, 4, 0, false);
+            if(!vh_seen(v,child) || !vh_read(v,child,a,sizeof(a)) || xx_data_get_u32(a, 4, 0, false)!=UINT32_C(0x37E40AAE) || xx_data_get_u32(a+4, 4, 0, false)!=child) return false;
             if(!vh_tree(v,a,12,20,40,60,m,size,next,depth+1)) return false;
             /* Separator keys are exclusive upper file-sector bounds. A
              * traversal that ignores them can accept allocations that the
@@ -88,7 +88,7 @@ static bool vh_tree(vh_state *v,const uint8_t *b,size_t bt,size_t array,unsigned
              * separator exactly; the final sentinel covers the entire span. */
             if(*next>(uint64_t)file*512 || (i+1<n && *next!=(uint64_t)file*512)) return false;
         } else {
-            uint32_t count=pm_le32(e+4),disk=pm_le32(e+8); uint64_t bytes=(uint64_t)count*512,logical=(uint64_t)file*512;
+            uint32_t count=xx_data_get_u32(e+4, 4, 0, false),disk=xx_data_get_u32(e+8, 4, 0, false); uint64_t bytes=(uint64_t)count*512,logical=(uint64_t)file*512;
             if(!count || !disk || disk>=v->sectors || count>v->sectors-disk || logical!=*next || bytes>UINT64_MAX-*next) return false;
             if(logical<size) {
                 uint64_t take=bytes<size-logical?bytes:size-logical;
@@ -107,7 +107,7 @@ static mm_map *vh_ea_map(vh_state *v,uint32_t sector,bool anode,uint64_t size) {
     mm_map *m=vh_map(v); uint64_t next=0; uint8_t b[512];
     if(!m || size>16U*1024U*1024U || !sector || sector>=v->sectors) goto fail;
     if(anode) {
-        if(!vh_seen(v,sector) || !vh_read(v,sector,b,sizeof(b)) || pm_le32(b)!=UINT32_C(0x37E40AAE) || pm_le32(b+4)!=sector || !vh_tree(v,b,12,20,40,60,m,size,&next,0) || next<size) goto fail;
+        if(!vh_seen(v,sector) || !vh_read(v,sector,b,sizeof(b)) || xx_data_get_u32(b, 4, 0, false)!=UINT32_C(0x37E40AAE) || xx_data_get_u32(b+4, 4, 0, false)!=sector || !vh_tree(v,b,12,20,40,60,m,size,&next,0) || next<size) goto fail;
     } else if(size>(v->sectors-sector)*512 || !vh_extent(v,m,sector,size)) goto fail;
     return m;
 fail: vh_drop(v,m); return NULL;
@@ -131,14 +131,14 @@ static bool vh_ea_scan(vh_state *v,mm_map *source,uint64_t at,uint64_t size,mm_m
     uint64_t end; uint8_t b[268];
     if(at>source->size || size>source->size-at) { return false; } end=at+size;
     while(at<end) { unsigned n,value,i; size_t header; uint64_t stride;
-        if(end-at<4 || !vh_map_read(v,source,at,b,4)) { return false; } n=b[1]; value=pm_le16(b+2); stride=5U+n+value;
+        if(end-at<4 || !vh_map_read(v,source,at,b,4)) { return false; } n=b[1]; value=xx_data_get_u16(b+2, 2, 0, false); stride=5U+n+value;
         if(!n || stride>end-at || (b[0]&~0x83U) || ((b[0]&2) && !(b[0]&1)) || ((b[0]&1) && value!=8)) return false;
         header=5U+n+((b[0]&1)?8U:0U); if(!vh_map_read(v,source,at+4,b+4,header-4) || b[4+n]) return false;
         for(i=0;i<n;++i) if(!b[4+i]) return false;
         if(n==7 && !xx_rt_memcmp(b+4,"SYMLINK",7)) {
-            uint64_t length=(b[0]&1)?pm_le32(b+5+n):value;
+            uint64_t length=(b[0]&1)?xx_data_get_u32(b+5+n, 4, 0, false):value;
             if(*target || length>v->max_member) return false;
-            *target=(b[0]&1)?vh_ea_map(v,pm_le32(b+9+n),(b[0]&2)!=0,length):vh_slice(v,source,at+5+n,length);
+            *target=(b[0]&1)?vh_ea_map(v,xx_data_get_u32(b+9+n, 4, 0, false),(b[0]&2)!=0,length):vh_slice(v,source,at+5+n,length);
             if(!*target) return false;
         }
         at+=stride;
@@ -146,14 +146,14 @@ static bool vh_ea_scan(vh_state *v,mm_map *source,uint64_t at,uint64_t size,mm_m
     return true;
 }
 static bool vh_symlink(vh_state *v,uint32_t sector,const uint8_t b[512],mm_map **target) {
-    mm_map *source=NULL; uint32_t external=pm_le32(b+44); unsigned resident=pm_le16(b+52),offset=pm_le16(b+184),acl=pm_le16(b+40); bool ok=false;
+    mm_map *source=NULL; uint32_t external=xx_data_get_u32(b+44, 4, 0, false); unsigned resident=xx_data_get_u16(b+52, 2, 0, false),offset=xx_data_get_u16(b+184, 2, 0, false),acl=xx_data_get_u16(b+40, 2, 0, false); bool ok=false;
     *target=NULL;
     if(resident) {
         if(offset<196 || offset>512 || acl>512-offset || resident>512-offset-acl) goto done;
         source=vh_ea_map(v,sector,false,512); if(!source || !vh_ea_scan(v,source,offset+acl,resident,target)) goto done; vh_drop(v,source); source=NULL;
     }
     if(external) {
-        source=vh_ea_map(v,pm_le32(b+48),(pm_le16(b+54)&2)!=0,external);
+        source=vh_ea_map(v,xx_data_get_u32(b+48, 4, 0, false),(xx_data_get_u16(b+54, 2, 0, false)&2)!=0,external);
         if(!source || !vh_ea_scan(v,source,0,external,target)) goto done;
     }
     ok=true;
@@ -162,17 +162,17 @@ done: vh_drop(v,source); if(!ok) { vh_drop(v,*target); *target=NULL; } return ok
 static bool vh_fnode(vh_state *v,uint32_t sector,const char *path,bool directory,uint32_t directory_size,unsigned depth);
 static bool vh_dnode(vh_state *v,uint32_t sector,const char *path,unsigned depth) {
     uint8_t b[2048]; size_t at,end; bool last=false;
-    if(depth>64 || !vh_seen(v,sector) || !vh_read(v,sector,b,sizeof(b)) || pm_le32(b)!=UINT32_C(0x77E40AAE) || pm_le32(b+16)!=sector) return false;
-    end=pm_le32(b+4); if(end<52 || end>sizeof(b) || (end&3)) return false;
+    if(depth>64 || !vh_seen(v,sector) || !vh_read(v,sector,b,sizeof(b)) || xx_data_get_u32(b, 4, 0, false)!=UINT32_C(0x77E40AAE) || xx_data_get_u32(b+16, 4, 0, false)!=sector) return false;
+    end=xx_data_get_u32(b+4, 4, 0, false); if(end<52 || end>sizeof(b) || (end&3)) return false;
     for(at=20;at<end;) { const uint8_t *e=b+at; uint16_t len; unsigned flags,n; char child[4097];
         if(end-at<32 || last || !vr_poll(v->pd)) return false;
-        len=pm_le16(e); flags=e[2]; n=e[30];
+        len=xx_data_get_u16(e, 2, 0, false); flags=e[2]; n=e[30];
         if(len<32 || (len&3) || len>end-at || 31U+n+((flags&4)?4U:0U)>len) return false;
-        if(flags&4) { uint32_t down=pm_le32(e+len-4); if(!vh_dnode(v,down,path,depth+1)) return false; }
+        if(flags&4) { uint32_t down=xx_data_get_u32(e+len-4, 4, 0, false); if(!vh_dnode(v,down,path,depth+1)) return false; }
         if(flags&8) { if(n!=1 || e[31]!=255) return false; last=true; }
         else if(flags&1) { if(n!=2 || e[31]!=1 || e[32]!=1) return false; }
         else {
-            if(!vh_path(path,e+31,n,child,sizeof(child)) || !vh_fnode(v,pm_le32(e+4),child,(e[3]&0x10)!=0,pm_le32(e+12),depth+1)) return false;
+            if(!vh_path(path,e+31,n,child,sizeof(child)) || !vh_fnode(v,xx_data_get_u32(e+4, 4, 0, false),child,(e[3]&0x10)!=0,xx_data_get_u32(e+12, 4, 0, false),depth+1)) return false;
         }
         at+=len;
     }
@@ -180,38 +180,38 @@ static bool vh_dnode(vh_state *v,uint32_t sector,const char *path,unsigned depth
 }
 static bool vh_fnode(vh_state *v,uint32_t sector,const char *path,bool directory,uint32_t directory_size,unsigned depth) {
     uint8_t b[512]; mm_map *m=NULL; uint64_t size,next=0;
-    if(depth>64 || !vh_seen(v,sector) || !vh_read(v,sector,b,sizeof(b)) || pm_le32(b)!=UINT32_C(0xF7E40AAE) || (((pm_le16(b+54)&0x100)!=0)!=directory)) return false;
-    size=pm_le32(b+160); if(!vh_symlink(v,sector,b,&m)) return false;
+    if(depth>64 || !vh_seen(v,sector) || !vh_read(v,sector,b,sizeof(b)) || xx_data_get_u32(b, 4, 0, false)!=UINT32_C(0xF7E40AAE) || (((xx_data_get_u16(b+54, 2, 0, false)&0x100)!=0)!=directory)) return false;
+    size=xx_data_get_u32(b+160, 4, 0, false); if(!vh_symlink(v,sector,b,&m)) return false;
     if(m) { if(directory || size!=directory_size) { vh_drop(v,m); return false; } return vh_named(v,path,m,false); }
     if(directory) {
         if(*path && !vh_named(v,path,NULL,true)) return false;
-        if((b[56]&0x80) || b[60]!=7 || b[61]!=1 || pm_le16(b+62)!=20 || pm_le32(b+64)!=0 || pm_le32(b+68)!=4) return false;
-        return vh_dnode(v,pm_le32(b+72),path,depth+1);
+        if((b[56]&0x80) || b[60]!=7 || b[61]!=1 || xx_data_get_u16(b+62, 2, 0, false)!=20 || xx_data_get_u32(b+64, 4, 0, false)!=0 || xx_data_get_u32(b+68, 4, 0, false)!=4) return false;
+        return vh_dnode(v,xx_data_get_u32(b+72, 4, 0, false),path,depth+1);
     }
     if(size!=directory_size || size>v->max_member) return false;
     m=vh_map(v); if(!m) return false;
     if(size && (!vh_tree(v,b,56,64,8,12,m,size,&next,0) || next<size)) { mm_free(m); return false; }
     if(!size && b[61]!=0) { if(!vh_tree(v,b,56,64,8,12,m,0,&next,0)) { mm_free(m); return false; } }
-    if(!size && !b[61] && ((b[56]&0x80) || b[60]!=8 || pm_le16(b+62)!=8)) { mm_free(m); return false; }
+    if(!size && !b[61] && ((b[56]&0x80) || b[60]!=8 || xx_data_get_u16(b+62, 2, 0, false)!=8)) { mm_free(m); return false; }
     return vh_named(v,path,m,false);
 }
 static bool vr_hpfs_files(Abstractformat *f,pm_stream *s,xx_pd_struct *pd,const uint8_t *super) {
     vh_state v; uint8_t spare[512]; const xx_var *opt; bool ok; xx_volume *r=(xx_volume *)f;
-    xx_mem_zero(&v,sizeof(v)); v.f=f; v.s=s; v.pd=pd; v.sectors=pm_le32(super+16); v.limit=UINT64_C(256)*1024*1024; v.used=UINT64_C(512)*1024+xx_get_file_buffer_size(); v.max_member=UINT64_MAX;
+    xx_mem_zero(&v,sizeof(v)); v.f=f; v.s=s; v.pd=pd; v.sectors=xx_data_get_u32(super+16, 4, 0, false); v.limit=UINT64_C(256)*1024*1024; v.used=UINT64_C(512)*1024+xx_get_file_buffer_size(); v.max_member=UINT64_MAX;
     opt=xx_format_resolve_extra_parameter(f,r->parse_options,XX_META_ID_OPT_MEMORY_LIMIT); if(opt && xx_var_get_u64(opt)<v.limit) v.limit=xx_var_get_u64(opt);
     opt=xx_format_resolve_extra_parameter(f,r->parse_options,XX_META_ID_OPT_MAX_MEMBER_SIZE); if(opt) v.max_member=xx_var_get_u64(opt);
-    if(v.limit<v.used || !vh_read(&v,17,spare,sizeof(spare)) || pm_le32(spare)!=UINT32_C(0xF9911849) || pm_le32(spare+4)!=UINT32_C(0xFA5229C5)) return false;
-    if(pm_le32(spare+16)) {
-        uint8_t hot[2048]; uint32_t used=pm_le32(spare+16),slots=pm_le32(spare+20),table=pm_le32(spare+12); unsigned i,j;
+    if(v.limit<v.used || !vh_read(&v,17,spare,sizeof(spare)) || xx_data_get_u32(spare, 4, 0, false)!=UINT32_C(0xF9911849) || xx_data_get_u32(spare+4, 4, 0, false)!=UINT32_C(0xFA5229C5)) return false;
+    if(xx_data_get_u32(spare+16, 4, 0, false)) {
+        uint8_t hot[2048]; uint32_t used=xx_data_get_u32(spare+16, 4, 0, false),slots=xx_data_get_u32(spare+20, 4, 0, false),table=xx_data_get_u32(spare+12, 4, 0, false); unsigned i,j;
         if(!table || used>slots || slots>256 || !vh_read(&v,table,hot,sizeof(hot))) return false;
-        for(i=0;i<used;++i) { v.hot_from[i]=pm_le32(hot+i*4); v.hot_to[i]=pm_le32(hot+(slots+i)*4);
+        for(i=0;i<used;++i) { v.hot_from[i]=xx_data_get_u32(hot+i*4, 4, 0, false); v.hot_to[i]=xx_data_get_u32(hot+(slots+i)*4, 4, 0, false);
             if(!v.hot_from[i] || !v.hot_to[i] || v.hot_from[i]>=v.sectors || v.hot_to[i]>=v.sectors || v.hot_from[i]==v.hot_to[i]) return false;
             for(j=0;j<i;++j) if(v.hot_from[j]==v.hot_from[i] || v.hot_to[j]==v.hot_to[i]) return false;
         }
         for(i=0;i<used;++i) for(j=0;j<used;++j) if(v.hot_to[i]==v.hot_from[j]) return false;
         v.hot_count=used;
     }
-    ok=vh_fnode(&v,pm_le32(super+12),"",true,0,0); xx_mem_free(v.visited);
+    ok=vh_fnode(&v,xx_data_get_u32(super+12, 4, 0, false),"",true,0,0); xx_mem_free(v.visited);
     if(!ok) { if(pd && !pd->last_error) xx_pd_set_error(pd,1,"HPFS directory or allocation tree is invalid or exceeds the operation limits"); return false; }
     r->capability="HPFS directory and file extraction";
     if(!vh_budget(&v,4096+2*sizeof(pm_member)+sizeof(vc_member_context)) || !vr_info(f,s,"Integrity scope: directory and allocation trees are validated; TEST reads all listed file bytes.\nSYMLINK EA targets are exported as ordinary bytes; resident, external and indirect EA allocations are mapped.\nLegacy name bytes use Latin-1 conversion. EA lists/targets are bounded to 16 MiB.\n")) return false;

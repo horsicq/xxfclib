@@ -34,11 +34,11 @@ static bool vd_table_open(Abstractformat *f, int64_t at, vd_table *table,
     xx_mem_zero(table, sizeof(*table));
     if (!wg_range(limit, (uint64_t)at, sizeof(header)) ||
         !pm_read(f, at, header, sizeof(header))) return false;
-    size = pm_le32(header);
-    count = pm_le16(header + 16);
+    size = xx_data_get_u32(header, 4, 0, false);
+    count = xx_data_get_u16(header + 16, 2, 0, false);
     if (size < 20U || size > VD_TABLE_MAX || !count || count > 256U ||
-        pm_le32(header + 4) || pm_le32(header + 8) != 0x5bf5a3a7U ||
-        pm_le32(header + 12) || pm_le16(header + 18) != 20U ||
+        xx_data_get_u32(header + 4, 4, 0, false) || xx_data_get_u32(header + 8, 4, 0, false) != 0x5bf5a3a7U ||
+        xx_data_get_u32(header + 12, 4, 0, false) || xx_data_get_u16(header + 18, 2, 0, false) != 20U ||
         size < 20U + (uint32_t)count * 12U ||
         !wg_range(limit, (uint64_t)at, size)) return false;
     data = (uint8_t *)xx_mem_alloc(size);
@@ -51,12 +51,12 @@ static bool vd_table_open(Abstractformat *f, int64_t at, vd_table *table,
         size_t node_end, nodes, symbols;
         uint8_t *slot = table->slots + i * VD_SLOT_SIZE;
         if (wg_stop(pd) || size - cursor < 12U) goto done;
-        block = pm_le16(data + cursor);
+        block = xx_data_get_u16(data + cursor, 2, 0, false);
         first = data[cursor + 2U]; last = data[cursor + 3U];
-        node_at = pm_le16(data + cursor + 8U);
-        map_at = pm_le16(data + cursor + 10U);
+        node_at = xx_data_get_u16(data + cursor + 8U, 2, 0, false);
+        map_at = xx_data_get_u16(data + cursor + 10U, 2, 0, false);
         if (first > last || data[cursor + 4U] || data[cursor + 5U] ||
-            pm_le16(data + cursor + 6U) != 12U ||
+            xx_data_get_u16(data + cursor + 6U, 2, 0, false) != 12U ||
             node_at <= 12U || node_at - 12U > VD_NODE_OFFSET ||
             block < node_at || block > size - cursor) goto done;
         node_end = map_at ? map_at : block;
@@ -79,7 +79,7 @@ static bool vd_table_open(Abstractformat *f, int64_t at, vd_table *table,
         unsigned symbol;
         if (wg_stop(pd)) goto done;
         for (symbol = 0U; symbol < 256U; ++symbol) {
-            if (pm_le16(slot + VD_MAP_OFFSET + symbol * 2U) >= count)
+            if (xx_data_get_u16(slot + VD_MAP_OFFSET + symbol * 2U, 2, 0, false) >= count)
                 goto done;
         }
     }
@@ -116,7 +116,7 @@ static bool vd_decode(const vd_table *table, const uint8_t *packed,
             if (out >= raw_size) return false;
             symbol = context[VD_NODE_OFFSET + node];
             plain[out++] = (uint8_t)symbol;
-            next = pm_le16(context + VD_MAP_OFFSET + symbol * 2U);
+            next = xx_data_get_u16(context + VD_MAP_OFFSET + symbol * 2U, 2, 0, false);
             if (next >= table->contexts) return false;
             context = table->slots + (size_t)next * VD_SLOT_SIZE;
             node = 0U;
@@ -150,26 +150,26 @@ static bool vd_candidate(Abstractformat *f, pm_stream *stream,
         !pm_read(f, banner, header, sizeof(header)) ||
         xx_rt_memcmp(header, "OpenVMS DCX FTSV Compressed File", 32) ||
         xx_rt_memcmp(header + 34, "\x11\x11\x22\x22", 4)) return false;
-    fdl_raw = pm_le16(header + 32);
-    fdl_table_size = pm_le32(header + 38);
-    if (!fdl_raw || pm_le32(header + 42) != fdl_table_size ||
+    fdl_raw = xx_data_get_u16(header + 32, 2, 0, false);
+    fdl_table_size = xx_data_get_u32(header + 38, 4, 0, false);
+    if (!fdl_raw || xx_data_get_u32(header + 42, 4, 0, false) != fdl_table_size ||
         !vd_table_open(f, banner + 42, &first, pd)) goto done;
     at = first.end;
     if (!wg_range(limit, (uint64_t)at, 8U) ||
         !pm_read(f, at, row, 8U) ||
         xx_rt_memcmp(row, group_head, sizeof(group_head))) goto done;
-    fdl_packed = pm_le16(row + 4);
-    if (!fdl_packed || pm_le16(row + 6) != fdl_raw ||
+    fdl_packed = xx_data_get_u16(row + 4, 2, 0, false);
+    if (!fdl_packed || xx_data_get_u16(row + 6, 2, 0, false) != fdl_raw ||
         !wg_range(limit, (uint64_t)at + 8U, fdl_packed)) goto done;
     first_data = at + 8;
     first_end = first_data + fdl_packed;
     if (!wg_range(limit, (uint64_t)first_end, sizeof(next_head) + 8U) ||
         !pm_read(f, first_end, row, sizeof(row)) ||
         xx_rt_memcmp(row, next_head, sizeof(next_head))) goto done;
-    sav_table_size = pm_le32(row + 8);
+    sav_table_size = xx_data_get_u32(row + 8, 4, 0, false);
     if (!sav_table_size || !vd_table_open(f, first_end + 12, &second, pd) ||
         !pm_read(f, first_end + 12, row, 4U) ||
-        pm_le32(row) != sav_table_size) goto done;
+        xx_data_get_u32(row, 4, 0, false) != sav_table_size) goto done;
     at = second.end;
     if (!wg_range(limit, (uint64_t)at, 2U) ||
         !pm_read(f, at, row, 2U) ||
@@ -183,8 +183,8 @@ static bool vd_candidate(Abstractformat *f, pm_stream *stream,
         if (!wg_range(limit, (uint64_t)at, 6U) ||
             !pm_read(f, at, row, 6U) ||
             row[0] != 0x44U || row[1] != 0x44U) goto done;
-        member_packed = pm_le16(row + 2);
-        member_raw = pm_le16(row + 4);
+        member_packed = xx_data_get_u16(row + 2, 2, 0, false);
+        member_raw = xx_data_get_u16(row + 4, 2, 0, false);
         if (!member_packed || !member_raw ||
             ++frames > VD_MAX_FRAMES ||
             sav_raw > VD_OUTPUT_MAX - member_raw ||
@@ -209,8 +209,8 @@ static bool vd_candidate(Abstractformat *f, pm_stream *stream,
     while (at < tail) {
         uint16_t member_packed, member_raw;
         if (wg_stop(pd) || !pm_read(f, at, row, 6U)) goto done;
-        member_packed = pm_le16(row + 2);
-        member_raw = pm_le16(row + 4);
+        member_packed = xx_data_get_u16(row + 2, 2, 0, false);
+        member_raw = xx_data_get_u16(row + 4, 2, 0, false);
         if ((uint64_t)end + member_raw > sav_raw ||
             !pm_read(f, at + 6, packed, member_packed) ||
             !vd_decode(&second, packed, member_packed, sav + end,

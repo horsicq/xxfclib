@@ -13,14 +13,14 @@ static bool sm_palette(const uint8_t *b,uint64_t *q,uint64_t end) {
  if(stop-at>3) {return false; } *q=stop;return true;
 }
 static bool ng_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
- uint32_t frames=pm_le32(b+12),flags=pm_le32(b+20),trees=pm_le32(b+52),i,j;uint64_t at,types;uint32_t rate[7],af[7],maximum[7];int32_t duration=(int32_t)pm_le32(b+16);
- if(!pm_le32(b+4)||pm_le32(b+4)>8192||!pm_le32(b+8)||pm_le32(b+8)>8192||!frames||frames>4092||flags>7||!duration||duration==(-2147483647-1)||duration>21474836||!trees||trees>16777216)return false;
+ uint32_t frames=xx_data_get_u32(b+12, 4, 0, false),flags=xx_data_get_u32(b+20, 4, 0, false),trees=xx_data_get_u32(b+52, 4, 0, false),i,j;uint64_t at,types;uint32_t rate[7],af[7],maximum[7];int32_t duration=(int32_t)xx_data_get_u32(b+16, 4, 0, false);
+ if(!xx_data_get_u32(b+4, 4, 0, false)||xx_data_get_u32(b+4, 4, 0, false)>8192||!xx_data_get_u32(b+8, 4, 0, false)||xx_data_get_u32(b+8, 4, 0, false)>8192||!frames||frames>4092||flags>7||!duration||duration==(-2147483647-1)||duration>21474836||!trees||trees>16777216)return false;
  frames+=flags&1U;types=104+(uint64_t)frames*4;at=types+frames;if(!ng_span(at,trees,n))return false;
- for(i=0;i<4;++i)if(pm_le32(b+56+i*4)>16777216)return false;
- for(i=0;i<7;++i){uint32_t r=pm_le32(b+72+i*4);rate[i]=r&0xffffffU;af[i]=r>>24;maximum[i]=pm_le32(b+24+i*4);if(rate[i]&&(rate[i]>192000||(af[i]&3U)))return false;if(!rate[i]&&af[i])return false;}
+ for(i=0;i<4;++i)if(xx_data_get_u32(b+56+i*4, 4, 0, false)>16777216)return false;
+ for(i=0;i<7;++i){uint32_t r=xx_data_get_u32(b+72+i*4, 4, 0, false);rate[i]=r&0xffffffU;af[i]=r>>24;maximum[i]=xx_data_get_u32(b+24+i*4, 4, 0, false);if(rate[i]&&(rate[i]>192000||(af[i]&3U)))return false;if(!rate[i]&&af[i])return false;}
  if(!ng_emit(f,s,"smacker_header_tables.bin",0,at,n)||!ng_emit(f,s,"smacker_encoded_trees.bin",at,trees,n)) {return false; } at+=trees;
- for(i=0;i<frames;++i){uint64_t begin=at,end,q;uint32_t size=pm_le32(b+104+(uint64_t)i*4)&~3U,type=b[types+i];if(ng_stop(pd)||!size||!ng_span(at,size,n))return false;end=at+size;q=at;if((type&1)&&!sm_palette(b,&q,end))return false;
-  for(j=0;j<7;++j)if(type&(2U<<j)){uint32_t bytes,decoded;bool prefix=(af[j]&(0x80U|0x08U|0x04U))!=0||(af[j]&0x20U)==0;if(!rate[j]||!ng_span(q,4,end))return false;bytes=pm_le32(b+q);if(bytes<4+(prefix?4U:0U)||!ng_span(q,bytes,end))return false;decoded=prefix?pm_le32(b+q+4):bytes-4;if(!decoded||(maximum[j]&&decoded>maximum[j]))return false;if(!(af[j]&(0x80U|0x08U|0x04U))&&((bytes-4-(prefix?4U:0U))%(((af[j]&0x10U)?2U:1U)*((af[j]&0x20U)?2U:1U))))return false;q+=bytes;}
+ for(i=0;i<frames;++i){uint64_t begin=at,end,q;uint32_t size=xx_data_get_u32(b+104+(uint64_t)i*4, 4, 0, false)&~3U,type=b[types+i];if(ng_stop(pd)||!size||!ng_span(at,size,n))return false;end=at+size;q=at;if((type&1)&&!sm_palette(b,&q,end))return false;
+  for(j=0;j<7;++j)if(type&(2U<<j)){uint32_t bytes,decoded;bool prefix=(af[j]&(0x80U|0x08U|0x04U))!=0||(af[j]&0x20U)==0;if(!rate[j]||!ng_span(q,4,end))return false;bytes=xx_data_get_u32(b+q, 4, 0, false);if(bytes<4+(prefix?4U:0U)||!ng_span(q,bytes,end))return false;decoded=prefix?xx_data_get_u32(b+q+4, 4, 0, false):bytes-4;if(!decoded||(maximum[j]&&decoded>maximum[j]))return false;if(!(af[j]&(0x80U|0x08U|0x04U))&&((bytes-4-(prefix?4U:0U))%(((af[j]&0x10U)?2U:1U)*((af[j]&0x20U)?2U:1U))))return false;q+=bytes;}
   if(q>=end||!ng_emit(f,s,"smacker_encoded_frame.bin",begin,size,n)) {return false; } at=end;
  }
  if(at!=n) {return false; } s->size=(int64_t)n;return true;

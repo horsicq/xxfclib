@@ -31,6 +31,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef EA_FSH
 #define XX_EA_FSH_FILE_TYPE XX_FILE_TYPE_EA_FSH
@@ -66,11 +67,6 @@ typedef struct xx_ea_fsh_stream_s {
 static void xx_ea_fsh_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint32_t xx_ea_fsh_u32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
-           ((uint32_t)p[3] << 24);
-}
 
 static bool xx_ea_fsh_read_from(xx_io_device *dev, int64_t offset,
                                 uint8_t *out, size_t size) {
@@ -256,8 +252,8 @@ static xx_ea_fsh_stream *xx_ea_fsh_parse(Abstractformat *self,
     for (k = 12U; k < 16U; ++k) {
         if (header[k] < 0x20U || header[k] > 0x7EU) return NULL;
     }
-    declared = (int64_t)xx_ea_fsh_u32(header + 4);
-    count = xx_ea_fsh_u32(header + 8);
+    declared = (int64_t)xx_data_get_u32(header + 4, 4, 0, false);
+    count = xx_data_get_u32(header + 8, 4, 0, false);
     if (count > XX_EA_FSH_MAX_MEMBERS) return NULL;
     dir_end = XX_EA_FSH_HEADER_SIZE + (int64_t)count * XX_EA_FSH_ENTRY_SIZE;
     if (declared < dir_end || dir_end > span) return NULL;
@@ -292,7 +288,7 @@ static xx_ea_fsh_stream *xx_ea_fsh_parse(Abstractformat *self,
         }
         for (j = 0U; j < n; ++j, ++i) {
             const uint8_t *e = chunk + (size_t)j * XX_EA_FSH_ENTRY_SIZE;
-            int64_t offset = (int64_t)xx_ea_fsh_u32(e + 4);
+            int64_t offset = (int64_t)xx_data_get_u32(e + 4, 4, 0, false);
             xx_ea_fsh_member *m = &s->items[i];
             if (offset < dir_end || offset > end - XX_EA_FSH_BITMAP_HEADER) {
                 goto fail;

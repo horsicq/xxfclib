@@ -9,6 +9,7 @@
 #include "xxfclib/strings/xx_string.h"
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef OBERON
 #define OBERON_TYPE XX_FILE_TYPE_OBERON
@@ -34,10 +35,6 @@ typedef struct ob_view_s {
 
 static bool ob_stopped(xx_pd_struct *pd) {
     return pd && xx_pd_is_stopped(pd);
-}
-static uint32_t ob_le32(const uint8_t *p) {
-    return p[0] | ((uint32_t)p[1] << 8) |
-           ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
 static bool ob_read(xx_io_device *device, int64_t at, void *data,
                     size_t size) {
@@ -153,8 +150,8 @@ static ob_view *ob_parse(Abstractformat *f, xx_pd_struct *pd) {
             !ob_read(f->device, at, h, sizeof(h))) goto bad;
         xx_mem_zero(&entry, sizeof(entry));
         if (!ob_name(h, &entry.name)) goto bad;
-        compressed = ob_le32(h + 128U);
-        flags = ob_le32(h + 132U);
+        compressed = xx_data_get_u32(h + 128U, 4, 0, false);
+        flags = xx_data_get_u32(h + 132U, 4, 0, false);
         if (flags > 1U || compressed > OB_MAX_MEMBER ||
             compressed > (uint64_t)(total - at - OB_HEADER)) {
             xx_mem_free(entry.name);
@@ -170,7 +167,7 @@ static ob_view *ob_parse(Abstractformat *f, xx_pd_struct *pd) {
                 xx_mem_free(entry.name);
                 goto bad;
             }
-            original = ob_le32(z + 10U);
+            original = xx_data_get_u32(z + 10U, 4, 0, false);
             if (original > OB_MAX_MEMBER) {
                 xx_mem_free(entry.name);
                 goto bad;

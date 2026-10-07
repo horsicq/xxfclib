@@ -16,6 +16,7 @@
 
 #include "xxfclib/formats/ppd/xx_ppd.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 #define PPD_MAX_ARCHIVE (512U * 1024U * 1024U)
 #define PPD_MAX_MEMBER (128U * 1024U * 1024U)
@@ -196,7 +197,7 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
     if (span < 22 || span > PPD_MAX_ARCHIVE ||
         !pm_read(format, 0, field, sizeof(field)))
         return false;
-    count = pm_le32(field);
+    count = xx_data_get_u32(field, 4, 0, false);
     if (count == 0U || count > PPD_MAX_MEMBERS ||
         (uint64_t)count > ((uint64_t)span - 4U) / 18U)
         return false;
@@ -209,7 +210,7 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
         if ((pd && xx_pd_is_stopped(pd)) || span - position < 4 ||
             !pm_read(format, position, field, sizeof(field)))
             goto done;
-        name_size = pm_le32(field);
+        name_size = xx_data_get_u32(field, 4, 0, false);
         position += 4;
         if (name_size < 2U || name_size > PPD_MAX_NAME_FIELD ||
             span - position < (int64_t)name_size + 12 ||
@@ -218,8 +219,8 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
             goto done;
         position += name_size;
         if (!pm_read(format, position, tail, sizeof(tail))) goto done;
-        rows[index].raw_size = pm_le32(tail);
-        rows[index].offset = pm_le32(tail + 4U);
+        rows[index].raw_size = xx_data_get_u32(tail, 4, 0, false);
+        rows[index].offset = xx_data_get_u32(tail + 4U, 4, 0, false);
         position += sizeof(tail);
         if (rows[index].raw_size == 0U ||
             rows[index].raw_size > PPD_MAX_MEMBER ||

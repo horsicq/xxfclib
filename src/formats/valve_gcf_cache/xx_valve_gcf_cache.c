@@ -21,6 +21,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef VALVE_GCF_CACHE
 #define XX_VALVE_GCF_CACHE_FILE_TYPE XX_FILE_TYPE_VALVE_GCF_CACHE
@@ -95,11 +96,6 @@ typedef struct gcf_stream_s {
 
 static void xx_valve_gcf_cache_vtable_destroy(Abstractformat *self);
 
-static uint32_t gcf_u32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
-           ((uint32_t)p[3] << 24);
-}
-
 static bool gcf_within(int64_t span, int64_t offset, uint64_t size) {
     return offset >= 0 && offset <= span && size <= (uint64_t)(span - offset);
 }
@@ -146,10 +142,10 @@ static bool gcf_try_data_header(Abstractformat *self, int64_t span,
     const uint8_t *p = l->minor >= 5U ? h + 4 : h;
     uint32_t first;
     if (!gcf_read(self, span, at, h, size)) return false;
-    if (gcf_u32(p) != l->block_count || gcf_u32(p + 4) != l->block_size ||
-        gcf_u32(p + 12) > l->block_count)
+    if (xx_data_get_u32(p, 4, 0, false) != l->block_count || xx_data_get_u32(p + 4, 4, 0, false) != l->block_size ||
+        xx_data_get_u32(p + 12, 4, 0, false) > l->block_count)
         return false;
-    first = gcf_u32(p + 8);
+    first = xx_data_get_u32(p + 8, 4, 0, false);
     if ((int64_t)first < at + (int64_t)size) return false;
     if (first > span) return false;
     l->data_offset = first;
@@ -181,7 +177,7 @@ static bool gcf_locate_tail(Abstractformat *self, int64_t span, gcf_layout *l,
             int64_t data_header;
             if (!gcf_within(span, ends[e], (uint64_t)(checksum - ends[e]))) continue;
             if (!gcf_read(self, span, checksum, ch, sizeof(ch))) continue;
-            data_header = checksum + GCF_CHECKSUM_HEADER_SIZE + (int64_t)gcf_u32(ch + 4);
+            data_header = checksum + GCF_CHECKSUM_HEADER_SIZE + (int64_t)xx_data_get_u32(ch + 4, 4, 0, false);
             if (data_header > span) continue;
             if (gcf_try_data_header(self, span, l, data_header)) {
                 l->map_offset = map;
@@ -201,23 +197,23 @@ static bool gcf_layout_read(Abstractformat *self, int64_t span, gcf_layout *l) {
 
     xx_rt_memset(l, 0, sizeof(*l));
     if (!gcf_read(self, span, 0, h, sizeof(h))) return false;
-    l->minor = gcf_u32(h + 8);
-    if (gcf_u32(h) != 1U || gcf_u32(h + 4) != 1U ||
+    l->minor = xx_data_get_u32(h + 8, 4, 0, false);
+    if (xx_data_get_u32(h, 4, 0, false) != 1U || xx_data_get_u32(h + 4, 4, 0, false) != 1U ||
         (l->minor != 3U && l->minor != 5U && l->minor != 6U))
         return false;
-    l->file_size = gcf_u32(h + 28);
-    l->block_size = gcf_u32(h + 32);
-    l->block_count = gcf_u32(h + 36);
+    l->file_size = xx_data_get_u32(h + 28, 4, 0, false);
+    l->block_size = xx_data_get_u32(h + 32, 4, 0, false);
+    l->block_count = xx_data_get_u32(h + 36, 4, 0, false);
     if (l->block_size < GCF_MIN_BLOCK_SIZE || l->block_size > GCF_MAX_BLOCK_SIZE ||
         l->block_count > GCF_MAX_BLOCKS)
         return false;
 
     if (!gcf_read(self, span, GCF_HEADER_SIZE, b, sizeof(b)) ||
-        gcf_u32(b) != l->block_count || gcf_u32(b + 4) > l->block_count)
+        xx_data_get_u32(b, 4, 0, false) != l->block_count || xx_data_get_u32(b + 4, 4, 0, false) > l->block_count)
         return false;
     l->entries_offset = GCF_HEADER_SIZE + GCF_BLOCK_ENTRY_HEADER_SIZE;
     at = l->entries_offset + (int64_t)l->block_count * GCF_BLOCK_ENTRY_SIZE;
-    if (!gcf_read(self, span, at, f, sizeof(f)) || gcf_u32(f) != l->block_count)
+    if (!gcf_read(self, span, at, f, sizeof(f)) || xx_data_get_u32(f, 4, 0, false) != l->block_count)
         return false;
     l->frag_offset = at + GCF_FRAG_HEADER_SIZE;
     at = l->frag_offset + (int64_t)l->block_count * 4;
@@ -225,22 +221,22 @@ static bool gcf_layout_read(Abstractformat *self, int64_t span, gcf_layout *l) {
     if (l->minor < 6U) {
         uint8_t m[GCF_BEM_HEADER_SIZE];
         if (!gcf_read(self, span, at, m, sizeof(m)) ||
-            gcf_u32(m) != l->block_count)
+            xx_data_get_u32(m, 4, 0, false) != l->block_count)
             return false;
-        l->bem_first = gcf_u32(m + 4);
+        l->bem_first = xx_data_get_u32(m + 4, 4, 0, false);
         l->bem_offset = at + GCF_BEM_HEADER_SIZE;
         at = l->bem_offset + (int64_t)l->block_count * GCF_BEM_ENTRY_SIZE;
     }
 
     l->dir_offset = at;
     if (!gcf_read(self, span, at, d, sizeof(d))) return false;
-    l->item_count = gcf_u32(d + 12);
-    files = gcf_u32(d + 16);
-    directory_size = gcf_u32(d + 24);
-    l->name_size = gcf_u32(d + 28);
-    info1 = gcf_u32(d + 32);
-    copies = gcf_u32(d + 36);
-    locals = gcf_u32(d + 40);
+    l->item_count = xx_data_get_u32(d + 12, 4, 0, false);
+    files = xx_data_get_u32(d + 16, 4, 0, false);
+    directory_size = xx_data_get_u32(d + 24, 4, 0, false);
+    l->name_size = xx_data_get_u32(d + 28, 4, 0, false);
+    info1 = xx_data_get_u32(d + 32, 4, 0, false);
+    copies = xx_data_get_u32(d + 36, 4, 0, false);
+    locals = xx_data_get_u32(d + 40, 4, 0, false);
     if (l->item_count == 0U || l->item_count > GCF_MAX_ITEMS ||
         files > l->item_count || info1 > GCF_MAX_ITEMS ||
         copies > l->item_count || locals > l->item_count ||
@@ -371,7 +367,7 @@ static char *gcf_build_path(const uint8_t *dir_entries, const char *names,
         size_t len = 0U;
         if (cur >= items || ++depth > GCF_MAX_DEPTH) return NULL;
         e = dir_entries + (size_t)cur * GCF_DIR_ENTRY_SIZE;
-        off = gcf_u32(e);
+        off = xx_data_get_u32(e, 4, 0, false);
         if (off >= name_size) return NULL;
         while (off + len < name_size && names[off + len]) ++len;
         if (off + len >= name_size) return NULL; /* unterminated */
@@ -383,7 +379,7 @@ static char *gcf_build_path(const uint8_t *dir_entries, const char *names,
         if (pos < len + 1U) return NULL;
         pos -= len;
         xx_rt_memcpy(buffer + pos, names + off, len);
-        cur = gcf_u32(e + 16);
+        cur = xx_data_get_u32(e + 16, 4, 0, false);
         if (cur == GCF_NONE) return NULL;
     }
     if (pos == sizeof(buffer) - 1U) return NULL;
@@ -453,7 +449,7 @@ static gcf_stream *gcf_parse(Abstractformat *self, xx_pd_struct *pd) {
                                       (uint64_t)l->item_count * 4U);
         if (!map) goto fail;
         for (i = 0U; i < l->item_count; ++i) {
-            uint32_t v = gcf_u32(map + (size_t)i * 4U);
+            uint32_t v = xx_data_get_u32(map + (size_t)i * 4U, 4, 0, false);
             first[i] = v < l->block_count ? v : GCF_NONE;
         }
         xx_mem_free(map);
@@ -465,9 +461,9 @@ static gcf_stream *gcf_parse(Abstractformat *self, xx_pd_struct *pd) {
         uint32_t idx = l->bem_first, steps = 0U;
         if (!bem) goto fail;
         while (idx < l->block_count && steps++ < l->block_count) {
-            uint32_t owner = gcf_u32(s->entries + (size_t)idx * GCF_BLOCK_ENTRY_SIZE + 24);
+            uint32_t owner = xx_data_get_u32(s->entries + (size_t)idx * GCF_BLOCK_ENTRY_SIZE + 24, 4, 0, false);
             if (owner < l->item_count && first[owner] == GCF_NONE) first[owner] = idx;
-            idx = gcf_u32(bem + (size_t)idx * GCF_BEM_ENTRY_SIZE + 4);
+            idx = xx_data_get_u32(bem + (size_t)idx * GCF_BEM_ENTRY_SIZE + 4, 4, 0, false);
         }
         xx_mem_free(bem);
     }
@@ -492,9 +488,9 @@ static gcf_stream *gcf_parse(Abstractformat *self, xx_pd_struct *pd) {
             if (pd && xx_pd_is_stopped(pd)) goto fail;
             xx_mem_zero(&m, sizeof(m));
             m.item = i;
-            m.flags = gcf_u32(e + 12);
+            m.flags = xx_data_get_u32(e + 12, 4, 0, false);
             m.folder = (m.flags & GCF_FLAG_FILE) == 0U;
-            m.size = m.folder ? 0 : (int64_t)gcf_u32(e + 4);
+            m.size = m.folder ? 0 : (int64_t)xx_data_get_u32(e + 4, 4, 0, false);
             m.first_entry = first[i];
             m.name = gcf_build_path(entries, names, l->name_size, l->item_count,
                                     i, &m.unsafe);
@@ -510,13 +506,13 @@ static gcf_stream *gcf_parse(Abstractformat *self, xx_pd_struct *pd) {
                     if (idx >= l->block_count || budget == 0U) break;
                     --budget;
                     be = s->entries + (size_t)idx * GCF_BLOCK_ENTRY_SIZE;
-                    off = gcf_u32(be + 4);
-                    size = gcf_u32(be + 8);
+                    off = xx_data_get_u32(be + 4, 4, 0, false);
+                    size = xx_data_get_u32(be + 8, 4, 0, false);
                     if ((int64_t)off != covered || size == 0U ||
                         (int64_t)size > m.size - covered)
                         break;
                     covered += size;
-                    idx = gcf_u32(be + 16);
+                    idx = xx_data_get_u32(be + 16, 4, 0, false);
                 }
                 if (budget == 0U && covered < m.size) {
                     xx_str_free(m.name);
@@ -665,8 +661,8 @@ static bool gcf_set_record(Abstractformat *self, const gcf_stream *s,
                            xx_archive_record *record, const gcf_member *m) {
     int64_t data = -1;
     if (!m->folder && m->first_entry < s->layout.block_count) {
-        uint32_t block = gcf_u32(s->entries + (size_t)m->first_entry *
-                                                  GCF_BLOCK_ENTRY_SIZE + 12);
+        uint32_t block = xx_data_get_u32(s->entries + (size_t)m->first_entry *
+                                                  GCF_BLOCK_ENTRY_SIZE + 12, 4, 0, false);
         if (block < s->layout.block_count)
             data = self->base_address + s->layout.data_offset +
                    (int64_t)block * s->layout.block_size;
@@ -811,9 +807,9 @@ static bool gcf_copy_item(Abstractformat *self, gcf_stream *s,
             break;
         }
         be = s->entries + (size_t)idx * GCF_BLOCK_ENTRY_SIZE;
-        left = gcf_u32(be + 8);
-        block = gcf_u32(be + 12);
-        if ((int64_t)gcf_u32(be + 4) != written || left == 0U ||
+        left = xx_data_get_u32(be + 8, 4, 0, false);
+        block = xx_data_get_u32(be + 12, 4, 0, false);
+        if ((int64_t)xx_data_get_u32(be + 4, 4, 0, false) != written || left == 0U ||
             (int64_t)left > m->size - written) {
             ok = false;
             break;
@@ -846,9 +842,9 @@ static bool gcf_copy_item(Abstractformat *self, gcf_stream *s,
             }
             left -= n;
             written += n;
-            block = gcf_u32(s->frag + (size_t)block * 4U);
+            block = xx_data_get_u32(s->frag + (size_t)block * 4U, 4, 0, false);
         }
-        idx = gcf_u32(be + 16);
+        idx = xx_data_get_u32(be + 16, 4, 0, false);
     }
     xx_mem_free(buffer);
     return ok && written == m->size;

@@ -4,13 +4,14 @@
  */
 #include "xxfclib/formats/nintendo_fds/xx_nintendo_fds.h"
 #include "../snes_spc/xx_tenth_retro.h"
+#include "xxfclib/data/xx_data.h"
 static bool read_components(Abstractformat *f,pm_stream *s,th_blob *b) {
  const uint8_t *p=b->p;unsigned side,sides;uint32_t total;
  if(b->n<16 || xx_rt_memcmp(p,"FDS\x1a",4) || !p[4] || p[4]>8 || !th_zero(p+5,11)) { return false; } sides=p[4];total=16+65500U*sides;if(!th_range(b,0,total) || !th_emit(f,s,b,"disk-descriptor.bin",0,16)) return false;
  for(side=0;side<sides;++side) {
   uint32_t a=16+65500U*side,end=a+65500;unsigned count,i;char name[64];if(!th_poll(b) || xx_rt_memcmp(p+a,"\1*NINTENDO-HVC*",15) || p[a+56]!=2) return false;count=p[a+57];if(!count || count>128) return false;
   xx_rt_snprintf(name,sizeof(name),"side-%u-descriptor.bin",side);if(!th_emit(f,s,b,name,a,58)) return false;a+=58;
-  for(i=0;i<count;++i) {uint32_t z,load;if(!th_poll(b) || end-a<17 || p[a]!=3 || p[a+15]>2 || p[a+16]!=4) return false;z=pm_le16(p+a+13);load=pm_le16(p+a+11);if(!z || z>end-a-17 || z>65536-load) return false;xx_rt_snprintf(name,sizeof(name),"side-%u-file-%u.fds-record",side,i);if(!th_emit(f,s,b,name,a,17+z)) return false;a+=17+z;}
+  for(i=0;i<count;++i) {uint32_t z,load;if(!th_poll(b) || end-a<17 || p[a]!=3 || p[a+15]>2 || p[a+16]!=4) return false;z=xx_data_get_u16(p+a+13, 2, 0, false);load=xx_data_get_u16(p+a+11, 2, 0, false);if(!z || z>end-a-17 || z>65536-load) return false;xx_rt_snprintf(name,sizeof(name),"side-%u-file-%u.fds-record",side,i);if(!th_emit(f,s,b,name,a,17+z)) return false;a+=17+z;}
   if(!th_zero(p+a,end-a)) return false;
  }
  s->size=total;return true;

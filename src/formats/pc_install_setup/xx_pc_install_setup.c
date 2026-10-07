@@ -43,6 +43,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested. */
@@ -115,15 +116,6 @@ typedef struct pcis_stream_s {
     bool relocated;
     bool exhausted;
 } pcis_stream;
-
-static uint16_t pcis_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t pcis_le32(const uint8_t *bytes) {
-    return (uint32_t)pcis_le16(bytes) |
-           ((uint32_t)pcis_le16(bytes + 2U) << 16U);
-}
 
 static bool pcis_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
@@ -231,10 +223,10 @@ static bool pcis_parse_group(xx_io_device *device, int64_t group_offset,
     /* The cross-volume link name is always blank inside one file. */
     for (index = 0U; index < PCIS_LINK_SIZE; ++index)
         if (prologue[index] != 0U) return false;
-    if (pcis_le16(prologue + 0x0eU) != PCIS_GROUP_TAG ||
-        pcis_le16(prologue + 0x12U) != PCIS_GROUP_TAG)
+    if (xx_data_get_u16(prologue + 0x0eU, 2, 0, false) != PCIS_GROUP_TAG ||
+        xx_data_get_u16(prologue + 0x12U, 2, 0, false) != PCIS_GROUP_TAG)
         return false;
-    count = pcis_le16(prologue + 0x10U);
+    count = xx_data_get_u16(prologue + 0x10U, 2, 0, false);
     /* Each member costs at least its info block and a two-byte prelude. */
     if (count == 0U || count > PCIS_MAX_GROUP_MEMBERS ||
         (int64_t)count >
@@ -252,8 +244,8 @@ static bool pcis_parse_group(xx_io_device *device, int64_t group_offset,
                           sizeof(info)))
             goto fail;
         length = pcis_field_name_length(info, PCIS_INFO_NAME_SIZE);
-        if (length == 0U || pcis_le32(info + 0x84U) != 0U) goto fail;
-        packed = (int64_t)pcis_le32(info + 0x88U);
+        if (length == 0U || xx_data_get_u32(info + 0x84U, 4, 0, false) != 0U) goto fail;
+        packed = (int64_t)xx_data_get_u32(info + 0x88U, 4, 0, false);
         if (packed < 2 || packed > group_size - position - PCIS_INFO_SIZE)
             goto fail;
         /* Raw PKWARE DCL prelude: literal mode 0/1, dictionary bits 4..6. */
@@ -269,12 +261,12 @@ static bool pcis_parse_group(xx_io_device *device, int64_t group_offset,
         member->header_size = PCIS_INFO_SIZE;
         member->data_offset = group_offset + position + PCIS_INFO_SIZE;
         member->packed_size = packed;
-        member->declared_size = pcis_le32(info + 0x9cU);
+        member->declared_size = xx_data_get_u32(info + 0x9cU, 4, 0, false);
         if (member->declared_size != 0U)
             member->unpacked_size = (int64_t)member->declared_size;
-        member->attributes = pcis_le32(info + 0x80U);
-        member->dos_date = pcis_le16(info + 0x8cU);
-        member->dos_time = pcis_le16(info + 0x90U);
+        member->attributes = xx_data_get_u32(info + 0x80U, 4, 0, false);
+        member->dos_date = xx_data_get_u16(info + 0x8cU, 2, 0, false);
+        member->dos_time = xx_data_get_u16(info + 0x90U, 2, 0, false);
         member->stored = false;
         position += PCIS_INFO_SIZE + packed;
     }
@@ -311,8 +303,8 @@ static bool pcis_walk(Abstractformat *format, int64_t trailer, int64_t start,
     if (terminal < start || terminal > trailer - PCIS_RECORD_SIZE ||
         !pcis_spend(stream) ||
         !pcis_read_at(device, base + terminal, header, sizeof(header)) ||
-        pcis_le32(header) != 0U ||
-        (int64_t)pcis_le32(header + 0x10U) !=
+        xx_data_get_u32(header, 4, 0, false) != 0U ||
+        (int64_t)xx_data_get_u32(header + 0x10U, 4, 0, false) !=
             trailer - terminal - PCIS_RECORD_SIZE ||
         pcis_field_name_length(header + PCIS_RECORD_NAME_OFFSET,
                                PCIS_RECORD_NAME_SIZE) == 0U)
@@ -326,8 +318,8 @@ static bool pcis_walk(Abstractformat *format, int64_t trailer, int64_t start,
             cursor > trailer - PCIS_RECORD_SIZE || !pcis_spend(stream) ||
             !pcis_read_at(device, base + cursor, record, sizeof(record)))
             goto fail;
-        next = (int64_t)pcis_le32(record);
-        stored = (int64_t)pcis_le32(record + 0x10U);
+        next = (int64_t)xx_data_get_u32(record, 4, 0, false);
+        stored = (int64_t)xx_data_get_u32(record + 0x10U, 4, 0, false);
         payload = cursor + PCIS_RECORD_SIZE;
         if (stored > trailer - payload) goto fail;
         length = pcis_field_name_length(record + PCIS_RECORD_NAME_OFFSET,
@@ -354,9 +346,9 @@ static bool pcis_walk(Abstractformat *format, int64_t trailer, int64_t start,
             member->packed_size = stored;
             member->unpacked_size = stored;
             member->declared_size = (uint32_t)stored;
-            member->attributes = pcis_le32(record + 0x04U) & 0xffffU;
-            member->dos_time = pcis_le16(record + 0x08U);
-            member->dos_date = pcis_le16(record + 0x0cU);
+            member->attributes = xx_data_get_u32(record + 0x04U, 4, 0, false) & 0xffffU;
+            member->dos_time = xx_data_get_u16(record + 0x08U, 2, 0, false);
+            member->dos_date = xx_data_get_u16(record + 0x0cU, 2, 0, false);
             member->stored = true;
             member->raw_group = grouped;
         }
@@ -648,8 +640,8 @@ static bool pcis_parse(Abstractformat *format, pcis_stream **result,
                       trailer_bytes, sizeof(trailer_bytes)) ||
         xx_rt_memcmp(trailer_bytes, pcis_tag, PCIS_TAG_SIZE) != 0)
         return false;
-    first = pcis_le32(trailer_bytes + 8U);
-    last = pcis_le32(trailer_bytes + 12U);
+    first = xx_data_get_u32(trailer_bytes + 8U, 4, 0, false);
+    last = xx_data_get_u32(trailer_bytes + 12U, 4, 0, false);
     stream = (pcis_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;
     stream->budget = PCIS_READ_BUDGET;

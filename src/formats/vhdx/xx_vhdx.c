@@ -73,6 +73,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef VHDX
 #define XX_VHDX_FILE_TYPE XX_FILE_TYPE_VHDX
@@ -205,19 +206,6 @@ typedef struct vhdx_log_slot_s {
 
 #define VHDX_NO_SLOT UINT32_C(0xFFFFFFFF)
 
-static uint16_t vhdx_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static uint32_t vhdx_le32(const uint8_t *b) {
-    return (uint32_t)b[0] | ((uint32_t)b[1] << 8U) | ((uint32_t)b[2] << 16U) |
-           ((uint32_t)b[3] << 24U);
-}
-
-static uint64_t vhdx_le64(const uint8_t *b) {
-    return (uint64_t)vhdx_le32(b) | ((uint64_t)vhdx_le32(b + 4U) << 32U);
-}
-
 static bool vhdx_is_zero(const uint8_t *b, size_t size) {
     size_t index;
     for (index = 0U; index < size; ++index)
@@ -268,7 +256,7 @@ static bool vhdx_checksum_ok(const uint8_t *data, size_t size) {
     crc = xx_crc32c_calc(0U, data, 4U);
     crc = xx_crc32c_calc(crc, zero4, 4U);
     crc = xx_crc32c_calc(crc, data + 8U, size - 8U);
-    return crc == vhdx_le32(data + 4U);
+    return crc == xx_data_get_u32(data + 4U, 4, 0, false);
 }
 
 /* ---- log overlay ------------------------------------------------------ */
@@ -456,11 +444,11 @@ static int vhdx_log_entry(const uint8_t *log, uint32_t length, uint32_t pos,
     uint32_t entry_length, tail, count, index, first, crc;
     uint64_t seq, descriptor_bytes, descriptor_area, data = 0U;
 
-    if (vhdx_le32(h) != VHDX_SIG_LOGE) return 0;
-    entry_length = vhdx_le32(h + 8U);
-    tail = vhdx_le32(h + 12U);
-    seq = vhdx_le64(h + 16U);
-    count = vhdx_le32(h + 24U);
+    if (xx_data_get_u32(h, 4, 0, false) != VHDX_SIG_LOGE) return 0;
+    entry_length = xx_data_get_u32(h + 8U, 4, 0, false);
+    tail = xx_data_get_u32(h + 12U, 4, 0, false);
+    seq = xx_data_get_u64(h + 16U, 8, 0, false);
+    count = xx_data_get_u32(h + 24U, 4, 0, false);
     if (entry_length < VHDX_LOG_SECTOR || (entry_length % VHDX_LOG_SECTOR) != 0U ||
         entry_length > length || (tail % VHDX_LOG_SECTOR) != 0U ||
         tail >= length || seq == 0U || xx_rt_memcmp(h + 32U, guid, 16U) != 0)
@@ -479,19 +467,19 @@ static int vhdx_log_entry(const uint8_t *log, uint32_t length, uint32_t pos,
     crc = xx_crc32c_calc(crc, h + 8U, first - 8U);
     if (entry_length > first)
         crc = xx_crc32c_calc(crc, log, entry_length - first);
-    if (crc != vhdx_le32(h + 4U)) return 0;
+    if (crc != xx_data_get_u32(h + 4U, 4, 0, false)) return 0;
     for (index = 0U; index < count; ++index) {
         /* 32-byte descriptors never straddle the wrap point. */
         const uint8_t *d = log + (size_t)(((uint64_t)pos + 64U +
                                            (uint64_t)index * 32U) % length);
-        uint32_t signature = vhdx_le32(d);
-        uint64_t file_offset = vhdx_le64(d + 16U);
-        if (vhdx_le64(d + 24U) != seq ||
+        uint32_t signature = xx_data_get_u32(d, 4, 0, false);
+        uint64_t file_offset = xx_data_get_u64(d + 16U, 8, 0, false);
+        if (xx_data_get_u64(d + 24U, 8, 0, false) != seq ||
             (file_offset % VHDX_LOG_SECTOR) != 0U ||
             file_offset > VHDX_MAX_FILE)
             return 0;
         if (signature == VHDX_SIG_ZERO) {
-            uint64_t zero_length = vhdx_le64(d + 8U);
+            uint64_t zero_length = xx_data_get_u64(d + 8U, 8, 0, false);
             if ((zero_length % VHDX_LOG_SECTOR) != 0U ||
                 zero_length > VHDX_MAX_FILE)
                 return 0;
@@ -500,9 +488,9 @@ static int vhdx_log_entry(const uint8_t *log, uint32_t length, uint32_t pos,
             const uint8_t *s;
             if (sector + VHDX_LOG_SECTOR > entry_length) return 0;
             s = log + (size_t)(((uint64_t)pos + sector) % length);
-            if (vhdx_le32(s) != VHDX_SIG_DATA ||
-                vhdx_le32(s + 4U) != (uint32_t)(seq >> 32U) ||
-                vhdx_le32(s + 4092U) != (uint32_t)seq)
+            if (xx_data_get_u32(s, 4, 0, false) != VHDX_SIG_DATA ||
+                xx_data_get_u32(s + 4U, 4, 0, false) != (uint32_t)(seq >> 32U) ||
+                xx_data_get_u32(s + 4092U, 4, 0, false) != (uint32_t)seq)
                 return 0;
             ++data;
         } else {
@@ -581,8 +569,8 @@ static bool vhdx_log_replay(Abstractformat *format, vhdx_info *info,
         result = true; /* nothing to replay */
         goto done;
     }
-    flushed = vhdx_le64(log + (size_t)head * VHDX_LOG_SECTOR + 48U);
-    last = vhdx_le64(log + (size_t)head * VHDX_LOG_SECTOR + 56U);
+    flushed = xx_data_get_u64(log + (size_t)head * VHDX_LOG_SECTOR + 48U, 8, 0, false);
+    last = xx_data_get_u64(log + (size_t)head * VHDX_LOG_SECTOR + 56U, 8, 0, false);
     /* The file must hold everything that was flushed before the log was
      * written; the log may extend it up to LastFileOffset. */
     if (flushed > info->size || last > VHDX_MAX_FILE) goto done;
@@ -590,7 +578,7 @@ static bool vhdx_log_replay(Abstractformat *format, vhdx_info *info,
     /* Count, then collect, the descriptors from the tail to the head. */
     at = slot[head].tail / VHDX_LOG_SECTOR;
     for (;;) {
-        ops += vhdx_le32(log + (size_t)at * VHDX_LOG_SECTOR + 24U);
+        ops += xx_data_get_u32(log + (size_t)at * VHDX_LOG_SECTOR + 24U, 4, 0, false);
         ++entries;
         if (ops > VHDX_LOG_MAX_OPS) goto done;
         if (at == head) break;
@@ -606,7 +594,7 @@ static bool vhdx_log_replay(Abstractformat *format, vhdx_info *info,
     for (;;) {
         uint32_t pos = at * VHDX_LOG_SECTOR;
         const uint8_t *h = log + pos;
-        uint32_t count = vhdx_le32(h + 24U), k;
+        uint32_t count = xx_data_get_u32(h + 24U, 4, 0, false), k;
         uint64_t area = (64U + (uint64_t)count * 32U + VHDX_LOG_SECTOR - 1U) /
                         VHDX_LOG_SECTOR * VHDX_LOG_SECTOR;
         uint64_t data = 0U;
@@ -614,8 +602,8 @@ static bool vhdx_log_replay(Abstractformat *format, vhdx_info *info,
             const uint8_t *d = log + (size_t)(((uint64_t)pos + 64U +
                                                (uint64_t)k * 32U) % length);
             vhdx_op *op = &overlay->ops[overlay->op_count];
-            op->start = vhdx_le64(d + 16U);
-            if (vhdx_le32(d) == VHDX_SIG_DESC) {
+            op->start = xx_data_get_u64(d + 16U, 8, 0, false);
+            if (xx_data_get_u32(d, 4, 0, false) == VHDX_SIG_DESC) {
                 uint8_t *s = log + (size_t)(((uint64_t)pos + area +
                                              data * VHDX_LOG_SECTOR) % length);
                 /* The sector as written: the descriptor's 8 leading bytes,
@@ -626,7 +614,7 @@ static bool vhdx_log_replay(Abstractformat *format, vhdx_info *info,
                 op->data = s;
                 ++data;
             } else {
-                op->end = op->start + vhdx_le64(d + 8U);
+                op->end = op->start + xx_data_get_u64(d + 8U, 8, 0, false);
                 op->data = NULL;
             }
             if (op->end > op->start) ++overlay->op_count;
@@ -652,11 +640,11 @@ done:
 /* ---- header, regions, metadata --------------------------------------- */
 
 static bool vhdx_header_ok(const uint8_t *h) {
-    return vhdx_le32(h) == VHDX_SIG_HEAD &&
+    return xx_data_get_u32(h, 4, 0, false) == VHDX_SIG_HEAD &&
            vhdx_checksum_ok(h, VHDX_HEADER_SIZE) &&
-           vhdx_le16(h + 66U) == 1U &&
-           (vhdx_le32(h + 68U) & VHDX_MIB_MASK) == 0U &&
-           (vhdx_le64(h + 72U) & VHDX_MIB_MASK) == 0U;
+           xx_data_get_u16(h + 66U, 2, 0, false) == 1U &&
+           (xx_data_get_u32(h + 68U, 4, 0, false) & VHDX_MIB_MASK) == 0U &&
+           (xx_data_get_u64(h + 72U, 8, 0, false) & VHDX_MIB_MASK) == 0U;
 }
 
 static bool vhdx_regions(const uint8_t *t, vhdx_info *info) {
@@ -665,15 +653,15 @@ static bool vhdx_regions(const uint8_t *t, vhdx_info *info) {
     uint64_t end = 0U;
     info->bat_offset = info->bat_length = 0U;
     info->meta_offset = info->meta_length = 0U;
-    if (vhdx_le32(t) != VHDX_SIG_REGI || !vhdx_checksum_ok(t, VHDX_TABLE_SIZE))
+    if (xx_data_get_u32(t, 4, 0, false) != VHDX_SIG_REGI || !vhdx_checksum_ok(t, VHDX_TABLE_SIZE))
         return false;
-    count = vhdx_le32(t + 8U);
-    if (count > VHDX_MAX_ENTRIES || vhdx_le32(t + 12U) != 0U) return false;
+    count = xx_data_get_u32(t + 8U, 4, 0, false);
+    if (count > VHDX_MAX_ENTRIES || xx_data_get_u32(t + 12U, 4, 0, false) != 0U) return false;
     for (index = 0U; index < count; ++index) {
         const uint8_t *e = t + 16U + (size_t)index * 32U;
-        uint64_t offset = vhdx_le64(e + 16U);
-        uint64_t length = vhdx_le32(e + 24U);
-        uint32_t required = vhdx_le32(e + 28U);
+        uint64_t offset = xx_data_get_u64(e + 16U, 8, 0, false);
+        uint64_t length = xx_data_get_u32(e + 24U, 4, 0, false);
+        uint32_t required = xx_data_get_u32(e + 28U, 4, 0, false);
         if ((offset & VHDX_MIB_MASK) != 0U || (length & VHDX_MIB_MASK) != 0U ||
             offset < VHDX_MIB || offset > VHDX_MAX_FILE)
             return false;
@@ -705,12 +693,12 @@ static void vhdx_parent_linkage(const uint8_t *p, uint32_t length, char *out,
     uint32_t count, k;
     out[0] = 0;
     if (length < 20U) return;
-    count = vhdx_le16(p + 18U);
+    count = xx_data_get_u16(p + 18U, 2, 0, false);
     if (20U + (uint64_t)count * 12U > length) return;
     for (k = 0U; k < count; ++k) {
         const uint8_t *e = p + 20U + (size_t)k * 12U;
-        uint32_t key_offset = vhdx_le32(e), value_offset = vhdx_le32(e + 4U);
-        uint32_t key_length = vhdx_le16(e + 8U), value_length = vhdx_le16(e + 10U);
+        uint32_t key_offset = xx_data_get_u32(e, 4, 0, false), value_offset = xx_data_get_u32(e + 4U, 4, 0, false);
+        uint32_t key_length = xx_data_get_u16(e + 8U, 2, 0, false), value_length = xx_data_get_u16(e + 10U, 2, 0, false);
         uint32_t c;
         if (key_offset > length || key_length > length - key_offset ||
             value_offset > length || value_length > length - value_offset ||
@@ -748,12 +736,12 @@ static bool vhdx_metadata(Abstractformat *format, vhdx_info *info,
     uint8_t value[16];
 
     if (xx_rt_memcmp(t, "metadata", 8U) != 0) return false;
-    count = vhdx_le16(t + 10U);
+    count = xx_data_get_u16(t + 10U, 2, 0, false);
     if (count > VHDX_MAX_ENTRIES) return false;
     for (index = 0U; index < count; ++index) {
         const uint8_t *e = t + 32U + (size_t)index * 32U;
-        uint32_t offset = vhdx_le32(e + 16U), length = vhdx_le32(e + 20U);
-        uint32_t flags = vhdx_le32(e + 24U);
+        uint32_t offset = xx_data_get_u32(e + 16U, 4, 0, false), length = xx_data_get_u32(e + 20U, 4, 0, false);
+        uint32_t flags = xx_data_get_u32(e + 24U, 4, 0, false);
         uint64_t at = info->meta_offset + offset;
         if ((flags & ~7U) != 0U) return false;
         if (length == 0U) {
@@ -772,26 +760,26 @@ static bool vhdx_metadata(Abstractformat *format, vhdx_info *info,
             if (have_parameters || length != 8U ||
                 !vhdx_read(format, info, at, value, 8U))
                 return false;
-            info->block_size = vhdx_le32(value);
-            info->file_flags = vhdx_le32(value + 4U);
+            info->block_size = xx_data_get_u32(value, 4, 0, false);
+            info->file_flags = xx_data_get_u32(value + 4U, 4, 0, false);
             have_parameters = true;
         } else if (xx_rt_memcmp(e, vhdx_guid_disk_size, 16U) == 0) {
             if (have_size || length != 8U ||
                 !vhdx_read(format, info, at, value, 8U))
                 return false;
-            info->disk_size = vhdx_le64(value);
+            info->disk_size = xx_data_get_u64(value, 8, 0, false);
             have_size = true;
         } else if (xx_rt_memcmp(e, vhdx_guid_logical_sector, 16U) == 0) {
             if (have_logical || length != 4U ||
                 !vhdx_read(format, info, at, value, 4U))
                 return false;
-            info->logical = vhdx_le32(value);
+            info->logical = xx_data_get_u32(value, 4, 0, false);
             have_logical = true;
         } else if (xx_rt_memcmp(e, vhdx_guid_physical_sector, 16U) == 0) {
             if (have_physical || length != 4U ||
                 !vhdx_read(format, info, at, value, 4U))
                 return false;
-            info->physical = vhdx_le32(value);
+            info->physical = xx_data_get_u32(value, 4, 0, false);
             have_physical = true;
         } else if (xx_rt_memcmp(e, vhdx_guid_disk_id, 16U) == 0) {
             if (length != 16U) return false;
@@ -858,8 +846,8 @@ static bool vhdx_parse(Abstractformat *format, vhdx_info *info) {
     first_ok = vhdx_header_ok(buffer);
     second_ok = vhdx_header_ok(buffer + VHDX_HEADER_SIZE);
     if (first_ok && second_ok) {
-        uint64_t first_seq = vhdx_le64(buffer + 8U);
-        uint64_t second_seq = vhdx_le64(buffer + VHDX_HEADER_SIZE + 8U);
+        uint64_t first_seq = xx_data_get_u64(buffer + 8U, 8, 0, false);
+        uint64_t second_seq = xx_data_get_u64(buffer + VHDX_HEADER_SIZE + 8U, 8, 0, false);
         if (first_seq > second_seq) head = buffer;
         else if (second_seq > first_seq) head = buffer + VHDX_HEADER_SIZE;
         else if (xx_rt_memcmp(buffer + 8U, buffer + VHDX_HEADER_SIZE + 8U,
@@ -875,8 +863,8 @@ static bool vhdx_parse(Abstractformat *format, vhdx_info *info) {
         goto done;
     }
 
-    info->log_length = vhdx_le32(head + 68U);
-    info->log_offset = vhdx_le64(head + 72U);
+    info->log_length = xx_data_get_u32(head + 68U, 4, 0, false);
+    info->log_offset = xx_data_get_u64(head + 72U, 8, 0, false);
     if (info->log_length != 0U) {
         if (info->log_offset < VHDX_MIB || info->log_offset > VHDX_MAX_FILE)
             goto done;
@@ -884,7 +872,7 @@ static bool vhdx_parse(Abstractformat *format, vhdx_info *info) {
             info->struct_end = info->log_offset + info->log_length;
     }
     if (!vhdx_is_zero(head + 48U, 16U) &&
-        !vhdx_log_replay(format, info, head + 48U, vhdx_le16(head + 64U)))
+        !vhdx_log_replay(format, info, head + 48U, xx_data_get_u16(head + 64U, 2, 0, false)))
         goto done;
 
     if (!(vhdx_read(format, info, VHDX_REGION1, table, VHDX_TABLE_SIZE) &&
@@ -1013,7 +1001,7 @@ static bool vhdx_walk(Abstractformat *format, vhdx_info *info,
             goto done;
         payload = count > ratio ? ratio : count;
         if (count > ratio) {
-            uint64_t entry = vhdx_le64(bat + (size_t)ratio * 8U);
+            uint64_t entry = xx_data_get_u64(bat + (size_t)ratio * 8U, 8, 0, false);
             if ((entry & UINT64_C(0xFFFF8)) != 0U) goto done;
             bitmap_state = (uint32_t)(entry & 7U);
             bitmap_offset = entry & ~VHDX_MIB_MASK;
@@ -1028,7 +1016,7 @@ static bool vhdx_walk(Abstractformat *format, vhdx_info *info,
             }
         }
         for (k = 0U; k < payload; ++k) {
-            uint64_t entry = vhdx_le64(bat + (size_t)k * 8U);
+            uint64_t entry = xx_data_get_u64(bat + (size_t)k * 8U, 8, 0, false);
             uint64_t offset = entry & ~VHDX_MIB_MASK;
             uint64_t block = chunk * ratio + k;
             uint64_t output = 0U;

@@ -26,6 +26,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef COPYDISK
 #define XX_COPYDISK_FILE_TYPE XX_FILE_TYPE_COPYDISK
@@ -66,27 +67,6 @@ typedef struct copydisk_stream_s {
     uint64_t aux1;
     uint64_t aux2;
 } copydisk_stream;
-
-static uint16_t copydisk_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static uint32_t copydisk_le32(const uint8_t *b) {
-    return (uint32_t)copydisk_le16(b) | ((uint32_t)copydisk_le16(b + 2U) << 16U);
-}
-
-static XXFC_MAYBE_UNUSED uint64_t copydisk_le64(const uint8_t *b) {
-    return (uint64_t)copydisk_le32(b) | ((uint64_t)copydisk_le32(b + 4U) << 32U);
-}
-
-static uint32_t copydisk_be32(const uint8_t *b) {
-    return ((uint32_t)b[0] << 24U) | ((uint32_t)b[1] << 16U) |
-           ((uint32_t)b[2] << 8U) | (uint32_t)b[3];
-}
-
-static XXFC_MAYBE_UNUSED uint64_t copydisk_be64(const uint8_t *b) {
-    return ((uint64_t)copydisk_be32(b) << 32U) | (uint64_t)copydisk_be32(b + 4U);
-}
 
 static bool copydisk_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -330,7 +310,7 @@ static bool copydisk_parse(Abstractformat *format, copydisk_stream **result) {
         xx_rt_memcmp(header, "COPYDISK", 8U) != 0)
         return false;
 
-    sector_size = copydisk_le16(header + 8U);
+    sector_size = xx_data_get_u16(header + 8U, 2, 0, false);
     if (sector_size != 0x200U) return false;
 
     image_size = (uint64_t)(size - COPYDISK_HEADER_SIZE);

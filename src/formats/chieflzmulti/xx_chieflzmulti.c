@@ -49,6 +49,7 @@
 #include "xxfclib/algo/chieflz/xx_chieflz.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_CHIEFLZMULTI_COPY_CHUNK (64 * 1024)
 
@@ -154,21 +155,9 @@ static bool xx_chieflzmulti_add(xx_chieflzmulti_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_chieflzmulti_le16(const uint8_t *data);
-static uint32_t xx_chieflzmulti_le32(const uint8_t *data);
 static char *xx_chieflzmulti_build_path(const uint8_t *directory, const uint32_t *name_offset, const uint8_t *name_length, const int32_t *parents, int32_t count, int32_t index);
 static xx_chieflzmulti_stream *xx_chieflzmulti_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_chieflzmulti_decode(Abstractformat *self, const xx_chieflzmulti_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
-
-
-static uint16_t xx_chieflzmulti_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_chieflzmulti_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* Build "parent/.../own" for entry index by walking the parent chain twice:
  * once to measure, once to fill from the end. The depth cap makes a cyclic
@@ -291,10 +280,10 @@ static xx_chieflzmulti_stream *xx_chieflzmulti_parse(Abstractformat *self,
      * the "ChfLZ_2" text would match any file that merely mentions it. */
     if (xx_rt_memcmp(header, magic, sizeof(magic)) != 0) return NULL;
 
-    raw = xx_chieflzmulti_le32(header + 0x17);
+    raw = xx_data_get_u32(header + 0x17, 4, 0, false);
     if (raw > 0x7fffffffU) return NULL;
     count64 = (int64_t)raw;
-    raw = xx_chieflzmulti_le32(header + 0x23);
+    raw = xx_data_get_u32(header + 0x23, 4, 0, false);
     if (raw > 0x7fffffffU) return NULL;
     name_bytes = (int64_t)raw;
     if (count64 <= 0 || count64 >= (int64_t)XX_CHIEFLZMULTI_MAX_MEMBERS) {
@@ -367,10 +356,10 @@ static xx_chieflzmulti_stream *xx_chieflzmulti_parse(Abstractformat *self,
         name_position += (int64_t)entry[0x23];
         name_remaining -= (int64_t)entry[0x23];
 
-        raw = xx_chieflzmulti_le32(entry + 0x0f);
+        raw = xx_data_get_u32(entry + 0x0f, 4, 0, false);
         if (raw > 0x7fffffffU) goto fail;
         packed = (int64_t)raw;
-        raw = xx_chieflzmulti_le32(entry + 0x13);
+        raw = xx_data_get_u32(entry + 0x13, 4, 0, false);
         if (raw > 0x7fffffffU) goto fail;
         unpacked = (int64_t)raw;
 
@@ -383,8 +372,8 @@ static xx_chieflzmulti_stream *xx_chieflzmulti_parse(Abstractformat *self,
 
         /* kind 0 keeps the parent index at 0x01, every other kind at 0x03. */
         parent_field = (entry[0] == 0U)
-                           ? xx_chieflzmulti_le16(entry + 0x01)
-                           : xx_chieflzmulti_le16(entry + 0x03);
+                           ? xx_data_get_u16(entry + 0x01, 2, 0, false)
+                           : xx_data_get_u16(entry + 0x03, 2, 0, false);
         /* 0 is the root; anything else is stored one greater than the index. */
         parents[index] = (parent_field == 0U)
                              ? -1
@@ -403,8 +392,8 @@ static xx_chieflzmulti_stream *xx_chieflzmulti_parse(Abstractformat *self,
     for (index = 0; index < count; ++index) {
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         entry = directory + (int64_t)index * XX_CHIEFLZMULTI_ENTRY_SIZE;
-        packed = (int64_t)xx_chieflzmulti_le32(entry + 0x0f);
-        unpacked = (int64_t)xx_chieflzmulti_le32(entry + 0x13);
+        packed = (int64_t)xx_data_get_u32(entry + 0x0f, 4, 0, false);
+        unpacked = (int64_t)xx_data_get_u32(entry + 0x13, 4, 0, false);
 
         name = xx_chieflzmulti_build_path(directory, name_offset, name_length,
                                           parents, count, index);
@@ -421,8 +410,8 @@ static xx_chieflzmulti_stream *xx_chieflzmulti_parse(Abstractformat *self,
         member.uncompressed_size = unpacked;
         member.method = (uint32_t)entry[0x28];
         member.timestamp =
-            ((uint64_t)xx_chieflzmulti_le16(entry + 0x19) << 16) |
-            (uint64_t)xx_chieflzmulti_le16(entry + 0x17);
+            ((uint64_t)xx_data_get_u16(entry + 0x19, 2, 0, false) << 16) |
+            (uint64_t)xx_data_get_u16(entry + 0x17, 2, 0, false);
         /* The container marks no entry as a directory: a folder exists only
          * as something another entry names as its parent. */
         member.is_folder = false;

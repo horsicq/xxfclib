@@ -49,6 +49,7 @@
 #include "xxfclib/algo/dcl/xx_dcl.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_DSL2_COPY_CHUNK (64 * 1024)
 
@@ -154,23 +155,12 @@ static bool xx_dsl2_add(xx_dsl2_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_dsl2_le16(const uint8_t *data);
-static uint32_t xx_dsl2_le32(const uint8_t *data);
 static char *xx_dsl2_make_name(const uint8_t *raw, size_t size, size_t index);
 static xx_dsl2_stream *xx_dsl2_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_dsl2_decode(Abstractformat *self, const xx_dsl2_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
 
 /* The directory is stored with every byte biased by this amount. */
-
-static uint16_t xx_dsl2_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_dsl2_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* Names are DOS paths written with backslashes; they are translated to '/' so
  * the generated extraction path check sees the separators it understands and
@@ -244,12 +234,12 @@ static xx_dsl2_stream *xx_dsl2_parse(Abstractformat *self, xx_pd_struct *pd) {
     }
     /* The revision word is zero in every 2.0 archive; a nonzero value means a
      * layout this reader has not seen, not a variant to parse anyway. */
-    if (xx_dsl2_le16(header + 0x10) != 0U) return NULL;
+    if (xx_data_get_u16(header + 0x10, 2, 0, false) != 0U) return NULL;
 
-    member_count = (int32_t)xx_dsl2_le16(header + 0x12);
+    member_count = (int32_t)xx_data_get_u16(header + 0x12, 2, 0, false);
     /* Read as a signed 32-bit value on purpose: the reference does, so an end
      * offset with the high bit set is a rejection rather than a huge span. */
-    directory_end = (int64_t)(int32_t)xx_dsl2_le32(header + 0x18);
+    directory_end = (int64_t)(int32_t)xx_data_get_u32(header + 0x18, 4, 0, false);
     if (member_count < 1 || member_count > XX_DSL2_MAX_MEMBERS) return NULL;
     if (directory_end <= 0 || directory_end > span) return NULL;
 
@@ -263,7 +253,7 @@ static xx_dsl2_stream *xx_dsl2_parse(Abstractformat *self, xx_pd_struct *pd) {
                              length_field, sizeof(length_field))) {
             return NULL;
         }
-        directory_start += 2 + (int64_t)xx_dsl2_le16(length_field);
+        directory_start += 2 + (int64_t)xx_data_get_u16(length_field, 2, 0, false);
     }
     /* A path length long enough to carry the start past the directory end is
      * the sign that the "paths" were not paths. */
@@ -318,7 +308,7 @@ static xx_dsl2_stream *xx_dsl2_parse(Abstractformat *self, xx_pd_struct *pd) {
         if (left < XX_DSL2_ENTRY_MIN_SIZE) goto fail;
 
         entry = directory + position;
-        record_size = (int64_t)xx_dsl2_le16(entry);
+        record_size = (int64_t)xx_data_get_u16(entry, 2, 0, false);
         /* The record size walks the directory; a record shorter than the
          * fixed part, or longer than what is left, would desynchronise every
          * record after it. */
@@ -328,14 +318,14 @@ static xx_dsl2_stream *xx_dsl2_parse(Abstractformat *self, xx_pd_struct *pd) {
 
         /* All three are signed 32-bit in the reference, so a value with the
          * high bit set is a rejection and not a four-gigabyte member. */
-        uncompressed_size = (int64_t)(int32_t)xx_dsl2_le32(entry + 0x02);
-        compressed_size = (int64_t)(int32_t)xx_dsl2_le32(entry + 0x06);
-        data_offset = (int64_t)(int32_t)xx_dsl2_le32(entry + 0x0a);
+        uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(entry + 0x02, 4, 0, false);
+        compressed_size = (int64_t)(int32_t)xx_data_get_u32(entry + 0x06, 4, 0, false);
+        data_offset = (int64_t)(int32_t)xx_data_get_u32(entry + 0x0a, 4, 0, false);
         if (uncompressed_size < 0 || compressed_size < 0 || data_offset < 0) {
             goto fail;
         }
 
-        flags = xx_dsl2_le16(entry + 0x12);
+        flags = xx_data_get_u16(entry + 0x12, 2, 0, false);
         if (flags & XX_DSL2_FLAG_COMPRESSED) {
             if (!xx_dsl2_range_within(span, data_offset, compressed_size)) {
                 goto fail;
@@ -359,7 +349,7 @@ static xx_dsl2_stream *xx_dsl2_parse(Abstractformat *self, xx_pd_struct *pd) {
         name_offset = position + XX_DSL2_NAME_OFFSET;
         name_size = 0;
         if (name_offset <= directory_size) {
-            int64_t name_length = (int64_t)xx_dsl2_le16(entry + 0x14);
+            int64_t name_length = (int64_t)xx_data_get_u16(entry + 0x14, 2, 0, false);
 
             /* The stored length counts its own terminating NUL. */
             name_size = (name_length > 0) ? (name_length - 1) : 0;
@@ -385,8 +375,8 @@ static xx_dsl2_stream *xx_dsl2_parse(Abstractformat *self, xx_pd_struct *pd) {
         member.method = (uint32_t)flags;
         /* DOS time at 0x0e, DOS date at 0x10, packed date-over-time the usual
          * way. */
-        member.timestamp = ((uint64_t)xx_dsl2_le16(entry + 0x10) << 16) |
-                           (uint64_t)xx_dsl2_le16(entry + 0x0e);
+        member.timestamp = ((uint64_t)xx_data_get_u16(entry + 0x10, 2, 0, false) << 16) |
+                           (uint64_t)xx_data_get_u16(entry + 0x0e, 2, 0, false);
         member.is_folder = false;
         if (!xx_dsl2_add(stream, &member)) {
             xx_str_free(name);

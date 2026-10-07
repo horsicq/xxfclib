@@ -62,6 +62,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* The alias macro is defined next to the enumerator in xxfc_defs.h, so testing
  * for it picks up the real file type as soon as EDC is registered there.
@@ -123,15 +124,6 @@ typedef struct xx_edc_stream_s {
 static void xx_edc_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint16_t xx_edc_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_edc_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* DOS date/time -> Unix seconds. Written out rather than taken from a helper
  * because there is no CRT here; an out-of-range field yields 0 (unknown)
@@ -321,14 +313,14 @@ static xx_edc_stream *xx_edc_parse(Abstractformat *self, xx_pd_struct *pd) {
          * is a member it cannot describe, so the chain stops rather than
          * decoding it with the wrong algorithm. */
         if (header[XX_EDC_METHOD_OFFSET] != (uint8_t)XX_EDC_METHOD) goto fail;
-        if (xx_edc_le16(header + XX_EDC_RESERVED_OFFSET) !=
+        if (xx_data_get_u16(header + XX_EDC_RESERVED_OFFSET, 2, 0, false) !=
             (uint16_t)XX_EDC_RESERVED) {
             goto fail;
         }
 
         /* Both lengths are bounded before either is used for anything. */
         {
-            uint32_t declared = xx_edc_le32(header + XX_EDC_TOTAL_OFFSET);
+            uint32_t declared = xx_data_get_u32(header + XX_EDC_TOTAL_OFFSET, 4, 0, false);
             if (declared > (uint32_t)XX_EDC_MAX_DECODED) goto fail;
             member_size = (int64_t)declared;
         }
@@ -336,7 +328,7 @@ static xx_edc_stream *xx_edc_parse(Abstractformat *self, xx_pd_struct *pd) {
         if (!xx_edc_range_within(span, offset, member_size)) goto fail;
         compressed = member_size - (int64_t)XX_EDC_HEADER_SIZE;
         {
-            uint32_t declared = xx_edc_le32(header + XX_EDC_RAW_OFFSET);
+            uint32_t declared = xx_data_get_u32(header + XX_EDC_RAW_OFFSET, 4, 0, false);
             if (declared > (uint32_t)XX_EDC_MAX_DECODED) goto fail;
             uncompressed = (int64_t)declared;
         }
@@ -358,8 +350,8 @@ static xx_edc_stream *xx_edc_parse(Abstractformat *self, xx_pd_struct *pd) {
         member.uncompressed_size = uncompressed;
         member.method = XX_EDC_METHOD;
         member.timestamp =
-            xx_edc_dos_to_unix(xx_edc_le16(header + XX_EDC_DATE_OFFSET),
-                               xx_edc_le16(header + XX_EDC_TIME_OFFSET));
+            xx_edc_dos_to_unix(xx_data_get_u16(header + XX_EDC_DATE_OFFSET, 2, 0, false),
+                               xx_data_get_u16(header + XX_EDC_TIME_OFFSET, 2, 0, false));
         /* The chain has no directory entries and never will: every member is
          * a file. */
         member.is_folder = false;

@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define LDBS_SOURCE_MAX (32U*1024U*1024U)
 #define LDBS_IMAGE_MAX (16U*1024U*1024U)
@@ -46,13 +47,6 @@ typedef struct ldbs_view_s {
 } ldbs_view;
 typedef struct ldbs_cursor_s { size_t index; } ldbs_cursor;
 
-static uint16_t ldbs_u16(const uint8_t *p) {
-    return (uint16_t)((uint16_t)p[0]|((uint16_t)p[1]<<8));
-}
-static uint32_t ldbs_u32(const uint8_t *p) {
-    return (uint32_t)p[0]|((uint32_t)p[1]<<8)|
-           ((uint32_t)p[2]<<16)|((uint32_t)p[3]<<24);
-}
 static bool ldbs_stop(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
 static bool ldbs_read(Abstractformat *f,uint32_t at,void *out,size_t n,
                       xx_pd_struct *pd) {
@@ -137,15 +131,15 @@ static ldbs_view *ldbs_parse_body(Abstractformat *f,const xx_list_s *opts,
     size=(uint32_t)(total-f->base_address);
     if (!ldbs_read(f,0U,h,20U,pd) || memcmp(h,"LBS\1DSK\2",8U))
         return NULL;
-    dirat=ldbs_u32(h+16U);
-    if (!dirat || dirat>=size || (ldbs_u32(h+12U) &&
-        ldbs_u32(h+12U)>=size) || (ldbs_u32(h+8U) &&
-        ldbs_u32(h+8U)>=size)) return NULL;
+    dirat=xx_data_get_u32(h+16U, 4, 0, false);
+    if (!dirat || dirat>=size || (xx_data_get_u32(h+12U, 4, 0, false) &&
+        xx_data_get_u32(h+12U, 4, 0, false)>=size) || (xx_data_get_u32(h+8U, 4, 0, false) &&
+        xx_data_get_u32(h+8U, 4, 0, false)>=size)) return NULL;
     for (at=20U;at<size;) {
         uint32_t alloc,used;
         if (size-at<20U || !ldbs_read(f,at,h,20U,pd) ||
             memcmp(h,"LDB\1",4U)) return NULL;
-        alloc=ldbs_u32(h+8U);used=ldbs_u32(h+12U);
+        alloc=xx_data_get_u32(h+8U, 4, 0, false);used=xx_data_get_u32(h+12U, 4, 0, false);
         if (used>alloc || alloc>size-at-20U ||
             (++nblock)>LDBS_BLOCK_MAX) return NULL;
         at+=20U+alloc;
@@ -161,8 +155,8 @@ static ldbs_view *ldbs_parse_body(Abstractformat *f,const xx_list_s *opts,
     for (at=20U,i=0U;i<nblock;++i) {
         ldbs_block *b=&v->block[i];
         if (!ldbs_read(f,at,h,20U,pd)) goto done;
-        b->at=at;b->alloc=ldbs_u32(h+8U);
-        b->used=ldbs_u32(h+12U);b->next=ldbs_u32(h+16U);
+        b->at=at;b->alloc=xx_data_get_u32(h+8U, 4, 0, false);
+        b->used=xx_data_get_u32(h+12U, 4, 0, false);b->next=xx_data_get_u32(h+16U, 4, 0, false);
         memcpy(b->type,h+4U,4U);
         at+=20U+b->alloc;
     }
@@ -173,9 +167,9 @@ static ldbs_view *ldbs_parse_body(Abstractformat *f,const xx_list_s *opts,
                              b->used))) goto done;
     }
     if (!ldbs_read(f,0U,h,20U,pd) ||
-        (ldbs_u32(h+8U) && !ldbs_find(v,ldbs_u32(h+8U))) ||
-        (ldbs_u32(h+12U) && !ldbs_find(v,ldbs_u32(h+12U)))) goto done;
-    used_head=ldbs_u32(h+8U);free_head=ldbs_u32(h+12U);
+        (xx_data_get_u32(h+8U, 4, 0, false) && !ldbs_find(v,xx_data_get_u32(h+8U, 4, 0, false))) ||
+        (xx_data_get_u32(h+12U, 4, 0, false) && !ldbs_find(v,xx_data_get_u32(h+12U, 4, 0, false)))) goto done;
+    used_head=xx_data_get_u32(h+8U, 4, 0, false);free_head=xx_data_get_u32(h+12U, 4, 0, false);
     while (used_head) {
         ldbs_block *b=ldbs_find(v,used_head);
         if (!b || b->mark ||
@@ -193,18 +187,18 @@ static ldbs_view *ldbs_parse_body(Abstractformat *f,const xx_list_s *opts,
     dir=ldbs_find(v,dirat);
     if (!dir || memcmp(dir->type,"DIR\1",4U) || dir->used<2U ||
         !ldbs_read(f,dirat+20U,e,2U,pd)) goto done;
-    entries=ldbs_u16(e);
+    entries=xx_data_get_u16(e, 2, 0, false);
     if ((uint32_t)entries>=(LDBS_TRACK_MAX+32U) ||
         dir->used!=2U+8U*(uint32_t)entries) goto done;
     for (i=0U;i<entries;++i) {
         if (!ldbs_read(f,dirat+22U+8U*i,e,8U,pd)) goto done;
         if (e[0]=='T') {
-            if (ldbs_u16(e+1U)>255U || e[3]>1U ||
-                !ldbs_find(v,ldbs_u32(e+4U)) ||
+            if (xx_data_get_u16(e+1U, 2, 0, false)>255U || e[3]>1U ||
+                !ldbs_find(v,xx_data_get_u32(e+4U, 4, 0, false)) ||
                 ++track_count>LDBS_TRACK_MAX) goto done;
         } else if (!memcmp(e,"GEOM",4U)) {
-            if (geom_at || !ldbs_find(v,ldbs_u32(e+4U))) goto done;
-            geom_at=ldbs_u32(e+4U);
+            if (geom_at || !ldbs_find(v,xx_data_get_u32(e+4U, 4, 0, false))) goto done;
+            geom_at=xx_data_get_u32(e+4U, 4, 0, false);
         }
     }
     if (!track_count) goto done;
@@ -222,16 +216,16 @@ static ldbs_view *ldbs_parse_body(Abstractformat *f,const xx_list_s *opts,
         uint32_t j;
         if (!ldbs_read(f,dirat+22U+8U*i,e,8U,pd)) goto done;
         if (e[0]!='T') continue;
-        tb=ldbs_find(v,ldbs_u32(e+4U));
+        tb=ldbs_find(v,xx_data_get_u32(e+4U, 4, 0, false));
         if (!tb || memcmp(tb->type,e,4U) || tb->used<12U ||
             !ldbs_read(f,tb->at+20U,t,12U,pd)) goto done;
-        fixed=ldbs_u16(t);dlen=ldbs_u16(t+2U);count=ldbs_u16(t+4U);
+        fixed=xx_data_get_u16(t, 2, 0, false);dlen=xx_data_get_u16(t+2U, 2, 0, false);count=xx_data_get_u16(t+4U, 2, 0, false);
         if (fixed<12U || dlen<16U || count==0U ||
             count>LDBS_SECTOR_MAX ||
             (uint64_t)fixed+(uint64_t)dlen*count>tb->used ||
             (t[7]!=0U && t[7]!=1U && t[7]!=2U)) goto done;
         tr=&v->track[track_count++];
-        tr->cyl=ldbs_u16(e+1U);tr->head=e[3];
+        tr->cyl=xx_data_get_u16(e+1U, 2, 0, false);tr->head=e[3];
         tr->count=(uint8_t)count;
         if (tr->cyl>maxc) maxc=tr->cyl;
         if (tr->head>maxh) maxh=tr->head;
@@ -244,9 +238,9 @@ static ldbs_view *ldbs_parse_body(Abstractformat *f,const xx_list_s *opts,
             size_t take=dlen>=18U ? 18U : 16U;
             if (!ldbs_read(f,tb->at+20U+fixed+(uint32_t)dlen*j,
                            t,take,pd)) goto done;
-            id=t[2U];bytes=dlen>=18U ? ldbs_u16(t+16U) : 0U;
+            id=t[2U];bytes=dlen>=18U ? xx_data_get_u16(t+16U, 2, 0, false) : 0U;
             if (!bytes && t[3U]<=7U) bytes=128U<<t[3U];
-            blockid=ldbs_u32(t+8U);trail=ldbs_u16(t+12U);
+            blockid=xx_data_get_u32(t+8U, 4, 0, false);trail=xx_data_get_u16(t+12U, 2, 0, false);
             if (t[0U]!=tr->cyl || t[1U]!=tr->head || t[3U]>7U ||
                 t[4U] || t[5U] || t[6U]>1U ||
                 bytes==0U || bytes>LDBS_SECTOR_BYTES_MAX ||
@@ -283,9 +277,9 @@ static ldbs_view *ldbs_parse_body(Abstractformat *f,const xx_list_s *opts,
         gb=ldbs_find(v,geom_at);
         if (!gb || memcmp(gb->type,"GEOM",4U) || gb->used<15U ||
             !ldbs_read(f,gb->at+20U,geom,15U,pd) || geom[0U]!=0U ||
-            ldbs_u16(geom+1U)!=(uint16_t)(maxc+1U) ||
+            xx_data_get_u16(geom+1U, 2, 0, false)!=(uint16_t)(maxc+1U) ||
             geom[3U]!=(uint8_t)(maxh+1U) || geom[4U]!=spt ||
-            geom[5U]!=sbase || ldbs_u16(geom+6U)!=secbytes ||
+            geom[5U]!=sbase || xx_data_get_u16(geom+6U, 2, 0, false)!=secbytes ||
             geom[12U]) goto done;
     }
     if ((uint64_t)v->tracks*spt*secbytes>LDBS_IMAGE_MAX) goto done;

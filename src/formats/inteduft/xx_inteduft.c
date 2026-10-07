@@ -49,6 +49,7 @@
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/algo/deflate/xx_deflate.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_INTEDUFT_COPY_CHUNK (64 * 1024)
 
@@ -154,23 +155,12 @@ static bool xx_inteduft_add(xx_inteduft_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint32_t xx_inteduft_le32(const uint8_t *data);
-static uint16_t xx_inteduft_le16(const uint8_t *data);
 static size_t xx_inteduft_name_length(const uint8_t *raw, size_t size);
 static xx_inteduft_stream *xx_inteduft_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_inteduft_decode(Abstractformat *self, const xx_inteduft_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
 
 /* The count is a u16, so the container itself cannot describe more. */
-
-static uint32_t xx_inteduft_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static uint16_t xx_inteduft_le16(const uint8_t *data) {
-    return (uint16_t)((uint32_t)data[0] | ((uint32_t)data[1] << 8));
-}
 
 /* The raw name field is not terminated but may be NUL-padded, and trailing
  * spaces are padding too. The reference reader percent-escapes any other
@@ -214,9 +204,9 @@ static xx_inteduft_stream *xx_inteduft_parse(Abstractformat *self,
                              sizeof(header))) {
         return NULL;
     }
-    if (xx_inteduft_le32(header) != XX_INTEDUFT_MAGIC) return NULL;
+    if (xx_data_get_u32(header, 4, 0, false) != XX_INTEDUFT_MAGIC) return NULL;
 
-    count = (int64_t)xx_inteduft_le16(header + 4);
+    count = (int64_t)xx_data_get_u16(header + 4, 2, 0, false);
     /* A zero-member pack is not a pack; the format has no empty form. */
     if (count < 1 || count > XX_INTEDUFT_MAX_MEMBERS) return NULL;
 
@@ -255,8 +245,8 @@ static xx_inteduft_stream *xx_inteduft_parse(Abstractformat *self,
             xx_mem_free(index);
             return NULL;
         }
-        entry_offset = (int64_t)(int32_t)xx_inteduft_le32(index +
-                                                          index_position);
+        entry_offset = (int64_t)(int32_t)xx_data_get_u32(index +
+                                                          index_position, 4, 0, false);
         name_length = (int64_t)index[index_position + 4];
         /* Offset 0 would point into the header, so it is reserved as "no
          * member" and rejected rather than clamped. */
@@ -305,8 +295,8 @@ static xx_inteduft_stream *xx_inteduft_parse(Abstractformat *self,
         uint32_t method;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        entry_offset = (int64_t)(int32_t)xx_inteduft_le32(index +
-                                                          index_position);
+        entry_offset = (int64_t)(int32_t)xx_data_get_u32(index +
+                                                          index_position, 4, 0, false);
         raw_size = (size_t)index[index_position + 4];
         raw = index + index_position + 5;
         index_position += 5 + (int64_t)raw_size;
@@ -323,9 +313,9 @@ static xx_inteduft_stream *xx_inteduft_parse(Abstractformat *self,
             goto fail;
         }
 
-        method = (uint32_t)xx_inteduft_le16(member_header + 2);
-        packed_size = (int64_t)(int32_t)xx_inteduft_le32(member_header + 8);
-        plain_size = (int64_t)(int32_t)xx_inteduft_le32(member_header + 12);
+        method = (uint32_t)xx_data_get_u16(member_header + 2, 2, 0, false);
+        packed_size = (int64_t)(int32_t)xx_data_get_u32(member_header + 8, 4, 0, false);
+        plain_size = (int64_t)(int32_t)xx_data_get_u32(member_header + 12, 4, 0, false);
         if (packed_size < 0 || plain_size < 0) goto fail;
         /* The format defines exactly two methods. Accepting an unknown third
          * one here would hand the decoder bytes it cannot name, so the whole

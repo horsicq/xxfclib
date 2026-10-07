@@ -8,6 +8,7 @@
 #include "../xx_payload_members.h"
 #include <stdlib.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef PCE_PFI
 #define PFI_FILE_TYPE XX_FILE_TYPE_PCE_PFI
@@ -33,18 +34,6 @@ typedef struct pfi_track_s {
     size_t index_count;
 } pfi_track;
 
-static uint32_t pfi_be32(const uint8_t *p) {
-    return ((uint32_t)p[0] << 24U) | ((uint32_t)p[1] << 16U) |
-           ((uint32_t)p[2] << 8U) | (uint32_t)p[3];
-}
-
-static void pfi_le32(uint8_t *p, uint32_t value) {
-    p[0] = (uint8_t)value;
-    p[1] = (uint8_t)(value >> 8U);
-    p[2] = (uint8_t)(value >> 16U);
-    p[3] = (uint8_t)(value >> 24U);
-}
-
 static const xx_crc_model pfi_crc_model = {
     32U, UINT64_C(0x1edc6f41), 0U, false, false, 0U, "PCE PFI"
 };
@@ -68,7 +57,7 @@ static bool pfi_chunk_crc(Abstractformat *format, int64_t offset,
     }
     return (!pd || !xx_pd_is_stopped(pd)) &&
            pm_read(format, at, trailer, sizeof(trailer)) &&
-           (uint32_t)xx_crc_context_final(&crc) == pfi_be32(trailer);
+           (uint32_t)xx_crc_context_final(&crc) == xx_data_get_u32(trailer, 4, 0, true);
 }
 
 static int pfi_compare_u32(const void *left, const void *right) {
@@ -88,7 +77,7 @@ static bool pfi_finish_track(pm_stream *stream, pfi_track *track) {
             track->indexes[unique++] = track->indexes[i];
     bytes = (uint8_t *)xx_mem_alloc(unique * 4U);
     if (!bytes) return false;
-    for (i = 0U; i < unique; ++i) pfi_le32(bytes + i * 4U, track->indexes[i]);
+    for (i = 0U; i < unique; ++i) xx_data_set_u32(bytes + i * 4U, 4, 0, track->indexes[i], false);
     member = &stream->items[track->indexes_member];
     member->memory = bytes;
     member->offset = -1;
@@ -115,7 +104,7 @@ static bool pfi_decode_pulses(const uint8_t *input, size_t length,
         } else {
             value = tag;
         }
-        if (output) pfi_le32(output + produced * 4U, value);
+        if (output) xx_data_set_u32(output + produced * 4U, 4, 0, value, false);
         ++produced;
     }
     *count = produced;
@@ -163,8 +152,8 @@ static bool pfi_add_pulses(Abstractformat *format, pm_stream *stream,
 static bool pfi_start_track(Abstractformat *format, pm_stream *stream,
                              pfi_track *track, const uint8_t fields[12],
                              uint8_t seen[PFI_CYLINDERS * PFI_HEADS / 8U]) {
-    uint32_t cylinder = pfi_be32(fields), head = pfi_be32(fields + 4U);
-    uint32_t clock = pfi_be32(fields + 8U), index;
+    uint32_t cylinder = xx_data_get_u32(fields, 4, 0, true), head = xx_data_get_u32(fields + 4U, 4, 0, true);
+    uint32_t clock = xx_data_get_u32(fields + 8U, 4, 0, true), index;
     char name[72];
     uint8_t *clock_bytes;
     if (cylinder >= PFI_CYLINDERS || head >= PFI_HEADS || clock == 0U)
@@ -177,7 +166,7 @@ static bool pfi_start_track(Abstractformat *format, pm_stream *stream,
     if (!pm_add(format, stream, name, 0, 0)) return false;
     clock_bytes = (uint8_t *)xx_mem_alloc(4U);
     if (!clock_bytes) return false;
-    pfi_le32(clock_bytes, clock);
+    xx_data_set_u32(clock_bytes, 4, 0, clock, false);
     stream->items[stream->count - 1U].memory = clock_bytes;
     stream->items[stream->count - 1U].offset = -1;
     stream->items[stream->count - 1U].size = 4;
@@ -211,7 +200,7 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
         int64_t next;
         if (++chunks > PFI_MAX_CHUNKS || available - cursor < 12 ||
             !pm_read(format, cursor, header, sizeof(header))) return false;
-        length = pfi_be32(header + 4U);
+        length = xx_data_get_u32(header + 4U, 4, 0, true);
         if ((uint64_t)length > (uint64_t)(available - cursor - 12))
             return false;
         next = cursor + 12 + (int64_t)length;
@@ -221,7 +210,7 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
             uint8_t version[4];
             if (memcmp(header, "PFI ", 4U) != 0 || length != 4U ||
                 !pm_read(format, cursor + 8, version, 4U) ||
-                pfi_be32(version) != 0U) return false;
+                xx_data_get_u32(version, 4, 0, true) != 0U) return false;
             header_seen = true;
         } else if (memcmp(header, "TEXT", 4U) == 0) {
             if (length > PFI_MAX_TEXT ||
@@ -244,7 +233,7 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
                 if ((pd && xx_pd_is_stopped(pd)) ||
                     !pm_read(format, cursor + 8 + (int64_t)i * 4,
                              word, 4U)) return false;
-                track.indexes[track.index_count++] = pfi_be32(word);
+                track.indexes[track.index_count++] = xx_data_get_u32(word, 4, 0, true);
             }
         } else if (memcmp(header, "DATA", 4U) == 0) {
             if (!track.active || !pfi_add_pulses(format, stream, &track,

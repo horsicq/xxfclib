@@ -28,6 +28,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef FMOD_SAMPLE_BANK
 #define XX_FMOD_SAMPLE_BANK_FILE_TYPE XX_FILE_TYPE_FMOD_SAMPLE_BANK
@@ -69,13 +70,6 @@ static void fmod_sample_bank_vtable_destroy(Abstractformat *self);
 
 static uint32_t fsb_u16(const uint8_t *p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8U);
-}
-static uint32_t fsb_u32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) | ((uint32_t)p[2] << 16U) |
-           ((uint32_t)p[3] << 24U);
-}
-static uint64_t fsb_u64(const uint8_t *p) {
-    return (uint64_t)fsb_u32(p) | ((uint64_t)fsb_u32(p + 4) << 32U);
 }
 
 static bool fsb_read_at(xx_io_device *dev, int64_t offset, uint8_t *out,
@@ -236,7 +230,7 @@ static bool fsb_unique_names(fsb_stream *s) {
 /* FSB1: one 0x40-byte header per sample, data back to back. */
 static bool fsb_parse_v1(Abstractformat *self, int64_t span,
                          const uint8_t *head, fsb_stream *s, bool records) {
-    uint32_t n = fsb_u32(head + 4), data_size = fsb_u32(head + 8), i;
+    uint32_t n = xx_data_get_u32(head + 4, 4, 0, false), data_size = xx_data_get_u32(head + 8, 4, 0, false), i;
     int64_t table = 0x10, data, end, at;
     uint8_t *headers;
     bool ok = false;
@@ -253,7 +247,7 @@ static bool fsb_parse_v1(Abstractformat *self, int64_t span,
     for (i = 0; i < n; ++i) {
         const uint8_t *h = headers + (size_t)i * 0x40U;
         if (xx_pd_is_stopped(s->pd)) goto done;
-        int64_t length = (int64_t)fsb_u32(h + 0x24);
+        int64_t length = (int64_t)xx_data_get_u32(h + 0x24, 4, 0, false);
         if (length > end - at) goto done;
         if (records &&
             !fsb_add(s, n, fsb_name(h, 32U, i), table + (int64_t)i * 0x40,
@@ -261,8 +255,8 @@ static bool fsb_parse_v1(Abstractformat *self, int64_t span,
             goto done;
         if (records) {
             fsb_member *m = s->items + i;
-            m->samples = fsb_u32(h + 0x20); m->rate = fsb_u32(h + 0x28);
-            m->channels = (uint16_t)fsb_u16(h + 0x2e); m->mode = fsb_u32(h + 0x34);
+            m->samples = xx_data_get_u32(h + 0x20, 4, 0, false); m->rate = xx_data_get_u32(h + 0x28, 4, 0, false);
+            m->channels = (uint16_t)fsb_u16(h + 0x2e); m->mode = xx_data_get_u32(h + 0x34, 4, 0, false);
         }
         at += length;
     }
@@ -284,12 +278,12 @@ static bool fsb_parse_v234(Abstractformat *self, int64_t span,
     uint8_t *headers;
     bool ok = false, align;
     if (span < fixed) return false;
-    n = fsb_u32(head + 4);
-    table_size = fsb_u32(head + 8);
-    data_size = fsb_u32(head + 12);
+    n = xx_data_get_u32(head + 4, 4, 0, false);
+    table_size = xx_data_get_u32(head + 8, 4, 0, false);
+    data_size = xx_data_get_u32(head + 12, 4, 0, false);
     if (version >= 3U) {
-        uint32_t revision = fsb_u32(head + 16);
-        flags = fsb_u32(head + 20);
+        uint32_t revision = xx_data_get_u32(head + 16, 4, 0, false);
+        flags = xx_data_get_u32(head + 20, 4, 0, false);
         if (version == 3U && revision != 0x30000U && revision != 0x30001U)
             return false;
         if (version == 4U && revision != 0x40000U) return false;
@@ -316,14 +310,14 @@ static bool fsb_parse_v234(Abstractformat *self, int64_t span,
         if (i > 0U && (flags & FSB_FLAG_BASICHEADERS)) {
             if (table_size - pos < 8U) goto done;
             header_size = 8U;
-            length = (int64_t)fsb_u32(h + 4);
+            length = (int64_t)xx_data_get_u32(h + 4, 4, 0, false);
         } else {
             if (table_size - pos < FSB_MIN_FULL_HEADER) goto done;
             header_size = fsb_u16(h);
             if (header_size < FSB_MIN_FULL_HEADER ||
                 header_size > table_size - pos)
                 goto done;
-            length = (int64_t)fsb_u32(h + 0x24);
+            length = (int64_t)xx_data_get_u32(h + 0x24, 4, 0, false);
             if (records) name = fsb_name(h + 2, 30U, i);
         }
         if (length > end - at) {
@@ -337,11 +331,11 @@ static bool fsb_parse_v234(Abstractformat *self, int64_t span,
                 goto done;
             {
                 fsb_member *m = s->items + i;
-                m->samples = fsb_u32(h + (header_size == 8U ? 0 : 0x20));
+                m->samples = xx_data_get_u32(h + (header_size == 8U ? 0 : 0x20), 4, 0, false);
                 if (header_size == 8U) {
                     m->rate = s->items[0].rate; m->channels = s->items[0].channels; m->mode = s->items[0].mode;
                 } else {
-                    m->mode = fsb_u32(h + 0x30); m->rate = fsb_u32(h + 0x34); m->channels = (uint16_t)fsb_u16(h + 0x3e);
+                    m->mode = xx_data_get_u32(h + 0x30, 4, 0, false); m->rate = xx_data_get_u32(h + 0x34, 4, 0, false); m->channels = (uint16_t)fsb_u16(h + 0x3e);
                 }
             }
         }
@@ -358,9 +352,9 @@ done:
 /* FSB5. */
 static bool fsb_parse_v5(Abstractformat *self, int64_t span,
                          const uint8_t *head, fsb_stream *s, bool records) {
-    uint32_t revision = fsb_u32(head + 4), n = fsb_u32(head + 8);
-    uint32_t table_size = fsb_u32(head + 12), names_size = fsb_u32(head + 16);
-    uint32_t data_size = fsb_u32(head + 20), codec = fsb_u32(head + 24), i;
+    uint32_t revision = xx_data_get_u32(head + 4, 4, 0, false), n = xx_data_get_u32(head + 8, 4, 0, false);
+    uint32_t table_size = xx_data_get_u32(head + 12, 4, 0, false), names_size = xx_data_get_u32(head + 16, 4, 0, false);
+    uint32_t data_size = xx_data_get_u32(head + 20, 4, 0, false), codec = xx_data_get_u32(head + 24, 4, 0, false), i;
     int64_t fixed, names, data, end, previous = 0;
     uint8_t *headers = NULL, *name_table = NULL;
     int64_t *offsets = NULL;
@@ -392,7 +386,7 @@ static bool fsb_parse_v5(Abstractformat *self, int64_t span,
         bool more;
         if (xx_pd_is_stopped(s->pd)) goto done;
         if (table_size - pos < 8U) goto done;
-        raw = fsb_u64(headers + pos);
+        raw = xx_data_get_u64(headers + pos, 8, 0, false);
         if (records) {
             static const uint32_t rates[] = {4000,8000,11000,11025,16000,22050,24000,32000,44100,48000,96000};
             static const uint16_t channels[] = {1,2,6,8};
@@ -401,7 +395,7 @@ static bool fsb_parse_v5(Abstractformat *self, int64_t span,
             m->codec = codec; m->samples = (uint32_t)(raw >> 34U);
             m->channels = channels[(raw >> 5U) & 3U];
             m->rate = rate_index < sizeof(rates) / sizeof(rates[0]) ? rates[rate_index] : 0;
-            m->swap_endian = codec == 2U && revision == 1U && (fsb_u32(head + 0x20) & 1U);
+            m->swap_endian = codec == 2U && revision == 1U && (xx_data_get_u32(head + 0x20, 4, 0, false) & 1U);
         }
         pos += 8U;
         more = (raw & 1U) != 0U;
@@ -410,7 +404,7 @@ static bool fsb_parse_v5(Abstractformat *self, int64_t span,
         while (more) {
             uint32_t chunk, chunk_size;
             if (table_size - pos < 4U) goto done;
-            chunk = fsb_u32(headers + pos);
+            chunk = xx_data_get_u32(headers + pos, 4, 0, false);
             pos += 4U;
             more = (chunk & 1U) != 0U;
             chunk_size = (chunk >> 1U) & 0xFFFFFFU;
@@ -418,7 +412,7 @@ static bool fsb_parse_v5(Abstractformat *self, int64_t span,
             if (records) {
                 uint32_t type = chunk >> 25U;
                 if (type == 1U) { if (chunk_size != 1U) goto done; s->items[i].channels = headers[pos]; }
-                if (type == 2U) { if (chunk_size != 4U) goto done; s->items[i].rate = fsb_u32(headers + pos); }
+                if (type == 2U) { if (chunk_size != 4U) goto done; s->items[i].rate = xx_data_get_u32(headers + pos, 4, 0, false); }
             }
             pos += chunk_size;
         }
@@ -440,7 +434,7 @@ static bool fsb_parse_v5(Abstractformat *self, int64_t span,
             const uint8_t *field = NULL;
             size_t limit = 0U;
             if (name_table) {
-                uint32_t name_offset = fsb_u32(name_table + (size_t)i * 4U);
+                uint32_t name_offset = xx_data_get_u32(name_table + (size_t)i * 4U, 4, 0, false);
                 if (name_offset >= names_size) goto done;
                 field = name_table + name_offset;
                 limit = names_size - name_offset;
@@ -455,7 +449,7 @@ static bool fsb_parse_v5(Abstractformat *self, int64_t span,
         uint8_t *index_table = fsb_read_table(self, names, n * 4U);
         if (!index_table) goto done;
         for (i = 0; i < n; ++i)
-            if (fsb_u32(index_table + (size_t)i * 4U) >= names_size) break;
+            if (xx_data_get_u32(index_table + (size_t)i * 4U, 4, 0, false) >= names_size) break;
         xx_mem_free(index_table);
         if (i != n) goto done;
     }
@@ -496,9 +490,9 @@ static fsb_stream *fsb_parse_impl(Abstractformat *self, bool records,
     {
         const xx_var *limit = xx_format_resolve_extra_parameter(self, options, XX_META_ID_OPT_MEMORY_LIMIT);
         uint64_t budget = limit ? xx_var_get_u64(limit) : UINT64_C(256) * 1024U * 1024U;
-        uint64_t n = fsb_u32(head + (version == 5U ? 8 : 4));
-        uint64_t tables = version == 1U ? n * 64U : fsb_u32(head + (version == 5U ? 12 : 8));
-        if (version == 5U) tables += fsb_u32(head + 16);
+        uint64_t n = xx_data_get_u32(head + (version == 5U ? 8 : 4), 4, 0, false);
+        uint64_t tables = version == 1U ? n * 64U : xx_data_get_u32(head + (version == 5U ? 12 : 8), 4, 0, false);
+        if (version == 5U) tables += xx_data_get_u32(head + 16, 4, 0, false);
         /* Header tables, record array, owned/current names and dedup hash are
          * simultaneously live. Bound all of them before allocating any. */
         uint64_t retained = n * (sizeof(fsb_member) + 2U * (FSB_MAX_NAME + 24U) + 96U);
@@ -512,7 +506,7 @@ static fsb_stream *fsb_parse_impl(Abstractformat *self, bool records,
     s->version = version;
     s->pd = pd;
     if (records) {
-        uint32_t n = fsb_u32(head + (version == 5U ? 8 : 4));
+        uint32_t n = xx_data_get_u32(head + (version == 5U ? 8 : 4), 4, 0, false);
         /* Sized from the declared count, which the parsers bound by the
          * header table they have already checked against the device; cap it
          * here too so the allocation never precedes that check. */

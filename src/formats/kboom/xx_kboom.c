@@ -35,6 +35,7 @@
 #include "xxfclib/algo/lzwvariants/xx_lzwvariants.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_KBOOM_COPY_CHUNK (64 * 1024)
 
@@ -142,8 +143,6 @@ static bool xx_kboom_add(xx_kboom_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_kboom_le16(const uint8_t *data);
-static uint32_t xx_kboom_le32(const uint8_t *data);
 static xx_kboom_stream *xx_kboom_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_kboom_decode(Abstractformat *self, const xx_kboom_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
@@ -159,15 +158,6 @@ static bool xx_kboom_decode(Abstractformat *self, const xx_kboom_member *member,
  * container's own file name, so the single record gets a fixed placeholder.
  * It is deliberately extension-less: inventing one would be a claim about
  * content the container never makes. */
-
-static uint16_t xx_kboom_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_kboom_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static xx_kboom_stream *xx_kboom_parse(Abstractformat *self,
                                        xx_pd_struct *pd) {
@@ -199,9 +189,9 @@ static xx_kboom_stream *xx_kboom_parse(Abstractformat *self,
      * against claiming an unrelated file. They are high-entropy and
      * non-ASCII, which is what makes that just barely enough; loosening
      * either one turns this reader into a wildcard. */
-    if (xx_kboom_le32(header) != XX_KBOOM_MAGIC) return NULL;
+    if (xx_data_get_u32(header, 4, 0, false) != XX_KBOOM_MAGIC) return NULL;
 
-    raw_size = xx_kboom_le32(header + XX_KBOOM_RAWSIZE_OFFSET);
+    raw_size = xx_data_get_u32(header + XX_KBOOM_RAWSIZE_OFFSET, 4, 0, false);
     /* The reference reads the length as a SIGNED 32-bit value and rejects a
      * negative one, so the top bit being set is a rejection rather than a
      * two-gigabyte member. Part of the magic's gate: it rules out half of
@@ -250,8 +240,8 @@ static xx_kboom_stream *xx_kboom_parse(Abstractformat *self,
      * first and the time word second, the reverse of the packed DOS order,
      * and swapping them yields plausible nonsense rather than an error. */
     member.timestamp =
-        ((uint64_t)xx_kboom_le16(header + XX_KBOOM_DOSDATE_OFFSET) << 16) |
-        (uint64_t)xx_kboom_le16(header + XX_KBOOM_DOSTIME_OFFSET);
+        ((uint64_t)xx_data_get_u16(header + XX_KBOOM_DOSDATE_OFFSET, 2, 0, false) << 16) |
+        (uint64_t)xx_data_get_u16(header + XX_KBOOM_DOSTIME_OFFSET, 2, 0, false);
     /* The wrapper has no directory entries and never will: it holds one
      * file. */
     member.is_folder = false;

@@ -5,9 +5,10 @@
  */
 #include "xxfclib/formats/nintendo_bfres/xx_nintendo_bfres.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static XXFC_MAYBE_UNUSED uint16_t g16(const uint8_t *p,bool be) { return be ? pm_be16(p) : pm_le16(p); }
-static XXFC_MAYBE_UNUSED uint32_t g32(const uint8_t *p,bool be) { return be ? pm_be32(p) : pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint16_t g16(const uint8_t *p,bool be) { return be ? xx_data_get_u16(p, 2, 0, true) : xx_data_get_u16(p, 2, 0, false); }
+static XXFC_MAYBE_UNUSED uint32_t g32(const uint8_t *p,bool be) { return be ? xx_data_get_u32(p, 4, 0, true) : xx_data_get_u32(p, 4, 0, false); }
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool overlap(uint64_t a,uint64_t n,uint64_t b,uint64_t m) { return n && m && a<b+m && b<a+n; }
 static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uint64_t n,uint64_t total) {
@@ -26,27 +27,27 @@ static XXFC_MAYBE_UNUSED bool bom(const uint8_t *p,bool *be) { *be=p[0]==0xfe &&
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[108],d[8],e[16],p[8]; uint32_t total,count,dict,ds,pool,ps,i; int64_t target; uint64_t metadata_end,descriptors[1024]; char label[40];
-    if(!pm_read(f,0,h,sizeof(h)) || xx_rt_memcmp(h,"FRES",4) || h[8]!=0xfe || h[9]!=0xff || pm_be16(h+10)!=16 || pm_be32(h+4)<0x02040000 || pm_be32(h+4)>=0x05000000) return false;
-    total=pm_be32(h+12); ps=pm_be32(h+24); count=pm_be16(h+102);
-    if(total<108 || total>(uint64_t)pm_available(f) || !count || count>1024 || !pm_be32(h+16) || (pm_be32(h+16)&(pm_be32(h+16)-1)) || pm_be32(h+16)>65536 || pm_be32(h+104)) return false;
-    for(i=0;i<11;++i) if(pm_be32(h+32+i*4) || pm_be16(h+80+i*2)) return false;
-    target=28+(int64_t)(int32_t)pm_be32(h+28); if(target<108 || !span((uint64_t)target,ps,total) || !ps) return false; pool=(uint32_t)target;
-    target=20+(int64_t)(int32_t)pm_be32(h+20); if(target<pool || !zname(f,(uint64_t)target,(uint64_t)pool+ps,false)) return false;
-    target=76+(int64_t)(int32_t)pm_be32(h+76); if(target<108 || !span((uint64_t)target,8,total) || !pm_read(f,target,d,8)) return false; dict=(uint32_t)target; ds=pm_be32(d);
-    if(pm_be32(d+4)!=count || ds!=8U+16U*(count+1U) || !span(dict,ds,total) || overlap(dict,ds,pool,ps)) return false;
+    if(!pm_read(f,0,h,sizeof(h)) || xx_rt_memcmp(h,"FRES",4) || h[8]!=0xfe || h[9]!=0xff || xx_data_get_u16(h+10, 2, 0, true)!=16 || xx_data_get_u32(h+4, 4, 0, true)<0x02040000 || xx_data_get_u32(h+4, 4, 0, true)>=0x05000000) return false;
+    total=xx_data_get_u32(h+12, 4, 0, true); ps=xx_data_get_u32(h+24, 4, 0, true); count=xx_data_get_u16(h+102, 2, 0, true);
+    if(total<108 || total>(uint64_t)pm_available(f) || !count || count>1024 || !xx_data_get_u32(h+16, 4, 0, true) || (xx_data_get_u32(h+16, 4, 0, true)&(xx_data_get_u32(h+16, 4, 0, true)-1)) || xx_data_get_u32(h+16, 4, 0, true)>65536 || xx_data_get_u32(h+104, 4, 0, true)) return false;
+    for(i=0;i<11;++i) if(xx_data_get_u32(h+32+i*4, 4, 0, true) || xx_data_get_u16(h+80+i*2, 2, 0, true)) return false;
+    target=28+(int64_t)(int32_t)xx_data_get_u32(h+28, 4, 0, true); if(target<108 || !span((uint64_t)target,ps,total) || !ps) return false; pool=(uint32_t)target;
+    target=20+(int64_t)(int32_t)xx_data_get_u32(h+20, 4, 0, true); if(target<pool || !zname(f,(uint64_t)target,(uint64_t)pool+ps,false)) return false;
+    target=76+(int64_t)(int32_t)xx_data_get_u32(h+76, 4, 0, true); if(target<108 || !span((uint64_t)target,8,total) || !pm_read(f,target,d,8)) return false; dict=(uint32_t)target; ds=xx_data_get_u32(d, 4, 0, true);
+    if(xx_data_get_u32(d+4, 4, 0, true)!=count || ds!=8U+16U*(count+1U) || !span(dict,ds,total) || overlap(dict,ds,pool,ps)) return false;
     metadata_end=dict+ds; if((uint64_t)pool+ps>metadata_end) metadata_end=(uint64_t)pool+ps;
     for(i=0;i<=count;++i) {
         uint64_t node=(uint64_t)dict+8+i*16,external,data; uint32_t size;
-        if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,(int64_t)node,e,16) || pm_be16(e+4)>count || pm_be16(e+6)>count) return false;
-        if(!i) { if(pm_be32(e+12)) return false; continue; }
-        target=(int64_t)node+8+(int64_t)(int32_t)pm_be32(e+8); if(target<pool || !zname(f,(uint64_t)target,(uint64_t)pool+ps,false)) return false;
-        target=(int64_t)node+12+(int64_t)(int32_t)pm_be32(e+12); if(target<108 || !span((uint64_t)target,8,total) || overlap((uint64_t)target,8,dict,ds) || overlap((uint64_t)target,8,pool,ps) || !pm_read(f,target,p,8)) return false; external=(uint64_t)target;
+        if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,(int64_t)node,e,16) || xx_data_get_u16(e+4, 2, 0, true)>count || xx_data_get_u16(e+6, 2, 0, true)>count) return false;
+        if(!i) { if(xx_data_get_u32(e+12, 4, 0, true)) return false; continue; }
+        target=(int64_t)node+8+(int64_t)(int32_t)xx_data_get_u32(e+8, 4, 0, true); if(target<pool || !zname(f,(uint64_t)target,(uint64_t)pool+ps,false)) return false;
+        target=(int64_t)node+12+(int64_t)(int32_t)xx_data_get_u32(e+12, 4, 0, true); if(target<108 || !span((uint64_t)target,8,total) || overlap((uint64_t)target,8,dict,ds) || overlap((uint64_t)target,8,pool,ps) || !pm_read(f,target,p,8)) return false; external=(uint64_t)target;
         { uint32_t j; for(j=0;j+1<i;++j) if(overlap(external,8,descriptors[j],8)) return false; descriptors[i-1]=external; }
-        target=(int64_t)external+(int64_t)(int32_t)pm_be32(p); size=pm_be32(p+4); if(target<(int64_t)metadata_end || !size || !span((uint64_t)target,size,total) || overlap((uint64_t)target,size,external,8)) return false; data=(uint64_t)target;
+        target=(int64_t)external+(int64_t)(int32_t)xx_data_get_u32(p, 4, 0, true); size=xx_data_get_u32(p+4, 4, 0, true); if(target<(int64_t)metadata_end || !size || !span((uint64_t)target,size,total) || overlap((uint64_t)target,size,external,8)) return false; data=(uint64_t)target;
         xx_rt_snprintf(label,sizeof(label),"attachment-%u.bin",i-1); if(!emit(f,s,label,data,size,total)) return false;
     }
     for(i=1;i<=count;++i) { uint64_t node=(uint64_t)dict+8+i*16; size_t j;
-        if(!pm_read(f,(int64_t)node,e,16)) { return false; } target=(int64_t)node+12+(int64_t)(int32_t)pm_be32(e+12);
+        if(!pm_read(f,(int64_t)node,e,16)) { return false; } target=(int64_t)node+12+(int64_t)(int32_t)xx_data_get_u32(e+12, 4, 0, true);
         for(j=0;j<s->count;++j) if(overlap((uint64_t)target,8,(uint64_t)(s->items[j].offset-f->base_address),(uint64_t)s->items[j].size)) return false; }
     s->size=total; return true;
 

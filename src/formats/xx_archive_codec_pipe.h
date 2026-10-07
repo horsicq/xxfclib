@@ -7,6 +7,7 @@
 #include <string.h>
 #include <limits.h>
 #include <wchar.h>
+#include "xxfclib/data/xx_data.h"
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -65,10 +66,6 @@ static bool af_output(af_process *p,const void *data,size_t count){size_t done=0
  ssize_t wrote=send(p->input,(const uint8_t *)data+done,want,MSG_NOSIGNAL);if(wrote<0&&errno==EINTR)continue;if(wrote<0&&(errno==EAGAIN||errno==EWOULDBLOCK)){struct pollfd poller={p->input,POLLOUT,0};(void)poll(&poller,1,5);continue;}if(wrote<=0){p->status=AF_IO;return false;}done+=(size_t)wrote;
 #endif
  }return true;}
-static uint32_t af_le32(const uint8_t *p){return (uint32_t)p[0]|(uint32_t)p[1]<<8|(uint32_t)p[2]<<16|(uint32_t)p[3]<<24;}
-static uint64_t af_le64(const uint8_t *p){return af_le32(p)|((uint64_t)af_le32(p+4)<<32);}
-static void af_put32(uint8_t *p,uint32_t v){p[0]=(uint8_t)v;p[1]=(uint8_t)(v>>8);p[2]=(uint8_t)(v>>16);p[3]=(uint8_t)(v>>24);}
-static void af_put64(uint8_t *p,uint64_t v){af_put32(p,(uint32_t)v);af_put32(p+4,(uint32_t)(v>>32));}
 static void af_close(af_process *p){
 #ifdef _WIN32
  if(p->input) {CloseHandle(p->input); } if(p->output)CloseHandle(p->output);if(p->write_event)CloseHandle(p->write_event);if(p->process){if(WaitForSingleObject(p->process,100)!=WAIT_OBJECT_0){TerminateProcess(p->process,2);WaitForSingleObject(p->process,1000);}CloseHandle(p->process);}if(p->job)CloseHandle(p->job);
@@ -113,12 +110,12 @@ static XXFC_MAYBE_UNUSED bool af_decode(ac_blob *b,unsigned kind,uint8_t *out,ui
  if(worker>UINT64_C(1024)*1024U*1024U)worker=UINT64_C(1024)*1024U*1024U;
  if(!af_live(&p))goto done;
  if(!af_start(&p,NULL,worker)){p.status=AF_UNAVAILABLE;goto done;}
- xx_rt_memcpy(h,"AFC1",4);af_put32(h+4,kind);af_put64(h+8,b->n);af_put64(h+16,size);af_put64(h+24,worker);
+ xx_rt_memcpy(h,"AFC1",4);xx_data_set_u32(h+4, 4, 0, kind, false);xx_data_set_u64(h+8, 8, 0, b->n, false);xx_data_set_u64(h+16, 8, 0, size, false);xx_data_set_u64(h+24, 8, 0, worker, false);
  if(!af_output(&p,h,32))goto done;
- for(;;){unsigned type;if(!af_input(&p,h,4))goto done;type=af_le32(h);
-  if(type==1U){uint64_t at;uint32_t n;if(!af_input(&p,h,12))goto done;at=af_le64(h);n=af_le32(h+8);if(!n||n>65536U||at>b->n||n>b->n-at)goto done;af_put32(h,n);if(!af_output(&p,h,4)||!af_output(&p,b->p+(uint32_t)at,n))goto done;
-  }else if(type==3U){uint32_t n;if(!af_input(&p,h,4))goto done;n=af_le32(h);if(!n||n>65536U||received>size||n>size-received||!af_input(&p,out+(uint32_t)received,n))goto done;received+=n;
-  }else if(type==4U){if(!af_input(&p,h,12)||af_le32(h)||af_le64(h+4)!=size||received!=size)goto done;p.status=AF_OK;ok=af_live(&p);break;
+ for(;;){unsigned type;if(!af_input(&p,h,4))goto done;type=xx_data_get_u32(h, 4, 0, false);
+  if(type==1U){uint64_t at;uint32_t n;if(!af_input(&p,h,12))goto done;at=xx_data_get_u64(h, 8, 0, false);n=xx_data_get_u32(h+8, 4, 0, false);if(!n||n>65536U||at>b->n||n>b->n-at)goto done;xx_data_set_u32(h, 4, 0, n, false);if(!af_output(&p,h,4)||!af_output(&p,b->p+(uint32_t)at,n))goto done;
+  }else if(type==3U){uint32_t n;if(!af_input(&p,h,4))goto done;n=xx_data_get_u32(h, 4, 0, false);if(!n||n>65536U||received>size||n>size-received||!af_input(&p,out+(uint32_t)received,n))goto done;received+=n;
+  }else if(type==4U){if(!af_input(&p,h,12)||xx_data_get_u32(h, 4, 0, false)||xx_data_get_u64(h+4, 8, 0, false)!=size||received!=size)goto done;p.status=AF_OK;ok=af_live(&p);break;
   }else goto done;
  }
 done:af_close(&p);if(!ok && (!b->pd||!xx_pd_is_stopped(b->pd)))ac_error(b,p.status==AF_UNAVAILABLE?"archive codec helper unavailable":p.status==AF_TIMEOUT?"archive codec timed out":p.status==AF_LIMIT?"archive codec memory limit":"archive codec rejected damaged, unsupported or over-budget stream");return ok;

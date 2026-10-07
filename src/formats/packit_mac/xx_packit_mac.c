@@ -33,6 +33,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -170,15 +171,6 @@ static const uint16_t pit_mac_roman[128] = {
     0xF8FF, 0x00D2, 0x00DA, 0x00DB, 0x00D9, 0x0131, 0x02C6, 0x02DC,
     0x00AF, 0x02D8, 0x02D9, 0x02DA, 0x00B8, 0x02DD, 0x02DB, 0x02C7,
 };
-
-static uint32_t pit_be32(const uint8_t *bytes) {
-    return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
-           ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3];
-}
-
-static uint16_t pit_be16(const uint8_t *bytes) {
-    return (uint16_t)(((uint32_t)bytes[0] << 8U) | (uint32_t)bytes[1]);
-}
 
 static bool pit_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -333,19 +325,19 @@ static bool pit_body_header_valid(const uint8_t *header) {
     uint8_t name_length = header[PIT_OFF_NAME_LENGTH];
     return name_length >= 1U && name_length <= PIT_NAME_FIELD &&
            xx_crc16_xmodem_calc(0U, header, PIT_HEADER_CRC_SPAN) ==
-               pit_be16(header + PIT_OFF_HEADER_CRC) &&
-           pit_be32(header + PIT_OFF_DATA_LENGTH) <= PIT_MAX_FORK &&
-           pit_be32(header + PIT_OFF_RSRC_LENGTH) <= PIT_MAX_FORK;
+               xx_data_get_u16(header + PIT_OFF_HEADER_CRC, 2, 0, true) &&
+           xx_data_get_u32(header + PIT_OFF_DATA_LENGTH, 4, 0, true) <= PIT_MAX_FORK &&
+           xx_data_get_u32(header + PIT_OFF_RSRC_LENGTH, 4, 0, true) <= PIT_MAX_FORK;
 }
 
 static void pit_member_from_header(pit_member *m, const uint8_t *header) {
     m->name_length = header[PIT_OFF_NAME_LENGTH];
     xx_rt_memcpy(m->name, header + PIT_OFF_NAME, PIT_NAME_FIELD);
-    m->type = pit_be32(header + PIT_OFF_TYPE);
-    m->finder_flags = pit_be16(header + PIT_OFF_FINDER);
-    m->data_length = pit_be32(header + PIT_OFF_DATA_LENGTH);
-    m->rsrc_length = pit_be32(header + PIT_OFF_RSRC_LENGTH);
-    m->modified = pit_be32(header + PIT_OFF_MODIFIED);
+    m->type = xx_data_get_u32(header + PIT_OFF_TYPE, 4, 0, true);
+    m->finder_flags = xx_data_get_u16(header + PIT_OFF_FINDER, 2, 0, true);
+    m->data_length = xx_data_get_u32(header + PIT_OFF_DATA_LENGTH, 4, 0, true);
+    m->rsrc_length = xx_data_get_u32(header + PIT_OFF_RSRC_LENGTH, 4, 0, true);
+    m->modified = xx_data_get_u32(header + PIT_OFF_MODIFIED, 4, 0, true);
 }
 
 /* Reads the member (or end marker) at absolute offset @p at.  A Huffman
@@ -848,7 +840,7 @@ static bool pit_extract(Abstractformat *format, const pit_member *m,
         }
     }
     if (!pit_read_body(r, trailer, sizeof(trailer)) ||
-        pit_be16(trailer) != crc ||
+        xx_data_get_u16(trailer, 2, 0, true) != crc ||
         (int64_t)r->fetched != m->size - PIT_MARKER_SIZE)
         goto done;
     result = true;

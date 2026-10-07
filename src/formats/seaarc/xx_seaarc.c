@@ -78,6 +78,7 @@
 #include "../../global/xx_tls.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 typedef struct xx_seaarc_member_s {
     char *name;
@@ -153,15 +154,6 @@ static bool xx_seaarc_range_within(int64_t total, int64_t offset,
                                    int64_t size) {
     return offset >= 0 && size >= 0 && offset <= total &&
            size <= total - offset;
-}
-
-static uint32_t xx_seaarc_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static uint16_t xx_seaarc_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
 }
 
 static char xx_seaarc_upper(char c) {
@@ -620,13 +612,13 @@ static xx_seaarc_step xx_seaarc_read_record(Abstractformat *self, int64_t span,
         return XX_SEAARC_STEP_ERROR;
     }
 
-    compressed_size = (int64_t)xx_seaarc_le32(header + 15);
+    compressed_size = (int64_t)xx_data_get_u32(header + 15, 4, 0, false);
     if (method == XX_SEAARC_METHOD_STORE_OLD) {
         /* The old header has no original-size field at all; for a stored
          * member the two lengths are the same by definition. */
         uncompressed_size = compressed_size;
     } else {
-        uncompressed_size = (int64_t)xx_seaarc_le32(header + 25);
+        uncompressed_size = (int64_t)xx_data_get_u32(header + 25, 4, 0, false);
     }
 
     data_offset = offset + header_size;
@@ -958,16 +950,16 @@ static xx_seaarc_stream *xx_seaarc_parse(Abstractformat *self,
         member.header_offset = self->base_address + offset;
         member.header_size = xx_seaarc_header_size(header[1]);
         member.data_offset = member.header_offset + member.header_size;
-        member.compressed_size = (int64_t)xx_seaarc_le32(header + 15);
+        member.compressed_size = (int64_t)xx_data_get_u32(header + 15, 4, 0, false);
         member.uncompressed_size =
             header[1] == XX_SEAARC_METHOD_STORE_OLD
                 ? member.compressed_size
-                : (int64_t)xx_seaarc_le32(header + 25);
+                : (int64_t)xx_data_get_u32(header + 25, 4, 0, false);
         member.method = (uint32_t)header[1];
-        member.crc = xx_seaarc_le16(header + 23);
+        member.crc = xx_data_get_u16(header + 23, 2, 0, false);
         /* Date at +0x13, time at +0x15, published as the usual packed dword. */
-        member.timestamp = ((uint64_t)xx_seaarc_le16(header + 19) << 16) |
-                           (uint64_t)xx_seaarc_le16(header + 21);
+        member.timestamp = ((uint64_t)xx_data_get_u16(header + 19, 2, 0, false) << 16) |
+                           (uint64_t)xx_data_get_u16(header + 21, 2, 0, false);
         member.is_folder = false;
         if (!xx_seaarc_add(stream, &member)) {
             xx_str_free(name);

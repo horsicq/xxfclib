@@ -16,6 +16,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define ARTIPACK_HEADER_SIZE 32U
 #define ARTIPACK_RECORD_SIZE 34U
@@ -41,15 +42,6 @@ typedef struct artipack_stream_s {
     int64_t directory_offset;
     int64_t archive_size;
 } artipack_stream;
-
-static uint16_t artipack_le16(const uint8_t *bytes) {
-    return (uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U);
-}
-
-static uint32_t artipack_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
 
 static bool artipack_read_at(xx_io_device *device, int64_t offset,
                              void *buffer, size_t size) {
@@ -152,10 +144,10 @@ static bool artipack_parse(Abstractformat *format, artipack_stream **result,
                          ARTIPACK_SIZE_PREFIX) ||
         !artipack_read_at(format->device, format->base_address, header,
                           sizeof(header)) ||
-        xx_rt_memcmp(header, "ARTIPACK", 8U) != 0 || artipack_le16(header + 8U) != 0x0100U)
+        xx_rt_memcmp(header, "ARTIPACK", 8U) != 0 || xx_data_get_u16(header + 8U, 2, 0, false) != 0x0100U)
         return false;
-    count = artipack_le16(header + 10U);
-    directory_offset = (int64_t)artipack_le32(header + 12U);
+    count = xx_data_get_u16(header + 10U, 2, 0, false);
+    directory_offset = (int64_t)xx_data_get_u32(header + 12U, 4, 0, false);
     directory_size = (int64_t)count * ARTIPACK_RECORD_SIZE;
     if (count == 0U || directory_offset < (int64_t)ARTIPACK_HEADER_SIZE ||
         directory_size > size || directory_offset > size - directory_size ||
@@ -176,11 +168,11 @@ static bool artipack_parse(Abstractformat *format, artipack_stream **result,
             goto done;
         xx_rt_memset(&member, 0, sizeof(member));
         member.name = artipack_name(record);
-        member.data_offset = (int64_t)artipack_le32(record + 14U);
-        member.original_size = artipack_le32(record + 18U);
-        member.compressed_size = artipack_le32(record + 22U);
-        member.dos_date = artipack_le16(record + 26U);
-        member.dos_time = artipack_le16(record + 28U);
+        member.data_offset = (int64_t)xx_data_get_u32(record + 14U, 4, 0, false);
+        member.original_size = xx_data_get_u32(record + 18U, 4, 0, false);
+        member.compressed_size = xx_data_get_u32(record + 22U, 4, 0, false);
+        member.dos_date = xx_data_get_u16(record + 26U, 2, 0, false);
+        member.dos_time = xx_data_get_u16(record + 28U, 2, 0, false);
         if (!member.name || member.data_offset != expected ||
             member.compressed_size < ARTIPACK_SIZE_PREFIX ||
             member.data_offset > directory_offset ||
@@ -192,7 +184,7 @@ static bool artipack_parse(Abstractformat *format, artipack_stream **result,
         if (!artipack_read_at(format->device,
                               format->base_address + member.data_offset,
                               inner_size, sizeof(inner_size)) ||
-            artipack_le32(inner_size) != member.original_size) {
+            xx_data_get_u32(inner_size, 4, 0, false) != member.original_size) {
             xx_mem_free(member.name);
             goto done;
         }

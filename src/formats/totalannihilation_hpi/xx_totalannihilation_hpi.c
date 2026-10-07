@@ -8,15 +8,15 @@
 
 static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[20]; uint32_t dirend,start,queue[1024],used=0,count=1; int64_t limit=pm_available(f),end;
-    if(!pm_read(f,0,h,20) || xx_rt_memcmp(h,"HAPI",4) || pm_le32(h+4)!=0x10000 || pm_le32(h+12)) return false;
-    dirend=pm_le32(h+8); start=pm_le32(h+16); if(start<20 || dirend<start+8U || dirend>16777216 || dirend>(uint64_t)limit) return false; queue[0]=start; end=dirend;
+    if(!pm_read(f,0,h,20) || xx_rt_memcmp(h,"HAPI",4) || xx_data_get_u32(h+4, 4, 0, false)!=0x10000 || xx_data_get_u32(h+12, 4, 0, false)) return false;
+    dirend=xx_data_get_u32(h+8, 4, 0, false); start=xx_data_get_u32(h+16, 4, 0, false); if(start<20 || dirend<start+8U || dirend>16777216 || dirend>(uint64_t)limit) return false; queue[0]=start; end=dirend;
     while(used<count) { uint32_t at=queue[used++],n,table,i; if(at<start || !wg_range(dirend,at,8) || !pm_read(f,at,h,8)) return false;
-        n=pm_le32(h); table=pm_le32(h+4); if(n>65536 || table<start || !wg_range(dirend,table,(uint64_t)n*9)) return false;
+        n=xx_data_get_u32(h, 4, 0, false); table=xx_data_get_u32(h+4, 4, 0, false); if(n>65536 || table<start || !wg_range(dirend,table,(uint64_t)n*9)) return false;
         for(i=0;i<n;++i) { uint32_t name,record; int64_t p; char text[257],label[48];
-            if(wg_stop(pd) || !pm_read(f,table+(int64_t)i*9,h,9) || h[8]>1) { return false; } name=pm_le32(h); record=pm_le32(h+4); p=name;
+            if(wg_stop(pd) || !pm_read(f,table+(int64_t)i*9,h,9) || h[8]>1) { return false; } name=xx_data_get_u32(h, 4, 0, false); record=xx_data_get_u32(h+4, 4, 0, false); p=name;
             if(name<start || !wg_string(f,&p,dirend,text,sizeof(text)) || !text[0]) return false;
             if(h[8]) { unsigned j; if(count==1024 || record<start || !wg_range(dirend,record,8)) return false; for(j=0;j<count;++j) if(queue[j]==record) return false; queue[count++]=record; }
-            else { uint32_t data,bytes; if(record<start || !wg_range(dirend,record,9) || !pm_read(f,record,h,9) || h[8]) return false; data=pm_le32(h); bytes=pm_le32(h+4);
+            else { uint32_t data,bytes; if(record<start || !wg_range(dirend,record,9) || !pm_read(f,record,h,9) || h[8]) return false; data=xx_data_get_u32(h, 4, 0, false); bytes=xx_data_get_u32(h+4, 4, 0, false);
                 if(data<dirend || !wg_range(limit,data,bytes)) { return false; } xx_rt_snprintf(label,sizeof(label),"file-%u.bin",(unsigned)s->count); if(!pm_add(f,s,label,data,bytes)) return false; if((int64_t)data+bytes>end) end=(int64_t)data+bytes; }
         }
     } s->size=end; return s->count>0;

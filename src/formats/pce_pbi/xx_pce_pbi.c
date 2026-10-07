@@ -6,6 +6,7 @@
 #include "xxfclib/formats/pce_pbi/xx_pce_pbi.h"
 #include "../xx_payload_members.h"
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef PCE_PBI
 #define PBI_FILE_TYPE XX_FILE_TYPE_PCE_PBI
@@ -15,10 +16,6 @@
 
 #define PBI_MAX_FILE (128U * 1024U * 1024U)
 #define PBI_MAX_IMAGE (64U * 1024U * 1024U)
-
-static uint64_t pbi_be64(const uint8_t *p) {
-    return ((uint64_t)pm_be32(p) << 32U) | pm_be32(p + 4U);
-}
 
 static bool pbi_extent(uint64_t offset, uint64_t length, uint64_t end) {
     return offset <= end && length <= end - offset;
@@ -47,8 +44,8 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
             header[14] != first_block_bits) return false;
         alternate = true;
     }
-    if (memcmp(header, "PBI ", 4U) != 0 || pm_be32(header + 4U) != 0U ||
-        pm_be32(header + 8U) < 48U || header[15] != 0U) return false;
+    if (memcmp(header, "PBI ", 4U) != 0 || xx_data_get_u32(header + 4U, 4, 0, true) != 0U ||
+        xx_data_get_u32(header + 8U, 4, 0, true) < 48U || header[15] != 0U) return false;
     l1_bits = header[12];
     l2_bits = header[13];
     block_bits = header[14];
@@ -57,13 +54,13 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
     block_size = UINT64_C(1) << block_bits;
     l1_size = (UINT64_C(1) << l1_bits) * 8U;
     l2_size = (UINT64_C(1) << l2_bits) * 8U;
-    image_size = pbi_be64(header + 16U);
-    l1_offset = pbi_be64(header + 24U);
-    file_size = pbi_be64(header + 32U);
+    image_size = xx_data_get_u64(header + 16U, 8, 0, true);
+    l1_offset = xx_data_get_u64(header + 24U, 8, 0, true);
+    file_size = xx_data_get_u64(header + 32U, 8, 0, true);
     if (image_size == 0U || image_size > PBI_MAX_IMAGE ||
         (image_size & 511U) != 0U || file_size > available ||
         file_size < block_size ||
-        pm_be32(header + 8U) > block_size ||
+        xx_data_get_u32(header + 8U, 4, 0, true) > block_size ||
         l1_offset < block_size || (l1_offset & (block_size - 1U)) != 0U ||
         !pbi_extent(l1_offset, l1_size, file_size) ||
         (alternate && l1_offset + l1_size > available - block_size))
@@ -85,7 +82,7 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
         if ((pd && xx_pd_is_stopped(pd)) ||
             !pm_read(format, (int64_t)(l1_offset + l1_index * 8U),
                      entry, sizeof(entry))) goto fail;
-        l1_entry = pbi_be64(entry);
+        l1_entry = xx_data_get_u64(entry, 8, 0, true);
         if (l1_entry == 0U) continue;
         if ((l1_entry & (block_size - 1U)) != 0U ||
             l1_entry < block_size ||
@@ -93,12 +90,12 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
             (alternate && l1_entry + l2_size > available - block_size) ||
             !pm_read(format, (int64_t)(l1_entry + l2_index * 8U),
                      entry, sizeof(entry))) goto fail;
-        l2_entry = pbi_be64(entry);
+        l2_entry = xx_data_get_u64(entry, 8, 0, true);
         if (l2_entry == 0U) continue;
         if (l2_entry & 2U) {
             size_t i;
-            uint32_t fill = pm_be32(entry);
-            if (pm_be32(entry + 4U) != 2U) goto fail;
+            uint32_t fill = xx_data_get_u32(entry, 4, 0, true);
+            if (xx_data_get_u32(entry + 4U, 4, 0, true) != 2U) goto fail;
             for (i = 0U; i < take; ++i)
                 image[(size_t)output_offset + i] =
                     (uint8_t)(fill >> (24U - (unsigned)(i & 3U) * 8U));

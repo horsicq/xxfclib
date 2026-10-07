@@ -17,6 +17,7 @@
 #include "xxfclib/rt/xx_rt.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #define RS_MAX_FILE (64U * 1024U * 1024U)
 #define RS_SCAN_MAX (1024U * 1024U)
@@ -24,20 +25,6 @@
 #define RS_MAX_PACKED (16U * 1024U * 1024U)
 #define RS_MAX_PLAIN (64U * 1024U * 1024U)
 #define RS_MAX_MEMBERS 65536U
-
-static uint16_t rs_u16(const uint8_t *p) {
-    return (uint16_t)((uint16_t)p[0] | ((uint16_t)p[1] << 8U));
-}
-
-static uint32_t rs_u32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) |
-           ((uint32_t)p[2] << 16U) | ((uint32_t)p[3] << 24U);
-}
-
-static void rs_put16(uint8_t *p, uint16_t value) {
-    p[0] = (uint8_t)value;
-    p[1] = (uint8_t)(value >> 8U);
-}
 
 static uint16_t rs_header_crc(const uint8_t *p, size_t size) {
     return (uint16_t)xx_crc32_calc(0U, p, size);
@@ -73,17 +60,17 @@ static bool rs_normalize(uint8_t *bytes, size_t size, size_t *member_count,
         xx_rt_memcmp(bytes, signature, sizeof(signature)))
         return false;
     at = sizeof(signature);
-    main_flags = rs_u16(bytes + at + 3U);
-    main_size = rs_u16(bytes + at + 5U);
+    main_flags = xx_data_get_u16(bytes + at + 3U, 2, 0, false);
+    main_size = xx_data_get_u16(bytes + at + 5U, 2, 0, false);
     if (bytes[at + 2U] != 0x73U || (main_flags & ~0x002eU) ||
         main_size < 13U || main_size > RS_MAX_HEADER ||
         main_size > size - at ||
         (main_size != 13U && !(main_flags & 0x0002U)) ||
-        rs_u16(bytes + at) != rs_header_crc(bytes + at + 2U, 11U))
+        xx_data_get_u16(bytes + at, 2, 0, false) != rs_header_crc(bytes + at + 2U, 11U))
         return false;
     if (main_size != 13U)
-        rs_put16(bytes + at,
-                 rs_header_crc(bytes + at + 2U, main_size - 2U));
+        xx_data_set_u16(bytes + at, 2, 0,
+                 rs_header_crc(bytes + at + 2U, main_size - 2U), false);
     at += main_size;
 
     while (at < size) {
@@ -93,16 +80,16 @@ static bool rs_normalize(uint8_t *bytes, size_t size, size_t *member_count,
         size_t next;
         if (pd && xx_pd_is_stopped(pd)) return false;
         if (size - at < 7U) return false;
-        stored_crc = rs_u16(bytes + at);
+        stored_crc = xx_data_get_u16(bytes + at, 2, 0, false);
         type = bytes[at + 2U];
-        flags = rs_u16(bytes + at + 3U);
-        header_size = rs_u16(bytes + at + 5U);
+        flags = xx_data_get_u16(bytes + at + 3U, 2, 0, false);
+        header_size = xx_data_get_u16(bytes + at + 5U, 2, 0, false);
         if (header_size < 7U || header_size > RS_MAX_HEADER ||
             header_size > size - at)
             return false;
         if (flags & 0x8000U) {
             if (header_size < 11U) return false;
-            packed_size = rs_u32(bytes + at + 7U);
+            packed_size = xx_data_get_u32(bytes + at + 7U, 4, 0, false);
         }
         if (packed_size > size - at - header_size ||
             packed_size > RS_MAX_PACKED)
@@ -113,20 +100,20 @@ static bool rs_normalize(uint8_t *bytes, size_t size, size_t *member_count,
             uint16_t name_size;
             if (flags != 0x8000U || header_size < 33U ||
                 header_size < 28U) return false;
-            name_size = rs_u16(bytes + at + 26U);
+            name_size = xx_data_get_u16(bytes + at + 26U, 2, 0, false);
             if (!name_size || header_size != (size_t)32U + name_size ||
                 bytes[at + 24U] != 15U ||
                 bytes[at + 25U] < 0x30U ||
                 bytes[at + 25U] > 0x35U ||
-                rs_u32(bytes + at + 11U) > RS_MAX_PLAIN ||
+                xx_data_get_u32(bytes + at + 11U, 4, 0, false) > RS_MAX_PLAIN ||
                 stored_crc != rs_header_crc(bytes + at + 2U,
                                              header_size - 2U) ||
                 count >= RS_MAX_MEMBERS)
                 return false;
             if (count && (main_flags & 0x0008U)) {
-                rs_put16(bytes + at + 3U, flags | 0x0010U);
-                rs_put16(bytes + at,
-                         rs_header_crc(bytes + at + 2U, header_size - 2U));
+                xx_data_set_u16(bytes + at + 3U, 2, 0, flags | 0x0010U, false);
+                xx_data_set_u16(bytes + at, 2, 0,
+                         rs_header_crc(bytes + at + 2U, header_size - 2U), false);
             }
             ++count;
         } else if (type == 0x77U) {
@@ -140,8 +127,8 @@ static bool rs_normalize(uint8_t *bytes, size_t size, size_t *member_count,
             saw_av = true;
             if (stored_crc != rs_header_crc(bytes + at + 2U,
                                              header_size - 2U))
-                rs_put16(bytes + at,
-                         rs_header_crc(bytes + at + 2U, header_size - 2U));
+                xx_data_set_u16(bytes + at, 2, 0,
+                         rs_header_crc(bytes + at + 2U, header_size - 2U), false);
         } else {
             return false;
         }
@@ -173,7 +160,7 @@ static bool rs_prepare(xx_sfx_rsfx *archive, xx_pd_struct *pd) {
     if (!rs_read(f->device, f->base_address, mz, sizeof(mz), pd) ||
         xx_rt_memcmp(mz, "MZ", 2U) ||
         xx_rt_memcmp(mz + 28U, "RSFX", 4U)) goto done;
-    lx_offset = rs_u32(mz + 60U);
+    lx_offset = xx_data_get_u32(mz + 60U, 4, 0, false);
     if (lx_offset < 64U || lx_offset > RS_SCAN_MAX - 2U ||
         (int64_t)lx_offset + 2 > length ||
         !rs_read(f->device, f->base_address + lx_offset, lx, sizeof(lx), pd) ||

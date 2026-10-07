@@ -17,6 +17,7 @@
 
 #include <limits.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Only the MSVC arm of the atomics fork below needs Win32; MinGW and
  * clang take the __atomic path and must not pull this in. */
@@ -393,30 +394,6 @@ static bool xx_tarx2_cipher_init(xx_tarx2_cipher *cipher) {
     }
 }
 
-static uint32_t xx_tarx2_read_u32le(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
-
-static uint32_t xx_tarx2_read_u32be(const uint8_t *data) {
-    return ((uint32_t)data[0] << 24U) | ((uint32_t)data[1] << 16U) |
-           ((uint32_t)data[2] << 8U) | (uint32_t)data[3];
-}
-
-static void xx_tarx2_write_u32le(uint8_t *data, uint32_t value) {
-    data[0] = (uint8_t)value;
-    data[1] = (uint8_t)(value >> 8U);
-    data[2] = (uint8_t)(value >> 16U);
-    data[3] = (uint8_t)(value >> 24U);
-}
-
-static void xx_tarx2_write_u32be(uint8_t *data, uint32_t value) {
-    data[0] = (uint8_t)(value >> 24U);
-    data[1] = (uint8_t)(value >> 16U);
-    data[2] = (uint8_t)(value >> 8U);
-    data[3] = (uint8_t)value;
-}
-
 static bool xx_tarx2_decrypt_blocks(const xx_tarx2_cipher *cipher,
                                     const uint8_t *source,
                                     uint8_t *destination, size_t size) {
@@ -426,11 +403,11 @@ static bool xx_tarx2_decrypt_blocks(const xx_tarx2_cipher *cipher,
         return false;
     }
     for (offset = 0U; offset < size; offset += XX_TARX2_BLOCK_SIZE) {
-        uint32_t left = xx_tarx2_read_u32le(source + offset);
-        uint32_t right = xx_tarx2_read_u32le(source + offset + 4U);
+        uint32_t left = xx_data_get_u32(source + offset, 4, 0, false);
+        uint32_t right = xx_data_get_u32(source + offset + 4U, 4, 0, false);
         xx_tarx2_blowfish_decrypt_block(cipher, &left, &right);
-        xx_tarx2_write_u32be(destination + offset, left);
-        xx_tarx2_write_u32be(destination + offset + 4U, right);
+        xx_data_set_u32(destination + offset, 4, 0, left, true);
+        xx_data_set_u32(destination + offset + 4U, 4, 0, right, true);
     }
     return true;
 }
@@ -636,11 +613,11 @@ bool xx_tarx2_encrypt_blocks(const uint8_t *source, uint8_t *destination,
         return false;
     }
     for (offset = 0U; offset < size; offset += XX_TARX2_BLOCK_SIZE) {
-        uint32_t left = xx_tarx2_read_u32be(source + offset);
-        uint32_t right = xx_tarx2_read_u32be(source + offset + 4U);
+        uint32_t left = xx_data_get_u32(source + offset, 4, 0, true);
+        uint32_t right = xx_data_get_u32(source + offset + 4U, 4, 0, true);
         xx_tarx2_blowfish_encrypt_block(&cipher, &left, &right);
-        xx_tarx2_write_u32le(destination + offset, left);
-        xx_tarx2_write_u32le(destination + offset + 4U, right);
+        xx_data_set_u32(destination + offset, 4, 0, left, false);
+        xx_data_set_u32(destination + offset + 4U, 4, 0, right, false);
     }
     return true;
 }

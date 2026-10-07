@@ -5,6 +5,7 @@
  */
 #include "xxfclib/formats/windows_thumbnail_cache/xx_windows_thumbnail_cache.h"
 #include "../ue2_indexed.h"
+#include "xxfclib/data/xx_data.h"
 #ifdef WINDOWS_THUMBNAIL_CACHE
 #define UE2_THUMBCACHE_TYPE XX_FILE_TYPE_WINDOWS_THUMBNAIL_CACHE
 #else
@@ -25,16 +26,16 @@ static ue2_index *thumb_parse(Abstractformat *f, uint32_t *version_out, uint32_t
     int64_t total = f && f->device ? xx_io_total_size(f->device) : -1, end, cursor;
     ue2_index *index = NULL;
     if (!f || f->base_address < 0 || !ue2_read(f, f->base_address, header, 24) || xx_rt_memcmp(header, "CMMM", 4)) return NULL;
-    version = ue2_u32(header + 4); type = ue2_u32(header + 8);
+    version = xx_data_get_u32(header + 4, 4, 0, false); type = xx_data_get_u32(header + 8, 4, 0, false);
     if (version == 20 || version == 21) {
-        first = ue2_u32(header + 12); available = ue2_u32(header + 16);
+        first = xx_data_get_u32(header + 12, 4, 0, false); available = xx_data_get_u32(header + 16, 4, 0, false);
         if (type > 4) return NULL;
     } else if (version == 26) {
-        first = ue2_u32(header + 12); available = ue2_u32(header + 16);
+        first = xx_data_get_u32(header + 12, 4, 0, false); available = xx_data_get_u32(header + 16, 4, 0, false);
         if (type > 8) return NULL;
     } else if (version == 28 || version == 30 || version == 31 || version == 32) {
         if (version == 28) { header_size = 28; if (!ue2_read(f, f->base_address, header, 28)) return NULL; }
-        first = ue2_u32(header + 16); available = ue2_u32(header + 20);
+        first = xx_data_get_u32(header + 16, 4, 0, false); available = xx_data_get_u32(header + 20, 4, 0, false);
         if (type > (version == 31 ? 10U : version == 32 ? 13U : 8U)) return NULL;
     } else return NULL;
     end = total - f->base_address;
@@ -52,13 +53,13 @@ static ue2_index *thumb_parse(Abstractformat *f, uint32_t *version_out, uint32_t
         char name[80]; const char *extension = "bin";
         if ((pd && xx_pd_is_stopped(pd)) || !ue2_range(end, cursor, entry_size) ||
             !ue2_read(f, f->base_address + cursor, entry, entry_size) || xx_rt_memcmp(entry, "CMMM", 4)) goto fail;
-        length = ue2_u32(entry + 4); hash = ue2_u64(entry + 8);
-        identifier = ue2_u32(entry + fields); padding = ue2_u32(entry + fields + 4); size = ue2_u32(entry + fields + 8);
+        length = xx_data_get_u32(entry + 4, 4, 0, false); hash = xx_data_get_u64(entry + 8, 8, 0, false);
+        identifier = xx_data_get_u32(entry + fields, 4, 0, false); padding = xx_data_get_u32(entry + fields + 4, 4, 0, false); size = xx_data_get_u32(entry + fields + 8, 4, 0, false);
         if (length < entry_size || !ue2_range(end, cursor, length) || identifier & 1U ||
             identifier > 1024U * 1024U || (uint64_t)entry_size + identifier + padding + size > length) goto fail;
         /* An unused terminal entry can reserve all remaining physical space. */
         if (!identifier && !padding && !size && !hash) { cursor += length; continue; }
-        if (thumb_crc(UINT64_MAX, entry, entry_size - 8) != ue2_u64(entry + entry_size - 8)) goto fail;
+        if (thumb_crc(UINT64_MAX, entry, entry_size - 8) != xx_data_get_u64(entry + entry_size - 8, 8, 0, false)) goto fail;
         if (size) {
             data = f->base_address + cursor + entry_size + identifier + padding;
             if (!ue2_read(f, data, magic, size < 8 ? size : 8)) goto fail;
@@ -66,7 +67,7 @@ static ue2_index *thumb_parse(Abstractformat *f, uint32_t *version_out, uint32_t
             else if (size >= 3 && magic[0] == 0xff && magic[1] == 0xd8 && magic[2] == 0xff) extension = "jpg";
             else if (size >= 2 && magic[0] == 'B' && magic[1] == 'M') extension = "bmp";
             xx_rt_snprintf(name, sizeof(name), "%016llx_%08llx.%s", (unsigned long long)hash, (unsigned long long)cursor, extension);
-            if (!ue2_add(index, name, data, size, ue2_u64(entry + entry_size - 16))) goto fail;
+            if (!ue2_add(index, name, data, size, xx_data_get_u64(entry + entry_size - 16, 8, 0, false))) goto fail;
         }
         cursor += length;
     }

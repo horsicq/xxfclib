@@ -88,27 +88,6 @@ typedef struct phar_stream_s {
     uint64_t aux2;
 } phar_stream;
 
-static uint16_t phar_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static uint32_t phar_le32(const uint8_t *b) {
-    return (uint32_t)phar_le16(b) | ((uint32_t)phar_le16(b + 2U) << 16U);
-}
-
-static XXFC_MAYBE_UNUSED uint64_t phar_le64(const uint8_t *b) {
-    return (uint64_t)phar_le32(b) | ((uint64_t)phar_le32(b + 4U) << 32U);
-}
-
-static uint32_t phar_be32(const uint8_t *b) {
-    return ((uint32_t)b[0] << 24U) | ((uint32_t)b[1] << 16U) |
-           ((uint32_t)b[2] << 8U) | (uint32_t)b[3];
-}
-
-static XXFC_MAYBE_UNUSED uint64_t phar_be64(const uint8_t *b) {
-    return ((uint64_t)phar_be32(b) << 32U) | (uint64_t)phar_be32(b + 4U);
-}
-
 static bool phar_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     size_t done = 0U;
@@ -388,11 +367,11 @@ static bool phar_parse(Abstractformat *format, phar_stream **result) {
                       head, sizeof(head)))
         return false;
 
-    manifest_size = phar_le32(head);
-    count = phar_le32(head + 4U);
-    api = phar_le16(head + 8U);
-    flags = phar_le32(head + 10U);
-    alias_size = phar_le32(head + 14U);
+    manifest_size = xx_data_get_u32(head, 4, 0, false);
+    count = xx_data_get_u32(head + 4U, 4, 0, false);
+    api = xx_data_get_u16(head + 8U, 2, 0, false);
+    flags = xx_data_get_u32(head + 10U, 4, 0, false);
+    alias_size = xx_data_get_u32(head + 14U, 4, 0, false);
     if (manifest_size < PHAR_MANIFEST_MIN - 4U ||
         manifest_size > PHAR_MAX_MANIFEST ||
         (int64_t)manifest_size > size - manifest_offset - 4)
@@ -416,7 +395,7 @@ static bool phar_parse(Abstractformat *format, phar_stream **result) {
     if ((uint64_t)alias_size > manifest_size - cursor) goto fail;
     cursor += alias_size;
     if (cursor + 4U > manifest_size) goto fail;
-    meta_size = phar_le32(manifest + cursor);
+    meta_size = xx_data_get_u32(manifest + cursor, 4, 0, false);
     cursor += 4U;
     if (meta_size > manifest_size - cursor) goto fail;
     cursor += meta_size;
@@ -432,7 +411,7 @@ static bool phar_parse(Abstractformat *format, phar_stream **result) {
         uint32_t name_size, entry_meta;
         const uint8_t *fixed;
         if (cursor + 4U > manifest_size) goto fail;
-        name_size = phar_le32(manifest + cursor);
+        name_size = xx_data_get_u32(manifest + cursor, 4, 0, false);
         cursor += 4U;
         if (name_size == 0U || name_size > PHAR_MAX_NAME ||
             name_size > manifest_size - cursor)
@@ -446,13 +425,13 @@ static bool phar_parse(Abstractformat *format, phar_stream **result) {
             goto fail;
         }
         fixed = manifest + cursor;
-        member.unpacked_size = phar_le32(fixed);
-        member.timestamp = phar_le32(fixed + 4U);
-        member.packed_size = (int64_t)phar_le32(fixed + 8U);
-        member.crc32 = phar_le32(fixed + 12U);
+        member.unpacked_size = xx_data_get_u32(fixed, 4, 0, false);
+        member.timestamp = xx_data_get_u32(fixed + 4U, 4, 0, false);
+        member.packed_size = (int64_t)xx_data_get_u32(fixed + 8U, 4, 0, false);
+        member.crc32 = xx_data_get_u32(fixed + 12U, 4, 0, false);
         member.has_crc = true;
-        member.flags = phar_le32(fixed + 16U);
-        entry_meta = phar_le32(fixed + 20U);
+        member.flags = xx_data_get_u32(fixed + 16U, 4, 0, false);
+        entry_meta = xx_data_get_u32(fixed + 20U, 4, 0, false);
         cursor += 24U;
         if (entry_meta > manifest_size - cursor) {
             xx_mem_free(member.name);

@@ -56,6 +56,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef VDI
 #define XX_VDI_FILE_TYPE XX_FILE_TYPE_VDI
@@ -103,15 +104,6 @@ typedef struct vdi_stream_s {
     size_t index;
     xx_nested_fat *nested;
 } vdi_stream;
-
-static uint32_t vdi_le32(const uint8_t *b) {
-    return (uint32_t)b[0] | ((uint32_t)b[1] << 8U) | ((uint32_t)b[2] << 16U) |
-           ((uint32_t)b[3] << 24U);
-}
-
-static uint64_t vdi_le64(const uint8_t *b) {
-    return (uint64_t)vdi_le32(b) | ((uint64_t)vdi_le32(b + 4U) << 32U);
-}
 
 static bool vdi_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -168,23 +160,23 @@ static bool vdi_parse(Abstractformat *format, vdi_info *info) {
     if (size < VDI_HEADER_READ) return false;
     if (!vdi_read_at(format->device, format->base_address, h, sizeof(h)))
         return false;
-    if (vdi_le32(h + 0x40U) != VDI_SIGNATURE) return false;
+    if (xx_data_get_u32(h + 0x40U, 4, 0, false) != VDI_SIGNATURE) return false;
 
     xx_rt_memset(info, 0, sizeof(*info));
     info->base = format->base_address;
-    info->version = vdi_le32(h + 0x44U);
+    info->version = xx_data_get_u32(h + 0x44U, 4, 0, false);
     /* Only the version 1 header layout is defined here (1.0 and 1.1). */
     if ((info->version >> 16U) != 1U) return false;
-    info->header_size = vdi_le32(h + 0x48U);
-    info->type = vdi_le32(h + 0x4CU);
-    info->off_blocks = vdi_le32(h + 0x154U);
-    info->off_data = vdi_le32(h + 0x158U);
-    sector_size = vdi_le32(h + 0x168U);
-    info->disk_size = vdi_le64(h + 0x170U);
-    info->block_size = vdi_le32(h + 0x178U);
-    info->block_extra = vdi_le32(h + 0x17CU);
-    info->blocks = vdi_le32(h + 0x180U);
-    info->allocated = vdi_le32(h + 0x184U);
+    info->header_size = xx_data_get_u32(h + 0x48U, 4, 0, false);
+    info->type = xx_data_get_u32(h + 0x4CU, 4, 0, false);
+    info->off_blocks = xx_data_get_u32(h + 0x154U, 4, 0, false);
+    info->off_data = xx_data_get_u32(h + 0x158U, 4, 0, false);
+    sector_size = xx_data_get_u32(h + 0x168U, 4, 0, false);
+    info->disk_size = xx_data_get_u64(h + 0x170U, 8, 0, false);
+    info->block_size = xx_data_get_u32(h + 0x178U, 4, 0, false);
+    info->block_extra = xx_data_get_u32(h + 0x17CU, 4, 0, false);
+    info->blocks = xx_data_get_u32(h + 0x180U, 4, 0, false);
+    info->allocated = xx_data_get_u32(h + 0x184U, 4, 0, false);
     xx_rt_memcpy(info->parent_uuid, h + 0x1A8U, sizeof(info->parent_uuid));
 
     if (info->header_size < VDI_HEADER1_SIZE || info->type < 1U ||
@@ -258,7 +250,7 @@ static bool vdi_emit(Abstractformat *format, const vdi_info *info,
             chunk_first = index;
             chunk_count = want;
         }
-        entry = vdi_le32(map + (size_t)(index - chunk_first) * 4U);
+        entry = xx_data_get_u32(map + (size_t)(index - chunk_first) * 4U, 4, 0, false);
         if (entry == VDI_BLOCK_FREE || entry == VDI_BLOCK_ZERO) {
             uint64_t rest = output;
             while (rest != 0U && destination) {
@@ -315,7 +307,7 @@ static ssize_t vdi_guest_read(xx_io_device *device, void *buffer, size_t size) {
         uint64_t at = (uint64_t)guest->position + done;
         uint64_t block = at / guest->info.block_size;
         uint64_t within = at % guest->info.block_size;
-        uint32_t entry = vdi_le32(guest->map + (size_t)block * 4U);
+        uint32_t entry = xx_data_get_u32(guest->map + (size_t)block * 4U, 4, 0, false);
         size_t amount = wanted - done;
         if ((uint64_t)amount > guest->info.block_size - within)
             amount = (size_t)(guest->info.block_size - within);

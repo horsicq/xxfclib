@@ -248,13 +248,13 @@ done:if(t) xx_mem_free(t);return ok;
 }
 static bool f15_abif(Abstractformat *f,pm_stream *s,nh_blob *b) {
     uint64_t *keys=NULL;uint64_t directory,capacity,count,i,extent,budget=1048576;bool ok=false;
-    F15_NEED(b->n>=34 && !xx_rt_memcmp(b->p,"ABIF",4) && pm_be16(b->p+4)>=100 && pm_be16(b->p+4)<200 && !xx_rt_memcmp(b->p+6,"tdir",4) && pm_be16(b->p+14)==1023 && pm_be16(b->p+16)==28);
-    count=pm_be32(b->p+18);capacity=pm_be32(b->p+22);directory=pm_be32(b->p+26);
+    F15_NEED(b->n>=34 && !xx_rt_memcmp(b->p,"ABIF",4) && xx_data_get_u16(b->p+4, 2, 0, true)>=100 && xx_data_get_u16(b->p+4, 2, 0, true)<200 && !xx_rt_memcmp(b->p+6,"tdir",4) && xx_data_get_u16(b->p+14, 2, 0, true)==1023 && xx_data_get_u16(b->p+16, 2, 0, true)==28);
+    count=xx_data_get_u32(b->p+18, 4, 0, true);capacity=xx_data_get_u32(b->p+22, 4, 0, true);directory=xx_data_get_u32(b->p+26, 4, 0, true);
     F15_NEED(count && count<=4094 && capacity>=count*28 && capacity%28==0 && capacity<=4096*28 && directory>=34 && nh_span(b,directory,capacity));
     extent=directory+capacity;keys=(uint64_t *)xx_mem_alloc(8192*sizeof(*keys));F15_NEED(keys);xx_mem_zero(keys,8192*sizeof(*keys));
     F15_NEED(nh_add(f,s,b,"file-header",0,34) && nh_add(f,s,b,"tag-directory",directory,capacity));
     for(i=0;i<count;++i) {
-        const uint8_t *p=b->p+(size_t)(directory+i*28);uint64_t name=pm_be32(p),number=pm_be32(p+4),key=(name<<32)|number,at,size=pm_be32(p+16),elements=pm_be32(p+12),slot=(key^(key>>33))&8191;unsigned type=pm_be16(p+8),width=pm_be16(p+10),j;char label[64];
+        const uint8_t *p=b->p+(size_t)(directory+i*28);uint64_t name=xx_data_get_u32(p, 4, 0, true),number=xx_data_get_u32(p+4, 4, 0, true),key=(name<<32)|number,at,size=xx_data_get_u32(p+16, 4, 0, true),elements=xx_data_get_u32(p+12, 4, 0, true),slot=(key^(key>>33))&8191;unsigned type=xx_data_get_u16(p+8, 2, 0, true),width=xx_data_get_u16(p+10, 2, 0, true),j;char label[64];
         for(j=0;j<4;++j) F15_NEED(p[j]>=33 && p[j]<=126);
         F15_NEED(width && elements<=67108864 && (uint64_t)width*elements==size && ((type>=1 && type<=20 && type!=6 && type!=9 && type!=14 && type!=15 && type!=16 && type!=17 && type!=20) || type>=1024));
         if(type==1 || type==2 || type==13 || type==18 || type==19) F15_NEED(width==1);
@@ -263,7 +263,7 @@ static bool f15_abif(Abstractformat *f,pm_stream *s,nh_blob *b) {
         if(type==8) F15_NEED(width==8);
         if(type==12) F15_NEED(width==10);
         while(keys[slot]) {F15_NEED(f15_charge(b,&budget,1) && keys[slot]!=key);slot=(slot+1)&8191;}keys[slot]=key;
-        at=size<=4 ? directory+i*28+20:pm_be32(p+20);
+        at=size<=4 ? directory+i*28+20:xx_data_get_u32(p+20, 4, 0, true);
         F15_NEED(nh_span(b,at,size) && (size<=4 || (at>=34 && (at+size<=directory || at>=directory+capacity))));
         if(at+size>extent) extent=at+size;
         if(type==7 || type==8) F15_NEED(nh_floats(b,at,size,width,true));
@@ -277,13 +277,13 @@ done:if(keys) xx_mem_free(keys);return ok;
 static bool f15_scf(Abstractformat *f,pm_stream *s,nh_blob *b) {
     uint64_t samples,bases,offset[4],length[4],extent=128,i,j;unsigned width;static const char *const channels[]={"A","C","G","T"};
     if(b->n<128 || xx_rt_memcmp(b->p,".scf",4) || xx_rt_memcmp(b->p+36,"3.00",4)) return false;
-    samples=pm_be32(b->p+4);bases=pm_be32(b->p+12);width=pm_be32(b->p+40);
-    if(!samples || samples>1048576 || !bases || bases>1048576 || (width!=1 && width!=2) || pm_be32(b->p+44)>4 || pm_be32(b->p+16)>bases || pm_be32(b->p+20)>bases) return false;
-    offset[0]=pm_be32(b->p+8);length[0]=samples*4*width;offset[1]=pm_be32(b->p+24);length[1]=bases*12;
-    offset[2]=pm_be32(b->p+32);length[2]=pm_be32(b->p+28);offset[3]=pm_be32(b->p+52);length[3]=pm_be32(b->p+48);
+    samples=xx_data_get_u32(b->p+4, 4, 0, true);bases=xx_data_get_u32(b->p+12, 4, 0, true);width=xx_data_get_u32(b->p+40, 4, 0, true);
+    if(!samples || samples>1048576 || !bases || bases>1048576 || (width!=1 && width!=2) || xx_data_get_u32(b->p+44, 4, 0, true)>4 || xx_data_get_u32(b->p+16, 4, 0, true)>bases || xx_data_get_u32(b->p+20, 4, 0, true)>bases) return false;
+    offset[0]=xx_data_get_u32(b->p+8, 4, 0, true);length[0]=samples*4*width;offset[1]=xx_data_get_u32(b->p+24, 4, 0, true);length[1]=bases*12;
+    offset[2]=xx_data_get_u32(b->p+32, 4, 0, true);length[2]=xx_data_get_u32(b->p+28, 4, 0, true);offset[3]=xx_data_get_u32(b->p+52, 4, 0, true);length[3]=xx_data_get_u32(b->p+48, 4, 0, true);
     for(i=0;i<4;++i) {if(!length[i]) {if(offset[i]>b->n) return false;continue;}if(offset[i]<128 || !nh_span(b,offset[i],length[i])) return false;if(offset[i]+length[i]>extent) extent=offset[i]+length[i];for(j=0;j<i;++j) if(length[j] && offset[i]<offset[j]+length[j] && offset[j]<offset[i]+length[i]) return false;}
     if(extent!=b->n || !nh_add(f,s,b,"trace-header",0,128)) return false;
-    for(i=0;i<bases;++i) {uint64_t peak=pm_be32(b->p+(size_t)(offset[1]+i*4));uint8_t ch=b->p[(size_t)(offset[1]+bases*8+i)];if(!(i&1023) && fd_stop(b->pd)) return false;if(peak>=samples || (i && peak<pm_be32(b->p+(size_t)(offset[1]+(i-1)*4))) || !ch || !xx_rt_strchr("ACGTNRYKMSWBDHVX-acgtnrykmswbdhvx",ch)) return false;}
+    for(i=0;i<bases;++i) {uint64_t peak=xx_data_get_u32(b->p+(size_t)(offset[1]+i*4), 4, 0, true);uint8_t ch=b->p[(size_t)(offset[1]+bases*8+i)];if(!(i&1023) && fd_stop(b->pd)) return false;if(peak>=samples || (i && peak<xx_data_get_u32(b->p+(size_t)(offset[1]+(i-1)*4), 4, 0, true)) || !ch || !xx_rt_strchr("ACGTNRYKMSWBDHVX-acgtnrykmswbdhvx",ch)) return false;}
     for(i=0;i<4;++i) {char label[32];xx_rt_snprintf(label,sizeof(label),"encoded-trace-%s",channels[i]);if(!nh_add(f,s,b,label,offset[0]+i*samples*width,samples*width)) return false;}
     if(!nh_add(f,s,b,"base-positions",offset[1],bases*4)) return false;
     for(i=0;i<4;++i) {char label[32];xx_rt_snprintf(label,sizeof(label),"base-probability-%s",channels[i]);if(!nh_add(f,s,b,label,offset[1]+bases*4+i*bases,bases)) return false;}
@@ -300,7 +300,7 @@ typedef struct f15_sff_entry {el_token name;uint64_t offset;bool indexed;} f15_s
 static bool f15_sff_index(Abstractformat *f,pm_stream *s,nh_blob *b,uint64_t at,uint64_t size,f15_sff_entry *reads,unsigned count) {
     uint64_t table,end=at+size,manifest=0,budget=8388608;unsigned i;
     if(size<12 || !nh_span(b,at,size) || xx_rt_memcmp(b->p+(size_t)at+4,"1.00",4)) return false;
-    if(!xx_rt_memcmp(b->p+(size_t)at,".mft",4)) {if(size<16) return false;manifest=pm_be32(b->p+(size_t)at+8);if(manifest>65536 || manifest+pm_be32(b->p+(size_t)at+12)!=size-16 || !nh_ascii(b->p+(size_t)at+16,(size_t)manifest,false)) return false;table=at+16+manifest;if(!nh_add(f,s,b,"index-header",at,16) || !nh_add(f,s,b,"index-manifest",at+16,manifest)) return false;}
+    if(!xx_rt_memcmp(b->p+(size_t)at,".mft",4)) {if(size<16) return false;manifest=xx_data_get_u32(b->p+(size_t)at+8, 4, 0, true);if(manifest>65536 || manifest+xx_data_get_u32(b->p+(size_t)at+12, 4, 0, true)!=size-16 || !nh_ascii(b->p+(size_t)at+16,(size_t)manifest,false)) return false;table=at+16+manifest;if(!nh_add(f,s,b,"index-header",at,16) || !nh_add(f,s,b,"index-manifest",at+16,manifest)) return false;}
     else if(!xx_rt_memcmp(b->p+(size_t)at,".srt",4)) {if(!nh_zero(b,at+8,4) || !nh_add(f,s,b,"index-header",at,12)) return false;table=at+12;}
     else return false;
     at=table;
@@ -316,8 +316,8 @@ static bool f15_sff_index(Abstractformat *f,pm_stream *s,nh_blob *b,uint64_t at,
 }
 static bool f15_sff(Abstractformat *f,pm_stream *s,nh_blob *b) {
     uint64_t index,index_size,at,header,flows,key,count,i,budget=8388608;f15_sff_entry *reads=NULL;bool skipped=false,ok=false;
-    F15_NEED(b->n>=31 && !xx_rt_memcmp(b->p,".sff",4) && pm_be32(b->p+4)==1);
-    index=sv_u64(b->p+8,true);index_size=pm_be32(b->p+16);count=pm_be32(b->p+20);header=pm_be16(b->p+24);key=pm_be16(b->p+26);flows=pm_be16(b->p+28);
+    F15_NEED(b->n>=31 && !xx_rt_memcmp(b->p,".sff",4) && xx_data_get_u32(b->p+4, 4, 0, true)==1);
+    index=xx_data_get_u64(b->p+8, 8, 0, true);index_size=xx_data_get_u32(b->p+16, 4, 0, true);count=xx_data_get_u32(b->p+20, 4, 0, true);header=xx_data_get_u16(b->p+24, 2, 0, true);key=xx_data_get_u16(b->p+26, 2, 0, true);flows=xx_data_get_u16(b->p+28, 2, 0, true);
     F15_NEED(count && count<=512 && flows && flows<=4096 && key<=256 && b->p[30]==1 && header==((31+key+flows+7)&~UINT64_C(7)) && nh_span(b,0,header) && (!index==!index_size) && (!index || (index>=header && index%8==0 && nh_span(b,index,index_size) && nh_span(b,index,(index_size+7)&~UINT64_C(7)))));
     for(i=0;i<flows+key;++i) F15_NEED(xx_rt_strchr("ACGTN",b->p[(size_t)(31+i)]) && b->p[(size_t)(31+i)]);
     F15_NEED(nh_zero(b,31+key+flows,header-(31+key+flows)) && nh_add(f,s,b,"flowgram-header",0,header));
@@ -325,12 +325,12 @@ static bool f15_sff(Abstractformat *f,pm_stream *s,nh_blob *b) {
     for(i=0;i<count;++i) {
         uint64_t begin,name,n,data,padded,j,sum=0;
         if(index && at==index) {F15_NEED(!skipped && nh_zero(b,index+index_size,((index_size+7)&~UINT64_C(7))-index_size));at+=((index_size+7)&~UINT64_C(7));skipped=true;}
-        begin=at;F15_NEED(nh_span(b,at,16));header=pm_be16(b->p+(size_t)at);name=pm_be16(b->p+(size_t)at+2);n=pm_be32(b->p+(size_t)at+4);
+        begin=at;F15_NEED(nh_span(b,at,16));header=xx_data_get_u16(b->p+(size_t)at, 2, 0, true);name=xx_data_get_u16(b->p+(size_t)at+2, 2, 0, true);n=xx_data_get_u32(b->p+(size_t)at+4, 4, 0, true);
         F15_NEED(name && name<=255 && n && n<=1048576 && header==((16+name+7)&~UINT64_C(7)) && nh_span(b,at,header) && nh_zero(b,at+16+name,header-(16+name)));
         reads[i].name.at=at+16;reads[i].name.n=name;reads[i].offset=at;
         F15_NEED(el_ident(b,reads[i].name));
         for(j=0;j<i;++j) {F15_NEED(f15_charge(b,&budget,1));if(reads[i].name.n==reads[j].name.n) {F15_NEED(f15_charge(b,&budget,name));F15_NEED(!th_same(b,reads[i].name,reads[j].name));}}
-        for(j=8;j<16;j+=2) F15_NEED(pm_be16(b->p+(size_t)at+j)<=n);
+        for(j=8;j<16;j+=2) F15_NEED(xx_data_get_u16(b->p+(size_t)at+j, 2, 0, true)<=n);
         at+=header;data=flows*2+n*3;padded=(data+7)&~UINT64_C(7);
         F15_NEED(nh_span(b,at,padded) && nh_zero(b,at+data,padded-data) && (!index || skipped || at+padded<=index));
         for(j=0;j<n;++j) {sum+=b->p[(size_t)(at+flows*2+j)];F15_NEED(sum<=flows && b->p[(size_t)(at+flows*2+n+j)] && xx_rt_strchr("ACGTNacgtn",b->p[(size_t)(at+flows*2+n+j)]));}

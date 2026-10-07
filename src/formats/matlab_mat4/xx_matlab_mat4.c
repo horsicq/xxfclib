@@ -9,9 +9,9 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(fd_stop(pd) || available<22 || available>67108864) return false;
     while(at<(uint64_t)available) {uint32_t type,rows,cols,imag,names;uint64_t count,n;unsigned w,i;bool be;char label[64];
         if(fd_stop(pd) || ++index>1024 || !fd_range(at,20,(uint64_t)available) || !pm_read(f,(int64_t)at,h,20)) return false;
-        type=pm_le32(h);be=type>1999;if(be) type=pm_be32(h);
+        type=xx_data_get_u32(h, 4, 0, false);be=type>1999;if(be) type=xx_data_get_u32(h, 4, 0, true);
         if(type>1999 || type/1000!=(be?1U:0U) || (type/100)%10 || type%10>1 || !(w=width((type/10)%10))) return false;
-        rows=fd_u32(h+4,be);cols=fd_u32(h+8,be);imag=fd_u32(h+12,be);names=fd_u32(h+16,be);
+        rows=xx_data_get_u32(h+4, 4, 0, be);cols=xx_data_get_u32(h+8, 4, 0, be);imag=xx_data_get_u32(h+12, 4, 0, be);names=xx_data_get_u32(h+16, 4, 0, be);
         if(!rows || rows>1000000 || !cols || cols>1000000 || imag>1 || (type%10==1 && imag) || names<2 || names>sizeof(name) || !fd_range(at+20,names,(uint64_t)available) || !pm_read(f,(int64_t)(at+20),name,names) || name[names-1]) return false;
         for(i=0;i<names-1;++i) if(!((name[i]>='a' && name[i]<='z') || (name[i]>='A' && name[i]<='Z') || name[i]=='_' || (i && name[i]>='0' && name[i]<='9'))) return false;
         if(!fd_mul(rows,cols,&count) || count>1000000 || !fd_mul(count,w,&n) || !fd_range(at+20+names,n*(1+imag),(uint64_t)available)) return false;

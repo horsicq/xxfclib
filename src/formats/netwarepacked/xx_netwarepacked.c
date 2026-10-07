@@ -36,6 +36,7 @@
 #include "xxfclib/algo/netwarepack/xx_netwarepack.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_NETWAREPACKED_COPY_CHUNK (64 * 1024)
 
@@ -142,18 +143,12 @@ static bool xx_netwarepacked_add(xx_netwarepacked_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint32_t xx_netwarepacked_le32(const uint8_t *data);
 static bool xx_netwarepacked_name_ok(const uint8_t *bytes, size_t length);
 static xx_netwarepacked_stream *xx_netwarepacked_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_netwarepacked_decode(Abstractformat *self, const xx_netwarepacked_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
 
 /* Used when the name field holds packer scratch rather than a name. */
-
-static uint32_t xx_netwarepacked_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* The name becomes an output file name, so every separator, traversal and
  * control character is rejected here rather than downstream. */
@@ -229,7 +224,7 @@ static xx_netwarepacked_stream *xx_netwarepacked_parse(Abstractformat *self,
     }
 
     uncompressed_size =
-        (int64_t)xx_netwarepacked_le32(header + 27);
+        (int64_t)xx_data_get_u32(header + 27, 4, 0, false);
     if (uncompressed_size > XX_NETWAREPACKED_MAX_UNCOMPRESSED) return NULL;
     compressed_size = span - XX_NETWAREPACKED_HEADER_SIZE;
     if (!xx_netwarepacked_range_within(span, XX_NETWAREPACKED_HEADER_SIZE,

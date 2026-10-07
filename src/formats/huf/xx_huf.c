@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_HUF_MAGIC UINT16_C(0x01bd)
 #define XX_HUF_HEADER_SIZE 10U
@@ -46,15 +47,6 @@ typedef struct xx_huf_stream_s {
 } xx_huf_stream;
 
 static void xx_huf_vtable_destroy(Abstractformat *self);
-
-static uint16_t xx_huf_read16le(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8U));
-}
-
-static uint32_t xx_huf_read32le(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
 
 static bool xx_huf_read_exact_at(xx_io_device *device, int64_t offset,
                                  void *data, size_t size) {
@@ -160,12 +152,12 @@ static bool xx_huf_parse(Abstractformat *format, xx_huf_stream **result,
     if (input_size < (int64_t)(XX_HUF_HEADER_SIZE + XX_HUF_RECORD_SIZE) ||
         !xx_huf_read_exact_at(format->device, format->base_address, header,
                               sizeof(header)) ||
-        xx_huf_read16le(header) != XX_HUF_MAGIC) {
+        xx_data_get_u16(header, 2, 0, false) != XX_HUF_MAGIC) {
         return false;
     }
-    member_count = xx_huf_read16le(header + 2U);
-    symbol_count = xx_huf_read16le(header + 4U);
-    directory_offset = (int64_t)xx_huf_read32le(header + 6U);
+    member_count = xx_data_get_u16(header + 2U, 2, 0, false);
+    symbol_count = xx_data_get_u16(header + 4U, 2, 0, false);
+    directory_offset = (int64_t)xx_data_get_u32(header + 6U, 4, 0, false);
     if (member_count == 0U ||
         symbol_count == 0U || symbol_count > XX_HUF_MAX_SYMBOLS ||
         directory_offset <= 9 || directory_offset >= input_size) {
@@ -212,10 +204,10 @@ static bool xx_huf_parse(Abstractformat *format, xx_huf_stream **result,
     for (index = 0U; index < stream->count; ++index) {
         const uint8_t *record = directory + index * XX_HUF_RECORD_SIZE;
         xx_huf_member *member = &stream->items[index];
-        int64_t name_relative = (int64_t)xx_huf_read32le(record);
-        int64_t data_relative = (int64_t)xx_huf_read32le(record + 8U);
+        int64_t name_relative = (int64_t)xx_data_get_u32(record, 4, 0, false);
+        int64_t data_relative = (int64_t)xx_data_get_u32(record + 8U, 4, 0, false);
         if ((pd && xx_pd_is_stopped(pd)) ||
-            xx_huf_read32le(record + 4U) > XX_HUF_MAX_OUTPUT ||
+            xx_data_get_u32(record + 4U, 4, 0, false) > XX_HUF_MAX_OUTPUT ||
             name_relative < directory_end || name_relative >= input_size ||
             data_relative < directory_end || data_relative >= input_size) {
             goto cleanup;
@@ -224,7 +216,7 @@ static bool xx_huf_parse(Abstractformat *format, xx_huf_stream **result,
                                 (int64_t)index * XX_HUF_RECORD_SIZE;
         member->name_offset = format->base_address + name_relative;
         member->data_offset = format->base_address + data_relative;
-        member->uncompressed_size = xx_huf_read32le(record + 4U);
+        member->uncompressed_size = xx_data_get_u32(record + 4U, 4, 0, false);
         member->flags = record[12U];
         starts[index * 2U] = name_relative;
         starts[index * 2U + 1U] = data_relative;

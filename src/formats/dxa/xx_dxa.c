@@ -25,6 +25,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef DXA
 #define XX_DXA_FILE_TYPE XX_FILE_TYPE_DXA
@@ -109,15 +110,6 @@ typedef struct dxa_stream_s {
 
 /* ---- helpers ----------------------------------------------------------- */
 
-static uint32_t dxa_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) | ((uint32_t)p[2] << 16U) |
-           ((uint32_t)p[3] << 24U);
-}
-
-static uint64_t dxa_le64(const uint8_t *p) {
-    return (uint64_t)dxa_le32(p) | ((uint64_t)dxa_le32(p + 4) << 32U);
-}
-
 static bool dxa_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     size_t done = 0U;
@@ -166,10 +158,10 @@ static bool dxa_guess_v6(const uint8_t *raw, int64_t total, dxa_layout *l) {
     uint32_t key0, key1, key2;
     uint64_t index_offset, file_table, dir_table;
     if (total < (int64_t)DXA_V6_HEADER) return false;
-    key0 = dxa_le32(raw) ^ (DXA_SIGNATURE | (UINT32_C(6) << 16U));
-    if ((dxa_le32(raw + 12) ^ key0) != 0U) return false;
-    key1 = dxa_le32(raw + 0x1C);
-    key2 = dxa_le32(raw + 8) ^ DXA_V6_HEADER;
+    key0 = xx_data_get_u32(raw, 4, 0, false) ^ (DXA_SIGNATURE | (UINT32_C(6) << 16U));
+    if ((xx_data_get_u32(raw + 12, 4, 0, false) ^ key0) != 0U) return false;
+    key1 = xx_data_get_u32(raw + 0x1C, 4, 0, false);
+    key2 = xx_data_get_u32(raw + 8, 4, 0, false) ^ DXA_V6_HEADER;
     l->key[0] = (uint8_t)key0;
     l->key[1] = (uint8_t)(key0 >> 8U);
     l->key[2] = (uint8_t)(key0 >> 16U);
@@ -185,11 +177,11 @@ static bool dxa_guess_v6(const uint8_t *raw, int64_t total, dxa_layout *l) {
     xx_rt_memcpy(h, raw, sizeof(h));
     dxa_xor(h, sizeof(h), l->key, 0U);
     l->version = 6U;
-    l->index_size = dxa_le32(h + 4);
-    l->data_start = (int64_t)dxa_le64(h + 8); /* 0x30 by construction */
-    index_offset = dxa_le64(h + 0x10);
-    file_table = dxa_le64(h + 0x18);
-    dir_table = dxa_le64(h + 0x20);
+    l->index_size = xx_data_get_u32(h + 4, 4, 0, false);
+    l->data_start = (int64_t)xx_data_get_u64(h + 8, 8, 0, false); /* 0x30 by construction */
+    index_offset = xx_data_get_u64(h + 0x10, 8, 0, false);
+    file_table = xx_data_get_u64(h + 0x18, 8, 0, false);
+    dir_table = xx_data_get_u64(h + 0x20, 8, 0, false);
     if (l->index_size == 0U || l->index_size > DXA_MAX_INDEX_V6 ||
         index_offset < DXA_V6_HEADER || index_offset > (uint64_t)total ||
         (uint64_t)l->index_size > (uint64_t)total - index_offset ||
@@ -218,8 +210,8 @@ static bool dxa_guess_v4(const uint8_t *raw, int64_t total, uint32_t version,
     l->key[1] ^= (uint8_t)'X';
     l->key[2] ^= (uint8_t)version;
     l->key[8] ^= (uint8_t)header;
-    key0 = dxa_le32(l->key);
-    index_offset = dxa_le32(h + 12) ^ key0;
+    key0 = xx_data_get_u32(l->key, 4, 0, false);
+    index_offset = xx_data_get_u32(h + 12, 4, 0, false) ^ key0;
     if (index_offset <= header || (int64_t)index_offset >= total) return false;
     if (total - (int64_t)index_offset > (int64_t)DXA_MAX_INDEX_V4) return false;
     index_size = (uint32_t)(total - (int64_t)index_offset);
@@ -228,11 +220,11 @@ static bool dxa_guess_v4(const uint8_t *raw, int64_t total, uint32_t version,
     l->key[6] ^= (uint8_t)(index_size >> 16U);
     dxa_xor(h, header, l->key, 0U);
     l->version = version;
-    l->index_size = dxa_le32(h + 4);
-    l->data_start = (int64_t)dxa_le32(h + 8);
-    l->index_offset = (int64_t)dxa_le32(h + 12);
-    l->file_table = dxa_le32(h + 16);
-    l->dir_table = dxa_le32(h + 20);
+    l->index_size = xx_data_get_u32(h + 4, 4, 0, false);
+    l->data_start = (int64_t)xx_data_get_u32(h + 8, 4, 0, false);
+    l->index_offset = (int64_t)xx_data_get_u32(h + 12, 4, 0, false);
+    l->file_table = xx_data_get_u32(h + 16, 4, 0, false);
+    l->dir_table = xx_data_get_u32(h + 20, 4, 0, false);
     if (l->index_size != index_size || l->data_start != (int64_t)header ||
         l->index_offset != (int64_t)index_offset ||
         l->file_table >= l->dir_table || l->dir_table >= l->index_size)
@@ -244,7 +236,7 @@ static bool dxa_guess_v4(const uint8_t *raw, int64_t total, uint32_t version,
 
 static uint64_t dxa_field(const dxa_layout *l, const uint8_t *p,
                           uint32_t slot) {
-    return l->version >= 6U ? dxa_le64(p + 8U * slot) : dxa_le32(p + 4U * slot);
+    return l->version >= 6U ? xx_data_get_u64(p + 8U * slot, 8, 0, false) : xx_data_get_u32(p + 4U * slot, 4, 0, false);
 }
 
 static bool dxa_is_minus_one(const dxa_layout *l, uint64_t value) {
@@ -354,9 +346,9 @@ static bool dxa_walk(const dxa_layout *layout_in, dxa_layout *out,
         if (!dxa_name_at(&l, index, name, &name_length)) goto done;
         /* three FILETIMEs follow the attributes */
         if (l.version >= 6U)
-            data = dxa_le64(head + 0x28);
+            data = xx_data_get_u64(head + 0x28, 8, 0, false);
         else
-            data = dxa_le32(head + 0x20);
+            data = xx_data_get_u32(head + 0x20, 4, 0, false);
         if (attr & DXA_ATTR_DIRECTORY) {
             const uint8_t *child;
             uint64_t slot;
@@ -385,12 +377,12 @@ static bool dxa_walk(const dxa_layout *layout_in, dxa_layout *out,
             uint64_t size, stored;
             bool packed = false;
             if (l.version >= 6U) {
-                size = dxa_le64(head + 0x30);
-                stored = dxa_le64(head + 0x38);
+                size = xx_data_get_u64(head + 0x30, 8, 0, false);
+                stored = xx_data_get_u64(head + 0x38, 8, 0, false);
                 if (stored != UINT64_MAX) packed = true;
             } else {
-                size = dxa_le32(head + 0x24);
-                stored = l.version >= 2U ? dxa_le32(head + 0x28) : UINT32_MAX;
+                size = xx_data_get_u32(head + 0x24, 4, 0, false);
+                stored = l.version >= 2U ? xx_data_get_u32(head + 0x28, 4, 0, false) : UINT32_MAX;
                 if (stored != UINT32_MAX) packed = true;
             }
             if (!packed) stored = size;
@@ -800,8 +792,8 @@ static bool dxa_decode(dxa_input *in, const dxa_member *m,
     bool ok = false;
     for (at = 0U; at < DXA_LZ_HEADER; ++at)
         if (!dxa_input_byte(in, &head[at])) return false;
-    unpacked = dxa_le32(head);
-    packed = dxa_le32(head + 4);
+    unpacked = xx_data_get_u32(head, 4, 0, false);
+    packed = xx_data_get_u32(head + 4, 4, 0, false);
     code = head[8];
     if ((int64_t)unpacked != m->size || packed < DXA_LZ_HEADER ||
         (int64_t)packed > m->stored)

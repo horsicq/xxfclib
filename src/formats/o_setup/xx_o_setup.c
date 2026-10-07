@@ -25,6 +25,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -133,11 +134,6 @@ static ssize_t gb_o_setup_write(xx_io_device *device, const void *buffer, size_t
 
 static uint32_t os_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
-}
-
-static uint32_t os_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
 }
 
 static bool os_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -374,7 +370,7 @@ static bool os_read_trailer(Abstractformat *format, os_layout *out) {
         return false;
     }
     layout.count = os_le16(tail + 12);
-    first = (int64_t)os_le32(tail + 8);
+    first = (int64_t)xx_data_get_u32(tail + 8, 4, 0, false);
     layout.trailer = layout.total - (int64_t)size;
     if (layout.count == 0U || first < OS_MIN_FIRST_RECORD ||
         first > layout.trailer - base)
@@ -401,8 +397,8 @@ static bool os_parse_record(const uint8_t *header, uint32_t *size,
         ++length;
     /* The writer terminates the name inside the field. */
     if (length == 0U || length >= OS_NAME_FIELD) return false;
-    *size = os_le32(header + OS_SIZE_OFFSET);
-    *mtime = os_le32(header + OS_TIME_OFFSET);
+    *size = xx_data_get_u32(header + OS_SIZE_OFFSET, 4, 0, false);
+    *mtime = xx_data_get_u32(header + OS_TIME_OFFSET, 4, 0, false);
     *name_length = length;
     return true;
 }
@@ -421,7 +417,7 @@ static bool os_classify(xx_io_device *device, os_item *item) {
     if (xx_rt_memcmp(head, magic, sizeof(magic)) == 0 &&
         head[8] == (uint8_t)'A') {
         item->method = XX_O_SETUP_METHOD_SZDD;
-        item->unpacked = os_le32(head + 10);
+        item->unpacked = xx_data_get_u32(head + 10, 4, 0, false);
     }
     return true;
 }

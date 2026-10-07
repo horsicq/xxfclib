@@ -62,6 +62,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* The enumerator is added by the coordinator, not by this file.  Until it
  * exists the reader still compiles and simply reports UNKNOWN.  Delete this
@@ -312,15 +313,6 @@ typedef struct xx_ibmpack_stream_s {
 
 static void xx_ibmpack_vtable_destroy(Abstractformat *self);
 
-static uint16_t xx_ibmpack_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8));
-}
-
-static uint32_t xx_ibmpack_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8) |
-           ((uint32_t)bytes[2] << 16) | ((uint32_t)bytes[3] << 24);
-}
-
 static bool xx_ibmpack_read_at(Abstractformat *self, int64_t offset,
                                uint8_t *buffer, size_t size) {
     size_t done = 0U;
@@ -466,23 +458,23 @@ static bool xx_ibmpack_read_member(Abstractformat *self, int64_t span,
         return false;
     if (header[0] != XX_IBMPACK_SIG0 || header[1] != XX_IBMPACK_SIG1)
         return false;
-    variant = xx_ibmpack_le16(header + 2);
+    variant = xx_data_get_u16(header + 2, 2, 0, false);
     if (!xx_ibmpack_variant_known(variant)) return false;
 
     member->variant = variant;
     member->attributes = header[8];
-    member->timestamp = ((uint64_t)xx_ibmpack_le16(header + 4) << 16) |
-                        (uint64_t)xx_ibmpack_le16(header + 6);
+    member->timestamp = ((uint64_t)xx_data_get_u16(header + 4, 2, 0, false) << 16) |
+                        (uint64_t)xx_data_get_u16(header + 6, 2, 0, false);
 
     if (variant == XX_IBMPACK_VARIANT_CHAIN) {
         if (span - offset < 26) return false;
         if (!xx_ibmpack_read_at(self, self->base_address + offset, header,
                                 sizeof(header)))
             return false;
-        extended_attributes = xx_ibmpack_le32(header + 12);
-        declared = xx_ibmpack_le32(header + 16);
-        successor = xx_ibmpack_le32(header + 20);
-        name_field = (int64_t)xx_ibmpack_le16(header + 24);
+        extended_attributes = xx_data_get_u32(header + 12, 4, 0, false);
+        declared = xx_data_get_u32(header + 16, 4, 0, false);
+        successor = xx_data_get_u32(header + 20, 4, 0, false);
+        name_field = (int64_t)xx_data_get_u16(header + 24, 2, 0, false);
         name_offset = offset + 26;
         /* A name field must fit in the file and must be able to hold a
          * NUL.  Bound it before it is used to place the payload. */

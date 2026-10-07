@@ -294,6 +294,7 @@ typedef struct {
     size_t idx2;
 } SigMasked;
 
+#if !defined(XX_SIG_NO_MASKED_SEARCH)
 /* How common a byte is in executable data; lower is rarer. The same scale as
  * the literal search's filter (xx_data_avx2.c). */
 static uint8_t sig_byte_weight(uint8_t c) {
@@ -305,6 +306,7 @@ static uint8_t sig_byte_weight(uint8_t c) {
     if (c >= '0' && c <= '9') return 120;
     return 50;
 }
+#endif
 
 /* Builds the filter from the leading BYTES/SKIP records. True only when it
  * covers the anchor record completely, anchor_idx being the first BYTES
@@ -1138,6 +1140,7 @@ static int64_t sig_input_find_text(SigInput *input,
                     int64_t first = offset;
                     int64_t last = offset + length - anchor_size;
                     bool fallback = false;
+                    bool failed_before = input->failed;
 
                     if ((int64_t)input->size - (int64_t)masked.size < last) {
                         last = (int64_t)input->size - (int64_t)masked.size;
@@ -1151,6 +1154,16 @@ static int64_t sig_input_find_text(SigInput *input,
                             break;
                         }
                         first = candidate + 1;
+                    }
+                    /* The filter reads bytes the literal path may never touch
+                     * (leading SKIPs, the fixed part past the window, other
+                     * window bounds). After a failed read, retry on that path,
+                     * so a read error there cannot turn its match into -1. */
+                    if (!failed_before && input->failed) {
+                        input->failed = false;
+                        input->find_valid = 0;
+                        result = -1;
+                        fallback = true;
                     }
                     if (!fallback) goto finished;
                 }

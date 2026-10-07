@@ -19,7 +19,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     for(i=0;i<128;++i) { if(h[113+i]==255) break; if(h[113+i]>=patterns) return false; ++orders; } if(!orders || h[112]>=orders || h[240]!=255) return false;
     for(i=0;i<patterns;++i) if(!h[241+i] || h[241+i]>15 || h[369+i]>63) return false;
     if(!sm_emit(f,s,"669-descriptor.bin",0,497,&measured)) return false;
-    for(i=0;i<samples;++i) { uint32_t a,z; start=c.at; if(!fd_get(&c,b,25)) return false; length[i]=pm_le32(b+13); a=pm_le32(b+17); z=pm_le32(b+21);
+    for(i=0;i<samples;++i) { uint32_t a,z; start=c.at; if(!fd_get(&c,b,25)) return false; length[i]=xx_data_get_u32(b+13, 4, 0, false); a=xx_data_get_u32(b+17, 4, 0, false); z=xx_data_get_u32(b+21, 4, 0, false);
         if(length[i]>16777216 || a>length[i] || (z<0xfffff && z && (a>=z || z>length[i]))) return false;
         xx_rt_snprintf(label,sizeof(label),"sample-%u-descriptor.bin",i+1); if(!sm_emit(f,s,label,start,25,&measured)) return false; }
     for(i=0;i<patterns;++i) { start=c.at; if(!fd_get(&c,b,1536)) return false;

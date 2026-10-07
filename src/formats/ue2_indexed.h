@@ -26,16 +26,6 @@ typedef struct ue2_index {
 typedef struct ue2_format { Abstractformat format; ue2_index *index; } ue2_format;
 typedef struct ue2_state { const ue2_index *index; size_t cursor; } ue2_state;
 
-static XXFC_MAYBE_UNUSED uint16_t ue2_u16(const uint8_t *p) {
-    return (uint16_t)((uint16_t)p[0] | (uint16_t)p[1] << 8);
-}
-static uint32_t ue2_u32(const uint8_t *p) {
-    return (uint32_t)p[0] | (uint32_t)p[1] << 8 |
-           (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24;
-}
-static XXFC_MAYBE_UNUSED uint64_t ue2_u64(const uint8_t *p) {
-    return (uint64_t)ue2_u32(p) | (uint64_t)ue2_u32(p + 4) << 32;
-}
 static bool ue2_range(int64_t total, int64_t offset, int64_t size) {
     return total >= 0 && offset >= 0 && size >= 0 && offset <= total && size <= total - offset;
 }

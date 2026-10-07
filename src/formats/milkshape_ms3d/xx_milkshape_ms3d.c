@@ -5,8 +5,9 @@
  */
 #include "xxfclib/formats/milkshape_ms3d/xx_milkshape_ms3d.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static uint32_t g32(const uint8_t *p,bool be) { return be ? pm_be32(p) : pm_le32(p); }
+static uint32_t g32(const uint8_t *p,bool be) { return be ? xx_data_get_u32(p, 4, 0, true) : xx_data_get_u32(p, 4, 0, false); }
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool overlap(uint64_t a,uint64_t n,uint64_t b,uint64_t m) { return n && m && a<b+m && b<a+n; }
 static bool stop(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
@@ -20,20 +21,20 @@ static bool finite32(const uint8_t *p,bool be) { return (g32(p,be)&0x7f800000U)!
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[14],p[361],used[2048]={0}; uint64_t at=14,total=(uint64_t)pm_available(f),start,triangle_at; uint32_t verts,tris,groups,mats,i,j; uint8_t material[128]; char label[40];
-    if(!pm_read(f,0,h,14) || xx_rt_memcmp(h,"MS3D000000",10) || pm_le32(h+10)!=4 || !take(f,&at,total,p,2,pd) || !(verts=pm_le16(p)) || verts>8192) return false;
+    if(!pm_read(f,0,h,14) || xx_rt_memcmp(h,"MS3D000000",10) || xx_data_get_u32(h+10, 4, 0, false)!=4 || !take(f,&at,total,p,2,pd) || !(verts=xx_data_get_u16(p, 2, 0, false)) || verts>8192) return false;
     start=at; for(i=0;i<verts;++i) { if(!take(f,&at,total,p,15,pd) || p[13]!=255) return false; for(j=1;j<13;j+=4) if(!finite32(p+j,false)) return false; }
-    if(!emit(f,s,"vertices.bin",start,at-start,total) || !take(f,&at,total,p,2,pd) || !(tris=pm_le16(p)) || tris>16384) return false;
-    start=triangle_at=at; for(i=0;i<tris;++i) { if(!take(f,&at,total,p,70,pd)) return false; for(j=0;j<3;++j) if(pm_le16(p+2+j*2)>=verts) return false; for(j=8;j<68;j+=4) if(!finite32(p+j,false)) return false; }
-    if(!emit(f,s,"triangles.bin",start,at-start,total) || !take(f,&at,total,p,2,pd) || !(groups=pm_le16(p)) || groups>128) return false;
-    for(i=0;i<groups;++i) { uint32_t n; start=at; if(!take(f,&at,total,p,35,pd) || !xx_rt_memchr(p+1,0,32) || !(n=pm_le16(p+33))) return false;
-      for(j=0;j<n;++j) { uint32_t index; uint8_t group; if(!take(f,&at,total,p,2,pd) || (index=pm_le16(p))>=tris || (used[index/8]&(1U<<(index%8))) || !pm_read(f,(int64_t)(triangle_at+index*70+69),&group,1) || group!=i) return false; used[index/8]|=(uint8_t)(1U<<(index%8)); }
+    if(!emit(f,s,"vertices.bin",start,at-start,total) || !take(f,&at,total,p,2,pd) || !(tris=xx_data_get_u16(p, 2, 0, false)) || tris>16384) return false;
+    start=triangle_at=at; for(i=0;i<tris;++i) { if(!take(f,&at,total,p,70,pd)) return false; for(j=0;j<3;++j) if(xx_data_get_u16(p+2+j*2, 2, 0, false)>=verts) return false; for(j=8;j<68;j+=4) if(!finite32(p+j,false)) return false; }
+    if(!emit(f,s,"triangles.bin",start,at-start,total) || !take(f,&at,total,p,2,pd) || !(groups=xx_data_get_u16(p, 2, 0, false)) || groups>128) return false;
+    for(i=0;i<groups;++i) { uint32_t n; start=at; if(!take(f,&at,total,p,35,pd) || !xx_rt_memchr(p+1,0,32) || !(n=xx_data_get_u16(p+33, 2, 0, false))) return false;
+      for(j=0;j<n;++j) { uint32_t index; uint8_t group; if(!take(f,&at,total,p,2,pd) || (index=xx_data_get_u16(p, 2, 0, false))>=tris || (used[index/8]&(1U<<(index%8))) || !pm_read(f,(int64_t)(triangle_at+index*70+69),&group,1) || group!=i) return false; used[index/8]|=(uint8_t)(1U<<(index%8)); }
       if(!take(f,&at,total,&material[i],1,pd)) { return false; } xx_rt_snprintf(label,sizeof(label),"group-%u.bin",i); if(!emit(f,s,label,start,at-start,total)) return false; }
     for(i=0;i<tris;++i) if(!(used[i/8]&(1U<<(i%8)))) return false;
-    if(!take(f,&at,total,p,2,pd) || (mats=pm_le16(p))>128) { return false; } for(i=0;i<groups;++i) if(material[i]!=255 && material[i]>=mats) return false;
+    if(!take(f,&at,total,p,2,pd) || (mats=xx_data_get_u16(p, 2, 0, false))>128) { return false; } for(i=0;i<groups;++i) if(material[i]!=255 && material[i]>=mats) return false;
     for(i=0;i<mats;++i) { start=at; if(!take(f,&at,total,p,361,pd) || !xx_rt_memchr(p,0,32) || !xx_rt_memchr(p+105,0,128) || !xx_rt_memchr(p+233,0,128)) return false; for(j=32;j<104;j+=4) if(!finite32(p+j,false)) return false;
-      { uint32_t shine=pm_le32(p+96),alpha=pm_le32(p+100); if(((shine&0x80000000U) && (shine&0x7fffffffU)) || (shine&0x7fffffffU)>0x43000000U || ((alpha&0x80000000U) && (alpha&0x7fffffffU)) || (alpha&0x7fffffffU)>0x3f800000U) return false; }
+      { uint32_t shine=xx_data_get_u32(p+96, 4, 0, false),alpha=xx_data_get_u32(p+100, 4, 0, false); if(((shine&0x80000000U) && (shine&0x7fffffffU)) || (shine&0x7fffffffU)>0x43000000U || ((alpha&0x80000000U) && (alpha&0x7fffffffU)) || (alpha&0x7fffffffU)>0x3f800000U) return false; }
       xx_rt_snprintf(label,sizeof(label),"material-%u.bin",i); if(!emit(f,s,label,start,361,total)) return false; }
-    if(!take(f,&at,total,p,14,pd) || !finite32(p,false) || !finite32(p+4,false) || (pm_le32(p)&0x80000000U) || !pm_le32(p) || pm_le16(p+12) || at!=total) { return false; } s->size=(int64_t)at; return true;
+    if(!take(f,&at,total,p,14,pd) || !finite32(p,false) || !finite32(p+4,false) || (xx_data_get_u32(p, 4, 0, false)&0x80000000U) || !xx_data_get_u32(p, 4, 0, false) || xx_data_get_u16(p+12, 2, 0, false) || at!=total) { return false; } s->size=(int64_t)at; return true;
 
 }
 

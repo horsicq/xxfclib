@@ -16,6 +16,7 @@
 #include "xxfclib/algo/lzfse/xx_lzfse.h"
 
 #include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/data/xx_data.h"
 
 /* ------------------------------------------------------------------------ */
 /* Format constants                                                          */
@@ -82,14 +83,6 @@ static const int32_t xx_lzfse_d_base_value[XX_LZFSE_D_SYMBOLS] = {
 /* ------------------------------------------------------------------------ */
 /* Small helpers                                                             */
 /* ------------------------------------------------------------------------ */
-
-/* Everything in an LZFSE stream is little endian, and nothing in it is
- * guaranteed to be aligned, so every multi-byte field is assembled a byte at
- * a time rather than loaded through a cast. */
-static uint32_t xx_lzfse_load4(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static uint64_t xx_lzfse_load_n(const uint8_t *data, size_t size) {
     uint64_t value = 0U;
@@ -364,7 +357,7 @@ static bool xx_lzfse_decode_header_v2(const uint8_t *data, size_t size,
         return false;
     }
     xx_rt_memset(header, 0, sizeof(*header));
-    header->n_raw_bytes = xx_lzfse_load4(data + 4U);
+    header->n_raw_bytes = xx_data_get_u32(data + 4U, 4, 0, false);
     header->n_literals = xx_lzfse_get_field(v0, 0, 20);
     header->n_literal_payload_bytes = xx_lzfse_get_field(v0, 20, 20);
     header->n_matches = xx_lzfse_get_field(v0, 40, 20);
@@ -412,17 +405,17 @@ static bool xx_lzfse_decode_header_v1(const uint8_t *data, size_t size,
     int index;
     if (size < XX_LZFSE_V1_SIZE) return false;
     xx_rt_memset(header, 0, sizeof(*header));
-    header->n_raw_bytes = xx_lzfse_load4(data + 4U);
-    header->n_literals = xx_lzfse_load4(data + 12U);
-    header->n_matches = xx_lzfse_load4(data + 16U);
-    header->n_literal_payload_bytes = xx_lzfse_load4(data + 20U);
-    header->n_lmd_payload_bytes = xx_lzfse_load4(data + 24U);
-    header->literal_bits = (int)(int32_t)xx_lzfse_load4(data + 28U);
+    header->n_raw_bytes = xx_data_get_u32(data + 4U, 4, 0, false);
+    header->n_literals = xx_data_get_u32(data + 12U, 4, 0, false);
+    header->n_matches = xx_data_get_u32(data + 16U, 4, 0, false);
+    header->n_literal_payload_bytes = xx_data_get_u32(data + 20U, 4, 0, false);
+    header->n_lmd_payload_bytes = xx_data_get_u32(data + 24U, 4, 0, false);
+    header->literal_bits = (int)(int32_t)xx_data_get_u32(data + 28U, 4, 0, false);
     header->literal_state[0] = (uint16_t)xx_lzfse_load_n(data + 32U, 2U);
     header->literal_state[1] = (uint16_t)xx_lzfse_load_n(data + 34U, 2U);
     header->literal_state[2] = (uint16_t)xx_lzfse_load_n(data + 36U, 2U);
     header->literal_state[3] = (uint16_t)xx_lzfse_load_n(data + 38U, 2U);
-    header->lmd_bits = (int)(int32_t)xx_lzfse_load4(data + 40U);
+    header->lmd_bits = (int)(int32_t)xx_data_get_u32(data + 40U, 4, 0, false);
     header->l_state = (uint16_t)xx_lzfse_load_n(data + 44U, 2U);
     header->m_state = (uint16_t)xx_lzfse_load_n(data + 46U, 2U);
     header->d_state = (uint16_t)xx_lzfse_load_n(data + 48U, 2U);
@@ -862,7 +855,7 @@ bool xx_lzfse_is_available(void) { return true; }
 bool xx_lzfse_header_is_valid(const void *source, size_t source_size) {
     uint32_t magic;
     if (!source || source_size < 4U) return false;
-    magic = xx_lzfse_load4((const uint8_t *)source);
+    magic = xx_data_get_u32((const uint8_t *)source, 4, 0, false);
     return magic == XX_LZFSE_MAGIC_ENDOFSTREAM ||
            magic == XX_LZFSE_MAGIC_UNCOMPRESSED ||
            magic == XX_LZFSE_MAGIC_COMPRESSEDV1 ||
@@ -899,7 +892,7 @@ bool xx_lzfse_decompress_memory(const void *source, size_t source_size,
     for (;;) {
         uint32_t magic;
         if (source_size - cursor < 4U) goto done;
-        magic = xx_lzfse_load4(input + cursor);
+        magic = xx_data_get_u32(input + cursor, 4, 0, false);
         if (magic == XX_LZFSE_MAGIC_ENDOFSTREAM) {
             cursor += 4U;
             result = true;
@@ -910,7 +903,7 @@ bool xx_lzfse_decompress_memory(const void *source, size_t source_size,
             if (source_size - cursor < XX_LZFSE_UNCOMPRESSED_HEADER_SIZE) {
                 goto done;
             }
-            raw = xx_lzfse_load4(input + cursor + 4U);
+            raw = xx_data_get_u32(input + cursor + 4U, 4, 0, false);
             cursor += XX_LZFSE_UNCOMPRESSED_HEADER_SIZE;
             if ((size_t)raw > source_size - cursor) goto done;
             if ((size_t)raw > destination_size - position) goto done;
@@ -927,8 +920,8 @@ bool xx_lzfse_decompress_memory(const void *source, size_t source_size,
             size_t consumed = 0U;
             size_t before = position;
             if (source_size - cursor < XX_LZFSE_LZVN_HEADER_SIZE) goto done;
-            raw = xx_lzfse_load4(input + cursor + 4U);
-            payload = xx_lzfse_load4(input + cursor + 8U);
+            raw = xx_data_get_u32(input + cursor + 4U, 4, 0, false);
+            payload = xx_data_get_u32(input + cursor + 8U, 4, 0, false);
             cursor += XX_LZFSE_LZVN_HEADER_SIZE;
             if ((size_t)payload > source_size - cursor) goto done;
             if ((size_t)raw > destination_size - position) goto done;

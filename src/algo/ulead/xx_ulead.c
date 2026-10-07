@@ -14,6 +14,7 @@
 
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/data/xx_data.h"
 
 #define ULEAD_MAGIC_SIZE 12
 #define ULEAD_HEADER1_SIZE 0x1c
@@ -42,12 +43,6 @@ static uint32_t ulead_read16(const uint8_t *data, size_t offset) {
     return (uint32_t)data[offset] | ((uint32_t)data[offset + 1U] << 8U);
 }
 
-static uint32_t ulead_read32(const uint8_t *data, size_t offset) {
-    return (uint32_t)data[offset] | ((uint32_t)data[offset + 1U] << 8U) |
-           ((uint32_t)data[offset + 2U] << 16U) |
-           ((uint32_t)data[offset + 3U] << 24U);
-}
-
 bool xx_ulead_parse_header(const uint8_t *input, size_t input_size,
                            uint64_t file_size, xx_ulead_header *header) {
     uint32_t count1;
@@ -69,10 +64,10 @@ bool xx_ulead_parse_header(const uint8_t *input, size_t input_size,
     /* Fixed words that must hold before either layout is accepted: two zero
      * dwords straddling a pair of 1s.  Every member of the family carries
      * them. */
-    if (ulead_read32(input, 12U) != 0U) return false;
+    if (xx_data_get_u32(input + 12U, 4, 0, false) != 0U) return false;
     if (ulead_read16(input, 16U) != 1U) return false;
     if (ulead_read16(input, 18U) != 1U) return false;
-    if (ulead_read32(input, 20U) != 0U) return false;
+    if (xx_data_get_u32(input + 20U, 4, 0, false) != 0U) return false;
 
     count1 = ulead_read16(input, 24U);
     last1 = ulead_read16(input, 26U);

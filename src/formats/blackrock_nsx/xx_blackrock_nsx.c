@@ -6,13 +6,13 @@
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[314];nh_blob b={0};bool ok=false;uint32_t header,channels;uint64_t at,last=0;unsigned i,records=0;uint16_t ids[1024];
     if(!pm_read(f,0,h,sizeof(h)) || xx_rt_memcmp(h,"NEURALCD",8) || h[8]!=2 || (h[9]!=2 && h[9]!=3)) return false;
-    header=pm_le32(h+10);channels=pm_le32(h+310);
-    NH_NEED(channels && channels<=1024 && header==314+channels*66 && pm_le32(h+286) && pm_le32(h+290) && nh_date(h+294));
+    header=xx_data_get_u32(h+10, 4, 0, false);channels=xx_data_get_u32(h+310, 4, 0, false);
+    NH_NEED(channels && channels<=1024 && header==314+channels*66 && xx_data_get_u32(h+286, 4, 0, false) && xx_data_get_u32(h+290, 4, 0, false) && nh_date(h+294));
     NH_NEED(nh_load(f,&b,pd) && nh_span(&b,0,header));
-    for(i=0;i<channels;++i) {const uint8_t *p=b.p+314+i*66;unsigned j;NH_NEED(p[0]=='C' && p[1]=='C' && pm_le16(p+2));ids[i]=pm_le16(p+2);for(j=0;j<i;++j) NH_NEED(ids[j]!=ids[i]);NH_NEED((int16_t)pm_le16(p+22)<(int16_t)pm_le16(p+24) && (int16_t)pm_le16(p+26)<(int16_t)pm_le16(p+28));}
+    for(i=0;i<channels;++i) {const uint8_t *p=b.p+314+i*66;unsigned j;NH_NEED(p[0]=='C' && p[1]=='C' && xx_data_get_u16(p+2, 2, 0, false));ids[i]=xx_data_get_u16(p+2, 2, 0, false);for(j=0;j<i;++j) NH_NEED(ids[j]!=ids[i]);NH_NEED((int16_t)xx_data_get_u16(p+22, 2, 0, false)<(int16_t)xx_data_get_u16(p+24, 2, 0, false) && (int16_t)xx_data_get_u16(p+26, 2, 0, false)<(int16_t)xx_data_get_u16(p+28, 2, 0, false));}
     NH_NEED(nh_add(f,s,&b,"header",0,header));at=header;
-    while(at<b.n) {uint32_t time,count;uint64_t bytes;NH_NEED(++records<=4095 && nh_span(&b,at,9) && b.p[(size_t)at]==1);time=pm_le32(b.p+(size_t)at+1);count=pm_le32(b.p+(size_t)at+5);bytes=(uint64_t)count*channels*2;
-        NH_NEED(count && (!last || time>=last) && nh_span(&b,at+9,bytes) && nh_add(f,s,&b,"packet",at,9+bytes));last=(uint64_t)time+(uint64_t)count*pm_le32(h+286);at+=9+bytes;
+    while(at<b.n) {uint32_t time,count;uint64_t bytes;NH_NEED(++records<=4095 && nh_span(&b,at,9) && b.p[(size_t)at]==1);time=xx_data_get_u32(b.p+(size_t)at+1, 4, 0, false);count=xx_data_get_u32(b.p+(size_t)at+5, 4, 0, false);bytes=(uint64_t)count*channels*2;
+        NH_NEED(count && (!last || time>=last) && nh_span(&b,at+9,bytes) && nh_add(f,s,&b,"packet",at,9+bytes));last=(uint64_t)time+(uint64_t)count*xx_data_get_u32(h+286, 4, 0, false);at+=9+bytes;
     }NH_NEED(records);s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }

@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 #ifdef XVA
 #define XV_TYPE XX_FILE_TYPE_XVA
 #else
@@ -548,9 +549,6 @@ bad:xv_drop(v,items,capacity*sizeof(*items));xv_release(v);return NULL;
 #define XV_P4 UINT64_C(0x85ebca77c2b2ae63)
 #define XV_P5 UINT64_C(0x27d4eb2f165667c5)
 typedef struct xv_xxh_s { uint64_t lanes[4],length;uint8_t tail[32];size_t used; } xv_xxh;
-static uint64_t xv_le64(const uint8_t *p) {
-    uint64_t x=0;unsigned i;for(i=0;i<8U;++i)x|=(uint64_t)p[i]<<(i*8U);return x;
-}
 static uint64_t xv_rotate(uint64_t x,unsigned n) { return (x<<n)|(x>>(64U-n)); }
 static uint64_t xv_round(uint64_t x,uint64_t lane) { return xv_rotate(x+lane*XV_P2,31U)*XV_P1; }
 static void xv_xxh_init(xv_xxh *h) {
@@ -558,7 +556,7 @@ static void xv_xxh_init(xv_xxh *h) {
     h->lanes[1]=XV_P2;h->lanes[3]=UINT64_C(0)-XV_P1;
 }
 static void xv_xxh_stripe(xv_xxh *h,const uint8_t *p) {
-    unsigned i;for(i=0;i<4U;++i)h->lanes[i]=xv_round(h->lanes[i],xv_le64(p+i*8U));
+    unsigned i;for(i=0;i<4U;++i)h->lanes[i]=xv_round(h->lanes[i],xx_data_get_u64(p+i*8U, 8, 0, false));
 }
 static void xv_xxh_update(xv_xxh *h,const uint8_t *p,size_t n) {
     h->length+=n;
@@ -578,7 +576,7 @@ static uint64_t xv_xxh_final(const xv_xxh *h) {
         for(i=0;i<4U;++i)x=(x^xv_round(0U,h->lanes[i]))*XV_P1+XV_P4;
     } else x=XV_P5;
     x+=h->length;
-    while(h->used-at>=8U) {x=xv_rotate(x^xv_round(0U,xv_le64(h->tail+at)),27U)*XV_P1+XV_P4;at+=8U;}
+    while(h->used-at>=8U) {x=xv_rotate(x^xv_round(0U,xx_data_get_u64(h->tail+at, 8, 0, false)),27U)*XV_P1+XV_P4;at+=8U;}
     if(h->used-at>=4U) {
         const uint8_t *p=h->tail+at;uint64_t n=(uint64_t)p[0]|((uint64_t)p[1]<<8)|((uint64_t)p[2]<<16)|((uint64_t)p[3]<<24);
         x=xv_rotate(x^n*XV_P1,23U)*XV_P2+XV_P3;at+=4U;

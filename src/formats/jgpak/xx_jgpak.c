@@ -53,6 +53,7 @@
 #include "xxfclib/algo/crc/xx_crc.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_JGPAK_COPY_CHUNK (64 * 1024)
 
@@ -157,8 +158,6 @@ static bool xx_jgpak_add(xx_jgpak_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_jgpak_le16(const uint8_t *data);
-static uint32_t xx_jgpak_le32(const uint8_t *data);
 static bool xx_jgpak_name_valid(const uint8_t *name, size_t size);
 static xx_jgpak_stream *xx_jgpak_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_jgpak_decode(Abstractformat *self, const xx_jgpak_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
@@ -168,15 +167,6 @@ static bool xx_jgpak_decode(Abstractformat *self, const xx_jgpak_member *member,
 /* The count is i32, but every member costs at least 26 directory bytes plus
  * one payload byte, so the writer cannot reach anything like this. */
 /* Both leading strings are short product banners in every known archive. */
-
-static uint16_t xx_jgpak_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_jgpak_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* Member names are bare DOS/Windows file names -- no directory component
  * ever appears -- so anything that could escape the output directory, or any
@@ -246,7 +236,7 @@ static xx_jgpak_stream *xx_jgpak_parse(Abstractformat *self,
                               4U)) {
             return NULL;
         }
-        length = (int64_t)(int32_t)xx_jgpak_le32(scratch);
+        length = (int64_t)(int32_t)xx_data_get_u32(scratch, 4, 0, false);
         if (length < 0 || length > XX_JGPAK_MAX_STRING) return NULL;
         offset += 4;
         if (!xx_jgpak_range_within(span, offset, length)) return NULL;
@@ -279,7 +269,7 @@ static xx_jgpak_stream *xx_jgpak_parse(Abstractformat *self,
         return NULL;
     }
     /* scratch[0] is a flag byte the reference reader does not interpret. */
-    member_count = (int32_t)xx_jgpak_le32(scratch + 1);
+    member_count = (int32_t)xx_data_get_u32(scratch + 1, 4, 0, false);
     if (member_count < 0 || member_count > XX_JGPAK_MAX_MEMBERS) return NULL;
     offset += 5;
 
@@ -330,9 +320,9 @@ static xx_jgpak_stream *xx_jgpak_parse(Abstractformat *self,
         name[(size_t)name_size] = '\0';
 
         tail = scratch + name_size;
-        uncompressed_size = (int64_t)(int32_t)xx_jgpak_le32(tail + 4);
-        data_offset = (int64_t)(int32_t)xx_jgpak_le32(tail + 8);
-        compressed_size = (int64_t)(int32_t)xx_jgpak_le32(tail + 12);
+        uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(tail + 4, 4, 0, false);
+        data_offset = (int64_t)(int32_t)xx_data_get_u32(tail + 8, 4, 0, false);
+        compressed_size = (int64_t)(int32_t)xx_data_get_u32(tail + 12, 4, 0, false);
         /* All three are i32 in the container and the reference reader
          * refuses any of them negative. */
         if (uncompressed_size < 0 || data_offset < 0 || compressed_size < 0) {
@@ -351,10 +341,10 @@ static xx_jgpak_stream *xx_jgpak_parse(Abstractformat *self,
         member.compressed_size = compressed_size;
         member.uncompressed_size = uncompressed_size;
         member.method = XX_JGPAK_METHOD_LZH1;
-        member.crc32 = xx_jgpak_le32(tail + 16);
+        member.crc32 = xx_data_get_u32(tail + 16, 4, 0, false);
         /* Raw MS-DOS time and date, packed time | (date << 16). */
-        member.timestamp = (uint64_t)xx_jgpak_le16(tail) |
-                           ((uint64_t)xx_jgpak_le16(tail + 2) << 16);
+        member.timestamp = (uint64_t)xx_data_get_u16(tail, 2, 0, false) |
+                           ((uint64_t)xx_data_get_u16(tail + 2, 2, 0, false) << 16);
         member.is_folder = false;
         if (!xx_jgpak_add(stream, &member)) {
             xx_str_free(member.name);

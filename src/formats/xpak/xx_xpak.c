@@ -28,6 +28,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -143,11 +144,6 @@ typedef struct xpak_output_s {
     uint8_t *memory;    /**< Memory sink of exactly expected bytes. */
     uint64_t written;
 } xpak_output;
-
-static uint32_t xpak_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
 
 static uint32_t xpak_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
@@ -766,8 +762,8 @@ static bool xpak_parse(Abstractformat *format, xpak_context *out,
     if (!xpak_decode_name(header + XPAK_NAME_OFFSET, context.name))
         return false;
     context.input_size = size;
-    context.declared_size = (int64_t)xpak_le32(header + 4U);
-    context.unpacked_size = (int64_t)xpak_le32(header + XPAK_SIZE_OFFSET);
+    context.declared_size = (int64_t)xx_data_get_u32(header + 4U, 4, 0, false);
+    context.unpacked_size = (int64_t)xx_data_get_u32(header + XPAK_SIZE_OFFSET, 4, 0, false);
     /* The archive size counts this header; the stream needs its codec
      * header, the marker and at least one byte of bits. */
     if (context.declared_size <=

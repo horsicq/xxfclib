@@ -15,6 +15,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 #ifdef NITROPLUS_NPA
 #define NA_FILE_TYPE XX_FILE_TYPE_NITROPLUS_NPA
@@ -51,10 +52,6 @@ typedef struct na_name_key {
 
 static bool na_stopped(xx_pd_struct *pd) {
     return pd && xx_pd_is_stopped(pd);
-}
-static uint32_t na_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | (uint32_t)p[1] << 8U |
-           (uint32_t)p[2] << 16U | (uint32_t)p[3] << 24U;
 }
 static bool na_read(xx_io_device *device, int64_t at, void *buffer,
                     size_t size, xx_pd_struct *pd) {
@@ -209,7 +206,7 @@ static bool na_resolve_scheme(xx_nitroplus_npa *archive, const xx_list_s *option
     } else if (value->type == XX_VAR_TYPE_BYTES || value->type == XX_VAR_TYPE_BYTES_VIEW) {
         const uint8_t *bytes = (const uint8_t *)xx_var_get_bytes(value, &length);
         if (!bytes || length != 261U) return false;
-        scheme->profile = bytes[0]; scheme->name_key = na_le32(bytes + 1U);
+        scheme->profile = bytes[0]; scheme->name_key = xx_data_get_u32(bytes + 1U, 4, 0, false);
         xx_rt_memcpy(scheme->table, bytes + 5U, 256U);
     } else if (value->type == XX_VAR_TYPE_STRING || value->type == XX_VAR_TYPE_STRING_VIEW) {
         const char *text = xx_var_get_str(value);
@@ -239,8 +236,8 @@ static bool na_header(Abstractformat *format, uint8_t header[41], xx_pd_struct *
     available = total - format->base_address;
     if (available < 41 || !na_read(format->device, format->base_address, header, 41U, pd) ||
         xx_rt_memcmp(header, "NPA\1\0\0\0", 7U) || header[15] > 1U || header[16] > 1U) return false;
-    count = na_le32(header + 17U); folders = na_le32(header + 21U); files = na_le32(header + 25U);
-    index_size = na_le32(header + 37U);
+    count = xx_data_get_u32(header + 17U, 4, 0, false); folders = xx_data_get_u32(header + 21U, 4, 0, false); files = xx_data_get_u32(header + 25U, 4, 0, false);
+    index_size = xx_data_get_u32(header + 37U, 4, 0, false);
     return count <= NA_MAX_COUNT && folders <= count && files <= count &&
         (uint64_t)folders + files == count && index_size <= NA_MAX_INDEX &&
         (uint64_t)count * 22U <= index_size && (uint64_t)index_size <= (uint64_t)available - 41U;
@@ -264,12 +261,12 @@ static na_layout *na_parse_inner(Abstractformat *format, const xx_list_s *option
     xx_mem_zero(&scheme, sizeof(scheme));
     if (!na_header(format, header, pd)) return NULL;
     if (header[16] && !na_resolve_scheme((xx_nitroplus_npa *)format, options, &scheme)) return NULL;
-    records = na_le32(header + 17U); index_size = na_le32(header + 37U);
+    records = xx_data_get_u32(header + 17U, 4, 0, false); index_size = xx_data_get_u32(header + 37U, 4, 0, false);
     available = xx_io_total_size(format->device) - format->base_address;
     layout = (na_layout *)xx_mem_calloc(1U, sizeof(*layout));
     if (!layout) goto done;
-    layout->count = na_le32(header + 25U); layout->directories = na_le32(header + 21U);
-    layout->key1 = na_le32(header + 7U); layout->key2 = na_le32(header + 11U);
+    layout->count = xx_data_get_u32(header + 25U, 4, 0, false); layout->directories = xx_data_get_u32(header + 21U, 4, 0, false);
+    layout->key1 = xx_data_get_u32(header + 7U, 4, 0, false); layout->key2 = xx_data_get_u32(header + 11U, 4, 0, false);
     layout->compressed = header[15] != 0U; layout->encrypted = header[16] != 0U;
     layout->profile = scheme.profile; xx_rt_memcpy(layout->table, scheme.table, 256U);
     layout->format_size = 41 + (int64_t)index_size;
@@ -288,12 +285,12 @@ static na_layout *na_parse_inner(Abstractformat *format, const xx_list_s *option
         uint32_t length, folder_id, relative, packed, plain, sum = 0U, j;
         uint8_t type;
         if (na_stopped(pd) || index_size - at < 4U) goto done;
-        length = na_le32(index + at); at += 4U;
+        length = xx_data_get_u32(index + at, 4, 0, false); at += 4U;
         if (!length || length > NA_MAX_NAME || (uint64_t)length + 17U > index_size - at) goto done;
         for (j = 0U; j < length; ++j) { index[at + j] += na_name_mask(j, i, archive_key); sum += index[at + j]; }
-        type = index[at + length]; folder_id = na_le32(index + at + length + 1U);
-        relative = na_le32(index + at + length + 5U); packed = na_le32(index + at + length + 9U);
-        plain = na_le32(index + at + length + 13U);
+        type = index[at + length]; folder_id = xx_data_get_u32(index + at + length + 1U, 4, 0, false);
+        relative = xx_data_get_u32(index + at + length + 5U, 4, 0, false); packed = xx_data_get_u32(index + at + length + 9U, 4, 0, false);
+        plain = xx_data_get_u32(index + at + length + 13U, 4, 0, false);
         if (folder_id > layout->directories || (type != 1U && type != 2U)) goto done;
         if (type == 1U) {
             if (!folder_id || folders[folder_id] || packed || plain || relative) goto done;
@@ -301,7 +298,7 @@ static na_layout *na_parse_inner(Abstractformat *format, const xx_list_s *option
         } else {
             na_member *member;
             uint64_t offset = 41U + (uint64_t)index_size + relative;
-            if (layout->count >= na_le32(header + 25U) || offset > (uint64_t)available ||
+            if (layout->count >= xx_data_get_u32(header + 25U, 4, 0, false) || offset > (uint64_t)available ||
                 packed > (uint64_t)available - offset || (!layout->compressed && packed != plain) ||
                 names > NA_MAX_NAMES - (length * 3U + 14U)) goto done;
             member = &layout->members[layout->count];
@@ -322,7 +319,7 @@ static na_layout *na_parse_inner(Abstractformat *format, const xx_list_s *option
         }
         at += length + 17U;
     }
-    if (at != index_size || layout->count != na_le32(header + 25U) || directory_count != layout->directories) goto done;
+    if (at != index_size || layout->count != xx_data_get_u32(header + 25U, 4, 0, false) || directory_count != layout->directories) goto done;
     if (layout->count) xx_rt_qsort(keys, layout->count, sizeof(*keys), na_compare_keys);
     for (i = 1U; i < layout->count; ++i)
         if (!na_fold_compare(keys[i - 1U].name, keys[i].name)) layout->members[keys[i].index].duplicate = true;

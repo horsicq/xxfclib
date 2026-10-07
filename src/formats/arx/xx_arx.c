@@ -12,6 +12,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ARX_MAX_MEMBERS 100000U
 
@@ -33,15 +34,6 @@ typedef struct xx_arx_stream_s {
     size_t index;
     int64_t end;
 } xx_arx_stream;
-
-static uint16_t xx_arx_u16(const uint8_t *p) {
-    return (uint16_t)(p[0] | ((uint16_t)p[1] << 8U));
-}
-
-static uint32_t xx_arx_u32(const uint8_t *p) {
-    return (uint32_t)xx_arx_u16(p) |
-           ((uint32_t)xx_arx_u16(p + 2U) << 16U);
-}
 
 static bool xx_arx_read(xx_io_device *device, int64_t offset, void *data,
                         size_t size) {
@@ -122,8 +114,8 @@ static bool xx_arx_parse(Abstractformat *format, xx_arx_stream **result) {
             xx_mem_free(header);
             goto fail;
         }
-        packed = xx_arx_u32(header + 8U);
-        original = xx_arx_u32(header + 12U);
+        packed = xx_data_get_u32(header + 8U, 4, 0, false);
+        original = xx_data_get_u32(header + 12U, 4, 0, false);
         if (packed == 0U) packed = original;
         if ((uint64_t)packed > (uint64_t)(total - offset - (int64_t)header_size)) {
             xx_mem_free(header);
@@ -157,9 +149,9 @@ static bool xx_arx_parse(Abstractformat *format, xx_arx_stream **result) {
         member->data_offset = offset + (int64_t)header_size;
         member->packed_size = packed;
         member->original_size = original;
-        member->dos_time = ((uint32_t)xx_arx_u16(header + 18U) << 16U) |
-                           xx_arx_u16(header + 16U);
-        member->stored = xx_arx_u32(header + 8U) == 0U || method == 0U;
+        member->dos_time = ((uint32_t)xx_data_get_u16(header + 18U, 2, 0, false) << 16U) |
+                           xx_data_get_u16(header + 16U, 2, 0, false);
+        member->stored = xx_data_get_u32(header + 8U, 4, 0, false) == 0U || method == 0U;
         member->method = member->stored ? 0U : method;
         ++stream->count;
         xx_mem_free(header);

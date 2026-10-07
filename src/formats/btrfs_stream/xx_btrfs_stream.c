@@ -36,6 +36,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef BTRFS_STREAM
 #define XX_BTRFS_STREAM_FILE_TYPE XX_FILE_TYPE_BTRFS_STREAM
@@ -210,19 +211,6 @@ typedef struct bs_stream_s {
 } bs_stream;
 
 /* ------------------------------------------------------------ helpers --- */
-
-static uint16_t bs_le16(const uint8_t *p) {
-    return (uint16_t)((uint16_t)p[0] | ((uint16_t)p[1] << 8U));
-}
-
-static uint32_t bs_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) | ((uint32_t)p[2] << 16U) |
-           ((uint32_t)p[3] << 24U);
-}
-
-static uint64_t bs_le64(const uint8_t *p) {
-    return (uint64_t)bs_le32(p) | ((uint64_t)bs_le32(p + 4U) << 32U);
-}
 
 static bool bs_read_at(xx_io_device *device, int64_t offset, void *buffer,
                        size_t size) {
@@ -503,7 +491,7 @@ static bool bs_parse_tlvs(const bs_tree *tree, const uint8_t *payload,
     while (pos < length) {
         uint16_t type, tlen;
         if (length - pos < 2U) return false;
-        type = bs_le16(payload + pos);
+        type = xx_data_get_u16(payload + pos, 2, 0, false);
         if (tree->version >= 2U && type == BS_A_DATA) {
             attrs[type].p = payload + pos + 2U;
             attrs[type].len = length - pos - 2U;
@@ -511,7 +499,7 @@ static bool bs_parse_tlvs(const bs_tree *tree, const uint8_t *payload,
             return true;
         }
         if (length - pos < 4U) return false;
-        tlen = bs_le16(payload + pos + 2U);
+        tlen = xx_data_get_u16(payload + pos + 2U, 2, 0, false);
         if ((uint32_t)tlen > length - pos - 4U) return false;
         if (type < BS_A_COUNT && !attrs[type].present) {
             attrs[type].p = payload + pos + 4U;
@@ -525,15 +513,15 @@ static bool bs_parse_tlvs(const bs_tree *tree, const uint8_t *payload,
 
 static bool bs_u64(const bs_attr *attrs, int type, uint64_t *value) {
     if (!attrs[type].present || attrs[type].len != 8U) return false;
-    *value = bs_le64(attrs[type].p);
+    *value = xx_data_get_u64(attrs[type].p, 8, 0, false);
     return true;
 }
 
 static bool bs_u32(const bs_attr *attrs, int type, uint32_t *value) {
     if (!attrs[type].present) return false;
-    if (attrs[type].len == 4U) *value = bs_le32(attrs[type].p);
+    if (attrs[type].len == 4U) *value = xx_data_get_u32(attrs[type].p, 4, 0, false);
     else if (attrs[type].len == 8U) {
-        uint64_t wide = bs_le64(attrs[type].p);
+        uint64_t wide = xx_data_get_u64(attrs[type].p, 8, 0, false);
         if (wide > 0xFFFFFFFFU) return false;
         *value = (uint32_t)wide;
     } else return false;
@@ -780,7 +768,7 @@ static bool bs_cmd_meta(bs_tree *tree, uint16_t cmd, const bs_attr *attrs) {
     } else if (cmd == BS_C_UTIMES) {
         if (!attrs[BS_A_MTIME].present || attrs[BS_A_MTIME].len != 12U)
             return false;
-        node->mtime = (int64_t)bs_le64(attrs[BS_A_MTIME].p);
+        node->mtime = (int64_t)xx_data_get_u64(attrs[BS_A_MTIME].p, 8, 0, false);
     }
     return true;
 }
@@ -851,11 +839,11 @@ static bool bs_probe(Abstractformat *format, uint32_t *version_out) {
         !bs_read_at(format->device, format->base_address, head, sizeof(head)) ||
         xx_rt_memcmp(head, "btrfs-stream", BS_MAGIC_SIZE) != 0)
         return false;
-    version = bs_le32(head + BS_MAGIC_SIZE);
+    version = xx_data_get_u32(head + BS_MAGIC_SIZE, 4, 0, false);
     if (version < 1U || version > 3U) return false;
-    length = bs_le32(head + BS_HEADER_SIZE);
-    cmd = bs_le16(head + BS_HEADER_SIZE + 4U);
-    crc = bs_le32(head + BS_HEADER_SIZE + 6U);
+    length = xx_data_get_u32(head + BS_HEADER_SIZE, 4, 0, false);
+    cmd = xx_data_get_u16(head + BS_HEADER_SIZE + 4U, 2, 0, false);
+    crc = xx_data_get_u32(head + BS_HEADER_SIZE + 6U, 4, 0, false);
     if ((cmd != BS_C_SUBVOL && cmd != BS_C_SNAPSHOT) || length == 0U ||
         length > BS_PROBE_MAX_CMD ||
         (int64_t)length > size - (int64_t)sizeof(head))
@@ -905,9 +893,9 @@ static bool bs_parse(Abstractformat *format, bs_tree *tree, xx_pd_struct *pd) {
             tree->damaged = true;
             break;
         }
-        length = bs_le32(header);
-        cmd = bs_le16(header + 4U);
-        crc = bs_le32(header + 6U);
+        length = xx_data_get_u32(header, 4, 0, false);
+        cmd = xx_data_get_u16(header + 4U, 2, 0, false);
+        crc = xx_data_get_u32(header + 6U, 4, 0, false);
         if (cmd == BS_C_UNSPEC || cmd > BS_C_ENABLE_VERITY ||
             length > BS_MAX_CMD ||
             (int64_t)length > total - pos - (int64_t)BS_CMD_HEADER ||
@@ -1062,7 +1050,7 @@ static bool bs_decode(bs_ctx *ctx, const bs_op *op, uint8_t *out) {
         size_t sector = (size_t)0x1000U << (op->comp - 3U);
         size_t total, pos = 4U, produced = 0U;
         if (op->data_len < 4U) goto done;
-        total = bs_le32(in);
+        total = xx_data_get_u32(in, 4, 0, false);
         if (total < 4U || total > op->data_len) goto done;
         while (pos < total) {
             size_t room = sector - (pos % sector), seg, part = 0U, want;
@@ -1071,7 +1059,7 @@ static bool bs_decode(bs_ctx *ctx, const bs_op *op, uint8_t *out) {
                 continue;
             }
             if (total - pos < 4U) goto done;
-            seg = bs_le32(in + pos);
+            seg = xx_data_get_u32(in + pos, 4, 0, false);
             pos += 4U;
             if (seg == 0U || seg > total - pos || produced >= size) goto done;
             want = size - produced < sector ? size - produced : sector;

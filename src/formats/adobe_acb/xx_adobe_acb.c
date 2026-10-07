@@ -10,9 +10,9 @@ static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  tg_bin q={b,8,n,pd};const uint8_t *p;uint16_t count,space,page;unsigned i;uint64_t start;char label[48];
  if(n<32||!tg_tag(b,"8BCB\0\1",6))return false;
  for(i=0;i<4;++i)if(!tg_pstring(&q))return false;
- if(!tg_take(&q,8,&p)) {return false; } count=pm_be16(p);page=pm_be16(p+2);space=pm_be16(p+6);
+ if(!tg_take(&q,8,&p)) {return false; } count=xx_data_get_u16(p, 2, 0, true);page=xx_data_get_u16(p+2, 2, 0, true);space=xx_data_get_u16(p+6, 2, 0, true);
  if(!count||count>4094||!page||page>9||(space!=0&&space!=2&&space!=7)||!tg_emit(f,s,"descriptor.acb",0,q.p,n))return false;
- for(i=0;i<count;++i){unsigned j;bool named;start=q.p;if(!tg_span(q.p,4,n))return false;named=pm_be32(b+q.p)!=0;if(!tg_pstring(&q)||!tg_take(&q,space==2?10:9,&p))return false;if(named)for(j=0;j<6;++j)if(p[j]<32||p[j]>126)return false;xx_rt_snprintf(label,sizeof(label),"color-%u.acb",i);if(!tg_emit(f,s,label,start,q.p-start,n))return false;}
+ for(i=0;i<count;++i){unsigned j;bool named;start=q.p;if(!tg_span(q.p,4,n))return false;named=xx_data_get_u32(b+q.p, 4, 0, true)!=0;if(!tg_pstring(&q)||!tg_take(&q,space==2?10:9,&p))return false;if(named)for(j=0;j<6;++j)if(p[j]<32||p[j]>126)return false;xx_rt_snprintf(label,sizeof(label),"color-%u.acb",i);if(!tg_emit(f,s,label,start,q.p-start,n))return false;}
  if(q.p<n){if(n-q.p!=8||(!tg_tag(b+q.p,"spflspot",8)&&!tg_tag(b+q.p,"spflproc",8))||!tg_emit(f,s,"spot-process.acb",q.p,8,n))return false;q.p=n;}
  s->size=(int64_t)n;return q.p==n;
 }

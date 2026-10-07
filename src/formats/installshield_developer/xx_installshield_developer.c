@@ -29,6 +29,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -154,11 +155,6 @@ static uint32_t isd_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static uint32_t isd_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
-
 static bool isd_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     const size_t file_io_capacity = gb_installshield_developer_capacity();
@@ -197,7 +193,7 @@ static bool isd_locate_overlay(xx_io_device *device, int64_t base,
         !isd_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' ||
         dos[1] != 'Z')
         return false;
-    pe = (int64_t)isd_le32(dos + ISD_LFANEW_OFFSET);
+    pe = (int64_t)xx_data_get_u32(dos + ISD_LFANEW_OFFSET, 4, 0, false);
     if (pe < 4 || pe > size - (int64_t)ISD_FILE_HEADER_SIZE ||
         !isd_read_at(device, base + pe, file_header, sizeof(file_header)) ||
         xx_rt_memcmp(file_header, "PE\0\0", 4U) != 0)
@@ -212,8 +208,8 @@ static bool isd_locate_overlay(xx_io_device *device, int64_t base,
         return false;
     for (index = 0U; index < sections; ++index) {
         const uint8_t *row = table + (size_t)index * ISD_SECTION_SIZE;
-        int64_t raw_size = (int64_t)isd_le32(row + 16U);
-        int64_t raw_offset = (int64_t)isd_le32(row + 20U);
+        int64_t raw_size = (int64_t)xx_data_get_u32(row + 16U, 4, 0, false);
+        int64_t raw_offset = (int64_t)xx_data_get_u32(row + 20U, 4, 0, false);
         if (raw_size == 0) continue;
         /* A section running past the end of the file leaves no overlay. */
         if (raw_offset > size || raw_size > size - raw_offset) return false;
@@ -242,11 +238,11 @@ static bool isd_locate_overlay(xx_io_device *device, int64_t base,
         }
         if (directories_at != 0U &&
             amount >= directories_at + (ISD_SECURITY_DIRECTORY + 1U) * 8U &&
-            isd_le32(optional + count_at) > ISD_SECURITY_DIRECTORY) {
+            xx_data_get_u32(optional + count_at, 4, 0, false) > ISD_SECURITY_DIRECTORY) {
             const uint8_t *entry =
                 optional + directories_at + ISD_SECURITY_DIRECTORY * 8U;
-            layout->certificate_offset = (int64_t)isd_le32(entry);
-            layout->certificate_size = (int64_t)isd_le32(entry + 4U);
+            layout->certificate_offset = (int64_t)xx_data_get_u32(entry, 4, 0, false);
+            layout->certificate_size = (int64_t)xx_data_get_u32(entry + 4U, 4, 0, false);
         }
     }
     return true;
@@ -288,7 +284,7 @@ static bool isd_walk(xx_io_device *device, int64_t base, int64_t size,
         return false;
     if (xx_rt_memcmp(header, "InstallShield\0", ISD_SIGNATURE_SIZE) != 0)
         return false;
-    count = isd_le32(header + ISD_COUNT_OFFSET);
+    count = xx_data_get_u32(header + ISD_COUNT_OFFSET, 4, 0, false);
     if (count == 0U || count > ISD_MAX_FILES ||
         !isd_all_zero(header, ISD_COUNT_OFFSET + 4U, ISD_HEADER_SIZE))
         return false;
@@ -304,7 +300,7 @@ static bool isd_walk(xx_io_device *device, int64_t base, int64_t size,
             return false;
         if (!isd_check_record(record, &name_length)) break;
         data = position + (int64_t)ISD_RECORD_SIZE;
-        member_size = (int64_t)isd_le32(record + ISD_SIZE_OFFSET);
+        member_size = (int64_t)xx_data_get_u32(record + ISD_SIZE_OFFSET, 4, 0, false);
         if (member_size > size - data) break;
         if (items) {
             size_t index_char;

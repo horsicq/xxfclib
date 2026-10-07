@@ -12,7 +12,7 @@ static bool pl_count(nh_blob *b,uint64_t *at,uint64_t end,unsigned low,uint64_t 
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     nh_blob b;uint64_t n,table,root,i,j,at,end,len,bytes,ref,*offsets=NULL;unsigned ow,rw,kind,low,width;bool ok=false;
-    if(!nh_load(f,&b,pd)) { return false; } NH_NEED(nh_span(&b,0,40) && !xx_rt_memcmp(b.p,"bplist00",8));at=b.n-32;NH_NEED(nh_zero(&b,at,6));ow=b.p[(size_t)at+6];rw=b.p[(size_t)at+7];n=fd_be64(b.p+(size_t)at+8);root=fd_be64(b.p+(size_t)at+16);table=fd_be64(b.p+(size_t)at+24);
+    if(!nh_load(f,&b,pd)) { return false; } NH_NEED(nh_span(&b,0,40) && !xx_rt_memcmp(b.p,"bplist00",8));at=b.n-32;NH_NEED(nh_zero(&b,at,6));ow=b.p[(size_t)at+6];rw=b.p[(size_t)at+7];n=xx_data_get_u64(b.p+(size_t)at+8, 8, 0, true);root=xx_data_get_u64(b.p+(size_t)at+16, 8, 0, true);table=xx_data_get_u64(b.p+(size_t)at+24, 8, 0, true);
     NH_NEED((ow==1 || ow==2 || ow==4 || ow==8) && (rw==1 || rw==2 || rw==4 || rw==8) && n && n<=4093 && root<n && table>=8 && table<=b.n-32 && n*ow==b.n-32-table);
     offsets=(uint64_t *)xx_mem_alloc((size_t)n*sizeof(*offsets));NH_NEED(offsets);
     for(i=0;i<n;++i) {offsets[i]=pl_int(b.p+(size_t)(table+i*ow),ow);NH_NEED(offsets[i]>=8 && offsets[i]<table);for(j=0;j<i;++j) NH_NEED(offsets[j]!=offsets[i]);}
@@ -23,7 +23,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         else {NH_NEED(pl_count(&b,&at,end,low,&len));if(kind==4 || kind==5) bytes=len;else if(kind==6) NH_NEED(fd_mul(len,2,&bytes));else if(kind==10 || kind==11 || kind==12 || kind==13) {NH_NEED(len<=4093 && fd_mul(len,(uint64_t)rw*(kind==13 ? 2:1),&bytes));}else NH_NEED(false);}
         NH_NEED(eh_span(at,bytes,end) && nh_span(&b,at,bytes));
         if(kind==5) NH_NEED(nh_ascii(b.p+(size_t)at,(size_t)bytes,true));
-        if(kind==6) {for(j=0;j<bytes;j+=2) {uint16_t c=pm_be16(b.p+(size_t)(at+j));if(c>=0xd800 && c<=0xdbff) {NH_NEED(j+4<=bytes);c=pm_be16(b.p+(size_t)(at+j+2));NH_NEED(c>=0xdc00 && c<=0xdfff);j+=2;}else NH_NEED(c<0xdc00 || c>0xdfff);}}
+        if(kind==6) {for(j=0;j<bytes;j+=2) {uint16_t c=xx_data_get_u16(b.p+(size_t)(at+j), 2, 0, true);if(c>=0xd800 && c<=0xdbff) {NH_NEED(j+4<=bytes);c=xx_data_get_u16(b.p+(size_t)(at+j+2), 2, 0, true);NH_NEED(c>=0xdc00 && c<=0xdfff);j+=2;}else NH_NEED(c<0xdc00 || c>0xdfff);}}
         if(kind>=10) for(j=0;j<bytes;j+=rw) {ref=pl_int(b.p+(size_t)(at+j),rw);NH_NEED(ref<n);}
         NH_NEED(nh_add(f,s,&b,kind==4 ? "data":"object",kind==4 ? at:start,kind==4 ? bytes:at+bytes-start));at+=bytes;
         while(at<end) {NH_NEED(!fd_stop(pd) && (b.p[(size_t)at]==0 || b.p[(size_t)at]==15));++at;}

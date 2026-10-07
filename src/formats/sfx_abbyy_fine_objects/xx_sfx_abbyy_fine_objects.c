@@ -30,6 +30,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* xxfc_defs.h is shared and is not edited from here, so the file-type
  * constant is resolved through the alias macro that the enumerator defines. */
@@ -76,10 +77,6 @@ static const char afo_tag[AFO_TAG_SIZE + 1U] = "ArcUpdateABBYY";
 
 static uint32_t afo_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
-}
-
-static uint32_t afo_le32(const uint8_t *bytes) {
-    return afo_le16(bytes) | (afo_le16(bytes + 2) << 16U);
 }
 
 static bool afo_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -157,7 +154,7 @@ static bool afo_cursor_read(afo_cursor *cursor, uint8_t *out, size_t count) {
 static bool afo_cursor_u32(afo_cursor *cursor, uint32_t *value) {
     uint8_t bytes[4];
     if (!afo_cursor_read(cursor, bytes, sizeof(bytes))) return false;
-    *value = afo_le32(bytes);
+    *value = xx_data_get_u32(bytes, 4, 0, false);
     return true;
 }
 
@@ -184,7 +181,7 @@ static bool afo_overlay(xx_io_device *device, int64_t base, int64_t size,
     if (size < AFO_MIN_FILE || !afo_read_at(device, base, dos, sizeof(dos)) ||
         dos[0] != 'M' || dos[1] != 'Z')
         return false;
-    lfanew = (int64_t)afo_le32(dos + 0x3c);
+    lfanew = (int64_t)xx_data_get_u32(dos + 0x3c, 4, 0, false);
     if (lfanew < 4 || lfanew > AFO_MAX_LFANEW || lfanew > size - 24 ||
         !afo_read_at(device, base + lfanew, nt, sizeof(nt)) || nt[0] != 'P' ||
         nt[1] != 'E' || nt[2] != 0U || nt[3] != 0U)
@@ -198,8 +195,8 @@ static bool afo_overlay(xx_io_device *device, int64_t base, int64_t size,
         return false;
     for (index = 0U; index < sections; ++index) {
         const uint8_t *row = table + index * 40U;
-        int64_t raw_size = (int64_t)afo_le32(row + 16);
-        int64_t raw_offset = (int64_t)afo_le32(row + 20);
+        int64_t raw_size = (int64_t)xx_data_get_u32(row + 16, 4, 0, false);
+        int64_t raw_offset = (int64_t)xx_data_get_u32(row + 20, 4, 0, false);
         if (raw_size == 0) continue;
         if (raw_offset > size || raw_size > size - raw_offset) return false;
         if (raw_offset + raw_size > end) end = raw_offset + raw_size;
@@ -230,8 +227,8 @@ static bool afo_finear_ok(const uint8_t *header, uint32_t stream_size,
         xx_rt_memcmp(header, afo_finear_magic, sizeof(afo_finear_magic)) != 0)
         return false;
     body = (uint64_t)stream_size - AFO_FINEAR_SIZE;
-    checksum = afo_le32(header + 9);
-    declared = afo_le32(header + 13);
+    checksum = xx_data_get_u32(header + 9, 4, 0, false);
+    declared = xx_data_get_u32(header + 13, 4, 0, false);
     /* A 16-bit CRC stored in a 32-bit slot. */
     if (checksum > 0xffffU || body > AFO_MAX_BODY ||
         declared > AFO_MAX_PLAIN || declared > body * AFO_LH1_RATIO)
@@ -302,7 +299,7 @@ static bool afo_scan(Abstractformat *format, afo_info *info,
     if (!afo_read_at(format->device,
                      format->base_address + info->trailer_at, trailer,
                      sizeof(trailer)) ||
-        (int64_t)afo_le32(trailer) != info->overlay ||
+        (int64_t)xx_data_get_u32(trailer, 4, 0, false) != info->overlay ||
         xx_rt_memcmp(trailer + 4, afo_tag, AFO_TAG_SIZE + 1U) != 0)
         return false;
     /* Every member must start with a FINEAR header that fits its size. */

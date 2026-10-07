@@ -47,13 +47,6 @@ typedef struct nss_view_s {
 static bool nss_stopped(xx_pd_struct *pd) {
     return pd && xx_pd_is_stopped(pd);
 }
-static uint16_t nss_u16(const uint8_t *p) {
-    return (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
-}
-static uint32_t nss_u32(const uint8_t *p) {
-    return p[0] | ((uint32_t)p[1] << 8) |
-           ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
 static bool nss_read(xx_io_device *device, int64_t at, void *out,
                      size_t size) {
     int64_t saved;
@@ -124,9 +117,9 @@ static bool nss_scan(Abstractformat *f, xx_pd_struct *pd,
         !nss_read(f->device, f->base_address, mz, sizeof(mz)) ||
         mz[0] != 'M' || mz[1] != 'Z') return false;
     volume_size = (uint64_t)(total - f->base_address);
-    last = nss_u16(mz + 2U);
-    pages = nss_u16(mz + 4U);
-    paragraphs = nss_u16(mz + 8U);
+    last = xx_data_get_u16(mz + 2U, 2, 0, false);
+    pages = xx_data_get_u16(mz + 4U, 2, 0, false);
+    paragraphs = xx_data_get_u16(mz + 8U, 2, 0, false);
     if (!pages || last > 511U || paragraphs < 4U) return false;
     mz_size = (uint64_t)(pages - 1U) * 512U +
               (last ? (uint64_t)last : 512U);
@@ -142,15 +135,15 @@ static bool nss_scan(Abstractformat *f, xx_pd_struct *pd,
         if (volume_size - 1U - cursor < NSS_HEADER_SIZE ||
             !nss_read(f->device, f->base_address + (int64_t)cursor + 1,
                       header, sizeof(header)) ||
-            nss_u16(header) != NSS_HEADER_SIZE ||
+            xx_data_get_u16(header, 2, 0, false) != NSS_HEADER_SIZE ||
             xx_rt_memcmp(header + 30U, "CCRITTER", 8U) != 0 ||
             !nss_name_length(header + NSS_NAME_OFFSET, &name_length))
             return false;
-        packed = nss_u32(header + 2U);
-        raw = nss_u32(header + 6U);
+        packed = xx_data_get_u32(header + 2U, 4, 0, false);
+        raw = xx_data_get_u32(header + 6U, 4, 0, false);
         if (packed < 8U || packed > NSS_MAX_MEMBER ||
             (packed & 7U) != 0U || raw > NSS_MAX_MEMBER ||
-            (!raw && nss_u16(header + 24U) != 0U) ||
+            (!raw && xx_data_get_u16(header + 24U, 2, 0, false) != 0U) ||
             (uint64_t)packed >
                 volume_size - 1U - cursor - NSS_HEADER_SIZE ||
             count >= NSS_MAX_RECORDS || (entries && count >= capacity))
@@ -167,7 +160,7 @@ static bool nss_scan(Abstractformat *f, xx_pd_struct *pd,
             item->packed_size = packed;
             item->raw_size = raw;
             xx_mem_copy(item->iv, header + 38U, sizeof(item->iv));
-            item->compressed = nss_u16(header + 24U) != 0U;
+            item->compressed = xx_data_get_u16(header + 24U, 2, 0, false) != 0U;
         }
         cursor += NSS_HEADER_SIZE + (uint64_t)packed;
         ++count;

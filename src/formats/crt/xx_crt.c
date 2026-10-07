@@ -12,6 +12,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 #ifdef CRT
 #define XX_CRT_FILE_TYPE XX_FILE_TYPE_CRT
@@ -55,14 +56,6 @@ typedef struct xx_crt_stream_s {
 } xx_crt_stream;
 
 static void xx_crt_vtable_destroy(Abstractformat *self);
-
-static uint16_t xx_crt_be16(const uint8_t *p) {
-    return (uint16_t)(((unsigned)p[0] << 8) | p[1]);
-}
-static uint32_t xx_crt_be32(const uint8_t *p) {
-    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
-           ((uint32_t)p[2] << 8) | (uint32_t)p[3];
-}
 
 static bool xx_crt_read_at(xx_io_device *device, int64_t offset, void *data,
                            size_t size) {
@@ -140,7 +133,7 @@ static bool xx_crt_parse(Abstractformat *self, xx_crt_private *parsed,
     }
     parsed->machine = xx_crt_check_header(parsed->header);
     if (parsed->machine < 0) return false;
-    header_length = xx_crt_be32(parsed->header + 0x10);
+    header_length = xx_data_get_u32(parsed->header + 0x10, 4, 0, true);
     parsed->header_length = header_length;
     if (header_length > XX_CRT_MAX_HEADER_LENGTH) return false;
     /* Old C64 images state 0x20 but still have the full 64-byte header. */
@@ -164,11 +157,11 @@ static bool xx_crt_parse(Abstractformat *self, xx_crt_private *parsed,
             break;
         }
         if (xx_rt_memcmp(chip_header, "CHIP", 4U) != 0) break;
-        packet_length = xx_crt_be32(chip_header + 4);
-        chip.chip_type = xx_crt_be16(chip_header + 8);
-        chip.bank = xx_crt_be16(chip_header + 10);
-        chip.load_address = xx_crt_be16(chip_header + 12);
-        chip.data_size = xx_crt_be16(chip_header + 14);
+        packet_length = xx_data_get_u32(chip_header + 4, 4, 0, true);
+        chip.chip_type = xx_data_get_u16(chip_header + 8, 2, 0, true);
+        chip.bank = xx_data_get_u16(chip_header + 10, 2, 0, true);
+        chip.load_address = xx_data_get_u16(chip_header + 12, 2, 0, true);
+        chip.data_size = xx_data_get_u16(chip_header + 14, 2, 0, true);
         chip.data_offset = at + (int64_t)XX_CRT_CHIP_HEADER_SIZE;
         if (chip.chip_type > 3U || packet_length < XX_CRT_CHIP_HEADER_SIZE ||
             packet_length > XX_CRT_MAX_PACKET_LENGTH) {
@@ -338,7 +331,7 @@ bool xx_crt_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     crt->machine = parsed.machine;
     crt->version_major = parsed.header[0x14];
     crt->version_minor = parsed.header[0x15];
-    crt->hardware_type = xx_crt_be16(parsed.header + 0x16);
+    crt->hardware_type = xx_data_get_u16(parsed.header + 0x16, 2, 0, true);
     crt->exrom = parsed.header[0x18];
     crt->game = parsed.header[0x19];
     crt->subtype = parsed.header[0x1A];

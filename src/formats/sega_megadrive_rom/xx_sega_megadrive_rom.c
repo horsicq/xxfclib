@@ -5,16 +5,13 @@
  */
 #include "xxfclib/formats/sega_megadrive_rom/xx_sega_megadrive_rom.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 static __inline bool span(uint64_t a,uint64_t n,uint64_t e) { return a<=e && n<=e-a; }
 static __inline bool stop(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
-static __inline uint64_t u64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
-static __inline uint32_t u32(const uint8_t *p,bool be) { return be ? pm_be32(p):pm_le32(p); }
-static __inline uint16_t u16(const uint8_t *p,bool be) { return be ? pm_be16(p):pm_le16(p); }
-static __inline uint32_t be24(const uint8_t *p) { return (uint32_t)p[0]<<16 | (uint32_t)p[1]<<8 | p[2]; }
 static __inline bool zero(const uint8_t *b,uint64_t n) { uint64_t i; for(i=0;i<n;++i) if(b[i]) return false; return true; }
-static __inline bool finite32(const uint8_t *p,bool be) { return (u32(p,be)&0x7f800000U)!=0x7f800000U; }
-static __inline bool finite64(const uint8_t *p,bool be) { return (u64(p,be)&0x7ff0000000000000ULL)!=0x7ff0000000000000ULL; }
+static __inline bool finite32(const uint8_t *p,bool be) { return (xx_data_get_u32(p, 4, 0, be)&0x7f800000U)!=0x7f800000U; }
+static __inline bool finite64(const uint8_t *p,bool be) { return (xx_data_get_u64(p, 8, 0, be)&0x7ff0000000000000ULL)!=0x7ff0000000000000ULL; }
 static __inline bool floats(const uint8_t *b,uint64_t at,uint64_t count,bool be,uint64_t n) { uint64_t i; if(!span(at,count*4,n)) return false; for(i=0;i<count;++i) if(!finite32(b+at+i*4,be)) return false; return true; }
 static __inline bool emit(Abstractformat *f,pm_stream *s,const char *label,uint64_t a,uint64_t n,uint64_t e) { return span(a,n,e) && s->count<4096 && pm_add(f,s,label,(int64_t)a,(int64_t)n); }
 static __inline bool cstr(const uint8_t *b,uint64_t *at,uint64_t end,uint64_t maximum,bool empty) { uint64_t start=*at; while(*at<end && *at-start<=maximum) { uint8_t c=b[(*at)++]; if(!c) return empty || *at>start+1; if(c<32 || c==127) return false; } return false; }
@@ -23,9 +20,9 @@ static __inline bool reserve(range *r,unsigned *nr,unsigned max,uint64_t at,uint
 
 static bool parse_data(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
 
- uint32_t stack,entry,sum=0;uint64_t end,at;if(n<514||xx_rt_memcmp(b+256,"SEGA",4)||(stack=pm_be32(b))<0xff0000||stack>0x1000000||stack&1||(entry=pm_be32(b+4))<512||entry&1||pm_be32(b+0x1a0))return false;
- end=1+(uint64_t)pm_be32(b+0x1a4);if(end<514||end>16777216||end>n||(end&1)||entry>=end)return false;for(at=0x100;at<0x18e;++at)if(b[at]<32||b[at]>126)return false;
- for(at=512;at<end;at+=2){if((at&65535)==0&&stop(pd))return false;sum+=pm_be16(b+at);}if((sum&65535)!=pm_be16(b+0x18e))return false;
+ uint32_t stack,entry,sum=0;uint64_t end,at;if(n<514||xx_rt_memcmp(b+256,"SEGA",4)||(stack=xx_data_get_u32(b, 4, 0, true))<0xff0000||stack>0x1000000||stack&1||(entry=xx_data_get_u32(b+4, 4, 0, true))<512||entry&1||xx_data_get_u32(b+0x1a0, 4, 0, true))return false;
+ end=1+(uint64_t)xx_data_get_u32(b+0x1a4, 4, 0, true);if(end<514||end>16777216||end>n||(end&1)||entry>=end)return false;for(at=0x100;at<0x18e;++at)if(b[at]<32||b[at]>126)return false;
+ for(at=512;at<end;at+=2){if((at&65535)==0&&stop(pd))return false;sum+=xx_data_get_u16(b+at, 2, 0, true);}if((sum&65535)!=xx_data_get_u16(b+0x18e, 2, 0, true))return false;
  if(!emit(f,s,"vectors.bin",0,256,end)||!emit(f,s,"cartridge-header.bin",256,256,end)||!emit(f,s,"rom-body.bin",512,end-512,end)) {return false; } s->size=(int64_t)end;return true;
 
 }

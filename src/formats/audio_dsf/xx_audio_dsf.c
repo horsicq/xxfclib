@@ -6,9 +6,9 @@
 #endif
 static bool e8_parse(e8_blob*c) {
  uint32_t channels,type,block,bits,rate;uint64_t samples,data,expected;unsigned channel_counts[]={0,1,2,3,4,4,5,6};
- if(!e8_range(c,0,92) || !e8_eq(c,0,"DSD ",4) || fd_le64(c->b+4)!=28 || fd_le64(c->b+12)!=c->n || fd_le64(c->b+20) || !e8_eq(c,28,"fmt ",4) || fd_le64(c->b+32)!=52 || pm_le32(c->b+40)!=1 || pm_le32(c->b+44))return false;
- type=pm_le32(c->b+48);channels=pm_le32(c->b+52);rate=pm_le32(c->b+56);bits=pm_le32(c->b+60);samples=fd_le64(c->b+64);block=pm_le32(c->b+72);
- if(type<1 || type>7 || channels!=channel_counts[type] || !rate || rate>24576000 || (rate&7) || (bits!=1 && bits!=8) || !samples || samples>E8_LIMIT*8U || !block || block>65536 || pm_le32(c->b+76) || !e8_eq(c,80,"data",4) || (data=fd_le64(c->b+84))<12 || data!=c->n-80)return false;
+ if(!e8_range(c,0,92) || !e8_eq(c,0,"DSD ",4) || xx_data_get_u64(c->b+4, 8, 0, false)!=28 || xx_data_get_u64(c->b+12, 8, 0, false)!=c->n || xx_data_get_u64(c->b+20, 8, 0, false) || !e8_eq(c,28,"fmt ",4) || xx_data_get_u64(c->b+32, 8, 0, false)!=52 || xx_data_get_u32(c->b+40, 4, 0, false)!=1 || xx_data_get_u32(c->b+44, 4, 0, false))return false;
+ type=xx_data_get_u32(c->b+48, 4, 0, false);channels=xx_data_get_u32(c->b+52, 4, 0, false);rate=xx_data_get_u32(c->b+56, 4, 0, false);bits=xx_data_get_u32(c->b+60, 4, 0, false);samples=xx_data_get_u64(c->b+64, 8, 0, false);block=xx_data_get_u32(c->b+72, 4, 0, false);
+ if(type<1 || type>7 || channels!=channel_counts[type] || !rate || rate>24576000 || (rate&7) || (bits!=1 && bits!=8) || !samples || samples>E8_LIMIT*8U || !block || block>65536 || xx_data_get_u32(c->b+76, 4, 0, false) || !e8_eq(c,80,"data",4) || (data=xx_data_get_u64(c->b+84, 8, 0, false))<12 || data!=c->n-80)return false;
  expected=(((samples+7U)/8U+block-1U)/block)*block*channels;if(expected!=data-12)return false;
  return e8_add(c,"header-format.bin",0,80) && e8_add(c,"dsd-channel-blocks.bin",80,(size_t)data);
 }

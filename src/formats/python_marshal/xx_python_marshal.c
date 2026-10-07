@@ -11,17 +11,17 @@ static bool tm_object(tm_state *t,unsigned depth,uint8_t *kind) {
     case 'N':case 'F':case 'T':case '.':break;
     case 'i':bytes=4;break;case 'I':bytes=8;break;
     case 'g':case 'y':bytes=code=='g' ? 8:16;if(!nh_floats(b,t->at,bytes,8,false)) return false;break;
-    case 'r':if(!nh_span(b,t->at,4)) return false;n=pm_le32(b->p+(size_t)t->at);t->at+=4;if(n>=t->refs) return false;k=t->kinds[n];break;
+    case 'r':if(!nh_span(b,t->at,4)) return false;n=xx_data_get_u32(b->p+(size_t)t->at, 4, 0, false);t->at+=4;if(n>=t->refs) return false;k=t->kinds[n];break;
     case 'l': {
-        int32_t signed_n;if(!nh_span(b,t->at,4)) return false;signed_n=(int32_t)pm_le32(b->p+(size_t)t->at);t->at+=4;if(signed_n==INT32_MIN) return false;n=(uint32_t)(signed_n<0 ? -signed_n:signed_n);if(n>4096 || !nh_span(b,t->at,(uint64_t)n*2)) return false;
-        for(i=0;i<n;++i) { if(pm_le16(b->p+(size_t)t->at+i*2)>32767) return false; } if(n && !pm_le16(b->p+(size_t)t->at+(n-1)*2)) return false;bytes=(uint64_t)n*2;break;
+        int32_t signed_n;if(!nh_span(b,t->at,4)) return false;signed_n=(int32_t)xx_data_get_u32(b->p+(size_t)t->at, 4, 0, false);t->at+=4;if(signed_n==INT32_MIN) return false;n=(uint32_t)(signed_n<0 ? -signed_n:signed_n);if(n>4096 || !nh_span(b,t->at,(uint64_t)n*2)) return false;
+        for(i=0;i<n;++i) { if(xx_data_get_u16(b->p+(size_t)t->at+i*2, 2, 0, false)>32767) return false; } if(n && !xx_data_get_u16(b->p+(size_t)t->at+(n-1)*2, 2, 0, false)) return false;bytes=(uint64_t)n*2;break;
     }
     case 's':case 't':case 'u':case 'a':case 'A':case 'z':case 'Z': {
-        bool ascii=code=='a' || code=='A' || code=='z' || code=='Z';if(code=='z' || code=='Z') {if(!nh_span(b,t->at,1)) return false;n=b->p[(size_t)t->at++];}else {if(!nh_span(b,t->at,4)) return false;n=pm_le32(b->p+(size_t)t->at);t->at+=4;}
+        bool ascii=code=='a' || code=='A' || code=='z' || code=='Z';if(code=='z' || code=='Z') {if(!nh_span(b,t->at,1)) return false;n=b->p[(size_t)t->at++];}else {if(!nh_span(b,t->at,4)) return false;n=xx_data_get_u32(b->p+(size_t)t->at, 4, 0, false);t->at+=4;}
         if(n>16777216 || !nh_span(b,t->at,n)) { return false; } if(code!='s' && !fourth_utf8(b->p+(size_t)t->at,n,b->pd)) return false;if(ascii) for(i=0;i<n;++i) if(b->p[(size_t)t->at+i]>127) return false;bytes=n;break;
     }
     case '(':case ')':case '[':case '<':case '>': {
-        bool hashable=code=='(' || code==')' || code=='>';k=(code=='[' || code=='<') ? 2:1;if(code==')') {if(!nh_span(b,t->at,1)) return false;n=b->p[(size_t)t->at++];}else {if(!nh_span(b,t->at,4)) return false;n=pm_le32(b->p+(size_t)t->at);t->at+=4;}
+        bool hashable=code=='(' || code==')' || code=='>';k=(code=='[' || code=='<') ? 2:1;if(code==')') {if(!nh_span(b,t->at,1)) return false;n=b->p[(size_t)t->at++];}else {if(!nh_span(b,t->at,4)) return false;n=xx_data_get_u32(b->p+(size_t)t->at, 4, 0, false);t->at+=4;}
         if(n>4090) { return false; } if(depth==0 && !nh_add(t->f,t->s,b,"collection-header",start,t->at-start)) return false;
         for(i=0;i<n;++i) {uint8_t child;uint64_t at=t->at;if(!tm_object(t,depth+1,&child) || ((code=='<' || code=='>') && child!=1)) return false;if(hashable && child!=1) k=2;if(depth==0 && !nh_add(t->f,t->s,b,"item",at,t->at-at)) return false;}break;
     }

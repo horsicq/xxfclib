@@ -37,6 +37,7 @@
 #include "xxfclib/algo/dcl/xx_dcl.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_CMP_COPY_CHUNK (64 * 1024)
 
@@ -148,22 +149,9 @@ static bool xx_cmp_add(xx_cmp_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_cmp_le16(const uint8_t *data);
-static uint32_t xx_cmp_le32(const uint8_t *data);
 static xx_cmp_stream *xx_cmp_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_cmp_looks_like_dcl(const uint8_t *input, size_t input_size);
 static bool xx_cmp_decode(Abstractformat *self, const xx_cmp_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
-
-
-
-static uint16_t xx_cmp_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_cmp_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static xx_cmp_stream *xx_cmp_parse(Abstractformat *self, xx_pd_struct *pd) {
     xx_cmp_stream *stream;
@@ -197,15 +185,15 @@ static xx_cmp_stream *xx_cmp_parse(Abstractformat *self, xx_pd_struct *pd) {
      * block size 0x1000 at 0x37 - plus a printable NUL-terminated name in the
      * fixed field. Dropping any one of them, particularly the block-size
      * word, turns this into a format that matches noise. */
-    if (xx_cmp_le16(header) != XX_CMP_MAGIC) return NULL;
+    if (xx_data_get_u16(header, 2, 0, false) != XX_CMP_MAGIC) return NULL;
     /* The header size is stored as well as fixed; a container that disagrees
      * with itself is not this format. */
-    if (xx_cmp_le16(header + 2) != (uint16_t)XX_CMP_HEADER_SIZE) return NULL;
-    method = (uint32_t)xx_cmp_le16(header + 4);
+    if (xx_data_get_u16(header + 2, 2, 0, false) != (uint16_t)XX_CMP_HEADER_SIZE) return NULL;
+    method = (uint32_t)xx_data_get_u16(header + 4, 2, 0, false);
     if (method != XX_CMP_METHOD_LZW && method != XX_CMP_METHOD_LZSS) {
         return NULL;
     }
-    if (xx_cmp_le16(header + XX_CMP_BLOCK_SIZE_OFFSET) !=
+    if (xx_data_get_u16(header + XX_CMP_BLOCK_SIZE_OFFSET, 2, 0, false) !=
         (uint16_t)XX_CMP_BLOCK_SIZE) {
         return NULL;
     }
@@ -213,7 +201,7 @@ static xx_cmp_stream *xx_cmp_parse(Abstractformat *self, xx_pd_struct *pd) {
     /* The reference reads the size as a signed 32-bit value and requires it
      * positive, so the top bit set is a rejection rather than a two-gigabyte
      * member. */
-    raw = xx_cmp_le32(header + XX_CMP_SIZE_OFFSET);
+    raw = xx_data_get_u32(header + XX_CMP_SIZE_OFFSET, 4, 0, false);
     if (raw > 0x7fffffffU) return NULL;
     uncompressed_size = (int64_t)raw;
     if (uncompressed_size <= 0) return NULL;

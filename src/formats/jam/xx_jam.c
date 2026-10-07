@@ -37,6 +37,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_JAM_COPY_CHUNK (64 * 1024)
 
@@ -172,11 +173,6 @@ static bool xx_jam_decode(Abstractformat *self,
 /* 15 raw bytes, each escaping to at most "%XX", plus a '/' and a NUL. */
 #define XX_JAM_NAME_BUFFER (XX_JAM_NAME_SIZE * 3 + 2)
 
-static uint32_t xx_jam_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
 /* The reference validator: every byte up to the first NUL must be above 0x20,
  * and everything from the NUL to the end of the 15-byte field must be NUL. A
  * field with no terminator at all is rejected. Together with the count that
@@ -294,7 +290,7 @@ static bool xx_jam_walk(Abstractformat *self, xx_jam_stream *stream,
                         (size_t)XX_JAM_COUNT_SIZE)) {
         return false;
     }
-    file_count = (int64_t)(int32_t)xx_jam_le32(entry);
+    file_count = (int64_t)(int32_t)xx_data_get_u32(entry, 4, 0, false);
     if (file_count < 0 || file_count > XX_JAM_MAX_MEMBERS) return false;
     offset = node_offset + XX_JAM_COUNT_SIZE;
     if (!xx_jam_range_within(span, offset,
@@ -315,9 +311,9 @@ static bool xx_jam_walk(Abstractformat *self, xx_jam_stream *stream,
             !xx_jam_name_valid(entry)) {
             return false;
         }
-        data_offset = (int64_t)(int32_t)xx_jam_le32(entry + XX_JAM_NAME_SIZE);
+        data_offset = (int64_t)(int32_t)xx_data_get_u32(entry + XX_JAM_NAME_SIZE, 4, 0, false);
         data_size =
-            (int64_t)(int32_t)xx_jam_le32(entry + XX_JAM_NAME_SIZE + 4);
+            (int64_t)(int32_t)xx_data_get_u32(entry + XX_JAM_NAME_SIZE + 4, 4, 0, false);
         /* Member data always sits past the magic; an entry pointing into the
          * three-byte header is a directory read out of unrelated bytes. */
         if (data_offset < XX_JAM_MAGIC_SIZE || data_size < 0) return false;
@@ -344,7 +340,7 @@ static bool xx_jam_walk(Abstractformat *self, xx_jam_stream *stream,
                         (size_t)XX_JAM_COUNT_SIZE)) {
         return false;
     }
-    dir_count = (int64_t)(int32_t)xx_jam_le32(entry);
+    dir_count = (int64_t)(int32_t)xx_data_get_u32(entry, 4, 0, false);
     if (dir_count < 0 || dir_count > XX_JAM_MAX_NODES) return false;
     offset += XX_JAM_COUNT_SIZE;
     if (!xx_jam_range_within(span, offset,
@@ -363,7 +359,7 @@ static bool xx_jam_walk(Abstractformat *self, xx_jam_stream *stream,
             !xx_jam_name_valid(entry)) {
             return false;
         }
-        child_offset = (int64_t)(int32_t)xx_jam_le32(entry + XX_JAM_NAME_SIZE);
+        child_offset = (int64_t)(int32_t)xx_data_get_u32(entry + XX_JAM_NAME_SIZE, 4, 0, false);
         if (child_offset < XX_JAM_MAGIC_SIZE) return false;
         child_prefix = xx_jam_join(prefix, entry, (size_t)index, true);
         if (!child_prefix) return false;
@@ -399,10 +395,10 @@ static xx_jam_stream *xx_jam_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (header[0] != 'J' || header[1] != 'A' || header[2] != 'M') return NULL;
     /* The root always holds at least one file, so its table is present and
      * the first record below can be validated. */
-    if ((int32_t)xx_jam_le32(header + XX_JAM_ROOT_OFFSET) <= 0) return NULL;
+    if ((int32_t)xx_data_get_u32(header + XX_JAM_ROOT_OFFSET, 4, 0, false) <= 0) return NULL;
 
-    first_offset = xx_jam_le32(header + 0x16);
-    first_size = (int64_t)(int32_t)xx_jam_le32(header + 0x1A);
+    first_offset = xx_data_get_u32(header + 0x16, 4, 0, false);
+    first_size = (int64_t)(int32_t)xx_data_get_u32(header + 0x1A, 4, 0, false);
     /* This is the format's only real defence against a false positive: three
      * magic bytes are cheap to hit by accident, but a writer always starts
      * the data area on a 256-byte boundary, so the first member's offset is a

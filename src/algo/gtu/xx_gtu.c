@@ -22,20 +22,9 @@
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/algo/gtu/xx_gtu.h"
 #include "xxfclib/algo/ampk/xx_ampk.h"
+#include "xxfclib/data/xx_data.h"
 
 #define GTU_FRAME_PRELUDE 8U
-
-/* Little-endian i32, read byte by byte. */
-static int32_t gtu_read_i32(const uint8_t *p)
-{
-    uint32_t value = (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
-                     ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-    /* Reference reads a quint32 and casts to qint32; reproduce that without
-     * relying on implementation-defined conversion of an out-of-range value. */
-    if (value >= UINT32_C(0x80000000))
-        return -(int32_t)(UINT32_C(0xffffffff) - value) - 1;
-    return (int32_t)value;
-}
 
 bool xx_gtu_decode_memory(const uint8_t *input, size_t input_size,
                           uint8_t *output, size_t output_size,
@@ -63,8 +52,8 @@ bool xx_gtu_decode_memory(const uint8_t *input, size_t input_size,
             (frame_offset > input_size - GTU_FRAME_PRELUDE))
             return false;
 
-        raw_size = gtu_read_i32(input + frame_offset);
-        packed_size = gtu_read_i32(input + frame_offset + 4U);
+        raw_size = xx_data_get_i32(input + frame_offset, 4, 0, false);
+        packed_size = xx_data_get_i32(input + frame_offset + 4U, 4, 0, false);
         frame_offset += GTU_FRAME_PRELUDE;
 
         if (raw_size <= 0 || packed_size <= 0) return false;

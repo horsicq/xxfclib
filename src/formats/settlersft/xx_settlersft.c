@@ -37,6 +37,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef SETTLERSFT
 #define XX_SETTLERSFT_FILE_TYPE XX_FILE_TYPE_SETTLERSFT
@@ -88,24 +89,6 @@ typedef struct xx_settlersft_stream_s {
 static void xx_settlersft_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint16_t xx_settlersft_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_settlersft_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static XXFC_MAYBE_UNUSED uint16_t xx_settlersft_be16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[1] | ((uint16_t)data[0] << 8));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t xx_settlersft_be32(const uint8_t *data) {
-    return (uint32_t)data[3] | ((uint32_t)data[2] << 8) |
-           ((uint32_t)data[1] << 16) | ((uint32_t)data[0] << 24);
-}
 
 static bool xx_settlersft_read_at(Abstractformat *self, int64_t offset,
                               uint8_t *buffer, size_t size) {
@@ -229,16 +212,6 @@ static char *xx_settlersft_slot_name(uint32_t index, uint32_t kind) {
     return length > 0 && (size_t)length < sizeof(text) ? xx_str_dup(text) : NULL;
 }
 
-static void xx_settlersft_put16(uint8_t *p, uint16_t value) {
-    p[0] = (uint8_t)value;
-    p[1] = (uint8_t)(value >> 8);
-}
-
-static void xx_settlersft_put32(uint8_t *p, uint32_t value) {
-    xx_settlersft_put16(p, (uint16_t)value);
-    xx_settlersft_put16(p + 2, (uint16_t)(value >> 16));
-}
-
 /* The same bounded row walk classifies and converts a sprite.  A row ends
  * only on a zero run and must fill exactly its declared width. */
 static bool xx_settlersft_rle(const uint8_t *source, size_t size, int type,
@@ -291,19 +264,19 @@ static uint32_t xx_settlersft_classify(const uint8_t *p, size_t size,
     uint32_t width, height;
     *output_size = size;
     if (size >= 11U) {
-        width = xx_settlersft_le16(p + 2);
-        height = xx_settlersft_le16(p + 4);
+        width = xx_data_get_u16(p + 2, 2, 0, false);
+        height = xx_data_get_u16(p + 4, 2, 0, false);
         if ((int16_t)width > 0 && (int16_t)height > 0 &&
             xx_settlersft_rle(p + 10, size - 10U,
-                              (int16_t)xx_settlersft_le16(p), width, height,
+                              (int16_t)xx_data_get_u16(p, 2, 0, false), width, height,
                               NULL, NULL, pd)) {
             *output_size = XX_SETTLERSFT_BMP_HEADER_SIZE +
                            (uint64_t)width * height * 4U;
             return XX_SETTLERSFT_KIND_MASK;
         }
-        if (xx_settlersft_le16(p) == 1U && (int16_t)width > 0 &&
-            (int16_t)height > 0 && xx_settlersft_le16(p + 6) == 0U &&
-            xx_settlersft_le16(p + 8) == 0U &&
+        if (xx_data_get_u16(p, 2, 0, false) == 1U && (int16_t)width > 0 &&
+            (int16_t)height > 0 && xx_data_get_u16(p + 6, 2, 0, false) == 0U &&
+            xx_data_get_u16(p + 8, 2, 0, false) == 0U &&
             (uint64_t)width * height + 10U == size) {
             *output_size = XX_SETTLERSFT_BMP_HEADER_SIZE +
                            XX_SETTLERSFT_BMP_PALETTE_SIZE + size - 10U;
@@ -322,17 +295,17 @@ static void xx_settlersft_bmp_header(uint8_t *out, uint32_t width,
                                      uint32_t data_size, uint32_t offset) {
     xx_mem_zero(out, XX_SETTLERSFT_BMP_HEADER_SIZE);
     out[0] = 'B'; out[1] = 'M';
-    xx_settlersft_put32(out + 2, offset + data_size);
-    xx_settlersft_put32(out + 10, offset);
-    xx_settlersft_put32(out + 14, 40U);
-    xx_settlersft_put32(out + 18, width);
-    xx_settlersft_put32(out + 22, (uint32_t)(-(int32_t)height));
-    xx_settlersft_put16(out + 26, 1U);
-    xx_settlersft_put16(out + 28, (uint16_t)bits);
-    xx_settlersft_put32(out + 34, data_size);
+    xx_data_set_u32(out + 2, 4, 0, offset + data_size, false);
+    xx_data_set_u32(out + 10, 4, 0, offset, false);
+    xx_data_set_u32(out + 14, 4, 0, 40U, false);
+    xx_data_set_u32(out + 18, 4, 0, width, false);
+    xx_data_set_u32(out + 22, 4, 0, (uint32_t)(-(int32_t)height), false);
+    xx_data_set_u16(out + 26, 2, 0, 1U, false);
+    xx_data_set_u16(out + 28, 2, 0, (uint16_t)bits, false);
+    xx_data_set_u32(out + 34, 4, 0, data_size, false);
     if (bits == 8U) {
-        xx_settlersft_put32(out + 46, 256U);
-        xx_settlersft_put32(out + 50, 256U);
+        xx_data_set_u32(out + 46, 4, 0, 256U, false);
+        xx_data_set_u32(out + 50, 4, 0, 256U, false);
     }
 }
 
@@ -366,8 +339,8 @@ static xx_settlersft_stream *xx_settlersft_parse(Abstractformat *self,
 
     /* The only anchor a format with no magic offers: the declared size must
      * be the real size. */
-    if ((int64_t)xx_settlersft_le32(head) != span) return NULL;
-    count = (uint64_t)xx_settlersft_le32(head + 4);
+    if ((int64_t)xx_data_get_u32(head, 4, 0, false) != span) return NULL;
+    count = (uint64_t)xx_data_get_u32(head + 4, 4, 0, false);
     if (count < 2U || count > XX_SETTLERSFT_MAX_ENTRIES) return NULL;
     /* Bound the table against the real file before it is allocated. */
     table_size = (int64_t)(count * (uint64_t)XX_SETTLERSFT_ENTRY_SIZE);
@@ -385,10 +358,10 @@ static xx_settlersft_stream *xx_settlersft_parse(Abstractformat *self,
      * first member starts right behind the table, the second starts right
      * behind the first, and neither is empty. */
     {
-        int64_t size0 = (int64_t)(int32_t)xx_settlersft_le32(table);
-        int64_t offset0 = (int64_t)(int32_t)xx_settlersft_le32(table + 4);
-        int64_t size1 = (int64_t)(int32_t)xx_settlersft_le32(table + 8);
-        int64_t offset1 = (int64_t)(int32_t)xx_settlersft_le32(table + 12);
+        int64_t size0 = (int64_t)(int32_t)xx_data_get_u32(table, 4, 0, false);
+        int64_t offset0 = (int64_t)(int32_t)xx_data_get_u32(table + 4, 4, 0, false);
+        int64_t size1 = (int64_t)(int32_t)xx_data_get_u32(table + 8, 4, 0, false);
+        int64_t offset1 = (int64_t)(int32_t)xx_data_get_u32(table + 12, 4, 0, false);
 
         if (offset0 != XX_SETTLERSFT_HEADER_SIZE + table_size || size0 <= 0 ||
             size1 <= 0 || offset1 != offset0 + size0) {
@@ -403,8 +376,8 @@ static xx_settlersft_stream *xx_settlersft_parse(Abstractformat *self,
     for (index = 0U; index < count; ++index) {
         const uint8_t *entry =
             table + (size_t)(index * (uint64_t)XX_SETTLERSFT_ENTRY_SIZE);
-        int64_t size = (int64_t)(int32_t)xx_settlersft_le32(entry);
-        int64_t offset = (int64_t)(int32_t)xx_settlersft_le32(entry + 4);
+        int64_t size = (int64_t)(int32_t)xx_data_get_u32(entry, 4, 0, false);
+        int64_t offset = (int64_t)(int32_t)xx_data_get_u32(entry + 4, 4, 0, false);
         xx_settlersft_member member;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
@@ -510,8 +483,8 @@ static bool xx_settlersft_decode(Abstractformat *self,
         xx_mem_free(packed);
         return false;
     }
-    width = xx_settlersft_le16(packed + 2);
-    height = xx_settlersft_le16(packed + 4);
+    width = xx_data_get_u16(packed + 2, 2, 0, false);
+    height = xx_data_get_u16(packed + 4, 2, 0, false);
     output = (uint8_t *)xx_mem_alloc((size_t)member->unpacked_size);
     if (!output) { xx_mem_free(packed); return false; }
     if (member->kind == XX_SETTLERSFT_KIND_MASK) {
@@ -519,7 +492,7 @@ static bool xx_settlersft_decode(Abstractformat *self,
         xx_settlersft_bmp_header(output, width, height, 32U, image_size,
                                  XX_SETTLERSFT_BMP_HEADER_SIZE);
         if (!xx_settlersft_rle(packed + 10, size - 10U,
-                               (int16_t)xx_settlersft_le16(packed),
+                               (int16_t)xx_data_get_u16(packed, 2, 0, false),
                                width, height, palette,
                                output + XX_SETTLERSFT_BMP_HEADER_SIZE, pd)) {
             xx_mem_free(output);

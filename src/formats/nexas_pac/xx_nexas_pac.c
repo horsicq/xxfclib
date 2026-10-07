@@ -16,6 +16,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 #ifdef NEXAS_PAC
 #define NX_FILE_TYPE XX_FILE_TYPE_NEXAS_PAC
@@ -50,10 +51,6 @@ typedef struct nx_name_key {
 
 static bool nx_stopped(xx_pd_struct *pd) {
     return pd && xx_pd_is_stopped(pd);
-}
-static uint32_t nx_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | (uint32_t)p[1] << 8U |
-           (uint32_t)p[2] << 16U | (uint32_t)p[3] << 24U;
 }
 static bool nx_read(xx_io_device *device, int64_t at, void *buffer,
                     size_t size, xx_pd_struct *pd) {
@@ -221,9 +218,9 @@ static nx_layout *nx_index(Abstractformat *format, const uint8_t *bytes,
         nx_member *member = &layout->members[i];
         size_t length = 0U, j;
         bool nonspace = false;
-        uint32_t offset = nx_le32(record + width);
-        uint32_t unpacked = nx_le32(record + width + 4U);
-        uint32_t packed = nx_le32(record + width + 8U);
+        uint32_t offset = xx_data_get_u32(record + width, 4, 0, false);
+        uint32_t unpacked = xx_data_get_u32(record + width + 4U, 4, 0, false);
+        uint32_t packed = xx_data_get_u32(record + width + 8U, 4, 0, false);
         if (nx_stopped(pd)) goto done;
         while (length < width && record[length]) ++length;
         for (j = 0U; j < length; ++j) if (record[j] > 0x20U) nonspace = true;
@@ -270,7 +267,7 @@ static nx_layout *nx_parse_inner(Abstractformat *format, xx_pd_struct *pd) {
     if (available < 16 ||
         !nx_read(format->device, format->base_address, header, sizeof(header), pd) ||
         xx_rt_memcmp(header, "PAC", 3U) || header[3] == 'K') return NULL;
-    count = nx_le32(header + 4U); mode = nx_le32(header + 8U);
+    count = xx_data_get_u32(header + 4U, 4, 0, false); mode = xx_data_get_u32(header + 8U, 4, 0, false);
     if (!count || count > NX_MAX_COUNT || mode > 4U) return NULL;
     /* Match the primary reader's old-32, old-64, then footer-index order. */
     for (width = 32U; width <= 64U; width += 32U) {
@@ -288,7 +285,7 @@ static nx_layout *nx_parse_inner(Abstractformat *format, xx_pd_struct *pd) {
     unpacked_size = (size_t)count * 76U;
     if (unpacked_size > NX_MAX_INDEX ||
         !nx_read(format->device, total - 4, footer, sizeof(footer), pd)) return NULL;
-    index_size = nx_le32(footer);
+    index_size = xx_data_get_u32(footer, 4, 0, false);
     if (!index_size || (uint64_t)index_size > (uint64_t)unpacked_size * 2U ||
         (int64_t)index_size > available - 16) return NULL;
     packed = (uint8_t *)xx_mem_alloc(index_size);

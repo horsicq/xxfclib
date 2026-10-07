@@ -50,6 +50,14 @@ xxfclib/
         └── build_portable_windows.cmd  # Packaging script for Windows
 ```
 
+## PE streams
+
+PE32/PE64 readers provide incremental import, export, resource, metadata and symbol
+cursors through `Abstractformat` callbacks and the common `xx_format_` API.
+See [PE streaming API](docs/PE_STREAMS.md) for ownership, examples, supported
+records and focused tests. Rebuild library consumers when using the enlarged
+`Abstractformat` structure.
+
 ## Generic tree
 
 `<xxfclib/tree/xx_tree.h>` provides an ordered, rooted tree of fixed-size

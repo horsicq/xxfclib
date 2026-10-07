@@ -34,6 +34,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_SCI_COPY_CHUNK (64 * 1024)
 
@@ -159,11 +160,6 @@ static bool xx_sci_decode(Abstractformat *self,
 #define XX_SCI_RECORD_SIZE 55 /* 1 kind + 50 name + 4 size */
 /* The chain carries no member count, so this only bounds a runaway walk. */
 #define XX_SCI_MAX_MEMBERS 65536
-
-static uint32_t xx_sci_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* Only the bytes before the first NUL are the name: the rest of the 50-byte
  * field is uninitialised writer scratch and must never be inspected.
@@ -300,7 +296,7 @@ static xx_sci_stream *xx_sci_parse(Abstractformat *self, xx_pd_struct *pd) {
          * no other way to tell a real record from noise. */
         if (!name) goto fail;
 
-        size = (int64_t)(int32_t)xx_sci_le32(record + 1 + XX_SCI_NAME_SIZE);
+        size = (int64_t)(int32_t)xx_data_get_u32(record + 1 + XX_SCI_NAME_SIZE, 4, 0, false);
         if (size < 0) {
             xx_str_free(name);
             goto fail;

@@ -9,6 +9,7 @@
 #include "xxfclib/data/xx_pd.h"
 #include <stddef.h>
 #include <stdint.h>
+#include "xxfclib/data/xx_data.h"
 
 typedef struct xpk_impl_bits {
     const uint8_t *data;
@@ -16,12 +17,6 @@ typedef struct xpk_impl_bits {
     uint8_t word;
     unsigned left;
 } xpk_impl_bits;
-static uint16_t xpk_impl_be16(const uint8_t *p) {
-    return (uint16_t)(((uint16_t)p[0]<<8U)|p[1]);
-}
-static uint32_t xpk_impl_be32(const uint8_t *p) {
-    return ((uint32_t)p[0]<<24U)|((uint32_t)p[1]<<16U)|((uint32_t)p[2]<<8U)|p[3];
-}
 static bool xpk_impl_byte(xpk_impl_bits *bits,uint8_t *value) {
     size_t index;
     if(!bits->at)return false;
@@ -77,7 +72,7 @@ static bool xpk_impl_native(const uint8_t *packed,size_t size,uint8_t *output,
     size_t pos=wanted;
     unsigned i;
     if(!packed || !output || !wanted || size<0x2eU || xx_pd_is_stopped(pd))return false;
-    raw_size=xpk_impl_be32(packed+4U);end_offset=xpk_impl_be32(packed+8U);
+    raw_size=xx_data_get_u32(packed+4U, 4, 0, true);end_offset=xx_data_get_u32(packed+8U, 4, 0, true);
     if(raw_size!=wanted || (end_offset&1U) || end_offset<12U ||
        end_offset>size-0x2eU)return false;
     bits.data=packed;bits.size=size;bits.at=end_offset;bits.reference=end_offset;
@@ -91,10 +86,10 @@ static bool xpk_impl_native(const uint8_t *packed,size_t size,uint8_t *output,
         }
     }
     for(i=0U;i<8U;++i)
-        distance_values[i>>2U][i&3U]=xpk_impl_be16(packed+end_offset+18U+i*2U);
+        distance_values[i>>2U][i&3U]=xx_data_get_u16(packed+end_offset+18U+i*2U, 2, 0, true);
     for(i=0U;i<12U;++i)
         distance_bits[i>>2U][i&3U]=packed[end_offset+34U+i];
-    lit_length=xpk_impl_be32(packed+end_offset+12U);
+    lit_length=xx_data_get_u32(packed+end_offset+12U, 4, 0, true);
     for(;;) {
         uint32_t i0,i1,i2,selector,count,more;
         uint64_t distance;

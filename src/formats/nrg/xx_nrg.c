@@ -28,6 +28,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -132,15 +133,6 @@ static ssize_t gb_nrg_write(xx_io_device *device, const void *buffer, size_t siz
 
 static uint32_t nrg_be16(const uint8_t *b) {
     return ((uint32_t)b[0] << 8U) | (uint32_t)b[1];
-}
-
-static uint32_t nrg_be32(const uint8_t *b) {
-    return ((uint32_t)b[0] << 24U) | ((uint32_t)b[1] << 16U) |
-           ((uint32_t)b[2] << 8U) | (uint32_t)b[3];
-}
-
-static uint64_t nrg_be64(const uint8_t *b) {
-    return ((uint64_t)nrg_be32(b) << 32U) | (uint64_t)nrg_be32(b + 4U);
 }
 
 static bool nrg_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -270,8 +262,8 @@ static bool nrg_parse_dao(nrg_image *image, const uint8_t *payload,
         track.sector_size = nrg_be16(entry + 12U);
         track.mode = entry[14];
         for (field = 0U; field < 3U; ++field)
-            values[field] = wide ? nrg_be64(entry + 18U + field * 8U)
-                                 : (uint64_t)nrg_be32(entry + 18U + field * 4U);
+            values[field] = wide ? xx_data_get_u64(entry + 18U + field * 8U, 8, 0, true)
+                                 : (uint64_t)xx_data_get_u32(entry + 18U + field * 4U, 4, 0, true);
         /* Every extent sits in the data area in front of the chunk list. */
         if (!nrg_sector_size_known(track.sector_size) ||
             values[0] > values[1] || values[1] >= values[2] ||
@@ -307,12 +299,12 @@ static bool nrg_parse_etn(nrg_image *image, const uint8_t *payload,
         nrg_track track;
         xx_mem_zero(&track, sizeof(track));
         if (wide) {
-            offset = nrg_be64(entry);
-            length = nrg_be64(entry + 8U);
+            offset = xx_data_get_u64(entry, 8, 0, true);
+            length = xx_data_get_u64(entry + 8U, 8, 0, true);
             track.mode = entry[19];
         } else {
-            offset = nrg_be32(entry);
-            length = nrg_be32(entry + 4U);
+            offset = xx_data_get_u32(entry, 4, 0, true);
+            length = xx_data_get_u32(entry + 4U, 4, 0, true);
             track.mode = entry[11];
         }
         track.sector_size = nrg_mode_sector_size(track.mode);
@@ -392,10 +384,10 @@ bool xx_nrg_probe_device(xx_io_device *device) {
         !nrg_read_at(device, total - NRG_FOOTER_V2, footer, sizeof(footer)))
         goto done;
     if (nrg_tag_is(footer, "NER5")) {
-        list = nrg_be64(footer + 4U);
+        list = xx_data_get_u64(footer + 4U, 8, 0, true);
         footer_offset = total - NRG_FOOTER_V2;
     } else if (nrg_tag_is(footer + 4U, "NERO")) {
-        list = nrg_be32(footer + 8U);
+        list = xx_data_get_u32(footer + 8U, 4, 0, true);
         footer_offset = total - NRG_FOOTER_V1;
     } else {
         goto done;
@@ -431,11 +423,11 @@ static bool nrg_parse(Abstractformat *format, nrg_image **result) {
         return false;
     if (nrg_tag_is(footer, "NER5")) {
         version = 2U;
-        list = nrg_be64(footer + 4U);
+        list = xx_data_get_u64(footer + 4U, 8, 0, true);
         footer_offset = size - NRG_FOOTER_V2;
     } else if (nrg_tag_is(footer + 4U, "NERO")) {
         version = 1U;
-        list = nrg_be32(footer + 8U);
+        list = xx_data_get_u32(footer + 8U, 4, 0, true);
         footer_offset = size - NRG_FOOTER_V1;
     } else {
         return false;
@@ -459,7 +451,7 @@ static bool nrg_parse(Abstractformat *format, nrg_image **result) {
                          header, sizeof(header)) ||
             !nrg_tag_plausible(header))
             goto fail;
-        chunk_size = nrg_be32(header + 4U);
+        chunk_size = xx_data_get_u32(header + 4U, 4, 0, true);
         payload_offset = position + NRG_CHUNK_HEADER;
         if ((int64_t)chunk_size > footer_offset - payload_offset) goto fail;
         if (nrg_tag_is(header, "END!")) {

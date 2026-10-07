@@ -7,7 +7,7 @@
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  hx_blob b;uint32_t tracks,sides,sectors,size,start,end;uint64_t plain;bool ok=false;char info[512];
  if(!hx_load(f,&b,pd))return false;
- HX_NEED(hx_tag(&b,0,"BB",2)&&hx_span(&b,0,32));sides=b.p[6]+1U;sectors=b.p[8];start=b.p[10];end=b.p[12];size=pm_be16(b.p+14);if(!size)size=512;
+ HX_NEED(hx_tag(&b,0,"BB",2)&&hx_span(&b,0,32));sides=b.p[6]+1U;sectors=b.p[8];start=b.p[10];end=b.p[12];size=xx_data_get_u16(b.p+14, 2, 0, true);if(!size)size=512;
  HX_NEED(b.p[3]<=1&&sides<=2&&sectors&&sectors<=64&&start<=end&&end<170&&b.p[13]<=1&&size>=128&&size<=8192&&!(size&(size-1U)));tracks=end-start+1;plain=(uint64_t)tracks*sides*sectors*size;
  HX_NEED(plain<=HX_MAX_FILE&&hx_emit(f,s,&b,"descriptor.dim",0,32));
  if(b.p[3]){HX_NEED(b.n>32&&b.n-32<=plain&&hx_emit(f,s,&b,"unreconstructed-used-sectors.dim",32,b.n-32));}

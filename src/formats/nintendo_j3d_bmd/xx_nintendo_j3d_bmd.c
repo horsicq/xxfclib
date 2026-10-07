@@ -5,6 +5,7 @@
  */
 #include "xxfclib/formats/nintendo_j3d_bmd/xx_nintendo_j3d_bmd.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool overlap(uint64_t a,uint64_t n,uint64_t b,uint64_t m) { return n && m && a<b+m && b<a+n; }
@@ -15,14 +16,14 @@ static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uin
     return pm_add(f,s,name,(int64_t)at,(int64_t)n);
 }
 typedef struct rg { uint64_t at,n; } rg;
-static bool section(Abstractformat *f,uint64_t at,uint64_t total,const char *magic,uint32_t n,xx_pd_struct *pd) { uint8_t h[8]; return !stop(pd) && n>=8 && span(at,n,total) && pm_read(f,(int64_t)at,h,8) && !xx_rt_memcmp(h,magic,4) && pm_be32(h+4)==n; }
+static bool section(Abstractformat *f,uint64_t at,uint64_t total,const char *magic,uint32_t n,xx_pd_struct *pd) { uint8_t h[8]; return !stop(pd) && n>=8 && span(at,n,total) && pm_read(f,(int64_t)at,h,8) && !xx_rt_memcmp(h,magic,4) && xx_data_get_u32(h+4, 4, 0, true)==n; }
 
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[32],b[8]; uint32_t total,i,n; uint64_t at=32; char label[40]; static const char *tags[]={"INF1","VTX1","EVP1","DRW1","JNT1","SHP1","MAT3","TEX1"};
-    if(!pm_read(f,0,h,32) || xx_rt_memcmp(h,"J3D2bmd3",8) || pm_be32(h+12)!=8 || (total=pm_be32(h+8))<32 || total>(uint64_t)pm_available(f)) return false;
-    for(i=0;i<8;++i) { if(!pm_read(f,(int64_t)at,b,8) || (n=pm_be32(b+4))<32 || (n&31) || !section(f,at,total,tags[i],n,pd)) return false; xx_rt_snprintf(label,sizeof(label),"section-%s.bin",tags[i]); if(!emit(f,s,label,at,n,total)) return false; at+=n; }
+    if(!pm_read(f,0,h,32) || xx_rt_memcmp(h,"J3D2bmd3",8) || xx_data_get_u32(h+12, 4, 0, true)!=8 || (total=xx_data_get_u32(h+8, 4, 0, true))<32 || total>(uint64_t)pm_available(f)) return false;
+    for(i=0;i<8;++i) { if(!pm_read(f,(int64_t)at,b,8) || (n=xx_data_get_u32(b+4, 4, 0, true))<32 || (n&31) || !section(f,at,total,tags[i],n,pd)) return false; xx_rt_snprintf(label,sizeof(label),"section-%s.bin",tags[i]); if(!emit(f,s,label,at,n,total)) return false; at+=n; }
     if(at!=total) { return false; } s->size=total; return true;
 
 }

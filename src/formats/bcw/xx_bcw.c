@@ -46,6 +46,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef BCW
 #define XX_BCW_FILE_TYPE XX_FILE_TYPE_BCW
@@ -74,14 +75,6 @@ typedef struct bcw_stream_s {
     size_t index;
     int64_t archive_size;
 } bcw_stream;
-
-static uint16_t bcw_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t bcw_le32(const uint8_t *bytes) {
-    return (uint32_t)bcw_le16(bytes) | ((uint32_t)bcw_le16(bytes + 2U) << 16U);
-}
 
 static bool bcw_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -505,8 +498,8 @@ static bool bcw_parse_buffered(Abstractformat *format, bcw_stream **result, uint
              * other DOS-era readers here use, with the time in the low
              * half.  SBLOCK.DLL carries 1991-06-25 12:53:00, which is the
              * stamp U3 puts on the file it writes. */
-            member.dos_time = ((uint32_t)bcw_le16(stamp) << 16U) |
-                              bcw_le16(stamp + 2U);
+            member.dos_time = ((uint32_t)xx_data_get_u16(stamp, 2, 0, false) << 16U) |
+                              xx_data_get_u16(stamp + 2U, 2, 0, false);
             member.folder = false;
             if (!bcw_add_member(stream, &member)) {
                 xx_str_free(member.name);

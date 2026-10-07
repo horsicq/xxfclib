@@ -10,6 +10,7 @@
  */
 #include "xxfclib/formats/amstrad_cpc_dsk/xx_amstrad_cpc_dsk.h"
 #include "../vice_x64/xx_ninth_retro.h"
+#include "xxfclib/data/xx_data.h"
 
 /* The shared retro helper stops at 4096 members, while one legal CPC image
  * can contain 84 * 2 tracks with 29 sectors each. Include the disk header,
@@ -25,9 +26,9 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
  uint32_t tracks,sides,at=256,i,nonempty=0,offset_entries=0; bool ext; char name[48];
  if(!nh_range(b,0,256)) return false;
  ext=!xx_rt_memcmp(b->p,"EXTENDED CPC DSK File\r\nDisk-Info\r\n",34);
- if((!ext && xx_rt_memcmp(b->p,"MV - CPCEMU Disk-File\r\nDisk-Info\r\n",34)) || !(tracks=b->p[48]) || tracks>84 || !(sides=b->p[49]) || sides>2 || (!ext && pm_le16(b->p+50)<256) || !cpc_emit(f,s,b,"disk-descriptor.bin",0,256)) return false;
+ if((!ext && xx_rt_memcmp(b->p,"MV - CPCEMU Disk-File\r\nDisk-Info\r\n",34)) || !(tracks=b->p[48]) || tracks>84 || !(sides=b->p[49]) || sides>2 || (!ext && xx_data_get_u16(b->p+50, 2, 0, false)<256) || !cpc_emit(f,s,b,"disk-descriptor.bin",0,256)) return false;
  for(i=0;i<tracks*sides;++i) {
-  uint32_t z=ext ? (uint32_t)b->p[52+i]*256U : pm_le16(b->p+50),j,pos,ns; const uint8_t *p; uint8_t ids[256]={0};
+  uint32_t z=ext ? (uint32_t)b->p[52+i]*256U : xx_data_get_u16(b->p+50, 2, 0, false),j,pos,ns; const uint8_t *p; uint8_t ids[256]={0};
   if(!z) continue;
   if(z<256 || !nh_range(b,at,z) || xx_rt_memcmp(b->p+at,"Track-Info\r\n",12)) { return false; } p=b->p+at;
   if(p[16]!=i/sides || p[17]!=i%sides || p[20]>7 || (ns=p[21])>29) return false;
@@ -39,7 +40,7 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
     * repeat an ID with different data. Keep the historical name for the
     * first occurrence and disambiguate each later physical occurrence. */
    ++ids[e[2]];
-   len=ext ? pm_le16(e+6) : 128U<<p[20];
+   len=ext ? xx_data_get_u16(e+6, 2, 0, false) : 128U<<p[20];
    if(!len || len>z-pos) return false;
    if(ids[e[2]]==1U) xx_rt_snprintf(name,sizeof(name),"track-%u-sector-%u.bin",i,e[2]);
    else xx_rt_snprintf(name,sizeof(name),"track-%u-sector-%u-instance-%u.bin",i,e[2],ids[e[2]]);

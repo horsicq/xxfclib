@@ -3,6 +3,7 @@
  */
 #include "xxfclib/formats/parsec_pmm/xx_parsec_pmm.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 #define PMM_MDH_OFFSET 0x38U
 #define PMM_SAMPLE_COUNT_OFFSET 0x40U
@@ -19,15 +20,15 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
         !pm_read(format, 0, header, sizeof(header)) ||
         xx_rt_memcmp(header, "MTCVTS PSM 2.00", 16U) != 0 ||
         xx_rt_memcmp(header + PMM_MDH_OFFSET, "MDH\0", 4U) != 0 ||
-        pm_le32(header + 0x34U) != 0U) return false;
+        xx_data_get_u32(header + 0x34U, 4, 0, false) != 0U) return false;
     count = header[PMM_SAMPLE_COUNT_OFFSET];
     if (count < 1U || count > 8U ||
         total < (int64_t)sizeof(header) + 4 + (int64_t)count * PMM_SAMPLE_HEADER)
         return false;
-    instrument_offset = pm_le32(header + 0x10U);
-    track_offset = PMM_MDH_OFFSET + pm_le16(header + 0x3eU);
+    instrument_offset = xx_data_get_u32(header + 0x10U, 4, 0, false);
+    track_offset = PMM_MDH_OFFSET + xx_data_get_u16(header + 0x3eU, 2, 0, false);
     for (index = 0U; index < 8U; ++index) {
-        offsets[index] = pm_le32(header + PMM_SAMPLE_OFFSETS + index * 4U);
+        offsets[index] = xx_data_get_u32(header + PMM_SAMPLE_OFFSETS + index * 4U, 4, 0, false);
         if (index >= count && offsets[index] != 0U) return false;
     }
     if (instrument_offset < sizeof(header) || track_offset < sizeof(header) ||
@@ -45,7 +46,7 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
             !pm_read(format, offset, sample_header, sizeof(sample_header)) ||
             xx_rt_memcmp(sample_header, "SM8\0\0\1", 6U) != 0)
             return false;
-        pcm_size = pm_le16(sample_header + 6U);
+        pcm_size = xx_data_get_u16(sample_header + 6U, 2, 0, false);
         if (next - offset != (int64_t)PMM_SAMPLE_HEADER + pcm_size) return false;
     }
     if (!pm_read(format, instrument_offset, sample_header, 4U) ||

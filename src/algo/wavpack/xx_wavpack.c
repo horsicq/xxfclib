@@ -4,6 +4,7 @@
 #include "xxfclib/algo/wavpack/xx_wavpack.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xx_wavpack_internal.h"
+#include "xxfclib/data/xx_data.h"
 
 typedef struct xx_wv_reader_context {
     const uint8_t *source;
@@ -54,10 +55,6 @@ static xx_wv_StreamReader64 xx_wv_reader = {
     xx_wv_pushback, xx_wv_length, xx_wv_can_seek, NULL, xx_wv_close
 };
 
-static uint32_t xx_wv_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
-
 /* Reject truncated or oversized blocks before the vendor decoder allocates them.
  * ZIP method 97 contains a complete sequence of WavPack blocks, without tags. */
 static bool xx_wv_validate_blocks(const uint8_t *data, size_t size) {
@@ -66,7 +63,7 @@ static bool xx_wv_validate_blocks(const uint8_t *data, size_t size) {
     while (position < size) {
         size_t block_size;
         if (size - position < 32 || xx_mem_compare(data + position, "wvpk", 4)) return false;
-        block_size = (size_t)xx_wv_le32(data + position + 4);
+        block_size = (size_t)xx_data_get_u32(data + position + 4, 4, 0, false);
         if (block_size < 24 || block_size > size - position - 8) return false;
         position += block_size + 8;
     }

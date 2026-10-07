@@ -8,6 +8,7 @@
  */
 #include "xxfclib/formats/cdi_fs/xx_cdi_fs.h"
 #include "../apple_family/xx_apple_family_private.h"
+#include "xxfclib/data/xx_data.h"
 typedef struct ci_ctx {af_work *w;uint32_t stride,blocks;uint32_t *seen;uint32_t directories;bool form2;} ci_ctx;
 static uint32_t ci_edc(const uint8_t *p,size_t n) {uint32_t c=0;size_t i;unsigned j;for(i=0;i<n;++i){c^=p[i];for(j=0;j<8;++j)c=(c>>1)^((c&1U)?0xd8018001U:0U);}return c;}
 static bool ci_sector(ci_ctx *c,uint32_t block,uint8_t out[2352],bool metadata,bool *form2) {
@@ -17,7 +18,7 @@ static bool ci_sector(ci_ctx *c,uint32_t block,uint8_t out[2352],bool metadata,b
     if(xx_rt_memcmp(out,sync,12) || out[15]!=2 || xx_rt_memcmp(out+16,out+20,4))return false;
     *form2=(out[18]&0x20U)!=0;
     if(metadata && (*form2 || out[16] || out[17] || out[19] || (out[18]&~0x89U)))return false;
-    if(!*form2 && ci_edc(out+16,2056)!=pm_le32(out+2072))return false;
+    if(!*form2 && ci_edc(out+16,2056)!=xx_data_get_u32(out+2072, 4, 0, false))return false;
     return af_poll(c->w);
 }
 static const uint8_t *ci_data(const ci_ctx *c,const uint8_t *p){return p+(c->stride==2352U?24U:0U);}
@@ -49,9 +50,9 @@ static bool ci_walk(ci_ctx *c,uint32_t start,uint32_t bytes,const char *parent,u
         while(at<2048U){const uint8_t *e=p+at;uint32_t n=e[0],names,tail,extent,size;uint16_t attrs;bool directory;char leaf[96],name[96];
             if(!n){if(!af_zero(e,2048U-at))return false;break;}
             if(n<44U || n>2048U-at || !af_poll(c->w)) {return false; } names=e[32];tail=33U+names+((names&1U)?0U:1U);
-            if(!names || tail+10U!=n || e[1] || !af_zero(e+2,4) || !af_zero(e+10,4) || e[24] || (e[25]&~1U) || !af_zero(e+28,2) || pm_be16(e+30) ||
+            if(!names || tail+10U!=n || e[1] || !af_zero(e+2,4) || !af_zero(e+10,4) || e[24] || (e[25]&~1U) || !af_zero(e+28,2) || xx_data_get_u16(e+30, 2, 0, true) ||
                (names%2U==0 && e[33+names]) || !af_zero(e+tail+6,2) || e[tail+9])return false;
-            extent=pm_be32(e+6);size=pm_be32(e+14);attrs=pm_be16(e+tail+4);directory=(attrs&0x8000U)!=0;
+            extent=xx_data_get_u32(e+6, 4, 0, true);size=xx_data_get_u32(e+14, 4, 0, true);attrs=xx_data_get_u16(e+tail+4, 2, 0, true);directory=(attrs&0x8000U)!=0;
             if(attrs&~0xc555U)return false;
             if(entries<2U){if(names!=1U || e[33]!=entries || !directory || e[26] || e[27] || e[tail+8] ||
                 extent!=(entries?parent_start:start) || (!entries && size!=bytes))return false;}
@@ -77,8 +78,8 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if(!ci_sector(&c,16,raw,true,&form2))return false;}
     h=ci_data(&c,raw);xx_rt_memcpy(descriptor,h,2048);h=descriptor;
     if(h[0]!=1 || xx_rt_memcmp(h+1,"CD-I ",5) || h[6]!=1 || h[7] || xx_rt_memcmp(h+8,"CD-RTOS",7) ||
-       pm_be16(h+130)!=2048 || !pm_be32(h+84) || pm_be32(h+84)>c.blocks || h[881]!=1)return false;
-    c.blocks=pm_be32(h+84);path=pm_be32(h+148);size=pm_be32(h+136);
+       xx_data_get_u16(h+130, 2, 0, true)!=2048 || !xx_data_get_u32(h+84, 4, 0, true) || xx_data_get_u32(h+84, 4, 0, true)>c.blocks || h[881]!=1)return false;
+    c.blocks=xx_data_get_u32(h+84, 4, 0, true);path=xx_data_get_u32(h+148, 4, 0, true);size=xx_data_get_u32(h+136, 4, 0, true);
     if(!size || size>1048576U || path>=c.blocks || ((uint64_t)size+2047)/2048>c.blocks-path)return false;
     for(record=17;record<80 && record<c.blocks;++record){if(!ci_sector(&c,record,raw,true,&form2))return false;h=ci_data(&c,raw);
         if(xx_rt_memcmp(h+1,"CD-I ",5) || h[6]!=1) {return false; } if(h[0]==255){ended=true;break;}if(h[0]!=1 && h[0]!=2)return false;}
@@ -87,14 +88,14 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if(!ci_sector(&c,path+record,raw,true,&form2)) {goto done; } xx_rt_memcpy(table+record*2048U,ci_data(&c,raw),z);}
     while(at<size){uint32_t z,names,parent;
         if(size-at<8U || !(names=table[at]) || table[at+1]) {goto done; } z=8U+names+(names&1U);if(z>size-at || (names&1U && table[at+8+names]))goto done;
-        start=pm_be32(table+at+2);parent=pm_be16(table+at+6);if(start>=c.blocks || ++count>8192U || !parent || parent>count)goto done;
+        start=xx_data_get_u32(table+at+2, 4, 0, true);parent=xx_data_get_u16(table+at+6, 2, 0, true);if(start>=c.blocks || ++count>8192U || !parent || parent>count)goto done;
         if(count==1U){if(names!=1U || table[at+8] || parent!=1U)goto done;root=start;}
         else if(parent==count || names>28U)goto done;
         at+=z;}
-    if(!ci_sector(&c,root,raw,true,&form2)) {goto done; } h=ci_data(&c,raw);if(h[0]<44 || h[32]!=1 || h[33] || pm_be32(h+6)!=root)goto done;rootbytes=pm_be32(h+14);
+    if(!ci_sector(&c,root,raw,true,&form2)) {goto done; } h=ci_data(&c,raw);if(h[0]<44 || h[32]!=1 || h[33] || xx_data_get_u32(h+6, 4, 0, true)!=root)goto done;rootbytes=xx_data_get_u32(h+14, 4, 0, true);
     if(!ci_walk(&c,root,rootbytes,"",root,0) || c.directories!=count)goto done;
     /* Cross-check path-table extent identities against every reached directory. */
-    at=0;while(at<size){uint32_t names=table[at],i;start=pm_be32(table+at+2);for(i=0;i<c.directories;++i)if(c.seen[i]==start)break;
+    at=0;while(at<size){uint32_t names=table[at],i;start=xx_data_get_u32(table+at+2, 4, 0, true);for(i=0;i<c.directories;++i)if(c.seen[i]==start)break;
         if(i==c.directories) {goto done; } c.seen[i]=UINT32_MAX; /* Every reached directory matches exactly one path entry. */
         at+=8U+names+(names&1U);}
     ok=af_poll(&w);if(ok){xx_cdi_fs *r=(xx_cdi_fs *)f;s->size=(int64_t)c.blocks*c.stride;r->number_of_records=s->count;

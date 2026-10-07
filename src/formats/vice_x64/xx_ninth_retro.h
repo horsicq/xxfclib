@@ -11,7 +11,6 @@ typedef struct nh_blob { uint8_t *p; uint32_t n,crc_budget; xx_pd_struct *pd; } 
 typedef struct nh_span { uint32_t a,z; } nh_span;
 static bool nh_poll(const nh_blob *b) { return !b->pd || !xx_pd_is_stopped(b->pd); }
 static bool nh_range(const nh_blob *b,uint32_t at,uint32_t n) { return at<=b->n && n<=b->n-at; }
-static XXFC_MAYBE_UNUSED uint32_t nh_u24(const uint8_t *p) { return (uint32_t)p[0]|(uint32_t)p[1]<<8|(uint32_t)p[2]<<16; }
 static XXFC_MAYBE_UNUSED bool nh_load(Abstractformat *f,nh_blob *b,xx_pd_struct *pd) {
  int64_t n=pm_available(f); uint32_t at=0; xx_mem_zero(b,sizeof(*b)); b->pd=pd;
  if(n<=0 || n>NH_LIMIT || !nh_poll(b) || !(b->p=(uint8_t *)xx_mem_alloc((size_t)n))) return false;

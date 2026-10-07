@@ -26,6 +26,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the file-type constant is resolved locally until the enumerator
@@ -365,11 +366,6 @@ static uint32_t xx_ihexfmt_be16(const uint8_t *data) {
     return ((uint32_t)data[0] << 8U) | data[1];
 }
 
-static uint32_t xx_ihexfmt_be32(const uint8_t *data) {
-    return ((uint32_t)data[0] << 24U) | ((uint32_t)data[1] << 16U) |
-           ((uint32_t)data[2] << 8U) | data[3];
-}
-
 bool xx_ihex_check_magic(const uint8_t *magic, size_t magic_size) {
     uint8_t count;
     uint8_t type;
@@ -588,7 +584,7 @@ static bool xx_ihexfmt_scan_run_buffered(Abstractformat *self, xx_ihexfmt_scan *
                 break;
             case XX_IHEXFMT_TYPE_START_SEGMENT:
             case XX_IHEXFMT_TYPE_START_LINEAR:
-                scan->entry_point = xx_ihexfmt_be32(record.data);
+                scan->entry_point = xx_data_get_u32(record.data, 4, 0, true);
                 scan->entry_type = record.type;
                 scan->has_entry_point = true;
                 break;

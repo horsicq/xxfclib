@@ -54,6 +54,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_PMA_MAX_MEMBERS 100000 /* no count is stored: a runaway guard */
 #define XX_PMA_MAX_HEADER 257     /* the largest a u8 size byte can describe */
@@ -105,15 +106,6 @@ static bool xx_pma_read_at(Abstractformat *self, int64_t offset,
         completed += (size_t)received;
     }
     return true;
-}
-
-static uint16_t xx_pma_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_pma_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
 }
 
 /* CRC-16/ARC, the check PMarc stores for the uncompressed payload. */
@@ -1027,8 +1019,8 @@ static xx_pma_stream *xx_pma_parse(Abstractformat *self, xx_pd_struct *pd) {
         if (out == 0U) goto fail;
         name[out] = '\0';
 
-        compressed_size = xx_pma_le32(header + 7);
-        uncompressed_size = xx_pma_le32(header + 11);
+        compressed_size = xx_data_get_u32(header + 7, 4, 0, false);
+        uncompressed_size = xx_data_get_u32(header + 11, 4, 0, false);
         if ((int64_t)compressed_size > remaining - (int64_t)base_size) {
             goto fail;
         }
@@ -1042,9 +1034,9 @@ static xx_pma_stream *xx_pma_parse(Abstractformat *self, xx_pd_struct *pd) {
         member.compressed_size = (int64_t)compressed_size;
         member.uncompressed_size = (int64_t)uncompressed_size;
         member.method = method;
-        member.timestamp = (uint64_t)xx_pma_le32(header + 15);
+        member.timestamp = (uint64_t)xx_data_get_u32(header + 15, 4, 0, false);
         member.attributes = header[19];
-        member.crc16 = xx_pma_le16(header + 22 + name_length);
+        member.crc16 = xx_data_get_u16(header + 22 + name_length, 2, 0, false);
         if (!xx_pma_add(stream, &member)) {
             xx_str_free(member.name);
             goto fail;

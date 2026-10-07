@@ -9,12 +9,12 @@
 static bool w6_arc_at(Abstractformat *f,pm_stream *s,int64_t base,xx_pd_struct *pd) {
     int64_t at=base,limit=pm_available(f);unsigned archives=0,members=0;uint64_t checks=0;uint8_t h[300];
     while(at<limit) { int64_t start=at;unsigned count=0;char label[48];
-        if(wg_stop(pd) || ++archives>64 || !pm_read(f,at,h,14) || xx_rt_memcmp(h,"ARCV\0\2\x0e\0",8) || (pm_le32(h+8)!=1 && pm_le32(h+8)!=2 && pm_le32(h+8)!=4 && pm_le32(h+8)!=8)) { return false; } at+=14;
+        if(wg_stop(pd) || ++archives>64 || !pm_read(f,at,h,14) || xx_rt_memcmp(h,"ARCV\0\2\x0e\0",8) || (xx_data_get_u32(h+8, 4, 0, false)!=1 && xx_data_get_u32(h+8, 4, 0, false)!=2 && xx_data_get_u32(h+8, 4, 0, false)!=4 && xx_data_get_u32(h+8, 4, 0, false)!=8)) { return false; } at+=14;
         while(limit-at>=4 && pm_read(f,at,h,4) && !xx_rt_memcmp(h,"BLCK",4)) { unsigned name;uint32_t flags,n,raw,packed,crc;const uint8_t *tail;int64_t data;
-            if(wg_stop(pd) || ++members>4096 || !pm_read(f,at,h,17) || pm_le16(h+4)!=512 || !(name=h[16]) || pm_le16(h+6)!=45+name || !pm_read(f,at,h,45+name)) return false;
-            flags=pm_le32(h+8);n=pm_le32(h+12);if(flags!=0x11 && flags!=0x21) return false;
+            if(wg_stop(pd) || ++members>4096 || !pm_read(f,at,h,17) || xx_data_get_u16(h+4, 2, 0, false)!=512 || !(name=h[16]) || xx_data_get_u16(h+6, 2, 0, false)!=45+name || !pm_read(f,at,h,45+name)) return false;
+            flags=xx_data_get_u32(h+8, 4, 0, false);n=xx_data_get_u32(h+12, 4, 0, false);if(flags!=0x11 && flags!=0x21) return false;
             { unsigned j;for(j=0;j<name;++j) if(h[17+j]<32 || h[17+j]==127) return false; }
-            tail=h+17+name;raw=pm_le32(tail);packed=pm_le32(tail+4);crc=pm_le32(tail+24);data=at+45+name;
+            tail=h+17+name;raw=xx_data_get_u32(tail, 4, 0, false);packed=xx_data_get_u32(tail+4, 4, 0, false);crc=xx_data_get_u32(tail+24, 4, 0, false);data=at+45+name;
             if(n!=packed || !wg_range(limit,data,n) || (flags==0x11 && raw!=n)) return false;
             if(flags==0x11) { if(n>67108864-checks || !w5_crc(f,data,n,crc,pd)) return false;checks+=n; }
             at=data+n;++count;

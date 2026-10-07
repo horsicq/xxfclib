@@ -67,18 +67,18 @@ static bool w6_at_parse(Abstractformat *format, pm_stream *stream,
         uint64_t packed = 0;
         uint32_t crc;
         if (wg_stop(pd) || !pm_read(format, cursor, header, 7)) return false;
-        size = pm_le16(header + 2);
+        size = xx_data_get_u16(header + 2, 2, 0, false);
         if (size < 3 || !wg_range(limit, cursor, (uint64_t)size + 4U) ||
             blocks >= 4096U || header_bytes + size > 4194304U) break;
         if (!pm_read(format, cursor, header, size + 4U)) return false;
         crc = w6_crc(header + 4, size) ^ UINT32_MAX;
-        if ((crc & 65535U) != pm_le16(header)) break;
-        flags = pm_le16(header + 5);
+        if ((crc & 65535U) != xx_data_get_u16(header, 2, 0, false)) break;
+        flags = xx_data_get_u16(header + 5, 2, 0, false);
         if (flags & 1U) {
             width = (flags & 4U) ? 8U : 4U;
             if (size < 3U + width) break;
-            packed = width == 8U ? w6_u64(header + 7, false)
-                                 : pm_le32(header + 7);
+            packed = width == 8U ? xx_data_get_u64(header + 7, 8, 0, false)
+                                 : xx_data_get_u32(header + 7, 4, 0, false);
         }
         if (!wg_range(limit, cursor + (int64_t)size + 4, packed)) break;
         cursor += (int64_t)size + 4 + (int64_t)packed;

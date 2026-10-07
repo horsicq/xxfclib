@@ -10,6 +10,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Every bound below is a ceiling on attacker-controlled arithmetic, not a
  * statement about what NTFS permits. A hostile image can name any cluster
@@ -83,20 +84,6 @@ static ssize_t gb_ntfs_write(xx_io_device *device, const void *buffer, size_t si
         done += (size_t)n;
     }
     return (ssize_t)done;
-}
-
-static uint16_t xx_ntfs_u16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8U));
-}
-
-static uint32_t xx_ntfs_u32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
-
-static uint64_t xx_ntfs_u64(const uint8_t *data) {
-    return (uint64_t)xx_ntfs_u32(data) |
-           ((uint64_t)xx_ntfs_u32(data + 4U) << 32U);
 }
 
 /** True when [off, off + n) lies inside [0, size) without wrapping. */
@@ -383,7 +370,7 @@ static bool xx_ntfs_lznt1_decode(const uint8_t *input, size_t input_size,
         size_t end;
         size_t made = 0U;
         if (input_size - source < 2U) return false;
-        header = xx_ntfs_u16(input + source);
+        header = xx_data_get_u16(input + source, 2, 0, false);
         if (header == 0U) break;
         /* Bits 12..14 are the LZNT1 subblock signature 011. */
         if ((header & 0x7000U) != 0x3000U) return false;
@@ -419,7 +406,7 @@ static bool xx_ntfs_lznt1_decode(const uint8_t *input, size_t input_size,
                         --shift;
                         position >>= 1U;
                     }
-                    token = xx_ntfs_u16(input + source);
+                    token = xx_data_get_u16(input + source, 2, 0, false);
                     source += 2U;
                     distance = (token >> shift) + 1U;
                     length = (token & ((1U << shift) - 1U)) + 3U;
@@ -639,7 +626,7 @@ static char *xx_ntfs_decode_name(const uint8_t *data, size_t available,
         return NULL;
     }
     for (index = 0U; index < units; ++index) {
-        uint32_t code_point = xx_ntfs_u16(data + offset + index * 2U);
+        uint32_t code_point = xx_data_get_u16(data + offset + index * 2U, 2, 0, false);
         size_t length;
         if (code_point == 0U || code_point == (uint32_t)'/' ||
             code_point == (uint32_t)'\\') {
@@ -648,7 +635,7 @@ static char *xx_ntfs_decode_name(const uint8_t *data, size_t available,
         if (code_point >= 0xd800U && code_point <= 0xdbffU) {
             uint32_t low;
             if (++index >= units) return NULL;
-            low = xx_ntfs_u16(data + offset + index * 2U);
+            low = xx_data_get_u16(data + offset + index * 2U, 2, 0, false);
             if (low < 0xdc00U || low > 0xdfffU) return NULL;
             code_point = 0x10000U + ((code_point - 0xd800U) << 10U) +
                          (low - 0xdc00U);
@@ -663,9 +650,9 @@ static char *xx_ntfs_decode_name(const uint8_t *data, size_t available,
     name = (char *)xx_mem_alloc(total + 1U);
     if (!name) return NULL;
     for (index = 0U; index < units; ++index) {
-        uint32_t code_point = xx_ntfs_u16(data + offset + index * 2U);
+        uint32_t code_point = xx_data_get_u16(data + offset + index * 2U, 2, 0, false);
         if (code_point >= 0xd800U && code_point <= 0xdbffU) {
-            uint32_t low = xx_ntfs_u16(data + offset + (index + 1U) * 2U);
+            uint32_t low = xx_data_get_u16(data + offset + (index + 1U) * 2U, 2, 0, false);
             ++index;
             code_point = 0x10000U + ((code_point - 0xd800U) << 10U) +
                          (low - 0xdc00U);
@@ -731,23 +718,23 @@ static bool xx_ntfs_fixup(uint8_t *data, const xx_ntfs_private *volume) {
         xx_rt_memcmp(data, "FILE", 4U) != 0) {
         return false;
     }
-    offset = xx_ntfs_u16(data + 4U);
-    count = xx_ntfs_u16(data + 6U);
+    offset = xx_data_get_u16(data + 4U, 2, 0, false);
+    count = xx_data_get_u16(data + 6U, 2, 0, false);
     if (offset < 42U || (offset % 2U) != 0U ||
         count != volume->record_size / volume->sector_size + 1U ||
         !xx_ntfs_span(offset, count * 2U, volume->sector_size - 2U)) {
         return false;
     }
-    sequence = xx_ntfs_u16(data + offset);
+    sequence = xx_data_get_u16(data + offset, 2, 0, false);
     for (index = 1U; index < count; ++index) {
         uint64_t trailer = index * volume->sector_size - 2U;
-        if (xx_ntfs_u16(data + trailer) != sequence) return false;
+        if (xx_data_get_u16(data + trailer, 2, 0, false) != sequence) return false;
         data[trailer] = data[offset + index * 2U];
         data[trailer + 1U] = data[offset + index * 2U + 1U];
     }
-    used = xx_ntfs_u32(data + 24U);
-    allocated = xx_ntfs_u32(data + 28U);
-    first = xx_ntfs_u16(data + 20U);
+    used = xx_data_get_u32(data + 24U, 4, 0, false);
+    allocated = xx_data_get_u32(data + 28U, 4, 0, false);
+    first = xx_data_get_u16(data + 20U, 2, 0, false);
     return allocated == volume->record_size && used >= 48U &&
            used <= allocated && first >= 48U &&
            first >= offset + count * 2U && (first % 8U) == 0U &&
@@ -774,15 +761,15 @@ static bool xx_ntfs_parse_runs(xx_ntfs_reader *reader, const uint8_t *attr,
     bool previous_sparse = false;
     bool ended = false;
     if (!attr || !volume || !stream || length < 64U ||
-        xx_ntfs_u64(attr + 16U) != 0U) {
+        xx_data_get_u64(attr + 16U, 8, 0, false) != 0U) {
         return false;
     }
-    high = xx_ntfs_u64(attr + 24U);
-    offset = xx_ntfs_u16(attr + 32U);
+    high = xx_data_get_u64(attr + 24U, 8, 0, false);
+    offset = xx_data_get_u16(attr + 32U, 2, 0, false);
     if (offset < (stream->compression_unit ? 72U : 64U) ||
         offset >= length) return false;
-    stream->size = xx_ntfs_u64(attr + 48U);
-    stream->initialized = xx_ntfs_u64(attr + 56U);
+    stream->size = xx_data_get_u64(attr + 48U, 8, 0, false);
+    stream->initialized = xx_data_get_u64(attr + 56U, 8, 0, false);
     stream->nonresident = true;
     if (stream->size > XX_NTFS_MAX_VOLUME ||
         stream->initialized > stream->size) {
@@ -856,13 +843,13 @@ static bool xx_ntfs_parse_runs(xx_ntfs_reader *reader, const uint8_t *attr,
         logical += bytes;
     }
     if (!ended || !xx_ntfs_active(reader) || stream->size > logical ||
-        xx_ntfs_u64(attr + 40U) > logical) {
+        xx_data_get_u64(attr + 40U, 8, 0, false) > logical) {
         return false;
     }
     if (stream->compression_unit != 0U) {
-        stream->stored_size = xx_ntfs_u64(attr + 64U);
+        stream->stored_size = xx_data_get_u64(attr + 64U, 8, 0, false);
         if (logical % stream->compression_unit != 0U ||
-            xx_ntfs_u64(attr + 40U) != logical ||
+            xx_data_get_u64(attr + 40U, 8, 0, false) != logical ||
             stream->stored_size != physical_total) {
             return false;
         }
@@ -898,8 +885,8 @@ static bool xx_ntfs_store_name(xx_ntfs_reader *reader, xx_ntfs_record *record,
     record->names[namespace_id].text = text;
     /* The parent is a 48-bit MFT reference; the top 16 bits are its sequence. */
     record->names[namespace_id].parent =
-        xx_ntfs_u64(value) & UINT64_C(0xffffffffffff);
-    record->names[namespace_id].sequence = xx_ntfs_u16(value + 6U);
+        xx_data_get_u64(value, 8, 0, false) & UINT64_C(0xffffffffffff);
+    record->names[namespace_id].sequence = xx_data_get_u16(value + 6U, 2, 0, false);
     record->names[namespace_id].present = true;
     return true;
 }
@@ -926,7 +913,7 @@ static bool xx_ntfs_store_data(xx_ntfs_reader *reader, xx_ntfs_record *record,
         record->data.compression_unit = volume->cluster_size * 16U;
     }
     if (nonresident) {
-        if (xx_ntfs_u64(attr + 16U) != 0U) {
+        if (xx_data_get_u64(attr + 16U, 8, 0, false) != 0U) {
             record->unsupported = xx_ntfs_unsupported_continuation;
         } else if (!record->unsupported &&
                    !xx_ntfs_parse_runs(reader, attr, length, volume,
@@ -936,8 +923,8 @@ static bool xx_ntfs_store_data(xx_ntfs_reader *reader, xx_ntfs_record *record,
         /* The header still states a truthful size for an entry we refuse to
          * extract, so the listing stays accurate. */
         if (record->unsupported) {
-            record->data.size = xx_ntfs_u64(attr + 48U);
-            record->data.initialized = xx_ntfs_u64(attr + 56U);
+            record->data.size = xx_data_get_u64(attr + 48U, 8, 0, false);
+            record->data.initialized = xx_data_get_u64(attr + 56U, 8, 0, false);
         }
         return true;
     }
@@ -976,12 +963,12 @@ static bool xx_ntfs_parse_record(xx_ntfs_reader *reader,
     if (!record) return false;
     if (!xx_ntfs_fixup(data, volume)) return false;
     record->index = index;
-    record->sequence = xx_ntfs_u16(data + 16U);
-    record->folder = (xx_ntfs_u16(data + 22U) & 2U) != 0U;
-    record->extension = xx_ntfs_u64(data + 32U) != 0U;
+    record->sequence = xx_data_get_u16(data + 16U, 2, 0, false);
+    record->folder = (xx_data_get_u16(data + 22U, 2, 0, false) & 2U) != 0U;
+    record->extension = xx_data_get_u64(data + 32U, 8, 0, false) != 0U;
     record->selected = -1;
-    used = xx_ntfs_u32(data + 24U);
-    offset = xx_ntfs_u16(data + 20U);
+    used = xx_data_get_u32(data + 24U, 4, 0, false);
+    offset = xx_data_get_u16(data + 20U, 2, 0, false);
     while (xx_ntfs_span(offset, 4U, used) && xx_ntfs_active(reader)) {
         const uint8_t *attr;
         uint32_t type;
@@ -992,7 +979,7 @@ static bool xx_ntfs_parse_record(xx_ntfs_reader *reader,
         uint16_t flags;
         const uint8_t *value = NULL;
         uint64_t value_size = 0U;
-        type = xx_ntfs_u32(data + offset);
+        type = xx_data_get_u32(data + offset, 4, 0, false);
         if (type == 0xffffffffU) {
             ended = true;
             break;
@@ -1001,7 +988,7 @@ static bool xx_ntfs_parse_record(xx_ntfs_reader *reader,
             !xx_ntfs_span(offset, 16U, used)) {
             return false;
         }
-        length = xx_ntfs_u32(data + offset + 4U);
+        length = xx_data_get_u32(data + offset + 4U, 4, 0, false);
         if (length < 24U || (length % 8U) != 0U ||
             !xx_ntfs_span(offset, length, used)) {
             return false;
@@ -1009,8 +996,8 @@ static bool xx_ntfs_parse_record(xx_ntfs_reader *reader,
         attr = data + offset;
         form = attr[8];
         name_length = attr[9];
-        name_offset = xx_ntfs_u16(attr + 10U);
-        flags = xx_ntfs_u16(attr + 12U);
+        name_offset = xx_data_get_u16(attr + 10U, 2, 0, false);
+        flags = xx_data_get_u16(attr + 12U, 2, 0, false);
         if (form > 1U || (form != 0U && length < 64U) ||
             (name_length != 0U &&
              (name_offset < (form != 0U ? 64U : 24U) ||
@@ -1019,8 +1006,8 @@ static bool xx_ntfs_parse_record(xx_ntfs_reader *reader,
             return false;
         }
         if (form == 0U) {
-            uint64_t resident_size = xx_ntfs_u32(attr + 16U);
-            uint64_t resident_offset = xx_ntfs_u16(attr + 20U);
+            uint64_t resident_size = xx_data_get_u32(attr + 16U, 4, 0, false);
+            uint64_t resident_offset = xx_data_get_u16(attr + 20U, 2, 0, false);
             if (resident_offset < 24U ||
                 !xx_ntfs_span(resident_offset, resident_size, length)) {
                 return false;
@@ -1219,9 +1206,9 @@ static bool xx_ntfs_read_geometry(xx_ntfs_reader *reader,
         boot[511] != 0xaaU) {
         return false;
     }
-    sector = xx_ntfs_u16(boot + 11U);
+    sector = xx_data_get_u16(boot + 11U, 2, 0, false);
     per_cluster = boot[13];
-    sectors = xx_ntfs_u64(boot + 40U);
+    sectors = xx_data_get_u64(boot + 40U, 8, 0, false);
     if (!xx_ntfs_power2(sector) || sector < 512U || sector > 4096U ||
         !xx_ntfs_power2(per_cluster) || per_cluster > 128U || sectors == 0U ||
         sectors > reader->size / sector) {
@@ -1246,7 +1233,7 @@ static bool xx_ntfs_read_geometry(xx_ntfs_reader *reader,
     parsed->cluster_size = cluster;
     parsed->sector_size = sector;
     parsed->record_size = record_size;
-    parsed->mft_cluster = xx_ntfs_u64(boot + 48U);
+    parsed->mft_cluster = xx_data_get_u64(boot + 48U, 8, 0, false);
     if (parsed->mft_cluster > bytes / cluster ||
         !xx_ntfs_span(parsed->mft_cluster * cluster, record_size, bytes)) {
         return false;
@@ -1332,7 +1319,7 @@ static bool xx_ntfs_read_records(xx_ntfs_reader *reader,
             }
             continue;
         }
-        if ((xx_ntfs_u16(buffer + 22U) & 1U) == 0U) continue; /* Not in use. */
+        if ((xx_data_get_u16(buffer + 22U, 2, 0, false) & 1U) == 0U) continue; /* Not in use. */
         if (!xx_ntfs_parse_record(reader, parsed, buffer, index,
                                   &parsed->records[index])) {
             ok = false;

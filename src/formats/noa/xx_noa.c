@@ -36,6 +36,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef NOA
 #define XX_NOA_FILE_TYPE XX_FILE_TYPE_NOA
@@ -116,15 +117,6 @@ typedef struct noa_stream_s {
     char *pool;
     char *name; /**< NOA_MAX_PATH + 16 bytes: the current (renamed) path. */
 } noa_stream;
-
-static uint32_t noa_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) | ((uint32_t)p[2] << 16U) |
-           ((uint32_t)p[3] << 24U);
-}
-
-static uint64_t noa_le64(const uint8_t *p) {
-    return (uint64_t)noa_le32(p) | ((uint64_t)noa_le32(p + 4) << 32U);
-}
 
 static size_t noa_capacity(void) {
     size_t n = xx_get_file_buffer_size();
@@ -308,7 +300,7 @@ static bool noa_read_header(Abstractformat *format, int64_t *end) {
     if (xx_rt_memcmp(header, "Entis\x1a", 6) != 0 &&
         xx_rt_memcmp(header, "VIST\x1a", 5) != 0)
         return false;
-    if (noa_le32(header + 8) != NOA_FILE_ID ||
+    if (xx_data_get_u32(header + 8, 4, 0, false) != NOA_FILE_ID ||
         xx_rt_memcmp(header + NOA_HEADER_SIZE, "DirEntry", 8) != 0)
         return false;
     *end = total;
@@ -418,7 +410,7 @@ static bool noa_walk_dir(noa_walk *walk, int64_t record, size_t prefix,
     if (!noa_read_at(walk->device, record, head, sizeof(head)) ||
         xx_rt_memcmp(head, "DirEntry", 8) != 0)
         return false;
-    length = noa_le64(head + 8);
+    length = xx_data_get_u64(head + 8, 8, 0, false);
     /* GARbro: 0 < size <= INT_MAX and record + 8 + size inside the file. */
     if (length == 0U || length > (uint64_t)0x7fffffff ||
         (int64_t)length > walk->end - record - 8)
@@ -440,7 +432,7 @@ static bool noa_walk_dir(noa_walk *walk, int64_t record, size_t prefix,
     if (!noa_read_at(walk->device, record + NOA_RECORD_HEADER, body,
                      (size_t)available))
         goto done;
-    count = (int32_t)noa_le32(body);
+    count = (int32_t)xx_data_get_u32(body, 4, 0, false);
     if (count > 0 &&
         (int64_t)count > (available - 4) / (int64_t)NOA_ENTRY_FIXED)
         goto done;
@@ -454,15 +446,15 @@ static bool noa_walk_dir(noa_walk *walk, int64_t record, size_t prefix,
             xx_pd_is_stopped(walk->pd))
             goto done;
         if (available - pos < NOA_ENTRY_FIXED) goto done;
-        size = noa_le64(body + pos);
-        attribute = noa_le32(body + pos + 8);
-        encoding = noa_le32(body + pos + 12);
-        relative = noa_le64(body + pos + 16);
-        extra = noa_le32(body + pos + 32);
+        size = xx_data_get_u64(body + pos, 8, 0, false);
+        attribute = xx_data_get_u32(body + pos + 8, 4, 0, false);
+        encoding = xx_data_get_u32(body + pos + 12, 4, 0, false);
+        relative = xx_data_get_u64(body + pos + 16, 8, 0, false);
+        extra = xx_data_get_u32(body + pos + 32, 4, 0, false);
         pos += 36;
         if ((uint64_t)extra > (uint64_t)(available - pos - 4)) goto done;
         pos += (int64_t)extra;
-        name_length = noa_le32(body + pos);
+        name_length = xx_data_get_u32(body + pos, 4, 0, false);
         pos += 4;
         if (name_length > NOA_MAX_NAME ||
             (int64_t)name_length > available - pos)
@@ -498,7 +490,7 @@ static bool noa_walk_dir(noa_walk *walk, int64_t record, size_t prefix,
                 uint64_t file_length;
                 if (noa_read_at(walk->device, target, file_head,
                                 sizeof(file_head))) {
-                    file_length = noa_le64(file_head + 8);
+                    file_length = xx_data_get_u64(file_head + 8, 8, 0, false);
                     if (file_length <= (uint64_t)(walk->end - target -
                                                   NOA_RECORD_HEADER))
                         noa_extend(walk, target + NOA_RECORD_HEADER +
@@ -1042,7 +1034,7 @@ static bool noa_member_body(Abstractformat *format, const noa_member *member,
         member->record > end - NOA_RECORD_HEADER ||
         !noa_read_at(format->device, member->record, head, sizeof(head)))
         return false;
-    size = noa_le64(head + 8);
+    size = xx_data_get_u64(head + 8, 8, 0, false);
     if (size > (uint64_t)0x7fffffff ||
         (int64_t)size > end - member->record - NOA_RECORD_HEADER)
         return false;

@@ -17,6 +17,7 @@
 #include "../../algo/deflate/xx_deflate_internal.h"
 #include "../../algo/ppmd7/xx_ppmd7_internal.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_7ZIP_STREAM_BUFFER (64U * 1024U)
 
@@ -148,11 +149,6 @@ static bool xx_7zip_stream_write_exact(xx_io_device *destination,
         size -= (size_t)count;
     }
     return true;
-}
-
-static uint32_t xx_7zip_stream_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
 }
 
 static bool xx_7zip_stream_filter(uint64_t method, const uint8_t *properties,
@@ -312,7 +308,7 @@ bool xx_7zip_stream_decode(uint64_t method, const uint8_t *properties,
         if (compressed_size == 0U) result = expected_size == 0U;
         else result = ppmd7_rd_init(&decoder, &input.device, NULL, 0U, (int64_t)compressed_size) &&
                       xx_ppmd7_decompress_stream_sized(&decoder, properties[0],
-                          xx_7zip_stream_le32(properties + 1U), &output.device, expected_size, pd);
+                          xx_data_get_u32(properties + 1U, 4, 0, false), &output.device, expected_size, pd);
     } else if (method == XX_7ZIP_METHOD_AES) {
         result = xx_7zip_aes_decrypt_device(&input.device, 0, (int64_t)compressed_size,
                      password_utf16le, password_size, properties, properties_size,
@@ -402,7 +398,7 @@ bool xx_7zip_stream_bcj2(xx_io_device *const sources[4], const uint64_t sizes[4]
     for (i = 0U; i < 4U; ++i) input[i].buffer = buffers + i * XX_7ZIP_STREAM_BUFFER;
     out_buffer = buffers + 4U * XX_7ZIP_STREAM_BUFFER;
     xx_7zip_stream_sink_init(&output, destination, expected_size, pd);
-    ip = properties_size == 4U ? xx_7zip_stream_le32(properties) : 0U;
+    ip = properties_size == 4U ? xx_data_get_u32(properties, 4, 0, false) : 0U;
     for (i = 0U; i < 258U; ++i) probabilities[i] = 1024U;
     if (!xx_7zip_bcj2_stream_byte(&input[3], &first) || first != 0U) goto done;
     for (i = 0U; i < 4U; ++i) {

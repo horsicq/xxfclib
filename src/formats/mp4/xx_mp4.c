@@ -5,20 +5,20 @@
  */
 #include "xxfclib/formats/mp4/xx_mp4.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static uint64_t mp_be64(const uint8_t *p) { return (uint64_t)pm_be32(p)<<32|pm_be32(p+4); }
 static bool mp_tables(Abstractformat *f,const uint8_t *type,int64_t at,int64_t size) {
     uint8_t h[16]; uint32_t count,width=0;
     if(!xx_rt_memcmp(type,"stco",4)) width=4; else if(!xx_rt_memcmp(type,"co64",4)) width=8;
     else if(!xx_rt_memcmp(type,"stts",4) || !xx_rt_memcmp(type,"ctts",4)) width=8;
     else if(!xx_rt_memcmp(type,"stsc",4)) width=12; else if(!xx_rt_memcmp(type,"stss",4)) width=4;
-    if(width) { if(size<8 || !pm_read(f,at,h,8)) return false; count=pm_be32(h+4); return (uint64_t)count*width==(uint64_t)size-8; }
-    if(!xx_rt_memcmp(type,"stsz",4)) { if(size<12 || !pm_read(f,at,h,12)) return false; return pm_be32(h+4) ? size==12 : (uint64_t)pm_be32(h+8)*4==(uint64_t)size-12; }
+    if(width) { if(size<8 || !pm_read(f,at,h,8)) return false; count=xx_data_get_u32(h+4, 4, 0, true); return (uint64_t)count*width==(uint64_t)size-8; }
+    if(!xx_rt_memcmp(type,"stsz",4)) { if(size<12 || !pm_read(f,at,h,12)) return false; return xx_data_get_u32(h+4, 4, 0, true) ? size==12 : (uint64_t)xx_data_get_u32(h+8, 4, 0, true)*4==(uint64_t)size-12; }
     if(!xx_rt_memcmp(type,"stsd",4) || !xx_rt_memcmp(type,"dref",4)) {
         uint32_t i; int64_t pos=at+8;
-        if(size<8 || !pm_read(f,at,h,8)) { return false; } count=pm_be32(h+4);
+        if(size<8 || !pm_read(f,at,h,8)) { return false; } count=xx_data_get_u32(h+4, 4, 0, true);
         if(count>65536) return false;
-        for(i=0;i<count;++i) { uint32_t n; if(pos>at+size-8 || !pm_read(f,pos,h,8) || (n=pm_be32(h))<8 || n>(uint64_t)(at+size-pos)) return false; pos+=n; }
+        for(i=0;i<count;++i) { uint32_t n; if(pos>at+size-8 || !pm_read(f,pos,h,8) || (n=xx_data_get_u32(h, 4, 0, true))<8 || n>(uint64_t)(at+size-pos)) return false; pos+=n; }
         return pos==at+size;
     } return true;
 }
@@ -26,8 +26,8 @@ static bool mp_boxes(Abstractformat *f,pm_stream *s,int64_t at,int64_t end,unsig
     unsigned boxes=0,have=0; if(depth>24) return false;
     while(at<end) { uint8_t h[32]; uint64_t size; int64_t head=8,body; bool container; char name[40]; unsigned i;
         if((pd && xx_pd_is_stopped(pd)) || end-at<8 || !pm_read(f,at,h,8) || ++boxes>65536) return false;
-        size=pm_be32(h);
-        if(size==1) { if(end-at<16 || !pm_read(f,at+8,h+8,8)) return false; size=mp_be64(h+8); head=16; }
+        size=xx_data_get_u32(h, 4, 0, true);
+        if(size==1) { if(end-at<16 || !pm_read(f,at+8,h+8,8)) return false; size=xx_data_get_u64(h+8, 8, 0, true); head=16; }
         if(!size) size=(uint64_t)(end-at);
         if(!xx_rt_memcmp(h+4,"uuid",4)) head+=16;
         if(size<(uint64_t)head || size>(uint64_t)(end-at)) { return false; } body=at+head;
@@ -43,7 +43,7 @@ static bool mp_boxes(Abstractformat *f,pm_stream *s,int64_t at,int64_t end,unsig
         if(!xx_rt_memcmp(h+4,"minf",4)) { if(have&64) return false; have|=64; }
         if(!xx_rt_memcmp(h+4,"stbl",4)) { if(have&128) return false; have|=128; }
         if(!xx_rt_memcmp(h+4,"stsd",4)) { if(have&256) return false; have|=256; }
-        if(container) { if(!mp_boxes(f,s,body,at+(int64_t)size,depth+1,pm_be32(h+4),moov,mdat,pd)) return false; }
+        if(container) { if(!mp_boxes(f,s,body,at+(int64_t)size,depth+1,xx_data_get_u32(h+4, 4, 0, true),moov,mdat,pd)) return false; }
         else { if(!mp_tables(f,h+4,body,(int64_t)size-head)) return false;
             for(i=0;i<4;++i) { name[i]=h[4+i]>=32 && h[4+i]<=126 ? (char)h[4+i] : '_'; } name[4]=0;
             xx_rt_memcpy(name+4,".bin",5); if(!pm_add(f,s,name,body,(int64_t)size-head)) return false;
@@ -55,7 +55,7 @@ static bool mp_boxes(Abstractformat *f,pm_stream *s,int64_t at,int64_t end,unsig
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[16]; int64_t size=pm_available(f); uint32_t n; unsigned moov=0,mdat=0;
-    if(size<24 || !pm_read(f,0,h,16) || xx_rt_memcmp(h+4,"ftyp",4) || (n=pm_be32(h))<16 || n>(uint64_t)size || ((n-16)&3)) return false;
+    if(size<24 || !pm_read(f,0,h,16) || xx_rt_memcmp(h+4,"ftyp",4) || (n=xx_data_get_u32(h, 4, 0, true))<16 || n>(uint64_t)size || ((n-16)&3)) return false;
     if(!mp_boxes(f,s,0,size,0,0,&moov,&mdat,pd) || moov!=1 || !mdat) return false;
     s->size=size; return true;
 }

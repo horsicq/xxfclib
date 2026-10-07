@@ -88,6 +88,7 @@
 #include "xx_lha_lh3_native.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_LHA_COPY_CHUNK (64 * 1024)
 
@@ -206,8 +207,6 @@ static bool xx_lha_add(xx_lha_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_lha_le16(const uint8_t *data);
-static uint32_t xx_lha_le32(const uint8_t *data);
 static uint16_t xx_lha_crc16(const uint8_t *data, size_t size, size_t skip_offset);
 static bool xx_lha_checksum_ok(const uint8_t *header, int32_t base_size);
 static bool xx_lha_tag_ok(const uint8_t *prefix);
@@ -221,15 +220,6 @@ static bool xx_lha_decode(Abstractformat *self, const xx_lha_member *member, uin
  * dashes, packed big-endian, so "-lh5-" is 0x6C6835 and a member listing
  * still shows what the archive itself said. The mapping to a decoder lives
  * only in xx_lha_decode. */
-
-static uint16_t xx_lha_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_lha_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* CRC-16/ARC, the polynomial the type-0 common extended header uses. */
 static uint16_t xx_lha_crc16(const uint8_t *data, size_t size, size_t skip_offset) {
@@ -349,10 +339,10 @@ static xx_lha_stream *xx_lha_parse(Abstractformat *self, xx_pd_struct *pd) {
             static const char banner[] = "LHarc's SFX ";
             bool identified = false, found = false;
             int64_t extent;
-            uint16_t pages = xx_lha_le16(carrier + 4), last = xx_lha_le16(carrier + 2);
+            uint16_t pages = xx_data_get_u16(carrier + 4, 2, 0, false), last = xx_data_get_u16(carrier + 2, 2, 0, false);
             for (i = 0; i + sizeof(banner) - 1 <= bytes; ++i)
                 if (xx_rt_memcmp(carrier + i, banner, sizeof(banner) - 1) == 0) { identified = true; break; }
-            if (!identified || !pages || last >= 512 || bytes < 28 || xx_lha_le16(carrier + 24) >= 64) return NULL;
+            if (!identified || !pages || last >= 512 || bytes < 28 || xx_data_get_u16(carrier + 24, 2, 0, false) >= 64) return NULL;
             extent = (int64_t)pages * 512 - (last ? 512 - last : 0);
             if (extent < 28 || extent > span - 24) return NULL;
             for (i = 0; i < 64 && extent + (int64_t)i <= span - 24; ++i) {
@@ -441,8 +431,8 @@ static xx_lha_stream *xx_lha_parse(Abstractformat *self, xx_pd_struct *pd) {
 
         method = XX_LHA_TAG3(prefix[3], prefix[4], prefix[5]);
         level = prefix[20];
-        compressed_size = (int64_t)xx_lha_le32(prefix + 7);
-        uncompressed_size = (int64_t)xx_lha_le32(prefix + 11);
+        compressed_size = (int64_t)xx_data_get_u32(prefix + 7, 4, 0, false);
+        uncompressed_size = (int64_t)xx_data_get_u32(prefix + 11, 4, 0, false);
 
         if (level <= 1U) {
             /* The size byte counts neither itself nor the checksum byte. */
@@ -457,7 +447,7 @@ static xx_lha_stream *xx_lha_parse(Abstractformat *self, xx_pd_struct *pd) {
             if (avail < 26) goto fail;
             /* Levels 2 and 3 have no checksum byte: byte 1 is the high half
              * of the size field instead. */
-            base_size = (int32_t)xx_lha_le16(prefix);
+            base_size = (int32_t)xx_data_get_u16(prefix, 2, 0, false);
             if (base_size < 26) goto fail;
             /* OS-9/68K writers leave two bytes out of the size field. */
             if (prefix[23] == (uint8_t)'K') base_size += 2;
@@ -465,8 +455,8 @@ static xx_lha_stream *xx_lha_parse(Abstractformat *self, xx_pd_struct *pd) {
             if (avail < 32) goto fail;
             /* Level 3's first word is a chain word size, and 4 is the only
              * legal value. It is this level's entire magic. */
-            if (xx_lha_le16(prefix) != 4U) goto fail;
-            total32 = xx_lha_le32(prefix + 24);
+            if (xx_data_get_u16(prefix, 2, 0, false) != 4U) goto fail;
+            total32 = xx_data_get_u32(prefix + 24, 4, 0, false);
             if (total32 > (uint32_t)XX_LHA_MAX_HEADER) goto fail;
             base_size = (int32_t)total32;
             if (base_size < 32) goto fail;
@@ -500,7 +490,7 @@ static xx_lha_stream *xx_lha_parse(Abstractformat *self, xx_pd_struct *pd) {
                     int32_t next_size;
 
                     if (pd && xx_pd_is_stopped(pd)) goto fail;
-                    next_size = (int32_t)xx_lha_le16(header + header_total - 2);
+                    next_size = (int32_t)xx_data_get_u16(header + header_total - 2, 2, 0, false);
                     if (next_size == 0) break;
                     /* type byte plus the next chain word is the minimum. */
                     if (next_size < 3) goto fail;
@@ -550,8 +540,8 @@ static xx_lha_stream *xx_lha_parse(Abstractformat *self, xx_pd_struct *pd) {
                  * about where the payload begins. */
                 if (ext_pos > (header_total - word_size)) goto fail;
                 ext_size = (word_size == 4)
-                               ? (int32_t)xx_lha_le32(header + ext_pos)
-                               : (int32_t)xx_lha_le16(header + ext_pos);
+                               ? (int32_t)xx_data_get_u32(header + ext_pos, 4, 0, false)
+                               : (int32_t)xx_data_get_u16(header + ext_pos, 2, 0, false);
                 if (ext_size == 0) break;
                 if (ext_size < (word_size + 1)) goto fail;
                 if (ext_size > (header_total - ext_pos - word_size)) goto fail;
@@ -566,7 +556,7 @@ static xx_lha_stream *xx_lha_parse(Abstractformat *self, xx_pd_struct *pd) {
                      * undefined. */
                     if (data_size < 2 || crc_pos >= 0) goto fail;
                     crc_pos = data_pos;
-                    common_crc = xx_lha_le16(header + data_pos);
+                    common_crc = xx_data_get_u16(header + data_pos, 2, 0, false);
                 } else if (type == 0x01U) {
                     name_pos = data_pos;
                     name_size = data_size;
@@ -575,7 +565,7 @@ static xx_lha_stream *xx_lha_parse(Abstractformat *self, xx_pd_struct *pd) {
                     dir_size = data_size;
                 } else if (type == 0x50U) {
                     if (data_size < 2) goto fail;
-                    unix_mode = xx_lha_le16(header + data_pos);
+                    unix_mode = xx_data_get_u16(header + data_pos, 2, 0, false);
                 } else if (type == 0x42U) {
                     /* The 64-bit restatement of the two sizes. The member
                      * fields published here come from the 32-bit ones, so a
@@ -583,13 +573,13 @@ static xx_lha_stream *xx_lha_parse(Abstractformat *self, xx_pd_struct *pd) {
                      * word -- would make the extent this reader publishes a
                      * lie about the file. */
                     if (data_size < 16) goto fail;
-                    if (xx_lha_le32(header + data_pos + 4) != 0U) goto fail;
-                    if (xx_lha_le32(header + data_pos + 12) != 0U) goto fail;
-                    if ((int64_t)xx_lha_le32(header + data_pos) !=
+                    if (xx_data_get_u32(header + data_pos + 4, 4, 0, false) != 0U) goto fail;
+                    if (xx_data_get_u32(header + data_pos + 12, 4, 0, false) != 0U) goto fail;
+                    if ((int64_t)xx_data_get_u32(header + data_pos, 4, 0, false) !=
                         compressed_size) {
                         goto fail;
                     }
-                    if ((int64_t)xx_lha_le32(header + data_pos + 8) !=
+                    if ((int64_t)xx_data_get_u32(header + data_pos + 8, 4, 0, false) !=
                         uncompressed_size) {
                         goto fail;
                     }
@@ -746,11 +736,11 @@ static xx_lha_stream *xx_lha_parse(Abstractformat *self, xx_pd_struct *pd) {
         member.compressed_size = compressed_size;
         member.uncompressed_size = uncompressed_size;
         member.method = method;
-        member.payload_crc=xx_lha_le16(header+(level<=1U?22U+header[21]:21U));
+        member.payload_crc=xx_data_get_u16(header+(level<=1U?22U+header[21]:21U), 2, 0, false);
         /* Stored verbatim: the field is an MS-DOS time|date pair at levels 0
          * and 1 but a Unix time_t at levels 2 and 3, and the level is the
          * only thing that says which. */
-        member.timestamp = (uint64_t)xx_lha_le32(header + 15);
+        member.timestamp = (uint64_t)xx_data_get_u32(header + 15, 4, 0, false);
         member.is_folder = is_dir;
         if (!xx_lha_add(stream, &member)) {
             xx_str_free(member.name);

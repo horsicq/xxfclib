@@ -27,6 +27,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef SQUEEZE2
 #define XX_SQUEEZE2_FILE_TYPE XX_FILE_TYPE_SQUEEZE2
@@ -67,27 +68,6 @@ typedef struct squeeze2_stream_s {
     uint64_t aux1;
     uint64_t aux2;
 } squeeze2_stream;
-
-static uint16_t squeeze2_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static uint32_t squeeze2_le32(const uint8_t *b) {
-    return (uint32_t)squeeze2_le16(b) | ((uint32_t)squeeze2_le16(b + 2U) << 16U);
-}
-
-static XXFC_MAYBE_UNUSED uint64_t squeeze2_le64(const uint8_t *b) {
-    return (uint64_t)squeeze2_le32(b) | ((uint64_t)squeeze2_le32(b + 4U) << 32U);
-}
-
-static uint32_t squeeze2_be32(const uint8_t *b) {
-    return ((uint32_t)b[0] << 24U) | ((uint32_t)b[1] << 16U) |
-           ((uint32_t)b[2] << 8U) | (uint32_t)b[3];
-}
-
-static XXFC_MAYBE_UNUSED uint64_t squeeze2_be64(const uint8_t *b) {
-    return ((uint64_t)squeeze2_be32(b) << 32U) | (uint64_t)squeeze2_be32(b + 4U);
-}
 
 static bool squeeze2_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -340,7 +320,7 @@ typedef struct squeeze2_header_s {
 } squeeze2_header;
 
 static int32_t squeeze2_read_signed16le(const uint8_t *data) {
-    uint16_t value = squeeze2_le16(data);
+    uint16_t value = xx_data_get_u16(data, 2, 0, false);
     return (value & UINT16_C(0x8000)) != 0U ? (int32_t)value - INT32_C(65536)
                                             : (int32_t)value;
 }
@@ -407,10 +387,10 @@ static bool squeeze2_parse_header(const uint8_t *input, size_t input_size,
         return false;
     if (input_size - offset < 10U) return false;
     if (input[offset] != 0x00U || input[offset + 1U] != 0x1aU) return false;
-    header->checksum = squeeze2_le16(input + offset + 2U);
-    header->dos_date = squeeze2_le16(input + offset + 4U);
-    header->dos_time = squeeze2_le16(input + offset + 6U);
-    header->node_count = squeeze2_le16(input + offset + 8U);
+    header->checksum = xx_data_get_u16(input + offset + 2U, 2, 0, false);
+    header->dos_date = xx_data_get_u16(input + offset + 4U, 2, 0, false);
+    header->dos_time = xx_data_get_u16(input + offset + 6U, 2, 0, false);
+    header->node_count = xx_data_get_u16(input + offset + 8U, 2, 0, false);
     offset += 10U;
     if (header->node_count == 0U || header->node_count > SQUEEZE2_MAX_NODES)
         return false;

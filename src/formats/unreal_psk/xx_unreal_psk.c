@@ -5,8 +5,9 @@
  */
 #include "xxfclib/formats/unreal_psk/xx_unreal_psk.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static uint32_t g32(const uint8_t *p,bool be) { return be ? pm_be32(p) : pm_le32(p); }
+static uint32_t g32(const uint8_t *p,bool be) { return be ? xx_data_get_u32(p, 4, 0, true) : xx_data_get_u32(p, 4, 0, false); }
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool overlap(uint64_t a,uint64_t n,uint64_t b,uint64_t m) { return n && m && a<b+m && b<a+n; }
 static bool stop(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
@@ -19,8 +20,8 @@ static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uin
 static bool finite32(const uint8_t *p,bool be) { return (g32(p,be)&0x7f800000U)!=0x7f800000U; }
 static bool floats(Abstractformat *f,uint64_t at,uint64_t count,bool be,xx_pd_struct *pd) { uint8_t p[4]; uint64_t i; for(i=0;i<count;++i) if(stop(pd) || !pm_read(f,(int64_t)(at+i*4),p,4) || !finite32(p,be)) return false; return true; }
 typedef struct rg { uint64_t at,n; } rg;
-static bool psx_chunk(Abstractformat *f,uint64_t *at,uint64_t total,const char *name,uint32_t stride,uint32_t maximum,uint32_t *count,xx_pd_struct *pd) { uint8_t h[32]; size_t n=xx_rt_strlen(name); if(!take(f,at,total,h,32,pd) || xx_rt_memcmp(h,name,n) || !xx_rt_memchr(h+n,0,20-n) || pm_le32(h+20)!=1999801 || pm_le32(h+24)!=stride || (*count=pm_le32(h+28))>maximum || !span(*at,(uint64_t)*count*stride,total)) return false; return true; }
-static bool psx_bones(Abstractformat *f,uint64_t at,uint32_t count,xx_pd_struct *pd) { uint8_t b[120]; uint32_t i,j,children[256]={0},declared[256]; if(!count || count>256) return false; for(i=0;i<count;++i) { int32_t parent; if(stop(pd) || !pm_read(f,(int64_t)(at+(uint64_t)i*120),b,120) || !xx_rt_memchr(b,0,64) || (declared[i]=pm_le32(b+68))>count) return false; parent=(int32_t)pm_le32(b+72); if(!i) { if(parent!=0 && parent!=-1) return false; } else { if(parent<0 || (uint32_t)parent>=i) return false; ++children[parent]; } for(j=76;j<120;j+=4) if(!finite32(b+j,false)) return false; }
+static bool psx_chunk(Abstractformat *f,uint64_t *at,uint64_t total,const char *name,uint32_t stride,uint32_t maximum,uint32_t *count,xx_pd_struct *pd) { uint8_t h[32]; size_t n=xx_rt_strlen(name); if(!take(f,at,total,h,32,pd) || xx_rt_memcmp(h,name,n) || !xx_rt_memchr(h+n,0,20-n) || xx_data_get_u32(h+20, 4, 0, false)!=1999801 || xx_data_get_u32(h+24, 4, 0, false)!=stride || (*count=xx_data_get_u32(h+28, 4, 0, false))>maximum || !span(*at,(uint64_t)*count*stride,total)) return false; return true; }
+static bool psx_bones(Abstractformat *f,uint64_t at,uint32_t count,xx_pd_struct *pd) { uint8_t b[120]; uint32_t i,j,children[256]={0},declared[256]; if(!count || count>256) return false; for(i=0;i<count;++i) { int32_t parent; if(stop(pd) || !pm_read(f,(int64_t)(at+(uint64_t)i*120),b,120) || !xx_rt_memchr(b,0,64) || (declared[i]=xx_data_get_u32(b+68, 4, 0, false))>count) return false; parent=(int32_t)xx_data_get_u32(b+72, 4, 0, false); if(!i) { if(parent!=0 && parent!=-1) return false; } else { if(parent<0 || (uint32_t)parent>=i) return false; ++children[parent]; } for(j=76;j<120;j+=4) if(!finite32(b+j,false)) return false; }
     for(i=0;i<count;++i) { if(children[i]!=declared[i]) return false; } return true; }
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
@@ -29,10 +30,10 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(!psx_chunk(f,&at,total,"ACTRHEAD",0,0,&n,pd)) return false;
     for(i=0;i<6;++i) { if(!psx_chunk(f,&at,total,tags[i],stride[i],caps[i],&count[i],pd) || !count[i]) return false; starts[i]=at; xx_rt_snprintf(label,sizeof(label),"table-%s.bin",tags[i]); if(!emit(f,s,label,at,(uint64_t)count[i]*stride[i],total)) return false; at+=(uint64_t)count[i]*stride[i]; }
     if(at!=total || !floats(f,starts[0],(uint64_t)count[0]*3,false,pd) || !psx_bones(f,starts[4],count[4],pd)) return false;
-    for(i=0;i<count[1];++i) if(stop(pd) || !pm_read(f,(int64_t)(starts[1]+i*16),p,16) || pm_le32(p)>=count[0] || !finite32(p+4,false) || !finite32(p+8,false) || p[12]>=count[3] || p[13] || pm_le16(p+14)) return false;
-    for(i=0;i<count[2];++i) { if(stop(pd) || !pm_read(f,(int64_t)(starts[2]+i*12),p,12) || p[6]>=count[3]) return false; for(j=0;j<3;++j) if(pm_le16(p+j*2)>=count[1] || !pm_read(f,(int64_t)(starts[1]+pm_le16(p+j*2)*16),q,16) || q[12]!=p[6]) return false; }
+    for(i=0;i<count[1];++i) if(stop(pd) || !pm_read(f,(int64_t)(starts[1]+i*16),p,16) || xx_data_get_u32(p, 4, 0, false)>=count[0] || !finite32(p+4,false) || !finite32(p+8,false) || p[12]>=count[3] || p[13] || xx_data_get_u16(p+14, 2, 0, false)) return false;
+    for(i=0;i<count[2];++i) { if(stop(pd) || !pm_read(f,(int64_t)(starts[2]+i*12),p,12) || p[6]>=count[3]) return false; for(j=0;j<3;++j) if(xx_data_get_u16(p+j*2, 2, 0, false)>=count[1] || !pm_read(f,(int64_t)(starts[1]+xx_data_get_u16(p+j*2, 2, 0, false)*16),q,16) || q[12]!=p[6]) return false; }
     for(i=0;i<count[3];++i) if(!pm_read(f,(int64_t)(starts[3]+i*88),p,88) || !xx_rt_memchr(p,0,64)) return false;
-    for(i=0;i<count[5];++i) { uint32_t weight; if(stop(pd) || !pm_read(f,(int64_t)(starts[5]+i*12),p,12) || !finite32(p,false) || ((weight=pm_le32(p))&0x80000000U) || !weight || weight>0x3f800000U || pm_le32(p+4)>=count[0] || pm_le32(p+8)>=count[4]) return false; }
+    for(i=0;i<count[5];++i) { uint32_t weight; if(stop(pd) || !pm_read(f,(int64_t)(starts[5]+i*12),p,12) || !finite32(p,false) || ((weight=xx_data_get_u32(p, 4, 0, false))&0x80000000U) || !weight || weight>0x3f800000U || xx_data_get_u32(p+4, 4, 0, false)>=count[0] || xx_data_get_u32(p+8, 4, 0, false)>=count[4]) return false; }
     s->size=(int64_t)total; return true;
 
 }

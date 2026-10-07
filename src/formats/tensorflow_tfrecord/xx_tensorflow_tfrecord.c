@@ -13,10 +13,10 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(capacity>(SIZE_MAX>>1)) { capacity=SIZE_MAX>>1; } if(end<capacity) capacity=(size_t)end;
     buffer=(uint8_t *)xx_mem_alloc(capacity);if(!buffer) return false;
     while(at<end) {uint64_t n,p,left;uint32_t crc=UINT32_MAX;char label[64];
-        if(fd_stop(pd) || ++count>4096 || !fd_range(at,12,end) || !pm_read(f,(int64_t)at,h,12) || pm_le32(h+8)!=tf_mask(tf_crc(UINT32_MAX,h,8))) goto done;
-        n=fd_le64(h);p=at+12;if(!fd_range(p,n,end) || !fd_range(p+n,4,end)) goto done;left=n;
+        if(fd_stop(pd) || ++count>4096 || !fd_range(at,12,end) || !pm_read(f,(int64_t)at,h,12) || xx_data_get_u32(h+8, 4, 0, false)!=tf_mask(tf_crc(UINT32_MAX,h,8))) goto done;
+        n=xx_data_get_u64(h, 8, 0, false);p=at+12;if(!fd_range(p,n,end) || !fd_range(p+n,4,end)) goto done;left=n;
         while(left) {size_t z=left>capacity?capacity:(size_t)left;if(fd_stop(pd) || !pm_read(f,(int64_t)p,buffer,z)) goto done;crc=tf_crc(crc,buffer,z);left-=z;p+=z;}
-        if(!pm_read(f,(int64_t)p,tail,4) || pm_le32(tail)!=tf_mask(crc)) goto done;
+        if(!pm_read(f,(int64_t)p,tail,4) || xx_data_get_u32(tail, 4, 0, false)!=tf_mask(crc)) goto done;
         xx_rt_snprintf(label,sizeof(label),"record-%u.bin",count-1);if(!pm_add(f,s,label,(int64_t)(at+12),(int64_t)n)) goto done;at=p+4;
     }
     s->size=available;ok=count!=0;

@@ -42,6 +42,7 @@
 #include "xxfclib/algo/dcl/xx_dcl.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_BWF_COPY_CHUNK (64 * 1024)
 
@@ -153,7 +154,6 @@ static bool xx_bwf_add(xx_bwf_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint32_t xx_bwf_le32(const uint8_t *data);
 static bool xx_bwf_name_character(uint8_t character);
 static bool xx_bwf_name_field(const uint8_t *field, char **out_name);
 static xx_bwf_stream *xx_bwf_parse(Abstractformat *self, xx_pd_struct *pd);
@@ -166,11 +166,6 @@ static bool xx_bwf_decode(Abstractformat *self, const xx_bwf_member *member, uin
  * bits, of which only 4..6 (1K/2K/4K) are legal. */
 /* No member count is stored, so this is a runaway guard, not a format limit.
  * The largest reference archive holds a few hundred members. */
-
-static uint32_t xx_bwf_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* The DOS 8.3 character set this format actually uses. '&' is in it because
  * the corpus really does ship AT&T.COM. Path separators and spaces are
@@ -299,7 +294,7 @@ static xx_bwf_stream *xx_bwf_parse(Abstractformat *self, xx_pd_struct *pd) {
         /* Signed on purpose: a packed size with the top bit set is a corrupt
          * field, not a four-gigabyte member. */
         compressed_size =
-            (int64_t)(int32_t)xx_bwf_le32(record + XX_BWF_PACKEDSIZE_OFFSET);
+            (int64_t)(int32_t)xx_data_get_u32(record + XX_BWF_PACKEDSIZE_OFFSET, 4, 0, false);
         if (compressed_size < XX_BWF_MIN_PACKED_SIZE) goto fail;
         if (compressed_size > XX_BWF_MAX_DECODED) goto fail;
         data_offset = offset + XX_BWF_RECORD_SIZE;
@@ -358,8 +353,8 @@ static xx_bwf_stream *xx_bwf_parse(Abstractformat *self, xx_pd_struct *pd) {
         member.uncompressed_size = (int64_t)produced;
         member.method = XX_BWF_METHOD_DCL;
         /* Already stored as (date << 16) | time, so it is published as read. */
-        member.timestamp = (uint64_t)xx_bwf_le32(record +
-                                                 XX_BWF_DATETIME_OFFSET);
+        member.timestamp = (uint64_t)xx_data_get_u32(record +
+                                                 XX_BWF_DATETIME_OFFSET, 4, 0, false);
         /* The format has no directory entries at all. */
         member.is_folder = false;
 

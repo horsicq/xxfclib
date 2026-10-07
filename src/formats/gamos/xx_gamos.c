@@ -44,6 +44,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Pending registration in xxfc_defs.h.  Once the enumerator XX_FILE_TYPE_GAMOS
  * and its short alias GAMOS are added there this fallback switches itself
@@ -83,15 +84,6 @@ typedef struct xx_gamos_stream_s {
 static void xx_gamos_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint16_t xx_gamos_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_gamos_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static bool xx_gamos_read_at(Abstractformat *self, int64_t offset,
                              uint8_t *buffer, size_t size) {
@@ -225,9 +217,9 @@ static xx_gamos_stream *xx_gamos_parse(Abstractformat *self,
     if (header[0x12] != 0U || header[0x13] != 1U || header[0x16] != 1U) {
         return NULL;
     }
-    if (xx_gamos_le16(header + 0x14) != 0U) return NULL;
+    if (xx_data_get_u16(header + 0x14, 2, 0, false) != 0U) return NULL;
 
-    count = (int32_t)xx_gamos_le16(header + 0x17);
+    count = (int32_t)xx_data_get_u16(header + 0x17, 2, 0, false);
     if (count <= 0 || count > XX_GAMOS_MAX_MEMBERS) return NULL;
 
     directory_offset = XX_GAMOS_HEADER_SIZE;
@@ -267,9 +259,9 @@ static xx_gamos_stream *xx_gamos_parse(Abstractformat *self,
         member.method = record[0x0d];
         /* Signed on purpose: the field is an i32 and a negative value is a
          * corrupt record, not a four-gigabyte offset. */
-        member.data_offset = (int64_t)(int32_t)xx_gamos_le32(record + 0x0e);
-        member.compressed_size = (int64_t)xx_gamos_le16(record + 0x12);
-        member.uncompressed_size = (int64_t)xx_gamos_le16(record + 0x14);
+        member.data_offset = (int64_t)(int32_t)xx_data_get_u32(record + 0x0e, 4, 0, false);
+        member.compressed_size = (int64_t)xx_data_get_u16(record + 0x12, 2, 0, false);
+        member.uncompressed_size = (int64_t)xx_data_get_u16(record + 0x14, 2, 0, false);
         /* The reference abandons the archive on a non-positive data offset
          * rather than skipping the record. */
         if (member.data_offset < 1) goto fail;

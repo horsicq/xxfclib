@@ -55,6 +55,7 @@
 #include "xxfclib/algo/lzhuf/xx_lzhuf.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_BWCF_COPY_CHUNK (64 * 1024)
 
@@ -165,8 +166,6 @@ static bool xx_bwcf_add(xx_bwcf_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_bwcf_le16(const uint8_t *data);
-static uint32_t xx_bwcf_le32(const uint8_t *data);
 static uint64_t xx_bwcf_dos_to_unix(uint16_t dos_date, uint16_t dos_time);
 static bool xx_bwcf_append_name(char *buffer, size_t *length, const uint8_t *data, size_t size);
 static size_t xx_bwcf_field_length(const uint8_t *field, size_t size);
@@ -178,15 +177,6 @@ static bool xx_bwcf_decode(Abstractformat *self, const xx_bwcf_member *member, u
  * own ceiling rather than a policy limit. */
 /* Directory plus name plus a separating NUL, with the version 1 field (which
  * is larger than two version 2 halves) setting the floor. */
-
-static uint16_t xx_bwcf_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_bwcf_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* DOS date/time -> Unix seconds. Written out rather than taken from a helper
  * because there is no CRT here; an out-of-range field yields 0 (unknown)
@@ -408,9 +398,9 @@ static xx_bwcf_stream *xx_bwcf_parse(Abstractformat *self, xx_pd_struct *pd) {
 
         /* Signed on purpose: a size field with the top bit set is corrupt,
          * not a two-gigabyte quantity. */
-        uncompressed_size = (int64_t)(int32_t)xx_bwcf_le32(descriptor + 0x04);
-        block_size = (int64_t)(int32_t)xx_bwcf_le32(descriptor + 0x08);
-        reserved = xx_bwcf_le32(descriptor + 0x0c);
+        uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(descriptor + 0x04, 4, 0, false);
+        block_size = (int64_t)(int32_t)xx_data_get_u32(descriptor + 0x08, 4, 0, false);
+        reserved = xx_data_get_u32(descriptor + 0x0c, 4, 0, false);
         method = descriptor[0x10];
 
         if (uncompressed_size < 0 || block_size < 0) goto fail;
@@ -432,7 +422,7 @@ static xx_bwcf_stream *xx_bwcf_parse(Abstractformat *self, xx_pd_struct *pd) {
                              sizeof(prefix))) {
             goto fail;
         }
-        repeated_size = (int64_t)(int32_t)xx_bwcf_le32(prefix);
+        repeated_size = (int64_t)(int32_t)xx_data_get_u32(prefix, 4, 0, false);
         /* THE defence against a false positive, and the one a later reader
          * will be tempted to drop: the data block opens with an independent
          * repeat of the descriptor's uncompressed size. Two 32-bit fields
@@ -477,7 +467,7 @@ static xx_bwcf_stream *xx_bwcf_parse(Abstractformat *self, xx_pd_struct *pd) {
         member.uncompressed_size = uncompressed_size;
         member.method = (uint32_t)method;
         member.timestamp = xx_bwcf_dos_to_unix(
-            xx_bwcf_le16(descriptor + 0x02), xx_bwcf_le16(descriptor + 0x00));
+            xx_data_get_u16(descriptor + 0x02, 2, 0, false), xx_data_get_u16(descriptor + 0x00, 2, 0, false));
         member.is_folder = false;
 
         if (!xx_bwcf_add(stream, &member)) {

@@ -5,19 +5,20 @@
  */
 #include "xxfclib/formats/bioware_biff/xx_bioware_biff.h"
 #include "../bethesda_bsa/xx_game_table.h"
+#include "xxfclib/data/xx_data.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[20],r[20]; uint32_t count,table,step,i; int64_t total=pm_available(f); uint64_t floor;
     if(!gm_read(f,total,0,h,20) || xx_rt_memcmp(h,"BIFF",4)) return false;
     if(!xx_rt_memcmp(h+4,"V1  ",4)) step=16;
     else if(!xx_rt_memcmp(h+4,"V1.1",4)) step=20; else return false;
-    count=pm_le32(h+8); table=pm_le32(h+16);
-    if(pm_le32(h+12)!=0 || count>65536 || table<20 || !gm_range(total,table,(uint64_t)count*step)) return false;
+    count=xx_data_get_u32(h+8, 4, 0, false); table=xx_data_get_u32(h+16, 4, 0, false);
+    if(xx_data_get_u32(h+12, 4, 0, false)!=0 || count>65536 || table<20 || !gm_range(total,table,(uint64_t)count*step)) return false;
     floor=table+(uint64_t)count*step; s->size=(int64_t)floor;
     for(i=0;i<count;++i) {
         uint32_t at,n; if(gm_stopped(pd) || !gm_read(f,total,table+(uint64_t)i*step,r,step)) return false;
-        if(step==20 && pm_le32(r+4)!=0) return false;
-        at=pm_le32(r+step-12); n=pm_le32(r+step-8);
+        if(step==20 && xx_data_get_u32(r+4, 4, 0, false)!=0) return false;
+        at=xx_data_get_u32(r+step-12, 4, 0, false); n=xx_data_get_u32(r+step-8, 4, 0, false);
         if(!gm_add(f,s,"resource.bin",at,n,floor,total)) return false;
     }
     return true;

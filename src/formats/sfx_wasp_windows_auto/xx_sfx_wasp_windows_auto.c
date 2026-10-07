@@ -36,6 +36,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and not edited from here,
  * so the alias macro that sits next to the enumerator is tested instead. */
@@ -107,11 +108,6 @@ static uint32_t wasp_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static uint32_t wasp_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
-
 static bool wasp_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
     size_t done = 0U;
@@ -172,7 +168,7 @@ static bool wasp_load_table(Abstractformat *format, wasp_table *table) {
         !wasp_read_at(format->device, table->base, mz, sizeof(mz)) ||
         mz[0] != 'M' || mz[1] != 'Z')
         return false;
-    table->ne_offset = wasp_le32(mz + 0x3CU);
+    table->ne_offset = xx_data_get_u32(mz + 0x3CU, 4, 0, false);
     if (table->ne_offset < WASP_MZ_HEADER ||
         (int64_t)table->ne_offset + (int64_t)WASP_NE_HEADER > table->size ||
         !wasp_read_at(format->device, table->base + table->ne_offset,
@@ -544,7 +540,7 @@ static int64_t wasp_image_end(Abstractformat *format,
     wasp_extend(&end, ne_at + (int64_t)wasp_le16(ne + 0x04U) +
                           (int64_t)wasp_le16(ne + 0x06U));
     if (wasp_le16(ne + 0x20U) != 0U)
-        wasp_extend(&end, (int64_t)wasp_le32(ne + 0x2CU) +
+        wasp_extend(&end, (int64_t)xx_data_get_u32(ne + 0x2CU, 4, 0, false) +
                               (int64_t)wasp_le16(ne + 0x20U));
     if (segment_shift == 0U) segment_shift = 9U;
     if (segments <= WASP_MAX_SEGMENTS && segment_shift <= WASP_MAX_SHIFT) {

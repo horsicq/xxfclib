@@ -35,6 +35,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef INSTALLSHIELD_12_SETUP
 #define XX_INSTALLSHIELD_12_SETUP_FILE_TYPE XX_FILE_TYPE_INSTALLSHIELD_12_SETUP
@@ -112,14 +113,6 @@ typedef struct is12_header_s {
     uint64_t size;
 } is12_header;
 
-static uint16_t is12_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t is12_le32(const uint8_t *bytes) {
-    return (uint32_t)is12_le16(bytes) | ((uint32_t)is12_le16(bytes + 2U) << 16U);
-}
-
 static bool is12_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
     size_t done = 0U;
@@ -166,14 +159,14 @@ static bool is12_pe_layout(xx_io_device *device, int64_t base,
         !is12_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' ||
         dos[1] != 'Z')
         return false;
-    nt_offset = is12_le32(dos + 0x3CU);
+    nt_offset = xx_data_get_u32(dos + 0x3CU, 4, 0, false);
     if (nt_offset < IS12_DOS_HEADER ||
         !is12_range_within(available, (int64_t)nt_offset, IS12_NT_HEADER) ||
         !is12_read_at(device, base + nt_offset, nt, sizeof(nt)) ||
         nt[0] != 'P' || nt[1] != 'E' || nt[2] != 0U || nt[3] != 0U)
         return false;
-    section_count = is12_le16(nt + 6U);
-    optional_size = is12_le16(nt + 20U);
+    section_count = xx_data_get_u16(nt + 6U, 2, 0, false);
+    optional_size = xx_data_get_u16(nt + 20U, 2, 0, false);
     if (section_count == 0U || section_count > IS12_MAX_SECTIONS ||
         optional_size < 2U)
         return false;
@@ -184,7 +177,7 @@ static bool is12_pe_layout(xx_io_device *device, int64_t base,
         !is12_read_at(device, base + nt_offset + IS12_NT_HEADER, optional,
                       optional_read))
         return false;
-    optional_magic = is12_le16(optional);
+    optional_magic = xx_data_get_u16(optional, 2, 0, false);
     if (optional_magic == 0x010BU)
         directory_base = 96U;
     else if (optional_magic == 0x020BU)
@@ -192,7 +185,7 @@ static bool is12_pe_layout(xx_io_device *device, int64_t base,
     else
         return false;
     if (optional_read < directory_base) return false;
-    directory_count = is12_le32(optional + directory_base - 4U);
+    directory_count = xx_data_get_u32(optional + directory_base - 4U, 4, 0, false);
 
     table = (int64_t)nt_offset + IS12_NT_HEADER + optional_size;
     if (!is12_range_within(available, table,
@@ -202,8 +195,8 @@ static bool is12_pe_layout(xx_io_device *device, int64_t base,
         return false;
     for (index = 0U; index < section_count; ++index) {
         const uint8_t *section = sections + (size_t)index * IS12_SECTION_SIZE;
-        int64_t raw_size = (int64_t)is12_le32(section + 16U);
-        int64_t raw_offset = (int64_t)is12_le32(section + 20U);
+        int64_t raw_size = (int64_t)xx_data_get_u32(section + 16U, 4, 0, false);
+        int64_t raw_offset = (int64_t)xx_data_get_u32(section + 20U, 4, 0, false);
         if (raw_size == 0) continue;
         /* A section that runs past the file leaves no overlay to speak of. */
         if (!is12_range_within(available, raw_offset, raw_size)) return false;
@@ -220,8 +213,8 @@ static bool is12_pe_layout(xx_io_device *device, int64_t base,
         /* The security directory holds a file offset, not an RVA. */
         const uint8_t *entry = optional + directory_base +
                                IS12_DIRECTORY_SECURITY * 8U;
-        int64_t offset = (int64_t)is12_le32(entry);
-        int64_t size = (int64_t)is12_le32(entry + 4U);
+        int64_t offset = (int64_t)xx_data_get_u32(entry, 4, 0, false);
+        int64_t size = (int64_t)xx_data_get_u32(entry + 4U, 4, 0, false);
         if (offset != 0 && size != 0 && offset >= overlay) {
             layout->certificate_offset = offset;
             layout->certificate_size = size;
@@ -243,7 +236,7 @@ static int is12_scan_string(const uint8_t *buffer, size_t size,
     for (;;) {
         uint16_t unit;
         if (at > size || size - at < 2U) return IS12_RECORD_SHORT;
-        unit = is12_le16(buffer + at);
+        unit = xx_data_get_u16(buffer + at, 2, 0, false);
         at += 2U;
         if (unit == 0U) break;
         if (++count > max_units) return IS12_RECORD_BAD;
@@ -266,13 +259,13 @@ static bool is12_units_ok(const uint8_t *text, size_t units,
                           bool allow_separators) {
     size_t index;
     for (index = 0U; index < units; ++index) {
-        uint16_t unit = is12_le16(text + index * 2U);
+        uint16_t unit = xx_data_get_u16(text + index * 2U, 2, 0, false);
         if (!is12_unit_ok(unit)) return false;
         if (!allow_separators && (unit == '\\' || unit == '/')) return false;
         if (unit >= 0xD800U && unit <= 0xDBFFU) {
             uint16_t next;
             if (index + 1U >= units) return false;
-            next = is12_le16(text + (index + 1U) * 2U);
+            next = xx_data_get_u16(text + (index + 1U) * 2U, 2, 0, false);
             if (next < 0xDC00U || next > 0xDFFFU) return false;
             ++index;
         } else if (unit >= 0xDC00U && unit <= 0xDFFFU) {
@@ -292,13 +285,13 @@ static bool is12_path_ends_with(const uint8_t *path, size_t path_units,
     size_t start = 0U;
     size_t index;
     for (index = 0U; index < path_units; ++index) {
-        uint16_t unit = is12_le16(path + index * 2U);
+        uint16_t unit = xx_data_get_u16(path + index * 2U, 2, 0, false);
         if (unit == '\\' || unit == '/') start = index + 1U;
     }
     if (path_units - start != name_units) return false;
     for (index = 0U; index < name_units; ++index)
-        if (is12_fold_unit(is12_le16(path + (start + index) * 2U)) !=
-            is12_fold_unit(is12_le16(name + index * 2U)))
+        if (is12_fold_unit(xx_data_get_u16(path + (start + index) * 2U, 2, 0, false)) !=
+            is12_fold_unit(xx_data_get_u16(name + index * 2U, 2, 0, false)))
             return false;
     return true;
 }
@@ -312,7 +305,7 @@ static bool is12_version_ok(const uint8_t *text, size_t units) {
     size_t groups = 1U;
     if (units == 0U) return true;
     for (index = 0U; index < units; ++index) {
-        uint16_t unit = is12_le16(text + index * 2U);
+        uint16_t unit = xx_data_get_u16(text + index * 2U, 2, 0, false);
         if (unit >= '0' && unit <= '9') {
             if (++digits > 10U) return false;
         } else if (unit == '.') {
@@ -331,7 +324,7 @@ static bool is12_size_value(const uint8_t *text, size_t units,
     uint64_t result = 0U;
     if (units == 0U || units > IS12_MAX_SIZE_DIGITS) return false;
     for (index = 0U; index < units; ++index) {
-        uint16_t unit = is12_le16(text + index * 2U);
+        uint16_t unit = xx_data_get_u16(text + index * 2U, 2, 0, false);
         if (unit < '0' || unit > '9') return false;
         result = result * 10U + (uint64_t)(unit - '0');
     }
@@ -392,7 +385,7 @@ static size_t is12_utf8_length(const uint8_t *text, size_t units) {
     size_t length = 0U;
     size_t index;
     for (index = 0U; index < units; ++index) {
-        uint16_t unit = is12_le16(text + index * 2U);
+        uint16_t unit = xx_data_get_u16(text + index * 2U, 2, 0, false);
         if (unit < 0x80U)
             length += 1U;
         else if (unit < 0x800U)
@@ -415,9 +408,9 @@ static char *is12_path_to_utf8(const uint8_t *text, size_t units,
     if (!result) return NULL;
     out = (uint8_t *)result;
     for (index = 0U; index < units; ++index) {
-        uint32_t code = is12_le16(text + index * 2U);
+        uint32_t code = xx_data_get_u16(text + index * 2U, 2, 0, false);
         if (code >= 0xD800U && code <= 0xDBFFU) {
-            uint32_t low = is12_le16(text + (index + 1U) * 2U);
+            uint32_t low = xx_data_get_u16(text + (index + 1U) * 2U, 2, 0, false);
             code = 0x10000U + ((code - 0xD800U) << 10U) + (low - 0xDC00U);
             ++index;
         }
@@ -714,7 +707,7 @@ static bool is12_parse(Abstractformat *format, xx_pd_struct *pd,
     if (!is12_range_within(layout.limit, layout.overlay, 4 + 16) ||
         !is12_read_at(format->device, base + layout.overlay, count_bytes, 4U))
         return false;
-    declared = is12_le32(count_bytes);
+    declared = xx_data_get_u32(count_bytes, 4, 0, false);
     if (declared == 0U || declared > IS12_MAX_COUNT) return false;
 
     buffer = (uint8_t *)xx_mem_alloc(IS12_HEADER_MAX);

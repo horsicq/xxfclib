@@ -31,6 +31,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef BGA
 #define XX_BGA_FILE_TYPE XX_FILE_TYPE_BGA
@@ -111,15 +112,6 @@ typedef struct bga_parsed_s {
     uint8_t raw[BGA_MAX_RAW_NAME];
 } bga_parsed;
 
-static uint16_t bga_le16(const uint8_t *p) {
-    return (uint16_t)(p[0] | (p[1] << 8U));
-}
-
-static uint32_t bga_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) | ((uint32_t)p[2] << 16U) |
-           ((uint32_t)p[3] << 24U);
-}
-
 static bool bga_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     size_t done = 0U;
@@ -168,8 +160,8 @@ static int bga_parse_header(xx_io_device *device, int64_t offset, int64_t end,
         out->method = BGA_METHOD_BZ2;
     else
         return 0;
-    dir_length = bga_le16(head + 24);
-    file_length = bga_le16(head + 26);
+    dir_length = xx_data_get_u16(head + 24, 2, 0, false);
+    file_length = xx_data_get_u16(head + 26, 2, 0, false);
     out->raw_length = dir_length + file_length;
     if (out->raw_length == 0U || out->raw_length > BGA_MAX_RAW_NAME ||
         (int64_t)out->raw_length > end - offset - BGA_HEADER_SIZE ||
@@ -178,13 +170,13 @@ static int bga_parse_header(xx_io_device *device, int64_t offset, int64_t end,
         return 0;
     sum = (int32_t)((uint32_t)bga_signed_sum(head + 4, BGA_HEADER_SIZE - 4) +
                     (uint32_t)bga_signed_sum(out->raw, out->raw_length));
-    if ((uint32_t)sum != bga_le32(head)) return 0;
-    out->packed = bga_le32(head + 8);
-    out->original = bga_le32(head + 12);
-    out->date = bga_le16(head + 16);
-    out->time = bga_le16(head + 18);
+    if ((uint32_t)sum != xx_data_get_u32(head, 4, 0, false)) return 0;
+    out->packed = xx_data_get_u32(head + 8, 4, 0, false);
+    out->original = xx_data_get_u32(head + 12, 4, 0, false);
+    out->date = xx_data_get_u16(head + 16, 2, 0, false);
+    out->time = xx_data_get_u16(head + 18, 2, 0, false);
     out->attributes = head[20];
-    out->arc_type = bga_le16(head + 22);
+    out->arc_type = xx_data_get_u16(head + 22, 2, 0, false);
     return 1;
 }
 
@@ -628,7 +620,7 @@ static int64_t bga_gzip_header(xx_io_device *device, int64_t offset,
         uint8_t length[2];
         if (limit - at < 2 || !bga_read_at(device, offset + at, length, 2U))
             return 0;
-        at += 2 + (int64_t)bga_le16(length);
+        at += 2 + (int64_t)xx_data_get_u16(length, 2, 0, false);
         if (at > limit) return 0;
     }
     for (pass = 0; pass < 2; ++pass) {
@@ -680,8 +672,8 @@ static bool bga_extract(Abstractformat *format, const bga_member *m,
                          trailer, sizeof(trailer)))
             return false;
         return sink.written == (uint64_t)m->original &&
-               bga_le32(trailer) == sink.crc &&
-               bga_le32(trailer + 4) == m->original;
+               xx_data_get_u32(trailer, 4, 0, false) == sink.crc &&
+               xx_data_get_u32(trailer + 4, 4, 0, false) == m->original;
     }
     return xx_bzip2_unpack_device(format->device, m->data, (int64_t)m->packed,
                                   &sink.device, pd) &&

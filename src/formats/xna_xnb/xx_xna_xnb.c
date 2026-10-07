@@ -5,16 +5,13 @@
  */
 #include "xxfclib/formats/xna_xnb/xx_xna_xnb.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 static __inline bool span(uint64_t a,uint64_t n,uint64_t e) { return a<=e && n<=e-a; }
 static __inline bool stop(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
-static __inline uint64_t u64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
-static __inline uint32_t u32(const uint8_t *p,bool be) { return be ? pm_be32(p):pm_le32(p); }
-static __inline uint16_t u16(const uint8_t *p,bool be) { return be ? pm_be16(p):pm_le16(p); }
-static __inline uint32_t be24(const uint8_t *p) { return (uint32_t)p[0]<<16 | (uint32_t)p[1]<<8 | p[2]; }
 static __inline bool zero(const uint8_t *b,uint64_t n) { uint64_t i; for(i=0;i<n;++i) if(b[i]) return false; return true; }
-static __inline bool finite32(const uint8_t *p,bool be) { return (u32(p,be)&0x7f800000U)!=0x7f800000U; }
-static __inline bool finite64(const uint8_t *p,bool be) { return (u64(p,be)&0x7ff0000000000000ULL)!=0x7ff0000000000000ULL; }
+static __inline bool finite32(const uint8_t *p,bool be) { return (xx_data_get_u32(p, 4, 0, be)&0x7f800000U)!=0x7f800000U; }
+static __inline bool finite64(const uint8_t *p,bool be) { return (xx_data_get_u64(p, 8, 0, be)&0x7ff0000000000000ULL)!=0x7ff0000000000000ULL; }
 static __inline bool floats(const uint8_t *b,uint64_t at,uint64_t count,bool be,uint64_t n) { uint64_t i; if(!span(at,count*4,n)) return false; for(i=0;i<count;++i) if(!finite32(b+at+i*4,be)) return false; return true; }
 static __inline bool emit(Abstractformat *f,pm_stream *s,const char *label,uint64_t a,uint64_t n,uint64_t e) { return span(a,n,e) && s->count<4096 && pm_add(f,s,label,(int64_t)a,(int64_t)n); }
 static __inline bool cstr(const uint8_t *b,uint64_t *at,uint64_t end,uint64_t maximum,bool empty) { uint64_t start=*at; while(*at<end && *at-start<=maximum) { uint8_t c=b[(*at)++]; if(!c) return empty || *at>start+1; if(c<32 || c==127) return false; } return false; }
@@ -26,10 +23,10 @@ static bool var7(const uint8_t *b,uint64_t *p,uint64_t end,uint32_t *v){unsigned
 static bool parse_data(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
 
  uint64_t end,p=10,name_at,data;uint32_t count,len,index;unsigned kind=99,i;char label[40];static const char *names[]={"Microsoft.Xna.Framework.Content.Texture2DReader","Microsoft.Xna.Framework.Content.StringReader","Microsoft.Xna.Framework.Content.ByteReader","Microsoft.Xna.Framework.Content.Int32Reader","Microsoft.Xna.Framework.Content.SingleReader"};
- if(n<10||xx_rt_memcmp(b,"XNB",3)||(b[3]!='w'&&b[3]!='x'&&b[3]!='m')||b[4]!=5||b[5]&~1U||(end=pm_le32(b+6))<10||end>n||!var7(b,&p,end,&count)||count!=1||!var7(b,&p,end,&len)||!len||len>1024||!span(p,(uint64_t)len+4,end))return false;
- name_at=p;for(i=0;i<5;++i){size_t l=xx_rt_strlen(names[i]);if(len>=l&&!xx_rt_memcmp(b+p,names[i],l)&&(len==l||b[p+l]==','))kind=i;}if(kind==99)return false;for(i=0;i<len;++i)if(b[name_at+i]<32||b[name_at+i]>126)return false;p+=len;if(pm_le32(b+p))return false;p+=4;if(!var7(b,&p,end,&count)||count||!var7(b,&p,end,&index)||index!=1)return false;data=p;
- if(kind==0){uint32_t format,w,h,mips;if(!span(p,16,end)||(format=pm_le32(b+p))>3||!(w=pm_le32(b+p+4))||w>8192||!(h=pm_le32(b+p+8))||h>8192||(uint64_t)w*h>16777216||!(mips=pm_le32(b+p+12))||mips>16)return false;p+=16;
- for(i=0;i<mips;++i){uint64_t bytes=(uint64_t)w*h*(format?2:4);if(stop(pd)||!span(p,4,end)||pm_le32(b+p)!=bytes||!span(p+4,bytes,end))return false;p+=4;xx_rt_snprintf(label,sizeof(label),"mip-%u.bin",i);if(!emit(f,s,label,p,bytes,end))return false;p+=bytes;if(w==1&&h==1&&i+1<mips)return false;w=w>1?w/2:1;h=h>1?h/2:1;}}
+ if(n<10||xx_rt_memcmp(b,"XNB",3)||(b[3]!='w'&&b[3]!='x'&&b[3]!='m')||b[4]!=5||b[5]&~1U||(end=xx_data_get_u32(b+6, 4, 0, false))<10||end>n||!var7(b,&p,end,&count)||count!=1||!var7(b,&p,end,&len)||!len||len>1024||!span(p,(uint64_t)len+4,end))return false;
+ name_at=p;for(i=0;i<5;++i){size_t l=xx_rt_strlen(names[i]);if(len>=l&&!xx_rt_memcmp(b+p,names[i],l)&&(len==l||b[p+l]==','))kind=i;}if(kind==99)return false;for(i=0;i<len;++i)if(b[name_at+i]<32||b[name_at+i]>126)return false;p+=len;if(xx_data_get_u32(b+p, 4, 0, false))return false;p+=4;if(!var7(b,&p,end,&count)||count||!var7(b,&p,end,&index)||index!=1)return false;data=p;
+ if(kind==0){uint32_t format,w,h,mips;if(!span(p,16,end)||(format=xx_data_get_u32(b+p, 4, 0, false))>3||!(w=xx_data_get_u32(b+p+4, 4, 0, false))||w>8192||!(h=xx_data_get_u32(b+p+8, 4, 0, false))||h>8192||(uint64_t)w*h>16777216||!(mips=xx_data_get_u32(b+p+12, 4, 0, false))||mips>16)return false;p+=16;
+ for(i=0;i<mips;++i){uint64_t bytes=(uint64_t)w*h*(format?2:4);if(stop(pd)||!span(p,4,end)||xx_data_get_u32(b+p, 4, 0, false)!=bytes||!span(p+4,bytes,end))return false;p+=4;xx_rt_snprintf(label,sizeof(label),"mip-%u.bin",i);if(!emit(f,s,label,p,bytes,end))return false;p+=bytes;if(w==1&&h==1&&i+1<mips)return false;w=w>1?w/2:1;h=h>1?h/2:1;}}
  else {if(kind==1){if(!var7(b,&p,end,&len)||!span(p,len,end))return false;data=p;p+=len;}else{len=kind==2?1:4;if(!span(p,len,end)||(kind==4&&!finite32(b+p,false)))return false;p+=len;}if(!emit(f,s,"value.bin",data,len,end))return false;}
  if(p!=end) {return false; } s->size=(int64_t)end;return true;
 

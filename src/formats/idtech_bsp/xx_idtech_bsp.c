@@ -5,15 +5,16 @@
  */
 #include "xxfclib/formats/idtech_bsp/xx_idtech_bsp.h"
 #include "../bethesda_bsa/xx_game_table.h"
+#include "xxfclib/data/xx_data.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[8],r[8]; uint32_t ver,count,i; uint64_t floor; int64_t total=pm_available(f);
     if(!gm_read(f,total,0,h,8) || xx_rt_memcmp(h,"IBSP",4)) return false;
-    ver=pm_le32(h+4); if(ver==38) count=19; else if(ver==46) count=17; else return false;
+    ver=xx_data_get_u32(h+4, 4, 0, false); if(ver==38) count=19; else if(ver==46) count=17; else return false;
     floor=8+(uint64_t)count*8; if(!gm_range(total,0,floor)) return false; s->size=(int64_t)floor;
     for(i=0;i<count;++i) { uint32_t at,n; char label[32];
         if(gm_stopped(pd) || !gm_read(f,total,8+(uint64_t)i*8,r,8)) return false;
-        at=pm_le32(r); n=pm_le32(r+4); if(!n) continue;
+        at=xx_data_get_u32(r, 4, 0, false); n=xx_data_get_u32(r+4, 4, 0, false); if(!n) continue;
         xx_rt_snprintf(label,sizeof(label),"lump-%02u.bin",i);
         if(!gm_add(f,s,label,at,n,floor,total)) return false;
     }

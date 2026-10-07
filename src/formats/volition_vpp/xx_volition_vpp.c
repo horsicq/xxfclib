@@ -6,10 +6,10 @@
 #include "xxfclib/formats/volition_vpp/xx_volition_vpp.h"
 #include "../makeself/xx_fourth_wrapper_table.h"
 
-static uint32_t vp32(bool be,const uint8_t *p) { return be ? pm_be32(p) : pm_le32(p); }
+static uint32_t vp32(bool be,const uint8_t *p) { return be ? xx_data_get_u32(p, 4, 0, true) : xx_data_get_u32(p, 4, 0, false); }
 static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[376]; bool be; uint32_t count,size,dirs,names,i; int64_t namebase,data,limit=pm_available(f);
-    if(!pm_read(f,0,h,376)) { return false; } be=pm_be32(h)==0x51890ace; if((!be && pm_le32(h)!=0x51890ace) || vp32(be,h+4)!=3 || vp32(be,h+332)) return false;
+    if(!pm_read(f,0,h,376)) { return false; } be=xx_data_get_u32(h, 4, 0, true)==0x51890ace; if((!be && xx_data_get_u32(h, 4, 0, false)!=0x51890ace) || vp32(be,h+4)!=3 || vp32(be,h+332)) return false;
     count=vp32(be,h+340); size=vp32(be,h+344); dirs=vp32(be,h+348); names=vp32(be,h+352);
     if(!count || count>65536 || dirs!=(uint64_t)count*28 || !names || names>16777216 || size>(uint64_t)limit) return false;
     namebase=2048+((uint64_t)dirs+2047)/2048*2048; data=namebase+((uint64_t)names+2047)/2048*2048; if(data>size || !wg_range(size,2048,dirs) || !wg_range(data,namebase,names)) return false;

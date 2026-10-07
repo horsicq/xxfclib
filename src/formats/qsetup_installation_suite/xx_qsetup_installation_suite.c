@@ -52,6 +52,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef QSETUP_INSTALLATION_SUITE
 #define XX_QSETUP_INSTALLATION_SUITE_FILE_TYPE \
@@ -96,15 +97,6 @@ static const char g_qs_http[6] = {'|', 'h', 't', 't', 'p', ':'};
 
 /* ---------------------------------------------------------------------- */
 /* Small helpers                                                           */
-
-static uint16_t qs_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static uint32_t qs_le32(const uint8_t *b) {
-    return (uint32_t)b[0] | ((uint32_t)b[1] << 8U) | ((uint32_t)b[2] << 16U) |
-           ((uint32_t)b[3] << 24U);
-}
 
 static bool qs_read_at(xx_io_device *device, int64_t offset, void *buffer,
                        size_t size) {
@@ -160,14 +152,14 @@ static bool qs_locate(Abstractformat *format, qs_location *out) {
     if (!qs_read_at(format->device, base, mz, sizeof(mz)) || mz[0] != 'M' ||
         mz[1] != 'Z')
         return false;
-    lfanew = qs_le32(mz + 0x3C);
+    lfanew = xx_data_get_u32(mz + 0x3C, 4, 0, false);
     if (lfanew < QS_MIN_LFANEW || lfanew > QS_MAX_LFANEW ||
         (int64_t)lfanew + (int64_t)sizeof(nt) > total ||
         !qs_read_at(format->device, base + lfanew, nt, sizeof(nt)) ||
         nt[0] != 'P' || nt[1] != 'E' || nt[2] != 0 || nt[3] != 0)
         return false;
-    nsec = qs_le16(nt + 6);
-    optsz = qs_le16(nt + 20);
+    nsec = xx_data_get_u16(nt + 6, 2, 0, false);
+    optsz = xx_data_get_u16(nt + 20, 2, 0, false);
     if (nsec == 0U || nsec > QS_MAX_SECTIONS) return false;
     table = (int64_t)lfanew + (int64_t)QS_NT_HEADER + (int64_t)optsz;
     if (table + (int64_t)nsec * (int64_t)QS_SECTION_SIZE > total ||
@@ -176,8 +168,8 @@ static bool qs_locate(Abstractformat *format, qs_location *out) {
         return false;
     for (index = 0U; index < nsec; ++index) {
         const uint8_t *s = sections + index * QS_SECTION_SIZE;
-        int64_t raw_size = (int64_t)qs_le32(s + 16);
-        int64_t raw_ptr = (int64_t)qs_le32(s + 20);
+        int64_t raw_size = (int64_t)xx_data_get_u32(s + 16, 4, 0, false);
+        int64_t raw_ptr = (int64_t)xx_data_get_u32(s + 20, 4, 0, false);
         if (raw_size != 0 && raw_ptr + raw_size > overlay)
             overlay = raw_ptr + raw_size;
     }
@@ -187,11 +179,11 @@ static bool qs_locate(Abstractformat *format, qs_location *out) {
 
     if (!qs_read_at(format->device, base + overlay, head, sizeof(head)))
         return false;
-    length1 = qs_le32(head);
+    length1 = xx_data_get_u32(head, 4, 0, false);
     if (length1 != 1U && length1 != 2U) return false;
     for (index = 0U; index < length1; ++index)
         if (head[4U + index] != '|') return false;
-    length2 = qs_le32(head + 4U + length1);
+    length2 = xx_data_get_u32(head + 4U + length1, 4, 0, false);
     /* The product list must leave room for one record behind it. */
     if (length2 < QS_MIN_STRING2 ||
         (int64_t)length2 > container_size - (int64_t)(8U + length1) -
@@ -203,7 +195,7 @@ static bool qs_locate(Abstractformat *format, qs_location *out) {
     if (!qs_read_at(format->device, base + records, record, sizeof(record)))
         return false;
     {
-        int64_t size = (int64_t)qs_le32(record);
+        int64_t size = (int64_t)xx_data_get_u32(record, 4, 0, false);
         if (size < (int64_t)QS_MIN_RECORD || size > total - records - 4 ||
             !qs_zlib_header_ok(record + 4))
             return false;
@@ -859,17 +851,17 @@ static bool qs_walk(Abstractformat *format, qs_list **result, bool members,
         if (!qs_read_at(format->device, base + position, header, have))
             break;
         if (have == QS_TRAILER_SIZE &&
-            qs_le32(header + QS_TRAILER_MAGIC_AT) == QS_TRAILER_MAGIC &&
-            qs_le32(header + QS_TRAILER_SIZE_AT) == QS_TRAILER_SIZE) {
-            if ((int64_t)qs_le32(header + QS_TRAILER_OFFSET) !=
+            xx_data_get_u32(header + QS_TRAILER_MAGIC_AT, 4, 0, false) == QS_TRAILER_MAGIC &&
+            xx_data_get_u32(header + QS_TRAILER_SIZE_AT, 4, 0, false) == QS_TRAILER_SIZE) {
+            if ((int64_t)xx_data_get_u32(header + QS_TRAILER_OFFSET, 4, 0, false) !=
                     list->location.container ||
-                (size_t)qs_le32(header + QS_TRAILER_COUNT) != list->count)
+                (size_t)xx_data_get_u32(header + QS_TRAILER_COUNT, 4, 0, false) != list->count)
                 goto done;
             list->complete = true;
             position += QS_TRAILER_SIZE;
             break;
         }
-        size = (int64_t)qs_le32(header);
+        size = (int64_t)xx_data_get_u32(header, 4, 0, false);
         if (size < (int64_t)QS_MIN_RECORD || size > left - 4 ||
             !qs_zlib_header_ok(header + 4))
             break;

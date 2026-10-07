@@ -20,6 +20,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef RPG_MAKER_RGSSAD
 #define XX_RPG_MAKER_RGSSAD_FILE_TYPE XX_FILE_TYPE_RPG_MAKER_RGSSAD
@@ -72,11 +73,6 @@ typedef struct rgss_stream_s {
 
 static uint32_t rgss_next(uint32_t key) {
     return key * 7U + 3U;
-}
-
-static uint32_t rgss_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
 }
 
 static size_t rgss_capacity(void) {
@@ -332,7 +328,7 @@ static bool rgss_walk_v1(Abstractformat *format, rgss_layout *layout,
         if (end - pos < 4 ||
             !rgss_read_at(format->device, layout->origin + pos, field, 4U))
             return false;
-        length = rgss_le32(field) ^ key;
+        length = xx_data_get_u32(field, 4, 0, false) ^ key;
         key = rgss_next(key);
         pos += 4;
         if (length == 0U || length > RGSS_MAX_NAME ||
@@ -352,7 +348,7 @@ static bool rgss_walk_v1(Abstractformat *format, rgss_layout *layout,
         pos += (int64_t)length;
         if (!rgss_read_at(format->device, layout->origin + pos, field, 4U))
             return false;
-        size = rgss_le32(field) ^ key;
+        size = xx_data_get_u32(field, 4, 0, false) ^ key;
         key = rgss_next(key);
         pos += 4;
         if ((int64_t)size > end - pos) return false;
@@ -381,7 +377,7 @@ static bool rgss_walk_v3(Abstractformat *format, rgss_layout *layout,
         !rgss_read_at(format->device, layout->origin + RGSS_HEADER_SIZE,
                       fields, 4U))
         return false;
-    key = rgss_le32(fields) * 9U + 3U;
+    key = xx_data_get_u32(fields, 4, 0, false) * 9U + 3U;
     extent = RGSS_V3_TABLE;
     for (;;) {
         rgss_member member;
@@ -391,7 +387,7 @@ static bool rgss_walk_v3(Abstractformat *format, rgss_layout *layout,
         if (end - pos < 4 ||
             !rgss_read_at(format->device, layout->origin + pos, fields, 4U))
             return false;
-        offset = rgss_le32(fields) ^ key;
+        offset = xx_data_get_u32(fields, 4, 0, false) ^ key;
         if (offset == 0U) {
             pos += 4;
             break;
@@ -400,11 +396,11 @@ static bool rgss_walk_v3(Abstractformat *format, rgss_layout *layout,
         if (end - pos < 16 ||
             !rgss_read_at(format->device, layout->origin + pos, fields, 16U))
             return false;
-        size = rgss_le32(fields + 4) ^ key;
-        length = rgss_le32(fields + 12) ^ key;
+        size = xx_data_get_u32(fields + 4, 4, 0, false) ^ key;
+        length = xx_data_get_u32(fields + 12, 4, 0, false) ^ key;
         xx_mem_zero(&member, sizeof(member));
         member.entry_offset = layout->origin + pos;
-        member.data_key = rgss_le32(fields + 8) ^ key;
+        member.data_key = xx_data_get_u32(fields + 8, 4, 0, false) ^ key;
         pos += 16;
         if (length == 0U || length > RGSS_MAX_NAME ||
             end - pos < (int64_t)length ||

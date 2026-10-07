@@ -63,6 +63,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 /* The enumerator is added by the coordinator, not by this file. */
 #ifdef FTCOMP
@@ -119,15 +120,6 @@ typedef struct xx_ftcomp_stream_s {
 static void xx_ftcomp_codec_free(struct xx_ftcomp_codec_s *codec);
 
 /* ------------------------------------------------------------ helpers --- */
-
-static uint16_t xx_ftcomp_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t xx_ftcomp_le32(const uint8_t *bytes) {
-    return (uint32_t)xx_ftcomp_le16(bytes) |
-           ((uint32_t)xx_ftcomp_le16(bytes + 2U) << 16U);
-}
 
 static bool xx_ftcomp_read_at(Abstractformat *self, int64_t offset,
                               void *buffer, size_t size) {
@@ -257,20 +249,20 @@ static bool xx_ftcomp_read_member(Abstractformat *self, int64_t span,
         return false;
     if (header[0] != XX_FTCOMP_SIG0 || header[1] != XX_FTCOMP_SIG1)
         return false;
-    if ((uint32_t)xx_ftcomp_le16(header + 2) != XX_FTCOMP_VARIANT)
+    if ((uint32_t)xx_data_get_u16(header + 2, 2, 0, false) != XX_FTCOMP_VARIANT)
         return false;
     if (xx_rt_memcmp(header + XX_FTCOMP_TAG_OFFSET, "FTCOMP",
                      XX_FTCOMP_TAG_SIZE) != 0)
         return false;
-    if (!xx_ftcomp_date_sane(xx_ftcomp_le16(header + 4))) return false;
+    if (!xx_ftcomp_date_sane(xx_data_get_u16(header + 4, 2, 0, false))) return false;
 
-    extended_attributes = xx_ftcomp_le32(header + 12);
-    declared = xx_ftcomp_le32(header + 16);
-    successor = xx_ftcomp_le32(header + 20);
-    member->check = xx_ftcomp_le16(header + 0x1f);
-    member->method = xx_ftcomp_le16(header + 0x21);
-    member->extra = xx_ftcomp_le32(header + 0x23);
-    name_field = (int64_t)xx_ftcomp_le16(header + 0x27);
+    extended_attributes = xx_data_get_u32(header + 12, 4, 0, false);
+    declared = xx_data_get_u32(header + 16, 4, 0, false);
+    successor = xx_data_get_u32(header + 20, 4, 0, false);
+    member->check = xx_data_get_u16(header + 0x1f, 2, 0, false);
+    member->method = xx_data_get_u16(header + 0x21, 2, 0, false);
+    member->extra = xx_data_get_u32(header + 0x23, 4, 0, false);
+    name_field = (int64_t)xx_data_get_u16(header + 0x27, 2, 0, false);
     name_offset = offset + (int64_t)XX_FTCOMP_HEADER_SIZE;
     /* The name field must fit in the file and must be able to hold a NUL.
      * Bound it before it is used to place the payload. */
@@ -317,8 +309,8 @@ static bool xx_ftcomp_read_member(Abstractformat *self, int64_t span,
     member->data_offset = self->base_address + data_offset;
     member->compressed_size = member_end - data_offset;
     member->attributes = header[8];
-    member->timestamp = ((uint64_t)xx_ftcomp_le16(header + 4) << 16) |
-                        (uint64_t)xx_ftcomp_le16(header + 6);
+    member->timestamp = ((uint64_t)xx_data_get_u16(header + 4, 2, 0, false) << 16) |
+                        (uint64_t)xx_data_get_u16(header + 6, 2, 0, false);
     /* A declared plaintext length cannot exceed what the container could
      * conceivably hold in memory; it is only carried, never used to size an
      * allocation here, but it is still bounded so callers can trust it. */
@@ -1064,7 +1056,7 @@ static bool xx_ftcomp_rle(const uint8_t *input, size_t size, uint8_t *output,
     }
     if (size < 3U) return false;
     marker = input[0];
-    table_at = xx_ftcomp_le16(input + 1U);
+    table_at = xx_data_get_u16(input + 1U, 2, 0, false);
     if (table_at > size - 3U) return false;
     main_end = size - table_at;
     table_at = main_end;
@@ -1369,7 +1361,7 @@ static bool xx_ftcomp_lz(xx_ftcomp_codec *codec, const uint8_t *data,
             uint16_t low;
             if (size - at < 3U) return false;
             extra = data[at];
-            low = xx_ftcomp_le16(data + at + 1U);
+            low = xx_data_get_u16(data + at + 1U, 2, 0, false);
             length = (uint32_t)extra + ((token & 8U) ? 0x106U : 6U);
             distance = (((uint32_t)(token & 7U) +
                          (length < 0x43U ? 1U : 0U)) << 16U) +
@@ -1840,16 +1832,16 @@ static bool xx_ftcomp_decode_variant(Abstractformat *self,
         }
         if (end - cursor < 6 ||
             !xx_ftcomp_read_at(self, cursor, head, sizeof(head)) ||
-            xx_ftcomp_le32(head) !=
+            xx_data_get_u32(head, 4, 0, false) !=
                 (version == 1U ? XX_FTCOMP_TAG_FT21 : XX_FTCOMP_TAG_FT33))
             goto done;
-        declared = xx_ftcomp_le16(head + 4U);
+        declared = xx_data_get_u16(head + 4U, 2, 0, false);
         cursor += 6;
         if (declared == 0xffffU) {
             uint8_t length_bytes[2];
             if (end - cursor < 2 ||
                 !xx_ftcomp_read_at(self, cursor, length_bytes, 2U)) goto done;
-            token_count = xx_ftcomp_le16(length_bytes);
+            token_count = xx_data_get_u16(length_bytes, 2, 0, false);
             cursor += 2;
             if (token_count == 0U || end - cursor < (int64_t)token_count ||
                 !xx_ftcomp_read_at(self, cursor, codec->input, token_count))
@@ -1894,7 +1886,7 @@ static bool xx_ftcomp_decode_variant(Abstractformat *self,
         if (version == 3U && intermediate[0] != 0xffU) {
             /* The suffix rank table is excluded from the LZ dictionary for
              * following blocks. Raw 0xFF RLE data has no rank table. */
-            uint32_t table_size = xx_ftcomp_le16(intermediate + 1U);
+            uint32_t table_size = xx_data_get_u16(intermediate + 1U, 2, 0, false);
             if (table_size > codec->history_count) goto done;
             codec->position = (codec->position - table_size) &
                               XX_FTCOMP_WINDOW_MASK;
@@ -1996,8 +1988,8 @@ static bool xx_ftcomp_decode_member(Abstractformat *self,
         }
         if (end - cursor < 6) goto done;
         if (!xx_ftcomp_read_at(self, cursor, head, sizeof(head))) goto done;
-        if (xx_ftcomp_le32(head) != XX_FTCOMP_TAG_FT19) goto done;
-        declared = xx_ftcomp_le16(head + 4);
+        if (xx_data_get_u32(head, 4, 0, false) != XX_FTCOMP_TAG_FT19) goto done;
+        declared = xx_data_get_u16(head + 4, 2, 0, false);
         cursor += 6;
         if (declared == 0xffffU) {
             /* A stored block: the next u16 is the token count itself. */
@@ -2005,7 +1997,7 @@ static bool xx_ftcomp_decode_member(Abstractformat *self,
             uint32_t length;
             if (end - cursor < 2) goto done;
             if (!xx_ftcomp_read_at(self, cursor, raw, sizeof(raw))) goto done;
-            length = xx_ftcomp_le16(raw);
+            length = xx_data_get_u16(raw, 2, 0, false);
             cursor += 2;
             if (length == 0U || end - cursor < (int64_t)length) goto done;
             if (!xx_ftcomp_read_at(self, cursor, codec->input, length))

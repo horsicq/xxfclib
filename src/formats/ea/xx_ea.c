@@ -44,6 +44,7 @@
 #include "xxfclib/algo/ea/xx_ea.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_EA_COPY_CHUNK (64 * 1024)
 
@@ -154,7 +155,6 @@ static bool xx_ea_add(xx_ea_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint32_t xx_ea_le32(const uint8_t *data);
 static bool xx_ea_decode_name(const uint8_t *header, char *name);
 static xx_ea_stream *xx_ea_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_ea_decode(Abstractformat *self, const xx_ea_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
@@ -162,11 +162,6 @@ static bool xx_ea_decode(Abstractformat *self, const xx_ea_member *member, uint8
 
 /* Constant on every member of every known archive; the reference reader
  * reports it as the format version. */
-
-static uint32_t xx_ea_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* The name is a NUL-padded 8.3 DOS name. Only the bytes in FRONT of the NUL
  * may be checked: the packer reuses the fixed-width field without clearing
@@ -238,7 +233,7 @@ static xx_ea_stream *xx_ea_parse(Abstractformat *self, xx_pd_struct *pd) {
          * they have to carry that weight because the name field cannot be
          * checked past its NUL. Loosening either turns every stray DOS EOF
          * byte followed by "EA" into an archive. */
-        if (xx_ea_le32(header + XX_EA_TAG_OFFSET) !=
+        if (xx_data_get_u32(header + XX_EA_TAG_OFFSET, 4, 0, false) !=
             (uint32_t)XX_EA_TAG_VALUE) {
             goto fail;
         }
@@ -255,10 +250,10 @@ static xx_ea_stream *xx_ea_parse(Abstractformat *self, xx_pd_struct *pd) {
         /* Both size words are read as SIGNED 32-bit and a negative one is a
          * rejection; that is the only bound the format itself states. The
          * ceiling on the uncompressed size is this reader's own sanity cap. */
-        uncompressed = (int64_t)(int32_t)xx_ea_le32(header +
-                                                    XX_EA_USIZE_OFFSET);
-        compressed = (int64_t)(int32_t)xx_ea_le32(header +
-                                                  XX_EA_CSIZE_OFFSET);
+        uncompressed = (int64_t)(int32_t)xx_data_get_u32(header +
+                                                    XX_EA_USIZE_OFFSET, 4, 0, false);
+        compressed = (int64_t)(int32_t)xx_data_get_u32(header +
+                                                  XX_EA_CSIZE_OFFSET, 4, 0, false);
         if (uncompressed < 0 || compressed < 0) goto fail;
         if (uncompressed > XX_EA_MAX_DECODED) goto fail;
 
@@ -284,7 +279,7 @@ static xx_ea_stream *xx_ea_parse(Abstractformat *self, xx_pd_struct *pd) {
         member.method = method;
         /* Published raw: +0x10 is not an MS-DOS date on most members, so
          * turning it into a timestamp would invent information. */
-        member.timestamp = (uint64_t)xx_ea_le32(header + XX_EA_STAMP_OFFSET);
+        member.timestamp = (uint64_t)xx_data_get_u32(header + XX_EA_STAMP_OFFSET, 4, 0, false);
         member.is_folder = false;
         if (!xx_ea_add(stream, &member)) {
             xx_str_free(member.name);

@@ -56,6 +56,7 @@
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/algo/irwinpac/xx_irwinpac.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_IRWINPAC_COPY_CHUNK (64 * 1024)
 
@@ -160,7 +161,6 @@ static bool xx_irwinpac_add(xx_irwinpac_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_irwinpac_le16(const uint8_t *data);
 static bool xx_irwinpac_probe_first(Abstractformat *self, int64_t offset, int64_t chunk_size, int64_t unpacked_size, xx_pd_struct *pd);
 static xx_irwinpac_stream *xx_irwinpac_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_irwinpac_decode(Abstractformat *self, const xx_irwinpac_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
@@ -175,10 +175,6 @@ static bool xx_irwinpac_decode(Abstractformat *self, const xx_irwinpac_member *m
 
 static const uint8_t xx_irwinpac_signature[XX_IRWINPAC_MAGIC_SIZE] = {
     'I', 'r', 'w', 'i', 'n', 'P', 'a', 'c'};
-
-static uint16_t xx_irwinpac_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
 
 /* Run the real decoder over the FIRST block only. The chain has no
  * terminator, so a clean end of input on a block boundary is how a member
@@ -258,7 +254,7 @@ static xx_irwinpac_stream *xx_irwinpac_parse(Abstractformat *self,
     /* The header states its own length, and it is 20 in every known file.
      * Checking it costs nothing and rules out anything that merely happens to
      * begin with the eight signature bytes. */
-    if ((int64_t)xx_irwinpac_le16(header + 8) != XX_IRWINPAC_HEADER_SIZE) {
+    if ((int64_t)xx_data_get_u16(header + 8, 2, 0, false) != XX_IRWINPAC_HEADER_SIZE) {
         return NULL;
     }
 
@@ -278,9 +274,9 @@ static xx_irwinpac_stream *xx_irwinpac_parse(Abstractformat *self,
                                  sizeof(chunk))) {
             return NULL;
         }
-        flag = xx_irwinpac_le16(chunk);
-        chunk_size = (int64_t)xx_irwinpac_le16(chunk + 2);
-        unpacked_size = (int64_t)xx_irwinpac_le16(chunk + 4);
+        flag = xx_data_get_u16(chunk, 2, 0, false);
+        chunk_size = (int64_t)xx_data_get_u16(chunk + 2, 2, 0, false);
+        unpacked_size = (int64_t)xx_data_get_u16(chunk + 4, 2, 0, false);
 
         if (flag > 1U) return NULL;
         /* A chunk that is only its own header carries nothing and would let a

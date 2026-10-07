@@ -34,6 +34,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef FINEAR
 #define XX_FINEAR_FILE_TYPE XX_FILE_TYPE_FINEAR
@@ -48,15 +49,6 @@
 #define FINEAR_MAX_PACKED ((uint64_t)256U * 1024U * 1024U)
 
 static void xx_finear_vtable_destroy(Abstractformat *self);
-
-static uint16_t finear_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t finear_le32(const uint8_t *bytes) {
-    return (uint32_t)finear_le16(bytes) |
-           ((uint32_t)finear_le16(bytes + 2U) << 16U);
-}
 
 static bool finear_read_at(xx_io_device *device, int64_t offset, void *buffer,
                            size_t size) {
@@ -90,8 +82,8 @@ static bool finear_parse_header(Abstractformat *format, uint32_t *checksum,
     if (xx_rt_memcmp(header, "FINEAR", 6U) != 0 || header[6] != 0xddU ||
         header[7] != 0x88U || header[8] != 0xddU)
         return false;
-    stored_checksum = finear_le32(header + 9U);
-    stored_unpacked = finear_le32(header + 13U);
+    stored_checksum = xx_data_get_u32(header + 9U, 4, 0, false);
+    stored_unpacked = xx_data_get_u32(header + 13U, 4, 0, false);
     /* The checksum field is a 16-bit CRC written into a 32-bit slot; anything
      * in the high half means this is not the layout we understand. */
     if (stored_checksum > 0xffffU) return false;

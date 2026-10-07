@@ -24,6 +24,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/algo/rsvk/xx_rsvk.h"
+#include "xxfclib/data/xx_data.h"
 
 #define RSVK_BLOCK_HEADER_SIZE 20
 /* The reference implementation's own ceilings. */
@@ -377,11 +378,6 @@ static bool rsvk_inverse(rsvk_state *state, int32_t primary, int32_t hole,
     return true;
 }
 
-static uint32_t rsvk_read_u32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
-           ((uint32_t)p[3] << 24);
-}
-
 static void rsvk_free(rsvk_state *state) {
     if (!state) return;
     if (state->mtf) xx_mem_free(state->mtf);
@@ -433,10 +429,10 @@ XXFC_API bool xx_rsvk_decode_memory(const uint8_t *input, size_t input_size,
         size_t length;
 
         if (xx_rt_memcmp(header, rsvk_magic, 4) != 0) break;
-        expected_crc = rsvk_read_u32(header + 4);
-        packed = (size_t)rsvk_read_u32(header + 8);
-        primary = (int32_t)rsvk_read_u32(header + 12);
-        hole = (int32_t)rsvk_read_u32(header + 16);
+        expected_crc = xx_data_get_u32(header + 4, 4, 0, false);
+        packed = (size_t)xx_data_get_u32(header + 8, 4, 0, false);
+        primary = (int32_t)xx_data_get_u32(header + 12, 4, 0, false);
+        hole = (int32_t)xx_data_get_u32(header + 16, 4, 0, false);
         if ((packed == 0) ||
             (packed > input_size - cursor - RSVK_BLOCK_HEADER_SIZE)) {
             ok = false;

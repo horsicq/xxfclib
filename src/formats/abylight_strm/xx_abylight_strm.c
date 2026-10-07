@@ -5,6 +5,7 @@
  */
 #include "xxfclib/formats/abylight_strm/xx_abylight_strm.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 #ifndef ABYLIGHT_STRM
 #define XX_FILE_TYPE_ABYLIGHT_STRM ((xx_file_type_t)1542)
 #endif
@@ -15,9 +16,9 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[30],adts[7]; uint32_t rate,length,position=0,frames=0;
     int64_t available=pm_available(f);
     if(available<37 || !pm_read(f,0,h,sizeof(h)) ||
-       xx_rt_memcmp(h,"STRM",4) || pm_le32(h+4)!=1000 ||
-       !(rate=pm_le32(h+8)) || !(length=pm_le32(h+0x10)) ||
-       length!=pm_le32(h+0x18) || (uint64_t)length!=(uint64_t)(available-30))
+       xx_rt_memcmp(h,"STRM",4) || xx_data_get_u32(h+4, 4, 0, false)!=1000 ||
+       !(rate=xx_data_get_u32(h+8, 4, 0, false)) || !(length=xx_data_get_u32(h+0x10, 4, 0, false)) ||
+       length!=xx_data_get_u32(h+0x18, 4, 0, false) || (uint64_t)length!=(uint64_t)(available-30))
         return false;
     while(position<length) {
         uint32_t frame_length,frequency,channels,header_length;

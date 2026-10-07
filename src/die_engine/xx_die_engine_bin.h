@@ -32,7 +32,9 @@
  *
  * Small files have a resident buffer and a device over those same bytes.
  * Larger files keep a buffered, seekable xxio device; readers must not assume
- * a whole-file allocation exists.
+ * a whole-file allocation exists. A scan that keeps re-reading a large file
+ * gets it loaded whole (xx_get_file_memory_limit); die_file_whole() reports
+ * either kind of buffer.
  */
 
 #ifndef DIE_ENGINE_BIN_H
@@ -80,6 +82,19 @@ int die_file_read_at(DieFile *pFile, cd_i64 nOffset, void *pData, size_t nSize);
 const unsigned char *die_file_window(DieFile *pFile, cd_i64 nOffset, size_t *pnSize);
 /** Sticky physical I/O failure, shared by copies of the same DieFile. */
 int die_file_read_failed(const DieFile *pFile);
+
+/** The whole file as one buffer (plus NUL), or NULL to stream it. Resident
+ *  files always have one. A streamed file gets one once the bytes read
+ *  through its window reach its size; nAccess, the bytes the caller will
+ *  certainly read now, counts toward that and may load it at once (0 only
+ *  asks). A search, which can stop at its first match, passes
+ *  die_file_search_access() instead of its range. The buffer belongs to the
+ *  device every copy of the DieFile shares, so it lives until
+ *  die_file_close() -- use this, never pData, to pick a buffer path. */
+const unsigned char *die_file_whole(DieFile *pFile, cd_i64 nAccess);
+
+/** What a search over nRange bytes certainly reads: one window. */
+cd_i64 die_file_search_access(const DieFile *pFile, cd_i64 nRange);
 
 /** Load the complete declared size from the source's current position.
  *  The source is borrowed and remains open. On EOF/error the file is zeroed. */

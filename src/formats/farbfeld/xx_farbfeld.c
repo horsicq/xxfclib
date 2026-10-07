@@ -5,10 +5,11 @@
  */
 #include "xxfclib/formats/farbfeld/xx_farbfeld.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[16]; uint32_t w,height; uint64_t row,bytes; (void)pd;
-    if(!pm_read(f,0,h,16) || xx_rt_memcmp(h,"farbfeld",8) || !(w=pm_be32(h+8)) || !(height=pm_be32(h+12))) return false;
+    if(!pm_read(f,0,h,16) || xx_rt_memcmp(h,"farbfeld",8) || !(w=xx_data_get_u32(h+8, 4, 0, true)) || !(height=xx_data_get_u32(h+12, 4, 0, true))) return false;
     row=(uint64_t)w*8; if(row>(uint64_t)INT64_MAX/height) return false; bytes=row*height;
     if(bytes>(uint64_t)(pm_available(f)-16) || !pm_add(f,s,"dimensions.bin",8,8) || !pm_add(f,s,"rgba16be.bin",16,(int64_t)bytes)) return false;
     s->size=16+(int64_t)bytes; return true;

@@ -33,6 +33,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder, keyed on the alias macro that xxfc_defs.h
  * defines next to the enumerator once CHD is registered there. */
@@ -193,37 +194,8 @@ static uint32_t chd_be16(const uint8_t *p) {
     return ((uint32_t)p[0] << 8) | (uint32_t)p[1];
 }
 
-static uint32_t chd_be24(const uint8_t *p) {
-    return ((uint32_t)p[0] << 16) | ((uint32_t)p[1] << 8) | (uint32_t)p[2];
-}
-
-static uint32_t chd_be32(const uint8_t *p) {
-    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
-           ((uint32_t)p[2] << 8) | (uint32_t)p[3];
-}
-
 static uint64_t chd_be48(const uint8_t *p) {
-    return ((uint64_t)chd_be16(p) << 32) | (uint64_t)chd_be32(p + 2);
-}
-
-static uint64_t chd_be64(const uint8_t *p) {
-    return ((uint64_t)chd_be32(p) << 32) | (uint64_t)chd_be32(p + 4);
-}
-
-static uint32_t chd_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
-           ((uint32_t)p[3] << 24);
-}
-
-static void chd_put_be16(uint8_t *p, uint32_t v) {
-    p[0] = (uint8_t)(v >> 8);
-    p[1] = (uint8_t)v;
-}
-
-static void chd_put_be24(uint8_t *p, uint32_t v) {
-    p[0] = (uint8_t)(v >> 16);
-    p[1] = (uint8_t)(v >> 8);
-    p[2] = (uint8_t)v;
+    return ((uint64_t)chd_be16(p) << 32) | (uint64_t)xx_data_get_u32(p + 2, 4, 0, true);
 }
 
 static void chd_put_be48(uint8_t *p, uint64_t v) {
@@ -320,8 +292,8 @@ static bool chd_parse_header(xx_io_device *device, int64_t base,
     if (!chd_read_at(device, base, h, 16U) ||
         xx_rt_memcmp(h, CHD_MAGIC, 8U) != 0)
         return false;
-    length = chd_be32(h + 8);
-    version = chd_be32(h + 12);
+    length = xx_data_get_u32(h + 8, 4, 0, true);
+    version = xx_data_get_u32(h + 12, 4, 0, true);
     if (chd_header_length(version) == 0U || length != chd_header_length(version) ||
         (int64_t)length > info->size ||
         !chd_read_at(device, base, h, length))
@@ -329,19 +301,19 @@ static bool chd_parse_header(xx_io_device *device, int64_t base,
     info->version = version;
     info->header_len = length;
     if (version <= 2U) {
-        uint32_t hunk_sectors = chd_be32(h + 24);
-        uint32_t cylinders = chd_be32(h + 32);
-        uint32_t heads = chd_be32(h + 36);
-        uint32_t sectors = chd_be32(h + 40);
-        uint32_t sector_bytes = version == 1U ? 512U : chd_be32(h + 76);
+        uint32_t hunk_sectors = xx_data_get_u32(h + 24, 4, 0, true);
+        uint32_t cylinders = xx_data_get_u32(h + 32, 4, 0, true);
+        uint32_t heads = xx_data_get_u32(h + 36, 4, 0, true);
+        uint32_t sectors = xx_data_get_u32(h + 40, 4, 0, true);
+        uint32_t sector_bytes = version == 1U ? 512U : xx_data_get_u32(h + 76, 4, 0, true);
         uint64_t chs;
-        info->flags = chd_be32(h + 16);
-        if (chd_be32(h + 20) > 2U) return false;
+        info->flags = xx_data_get_u32(h + 16, 4, 0, true);
+        if (xx_data_get_u32(h + 20, 4, 0, true) > 2U) return false;
         if (hunk_sectors == 0U || sector_bytes == 0U ||
             (uint64_t)hunk_sectors * sector_bytes > CHD_MAX_HUNK)
             return false;
         info->hunk_bytes = hunk_sectors * sector_bytes;
-        info->hunk_count = chd_be32(h + 28);
+        info->hunk_count = xx_data_get_u32(h + 28, 4, 0, true);
         chs = (uint64_t)cylinders * heads;
         if (sectors != 0U && chs > UINT64_MAX / sectors) return false;
         chs *= sectors;
@@ -356,14 +328,14 @@ static bool chd_parse_header(xx_io_device *device, int64_t base,
         xx_rt_memcpy(info->digest, h + 44, 16U);
         info->digest_size = 16U;
     } else if (version <= 4U) {
-        uint32_t compression = chd_be32(h + 20);
-        info->flags = chd_be32(h + 16);
+        uint32_t compression = xx_data_get_u32(h + 20, 4, 0, true);
+        info->flags = xx_data_get_u32(h + 16, 4, 0, true);
         if (compression > 3U) return false;
         info->codecs[0] = compression == 3U ? CHD_CODEC_V34AV : CHD_CODEC_ZLIB;
-        info->hunk_count = chd_be32(h + 24);
-        info->logical_bytes = chd_be64(h + 28);
-        info->meta_offset = chd_be64(h + 36);
-        info->hunk_bytes = chd_be32(h + (version == 3U ? 76 : 44));
+        info->hunk_count = xx_data_get_u32(h + 24, 4, 0, true);
+        info->logical_bytes = xx_data_get_u64(h + 28, 8, 0, true);
+        info->meta_offset = xx_data_get_u64(h + 36, 8, 0, true);
+        info->hunk_bytes = xx_data_get_u32(h + (version == 3U ? 76 : 44), 4, 0, true);
         info->unit_bytes = info->hunk_bytes;
         info->map_offset = length;
         info->map_entry_size = 16U;
@@ -372,14 +344,14 @@ static bool chd_parse_header(xx_io_device *device, int64_t base,
         info->digest_size = 20U;
     } else {
         for (index = 0U; index < 4U; ++index) {
-            info->codecs[index] = chd_be32(h + 16 + 4U * index);
+            info->codecs[index] = xx_data_get_u32(h + 16 + 4U * index, 4, 0, true);
             if (!chd_known_codec(info->codecs[index])) return false;
         }
-        info->logical_bytes = chd_be64(h + 32);
-        info->map_offset = chd_be64(h + 40);
-        info->meta_offset = chd_be64(h + 48);
-        info->hunk_bytes = chd_be32(h + 56);
-        info->unit_bytes = chd_be32(h + 60);
+        info->logical_bytes = xx_data_get_u64(h + 32, 8, 0, true);
+        info->map_offset = xx_data_get_u64(h + 40, 8, 0, true);
+        info->meta_offset = xx_data_get_u64(h + 48, 8, 0, true);
+        info->hunk_bytes = xx_data_get_u32(h + 56, 4, 0, true);
+        info->unit_bytes = xx_data_get_u32(h + 60, 4, 0, true);
         if (info->unit_bytes == 0U || info->hunk_bytes == 0U ||
             info->unit_bytes > info->hunk_bytes ||
             info->hunk_bytes % info->unit_bytes != 0U)
@@ -533,16 +505,16 @@ static bool chd_parse_chcd(chd_info *info, const uint8_t *data,
     uint32_t count, index;
     bool big;
     if (size < 4U + CHD_MAX_TRACKS * 24U) return false;
-    count = chd_le32(data);
+    count = xx_data_get_u32(data, 4, 0, false);
     big = count > CHD_MAX_TRACKS;
-    if (big) count = chd_be32(data);
+    if (big) count = xx_data_get_u32(data, 4, 0, true);
     if (count == 0U || count > CHD_MAX_TRACKS) return false;
     for (index = 0U; index < count; ++index) {
         const uint8_t *p = data + 4U + index * 24U;
         chd_track *track = &info->tracks[index];
         uint32_t f[6], field;
         for (field = 0U; field < 6U; ++field)
-            f[field] = big ? chd_be32(p + 4U * field) : chd_le32(p + 4U * field);
+            f[field] = big ? xx_data_get_u32(p + 4U * field, 4, 0, true) : xx_data_get_u32(p + 4U * field, 4, 0, false);
         if (f[0] >= TRK_COUNT || f[1] >= SUB_COUNT || f[2] == 0U ||
             f[2] > CHD_SECTOR || f[3] > CHD_SUBCODE || f[4] == 0U ||
             f[4] > 0x10000000U || f[5] > 0x10000000U)
@@ -579,8 +551,8 @@ static bool chd_scan_metadata(xx_io_device *device, chd_info *info,
         if (++count > CHD_MAX_META_ENTRIES || offset < info->header_len ||
             !chd_read(info, device, offset, head, sizeof(head)))
             return false;
-        tag = chd_be32(head);
-        length = chd_be32(head + 4) & 0x00FFFFFFU;
+        tag = xx_data_get_u32(head, 4, 0, true);
+        length = xx_data_get_u32(head + 4, 4, 0, true) & 0x00FFFFFFU;
         if ((uint64_t)length > (uint64_t)info->size - offset - 16U)
             return false;
         if (tag == CHD_META_CHTR) ++scan->text_tracks[0];
@@ -621,7 +593,7 @@ static bool chd_scan_metadata(xx_io_device *device, chd_info *info,
                 ++info->track_count;
             }
         }
-        offset = chd_be64(head + 8);
+        offset = xx_data_get_u64(head + 8, 8, 0, true);
     }
     return true;
 }
@@ -1120,7 +1092,7 @@ static bool chd_v5_decode_map(chd_ctx *c) {
     c->map_failed = true;
     if (!chd_read(info, c->device, info->map_offset, head, sizeof(head)))
         return false;
-    packed_size = chd_be32(head);
+    packed_size = xx_data_get_u32(head, 4, 0, true);
     current = chd_be48(head + 4);
     length_bits = head[12];
     self_bits = head[13];
@@ -1219,9 +1191,9 @@ static bool chd_v5_decode_map(chd_ctx *c) {
         default:
             goto done;
         }
-        chd_put_be24(entry + 1, length);
+        xx_data_set_u24(entry + 1, 3, 0, length, true);
         chd_put_be48(entry + 4, offset);
-        chd_put_be16(entry + 10, crc);
+        xx_data_set_u16(entry + 10, 2, 0, (uint16_t)crc, true);
         if ((hunk & 0xFFFFU) == 0U && chd_bits_overflow(&bits)) goto done;
     }
     if (chd_bits_overflow(&bits)) goto done;
@@ -1281,7 +1253,7 @@ static bool chd_get_entry(chd_ctx *c, uint32_t hunk, chd_entry *e) {
     if (info->version <= 2U) {
         uint64_t value;
         if (!chd_map_raw(c, hunk, &raw)) return false;
-        value = chd_be64(raw);
+        value = xx_data_get_u64(raw, 8, 0, true);
         e->offset = value & 0xFFFFFFFFFFFULL;
         e->length = (uint32_t)(value >> 44);
         e->kind = e->length == info->hunk_bytes ? CHD_E_STORED : CHD_E_COMPRESSED;
@@ -1290,8 +1262,8 @@ static bool chd_get_entry(chd_ctx *c, uint32_t hunk, chd_entry *e) {
     if (info->version <= 4U) {
         uint32_t flags;
         if (!chd_map_raw(c, hunk, &raw)) return false;
-        e->offset = chd_be64(raw);
-        e->crc = chd_be32(raw + 8);
+        e->offset = xx_data_get_u64(raw, 8, 0, true);
+        e->crc = xx_data_get_u32(raw + 8, 4, 0, true);
         e->length = chd_be16(raw + 12) | ((uint32_t)raw[14] << 16);
         flags = raw[15];
         e->crc_kind = (flags & 0x10U) ? 0U : 32U;
@@ -1307,14 +1279,14 @@ static bool chd_get_entry(chd_ctx *c, uint32_t hunk, chd_entry *e) {
     }
     if (!info->v5_compressed_map) {
         if (!chd_map_raw(c, hunk, &raw)) return false;
-        e->offset = (uint64_t)chd_be32(raw) * info->hunk_bytes;
+        e->offset = (uint64_t)xx_data_get_u32(raw, 4, 0, true) * info->hunk_bytes;
         e->length = info->hunk_bytes;
         e->kind = e->offset == 0U ? CHD_E_ZERO : CHD_E_STORED;
         return true;
     }
     if (!chd_v5_decode_map(c)) return false;
     raw = c->map + (size_t)hunk * CHD_V5_MAP_ENTRY;
-    e->length = chd_be24(raw + 1);
+    e->length = xx_data_get_u24(raw + 1, 3, 0, true);
     e->offset = chd_be48(raw + 4);
     e->crc = chd_be16(raw + 10);
     e->crc_kind = 16U;

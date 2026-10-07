@@ -72,6 +72,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and not edited from here,
  * so the alias macro that sits next to the enumerator is tested instead. */
@@ -169,16 +170,6 @@ static ssize_t gb_microfox_put_write(xx_io_device *device, const void *buffer, s
         done += (size_t)n;
     }
     return (ssize_t)done;
-}
-
-
-static uint16_t put_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t put_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
 }
 
 static bool put_read_at(xx_io_device *device, int64_t offset, uint8_t *buffer,
@@ -327,12 +318,12 @@ static bool put_parse_member(Abstractformat *self, uint8_t *header,
     min_base = (level == 0U) ? PUT_L0_MIN : PUT_L1_MIN;
     if (min_base + name_length > base_size) return false;
     name_size = name_length;
-    packed = (int64_t)put_le32(header + 7);
-    unpacked = (int64_t)put_le32(header + 11);
+    packed = (int64_t)xx_data_get_u32(header + 7, 4, 0, false);
+    unpacked = (int64_t)xx_data_get_u32(header + 11, 4, 0, false);
     header_total = base_size;
 
     if (level == 1U) {
-        int32_t next = (int32_t)put_le16(header + base_size - 2);
+        int32_t next = (int32_t)xx_data_get_u16(header + base_size - 2, 2, 0, false);
         int ext_count = 0;
 
         while (next != 0) {
@@ -368,11 +359,11 @@ static bool put_parse_member(Abstractformat *self, uint8_t *header,
             }
             header_total += next;
             ext_total += next;
-            next = (int32_t)put_le16(header + header_total - 2);
+            next = (int32_t)xx_data_get_u16(header + header_total - 2, 2, 0, false);
         }
         if (crc_pos >= 0 &&
             put_header_crc(header, (size_t)header_total, (size_t)crc_pos) !=
-                put_le16(header + crc_pos)) {
+                xx_data_get_u16(header + crc_pos, 2, 0, false)) {
             return false;
         }
         packed -= ext_total;
@@ -404,8 +395,8 @@ static bool put_parse_member(Abstractformat *self, uint8_t *header,
     member->data_offset = absolute + header_total;
     member->packed_size = packed;
     member->unpacked_size = unpacked;
-    member->dos_datetime = put_le32(header + 15);
-    member->crc16 = put_le16(header + 22 + name_length);
+    member->dos_datetime = xx_data_get_u32(header + 15, 4, 0, false);
+    member->crc16 = xx_data_get_u16(header + 22 + name_length, 2, 0, false);
     member->method = header[5];
     member->level = level;
     member->attributes = header[19];

@@ -64,6 +64,7 @@
 #include "xxfclib/formats/xz/xx_xz.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_XAR_COPY_CHUNK (64 * 1024)
 
@@ -202,9 +203,6 @@ typedef struct xx_xar_frame_s {
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_xar_be16(const uint8_t *data);
-static uint32_t xx_xar_be32(const uint8_t *data);
-static uint64_t xx_xar_be64(const uint8_t *data);
 static bool xx_xar_is_space(char value);
 static bool xx_xar_str_ieq(const char *left, const char *right);
 static bool xx_xar_parse_u64(const char *text, int64_t *value);
@@ -221,22 +219,6 @@ static bool xx_xar_decode(Abstractformat *self, const xx_xar_member *member, uin
  * a <name> or an <offset> is only believed where the schema puts it: XAR
  * files embed foreign metadata (signatures, property lists) under <toc>, and
  * a stray <offset> there must not become a member's location. */
-
-
-
-static uint16_t xx_xar_be16(const uint8_t *data) {
-    return (uint16_t)(((uint16_t)data[0] << 8) | (uint16_t)data[1]);
-}
-
-static uint32_t xx_xar_be32(const uint8_t *data) {
-    return ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16) |
-           ((uint32_t)data[2] << 8) | (uint32_t)data[3];
-}
-
-static uint64_t xx_xar_be64(const uint8_t *data) {
-    return ((uint64_t)xx_xar_be32(data) << 32) |
-           (uint64_t)xx_xar_be32(data + 4);
-}
 
 static bool xx_xar_is_space(char value) {
     return value == ' ' || value == '\t' || value == '\r' || value == '\n';
@@ -466,11 +448,11 @@ static xx_xar_stream *xx_xar_parse(Abstractformat *self, xx_pd_struct *pd) {
         return NULL;
     }
 
-    header_size = (int64_t)xx_xar_be16(header + 4);
-    version = (uint32_t)xx_xar_be16(header + 6);
-    toc_packed = (int64_t)(xx_xar_be64(header + 8) & 0x7FFFFFFFFFFFFFFFULL);
-    toc_plain = (int64_t)(xx_xar_be64(header + 16) & 0x7FFFFFFFFFFFFFFFULL);
-    checksum_alg = xx_xar_be32(header + 24);
+    header_size = (int64_t)xx_data_get_u16(header + 4, 2, 0, true);
+    version = (uint32_t)xx_data_get_u16(header + 6, 2, 0, true);
+    toc_packed = (int64_t)(xx_data_get_u64(header + 8, 8, 0, true) & 0x7FFFFFFFFFFFFFFFULL);
+    toc_plain = (int64_t)(xx_data_get_u64(header + 16, 8, 0, true) & 0x7FFFFFFFFFFFFFFFULL);
+    checksum_alg = xx_data_get_u32(header + 24, 4, 0, true);
 
     /* The header size may grow in a later revision, but it can never be
      * smaller than the fields already defined, and 1 KiB of header is far

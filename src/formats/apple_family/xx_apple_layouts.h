@@ -6,6 +6,7 @@
 #ifndef XX_APPLE_LAYOUTS_PRIVATE_H
 #define XX_APPLE_LAYOUTS_PRIVATE_H
 #include "xx_apple_volumes.h"
+#include "xxfclib/data/xx_data.h"
 typedef struct al_part { uint64_t at,size;unsigned kind; } al_part;
 static bool al_parts(af_work *w,const al_part *parts,unsigned count,uint64_t header) {
     unsigned i,j;int64_t n=pm_available(w->f);char prefix[24];
@@ -36,21 +37,21 @@ static bool al_focus(af_work *w) {
     uint8_t h[512];al_part p[30];unsigned i,count;
     if(!af_read(w,0,h,sizeof(h)) || xx_rt_memcmp(h,"Parsons Engin.",14) || !(count=h[15]) || count>30U)return false;
     for(i=0;i<count;++i){const uint8_t *e=h+32+i*16U;if(!af_zero(e+8,8))return false;
-        p[i].at=(uint64_t)pm_le32(e)*512U;p[i].size=(uint64_t)pm_le32(e+4)*512U;p[i].kind=0;}
+        p[i].at=(uint64_t)xx_data_get_u32(e, 4, 0, false)*512U;p[i].size=(uint64_t)xx_data_get_u32(e+4, 4, 0, false)*512U;p[i].kind=0;}
     return al_parts(w,p,count,1536);
 }
 static bool al_micro(af_work *w) {
     uint8_t h[512];al_part p[16];unsigned i,j=0,first,second;
-    if(!af_read(w,0,h,sizeof(h)) || pm_le16(h)!=0xcccaU || (first=h[12])>8U || (second=h[13])>8U || !(first+second))return false;
+    if(!af_read(w,0,h,sizeof(h)) || xx_data_get_u16(h, 2, 0, false)!=0xcccaU || (first=h[12])>8U || (second=h[13])>8U || !(first+second))return false;
     for(i=0;i<first+second;++i){unsigned slot=i<first?i:i-first;unsigned starts=i<first?32U:128U,sizes=i<first?64U:160U;
-        p[j].at=(uint64_t)pm_le32(h+starts+slot*4U)*512U;p[j].size=(uint64_t)(pm_le32(h+sizes+slot*4U)&0xffffffU)*512U;p[j++].kind=0;}
+        p[j].at=(uint64_t)xx_data_get_u32(h+starts+slot*4U, 4, 0, false)*512U;p[j].size=(uint64_t)(xx_data_get_u32(h+sizes+slot*4U, 4, 0, false)&0xffffffU)*512U;p[j++].kind=0;}
     return al_parts(w,p,j,256U*512U);
 }
 static bool al_ts(af_work *w) {
     uint8_t h[1024];al_part p[42];unsigned count=0,at;uint32_t blocks;bool ended=false;
-    if(!af_read(w,0,h,sizeof(h)) || pm_be16(h)!=0x4552U || pm_be16(h+2)!=512U || pm_be16(h+512)!=0x5453U)return false;
-    blocks=pm_be32(h+4);if(!blocks || (uint64_t)blocks*512U>(uint64_t)pm_available(w->f))return false;
-    for(at=514;at+12U<=1024;at+=12U){uint32_t start=pm_be32(h+at),size=pm_be32(h+at+4),fs=pm_be32(h+at+8);
+    if(!af_read(w,0,h,sizeof(h)) || xx_data_get_u16(h, 2, 0, true)!=0x4552U || xx_data_get_u16(h+2, 2, 0, true)!=512U || xx_data_get_u16(h+512, 2, 0, true)!=0x5453U)return false;
+    blocks=xx_data_get_u32(h+4, 4, 0, true);if(!blocks || (uint64_t)blocks*512U>(uint64_t)pm_available(w->f))return false;
+    for(at=514;at+12U<=1024;at+=12U){uint32_t start=xx_data_get_u32(h+at, 4, 0, true),size=xx_data_get_u32(h+at+4, 4, 0, true),fs=xx_data_get_u32(h+at+8, 4, 0, true);
         /* Historical producers may leave garbage after a zero start. */
         if(!start){ended=true;break;}
         if(fs!=0x54465331U || !size || start>=blocks || size>blocks-start || count>=42U)return false;
@@ -76,15 +77,15 @@ static bool al_cffa(af_work *w,uint32_t profile) {
 }
 static bool al_ppm(af_work *w) {
     uint8_t h[512],map[1024],seen[8192];uint32_t block=2,last=0,area=0,used=0,total;unsigned count,i;al_part p[31];
-    if(!af_read(w,1024,h,sizeof(h)) || (h[4]&0xf0U)!=0xf0U || h[35]!=39U || h[36]!=13U || !(total=pm_le16(h+41)) || (uint64_t)total*512U>(uint64_t)pm_available(w->f))return false;
+    if(!af_read(w,1024,h,sizeof(h)) || (h[4]&0xf0U)!=0xf0U || h[35]!=39U || h[36]!=13U || !(total=xx_data_get_u16(h+41, 2, 0, false)) || (uint64_t)total*512U>(uint64_t)pm_available(w->f))return false;
     xx_mem_zero(seen,sizeof(seen));
-    while(block){if(block>=total || (seen[block>>3]&(1U<<(block&7))) || !af_read(w,(int64_t)block*512,h,sizeof(h)) || pm_le16(h)!=last)return false;
+    while(block){if(block>=total || (seen[block>>3]&(1U<<(block&7))) || !af_read(w,(int64_t)block*512,h,sizeof(h)) || xx_data_get_u16(h, 2, 0, false)!=last)return false;
         seen[block>>3]|=(uint8_t)(1U<<(block&7));
         for(i=block==2U?1U:0U;i<13U;++i){const uint8_t *e=h+4+i*39U;
-            if((e[0]>>4U)==4U){if(area || (e[0]&15U)!=11U || xx_rt_memcmp(e+1,"PASCAL.AREA",11) || e[16]!=0xefU)return false;area=pm_le16(e+17);used=pm_le16(e+19);}}
-        last=block;block=pm_le16(h+2);}
-    if(area<3U || used<3U || area>=total || used>total-area || !af_read(w,(int64_t)area*512,map,sizeof(map)) || pm_le16(map)!=used || !(count=pm_le16(map+2)) || count>31U || xx_rt_memcmp(map+4,"\003PPM",4))return false;
-    for(i=0;i<count;++i){const uint8_t *e=map+16+i*8U;uint32_t start=pm_le16(e),size=pm_le16(e+2);
+            if((e[0]>>4U)==4U){if(area || (e[0]&15U)!=11U || xx_rt_memcmp(e+1,"PASCAL.AREA",11) || e[16]!=0xefU)return false;area=xx_data_get_u16(e+17, 2, 0, false);used=xx_data_get_u16(e+19, 2, 0, false);}}
+        last=block;block=xx_data_get_u16(h+2, 2, 0, false);}
+    if(area<3U || used<3U || area>=total || used>total-area || !af_read(w,(int64_t)area*512,map,sizeof(map)) || xx_data_get_u16(map, 2, 0, false)!=used || !(count=xx_data_get_u16(map+2, 2, 0, false)) || count>31U || xx_rt_memcmp(map+4,"\003PPM",4))return false;
+    for(i=0;i<count;++i){const uint8_t *e=map+16+i*8U;uint32_t start=xx_data_get_u16(e, 2, 0, false),size=xx_data_get_u16(e+2, 2, 0, false);
         if(start<area+2U || start>=area+used || !size || size>area+used-start)return false;
         p[i].at=(uint64_t)start*512U;p[i].size=(uint64_t)size*512U;p[i].kind=2;}
     return av_extent(w,0,(uint64_t)total*512U,"PRODOS",1) && al_parts(w,p,count,(uint64_t)(area+2U)*512U);
@@ -97,7 +98,7 @@ static bool al_hybrid(af_work *w) {
      * by a different interpretation of its directory bytes. */
     for(i=0;i<2U;++i){if(!af_read(w,i?2816:1024,h,sizeof(h)))return false;
         if(((h[4]&0xf0U)==0xf0U && (h[4]&15U) && h[35]==39U && h[36]==13U) ||
-           (pm_le16(h)==0U && pm_le16(h+2)==6U && pm_le16(h+4)==0U && h[6]>=1U && h[6]<=7U) ||
+           (xx_data_get_u16(h, 2, 0, false)==0U && xx_data_get_u16(h+2, 2, 0, false)==6U && xx_data_get_u16(h+4, 2, 0, false)==0U && h[6]>=1U && h[6]<=7U) ||
            (!i && h[0]=='B' && h[1]=='D'))return av_extent(w,0,143360,"BLOCK",0);}
     return av_extent(w,0,143360,"CPM",7);
 }
@@ -108,12 +109,12 @@ static bool al_hybrid(af_work *w) {
 static bool al_master(af_work *w,uint32_t profile) {
     uint8_t h[512],bitmap[8192];uint32_t total,bmap,blocks,start,i;unsigned found=0;char prefix[24];
     if(profile!=143360U && profile!=163840U && profile!=204800U && profile!=409600U)return false;
-    if(!af_read(w,1024,h,sizeof(h)) || (h[4]&0xf0U)!=0xf0U || h[35]!=39U || h[36]!=13U || !(total=pm_le16(h+41)) || (uint64_t)total*512U>(uint64_t)pm_available(w->f))return false;
-    bmap=pm_le16(h+39);blocks=profile/512U;
+    if(!af_read(w,1024,h,sizeof(h)) || (h[4]&0xf0U)!=0xf0U || h[35]!=39U || h[36]!=13U || !(total=xx_data_get_u16(h+41, 2, 0, false)) || (uint64_t)total*512U>(uint64_t)pm_available(w->f))return false;
+    bmap=xx_data_get_u16(h+39, 2, 0, false);blocks=profile/512U;
     if(!bmap || bmap>=total || (total+7U)/8U>(total-bmap)*512U || !af_read(w,(int64_t)bmap*512,bitmap,(total+7U)/8U) || !av_extent(w,0,(uint64_t)total*512U,"PRODOS",1))return false;
     for(start=0;start+blocks<=total;++start){uint64_t vtoc=(uint64_t)start*512U+17U*(profile==409600U?32U:16U)*256U;uint8_t v[256];bool allocated=true;
         if(!af_read(w,(int64_t)vtoc,v,sizeof(v)))return false;
-        if(v[1]!=17U || !v[2] || v[2]>=(profile==409600U?32U:16U) || v[0x34]!=(profile==143360U?35U:profile==163840U?40U:50U) || v[0x35]!=(profile==409600U?32U:16U) || pm_le16(v+0x36)!=256U)continue;
+        if(v[1]!=17U || !v[2] || v[2]>=(profile==409600U?32U:16U) || v[0x34]!=(profile==143360U?35U:profile==163840U?40U:50U) || v[0x35]!=(profile==409600U?32U:16U) || xx_data_get_u16(v+0x36, 2, 0, false)!=256U)continue;
         for(i=start;i<start+blocks;++i)if(bitmap[i>>3]&(0x80U>>(i&7))){allocated=false;break;}
         if(!allocated)continue;
         xx_rt_snprintf(prefix,sizeof(prefix),"DOS%02u",++found);

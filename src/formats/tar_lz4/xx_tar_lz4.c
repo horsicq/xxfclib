@@ -10,6 +10,7 @@
 #include "xxfclib/memory/xx_memory.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_TAR_LZ4_MAGIC_SIZE 4U
 #define XX_TAR_LZ4_HEADER_SIZE 15U
@@ -24,28 +25,6 @@
 
 static void xx_tar_lz4_vtable_destroy(Abstractformat *self);
 
-static uint32_t xx_tar_lz4_read32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
-
-static uint64_t xx_tar_lz4_read64(const uint8_t *data) {
-    return (uint64_t)xx_tar_lz4_read32(data) |
-           ((uint64_t)xx_tar_lz4_read32(data + 4U) << 32U);
-}
-
-static void xx_tar_lz4_put32(uint8_t *data, uint32_t value) {
-    data[0] = (uint8_t)value;
-    data[1] = (uint8_t)(value >> 8U);
-    data[2] = (uint8_t)(value >> 16U);
-    data[3] = (uint8_t)(value >> 24U);
-}
-
-static void xx_tar_lz4_put64(uint8_t *data, uint64_t value) {
-    xx_tar_lz4_put32(data, (uint32_t)value);
-    xx_tar_lz4_put32(data + 4U, (uint32_t)(value >> 32U));
-}
-
 static uint32_t xx_tar_lz4_rotl32(uint32_t value, unsigned count) {
     return (value << count) | (value >> (32U - count));
 }
@@ -56,7 +35,7 @@ static uint32_t xx_tar_lz4_xxh32(const uint8_t *data, size_t size) {
     uint32_t hash = XX_TAR_LZ4_XXH_PRIME5 + (uint32_t)size;
     size_t offset = 0U;
     while (size - offset >= 4U) {
-        hash += xx_tar_lz4_read32(data + offset) * XX_TAR_LZ4_XXH_PRIME3;
+        hash += xx_data_get_u32(data + offset, 4, 0, false) * XX_TAR_LZ4_XXH_PRIME3;
         hash = xx_tar_lz4_rotl32(hash, 17U) * XX_TAR_LZ4_XXH_PRIME4;
         offset += 4U;
     }
@@ -109,7 +88,7 @@ static bool xx_tar_lz4_declared_size(const uint8_t *source, size_t size,
     uint8_t block_descriptor;
     uint64_t declared;
     if (!source || !result || size < XX_TAR_LZ4_HEADER_SIZE ||
-        xx_tar_lz4_read32(source) != UINT32_C(0x184D2204)) {
+        xx_data_get_u32(source, 4, 0, false) != UINT32_C(0x184D2204)) {
         return false;
     }
     flags = source[4];
@@ -119,7 +98,7 @@ static bool xx_tar_lz4_declared_size(const uint8_t *source, size_t size,
         (block_descriptor & UINT8_C(0x8F)) != 0U) {
         return false;
     }
-    declared = xx_tar_lz4_read64(source + 6U);
+    declared = xx_data_get_u64(source + 6U, 8, 0, false);
     if (declared == 0U || declared > (uint64_t)XX_TAR_LZ4_MAX_BUFFER ||
         declared > (uint64_t)SIZE_MAX) {
         return false;
@@ -224,7 +203,7 @@ static bool xx_tar_lz4_encode(Abstractformat *outer,
     header[3] = 0x18U;
     header[4] = 0x68U; /* version 1, independent blocks, content size */
     header[5] = 0x40U; /* 64 KiB maximum block size */
-    xx_tar_lz4_put64(header + 6U, (uint64_t)tar_size);
+    xx_data_set_u64(header + 6U, 8, 0, (uint64_t)tar_size, false);
     header[14] = (uint8_t)(xx_tar_lz4_xxh32(header + 4U, 10U) >> 8U);
     if (xx_io_seek(outer->device, (long)outer->base_address, SEEK_SET) != 0 ||
         !xx_tar_lz4_write_all(outer->device, header, sizeof(header), pd)) {
@@ -242,8 +221,8 @@ static bool xx_tar_lz4_encode(Abstractformat *outer,
             read > INT32_MAX || total_size > INT64_MAX - 4 - read) {
             return false;
         }
-        xx_tar_lz4_put32(block_size,
-                          UINT32_C(0x80000000) | (uint32_t)read);
+        xx_data_set_u32(block_size, 4, 0,
+                          UINT32_C(0x80000000) | (uint32_t)read, false);
         if (!xx_tar_lz4_write_all(outer->device, block_size,
                                   sizeof(block_size), pd) ||
             !xx_tar_lz4_write_all(outer->device, buffer, (size_t)read, pd)) {

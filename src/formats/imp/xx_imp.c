@@ -63,6 +63,7 @@
 #include "xxfclib/algo/crc/xx_crc.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_IMP_COPY_CHUNK (64 * 1024)
 
@@ -175,8 +176,6 @@ typedef struct xx_imp_record_s {
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_imp_le16(const uint8_t *data);
-static uint32_t xx_imp_le32(const uint8_t *data);
 static uint16_t xx_imp_check16(const uint8_t *data, size_t size, size_t hole);
 static bool xx_imp_name_byte_ok(uint8_t byte);
 static bool xx_imp_record_add(xx_imp_record **records, size_t *count, const xx_imp_record *entry);
@@ -191,16 +190,6 @@ static bool xx_imp_decode(Abstractformat *self, const xx_imp_member *member, uin
  * struct has nowhere to put: a member's position inside the DECODED solid
  * stream, and the attribute byte that selects the branch converter. Built in
  * the same order as the members, one to one. */
-
-
-static uint16_t xx_imp_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_imp_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* CRC-32 of @p data with the two bytes at @p hole taken as zero, which is how
  * both the archive header and every record store their own checksum. Computed
@@ -284,16 +273,16 @@ static bool xx_imp_walk(Abstractformat *self, xx_pd_struct *pd,
      * The header's own CRC-16 is what makes this format identifiable, and it
      * is the check a later reader must not turn advisory. */
     if (xx_imp_check16(header, sizeof(header), 0x28U) !=
-        xx_imp_le16(header + 0x28)) {
+        xx_data_get_u16(header + 0x28, 2, 0, false)) {
         return false;
     }
 
-    directory_offset = (int64_t)xx_imp_le32(header + 4);
-    records_declared = xx_imp_le32(header + 8);
+    directory_offset = (int64_t)xx_data_get_u32(header + 4, 4, 0, false);
+    records_declared = xx_data_get_u32(header + 8, 4, 0, false);
     /* Flags 0x0001 and 0x0004 turn on container features with no support
      * here; listing under them would describe members that are not laid out
      * the way this walk assumes. */
-    if (xx_imp_le16(header + 0x26) & XX_IMP_UNSUPPORTED_FLAGS) return false;
+    if (xx_data_get_u16(header + 0x26, 2, 0, false) & XX_IMP_UNSUPPORTED_FLAGS) return false;
     if (records_declared > (uint32_t)XX_IMP_MAX_MEMBERS) return false;
 
     if (records_declared == 0U) {
@@ -365,22 +354,22 @@ static bool xx_imp_walk(Abstractformat *self, xx_pd_struct *pd,
         record = plain + chunk_base + position;
 
         /* The version field is the format's own compatibility gate. */
-        if ((xx_imp_le16(record) & 0x0FFFU) >= 0x010BU) goto done;
-        name_length = (int32_t)xx_imp_le16(record + 0x1A);
+        if ((xx_data_get_u16(record, 2, 0, false) & 0x0FFFU) >= 0x010BU) goto done;
+        name_length = (int32_t)xx_data_get_u16(record + 0x1A, 2, 0, false);
         record_total = (int64_t)XX_IMP_RECORD_SIZE + (int64_t)name_length +
                        (int64_t)record[0x0A] +
-                       (int64_t)xx_imp_le16(record + 0x18);
+                       (int64_t)xx_data_get_u16(record + 0x18, 2, 0, false);
         if ((int64_t)(chunk_sizes[chunk] - position) < record_total) goto done;
         /* Each record carries its own CRC-16 as well. With the directory
          * itself decoded from a compressed chunk, this is what tells a
          * correct decode from one that produced plausible bytes. */
         if (xx_imp_check16(record, (size_t)record_total, 0x24U) !=
-            xx_imp_le16(record + 0x24)) {
+            xx_data_get_u16(record + 0x24, 2, 0, false)) {
             goto done;
         }
 
-        stream_base = (int64_t)xx_imp_le32(record + 4);
-        decoded_size = (int64_t)xx_imp_le32(record + 0x10);
+        stream_base = (int64_t)xx_data_get_u32(record + 4, 4, 0, false);
+        decoded_size = (int64_t)xx_data_get_u32(record + 0x10, 4, 0, false);
         /* The solid stream must be inside the file and must carry its own
          * signature. The codec skips six bytes there without checking them,
          * so this is the only thing standing between a wrong stream base and
@@ -427,8 +416,8 @@ static bool xx_imp_walk(Abstractformat *self, xx_pd_struct *pd,
          * converter), so it is what is published raw here. */
         member.method = (uint32_t)record[0x0B];
         member.timestamp =
-            (uint64_t)xx_imp_le16(record + 0x20) |
-            ((uint64_t)xx_imp_le16(record + 0x22) << 16);
+            (uint64_t)xx_data_get_u16(record + 0x20, 2, 0, false) |
+            ((uint64_t)xx_data_get_u16(record + 0x22, 2, 0, false) << 16);
         member.is_folder = false;
         if (!xx_imp_add(stream, &member)) {
             xx_str_free(member.name);
@@ -438,7 +427,7 @@ static bool xx_imp_walk(Abstractformat *self, xx_pd_struct *pd,
         if (records) {
             xx_mem_zero(&entry, sizeof(entry));
             entry.stream_base = stream_base;
-            entry.stream_offset = (int64_t)xx_imp_le32(record + 0x0C);
+            entry.stream_offset = (int64_t)xx_data_get_u32(record + 0x0C, 4, 0, false);
             entry.decoded_size = decoded_size;
             entry.attributes = record[0x0B];
             if (!xx_imp_record_add(records, record_count, &entry)) goto done;

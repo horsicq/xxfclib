@@ -34,6 +34,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and not edited from here,
  * so the alias macro that sits next to the enumerator is tested instead. */
@@ -113,14 +114,6 @@ static const uint32_t ci_slot_base[CI_SLOTS] = {0U, 16U, 80U, 336U, 1360U,
 
 static uint32_t ci_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
-}
-
-static uint32_t ci_le32(const uint8_t *bytes) {
-    return ci_le16(bytes) | (ci_le16(bytes + 2U) << 16U);
-}
-
-static uint64_t ci_le64(const uint8_t *bytes) {
-    return (uint64_t)ci_le32(bytes) | ((uint64_t)ci_le32(bytes + 4U) << 32U);
 }
 
 static bool ci_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -546,7 +539,7 @@ static bool ci_locate(Abstractformat *format, int64_t *available_out,
         !ci_read_at(format->device, base, dos, sizeof(dos)) ||
         dos[0] != 'M' || dos[1] != 'Z')
         return false;
-    lfanew = ci_le32(dos + 0x3c);
+    lfanew = xx_data_get_u32(dos + 0x3c, 4, 0, false);
     if (lfanew < CI_DOS_HEADER || lfanew > CI_MAX_LFANEW ||
         (int64_t)lfanew > available - CI_PE_HEADER - CI_MIN_OPTIONAL ||
         !ci_read_at(format->device, base + lfanew, pe, sizeof(pe)) ||
@@ -566,11 +559,11 @@ static bool ci_locate(Abstractformat *format, int64_t *available_out,
                     (size_t)count * CI_SECTION_SIZE))
         return false;
     /* SizeOfHeaders, then the end of every section's raw data. */
-    image_end = ci_le32(optional + 60);
+    image_end = xx_data_get_u32(optional + 60, 4, 0, false);
     for (index = 0U; index < count; ++index) {
         const uint8_t *section = sections + (size_t)index * CI_SECTION_SIZE;
-        uint64_t raw_size = ci_le32(section + 16);
-        uint64_t raw_pointer = ci_le32(section + 20);
+        uint64_t raw_size = xx_data_get_u32(section + 16, 4, 0, false);
+        uint64_t raw_pointer = xx_data_get_u32(section + 20, 4, 0, false);
         if (raw_size != 0U && raw_pointer + raw_size > image_end)
             image_end = raw_pointer + raw_size;
     }
@@ -672,7 +665,7 @@ static bool ci_parse_head(Abstractformat *format, ci_codec *codec,
             }
             frame[have++] = codec->stage[at];
             if (have < sizeof(frame) || prelude >= 0) continue;
-            value = ci_le32(frame);
+            value = xx_data_get_u32(frame, 4, 0, false);
             if (carrier_size != 0U && value == carrier_size)
                 prelude = start + (int64_t)(index + at + 1U - sizeof(frame));
             else if (fallback < 0 && (value >> 24U) == 0U)
@@ -690,7 +683,7 @@ static bool ci_parse_head(Abstractformat *format, ci_codec *codec,
                         format->base_address + prelude + CI_PRELUDE_SKIP,
                         skip_bytes, sizeof(skip_bytes)))
             return false;
-        skip = (int32_t)ci_le32(skip_bytes);
+        skip = (int32_t)xx_data_get_u32(skip_bytes, 4, 0, false);
     }
     if (skip < 0 || (int64_t)skip > head->available - prelude) return false;
 
@@ -1248,7 +1241,7 @@ static bool ci_walk_records(Abstractformat *format, ci_codec *codec,
             if (!ci_read_at(format->device, format->base_address + position,
                             size_bytes, sizeof(size_bytes)))
                 goto done;
-            size = (int64_t)(int32_t)ci_le32(size_bytes);
+            size = (int64_t)(int32_t)xx_data_get_u32(size_bytes, 4, 0, false);
         }
         position += 4;
         if (size < 0 || size > CI_MAX_MEMBER) goto done;
@@ -1257,8 +1250,8 @@ static bool ci_walk_records(Abstractformat *format, ci_codec *codec,
         member.header_offset = position - 4 - length - CI_RECORD_HEADER;
         member.data_offset = position;
         member.unpacked_size = size;
-        member.attributes = ci_le32(header + 2);
-        member.filetime = ci_le64(header + 6);
+        member.attributes = xx_data_get_u32(header + 2, 4, 0, false);
+        member.filetime = xx_data_get_u64(header + 6, 8, 0, false);
         member.flag = header[1];
         member.method = (uint8_t)method;
         member.unsafe = unsafe;

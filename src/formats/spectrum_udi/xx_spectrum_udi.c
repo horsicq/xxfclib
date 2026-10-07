@@ -46,6 +46,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef SPECTRUM_UDI
 #define XX_SPECTRUM_UDI_FILE_TYPE XX_FILE_TYPE_SPECTRUM_UDI
@@ -106,11 +107,6 @@ typedef struct udi_work_s {
     udi_sector sectors[UDI_MAX_SECTORS];
     uint32_t count;
 } udi_work;
-
-static uint32_t udi_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
-           ((uint32_t)p[3] << 24);
-}
 
 static uint32_t udi_le16(const uint8_t *p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8);
@@ -318,8 +314,8 @@ static bool udi_parse(Abstractformat *format, udi_stream **result) {
         xx_rt_memcmp(header, "UDI!", 4U) != 0 || header[8] != 0U ||
         header[10] > 1U)
         return false;
-    file_size = udi_le32(header + 4);
-    ext_size = udi_le32(header + 12);
+    file_size = xx_data_get_u32(header + 4, 4, 0, false);
+    ext_size = xx_data_get_u32(header + 12, 4, 0, false);
     cylinders = (uint32_t)header[9] + 1U;
     heads = (uint32_t)header[10] + 1U;
     count = cylinders * heads;
@@ -457,7 +453,7 @@ static bool udi_check_crc(Abstractformat *format, int64_t file_size) {
         done += (int64_t)part;
     }
     ok = udi_read_at(format->device, format->base_address + file_size, stored,
-                     4U) && udi_le32(stored) == crc;
+                     4U) && xx_data_get_u32(stored, 4, 0, false) == crc;
 out:
     xx_mem_free(chunk);
     return ok;

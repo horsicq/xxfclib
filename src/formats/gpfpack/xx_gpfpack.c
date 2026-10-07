@@ -61,6 +61,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 /* The enumerator is added by the coordinator, not by this file. */
 #ifdef GPFPACK
@@ -115,15 +116,6 @@ typedef struct xx_gpfpack_stream_s {
 } xx_gpfpack_stream;
 
 /* ------------------------------------------------------------ helpers --- */
-
-static uint16_t xx_gpfpack_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t xx_gpfpack_le32(const uint8_t *bytes) {
-    return (uint32_t)xx_gpfpack_le16(bytes) |
-           ((uint32_t)xx_gpfpack_le16(bytes + 2U) << 16U);
-}
 
 static bool xx_gpfpack_read_at(Abstractformat *self, int64_t offset,
                                void *buffer, size_t size) {
@@ -200,7 +192,7 @@ static bool xx_gpfpack_walk_blocks(Abstractformat *self, int64_t start,
         if (!xx_gpfpack_read_at(self, self->base_address + cursor, field,
                                 sizeof(field)))
             return false;
-        bits = xx_gpfpack_le32(field);
+        bits = xx_data_get_u32(field, 4, 0, false);
         if (bits == 0U || bits > XX_GPFPACK_MAX_BLOCK_BITS) return false;
         bytes = (int64_t)((bits + 7U) / 8U);
         cursor += 4;
@@ -239,12 +231,12 @@ static xx_gpfpack_stream *xx_gpfpack_parse(Abstractformat *self,
     if (span < (int64_t)XX_GPFPACK_HEADER_SIZE + 5) return NULL;
     if (!xx_gpfpack_read_at(self, self->base_address, header, sizeof(header)))
         return NULL;
-    if (xx_gpfpack_le32(header) != XX_GPFPACK_CONSTANT) return NULL;
+    if (xx_data_get_u32(header, 4, 0, false) != XX_GPFPACK_CONSTANT) return NULL;
     if (xx_rt_memcmp(header + XX_GPFPACK_TAG_OFFSET, "GPFPACK",
                      XX_GPFPACK_TAG_SIZE) != 0)
         return NULL;
     /* U3 requires the version word to be exactly 1, and every sample is. */
-    if (xx_gpfpack_le16(header + XX_GPFPACK_VERSION_OFFSET) !=
+    if (xx_data_get_u16(header + XX_GPFPACK_VERSION_OFFSET, 2, 0, false) !=
         XX_GPFPACK_VERSION)
         return NULL;
     if (!xx_gpfpack_name_field_sane(header + XX_GPFPACK_NAME_OFFSET,
@@ -263,7 +255,7 @@ static xx_gpfpack_stream *xx_gpfpack_parse(Abstractformat *self,
         xx_mem_free(stream);
         return NULL;
     }
-    stream->version = xx_gpfpack_le16(header + XX_GPFPACK_VERSION_OFFSET);
+    stream->version = xx_data_get_u16(header + XX_GPFPACK_VERSION_OFFSET, 2, 0, false);
     stream->blocks = blocks;
     stream->member.header_offset = self->base_address;
     stream->member.header_size = XX_GPFPACK_HEADER_SIZE;
@@ -470,7 +462,7 @@ static bool xx_gpfpack_lzw_run(const uint8_t *payload, size_t payload_size,
             result = false;
             break;
         }
-        bit_count = xx_gpfpack_le32(payload + cursor);
+        bit_count = xx_data_get_u32(payload + cursor, 4, 0, false);
         if (bit_count == 0U || bit_count > XX_GPFPACK_MAX_BLOCK_BITS) {
             result = false;
             break;

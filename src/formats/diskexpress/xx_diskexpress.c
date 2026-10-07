@@ -51,6 +51,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef DISKEXPRESS
 #define XX_DISKEXPRESS_FILE_TYPE XX_FILE_TYPE_DISKEXPRESS
@@ -92,14 +93,6 @@ typedef struct dxp_stream_s {
     char *name;
     bool consumed;
 } dxp_stream;
-
-static uint16_t dxp_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t dxp_le32(const uint8_t *bytes) {
-    return (uint32_t)dxp_le16(bytes) | ((uint32_t)dxp_le16(bytes + 2U) << 16U);
-}
 
 static bool dxp_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -176,7 +169,7 @@ static bool dxp_parse(Abstractformat *format, dxp_stream **result) {
     stream->info.major_version = header[2];
     stream->info.minor_version = header[3];
     stream->info.disk_type = header[5];
-    stream->info.data_crc = dxp_le32(header + 6U);
+    stream->info.data_crc = xx_data_get_u32(header + 6U, 4, 0, false);
     stream->info.method = header[10];
     stream->info.flags = header[14];
     stream->info.track_size = sectors_per_track * DXP_SECTOR_SIZE;
@@ -209,7 +202,7 @@ static bool dxp_parse(Abstractformat *format, dxp_stream **result) {
             if (!dxp_read_at(format->device, format->base_address + cursor,
                              length, sizeof(length)))
                 goto fail;
-            chunk = (int32_t)dxp_le16(length);
+            chunk = (int32_t)xx_data_get_u16(length, 2, 0, false);
             cursor += 2;
             /* Bound the chunk against what is actually left in the file. */
             if (chunk <= 0 || (int64_t)chunk > size - cursor) goto fail;

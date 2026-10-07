@@ -47,6 +47,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -122,11 +123,6 @@ typedef struct t64_name_key_s {
 
 static uint32_t t64_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
-}
-
-static uint32_t t64_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
 }
 
 static bool t64_read_at_sized(xx_io_device *device, int64_t offset, void *buffer,
@@ -493,7 +489,7 @@ static bool t64_parse(Abstractformat *format, t64_stream **result) {
             if (!entry) goto fail;
             if (pass == 0U) scanned = index + 1U;
             if (entry[0] == T64_TYPE_FREE) continue;
-            offset = (int64_t)t64_le32(entry + 8U);
+            offset = (int64_t)xx_data_get_u32(entry + 8U, 4, 0, false);
             /* A reserved entry type, or data that would start in the header
              * or the directory, cannot be extracted: the slot is skipped,
              * as VICE skips entries it does not understand. */

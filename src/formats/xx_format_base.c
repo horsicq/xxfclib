@@ -51,6 +51,7 @@ void xx_format_init(Abstractformat *fmt, xx_io_device *dev, int64_t base_address
     fmt->number_of_exports = 0;
     fmt->number_of_resources = 0;
     fmt->number_of_metadata = 0;
+    fmt->number_of_symbols = 0;
     fmt->number_of_archive_records = 0;
     fmt->module_address = XX_INVALID_ADDRESS;
     xx_memory_map_init(&fmt->memory_map);

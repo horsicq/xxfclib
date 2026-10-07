@@ -16,6 +16,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef PMDISKCOPY
 #define XX_PMDISKCOPY_FILE_TYPE XX_FILE_TYPE_PMDISKCOPY
@@ -43,14 +44,6 @@ typedef struct pmdiskcopy_stream_s {
     size_t index;
     int64_t archive_size;
 } pmdiskcopy_stream;
-
-static uint16_t pmdiskcopy_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t pmdiskcopy_le32(const uint8_t *b) {
-    return (uint32_t)pmdiskcopy_le16(b) | ((uint32_t)pmdiskcopy_le16(b + 2U) << 16U);
-}
 
 static bool pmdiskcopy_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -166,7 +159,7 @@ static bool pmdiskcopy_parse(Abstractformat *format,
                             sizeof(header)) ||
         xx_rt_memcmp(header, magic, sizeof(magic)) != 0)
         return false;
-    bytes_per_sector = pmdiskcopy_le16(header + PMDISKCOPY_BPB_OFFSET);
+    bytes_per_sector = xx_data_get_u16(header + PMDISKCOPY_BPB_OFFSET, 2, 0, false);
     sectors_per_cluster = header[PMDISKCOPY_BPB_OFFSET + 2];
     fats = header[PMDISKCOPY_BPB_OFFSET + 5];
     media = header[PMDISKCOPY_BPB_OFFSET + 10];

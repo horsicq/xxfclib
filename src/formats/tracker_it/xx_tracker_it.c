@@ -27,22 +27,22 @@ static bool sm_it_pattern(Abstractformat *f,uint64_t at,uint32_t n,uint32_t rows
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[192],tables[1024],b[80]; uint32_t orders,samples,patterns,i,n,flags,ptr; uint64_t metadata,at,bytes,measured=0; char label[48];
     if(fd_stop(pd) || !pm_read(f,0,h,192) || xx_rt_memcmp(h,"IMPM",4)) return false;
-    orders=pm_le16(h+32); samples=pm_le16(h+36); patterns=pm_le16(h+38); flags=pm_le16(h+44);
-    if(!orders || orders>256 || pm_le16(h+34) || samples>64 || !patterns || patterns>128 || pm_le16(h+42)<0x200 || pm_le16(h+42)>0x214 || (flags&~0x3bU) || (pm_le16(h+46)&~1U) || h[48]>128 || h[49]>128 || !h[50] || h[50]>31 || h[51]<32 || h[52]>128) return false;
+    orders=xx_data_get_u16(h+32, 2, 0, false); samples=xx_data_get_u16(h+36, 2, 0, false); patterns=xx_data_get_u16(h+38, 2, 0, false); flags=xx_data_get_u16(h+44, 2, 0, false);
+    if(!orders || orders>256 || xx_data_get_u16(h+34, 2, 0, false) || samples>64 || !patterns || patterns>128 || xx_data_get_u16(h+42, 2, 0, false)<0x200 || xx_data_get_u16(h+42, 2, 0, false)>0x214 || (flags&~0x3bU) || (xx_data_get_u16(h+46, 2, 0, false)&~1U) || h[48]>128 || h[49]>128 || !h[50] || h[50]>31 || h[51]<32 || h[52]>128) return false;
     for(i=0;i<64;++i) if(((h[64+i]&127)>64 && (h[64+i]&127)!=100) || h[128+i]>64) return false;
     metadata=192+orders+(uint64_t)(samples+patterns)*4; if(!fd_range(192,metadata-192,(uint64_t)pm_available(f)) || !pm_read(f,192,tables,(size_t)(metadata-192))) return false;
     n=0; for(i=0;i<orders;++i) if(tables[i]<254) { if(tables[i]>=patterns) return false; ++n; } if(!n || !sm_emit(f,s,"it-descriptor.bin",0,metadata,&measured)) return false;
-    if(pm_le16(h+46)&1) { n=pm_le16(h+54); ptr=pm_le32(h+56); if(!n || ptr<metadata || !fd_range(ptr,n,(uint64_t)pm_available(f)) || !pm_read(f,(int64_t)ptr+n-1,b,1) || b[0] || !sm_emit(f,s,"message.txt",ptr,n,&measured)) return false; }
-    else if(pm_le16(h+54) || pm_le32(h+56)) return false;
-    for(i=0;i<samples;++i) { at=pm_le32(tables+orders+i*4); if(fd_stop(pd) || at<metadata || !fd_range(at,80,(uint64_t)pm_available(f)) || !pm_read(f,(int64_t)at,b,80) || xx_rt_memcmp(b,"IMPS",4) || b[16] || b[17]>64 || b[19]>64 || b[46]>1 || (b[47]&127)>64 || b[79]>3) return false;
-        flags=b[18]; n=pm_le32(b+48); ptr=pm_le32(b+72);
-        if((flags&8) || n>16777216 || !!(flags&1)!=!!n || ((flags&64) && !(flags&16)) || ((flags&128) && !(flags&32)) || !sm_loop(pm_le32(b+52),pm_le32(b+56),n,!!(flags&16)) || !sm_loop(pm_le32(b+64),pm_le32(b+68),n,!!(flags&32)) || (n && !pm_le32(b+60))) return false;
+    if(xx_data_get_u16(h+46, 2, 0, false)&1) { n=xx_data_get_u16(h+54, 2, 0, false); ptr=xx_data_get_u32(h+56, 4, 0, false); if(!n || ptr<metadata || !fd_range(ptr,n,(uint64_t)pm_available(f)) || !pm_read(f,(int64_t)ptr+n-1,b,1) || b[0] || !sm_emit(f,s,"message.txt",ptr,n,&measured)) return false; }
+    else if(xx_data_get_u16(h+54, 2, 0, false) || xx_data_get_u32(h+56, 4, 0, false)) return false;
+    for(i=0;i<samples;++i) { at=xx_data_get_u32(tables+orders+i*4, 4, 0, false); if(fd_stop(pd) || at<metadata || !fd_range(at,80,(uint64_t)pm_available(f)) || !pm_read(f,(int64_t)at,b,80) || xx_rt_memcmp(b,"IMPS",4) || b[16] || b[17]>64 || b[19]>64 || b[46]>1 || (b[47]&127)>64 || b[79]>3) return false;
+        flags=b[18]; n=xx_data_get_u32(b+48, 4, 0, false); ptr=xx_data_get_u32(b+72, 4, 0, false);
+        if((flags&8) || n>16777216 || !!(flags&1)!=!!n || ((flags&64) && !(flags&16)) || ((flags&128) && !(flags&32)) || !sm_loop(xx_data_get_u32(b+52, 4, 0, false),xx_data_get_u32(b+56, 4, 0, false),n,!!(flags&16)) || !sm_loop(xx_data_get_u32(b+64, 4, 0, false),xx_data_get_u32(b+68, 4, 0, false),n,!!(flags&32)) || (n && !xx_data_get_u32(b+60, 4, 0, false))) return false;
         xx_rt_snprintf(label,sizeof(label),"sample-%u-descriptor.bin",i+1); if(!sm_emit(f,s,label,at,80,&measured)) return false;
         bytes=(uint64_t)n*((flags&2) ? 2:1)*((flags&4) ? 2:1);
         if(n) { if(ptr<metadata) return false; xx_rt_snprintf(label,sizeof(label),"sample-%u-pcm.bin",i+1); if(!sm_emit(f,s,label,ptr,bytes,&measured)) return false; }
     }
-    for(i=0;i<patterns;++i) { uint32_t rows; at=pm_le32(tables+orders+samples*4+i*4); if(!at) continue;
-        if(fd_stop(pd) || at<metadata || !fd_range(at,8,(uint64_t)pm_available(f)) || !pm_read(f,(int64_t)at,b,8) || !(rows=pm_le16(b+2)) || rows>256 || !sm_zero(b+4,4) || !(n=pm_le16(b)) || !fd_range(at+8,n,(uint64_t)pm_available(f)) || !sm_it_pattern(f,at+8,n,rows,samples,pd)) return false;
+    for(i=0;i<patterns;++i) { uint32_t rows; at=xx_data_get_u32(tables+orders+samples*4+i*4, 4, 0, false); if(!at) continue;
+        if(fd_stop(pd) || at<metadata || !fd_range(at,8,(uint64_t)pm_available(f)) || !pm_read(f,(int64_t)at,b,8) || !(rows=xx_data_get_u16(b+2, 2, 0, false)) || rows>256 || !sm_zero(b+4,4) || !(n=xx_data_get_u16(b, 2, 0, false)) || !fd_range(at+8,n,(uint64_t)pm_available(f)) || !sm_it_pattern(f,at+8,n,rows,samples,pd)) return false;
         xx_rt_snprintf(label,sizeof(label),"pattern-%u.bin",i); if(!sm_emit(f,s,label,at,8+n,&measured)) return false;
     }
     if(!fd_disjoint(s,(uint64_t)f->base_address)) { return false; } s->size=(int64_t)measured; return true;

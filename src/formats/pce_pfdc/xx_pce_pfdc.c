@@ -7,6 +7,7 @@
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "../xx_payload_members.h"
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define PFDC_MAX_FILE (32U * 1024U * 1024U)
 #define PFDC_MAX_OUTPUT (64U * 1024U * 1024U)
@@ -14,13 +15,6 @@
 #define PFDC_MAX_CHUNKS 8192U
 #define PFDC_TRANSFER 32768U
 
-static uint16_t pf_be16(const uint8_t *p) {
-    return (uint16_t)(((uint16_t)p[0] << 8U) | p[1]);
-}
-static uint32_t pf_be32(const uint8_t *p) {
-    return ((uint32_t)p[0] << 24U) | ((uint32_t)p[1] << 16U) |
-           ((uint32_t)p[2] << 8U) | p[3];
-}
 static bool pf_crc_range(Abstractformat *format, int64_t offset,
                          uint32_t length, uint32_t seed, uint32_t polynomial,
                          uint32_t *value,
@@ -49,7 +43,7 @@ static bool pf_verify_chunk(Abstractformat *format, int64_t cursor,
     return pf_crc_range(format, cursor, header_size + payload_size, 0U,
                         polynomial, &crc, pd) &&
            pm_read(format, cursor + header_size + payload_size,
-                   stored, sizeof(stored)) && crc == pf_be32(stored);
+                   stored, sizeof(stored)) && crc == xx_data_get_u32(stored, 4, 0, true);
 }
 
 /* The numeric member prefix preserves duplicate/alternate sectors. */
@@ -93,8 +87,8 @@ static bool pf_legacy(Abstractformat *format, pm_stream *stream,
     bool have_previous = false;
     if (available < 16 || !pm_read(format, 0, header, sizeof(header)))
         return false;
-    count = pf_be32(header + 8U);
-    offset = pf_be32(header + 12U);
+    count = xx_data_get_u32(header + 8U, 4, 0, true);
+    offset = xx_data_get_u32(header + 12U, 4, 0, true);
     if (count == 0U || count > PFDC_MAX_SECTORS ||
         offset < 16U || offset > (uint64_t)available) return false;
     cursor = offset;
@@ -110,12 +104,12 @@ static bool pf_legacy(Abstractformat *format, pm_stream *stream,
             !pm_read(format, cursor, fields, header_size)) return false;
         if (version == 0U) {
             pc = fields[0]; ph = fields[1]; ls = fields[4];
-            flags = fields[5]; size = pf_be16(fields + 6U);
+            flags = fields[5]; size = xx_data_get_u16(fields + 6U, 2, 0, true);
             if (flags & ~0x9fU) return false;
         } else {
             if (fields[0] != 'S') return false;
             pc = fields[1]; ph = fields[2]; ls = fields[5];
-            flags = pf_be32(fields + 12U); size = pf_be16(fields + 6U);
+            flags = xx_data_get_u32(fields + 12U, 4, 0, true); size = xx_data_get_u16(fields + 6U, 2, 0, true);
             if (flags & ~0x9dU || ((flags & 1U) && !have_previous))
                 return false;
         }
@@ -147,13 +141,13 @@ static bool pf_v2(Abstractformat *format, pm_stream *stream,
     bool have_previous = false;
     if (available < 28 || !pm_read(format, 0, header, sizeof(header)))
         return false;
-    offset = pf_be32(header + 12U);
+    offset = xx_data_get_u32(header + 12U, 4, 0, true);
     if (offset < 16U || offset > (uint64_t)available - 12U)
         return false;
     if (!pf_crc_range(format, 0, (uint32_t)available - 4U,
                       UINT32_C(0xffffffff), UINT32_C(0x04c11db7), &actual, pd) ||
         !pm_read(format, available - 4, stored, 4U) ||
-        actual != pf_be32(stored)) return false;
+        actual != xx_data_get_u32(stored, 4, 0, true)) return false;
     cursor = offset;
     while (cursor < available - 4) {
         uint8_t chunk[4];
@@ -161,8 +155,8 @@ static bool pf_v2(Abstractformat *format, pm_stream *stream,
         int64_t next;
         if (++chunks > PFDC_MAX_CHUNKS || available - 4 - cursor < 8 ||
             !pm_read(format, cursor, chunk, 4U)) return false;
-        id = pf_be16(chunk);
-        length = pf_be16(chunk + 2U);
+        id = xx_data_get_u16(chunk, 2, 0, true);
+        length = xx_data_get_u16(chunk + 2U, 2, 0, true);
         if (length > (uint64_t)(available - 4 - cursor - 8)) return false;
         next = cursor + 8 + length;
         if (!pf_verify_chunk(format, cursor, 4U, length,
@@ -177,7 +171,7 @@ static bool pf_v2(Abstractformat *format, pm_stream *stream,
             if (length < 12U ||
                 !pm_read(format, cursor + 4, fields, 12U)) return false;
             flags = fields[0];
-            size = pf_be16(fields + 6U);
+            size = xx_data_get_u16(fields + 6U, 2, 0, true);
             compressed = (flags & 0x80U) != 0U;
             if (flags & ~0xcfU ||
                 ((flags & 0x40U) && !have_previous) ||
@@ -219,7 +213,7 @@ static bool pf_v4(Abstractformat *format, pm_stream *stream,
     bool have_previous = false, pending = false;
     if (available < 28 || !pm_read(format, 0, header, 8U) ||
         !pm_read(format, 8, version, 4U) ||
-        pf_be32(version) != UINT32_C(0x00040000)) return false;
+        xx_data_get_u32(version, 4, 0, true) != UINT32_C(0x00040000)) return false;
     if (!pf_verify_chunk(format, 0, 8U, 4U,
                          UINT32_C(0x1edc6f41), pd)) return false;
     while (cursor < available) {
@@ -227,7 +221,7 @@ static bool pf_v4(Abstractformat *format, pm_stream *stream,
         int64_t next;
         if (++chunks > PFDC_MAX_CHUNKS || available - cursor < 12 ||
             !pm_read(format, cursor, header, 8U)) return false;
-        length = pf_be32(header + 4U);
+        length = xx_data_get_u32(header + 4U, 4, 0, true);
         if (length > (uint64_t)(available - cursor - 12)) return false;
         next = cursor + 12 + length;
         if (!pf_verify_chunk(format, cursor, 8U, length,
@@ -239,14 +233,14 @@ static bool pf_v4(Abstractformat *format, pm_stream *stream,
             bool compressed;
             if (pending || length != 18U ||
                 !pm_read(format, cursor + 8, fields, 18U)) return false;
-            flags = pf_be16(fields + 14U);
-            size = pf_be16(fields + 10U);
+            flags = xx_data_get_u16(fields + 14U, 2, 0, true);
+            size = xx_data_get_u16(fields + 10U, 2, 0, true);
             compressed = (flags & 0x8000U) != 0U;
             if (flags & ~0xc00fU ||
                 ((flags & 0x4000U) && !have_previous) ||
                 (!compressed && (flags & 8U) && size != 0U)) return false;
-            if (!pf_sector(format, stream, pf_be16(fields),
-                           pf_be16(fields + 2U), pf_be16(fields + 8U),
+            if (!pf_sector(format, stream, xx_data_get_u16(fields, 2, 0, true),
+                           xx_data_get_u16(fields + 2U, 2, 0, true), xx_data_get_u16(fields + 8U, 2, 0, true),
                            size, 0, compressed, fields[13],
                            &sectors, &output, &current)) return false;
             have_previous = true;
@@ -290,7 +284,7 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
         (pd && xx_pd_is_stopped(pd)) ||
         !pm_read(format, 0, header, 8U) ||
         memcmp(header, "PFDC", 4U) != 0) return false;
-    marker = pf_be32(header + 4U);
+    marker = xx_data_get_u32(header + 4U, 4, 0, true);
     if (reader->version == 0U && marker == 0U)
         return pf_legacy(format, stream, 0U, available, pd);
     if (reader->version == 1U && marker == UINT32_C(0x00010000))

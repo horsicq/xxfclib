@@ -15,6 +15,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -41,11 +42,6 @@ typedef struct vp_stream_s {
     uint64_t entry_count;
     int64_t index_offset;
 } vp_stream;
-
-static uint32_t vp_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
 
 static bool vp_read_at(xx_io_device *device, int64_t offset, void *buffer,
                        size_t size) {
@@ -159,9 +155,9 @@ static bool vp_parse(Abstractformat *format, vp_stream **result,
                      XX_VOLITIONVPFT_SIGNATURE_SIZE) != 0)
         return false;
 
-    version = vp_le32(header + 4);
-    index_offset = (int64_t)(int32_t)vp_le32(header + 8);
-    count = vp_le32(header + 12);
+    version = xx_data_get_u32(header + 4, 4, 0, false);
+    index_offset = (int64_t)(int32_t)xx_data_get_u32(header + 8, 4, 0, false);
+    count = xx_data_get_u32(header + 12, 4, 0, false);
     if (version != XX_VOLITIONVPFT_VERSION) return false;
     if (index_offset <= (int64_t)XX_VOLITIONVPFT_HEADER_SIZE) return false;
     if (count == 0U || count > XX_VOLITIONVPFT_MAX_ENTRIES) return false;
@@ -190,9 +186,9 @@ static bool vp_parse(Abstractformat *format, vp_stream **result,
             !vp_read_at(format->device, format->base_address + entry_offset,
                         record, sizeof(record)))
             goto done;
-        data_offset = vp_le32(record);
-        data_size = vp_le32(record + 4);
-        timestamp = vp_le32(record + 40);
+        data_offset = xx_data_get_u32(record, 4, 0, false);
+        data_size = xx_data_get_u32(record + 4, 4, 0, false);
+        timestamp = xx_data_get_u32(record + 40, 4, 0, false);
 
         if (data_size == 0U) {
             /* Directory entry: ".." pops, anything else pushes. */

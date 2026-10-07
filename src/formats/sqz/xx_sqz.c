@@ -57,6 +57,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 typedef struct xx_sqz_member_s {
     char *name;
@@ -173,15 +174,6 @@ static bool xx_sqz_add(xx_sqz_stream *stream, const xx_sqz_member *member) {
 static const uint8_t XX_SQZ_MAGIC[XX_SQZ_MAGIC_SIZE] = {'H', 'L', 'S', 'Q',
                                                         'Z'};
 
-static uint16_t xx_sqz_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_sqz_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
 /* The reference normalises backslashes to forward slashes and then rejects
  * anything that is not a plain relative path. The same rules are applied here
  * in place, over Latin-1 bytes, so that a member whose name cannot be written
@@ -237,11 +229,11 @@ static bool xx_sqz_skip_block(uint8_t type, const uint8_t *block,
     int64_t extra;
 
     if (available < 3) return false;
-    extra = (int64_t)xx_sqz_le16(block + 1);
+    extra = (int64_t)xx_data_get_u16(block + 1, 2, 0, false);
     if (type == XX_SQZ_BLOCK_COMMENT) {
         /* The second u16 REPLACES the first; five more bytes follow it. */
         if (available < 10) return false;
-        extra = (int64_t)xx_sqz_le16(block + 3);
+        extra = (int64_t)xx_data_get_u16(block + 3, 2, 0, false);
         skip = 10;
     } else if (type == XX_SQZ_BLOCK_TYPE4) {
         skip = 5;
@@ -365,8 +357,8 @@ static xx_sqz_stream *xx_sqz_parse(Abstractformat *self, xx_pd_struct *pd) {
 
         method = (uint32_t)(header[2] & 0x0FU);
         if (method > XX_SQZ_MAX_METHOD) goto fail;
-        compressed = xx_sqz_le32(header + 3);
-        uncompressed = xx_sqz_le32(header + 7);
+        compressed = xx_data_get_u32(header + 3, 4, 0, false);
+        uncompressed = xx_data_get_u32(header + 7, 4, 0, false);
         /* A stored member that claims two different lengths was not written
          * by this format. */
         if (method == XX_SQZ_METHOD_STORE && compressed != uncompressed) {
@@ -388,12 +380,12 @@ static xx_sqz_stream *xx_sqz_parse(Abstractformat *self, xx_pd_struct *pd) {
         member.uncompressed_size = (int64_t)uncompressed;
         member.method = method;
         member.attributes = header[15];
-        member.crc32 = xx_sqz_le32(header + 16);
+        member.crc32 = xx_data_get_u32(header + 16, 4, 0, false);
         /* The DOS stamp is published the way the reference packs it: date in
          * the high half, time in the low half. */
         member.timestamp =
-            ((uint64_t)xx_sqz_le16(header + 13) << 16) |
-            (uint64_t)xx_sqz_le16(header + 11);
+            ((uint64_t)xx_data_get_u16(header + 13, 2, 0, false) << 16) |
+            (uint64_t)xx_data_get_u16(header + 11, 2, 0, false);
         member.is_folder = false;
         if (!xx_sqz_add(stream, &member)) {
             xx_str_free(member.name);

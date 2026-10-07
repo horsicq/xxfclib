@@ -7,15 +7,16 @@
  */
 #include "xxfclib/formats/commodore_g64/xx_commodore_g64.h"
 #include "../vice_x64/xx_ninth_retro.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
  uint32_t tracks,maxlen,base,i,end,nonempty=0,count=0; nh_span spans[168]; char name[48];
- if(!nh_range(b,0,12) || xx_rt_memcmp(b->p,"GCR-1541",8) || b->p[8] || !(tracks=b->p[9]) || tracks>84 || !(maxlen=pm_le16(b->p+10)) || maxlen>32768 || !nh_range(b,12,tracks*8)) return false;
+ if(!nh_range(b,0,12) || xx_rt_memcmp(b->p,"GCR-1541",8) || b->p[8] || !(tracks=b->p[9]) || tracks>84 || !(maxlen=xx_data_get_u16(b->p+10, 2, 0, false)) || maxlen>32768 || !nh_range(b,12,tracks*8)) return false;
  base=end=12+tracks*8; if(!nh_emit(f,s,b,"gcr-descriptor.bin",0,base)) return false;
  for(i=0;i<tracks;++i) {
-  uint32_t at=pm_le32(b->p+12+i*4),speed=pm_le32(b->p+12+tracks*4+i*4),len;
+  uint32_t at=xx_data_get_u32(b->p+12+i*4, 4, 0, false),speed=xx_data_get_u32(b->p+12+tracks*4+i*4, 4, 0, false),len;
   if(!at) { if(speed>3) return false; continue; }
-  if(at<base || !nh_range(b,at,2) || !(len=pm_le16(b->p+at)) || len>maxlen || !nh_range(b,at+2,len) || !nh_disjoint(spans,&count,168,at,len+2)) return false;
+  if(at<base || !nh_range(b,at,2) || !(len=xx_data_get_u16(b->p+at, 2, 0, false)) || len>maxlen || !nh_range(b,at+2,len) || !nh_disjoint(spans,&count,168,at,len+2)) return false;
   if(end<at+2+len) { end=at+2+len; } ++nonempty;
   xx_rt_snprintf(name,sizeof(name),"halftrack-%u.gcr",i+2); if(!nh_emit(f,s,b,name,at+2,len)) return false;
   if(speed>3) { uint32_t z=(len+3)/4; if(speed<base || !nh_range(b,speed,z) || !nh_disjoint(spans,&count,168,speed,z)) return false; if(end<speed+z) end=speed+z; xx_rt_snprintf(name,sizeof(name),"halftrack-%u.speed",i+2); if(!nh_emit(f,s,b,name,speed,z)) return false; }

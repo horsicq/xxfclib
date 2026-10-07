@@ -4,7 +4,7 @@
 #include "../xx_fifth_data.h"
 
 static bool dt_tag(fd_cursor *c,const char *s) { uint8_t h[40]; size_t n=xx_rt_strlen(s); return n<=sizeof(h) && fd_get(c,h,n) && !xx_rt_memcmp(h,s,n); }
-static bool dt_number(fd_cursor *c,bool be,unsigned n,uint64_t *v) { uint8_t b[8]; if(!fd_get(c,b,n)) return false; *v=n==1 ? b[0]:n==2 ? fd_u16(b,be):n==4 ? fd_u32(b,be):be ? fd_be64(b):fd_le64(b); return true; }
+static bool dt_number(fd_cursor *c,bool be,unsigned n,uint64_t *v) { uint8_t b[8]; if(!fd_get(c,b,n)) return false; *v=n==1 ? b[0]:n==2 ? xx_data_get_u16(b, 2, 0, be):n==4 ? xx_data_get_u32(b, 4, 0, be):be ? xx_data_get_u64(b, 8, 0, true):xx_data_get_u64(b, 8, 0, false); return true; }
 static bool dt_section(Abstractformat *f,uint64_t start,uint64_t end,const char *open,const char *close,uint64_t expected,uint64_t *at,uint64_t *size) {
     uint64_t a=xx_rt_strlen(open),b=xx_rt_strlen(close);
     if(start>end || a+b>end-start || !fd_equal(f,(int64_t)start,open,(size_t)a) || !fd_equal(f,(int64_t)(end-b),close,(size_t)b)) return false;
@@ -26,11 +26,11 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         else if(i==6 || i==8 || i==9) expected=0;
         if(!dt_section(f,map[i+2],map[i+3],opens[i],closes[i],expected,&at,&size)) return false;
         if(i==0) { unsigned j; for(j=0;j<vars;++j) { uint8_t b[2]; uint16_t t; unsigned w;
-            if(!pm_read(f,(int64_t)at+j*2,b,2)) { return false; } t=fd_u16(b,be);
+            if(!pm_read(f,(int64_t)at+j*2,b,2)) { return false; } t=xx_data_get_u16(b, 2, 0, be);
             if(t>=1 && t<=2045) w=t; else w=t==65526 ? 8:t==65527 || t==65528 ? 4:t==65529 ? 2:t==65530 ? 1:0;
             if(!w) { return false; } width+=w;
         }}
-        if(i==2) { unsigned j; for(j=0;j<=vars;++j) { uint8_t b[2]; if(!pm_read(f,(int64_t)at+j*2,b,2) || fd_u16(b,be)>vars) return false; } }
+        if(i==2) { unsigned j; for(j=0;j<=vars;++j) { uint8_t b[2]; if(!pm_read(f,(int64_t)at+j*2,b,2) || xx_data_get_u16(b, 2, 0, be)>vars) return false; } }
         if(i==7) { uint64_t wanted; if(!fd_mul(width,rows,&wanted) || wanted!=size) return false; data_at=at; data_size=size; }
         xx_rt_snprintf(name,sizeof(name),"section-%u.bin",i); if(!pm_add(f,s,name,(int64_t)at,(int64_t)size)) return false;
     }

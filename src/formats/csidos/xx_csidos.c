@@ -38,6 +38,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef CSIDOS
 #define XX_CSIDOS_FILE_TYPE XX_FILE_TYPE_CSIDOS
@@ -120,10 +121,6 @@ static const uint16_t csidos_koi8r_high[128] = {
     0x041f,0x042f,0x0420,0x0421,0x0422,0x0423,0x0416,0x0412,
     0x042c,0x042b,0x0417,0x0428,0x042d,0x0429,0x0427,0x042a
 };
-
-static uint16_t csidos_le16(const uint8_t *bytes) {
-    return (uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U);
-}
 
 static bool csidos_read_at(xx_io_device *device, int64_t offset, void *buffer,
                            size_t size) {
@@ -465,12 +462,12 @@ static bool csidos_parse(Abstractformat *format, csidos_stream **result) {
                         block, sizeof(block))) return false;
     /* The catalogue root block identifies itself, repeats the signature word
      * three times and declares the volume's block count. */
-    declared_blocks = (int64_t)csidos_le16(block + 2U);
-    if (csidos_le16(block) != CSIDOS_CATALOGUE_FIRST_BLOCK ||
-        csidos_le16(block + 4U) != CSIDOS_SIGNATURE ||
-        csidos_le16(block + 6U) != CSIDOS_SIGNATURE ||
+    declared_blocks = (int64_t)xx_data_get_u16(block + 2U, 2, 0, false);
+    if (xx_data_get_u16(block, 2, 0, false) != CSIDOS_CATALOGUE_FIRST_BLOCK ||
+        xx_data_get_u16(block + 4U, 2, 0, false) != CSIDOS_SIGNATURE ||
+        xx_data_get_u16(block + 6U, 2, 0, false) != CSIDOS_SIGNATURE ||
         block[9] != (uint8_t)(CSIDOS_SIGNATURE >> 8U) ||
-        csidos_le16(block + 10U) != 0U ||
+        xx_data_get_u16(block + 10U, 2, 0, false) != 0U ||
         declared_blocks <= (int64_t)CSIDOS_FIRST_DATA_BLOCK ||
         declared_blocks > total_blocks) return false;
     raw = (csidos_raw *)xx_mem_calloc(CSIDOS_MAX_ENTRIES, sizeof(*raw));
@@ -487,19 +484,19 @@ static bool csidos_parse(Abstractformat *format, csidos_stream **result) {
             (!csidos_read_at(format->device,
                              format->base_address + block_offset, block,
                              sizeof(block)) ||
-             csidos_le16(block) != catalogue_block)) break;
+             xx_data_get_u16(block, 2, 0, false) != catalogue_block)) break;
         for (slot = 0U; slot < CSIDOS_ENTRIES_PER_BLOCK; ++slot) {
             const uint8_t *entry = block + CSIDOS_BLOCK_HEADER_SIZE +
                                    slot * CSIDOS_ENTRY_SIZE;
             csidos_raw value;
             xx_mem_zero(&value, sizeof(value));
             if (entry[2] == 0U) continue; /* free slot */
-            value.parent = csidos_le16(entry);
+            value.parent = xx_data_get_u16(entry, 2, 0, false);
             xx_rt_memcpy(value.name, entry + 2U, CSIDOS_NAME_SIZE);
             xx_rt_memcpy(value.extension, entry + 10U, CSIDOS_EXTENSION_SIZE);
             value.attributes = entry[13];
-            value.start_block = csidos_le16(entry + 14U);
-            value.byte_size = csidos_le16(entry + 18U);
+            value.start_block = xx_data_get_u16(entry + 14U, 2, 0, false);
+            value.byte_size = xx_data_get_u16(entry + 18U, 2, 0, false);
             value.folder = csidos_all_zero(value.extension,
                                            CSIDOS_EXTENSION_SIZE);
             value.entry_offset = block_offset +

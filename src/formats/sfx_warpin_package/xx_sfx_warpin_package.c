@@ -29,6 +29,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -177,11 +178,6 @@ static ssize_t gb_sfx_warpin_package_write(xx_io_device *device, const void *buf
 
 static uint32_t wpi_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
-}
-
-static uint32_t wpi_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
 }
 
 static bool wpi_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -401,7 +397,7 @@ static bool wpi_read_layout(Abstractformat *format, wpi_layout *out) {
     layout.packages = wpi_le16(header + WPI_PACKAGES_OFFSET);
     layout.script_unpacked = wpi_le16(header + WPI_SCRIPT_UNPACKED_OFFSET);
     layout.script_packed = wpi_le16(header + WPI_SCRIPT_PACKED_OFFSET);
-    blob = (int64_t)(int32_t)wpi_le32(header + WPI_BLOB_OFFSET);
+    blob = (int64_t)(int32_t)xx_data_get_u32(header + WPI_BLOB_OFFSET, 4, 0, false);
     layout.has_script = layout.script_packed != 0U;
     if (layout.revision > WPI_MAX_REVISION || layout.packages == 0U ||
         (layout.has_script && layout.script_packed < (uint32_t)WPI_MIN_BZIP2) ||
@@ -414,7 +410,7 @@ static bool wpi_read_layout(Abstractformat *format, wpi_layout *out) {
         if (!wpi_read_at(format->device, format->base_address + position,
                          field, sizeof(field)))
             return false;
-        extension = (int64_t)(int32_t)wpi_le32(field);
+        extension = (int64_t)(int32_t)xx_data_get_u32(field, 4, 0, false);
         if (extension < WPI_EXTENSION_MIN || extension > WPI_EXTENSION_MAX ||
             extension > layout.size - position)
             return false;
@@ -457,8 +453,8 @@ static bool wpi_parse_member(const uint8_t *header, wpi_member *member,
     if (wpi_le16(header) != WPI_MEMBER_MAGIC ||
         header[WPI_MEMBER_EXTENSION] != 0U)
         return false;
-    unpacked = (int64_t)(int32_t)wpi_le32(header + WPI_MEMBER_UNPACKED);
-    packed = (int64_t)(int32_t)wpi_le32(header + WPI_MEMBER_PACKED);
+    unpacked = (int64_t)(int32_t)xx_data_get_u32(header + WPI_MEMBER_UNPACKED, 4, 0, false);
+    packed = (int64_t)(int32_t)xx_data_get_u32(header + WPI_MEMBER_PACKED, 4, 0, false);
     if (unpacked < 0 || packed < 0) return false;
     while (length < WPI_MEMBER_NAME_SIZE &&
            header[WPI_MEMBER_NAME + length] != 0U)
@@ -468,7 +464,7 @@ static bool wpi_parse_member(const uint8_t *header, wpi_member *member,
     member->packed = (uint32_t)packed;
     member->unpacked = (uint32_t)unpacked;
     member->method = (uint16_t)wpi_le16(header + WPI_MEMBER_METHOD);
-    member->mtime = wpi_le32(header + WPI_MEMBER_MTIME);
+    member->mtime = xx_data_get_u32(header + WPI_MEMBER_MTIME, 4, 0, false);
     member->package = 0U;
     member->renamed = false;
     *name_length = length;
@@ -555,9 +551,9 @@ static bool wpi_walk(Abstractformat *format, wpi_layout *layout,
         }
         entry = table + (size_t)(package - first) * WPI_PACKAGE_ENTRY;
         files = wpi_le16(entry + 2U);
-        offset = (int64_t)(int32_t)wpi_le32(entry + 4U);
-        unpacked_total = (int64_t)(int32_t)wpi_le32(entry + 8U);
-        packed_total = (int64_t)(int32_t)wpi_le32(entry + 12U);
+        offset = (int64_t)(int32_t)xx_data_get_u32(entry + 4U, 4, 0, false);
+        unpacked_total = (int64_t)(int32_t)xx_data_get_u32(entry + 8U, 4, 0, false);
+        packed_total = (int64_t)(int32_t)xx_data_get_u32(entry + 12U, 4, 0, false);
         if (offset < 0 || unpacked_total < 0 || packed_total < 0)
             goto fail;
         if (package == 0U &&

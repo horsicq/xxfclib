@@ -5,6 +5,7 @@
  */
 #include "xxfclib/formats/parsec_rib/xx_parsec_rib.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 #define RIB_MAX_OUTPUT (512U * 1024U * 1024U)
 #define RIB_CANCEL_MASK 0x3fffU
@@ -147,7 +148,7 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
     if (total < 8 || !pm_read(format, 0, header, sizeof(header)) ||
         xx_rt_memcmp(header, "RIB\0", 4U) != 0) return false;
     packed_size = total - 8;
-    output_size = pm_le32(header + 4U);
+    output_size = xx_data_get_u32(header + 4U, 4, 0, false);
     if ((uint64_t)output_size > RIB_MAX_OUTPUT ||
         packed_size > (int64_t)output_size ||
         ((packed_size == 0) != (output_size == 0U)) ||

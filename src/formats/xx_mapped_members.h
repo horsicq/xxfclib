@@ -34,8 +34,6 @@ static bool mm_emit(Abstractformat *f,pm_stream *s,const char *name,mm_map *m) {
     member->offset=-1; member->context=m; member->free_context=mm_free; member->read_range=mm_read;
     return true;
 }
-static uint64_t mm_le64(const uint8_t *p) { return (uint64_t)pm_le32(p)|((uint64_t)pm_le32(p+4)<<32); }
-static uint64_t mm_be64(const uint8_t *p) { return ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4); }
 static bool mm_text(Abstractformat *f,pm_stream *s,const char *name,const char *text) {
     size_t n=xx_rt_strlen(text); uint8_t *copy=(uint8_t *)xx_mem_alloc(n?n:1); if(!copy) return false;
     xx_rt_memcpy(copy,text,n); if(!pm_add(f,s,name,0,0)) { xx_mem_free(copy); return false; }

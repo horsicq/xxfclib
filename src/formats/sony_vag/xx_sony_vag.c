@@ -5,8 +5,9 @@
  */
 #include "xxfclib/formats/sony_vag/xx_sony_vag.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static XXFC_MAYBE_UNUSED uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)xx_data_get_u32(p, 4, 0, true)<<32)|xx_data_get_u32(p+4, 4, 0, true) : ((uint64_t)xx_data_get_u32(p+4, 4, 0, false)<<32)|xx_data_get_u32(p, 4, 0, false); }
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uint64_t n,uint64_t total) {
     size_t i;
@@ -24,8 +25,8 @@ static XXFC_MAYBE_UNUSED bool zname(Abstractformat *f,uint64_t at,uint64_t end) 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[48],b[16]; uint32_t n,rate,i;
-    if(!pm_read(f,0,h,48) || xx_rt_memcmp(h,"VAGp",4) || pm_be32(h+4)!=0x20 || pm_be32(h+8)) return false;
-    n=pm_be32(h+12); rate=pm_be32(h+16); if(!n || n%16 || n>256U*1024U*1024U || rate<1000 || rate>192000 || !span(48,n,(uint64_t)pm_available(f))) return false;
+    if(!pm_read(f,0,h,48) || xx_rt_memcmp(h,"VAGp",4) || xx_data_get_u32(h+4, 4, 0, true)!=0x20 || xx_data_get_u32(h+8, 4, 0, true)) return false;
+    n=xx_data_get_u32(h+12, 4, 0, true); rate=xx_data_get_u32(h+16, 4, 0, true); if(!n || n%16 || n>256U*1024U*1024U || rate<1000 || rate>192000 || !span(48,n,(uint64_t)pm_available(f))) return false;
     for(i=20;i<32;++i) if(h[i]) return false;
     for(i=0;i<n;i+=16) { if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,48+(int64_t)i,b,16) || b[0]>>4>4 || (b[0]&15)>12 || b[1]>7) return false; }
     s->size=48+(int64_t)n; return emit(f,s,"adpcm.bin",48,n,(uint64_t)s->size);

@@ -7,9 +7,9 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint64_t total=(uint64_t)pm_available(f),at=0;uint32_t frame=0,first_atoms=0;char label[64];
     if(total>67108864) return false;
     while(at<total) {uint8_t p[64];uint64_t start=at,arraybytes;uint32_t len,atoms,width=0,sizes[10],i;
-        if(frame>=512 || !eh_take(f,&at,total,p,12,pd) || pm_be32(p)!=1993 || pm_be32(p+4)!=13 || (len=pm_be32(p+8))!=12 || !eh_take(f,&at,total,p,len,pd) || xx_rt_memcmp(p,"GMX_trn_file\0",12) || !eh_take(f,&at,total,p,52,pd)) return false;
-        for(i=0;i<10;++i) { sizes[i]=pm_be32(p+i*4); } atoms=pm_be32(p+40);
-        if(!atoms || atoms>1048576 || (frame && atoms!=first_atoms) || sizes[0] || sizes[1] || sizes[5] || sizes[6] || (int32_t)pm_be32(p+44)<0 || pm_be32(p+48)) { return false; } first_atoms=atoms;
+        if(frame>=512 || !eh_take(f,&at,total,p,12,pd) || xx_data_get_u32(p, 4, 0, true)!=1993 || xx_data_get_u32(p+4, 4, 0, true)!=13 || (len=xx_data_get_u32(p+8, 4, 0, true))!=12 || !eh_take(f,&at,total,p,len,pd) || xx_rt_memcmp(p,"GMX_trn_file\0",12) || !eh_take(f,&at,total,p,52,pd)) return false;
+        for(i=0;i<10;++i) { sizes[i]=xx_data_get_u32(p+i*4, 4, 0, true); } atoms=xx_data_get_u32(p+40, 4, 0, true);
+        if(!atoms || atoms>1048576 || (frame && atoms!=first_atoms) || sizes[0] || sizes[1] || sizes[5] || sizes[6] || (int32_t)xx_data_get_u32(p+44, 4, 0, true)<0 || xx_data_get_u32(p+48, 4, 0, true)) { return false; } first_atoms=atoms;
         if(sizes[2]) width=sizes[2]/9;else for(i=7;i<10 && !width;++i) if(sizes[i]) width=sizes[i]/(atoms*3);
         if((width!=4 && width!=8) || !fd_mul(atoms,(uint64_t)width*3,&arraybytes)) return false;
         for(i=2;i<=4;++i) if(sizes[i] && sizes[i]!=width*9) return false;

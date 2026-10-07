@@ -4,6 +4,7 @@
  */
 /* Primary: https://www.rfc-editor.org/rfc/rfc9112.html */
 #include "xxfclib/formats/http1_message/xx_http1_message.h"
+#include "xxfclib/data/xx_data.h"
 #include "../xx_thirteenth_wrappers.h"
 
 static bool token(uint8_t c){return (c>=48&&c<=57)||(c>=65&&c<=90)||(c>=97&&c<=122)||c=='!'||c=='#'||c=='$'||c=='%'||c=='&'||c==39||c=='*'||c=='+'||c=='-'||c=='.'||c=='^'||c=='_'||c=='`'||c=='|'||c=='~';}

@@ -31,6 +31,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef XAMARIN_COMPRESSED_ASSEMBLY
 #define XX_XAMARIN_COMPRESSED_ASSEMBLY_FILE_TYPE \
@@ -61,11 +62,6 @@ typedef struct xca_stream_s {
     size_t index;
     size_t count;
 } xca_stream;
-
-static uint32_t xca_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
 
 static bool xca_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -195,8 +191,8 @@ static bool xca_parse(Abstractformat *format, xca_context *out,
         header[0] != 'X' || header[1] != 'A' || header[2] != 'L' ||
         header[3] != 'Z') return false;
     xx_mem_zero(&context, sizeof(context));
-    context.descriptor_index = xca_le32(header + 4);
-    context.unpacked_size = xca_le32(header + 8);
+    context.descriptor_index = xx_data_get_u32(header + 4, 4, 0, false);
+    context.unpacked_size = xx_data_get_u32(header + 8, 4, 0, false);
     if (context.unpacked_size == 0U ||
         context.unpacked_size > XCA_MAX_UNPACKED) return false;
     context.header_offset = format->base_address;

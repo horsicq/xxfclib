@@ -42,6 +42,7 @@
 #include "xxfclib/algo/dcl/xx_dcl.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_LSZ_COPY_CHUNK (64 * 1024)
 
@@ -154,8 +155,6 @@ static bool xx_lsz_add(xx_lsz_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_lsz_le16(const uint8_t *data);
-static uint32_t xx_lsz_le32(const uint8_t *data);
 static bool xx_lsz_name_field(const uint8_t *field, char **out_name);
 static bool xx_lsz_dcl_prelude(const uint8_t *prelude);
 static xx_lsz_stream *xx_lsz_parse(Abstractformat *self, xx_pd_struct *pd);
@@ -166,15 +165,6 @@ static bool xx_lsz_decode(Abstractformat *self, const xx_lsz_member *member, uin
  * holding the start of the end-of-stream code. */
 /* No member count is stored, so this is a runaway guard, not a format limit.
  * The largest reference archive holds 67 members. */
-
-static uint16_t xx_lsz_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_lsz_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* The 13-byte field is a fixed, NUL-padded 8.3 buffer. Read the FULL field
  * and stop at the first NUL; a stale byte behind the terminator would mean
@@ -262,8 +252,8 @@ static xx_lsz_stream *xx_lsz_parse(Abstractformat *self, xx_pd_struct *pd) {
     }
     /* Six bytes of magic and version are weak on their own; what actually
      * keeps a stray 37 F0 FF FF 00 03 out is the record chain below. */
-    if (xx_lsz_le32(header) != XX_LSZ_MAGIC ||
-        xx_lsz_le16(header + 4) != XX_LSZ_VERSION) {
+    if (xx_data_get_u32(header, 4, 0, false) != XX_LSZ_MAGIC ||
+        xx_data_get_u16(header + 4, 2, 0, false) != XX_LSZ_VERSION) {
         return NULL;
     }
 
@@ -290,24 +280,24 @@ static xx_lsz_stream *xx_lsz_parse(Abstractformat *self, xx_pd_struct *pd) {
             goto fail;
         }
 
-        tag = xx_lsz_le32(record);
+        tag = xx_data_get_u32(record, 4, 0, false);
         if (tag != XX_LSZ_RECORD_TAG_A && tag != XX_LSZ_RECORD_TAG_B) {
             goto fail;
         }
         /* Reserved fields are zero in every member of the reference corpus;
          * together with the tag they are the cheapest way to keep a random
          * six-byte header hit from walking into a bogus record chain. */
-        if (xx_lsz_le16(record + 0x11) != 0U) goto fail;
+        if (xx_data_get_u16(record + 0x11, 2, 0, false) != 0U) goto fail;
         for (index = 0x27U; index < (size_t)XX_LSZ_RECORD_SIZE; ++index) {
             if (record[index] != 0U) goto fail;
         }
 
         /* Signed on purpose: a size with the top bit set is a corrupt field,
          * not a four-gigabyte member. */
-        uncompressed_size = (int64_t)(int32_t)xx_lsz_le32(record + 0x13);
-        compressed_size = (int64_t)(int32_t)xx_lsz_le32(record + 0x17);
+        uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(record + 0x13, 4, 0, false);
+        compressed_size = (int64_t)(int32_t)xx_data_get_u32(record + 0x17, 4, 0, false);
         if (uncompressed_size < 0 || compressed_size < 0) goto fail;
-        method = xx_lsz_le16(record + 0x25);
+        method = xx_data_get_u16(record + 0x25, 2, 0, false);
 
         if (method == (uint16_t)XX_LSZ_METHOD_STORED) {
             /* Stored means the two sizes are the same number twice. */
@@ -360,8 +350,8 @@ static xx_lsz_stream *xx_lsz_parse(Abstractformat *self, xx_pd_struct *pd) {
          * time word first and the date word second, the reverse of the
          * obvious order; swapping them yields plausible nonsense rather than
          * an error. */
-        member.timestamp = ((uint64_t)xx_lsz_le16(record + 0x21) << 16) |
-                           (uint64_t)xx_lsz_le16(record + 0x1f);
+        member.timestamp = ((uint64_t)xx_data_get_u16(record + 0x21, 2, 0, false) << 16) |
+                           (uint64_t)xx_data_get_u16(record + 0x1f, 2, 0, false);
         /* The format has no directory entries: method 6 is an empty file. */
         member.is_folder = false;
         /* The checksum word at 0x1b is zero for most members and the

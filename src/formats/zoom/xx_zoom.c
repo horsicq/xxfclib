@@ -39,6 +39,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ZOOM_HEADER_SIZE 0x4C
 #define XX_ZOOM_CHUNK_HEADER_SIZE 42
@@ -63,11 +64,6 @@ typedef struct xx_zoom_context_s {
 static void xx_zoom_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint32_t xx_zoom_read32be(const uint8_t *data) {
-    return ((uint32_t)data[0] << 24U) | ((uint32_t)data[1] << 16U) |
-           ((uint32_t)data[2] << 8U) | (uint32_t)data[3];
-}
 
 static bool xx_zoom_read_at(Abstractformat *self, int64_t offset,
                             uint8_t *buffer, size_t size) {
@@ -116,7 +112,7 @@ static bool xx_zoom_parse(Abstractformat *self, xx_zoom_context *context,
     /* The note block is skipped whole: N bytes of note plus a four-byte
      * checksum.  It has to fit inside the real file - the codec cannot check
      * that for a caller who hands it a short slice. */
-    note_size = (int64_t)xx_zoom_read32be(header + 0x1c);
+    note_size = (int64_t)xx_data_get_u32(header + 0x1c, 4, 0, true);
     chunks_offset = XX_ZOOM_HEADER_SIZE;
     if (note_size != 0) {
         if (note_size > span - (int64_t)XX_ZOOM_HEADER_SIZE - 4) return false;

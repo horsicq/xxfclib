@@ -135,6 +135,7 @@
 #include "xxfclib/algo/diskdoubler/xx_diskdoubler.h"
 #include "xxfclib/algo/compactpro/xx_compactpro.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_DISKDOUBLER_MAGIC 0xABCD0054U
 #define XX_DISKDOUBLER_DDA2_MAGIC 0x44444132U /* "DDA2" */
@@ -304,15 +305,6 @@ static bool xx_diskdoubler_range_within(int64_t total, int64_t offset,
            size <= total - offset;
 }
 
-static uint32_t xx_diskdoubler_be32(const uint8_t *data) {
-    return ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16) |
-           ((uint32_t)data[2] << 8) | (uint32_t)data[3];
-}
-
-static uint16_t xx_diskdoubler_be16(const uint8_t *data) {
-    return (uint16_t)(((uint32_t)data[0] << 8) | (uint32_t)data[1]);
-}
-
 /* CRC-16/CCITT, MSB-first, zero seed, no final xor. Every header of every
  * DiskDoubler form carries one, and it is what keeps a file whose first
  * bytes merely look like a signature from being claimed. */
@@ -323,7 +315,7 @@ static uint16_t xx_diskdoubler_header_crc(const uint8_t *data, int32_t size) {
 /* A header whose last two bytes are the CRC of the bytes before them. */
 static bool xx_diskdoubler_crc_ok(const uint8_t *header, int32_t size) {
     return size >= 2 && xx_diskdoubler_header_crc(header, size - 2) ==
-                            xx_diskdoubler_be16(header + size - 2);
+                            xx_data_get_u16(header + size - 2, 2, 0, true);
 }
 
 static char xx_diskdoubler_upper_ascii(char c) {
@@ -448,9 +440,9 @@ static bool xx_diskdoubler_check_forks(const uint8_t *header, int64_t room,
 
     xx_mem_zero(forks, sizeof(*forks));
     if (room < XX_DISKDOUBLER_HEADER_SIZE) return false;
-    if (xx_diskdoubler_be32(header) != XX_DISKDOUBLER_MAGIC) return false;
+    if (xx_data_get_u32(header, 4, 0, true) != XX_DISKDOUBLER_MAGIC) return false;
 
-    stored_crc = xx_diskdoubler_be16(header + XX_DISKDOUBLER_CRC_OFFSET);
+    stored_crc = xx_data_get_u16(header + XX_DISKDOUBLER_CRC_OFFSET, 2, 0, true);
     /* Very early DiskDoubler releases left the CRC field zero. A zero word is
      * therefore "no CRC recorded" rather than "CRC of zero", and skipping the
      * check is the documented behaviour, not a loosening. Every other value
@@ -462,21 +454,21 @@ static bool xx_diskdoubler_check_forks(const uint8_t *header, int64_t room,
     }
 
     forks->data_plain =
-        (int64_t)xx_diskdoubler_be32(header + XX_DISKDOUBLER_OFF_DATA_PLAIN);
+        (int64_t)xx_data_get_u32(header + XX_DISKDOUBLER_OFF_DATA_PLAIN, 4, 0, true);
     forks->data_packed =
-        (int64_t)xx_diskdoubler_be32(header + XX_DISKDOUBLER_OFF_DATA_PACKED);
+        (int64_t)xx_data_get_u32(header + XX_DISKDOUBLER_OFF_DATA_PACKED, 4, 0, true);
     forks->rsrc_plain =
-        (int64_t)xx_diskdoubler_be32(header + XX_DISKDOUBLER_OFF_RSRC_PLAIN);
+        (int64_t)xx_data_get_u32(header + XX_DISKDOUBLER_OFF_RSRC_PLAIN, 4, 0, true);
     forks->rsrc_packed =
-        (int64_t)xx_diskdoubler_be32(header + XX_DISKDOUBLER_OFF_RSRC_PACKED);
+        (int64_t)xx_data_get_u32(header + XX_DISKDOUBLER_OFF_RSRC_PACKED, 4, 0, true);
     forks->data_method = header[XX_DISKDOUBLER_OFF_DATA_METHOD];
     forks->rsrc_method = header[XX_DISKDOUBLER_OFF_RSRC_METHOD];
 
     /* A nonzero delta selector means a pre-filter was applied to the fork
      * before compression. No decoder here undoes one, and decoding without it
      * produces plausible-looking garbage, so the whole file is refused. */
-    if (xx_diskdoubler_be16(header + XX_DISKDOUBLER_OFF_DATA_DELTA) != 0U ||
-        xx_diskdoubler_be16(header + XX_DISKDOUBLER_OFF_RSRC_DELTA) != 0U) {
+    if (xx_data_get_u16(header + XX_DISKDOUBLER_OFF_DATA_DELTA, 2, 0, true) != 0U ||
+        xx_data_get_u16(header + XX_DISKDOUBLER_OFF_RSRC_DELTA, 2, 0, true) != 0U) {
         return false;
     }
 
@@ -1283,14 +1275,14 @@ static int64_t xx_diskdoubler_dda2_end(Abstractformat *self, int64_t span,
     uint8_t footer[XX_DISKDOUBLER_DDA2_FOOTER];
     int64_t position = end_record + XX_DISKDOUBLER_DDA2_END_SIZE;
     int64_t stated_size =
-        (int64_t)xx_diskdoubler_be32(archive + XX_DISKDOUBLER_DDA2_OFF_SIZE);
+        (int64_t)xx_data_get_u32(archive + XX_DISKDOUBLER_DDA2_OFF_SIZE, 4, 0, true);
 
     if (xx_diskdoubler_range_within(span, position,
                                     XX_DISKDOUBLER_DDA2_FOOTER) &&
         xx_diskdoubler_read_at(self, self->base_address + position, footer,
                                sizeof(footer)) &&
-        xx_diskdoubler_be16(footer) == XX_DISKDOUBLER_DDA2_FOOTER_MAGIC) {
-        int64_t index_size = (int64_t)xx_diskdoubler_be32(footer + 2);
+        xx_data_get_u16(footer, 2, 0, true) == XX_DISKDOUBLER_DDA2_FOOTER_MAGIC) {
+        int64_t index_size = (int64_t)xx_data_get_u32(footer + 2, 4, 0, true);
         int64_t index_start = position + XX_DISKDOUBLER_DDA2_FOOTER;
         /* The index is a few bytes per record; one this large is not. */
         if (index_size <= (int64_t)XX_DISKDOUBLER_MAX_RECORDS * 8 &&
@@ -1302,12 +1294,12 @@ static int64_t xx_diskdoubler_dda2_end(Abstractformat *self, int64_t span,
                                              self->base_address + index_start,
                                              index, (size_t)index_size) &&
                       xx_diskdoubler_header_crc(index, (int32_t)index_size) ==
-                          xx_diskdoubler_be16(footer + 6);
+                          xx_data_get_u16(footer + 6, 2, 0, true);
             if (index) xx_mem_free(index);
             if (ok) return index_start + index_size;
         }
     }
-    if ((int64_t)xx_diskdoubler_be32(archive + XX_DISKDOUBLER_DDA2_OFF_END) ==
+    if ((int64_t)xx_data_get_u32(archive + XX_DISKDOUBLER_DDA2_OFF_END, 4, 0, true) ==
             end_record &&
         stated_size >= position && stated_size <= span) {
         return stated_size;
@@ -1325,8 +1317,8 @@ static bool xx_diskdoubler_parse_dda2(xx_diskdoubler_build *build,
     if (span < XX_DISKDOUBLER_DDA2_HEADER + XX_DISKDOUBLER_DDA2_END_SIZE ||
         !xx_diskdoubler_read_at(self, self->base_address, archive,
                                 sizeof(archive)) ||
-        xx_diskdoubler_be32(archive) != XX_DISKDOUBLER_DDA2_MAGIC ||
-        xx_diskdoubler_be16(archive + 4) != XX_DISKDOUBLER_DDA2_HEADER ||
+        xx_data_get_u32(archive, 4, 0, true) != XX_DISKDOUBLER_DDA2_MAGIC ||
+        xx_data_get_u16(archive + 4, 2, 0, true) != XX_DISKDOUBLER_DDA2_HEADER ||
         !xx_diskdoubler_crc_ok(archive, XX_DISKDOUBLER_DDA2_HEADER)) {
         return false;
     }
@@ -1345,10 +1337,10 @@ static bool xx_diskdoubler_parse_dda2(xx_diskdoubler_build *build,
                                          XX_DISKDOUBLER_DDA2_END_SIZE) ||
             !xx_diskdoubler_read_at(self, self->base_address + position,
                                     record, XX_DISKDOUBLER_DDA2_END_SIZE) ||
-            xx_diskdoubler_be32(record) != XX_DISKDOUBLER_DDA2_MAGIC) {
+            xx_data_get_u32(record, 4, 0, true) != XX_DISKDOUBLER_DDA2_MAGIC) {
             return false;
         }
-        type = xx_diskdoubler_be16(record + 4);
+        type = xx_data_get_u16(record + 4, 2, 0, true);
         if (type == XX_DISKDOUBLER_DDA2_END_TYPE) break;
         if (++build->records > XX_DISKDOUBLER_MAX_RECORDS) return false;
 
@@ -1373,21 +1365,21 @@ static bool xx_diskdoubler_parse_dda2(xx_diskdoubler_build *build,
             !xx_diskdoubler_crc_ok(record, header_size)) {
             return false;
         }
-        record_size = (int64_t)xx_diskdoubler_be32(
-            record + XX_DISKDOUBLER_DDA2_OFF_RECORD_SIZE);
+        record_size = (int64_t)xx_data_get_u32(
+            record + XX_DISKDOUBLER_DDA2_OFF_RECORD_SIZE, 4, 0, true);
         if (record_size < header_size ||
             !xx_diskdoubler_range_within(span, position, record_size)) {
             return false;
         }
-        parent_id = xx_diskdoubler_be32(record + XX_DISKDOUBLER_DDA2_OFF_PARENT);
+        parent_id = xx_data_get_u32(record + XX_DISKDOUBLER_DDA2_OFF_PARENT, 4, 0, true);
         name_size = record[6];
         if (name_size > XX_DISKDOUBLER_DDA2_NAME_MAX) {
             name_size = XX_DISKDOUBLER_DDA2_NAME_MAX;
         }
 
         if (header_size == XX_DISKDOUBLER_DDA2_FOLDER_HEADER) {
-            uint32_t id = xx_diskdoubler_be32(
-                record + XX_DISKDOUBLER_DDA2_OFF_FOLDER_ID);
+            uint32_t id = xx_data_get_u32(
+                record + XX_DISKDOUBLER_DDA2_OFF_FOLDER_ID, 4, 0, true);
             if (parent_id <= XX_DISKDOUBLER_DDA2_ROOT_PARENT) {
                 /* The archive's own folder: its children are the top. */
                 if (!xx_diskdoubler_ids_set(&build->ids, id, 1U)) return false;
@@ -1414,10 +1406,10 @@ static bool xx_diskdoubler_parse_dda2(xx_diskdoubler_build *build,
                 return false;
             }
         } else {
-            int64_t data_size = (int64_t)xx_diskdoubler_be32(
-                record + XX_DISKDOUBLER_DDA2_OFF_DATA_SIZE);
-            int64_t rsrc_size = (int64_t)xx_diskdoubler_be32(
-                record + XX_DISKDOUBLER_DDA2_OFF_RSRC_SIZE);
+            int64_t data_size = (int64_t)xx_data_get_u32(
+                record + XX_DISKDOUBLER_DDA2_OFF_DATA_SIZE, 4, 0, true);
+            int64_t rsrc_size = (int64_t)xx_data_get_u32(
+                record + XX_DISKDOUBLER_DDA2_OFF_RSRC_SIZE, 4, 0, true);
             parent = xx_diskdoubler_dda2_parent(build, parent_id);
             /* Both sizes are below 2^32, so the sum cannot overflow. */
             if (data_size + rsrc_size > record_size - header_size ||
@@ -1459,7 +1451,7 @@ static bool xx_diskdoubler_parse_ddar(xx_diskdoubler_build *build,
     if (span < XX_DISKDOUBLER_DDAR_HEADER ||
         !xx_diskdoubler_read_at(self, self->base_address, archive,
                                 sizeof(archive)) ||
-        xx_diskdoubler_be32(archive) != XX_DISKDOUBLER_DDAR_MAGIC ||
+        xx_data_get_u32(archive, 4, 0, true) != XX_DISKDOUBLER_DDAR_MAGIC ||
         !xx_diskdoubler_crc_ok(archive, XX_DISKDOUBLER_DDAR_HEADER)) {
         return false;
     }
@@ -1484,7 +1476,7 @@ static bool xx_diskdoubler_parse_ddar(xx_diskdoubler_build *build,
                                          XX_DISKDOUBLER_DDAR_RECORD) ||
             !xx_diskdoubler_read_at(self, self->base_address + position,
                                     record, sizeof(record)) ||
-            xx_diskdoubler_be32(record) != XX_DISKDOUBLER_DDAR_MAGIC ||
+            xx_data_get_u32(record, 4, 0, true) != XX_DISKDOUBLER_DDAR_MAGIC ||
             !xx_diskdoubler_crc_ok(record, XX_DISKDOUBLER_DDAR_RECORD)) {
             if (build->records == 0U) return false;
             break;
@@ -1494,10 +1486,10 @@ static bool xx_diskdoubler_parse_ddar(xx_diskdoubler_build *build,
         if (name_size > XX_DISKDOUBLER_DDAR_NAME_MAX) {
             name_size = XX_DISKDOUBLER_DDAR_NAME_MAX;
         }
-        data_size = (int64_t)xx_diskdoubler_be32(
-            record + XX_DISKDOUBLER_DDAR_OFF_DATA_SIZE);
-        rsrc_size = (int64_t)xx_diskdoubler_be32(
-            record + XX_DISKDOUBLER_DDAR_OFF_RSRC_SIZE);
+        data_size = (int64_t)xx_data_get_u32(
+            record + XX_DISKDOUBLER_DDAR_OFF_DATA_SIZE, 4, 0, true);
+        rsrc_size = (int64_t)xx_data_get_u32(
+            record + XX_DISKDOUBLER_DDAR_OFF_RSRC_SIZE, 4, 0, true);
         body = position + XX_DISKDOUBLER_DDAR_RECORD;
 
         if (record[XX_DISKDOUBLER_DDAR_OFF_FOLDER] != 0U) {
@@ -1543,10 +1535,10 @@ static bool xx_diskdoubler_parse_ddar(xx_diskdoubler_build *build,
                        self->base_address + position,
                        XX_DISKDOUBLER_DDAR_RECORD, self->base_address + body,
                        data_size, rsrc_size, XX_DISKDOUBLER_CHECK_SUM16,
-                       xx_diskdoubler_be16(record +
-                                           XX_DISKDOUBLER_DDAR_OFF_DATA_SUM),
-                       xx_diskdoubler_be16(record +
-                                           XX_DISKDOUBLER_DDAR_OFF_RSRC_SUM))) {
+                       xx_data_get_u16(record +
+                                           XX_DISKDOUBLER_DDAR_OFF_DATA_SUM, 2, 0, true),
+                       xx_data_get_u16(record +
+                                           XX_DISKDOUBLER_DDAR_OFF_RSRC_SUM, 2, 0, true))) {
             return false;
         }
         position = body + data_size + rsrc_size;
@@ -1575,7 +1567,7 @@ static xx_diskdoubler_stream *xx_diskdoubler_parse(Abstractformat *self,
                                 sizeof(magic))) {
         return NULL;
     }
-    signature = xx_diskdoubler_be32(magic);
+    signature = xx_data_get_u32(magic, 4, 0, true);
     if (signature != XX_DISKDOUBLER_MAGIC &&
         signature != XX_DISKDOUBLER_DDA2_MAGIC &&
         signature != XX_DISKDOUBLER_DDAR_MAGIC) {
@@ -1744,12 +1736,12 @@ static bool xx_diskdoubler_decode(Abstractformat *self,
                                 sizeof(header))) {
         return false;
     }
-    data_plain = (int64_t)xx_diskdoubler_be32(header +
-                                              XX_DISKDOUBLER_OFF_DATA_PLAIN);
-    data_packed = (int64_t)xx_diskdoubler_be32(header +
-                                               XX_DISKDOUBLER_OFF_DATA_PACKED);
-    rsrc_plain = (int64_t)xx_diskdoubler_be32(header +
-                                              XX_DISKDOUBLER_OFF_RSRC_PLAIN);
+    data_plain = (int64_t)xx_data_get_u32(header +
+                                              XX_DISKDOUBLER_OFF_DATA_PLAIN, 4, 0, true);
+    data_packed = (int64_t)xx_data_get_u32(header +
+                                               XX_DISKDOUBLER_OFF_DATA_PACKED, 4, 0, true);
+    rsrc_plain = (int64_t)xx_data_get_u32(header +
+                                              XX_DISKDOUBLER_OFF_RSRC_PLAIN, 4, 0, true);
 
     /* Which fork this member is. Normally the offset decides it, but when the
      * data fork is absent (plaintext zero) parse publishes only the resource
@@ -1807,9 +1799,9 @@ static bool xx_diskdoubler_decode(Abstractformat *self,
          * it needs the header's per-fork checksum word plus the two info
          * bytes that tell it whether the .Z header and the plaintext are
          * XOR-masked with 0x5a. */
-        uint16_t checksum = xx_diskdoubler_be16(
+        uint16_t checksum = xx_data_get_u16(
             header + (is_resource ? XX_DISKDOUBLER_OFF_RSRC_CHECKSUM
-                                  : XX_DISKDOUBLER_OFF_DATA_CHECKSUM));
+                                  : XX_DISKDOUBLER_OFF_DATA_CHECKSUM), 2, 0, true);
         ok = xx_diskdoubler_lzw_decode_memory(
             packed, packed_size, header[XX_DISKDOUBLER_OFF_INFO1],
             header[XX_DISKDOUBLER_OFF_INFO2], checksum, plain, plain_size,

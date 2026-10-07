@@ -9,6 +9,7 @@
 #include "xxfclib/data/xx_pd.h"
 #include <stddef.h>
 #include <stdint.h>
+#include "xxfclib/data/xx_data.h"
 
 typedef struct xpk_pwpk_bits {
     const uint8_t *data;
@@ -35,9 +36,6 @@ static bool xpk_pwpk_read(xpk_pwpk_bits *bits,unsigned count,uint32_t *value) {
     }
     *value=result;return true;
 }
-static uint32_t xpk_pwpk_be32(const uint8_t *p) {
-    return ((uint32_t)p[0]<<24U)|((uint32_t)p[1]<<16U)|((uint32_t)p[2]<<8U)|p[3];
-}
 /* Version 22=PWPK. Initialize *mode to UINT32_MAX before the first chunk.
  * The first compressed chunk carries the mode after its size footer; later
  * chunks reuse the cached mode. Only commit mode on complete success.
@@ -55,11 +53,11 @@ static bool xpk_pwpk_native(const uint8_t *packed,size_t size,uint8_t *output,
     limit=size-4U;
     if(candidate==UINT32_MAX) {
         if(size<8U)return false;
-        candidate=xpk_pwpk_be32(packed+limit);
+        candidate=xx_data_get_u32(packed+limit, 4, 0, true);
         if(candidate>4U)return false;
         limit-=4U;
     } else if(candidate>4U)return false;
-    footer=xpk_pwpk_be32(packed+limit);
+    footer=xx_data_get_u32(packed+limit, 4, 0, true);
     if((footer>>8U)!=wanted || (footer&255U)>=32U)return false;
     bits.data=packed;bits.at=limit;bits.word=0U;bits.left=0U;
     if(!xpk_pwpk_read(&bits,footer&255U,&discard))return false;

@@ -26,6 +26,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -165,11 +166,6 @@ static uint32_t mmf_le16(const uint8_t *p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8U);
 }
 
-static uint32_t mmf_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) |
-           ((uint32_t)p[2] << 16U) | ((uint32_t)p[3] << 24U);
-}
-
 static bool mmf_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     const size_t file_io_capacity = gb_sfx_clickteam_multimedia_fusion_capacity();
@@ -206,7 +202,7 @@ uint32_t xx_sfx_clickteam_multimedia_fusion_checksum(const uint8_t *data,
     size_t index = 0U;
     if (!data) return 0U;
     for (; size - index >= 4U; index += 4U)
-        sum = mmf_rol1(sum) + mmf_le32(data + index);
+        sum = mmf_rol1(sum) + xx_data_get_u32(data + index, 4, 0, false);
     for (; index < size; ++index) sum = mmf_rol1(sum) + data[index];
     return sum;
 }
@@ -232,7 +228,7 @@ static bool mmf_pe_extent(xx_io_device *device, int64_t base, int64_t size,
         !mmf_read_at(device, base, dos, sizeof(dos)) ||
         dos[0] != 'M' || dos[1] != 'Z')
         return false;
-    nt_offset = mmf_le32(dos + 0x3C);
+    nt_offset = xx_data_get_u32(dos + 0x3C, 4, 0, false);
     if (nt_offset < 4U || (int64_t)nt_offset > size - (int64_t)sizeof(nt) ||
         !mmf_read_at(device, base + nt_offset, nt, sizeof(nt)) ||
         xx_rt_memcmp(nt, "PE\0\0", 4U) != 0)
@@ -259,12 +255,12 @@ static bool mmf_pe_extent(xx_io_device *device, int64_t base, int64_t size,
     } else {
         return false;
     }
-    raw_end = (int64_t)mmf_le32(optional + 60);  /* SizeOfHeaders */
+    raw_end = (int64_t)xx_data_get_u32(optional + 60, 4, 0, false);  /* SizeOfHeaders */
     if (raw_end > size) return false;
     for (index = 0U; index < section_count; ++index) {
         const uint8_t *entry = sections + index * MMF_PE_SECTION_SIZE;
-        int64_t raw_size = (int64_t)mmf_le32(entry + 16);
-        int64_t raw_offset = (int64_t)mmf_le32(entry + 20);
+        int64_t raw_size = (int64_t)xx_data_get_u32(entry + 16, 4, 0, false);
+        int64_t raw_offset = (int64_t)xx_data_get_u32(entry + 20, 4, 0, false);
         if (raw_size == 0) continue;
         if (raw_offset > size || raw_size > size - raw_offset) return false;
         if (raw_offset + raw_size > raw_end) raw_end = raw_offset + raw_size;
@@ -275,16 +271,16 @@ static bool mmf_pe_extent(xx_io_device *device, int64_t base, int64_t size,
      * entry points into the pack header. */
     security_entry = directories + 4U * 8U;
     if (optional_read >= security_entry + 8U &&
-        mmf_le32(optional + directories - 4U) > 4U) {
-        int64_t cert_offset = (int64_t)mmf_le32(optional + security_entry);
-        int64_t cert_size = (int64_t)mmf_le32(optional + security_entry + 4U);
+        xx_data_get_u32(optional + directories - 4U, 4, 0, false) > 4U) {
+        int64_t cert_offset = (int64_t)xx_data_get_u32(optional + security_entry, 4, 0, false);
+        int64_t cert_size = (int64_t)xx_data_get_u32(optional + security_entry + 4U, 4, 0, false);
         if (cert_size > 0 && cert_offset > raw_end && cert_offset <= size &&
             cert_size == size - cert_offset)
             data_end = cert_offset;
     }
     *raw_end_out = raw_end;
     *data_end_out = data_end;
-    *alignment_out = mmf_le32(optional + 36);  /* FileAlignment */
+    *alignment_out = xx_data_get_u32(optional + 36, 4, 0, false);  /* FileAlignment */
     return true;
 }
 
@@ -324,8 +320,8 @@ static bool mmf_probe_record(const uint8_t *head, size_t avail, int64_t room,
     name_bytes = unicode ? (size_t)length * 2U : (size_t)length;
     position = 2U + name_bytes;
     if (avail < position || avail - position < 11U) return false;
-    first = mmf_le32(head + position);
-    second = mmf_le32(head + position + 4U);
+    first = xx_data_get_u32(head + position, 4, 0, false);
+    second = xx_data_get_u32(head + position + 4U, 4, 0, false);
     if (first != 0U) {
         *two_fields = false;
         return mmf_probe_payload(head, position + 4U, first, room, stored);
@@ -345,11 +341,11 @@ static bool mmf_try_pack(xx_io_device *device, int64_t pack, int64_t end,
     bool as_unicode, as_ansi;
     if (pack < 0 || end - pack < (int64_t)MMF_HEADER_SIZE + 2 ||
         !mmf_read_at(device, pack, header, sizeof(header)) ||
-        mmf_le32(header) != MMF_MAGIC1 || mmf_le32(header + 4) != MMF_MAGIC2 ||
-        mmf_le32(header + 8) != MMF_HEADER_SIZE ||
-        mmf_le32(header + 0x14) != 0U || mmf_le32(header + 0x18) != 0U)
+        xx_data_get_u32(header, 4, 0, false) != MMF_MAGIC1 || xx_data_get_u32(header + 4, 4, 0, false) != MMF_MAGIC2 ||
+        xx_data_get_u32(header + 8, 4, 0, false) != MMF_HEADER_SIZE ||
+        xx_data_get_u32(header + 0x14, 4, 0, false) != 0U || xx_data_get_u32(header + 0x18, 4, 0, false) != 0U)
         return false;
-    count = mmf_le32(header + 0x1C);
+    count = xx_data_get_u32(header + 0x1C, 4, 0, false);
     if (count == 0U || count > MMF_MAX_FILES) return false;
     room = end - pack - (int64_t)MMF_HEADER_SIZE;
     avail = room < (int64_t)sizeof(head) ? (size_t)room : sizeof(head);
@@ -826,10 +822,10 @@ static bool mmf_walk(Abstractformat *format, const mmf_layout *layout,
                          name_bytes + fields))
             break;
         if (layout->two_fields) {
-            checksum = mmf_le32(head + name_bytes);
-            packed = mmf_le32(head + name_bytes + 4U);
+            checksum = xx_data_get_u32(head + name_bytes, 4, 0, false);
+            packed = xx_data_get_u32(head + name_bytes + 4U, 4, 0, false);
         } else {
-            packed = mmf_le32(head + name_bytes);
+            packed = xx_data_get_u32(head + name_bytes, 4, 0, false);
         }
         data = position + 2 + (int64_t)(name_bytes + fields);
         if (packed == 0U || packed > (uint32_t)INT32_MAX ||

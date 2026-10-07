@@ -4,11 +4,12 @@
  */
 #include "xxfclib/formats/zx_hobeta/xx_zx_hobeta.h"
 #include "../atari_7800_a78/xx_eleventh_retro.h"
+#include "xxfclib/data/xx_data.h"
 static bool read_components(Abstractformat *f,pm_stream *s,er_blob *b) {
  uint32_t i,z,length,sum=105;char name[16];const uint8_t *p=b->p;
  if(b->n<273 || p[13] || !p[14] || (p[8]!='B' && p[8]!='C' && p[8]!='D') || !er_name(p,8,name,false)) return false;
- for(i=0;i<15;++i) { sum+=(uint32_t)p[i]*257U; } if((sum&65535U)!=pm_le16(p+15)) return false;
- z=(uint32_t)p[14]*256U;length=pm_le16(p+11);if(b->n!=17+z || !length || length>z || (p[8]=='C' && length>65536U-pm_le16(p+9))) return false;
+ for(i=0;i<15;++i) { sum+=(uint32_t)p[i]*257U; } if((sum&65535U)!=xx_data_get_u16(p+15, 2, 0, false)) return false;
+ z=(uint32_t)p[14]*256U;length=xx_data_get_u16(p+11, 2, 0, false);if(b->n!=17+z || !length || length>z || (p[8]=='C' && length>65536U-xx_data_get_u16(p+9, 2, 0, false))) return false;
  if(!er_emit(f,s,b,"trdos-file-descriptor.bin",0,17) || !er_emit(f,s,b,"original-file-sectors.bin",17,z)) { return false; } s->size=b->n;return true;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { er_blob b;bool ok;if(!er_load(f,&b,pd)) return false;ok=read_components(f,s,&b);xx_mem_free(b.p);return ok; }

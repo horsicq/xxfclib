@@ -10,6 +10,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 typedef struct xpk_shrx_state {
     uint32_t ar[999],vlen,vnext,shift;
@@ -23,9 +24,6 @@ typedef struct xpk_shrx_context {
     bool shr3;
     xx_pd_struct *pd;
 } xpk_shrx_context;
-static uint32_t xpk_shrx_be32(const uint8_t *p) {
-    return ((uint32_t)p[0]<<24U)|((uint32_t)p[1]<<16U)|((uint32_t)p[2]<<8U)|p[3];
-}
 static bool xpk_shrx_byte(xpk_shrx_context *ctx,uint32_t *value) {
     if(ctx->at>=ctx->size)return false;
     *value=ctx->packed[ctx->at++];return true;
@@ -193,7 +191,7 @@ static bool xpk_shrx_native(const uint8_t *packed,size_t size,uint8_t *output,
     ctx.packed=packed;ctx.size=size;ctx.shr3=shr3;ctx.pd=pd;
     if(shr3)ctx.at=1U;
     else if(packed[2]&0x80U) {
-        raw_size=~xpk_shrx_be32(packed+2U)+1U;
+        raw_size=~xx_data_get_u32(packed+2U, 4, 0, true)+1U;
         if(raw_size!=wanted)return false;
         ctx.at=6U;
     } else {
@@ -210,7 +208,7 @@ static bool xpk_shrx_native(const uint8_t *packed,size_t size,uint8_t *output,
         ctx.state=*state;
     }
     if(ctx.at>size || size-ctx.at<4U)return false;
-    ctx.stream=xpk_shrx_be32(packed+ctx.at);ctx.at+=4U;
+    ctx.stream=xx_data_get_u32(packed+ctx.at, 4, 0, true);ctx.at+=4U;
     while(produced<wanted) {
         uint32_t code,count,distance,tmp,extra;
         size_t i;

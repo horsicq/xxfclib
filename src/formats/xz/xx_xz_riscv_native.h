@@ -9,23 +9,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-
-static uint32_t xx_xz_riscv_read_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
-
-static uint32_t xx_xz_riscv_read_be32(const uint8_t *data) {
-    return ((uint32_t)data[0] << 24U) | ((uint32_t)data[1] << 16U) |
-           ((uint32_t)data[2] << 8U) | (uint32_t)data[3];
-}
-
-static void xx_xz_riscv_write_le32(uint8_t *data, uint32_t value) {
-    data[0] = (uint8_t)value;
-    data[1] = (uint8_t)(value >> 8U);
-    data[2] = (uint8_t)(value >> 16U);
-    data[3] = (uint8_t)(value >> 24U);
-}
+#include "xxfclib/data/xx_data.h"
 
 static bool xx_xz_riscv_decode(uint8_t *data, size_t size,
                                 const uint8_t *properties,
@@ -37,7 +21,7 @@ static bool xx_xz_riscv_decode(uint8_t *data, size_t size,
         (properties_size != 0U && properties_size != 4U) ||
         (!properties && properties_size != 0U)) return false;
     if (properties_size == 4U) {
-        start = xx_xz_riscv_read_le32(properties);
+        start = xx_data_get_u32(properties, 4, 0, false);
         if ((start & 1U) != 0U) return false;
     }
     if (size < 8U) return true;
@@ -62,8 +46,8 @@ static bool xx_xz_riscv_decode(uint8_t *data, size_t size,
             offset += 2U;
         } else if ((instruction & 0x7FU) == 0x17U) {
             uint32_t second;
-            instruction = xx_xz_riscv_read_le32(data + offset);
-            second = xx_xz_riscv_read_le32(data + offset + 4U);
+            instruction = xx_data_get_u32(data + offset, 4, 0, false);
+            second = xx_data_get_u32(data + offset + 4U, 4, 0, false);
             if ((instruction & 0xE80U) != 0U) {
                 uint32_t address;
                 if ((((instruction << 8U) ^ (second - 3U)) &
@@ -82,14 +66,14 @@ static bool xx_xz_riscv_decode(uint8_t *data, size_t size,
                     offset += 2U;
                     continue;
                 }
-                address = xx_xz_riscv_read_be32(data + offset + 4U);
+                address = xx_data_get_u32(data + offset + 4U, 4, 0, true);
                 address -= start + (uint32_t)offset;
                 second = (instruction >> 12U) | (address << 20U);
                 instruction = 0x17U | (register_id << 7U) |
                               ((address + 0x800U) & 0xFFFFF000U);
             }
-            xx_xz_riscv_write_le32(data + offset, instruction);
-            xx_xz_riscv_write_le32(data + offset + 4U, second);
+            xx_data_set_u32(data + offset, 4, 0, instruction, false);
+            xx_data_set_u32(data + offset + 4U, 4, 0, second, false);
             offset += 6U;
         }
     }

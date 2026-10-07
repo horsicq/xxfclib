@@ -3,14 +3,15 @@
  */
 #include "xxfclib/formats/yamaha_ym/xx_yamaha_ym.h"
 #include "../nintendo_sdat/xx_twelfth_c.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool read_components(Abstractformat *f,pm_stream *s,tc_blob *b) {
  const uint8_t *p=b->p;uint32_t frames,attrs,drums,at,i,start,z;char label[64];
  if(b->n<34 || (xx_rt_memcmp(p,"YM5!",4) && xx_rt_memcmp(p,"YM6!",4)) || xx_rt_memcmp(p+4,"LeOnArD!",8)) return false;
- frames=pm_be32(p+12);attrs=pm_be32(p+16);drums=pm_be16(p+20);at=34+pm_be16(p+32);
- if(!frames || frames>1000000 || attrs&~7U || drums>256 || !pm_be32(p+22) || !pm_be16(p+26) || pm_be32(p+28)>=frames || !tc_span(b,0,at)) return false;
+ frames=xx_data_get_u32(p+12, 4, 0, true);attrs=xx_data_get_u32(p+16, 4, 0, true);drums=xx_data_get_u16(p+20, 2, 0, true);at=34+xx_data_get_u16(p+32, 2, 0, true);
+ if(!frames || frames>1000000 || attrs&~7U || drums>256 || !xx_data_get_u32(p+22, 4, 0, true) || !xx_data_get_u16(p+26, 2, 0, true) || xx_data_get_u32(p+28, 4, 0, true)>=frames || !tc_span(b,0,at)) return false;
  if(!tc_emit(f,s,b,"ym-descriptor.bin",0,at)) return false;
- for(i=0;i<drums;++i) {if(!tc_span(b,at,4)) return false;z=pm_be32(p+at);at+=4;xx_rt_snprintf(label,sizeof(label),"digidrum-%03u.bin",i);
+ for(i=0;i<drums;++i) {if(!tc_span(b,at,4)) return false;z=xx_data_get_u32(p+at, 4, 0, true);at+=4;xx_rt_snprintf(label,sizeof(label),"digidrum-%03u.bin",i);
   if(!z || !tc_emit(f,s,b,label,at,z)) { return false; } at+=z;}
  start=at;for(i=0;i<3;++i) {if(!tc_string(b,at,b->n,&z,false)) return false;at+=z;}
  if(!tc_emit(f,s,b,"song-metadata.bin",start,at-start) || !tc_span(b,at,frames*16) || b->n-at!=frames*16+4 || xx_rt_memcmp(p+b->n-4,"End!",4)) return false;

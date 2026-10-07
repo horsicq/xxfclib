@@ -7,6 +7,7 @@
  */
 #include "xxfclib/formats/zx_spectrum_szx/xx_zx_spectrum_szx.h"
 #include "../vice_x64/xx_ninth_retro.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
  uint32_t at=8,flags=0,pages=0,machine,needed; char name[48];
@@ -14,14 +15,14 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
  needed=machine==0 ? 32U : machine==1 ? 37U : 255U;
  while(at<b->n) {
   uint32_t z,bit=0; const uint8_t *p;
-  if(!nh_range(b,at,8) || (z=pm_le32(b->p+at+4))>b->n-at-8) { return false; } p=b->p+at+8;
+  if(!nh_range(b,at,8) || (z=xx_data_get_u32(b->p+at+4, 4, 0, false))>b->n-at-8) { return false; } p=b->p+at+8;
   if(!xx_rt_memcmp(b->p+at,"Z80R",4)) { bit=1; if(z!=37 || p[26]>1 || p[27]>1 || p[28]>2 || (p[34]&~7U)) return false; }
   else if(!xx_rt_memcmp(b->p+at,"SPCR",4)) { bit=2; if(z!=8 || p[0]>7 || !nh_zero(p+4,4) || (machine<2 && (p[1] || p[2]))) return false; }
-  else if(!xx_rt_memcmp(b->p+at,"RAMP",4)) { uint32_t pg; if(z!=16387 || pm_le16(p) || (pg=p[2])>7 || !(needed&(1U<<pg)) || (pages&(1U<<pg))) return false; pages|=1U<<pg; }
+  else if(!xx_rt_memcmp(b->p+at,"RAMP",4)) { uint32_t pg; if(z!=16387 || xx_data_get_u16(p, 2, 0, false) || (pg=p[2])>7 || !(needed&(1U<<pg)) || (pages&(1U<<pg))) return false; pages|=1U<<pg; }
   else if(!xx_rt_memcmp(b->p+at,"CRTR",4)) { bit=4; if(z<36 || !nh_ascii(p,32,true)) return false; }
-  else if(!xx_rt_memcmp(b->p+at,"JOY\0",4)) { bit=16; if(z!=6 || pm_le32(p)>1 || p[4]>8 || p[5]>8) return false; }
-  else if(!xx_rt_memcmp(b->p+at,"KEYB",4)) { bit=32; if(z!=(b->p[5] ? 5U : 4U) || pm_le32(p)>1 || (z==5 && p[4]>8)) return false; }
-  else if(!xx_rt_memcmp(b->p+at,"ZXPR",4)) { bit=64; if(z!=2 || pm_le16(p)>1) return false; }
+  else if(!xx_rt_memcmp(b->p+at,"JOY\0",4)) { bit=16; if(z!=6 || xx_data_get_u32(p, 4, 0, false)>1 || p[4]>8 || p[5]>8) return false; }
+  else if(!xx_rt_memcmp(b->p+at,"KEYB",4)) { bit=32; if(z!=(b->p[5] ? 5U : 4U) || xx_data_get_u32(p, 4, 0, false)>1 || (z==5 && p[4]>8)) return false; }
+  else if(!xx_rt_memcmp(b->p+at,"ZXPR",4)) { bit=64; if(z!=2 || xx_data_get_u16(p, 2, 0, false)>1) return false; }
   else if(!xx_rt_memcmp(b->p+at,"AY\0\0",4)) { bit=8; if(machine!=2 || z!=18 || p[0]>1 || p[1]>15) return false; }
   else return false;
   if(bit && (flags&bit)) { return false; } flags|=bit;

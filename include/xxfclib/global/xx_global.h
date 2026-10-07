@@ -74,6 +74,28 @@ XXFC_API size_t xx_global_get_file_buffer_size(void);
 #define xx_get_file_BufferSize xx_get_file_buffer_size
 #define xx_set_file_BufferSize xx_set_file_buffer_size
 
+/* --- Whole-File Memory Limit --- */
+
+/* 256 MB for 64-bit builds, 64 MB for 32-bit ones */
+#define XX_DEFAULT_FILE_MEMORY_LIMIT \
+    (sizeof(void *) > 4 ? (uint64_t)256 * 1024 * 1024 : (uint64_t)64 * 1024 * 1024)
+
+/**
+ * @brief Set the largest file that may be read into memory whole.
+ *
+ * A file bigger than the file buffer is streamed through it. When a scan has
+ * read about as many bytes through the buffer as the file holds, the file is
+ * loaded once instead, if it is no bigger than this limit, so repeated
+ * searches over it stop re-reading the device.
+ * @param limit Size in bytes; 0 never loads a streamed file whole.
+ */
+XXFC_API void     xx_set_file_memory_limit(uint64_t limit);
+
+/**
+ * @brief Get the whole-file memory limit (default XX_DEFAULT_FILE_MEMORY_LIMIT).
+ */
+XXFC_API uint64_t xx_get_file_memory_limit(void);
+
 /* --- Terminal Configuration --- */
 
 typedef enum xx_terminal_type_e {

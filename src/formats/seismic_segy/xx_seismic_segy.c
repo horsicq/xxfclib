@@ -10,12 +10,12 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     /* The textual header has no unique signature. Accept printable ASCII or
        EBCDIC blocks, requiring forty nonempty 80-byte card images. */
     for(i=0;i<40;++i) {unsigned j;bool content=false;for(j=0;j<80;++j) {uint8_t c=text[i*80+j];if(!c || c==255) return false;if(c!=32 && c!=64) content=true;}if(!content) return false;}
-    rev=pm_be16(h+300);ext=pm_be16(h+304);fixed=pm_be16(h+302);ns=pm_be16(h+20);dt=pm_be16(h+16);w=sample_width(pm_be16(h+24));
+    rev=xx_data_get_u16(h+300, 2, 0, true);ext=xx_data_get_u16(h+304, 2, 0, true);fixed=xx_data_get_u16(h+302, 2, 0, true);ns=xx_data_get_u16(h+20, 2, 0, true);dt=xx_data_get_u16(h+16, 2, 0, true);w=sample_width(xx_data_get_u16(h+24, 2, 0, true));
     if((rev!=0 && rev!=256) || ext>16 || fixed>1 || !w || !ns || !dt || (!rev && (ext || fixed))) return false;
     at=3600+(uint64_t)ext*3200;if(at>(uint64_t)available || !pm_add(f,s,"segy-file-headers.bin",0,(int64_t)at)) return false;
     while(at<(uint64_t)available) {unsigned samples,interval;char label[64];
         if(fd_stop(pd) || ++index>1024 || !fd_range(at,240,(uint64_t)available) || !pm_read(f,(int64_t)at,trace,240)) return false;
-        samples=pm_be16(trace+114);interval=pm_be16(trace+116);if(!samples || !interval || (fixed && (samples!=ns || interval!=dt)) || (int16_t)pm_be16(trace+28)<-1) return false;
+        samples=xx_data_get_u16(trace+114, 2, 0, true);interval=xx_data_get_u16(trace+116, 2, 0, true);if(!samples || !interval || (fixed && (samples!=ns || interval!=dt)) || (int16_t)xx_data_get_u16(trace+28, 2, 0, true)<-1) return false;
         n=(uint64_t)samples*w;if(!fd_range(at+240,n,(uint64_t)available)) return false;
         xx_rt_snprintf(label,sizeof(label),"trace-%u-header.bin",index-1);if(!pm_add(f,s,label,(int64_t)at,240)) return false;
         xx_rt_snprintf(label,sizeof(label),"trace-%u-samples.bin",index-1);if(!pm_add(f,s,label,(int64_t)(at+240),(int64_t)n)) return false;at+=240+n;

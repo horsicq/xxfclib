@@ -56,6 +56,7 @@
 #include "xxfclib/algo/deflate/xx_deflate.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef LSPACK10
 #define XX_LSPACK10_FILE_TYPE XX_FILE_TYPE_LSPACK10
@@ -95,24 +96,6 @@ typedef struct xx_lspack10_stream_s {
 static void xx_lspack10_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint16_t xx_lspack10_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_lspack10_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static XXFC_MAYBE_UNUSED uint16_t xx_lspack10_be16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[1] | ((uint16_t)data[0] << 8));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t xx_lspack10_be32(const uint8_t *data) {
-    return (uint32_t)data[3] | ((uint32_t)data[2] << 8) |
-           ((uint32_t)data[1] << 16) | ((uint32_t)data[0] << 24);
-}
 
 static bool xx_lspack10_read_at(Abstractformat *self, int64_t offset,
                               uint8_t *buffer, size_t size) {
@@ -286,18 +269,18 @@ static xx_lspack10_stream *xx_lspack10_parse(Abstractformat *self,
             goto fail;
         }
         /* U3's reserved-field gate, applied to every member. */
-        if (xx_lspack10_le16(header + 0x1a) != 0U ||
-            xx_lspack10_le16(header + 0x1c) != 0U ||
-            xx_lspack10_le16(header + 0x1e) != 0U ||
-            xx_lspack10_le32(header + 0x20) != 0U) {
+        if (xx_data_get_u16(header + 0x1a, 2, 0, false) != 0U ||
+            xx_data_get_u16(header + 0x1c, 2, 0, false) != 0U ||
+            xx_data_get_u16(header + 0x1e, 2, 0, false) != 0U ||
+            xx_data_get_u32(header + 0x20, 4, 0, false) != 0U) {
             goto fail;
         }
 
-        method = xx_lspack10_le16(header + 8);
-        packed = (int64_t)(int32_t)xx_lspack10_le32(header + 0x12);
-        plain = (int64_t)(int32_t)xx_lspack10_le32(header + 0x16);
-        name_size = xx_lspack10_le16(header + 0x24);
-        path_size = xx_lspack10_le16(header + 0x26);
+        method = xx_data_get_u16(header + 8, 2, 0, false);
+        packed = (int64_t)(int32_t)xx_data_get_u32(header + 0x12, 4, 0, false);
+        plain = (int64_t)(int32_t)xx_data_get_u32(header + 0x16, 4, 0, false);
+        name_size = xx_data_get_u16(header + 0x24, 2, 0, false);
+        path_size = xx_data_get_u16(header + 0x26, 2, 0, false);
         if (packed < 0 || plain < 0 || name_size == 0U) goto fail;
         if (method != XX_LSPACK10_METHOD_STORE &&
             method != XX_LSPACK10_METHOD_DEFLATE) {
@@ -336,7 +319,7 @@ static xx_lspack10_stream *xx_lspack10_parse(Abstractformat *self,
         member.packed_size = packed;
         member.unpacked_size = (uint64_t)plain;
         member.method = method;
-        member.crc32 = xx_lspack10_le32(header + 0x0e);
+        member.crc32 = xx_data_get_u32(header + 0x0e, 4, 0, false);
         member.has_crc = true;
         if (!xx_lspack10_add(stream, &member)) {
             xx_str_free(member.name);

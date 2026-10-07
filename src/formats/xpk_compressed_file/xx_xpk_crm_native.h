@@ -9,6 +9,7 @@
 #include "xxfclib/data/xx_pd.h"
 #include <stddef.h>
 #include <stdint.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XPK_CRM_NODES 8193U
 typedef struct xpk_crm_node {int32_t child[2],symbol;} xpk_crm_node;
@@ -19,12 +20,6 @@ typedef struct xpk_crm_bits {
     uint32_t word;
     unsigned left;
 } xpk_crm_bits;
-static uint16_t xpk_crm_be16(const uint8_t *p) {
-    return (uint16_t)(((uint16_t)p[0]<<8U)|p[1]);
-}
-static uint32_t xpk_crm_be32(const uint8_t *p) {
-    return ((uint32_t)p[0]<<24U)|((uint32_t)p[1]<<16U)|((uint32_t)p[2]<<8U)|p[3];
-}
 static bool xpk_crm_read(xpk_crm_bits *bits,unsigned count,uint32_t *value) {
     uint32_t result=0U;
     unsigned i;
@@ -113,13 +108,13 @@ static bool xpk_crm_native(const uint8_t *packed,size_t size,uint8_t *output,
     if(packed[0]!='C' || packed[1]!='r' ||
        (packed[2]!='M' && packed[2]!='m') || packed[3]!='2')return false;
     sampled=packed[2]=='m';
-    raw_size=xpk_crm_be32(packed+6U);packed_size=xpk_crm_be32(packed+10U);
+    raw_size=xx_data_get_u32(packed+6U, 4, 0, true);packed_size=xx_data_get_u32(packed+10U, 4, 0, true);
     if(raw_size!=wanted || packed_size<6U || packed_size>size-14U)return false;
     at=(size_t)packed_size+8U;
-    shift=xpk_crm_be16(packed+at+4U);
+    shift=xx_data_get_u16(packed+at+4U, 2, 0, true);
     if(shift>16U)return false;
     bits.data=packed;bits.at=at;
-    bits.word=xpk_crm_be32(packed+at)>>(16U-shift);
+    bits.word=xx_data_get_u32(packed+at, 4, 0, true)>>(16U-shift);
     bits.left=shift+16U;
     for(;;) {
         uint32_t items,index,again;

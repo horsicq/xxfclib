@@ -10,7 +10,7 @@ static bool pq_header(Abstractformat *f,const char *magic,pq_item *items,unsigne
     for(i=8;i<16;++i) {if(!h[i]) nul=true;else if(nul || (h[i]!='.' && (h[i]<'0' || h[i]>'9'))) return false;}if(!nul) return false;
     for(i=0;i<1024;++i) {pq_item *v=items+i;uint64_t n=0;if(at>4194256 || !eh_take(f,&at,total,h,48,pd)) return false;
         for(j=0;j<32 && h[j];++j) { if(h[j]<32 || h[j]>126) return false; } if(!j || j==32) return false;
-        xx_rt_memcpy(v->name,h,32);v->index=(int32_t)pm_le32(h+32);v->type=pm_le32(h+36);v->value=fd_le64(h+40);
+        xx_rt_memcpy(v->name,h,32);v->index=(int32_t)xx_data_get_u32(h+32, 4, 0, false);v->type=xx_data_get_u32(h+36, 4, 0, false);v->value=xx_data_get_u64(h+40, 8, 0, false);
         if(v->index < -1 || v->index>=4096) return false;
         for(j=0;j<i;++j) if(items[j].index==v->index && !xx_rt_strcmp(items[j].name,v->name)) return false;
         switch(v->type) {

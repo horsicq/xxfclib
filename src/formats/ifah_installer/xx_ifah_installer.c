@@ -30,6 +30,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -129,11 +130,6 @@ typedef struct ifah_sink_s {
 
 static uint32_t ifah_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
-}
-
-static uint32_t ifah_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
 }
 
 static bool ifah_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -324,7 +320,7 @@ static int64_t ifah_pe_overlay(xx_io_device *device, int64_t base,
         !ifah_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' ||
         dos[1] != 'Z')
         return -1;
-    lfanew = ifah_le32(dos + 0x3C);
+    lfanew = xx_data_get_u32(dos + 0x3C, 4, 0, false);
     if (lfanew < 4U || lfanew > IFAH_PE_MAX_LFANEW ||
         (int64_t)lfanew + IFAH_PE_HEADER > total - base ||
         !ifah_read_at(device, base + (int64_t)lfanew, pe, sizeof(pe)) ||
@@ -340,8 +336,8 @@ static int64_t ifah_pe_overlay(xx_io_device *device, int64_t base,
         return -1;
     for (index = 0U; index < sections; ++index) {
         const uint8_t *entry = table + (size_t)index * IFAH_PE_SECTION;
-        uint32_t raw_size = ifah_le32(entry + 16);
-        uint32_t raw_pointer = ifah_le32(entry + 20);
+        uint32_t raw_size = xx_data_get_u32(entry + 16, 4, 0, false);
+        uint32_t raw_pointer = xx_data_get_u32(entry + 20, 4, 0, false);
         if (raw_size != 0U &&
             (uint64_t)raw_pointer + (uint64_t)raw_size > end)
             end = (uint64_t)raw_pointer + (uint64_t)raw_size;
@@ -366,8 +362,8 @@ static bool ifah_walk(xx_io_device *device, int64_t total, ifah_layout *layout,
         header[0] != 'I' || header[1] != 'F' || header[2] != 'A' ||
         header[3] != 'H')
         return false;
-    layout->declared = ifah_le32(header + IFAH_SIZE_OFFSET);
-    count = ifah_le32(header + IFAH_COUNT_OFFSET);
+    layout->declared = xx_data_get_u32(header + IFAH_SIZE_OFFSET, 4, 0, false);
+    count = xx_data_get_u32(header + IFAH_COUNT_OFFSET, 4, 0, false);
     if (count == 0U || count > IFAH_MAX_RECORDS ||
         layout->declared > IFAH_MAX_FIELD)
         return false;
@@ -383,8 +379,8 @@ static bool ifah_walk(xx_io_device *device, int64_t total, ifah_layout *layout,
             header[0] != 'I' || header[1] != 'F' || header[2] != 'F' ||
             header[3] != 'H')
             return false;
-        unpacked = ifah_le32(header + IFAH_UNPACKED_OFFSET);
-        packed = ifah_le32(header + IFAH_PACKED_OFFSET);
+        unpacked = xx_data_get_u32(header + IFAH_UNPACKED_OFFSET, 4, 0, false);
+        packed = xx_data_get_u32(header + IFAH_PACKED_OFFSET, 4, 0, false);
         name_length = header[IFAH_NAME_LENGTH_OFFSET];
         if (unpacked > IFAH_MAX_FIELD || packed > IFAH_MAX_FIELD ||
             name_length == 0U ||
@@ -407,7 +403,7 @@ static bool ifah_walk(xx_io_device *device, int64_t total, ifah_layout *layout,
             member->header = cursor;
             member->packed = packed;
             member->unpacked = unpacked;
-            member->crc = ifah_le32(header + IFAH_CRC_OFFSET);
+            member->crc = xx_data_get_u32(header + IFAH_CRC_OFFSET, 4, 0, false);
             member->dos_time = (uint16_t)ifah_le16(header + IFAH_TIME_OFFSET);
             member->dos_date = (uint16_t)ifah_le16(header + IFAH_DATE_OFFSET);
             member->name_length = (uint8_t)name_length;
@@ -530,8 +526,8 @@ static bool ifah_load_name(Abstractformat *format, ifah_stream *stream,
     if (index >= stream->count) return false;
     member = &stream->items[index];
     if (!ifah_read_at(format->device, member->header, header, IFAH_RECORD) ||
-        ifah_le32(header + IFAH_PACKED_OFFSET) != member->packed ||
-        ifah_le32(header + IFAH_UNPACKED_OFFSET) != member->unpacked)
+        xx_data_get_u32(header + IFAH_PACKED_OFFSET, 4, 0, false) != member->packed ||
+        xx_data_get_u32(header + IFAH_UNPACKED_OFFSET, 4, 0, false) != member->unpacked)
         return false;
     name_length = header[IFAH_NAME_LENGTH_OFFSET];
     if (name_length == 0U || name_length != member->name_length ||

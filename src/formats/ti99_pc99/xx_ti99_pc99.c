@@ -8,8 +8,9 @@
  */
 #include "xxfclib/formats/ti99_pc99/xx_ti99_pc99.h"
 #include "../xx_hxc_sector.h"
+#include "xxfclib/data/xx_data.h"
 static bool pc_crc(const uint8_t *p, uint32_t n, const uint8_t *stored) {
-    return (stored[0] == 0xF7U && stored[1] == 0xF7U) || hc_crc16(p, n, 0xFFFFU) == pm_be16(stored);
+    return (stored[0] == 0xF7U && stored[1] == 0xF7U) || hc_crc16(p, n, 0xFFFFU) == xx_data_get_u16(stored, 2, 0, true);
 }
 static bool pc_track(hc_blob *b, const uint8_t *p, uint32_t n, uint32_t cylinder, uint32_t head, bool fm) {
     uint32_t i = 0U, seen = 0U, wanted = fm ? 9U : 18U;

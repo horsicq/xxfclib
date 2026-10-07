@@ -61,6 +61,7 @@
 #include "xxfclib/algo/flslz/xx_flslz.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_FLS_COPY_CHUNK (64 * 1024)
 
@@ -164,21 +165,9 @@ static bool xx_fls_add(xx_fls_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_fls_le16(const uint8_t *data);
-static uint32_t xx_fls_le32(const uint8_t *data);
 static bool xx_fls_leaf_ok(const uint8_t *bytes, size_t length);
 static xx_fls_stream *xx_fls_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_fls_decode(Abstractformat *self, const xx_fls_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
-
-
-static uint16_t xx_fls_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_fls_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* Leaf names are CP437, so bytes 0x80..0xFF are genuinely permitted by the
  * format (the reference reader transcodes them). Only C0 controls and 0x7F
@@ -229,7 +218,7 @@ static xx_fls_stream *xx_fls_parse(Abstractformat *self, xx_pd_struct *pd) {
                         sizeof(count_bytes))) {
         return NULL;
     }
-    records = (int64_t)xx_fls_le16(count_bytes);
+    records = (int64_t)xx_data_get_u16(count_bytes, 2, 0, false);
     /* The count includes the header record, so fewer than two records means
      * there are no members at all. */
     if (records < 2 || records > XX_FLS_MAX_MEMBERS) return NULL;
@@ -248,7 +237,7 @@ static xx_fls_stream *xx_fls_parse(Abstractformat *self, xx_pd_struct *pd) {
      * a 16-bit count is no magic at all, so the "SaveRam" string has to land
      * at exactly the offset the count computes. Loosening the placement, or
      * searching for the string, throws that defence away. */
-    if (xx_fls_le16(tag) != 0xFFFFU || tag[2] != 'S' || tag[3] != 'a' ||
+    if (xx_data_get_u16(tag, 2, 0, false) != 0xFFFFU || tag[2] != 'S' || tag[3] != 'a' ||
         tag[4] != 'v' || tag[5] != 'e' || tag[6] != 'R' || tag[7] != 'a' ||
         tag[8] != 'm') {
         return NULL;
@@ -266,7 +255,7 @@ static xx_fls_stream *xx_fls_parse(Abstractformat *self, xx_pd_struct *pd) {
         header_record[6] != 0x00U || header_record[7] != 0xFFU) {
         return NULL;
     }
-    name_block_size = (int64_t)xx_fls_le32(header_record + 23);
+    name_block_size = (int64_t)xx_data_get_u32(header_record + 23, 4, 0, false);
     if (name_block_size < XX_FLS_NAME_BLOCK_TAG_SIZE) return NULL;
     if (!xx_fls_range_within(span, name_block_offset, name_block_size)) {
         return NULL;
@@ -330,12 +319,12 @@ static xx_fls_stream *xx_fls_parse(Abstractformat *self, xx_pd_struct *pd) {
             goto fail;
 
         compression_flag = record[1];
-        name_reference = (int64_t)xx_fls_le32(record + 8);
-        path_components = (int64_t)xx_fls_le16(record + 12);
-        tail_size = (int64_t)xx_fls_le32(record + 14);
-        data_offset = (int64_t)xx_fls_le32(record + 19);
-        compressed_size = (int64_t)xx_fls_le32(record + 23);
-        uncompressed_size = (int64_t)xx_fls_le32(record + 31);
+        name_reference = (int64_t)xx_data_get_u32(record + 8, 4, 0, false);
+        path_components = (int64_t)xx_data_get_u16(record + 12, 2, 0, false);
+        tail_size = (int64_t)xx_data_get_u32(record + 14, 4, 0, false);
+        data_offset = (int64_t)xx_data_get_u32(record + 19, 4, 0, false);
+        compressed_size = (int64_t)xx_data_get_u32(record + 23, 4, 0, false);
+        uncompressed_size = (int64_t)xx_data_get_u32(record + 31, 4, 0, false);
 
         if (compression_flag > 1U) goto fail;
         if (path_components < 1 ||
@@ -371,7 +360,7 @@ static xx_fls_stream *xx_fls_parse(Abstractformat *self, xx_pd_struct *pd) {
             goto fail;
         }
         name_offset =
-            name_block_offset + (int64_t)xx_fls_le32(reference_bytes);
+            name_block_offset + (int64_t)xx_data_get_u32(reference_bytes, 4, 0, false);
         /* A name must live inside the name block, past its tag, and never in
          * the payload area. */
         if (name_offset < name_block_offset + 2 || name_offset >= data_start) {
@@ -430,8 +419,8 @@ static xx_fls_stream *xx_fls_parse(Abstractformat *self, xx_pd_struct *pd) {
         member.method = (uint32_t)compression_flag;
         /* DOS date/time packed date-high / time-low. The record stores the
          * date word first and the time word second. */
-        member.timestamp = ((uint64_t)xx_fls_le16(record + 27) << 16) |
-                           (uint64_t)xx_fls_le16(record + 29);
+        member.timestamp = ((uint64_t)xx_data_get_u16(record + 27, 2, 0, false) << 16) |
+                           (uint64_t)xx_data_get_u16(record + 29, 2, 0, false);
         member.is_folder = false;
 
         if (!xx_fls_add(stream, &member)) {

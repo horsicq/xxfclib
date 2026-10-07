@@ -6,6 +6,7 @@
 #include "xxfclib/formats/sony_psf/xx_sony_psf.h"
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool overlap(uint64_t a,uint64_t n,uint64_t b,uint64_t m) { return n && m && a<b+m && b<a+n; }
@@ -30,7 +31,7 @@ buffer_done:
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[16],z[2],c; uint32_t reserved,n,crc; uint64_t at,total,left,i; bool equals=false,line=false; unsigned length=0;
-    if(!pm_read(f,0,h,16) || xx_rt_memcmp(h,"PSF\x01",4)) { return false; } reserved=pm_le32(h+4); n=pm_le32(h+8); crc=pm_le32(h+12); at=16U+(uint64_t)reserved; total=at+n; left=(uint64_t)pm_available(f);
+    if(!pm_read(f,0,h,16) || xx_rt_memcmp(h,"PSF\x01",4)) { return false; } reserved=xx_data_get_u32(h+4, 4, 0, false); n=xx_data_get_u32(h+8, 4, 0, false); crc=xx_data_get_u32(h+12, 4, 0, false); at=16U+(uint64_t)reserved; total=at+n; left=(uint64_t)pm_available(f);
     if(reserved>16777216 || n<6 || n>67108864 || total>left || !pm_read(f,(int64_t)at,z,2) || (z[0]&15)!=8 || (z[0]>>4)>7 || (((unsigned)z[0]<<8)|z[1])%31 || (z[1]&32) || !crc_range(f,at,n,crc,pd)) return false;
     if(reserved && !emit(f,s,"reserved.bin",16,reserved,left)) { return false; } if(!emit(f,s,"program.zlib",at,n,left)) return false;
     if(left>total) { uint8_t tag[5]; if(left-total<5 || left-total>1048576 || !pm_read(f,(int64_t)total,tag,5) || xx_rt_memcmp(tag,"[TAG]",5)) return false;

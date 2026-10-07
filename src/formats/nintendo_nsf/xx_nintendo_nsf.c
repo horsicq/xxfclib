@@ -7,10 +7,11 @@
  */
 #include "xxfclib/formats/nintendo_nsf/xx_nintendo_nsf.h"
 #include "../vice_x64/xx_ninth_retro.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
  uint32_t i,load,size; bool banked=false;
- if(!nh_range(b,0,129) || xx_rt_memcmp(b->p,"NESM\x1a",5) || b->p[5]!=1 || !b->p[6] || !b->p[7] || b->p[7]>b->p[6] || (load=pm_le16(b->p+8))<0x6000 || pm_le16(b->p+10)<0x6000 || (pm_le16(b->p+12) && pm_le16(b->p+12)<0x6000) || (b->p[122]&~3U) || (b->p[123]&~63U)) return false;
+ if(!nh_range(b,0,129) || xx_rt_memcmp(b->p,"NESM\x1a",5) || b->p[5]!=1 || !b->p[6] || !b->p[7] || b->p[7]>b->p[6] || (load=xx_data_get_u16(b->p+8, 2, 0, false))<0x6000 || xx_data_get_u16(b->p+10, 2, 0, false)<0x6000 || (xx_data_get_u16(b->p+12, 2, 0, false) && xx_data_get_u16(b->p+12, 2, 0, false)<0x6000) || (b->p[122]&~3U) || (b->p[123]&~63U)) return false;
  size=b->n-128; for(i=112;i<120;++i) if(b->p[i]) banked=true;
  if(!banked) { if(size>65536U-load) return false; }
  else { uint32_t pages=(size+(load&4095U)+4095U)/4096U; if(size>1048576U) return false; for(i=112;i<120;++i) if(b->p[i]>=pages) return false; }

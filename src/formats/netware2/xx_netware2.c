@@ -65,6 +65,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* The enum arrives with the registration; the shim keeps this file building
  * until then and never invents a value. */
@@ -130,11 +131,6 @@ static bool xx_netware2_read_at(Abstractformat *self, int64_t offset,
         completed += (size_t)received;
     }
     return true;
-}
-
-static uint32_t xx_netware2_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
 }
 
 static bool xx_netware2_range_within(int64_t total, int64_t offset,
@@ -283,7 +279,7 @@ static bool xx_netware2_read_record(Abstractformat *self, int64_t span,
                              sizeof(head))) {
         return false;
     }
-    declared = xx_netware2_le32(head);
+    declared = xx_data_get_u32(head, 4, 0, false);
     count = head[4];
     /* The size counts its own four bytes and the count byte, so anything
      * below five cannot describe a record, and anything past the file end
@@ -426,7 +422,7 @@ static xx_netware2_stream *xx_netware2_parse(Abstractformat *self,
             }
             /* The terminator the count does not cover. */
             if (payload[61 + name_count] != 0x00U) goto fail;
-            declared = (int64_t)xx_netware2_le32(payload + 52);
+            declared = (int64_t)xx_data_get_u32(payload + 52, 4, 0, false);
             if (declared < 1 || declared > XX_NETWARE2_MAX_DECODED) goto fail;
 
             if (have_pending) {
@@ -462,7 +458,7 @@ static xx_netware2_stream *xx_netware2_parse(Abstractformat *self,
                 payload[1] != XX_NETWARE2_METHOD_LZH) {
                 goto fail;
             }
-            declared = (int64_t)xx_netware2_le32(payload + 2);
+            declared = (int64_t)xx_data_get_u32(payload + 2, 4, 0, false);
             /* Two independent statements of the same size: disagreement
              * means this is not the pairing the container describes. */
             if (declared != pending.uncompressed_size) goto fail;

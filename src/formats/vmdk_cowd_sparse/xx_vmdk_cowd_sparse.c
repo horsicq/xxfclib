@@ -38,6 +38,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef VMDK_COWD_SPARSE
 #define XX_VMDK_COWD_SPARSE_FILE_TYPE XX_FILE_TYPE_VMDK_COWD_SPARSE
@@ -63,11 +64,6 @@ typedef struct cowd_stream_s {
     uint32_t flags;
     bool done;
 } cowd_stream;
-
-static uint32_t cowd_le32(const uint8_t *b) {
-    return (uint32_t)b[0] | ((uint32_t)b[1] << 8U) | ((uint32_t)b[2] << 16U) |
-           ((uint32_t)b[3] << 24U);
-}
 
 static bool cowd_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
@@ -174,13 +170,13 @@ static bool cowd_parse(Abstractformat *format, cowd_stream **result) {
     if (size < (int64_t)COWD_HEADER_READ ||
         !cowd_read_at(format->device, format->base_address, header,
                       sizeof(header)) ||
-        xx_rt_memcmp(header, "COWD", 4U) != 0 || cowd_le32(header + 4U) != 1U)
+        xx_rt_memcmp(header, "COWD", 4U) != 0 || xx_data_get_u32(header + 4U, 4, 0, false) != 1U)
         return false;
 
-    capacity = cowd_le32(header + 0x0cU);
-    grain = cowd_le32(header + 0x10U);
-    gd_sector = cowd_le32(header + 0x14U);
-    gd_entries = cowd_le32(header + 0x18U);
+    capacity = xx_data_get_u32(header + 0x0cU, 4, 0, false);
+    grain = xx_data_get_u32(header + 0x10U, 4, 0, false);
+    gd_sector = xx_data_get_u32(header + 0x14U, 4, 0, false);
+    gd_entries = xx_data_get_u32(header + 0x18U, 4, 0, false);
     if (capacity == 0U || grain == 0U || grain > COWD_MAX_GRAIN_SECTORS ||
         gd_sector == 0U || gd_entries == 0U ||
         gd_entries > COWD_MAX_GD_ENTRIES)
@@ -199,7 +195,7 @@ static bool cowd_parse(Abstractformat *format, cowd_stream **result) {
         return false;
     }
     stream->size = size;
-    free_end = (uint64_t)cowd_le32(header + 0x1cU) * COWD_SECTOR;
+    free_end = (uint64_t)xx_data_get_u32(header + 0x1cU, 4, 0, false) * COWD_SECTOR;
     stream->format_size = (free_end >= gd_end && free_end <= (uint64_t)size)
                               ? (int64_t)free_end
                               : size;
@@ -207,7 +203,7 @@ static bool cowd_parse(Abstractformat *format, cowd_stream **result) {
     stream->gd_offset = gd_sector * COWD_SECTOR;
     stream->gd_entries = needed;
     stream->grain_sectors = grain;
-    stream->flags = cowd_le32(header + 8U);
+    stream->flags = xx_data_get_u32(header + 8U, 4, 0, false);
     *result = stream;
     return true;
 }
@@ -237,7 +233,7 @@ static bool cowd_write_disk(Abstractformat *format, const cowd_stream *stream,
 
     for (d = 0U; d < stream->gd_entries &&
                  produced + pending_zero < stream->unpacked_size; ++d) {
-        uint64_t table_offset = (uint64_t)cowd_le32(directory + d * 4U) *
+        uint64_t table_offset = (uint64_t)xx_data_get_u32(directory + d * 4U, 4, 0, false) *
                                 COWD_SECTOR;
         uint32_t t;
         if (pd && xx_pd_is_stopped(pd)) goto done;
@@ -256,7 +252,7 @@ static bool cowd_write_disk(Abstractformat *format, const cowd_stream *stream,
                      produced + pending_zero < stream->unpacked_size; ++t) {
             uint64_t left = stream->unpacked_size - produced - pending_zero;
             uint64_t output = left < grain_bytes ? left : grain_bytes;
-            uint64_t grain_offset = (uint64_t)cowd_le32(table + t * 4U) *
+            uint64_t grain_offset = (uint64_t)xx_data_get_u32(table + t * 4U, 4, 0, false) *
                                     COWD_SECTOR;
             if (grain_offset == 0U) {
                 pending_zero += output;

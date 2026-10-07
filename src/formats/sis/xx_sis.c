@@ -26,6 +26,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef SIS
 #define XX_SIS_FILE_TYPE XX_FILE_TYPE_SIS
@@ -117,15 +118,6 @@ typedef struct sis_stream_s {
 
 static uint32_t sis_le16(const uint8_t *b) {
     return (uint32_t)b[0] | ((uint32_t)b[1] << 8U);
-}
-
-static uint32_t sis_le32(const uint8_t *b) {
-    return (uint32_t)b[0] | ((uint32_t)b[1] << 8U) | ((uint32_t)b[2] << 16U) |
-           ((uint32_t)b[3] << 24U);
-}
-
-static uint64_t sis_le64(const uint8_t *b) {
-    return (uint64_t)sis_le32(b) | ((uint64_t)sis_le32(b + 4) << 32U);
 }
 
 static bool sis_step(sis_ctx *ctx) {
@@ -483,8 +475,8 @@ static bool sis_epoc_parse_header(sis_ctx *ctx, sis_epoc_header *out) {
     uint32_t uid2;
     sis_epoc_header h;
     if (!sis_read(ctx, 0, head, sizeof(head))) return false;
-    uid2 = sis_le32(head + 4);
-    if (sis_le32(head + 8) != SIS_UID3_EPOC ||
+    uid2 = xx_data_get_u32(head + 4, 4, 0, false);
+    if (xx_data_get_u32(head + 8, 4, 0, false) != SIS_UID3_EPOC ||
         (uid2 != SIS_UID2_EPOC && uid2 != SIS_UID2_EPOC6))
         return false;
     xx_mem_zero(&h, sizeof(h));
@@ -495,9 +487,9 @@ static bool sis_epoc_parse_header(sis_ctx *ctx, sis_epoc_header *out) {
     h.langs = sis_le16(head + 0x12);
     h.files = sis_le16(head + 0x14);
     h.options = sis_le16(head + 0x24);
-    h.languages_ptr = (int64_t)sis_le32(head + 0x30);
-    h.files_ptr = (int64_t)sis_le32(head + 0x34);
-    h.component_ptr = (int64_t)sis_le32(head + 0x40);
+    h.languages_ptr = (int64_t)xx_data_get_u32(head + 0x30, 4, 0, false);
+    h.files_ptr = (int64_t)xx_data_get_u32(head + 0x34, 4, 0, false);
+    h.component_ptr = (int64_t)xx_data_get_u32(head + 0x40, 4, 0, false);
     h.unicode = (h.options & SIS_EPOC_OPT_UNICODE) != 0U;
     h.compressed = h.variant == XX_SIS_VARIANT_EPOC6 &&
                    (h.options & SIS_EPOC_OPT_NOCOMPRESS) == 0U;
@@ -512,7 +504,7 @@ static bool sis_epoc_parse_header(sis_ctx *ctx, sis_epoc_header *out) {
         return false;
     if (h.files != 0U) {
         uint8_t type[4];
-        if (!sis_read(ctx, h.files_ptr, type, 4U) || sis_le32(type) > 6U)
+        if (!sis_read(ctx, h.files_ptr, type, 4U) || xx_data_get_u32(type, 4, 0, false) > 6U)
             return false;
     }
     *out = h;
@@ -607,11 +599,11 @@ static bool sis_epoc_parse(sis_ctx *ctx) {
         size_t fixed;
         char *source, *destination;
         if (!sis_step(ctx) || !sis_read(ctx, position, record, 4U)) break;
-        type = sis_le32(record);
+        type = xx_data_get_u32(record, 4, 0, false);
         if (type == 3U || type == 4U) {
             uint32_t length;
             if (!sis_read(ctx, position + 4, record, 4U)) break;
-            length = sis_le32(record);
+            length = xx_data_get_u32(record, 4, 0, false);
             if ((int64_t)length > ctx->size - position - 8) break;
             position += 8 + (int64_t)length;
             sis_extend(ctx, position);
@@ -629,11 +621,11 @@ static bool sis_epoc_parse(sis_ctx *ctx) {
         fixed = 28U + tail;
         if (!sis_read(ctx, position, record, fixed)) break;
         sis_extend(ctx, position + (int64_t)fixed);
-        file_type = sis_le32(record + 4);
-        source = sis_epoc_string(ctx, &h, sis_le32(record + 12),
-                                 sis_le32(record + 16));
-        destination = sis_epoc_string(ctx, &h, sis_le32(record + 20),
-                                      sis_le32(record + 24));
+        file_type = xx_data_get_u32(record + 4, 4, 0, false);
+        source = sis_epoc_string(ctx, &h, xx_data_get_u32(record + 12, 4, 0, false),
+                                 xx_data_get_u32(record + 16, 4, 0, false));
+        destination = sis_epoc_string(ctx, &h, xx_data_get_u32(record + 20, 4, 0, false),
+                                      xx_data_get_u32(record + 24, 4, 0, false));
         if (!source || !destination) {
             if (source) xx_mem_free(source);
             if (destination) xx_mem_free(destination);
@@ -645,14 +637,14 @@ static bool sis_epoc_parse(sis_ctx *ctx) {
             for (fork = 0U; fork < forks; ++fork) {
                 const uint8_t *lens = record + 28U;
                 const uint8_t *ptrs = lens + 4U * forks;
-                int64_t length = (int64_t)sis_le32(lens + 4U * fork);
-                int64_t pointer = (int64_t)sis_le32(ptrs + 4U * fork);
+                int64_t length = (int64_t)xx_data_get_u32(lens + 4U * fork, 4, 0, false);
+                int64_t pointer = (int64_t)xx_data_get_u32(ptrs + 4U * fork, 4, 0, false);
                 int64_t unpacked = length;
                 uint32_t method = SIS_METHOD_STORE;
                 char code[3];
                 char *name;
                 if (h.variant == XX_SIS_VARIANT_EPOC6)
-                    unpacked = (int64_t)sis_le32(ptrs + 4U * forks + 4U * fork);
+                    unpacked = (int64_t)xx_data_get_u32(ptrs + 4U * forks + 4U * fork, 4, 0, false);
                 if (h.compressed) method = SIS_METHOD_ZLIB;
                 else unpacked = length;
                 sis_language_code(sis_le16(languages + 2U * fork), code);
@@ -697,18 +689,18 @@ static bool sisx_field_decode(const uint8_t *head, size_t available,
     uint64_t length, padded;
     if (typed) {
         if (available < 4U) return false;
-        out->type = sis_le32(head);
+        out->type = xx_data_get_u32(head, 4, 0, false);
         used = 4U;
     } else {
         out->type = 0U;
     }
     if (available < used + 4U) return false;
-    low = sis_le32(head + used);
+    low = xx_data_get_u32(head + used, 4, 0, false);
     used += 4U;
     if (low & 0x80000000U) {
         uint32_t high;
         if (available < used + 4U) return false;
-        high = sis_le32(head + used);
+        high = xx_data_get_u32(head + used, 4, 0, false);
         used += 4U;
         if (high >= 0x80000000U) return false;
         length = ((uint64_t)high << 31U) | (low & 0x7FFFFFFFU);
@@ -745,7 +737,7 @@ static bool sisx_mem_field(const uint8_t *buffer, size_t at, size_t end,
 static bool sisx_mem_array(const uint8_t *buffer, const sisx_field *array,
                            uint32_t *element, size_t *start, size_t *end) {
     if (array->type != SISX_ARRAY || array->length < 4U) return false;
-    *element = sis_le32(buffer + array->data);
+    *element = xx_data_get_u32(buffer + array->data, 4, 0, false);
     *start = (size_t)array->data + 4U;
     *end = (size_t)(array->data + array->length);
     return true;
@@ -762,7 +754,7 @@ static bool sisx_index_data(sis_ctx *ctx, const sisx_field *data) {
                         (int64_t)(data->data + data->length), true, &array) ||
         array.type != SISX_ARRAY || array.length < 4U ||
         !sis_read(ctx, (int64_t)array.data, word, 4U) ||
-        sis_le32(word) != SISX_DATA_UNIT)
+        xx_data_get_u32(word, 4, 0, false) != SISX_DATA_UNIT)
         return false;
     position = (int64_t)array.data + 4;
     end = (int64_t)(array.data + array.length);
@@ -785,7 +777,7 @@ static bool sisx_index_data(sis_ctx *ctx, const sisx_field *data) {
                             &inner) ||
             inner.type != SISX_ARRAY || inner.length < 4U ||
             !sis_read(ctx, (int64_t)inner.data, word, 4U) ||
-            sis_le32(word) != SISX_FILE_DATA)
+            xx_data_get_u32(word, 4, 0, false) != SISX_FILE_DATA)
             continue;
         inner_position = (int64_t)inner.data + 4;
         inner_end = (int64_t)(inner.data + inner.length);
@@ -846,16 +838,16 @@ static void sisx_file(sis_ctx *ctx, const uint8_t *b, size_t start,
     if (field.type != SISX_HASH) return;
     position = (size_t)field.next;
     if (end - position < 28U) return;
-    operation = sis_le32(b + position);
-    index = sis_le32(b + position + 24U);
+    operation = xx_data_get_u32(b + position, 4, 0, false);
+    index = xx_data_get_u32(b + position + 24U, 4, 0, false);
     if (operation & SISX_OP_NULL) return;
     if (unit < ctx->units && index < ctx->unit_count[unit]) {
         size_t slot = (size_t)ctx->unit_first[unit] + index;
         uint8_t head[12];
         if (slot < ctx->fd_count && ctx->fd_offset[slot] >= 0 &&
             sis_read(ctx, ctx->fd_offset[slot], head, sizeof(head))) {
-            uint32_t algorithm = sis_le32(head);
-            uint64_t declared = sis_le64(head + 4);
+            uint32_t algorithm = xx_data_get_u32(head, 4, 0, false);
+            uint64_t declared = xx_data_get_u64(head + 4, 8, 0, false);
             int64_t payload = ctx->fd_length[slot] - 12;
             if (algorithm == 0U && declared <= (uint64_t)payload) {
                 offset = ctx->fd_offset[slot] + 12;
@@ -901,7 +893,7 @@ static void sisx_controller(sis_ctx *ctx, const uint8_t *b, size_t start,
             block_start = (size_t)field.data;
             block_end = (size_t)(field.data + field.length);
         } else if (field.type == SISX_DATA_INDEX && field.length >= 4U) {
-            unit = sis_le32(b + field.data);
+            unit = xx_data_get_u32(b + field.data, 4, 0, false);
         }
         position = (size_t)field.next;
     }
@@ -970,7 +962,7 @@ static bool sisx_header(sis_ctx *ctx, sisx_field *contents) {
     uint8_t head[16];
     sisx_field first;
     if (!sis_read(ctx, 0, head, sizeof(head)) ||
-        sis_le32(head) != SIS_UID1_SISX ||
+        xx_data_get_u32(head, 4, 0, false) != SIS_UID1_SISX ||
         !sisx_dev_field(ctx, 16, ctx->size, true, contents) ||
         contents->type != SISX_CONTENTS || contents->length < 12U)
         return false;
@@ -992,8 +984,8 @@ static uint8_t *sisx_load_controller(sis_ctx *ctx, const sisx_field *field,
     size_t written = 0U;
     if (field->length < 12U || !sis_read(ctx, (int64_t)field->data, head, 12U))
         return NULL;
-    algorithm = sis_le32(head);
-    declared = sis_le64(head + 4);
+    algorithm = xx_data_get_u32(head, 4, 0, false);
+    declared = xx_data_get_u64(head + 4, 8, 0, false);
     stored = field->length - 12U;
     if (declared < 8U || declared > SIS_MAX_CONTROLLER) return NULL;
     if (algorithm == 0U) {
@@ -1074,7 +1066,7 @@ static bool sis_parse(Abstractformat *format, sis_ctx *ctx) {
     {
         uint8_t head[12];
         if (!sis_read(ctx, 0, head, sizeof(head))) return false;
-        if (sis_le32(head) == SIS_UID1_SISX)
+        if (xx_data_get_u32(head, 4, 0, false) == SIS_UID1_SISX)
             parsed = sisx_parse(ctx);
         else
             parsed = sis_epoc_parse(ctx);
@@ -1092,7 +1084,7 @@ static bool sis_quick_check(Abstractformat *format) {
     if (!sis_open(&ctx, format) || ctx.size < 16 ||
         !sis_read(&ctx, 0, head, sizeof(head)))
         return false;
-    if (sis_le32(head) == SIS_UID1_SISX) {
+    if (xx_data_get_u32(head, 4, 0, false) == SIS_UID1_SISX) {
         sisx_field contents;
         return sisx_header(&ctx, &contents);
     } else {

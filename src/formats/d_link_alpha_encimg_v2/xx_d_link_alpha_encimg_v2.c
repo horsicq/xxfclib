@@ -37,6 +37,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef D_LINK_ALPHA_ENCIMG_V2
 #define XX_D_LINK_ALPHA_ENCIMG_V2_FILE_TYPE XX_FILE_TYPE_D_LINK_ALPHA_ENCIMG_V2
@@ -85,16 +86,6 @@ typedef struct encimg2_stream_s {
     size_t index;
     size_t count;
 } encimg2_stream;
-
-static uint32_t encimg2_le32(const uint8_t *b) {
-    return (uint32_t)b[0] | ((uint32_t)b[1] << 8U) | ((uint32_t)b[2] << 16U) |
-           ((uint32_t)b[3] << 24U);
-}
-
-static uint32_t encimg2_be32(const uint8_t *b) {
-    return ((uint32_t)b[0] << 24U) | ((uint32_t)b[1] << 16U) |
-           ((uint32_t)b[2] << 8U) | (uint32_t)b[3];
-}
 
 static bool encimg2_read_at(xx_io_device *device, int64_t offset, void *buffer,
                             size_t size) {
@@ -150,8 +141,8 @@ static bool encimg2_parse(Abstractformat *format, encimg2_context *out) {
         return false;
     if (header[0] != 'w' || header[1] != 'a' || header[2] != 'p') return false;
     if (xx_rt_memcmp(header + 32, header + 36, 4U) != 0) return false;
-    magic_le = encimg2_le32(header + 32);
-    magic_be = encimg2_be32(header + 32);
+    magic_le = xx_data_get_u32(header + 32, 4, 0, false);
+    magic_be = xx_data_get_u32(header + 32, 4, 0, true);
     xx_mem_zero(&context, sizeof(context));
     if (magic_le == XX_D_LINK_ALPHA_ENCIMG_V2_MAGIC)
         context.big_endian = false;
@@ -171,15 +162,15 @@ static bool encimg2_parse(Abstractformat *format, encimg2_context *out) {
     context.signature_length = length;
 
     /* unblob: both orders decoded, the smaller size is the right one. */
-    size_le = encimg2_le32(header + 0x68);
-    size_be = encimg2_be32(header + 0x68);
+    size_le = xx_data_get_u32(header + 0x68, 4, 0, false);
+    size_be = xx_data_get_u32(header + 0x68, 4, 0, true);
     size = size_le < size_be ? size_le : size_be;
     remaining = total - format->base_address - (int64_t)ENCIMG2_HEADER;
     if (size < ENCIMG2_BLOCK || (size % ENCIMG2_BLOCK) != 0U ||
         (int64_t)size > remaining)
         return false;
-    context.offset_field = (size == size_le) ? encimg2_le32(header + 0x6C)
-                                             : encimg2_be32(header + 0x6C);
+    context.offset_field = (size == size_le) ? xx_data_get_u32(header + 0x6C, 4, 0, false)
+                                             : xx_data_get_u32(header + 0x6C, 4, 0, true);
     context.payload_size = size;
     context.payload_offset = format->base_address + (int64_t)ENCIMG2_HEADER;
 

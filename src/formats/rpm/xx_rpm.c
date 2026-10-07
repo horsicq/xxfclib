@@ -24,6 +24,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -142,15 +143,6 @@ static uint32_t rpm_be16(const uint8_t *p) {
     return ((uint32_t)p[0] << 8U) | (uint32_t)p[1];
 }
 
-static uint32_t rpm_be32(const uint8_t *p) {
-    return ((uint32_t)p[0] << 24U) | ((uint32_t)p[1] << 16U) |
-           ((uint32_t)p[2] << 8U) | (uint32_t)p[3];
-}
-
-static uint64_t rpm_be64(const uint8_t *p) {
-    return ((uint64_t)rpm_be32(p) << 32U) | (uint64_t)rpm_be32(p + 4);
-}
-
 /* Read exactly @p size bytes at relative @p offset; the caller has already
  * checked that the range lies inside the device. */
 static bool rpm_read_sized(Abstractformat *format, int64_t offset, void *buffer,
@@ -199,8 +191,8 @@ static bool rpm_header_open(Abstractformat *format, int64_t available,
         xx_rt_memcmp(intro, rpm_header_magic, sizeof(rpm_header_magic)) != 0)
         return false;
     header->offset = offset;
-    header->count = rpm_be32(intro + 8);
-    header->store_size = rpm_be32(intro + 12);
+    header->count = xx_data_get_u32(intro + 8, 4, 0, true);
+    header->store_size = xx_data_get_u32(intro + 12, 4, 0, true);
     if (header->count == 0U || header->count > RPM_MAX_ENTRIES ||
         header->store_size > RPM_MAX_STORE)
         return false;
@@ -248,9 +240,9 @@ static bool rpm_header_walk_buffered(Abstractformat *format, const rpm_header *h
             return false;
         for (i = 0U; i < batch; ++i) {
             const uint8_t *entry = chunk + (size_t)i * RPM_ENTRY_SIZE;
-            uint32_t tag = rpm_be32(entry), type = rpm_be32(entry + 4),
-                     offset = rpm_be32(entry + 8),
-                     count = rpm_be32(entry + 12), width;
+            uint32_t tag = xx_data_get_u32(entry, 4, 0, true), type = xx_data_get_u32(entry + 4, 4, 0, true),
+                     offset = xx_data_get_u32(entry + 8, 4, 0, true),
+                     count = xx_data_get_u32(entry + 12, 4, 0, true), width;
             if (type > RPM_MAX_TYPE || offset > header->store_size)
                 return false;
             width = rpm_type_width(type);
@@ -332,7 +324,7 @@ static bool rpm_tag_number(Abstractformat *format, const rpm_header *header,
         !rpm_read(format, header->store_offset + (int64_t)tag->offset, buffer,
                   width))
         return false;
-    *out = width == 8U ? rpm_be64(buffer) : (uint64_t)rpm_be32(buffer);
+    *out = width == 8U ? xx_data_get_u64(buffer, 8, 0, true) : (uint64_t)xx_data_get_u32(buffer, 4, 0, true);
     return true;
 }
 

@@ -1,13 +1,14 @@
 /* SPDX-License-Identifier: MIT. Original validated encoded components; no playback. */
 #include "xxfclib/formats/adlib_bnk/xx_adlib_bnk.h"
 #include "../xx_fourteenth_media.h"
+#include "xxfclib/data/xx_data.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
  fm_blob b={0};fm_range ranges[1024];unsigned nr=0;uint32_t used,total,list,data,count,i,j,seen=0;bool ok=false;
- FM_NEED(fm_load(f,&b,pd)&&fm_span(&b,0,20)&&b.p[0]==1&&b.p[1]==0&&fm_tag(&b,2,"ADLIB-",6));used=pm_le16(b.p+8);total=pm_le16(b.p+10);list=pm_le32(b.p+12);data=pm_le32(b.p+16);
+ FM_NEED(fm_load(f,&b,pd)&&fm_span(&b,0,20)&&b.p[0]==1&&b.p[1]==0&&fm_tag(&b,2,"ADLIB-",6));used=xx_data_get_u16(b.p+8, 2, 0, false);total=xx_data_get_u16(b.p+10, 2, 0, false);list=xx_data_get_u32(b.p+12, 4, 0, false);data=xx_data_get_u32(b.p+16, 4, 0, false);
  FM_NEED(used&&used<=total&&total<=1000&&list>=20&&data>=list+(uint64_t)total*12&&data<=b.n&&(b.n-data)%30==0);count=(uint32_t)((b.n-data)/30);FM_NEED(count&&count<=1000);
  FM_NEED(fm_claim(&b,ranges,&nr,0,20,false)&&fm_claim(&b,ranges,&nr,list,(uint64_t)total*12,false)&&fm_claim(&b,ranges,&nr,data,(uint64_t)count*30,false)&&fm_emit(f,s,&b,"descriptor.bnk",0,20)&&fm_emit(f,s,&b,"names.bnk",list,(uint64_t)total*12));
- for(i=0;i<total;++i){const uint8_t *q=b.p+list+i*12;FM_NEED(fm_work(&b,1)&&q[2]<=1&&pm_le16(q)<count);if(q[2]){bool z=false;FM_NEED(q[3]);for(j=0;j<9;++j)if(!q[3+j])z=true;FM_NEED(z);++seen;}}
+ for(i=0;i<total;++i){const uint8_t *q=b.p+list+i*12;FM_NEED(fm_work(&b,1)&&q[2]<=1&&xx_data_get_u16(q, 2, 0, false)<count);if(q[2]){bool z=false;FM_NEED(q[3]);for(j=0;j<9;++j)if(!q[3+j])z=true;FM_NEED(z);++seen;}}
  FM_NEED(seen==used);for(i=0;i<count;++i){const uint8_t *q=b.p+data+i*30;FM_NEED(q[0]<=1&&q[1]<=10);FM_NEED(fm_emit(f,s,&b,"instrument.bnk",data+(uint64_t)i*30,30));}s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }

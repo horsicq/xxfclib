@@ -8,6 +8,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 #ifdef APPLE_DOS32
 #define DOS32_TYPE XX_FILE_TYPE_APPLE_DOS32
 #else
@@ -40,7 +41,6 @@ static bool dos32_limit(Abstractformat *self, const xx_list_s *options, xx_meta_
     const xx_var *value = xx_format_resolve_extra_parameter(self, options, id);
     return !value || required <= xx_var_get_u64(value);
 }
-static uint16_t dos32_u16(const uint8_t *p) { return (uint16_t)(p[0] | (p[1] << 8)); }
 static uint32_t dos32_physical(const dos32_view *view, uint16_t sector) {
     (void)view;
     return (uint32_t)(sector / 13U) * DOS32_TRACK + (sector % 13U) * DOS32_SECTOR;
@@ -147,7 +147,7 @@ static bool dos32_file(dos32_view *view, dos32_member *member, xx_pd_struct *pd)
     for (;;) {
         uint32_t offset, i;
         if (!dos32_claim(view, list) || !dos32_sector(view, list, bytes, pd)) return false;
-        ++sectors; offset = dos32_u16(bytes + 5);
+        ++sectors; offset = xx_data_get_u16(bytes + 5, 2, 0, false);
         if (offset != lists * 122U || offset >= DOS32_LOGICAL_SECTORS) return false;
         ++lists;
         for (i = 0U; i < 122U; ++i) {
@@ -171,7 +171,7 @@ static bool dos32_file(dos32_view *view, dos32_member *member, xx_pd_struct *pd)
         uint32_t prefix = (member->type & 0x7FU) == 4U ? 4U : 2U;
         if (!member->pair_count || view->pairs[member->pair_start].logical != 0U ||
             !dos32_logical_read(view, member, 0U, bytes, prefix, pd)) return false;
-        member->skip = prefix; member->size = dos32_u16(bytes + prefix - 2U);
+        member->skip = prefix; member->size = xx_data_get_u16(bytes + prefix - 2U, 2, 0, false);
         return member->size <= member->sectors * DOS32_SECTOR - prefix;
     }
     if (!(member->type & 0x7FU) && !member->sparse) {
@@ -200,7 +200,7 @@ static bool dos32_parse_image(Abstractformat *self,
     if (!dos32_sector(view, 17U * 13U, vtoc, pd)) return false;
     view->tracks = vtoc[52]; view->volume = vtoc[6]; view->bytes = view->tracks * DOS32_TRACK;
     if (vtoc[3] != 2U || vtoc[39] != 122U || view->tracks != 35U ||
-        vtoc[53] != 13U || dos32_u16(vtoc + 54) != DOS32_SECTOR || !view->volume || view->volume == 255U ||
+        vtoc[53] != 13U || xx_data_get_u16(vtoc + 54, 2, 0, false) != DOS32_SECTOR || !view->volume || view->volume == 255U ||
         vtoc[48] >= view->tracks || (vtoc[49] != 1U && vtoc[49] != 255U) ||
         view->bytes > (uint64_t)(total - view->base)) return false;
     xx_mem_copy(view->bitmap, vtoc + 56, sizeof(view->bitmap));
@@ -220,7 +220,7 @@ static bool dos32_parse_image(Abstractformat *self,
             member = &view->members[view->count];
             member->header = dos32_physical(view, next) + 11U + (uint32_t)slot * 35U;
             member->first_track = entry[0]; member->first_sector = entry[1]; member->type = entry[2];
-            member->declared_sectors = dos32_u16(entry + 33);
+            member->declared_sectors = xx_data_get_u16(entry + 33, 2, 0, false);
             if (!member->declared_sectors || !dos32_name(view, member, entry + 3U)) return false;
             ++view->count;
         }

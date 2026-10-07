@@ -8,6 +8,7 @@
  */
 #include "xxfclib/formats/apple_cassette/xx_apple_cassette.h"
 #include "../apple_family/xx_apple_family_private.h"
+#include "xxfclib/data/xx_data.h"
 #define AC_MAX_DATA (512U*1024U)
 typedef struct ac_scan {af_work *w;uint8_t *data;uint32_t used,bits,value,leader,phase,state;uint8_t checksum;} ac_scan;
 static bool ac_finish(ac_scan *a) {
@@ -43,13 +44,13 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     af_work w;af_blob b;ac_scan scan;xx_apple_cassette *r=(xx_apple_cassette *)f;
     uint32_t at=12,fmt=0,data=0,bytes=0,rate,frames,i,last=0;unsigned width,channels,align,channel;bool positive=false,have=false,ok=false;
     if(!af_init(&w,f,s,pd) || !af_load(&w,&b)) {return false; } xx_mem_zero(&scan,sizeof(scan));scan.w=&w;scan.checksum=255U;
-    if(b.n<44U || xx_rt_memcmp(b.p,"RIFF",4) || xx_rt_memcmp(b.p+8,"WAVE",4) || (uint64_t)pm_le32(b.p+4)+8U!=b.n)goto done;
-    while(at<b.n){uint32_t n;if(!af_range(&b,at,8U))goto done;n=pm_le32(b.p+at+4);if(!af_range(&b,(uint64_t)at+8U,(uint64_t)n+(n&1U)))goto done;
-        if(!xx_rt_memcmp(b.p+at,"fmt ",4)){if(fmt || (n!=16U && n!=18U) || (n==18U && pm_le16(b.p+at+24)))goto done;fmt=at+8U;}
+    if(b.n<44U || xx_rt_memcmp(b.p,"RIFF",4) || xx_rt_memcmp(b.p+8,"WAVE",4) || (uint64_t)xx_data_get_u32(b.p+4, 4, 0, false)+8U!=b.n)goto done;
+    while(at<b.n){uint32_t n;if(!af_range(&b,at,8U))goto done;n=xx_data_get_u32(b.p+at+4, 4, 0, false);if(!af_range(&b,(uint64_t)at+8U,(uint64_t)n+(n&1U)))goto done;
+        if(!xx_rt_memcmp(b.p+at,"fmt ",4)){if(fmt || (n!=16U && n!=18U) || (n==18U && xx_data_get_u16(b.p+at+24, 2, 0, false)))goto done;fmt=at+8U;}
         else { if(!xx_rt_memcmp(b.p+at,"data",4)){if(data)goto done;data=at+8U;bytes=n;} } at+=8U+n+(n&1U);}
-    if(!fmt || !data || pm_le16(b.p+fmt)!=1U) {goto done; } channels=pm_le16(b.p+fmt+2);rate=pm_le32(b.p+fmt+4);align=pm_le16(b.p+fmt+12);width=pm_le16(b.p+fmt+14)/8U;
-    if(channels<1U || channels>2U || rate<8000U || rate>192000U || width<1U || width>4U || pm_le16(b.p+fmt+14)!=width*8U ||
-       align!=width*channels || pm_le32(b.p+fmt+8)!=(uint64_t)rate*align || !bytes || bytes%align || r->profile>channels)goto done;
+    if(!fmt || !data || xx_data_get_u16(b.p+fmt, 2, 0, false)!=1U) {goto done; } channels=xx_data_get_u16(b.p+fmt+2, 2, 0, false);rate=xx_data_get_u32(b.p+fmt+4, 4, 0, false);align=xx_data_get_u16(b.p+fmt+12, 2, 0, false);width=xx_data_get_u16(b.p+fmt+14, 2, 0, false)/8U;
+    if(channels<1U || channels>2U || rate<8000U || rate>192000U || width<1U || width>4U || xx_data_get_u16(b.p+fmt+14, 2, 0, false)!=width*8U ||
+       align!=width*channels || xx_data_get_u32(b.p+fmt+8, 4, 0, false)!=(uint64_t)rate*align || !bytes || bytes%align || r->profile>channels)goto done;
     channel=r->profile?r->profile-1U:0U;frames=bytes/align;scan.data=af_alloc(&w,AC_MAX_DATA,false);if(!scan.data)goto done;
     for(i=0;i<frames;++i){int32_t value=ac_sample(b.p+data+(uint64_t)i*align+channel*width,width);bool sign=value>=0;
         if(!(i&4095U) && !af_poll(&w))goto done;

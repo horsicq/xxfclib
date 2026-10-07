@@ -38,6 +38,7 @@
 #include "xxfclib/formats/xx_data_signature.h"
 #include "xxfclib/formats/xx_memory_map.h"
 #include "xxfclib/formats/pe/xx_pe.h"
+#include "xxfclib/formats/dotnet/xx_dotnet.h"
 #include "xxfclib/formats/jpeg/xx_jpeg.h"
 #include "xxfclib/formats/png/xx_png.h"
 #include "xxfclib/formats/apk/xx_apk.h"
@@ -78,6 +79,8 @@ struct DieEngine {
     DieLiteralSearchCache *pLiteralSearchCache;
     xx_pe_inspection pe;
     int bHasPE;
+    xx_dotnet_inspection dotnet;
+    int bHasDotNet;
     xx_jpeg jpeg;
     int bHasJpeg;
     xx_png png;

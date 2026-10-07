@@ -29,6 +29,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef SQUASHFS_SQLZ
 #define XX_SQUASHFS_SQLZ_FILE_TYPE XX_FILE_TYPE_SQUASHFS_SQLZ
@@ -433,24 +434,6 @@ static void xx_squashfs_sqlz_vtable_destroy(Abstractformat *self);
 
 /* ============================================================== helpers === */
 
-static uint16_t sqlz_u16(const uint8_t *p, bool be) {
-    return be ? (uint16_t)(((unsigned)p[0] << 8U) | p[1])
-              : (uint16_t)(p[0] | ((unsigned)p[1] << 8U));
-}
-
-static uint32_t sqlz_u32(const uint8_t *p, bool be) {
-    return be ? (((uint32_t)p[0] << 24U) | ((uint32_t)p[1] << 16U) |
-                 ((uint32_t)p[2] << 8U) | (uint32_t)p[3])
-              : ((uint32_t)p[0] | ((uint32_t)p[1] << 8U) |
-                 ((uint32_t)p[2] << 16U) | ((uint32_t)p[3] << 24U));
-}
-
-static uint64_t sqlz_u64(const uint8_t *p, bool be) {
-    return be ? (((uint64_t)sqlz_u32(p, true) << 32U) | sqlz_u32(p + 4, true))
-              : ((uint64_t)sqlz_u32(p, false) |
-                 ((uint64_t)sqlz_u32(p + 4, false) << 32U));
-}
-
 /* Image-relative read. */
 static bool sqlz_read_at(Abstractformat *self, int64_t offset, void *data,
                          size_t size) {
@@ -515,7 +498,7 @@ static bool sqlz_decompress(const uint8_t *input, size_t input_size,
         /* The 13-byte "alone" header: its u64 size is either unknown
          * (all ones) or fits the block, and its first stream byte is 0. */
         if (input_size > 13U && input[13] == 0U) {
-            uint64_t size = sqlz_u64(input + 5, false);
+            uint64_t size = xx_data_get_u64(input + 5, 8, 0, false);
             if (size == UINT64_MAX ||
                 (size != 0U && size <= (uint64_t)output_cap)) {
                 bool known = size != UINT64_MAX;
@@ -607,7 +590,7 @@ static bool sqlz_meta_get_block(sqlz_walk *walk, int64_t base, int64_t block,
     position = base + block;
     if (position > walk->parsed->image_size - 2) return false;
     if (!sqlz_read_at(walk->format, position, header_bytes, 2U)) return false;
-    header = sqlz_u16(header_bytes, walk->parsed->super.big_endian);
+    header = xx_data_get_u16(header_bytes, 2, 0, walk->parsed->super.big_endian);
     length = (size_t)(header & 0x7FFFU);
     if (length > SQLZ_META_MAX) return false;
     if ((int64_t)length > walk->parsed->image_size - position - 2) return false;
@@ -675,7 +658,7 @@ static bool sqlz_base_inode(sqlz_walk *walk, sqlz_stream *stream,
     uint8_t data[4];
     bool be = walk->parsed->super.big_endian;
     if (!sqlz_meta_read(stream, 4U, data)) return false;
-    *type = (int32_t)sqlz_bits(sqlz_u16(data, be), 16U, 0U, 4U, be);
+    *type = (int32_t)sqlz_bits(xx_data_get_u16(data, 2, 0, be), 16U, 0U, 4U, be);
     return true;
 }
 
@@ -690,7 +673,7 @@ static bool sqlz_dir_inode(sqlz_walk *walk, sqlz_stream *stream, bool extended,
         if (extended) {
             /* file_size:27 offset:13 - five bytes */
             if (!sqlz_meta_read(stream, 4U, data)) return false;
-            word = sqlz_u32(data, be);
+            word = xx_data_get_u32(data, 4, 0, be);
             if (!sqlz_meta_read(stream, 1U, data + 4)) return false;
             if (be) {
                 *size = (int64_t)(word >> 5);
@@ -701,7 +684,7 @@ static bool sqlz_dir_inode(sqlz_walk *walk, sqlz_stream *stream, bool extended,
             }
         } else {
             if (!sqlz_meta_read(stream, 4U, data)) return false;
-            word = sqlz_u32(data, be);
+            word = xx_data_get_u32(data, 4, 0, be);
             *size = (int64_t)sqlz_bits(word, 32U, 0U, 19U, be);
             *offset = (int64_t)sqlz_bits(word, 32U, 19U, 13U, be);
         }
@@ -718,7 +701,7 @@ static bool sqlz_dir_inode(sqlz_walk *walk, sqlz_stream *stream, bool extended,
     if (!sqlz_meta_read(stream, 12U, data)) return false;
     if (extended) {
         if (!sqlz_meta_read(stream, 4U, data)) return false;
-        word = sqlz_u32(data, be);
+        word = xx_data_get_u32(data, 4, 0, be);
         if (!sqlz_meta_read(stream, 1U, data + 4)) return false;
         if (be) {
             *size = (int64_t)(word >> 5);
@@ -729,12 +712,12 @@ static bool sqlz_dir_inode(sqlz_walk *walk, sqlz_stream *stream, bool extended,
         }
     } else {
         if (!sqlz_meta_read(stream, 4U, data)) return false;
-        word = sqlz_u32(data, be);
+        word = xx_data_get_u32(data, 4, 0, be);
         *size = (int64_t)sqlz_bits(word, 32U, 0U, 19U, be);
         *offset = (int64_t)sqlz_bits(word, 32U, 19U, 13U, be);
     }
     if (!sqlz_meta_read(stream, 4U, data)) return false;
-    *start_block = (int64_t)sqlz_u32(data, be);
+    *start_block = (int64_t)xx_data_get_u32(data, 4, 0, be);
     *size -= 3; /* v3 counts the implicit "." and ".." */
     return true;
 }
@@ -746,32 +729,32 @@ static bool sqlz_file_inode(sqlz_walk *walk, sqlz_stream *stream,
     bool be = walk->parsed->super.big_endian;
     if (walk->parsed->super.major == 2) {
         if (!sqlz_meta_read(stream, 20U, data)) return false;
-        *start = (int64_t)sqlz_u32(data + 4U, be);
-        *fragment = (int64_t)sqlz_u32(data + 8U, be);
-        *block_offset = (int64_t)sqlz_u32(data + 12U, be);
-        *size = (int64_t)sqlz_u32(data + 16U, be);
+        *start = (int64_t)xx_data_get_u32(data + 4U, 4, 0, be);
+        *fragment = (int64_t)xx_data_get_u32(data + 8U, 4, 0, be);
+        *block_offset = (int64_t)xx_data_get_u32(data + 12U, 4, 0, be);
+        *size = (int64_t)xx_data_get_u32(data + 16U, 4, 0, be);
         return true;
     }
     if (extended) {
         uint64_t s;
         uint64_t n;
         if (!sqlz_meta_read(stream, 36U, data)) return false;
-        s = sqlz_u64(data + 12U, be);
-        n = sqlz_u64(data + 28U, be);
+        s = xx_data_get_u64(data + 12U, 8, 0, be);
+        n = xx_data_get_u64(data + 28U, 8, 0, be);
         if (s > (uint64_t)INT64_MAX || n > (uint64_t)INT64_MAX) return false;
         *start = (int64_t)s;
-        *fragment = (int64_t)sqlz_u32(data + 20U, be);
-        *block_offset = (int64_t)sqlz_u32(data + 24U, be);
+        *fragment = (int64_t)xx_data_get_u32(data + 20U, 4, 0, be);
+        *block_offset = (int64_t)xx_data_get_u32(data + 24U, 4, 0, be);
         *size = (int64_t)n;
     } else {
         uint64_t s;
         if (!sqlz_meta_read(stream, 28U, data)) return false;
-        s = sqlz_u64(data + 8U, be);
+        s = xx_data_get_u64(data + 8U, 8, 0, be);
         if (s > (uint64_t)INT64_MAX) return false;
         *start = (int64_t)s;
-        *fragment = (int64_t)sqlz_u32(data + 16U, be);
-        *block_offset = (int64_t)sqlz_u32(data + 20U, be);
-        *size = (int64_t)sqlz_u32(data + 24U, be);
+        *fragment = (int64_t)xx_data_get_u32(data + 16U, 4, 0, be);
+        *block_offset = (int64_t)xx_data_get_u32(data + 20U, 4, 0, be);
+        *size = (int64_t)xx_data_get_u32(data + 24U, 4, 0, be);
     }
     return true;
 }
@@ -794,7 +777,7 @@ static bool sqlz_fragment(sqlz_walk *walk, int64_t index, int64_t *start,
             !sqlz_read_at(walk->format, index_position, pointer, 4U)) {
             return false;
         }
-        block = (int64_t)sqlz_u32(pointer, be);
+        block = (int64_t)xx_data_get_u32(pointer, 4, 0, be);
         entry_offset = (index & 0x3FF) * 8;
     } else {
         uint64_t raw;
@@ -803,7 +786,7 @@ static bool sqlz_fragment(sqlz_walk *walk, int64_t index, int64_t *start,
             !sqlz_read_at(walk->format, index_position, pointer, 8U)) {
             return false;
         }
-        raw = sqlz_u64(pointer, be);
+        raw = xx_data_get_u64(pointer, 8, 0, be);
         if (raw > (uint64_t)INT64_MAX) return false;
         block = (int64_t)raw;
         entry_offset = (index & 0x1FF) * 16;
@@ -814,17 +797,17 @@ static bool sqlz_fragment(sqlz_walk *walk, int64_t index, int64_t *start,
     stream.offset = entry_offset;
     if (walk->parsed->super.major == 2) {
         if (!sqlz_meta_read(&stream, 8U, entry)) return false;
-        *start = (int64_t)sqlz_u32(entry, be);
-        *size = (int64_t)sqlz_u32(entry + 4U, be);
+        *start = (int64_t)xx_data_get_u32(entry, 4, 0, be);
+        *size = (int64_t)xx_data_get_u32(entry + 4U, 4, 0, be);
         return true;
     }
     if (!sqlz_meta_read(&stream, 16U, entry)) return false;
     {
-        uint64_t raw = sqlz_u64(entry, be);
+        uint64_t raw = xx_data_get_u64(entry, 8, 0, be);
         if (raw > (uint64_t)INT64_MAX) return false;
         *start = (int64_t)raw;
     }
-    *size = (int64_t)sqlz_u32(entry + 8U, be);
+    *size = (int64_t)xx_data_get_u32(entry + 8U, 4, 0, be);
     return true;
 }
 
@@ -1090,7 +1073,7 @@ static bool sqlz_file_data(sqlz_walk *walk, sqlz_stream *stream, bool extended,
         sqlz_chunk chunk;
         if (walk->pd && xx_pd_is_stopped(walk->pd)) goto fail;
         if (!sqlz_meta_read(stream, 4U, entry_bytes)) goto fail;
-        entry = sqlz_u32(entry_bytes, be);
+        entry = xx_data_get_u32(entry_bytes, 4, 0, be);
         on_disk = (int64_t)(entry & 0xFFFFFFU);
         if (remaining < out_size) out_size = remaining;
         xx_rt_memset(&chunk, 0, sizeof(chunk));
@@ -1189,7 +1172,7 @@ static bool sqlz_walk_dir(sqlz_walk *walk, int64_t start_block, int64_t offset,
             if (remaining < 4) return false;
             remaining -= 4;
             if (!sqlz_meta_read(&stream, 4U, header)) return false;
-            word = sqlz_u32(header, be);
+            word = xx_data_get_u32(header, 4, 0, be);
             count = (int64_t)sqlz_bits(word, 32U, 0U, 8U, be) + 1;
             entry_block = (int64_t)sqlz_bits(word, 32U, 8U, 24U, be);
         } else {
@@ -1198,7 +1181,7 @@ static bool sqlz_walk_dir(sqlz_walk *walk, int64_t start_block, int64_t offset,
             if (!sqlz_meta_read(&stream, 1U, header)) return false;
             count = (int64_t)header[0] + 1;
             if (!sqlz_meta_read(&stream, 8U, header)) return false;
-            entry_block = (int64_t)sqlz_u32(header, be);
+            entry_block = (int64_t)xx_data_get_u32(header, 4, 0, be);
         }
 
         for (index = 0; index < count; ++index) {
@@ -1213,7 +1196,7 @@ static bool sqlz_walk_dir(sqlz_walk *walk, int64_t start_block, int64_t offset,
             if (remaining < need) return false;
             remaining -= need;
             if (!sqlz_meta_read(&stream, 2U, entry)) return false;
-            word = sqlz_u16(entry, be);
+            word = xx_data_get_u16(entry, 2, 0, be);
             entry_offset = (int64_t)sqlz_bits(word, 16U, 0U, 13U, be);
             entry_type = (int64_t)sqlz_bits(word, 16U, 13U, 3U, be);
             if (!sqlz_meta_read(&stream, 1U, entry)) return false;
@@ -1291,31 +1274,31 @@ static bool sqlz_parse_super(const uint8_t *h, int64_t image_size,
         return false;
     }
     super->big_endian = be;
-    super->major = (int32_t)sqlz_u16(h + 0x1C, be);
-    super->minor = (int32_t)sqlz_u16(h + 0x1E, be);
+    super->major = (int32_t)xx_data_get_u16(h + 0x1C, 2, 0, be);
+    super->minor = (int32_t)xx_data_get_u16(h + 0x1E, 2, 0, be);
     if (super->major != 2 && super->major != 3) return false;
     if (super->major == 3 && image_size < SQLZ_SUPER_V3) return false;
 
-    block_log = sqlz_u16(h + 0x22, be);
+    block_log = xx_data_get_u16(h + 0x22, 2, 0, be);
     super->flags = h[0x24];
-    super->inodes = (int64_t)sqlz_u32(h + 0x04, be);
-    super->block_size = (int64_t)sqlz_u32(h + 0x33, be);
-    super->fragments = (int64_t)sqlz_u32(h + 0x37, be);
-    super->root_inode = (int64_t)(sqlz_u64(h + 0x2B, be) & UINT64_C(0xFFFFFFFFFFFF));
+    super->inodes = (int64_t)xx_data_get_u32(h + 0x04, 4, 0, be);
+    super->block_size = (int64_t)xx_data_get_u32(h + 0x33, 4, 0, be);
+    super->fragments = (int64_t)xx_data_get_u32(h + 0x37, 4, 0, be);
+    super->root_inode = (int64_t)(xx_data_get_u64(h + 0x2B, 8, 0, be) & UINT64_C(0xFFFFFFFFFFFF));
     if (block_log < 12U || block_log > 20U ||
         super->block_size != (INT64_C(1) << block_log)) {
         return false;
     }
     if (super->major == 2) {
-        super->bytes_used = (int64_t)sqlz_u32(h + 0x08, be);
-        super->inode_table = (int64_t)sqlz_u32(h + 0x14, be);
-        super->directory_table = (int64_t)sqlz_u32(h + 0x18, be);
-        super->fragment_table = (int64_t)sqlz_u32(h + 0x3B, be);
+        super->bytes_used = (int64_t)xx_data_get_u32(h + 0x08, 4, 0, be);
+        super->inode_table = (int64_t)xx_data_get_u32(h + 0x14, 4, 0, be);
+        super->directory_table = (int64_t)xx_data_get_u32(h + 0x18, 4, 0, be);
+        super->fragment_table = (int64_t)xx_data_get_u32(h + 0x3B, 4, 0, be);
     } else {
-        uint64_t used = sqlz_u64(h + 0x3F, be);
-        uint64_t it = sqlz_u64(h + 0x57, be);
-        uint64_t dt = sqlz_u64(h + 0x5F, be);
-        uint64_t ft = sqlz_u64(h + 0x67, be);
+        uint64_t used = xx_data_get_u64(h + 0x3F, 8, 0, be);
+        uint64_t it = xx_data_get_u64(h + 0x57, 8, 0, be);
+        uint64_t dt = xx_data_get_u64(h + 0x5F, 8, 0, be);
+        uint64_t ft = xx_data_get_u64(h + 0x67, 8, 0, be);
         if (used > (uint64_t)INT64_MAX || it > (uint64_t)INT64_MAX ||
             dt > (uint64_t)INT64_MAX) {
             return false;

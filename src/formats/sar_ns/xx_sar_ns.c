@@ -22,6 +22,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -121,16 +122,6 @@ static ssize_t gb_sar_ns_write(xx_io_device *device, const void *buffer, size_t 
         done += (size_t)n;
     }
     return (ssize_t)done;
-}
-
-
-static uint16_t sar_be16(const uint8_t *bytes) {
-    return (uint16_t)(((uint16_t)bytes[0] << 8U) | (uint16_t)bytes[1]);
-}
-
-static uint32_t sar_be32(const uint8_t *bytes) {
-    return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
-           ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3];
 }
 
 static bool sar_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -349,8 +340,8 @@ static bool sar_read_header(Abstractformat *format, sar_layout *layout) {
         !sar_read_at(format->device, format->base_address, header,
                      sizeof(header)))
         return false;
-    count = (uint32_t)sar_be16(header);
-    base = (int64_t)sar_be32(header + 2U);
+    count = (uint32_t)xx_data_get_u16(header, 2, 0, true);
+    base = (int64_t)xx_data_get_u32(header + 2U, 4, 0, true);
     if (count == 0U || base > size) return false;
     /* The index must hold `count` entries of 10..1033 bytes each. */
     index_size = base - SAR_HEADER_SIZE;
@@ -412,8 +403,8 @@ static size_t sar_parse_entry(const uint8_t *view, size_t avail,
         avail - at - 1U < SAR_FIXED_SIZE)
         return 0U;
     *name_length = (uint32_t)at;
-    *offset = sar_be32(view + at + 1U);
-    *size = sar_be32(view + at + 5U);
+    *offset = xx_data_get_u32(view + at + 1U, 4, 0, true);
+    *size = xx_data_get_u32(view + at + 5U, 4, 0, true);
     return at + 1U + SAR_FIXED_SIZE;
 }
 

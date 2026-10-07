@@ -6,6 +6,7 @@
 #include "xxfclib/formats/iff_ilbm/xx_iff_ilbm.h"
 #include "../xx_payload_members.h"
 #include "xxfclib/global/xx_global.h"
+#include "xxfclib/data/xx_data.h"
 
 typedef struct fm_bytes { Abstractformat *f; xx_pd_struct *pd; int64_t pos,end,begin; size_t count,capacity; uint8_t *buffer; } fm_bytes;
 static bool fm_start(fm_bytes *r,Abstractformat *f,xx_pd_struct *pd,int64_t at,int64_t end) {
@@ -46,16 +47,16 @@ static bool il_body(Abstractformat *f,xx_pd_struct *pd,int64_t at,uint32_t size,
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[20],pad; int64_t pos=12,end; unsigned row=0,rows=0,planes=0,chunks=0; bool bmhd=false,body=false,compressed=false;
-    if(!pm_read(f,0,h,12) || xx_rt_memcmp(h,"FORM",4) || xx_rt_memcmp(h+8,"ILBM",4) || pm_be32(h+4)<4) return false;
-    end=8+(int64_t)pm_be32(h+4); if(end>pm_available(f) || (end&1)) return false;
+    if(!pm_read(f,0,h,12) || xx_rt_memcmp(h,"FORM",4) || xx_rt_memcmp(h+8,"ILBM",4) || xx_data_get_u32(h+4, 4, 0, true)<4) return false;
+    end=8+(int64_t)xx_data_get_u32(h+4, 4, 0, true); if(end>pm_available(f) || (end&1)) return false;
     while(pos<end) { uint32_t n,tag; char label[40]; unsigned i;
         if(++chunks>4096 || (pd && xx_pd_is_stopped(pd)) || end-pos<8 || !pm_read(f,pos,h,8)) return false;
         for(i=0;i<4;++i) if(h[i]<32 || h[i]>126) return false;
-        tag=pm_be32(h); n=pm_be32(h+4); pos+=8;
+        tag=xx_data_get_u32(h, 4, 0, true); n=xx_data_get_u32(h+4, 4, 0, true); pos+=8;
         if(n>(uint64_t)(end-pos) || (n&1 && (n==(uint64_t)(end-pos) || !pm_read(f,pos+n,&pad,1) || pad))) return false;
         if(tag==0x424D4844U) { unsigned w,height,mask;
             if(bmhd || body || n!=20 || !pm_read(f,pos,h,20)) return false;
-            w=pm_be16(h); height=pm_be16(h+2); planes=h[8]; mask=h[9];
+            w=xx_data_get_u16(h, 2, 0, true); height=xx_data_get_u16(h+2, 2, 0, true); planes=h[8]; mask=h[9];
             if(!w || !height || !planes || planes>32 || mask>2 || h[10]>1 || h[11]) return false;
             row=((w+15U)/16U)*2U; rows=height*(planes+(mask==1 ? 1U : 0U));
             if((uint64_t)row*rows>134217728U) { return false; } compressed=h[10]!=0; bmhd=true;

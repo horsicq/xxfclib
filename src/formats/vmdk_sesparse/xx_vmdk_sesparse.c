@@ -49,6 +49,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef VMDK_SESPARSE
 #define XX_VMDK_SESPARSE_FILE_TYPE XX_FILE_TYPE_VMDK_SESPARSE
@@ -90,13 +91,6 @@ typedef struct ses_stream_s {
     char *name;
     size_t index;
 } ses_stream;
-
-static uint64_t ses_le64(const uint8_t *b) {
-    uint64_t value = 0U;
-    unsigned at;
-    for (at = 8U; at != 0U; --at) value = (value << 8U) | b[at - 1U];
-    return value;
-}
 
 static bool ses_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -166,34 +160,34 @@ static bool ses_parse(Abstractformat *format, ses_info *info) {
         !ses_read_at(format->device, format->base_address, header,
                      sizeof(header)))
         return false;
-    if (ses_le64(header) != SES_CONST_MAGIC ||
-        ses_le64(header + 0x08U) != SES_VERSION ||
-        ses_le64(header + 0x18U) != SES_GRAIN_SECTORS ||
-        ses_le64(header + 0x20U) != SES_GT_SECTORS ||
-        ses_le64(header + 0x28U) != 0U)
+    if (xx_data_get_u64(header, 8, 0, false) != SES_CONST_MAGIC ||
+        xx_data_get_u64(header + 0x08U, 8, 0, false) != SES_VERSION ||
+        xx_data_get_u64(header + 0x18U, 8, 0, false) != SES_GRAIN_SECTORS ||
+        xx_data_get_u64(header + 0x20U, 8, 0, false) != SES_GT_SECTORS ||
+        xx_data_get_u64(header + 0x28U, 8, 0, false) != 0U)
         return false;
 
-    info->capacity = ses_le64(header + 0x10U);
+    info->capacity = xx_data_get_u64(header + 0x10U, 8, 0, false);
     if (info->capacity == 0U || info->capacity > SES_MAX_CAPACITY) return false;
 
     /* Volatile header: must exist, carry its magic and be clean. */
-    if (!ses_region_offset(ses_le64(header + 0x50U), &volatile_offset) ||
+    if (!ses_region_offset(xx_data_get_u64(header + 0x50U, 8, 0, false), &volatile_offset) ||
         !ses_range_ok(volatile_offset, SES_HEADER_SIZE, info->size) ||
         !ses_read_at(format->device,
                      format->base_address + (int64_t)volatile_offset,
                      volatile_header, sizeof(volatile_header)) ||
-        ses_le64(volatile_header) != SES_VOLATILE_MAGIC ||
-        ses_le64(volatile_header + 0x18U) != 0U)
+        xx_data_get_u64(volatile_header, 8, 0, false) != SES_VOLATILE_MAGIC ||
+        xx_data_get_u64(volatile_header + 0x18U, 8, 0, false) != 0U)
         return false;
 
     /* Grain directory: enough entries for the capacity, all in the file. */
     info->gd_entries =
         (info->capacity + SES_GT_COVER_SECTORS - 1U) / SES_GT_COVER_SECTORS;
-    gd_sectors = ses_le64(header + 0x88U);
+    gd_sectors = xx_data_get_u64(header + 0x88U, 8, 0, false);
     if (gd_sectors > SES_MAX_OFFSET_SECTORS ||
         gd_sectors * (SES_SECTOR / 8U) < info->gd_entries)
         return false;
-    if (!ses_region_offset(ses_le64(header + 0x80U), &info->gd_offset))
+    if (!ses_region_offset(xx_data_get_u64(header + 0x80U, 8, 0, false), &info->gd_offset))
         return false;
     gd_bytes_avail = info->gd_entries * 8U;
     if (!ses_range_ok(info->gd_offset, gd_bytes_avail, info->size))
@@ -201,8 +195,8 @@ static bool ses_parse(Abstractformat *format, ses_info *info) {
 
     /* Table and grain areas: only their start is fixed here; every table
      * and grain is range-checked when it is used. */
-    if (!ses_region_offset(ses_le64(header + 0x90U), &info->gt_offset) ||
-        !ses_region_offset(ses_le64(header + 0xc0U), &info->grains_offset) ||
+    if (!ses_region_offset(xx_data_get_u64(header + 0x90U, 8, 0, false), &info->gt_offset) ||
+        !ses_region_offset(xx_data_get_u64(header + 0xc0U, 8, 0, false), &info->grains_offset) ||
         info->gt_offset >= (uint64_t)info->size)
         return false;
     return true;
@@ -241,7 +235,7 @@ static bool ses_write_disk(Abstractformat *format, const ses_info *info,
                              (int64_t)(info->gd_offset + directory_index * 8U),
                          raw, sizeof(raw)))
             goto done;
-        entry = ses_le64(raw);
+        entry = xx_data_get_u64(raw, 8, 0, false);
         if (entry == 0U) {
             if (!ses_write_zeros(destination, zeros, cover, pd)) goto done;
             produced += cover;
@@ -258,7 +252,7 @@ static bool ses_write_disk(Abstractformat *format, const ses_info *info,
 
         for (index = 0U; index < SES_GT_ENTRIES && produced < total_bytes;
              ++index) {
-            uint64_t value = ses_le64(table + (size_t)index * 8U);
+            uint64_t value = xx_data_get_u64(table + (size_t)index * 8U, 8, 0, false);
             uint64_t left = total_bytes - produced;
             uint64_t output = left < SES_GRAIN_BYTES ? left : SES_GRAIN_BYTES;
             switch (value & SES_TAG_MASK) {

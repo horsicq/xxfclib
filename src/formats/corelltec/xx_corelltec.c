@@ -44,6 +44,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* The alias macro is defined next to the enumerator in xxfc_defs.h, so testing
  * for it picks up the real file type as soon as CORELLTEC is registered there.
@@ -105,15 +106,6 @@ typedef struct xx_corelltec_stream_s {
 static void xx_corelltec_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint16_t xx_corelltec_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_corelltec_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static bool xx_corelltec_read_at(Abstractformat *self, int64_t offset,
                                  uint8_t *buffer, size_t size) {
@@ -319,10 +311,10 @@ static xx_corelltec_stream *xx_corelltec_parse(Abstractformat *self,
                                   sizeof(record))) {
             goto fail;
         }
-        record_size = (int64_t)xx_corelltec_le16(record);
-        block_offset = (int64_t)xx_corelltec_le32(record + 2);
-        offset_in_block = (int64_t)xx_corelltec_le32(record + 6);
-        member_size = (int64_t)xx_corelltec_le32(record + 10);
+        record_size = (int64_t)xx_data_get_u16(record, 2, 0, false);
+        block_offset = (int64_t)xx_data_get_u32(record + 2, 4, 0, false);
+        offset_in_block = (int64_t)xx_data_get_u32(record + 6, 4, 0, false);
+        member_size = (int64_t)xx_data_get_u32(record + 10, 4, 0, false);
 
         /* The name field is the rest of the record, terminator included. */
         name_size = record_size - XX_CORELLTEC_RECORD_FIXED_SIZE;

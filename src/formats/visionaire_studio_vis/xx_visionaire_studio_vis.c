@@ -24,6 +24,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef VISIONAIRE_STUDIO_VIS
 #define XX_VISIONAIRE_STUDIO_VIS_FILE_TYPE XX_FILE_TYPE_VISIONAIRE_STUDIO_VIS
@@ -94,28 +95,6 @@ static size_t vis_capacity(void) {
     if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
     if (n < 4096U) n = 4096U;
     return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
-}
-
-static uint32_t vis_rd32(const uint8_t *p, bool big_endian) {
-    if (big_endian)
-        return ((uint32_t)p[0] << 24U) | ((uint32_t)p[1] << 16U) |
-               ((uint32_t)p[2] << 8U) | (uint32_t)p[3];
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) | ((uint32_t)p[2] << 16U) |
-           ((uint32_t)p[3] << 24U);
-}
-
-static void vis_wr32(uint8_t *p, uint32_t v, bool big_endian) {
-    if (big_endian) {
-        p[0] = (uint8_t)(v >> 24U);
-        p[1] = (uint8_t)(v >> 16U);
-        p[2] = (uint8_t)(v >> 8U);
-        p[3] = (uint8_t)v;
-    } else {
-        p[0] = (uint8_t)v;
-        p[1] = (uint8_t)(v >> 8U);
-        p[2] = (uint8_t)(v >> 16U);
-        p[3] = (uint8_t)(v >> 24U);
-    }
 }
 
 static bool vis_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -270,8 +249,8 @@ static bool vis_validate(const uint8_t *plain, uint32_t count, bool big_endian,
         return false;
     entry = plain + 3;
     for (index = 0U; index < count; ++index, entry += VIS_ENTRY) {
-        if (vis_rd32(entry, big_endian) != expected) return false;
-        expected += vis_rd32(entry + 4, big_endian);
+        if (xx_data_get_u32(entry, 4, 0, big_endian) != expected) return false;
+        expected += xx_data_get_u32(entry + 4, 4, 0, big_endian);
         if (expected > (uint64_t)data_available) return false;
     }
     if (data_size) *data_size = (int64_t)expected;
@@ -312,7 +291,7 @@ static bool vis_derive_key(const uint8_t *cipher, uint8_t *plain,
         for (k = 0U; k < 4U; ++k) key[7U + k] = (uint8_t)(cipher[7U + k] ^ next[k]);
     } else {
         if (data_available > (int64_t)UINT32_MAX) return false;
-        vis_wr32(first_size, (uint32_t)data_available, big_endian);
+        xx_data_set_u32(first_size, 4, 0, (uint32_t)data_available, big_endian);
         for (k = 0U; k < 4U; ++k)
             key[7U + k] = (uint8_t)(cipher[7U + k] ^ first_size[k]);
     }
@@ -440,8 +419,8 @@ static bool vis_resolve(Abstractformat *format, vis_layout *layout,
         head[0] != (uint8_t)'V' || head[1] != (uint8_t)'I' ||
         head[2] != (uint8_t)'S' || head[3] != (uint8_t)'3')
         return false;
-    be = vis_rd32(head + 4, true);
-    le = vis_rd32(head + 4, false);
+    be = xx_data_get_u32(head + 4, 4, 0, true);
+    le = xx_data_get_u32(head + 4, 4, 0, false);
     /* VIS3Ext: big-endian unless the little-endian count is smaller. */
     first_be = !(le < be);
     if (vis_try_order(format, layout, first_be ? be : le, first_be,
@@ -536,8 +515,8 @@ static bool vis_unpack_chunks(xx_io_device *device, int64_t data,
         if ((++steps & VIS_POLL_MASK) == 0U && pd && xx_pd_is_stopped(pd))
             return false;
         if (!vis_read_at(device, data + pos, head, sizeof(head))) return false;
-        usize = vis_rd32(head, true);
-        csize = vis_rd32(head + 4, true);
+        usize = xx_data_get_u32(head, 4, 0, true);
+        csize = xx_data_get_u32(head + 4, 4, 0, true);
         pos += 8;
         if (csize == VIS_CHUNK_END) break;
         if ((int64_t)csize > stored - pos ||
@@ -620,10 +599,10 @@ static bool vis_open_stream(Abstractformat *format, vis_stream **result,
     if (!stream->items) goto fail;
     for (index = 0U; index < layout.count; ++index) {
         const uint8_t *entry = plain + 3 + (size_t)index * VIS_ENTRY;
-        stream->items[index].offset = vis_rd32(entry, layout.big_endian);
-        stream->items[index].stored = vis_rd32(entry + 4, layout.big_endian);
-        stream->items[index].size = vis_rd32(entry + 8, layout.big_endian);
-        stream->items[index].flags = vis_rd32(entry + 12, layout.big_endian);
+        stream->items[index].offset = xx_data_get_u32(entry, 4, 0, layout.big_endian);
+        stream->items[index].stored = xx_data_get_u32(entry + 4, 4, 0, layout.big_endian);
+        stream->items[index].size = xx_data_get_u32(entry + 8, 4, 0, layout.big_endian);
+        stream->items[index].flags = xx_data_get_u32(entry + 12, 4, 0, layout.big_endian);
     }
     xx_mem_free(plain);
     stream->count = layout.count;

@@ -5,8 +5,9 @@
  */
 #include "xxfclib/formats/nintendo_bntx/xx_nintendo_bntx.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
+static uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)xx_data_get_u32(p, 4, 0, true)<<32)|xx_data_get_u32(p+4, 4, 0, true) : ((uint64_t)xx_data_get_u32(p+4, 4, 0, false)<<32)|xx_data_get_u32(p, 4, 0, false); }
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uint64_t n,uint64_t total) {
     size_t i;
@@ -24,19 +25,19 @@ static bool zname(Abstractformat *f,uint64_t at,uint64_t end) {
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[88],p[8],b[160],n[2],datah[16]; uint32_t total,count,i,version,reloc; uint64_t table,data,limit,data_end; char label[40];
-    if(!pm_read(f,0,h,88) || xx_rt_memcmp(h,"BNTX\0\0\0\0",8) || h[12]!=0xff || h[13]!=0xfe || h[14]>16 || h[15]!=0x40 || pm_le16(h+20) || xx_rt_memcmp(h+32,"NX  ",4)) return false;
-    version=pm_le32(h+8); total=pm_le32(h+28); count=pm_le32(h+36); reloc=pm_le32(h+24); table=g64(h+40,false); data=g64(h+48,false);
+    if(!pm_read(f,0,h,88) || xx_rt_memcmp(h,"BNTX\0\0\0\0",8) || h[12]!=0xff || h[13]!=0xfe || h[14]>16 || h[15]!=0x40 || xx_data_get_u16(h+20, 2, 0, false) || xx_rt_memcmp(h+32,"NX  ",4)) return false;
+    version=xx_data_get_u32(h+8, 4, 0, false); total=xx_data_get_u32(h+28, 4, 0, false); count=xx_data_get_u32(h+36, 4, 0, false); reloc=xx_data_get_u32(h+24, 4, 0, false); table=g64(h+40,false); data=g64(h+48,false);
     if((version!=0x40000 && version!=0x40100) || total<88 || total>(uint64_t)pm_available(f) || !count || count>1024 || table<88 || !span(table,(uint64_t)count*8,total) || data<table+(uint64_t)count*8 || !span(data,16,total) || !pm_read(f,(int64_t)data,datah,16) || xx_rt_memcmp(datah,"BRTD",4)) return false;
-    if(g64(h+64,false) || g64(h+72,false) || pm_le32(h+80)) return false;
-    if(pm_le32(h+16)<2 || !span(pm_le32(h+16)-2,2,total) || !pm_read(f,pm_le32(h+16)-2,n,2) || !span(pm_le32(h+16),pm_le16(n)+1,total) || !zname(f,pm_le32(h+16),pm_le32(h+16)+pm_le16(n)+1)) return false;
+    if(g64(h+64,false) || g64(h+72,false) || xx_data_get_u32(h+80, 4, 0, false)) return false;
+    if(xx_data_get_u32(h+16, 4, 0, false)<2 || !span(xx_data_get_u32(h+16, 4, 0, false)-2,2,total) || !pm_read(f,xx_data_get_u32(h+16, 4, 0, false)-2,n,2) || !span(xx_data_get_u32(h+16, 4, 0, false),xx_data_get_u16(n, 2, 0, false)+1,total) || !zname(f,xx_data_get_u32(h+16, 4, 0, false),xx_data_get_u32(h+16, 4, 0, false)+xx_data_get_u16(n, 2, 0, false)+1)) return false;
     limit=reloc ? reloc : total;
-    if(pm_le32(datah+8)<16 || !span(data,pm_le32(datah+8),limit)) { return false; } data_end=data+pm_le32(datah+8);
-    if(reloc && (reloc<data+16 || !span(reloc,16,total) || !pm_read(f,reloc,datah,16) || xx_rt_memcmp(datah,"_RLT",4) || pm_le32(datah+4)!=reloc || pm_le32(datah+8)>16)) return false;
+    if(xx_data_get_u32(datah+8, 4, 0, false)<16 || !span(data,xx_data_get_u32(datah+8, 4, 0, false),limit)) { return false; } data_end=data+xx_data_get_u32(datah+8, 4, 0, false);
+    if(reloc && (reloc<data+16 || !span(reloc,16,total) || !pm_read(f,reloc,datah,16) || xx_rt_memcmp(datah,"_RLT",4) || xx_data_get_u32(datah+4, 4, 0, false)!=reloc || xx_data_get_u32(datah+8, 4, 0, false)>16)) return false;
     for(i=0;i<count;++i) { uint64_t info,ptrs,name,first,last,image; uint32_t w,he,mips,j,alignment;
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,(int64_t)(table+i*8),p,8)) { return false; } info=g64(p,false);
-        if(info<88 || !span(info,160,data) || !pm_read(f,(int64_t)info,b,160) || xx_rt_memcmp(b,"BRTI",4) || pm_le32(b+8)<160 || !span(info,pm_le32(b+8),data)) return false;
-        w=pm_le32(b+36); he=pm_le32(b+40); mips=pm_le16(b+22); image=pm_le32(b+80); alignment=pm_le32(b+84); name=g64(b+96,false); ptrs=g64(b+112,false);
-        if((b[16]&~1U) || b[17]!=2 || pm_le16(b+18)>1 || !mips || mips>16 || pm_le16(b+24)!=1 || !w || !he || w>16384 || he>16384 || pm_le32(b+44)!=1 || pm_le32(b+48)!=1 || !pm_le32(b+28) || !image || !alignment || (alignment&(alignment-1)) || alignment>65536 || name<88 || !span(name,2,data) || !pm_read(f,(int64_t)name,n,2) || !span(name+2,pm_le16(n)+1,data) || !zname(f,name+2,name+3+pm_le16(n)) || ptrs<88 || !span(ptrs,(uint64_t)mips*8,data)) return false;
+        if(info<88 || !span(info,160,data) || !pm_read(f,(int64_t)info,b,160) || xx_rt_memcmp(b,"BRTI",4) || xx_data_get_u32(b+8, 4, 0, false)<160 || !span(info,xx_data_get_u32(b+8, 4, 0, false),data)) return false;
+        w=xx_data_get_u32(b+36, 4, 0, false); he=xx_data_get_u32(b+40, 4, 0, false); mips=xx_data_get_u16(b+22, 2, 0, false); image=xx_data_get_u32(b+80, 4, 0, false); alignment=xx_data_get_u32(b+84, 4, 0, false); name=g64(b+96,false); ptrs=g64(b+112,false);
+        if((b[16]&~1U) || b[17]!=2 || xx_data_get_u16(b+18, 2, 0, false)>1 || !mips || mips>16 || xx_data_get_u16(b+24, 2, 0, false)!=1 || !w || !he || w>16384 || he>16384 || xx_data_get_u32(b+44, 4, 0, false)!=1 || xx_data_get_u32(b+48, 4, 0, false)!=1 || !xx_data_get_u32(b+28, 4, 0, false) || !image || !alignment || (alignment&(alignment-1)) || alignment>65536 || name<88 || !span(name,2,data) || !pm_read(f,(int64_t)name,n,2) || !span(name+2,xx_data_get_u16(n, 2, 0, false)+1,data) || !zname(f,name+2,name+3+xx_data_get_u16(n, 2, 0, false)) || ptrs<88 || !span(ptrs,(uint64_t)mips*8,data)) return false;
         if(!pm_read(f,(int64_t)ptrs,p,8)) { return false; } first=g64(p,false); if(first<data+16 || first%alignment || !span(first,image,data_end)) return false; last=first;
         for(j=0;j<mips;++j) { uint64_t next=first+image;
             if(pd && xx_pd_is_stopped(pd)) return false;

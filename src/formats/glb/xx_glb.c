@@ -7,6 +7,7 @@
 #include "xxfclib/json/xx_json.h"
 #include "../xx_payload_members.h"
 #include "../xx_fourth_utf8.h"
+#include "xxfclib/data/xx_data.h"
 
 /* The shared JSON API returns C strings without their decoded byte length.
  * Check consumed escapes so an embedded U+0000 cannot alias a required key
@@ -55,12 +56,12 @@ done: xx_mem_free(data); return ok && (!pd || !xx_pd_is_stopped(pd));
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[12],e[8]; uint32_t length; int64_t at=12; bool bin=false;
-    if(!pm_read(f,0,h,12) || xx_rt_memcmp(h,"glTF",4) || pm_le32(h+4)!=2) return false;
-    length=pm_le32(h+8); if(length<24 || length%4 || length>pm_available(f)) return false;
+    if(!pm_read(f,0,h,12) || xx_rt_memcmp(h,"glTF",4) || xx_data_get_u32(h+4, 4, 0, false)!=2) return false;
+    length=xx_data_get_u32(h+8, 4, 0, false); if(length<24 || length%4 || length>pm_available(f)) return false;
     while(at<length) {
         uint32_t n,type; char name[48];
         if((pd && xx_pd_is_stopped(pd)) || length-at<8 || !pm_read(f,at,e,8)) return false;
-        n=pm_le32(e); type=pm_le32(e+4); if(n%4 || n>(uint64_t)(length-at-8)) return false;
+        n=xx_data_get_u32(e, 4, 0, false); type=xx_data_get_u32(e+4, 4, 0, false); if(n%4 || n>(uint64_t)(length-at-8)) return false;
         if(!s->count) { if(type!=0x4e4f534aU || !glb_json(f,at+8,n,pd)) return false; xx_rt_snprintf(name,sizeof(name),"scene.json"); }
         else if(type==0x4e4f534aU) return false;
         else if(type==0x004e4942U) { if(bin || s->count!=1) return false; bin=true; xx_rt_snprintf(name,sizeof(name),"buffer.bin"); }

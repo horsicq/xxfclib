@@ -52,6 +52,7 @@
 #include "xxfclib/algo/dcl/xx_dcl.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ROMPAQ_COPY_CHUNK (64 * 1024)
 
@@ -167,8 +168,6 @@ static bool xx_rompaq_add(xx_rompaq_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_rompaq_le16(const uint8_t *data);
-static uint32_t xx_rompaq_le32(const uint8_t *data);
 static bool xx_rompaq_is_name_character(uint8_t character);
 static xx_rompaq_stream *xx_rompaq_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_rompaq_decode(Abstractformat *self, const xx_rompaq_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
@@ -181,15 +180,6 @@ static bool xx_rompaq_decode(Abstractformat *self, const xx_rompaq_member *membe
 /* The packed side is bounded separately because a chained image's stream is
  * the WHOLE file: without this a file with a valid header and a gigabyte of
  * tail would be read into memory before the decoder ever refused it. */
-
-static uint16_t xx_rompaq_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_rompaq_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static bool xx_rompaq_is_name_character(uint8_t character) {
     /* Exactly the class the reference implementation tests: 0-9 A-Z a-z.
@@ -232,13 +222,13 @@ static xx_rompaq_stream *xx_rompaq_parse(Abstractformat *self,
 
     /* Read as a signed 32-bit value by the reference, so the top bit set is
      * nonsense rather than a four-gigabyte ROM. */
-    if (xx_rompaq_le32(header + XX_ROMPAQ_OFFSET_SIZE) > 0x7fffffffU) {
+    if (xx_data_get_u32(header + XX_ROMPAQ_OFFSET_SIZE, 4, 0, false) > 0x7fffffffU) {
         return NULL;
     }
-    image_size = (int64_t)xx_rompaq_le32(header + XX_ROMPAQ_OFFSET_SIZE);
+    image_size = (int64_t)xx_data_get_u32(header + XX_ROMPAQ_OFFSET_SIZE, 4, 0, false);
     if (image_size <= 0 || image_size > XX_ROMPAQ_MAX_IMAGE_SIZE) return NULL;
 
-    version = xx_rompaq_le16(header + XX_ROMPAQ_OFFSET_VERSION);
+    version = xx_data_get_u16(header + XX_ROMPAQ_OFFSET_VERSION, 2, 0, false);
     if (version != (uint16_t)XX_ROMPAQ_VERSION_100 &&
         version != (uint16_t)XX_ROMPAQ_VERSION_101) {
         return NULL;
@@ -258,7 +248,7 @@ static xx_rompaq_stream *xx_rompaq_parse(Abstractformat *self,
     if (header[XX_ROMPAQ_OFFSET_NAME_TERMINATOR] != 0U) return NULL;
     if (header[XX_ROMPAQ_OFFSET_DATE_END] != 0U) return NULL;
     if (header[XX_ROMPAQ_OFFSET_RESERVED2] != 0U) return NULL;
-    if (xx_rompaq_le32(header + XX_ROMPAQ_OFFSET_RESERVED1) != 0U) {
+    if (xx_data_get_u32(header + XX_ROMPAQ_OFFSET_RESERVED1, 4, 0, false) != 0U) {
         return NULL;
     }
 
@@ -272,11 +262,11 @@ static xx_rompaq_stream *xx_rompaq_parse(Abstractformat *self,
     }
     name_buffer[XX_ROMPAQ_NAME_SIZE] = '\0';
 
-    part_count = xx_rompaq_le16(header + XX_ROMPAQ_OFFSET_PARTCOUNT);
-    if (xx_rompaq_le32(header + XX_ROMPAQ_OFFSET_PARTSIZE) > 0x7fffffffU) {
+    part_count = xx_data_get_u16(header + XX_ROMPAQ_OFFSET_PARTCOUNT, 2, 0, false);
+    if (xx_data_get_u32(header + XX_ROMPAQ_OFFSET_PARTSIZE, 4, 0, false) > 0x7fffffffU) {
         return NULL;
     }
-    part_size = (int64_t)xx_rompaq_le32(header + XX_ROMPAQ_OFFSET_PARTSIZE);
+    part_size = (int64_t)xx_data_get_u32(header + XX_ROMPAQ_OFFSET_PARTSIZE, 4, 0, false);
     /* Part count and part size are written together or not at all. The pair
      * rule is worth more than either field on its own: it is a two-way
      * consistency check across six bytes that a random header fails. */
@@ -296,7 +286,7 @@ static xx_rompaq_stream *xx_rompaq_parse(Abstractformat *self,
         data_offset = XX_ROMPAQ_HEADER_SIZE;
         /* A zero word here is padding; a non-zero word is already the DCL
          * selector pair and must stay in the stream. */
-        if (xx_rompaq_le16(header + XX_ROMPAQ_HEADER_SIZE) == 0U) {
+        if (xx_data_get_u16(header + XX_ROMPAQ_HEADER_SIZE, 2, 0, false) == 0U) {
             data_offset += 2;
         }
         if (span - data_offset < 3) return NULL;
@@ -395,7 +385,7 @@ static bool xx_rompaq_decode(Abstractformat *self,
                            sizeof(header))) {
         return false;
     }
-    part_count = xx_rompaq_le16(header + XX_ROMPAQ_OFFSET_PARTCOUNT);
+    part_count = xx_data_get_u16(header + XX_ROMPAQ_OFFSET_PARTCOUNT, 2, 0, false);
 
     input = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
     if (!input) return false;

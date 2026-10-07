@@ -37,6 +37,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested; this
@@ -122,20 +123,6 @@ static uint32_t jg_le16(const uint8_t *p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8U);
 }
 
-static uint32_t jg_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) | ((uint32_t)p[2] << 16U) |
-           ((uint32_t)p[3] << 24U);
-}
-
-static uint32_t jg_be32(const uint8_t *p) {
-    return ((uint32_t)p[0] << 24U) | ((uint32_t)p[1] << 16U) |
-           ((uint32_t)p[2] << 8U) | (uint32_t)p[3];
-}
-
-static uint64_t jg_le64(const uint8_t *p) {
-    return (uint64_t)jg_le32(p) | ((uint64_t)jg_le32(p + 4U) << 32U);
-}
-
 static bool jg_read_at(xx_io_device *device, int64_t offset, void *buffer,
                        size_t size) {
     size_t done = 0U;
@@ -183,7 +170,7 @@ static bool jg_pe_overlay(Abstractformat *format, int64_t size,
         !jg_read_at(format->device, base, header, sizeof(header)) ||
         header[0] != 'M' || header[1] != 'Z')
         return false;
-    nt_offset = (int64_t)jg_le32(header + 0x3CU);
+    nt_offset = (int64_t)xx_data_get_u32(header + 0x3CU, 4, 0, false);
     if (nt_offset < 4 || nt_offset > size - (int64_t)sizeof(nt) ||
         !jg_read_at(format->device, base + nt_offset, nt, sizeof(nt)) ||
         xx_rt_memcmp(nt, "PE\0\0", 4U) != 0)
@@ -206,8 +193,8 @@ static bool jg_pe_overlay(Abstractformat *format, int64_t size,
         return false;
     for (index = 0U; index < sections; ++index) {
         const uint8_t *row = table + index * JG_PE_ROW;
-        int64_t raw_size = (int64_t)jg_le32(row + 16U);
-        int64_t raw_offset = (int64_t)jg_le32(row + 20U);
+        int64_t raw_size = (int64_t)xx_data_get_u32(row + 16U, 4, 0, false);
+        int64_t raw_offset = (int64_t)xx_data_get_u32(row + 20U, 4, 0, false);
         if (raw_size == 0) continue;
         if (raw_offset + raw_size > end) end = raw_offset + raw_size;
     }
@@ -443,14 +430,14 @@ static bool jg_member_parse(const uint8_t *h, size_t avail, uint32_t variant,
     uint32_t header_size = jugglor ? JG_J_HEADER : JG_A_HEADER;
     uint64_t size, packed;
     int64_t data;
-    if (avail < (size_t)header_size + 2U || jg_le32(h) != JG_MAGIC ||
-        jg_le32(h + (jugglor ? JG_J_SEAL_AT : JG_A_SEAL_AT)) != JG_SEAL ||
+    if (avail < (size_t)header_size + 2U || xx_data_get_u32(h, 4, 0, false) != JG_MAGIC ||
+        xx_data_get_u32(h + (jugglor ? JG_J_SEAL_AT : JG_A_SEAL_AT), 4, 0, false) != JG_SEAL ||
         !jg_short_string_ok(h + JG_NAME_AT, false) ||
         !jg_short_string_ok(h + JG_DIR_AT, true) ||
         !jg_zlib_header_ok(h + header_size))
         return false;
-    size = jg_le32(h + (jugglor ? JG_J_USIZE_AT : JG_A_USIZE_AT));
-    packed = jg_le32(h + (jugglor ? JG_J_CSIZE_AT : JG_A_CSIZE_AT));
+    size = xx_data_get_u32(h + (jugglor ? JG_J_USIZE_AT : JG_A_USIZE_AT), 4, 0, false);
+    packed = xx_data_get_u32(h + (jugglor ? JG_J_CSIZE_AT : JG_A_CSIZE_AT), 4, 0, false);
     if (packed < JG_MIN_STREAM || size > packed * JG_MAX_RATIO) return false;
     data = position + (int64_t)header_size;
     if (data > limit || (int64_t)packed > limit - data) return false;
@@ -461,7 +448,7 @@ static bool jg_member_parse(const uint8_t *h, size_t avail, uint32_t variant,
     member->packed = (int64_t)packed;
     member->size = size;
     member->filetime =
-        jg_le64(h + (jugglor ? JG_J_TIME_AT : JG_A_TIME_AT));
+        xx_data_get_u64(h + (jugglor ? JG_J_TIME_AT : JG_A_TIME_AT), 8, 0, false);
     return true;
 }
 
@@ -469,15 +456,15 @@ static bool jg_trailer_parse(const uint8_t *t, const jg_layout *layout,
                              int64_t position, char *version) {
     static const char legacy_version[] = "Jester Jugglor Version 1.01";
     uint32_t length = t[JG_TRAILER_VERSION_AT], index;
-    uint32_t reserved = jg_le32(t + 16U);
+    uint32_t reserved = xx_data_get_u32(t + 16U, 4, 0, false);
     const uint8_t *text = t + JG_TRAILER_VERSION_AT + 1U;
     size_t prefix = sizeof(JG_VERSION_PREFIX) - 1U;
     if (layout->overlay > (int64_t)UINT32_MAX ||
         position - layout->overlay > (int64_t)UINT32_MAX ||
-        jg_le32(t + 4U) != (uint32_t)layout->overlay ||
-        jg_le32(t + 8U) != (uint32_t)(position - layout->overlay) ||
-        (uint64_t)jg_le32(t + 12U) != layout->count ||
-        jg_le32(t + 20U) != (uint32_t)layout->unpacked ||
+        xx_data_get_u32(t + 4U, 4, 0, false) != (uint32_t)layout->overlay ||
+        xx_data_get_u32(t + 8U, 4, 0, false) != (uint32_t)(position - layout->overlay) ||
+        (uint64_t)xx_data_get_u32(t + 12U, 4, 0, false) != layout->count ||
+        xx_data_get_u32(t + 20U, 4, 0, false) != (uint32_t)layout->unpacked ||
         length < prefix || length > JG_TRAILER_VERSION_MAX)
         return false;
     for (index = 0U; index < length; ++index)
@@ -537,11 +524,11 @@ static bool jg_walk(Abstractformat *format, jg_layout *layout,
     if (avail < JG_A_HEADER + 2U ||
         !jg_read_at(format->device, format->base_address + position, h,
                     avail) ||
-        jg_le32(h) != JG_MAGIC)
+        xx_data_get_u32(h, 4, 0, false) != JG_MAGIC)
         return false;
-    if (avail >= JG_J_HEADER + 2U && jg_le32(h + JG_J_SEAL_AT) == JG_SEAL)
+    if (avail >= JG_J_HEADER + 2U && xx_data_get_u32(h + JG_J_SEAL_AT, 4, 0, false) == JG_SEAL)
         layout->variant = XX_SFX_FLASHJESTER_JUGGLOR_VARIANT_JUGGLOR;
-    else if (jg_le32(h + JG_A_SEAL_AT) == JG_SEAL)
+    else if (xx_data_get_u32(h + JG_A_SEAL_AT, 4, 0, false) == JG_SEAL)
         layout->variant = XX_SFX_FLASHJESTER_JUGGLOR_VARIANT_EXE_ATTACHMENT;
     else
         return false;
@@ -560,8 +547,8 @@ static bool jg_walk(Abstractformat *format, jg_layout *layout,
                 !jg_read_at(format->device, format->base_address + position,
                             h, avail))
                 return false;
-            if (jg_le32(h) == JG_MAGIC &&
-                jg_le32(h + JG_TRAILER_SEAL_AT) == JG_SEAL) {
+            if (xx_data_get_u32(h, 4, 0, false) == JG_MAGIC &&
+                xx_data_get_u32(h + JG_TRAILER_SEAL_AT, 4, 0, false) == JG_SEAL) {
                 if (layout->count == 0U ||
                     !jg_trailer_parse(h, layout, position, layout->version))
                     return false;
@@ -573,8 +560,8 @@ static bool jg_walk(Abstractformat *format, jg_layout *layout,
             if (remaining < (int64_t)JG_A_HEADER ||
                 !jg_read_at(format->device, format->base_address + position,
                             h, avail) ||
-                jg_le32(h) != JG_MAGIC ||
-                jg_le32(h + JG_A_SEAL_AT) != JG_SEAL) {
+                xx_data_get_u32(h, 4, 0, false) != JG_MAGIC ||
+                xx_data_get_u32(h + JG_A_SEAL_AT, 4, 0, false) != JG_SEAL) {
                 if (layout->count == 0U) return false;
                 layout->end = position;
                 return true;
@@ -601,8 +588,8 @@ static bool jg_walk(Abstractformat *format, jg_layout *layout,
             if (layout->size - position < (int64_t)JG_A_RECORD ||
                 !jg_read_at(format->device, format->base_address + position,
                             record, sizeof(record)) ||
-                jg_le32(record) != JG_MAGIC ||
-                jg_le32(record + JG_A_RECORD_SEAL_AT) != JG_SEAL)
+                xx_data_get_u32(record, 4, 0, false) != JG_MAGIC ||
+                xx_data_get_u32(record + JG_A_RECORD_SEAL_AT, 4, 0, false) != JG_SEAL)
                 return false;
             position += (int64_t)JG_A_RECORD;
         }
@@ -716,7 +703,7 @@ static bool jg_inflate(Abstractformat *format, const jg_member *member,
     result = xx_deflate_unpack_device(format->device, data + 2,
                                       member->packed - 6, &device, false, pd);
     return result && !sink.failed && sink.written == sink.expected &&
-           ((sink.b << 16U) | sink.a) == jg_be32(adler);
+           ((sink.b << 16U) | sink.a) == xx_data_get_u32(adler, 4, 0, true);
 }
 
 /* ---- records ----------------------------------------------------------- */

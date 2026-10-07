@@ -14,6 +14,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef FDI
 #define XX_FDI_FILE_TYPE XX_FILE_TYPE_FDI
@@ -41,14 +42,6 @@ typedef struct fdi_stream_s {
     size_t index;
     int64_t archive_size;
 } fdi_stream;
-
-static uint16_t fdi_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t fdi_le32(const uint8_t *b) {
-    return (uint32_t)fdi_le16(b) | ((uint32_t)fdi_le16(b + 2U) << 16U);
-}
 
 static bool fdi_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -152,9 +145,9 @@ static bool fdi_parse(Abstractformat *format, fdi_stream **result) {
         header[0] != 'F' || header[1] != 'D' || header[2] != 'I' ||
         header[3] != 0)
         return false;
-    cylinders = fdi_le16(header + 4U);
-    heads = fdi_le16(header + 6U);
-    data_offset = (int64_t)fdi_le16(header + 10U);
+    cylinders = xx_data_get_u16(header + 4U, 2, 0, false);
+    heads = xx_data_get_u16(header + 6U, 2, 0, false);
+    data_offset = (int64_t)xx_data_get_u16(header + 10U, 2, 0, false);
     if (cylinders == 0U || cylinders > 256U || heads == 0U || heads > 2U ||
         data_offset < (int64_t)FDI_HEADER_SIZE || data_offset >= size)
         return false;

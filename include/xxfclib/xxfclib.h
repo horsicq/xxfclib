@@ -1474,6 +1474,7 @@
 #include "xxfclib/formats/atarist/xx_atarist.h"
 #include "xxfclib/formats/amigahunk/xx_amigahunk.h"
 #include "xxfclib/formats/pe/xx_pe.h"
+#include "xxfclib/formats/dotnet/xx_dotnet.h"
 #include "xxfclib/formats/elf/xx_elf.h"
 #include "xxfclib/formats/macho/xx_macho.h"
 #include "xxfclib/formats/ne/xx_ne.h"

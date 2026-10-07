@@ -37,6 +37,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef PAX
 #define XX_PAX_FILE_TYPE XX_FILE_TYPE_PAX
@@ -451,11 +452,6 @@ done:
 
 /* --- header scan -------------------------------------------------------- */
 
-static uint32_t pax_be32(const uint8_t *bytes) {
-    return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
-           ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3];
-}
-
 static uint32_t pax_be16(const uint8_t *bytes) {
     return ((uint32_t)bytes[0] << 8U) | (uint32_t)bytes[1];
 }
@@ -475,7 +471,7 @@ static bool pax_scan_record(const uint8_t *image, int64_t size, int64_t offset,
         offset > size - (int64_t)PAX_MIN_RECORD ||
         xx_rt_memcmp(image + offset, "LZF0", 4U) != 0)
         return false;
-    declared_size = (int64_t)pax_be32(image + offset + 8);
+    declared_size = (int64_t)xx_data_get_u32(image + offset + 8, 4, 0, true);
     declared_name = pax_be16(image + offset + 28);
     if (declared_size < 1 || declared_size > PAX_MAX_OUTPUT ||
         declared_name < 2U || declared_name > PAX_MAX_NAME_SIZE ||

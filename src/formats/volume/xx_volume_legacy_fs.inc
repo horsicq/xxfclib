@@ -67,18 +67,18 @@ static uint8_t *vl_contents(vl_fs *g,mm_map *m) {
 static bool vl_rad50(uint16_t v,char out[3]) { static const char alphabet[]=" ABCDEFGHIJKLMNOPQRSTUVWXYZ$.%0123456789"; unsigned i; if(v>=64000) return false; for(i=3;i>0;--i) { out[i-1]=alphabet[v%40]; v/=40; } return true; }
 static bool vl_rt11(vl_fs *g) {
     uint8_t hb[512],b[1024]; uint32_t first,current=1; uint64_t seen=0; unsigned chain=0; uint16_t max=0;
-    if(!vl_read(g,512,hb,512)) { return false; } first=pm_le16(hb+468); if(first<2 || first>=g->blocks) return false;
+    if(!vl_read(g,512,hb,512)) { return false; } first=xx_data_get_u16(hb+468, 2, 0, false); if(first<2 || first>=g->blocks) return false;
     while(current) { uint32_t at,file; uint16_t next,extra; size_t pos; bool end=false;
         if(current>31 || (seen&(UINT64_C(1)<<current)) || ++chain>31) { return false; } seen|=UINT64_C(1)<<current;
         at=first+(current-1)*2; if(!vl_block(g,at,b,1024)) return false;
-        if(!max) { max=pm_le16(b); } if(!max || max>31 || pm_le16(b)!=max || current>max || pm_le16(b+4)>max) return false;
-        next=pm_le16(b+2); extra=pm_le16(b+6); file=pm_le16(b+8); if(extra>1000 || (extra&1) || next>max) return false;
-        for(pos=10;pos+2<=1024;pos+=14+extra) { uint16_t status=pm_le16(b+pos),type=status&0x0F00,len; char raw[10],name[24]; size_t i,k=0;
+        if(!max) { max=xx_data_get_u16(b, 2, 0, false); } if(!max || max>31 || xx_data_get_u16(b, 2, 0, false)!=max || current>max || xx_data_get_u16(b+4, 2, 0, false)>max) return false;
+        next=xx_data_get_u16(b+2, 2, 0, false); extra=xx_data_get_u16(b+6, 2, 0, false); file=xx_data_get_u16(b+8, 2, 0, false); if(extra>1000 || (extra&1) || next>max) return false;
+        for(pos=10;pos+2<=1024;pos+=14+extra) { uint16_t status=xx_data_get_u16(b+pos, 2, 0, false),type=status&0x0F00,len; char raw[10],name[24]; size_t i,k=0;
             if(type==0x0800) { end=true; break; } if(pos+14+extra>1024 || (type!=0x0100 && type!=0x0200 && type!=0x0400)) return false;
-            len=pm_le16(b+pos+8);
+            len=xx_data_get_u16(b+pos+8, 2, 0, false);
             /* Emulator disks may omit trailing unallocated zero sectors.
              * Bounds are required for live files, not free directory runs. */
-            if(type==0x0400) { if(file>g->blocks || len>g->blocks-file || !vl_rad50(pm_le16(b+pos+2),raw) || !vl_rad50(pm_le16(b+pos+4),raw+3) || !vl_rad50(pm_le16(b+pos+6),raw+6)) return false;
+            if(type==0x0400) { if(file>g->blocks || len>g->blocks-file || !vl_rad50(xx_data_get_u16(b+pos+2, 2, 0, false),raw) || !vl_rad50(xx_data_get_u16(b+pos+4, 2, 0, false),raw+3) || !vl_rad50(xx_data_get_u16(b+pos+6, 2, 0, false),raw+6)) return false;
                 for(i=0;i<6 && raw[i]!=' ';++i) { name[k++]=raw[i]; } if(!k) return false;
                 if(raw[6]!=' ') { name[k++]='.'; for(i=6;i<9 && raw[i]!=' ';++i) name[k++]=raw[i]; } name[k]=0;
                 if(status&0x10) { uint8_t prefix; if(!len || !vl_read(g,(uint64_t)file*512,&prefix,1) || !prefix || prefix>len) return false; if(!vl_contiguous(g,name,(uint64_t)(file+prefix)*512,(uint64_t)(len-prefix)*512)) return false; }
@@ -89,11 +89,11 @@ static bool vl_rt11(vl_fs *g) {
 }
 static bool vl_lif(vl_fs *g) {
     uint8_t hb[256],entry[32]; uint64_t first,size,i; char name[32]; bool ended=false;
-    if(!vl_read(g,0,hb,256)) { return false; } first=pm_be32(hb+8); size=pm_be32(hb+16); if(!first || !size || first>g->blocks || size>g->blocks-first || size>16384) return false;
+    if(!vl_read(g,0,hb,256)) { return false; } first=xx_data_get_u32(hb+8, 4, 0, true); size=xx_data_get_u32(hb+16, 4, 0, true); if(!first || !size || first>g->blocks || size>g->blocks-first || size>16384) return false;
     for(i=0;i<size*8;++i) { uint16_t type; uint64_t at,len;
-        if(!vl_read(g,first*256+i*32,entry,32)) { return false; } type=pm_be16(entry+10); if(type==0xFFFF) { ended=true; break; }
+        if(!vl_read(g,first*256+i*32,entry,32)) { return false; } type=xx_data_get_u16(entry+10, 2, 0, true); if(type==0xFFFF) { ended=true; break; }
         if(entry[0]==0xFF || !entry[0] || entry[0]==' ') continue;
-        if(!vl_name(entry,10,name,sizeof(name),false)) { return false; } at=pm_be32(entry+12); len=pm_be32(entry+16);
+        if(!vl_name(entry,10,name,sizeof(name),false)) { return false; } at=xx_data_get_u32(entry+12, 4, 0, true); len=xx_data_get_u32(entry+16, 4, 0, true);
         if(at>g->blocks || len>g->blocks-at || !vl_contiguous(g,name,at*256,len*256)) return false;
     } return ended || i==size*8;
 }
@@ -124,21 +124,21 @@ static bool vl_ecma(vl_fs *g) {
 static bool vl_locus_pointer(vl_fs *g,uint64_t ptr,unsigned level,uint64_t logical,uint64_t *out) {
     uint8_t b[4]; uint64_t stride=1,i,slots=g->bs/4; *out=0; if(!ptr) return true; if(!level || level>3 || ptr>=g->blocks) return false;
     for(i=1;i<level;++i) { stride*=slots; } if(logical>=stride*slots) return false;
-    if(!vl_read(g,ptr*g->bs+(logical/stride)*4,b,4)) { return false; } ptr=vr_u32(b,g->be);
+    if(!vl_read(g,ptr*g->bs+(logical/stride)*4,b,4)) { return false; } ptr=xx_data_get_u32(b, 4, 0, g->be);
     if(level==1) { *out=ptr; return ptr<g->blocks; } return vl_locus_pointer(g,ptr,level-1,logical%stride,out);
 }
 static mm_map *vl_locus_map(vl_fs *g,uint32_t ino,uint8_t inode[512],uint16_t *mode,uint16_t *flags) {
     uint32_t isize=g->small?512:128,per=g->bs/isize; uint64_t at,size,logical=0,left; mm_map *m;
     if(!ino || ino>(uint64_t)g->aux*per) { return NULL; } at=((uint64_t)(ino-1)/per+2)*g->bs+(ino-1)%per*isize;
-    if(!vl_read(g,at,inode,isize)) { return NULL; } *mode=vr_u16(inode,g->be); *flags=vr_u16(inode+14,g->be); size=vr_u32(inode+16,g->be);
-    if(!(*flags&0x10) || (*flags&1) || !(*flags&2) || !vr_u16(inode+2,g->be) || !vl_member_limit(g,size)) return NULL;
+    if(!vl_read(g,at,inode,isize)) { return NULL; } *mode=xx_data_get_u16(inode, 2, 0, g->be); *flags=xx_data_get_u16(inode+14, 2, 0, g->be); size=xx_data_get_u32(inode+16, 4, 0, g->be);
+    if(!(*flags&0x10) || (*flags&1) || !(*flags&2) || !xx_data_get_u16(inode+2, 2, 0, g->be) || !vl_member_limit(g,size)) return NULL;
     m=vl_map(g); if(!m) return NULL; left=size;
     if(g->small && (inode[75]&1)) { if(size>384 || !vl_extent(g,m,(int64_t)(at+128),size)) { mm_free(m); return NULL; } return m; }
     while(left) { uint64_t ptr=0,n=left<g->bs?left:g->bs,rem,slots=g->bs/4;
-        if(logical<10) ptr=vr_u32(inode+76+logical*4,g->be);
-        else { rem=logical-10; if(rem<slots) { if(!vl_locus_pointer(g,vr_u32(inode+116,g->be),1,rem,&ptr)) goto fail; }
-            else if((rem-=slots)<slots*slots) { if(!vl_locus_pointer(g,vr_u32(inode+120,g->be),2,rem,&ptr)) goto fail; }
-            else { rem-=slots*slots; if(!vl_locus_pointer(g,vr_u32(inode+124,g->be),3,rem,&ptr)) goto fail; }
+        if(logical<10) ptr=xx_data_get_u32(inode+76+logical*4, 4, 0, g->be);
+        else { rem=logical-10; if(rem<slots) { if(!vl_locus_pointer(g,xx_data_get_u32(inode+116, 4, 0, g->be),1,rem,&ptr)) goto fail; }
+            else if((rem-=slots)<slots*slots) { if(!vl_locus_pointer(g,xx_data_get_u32(inode+120, 4, 0, g->be),2,rem,&ptr)) goto fail; }
+            else { rem-=slots*slots; if(!vl_locus_pointer(g,xx_data_get_u32(inode+124, 4, 0, g->be),3,rem,&ptr)) goto fail; }
         } if(ptr>=g->blocks || !vl_extent(g,m,ptr?(int64_t)(ptr*g->bs):-1,n)) goto fail; left-=n; ++logical;
     } return m;
 fail: mm_free(m); return NULL;
@@ -151,17 +151,17 @@ static bool vl_locus_walk(vl_fs *g,uint32_t ino,const char *path) {
     if(mode!=0x4000) { ok=true; goto done; }
     if(path[0] && !vl_named(g,path,NULL,true)) { goto done; } b=vl_contents(g,m); if(!b) goto done;
     while(p<size) { uint32_t child; size_t stride,n,off; char name[512],full[4096];
-        if(flags&0x40) { if(size-p<8) goto done; child=vr_u32(b+p,g->be); stride=vr_u16(b+p+4,g->be); n=vr_u16(b+p+6,g->be); off=8; if(stride<8 || (stride&3) || stride>size-p || n>stride-8) goto done; }
-        else { if(size-p<16) goto done; child=vr_u16(b+p,g->be); stride=16; n=14; off=2; }
+        if(flags&0x40) { if(size-p<8) goto done; child=xx_data_get_u32(b+p, 4, 0, g->be); stride=xx_data_get_u16(b+p+4, 2, 0, g->be); n=xx_data_get_u16(b+p+6, 2, 0, g->be); off=8; if(stride<8 || (stride&3) || stride>size-p || n>stride-8) goto done; }
+        else { if(size-p<16) goto done; child=xx_data_get_u16(b+p, 2, 0, g->be); stride=16; n=14; off=2; }
         if(child) { while(n && !b[p+off+n-1]) --n; if(n==1 && b[p+off]=='.') {} else if(n==2 && b[p+off]=='.' && b[p+off+1]=='.') {} else {
             if(!vl_name(b+p+off,n,name,sizeof(name),false) || !vl_path(path,name,full,sizeof(full)) || !vl_locus_walk(g,child,full)) goto done;
         } } p+=stride;
     } ok=true;
 done: if(b) { g->used-=size?size:1; xx_mem_free(b); } mm_free(m); --g->depth; return ok;
 }
-static bool vl_locus(vl_fs *g) { uint8_t b[128]; unsigned i; for(i=0;i<=8;++i) { uint32_t magic; if(!vl_read(g,(uint64_t)i*512,b,128)) continue; magic=pm_le32(b); if(magic==UINT32_C(0xFFEEDDCD) || magic==UINT32_C(0xFFEEDDCC) || magic==UINT32_C(0xCDDDEEFF) || magic==UINT32_C(0xCCDDEEFF)) break; }
-    if(i>8 || (b[71]!=1 && b[71]!=2)) { return false; } g->be=pm_be32(b)==UINT32_C(0xFFEEDDCD) || pm_be32(b)==UINT32_C(0xFFEEDDCC); g->small=b[71]==1; g->bs=g->small?4096:1024; g->blocks=vr_u32(b+8,g->be); g->aux=vr_u32(b+36,g->be);
-    if(!g->blocks || g->blocks>(uint64_t)pm_available(g->f)/g->bs || !g->aux || g->aux>g->blocks-2 || (vr_u16(b+42,g->be)&0x120)) { return false; } return vl_locus_walk(g,2,"");
+static bool vl_locus(vl_fs *g) { uint8_t b[128]; unsigned i; for(i=0;i<=8;++i) { uint32_t magic; if(!vl_read(g,(uint64_t)i*512,b,128)) continue; magic=xx_data_get_u32(b, 4, 0, false); if(magic==UINT32_C(0xFFEEDDCD) || magic==UINT32_C(0xFFEEDDCC) || magic==UINT32_C(0xCDDDEEFF) || magic==UINT32_C(0xCCDDEEFF)) break; }
+    if(i>8 || (b[71]!=1 && b[71]!=2)) { return false; } g->be=xx_data_get_u32(b, 4, 0, true)==UINT32_C(0xFFEEDDCD) || xx_data_get_u32(b, 4, 0, true)==UINT32_C(0xFFEEDDCC); g->small=b[71]==1; g->bs=g->small?4096:1024; g->blocks=xx_data_get_u32(b+8, 4, 0, g->be); g->aux=xx_data_get_u32(b+36, 4, 0, g->be);
+    if(!g->blocks || g->blocks>(uint64_t)pm_available(g->f)/g->bs || !g->aux || g->aux>g->blocks-2 || (xx_data_get_u16(b+42, 2, 0, g->be)&0x120)) { return false; } return vl_locus_walk(g,2,"");
 }
 /* Professional File System: index/superindex, anodes and directory blocks. */
 static bool vl_pfs_reserved(vl_fs *g,uint32_t block,uint8_t *b) { return block>=g->first && block<=g->last && g->aux/512<=g->last-block+1 && vl_block(g,block,b,g->aux); }
@@ -169,12 +169,12 @@ static bool vl_pfs_anode(vl_fs *g,uint32_t nr,uint32_t *count,uint32_t *block,ui
     uint8_t b[4096]; uint32_t per=(g->aux-16)/12,seq,slot,ip=(g->aux-12)/4,which,idx,addr; size_t at;
     if(g->options&2) { seq=nr>>16; slot=nr&65535; } else { seq=nr/per; slot=nr%per; }
     if(slot>=per) { return false; } which=seq/ip; idx=seq%ip;
-    if(g->options&128) { unsigned super=which/ip; if(super>=16 || !g->index || !vl_pfs_reserved(g,g->index,b) || pm_be16(b)!=0x4558) return false;
-        addr=pm_be32(b+64+super*4); if(!addr || !vl_pfs_reserved(g,addr,b) || pm_be16(b)!=0x5342 || pm_be32(b+8)!=super) return false; addr=pm_be32(b+12+(which%ip)*4);
-    } else { if(which>=99 || 116+which*4+4>g->aux) return false; addr=pm_be32(g->root+116+which*4); }
-    if(!addr || !vl_pfs_reserved(g,addr,b) || pm_be16(b)!=0x4942 || pm_be32(b+8)!=which) { return false; } addr=pm_be32(b+12+idx*4);
-    if(!addr || !vl_pfs_reserved(g,addr,b) || pm_be16(b)!=0x4142 || pm_be32(b+8)!=seq) { return false; } at=16+slot*12;
-    *count=pm_be32(b+at); *block=pm_be32(b+at+4); *next=pm_be32(b+at+8); return true;
+    if(g->options&128) { unsigned super=which/ip; if(super>=16 || !g->index || !vl_pfs_reserved(g,g->index,b) || xx_data_get_u16(b, 2, 0, true)!=0x4558) return false;
+        addr=xx_data_get_u32(b+64+super*4, 4, 0, true); if(!addr || !vl_pfs_reserved(g,addr,b) || xx_data_get_u16(b, 2, 0, true)!=0x5342 || xx_data_get_u32(b+8, 4, 0, true)!=super) return false; addr=xx_data_get_u32(b+12+(which%ip)*4, 4, 0, true);
+    } else { if(which>=99 || 116+which*4+4>g->aux) return false; addr=xx_data_get_u32(g->root+116+which*4, 4, 0, true); }
+    if(!addr || !vl_pfs_reserved(g,addr,b) || xx_data_get_u16(b, 2, 0, true)!=0x4942 || xx_data_get_u32(b+8, 4, 0, true)!=which) { return false; } addr=xx_data_get_u32(b+12+idx*4, 4, 0, true);
+    if(!addr || !vl_pfs_reserved(g,addr,b) || xx_data_get_u16(b, 2, 0, true)!=0x4142 || xx_data_get_u32(b+8, 4, 0, true)!=seq) { return false; } at=16+slot*12;
+    *count=xx_data_get_u32(b+at, 4, 0, true); *block=xx_data_get_u32(b+at+4, 4, 0, true); *next=xx_data_get_u32(b+at+8, 4, 0, true); return true;
 }
 static mm_map *vl_pfs_map(vl_fs *g,uint32_t nr,uint64_t size) {
     mm_map *m=vl_map(g); uint64_t left=size; uint32_t seen[4096]; unsigned steps=0;
@@ -185,7 +185,7 @@ static mm_map *vl_pfs_map(vl_fs *g,uint32_t nr,uint64_t size) {
     } return m;
 fail: mm_free(m); return NULL;
 }
-static bool vl_pfs_extra(const uint8_t *e,size_t size,uint16_t out[11]) { uint16_t flags; unsigned i; size_t at=size; if(at<2) return false; at-=2; flags=pm_be16(e+at); for(i=0;i<11;++i) { out[i]=0; if(flags&(1U<<i)) { if(at<2) return false; at-=2; out[i]=pm_be16(e+at); } } if(flags&0xF800) return false; return at>=(size_t)(18+e[17]+1+e[18+e[17]]); }
+static bool vl_pfs_extra(const uint8_t *e,size_t size,uint16_t out[11]) { uint16_t flags; unsigned i; size_t at=size; if(at<2) return false; at-=2; flags=xx_data_get_u16(e+at, 2, 0, true); for(i=0;i<11;++i) { out[i]=0; if(flags&(1U<<i)) { if(at<2) return false; at-=2; out[i]=xx_data_get_u16(e+at, 2, 0, true); } } if(flags&0xF800) return false; return at>=(size_t)(18+e[17]+1+e[18+e[17]]); }
 static bool vl_pfs_dir(vl_fs *g,uint32_t nr,const char *path) {
     uint8_t b[4096]; uint32_t seen[4096]; unsigned steps=0; bool ok=false;
     if(!vl_enter(g,nr)) { return false; } if(path[0] && !vl_named(g,path,NULL,true)) goto done;
@@ -193,11 +193,11 @@ static bool vl_pfs_dir(vl_fs *g,uint32_t nr,const char *path) {
         if(steps>=4096) { goto done; } for(i=0;i<steps;++i) if(seen[i]==nr) goto done; seen[steps++]=nr;
         if(!vl_pfs_anode(g,nr,&count,&block,&next) || !count || block>=g->blocks || count>g->blocks-block || count>262144) goto done;
         for(j=0;j<count;j+=g->aux/512) { size_t at=20; bool end=false;
-            if(count-j<g->aux/512 || !vl_block(g,block+j,b,g->aux) || pm_be16(b)!=0x4442) goto done;
+            if(count-j<g->aux/512 || !vl_block(g,block+j,b,g->aux) || xx_data_get_u16(b, 2, 0, true)!=0x4442) goto done;
             while(at<g->aux) { size_t len=b[at],names; int type; uint32_t child; uint64_t size; uint16_t extra[11]={0}; char name[512],full[4096]; mm_map *map;
                 if(!len) { end=true; break; } if(len<20 || (len&1) || len>g->aux-at) goto done; names=b[at+17]; if(!names || 18+names+1>len || 19+names+b[at+18+names]>len) goto done;
                 if(!vl_name(b+at+18,names,name,sizeof(name),false) || !vl_path(path,name,full,sizeof(full))) goto done;
-                type=(int8_t)b[at+1]; child=pm_be32(b+at+2); size=pm_be32(b+at+6);
+                type=(int8_t)b[at+1]; child=xx_data_get_u32(b+at+2, 4, 0, true); size=xx_data_get_u32(b+at+6, 4, 0, true);
                 if((g->options&4) && !vl_pfs_extra(b+at,len,extra)) { goto done; } if(g->options&2048) size|=(uint64_t)extra[10]<<32;
                 if(type==2) { if(!vl_pfs_dir(g,child,full)) goto done; }
                 else if(type==-3 || type==3) { map=vl_pfs_map(g,child,size); if(!map || !vl_named(g,full,map,false)) goto done; }
@@ -208,28 +208,28 @@ static bool vl_pfs_dir(vl_fs *g,uint32_t nr,const char *path) {
     } ok=true;
 done: --g->depth; return ok;
 }
-static bool vl_pfs(vl_fs *g) { uint8_t b[512]; if(!vl_read(g,1024,b,512)) return false; g->options=pm_be32(b+4); g->first=pm_be32(b+56); g->last=pm_be32(b+52); g->aux=pm_be16(b+64); g->index=pm_be32(b+88);
+static bool vl_pfs(vl_fs *g) { uint8_t b[512]; if(!vl_read(g,1024,b,512)) return false; g->options=xx_data_get_u32(b+4, 4, 0, true); g->first=xx_data_get_u32(b+56, 4, 0, true); g->last=xx_data_get_u32(b+52, 4, 0, true); g->aux=xx_data_get_u16(b+64, 2, 0, true); g->index=xx_data_get_u32(b+88, 4, 0, true);
     if(g->aux<512 || g->aux>4096 || !vr_power(g->aux) || g->first>g->last || g->last>=g->blocks || !vl_read(g,1024,g->root,g->aux)) return false;
-    if((g->options&16) && pm_be32(b+84)!=g->blocks) { return false; } return vl_pfs_dir(g,5,"");
+    if((g->options&16) && xx_data_get_u32(b+84, 4, 0, true)!=g->blocks) { return false; } return vl_pfs_dir(g,5,"");
 }
 /* HPOFS: directory DATA leaves hold full paths and explicit data extents. */
 static bool vl_hpofs_subf(vl_fs *g,mm_map *m,uint32_t nr,uint64_t *left) {
     uint8_t b[4096]; unsigned count,i; if(!nr || nr==UINT32_MAX) return !*left;
-    if(!vl_block(g,nr,b,g->bs) || xx_rt_memcmp(b,"SUBF",4)) { return false; } count=pm_be16(b+16); if(count>(g->bs-32)/8) return false;
-    for(i=0;i<count && *left;++i) { uint32_t block=pm_be32(b+32+i*8+4); uint64_t n=(uint64_t)pm_be16(b+32+i*8)*g->bs; if(block==UINT32_MAX) break; if(!n || block>=g->blocks || n>(g->blocks-block)*g->bs) return false; if(n>*left) n=*left; if(!vl_extent(g,m,(int64_t)((uint64_t)block*g->bs),n)) return false; *left-=n; } return !*left;
+    if(!vl_block(g,nr,b,g->bs) || xx_rt_memcmp(b,"SUBF",4)) { return false; } count=xx_data_get_u16(b+16, 2, 0, true); if(count>(g->bs-32)/8) return false;
+    for(i=0;i<count && *left;++i) { uint32_t block=xx_data_get_u32(b+32+i*8+4, 4, 0, true); uint64_t n=(uint64_t)xx_data_get_u16(b+32+i*8, 2, 0, true)*g->bs; if(block==UINT32_MAX) break; if(!n || block>=g->blocks || n>(g->blocks-block)*g->bs) return false; if(n>*left) n=*left; if(!vl_extent(g,m,(int64_t)((uint64_t)block*g->bs),n)) return false; *left-=n; } return !*left;
 }
 static bool vl_hpofs_node(vl_fs *g,uint32_t nr,bool *leaf) {
     uint8_t *b; size_t bytes=(size_t)g->bs*4,p=36; bool ok=false,end=false; *leaf=false;
     if(!vl_take(g,bytes)) { return false; } b=(uint8_t *)xx_mem_alloc(bytes); if(!b) return false;
-    if(!vl_block(g,nr,b,bytes)) { goto done; } if(!xx_rt_memcmp(b,"INDX",4)) { ok=pm_be16(b+20)>0; goto done; }
-    if(xx_rt_memcmp(b,"DATA",4) || pm_be16(b+20)!=0) { goto done; } *leaf=true;
-    while(p+4<=bytes) { size_t kl=pm_be16(b+p),rd=pm_be16(b+p+2); const uint8_t *e; char name[4096]; uint64_t size,left; mm_map *map;
+    if(!vl_block(g,nr,b,bytes)) { goto done; } if(!xx_rt_memcmp(b,"INDX",4)) { ok=xx_data_get_u16(b+20, 2, 0, true)>0; goto done; }
+    if(xx_rt_memcmp(b,"DATA",4) || xx_data_get_u16(b+20, 2, 0, true)!=0) { goto done; } *leaf=true;
+    while(p+4<=bytes) { size_t kl=xx_data_get_u16(b+p, 2, 0, true),rd=xx_data_get_u16(b+p+2, 2, 0, true); const uint8_t *e; char name[4096]; uint64_t size,left; mm_map *map;
         if(!kl) { end=true; break; } if(kl<5 || kl>1028 || rd<92 || kl+rd+4>bytes-p || !vl_name(b+p+8,kl-4,name,sizeof(name),true)) goto done; e=b+p+4+kl;
-        if(pm_be32(e)!=pm_be32(e+4) || (e[12]!=0x20 && e[12]!=0x60)) goto done;
+        if(xx_data_get_u32(e, 4, 0, true)!=xx_data_get_u32(e+4, 4, 0, true) || (e[12]!=0x20 && e[12]!=0x60)) goto done;
         if(e[12]==0x20) { if(e[14]&0x10) { if(!vl_named(g,name,NULL,true)) goto done; }
-            else { size=pm_be32(e+88); left=size; if(!vl_member_limit(g,size)) goto done; map=vl_map(g); if(!map) goto done;
-                if(left && pm_be16(e+64)) { uint32_t start=pm_be32(e+68); uint64_t n=(uint64_t)pm_be16(e+64)*g->bs; if(n>left) n=left; if(!vl_extent(g,map,(int64_t)((uint64_t)start*g->bs),n)) { mm_free(map); goto done; } left-=n; }
-                if(left && !vl_hpofs_subf(g,map,pm_be32(e+76),&left)) { mm_free(map); goto done; } if(left || !vl_named(g,name,map,false)) goto done;
+            else { size=xx_data_get_u32(e+88, 4, 0, true); left=size; if(!vl_member_limit(g,size)) goto done; map=vl_map(g); if(!map) goto done;
+                if(left && xx_data_get_u16(e+64, 2, 0, true)) { uint32_t start=xx_data_get_u32(e+68, 4, 0, true); uint64_t n=(uint64_t)xx_data_get_u16(e+64, 2, 0, true)*g->bs; if(n>left) n=left; if(!vl_extent(g,map,(int64_t)((uint64_t)start*g->bs),n)) { mm_free(map); goto done; } left-=n; }
+                if(left && !vl_hpofs_subf(g,map,xx_data_get_u32(e+76, 4, 0, true),&left)) { mm_free(map); goto done; } if(left || !vl_named(g,name,map,false)) goto done;
             }
         } p+=4+kl+rd;
     } ok=end;
@@ -237,9 +237,9 @@ done: xx_mem_free(b); g->used-=bytes; return ok;
 }
 static bool vl_hpofs(vl_fs *g) {
     uint8_t b[4096]; uint32_t nr,starts[508],counts[508]; unsigned n,i; bool leaf=false,found=false;
-    if(g->bs>4096 || !vl_block(g,13,b,g->bs) || xx_rt_memcmp(b,"MEDINFO ",8) || !vl_block(g,14,b,g->bs) || xx_rt_memcmp(b,"VOLINFO ",8) || !vl_block(g,6,b,g->bs) || pm_be32(b)!=3) { return false; } nr=pm_be32(b+76);
-    if(!nr || !vl_block(g,nr,b,g->bs) || xx_rt_memcmp(b,"SUBF",4)) { return false; } n=pm_be16(b+16); if(!n || n>(g->bs-32)/8) return false;
-    for(i=0;i<n;++i) { counts[i]=pm_be16(b+32+i*8); starts[i]=pm_be32(b+36+i*8); if(starts[i]==UINT32_MAX) { n=i; break; } if(!counts[i] || starts[i]>=g->blocks || counts[i]>g->blocks-starts[i] || counts[i]>262144) return false; }
+    if(g->bs>4096 || !vl_block(g,13,b,g->bs) || xx_rt_memcmp(b,"MEDINFO ",8) || !vl_block(g,14,b,g->bs) || xx_rt_memcmp(b,"VOLINFO ",8) || !vl_block(g,6,b,g->bs) || xx_data_get_u32(b, 4, 0, true)!=3) { return false; } nr=xx_data_get_u32(b+76, 4, 0, true);
+    if(!nr || !vl_block(g,nr,b,g->bs) || xx_rt_memcmp(b,"SUBF",4)) { return false; } n=xx_data_get_u16(b+16, 2, 0, true); if(!n || n>(g->bs-32)/8) return false;
+    for(i=0;i<n;++i) { counts[i]=xx_data_get_u16(b+32+i*8, 2, 0, true); starts[i]=xx_data_get_u32(b+36+i*8, 4, 0, true); if(starts[i]==UINT32_MAX) { n=i; break; } if(!counts[i] || starts[i]>=g->blocks || counts[i]>g->blocks-starts[i] || counts[i]>262144) return false; }
     for(i=0;i<n;++i) { unsigned j; for(j=i+1;j<n;++j) if(starts[j]<starts[i]) { uint32_t a=starts[i],c=counts[i]; starts[i]=starts[j]; counts[i]=counts[j]; starts[j]=a; counts[j]=c; } }
     for(i=0;i<n;++i) { uint32_t off; if(i && starts[i]<starts[i-1]+counts[i-1]) return false;
         for(off=0;off+4<=counts[i];off+=4) { if(!vl_hpofs_node(g,starts[i]+off,&leaf)) return false; found|=leaf; }
@@ -249,7 +249,7 @@ static bool vl_hpofs(vl_fs *g) {
         if(i+1<n) { uint32_t at=starts[i]+counts[i],end=starts[i+1]; uint8_t signature[22];
             if(end<at || (uint64_t)(end-at)*g->bs>UINT64_C(64)*1024*1024) return false;
             while(at+4<=end) { if(!vl_block(g,at,signature,sizeof(signature))) return false;
-                if(!xx_rt_memcmp(signature,"DATA",4) && !pm_be16(signature+20)) { if(!vl_hpofs_node(g,at,&leaf)) return false; found|=leaf; at+=4; }
+                if(!xx_rt_memcmp(signature,"DATA",4) && !xx_data_get_u16(signature+20, 2, 0, true)) { if(!vl_hpofs_node(g,at,&leaf)) return false; found|=leaf; at+=4; }
                 else ++at;
             }
         }
@@ -259,49 +259,49 @@ static bool vl_hpofs(vl_fs *g) {
 /* DEC ODS-2/5: header checksums, INDEXF.SYS mapping, all retrieval-pointer
  * encodings, extension headers, versioned names and hierarchical directories.
  * RMS record bytes are exported as stored; the record layout is not changed. */
-static uint16_t vl_ods_sum(const uint8_t *b,size_t n) { uint16_t v=0; size_t i; for(i=0;i<n;i+=2) v=(uint16_t)(v+pm_le16(b+i)); return v; }
-static uint32_t vl_ods_fid(const uint8_t *p) { return pm_le16(p)|((uint32_t)p[5]<<16); }
+static uint16_t vl_ods_sum(const uint8_t *b,size_t n) { uint16_t v=0; size_t i; for(i=0;i<n;i+=2) v=(uint16_t)(v+xx_data_get_u16(b+i, 2, 0, false)); return v; }
+static uint32_t vl_ods_fid(const uint8_t *p) { return xx_data_get_u16(p, 2, 0, false)|((uint32_t)p[5]<<16); }
 static bool vl_ods_header(vl_fs *g,uint32_t id,uint16_t seq,uint8_t b[512]) {
     uint64_t lbn=(uint64_t)g->aux+id-1; pm_member member;
     if(!id || id>g->last) return false;
     if(g->index_map) { uint64_t at=((uint64_t)g->index+id-2)*512; xx_mem_zero(&member,sizeof(member)); member.context=g->index_map; if(!mm_read(g->f,&member,at,b,512,g->pd)) return false; }
     else if(!vl_block(g,lbn,b,512)) return false;
-    return vl_ods_sum(b,510)==pm_le16(b+510) && (pm_le16(b+6)>>8==2 || pm_le16(b+6)>>8==5) && vl_ods_fid(b+8)==id && (!seq || pm_le16(b+10)==seq) && !b[12] && b[0]>=40 && b[0]<=b[1] && b[1]<=b[2] && b[2]<=b[3] && (size_t)(b[1]+b[58])<=b[2];
+    return vl_ods_sum(b,510)==xx_data_get_u16(b+510, 2, 0, false) && (xx_data_get_u16(b+6, 2, 0, false)>>8==2 || xx_data_get_u16(b+6, 2, 0, false)>>8==5) && vl_ods_fid(b+8)==id && (!seq || xx_data_get_u16(b+10, 2, 0, false)==seq) && !b[12] && b[0]>=40 && b[0]<=b[1] && b[1]<=b[2] && b[2]<=b[3] && (size_t)(b[1]+b[58])<=b[2];
 }
 static mm_map *vl_ods_map(vl_fs *g,const uint8_t original[512],uint64_t size) {
     uint8_t header[512]; uint32_t seen[1024]; unsigned steps=0; uint64_t left=size; mm_map *m=vl_map(g);
     if(!m || !vl_member_limit(g,size)) { goto fail; } xx_rt_memcpy(header,original,512);
     for(;;) { size_t at=(size_t)header[1]*2,end=at+(size_t)header[58]*2; uint32_t ext,id; uint16_t seq;
-        while(at<end) { uint16_t w=pm_le16(header+at); unsigned format=w>>14; uint64_t count,lbn,n;
+        while(at<end) { uint16_t w=xx_data_get_u16(header+at, 2, 0, false); unsigned format=w>>14; uint64_t count,lbn,n;
             if(format==0) { at+=2; continue; }
             if(end-at<(format==1?4U:format==2?6U:8U)) goto fail;
-            if(format==1) { count=(w&255)+1U; lbn=(uint32_t)(w&0x3F00)<<8|pm_le16(header+at+2); at+=4; }
-            else if(format==2) { count=(w&0x3FFF)+1U; lbn=pm_le32(header+at+2); at+=6; }
-            else { count=((uint64_t)(w&0x3FFF)<<16|pm_le16(header+at+2))+1; lbn=pm_le32(header+at+4); at+=8; }
+            if(format==1) { count=(w&255)+1U; lbn=(uint32_t)(w&0x3F00)<<8|xx_data_get_u16(header+at+2, 2, 0, false); at+=4; }
+            else if(format==2) { count=(w&0x3FFF)+1U; lbn=xx_data_get_u32(header+at+2, 4, 0, false); at+=6; }
+            else { count=((uint64_t)(w&0x3FFF)<<16|xx_data_get_u16(header+at+2, 2, 0, false))+1; lbn=xx_data_get_u32(header+at+4, 4, 0, false); at+=8; }
             if(lbn>=g->blocks || count>g->blocks-lbn) { goto fail; } n=count*512; if(n>left) n=left; if(n && !vl_extent(g,m,(int64_t)(lbn*512),n)) goto fail; left-=n;
         }
-        ext=vl_ods_fid(header+14); seq=pm_le16(header+16); if(!ext) break; if(steps>=1024) goto fail;
+        ext=vl_ods_fid(header+14); seq=xx_data_get_u16(header+16, 2, 0, false); if(!ext) break; if(steps>=1024) goto fail;
         for(id=0;id<steps;++id) { if(seen[id]==ext) goto fail; } seen[steps++]=ext;
-        if(header[18] || !vl_ods_header(g,ext,seq,header) || pm_le16(header+4)!=steps) goto fail;
+        if(header[18] || !vl_ods_header(g,ext,seq,header) || xx_data_get_u16(header+4, 2, 0, false)!=steps) goto fail;
     } if(left) goto fail; return m;
 fail: mm_free(m); return NULL;
 }
 static bool vl_ods_walk(vl_fs *g,uint32_t id,uint16_t sequence,const char *path) {
     uint8_t header[512],*b=NULL; mm_map *m=NULL; uint64_t size=0; uint32_t endblk; bool dir,ok=false; size_t block;
     if(!vl_enter(g,id)) { return false; } if(!vl_ods_header(g,id,sequence,header)) goto done;
-    endblk=(uint32_t)pm_le16(header+28)<<16|pm_le16(header+30); if(pm_le16(header+32)>511) goto done;
-    size=endblk?((uint64_t)endblk-1)*512+pm_le16(header+32):0; dir=(pm_le32(header+52)&0x2000)!=0;
-    if(pm_le32(header+52)&0x8000) { goto done; } m=vl_ods_map(g,header,size); if(!m) goto done;
+    endblk=(uint32_t)xx_data_get_u16(header+28, 2, 0, false)<<16|xx_data_get_u16(header+30, 2, 0, false); if(xx_data_get_u16(header+32, 2, 0, false)>511) goto done;
+    size=endblk?((uint64_t)endblk-1)*512+xx_data_get_u16(header+32, 2, 0, false):0; dir=(xx_data_get_u32(header+52, 4, 0, false)&0x2000)!=0;
+    if(xx_data_get_u32(header+52, 4, 0, false)&0x8000) { goto done; } m=vl_ods_map(g,header,size); if(!m) goto done;
     if(!dir) { ok=vl_named(g,path,m,false); m=NULL; goto done; }
     if(path[0] && !vl_named(g,path,NULL,true)) { goto done; } b=vl_contents(g,m); if(!b) goto done;
     for(block=0;block<size;block+=512) { size_t p=block,end=block+512<size?block+512:(size_t)size;
-        while(p+2<=end) { size_t record=pm_le16(b+p),names,values,next; unsigned encoding; char name[512];
+        while(p+2<=end) { size_t record=xx_data_get_u16(b+p, 2, 0, false),names,values,next; unsigned encoding; char name[512];
             if(record==0 || record==65535) { break; } next=p+record+2;
             if(record<14 || next>end || record&1 || (b[p+4]&7)) { goto done; } names=b[p+5]; encoding=(b[p+4]>>3)&7;
             values=p+6+((names+1)&~1U); if(!names || values+8>next || (next-values)%8) goto done;
-            if(encoding==3) { size_t i,k=0; if(names&1) goto done; for(i=0;i<names;i+=2) { uint16_t c=pm_le16(b+p+6+i); if(c<32 || c>=128 || c=='/' || c=='\\' || c==':') goto done; name[k++]=(char)c; } name[k]=0; }
+            if(encoding==3) { size_t i,k=0; if(names&1) goto done; for(i=0;i<names;i+=2) { uint16_t c=xx_data_get_u16(b+p+6+i, 2, 0, false); if(c<32 || c>=128 || c=='/' || c=='\\' || c==':') goto done; name[k++]=(char)c; } name[k]=0; }
             else if(encoding>1 || !vl_name(b+p+6,names,name,sizeof(name),false)) goto done;
-            for(;values<next;values+=8) { uint32_t child=vl_ods_fid(b+values+2); uint16_t seq=pm_le16(b+values+4),version=pm_le16(b+values); char full[4096],versioned[540];
+            for(;values<next;values+=8) { uint32_t child=vl_ods_fid(b+values+2); uint16_t seq=xx_data_get_u16(b+values+4, 2, 0, false),version=xx_data_get_u16(b+values, 2, 0, false); char full[4096],versioned[540];
                 if(!child || !version || b[values+6]) { goto done; } if(child==id) continue;
                 xx_rt_snprintf(versioned,sizeof(versioned),"%s;%u",name,version);
                 if(!vl_path(path,versioned,full,sizeof(full)) || !vl_ods_walk(g,child,seq,full)) goto done;
@@ -312,10 +312,10 @@ done: if(b) { g->used-=size?size:1; xx_mem_free(b); } mm_free(m); --g->depth; re
 }
 static bool vl_ods(vl_fs *g) {
     uint8_t hb[512],index[512]; uint32_t high; bool ok;
-    if(!vl_read(g,512,hb,512) || vl_ods_sum(hb,58)!=pm_le16(hb+58) || vl_ods_sum(hb,510)!=pm_le16(hb+510) || (pm_le16(hb+12)>>8!=2 && pm_le16(hb+12)>>8!=5) || pm_le16(hb+38)) return false;
-    g->aux=pm_le32(hb+24)+pm_le16(hb+32); g->index=pm_le16(hb+22)+pm_le16(hb+32); g->last=pm_le32(hb+28);
-    if(!pm_le32(hb+24) || !pm_le16(hb+32) || !g->index || g->last<5 || g->last>0xFFFFFF || !vl_ods_header(g,1,0,index)) return false;
-    high=(uint32_t)pm_le16(index+24)<<16|pm_le16(index+26); if(!high || high>g->blocks) return false;
+    if(!vl_read(g,512,hb,512) || vl_ods_sum(hb,58)!=xx_data_get_u16(hb+58, 2, 0, false) || vl_ods_sum(hb,510)!=xx_data_get_u16(hb+510, 2, 0, false) || (xx_data_get_u16(hb+12, 2, 0, false)>>8!=2 && xx_data_get_u16(hb+12, 2, 0, false)>>8!=5) || xx_data_get_u16(hb+38, 2, 0, false)) return false;
+    g->aux=xx_data_get_u32(hb+24, 4, 0, false)+xx_data_get_u16(hb+32, 2, 0, false); g->index=xx_data_get_u16(hb+22, 2, 0, false)+xx_data_get_u16(hb+32, 2, 0, false); g->last=xx_data_get_u32(hb+28, 4, 0, false);
+    if(!xx_data_get_u32(hb+24, 4, 0, false) || !xx_data_get_u16(hb+32, 2, 0, false) || !g->index || g->last<5 || g->last>0xFFFFFF || !vl_ods_header(g,1,0,index)) return false;
+    high=(uint32_t)xx_data_get_u16(index+24, 2, 0, false)<<16|xx_data_get_u16(index+26, 2, 0, false); if(!high || high>g->blocks) return false;
     g->index_map=vl_ods_map(g,index,(uint64_t)high*512); if(!g->index_map) return false;
     ok=vl_ods_walk(g,4,0,""); mm_free(g->index_map); g->index_map=NULL; return ok;
 }
@@ -325,13 +325,13 @@ static bool vl_ods(vl_fs *g) {
 static mm_map *vl_unicos_map(vl_fs *g,uint64_t ino,uint8_t inode[256],uint32_t *mode) {
     uint64_t part=(ino>>24)&255,region=(ino>>20)&15,relative=ino&0xFFFFF,start,count,bitmap,at,size,left; mm_map *m; unsigned i;
     if(ino>>32 || part || region>=4 || !relative) return NULL;
-    count=pm_be16(g->root+184+16+region*8+2); start=pm_be32(g->root+184+16+region*8+4); bitmap=(mm_be64(g->root+3280)+1)*(mm_be64(g->root+3264)+1);
+    count=xx_data_get_u16(g->root+184+16+region*8+2, 2, 0, true); start=xx_data_get_u32(g->root+184+16+region*8+4, 4, 0, true); bitmap=(xx_data_get_u64(g->root+3280, 8, 0, true)+1)*(xx_data_get_u64(g->root+3264, 8, 0, true)+1);
     if(!count || start>=g->blocks || count>g->blocks-start || bitmap>=count || relative/16>=count-bitmap) return NULL;
     at=(start+bitmap+relative/16)*4096+(relative%16)*256; if(!vl_read(g,at,inode,256)) return NULL;
-    *mode=pm_be32(inode)&0xFFFFFF; size=mm_be64(inode+24); left=size;
-    if(!(pm_be32(inode+4)&0x1FFFF) || (inode[88]&15)!=1 || (inode[81]&31) || pm_be16(inode+238) || !vl_member_limit(g,size)) return NULL;
+    *mode=xx_data_get_u32(inode, 4, 0, true)&0xFFFFFF; size=xx_data_get_u64(inode+24, 8, 0, true); left=size;
+    if(!(xx_data_get_u32(inode+4, 4, 0, true)&0x1FFFF) || (inode[88]&15)!=1 || (inode[81]&31) || xx_data_get_u16(inode+238, 2, 0, true) || !vl_member_limit(g,size)) return NULL;
     m=vl_map(g); if(!m) return NULL;
-    for(i=0;i<8 && left;++i) { uint64_t blocks=pm_be32(inode+128+i*8),block=pm_be32(inode+132+i*8),n;
+    for(i=0;i<8 && left;++i) { uint64_t blocks=xx_data_get_u32(inode+128+i*8, 4, 0, true),block=xx_data_get_u32(inode+132+i*8, 4, 0, true),n;
         if(!blocks || blocks&UINT32_C(0x80000000) || block>=g->blocks || blocks>g->blocks-block) { goto fail; } n=blocks*4096; if(n>left) n=left;
         if(!vl_extent(g,m,(int64_t)(block*4096),n)) { goto fail; } left-=n;
     } if(left) goto fail; return m;
@@ -343,7 +343,7 @@ static bool vl_unicos_walk(vl_fs *g,uint64_t ino,const char *path) {
     if(mode==0x8000 || mode==0xA000) { ok=vl_named(g,path,m,false); m=NULL; goto done; }
     if(mode!=0x4000) { ok=true; goto done; } if(path[0] && !vl_named(g,path,NULL,true)) goto done; b=vl_contents(g,m); if(!b) goto done;
     while(p<size) { uint64_t child,word; size_t stride,n; char name[512],full[4096];
-        if(size-p<24) { goto done; } child=mm_be64(b+p); word=mm_be64(b+p+16); stride=(size_t)((word>>10)&0x3FFFFF); n=(size_t)(word&1023);
+        if(size-p<24) { goto done; } child=xx_data_get_u64(b+p, 8, 0, true); word=xx_data_get_u64(b+p+16, 8, 0, true); stride=(size_t)((word>>10)&0x3FFFFF); n=(size_t)(word&1023);
         if(stride<24 || stride>size-p || stride&7 || n>255 || n>stride-24 || stride>4096-p%4096) goto done;
         if(child) { if(!n) goto done; if(n==1 && b[p+24]=='.') {} else if(n==2 && b[p+24]=='.' && b[p+25]=='.') {} else {
             if(!vl_name(b+p+24,n,name,sizeof(name),false) || !vl_path(path,name,full,sizeof(full)) || !vl_unicos_walk(g,child,full)) goto done;
@@ -353,10 +353,10 @@ done: if(b) { g->used-=size?size:1; xx_mem_free(b); } mm_free(m); --g->depth; re
 }
 static bool vl_unicos(vl_fs *g) {
     uint64_t root; if(!vl_read(g,0,g->root,4096)) return false;
-    if(mm_be64(g->root)!=UINT64_C(0x6E6331667331636E) && (!vl_read(g,4096,g->root,4096) || mm_be64(g->root)!=UINT64_C(0x6E6331667331636E))) return false;
-    if(mm_be64(g->root+152)!=1 || mm_be64(g->root+3280)>15 || mm_be64(g->root+3264)>15) return false;
-    g->bs=4096; g->blocks=mm_be64(g->root+32); root=mm_be64(g->root+112);
-    if(!g->blocks || g->blocks>(uint64_t)pm_available(g->f)/4096 || pm_be32(g->root+192)!=0 || pm_be32(g->root+196)!=g->blocks || !root) return false;
+    if(xx_data_get_u64(g->root, 8, 0, true)!=UINT64_C(0x6E6331667331636E) && (!vl_read(g,4096,g->root,4096) || xx_data_get_u64(g->root, 8, 0, true)!=UINT64_C(0x6E6331667331636E))) return false;
+    if(xx_data_get_u64(g->root+152, 8, 0, true)!=1 || xx_data_get_u64(g->root+3280, 8, 0, true)>15 || xx_data_get_u64(g->root+3264, 8, 0, true)>15) return false;
+    g->bs=4096; g->blocks=xx_data_get_u64(g->root+32, 8, 0, true); root=xx_data_get_u64(g->root+112, 8, 0, true);
+    if(!g->blocks || g->blocks>(uint64_t)pm_available(g->f)/4096 || xx_data_get_u32(g->root+192, 4, 0, true)!=0 || xx_data_get_u32(g->root+196, 4, 0, true)!=g->blocks || !root) return false;
     return vl_unicos_walk(g,root,"");
 }
 static bool vr_legacy_files(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {

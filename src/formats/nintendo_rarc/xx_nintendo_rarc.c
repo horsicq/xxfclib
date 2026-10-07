@@ -11,6 +11,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_nintendo_rarc_MAX_MEMBERS 1000000U
 typedef struct xx_nintendo_rarc_member_s {
@@ -33,16 +34,6 @@ typedef struct xx_nintendo_rarc_stream_s {
 } xx_nintendo_rarc_stream;
 static void xx_nintendo_rarc_vtable_destroy(Abstractformat *self);
 
-static inline uint16_t xx_nintendo_rarc_u16(const uint8_t *p, bool be) {
-    return be ? (uint16_t)(((uint16_t)p[0] << 8) | p[1])
-              : (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
-}
-static inline uint32_t xx_nintendo_rarc_u32(const uint8_t *p, bool be) {
-    return be ? ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
-                ((uint32_t)p[2] << 8) | p[3]
-              : p[0] | ((uint32_t)p[1] << 8) |
-                ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
 static bool xx_nintendo_rarc_range_within(int64_t span, int64_t offset, int64_t size) {
     return offset >= 0 && size >= 0 && offset <= span && size <= span-offset;
 }
@@ -216,9 +207,9 @@ static bool xx_nintendo_rarc_decode(Abstractformat *self,const xx_nintendo_rarc_
     packed_size=(size_t)m->compressed_size; size=(size_t)m->uncompressed_size; yaz=m->method==4U;
     packed=(uint8_t *)xx_mem_alloc(packed_size); plain=(uint8_t *)xx_mem_alloc(size?size:1U);
     if(!packed || !plain || !xx_nintendo_rarc_read_at(self,m->data_offset,packed,packed_size) ||
-       xx_rt_memcmp(packed,yaz?"Yaz0":"Yay0",4U) || xx_nintendo_rarc_u32(packed+4,true)!=size) goto failed;
+       xx_rt_memcmp(packed,yaz?"Yaz0":"Yay0",4U) || xx_data_get_u32(packed+4, 4, 0, true)!=size) goto failed;
     if(!yaz) {
-        links=xx_nintendo_rarc_u32(packed+8,true); data=xx_nintendo_rarc_u32(packed+12,true);
+        links=xx_data_get_u32(packed+8, 4, 0, true); data=xx_data_get_u32(packed+12, 4, 0, true);
         if(links<16U || links>data || data>packed_size) goto failed;
         mask_end=links;
     }
@@ -227,7 +218,7 @@ static bool xx_nintendo_rarc_decode(Abstractformat *self,const xx_nintendo_rarc_
         if(pd && xx_pd_is_stopped(pd)) goto failed;
         if(!bits) {
             if(yaz) { if(at>=packed_size) goto failed; mask=packed[at++]; bits=8U; }
-            else { if(at>mask_end || mask_end-at<4U) goto failed; mask=xx_nintendo_rarc_u32(packed+at,true); at+=4U; bits=32U; }
+            else { if(at>mask_end || mask_end-at<4U) goto failed; mask=xx_data_get_u32(packed+at, 4, 0, true); at+=4U; bits=32U; }
         }
         literal=(mask&(yaz?0x80U:0x80000000U))!=0; mask<<=1U; --bits;
         if(literal) {
@@ -237,9 +228,9 @@ static bool xx_nintendo_rarc_decode(Abstractformat *self,const xx_nintendo_rarc_
         } else {
             uint16_t token; size_t length,distance,j;
             size_t *cursor=yaz?&at:&links;
-            size_t end=yaz?packed_size:(size_t)xx_nintendo_rarc_u32(packed+12,true);
+            size_t end=yaz?packed_size:(size_t)xx_data_get_u32(packed+12, 4, 0, true);
             if(*cursor>end || end-*cursor<2U) goto failed;
-            token=xx_nintendo_rarc_u16(packed+*cursor,true); *cursor+=2U;
+            token=xx_data_get_u16(packed+*cursor, 2, 0, true); *cursor+=2U;
             distance=(token&0xFFFU)+1U; length=token>>12U;
             if(!length) {
                 size_t *extra=yaz?&at:&data;
@@ -270,8 +261,8 @@ static bool xx_nintendo_rarc_directory(xx_nintendo_rarc_directory_context *c,uin
     c->visited[index]=1;
     if(!index && xx_rt_memcmp(node,c->be?"ROOT":"TOOR",4U)) return false;
     if(!xx_nintendo_rarc_pool_name(c->self,c->span,c->pool,c->pool_size,
-        xx_nintendo_rarc_u32(node+4,c->be),node_name,sizeof(node_name))) return false;
-    count=xx_nintendo_rarc_u16(node+10,c->be); first=xx_nintendo_rarc_u32(node+12,c->be);
+        xx_data_get_u32(node+4, 4, 0, c->be),node_name,sizeof(node_name))) return false;
+    count=xx_data_get_u16(node+10, 2, 0, c->be); first=xx_data_get_u32(node+12, 4, 0, c->be);
     if(first>c->entry_count || count>c->entry_count-first) return false;
     for(j=0;j<count;++j) {
         uint8_t entry[20]; uint32_t fi=first+j,field,flags,offset,size;
@@ -279,8 +270,8 @@ static bool xx_nintendo_rarc_directory(xx_nintendo_rarc_directory_context *c,uin
         char leaf[1024]; char *name;
         if(c->entry_visited[fi] || !xx_nintendo_rarc_read_rel(c->self,c->span,header,entry,sizeof(entry))) return false;
         c->entry_visited[fi]=1;
-        field=xx_nintendo_rarc_u32(entry+4,c->be); flags=field>>24;
-        offset=xx_nintendo_rarc_u32(entry+8,c->be); size=xx_nintendo_rarc_u32(entry+12,c->be);
+        field=xx_data_get_u32(entry+4, 4, 0, c->be); flags=field>>24;
+        offset=xx_data_get_u32(entry+8, 4, 0, c->be); size=xx_data_get_u32(entry+12, 4, 0, c->be);
         if(!xx_nintendo_rarc_pool_name(c->self,c->span,c->pool,c->pool_size,field&0xFFFFFFU,leaf,sizeof(leaf))) return false;
         if(flags&2U) {
             if(!xx_rt_strcmp(leaf,".")) { if(offset!=index) return false; continue; }
@@ -304,9 +295,9 @@ static bool xx_nintendo_rarc_directory(xx_nintendo_rarc_directory_context *c,uin
                 if(size<16U || !xx_nintendo_rarc_read_rel(c->self,c->span,c->data+offset,packed_header,sizeof(packed_header)) ||
                    xx_rt_memcmp(packed_header,yaz?"Yaz0":"Yay0",4U)) return false;
                 m->method=yaz?4U:5U;
-                m->uncompressed_size=xx_nintendo_rarc_u32(packed_header+4,true);
+                m->uncompressed_size=xx_data_get_u32(packed_header+4, 4, 0, true);
                 if(!yaz) {
-                    uint32_t links=xx_nintendo_rarc_u32(packed_header+8,true),data=xx_nintendo_rarc_u32(packed_header+12,true);
+                    uint32_t links=xx_data_get_u32(packed_header+8, 4, 0, true),data=xx_data_get_u32(packed_header+12, 4, 0, true);
                     if(links<16U || links>data || data>size) return false;
                 }
             }
@@ -333,12 +324,12 @@ static xx_nintendo_rarc_stream *xx_nintendo_rarc_parse(Abstractformat *self,xx_p
     xx_mem_zero(&c,sizeof(c));
     c.be=xx_rt_memcmp(h,"RARC",4U)==0;
     if(!c.be && xx_rt_memcmp(h,"CRAR",4U)) goto fail;
-    declared=xx_nintendo_rarc_u32(h+4,c.be);
-    if(declared<64 || declared>span || xx_nintendo_rarc_u32(h+8,c.be)!=32U) goto fail;
-    c.data=32+(int64_t)xx_nintendo_rarc_u32(h+12,c.be); c.data_size=xx_nintendo_rarc_u32(h+16,c.be);
-    c.node_count=xx_nintendo_rarc_u32(h+32,c.be); c.nodes=32+(int64_t)xx_nintendo_rarc_u32(h+36,c.be);
-    c.entry_count=xx_nintendo_rarc_u32(h+40,c.be); c.entries=32+(int64_t)xx_nintendo_rarc_u32(h+44,c.be);
-    c.pool_size=xx_nintendo_rarc_u32(h+48,c.be); c.pool=32+(int64_t)xx_nintendo_rarc_u32(h+52,c.be);
+    declared=xx_data_get_u32(h+4, 4, 0, c.be);
+    if(declared<64 || declared>span || xx_data_get_u32(h+8, 4, 0, c.be)!=32U) goto fail;
+    c.data=32+(int64_t)xx_data_get_u32(h+12, 4, 0, c.be); c.data_size=xx_data_get_u32(h+16, 4, 0, c.be);
+    c.node_count=xx_data_get_u32(h+32, 4, 0, c.be); c.nodes=32+(int64_t)xx_data_get_u32(h+36, 4, 0, c.be);
+    c.entry_count=xx_data_get_u32(h+40, 4, 0, c.be); c.entries=32+(int64_t)xx_data_get_u32(h+44, 4, 0, c.be);
+    c.pool_size=xx_data_get_u32(h+48, 4, 0, c.be); c.pool=32+(int64_t)xx_data_get_u32(h+52, 4, 0, c.be);
     if(!c.node_count || c.node_count>XX_nintendo_rarc_MAX_MEMBERS || c.entry_count>XX_nintendo_rarc_MAX_MEMBERS ||
        c.data<64 || c.nodes<64 || c.entries<64 || c.pool<64 || c.pool_size<1 ||
        !xx_nintendo_rarc_range_within(declared,c.data,c.data_size) ||

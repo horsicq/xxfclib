@@ -33,6 +33,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_IRIXSA_COPY_CHUNK (64 * 1024)
 
@@ -165,11 +166,6 @@ static bool xx_irixsa_decode(Abstractformat *self,
 
 static const char XX_IRIXSA_HEX_DIGITS[] = "0123456789ABCDEF";
 
-static uint32_t xx_irixsa_be32(const uint8_t *data) {
-    return ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16) |
-           ((uint32_t)data[2] << 8) | (uint32_t)data[3];
-}
-
 static bool xx_irixsa_is_empty_slot(const uint8_t *entry) {
     int32_t i;
     for (i = 0; i < XX_IRIXSA_ENTRY_SIZE; ++i) {
@@ -259,7 +255,7 @@ static xx_irixsa_stream *xx_irixsa_parse(Abstractformat *self,
     if (!xx_irixsa_read_at(self, self->base_address, header, sizeof(header))) {
         return NULL;
     }
-    if (xx_irixsa_be32(header) != XX_IRIXSA_MAGIC) return NULL;
+    if (xx_data_get_u32(header, 4, 0, true) != XX_IRIXSA_MAGIC) return NULL;
 
     /* The whole 512-byte header block, summed as big-endian u32 words, must
      * come to zero; the word at 0x04 is the makeweight that makes it so. This
@@ -267,14 +263,14 @@ static xx_irixsa_stream *xx_irixsa_parse(Abstractformat *self,
      * bytes on their own are far too cheap to hit by chance. Do not loosen it.
      * The sum is deliberately unsigned so it wraps modulo 2^32. */
     for (i = 0; i < XX_IRIXSA_HEADER_SIZE; i += 4) {
-        checksum += xx_irixsa_be32(header + i);
+        checksum += xx_data_get_u32(header + i, 4, 0, true);
     }
     if (checksum != 0U) return NULL;
 
     /* Slot 0 is always in use and its member always begins at block 1, the
      * block directly behind the header. A zeroed slot 0 fails here too. */
-    if (xx_irixsa_be32(header + XX_IRIXSA_DIRECTORY_OFFSET +
-                       XX_IRIXSA_NAME_SIZE) != 1U) {
+    if (xx_data_get_u32(header + XX_IRIXSA_DIRECTORY_OFFSET +
+                       XX_IRIXSA_NAME_SIZE, 4, 0, true) != 1U) {
         return NULL;
     }
 
@@ -301,8 +297,8 @@ static xx_irixsa_stream *xx_irixsa_parse(Abstractformat *self,
         if (xx_irixsa_is_empty_slot(entry)) continue;
         if (!xx_irixsa_is_valid_raw_name(entry)) goto fail;
 
-        block = xx_irixsa_be32(entry + XX_IRIXSA_NAME_SIZE);
-        size = xx_irixsa_be32(entry + XX_IRIXSA_NAME_SIZE + 4);
+        block = xx_data_get_u32(entry + XX_IRIXSA_NAME_SIZE, 4, 0, true);
+        size = xx_data_get_u32(entry + XX_IRIXSA_NAME_SIZE + 4, 4, 0, true);
         /* Block 0 is the header itself, so it can never hold a member, and a
          * zero-length member is not a shape this volume ever writes: both mean
          * the slot is corrupt rather than merely unused. */

@@ -5,8 +5,8 @@
  */
 #include "xxfclib/formats/openexr/xx_openexr.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static uint64_t ex_le64(const uint8_t *p) { return (uint64_t)pm_le32(p+4)<<32|pm_le32(p); }
 static bool ex_string(Abstractformat *f,int64_t *at,int64_t end,char *text,unsigned capacity) {
     unsigned n=0; uint8_t b;
     do { if(*at>=end || !pm_read(f,(*at)++,&b,1) || n+1>=capacity) return false; text[n++]=(char)b; } while(b); return true;
@@ -15,21 +15,21 @@ typedef struct ex_channel { uint32_t bytes,xs,ys; } ex_channel;
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[24]; int64_t at=8,limit=pm_available(f),table,end; uint32_t version,compression=UINT32_MAX,mask=0,height,width,chcount=0; int32_t xmin=0,ymin=0,xmax=0,ymax=0; ex_channel channels[256]; unsigned block,chunk_count,i; size_t first_chunk;
     static const unsigned lines[12]={1,1,1,16,32,16,32,32,32,256,256,32};
-    if(!pm_read(f,0,h,8) || pm_le32(h)!=20000630U || ((version=pm_le32(h+4))&255)!=2 || (version&~0x402U)) return false;
+    if(!pm_read(f,0,h,8) || xx_data_get_u32(h, 4, 0, false)!=20000630U || ((version=xx_data_get_u32(h+4, 4, 0, false))&255)!=2 || (version&~0x402U)) return false;
     for(;;) { char name[258],type[258],label[96]; uint32_t n;
         if((pd && xx_pd_is_stopped(pd)) || !ex_string(f,&at,limit,name,(version&0x400) ? 258U : 34U)) { return false; } if(!name[0]) break;
-        if(!ex_string(f,&at,limit,type,(version&0x400) ? 258U : 34U) || limit-at<4 || !pm_read(f,at,h,4)) { return false; } n=pm_le32(h); at+=4;
+        if(!ex_string(f,&at,limit,type,(version&0x400) ? 258U : 34U) || limit-at<4 || !pm_read(f,at,h,4)) { return false; } n=xx_data_get_u32(h, 4, 0, false); at+=4;
         if(n>INT32_MAX || n>(uint64_t)(limit-at)) return false;
         if(!xx_rt_strcmp(name,"channels")) { int64_t p=at,stop=at+n; if(mask&1 || xx_rt_strcmp(type,"chlist")) return false;
             for(;;) { char channel[258]; if(!ex_string(f,&p,stop,channel,(version&0x400) ? 258U : 34U)) return false; if(!channel[0]) break;
-                if(chcount==256 || stop-p<16 || !pm_read(f,p,h,16) || pm_le32(h)>2 || h[4]>1 || h[5] || h[6] || h[7] || !pm_le32(h+8) || !pm_le32(h+12) || pm_le32(h+8)>INT32_MAX || pm_le32(h+12)>INT32_MAX) return false;
-                channels[chcount].bytes=pm_le32(h)==1 ? 2U : 4U; channels[chcount].xs=pm_le32(h+8); channels[chcount++].ys=pm_le32(h+12); p+=16;
+                if(chcount==256 || stop-p<16 || !pm_read(f,p,h,16) || xx_data_get_u32(h, 4, 0, false)>2 || h[4]>1 || h[5] || h[6] || h[7] || !xx_data_get_u32(h+8, 4, 0, false) || !xx_data_get_u32(h+12, 4, 0, false) || xx_data_get_u32(h+8, 4, 0, false)>INT32_MAX || xx_data_get_u32(h+12, 4, 0, false)>INT32_MAX) return false;
+                channels[chcount].bytes=xx_data_get_u32(h, 4, 0, false)==1 ? 2U : 4U; channels[chcount].xs=xx_data_get_u32(h+8, 4, 0, false); channels[chcount++].ys=xx_data_get_u32(h+12, 4, 0, false); p+=16;
             } if(p!=stop || !chcount) return false; mask|=1;
         } else if(!xx_rt_strcmp(name,"compression")) { if(mask&2 || xx_rt_strcmp(type,"compression") || n!=1 || !pm_read(f,at,h,1) || h[0]>11) return false; compression=h[0]; mask|=2; }
-        else if(!xx_rt_strcmp(name,"dataWindow")) { if(mask&4 || xx_rt_strcmp(type,"box2i") || n!=16 || !pm_read(f,at,h,16)) return false; xmin=(int32_t)pm_le32(h); ymin=(int32_t)pm_le32(h+4); xmax=(int32_t)pm_le32(h+8); ymax=(int32_t)pm_le32(h+12); if(xmin>xmax || ymin>ymax) return false; mask|=4; }
-        else if(!xx_rt_strcmp(name,"displayWindow")) { if(mask&8 || xx_rt_strcmp(type,"box2i") || n!=16 || !pm_read(f,at,h,16) || (int32_t)pm_le32(h)>(int32_t)pm_le32(h+8) || (int32_t)pm_le32(h+4)>(int32_t)pm_le32(h+12)) return false; mask|=8; }
+        else if(!xx_rt_strcmp(name,"dataWindow")) { if(mask&4 || xx_rt_strcmp(type,"box2i") || n!=16 || !pm_read(f,at,h,16)) return false; xmin=(int32_t)xx_data_get_u32(h, 4, 0, false); ymin=(int32_t)xx_data_get_u32(h+4, 4, 0, false); xmax=(int32_t)xx_data_get_u32(h+8, 4, 0, false); ymax=(int32_t)xx_data_get_u32(h+12, 4, 0, false); if(xmin>xmax || ymin>ymax) return false; mask|=4; }
+        else if(!xx_rt_strcmp(name,"displayWindow")) { if(mask&8 || xx_rt_strcmp(type,"box2i") || n!=16 || !pm_read(f,at,h,16) || (int32_t)xx_data_get_u32(h, 4, 0, false)>(int32_t)xx_data_get_u32(h+8, 4, 0, false) || (int32_t)xx_data_get_u32(h+4, 4, 0, false)>(int32_t)xx_data_get_u32(h+12, 4, 0, false)) return false; mask|=8; }
         else if(!xx_rt_strcmp(name,"lineOrder")) { if(mask&16 || xx_rt_strcmp(type,"lineOrder") || n!=1 || !pm_read(f,at,h,1) || h[0]>2) return false; mask|=16; }
-        else if(!xx_rt_strcmp(name,"pixelAspectRatio")) { if(mask&32 || xx_rt_strcmp(type,"float") || n!=4 || !pm_read(f,at,h,4) || (pm_le32(h)&0x80000000U) || !(pm_le32(h)&0x7FFFFFFFU) || (pm_le32(h)&0x7F800000U)==0x7F800000U) return false; mask|=32; }
+        else if(!xx_rt_strcmp(name,"pixelAspectRatio")) { if(mask&32 || xx_rt_strcmp(type,"float") || n!=4 || !pm_read(f,at,h,4) || (xx_data_get_u32(h, 4, 0, false)&0x80000000U) || !(xx_data_get_u32(h, 4, 0, false)&0x7FFFFFFFU) || (xx_data_get_u32(h, 4, 0, false)&0x7F800000U)==0x7F800000U) return false; mask|=32; }
         else if(!xx_rt_strcmp(name,"screenWindowCenter")) { if(mask&64 || xx_rt_strcmp(type,"v2f") || n!=8) return false; mask|=64; }
         else if(!xx_rt_strcmp(name,"screenWindowWidth")) { if(mask&128 || xx_rt_strcmp(type,"float") || n!=4) return false; mask|=128; }
         else if(!xx_rt_strcmp(name,"tiles") || !xx_rt_strcmp(name,"chunkCount")) return false;
@@ -45,8 +45,8 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if((uint64_t)chunk_count*8>(uint64_t)(limit-table)) { return false; } end=table+(int64_t)chunk_count*8; first_chunk=s->count;
     for(i=0;i<chunk_count;++i) { uint64_t offset; uint32_t bytes; int32_t y; unsigned j; char name[48]; uint64_t raw=0;
         if(pd && xx_pd_is_stopped(pd)) return false;
-        if(!pm_read(f,table+(int64_t)i*8,h,8) || (offset=ex_le64(h))>(uint64_t)limit || offset<(uint64_t)(table+(int64_t)chunk_count*8) || limit-(int64_t)offset<8 || !pm_read(f,(int64_t)offset,h,8)) return false;
-        y=(int32_t)pm_le32(h); bytes=pm_le32(h+4);
+        if(!pm_read(f,table+(int64_t)i*8,h,8) || (offset=xx_data_get_u64(h, 8, 0, false))>(uint64_t)limit || offset<(uint64_t)(table+(int64_t)chunk_count*8) || limit-(int64_t)offset<8 || !pm_read(f,(int64_t)offset,h,8)) return false;
+        y=(int32_t)xx_data_get_u32(h, 4, 0, false); bytes=xx_data_get_u32(h+4, 4, 0, false);
         if((int64_t)y!=(int64_t)ymin+(int64_t)i*block || !bytes || bytes>(uint64_t)(limit-(int64_t)offset-8)) return false;
         for(j=0;j<i;++j) { pm_member *m=&s->items[first_chunk+j]; int64_t start=m->offset-f->base_address-8,stop=start+8+m->size;
             if(!(j&255U) && pd && xx_pd_is_stopped(pd)) return false;

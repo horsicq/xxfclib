@@ -64,6 +64,7 @@
 #include "xxfclib/algo/dcl/xx_dcl.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_QUARTERDECKQP_COPY_CHUNK (64 * 1024)
 
@@ -179,8 +180,6 @@ static bool xx_quarterdeckqp_add(xx_quarterdeckqp_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_quarterdeckqp_le16(const uint8_t *data);
-static uint32_t xx_quarterdeckqp_le32(const uint8_t *data);
 static size_t xx_quarterdeckqp_field_length(const uint8_t *field, size_t width);
 static bool xx_quarterdeckqp_name_valid(const uint8_t *name, size_t length);
 static xx_quarterdeckqp_stream *xx_quarterdeckqp_parse(Abstractformat *self, xx_pd_struct *pd);
@@ -191,15 +190,6 @@ static bool xx_quarterdeckqp_decode(Abstractformat *self, const xx_quarterdeckqp
  * thirteenth byte, so the field must be read at its full width. */
 /* The count field is a u16, so this is the format's own ceiling. */
 /* Literal mode byte, dictionary-bits byte, and at least one coded byte. */
-
-static uint16_t xx_quarterdeckqp_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_quarterdeckqp_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* Length of a fixed-width NUL-padded field: the value is everything up to
  * the first terminator, and whatever follows it is stale producer-buffer
@@ -261,10 +251,10 @@ static xx_quarterdeckqp_stream *xx_quarterdeckqp_parse(Abstractformat *self,
     }
     if (xx_rt_memcmp(header, file_magic, sizeof(file_magic)) != 0) return NULL;
 
-    count = (int64_t)xx_quarterdeckqp_le16(header + 2);
-    index_size = (int64_t)xx_quarterdeckqp_le32(header + 4);
+    count = (int64_t)xx_data_get_u16(header + 2, 2, 0, false);
+    index_size = (int64_t)xx_data_get_u32(header + 4, 4, 0, false);
     /* Only version 2 was ever shipped. */
-    if (xx_quarterdeckqp_le16(header + 8) != XX_QUARTERDECKQP_VERSION_2) {
+    if (xx_data_get_u16(header + 8, 2, 0, false) != XX_QUARTERDECKQP_VERSION_2) {
         return NULL;
     }
     /* Together with the version word, these six zero bytes are what stops a
@@ -315,7 +305,7 @@ static xx_quarterdeckqp_stream *xx_quarterdeckqp_parse(Abstractformat *self,
         if (xx_rt_memcmp(record, record_magic, sizeof(record_magic)) != 0) {
             goto fail;
         }
-        kind = xx_quarterdeckqp_le16(record + 2);
+        kind = xx_data_get_u16(record + 2, 2, 0, false);
 
         if (kind == XX_QUARTERDECKQP_RECORD_PATH) {
             if (!xx_quarterdeckqp_range_within(
@@ -327,7 +317,7 @@ static xx_quarterdeckqp_stream *xx_quarterdeckqp_parse(Abstractformat *self,
                     XX_QUARTERDECKQP_PATH_HEADER_SIZE)) {
                 goto fail;
             }
-            name_blob_size = (int64_t)xx_quarterdeckqp_le32(record + 4);
+            name_blob_size = (int64_t)xx_data_get_u32(record + 4, 4, 0, false);
             if (name_blob_size < 1 ||
                 name_blob_size > XX_QUARTERDECKQP_PATH_NAME_MAX) {
                 goto fail;
@@ -374,8 +364,8 @@ static xx_quarterdeckqp_stream *xx_quarterdeckqp_parse(Abstractformat *self,
             goto fail;
         }
 
-        compressed_size = (int64_t)xx_quarterdeckqp_le32(record + 4);
-        uncompressed_size = (int64_t)xx_quarterdeckqp_le32(record + 0x13);
+        compressed_size = (int64_t)xx_data_get_u32(record + 4, 4, 0, false);
+        uncompressed_size = (int64_t)xx_data_get_u32(record + 0x13, 4, 0, false);
         data_offset = offset + XX_QUARTERDECKQP_FILE_HEADER_SIZE;
 
         name_length = xx_quarterdeckqp_field_length(
@@ -422,7 +412,7 @@ static xx_quarterdeckqp_stream *xx_quarterdeckqp_parse(Abstractformat *self,
                 index_entry, sizeof(index_entry))) {
             goto fail;
         }
-        index_offset = (int64_t)xx_quarterdeckqp_le32(index_entry);
+        index_offset = (int64_t)xx_data_get_u32(index_entry, 4, 0, false);
         if (index_offset != offset) goto fail;
         index_name_length = xx_quarterdeckqp_field_length(
             index_entry + 4, (size_t)XX_QUARTERDECKQP_INDEX_NAME_SIZE);
@@ -456,8 +446,8 @@ static xx_quarterdeckqp_stream *xx_quarterdeckqp_parse(Abstractformat *self,
         /* DOS date in the high half, DOS time in the low half, exactly as
          * the record stores the two words. */
         member.timestamp =
-            ((uint64_t)xx_quarterdeckqp_le16(record + 0x11) << 16) |
-            (uint64_t)xx_quarterdeckqp_le16(record + 0x0f);
+            ((uint64_t)xx_data_get_u16(record + 0x11, 2, 0, false) << 16) |
+            (uint64_t)xx_data_get_u16(record + 0x0f, 2, 0, false);
         member.is_folder = false;
         if (!xx_quarterdeckqp_add(stream, &member)) {
             xx_str_free(name);

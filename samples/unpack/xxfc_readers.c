@@ -1339,6 +1339,7 @@ static void rm_documents(void *r) { xx_ue2_documents_free((xx_ue2_documents *)r)
 #include <xxfclib/formats/pdb/xx_pdb.h>
 #include <xxfclib/formats/pdp11ar/xx_pdp11ar.h>
 #include <xxfclib/formats/pe/xx_pe.h>
+#include <xxfclib/formats/dotnet/xx_dotnet.h>
 #include <xxfclib/formats/pea/xx_pea.h>
 #include <xxfclib/formats/perform/xx_perform.h>
 #include <xxfclib/formats/phar/xx_phar.h>
@@ -3142,6 +3143,10 @@ static Abstractformat *mk_pe(xx_io_device *d, int64_t b) {
     return r ? &r->format : NULL;
 }
 static void rm_pe(void *p) { xx_pe_free((xx_pe *)p); }
+static Abstractformat *mk_dotnet(xx_io_device *d, int64_t b) {
+    return (Abstractformat *)xx_dotnet_create(d, b);
+}
+static void rm_dotnet(void *p) { xx_dotnet_free((xx_dotnet *)p); }
 static Abstractformat *mk_pea(xx_io_device *d, int64_t b) {
     xx_pea *r = xx_pea_create(d, b);
     return r ? &r->format : NULL;
@@ -10663,6 +10668,7 @@ static xxfc_reader_entry g_readers[] = {
     { "pcxlib", mk_pcxlib, rm_pcxlib, XX_FILE_TYPE_UNKNOWN },
     { "pdb", mk_pdb, rm_pdb, XX_FILE_TYPE_UNKNOWN },
     { "pdp11ar", mk_pdp11ar, rm_pdp11ar, XX_FILE_TYPE_UNKNOWN },
+    { "dotnet", mk_dotnet, rm_dotnet, XX_FILE_TYPE_DOTNET },
     { "pe", mk_pe, rm_pe, XX_FILE_TYPE_UNKNOWN },
     { "pea", mk_pea, rm_pea, XX_FILE_TYPE_UNKNOWN },
     { "perform", mk_perform, rm_perform, XX_FILE_TYPE_UNKNOWN },
@@ -10971,7 +10977,7 @@ bool xxfc_open_type(xxfc_opened *out, xx_io_device *device,
      * complete SFX ZIP parse is stronger evidence and exposes the members
      * directly; otherwise keep the ordinary executable reader. */
     if (type == XX_FILE_TYPE_NE || type == XX_FILE_TYPE_PE32 ||
-        type == XX_FILE_TYPE_PE64) {
+        type == XX_FILE_TYPE_PE64 || type == XX_FILE_TYPE_DOTNET) {
         Abstractformat *candidate = mk_sfx_zipcentral(device, base_address);
         if (candidate && xx_format_is_valid(candidate, NULL)) {
             out->format = candidate;
@@ -11384,7 +11390,7 @@ void xxfc_refresh_sevenzip_type(xxfc_opened *opened) {
             detected=view?xx_format_get_file_type_device(view):XX_FILE_TYPE_UNKNOWN;
             if (view && view!=source) xx_io_close(view);
             if (saved>=0) (void)xx_io_seek64(source,saved,SEEK_SET);
-            if ((!strcmp(name,"PE") && (detected==XX_FILE_TYPE_PE32 || detected==XX_FILE_TYPE_PE64)) ||
+            if ((!strcmp(name,"PE") && (detected==XX_FILE_TYPE_PE32 || detected==XX_FILE_TYPE_PE64 || detected==XX_FILE_TYPE_DOTNET)) ||
                 (!strcmp(name,"ELF") && (detected==XX_FILE_TYPE_ELF32 || detected==XX_FILE_TYPE_ELF64)) ||
                 (!strcmp(name,"MachO") && (detected==XX_FILE_TYPE_MACHO32 || detected==XX_FILE_TYPE_MACHO64)))
                 opened->type=detected;
@@ -11414,7 +11420,7 @@ bool xxfc_open_sevenzip(xxfc_opened *out,xx_io_device *device,int64_t base,
     if (candidate.type==XX_FILE_TYPE_UNKNOWN) { xxfc_close(&candidate); return false; }
     /* Carrier sections do not validate the installer wrapped around them.
      * They remain available through explicit sevenzip reader selection. */
-    if (candidate.type==XX_FILE_TYPE_PE32 || candidate.type==XX_FILE_TYPE_PE64 ||
+    if (candidate.type==XX_FILE_TYPE_PE32 || candidate.type==XX_FILE_TYPE_PE64 || candidate.type==XX_FILE_TYPE_DOTNET ||
         candidate.type==XX_FILE_TYPE_ELF32 || candidate.type==XX_FILE_TYPE_ELF64 ||
         candidate.type==XX_FILE_TYPE_MACHO32 || candidate.type==XX_FILE_TYPE_MACHO64) {
         xxfc_close(&candidate); return false;

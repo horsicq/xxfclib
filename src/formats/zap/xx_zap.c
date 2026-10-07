@@ -41,6 +41,7 @@
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/algo/dcl/xx_dcl.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ZAP_COPY_CHUNK (64 * 1024)
 
@@ -147,8 +148,6 @@ static bool xx_zap_add(xx_zap_stream *stream,
  * call into each other's helpers. */
 static char *xx_zap_copy_name(const uint8_t *field, size_t length);
 static xx_zap_stream *xx_zap_parse(Abstractformat *self, xx_pd_struct *pd);
-static uint16_t xx_zap_le16(const uint8_t *data);
-static uint32_t xx_zap_le32(const uint8_t *data);
 static bool xx_zap_is_dcl_prologue(uint8_t literal_mode, uint8_t dictionary_bits);
 static uint8_t *xx_zap_load(Abstractformat *self, int64_t offset, int64_t size, xx_pd_struct *pd);
 static bool xx_zap_measure(Abstractformat *self, int64_t data_offset, int64_t compressed, int64_t *produced, xx_pd_struct *pd);
@@ -219,7 +218,7 @@ static xx_zap_stream *xx_zap_parse(Abstractformat *self, xx_pd_struct *pd) {
         }
         /* Signed: a size with the top bit set is a corrupt field, not a two
          * gigabyte member. */
-        compressed = (int64_t)(int32_t)xx_zap_le32(header + 0x11);
+        compressed = (int64_t)(int32_t)xx_data_get_u32(header + 0x11, 4, 0, false);
         if (compressed < XX_ZAP_MIN_STREAM_SIZE) break;
         data_offset = offset + XX_ZAP_HEADER_SIZE;
         /* A member running past EOF ends the chain; it is never a short
@@ -265,8 +264,8 @@ static xx_zap_stream *xx_zap_parse(Abstractformat *self, xx_pd_struct *pd) {
         member.uncompressed_size = produced;
         member.method = XX_ZAP_METHOD_DCL_IMPLODE;
         /* The raw DOS stamp, time in the low half and date in the high. */
-        member.timestamp = (uint64_t)xx_zap_le16(header + 0x0d) |
-                           ((uint64_t)xx_zap_le16(header + 0x0f) << 16);
+        member.timestamp = (uint64_t)xx_data_get_u16(header + 0x0d, 2, 0, false) |
+                           ((uint64_t)xx_data_get_u16(header + 0x0f, 2, 0, false) << 16);
         if (!xx_zap_add(stream, &member)) {
             xx_str_free(name);
             goto fail;
@@ -291,15 +290,6 @@ fail:
  * This is the reader's name for that single method, not a container value,
  * and the decode switch below refuses anything else so that a future variant
  * cannot be silently treated as stored. */
-
-static uint16_t xx_zap_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_zap_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* The two bytes a DCL stream opens with. With no magic in the container this
  * is the only header-level evidence there is, so it is checked for every

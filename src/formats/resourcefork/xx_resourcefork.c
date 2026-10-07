@@ -47,6 +47,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef RESOURCEFORK
 #define XX_RESOURCEFORK_FILE_TYPE XX_FILE_TYPE_RESOURCEFORK
@@ -83,15 +84,6 @@ typedef struct rsrc_stream_s {
     uint64_t type_count;
     int64_t archive_size;
 } rsrc_stream;
-
-static uint16_t rsrc_be16(const uint8_t *bytes) {
-    return (uint16_t)(((uint16_t)bytes[0] << 8U) | (uint16_t)bytes[1]);
-}
-
-static uint32_t rsrc_be32(const uint8_t *bytes) {
-    return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
-           ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3];
-}
 
 static bool rsrc_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
@@ -334,10 +326,10 @@ static bool rsrc_parse(Abstractformat *format, rsrc_stream **result) {
                       sizeof(header)))
         return false;
 
-    data_offset = rsrc_be32(header);
-    map_offset = rsrc_be32(header + 4U);
-    data_size = rsrc_be32(header + 8U);
-    map_size = rsrc_be32(header + 12U);
+    data_offset = xx_data_get_u32(header, 4, 0, true);
+    map_offset = xx_data_get_u32(header + 4U, 4, 0, true);
+    data_size = xx_data_get_u32(header + 8U, 4, 0, true);
+    map_size = xx_data_get_u32(header + 12U, 4, 0, true);
 
     /* The four header values must be internally consistent and fit the file:
      * neither area may start inside the 16-byte header, the map must be large
@@ -356,12 +348,12 @@ static bool rsrc_parse(Abstractformat *format, rsrc_stream **result) {
                       map, map_size))
         goto fail;
 
-    type_list = rsrc_be16(map + RSRC_MAP_TYPE_LIST_OFFSET);
-    name_list = rsrc_be16(map + RSRC_MAP_NAME_LIST_OFFSET);
+    type_list = xx_data_get_u16(map + RSRC_MAP_TYPE_LIST_OFFSET, 2, 0, true);
+    name_list = xx_data_get_u16(map + RSRC_MAP_NAME_LIST_OFFSET, 2, 0, true);
     if ((uint64_t)type_list + 2U > (uint64_t)map_size ||
         (uint64_t)name_list > (uint64_t)map_size)
         goto fail;
-    type_count = rsrc_be16(map + type_list);
+    type_count = xx_data_get_u16(map + type_list, 2, 0, true);
     /* 0xFFFF is the canonical "no types" encoding of count-minus-one. */
     type_count = (type_count == 0xFFFFU) ? 0U : type_count + 1U;
     if ((uint64_t)type_list + 2U +
@@ -375,9 +367,9 @@ static bool rsrc_parse(Abstractformat *format, rsrc_stream **result) {
     for (type_index = 0U; type_index < type_count; ++type_index) {
         const uint8_t *entry =
             map + type_list + 2U + (size_t)type_index * RSRC_TYPE_ENTRY_SIZE;
-        uint32_t type = rsrc_be32(entry);
-        uint32_t count = (uint32_t)rsrc_be16(entry + 4U) + 1U;
-        uint32_t ref_offset = rsrc_be16(entry + 6U);
+        uint32_t type = xx_data_get_u32(entry, 4, 0, true);
+        uint32_t count = (uint32_t)xx_data_get_u16(entry + 4U, 2, 0, true) + 1U;
+        uint32_t ref_offset = xx_data_get_u16(entry + 6U, 2, 0, true);
         uint64_t ref_base = (uint64_t)type_list + ref_offset;
         uint32_t ref_index;
         if (ref_base + (uint64_t)count * RSRC_REF_ENTRY_SIZE >
@@ -390,7 +382,7 @@ static bool rsrc_parse(Abstractformat *format, rsrc_stream **result) {
             const uint8_t *raw_name = NULL;
             size_t raw_size = 0U;
             rsrc_member member;
-            uint32_t name_offset = rsrc_be16(ref + 2U);
+            uint32_t name_offset = xx_data_get_u16(ref + 2U, 2, 0, true);
             uint32_t blob_offset = ((uint32_t)ref[5] << 16U) |
                                    ((uint32_t)ref[6] << 8U) | (uint32_t)ref[7];
             uint32_t blob_size;
@@ -403,7 +395,7 @@ static bool rsrc_parse(Abstractformat *format, rsrc_stream **result) {
                                   (int64_t)blob_offset,
                               length_bytes, sizeof(length_bytes)))
                 goto fail;
-            blob_size = rsrc_be32(length_bytes);
+            blob_size = xx_data_get_u32(length_bytes, 4, 0, true);
             if ((uint64_t)blob_size >
                 (uint64_t)data_size - blob_offset - 4U)
                 goto fail;
@@ -418,7 +410,7 @@ static bool rsrc_parse(Abstractformat *format, rsrc_stream **result) {
 
             xx_mem_zero(&member, sizeof(member));
             member.type = type;
-            member.id = (int32_t)(int16_t)rsrc_be16(ref);
+            member.id = (int32_t)(int16_t)xx_data_get_u16(ref, 2, 0, true);
             member.attributes = ref[4];
             member.data_area_offset = blob_offset;
             member.header_offset = format->base_address + (int64_t)map_offset +

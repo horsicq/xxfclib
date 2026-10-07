@@ -2,7 +2,7 @@
 #include "xxfclib/formats/lpaq8/xx_lpaq8.h"
 #include "../xx_legacy_archive.h"
 #include "../xx_archive_codec_pipe.h"
-static bool lp_parse(Abstractformat *f,pm_stream *s,ac_blob *b){xx_lpaq8 *r=(xx_lpaq8 *)f;uint32_t size;uint8_t *out;bool ok;if(b->n<10||b->p[0]!='p'||b->p[1]!='Q'||b->p[2]!=8||b->p[3]<'0'||b->p[3]>'9'||b->p[8]>2||(size=pm_be32(b->p+4))>AC_MAX_BYTES)return false;out=ac_alloc(b,size);if(!out)return false;ok=af_decode(b,3,out,size);if(!ok){ac_release(b,out,size);return false;}r->level=b->p[3]-'0';r->data_mode=b->p[8];r->uncompressed_size=size;return ac_memory(f,s,b,"decoded.bin",out,size,b->n-9,1);}
+static bool lp_parse(Abstractformat *f,pm_stream *s,ac_blob *b){xx_lpaq8 *r=(xx_lpaq8 *)f;uint32_t size;uint8_t *out;bool ok;if(b->n<10||b->p[0]!='p'||b->p[1]!='Q'||b->p[2]!=8||b->p[3]<'0'||b->p[3]>'9'||b->p[8]>2||(size=xx_data_get_u32(b->p+4, 4, 0, true))>AC_MAX_BYTES)return false;out=ac_alloc(b,size);if(!out)return false;ok=af_decode(b,3,out,size);if(!ok){ac_release(b,out,size);return false;}r->level=b->p[3]-'0';r->data_mode=b->p[8];r->uncompressed_size=size;return ac_memory(f,s,b,"decoded.bin",out,size,b->n-9,1);}
 AC_PARSE(lp_parse)
 AC_DEFINE(lpaq8,XX_FILE_TYPE_LPAQ8,"lpaq8")
 bool xx_lpaq8_check_is_valid(Abstractformat *f,xx_pd_struct *pd){return pm_valid(f,pd);}

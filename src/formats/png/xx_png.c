@@ -148,11 +148,6 @@ static bool xx_png_read_at(xx_io_device *device, int64_t offset, void *data,
     return true;
 }
 
-static uint32_t xx_png_be32(const uint8_t *p) {
-    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
-           ((uint32_t)p[2] << 8) | (uint32_t)p[3];
-}
-
 /* Copy @p size bytes at @p offset (relative to base) out of the window,
  * refilling it when the range is not fully inside.  False when the range
  * runs past the end of the device or on a read error. */
@@ -219,8 +214,8 @@ static bool xx_png_check_lead(const uint8_t *lead, xx_png_parsed *parsed) {
     if (xx_rt_memcmp(lead, xx_png_magic, XX_PNG_MAGIC_SIZE) != 0) {
         return false;
     }
-    parsed->width = xx_png_be32(ihdr + 0);
-    parsed->height = xx_png_be32(ihdr + 4);
+    parsed->width = xx_data_get_u32(ihdr + 0, 4, 0, true);
+    parsed->height = xx_data_get_u32(ihdr + 4, 4, 0, true);
     parsed->bit_depth = ihdr[8];
     parsed->colour_type = ihdr[9];
     parsed->interlace = ihdr[12];
@@ -236,7 +231,7 @@ static bool xx_png_check_lead(const uint8_t *lead, xx_png_parsed *parsed) {
     if (ihdr[10] != 0U || ihdr[11] != 0U || ihdr[12] > 1U) return false;
 
     /* CRC-32 over the chunk type and data: bytes 12..28 of the lead. */
-    stored_crc = xx_png_be32(ihdr + XX_PNG_IHDR_DATA_SIZE);
+    stored_crc = xx_data_get_u32(ihdr + XX_PNG_IHDR_DATA_SIZE, 4, 0, true);
     crc = xx_crc32_calc(0U, lead + XX_PNG_SIGNATURE_SIZE + 4U,
                         4U + XX_PNG_IHDR_DATA_SIZE);
     return crc == stored_crc;
@@ -266,8 +261,8 @@ static bool xx_png_walk(xx_png_cursor *cursor, xx_png_parsed *parsed,
             !xx_png_cursor_get(cursor, pos, header, sizeof(header))) {
             return false;
         }
-        length = xx_png_be32(header);
-        type = xx_png_be32(header + 4);
+        length = xx_data_get_u32(header, 4, 0, true);
+        type = xx_data_get_u32(header + 4, 4, 0, true);
         if (length > XX_PNG_MAX_CHUNK_LENGTH) return false;
         for (index = 4U; index < 8U; ++index) {
             if (!xx_png_is_letter(header[index])) return false;
@@ -298,8 +293,8 @@ static bool xx_png_walk(xx_png_cursor *cursor, xx_png_parsed *parsed,
                 return false;
             }
             parsed->is_animated = true;
-            parsed->frame_count = xx_png_be32(actl);
-            parsed->play_count = xx_png_be32(actl + 4);
+            parsed->frame_count = xx_data_get_u32(actl, 4, 0, true);
+            parsed->play_count = xx_data_get_u32(actl + 4, 4, 0, true);
         }
         pos = chunk_end;
     }

@@ -22,6 +22,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef LIVEMAKER
 #define XX_LIVEMAKER_FILE_TYPE XX_FILE_TYPE_LIVEMAKER
@@ -178,15 +179,6 @@ static size_t lm_capacity(void) {
     if (!n) n = XX_DEFAULT_FILE_BUFFER_SIZE;
     if (n < 4096U) n = 4096U;
     return n > (SIZE_MAX >> 1) ? SIZE_MAX >> 1 : n;
-}
-
-static uint32_t lm_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
-
-static uint64_t lm_le64(const uint8_t *bytes) {
-    return (uint64_t)lm_le32(bytes) | ((uint64_t)lm_le32(bytes + 4) << 32U);
 }
 
 static bool lm_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -413,7 +405,7 @@ static bool lm_read_header(Abstractformat *format, lm_layout *layout) {
         header[0] != (uint8_t)'v' || header[1] != (uint8_t)'f' ||
         header[2] != (uint8_t)'f' || header[3] != 0U)
         return false;
-    count = lm_le32(header + 6);
+    count = xx_data_get_u32(header + 6, 4, 0, false);
     if (count == 0U || count >= LM_MAX_COUNT ||
         (int64_t)count * (5 + 8 + 1) + 8 > size - LM_HEADER_SIZE)
         return false;
@@ -451,7 +443,7 @@ static bool lm_walk(Abstractformat *format, lm_layout *layout,
         if ((index & LM_POLL_MASK) == 0U && pd && xx_pd_is_stopped(pd))
             goto done;
         if (!(view = lm_take(&reader, 4U))) goto done;
-        length = lm_le32(view);
+        length = xx_data_get_u32(view, 4, 0, false);
         if (length == 0U || length > LM_MAX_NAME) goto done;
         if (!(view = lm_take(&reader, length))) goto done;
         for (k = 0U; k < length; ++k) {
@@ -480,7 +472,7 @@ static bool lm_walk(Abstractformat *format, lm_layout *layout,
         int64_t offset;
         if (!view) goto done;
         mask = (uint64_t)(int64_t)(int32_t)lm_rand(&current);
-        raw = lm_le64(view) ^ mask;
+        raw = xx_data_get_u64(view, 8, 0, false) ^ mask;
         if (raw > (uint64_t)layout->size) goto done;
         offset = (int64_t)raw;
         if (index == 0U ? offset < index_end : offset < previous) goto done;
@@ -638,7 +630,7 @@ static bool lm_unpack_scrambled(xx_io_device *source, const lm_member *member,
     if (member->size - 8 > (int64_t)LM_MAX_SCRAMBLED ||
         !lm_read_at(source, member->data_offset, header, sizeof(header)))
         return false;
-    chunk = lm_le32(header);
+    chunk = xx_data_get_u32(header, 4, 0, false);
     length = (size_t)(member->size - 8);
     if (chunk == 0U || chunk > 0x7fffffffU) return false;
     count = (uint32_t)((length - 1U) / chunk + 1U);
@@ -649,7 +641,7 @@ static bool lm_unpack_scrambled(xx_io_device *source, const lm_member *member,
     tree = (uint32_t *)xx_mem_alloc(((size_t)count + 1U) * sizeof(*tree));
     if (!input || !output || !seq || !tree ||
         !lm_read_at(source, member->data_offset + 8, input, length) ||
-        !lm_sequence(count, lm_le32(header + 4) ^ LM_SCRAMBLE_KEY, seq, tree,
+        !lm_sequence(count, xx_data_get_u32(header + 4, 4, 0, false) ^ LM_SCRAMBLE_KEY, seq, tree,
                      pd))
         goto done;
     for (index = 0U; index < count; ++index) {

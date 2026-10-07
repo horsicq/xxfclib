@@ -40,6 +40,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>  /* SEEK_SET only: formatting goes through xx_rt */
+#include "xxfclib/data/xx_data.h"
 
 #define XX_AP4_TOC_HEADER_SIZE 5
 #define XX_AP4_TOC_RECORD_SIZE 9
@@ -116,11 +117,6 @@ static bool xx_ap4_read_at(Abstractformat *self, int64_t offset,
         completed += (size_t)received;
     }
     return true;
-}
-
-static uint32_t xx_ap4_read_be32(const uint8_t *data) {
-    return ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16) |
-           ((uint32_t)data[2] << 8) | (uint32_t)data[3];
 }
 
 static bool xx_ap4_is_toc_header(const uint8_t *data) {
@@ -461,8 +457,8 @@ static xx_ap4_stream *xx_ap4_parse(Abstractformat *self, bool gate_only,
 
         for (i = 0; i < (int)record_count; ++i) {
             const uint8_t *record = records + ((size_t)i * XX_AP4_TOC_RECORD_SIZE);
-            int64_t start = (int64_t)xx_ap4_read_be32(record);
-            int64_t size = (int64_t)xx_ap4_read_be32(record + 4);
+            int64_t start = (int64_t)xx_data_get_u32(record, 4, 0, true);
+            int64_t size = (int64_t)xx_data_get_u32(record + 4, 4, 0, true);
             uint8_t flag = record[8];
             size_t existing;
             size_t j;

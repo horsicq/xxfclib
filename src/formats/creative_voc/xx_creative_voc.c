@@ -17,8 +17,8 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[26],b[12]; uint32_t offset,version,kind,n,count=0,depth=0,frame=0; bool audio=false; uint64_t measured=0,start;
     fd_cursor c={f,0,(uint64_t)pm_available(f),pd,0};
     if(!fd_get(&c,h,26) || xx_rt_memcmp(h,"Creative Voice File\x1a",20)) return false;
-    offset=pm_le16(h+20); version=pm_le16(h+22);
-    if(offset<26 || offset>4096 || (version!=0x10a && version!=0x114) || pm_le16(h+24)!=(uint16_t)(~version+0x1234U) || !sm_emit(f,s,"voc-descriptor.bin",0,offset,&measured)) { return false; } c.at=offset;
+    offset=xx_data_get_u16(h+20, 2, 0, false); version=xx_data_get_u16(h+22, 2, 0, false);
+    if(offset<26 || offset>4096 || (version!=0x10a && version!=0x114) || xx_data_get_u16(h+24, 2, 0, false)!=(uint16_t)(~version+0x1234U) || !sm_emit(f,s,"voc-descriptor.bin",0,offset,&measured)) { return false; } c.at=offset;
     for(;;) { char label[48]; start=c.at; if(++count>4096 || !fd_get(&c,b,1)) return false; kind=b[0];
         if(!kind) { if(depth || !audio || !sm_emit(f,s,"voc-terminator.bin",start,1,&measured)) return false; break; }
         if(!fd_get(&c,b,3)) { return false; } n=(uint32_t)b[0]|((uint32_t)b[1]<<8)|((uint32_t)b[2]<<16); if(!fd_range(c.at,n,c.end)) return false;
@@ -27,9 +27,9 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         else if(kind==3) { if(n!=3 || !fd_get(&c,b,3)) return false; }
         else if(kind==4) { if(n!=2 || !fd_get(&c,b,2)) return false; }
         else if(kind==5) { uint32_t i; if(!n || n>4096) return false; for(i=0;i<n;++i) { if(!fd_get(&c,b,1) || (i==n-1 ? b[0]!=0 : b[0]==0)) return false; } }
-        else if(kind==6) { if(n!=2 || !fd_get(&c,b,2) || pm_le16(b)==65535 || ++depth>32) return false; }
+        else if(kind==6) { if(n!=2 || !fd_get(&c,b,2) || xx_data_get_u16(b, 2, 0, false)==65535 || ++depth>32) return false; }
         else if(kind==7) { if(n || !depth) return false; --depth; }
-        else if(kind==9) { uint32_t rate,bits,channels,codec; if(n<13 || !fd_get(&c,b,12)) return false; rate=pm_le32(b); bits=b[4]; channels=b[5]; codec=pm_le16(b+6);
+        else if(kind==9) { uint32_t rate,bits,channels,codec; if(n<13 || !fd_get(&c,b,12)) return false; rate=xx_data_get_u32(b, 4, 0, false); bits=b[4]; channels=b[5]; codec=xx_data_get_u16(b+6, 2, 0, false);
             if(!rate || rate>384000 || !channels || channels>2 || !sm_zero(b+8,4) || !((bits==8 && codec==0) || (bits==16 && codec==4))) return false;
             frame=channels*(bits/8); if((n-12)%frame || !fd_skip(&c,n-12)) return false; audio=true;
         } else return false;

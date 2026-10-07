@@ -7,6 +7,7 @@
  */
 #include "xxfclib/formats/vice_snapshot/xx_vice_snapshot.h"
 #include "../vice_x64/xx_ninth_retro.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
  uint32_t at=37,n=0; char label[48];
@@ -15,7 +16,7 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
  if(!nh_emit(f,s,b,"snapshot-descriptor.bin",0,at)) return false;
  while(at<b->n) {
   uint32_t z;
-  if(!nh_range(b,at,22) || !b->p[at] || !nh_ascii(b->p+at,16,true) || (z=pm_le32(b->p+at+18))<=22 || !nh_range(b,at,z) || ++n>4095) return false;
+  if(!nh_range(b,at,22) || !b->p[at] || !nh_ascii(b->p+at,16,true) || (z=xx_data_get_u32(b->p+at+18, 4, 0, false))<=22 || !nh_range(b,at,z) || ++n>4095) return false;
   xx_rt_snprintf(label,sizeof(label),"module-%u.bin",n-1); if(!nh_emit(f,s,b,label,at,z)) return false; at+=z;
  }
  if(!n) { return false; } s->size=at; return true;

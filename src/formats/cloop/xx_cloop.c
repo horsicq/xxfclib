@@ -53,6 +53,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and not edited from here,
  * so the alias macro defined next to the enumerator is tested instead. */
@@ -125,15 +126,6 @@ typedef bool (*cloop_visit_fn)(void *context, uint32_t index, int kind,
 
 /* ------------------------------------------------------------- helpers -- */
 
-static uint32_t cloop_be32(const uint8_t *b) {
-    return ((uint32_t)b[0] << 24U) | ((uint32_t)b[1] << 16U) |
-           ((uint32_t)b[2] << 8U) | (uint32_t)b[3];
-}
-
-static uint64_t cloop_be64(const uint8_t *b) {
-    return ((uint64_t)cloop_be32(b) << 32U) | (uint64_t)cloop_be32(b + 4U);
-}
-
 static bool cloop_read_at(xx_io_device *device, int64_t offset, void *buffer,
                           size_t size) {
     size_t done = 0U;
@@ -174,8 +166,8 @@ static bool cloop_toc_get(cloop_toc *toc, uint32_t index, uint64_t *value) {
         toc->start = index;
         toc->count = want;
     }
-    *value = cloop_be64(toc->buffer +
-                        (size_t)(index - toc->start) * CLOOP_TOC_ENTRY);
+    *value = xx_data_get_u64(toc->buffer +
+                        (size_t)(index - toc->start) * CLOOP_TOC_ENTRY, 8, 0, true);
     return true;
 }
 
@@ -349,8 +341,8 @@ static bool cloop_parse(Abstractformat *format, cloop_info *out,
     info.method = cloop_flavour(header);
     if (info.method == 0U) return false;
 
-    info.block_size = cloop_be32(header + CLOOP_PREAMBLE_SIZE);
-    info.block_count = cloop_be32(header + CLOOP_PREAMBLE_SIZE + 4);
+    info.block_size = xx_data_get_u32(header + CLOOP_PREAMBLE_SIZE, 4, 0, true);
+    info.block_count = xx_data_get_u32(header + CLOOP_PREAMBLE_SIZE + 4, 4, 0, true);
     if (info.block_size == 0U || (info.block_size % CLOOP_BLOCK_UNIT) != 0U ||
         info.block_size > CLOOP_MAX_BLOCK_SIZE)
         return false;
@@ -414,7 +406,7 @@ static bool cloop_decode_zlib(const uint8_t *packed, size_t size,
     /* The Adler-32 follows the Deflate data; bytes after it are padding. */
     if (consumed > size - 2U - 4U) return false;
     trailer = packed + 2U + consumed;
-    return cloop_be32(trailer) == xx_zlib_stream_adler32(plain, block_size);
+    return xx_data_get_u32(trailer, 4, 0, true) == xx_zlib_stream_adler32(plain, block_size);
 }
 
 /* An xz block is a complete .xz stream, which the xz format reader decodes

@@ -28,6 +28,7 @@
 #include "xxfclib/algo/lofi/xx_lofi.h"
 #include "xxfclib/algo/lzma/xx_lzma.h"
 #include "xxfclib/algo/deflate/xx_deflate.h"
+#include "xxfclib/data/xx_data.h"
 
 #define LOFI_NAME_SIZE 36
 #define LOFI_INDEX_OFFSET 0x30
@@ -50,28 +51,9 @@ typedef struct lofi_geometry_s {
     uint64_t image_size;
 } lofi_geometry;
 
-static uint32_t lofi_be32(const uint8_t *p)
-{
-    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
-           ((uint32_t)p[2] << 8) | (uint32_t)p[3];
-}
-
-static uint64_t lofi_be64(const uint8_t *p)
-{
-    return ((uint64_t)lofi_be32(p) << 32) | (uint64_t)lofi_be32(p + 4);
-}
-
-static uint64_t lofi_le64(const uint8_t *p)
-{
-    uint64_t value = 0;
-    int i;
-    for (i = 7; i >= 0; --i) value = (value << 8) | (uint64_t)p[i];
-    return value;
-}
-
 static uint64_t lofi_index_at(const uint8_t *input, uint64_t i)
 {
-    return lofi_be64(input + LOFI_INDEX_OFFSET + i * 8);
+    return xx_data_get_u64(input + LOFI_INDEX_OFFSET + i * 8, 8, 0, true);
 }
 
 static bool lofi_parse_geometry(const uint8_t *input, size_t input_size,
@@ -100,9 +82,9 @@ static bool lofi_parse_geometry(const uint8_t *input, size_t input_size,
         if (input[i] != 0) return false;
     }
 
-    geometry->segment_size = (uint64_t)lofi_be32(input + 0x24);
-    geometry->index_entries = (uint64_t)lofi_be32(input + 0x28);
-    geometry->last_segment_size = (uint64_t)lofi_be32(input + 0x2c);
+    geometry->segment_size = (uint64_t)xx_data_get_u32(input + 0x24, 4, 0, true);
+    geometry->index_entries = (uint64_t)xx_data_get_u32(input + 0x28, 4, 0, true);
+    geometry->last_segment_size = (uint64_t)xx_data_get_u32(input + 0x2c, 4, 0, true);
 
     /* Exactly the reference detector's rules: a positive segment size, more
      * than one index entry, and a final segment that is positive and no larger
@@ -226,7 +208,7 @@ bool xx_lofi_decode_memory(const uint8_t *input, size_t input_size,
             if (segment_bytes <= LOFI_SEGMENT_PREFIX + LOFI_ALONE_HEADER)
                 return false;
             props = segment + LOFI_SEGMENT_PREFIX;
-            declared = lofi_le64(props + 5);
+            declared = xx_data_get_u64(props + 5, 8, 0, false);
             if (declared != want || !xx_lzma_decompress_memory(
                     segment + LOFI_SEGMENT_PREFIX + LOFI_ALONE_HEADER,
                     (size_t)(segment_bytes - LOFI_SEGMENT_PREFIX - LOFI_ALONE_HEADER),

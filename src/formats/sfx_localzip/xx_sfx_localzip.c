@@ -15,6 +15,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef SFX_LOCALZIP
 #define XX_SFX_LOCALZIP_FILE_TYPE XX_FILE_TYPE_SFX_LOCALZIP
@@ -49,24 +50,6 @@ typedef struct xx_sfx_localzip_stream_s {
 static void xx_sfx_localzip_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint16_t xx_sfx_localzip_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_sfx_localzip_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static XXFC_MAYBE_UNUSED uint16_t xx_sfx_localzip_be16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[1] | ((uint16_t)data[0] << 8));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t xx_sfx_localzip_be32(const uint8_t *data) {
-    return (uint32_t)data[3] | ((uint32_t)data[2] << 8) |
-           ((uint32_t)data[1] << 16) | ((uint32_t)data[0] << 24);
-}
 
 static bool xx_sfx_localzip_read_at(Abstractformat *self, int64_t offset,
                               uint8_t *buffer, size_t size) {
@@ -270,11 +253,11 @@ static bool xx_sfx_localzip_parse_central(Abstractformat *self,
     search = n > 65557U ? n - 65557U : 0U;
     for (cursor = n - 22U;; --cursor) {
         if (!xx_rt_memcmp(data + cursor, "PK\x05\x06", 4U) &&
-            xx_sfx_localzip_le16(data + cursor + 4U) == 0U &&
-            xx_sfx_localzip_le16(data + cursor + 6U) == 0U &&
-            xx_sfx_localzip_le16(data + cursor + 8U) ==
-                xx_sfx_localzip_le16(data + cursor + 10U) &&
-            (size_t)xx_sfx_localzip_le16(data + cursor + 20U) <=
+            xx_data_get_u16(data + cursor + 4U, 2, 0, false) == 0U &&
+            xx_data_get_u16(data + cursor + 6U, 2, 0, false) == 0U &&
+            xx_data_get_u16(data + cursor + 8U, 2, 0, false) ==
+                xx_data_get_u16(data + cursor + 10U, 2, 0, false) &&
+            (size_t)xx_data_get_u16(data + cursor + 20U, 2, 0, false) <=
                 n - cursor - 22U) {
             eocd = cursor;
             break;
@@ -282,9 +265,9 @@ static bool xx_sfx_localzip_parse_central(Abstractformat *self,
         if (cursor == search) break;
     }
     if (eocd == SIZE_MAX) return false;
-    count = xx_sfx_localzip_le16(data + eocd + 10U);
-    central_size = xx_sfx_localzip_le32(data + eocd + 12U);
-    declared_offset = xx_sfx_localzip_le32(data + eocd + 16U);
+    count = xx_data_get_u16(data + eocd + 10U, 2, 0, false);
+    central_size = xx_data_get_u32(data + eocd + 12U, 4, 0, false);
+    declared_offset = xx_data_get_u32(data + eocd + 16U, 4, 0, false);
     if (!count || count > 4096U || central_size > eocd ||
         declared_offset > eocd - central_size) return false;
     central = eocd - (size_t)central_size;
@@ -300,15 +283,15 @@ static bool xx_sfx_localzip_parse_central(Abstractformat *self,
         if ((pd && xx_pd_is_stopped(pd)) || cursor > end ||
             end - cursor < 46U ||
             xx_rt_memcmp(data + cursor, "PK\x01\x02", 4U)) return false;
-        flags = xx_sfx_localzip_le16(data + cursor + 8U);
-        method = xx_sfx_localzip_le16(data + cursor + 10U);
-        crc = xx_sfx_localzip_le32(data + cursor + 16U);
-        packed = xx_sfx_localzip_le32(data + cursor + 20U);
-        plain = xx_sfx_localzip_le32(data + cursor + 24U);
-        name_len = xx_sfx_localzip_le16(data + cursor + 28U);
-        extra_len = xx_sfx_localzip_le16(data + cursor + 30U);
-        comment_len = xx_sfx_localzip_le16(data + cursor + 32U);
-        relative = xx_sfx_localzip_le32(data + cursor + 42U);
+        flags = xx_data_get_u16(data + cursor + 8U, 2, 0, false);
+        method = xx_data_get_u16(data + cursor + 10U, 2, 0, false);
+        crc = xx_data_get_u32(data + cursor + 16U, 4, 0, false);
+        packed = xx_data_get_u32(data + cursor + 20U, 4, 0, false);
+        plain = xx_data_get_u32(data + cursor + 24U, 4, 0, false);
+        name_len = xx_data_get_u16(data + cursor + 28U, 2, 0, false);
+        extra_len = xx_data_get_u16(data + cursor + 30U, 2, 0, false);
+        comment_len = xx_data_get_u16(data + cursor + 32U, 2, 0, false);
+        relative = xx_data_get_u32(data + cursor + 42U, 4, 0, false);
         record_size = 46U + (size_t)name_len + (size_t)extra_len +
                       (size_t)comment_len;
         if ((flags & 1U) || (method != 0U && method != 8U) ||
@@ -317,9 +300,9 @@ static bool xx_sfx_localzip_parse_central(Abstractformat *self,
         local = base + (size_t)relative;
         if (local > central || central - local < 30U ||
             xx_rt_memcmp(data + local, "PK\x03\x04", 4U) ||
-            xx_sfx_localzip_le16(data + local + 8U) != method) return false;
-        local_name_len = xx_sfx_localzip_le16(data + local + 26U);
-        local_extra_len = xx_sfx_localzip_le16(data + local + 28U);
+            xx_data_get_u16(data + local + 8U, 2, 0, false) != method) return false;
+        local_name_len = xx_data_get_u16(data + local + 26U, 2, 0, false);
+        local_extra_len = xx_data_get_u16(data + local + 28U, 2, 0, false);
         if ((size_t)local_name_len + (size_t)local_extra_len >
             central - local - 30U || local_name_len != name_len ||
             xx_rt_memcmp(data + local + 30U, data + cursor + 46U,
@@ -362,12 +345,12 @@ static bool xx_sfx_localzip_parse_softpaq(Abstractformat *self,
     for (marker=0U;marker+40U<=n && marker<131072U;++marker)
         if (!xx_rt_memcmp(data+marker,"!3PS",4U)) break;
     if (marker+40U>n || marker>=131072U) return false;
-    offsets[0]=xx_sfx_localzip_le32(data+marker+12U);
-    offsets[1]=xx_sfx_localzip_le32(data+marker+28U);
-    offsets[2]=xx_sfx_localzip_le32(data+marker+36U);
-    lengths[0]=xx_sfx_localzip_le32(data+marker+8U);
-    lengths[1]=xx_sfx_localzip_le32(data+marker+24U);
-    lengths[2]=xx_sfx_localzip_le32(data+marker+32U);
+    offsets[0]=xx_data_get_u32(data+marker+12U, 4, 0, false);
+    offsets[1]=xx_data_get_u32(data+marker+28U, 4, 0, false);
+    offsets[2]=xx_data_get_u32(data+marker+36U, 4, 0, false);
+    lengths[0]=xx_data_get_u32(data+marker+8U, 4, 0, false);
+    lengths[1]=xx_data_get_u32(data+marker+24U, 4, 0, false);
+    lengths[2]=xx_data_get_u32(data+marker+32U, 4, 0, false);
     if (offsets[0]<marker+40U || offsets[0]>n ||
         lengths[0]>n-offsets[0] ||
         offsets[1]!=offsets[0]+lengths[0] ||
@@ -463,14 +446,14 @@ static xx_sfx_localzip_stream *xx_sfx_localzip_parse(Abstractformat *self,
         size_t decoded_size=0U;
         if ((pd && xx_pd_is_stopped(pd))) goto fail;
         if (xx_rt_memcmp(data+at,"PK\x03\x04",4U)) continue;
-        version=xx_sfx_localzip_le16(data+at+4U);
-        flags=xx_sfx_localzip_le16(data+at+6U);
-        method=xx_sfx_localzip_le16(data+at+8U);
-        crc=xx_sfx_localzip_le32(data+at+14U);
-        packed=xx_sfx_localzip_le32(data+at+18U);
-        plain=xx_sfx_localzip_le32(data+at+22U);
-        name_len=xx_sfx_localzip_le16(data+at+26U);
-        extra_len=xx_sfx_localzip_le16(data+at+28U);
+        version=xx_data_get_u16(data+at+4U, 2, 0, false);
+        flags=xx_data_get_u16(data+at+6U, 2, 0, false);
+        method=xx_data_get_u16(data+at+8U, 2, 0, false);
+        crc=xx_data_get_u32(data+at+14U, 4, 0, false);
+        packed=xx_data_get_u32(data+at+18U, 4, 0, false);
+        plain=xx_data_get_u32(data+at+22U, 4, 0, false);
+        name_len=xx_data_get_u16(data+at+26U, 2, 0, false);
+        extra_len=xx_data_get_u16(data+at+28U, 2, 0, false);
         if (version<10U || version>45U || flags&9U ||
             (method!=0U && method!=8U) || !name_len || name_len>4096U ||
             (size_t)name_len+(size_t)extra_len>n-at-30U) continue;

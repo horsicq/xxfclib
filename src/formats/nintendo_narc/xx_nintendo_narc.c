@@ -5,26 +5,27 @@
  */
 #include "xxfclib/formats/nintendo_narc/xx_nintendo_narc.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static XXFC_MAYBE_UNUSED uint16_t r16(const uint8_t *p,bool be) { return be ? pm_be16(p) : pm_le16(p); }
-static XXFC_MAYBE_UNUSED uint32_t r32(const uint8_t *p,bool be) { return be ? pm_be32(p) : pm_le32(p); }
-static XXFC_MAYBE_UNUSED uint64_t r64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint16_t r16(const uint8_t *p,bool be) { return be ? xx_data_get_u16(p, 2, 0, true) : xx_data_get_u16(p, 2, 0, false); }
+static XXFC_MAYBE_UNUSED uint32_t r32(const uint8_t *p,bool be) { return be ? xx_data_get_u32(p, 4, 0, true) : xx_data_get_u32(p, 4, 0, false); }
+static XXFC_MAYBE_UNUSED uint64_t r64(const uint8_t *p,bool be) { return be ? ((uint64_t)xx_data_get_u32(p, 4, 0, true)<<32)|xx_data_get_u32(p+4, 4, 0, true) : ((uint64_t)xx_data_get_u32(p+4, 4, 0, false)<<32)|xx_data_get_u32(p, 4, 0, false); }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[16],b[12],e[8]; uint32_t total,fat,names,count,i,start,end; int64_t image;
     if(!pm_read(f,0,h,16) || xx_rt_memcmp(h,"NARC",4) ||
-       !((pm_le16(h+4)==0xfeff && pm_le16(h+6)==1) || (pm_le16(h+4)==0xfffe && pm_le16(h+6)==0x100)) ||
-       pm_le16(h+12)!=16 || pm_le16(h+14)!=3) return false;
-    total=pm_le32(h+8); if(total<44 || total>pm_available(f) || !pm_read(f,16,b,12) || xx_rt_memcmp(b,"BTAF",4)) return false;
-    fat=pm_le32(b+4); count=pm_le32(b+8);
+       !((xx_data_get_u16(h+4, 2, 0, false)==0xfeff && xx_data_get_u16(h+6, 2, 0, false)==1) || (xx_data_get_u16(h+4, 2, 0, false)==0xfffe && xx_data_get_u16(h+6, 2, 0, false)==0x100)) ||
+       xx_data_get_u16(h+12, 2, 0, false)!=16 || xx_data_get_u16(h+14, 2, 0, false)!=3) return false;
+    total=xx_data_get_u32(h+8, 4, 0, false); if(total<44 || total>pm_available(f) || !pm_read(f,16,b,12) || xx_rt_memcmp(b,"BTAF",4)) return false;
+    fat=xx_data_get_u32(b+4, 4, 0, false); count=xx_data_get_u32(b+8, 4, 0, false);
     if(count>65536 || fat!=12+(uint64_t)count*8 || fat>total-16 ||
        !pm_read(f,16+(int64_t)fat,b,8) || xx_rt_memcmp(b,"BTNF",4)) return false;
-    names=pm_le32(b+4); if(names<16 || names>total-16-fat) return false;
+    names=xx_data_get_u32(b+4, 4, 0, false); if(names<16 || names>total-16-fat) return false;
     image=16+(int64_t)fat+names;
-    if(image>total-8 || !pm_read(f,image,b,8) || xx_rt_memcmp(b,"GMIF",4) || pm_le32(b+4)!=total-image) return false;
+    if(image>total-8 || !pm_read(f,image,b,8) || xx_rt_memcmp(b,"GMIF",4) || xx_data_get_u32(b+4, 4, 0, false)!=total-image) return false;
     for(i=0;i<count;++i) {
         char label[40]; if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,28+(int64_t)i*8,e,8)) return false;
-        start=pm_le32(e); end=pm_le32(e+4); if(end<start || end>total-image-8) return false;
+        start=xx_data_get_u32(e, 4, 0, false); end=xx_data_get_u32(e+4, 4, 0, false); if(end<start || end>total-image-8) return false;
         xx_rt_snprintf(label,sizeof(label),"file-%u.bin",(unsigned)i);
         if(!pm_add(f,s,label,image+8+start,end-start)) return false;
     }

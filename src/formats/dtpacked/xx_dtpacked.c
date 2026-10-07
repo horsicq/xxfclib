@@ -45,6 +45,7 @@
 #include "xxfclib/algo/dcl/xx_dcl.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_DTPACKED_COPY_CHUNK (64 * 1024)
 
@@ -156,8 +157,6 @@ static bool xx_dtpacked_add(xx_dtpacked_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_dtpacked_le16(const uint8_t *data);
-static uint32_t xx_dtpacked_le32(const uint8_t *data);
 static xx_dtpacked_stream *xx_dtpacked_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_dtpacked_decode(Abstractformat *self, const xx_dtpacked_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
@@ -174,15 +173,6 @@ static bool xx_dtpacked_decode(Abstractformat *self, const xx_dtpacked_member *m
  * container's own file name, so the single record gets a fixed placeholder.
  * It is deliberately extension-less: inventing one would be a claim about
  * content the container never makes. */
-
-static uint16_t xx_dtpacked_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_dtpacked_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static xx_dtpacked_stream *xx_dtpacked_parse(Abstractformat *self,
                                              xx_pd_struct *pd) {
@@ -216,10 +206,10 @@ static xx_dtpacked_stream *xx_dtpacked_parse(Abstractformat *self,
      * pinned too. Even those six bytes are a weak gate; the trial decode
      * below is what actually keeps this reader off unrelated files. */
     if (header[0] != (uint8_t)'D' || header[1] != (uint8_t)'T') return NULL;
-    if (xx_dtpacked_le16(header + 2) != (uint16_t)XX_DTPACKED_VERSION) {
+    if (xx_data_get_u16(header + 2, 2, 0, false) != (uint16_t)XX_DTPACKED_VERSION) {
         return NULL;
     }
-    if (xx_dtpacked_le16(header + 4) != (uint16_t)XX_DTPACKED_FLAGS) {
+    if (xx_data_get_u16(header + 4, 2, 0, false) != (uint16_t)XX_DTPACKED_FLAGS) {
         return NULL;
     }
 
@@ -230,7 +220,7 @@ static xx_dtpacked_stream *xx_dtpacked_parse(Abstractformat *self,
     if (compressed_size > XX_DTPACKED_MAX_DECODED) return NULL;
 
     uncompressed_size =
-        (int64_t)xx_dtpacked_le32(header + XX_DTPACKED_RAWSIZE_OFFSET);
+        (int64_t)xx_data_get_u32(header + XX_DTPACKED_RAWSIZE_OFFSET, 4, 0, false);
     /* A zero plaintext length would make extraction write an empty file and
      * call it success, so it is a reject rather than an empty member. */
     if (uncompressed_size < 1) return NULL;
@@ -306,9 +296,9 @@ static xx_dtpacked_stream *xx_dtpacked_parse(Abstractformat *self,
      * first and the time word second, the reverse of the packed DOS order,
      * and swapping them yields plausible nonsense rather than an error. */
     member.timestamp =
-        ((uint64_t)xx_dtpacked_le16(header + XX_DTPACKED_DOSDATE_OFFSET)
+        ((uint64_t)xx_data_get_u16(header + XX_DTPACKED_DOSDATE_OFFSET, 2, 0, false)
          << 16) |
-        (uint64_t)xx_dtpacked_le16(header + XX_DTPACKED_DOSTIME_OFFSET);
+        (uint64_t)xx_data_get_u16(header + XX_DTPACKED_DOSTIME_OFFSET, 2, 0, false);
     /* The wrapper has no directory entries and never will: it holds one
      * file. */
     member.is_folder = false;

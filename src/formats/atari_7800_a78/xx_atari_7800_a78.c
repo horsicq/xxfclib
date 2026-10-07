@@ -4,11 +4,12 @@
  */
 #include "xxfclib/formats/atari_7800_a78/xx_atari_7800_a78.h"
 #include "../atari_7800_a78/xx_eleventh_retro.h"
+#include "xxfclib/data/xx_data.h"
 static bool read_components(Abstractformat *f,pm_stream *s,er_blob *b) {
  uint32_t z,i;const uint8_t *p=b->p;
  if(b->n<128 || p[0]<1 || p[0]>3 || xx_rt_memcmp(p+1,"ATARI7800",9) || xx_rt_memcmp(p+100,"ACTUAL CART DATA STARTS HERE",28)) return false;
  for(i=10;i<17;++i) if(p[i]!=0 && p[i]!=' ') return false;
- z=pm_be32(p+49);if(!z || z>b->n-128 || z+128!=b->n || p[55]>12 || p[56]>12 || p[57]>3 || p[58]>3) return false;
+ z=xx_data_get_u32(p+49, 4, 0, true);if(!z || z>b->n-128 || z+128!=b->n || p[55]>12 || p[56]>12 || p[57]>3 || p[58]>3) return false;
  if(!er_emit(f,s,b,"cartridge-descriptor.bin",0,128) || !er_emit(f,s,b,"cartridge-rom.bin",128,z)) { return false; } s->size=b->n;return true;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { er_blob b;bool ok;if(!er_load(f,&b,pd)) return false;ok=read_components(f,s,&b);xx_mem_free(b.p);return ok; }

@@ -63,6 +63,7 @@
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/algo/deflate/xx_deflate.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_CFL_COPY_CHUNK (64 * 1024)
 
@@ -168,8 +169,6 @@ static bool xx_cfl_add(xx_cfl_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_cfl_le16(const uint8_t *data);
-static uint32_t xx_cfl_le32(const uint8_t *data);
 static int64_t xx_cfl_i32(const uint8_t *data);
 static uint8_t *xx_cfl_read_block(Abstractformat *self, int64_t span, int64_t offset, int64_t expanded, int64_t *block_size, xx_pd_struct *pd);
 static xx_cfl_stream *xx_cfl_parse(Abstractformat *self, xx_pd_struct *pd);
@@ -181,21 +180,12 @@ static bool xx_cfl_decode(Abstractformat *self, const xx_cfl_member *member, uin
 
 static const uint8_t xx_cfl_signature[4] = {'C', 'F', 'L', '3'};
 
-static uint16_t xx_cfl_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_cfl_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
 /* Every size and offset in this format is a SIGNED 32-bit value in the
  * reference, and the reference then tests it for being negative. Sign
  * extending here keeps that test meaningful: a field with its high bit set
  * ends the directory walk instead of becoming a four-billion-byte extent. */
 static int64_t xx_cfl_i32(const uint8_t *data) {
-    return (int64_t)(int32_t)xx_cfl_le32(data);
+    return (int64_t)(int32_t)xx_data_get_u32(data, 4, 0, false);
 }
 
 /* The directory's own container. Returns the inflated bytes (exactly
@@ -219,7 +209,7 @@ static uint8_t *xx_cfl_read_block(Abstractformat *self, int64_t span,
                         sizeof(head))) {
         return NULL;
     }
-    method = xx_cfl_le32(head);
+    method = xx_data_get_u32(head, 4, 0, false);
     payload_size = xx_cfl_i32(head + 4);
 
     plain = (uint8_t *)xx_mem_alloc((size_t)expanded);
@@ -369,8 +359,8 @@ static xx_cfl_stream *xx_cfl_parse(Abstractformat *self, xx_pd_struct *pd) {
 
         size = xx_cfl_i32(entry);
         data_offset = xx_cfl_i32(entry + 4);
-        method = xx_cfl_le16(entry + 8);
-        name_length = (int64_t)xx_cfl_le16(entry + 12);
+        method = xx_data_get_u16(entry + 8, 2, 0, false);
+        name_length = (int64_t)xx_data_get_u16(entry + 12, 2, 0, false);
 
         /* Not a rejection: a record that fails any of these is where the
          * directory stops, which is how the padding some writers leave after

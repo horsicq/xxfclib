@@ -44,6 +44,7 @@
 #include "xxfclib/algo/deflate/xx_deflate.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_DPK_COPY_CHUNK (64 * 1024)
 
@@ -148,7 +149,6 @@ static bool xx_dpk_add(xx_dpk_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint32_t xx_dpk_le32(const uint8_t *data);
 static xx_dpk_stream *xx_dpk_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_dpk_decode(Abstractformat *self, const xx_dpk_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
@@ -158,11 +158,6 @@ static bool xx_dpk_decode(Abstractformat *self, const xx_dpk_member *member, uin
 /* The name is whatever the record size leaves over. Bounding the field keeps
  * a corrupt record size from asking for a multi-megabyte name; real DPK
  * records carry a path, not padding. */
-
-static uint32_t xx_dpk_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static xx_dpk_stream *xx_dpk_parse(Abstractformat *self, xx_pd_struct *pd) {
     static const uint8_t magic[4] = {'D', 'P', 'K', '4'};
@@ -192,9 +187,9 @@ static xx_dpk_stream *xx_dpk_parse(Abstractformat *self, xx_pd_struct *pd) {
 
     /* Signed on purpose throughout: a field with the top bit set is corrupt,
      * not a two-gigabyte quantity. */
-    declared_size = (int64_t)(int32_t)xx_dpk_le32(header + 4);
-    directory_size = (int64_t)(int32_t)xx_dpk_le32(header + 8);
-    count = (int64_t)(int32_t)xx_dpk_le32(header + 0x0c);
+    declared_size = (int64_t)(int32_t)xx_data_get_u32(header + 4, 4, 0, false);
+    directory_size = (int64_t)(int32_t)xx_data_get_u32(header + 8, 4, 0, false);
+    count = (int64_t)(int32_t)xx_data_get_u32(header + 0x0c, 4, 0, false);
 
     /* THE defence against a false positive: the header carries the length of
      * the file it sits in, so a stray "DPK4" only survives if the next four
@@ -241,7 +236,7 @@ static xx_dpk_stream *xx_dpk_parse(Abstractformat *self, xx_pd_struct *pd) {
             goto fail;
         }
 
-        record_size = (int64_t)(int32_t)xx_dpk_le32(entry);
+        record_size = (int64_t)(int32_t)xx_data_get_u32(entry, 4, 0, false);
         /* The record size is what advances the cursor; a record smaller than
          * the fixed part, or larger than the directory remainder, would walk
          * the loop off the directory (or never advance it at all). */
@@ -249,9 +244,9 @@ static xx_dpk_stream *xx_dpk_parse(Abstractformat *self, xx_pd_struct *pd) {
             goto fail;
         }
 
-        uncompressed_size = (int64_t)(int32_t)xx_dpk_le32(entry + 4);
-        compressed_size = (int64_t)(int32_t)xx_dpk_le32(entry + 8);
-        data_offset = (int64_t)(int32_t)xx_dpk_le32(entry + 0x0c);
+        uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(entry + 4, 4, 0, false);
+        compressed_size = (int64_t)(int32_t)xx_data_get_u32(entry + 8, 4, 0, false);
+        data_offset = (int64_t)(int32_t)xx_data_get_u32(entry + 0x0c, 4, 0, false);
         if (uncompressed_size < 0 || compressed_size < 0 || data_offset < 0) {
             goto fail;
         }

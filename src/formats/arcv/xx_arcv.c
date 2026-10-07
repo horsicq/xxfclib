@@ -22,6 +22,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Self-healing file-type shim: the enum entry is added by the coordinator. */
 #ifdef ARCV
@@ -51,15 +52,6 @@ typedef struct arcv_stream_s {
     bool lh1;
     bool consumed;
 } arcv_stream;
-
-static uint16_t arcv_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t arcv_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
 
 static bool arcv_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
@@ -202,10 +194,10 @@ static bool arcv_parse(Abstractformat *format, arcv_stream **result,
     if (!arcv_read_at(format->device, format->base_address, head, 13U) ||
         xx_rt_memcmp(head, "ARCV", 4U) != 0)
         return false;
-    version = arcv_le16(head + 4U);
+    version = xx_data_get_u16(head + 4U, 2, 0, false);
     if (version != ARCV_VERSION_100 && version != ARCV_VERSION_110)
         return false;
-    archive_header_size = (int64_t)arcv_le16(head + 6U);
+    archive_header_size = (int64_t)xx_data_get_u16(head + 6U, 2, 0, false);
     name_size = head[12U];
     if (name_size == 0U || name_size > ARCV_MAX_NAME) return false;
     fields_offset = 13 + (int64_t)name_size;
@@ -223,11 +215,11 @@ static bool arcv_parse(Abstractformat *format, arcv_stream **result,
                       sizeof(chunk)) ||
         xx_rt_memcmp(chunk, "CHNK", 4U) != 0)
         return false;
-    raw_size = arcv_le32(fields);
-    packed_size = arcv_le32(fields + 4U);
-    jam_crc = arcv_le32(fields + 24U);
-    chunk_header_size = (int64_t)arcv_le16(chunk + 6U);
-    chunk_data_size = arcv_le32(chunk + 12U);
+    raw_size = xx_data_get_u32(fields, 4, 0, false);
+    packed_size = xx_data_get_u32(fields + 4U, 4, 0, false);
+    jam_crc = xx_data_get_u32(fields + 24U, 4, 0, false);
+    chunk_header_size = (int64_t)xx_data_get_u16(chunk + 6U, 2, 0, false);
+    chunk_data_size = xx_data_get_u32(chunk + 12U, 4, 0, false);
     if (raw_size == 0U || raw_size > ARCV_MAX_SIZE || packed_size == 0U ||
         packed_size > ARCV_MAX_SIZE ||
         chunk_header_size < (int64_t)ARCV_CHUNK_HEADER_MIN ||

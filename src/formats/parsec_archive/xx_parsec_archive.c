@@ -3,6 +3,7 @@
  */
 #include "xxfclib/formats/parsec_archive/xx_parsec_archive.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 #define PARSEC_MAX_RECORDS 1000000U
 
@@ -12,21 +13,21 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream, xx_pd_struct *pd
     int64_t total = pm_available(format), expected;
     bool valid = false;
     if (total < 20 || !pm_read(format, 0, first, sizeof(first))) return false;
-    header_size = pm_le32(first);
+    header_size = xx_data_get_u32(first, 4, 0, false);
     if (header_size < 12 || (header_size - 4U) % 8U != 0U ||
         (uint64_t)header_size > (uint64_t)total) return false;
     count = (header_size - 4U) / 8U;
     if (count == 0U || count > PARSEC_MAX_RECORDS) return false;
     header = (uint8_t *)xx_mem_alloc(header_size);
     if (!header || !pm_read(format, 0, header, header_size)) goto done;
-    if (pm_le32(header + (size_t)count * 4U) != 0U) goto done;
+    if (xx_data_get_u32(header + (size_t)count * 4U, 4, 0, false) != 0U) goto done;
     expected = header_size;
     for (index = 0U; index < count; ++index) {
-        uint32_t offset = pm_le32(header + (size_t)index * 4U);
-        uint32_t size = pm_le32(header + ((size_t)count + 1U + index) * 4U);
+        uint32_t offset = xx_data_get_u32(header + (size_t)index * 4U, 4, 0, false);
+        uint32_t size = xx_data_get_u32(header + ((size_t)count + 1U + index) * 4U, 4, 0, false);
         uint64_t next = (uint64_t)offset + (uint64_t)size;
         uint64_t declared_next = index + 1U < count
-            ? pm_le32(header + ((size_t)index + 1U) * 4U)
+            ? xx_data_get_u32(header + ((size_t)index + 1U) * 4U, 4, 0, false)
             : (uint64_t)total;
         bool rib, sm8;
         char label[40];
@@ -37,7 +38,7 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream, xx_pd_struct *pd
         sm8 = xx_rt_memcmp(signature, "SM8\0\0\1", 6U) == 0;
         if (!rib && !sm8) goto done;
         if (rib) {
-            uint32_t decoded = pm_le32(signature + 4U);
+            uint32_t decoded = xx_data_get_u32(signature + 4U, 4, 0, false);
             uint32_t packed = size - 8U;
             if (decoded > 512U * 1024U * 1024U || packed > decoded ||
                 ((packed == 0U) != (decoded == 0U))) goto done;

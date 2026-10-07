@@ -6,6 +6,7 @@
 #include "xxfclib/formats/ogg/xx_ogg.h"
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 typedef struct og_stream { uint32_t serial,sequence; bool continued,ended; } og_stream;
 static const xx_crc_model og_crc_model = {
@@ -31,8 +32,8 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if(xx_rt_memcmp(h,"OggS",4)) { if(all_ended) break; return false; }
         flags=h[5]; n=h[26]; if(h[4] || (flags&~7U) || !pm_read(f,at+27,lace,n)) return false;
         for(i=0;i<n;++i) { body+=lace[i]; } page=27+(int64_t)n+body;
-        if(page>limit-at || !og_crc(f,at,page,pm_le32(h+22))) return false;
-        serial=pm_le32(h+14); seq=pm_le32(h+18);
+        if(page>limit-at || !og_crc(f,at,page,xx_data_get_u32(h+22, 4, 0, false))) return false;
+        serial=xx_data_get_u32(h+14, 4, 0, false); seq=xx_data_get_u32(h+18, 4, 0, false);
         for(k=0;k<count && streams[k].serial!=serial;++k) {}
         if(k==count) { if(count==256 || !(flags&2) || (flags&1) || seq) return false; streams[count++].serial=serial; }
         else if(streams[k].ended || (flags&2) || seq!=streams[k].sequence+1U || !!(flags&1)!=streams[k].continued) return false;

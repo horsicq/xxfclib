@@ -30,6 +30,7 @@
 
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/formats/xx_memory_map.h"
+#include "xxfclib/formats/xx_format_streams.h"
 #include "xxfclib/data/xx_pd.h"
 #include "xxfclib/list/xx_list.h"
 #include "xxfclib/var/xx_var.h"
@@ -464,6 +465,36 @@ struct Abstractformat {
   xx_memory_map_mode_t memory_map_requested_mode;
   /** Optional loaded module VA; UINT64_MAX asks the format for its default. */
   uint64_t module_address;
+
+  /* Read-only symbol/resource/metadata streams. Appended to preserve existing
+   * member offsets; the larger public struct still requires an ABI rebuild. */
+  xx_import_state *(*create_imports_reading)(Abstractformat *self, xx_pd_struct *pd);
+  const xx_import_record *(*get_current_import)(Abstractformat *self, xx_import_state *state);
+  bool (*import_move_to_next)(Abstractformat *self, xx_import_state *state, xx_pd_struct *pd);
+  void (*free_imports_reading)(Abstractformat *self, xx_import_state *state);
+
+  xx_export_state *(*create_exports_reading)(Abstractformat *self, xx_pd_struct *pd);
+  const xx_export_record *(*get_current_export)(Abstractformat *self, xx_export_state *state);
+  bool (*export_move_to_next)(Abstractformat *self, xx_export_state *state, xx_pd_struct *pd);
+  void (*free_exports_reading)(Abstractformat *self, xx_export_state *state);
+
+  xx_resource_state *(*create_resources_reading)(Abstractformat *self, xx_pd_struct *pd);
+  const xx_resource_record *(*get_current_resource)(Abstractformat *self, xx_resource_state *state);
+  bool (*resource_move_to_next)(Abstractformat *self, xx_resource_state *state, xx_pd_struct *pd);
+  void (*free_resources_reading)(Abstractformat *self, xx_resource_state *state);
+
+  xx_metadata_state *(*create_metadata_reading)(Abstractformat *self, xx_pd_struct *pd);
+  const xx_metadata_record *(*get_current_metadata)(Abstractformat *self, xx_metadata_state *state);
+  bool (*metadata_move_to_next)(Abstractformat *self, xx_metadata_state *state, xx_pd_struct *pd);
+  void (*free_metadata_reading)(Abstractformat *self, xx_metadata_state *state);
+
+  /** Native symbol-table primary entries, excluding auxiliary records. */
+  uint64_t number_of_symbols;
+  uint64_t (*get_number_of_symbols)(Abstractformat *self, xx_pd_struct *pd);
+  xx_symbol_state *(*create_symbols_reading)(Abstractformat *self, xx_pd_struct *pd);
+  const xx_symbol_record *(*get_current_symbol)(Abstractformat *self, xx_symbol_state *state);
+  bool (*symbol_move_to_next)(Abstractformat *self, xx_symbol_state *state, xx_pd_struct *pd);
+  void (*free_symbols_reading)(Abstractformat *self, xx_symbol_state *state);
 };
 
 /**
@@ -599,6 +630,7 @@ XXFC_API const char *xx_format_get_password(const Abstractformat *format);
 #define numberOfExports number_of_exports
 #define numberOfResources number_of_resources
 #define numberOfMetadata number_of_metadata
+#define numberOfSymbols number_of_symbols
 #define numberOfArchiveRecords number_of_archive_records
 #define listExtraParameters list_extra_parameters
 #define fileName file_name
@@ -726,6 +758,8 @@ XXFC_API size_t xx_format_get_file_type_chain(xx_file_type_t type,
  * XX_FILE_TYPE_MSDOS and XX_FILE_TYPE_PE64: the file is a binary, it carries a
  * DOS header, and that header introduces a PE64 image. The last element is
  * always what xx_format_get_file_type_device() returns on its own.
+ * A managed assembly adds XX_FILE_TYPE_DOTNET after its actual PE32/PE64
+ * carrier type. This device-aware chain retains the executable width.
  *
  * @param dev Device to inspect.
  * @return A list of xx_file_type_t owned by the caller, empty when the device
@@ -995,6 +1029,40 @@ static inline uint64_t xx_format_get_number_of_metadata_pd(Abstractformat *f, xx
 
 static inline uint64_t xx_format_get_number_of_metadata(Abstractformat *f, xx_pd_struct *pd) {
   return xx_format_get_number_of_metadata_pd(f, pd);
+}
+
+static inline uint64_t xx_format_get_number_of_symbols_pd(Abstractformat *f, xx_pd_struct *pd) {
+  if (!f) return 0;
+  if (f->get_number_of_symbols) return f->get_number_of_symbols(f, pd);
+  return f->number_of_symbols;
+}
+
+static inline uint64_t xx_format_get_number_of_symbols(Abstractformat *f, xx_pd_struct *pd) {
+  return xx_format_get_number_of_symbols_pd(f, pd);
+}
+
+static inline bool xx_format_has_file_symbols(Abstractformat *f) {
+  return xx_format_get_number_of_symbols_pd(f, NULL) > 0;
+}
+
+static inline void xx_format_set_number_of_symbols(Abstractformat *f, uint64_t count) {
+  if (f) f->number_of_symbols = count;
+}
+
+static inline uint64_t Abstractformat_get_number_of_symbols_pd(Abstractformat *f, xx_pd_struct *pd) {
+  return xx_format_get_number_of_symbols_pd(f, pd);
+}
+
+static inline void Abstractformat_set_number_of_symbols(Abstractformat *f, uint64_t count) {
+  xx_format_set_number_of_symbols(f, count);
+}
+
+static inline bool Abstractformat_has_file_symbols(Abstractformat *f) {
+  return xx_format_has_file_symbols(f);
+}
+
+static inline bool has_file_symbols(Abstractformat *f) {
+  return xx_format_has_file_symbols(f);
 }
 
 static inline bool xx_format_has_file_import(Abstractformat *f) {
@@ -1461,6 +1529,12 @@ static inline void Abstractformat_set_number_of_archive_records(Abstractformat *
 #define getNumberOfResources(...) \
     _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_RES_2, _XX_GET_RES_1)(__VA_ARGS__))
 
+#define _XX_GET_SYM_1(f) xx_format_get_number_of_symbols_pd((f), NULL)
+#define _XX_GET_SYM_2(f, pd) xx_format_get_number_of_symbols_pd((f), (pd))
+#define Abstractformat_get_number_of_symbols(...) \
+    _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_SYM_2, _XX_GET_SYM_1)(__VA_ARGS__))
+#define getNumberOfSymbols(...) \
+    _XX_GET_REC_EXPAND(_XX_GET_REC_CHOOSER(__VA_ARGS__, _XX_GET_SYM_2, _XX_GET_SYM_1)(__VA_ARGS__))
 #define _XX_GET_META_1(f) xx_format_get_number_of_metadata_pd((f), NULL)
 #define _XX_GET_META_2(f, pd) xx_format_get_number_of_metadata_pd((f), (pd))
 #define get_number_of_metadata(...) \
@@ -1518,6 +1592,8 @@ static inline void Abstractformat_set_has_file_metadata(Abstractformat *f, bool 
 #define hasFileExport has_file_export
 #define hasFileResources has_file_resources
 #define hasFileMetadata has_file_metadata
+#define hasSymbols has_file_symbols
+#define hasFileSymbols has_file_symbols
 #define hasFileImportt has_file_import
 static inline int Abstractformat_close(Abstractformat *f) {
   return xx_format_close(f);

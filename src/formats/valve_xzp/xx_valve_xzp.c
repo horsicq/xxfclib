@@ -13,6 +13,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef VALVE_XZP
 #define XX_VALVE_XZP_FILE_TYPE XX_FILE_TYPE_VALVE_XZP
@@ -44,11 +45,6 @@ typedef struct xzp_stream_s {
 } xzp_stream;
 
 static void xx_valve_xzp_vtable_destroy(Abstractformat *self);
-
-static uint32_t xzp_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
-           ((uint32_t)p[3] << 24);
-}
 
 static bool xzp_read(xx_io_device *dev, int64_t offset, uint8_t *out,
                      size_t size) {
@@ -256,15 +252,15 @@ static xzp_stream *xzp_parse(Abstractformat *self, bool members,
     span = total - self->base_address;
     if (span < XZP_HEADER_SIZE + XZP_FOOTER_SIZE ||
         !xzp_read(self->device, self->base_address, h, sizeof(h)) ||
-        xx_rt_memcmp(h, "piZx", 4U) != 0 || xzp_le32(h + 4) != XZP_VERSION ||
-        xzp_le32(h + 20) != XZP_HEADER_SIZE)
+        xx_rt_memcmp(h, "piZx", 4U) != 0 || xx_data_get_u32(h + 4, 4, 0, false) != XZP_VERSION ||
+        xx_data_get_u32(h + 20, 4, 0, false) != XZP_HEADER_SIZE)
         return NULL;
-    pcount = xzp_le32(h + 8);
-    ecount = xzp_le32(h + 12);
-    pbytes = xzp_le32(h + 16);
-    icount = xzp_le32(h + 24);
-    ioff = xzp_le32(h + 28);
-    ilen = xzp_le32(h + 32);
+    pcount = xx_data_get_u32(h + 8, 4, 0, false);
+    ecount = xx_data_get_u32(h + 12, 4, 0, false);
+    pbytes = xx_data_get_u32(h + 16, 4, 0, false);
+    icount = xx_data_get_u32(h + 24, 4, 0, false);
+    ioff = xx_data_get_u32(h + 28, 4, 0, false);
+    ilen = xx_data_get_u32(h + 32, 4, 0, false);
     if (ecount > XZP_MAX_ENTRIES || pcount > XZP_MAX_ENTRIES) return NULL;
     tables_end = XZP_HEADER_SIZE + (int64_t)ecount * XZP_ENTRY_SIZE;
     if (pbytes)
@@ -283,21 +279,21 @@ static xzp_stream *xzp_parse(Abstractformat *self, bool members,
      * followed by other data, it sits right after the furthest structure. */
     extent = tables_end;
     for (i = 0U; i < ecount; ++i) {
-        int64_t end = (int64_t)xzp_le32(entries + i * 12U + 8U) +
-                      (int64_t)xzp_le32(entries + i * 12U + 4U);
-        if (xzp_le32(entries + i * 12U + 4U) && end > extent) extent = end;
+        int64_t end = (int64_t)xx_data_get_u32(entries + i * 12U + 8U, 4, 0, false) +
+                      (int64_t)xx_data_get_u32(entries + i * 12U + 4U, 4, 0, false);
+        if (xx_data_get_u32(entries + i * 12U + 4U, 4, 0, false) && end > extent) extent = end;
     }
     if (icount && (int64_t)ioff + ilen > extent) extent = (int64_t)ioff + ilen;
     if (xzp_read(self->device, self->base_address + span - XZP_FOOTER_SIZE,
                  foot, sizeof(foot)) &&
         xx_rt_memcmp(foot + 4, "tFzX", 4U) == 0 &&
-        (int64_t)xzp_le32(foot) == span)
+        (int64_t)xx_data_get_u32(foot, 4, 0, false) == span)
         archive_size = span;
     else if (extent <= span - XZP_FOOTER_SIZE &&
              xzp_read(self->device, self->base_address + extent, foot,
                       sizeof(foot)) &&
              xx_rt_memcmp(foot + 4, "tFzX", 4U) == 0 &&
-             (int64_t)xzp_le32(foot) == extent + XZP_FOOTER_SIZE)
+             (int64_t)xx_data_get_u32(foot, 4, 0, false) == extent + XZP_FOOTER_SIZE)
         archive_size = extent + XZP_FOOTER_SIZE;
     else
         goto fail;
@@ -307,8 +303,8 @@ static xzp_stream *xzp_parse(Abstractformat *self, bool members,
                    !xzp_within(data_end, (int64_t)ioff, (int64_t)ilen)))
         goto fail;
     for (i = 0U; i < ecount; ++i) {
-        uint32_t len = xzp_le32(entries + i * 12U + 4U);
-        uint32_t off = xzp_le32(entries + i * 12U + 8U);
+        uint32_t len = xx_data_get_u32(entries + i * 12U + 4U, 4, 0, false);
+        uint32_t off = xx_data_get_u32(entries + i * 12U + 8U, 4, 0, false);
         if (len && (off < XZP_HEADER_SIZE ||
                     !xzp_within(data_end, (int64_t)off, (int64_t)len)))
             goto fail;
@@ -332,7 +328,7 @@ static xzp_stream *xzp_parse(Abstractformat *self, bool members,
                       (size_t)icount * XZP_ENTRY_SIZE))
             goto fail;
         for (i = 0U; i < icount; ++i)
-            keys[i] = ((uint64_t)xzp_le32(itab + i * 12U) << 32) | i;
+            keys[i] = ((uint64_t)xx_data_get_u32(itab + i * 12U, 4, 0, false) << 32) | i;
         xzp_sort(keys, icount);
     }
     if (ecount) {
@@ -352,13 +348,13 @@ static xzp_stream *xzp_parse(Abstractformat *self, bool members,
         size_t item;
         char *name = NULL;
         if ((i & 1023U) == 0U && pd && xx_pd_is_stopped(pd)) goto fail;
-        m->crc = xzp_le32(e);
-        m->size = (int64_t)xzp_le32(e + 4);
-        m->data_offset = self->base_address + (int64_t)xzp_le32(e + 8);
+        m->crc = xx_data_get_u32(e, 4, 0, false);
+        m->size = (int64_t)xx_data_get_u32(e + 4, 4, 0, false);
+        m->data_offset = self->base_address + (int64_t)xx_data_get_u32(e + 8, 4, 0, false);
         m->entry_offset = self->base_address + XZP_HEADER_SIZE + (int64_t)i * 12;
         item = icount ? xzp_find(keys, icount, m->crc) : (size_t)-1;
         if (item != (size_t)-1)
-            name = xzp_read_name(self, (int64_t)xzp_le32(itab + item * 12U + 4U),
+            name = xzp_read_name(self, (int64_t)xx_data_get_u32(itab + item * 12U + 4U, 4, 0, false),
                                  (int64_t)ioff, (int64_t)ioff + ilen);
         m->named = name != NULL;
         if (!name) {

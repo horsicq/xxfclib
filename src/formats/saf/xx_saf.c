@@ -43,6 +43,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* REGISTRATION PENDING.  xxfc_defs.h carries no XX_FILE_TYPE_SAF yet and this
  * port must not edit that shared header.  Delete this block when the enum is
@@ -78,15 +79,6 @@ typedef struct xx_saf_stream_s {
 static void xx_saf_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint32_t xx_saf_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static uint16_t xx_saf_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
 
 static bool xx_saf_read_at(Abstractformat *self, int64_t offset,
                            uint8_t *buffer, size_t size) {
@@ -262,8 +254,8 @@ static xx_saf_stream *xx_saf_parse(Abstractformat *self, bool header_only,
 
         /* Both sizes are written as u32 but read signed; a negative one is a
          * rejection, not a four-gigabyte member. */
-        uncompressed_size = (int64_t)(int32_t)xx_saf_le32(entry + 0x0eU);
-        compressed_size = (int64_t)(int32_t)xx_saf_le32(entry + 0x12U);
+        uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(entry + 0x0eU, 4, 0, false);
+        compressed_size = (int64_t)(int32_t)xx_data_get_u32(entry + 0x12U, 4, 0, false);
         if (uncompressed_size < 0 || compressed_size < 0) goto fail;
 
         data_offset = position + (int64_t)XX_SAF_ENTRY_SIZE;
@@ -281,8 +273,8 @@ static xx_saf_stream *xx_saf_parse(Abstractformat *self, bool header_only,
         member.uncompressed_size = uncompressed_size;
         member.method = entry[0x1b];
         /* Date first, time second - see the note at the top of this file. */
-        member.timestamp = ((uint64_t)xx_saf_le16(entry + 0x16U) << 16) |
-                           (uint64_t)xx_saf_le16(entry + 0x18U);
+        member.timestamp = ((uint64_t)xx_data_get_u16(entry + 0x16U, 2, 0, false) << 16) |
+                           (uint64_t)xx_data_get_u16(entry + 0x18U, 2, 0, false);
         member.is_folder = false;
 
         if (!xx_saf_add(stream, &member)) goto fail;

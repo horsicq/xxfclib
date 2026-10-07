@@ -11,6 +11,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_nintendo_u8_MAX_MEMBERS 1000000U
 typedef struct xx_nintendo_u8_member_s {
@@ -33,16 +34,6 @@ typedef struct xx_nintendo_u8_stream_s {
 } xx_nintendo_u8_stream;
 static void xx_nintendo_u8_vtable_destroy(Abstractformat *self);
 
-static inline uint16_t xx_nintendo_u8_u16(const uint8_t *p, bool be) {
-    return be ? (uint16_t)(((uint16_t)p[0] << 8) | p[1])
-              : (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
-}
-static inline uint32_t xx_nintendo_u8_u32(const uint8_t *p, bool be) {
-    return be ? ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
-                ((uint32_t)p[2] << 8) | p[3]
-              : p[0] | ((uint32_t)p[1] << 8) |
-                ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
 static bool xx_nintendo_u8_range_within(int64_t span, int64_t offset, int64_t size) {
     return offset >= 0 && size >= 0 && offset <= span && size <= span-offset;
 }
@@ -220,16 +211,16 @@ static xx_nintendo_u8_stream *xx_nintendo_u8_parse(Abstractformat *self,xx_pd_st
     int64_t fst_end,pool,pool_size,data_start;
     uint32_t *parents=NULL,*ends=NULL; char **paths=NULL; size_t depth=0;
     if(!xx_nintendo_u8_read_rel(self,span,0,h,sizeof(h))) goto fail;
-    be=xx_nintendo_u8_u32(h,true)==0x55AA382DU;
-    if(!be && xx_nintendo_u8_u32(h,false)!=0x55AA382DU) goto fail;
-    root_off=xx_nintendo_u8_u32(h+4,be); fst_end=(int64_t)root_off+xx_nintendo_u8_u32(h+8,be); data_start=xx_nintendo_u8_u32(h+12,be);
+    be=xx_data_get_u32(h, 4, 0, true)==0x55AA382DU;
+    if(!be && xx_data_get_u32(h, 4, 0, false)!=0x55AA382DU) goto fail;
+    root_off=xx_data_get_u32(h+4, 4, 0, be); fst_end=(int64_t)root_off+xx_data_get_u32(h+8, 4, 0, be); data_start=xx_data_get_u32(h+12, 4, 0, be);
     if(root_off<32 || fst_end>data_start || data_start>span ||
        !xx_nintendo_u8_read_rel(self,span,root_off,node,sizeof(node)) ||
-       (xx_nintendo_u8_u32(node,be)>>24)!=1U || xx_nintendo_u8_u32(node+4,be)!=0U) goto fail;
-    count=xx_nintendo_u8_u32(node+8,be); pool=(int64_t)root_off+(int64_t)count*12; pool_size=fst_end-pool;
+       (xx_data_get_u32(node, 4, 0, be)>>24)!=1U || xx_data_get_u32(node+4, 4, 0, be)!=0U) goto fail;
+    count=xx_data_get_u32(node+8, 4, 0, be); pool=(int64_t)root_off+(int64_t)count*12; pool_size=fst_end-pool;
     if(!count || count>XX_nintendo_u8_MAX_MEMBERS || pool_size<1) goto fail;
     {
-        uint32_t noff=xx_nintendo_u8_u32(node,be)&0xFFFFFFU; uint8_t terminator;
+        uint32_t noff=xx_data_get_u32(node, 4, 0, be)&0xFFFFFFU; uint8_t terminator;
         if((int64_t)noff>=pool_size || !xx_nintendo_u8_read_rel(self,span,pool+noff,&terminator,1U) || terminator) goto fail;
     }
     parents=(uint32_t *)xx_mem_alloc((size_t)count*sizeof(*parents));
@@ -243,7 +234,7 @@ static xx_nintendo_u8_stream *xx_nintendo_u8_parse(Abstractformat *self,xx_pd_st
         uint32_t field,type,off,size; char leaf[1024]; char *name;
         while(depth>1U && i>=ends[depth-1U]) xx_str_free(paths[--depth]);
         if((pd && xx_pd_is_stopped(pd)) || !xx_nintendo_u8_read_rel(self,span,(int64_t)root_off+(int64_t)i*12,node,sizeof(node))) goto u8_fail;
-        field=xx_nintendo_u8_u32(node,be); type=field>>24; off=xx_nintendo_u8_u32(node+4,be); size=xx_nintendo_u8_u32(node+8,be);
+        field=xx_data_get_u32(node, 4, 0, be); type=field>>24; off=xx_data_get_u32(node+4, 4, 0, be); size=xx_data_get_u32(node+8, 4, 0, be);
         if(type>1U || !xx_nintendo_u8_pool_name(self,span,pool,pool_size,field&0xFFFFFFU,leaf,sizeof(leaf))) goto u8_fail;
         if(xx_rt_strchr(leaf,'/') || xx_rt_strchr(leaf,'\\')) goto u8_fail;
         name=paths[depth-1U][0]?xx_str_concat3(paths[depth-1U],"/",leaf):xx_str_dup(leaf);

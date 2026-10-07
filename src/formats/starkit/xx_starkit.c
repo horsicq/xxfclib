@@ -82,6 +82,7 @@
 #include "xxfclib/algo/deflate/xx_deflate.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef STARKIT
 #define XX_STARKIT_FILE_TYPE XX_FILE_TYPE_STARKIT
@@ -132,24 +133,6 @@ typedef struct xx_starkit_stream_s {
 static void xx_starkit_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static XXFC_MAYBE_UNUSED uint16_t xx_starkit_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t xx_starkit_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static XXFC_MAYBE_UNUSED uint16_t xx_starkit_be16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[1] | ((uint16_t)data[0] << 8));
-}
-
-static uint32_t xx_starkit_be32(const uint8_t *data) {
-    return (uint32_t)data[3] | ((uint32_t)data[2] << 8) |
-           ((uint32_t)data[1] << 16) | ((uint32_t)data[0] << 24);
-}
 
 static bool xx_starkit_read_at(Abstractformat *self, int64_t offset,
                               uint8_t *buffer, size_t size) {
@@ -495,7 +478,7 @@ static xx_starkit_stream *xx_starkit_parse(Abstractformat *self,
     }
     /* The magic plus the file's own declared length. */
     if (xx_rt_memcmp(head, "JL\x1a\x00", 4U) != 0 ||
-        (int64_t)xx_starkit_be32(head + 4) != span) {
+        (int64_t)xx_data_get_u32(head + 4, 4, 0, true) != span) {
         /* Starpacks append an unchanged Metakit filesystem to an executable.
          * Its self-pointing final commit gives the exact container origin. */
         int64_t container_size, container_base;
@@ -503,14 +486,14 @@ static xx_starkit_stream *xx_starkit_parse(Abstractformat *self,
         if (head[0] != 'M' || head[1] != 'Z' ||
             !xx_starkit_read_at(self, total - XX_STARKIT_FOOTER_SIZE,
                                footer, sizeof(footer)) ||
-            xx_starkit_be32(footer) != 0x80000000U) return NULL;
-        container_size = (int64_t)xx_starkit_be32(footer + 4) + XX_STARKIT_FOOTER_SIZE;
+            xx_data_get_u32(footer, 4, 0, true) != 0x80000000U) return NULL;
+        container_size = (int64_t)xx_data_get_u32(footer + 4, 4, 0, true) + XX_STARKIT_FOOTER_SIZE;
         if (container_size < XX_STARKIT_HEADER_SIZE + XX_STARKIT_FOOTER_SIZE ||
             container_size >= span) return NULL;
         container_base = total - container_size;
         if (!xx_starkit_read_at(self, container_base, head, sizeof(head)) ||
             xx_rt_memcmp(head, "JL\x1a\x00", 4U) != 0 ||
-            (int64_t)xx_starkit_be32(head + 4) != container_size) return NULL;
+            (int64_t)xx_data_get_u32(head + 4, 4, 0, true) != container_size) return NULL;
         /* Borrow the device and metadata without mutating the caller's base.
          * The normal parser validates both commit pairs, schema, and columns. */
         nested = *self;
@@ -526,14 +509,14 @@ static xx_starkit_stream *xx_starkit_parse(Abstractformat *self,
     }
     /* The commit footer: an end marker that points at itself, then the tagged
      * size and position of the root block. */
-    if (xx_starkit_be32(footer) != 0x80000000U ||
-        (int64_t)xx_starkit_be32(footer + 4) !=
+    if (xx_data_get_u32(footer, 4, 0, true) != 0x80000000U ||
+        (int64_t)xx_data_get_u32(footer + 4, 4, 0, true) !=
             span - XX_STARKIT_FOOTER_SIZE ||
-        (xx_starkit_be32(footer + 8) & 0x80000000U) == 0U) {
+        (xx_data_get_u32(footer + 8, 4, 0, true) & 0x80000000U) == 0U) {
         return NULL;
     }
-    root_size = xx_starkit_be32(footer + 8) & 0x7fffffffU;
-    root_position = xx_starkit_be32(footer + 12);
+    root_size = xx_data_get_u32(footer + 8, 4, 0, true) & 0x7fffffffU;
+    root_position = xx_data_get_u32(footer + 12, 4, 0, true);
     root = xx_starkit_region(self, span, root_position, root_size,
                              XX_STARKIT_MAX_ROOT);
     if (!root) return NULL;

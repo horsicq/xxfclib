@@ -17,6 +17,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef D_LINK_FPKG_CPKG
 #define XX_D_LINK_FPKG_CPKG_FILE_TYPE XX_FILE_TYPE_D_LINK_FPKG_CPKG
@@ -52,15 +53,6 @@ typedef struct fpkg_stream_s {
 } fpkg_stream;
 
 /* ---- I/O --------------------------------------------------------------- */
-
-static uint16_t fpkg_be16(const uint8_t *bytes) {
-    return (uint16_t)(((uint16_t)bytes[0] << 8U) | (uint16_t)bytes[1]);
-}
-
-static uint32_t fpkg_be32(const uint8_t *bytes) {
-    return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
-           ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3];
-}
 
 static bool fpkg_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
@@ -102,7 +94,7 @@ static bool fpkg_read_header(Abstractformat *format, fpkg_layout *layout) {
                       sizeof(header)) ||
         !fpkg_is_magic(header))
         return false;
-    first = fpkg_be32(header + 8U);
+    first = xx_data_get_u32(header + 8U, 4, 0, true);
     if (first < XX_D_LINK_FPKG_CPKG_HEADER_SIZE ||
         (int64_t)first > total - format->base_address -
                              (int64_t)XX_D_LINK_FPKG_CPKG_ENTRY_SIZE)
@@ -122,10 +114,10 @@ static bool fpkg_read_header(Abstractformat *format, fpkg_layout *layout) {
 static bool fpkg_parse_entry(const uint8_t *entry, uint16_t *type,
                              uint16_t *unknown, uint32_t *size, char *name) {
     size_t length = 0U, index;
-    if (fpkg_be32(entry) != XX_D_LINK_FPKG_CPKG_ENTRY_SIZE) return false;
-    *type = fpkg_be16(entry + 4U);
-    *unknown = fpkg_be16(entry + 6U);
-    *size = fpkg_be32(entry + 8U);
+    if (xx_data_get_u32(entry, 4, 0, true) != XX_D_LINK_FPKG_CPKG_ENTRY_SIZE) return false;
+    *type = xx_data_get_u16(entry + 4U, 2, 0, true);
+    *unknown = xx_data_get_u16(entry + 6U, 2, 0, true);
+    *size = xx_data_get_u32(entry + 8U, 4, 0, true);
     if (*type < XX_D_LINK_FPKG_CPKG_TYPE_FILE ||
         *type > XX_D_LINK_FPKG_CPKG_TYPE_SIGNATURE)
         return false;
@@ -468,7 +460,7 @@ static void fpkg_read_model(Abstractformat *format, const fpkg_layout *layout,
         !fpkg_read_at(format->device, format->base_address + 12, block,
                       sizeof(block)))
         return;
-    length = fpkg_be32(block + 4U);
+    length = xx_data_get_u32(block + 4U, 4, 0, true);
     if (length == 0U || length > XX_D_LINK_FPKG_CPKG_MAX_MODEL ||
         length > layout->first_entry_offset - 20U ||
         !fpkg_read_at(format->device, format->base_address + 20, raw, length))

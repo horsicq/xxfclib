@@ -42,6 +42,7 @@
 #include "xxfclib/algo/dcl/xx_dcl.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_RCF_COPY_CHUNK (64 * 1024)
 
@@ -145,23 +146,12 @@ static bool xx_rcf_add(xx_rcf_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_rcf_le16(const uint8_t *data);
-static uint32_t xx_rcf_le32(const uint8_t *data);
 static xx_rcf_stream *xx_rcf_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_rcf_decode(Abstractformat *self, const xx_rcf_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
 
 /* The count field is 16 bit; nothing larger can be expressed. */
 /* A DCL stream is two header bytes plus at least one token byte. */
-
-static uint16_t xx_rcf_le16(const uint8_t *data) {
-    return (uint16_t)((uint32_t)data[0] | ((uint32_t)data[1] << 8));
-}
-
-static uint32_t xx_rcf_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static xx_rcf_stream *xx_rcf_parse(Abstractformat *self, xx_pd_struct *pd) {
     xx_rcf_stream *stream;
@@ -212,7 +202,7 @@ static xx_rcf_stream *xx_rcf_parse(Abstractformat *self, xx_pd_struct *pd) {
                         trailer, sizeof(trailer))) {
         return NULL;
     }
-    count = (int64_t)xx_rcf_le16(trailer);
+    count = (int64_t)xx_data_get_u16(trailer, 2, 0, false);
     if (count < 1 || count > XX_RCF_MAX_MEMBERS) return NULL;
 
     directory_size = (count * XX_RCF_ENTRY_SIZE) + XX_RCF_COUNT_SIZE;
@@ -260,7 +250,7 @@ static xx_rcf_stream *xx_rcf_parse(Abstractformat *self, xx_pd_struct *pd) {
             }
         }
 
-        packed_size = (int64_t)(int32_t)xx_rcf_le32(entry + 13);
+        packed_size = (int64_t)(int32_t)xx_data_get_u32(entry + 13, 4, 0, false);
         if (packed_size < XX_RCF_MIN_STREAM) goto fail;
         /* A member may not reach into the directory. */
         if (packed_size > directory_offset - offset) goto fail;

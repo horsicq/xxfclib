@@ -4,11 +4,12 @@
  */
 #include "xxfclib/formats/s98_log/xx_s98_log.h"
 #include "../snes_spc/xx_tenth_retro.h"
+#include "xxfclib/data/xx_data.h"
 static bool read_components(Abstractformat *f,pm_stream *s,th_blob *b) {
  const uint8_t *p=b->p;uint32_t count,data,tag,loop,a,end,commands=0,i,types[64],max=0;bool loop_seen=false,ended=false;
- if(b->n<33 || xx_rt_memcmp(p,"S983",4) || pm_le32(p+12)) { return false; } count=pm_le32(p+28);if(count>64) return false;data=pm_le32(p+20);tag=pm_le32(p+16);loop=pm_le32(p+24);
+ if(b->n<33 || xx_rt_memcmp(p,"S983",4) || xx_data_get_u32(p+12, 4, 0, false)) { return false; } count=xx_data_get_u32(p+28, 4, 0, false);if(count>64) return false;data=xx_data_get_u32(p+20, 4, 0, false);tag=xx_data_get_u32(p+16, 4, 0, false);loop=xx_data_get_u32(p+24, 4, 0, false);
  if(data<32+count*16 || data>=b->n || !th_zero(p+32+count*16,data-32-count*16) || (tag && (tag<=data || tag>=b->n))) return false;
- for(i=0;i<count;++i) {uint32_t at=32+i*16,t=pm_le32(p+at);if((t>9 && t!=15 && t!=16) || (t && !pm_le32(p+at+4)) || !th_zero(p+at+12,4)) return false;types[i]=t;}
+ for(i=0;i<count;++i) {uint32_t at=32+i*16,t=xx_data_get_u32(p+at, 4, 0, false);if((t>9 && t!=15 && t!=16) || (t && !xx_data_get_u32(p+at+4, 4, 0, false)) || !th_zero(p+at+12,4)) return false;types[i]=t;}
  if(!count) {types[0]=4;count=1;}end=tag ? tag:b->n;a=data;
  while(a<end) {unsigned op=p[a];if(!th_poll(b) || ++commands>2000000) return false;if(a==loop) loop_seen=true;++a;
   if(op==0xfd) {ended=true;break;}

@@ -4,6 +4,7 @@
 #include "../xx_ninth_data.h"
 #include "xxfclib/algo/hash/xx_hash.h"
 #include "xxfclib/algo/adler32/xx_adler32.h"
+#include "xxfclib/data/xx_data.h"
 static XXFC_MAYBE_UNUSED bool th_mem(Abstractformat *f,pm_stream *s,const char *name,uint8_t **p,uint64_t n) {
     if(n>67108864 || s->count>=4096 || !pm_add(f,s,name,0,0)) return false;
     s->items[s->count-1].memory=*p;s->items[s->count-1].size=(int64_t)n;s->items[s->count-1].packed_size=(int64_t)n;*p=NULL;return true;
@@ -50,7 +51,7 @@ static XXFC_MAYBE_UNUSED bool th_lz(const uint8_t *p,uint64_t n,uint8_t *out,uin
             if(!mode) {if(len==7) {if(at>=n) return false;len+=p[(size_t)at++];}len+=2;}
             else {--len;if(len==6) {do {if(at>=n) return false;code=p[(size_t)at++];len+=code;if(len>cap) return false;} while(level==2 && code==255);}len+=3;}
             if(at>=n) { return false; } code=p[(size_t)at++];dist+=code+1;
-            if(mode && level==2 && code==255 && (ctrl&31)==31) {if(!eh_span(at,2,n)) return false;dist=8192+pm_be16(p+(size_t)at);at+=2;}
+            if(mode && level==2 && code==255 && (ctrl&31)==31) {if(!eh_span(at,2,n)) return false;dist=8192+xx_data_get_u16(p+(size_t)at, 2, 0, true);at+=2;}
             if(!th_copy(out,&made,cap,dist,len,pd)) return false;
         }
     }return made==cap;

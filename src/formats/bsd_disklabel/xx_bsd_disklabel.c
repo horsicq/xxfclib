@@ -6,8 +6,9 @@
  */
 #include "xxfclib/formats/bsd_disklabel/xx_bsd_disklabel.h"
 #include "../apple_family/xx_apple_family_private.h"
-static uint32_t dl32(const uint8_t *p,bool big) { return big ? pm_be32(p):pm_le32(p); }
-static uint16_t dl16(const uint8_t *p,bool big) { return big ? pm_be16(p):pm_le16(p); }
+#include "xxfclib/data/xx_data.h"
+static uint32_t dl32(const uint8_t *p,bool big) { return big ? xx_data_get_u32(p, 4, 0, true):xx_data_get_u32(p, 4, 0, false); }
+static uint16_t dl16(const uint8_t *p,bool big) { return big ? xx_data_get_u16(p, 2, 0, true):xx_data_get_u16(p, 2, 0, false); }
 static bool dl_header(af_work *w,const uint8_t *p,size_t available,bool big,uint32_t *sec,uint32_t *parts) {
     uint32_t units,i;uint16_t checksum=0;
     if(available<148U || dl32(p,big)!=UINT32_C(0x82564557) || dl32(p+132,big)!=UINT32_C(0x82564557))return false;
@@ -26,8 +27,8 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     n=(uint64_t)pm_available(f)>sizeof(probe)?sizeof(probe):(size_t)pm_available(f);
     if(!af_read(&w,0,probe,n))return false;
     for(at=0;at+148U<=n;at+=4U) { bool endian;uint32_t ss,pp;
-        if(pm_le32(probe+at)==UINT32_C(0x82564557))endian=false;
-        else if(pm_be32(probe+at)==UINT32_C(0x82564557))endian=true;else continue;
+        if(xx_data_get_u32(probe+at, 4, 0, false)==UINT32_C(0x82564557))endian=false;
+        else if(xx_data_get_u32(probe+at, 4, 0, true)==UINT32_C(0x82564557))endian=true;else continue;
         if(!dl_header(&w,probe+at,n-at,endian,&ss,&pp))continue;
         if(found!=UINT32_MAX) {return false; } found=at;sec=ss;parts=pp;big=endian;
     }

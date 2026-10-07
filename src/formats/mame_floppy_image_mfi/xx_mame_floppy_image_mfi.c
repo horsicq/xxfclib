@@ -41,6 +41,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef MAME_FLOPPY_IMAGE_MFI
 #define XX_MAME_FLOPPY_IMAGE_MFI_FILE_TYPE XX_FILE_TYPE_MAME_FLOPPY_IMAGE_MFI
@@ -170,11 +171,6 @@ typedef struct mfi_pending_s {
     uint8_t c, h, r, n;
 } mfi_pending;
 
-static uint32_t mfi_le32(const uint8_t *b) {
-    return (uint32_t)b[0] | ((uint32_t)b[1] << 8U) | ((uint32_t)b[2] << 16U) |
-           ((uint32_t)b[3] << 24U);
-}
-
 static bool mfi_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     size_t done = 0U;
@@ -210,10 +206,10 @@ static bool mfi_read_table(xx_io_device *device, int64_t base, mfi_table *t) {
         t->old_format = true;
     else
         return false;
-    raw_cylinders = mfi_le32(head + 16);
+    raw_cylinders = xx_data_get_u32(head + 16, 4, 0, false);
     t->resolution = raw_cylinders >> 30U;
     t->cylinders = raw_cylinders & 0x3FFFFFFFU;
-    t->heads = mfi_le32(head + 20);
+    t->heads = xx_data_get_u32(head + 20, 4, 0, false);
     if (t->resolution > MFI_MAX_RESOLUTION || t->cylinders > MFI_MAX_CYLINDERS ||
         t->heads > MFI_MAX_HEADS)
         return false;
@@ -234,9 +230,9 @@ static bool mfi_read_table(xx_io_device *device, int64_t base, mfi_table *t) {
         const uint8_t *p = raw + (size_t)index * MFI_ENTRY_SIZE;
         const uint32_t row = index / t->heads;
         int64_t end;
-        e->offset = mfi_le32(p);
-        e->compressed = mfi_le32(p + 4);
-        e->uncompressed = mfi_le32(p + 8);
+        e->offset = xx_data_get_u32(p, 4, 0, false);
+        e->compressed = xx_data_get_u32(p + 4, 4, 0, false);
+        e->uncompressed = xx_data_get_u32(p + 8, 4, 0, false);
         e->head = index % t->heads;
         e->cylinder = row >> t->resolution;
         e->quarter = (row & ((1U << t->resolution) - 1U))
@@ -323,14 +319,14 @@ static void mfi_flux_start(mfi_flux *f, const uint8_t *raw, size_t count,
     f->old_format = old_format;
     f->level = -1;
     if (old_format && count != 0U) {
-        const uint32_t type = mfi_le32(raw + (count - 1U) * 4U) >> 28U;
+        const uint32_t type = xx_data_get_u32(raw + (count - 1U) * 4U, 4, 0, false) >> 28U;
         f->level = type <= 1U ? (int)type : -1;
     }
 }
 
 static bool mfi_flux_next(mfi_flux *f, uint64_t *when) {
     while (f->index < f->count) {
-        const uint32_t value = mfi_le32(f->raw + f->index * 4U);
+        const uint32_t value = xx_data_get_u32(f->raw + f->index * 4U, 4, 0, false);
         const uint32_t type = value >> 28U;
         const uint64_t start = f->time;
         bool change;

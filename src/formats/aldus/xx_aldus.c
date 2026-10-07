@@ -15,6 +15,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define ALDUS_HEADER_MIN 0x40U
 #define ALDUS_HEADER_LZW 100U
@@ -45,19 +46,6 @@ typedef struct aldus_stream {
     int64_t stream_size;
     int64_t archive_size;
 } aldus_stream;
-
-static uint16_t be16(const uint8_t *value) {
-    return (uint16_t)(((uint16_t)value[0] << 8U) | value[1]);
-}
-
-static uint32_t be32(const uint8_t *value) {
-    return ((uint32_t)be16(value) << 16U) | be16(value + 2U);
-}
-
-static uint32_t le32(const uint8_t *value) {
-    return (uint32_t)value[0] | ((uint32_t)value[1] << 8U) |
-           ((uint32_t)value[2] << 16U) | ((uint32_t)value[3] << 24U);
-}
 
 static bool range_inside(int64_t total, int64_t offset, int64_t size) {
     return total >= 0 && offset >= 0 && size >= 0 && offset <= total &&
@@ -152,7 +140,7 @@ static bool parse(Abstractformat *format, aldus_stream **result) {
     if (generation == ALDUS_GENERATION_UNKNOWN) return false;
 
     {
-        uint16_t header_size = be16(header + 16U);
+        uint16_t header_size = xx_data_get_u16(header + 16U, 2, 0, true);
         uint16_t expected = generation == ALDUS_GENERATION_LZW
                                 ? ALDUS_HEADER_LZW : ALDUS_HEADER_NEW;
         if (header_size != expected ||
@@ -165,17 +153,17 @@ static bool parse(Abstractformat *format, aldus_stream **result) {
     for (index = name_size + 1U; index < 32U; ++index)
         if (header[0x12U + index] != 0U) return false;
 
-    original = be32(header + 0x32U);
+    original = xx_data_get_u32(header + 0x32U, 4, 0, true);
     if (!read_at(format->device,
-                 format->base_address + (int64_t)be16(header + 16U),
+                 format->base_address + (int64_t)xx_data_get_u16(header + 16U, 2, 0, true),
                  subheader, sizeof(subheader))) return false;
-    if (be16(subheader) != ALDUS_SUBHEADER) return false;
-    block_size = be16(subheader + 2U);
-    last_block = be16(subheader + 4U);
-    block_count = be32(subheader + 6U);
-    table_offset = be32(subheader + 10U);
-    data_offset = be32(subheader + 14U);
-    declared_size = be32(subheader + 18U);
+    if (xx_data_get_u16(subheader, 2, 0, true) != ALDUS_SUBHEADER) return false;
+    block_size = xx_data_get_u16(subheader + 2U, 2, 0, true);
+    last_block = xx_data_get_u16(subheader + 4U, 2, 0, true);
+    block_count = xx_data_get_u32(subheader + 6U, 4, 0, true);
+    table_offset = xx_data_get_u32(subheader + 10U, 4, 0, true);
+    data_offset = xx_data_get_u32(subheader + 14U, 4, 0, true);
+    declared_size = xx_data_get_u32(subheader + 18U, 4, 0, true);
     if (block_count == 0U || block_count > ALDUS_MAX_BLOCKS ||
         last_block == 0U || last_block > block_size ||
         block_size != (generation == ALDUS_GENERATION_LZW
@@ -184,7 +172,7 @@ static bool parse(Abstractformat *format, aldus_stream **result) {
     if ((int64_t)(block_count - 1U) * block_size + last_block != original)
         return false;
     table_size = (int64_t)block_count * 2;
-    if (table_offset != (int64_t)be16(header + 16U) + ALDUS_SUBHEADER ||
+    if (table_offset != (int64_t)xx_data_get_u16(header + 16U, 2, 0, true) + ALDUS_SUBHEADER ||
         data_offset != table_offset + table_size || declared_size != size ||
         !range_inside(size, table_offset, table_size) ||
         !range_inside(size, data_offset, ALDUS_TRAILER)) return false;
@@ -202,7 +190,7 @@ static bool parse(Abstractformat *format, aldus_stream **result) {
     xx_rt_memcpy(stream->name, header + 0x12U, name_size);
     stream->name[name_size] = 0;
     for (index = 0U; index < block_count; ++index) {
-        uint16_t packed = be16(table + index * 2U);
+        uint16_t packed = xx_data_get_u16(table + index * 2U, 2, 0, true);
         if (packed < 2U || (packed & 1U) != 0U ||
             packed_total > INT64_MAX - packed) goto fail;
         stream->blocks[index] = packed;
@@ -222,8 +210,8 @@ static bool parse(Abstractformat *format, aldus_stream **result) {
     stream->block_count = block_count;
     stream->last_block_size = last_block;
     stream->original_size = original;
-    stream->timestamp = le32(header + 0x36U);
-    stream->header_size = be16(header + 16U);
+    stream->timestamp = xx_data_get_u32(header + 0x36U, 4, 0, false);
+    stream->header_size = xx_data_get_u16(header + 16U, 2, 0, true);
     stream->data_offset = data_offset;
     stream->stream_size = data_offset + packed_total - stream->header_size;
     stream->archive_size = size;

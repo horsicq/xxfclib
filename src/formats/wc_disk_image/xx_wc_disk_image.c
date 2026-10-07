@@ -7,7 +7,7 @@ static uint16_t wc_crc(const uint8_t *p,size_t n){uint16_t crc=0;size_t i;unsign
 static bool wc_track(Abstractformat *f,pm_stream *s,uint64_t *at,unsigned c,unsigned h,unsigned sectors,xx_pd_struct *pd,const char *name){
  da_run runs[18];uint8_t head[6],body[512];unsigned i;xx_disk_additions_info *r=(xx_disk_additions_info *)f;
  for(i=0;i<sectors;++i){da_run *run=runs+i;if(!da_read(f,*at,head,6,pd)||head[1]!=h||head[2]!=i+1U||head[3]!=c||head[0]>2U)return false;*at+=6U;run->at=*at;run->bytes=512;run->count=1;run->stride=0;run->source=NULL;run->fill=-1;
-  if(head[0]==0U){if(!da_read(f,*at,body,512,pd)||wc_crc(body,512)!=pm_le16(head+4))return false;*at+=512;}
+  if(head[0]==0U){if(!da_read(f,*at,body,512,pd)||wc_crc(body,512)!=xx_data_get_u16(head+4, 2, 0, false))return false;*at+=512;}
   else if(head[0]==1U){run->fill=0;r->incomplete=true;}else run->fill=head[4];
  }
  return da_map_add(f,s,name,runs,sectors);
@@ -20,7 +20,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd){uint8_t h[
   * extra tracks without inventing missing opposite-side data. */
  for(c=0;c<h[19];++c)for(head=0;head<h[17];++head){xx_rt_snprintf(name,sizeof(name),"c%03u-h%u-sectors.img",c,head);if(!wc_track(f,s,&at,c,head,h[18],pd,name))return false;}
  for(i=0;i<4U;++i)if(h[20U+i]){xx_rt_snprintf(name,sizeof(name),"extra-c%03u-h%u-sectors.img",h[19]+i/2U,i&1U);if(!wc_track(f,s,&at,h[19]+i/2U,i&1U,h[18],pd,name))return false;}
- for(i=0;i<2U;++i)if(h[24]&(1U<<i)){uint32_t n;if(!da_read(f,at,x,6,pd)||x[0]!=3U+i)return false;n=pm_le16(x+4);at+=6;if(!da_add(f,s,i?"directory.txt":"comment.txt",at,n))return false;at+=n;}
+ for(i=0;i<2U;++i)if(h[24]&(1U<<i)){uint32_t n;if(!da_read(f,at,x,6,pd)||x[0]!=3U+i)return false;n=xx_data_get_u16(x+4, 2, 0, false);at+=6;if(!da_add(f,s,i?"directory.txt":"comment.txt",at,n))return false;at+=n;}
  if(at!=(uint64_t)pm_available(f)) {return false; } s->size=(int64_t)at;return da_poll(pd);
 }
 DA_API(wc_disk_image,XX_FILE_TYPE_WC_DISK_IMAGE,"d2f")

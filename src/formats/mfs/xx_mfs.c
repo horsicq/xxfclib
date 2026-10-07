@@ -8,6 +8,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 #ifdef MFS
 #define MFS_TYPE XX_FILE_TYPE_MFS
 #else
@@ -62,11 +63,6 @@ typedef struct mfs_view_s {
     size_t hash_capacity;
     uint32_t name_work;
 } mfs_view;
-static uint16_t mfs_u16(const uint8_t *p) { return (uint16_t)((p[0] << 8) | p[1]); }
-static uint32_t mfs_u32(const uint8_t *p) {
-    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
-           ((uint32_t)p[2] << 8) | p[3];
-}
 static bool mfs_read(const mfs_view *view, uint64_t offset, void *buffer,
                        size_t size, xx_pd_struct *pd) {
     int64_t saved;
@@ -230,15 +226,15 @@ static mfs_view *mfs_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (!view) return NULL;
     xx_mem_zero(view, sizeof(*view)); view->device = self->device; view->base = self->base_address; view->bytes = available;
     if (!mfs_read(view, 2U * MFS_BLOCK, mdb, sizeof(mdb), pd)) goto fail;
-    view->files = mfs_u16(mdb + 12); view->units = mfs_u16(mdb + 18);
-    view->unit_size = mfs_u32(mdb + 20); view->heap = (uint64_t)mfs_u16(mdb + 28) * MFS_BLOCK;
-    directory = (uint64_t)mfs_u16(mdb + 14) * MFS_BLOCK;
-    sectors = mfs_u16(mdb + 16); directory_end = directory + (uint64_t)sectors * MFS_BLOCK;
-    if (mfs_u16(mdb) != 0xD2D7U || !view->units || view->units > MFS_UNITS ||
-        !view->unit_size || view->unit_size % MFS_BLOCK || mfs_u32(mdb + 24) % view->unit_size ||
+    view->files = xx_data_get_u16(mdb + 12, 2, 0, true); view->units = xx_data_get_u16(mdb + 18, 2, 0, true);
+    view->unit_size = xx_data_get_u32(mdb + 20, 4, 0, true); view->heap = (uint64_t)xx_data_get_u16(mdb + 28, 2, 0, true) * MFS_BLOCK;
+    directory = (uint64_t)xx_data_get_u16(mdb + 14, 2, 0, true) * MFS_BLOCK;
+    sectors = xx_data_get_u16(mdb + 16, 2, 0, true); directory_end = directory + (uint64_t)sectors * MFS_BLOCK;
+    if (xx_data_get_u16(mdb, 2, 0, true) != 0xD2D7U || !view->units || view->units > MFS_UNITS ||
+        !view->unit_size || view->unit_size % MFS_BLOCK || xx_data_get_u32(mdb + 24, 4, 0, true) % view->unit_size ||
         !sectors || directory < 4U * MFS_BLOCK || directory_end > available || view->heap < 4U * MFS_BLOCK ||
         view->heap + (uint64_t)view->units * view->unit_size > available ||
-        view->files > (uint64_t)sectors * 9U || mfs_u16(mdb + 34) > view->units ||
+        view->files > (uint64_t)sectors * 9U || xx_data_get_u16(mdb + 34, 2, 0, true) > view->units ||
         !mfs_name(mdb + 37, mdb[36], view->volume_name, false)) goto fail;
     end = view->heap + (uint64_t)view->units * view->unit_size;
     if (directory_end > end) end = directory_end;
@@ -253,13 +249,13 @@ static mfs_view *mfs_parse(Abstractformat *self, xx_pd_struct *pd) {
         view->map[i] = value;
         if (!value) ++free_blocks;
     }
-    if (free_blocks != mfs_u16(mdb + 34)) goto fail;
+    if (free_blocks != xx_data_get_u16(mdb + 34, 2, 0, true)) goto fail;
     /* Recognize a matching backup MDB immediately after described storage.
      * Missing or stale backups do not supply an alternate primary directory. */
     if (available - end >= MFS_MDB && mfs_read(view, end, sector, sizeof(sector), pd) &&
-        mfs_u16(sector) == 0xD2D7U && mfs_u16(sector + 14) == mfs_u16(mdb + 14) &&
-        mfs_u16(sector + 16) == sectors && mfs_u16(sector + 18) == view->units &&
-        mfs_u32(sector + 20) == view->unit_size && mfs_u16(sector + 28) == mfs_u16(mdb + 28))
+        xx_data_get_u16(sector, 2, 0, true) == 0xD2D7U && xx_data_get_u16(sector + 14, 2, 0, true) == xx_data_get_u16(mdb + 14, 2, 0, true) &&
+        xx_data_get_u16(sector + 16, 2, 0, true) == sectors && xx_data_get_u16(sector + 18, 2, 0, true) == view->units &&
+        xx_data_get_u32(sector + 20, 4, 0, true) == view->unit_size && xx_data_get_u16(sector + 28, 2, 0, true) == xx_data_get_u16(mdb + 28, 2, 0, true))
         end += MFS_MDB;
     view->capacity = (size_t)view->files * 2U;
     view->hash_capacity = 8U;
@@ -288,15 +284,15 @@ static mfs_view *mfs_parse(Abstractformat *self, xx_pd_struct *pd) {
             if (entry_size > MFS_BLOCK - at) goto fail;
             if (!(entry[0] & 0x80U)) { at += entry_size; continue; }
             if (++seen > view->files || !mfs_name(entry + 51, entry[50], name, true)) goto fail;
-            xx_mem_zero(&data, sizeof(data)); data.id = mfs_u32(entry + 18);
+            xx_mem_zero(&data, sizeof(data)); data.id = xx_data_get_u32(entry + 18, 4, 0, true);
             if (!mfs_id(view, data.id)) goto fail;
             data.header = directory + (uint64_t)i * MFS_BLOCK + at;
             data.header_size = (uint16_t)entry_size;
             data.flags = entry[0]; data.version = entry[1];
-            data.type = mfs_u32(entry + 2); data.creator = mfs_u32(entry + 6);
+            data.type = xx_data_get_u32(entry + 2, 4, 0, true); data.creator = xx_data_get_u32(entry + 6, 4, 0, true);
             resource = data; resource.resource = true;
-            if (!mfs_chain(view, &data, mfs_u16(entry + 22), mfs_u32(entry + 24), mfs_u32(entry + 28), pd) ||
-                !mfs_chain(view, &resource, mfs_u16(entry + 32), mfs_u32(entry + 34), mfs_u32(entry + 38), pd) ||
+            if (!mfs_chain(view, &data, xx_data_get_u16(entry + 22, 2, 0, true), xx_data_get_u32(entry + 24, 4, 0, true), xx_data_get_u32(entry + 28, 4, 0, true), pd) ||
+                !mfs_chain(view, &resource, xx_data_get_u16(entry + 32, 2, 0, true), xx_data_get_u32(entry + 34, 4, 0, true), xx_data_get_u32(entry + 38, 4, 0, true), pd) ||
                 !mfs_append(view, &data, name, pd) ||
                 (resource.physical && !mfs_append(view, &resource, name, pd))) goto fail;
             at += entry_size;

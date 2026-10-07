@@ -51,6 +51,7 @@
 #include "xxfclib/algo/crc/xx_crc.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef BSN
 #define XX_BSN_FILE_TYPE XX_FILE_TYPE_BSN
@@ -100,24 +101,6 @@ typedef struct xx_bsn_stream_s {
 static void xx_bsn_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static XXFC_MAYBE_UNUSED uint16_t xx_bsn_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t xx_bsn_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static uint16_t xx_bsn_be16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[1] | ((uint16_t)data[0] << 8));
-}
-
-static uint32_t xx_bsn_be32(const uint8_t *data) {
-    return (uint32_t)data[3] | ((uint32_t)data[2] << 8) |
-           ((uint32_t)data[1] << 16) | ((uint32_t)data[0] << 24);
-}
 
 static bool xx_bsn_read_at(Abstractformat *self, int64_t offset,
                               uint8_t *buffer, size_t size) {
@@ -249,8 +232,8 @@ static xx_bsn_stream *xx_bsn_parse(Abstractformat *self,
     if (!xx_bsn_read_at(self, self->base_address, head, sizeof(head))) {
         return NULL;
     }
-    if (xx_bsn_be32(head) != XX_BSN_ARCHIVE_MAGIC) return NULL;
-    if (xx_bsn_be16(head + 4) > XX_BSN_MAX_VERSION) return NULL;
+    if (xx_data_get_u32(head, 4, 0, true) != XX_BSN_ARCHIVE_MAGIC) return NULL;
+    if (xx_data_get_u16(head + 4, 2, 0, true) > XX_BSN_MAX_VERSION) return NULL;
 
     stream = (xx_bsn_stream *)xx_mem_alloc(sizeof(*stream));
     if (!stream) return NULL;
@@ -287,11 +270,11 @@ static xx_bsn_stream *xx_bsn_parse(Abstractformat *self,
                             sizeof(prefix))) {
             goto fail;
         }
-        if (xx_bsn_be32(prefix) != XX_BSN_MEMBER_MAGIC) goto fail;
+        if (xx_data_get_u32(prefix, 4, 0, true) != XX_BSN_MEMBER_MAGIC) goto fail;
 
         /* The body size is gated to the one shape the format can produce
          * before it is used to size a read. */
-        body_size = xx_bsn_be16(prefix + 4);
+        body_size = xx_data_get_u16(prefix + 4, 2, 0, true);
         if (body_size < XX_BSN_HEADER_BODY_OVERHEAD ||
             body_size > XX_BSN_HEADER_BODY_OVERHEAD + XX_BSN_MAX_NAME_SIZE) {
             goto fail;
@@ -326,21 +309,21 @@ static xx_bsn_stream *xx_bsn_parse(Abstractformat *self,
          * every header in the corpus, so reaching this point by accident is a
          * ~2^-32 event. */
         if (xx_crc32_calc(0U, body, body_size) !=
-            xx_bsn_be32(header + XX_BSN_MEMBER_PREFIX_SIZE + body_size)) {
+            xx_data_get_u32(header + XX_BSN_MEMBER_PREFIX_SIZE + body_size, 4, 0, true)) {
             goto fail;
         }
 
         xx_mem_zero(&member, sizeof(member));
-        plain = (uint64_t)xx_bsn_be32(body + XX_BSN_NAME_OFFSET + name_size +
-                                      1U);
-        packed = (uint64_t)xx_bsn_be32(body + XX_BSN_NAME_OFFSET + name_size +
-                                       5U);
+        plain = (uint64_t)xx_data_get_u32(body + XX_BSN_NAME_OFFSET + name_size +
+                                      1U, 4, 0, true);
+        packed = (uint64_t)xx_data_get_u32(body + XX_BSN_NAME_OFFSET + name_size +
+                                       5U, 4, 0, true);
         member.crc32 =
-            xx_bsn_be32(body + XX_BSN_NAME_OFFSET + name_size + 9U);
+            xx_data_get_u32(body + XX_BSN_NAME_OFFSET + name_size + 9U, 4, 0, true);
         member.has_crc = true;
         member.is_folder =
-            (xx_bsn_be32(body) & XX_BSN_ATTR_DIRECTORY) != 0U;
-        member.method = (xx_bsn_be32(body) & XX_BSN_ATTR_STORED) != 0U
+            (xx_data_get_u32(body, 4, 0, true) & XX_BSN_ATTR_DIRECTORY) != 0U;
+        member.method = (xx_data_get_u32(body, 4, 0, true) & XX_BSN_ATTR_STORED) != 0U
                             ? XX_BSN_METHOD_STORE
                             : XX_BSN_METHOD_SOLID_LZ;
 

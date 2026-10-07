@@ -24,6 +24,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -82,13 +83,8 @@ typedef struct gs_stream_s {
     uint32_t textures, embedded, skipped;
 } gs_stream;
 
-static uint32_t gs_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
-
 static int64_t gs_s32(const uint8_t *bytes) {
-    return (int64_t)(int32_t)gs_le32(bytes);
+    return (int64_t)(int32_t)xx_data_get_u32(bytes, 4, 0, false);
 }
 
 static bool gs_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -125,7 +121,7 @@ static bool gs_parse_header(Abstractformat *format, gs_header *out) {
     h.input_size = total - format->base_address;
     if (h.input_size < GS_HEADER_SIZE ||
         !gs_read_at(format->device, format->base_address, raw, sizeof(raw)) ||
-        gs_le32(raw) != GS_VERSION)
+        xx_data_get_u32(raw, 4, 0, false) != GS_VERSION)
         return false;
     h.archive_size = GS_HEADER_SIZE;
     for (i = 0; i < GS_LUMPS; ++i) {
@@ -314,9 +310,9 @@ static int64_t gs_miptex_extent(xx_io_device *device, int64_t lump_base,
         !gs_read_at(device, lump_base + at, head, GS_MIPTEX_HEADER))
         return 0;
     avail = (uint64_t)(lump - at);
-    width = gs_le32(head + 16);
-    height = gs_le32(head + 20);
-    if (gs_le32(head + 24) == 0U) {
+    width = xx_data_get_u32(head + 16, 4, 0, false);
+    height = xx_data_get_u32(head + 20, 4, 0, false);
+    if (xx_data_get_u32(head + 24, 4, 0, false) == 0U) {
         *bad = false;     /* External (WAD) texture: nothing embedded. */
         return 0;
     }
@@ -324,14 +320,14 @@ static int64_t gs_miptex_extent(xx_io_device *device, int64_t lump_base,
         width * height > avail)
         return 0;
     for (level = 0U; level < 4U; ++level) {
-        uint64_t offset = gs_le32(head + 24 + level * 4U);
+        uint64_t offset = xx_data_get_u32(head + 24 + level * 4U, 4, 0, false);
         uint64_t size = (width >> level) * (height >> level);
         if (offset < GS_MIPTEX_HEADER || offset > avail ||
             size > avail - offset)
             return 0;
         if (offset + size > end) end = offset + size;
     }
-    palette = (uint64_t)gs_le32(head + 36) + (width >> 3U) * (height >> 3U);
+    palette = (uint64_t)xx_data_get_u32(head + 36, 4, 0, false) + (width >> 3U) * (height >> 3U);
     if (palette > avail || avail - palette < 2U ||
         !gs_read_at(device, lump_base + at + (int64_t)palette, count, 2U))
         return 0;

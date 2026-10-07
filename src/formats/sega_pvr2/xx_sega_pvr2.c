@@ -5,8 +5,9 @@
  */
 #include "xxfclib/formats/sega_pvr2/xx_sega_pvr2.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static XXFC_MAYBE_UNUSED uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)xx_data_get_u32(p, 4, 0, true)<<32)|xx_data_get_u32(p+4, 4, 0, true) : ((uint64_t)xx_data_get_u32(p+4, 4, 0, false)<<32)|xx_data_get_u32(p, 4, 0, false); }
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uint64_t n,uint64_t total) {
     size_t i;
@@ -24,10 +25,10 @@ static XXFC_MAYBE_UNUSED bool zname(Abstractformat *f,uint64_t at,uint64_t end) 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[16]; uint32_t w,he; uint64_t n;
-    if(!pm_read(f,0,h,16) || xx_rt_memcmp(h,"PVRT",4) || h[8]>2 || pm_le16(h+10)) return false;
-    w=pm_le16(h+12); he=pm_le16(h+14); if(!w || !he || w>8192 || he>8192 || (h[9]!=1 && h[9]!=9 && h[9]!=13)) return false;
+    if(!pm_read(f,0,h,16) || xx_rt_memcmp(h,"PVRT",4) || h[8]>2 || xx_data_get_u16(h+10, 2, 0, false)) return false;
+    w=xx_data_get_u16(h+12, 2, 0, false); he=xx_data_get_u16(h+14, 2, 0, false); if(!w || !he || w>8192 || he>8192 || (h[9]!=1 && h[9]!=9 && h[9]!=13)) return false;
     if(h[9]!=9 && ((w&(w-1)) || (he&(he-1)) || (h[9]==1 && w!=he))) return false;
-    n=(uint64_t)w*he*2; if(pm_le32(h+4)!=n+8 || !span(16,n,(uint64_t)pm_available(f)) || (pd && xx_pd_is_stopped(pd))) return false;
+    n=(uint64_t)w*he*2; if(xx_data_get_u32(h+4, 4, 0, false)!=n+8 || !span(16,n,(uint64_t)pm_available(f)) || (pd && xx_pd_is_stopped(pd))) return false;
     s->size=(int64_t)(16+n); return emit(f,s,"texture.bin",16,n,(uint64_t)s->size);
 
 }

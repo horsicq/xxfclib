@@ -5,6 +5,7 @@
  */
 #include "xxfclib/formats/sfnt_collection/xx_sfnt_collection.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool ttc_checksum(Abstractformat *f,uint32_t at,uint32_t size,uint32_t tag,uint32_t expected,xx_pd_struct *pd) {
     size_t capacity=xx_get_file_buffer_size();
@@ -34,27 +35,27 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint32_t dirs[256],dir_sizes[256],tags[4096],offs[4096],sizes[4096],checks[4096],tables=0;
     uint64_t processed=0;
     if(!pm_read(f,0,h,12) || xx_rt_memcmp(h,"ttcf",4)) return false;
-    version=pm_be32(h+4); fonts=pm_be32(h+8);
+    version=xx_data_get_u32(h+4, 4, 0, true); fonts=xx_data_get_u32(h+8, 4, 0, true);
     if((version!=0x10000 && version!=0x20000) || !fonts || fonts>256) return false;
     header=12+fonts*4+(version==0x20000?12:0); end=header;
     if(header>pm_available(f)) return false;
     if(version==0x20000) {
         if(!pm_read(f,12+(int64_t)fonts*4,e,12)) return false;
-        dsig_size=pm_be32(e+4); dsig_at=pm_be32(e+8);
-        if(!pm_be32(e)) { if(dsig_size || dsig_at) return false; }
+        dsig_size=xx_data_get_u32(e+4, 4, 0, true); dsig_at=xx_data_get_u32(e+8, 4, 0, true);
+        if(!xx_data_get_u32(e, 4, 0, true)) { if(dsig_size || dsig_at) return false; }
         else {
-            if(pm_be32(e)!=0x44534947U || !dsig_size || dsig_at%4 || dsig_at<header || dsig_at>pm_available(f) || dsig_size>(uint64_t)(pm_available(f)-dsig_at)) return false;
+            if(xx_data_get_u32(e, 4, 0, true)!=0x44534947U || !dsig_size || dsig_at%4 || dsig_at<header || dsig_at>pm_available(f) || dsig_size>(uint64_t)(pm_available(f)-dsig_at)) return false;
             end=(int64_t)dsig_at+dsig_size;
         }
     }
     for(i=0;i<fonts;++i) {
         uint32_t flavor,count,power=1,log=0;
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,12+(int64_t)i*4,e,4)) return false;
-        dirs[i]=pm_be32(e); if(dirs[i]<header || dirs[i]%4 || !pm_read(f,dirs[i],h,12)) return false;
-        flavor=pm_be32(h); count=pm_be16(h+4);
+        dirs[i]=xx_data_get_u32(e, 4, 0, true); if(dirs[i]<header || dirs[i]%4 || !pm_read(f,dirs[i],h,12)) return false;
+        flavor=xx_data_get_u32(h, 4, 0, true); count=xx_data_get_u16(h+4, 2, 0, true);
         if((flavor!=0x10000 && flavor!=0x4f54544fU && flavor!=0x74727565U && flavor!=0x74797031U) || !count || count>4095) return false;
         while(power*2<=count) { power*=2; ++log; }
-        if(pm_be16(h+6)!=power*16 || pm_be16(h+8)!=log || pm_be16(h+10)!=count*16-power*16) return false;
+        if(xx_data_get_u16(h+6, 2, 0, true)!=power*16 || xx_data_get_u16(h+8, 2, 0, true)!=log || xx_data_get_u16(h+10, 2, 0, true)!=count*16-power*16) return false;
         dir_sizes[i]=12+count*16;
         if(dirs[i]>pm_available(f) || dir_sizes[i]>(uint64_t)(pm_available(f)-dirs[i])) return false;
         for(j=0;j<i;++j) if(dirs[i]<(uint64_t)dirs[j]+dir_sizes[j] && dirs[j]<(uint64_t)dirs[i]+dir_sizes[i]) return false;
@@ -69,7 +70,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,(int64_t)dirs[i]+12+(int64_t)j*16,e,16)) return false;
             if(e[0]==' ') return false;
             for(c=0;c<4;++c) { if(e[c]<32 || e[c]>126 || (space && e[c]!=' ')) return false; if(e[c]==' ') space=true; }
-            tag=pm_be32(e); checksum=pm_be32(e+4); off=pm_be32(e+8); size=pm_be32(e+12);
+            tag=xx_data_get_u32(e, 4, 0, true); checksum=xx_data_get_u32(e+4, 4, 0, true); off=xx_data_get_u32(e+8, 4, 0, true); size=xx_data_get_u32(e+12, 4, 0, true);
             if((j && tag<=previous) || off<header || off%4 || off>pm_available(f) || size>(uint64_t)(pm_available(f)-off)) return false;
             previous=tag;
             for(k=0;k<fonts;++k) if(size && off<(uint64_t)dirs[k]+dir_sizes[k] && dirs[k]<(uint64_t)off+size) return false;

@@ -12,6 +12,7 @@
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/algo/sfpack/xx_sfpack.h"
+#include "xxfclib/data/xx_data.h"
 
 #define SFPACK_LZW_TABLE 0x1000
 #define SFPACK_LZW_LAST 0x0fff
@@ -23,27 +24,11 @@
 
 /* ------------------------------------------------------------------ misc - */
 
-static uint32_t sf_read32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static uint16_t sf_read16(const uint8_t *data) {
-    return (uint16_t)((uint32_t)data[0] | ((uint32_t)data[1] << 8));
-}
-
-static void sf_write32(uint8_t *data, uint32_t value) {
-    data[0] = (uint8_t)(value & 0xffU);
-    data[1] = (uint8_t)((value >> 8) & 0xffU);
-    data[2] = (uint8_t)((value >> 16) & 0xffU);
-    data[3] = (uint8_t)((value >> 24) & 0xffU);
-}
-
 /* The reference reads these container fields through (qint32) casts, so a word
  * with bit 31 set becomes a negative number that the range tests then reject.
  * Reproduced: an unsigned read here would accept files the reference refuses. */
 static int64_t sf_read32_signed(const uint8_t *data) {
-    return (int64_t)(int32_t)sf_read32(data);
+    return (int64_t)(int32_t)xx_data_get_u32(data, 4, 0, false);
 }
 
 static bool sf_has_range(int64_t buffer_size, int64_t offset, int64_t size) {
@@ -210,7 +195,7 @@ static int64_t sf_word_get(sf_bits_word *bits, int32_t width) {
             if ((bits->position < 0) || ((bits->position + 4) > bits->size)) {
                 return -1;
             }
-            bits->current = sf_read32(bits->data + bits->position);
+            bits->current = xx_data_get_u32(bits->data + bits->position, 4, 0, false);
             bits->position += 4;
             bits->count = 32;
         }
@@ -496,7 +481,7 @@ static bool sfpack_parse_header(const uint8_t *buffer, int64_t size,
     if (xx_rt_memcmp(buffer, sf_magic, 4) != 0) return false;
 
     xx_rt_memset(header, 0, sizeof(*header));
-    header->flags = sf_read16(buffer + 6);
+    header->flags = xx_data_get_u16(buffer + 6, 2, 0, false);
     /* encrypted; the reference refuses it too */
     if (header->flags & 4) return false;
     header->declared_size = sf_read32_signed(buffer + 8);
@@ -591,7 +576,7 @@ static bool sfpack_sample_words(const uint8_t *pdta, int64_t pdta_size,
         if ((record < 0) || ((record + SFPACK_SHDR_RECORD_SIZE) > pdta_size)) {
             return false;
         }
-        type = sf_read16(pdta + record + 0x2c);
+        type = xx_data_get_u16(pdta + record + 0x2c, 2, 0, false);
         if (type & 0x8000) continue;
         start = sf_read32_signed(pdta + record + 0x14);
         end = sf_read32_signed(pdta + record + 0x18);
@@ -721,12 +706,12 @@ bool xx_sfpack_decode_memory(const uint8_t *input, size_t input_size,
     samples_start = 44 + header.info_size;
 
     xx_rt_memcpy(output, sf_riff, 4);
-    sf_write32(output + 4, (uint32_t)(header.info_size + 2 * words +
-                                      header.pdta_size + 0x30));
+    xx_data_set_u32(output + 4, 4, 0, (uint32_t)(header.info_size + 2 * words +
+                                      header.pdta_size + 0x30), false);
     xx_rt_memcpy(output + 8, sf_sfbk, 4);
 
     xx_rt_memcpy(output + 12, sf_list, 4);
-    sf_write32(output + 16, (uint32_t)(header.info_size + 4));
+    xx_data_set_u32(output + 16, 4, 0, (uint32_t)(header.info_size + 4), false);
     xx_rt_memcpy(output + 20, sf_info, 4);
     if (!sfpack_decode_chunk(input + header.info_offset, header.info_packed,
                              header.info_size, output + 24, table)) {
@@ -734,14 +719,14 @@ bool xx_sfpack_decode_memory(const uint8_t *input, size_t input_size,
     }
 
     xx_rt_memcpy(output + 24 + header.info_size, sf_list, 4);
-    sf_write32(output + 28 + header.info_size, (uint32_t)(2 * words + 0x0c));
+    xx_data_set_u32(output + 28 + header.info_size, 4, 0, (uint32_t)(2 * words + 0x0c), false);
     xx_rt_memcpy(output + 32 + header.info_size, sf_sdta, 4);
     xx_rt_memcpy(output + 36 + header.info_size, sf_smpl, 4);
-    sf_write32(output + 40 + header.info_size, (uint32_t)(2 * words));
+    xx_data_set_u32(output + 40 + header.info_size, 4, 0, (uint32_t)(2 * words), false);
 
     for (i = 0; i < header.sample_count; ++i) {
         const int64_t record = shdr + (int64_t)i * SFPACK_SHDR_RECORD_SIZE;
-        const uint16_t type = sf_read16(pdta + record + 0x2c);
+        const uint16_t type = xx_data_get_u16(pdta + record + 0x2c, 2, 0, false);
         int64_t sample_offset;
         int64_t old_start;
         uint32_t delta;
@@ -770,8 +755,8 @@ bool xx_sfpack_decode_memory(const uint8_t *input, size_t input_size,
         old_start = sf_read32_signed(pdta + record + 0x14);
         delta = (uint32_t)(int32_t)((sample_base / 2) - old_start);
         for (j = 0; j < 4; ++j) {
-            const uint32_t value = sf_read32(pdta + record + fields[j]);
-            sf_write32(pdta + record + fields[j], value + delta);
+            const uint32_t value = xx_data_get_u32(pdta + record + fields[j], 4, 0, false);
+            xx_data_set_u32(pdta + record + fields[j], 4, 0, value + delta, false);
         }
 
         sample_base += (int64_t)sample_length + SFPACK_SHDR_RECORD_SIZE;
@@ -779,8 +764,8 @@ bool xx_sfpack_decode_memory(const uint8_t *input, size_t input_size,
     if (sample_base != (2 * words)) goto done;
 
     xx_rt_memcpy(output + samples_start + sample_base, sf_list, 4);
-    sf_write32(output + samples_start + sample_base + 4,
-               (uint32_t)(header.pdta_size + 4));
+    xx_data_set_u32(output + samples_start + sample_base + 4, 4, 0,
+               (uint32_t)(header.pdta_size + 4), false);
     xx_rt_memcpy(output + samples_start + sample_base + 8, sf_pdta, 4);
     xx_rt_memcpy(output + samples_start + sample_base + 12, pdta,
                  (size_t)header.pdta_size);

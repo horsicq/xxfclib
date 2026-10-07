@@ -20,7 +20,7 @@ static bool rt_list(const uint8_t *bytes, size_t size, size_t start,
     size_t at, output = 0U, i, j;
     bool paths = true;
     if (start > size || size - start < 2U) return false;
-    count = pm_le16(bytes + start);
+    count = xx_data_get_u16(bytes + start, 2, 0, false);
     if (!count || count > 4096U) return false;
     at = start + 2U;
     for (i = 0U; i < count; ++i) {
@@ -50,10 +50,10 @@ static bool w5_comments(Abstractformat *f, pm_stream *s, xx_pd_struct *pd) {
     unsigned attempts = 0U;
     if (!w5_carrier(f, false, &low, pd) ||
         !pm_read(f, 0, mz, sizeof(mz)) ||
-        pm_le32(mz + 60) < 64U ||
-        !pm_read(f, pm_le32(mz + 60), ne, sizeof(ne)) ||
+        xx_data_get_u32(mz + 60, 4, 0, false) < 64U ||
+        !pm_read(f, xx_data_get_u32(mz + 60, 4, 0, false), ne, sizeof(ne)) ||
         xx_rt_memcmp(ne, "NE", 2)) return false;
-    low = (int64_t)pm_le32(mz + 60) + 64;
+    low = (int64_t)xx_data_get_u32(mz + 60, 4, 0, false) + 64;
     if (low >= limit || limit - low > 16 * 1024 * 1024) return false;
     while (low <= limit - 26 && attempts++ < 128U) {
         Abstractformat *nested;
@@ -81,7 +81,7 @@ static bool w5_comments(Abstractformat *f, pm_stream *s, xx_pd_struct *pd) {
         source = (uint8_t *)xx_mem_alloc(source_size);
         if (source && pm_read(f, candidate - f->base_address, source,
                               source_size) &&
-            pm_le16(source + 2) == 320U &&
+            xx_data_get_u16(source + 2, 2, 0, false) == 320U &&
             rt_list(source, source_size, 34U, &first_end, &first_raw,
                     &first_directory) && first_directory &&
             rt_list(source, source_size, first_end, &second_end, &second_raw,
@@ -91,7 +91,7 @@ static bool w5_comments(Abstractformat *f, pm_stream *s, xx_pd_struct *pd) {
             plain = (uint8_t *)xx_mem_alloc(second_raw);
             if (plain) {
                 at = first_end + 2U;
-                for (i = 0U; i < pm_le16(source + first_end); ++i) {
+                for (i = 0U; i < xx_data_get_u16(source + first_end, 2, 0, false); ++i) {
                     size_t length = source[at++];
                     xx_mem_copy(plain + out, source + at, length - 1U);
                     out += length - 1U;
@@ -147,9 +147,9 @@ static bool rt_nested_probe(xx_sfx_rtpatch *archive, xx_pd_struct *pd) {
         overlay < 64 || overlay > limit - (int64_t)sizeof(header) ||
         !pm_read(f, overlay, header, sizeof(header)) ||
         xx_rt_memcmp(header, "K*", 2U) ||
-        pm_le16(header + 2U) != 400U ||
-        pm_le32(header + 0x14U) != 0U ||
-        pm_le16(header + 0x18U) != 4U) goto done;
+        xx_data_get_u16(header + 2U, 2, 0, false) != 400U ||
+        xx_data_get_u32(header + 0x14U, 4, 0, false) != 0U ||
+        xx_data_get_u16(header + 0x18U, 2, 0, false) != 4U) goto done;
     inner = xx_rtpatch_create(f->device, f->base_address + overlay);
     if (!inner || !xx_format_handle_base_info(&inner->format, pd) ||
         inner->format.number_of_archive_records == 0U ||

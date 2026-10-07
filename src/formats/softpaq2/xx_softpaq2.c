@@ -50,6 +50,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder. xxfc_defs.h is shared and is not edited from
  * here, so the file-type constant is resolved through the alias macro that
@@ -113,17 +114,8 @@ typedef struct softpaq2_stream_s {
 
 /* --- little-endian helpers ---------------------------------------------- */
 
-static uint16_t softpaq2_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t softpaq2_le32(const uint8_t *bytes) {
-    return (uint32_t)softpaq2_le16(bytes) |
-           ((uint32_t)softpaq2_le16(bytes + 2U) << 16U);
-}
-
 static int64_t softpaq2_le32s(const uint8_t *bytes) {
-    return (int64_t)(int32_t)softpaq2_le32(bytes);
+    return (int64_t)(int32_t)xx_data_get_u32(bytes, 4, 0, false);
 }
 
 static bool softpaq2_read_at(xx_io_device *device, int64_t offset,
@@ -396,7 +388,7 @@ static bool softpaq2_parse(Abstractformat *format, softpaq2_stream **result,
         int64_t unpacked, packed, offset, stream_size;
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         if (entry[0x08] != 0U || entry[0x0d] != 0U) goto fail;
-        method = softpaq2_le16(entry + 0x0e);
+        method = xx_data_get_u16(entry + 0x0e, 2, 0, false);
         if (method != SOFTPAQ2_METHOD_STORED &&
             method != SOFTPAQ2_METHOD_IMPLODE)
             goto fail;
@@ -420,11 +412,11 @@ static bool softpaq2_parse(Abstractformat *format, softpaq2_stream **result,
         /* NOTE: this CRC-32 covers the PACKED stream, not the decompressed
          * member -- verified against the reference extractor on the whole
          * corpus.  It is checked on the stored bytes before decoding. */
-        member.crc32 = softpaq2_le32(entry + 0x14);
+        member.crc32 = xx_data_get_u32(entry + 0x14, 4, 0, false);
         member.has_crc = true;
-        member.dos_time = softpaq2_le16(entry + 0x10);
-        member.dos_date = softpaq2_le16(entry + 0x12);
-        member.attributes = softpaq2_le16(entry + 0x20);
+        member.dos_time = xx_data_get_u16(entry + 0x10, 2, 0, false);
+        member.dos_date = xx_data_get_u16(entry + 0x12, 2, 0, false);
+        member.attributes = xx_data_get_u16(entry + 0x20, 2, 0, false);
         member.name = softpaq2_make_name(entry, index);
         if (!member.name) goto fail;
         if (!softpaq2_add_member(stream, &member)) {

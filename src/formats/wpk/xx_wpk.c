@@ -50,6 +50,7 @@
 #include "xxfclib/algo/crc/xx_crc.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_WPK_COPY_CHUNK (64 * 1024)
 
@@ -178,8 +179,6 @@ typedef struct xx_wpk_dir_s {
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_wpk_le16(const uint8_t *data);
-static uint32_t xx_wpk_le32(const uint8_t *data);
 static void xx_wpk_dir_free(xx_wpk_dir *dir);
 static bool xx_wpk_dir_read(Abstractformat *self, xx_pd_struct *pd, xx_wpk_dir *dir);
 static xx_wpk_stream *xx_wpk_parse(Abstractformat *self, xx_pd_struct *pd);
@@ -198,19 +197,6 @@ static bool xx_wpk_decode(Abstractformat *self, const xx_wpk_member *member, uin
 
 /* The container's own method, which is a single flag bit: clear is the
  * Huffman + LZSS method A, set is the plain LZSS method B. */
-
-
-
-
-
-static uint16_t xx_wpk_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_wpk_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static void xx_wpk_dir_free(xx_wpk_dir *dir) {
     if (!dir) return;
@@ -247,16 +233,16 @@ static bool xx_wpk_dir_read(Abstractformat *self, xx_pd_struct *pd,
         return false;
     }
 
-    dir->magic = xx_wpk_le32(header);
+    dir->magic = xx_data_get_u32(header, 4, 0, false);
     /* Two magics, and they do NOT tell the two sorters apart - see the probe.
      * They are only the format gate. */
     if ((dir->magic != XX_WPK_MAGIC_A) && (dir->magic != XX_WPK_MAGIC_B)) {
         return false;
     }
 
-    count = (int32_t)xx_wpk_le16(header + 4);
-    directory_size = (int64_t)xx_wpk_le16(header + 6);
-    directory_offset = (int64_t)xx_wpk_le32(header + 8);
+    count = (int32_t)xx_data_get_u16(header + 4, 2, 0, false);
+    directory_size = (int64_t)xx_data_get_u16(header + 6, 2, 0, false);
+    directory_offset = (int64_t)xx_data_get_u32(header + 8, 4, 0, false);
 
     if ((count == 0) || (count > XX_WPK_MAX_MEMBERS)) return false;
     if (directory_offset <= XX_WPK_HEADER_SIZE) return false;
@@ -314,11 +300,11 @@ static bool xx_wpk_dir_read(Abstractformat *self, xx_pd_struct *pd,
 
         record_offset = directory_offset + position;
         record->uncompressed_size =
-            (int64_t)(int32_t)xx_wpk_le32(dir->bytes + position);
+            (int64_t)(int32_t)xx_data_get_u32(dir->bytes + position, 4, 0, false);
         record->data_offset =
-            (int64_t)(int32_t)xx_wpk_le32(dir->bytes + position + 4);
-        record->timestamp = xx_wpk_le32(dir->bytes + position + 8);
-        record->crc = xx_wpk_le32(dir->bytes + position + 0x0c);
+            (int64_t)(int32_t)xx_data_get_u32(dir->bytes + position + 4, 4, 0, false);
+        record->timestamp = xx_data_get_u32(dir->bytes + position + 8, 4, 0, false);
+        record->crc = xx_data_get_u32(dir->bytes + position + 0x0c, 4, 0, false);
         flags = dir->bytes[position + 0x10];
         name_size = (int64_t)(flags & 0x7fU);
         record->method_b = ((flags & 0x80U) != 0U);

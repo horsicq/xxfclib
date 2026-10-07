@@ -54,6 +54,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_SQUASHFS_SUPERBLOCK_SIZE 0x80
 #define XX_SQUASHFS_META_MAX 8192U
@@ -156,29 +157,6 @@ typedef struct xx_squashfs_archive_stream_s {
 static void xx_squashfs_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------- byte readers --- */
-
-static uint16_t xx_squashfs_read16(const uint8_t *data, bool big_endian) {
-    return big_endian ? (uint16_t)(((uint16_t)data[0] << 8U) | (uint16_t)data[1])
-                      : (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8U));
-}
-
-static uint32_t xx_squashfs_read32(const uint8_t *data, bool big_endian) {
-    if (big_endian) {
-        return ((uint32_t)data[0] << 24U) | ((uint32_t)data[1] << 16U) |
-               ((uint32_t)data[2] << 8U) | (uint32_t)data[3];
-    }
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
-
-static uint64_t xx_squashfs_read64(const uint8_t *data, bool big_endian) {
-    if (big_endian) {
-        return ((uint64_t)xx_squashfs_read32(data, true) << 32U) |
-               (uint64_t)xx_squashfs_read32(data + 4U, true);
-    }
-    return (uint64_t)xx_squashfs_read32(data, false) |
-           ((uint64_t)xx_squashfs_read32(data + 4U, false) << 32U);
-}
 
 /* Absolute device read; every offset in this reader is relative to
  * format->base_address, so callers pass image-relative offsets. */
@@ -451,7 +429,7 @@ static bool xx_squashfs_meta_get_block(xx_squashfs_walk *walk, int64_t base,
     if (!xx_squashfs_read_at(walk->format, position, header_bytes, 2U)) {
         return false;
     }
-    header = xx_squashfs_read16(header_bytes, walk->parsed->super.big_endian);
+    header = xx_data_get_u16(header_bytes, 2, 0, walk->parsed->super.big_endian);
     length = (size_t)(header & 0x7FFFU);
     if (length > XX_SQUASHFS_META_MAX) return false;
     if ((int64_t)length > walk->parsed->image_size - position - 2) return false;
@@ -568,17 +546,17 @@ static bool xx_squashfs_base_inode(xx_squashfs_walk *walk,
     if (major == 1) {
         if (!xx_squashfs_meta_read(stream, 3U, data)) return false;
         *type = (int32_t)xx_squashfs_bits(
-            xx_squashfs_read16(data, big_endian), 16U, 0U, 4U, big_endian);
+            xx_data_get_u16(data, 2, 0, big_endian), 16U, 0U, 4U, big_endian);
         return true;
     }
     if (major == 4) {
         if (!xx_squashfs_meta_read(stream, 8U, data)) return false;
-        *type = (int32_t)xx_squashfs_read16(data, big_endian);
+        *type = (int32_t)xx_data_get_u16(data, 2, 0, big_endian);
         return true;
     }
     if (!xx_squashfs_meta_read(stream, 4U, data)) return false;
     *type = (int32_t)xx_squashfs_bits(
-        xx_squashfs_read16(data, big_endian), 16U, 0U, 4U, big_endian);
+        xx_data_get_u16(data, 2, 0, big_endian), 16U, 0U, 4U, big_endian);
     return true;
 }
 
@@ -597,14 +575,14 @@ static bool xx_squashfs_dir_inode(xx_squashfs_walk *walk,
     if (major == 1 || major == 2) {
         if (extended && major == 2) {
             if (!xx_squashfs_meta_read(stream, 4U, data)) return false;
-            word = xx_squashfs_read32(data, big_endian);
+            word = xx_data_get_u32(data, 4, 0, big_endian);
             *size = (int64_t)xx_squashfs_bits(word, 32U, 0U, 27U, big_endian);
             if (!xx_squashfs_meta_read(stream, 1U, data)) return false;
             *offset = (int64_t)xx_squashfs_bits(word, 32U, 27U, 5U, big_endian) +
                       (int64_t)data[0] * 32;
         } else {
             if (!xx_squashfs_meta_read(stream, 4U, data)) return false;
-            word = xx_squashfs_read32(data, big_endian);
+            word = xx_data_get_u32(data, 4, 0, big_endian);
             *size = (int64_t)xx_squashfs_bits(word, 32U, 0U, 19U, big_endian);
             *offset = (int64_t)xx_squashfs_bits(word, 32U, 19U, 13U, big_endian);
         }
@@ -626,19 +604,19 @@ static bool xx_squashfs_dir_inode(xx_squashfs_walk *walk,
         if (!xx_squashfs_meta_read(stream, 12U, skip)) return false;
         if (extended) {
             if (!xx_squashfs_meta_read(stream, 4U, data)) return false;
-            word = xx_squashfs_read32(data, big_endian);
+            word = xx_data_get_u32(data, 4, 0, big_endian);
             *size = (int64_t)xx_squashfs_bits(word, 32U, 0U, 27U, big_endian);
             if (!xx_squashfs_meta_read(stream, 1U, data)) return false;
             *offset = (int64_t)xx_squashfs_bits(word, 32U, 27U, 5U, big_endian) +
                       (int64_t)data[0] * 32;
         } else {
             if (!xx_squashfs_meta_read(stream, 4U, data)) return false;
-            word = xx_squashfs_read32(data, big_endian);
+            word = xx_data_get_u32(data, 4, 0, big_endian);
             *size = (int64_t)xx_squashfs_bits(word, 32U, 0U, 19U, big_endian);
             *offset = (int64_t)xx_squashfs_bits(word, 32U, 19U, 13U, big_endian);
         }
         if (!xx_squashfs_meta_read(stream, 4U, data)) return false;
-        *start_block = (int64_t)xx_squashfs_read32(data, big_endian);
+        *start_block = (int64_t)xx_data_get_u32(data, 4, 0, big_endian);
         *size -= 3;
         return true;
     }
@@ -646,14 +624,14 @@ static bool xx_squashfs_dir_inode(xx_squashfs_walk *walk,
     /* v4 */
     if (extended) {
         if (!xx_squashfs_meta_read(stream, 32U, data)) return false;
-        *size = (int64_t)xx_squashfs_read32(data + 12U, big_endian);
-        *start_block = (int64_t)xx_squashfs_read32(data + 16U, big_endian);
-        *offset = (int64_t)xx_squashfs_read16(data + 26U, big_endian);
+        *size = (int64_t)xx_data_get_u32(data + 12U, 4, 0, big_endian);
+        *start_block = (int64_t)xx_data_get_u32(data + 16U, 4, 0, big_endian);
+        *offset = (int64_t)xx_data_get_u16(data + 26U, 2, 0, big_endian);
     } else {
         if (!xx_squashfs_meta_read(stream, 24U, data)) return false;
-        *start_block = (int64_t)xx_squashfs_read32(data + 8U, big_endian);
-        *size = (int64_t)xx_squashfs_read16(data + 16U, big_endian);
-        *offset = (int64_t)xx_squashfs_read16(data + 18U, big_endian);
+        *start_block = (int64_t)xx_data_get_u32(data + 8U, 4, 0, big_endian);
+        *size = (int64_t)xx_data_get_u16(data + 16U, 2, 0, big_endian);
+        *offset = (int64_t)xx_data_get_u16(data + 18U, 2, 0, big_endian);
     }
     *size -= 3;
     return true;
@@ -675,49 +653,49 @@ static bool xx_squashfs_file_inode(xx_squashfs_walk *walk,
 
     if (major == 1) {
         if (!xx_squashfs_meta_read(stream, 12U, data)) return false;
-        *start = (int64_t)xx_squashfs_read32(data + 4U, big_endian);
-        *size = (int64_t)xx_squashfs_read32(data + 8U, big_endian);
+        *start = (int64_t)xx_data_get_u32(data + 4U, 4, 0, big_endian);
+        *size = (int64_t)xx_data_get_u32(data + 8U, 4, 0, big_endian);
         *fragment = INT64_C(0xFFFFFFFF);
         *block_offset = 0;
         return true;
     }
     if (major == 2) {
         if (!xx_squashfs_meta_read(stream, 20U, data)) return false;
-        *start = (int64_t)xx_squashfs_read32(data + 4U, big_endian);
-        *fragment = (int64_t)xx_squashfs_read32(data + 8U, big_endian);
-        *block_offset = (int64_t)xx_squashfs_read32(data + 12U, big_endian);
-        *size = (int64_t)xx_squashfs_read32(data + 16U, big_endian);
+        *start = (int64_t)xx_data_get_u32(data + 4U, 4, 0, big_endian);
+        *fragment = (int64_t)xx_data_get_u32(data + 8U, 4, 0, big_endian);
+        *block_offset = (int64_t)xx_data_get_u32(data + 12U, 4, 0, big_endian);
+        *size = (int64_t)xx_data_get_u32(data + 16U, 4, 0, big_endian);
         return true;
     }
     if (major == 3) {
         if (extended) {
             if (!xx_squashfs_meta_read(stream, 36U, data)) return false;
-            *start = (int64_t)xx_squashfs_read64(data + 12U, big_endian);
-            *fragment = (int64_t)xx_squashfs_read32(data + 20U, big_endian);
-            *block_offset = (int64_t)xx_squashfs_read32(data + 24U, big_endian);
-            *size = (int64_t)xx_squashfs_read64(data + 28U, big_endian);
+            *start = (int64_t)xx_data_get_u64(data + 12U, 8, 0, big_endian);
+            *fragment = (int64_t)xx_data_get_u32(data + 20U, 4, 0, big_endian);
+            *block_offset = (int64_t)xx_data_get_u32(data + 24U, 4, 0, big_endian);
+            *size = (int64_t)xx_data_get_u64(data + 28U, 8, 0, big_endian);
         } else {
             if (!xx_squashfs_meta_read(stream, 28U, data)) return false;
-            *start = (int64_t)xx_squashfs_read64(data + 8U, big_endian);
-            *fragment = (int64_t)xx_squashfs_read32(data + 16U, big_endian);
-            *block_offset = (int64_t)xx_squashfs_read32(data + 20U, big_endian);
-            *size = (int64_t)xx_squashfs_read32(data + 24U, big_endian);
+            *start = (int64_t)xx_data_get_u64(data + 8U, 8, 0, big_endian);
+            *fragment = (int64_t)xx_data_get_u32(data + 16U, 4, 0, big_endian);
+            *block_offset = (int64_t)xx_data_get_u32(data + 20U, 4, 0, big_endian);
+            *size = (int64_t)xx_data_get_u32(data + 24U, 4, 0, big_endian);
         }
         return true;
     }
 
     if (extended) {
         if (!xx_squashfs_meta_read(stream, 48U, data)) return false;
-        *start = (int64_t)xx_squashfs_read64(data + 8U, big_endian);
-        *size = (int64_t)xx_squashfs_read64(data + 16U, big_endian);
-        *fragment = (int64_t)xx_squashfs_read32(data + 36U, big_endian);
-        *block_offset = (int64_t)xx_squashfs_read32(data + 40U, big_endian);
+        *start = (int64_t)xx_data_get_u64(data + 8U, 8, 0, big_endian);
+        *size = (int64_t)xx_data_get_u64(data + 16U, 8, 0, big_endian);
+        *fragment = (int64_t)xx_data_get_u32(data + 36U, 4, 0, big_endian);
+        *block_offset = (int64_t)xx_data_get_u32(data + 40U, 4, 0, big_endian);
     } else {
         if (!xx_squashfs_meta_read(stream, 24U, data)) return false;
-        *start = (int64_t)xx_squashfs_read32(data + 8U, big_endian);
-        *fragment = (int64_t)xx_squashfs_read32(data + 12U, big_endian);
-        *block_offset = (int64_t)xx_squashfs_read32(data + 16U, big_endian);
-        *size = (int64_t)xx_squashfs_read32(data + 20U, big_endian);
+        *start = (int64_t)xx_data_get_u32(data + 8U, 4, 0, big_endian);
+        *fragment = (int64_t)xx_data_get_u32(data + 12U, 4, 0, big_endian);
+        *block_offset = (int64_t)xx_data_get_u32(data + 16U, 4, 0, big_endian);
+        *size = (int64_t)xx_data_get_u32(data + 20U, 4, 0, big_endian);
     }
     return true;
 }
@@ -750,7 +728,7 @@ static bool xx_squashfs_fragment(xx_squashfs_walk *walk, int64_t index,
         if (!xx_squashfs_read_at(walk->format, index_position, pointer, 4U)) {
             return false;
         }
-        block = (int64_t)xx_squashfs_read32(pointer, big_endian);
+        block = (int64_t)xx_data_get_u32(pointer, 4, 0, big_endian);
         entry_offset = (index & 0x3FF) * 8;
     } else {
         index_position = walk->parsed->super.fragment_table + (index >> 9) * 8;
@@ -761,7 +739,7 @@ static bool xx_squashfs_fragment(xx_squashfs_walk *walk, int64_t index,
         if (!xx_squashfs_read_at(walk->format, index_position, pointer, 8U)) {
             return false;
         }
-        block = (int64_t)xx_squashfs_read64(pointer, big_endian);
+        block = (int64_t)xx_data_get_u64(pointer, 8, 0, big_endian);
         entry_offset = (index & 0x1FF) * 16;
     }
 
@@ -772,13 +750,13 @@ static bool xx_squashfs_fragment(xx_squashfs_walk *walk, int64_t index,
     xx_squashfs_meta_seek(&stream, block, entry_offset);
     if (major == 2) {
         if (!xx_squashfs_meta_read(&stream, 8U, entry)) return false;
-        *start = (int64_t)xx_squashfs_read32(entry, big_endian);
-        *size = (int64_t)xx_squashfs_read32(entry + 4U, big_endian);
+        *start = (int64_t)xx_data_get_u32(entry, 4, 0, big_endian);
+        *size = (int64_t)xx_data_get_u32(entry + 4U, 4, 0, big_endian);
         return true;
     }
     if (!xx_squashfs_meta_read(&stream, 16U, entry)) return false;
-    *start = (int64_t)xx_squashfs_read64(entry, big_endian);
-    *size = (int64_t)xx_squashfs_read32(entry + 8U, big_endian);
+    *start = (int64_t)xx_data_get_u64(entry, 8, 0, big_endian);
+    *size = (int64_t)xx_data_get_u32(entry + 8U, 4, 0, big_endian);
     return true;
 }
 
@@ -983,12 +961,12 @@ static bool xx_squashfs_file_data(xx_squashfs_walk *walk,
         if (walk->parsed->super.major == 1) {
             uint32_t word;
             if (!xx_squashfs_meta_read(stream, 2U, entry_bytes)) goto fail;
-            word = xx_squashfs_read16(entry_bytes, big_endian);
+            word = xx_data_get_u16(entry_bytes, 2, 0, big_endian);
             /* v1 packs the stored flag as 0x8000; rescale it to 0x1000000. */
             entry = ((word & 0x8000U) << 9U) | (word & 0x7FFFU);
         } else {
             if (!xx_squashfs_meta_read(stream, 4U, entry_bytes)) goto fail;
-            entry = xx_squashfs_read32(entry_bytes, big_endian);
+            entry = xx_data_get_u32(entry_bytes, 4, 0, big_endian);
         }
         on_disk = (int64_t)(entry & 0xFFFFFFU);
         if (entry == 0U) {
@@ -1102,7 +1080,7 @@ static bool xx_squashfs_walk_dir(xx_squashfs_walk *walk, int64_t start_block,
             if (remaining < 4) return false;
             remaining -= 4;
             if (!xx_squashfs_meta_read(&stream, 4U, header)) return false;
-            word = xx_squashfs_read32(header, big_endian);
+            word = xx_data_get_u32(header, 4, 0, big_endian);
             /* The entry count is stored biased by one, and like every other
              * v1/v2 bitfield it swaps ends with the image's byte order. */
             count = (int64_t)xx_squashfs_bits(word, 32U, 0U, 8U, big_endian) + 1;
@@ -1114,14 +1092,14 @@ static bool xx_squashfs_walk_dir(xx_squashfs_walk *walk, int64_t start_block,
             if (!xx_squashfs_meta_read(&stream, 1U, header)) return false;
             count = (int64_t)header[0] + 1;
             if (!xx_squashfs_meta_read(&stream, 4U, header)) return false;
-            entry_block = (int64_t)xx_squashfs_read32(header, big_endian);
+            entry_block = (int64_t)xx_data_get_u32(header, 4, 0, big_endian);
             if (!xx_squashfs_meta_read(&stream, 4U, header)) return false;
         } else {
             if (remaining < 12) return false;
             remaining -= 12;
             if (!xx_squashfs_meta_read(&stream, 12U, header)) return false;
-            count = (int64_t)xx_squashfs_read32(header, big_endian) + 1;
-            entry_block = (int64_t)xx_squashfs_read32(header + 4U, big_endian);
+            count = (int64_t)xx_data_get_u32(header, 4, 0, big_endian) + 1;
+            entry_block = (int64_t)xx_data_get_u32(header + 4U, 4, 0, big_endian);
         }
 
         for (index = 0; index < count; ++index) {
@@ -1136,18 +1114,18 @@ static bool xx_squashfs_walk_dir(xx_squashfs_walk *walk, int64_t start_block,
                 if (remaining < 8) return false;
                 remaining -= 8;
                 if (!xx_squashfs_meta_read(&stream, 8U, entry)) return false;
-                entry_offset = (int64_t)xx_squashfs_read16(entry, big_endian);
-                entry_type = (int64_t)xx_squashfs_read16(entry + 4U, big_endian);
+                entry_offset = (int64_t)xx_data_get_u16(entry, 2, 0, big_endian);
+                entry_type = (int64_t)xx_data_get_u16(entry + 4U, 2, 0, big_endian);
                 /* The name length is stored biased by one too. */
                 name_size =
-                    (int64_t)xx_squashfs_read16(entry + 6U, big_endian) + 1;
+                    (int64_t)xx_data_get_u16(entry + 6U, 2, 0, big_endian) + 1;
             } else {
                 uint32_t word;
                 int64_t need = (major == 1 || major == 2) ? 3 : 5;
                 if (remaining < need) return false;
                 remaining -= need;
                 if (!xx_squashfs_meta_read(&stream, 2U, entry)) return false;
-                word = xx_squashfs_read16(entry, big_endian);
+                word = xx_data_get_u16(entry, 2, 0, big_endian);
                 entry_offset =
                     (int64_t)xx_squashfs_bits(word, 16U, 0U, 13U, big_endian);
                 entry_type =
@@ -1247,7 +1225,7 @@ static bool xx_squashfs_parse_superblock(const uint8_t *header,
     if (!header || !super) return false;
     xx_mem_zero(super, sizeof(*super));
 
-    magic = xx_squashfs_read32(header, false);
+    magic = xx_data_get_u32(header, 4, 0, false);
     if (magic == 0x73717368U) { /* 'hsqs' */
         super->big_endian = false;
         super->compressor = 0U;
@@ -1271,77 +1249,77 @@ static bool xx_squashfs_parse_superblock(const uint8_t *header,
     }
 
     big_endian = super->big_endian;
-    super->major = (int32_t)xx_squashfs_read16(header + 0x1CU, big_endian);
-    super->minor = (int32_t)xx_squashfs_read16(header + 0x1EU, big_endian);
+    super->major = (int32_t)xx_data_get_u16(header + 0x1CU, 2, 0, big_endian);
+    super->minor = (int32_t)xx_data_get_u16(header + 0x1EU, 2, 0, big_endian);
     if (super->major < 1 || super->major > 4) return false;
 
     if (super->major == 4) {
         uint32_t compressor_id;
-        super->inodes = (int64_t)xx_squashfs_read32(header + 4U, big_endian);
-        super->block_size = (int64_t)xx_squashfs_read32(header + 12U, big_endian);
-        super->fragments = (int64_t)xx_squashfs_read32(header + 16U, big_endian);
-        compressor_id = xx_squashfs_read16(header + 0x14U, big_endian);
+        super->inodes = (int64_t)xx_data_get_u32(header + 4U, 4, 0, big_endian);
+        super->block_size = (int64_t)xx_data_get_u32(header + 12U, 4, 0, big_endian);
+        super->fragments = (int64_t)xx_data_get_u32(header + 16U, 4, 0, big_endian);
+        compressor_id = xx_data_get_u16(header + 0x14U, 2, 0, big_endian);
         super->root_inode =
-            (int64_t)xx_squashfs_read64(header + 0x20U, big_endian);
+            (int64_t)xx_data_get_u64(header + 0x20U, 8, 0, big_endian);
         super->bytes_used =
-            (int64_t)xx_squashfs_read64(header + 0x28U, big_endian);
+            (int64_t)xx_data_get_u64(header + 0x28U, 8, 0, big_endian);
         super->inode_table =
-            (int64_t)xx_squashfs_read64(header + 0x40U, big_endian);
+            (int64_t)xx_data_get_u64(header + 0x40U, 8, 0, big_endian);
         super->directory_table =
-            (int64_t)xx_squashfs_read64(header + 0x48U, big_endian);
+            (int64_t)xx_data_get_u64(header + 0x48U, 8, 0, big_endian);
         super->fragment_table =
-            (int64_t)xx_squashfs_read64(header + 0x50U, big_endian);
+            (int64_t)xx_data_get_u64(header + 0x50U, 8, 0, big_endian);
         if (compressor_id >= XX_SQUASHFS_COMPRESSOR_GZIP &&
             compressor_id <= XX_SQUASHFS_COMPRESSOR_ZSTD) {
             super->compressor = compressor_id;
         }
     } else if (super->major == 3) {
         /* v3 is PACKED: the 64-bit tables start at the unaligned 0x3F. */
-        super->inodes = (int64_t)xx_squashfs_read32(header + 4U, big_endian);
+        super->inodes = (int64_t)xx_data_get_u32(header + 4U, 4, 0, big_endian);
         super->root_inode =
-            (int64_t)xx_squashfs_read64(header + 0x2BU, big_endian);
+            (int64_t)xx_data_get_u64(header + 0x2BU, 8, 0, big_endian);
         super->block_size =
-            (int64_t)xx_squashfs_read32(header + 0x33U, big_endian);
+            (int64_t)xx_data_get_u32(header + 0x33U, 4, 0, big_endian);
         super->fragments =
-            (int64_t)xx_squashfs_read32(header + 0x37U, big_endian);
+            (int64_t)xx_data_get_u32(header + 0x37U, 4, 0, big_endian);
         super->bytes_used =
-            (int64_t)xx_squashfs_read64(header + 0x3FU, big_endian);
+            (int64_t)xx_data_get_u64(header + 0x3FU, 8, 0, big_endian);
         super->inode_table =
-            (int64_t)xx_squashfs_read64(header + 0x57U, big_endian);
+            (int64_t)xx_data_get_u64(header + 0x57U, 8, 0, big_endian);
         super->directory_table =
-            (int64_t)xx_squashfs_read64(header + 0x5FU, big_endian);
+            (int64_t)xx_data_get_u64(header + 0x5FU, 8, 0, big_endian);
         super->fragment_table =
-            (int64_t)xx_squashfs_read64(header + 0x67U, big_endian);
+            (int64_t)xx_data_get_u64(header + 0x67U, 8, 0, big_endian);
     } else {
-        super->inodes = (int64_t)xx_squashfs_read32(header + 4U, big_endian);
+        super->inodes = (int64_t)xx_data_get_u32(header + 4U, 4, 0, big_endian);
         if (super->major == 1) {
             super->block_size =
-                (int64_t)xx_squashfs_read16(header + 0x20U, big_endian);
+                (int64_t)xx_data_get_u16(header + 0x20U, 2, 0, big_endian);
         } else {
             super->block_size =
-                (int64_t)xx_squashfs_read32(header + 0x33U, big_endian);
+                (int64_t)xx_data_get_u32(header + 0x33U, 4, 0, big_endian);
         }
         super->root_inode =
-            (int64_t)xx_squashfs_read64(header + 0x2BU, big_endian);
+            (int64_t)xx_data_get_u64(header + 0x2BU, 8, 0, big_endian);
         super->bytes_used =
-            (int64_t)xx_squashfs_read32(header + 8U, big_endian);
+            (int64_t)xx_data_get_u32(header + 8U, 4, 0, big_endian);
         super->inode_table =
-            (int64_t)xx_squashfs_read32(header + 0x14U, big_endian);
+            (int64_t)xx_data_get_u32(header + 0x14U, 4, 0, big_endian);
         super->directory_table =
-            (int64_t)xx_squashfs_read32(header + 0x18U, big_endian);
+            (int64_t)xx_data_get_u32(header + 0x18U, 4, 0, big_endian);
         super->fragments =
             (super->major == 2)
-                ? (int64_t)xx_squashfs_read32(header + 0x37U, big_endian)
+                ? (int64_t)xx_data_get_u32(header + 0x37U, 4, 0, big_endian)
                 : 0;
         super->fragment_table =
             (super->major == 2)
-                ? (int64_t)xx_squashfs_read32(header + 0x3BU, big_endian)
+                ? (int64_t)xx_data_get_u32(header + 0x3BU, 4, 0, big_endian)
                 : 0;
     }
 
     if (super->block_size == 0) {
         int32_t block_log =
-            (int32_t)xx_squashfs_read16(header + 0x22U, big_endian);
+            (int32_t)xx_data_get_u16(header + 0x22U, 2, 0, big_endian);
         if (block_log < 0 || block_log > 23) return false;
         super->block_size = INT64_C(1) << block_log;
     }

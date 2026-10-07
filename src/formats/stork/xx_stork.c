@@ -39,6 +39,7 @@
 #include "xxfclib/algo/dcl/xx_dcl.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_STORK_COPY_CHUNK (64 * 1024)
 
@@ -145,7 +146,6 @@ static bool xx_stork_add(xx_stork_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint32_t xx_stork_le32(const uint8_t *data);
 static bool xx_stork_name_valid(const uint8_t *name, size_t length);
 static xx_stork_stream *xx_stork_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_stork_decode(Abstractformat *self, const xx_stork_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
@@ -154,11 +154,6 @@ static bool xx_stork_decode(Abstractformat *self, const xx_stork_member *member,
 /* The smallest stream is the two DCL prelude bytes plus one coded byte. */
 /* Ceiling on what one member may expand to while being measured. */
 /* And on what may be read in to measure it. */
-
-static uint32_t xx_stork_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* Stork names are DOS 8.3 names. The reference extractor escapes anything the
  * host filesystem would reject as %XX rather than rejecting the record; this
@@ -240,7 +235,7 @@ static xx_stork_stream *xx_stork_parse(Abstractformat *self,
          * walking through as a member list. */
         if (record[0x11] != (uint8_t)XX_STORK_TERMINATOR) goto fail;
 
-        compressed_size = (int64_t)(int32_t)xx_stork_le32(record + 0x0d);
+        compressed_size = (int64_t)(int32_t)xx_data_get_u32(record + 0x0d, 4, 0, false);
         data_offset = offset + XX_STORK_RECORD_SIZE;
         if (compressed_size < XX_STORK_MIN_PAYLOAD_SIZE) goto fail;
         if (compressed_size > XX_STORK_MAX_PACKED) goto fail;

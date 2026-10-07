@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT - read-only, memory-only SQLite SQL export. */
 #include "xxfclib/formats/sqlite_sql/xx_sqlite_sql.h"
+#include "xxfclib/data/xx_data.h"
 #ifdef XXFC_SQLITE_HOSTED_DISABLED
 xx_sqlite_sql *xx_sqlite_sql_create(xx_io_device *d,int64_t b) { (void)d;(void)b;return NULL; }
 void xx_sqlite_sql_free(xx_sqlite_sql *r) { (void)r; }
@@ -87,7 +88,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     sqlite3_hard_heap_limit64((sqlite3_int64)(limit/3));
     image=(uint8_t *)xx_mem_alloc((size_t)n);out.limit=limit/3;
     if(!image || !pm_read(f,0,image,(size_t)n) || xx_rt_memcmp(image,"SQLite format 3\0",16))goto done;
-    { uint32_t page=pm_be16(image+16),pages=pm_be32(image+28);
+    { uint32_t page=xx_data_get_u16(image+16, 2, 0, true),pages=xx_data_get_u32(image+28, 4, 0, true);
       if(page==1)page=65536;
       if(page<512 || page>65536 || (page&(page-1)) || !pages || (uint64_t)page*pages>(uint64_t)n ||
          (image[18]!=1 && image[18]!=2) || (image[19]!=1 && image[19]!=2))goto done; }

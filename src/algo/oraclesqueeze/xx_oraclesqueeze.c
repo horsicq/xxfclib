@@ -9,6 +9,7 @@
 #include "xxfclib/algo/oraclesqueeze/xx_oraclesqueeze.h"
 
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ORACLESQUEEZE_MAX_NODES 256U
 #define XX_ORACLESQUEEZE_EOF 256U
@@ -22,12 +23,8 @@ typedef struct xx_oraclesqueeze_bit_reader_s {
     unsigned bits_left;
 } xx_oraclesqueeze_bit_reader;
 
-static uint16_t xx_oraclesqueeze_read16le(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8U));
-}
-
 static int32_t xx_oraclesqueeze_read_signed16le(const uint8_t *data) {
-    uint16_t value = xx_oraclesqueeze_read16le(data);
+    uint16_t value = xx_data_get_u16(data, 2, 0, false);
     return (value & UINT16_C(0x8000)) != 0U ?
                (int32_t)value - INT32_C(65536) : (int32_t)value;
 }
@@ -38,7 +35,7 @@ bool xx_oraclesqueeze_parse_tree(const uint8_t *input, size_t input_size,
     size_t index;
     size_t table_size;
     if (!input || !info || input_size < 7U) return false;
-    node_count = xx_oraclesqueeze_read16le(input);
+    node_count = xx_data_get_u16(input, 2, 0, false);
     if (node_count == 0U || node_count > XX_ORACLESQUEEZE_MAX_NODES) {
         return false;
     }

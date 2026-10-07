@@ -10,6 +10,7 @@
 #include "xxfclib/algo/lzdiet/xx_lzdiet.h"
 
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_LZDIET_HEADER_SIZE 0x5fcU
 #define XX_LZDIET_TABLE_OFFSET 0x20U
@@ -29,15 +30,6 @@ typedef struct xx_lzdiet_bits_s {
     uint32_t accumulator;
     unsigned bit_count;
 } xx_lzdiet_bits;
-
-static uint16_t xx_lzdiet_read16le(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8U));
-}
-
-static uint32_t xx_lzdiet_read32le(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
 
 static bool xx_lzdiet_read_code(xx_lzdiet_bits *bits, unsigned *width,
                                 unsigned *max_code, unsigned next_free,
@@ -159,19 +151,19 @@ bool xx_lzdiet_parse_memory(const uint8_t *input, size_t input_size,
         xx_rt_memcmp(input, "lZdIeT", 6U) != 0) {
         return false;
     }
-    raw_size = xx_lzdiet_read32le(input + 6U);
+    raw_size = xx_data_get_u32(input + 6U, 4, 0, false);
     if ((int32_t)raw_size <= 0 || raw_size > XX_LZDIET_MAX_OUTPUT ||
-        xx_lzdiet_read32le(input + XX_LZDIET_TABLE_OFFSET) !=
+        xx_data_get_u32(input + XX_LZDIET_TABLE_OFFSET, 4, 0, false) !=
             XX_LZDIET_HEADER_SIZE ||
-        xx_lzdiet_read16le(input + XX_LZDIET_TABLE_OFFSET + 4U) <
+        xx_data_get_u16(input + XX_LZDIET_TABLE_OFFSET + 4U, 2, 0, false) <
             XX_LZDIET_CHUNK_PREAMBLE) {
         return false;
     }
     for (index = 0U; index < XX_LZDIET_MAX_CHUNKS; ++index) {
         const uint8_t *entry = input + XX_LZDIET_TABLE_OFFSET +
                                index * XX_LZDIET_ENTRY_SIZE;
-        uint32_t offset_raw = xx_lzdiet_read32le(entry);
-        uint16_t chunk_size = xx_lzdiet_read16le(entry + 4U);
+        uint32_t offset_raw = xx_data_get_u32(entry, 4, 0, false);
+        uint16_t chunk_size = xx_data_get_u16(entry + 4U, 2, 0, false);
         size_t chunk_offset;
         if (offset_raw == UINT32_MAX) {
             terminated = true;
@@ -217,8 +209,8 @@ bool xx_lzdiet_decompress_memory(
                     output_position < output_size; ++index) {
         const uint8_t *entry = input + XX_LZDIET_TABLE_OFFSET +
                                index * XX_LZDIET_ENTRY_SIZE;
-        size_t chunk_offset = (size_t)xx_lzdiet_read32le(entry);
-        size_t chunk_size = xx_lzdiet_read16le(entry + 4U);
+        size_t chunk_offset = (size_t)xx_data_get_u32(entry, 4, 0, false);
+        size_t chunk_size = xx_data_get_u16(entry + 4U, 2, 0, false);
         if (chunk_size < XX_LZDIET_CHUNK_PREAMBLE ||
             !xx_lzdiet_decode_chunk(input + chunk_offset +
                                      XX_LZDIET_CHUNK_PREAMBLE,

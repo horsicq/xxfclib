@@ -22,6 +22,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef COPYQM
 #define XX_COPYQM_FILE_TYPE XX_FILE_TYPE_COPYQM
@@ -50,14 +51,6 @@ typedef struct copyqm_stream_s {
     size_t index;
     int64_t archive_size;
 } copyqm_stream;
-
-static uint16_t copyqm_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t copyqm_le32(const uint8_t *b) {
-    return (uint32_t)copyqm_le16(b) | ((uint32_t)copyqm_le16(b + 2U) << 16U);
-}
 
 static bool copyqm_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -152,9 +145,9 @@ static bool copyqm_add_member(copyqm_stream *stream, const copyqm_member *member
  * usable (then the image keeps its natural decoded length).  Every factor is
  * bounded, so the product cannot overflow 64 bits. */
 static uint64_t copyqm_geometry_bytes(const uint8_t *header, uint32_t cylinders) {
-    uint32_t sector_size = copyqm_le16(header + COPYQM_SECTOR_SIZE_OFFSET);
-    uint32_t sectors = copyqm_le16(header + COPYQM_SECTORS_PER_TRACK_OFFSET);
-    uint32_t heads = copyqm_le16(header + COPYQM_HEADS_OFFSET);
+    uint32_t sector_size = xx_data_get_u16(header + COPYQM_SECTOR_SIZE_OFFSET, 2, 0, false);
+    uint32_t sectors = xx_data_get_u16(header + COPYQM_SECTORS_PER_TRACK_OFFSET, 2, 0, false);
+    uint32_t heads = xx_data_get_u16(header + COPYQM_HEADS_OFFSET, 2, 0, false);
     if (sector_size < 128U || sector_size > 16384U || sectors == 0U ||
         sectors > 255U || heads == 0U || heads > 255U || cylinders == 0U)
         return 0U;
@@ -171,7 +164,7 @@ static bool copyqm_run(const uint8_t *packed, size_t packed_size,
     size_t offset = 0U;
     size_t total = 0U;
     while (offset + 2U <= packed_size) {
-        int32_t token = (int32_t)(int16_t)copyqm_le16(packed + offset);
+        int32_t token = (int32_t)(int16_t)xx_data_get_u16(packed + offset, 2, 0, false);
         offset += 2U;
         if (token == 0) break;
         if (token < 0) {
@@ -226,7 +219,7 @@ static bool copyqm_parse(Abstractformat *format, copyqm_stream **result) {
         header[0] != 'C' || header[1] != 'Q' || header[2] != 0x14)
         return false;
     data_offset = (int64_t)COPYQM_HEADER_SIZE +
-                  (int64_t)copyqm_le16(header + COPYQM_COMMENT_LENGTH_OFFSET);
+                  (int64_t)xx_data_get_u16(header + COPYQM_COMMENT_LENGTH_OFFSET, 2, 0, false);
     if (data_offset >= size) return false;
     packed_size = size - data_offset;
     if ((uint64_t)packed_size > COPYQM_MAX_OUTPUT) return false;

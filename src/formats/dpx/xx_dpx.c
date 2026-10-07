@@ -5,21 +5,21 @@
  */
 #include "xxfclib/formats/dpx/xx_dpx.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static uint32_t dx_u32(const uint8_t *p,bool little) { return little ? pm_le32(p) : pm_be32(p); }
-static unsigned dx_u16(const uint8_t *p,bool little) { return little ? pm_le16(p) : pm_be16(p); }
+static unsigned dx_u16(const uint8_t *p,bool little) { return little ? xx_data_get_u16(p, 2, 0, false) : xx_data_get_u16(p, 2, 0, true); }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[1664]; bool little; unsigned count,width,height,i,j; uint32_t total,image,industry,user,starts[8]; uint64_t sizes[8],header_end; char label[48];
     if(!pm_read(f,0,h,sizeof(h)) || (xx_rt_memcmp(h,"SDPX",4) && xx_rt_memcmp(h,"XPDS",4))) return false;
-    little=h[0]=='X'; total=dx_u32(h+16,little); image=dx_u32(h+4,little); industry=dx_u32(h+28,little); user=dx_u32(h+32,little);
+    little=h[0]=='X'; total=xx_data_get_u32(h+16, 4, 0, !little); image=xx_data_get_u32(h+4, 4, 0, !little); industry=xx_data_get_u32(h+28, 4, 0, !little); user=xx_data_get_u32(h+32, 4, 0, !little);
     header_end=1664U+(uint64_t)industry+user;
-    if((xx_rt_memcmp(h+8,"V1.0",4) && xx_rt_memcmp(h+8,"V2.0",4)) || dx_u32(h+24,little)!=1664 || (industry!=0 && industry!=384) || user>1048576 || header_end>image || (image&3) || total<image || total>(uint64_t)pm_available(f) || dx_u32(h+660,little)!=0xFFFFFFFFU) return false;
-    count=dx_u16(h+770,little); width=dx_u32(h+772,little); height=dx_u32(h+776,little);
+    if((xx_rt_memcmp(h+8,"V1.0",4) && xx_rt_memcmp(h+8,"V2.0",4)) || xx_data_get_u32(h+24, 4, 0, !little)!=1664 || (industry!=0 && industry!=384) || user>1048576 || header_end>image || (image&3) || total<image || total>(uint64_t)pm_available(f) || xx_data_get_u32(h+660, 4, 0, !little)!=0xFFFFFFFFU) return false;
+    count=dx_u16(h+770,little); width=xx_data_get_u32(h+772, 4, 0, !little); height=xx_data_get_u32(h+776, 4, 0, !little);
     if(dx_u16(h+768,little)>7 || !count || count>8 || !width || !height || width>32768 || height>32768 || (uint64_t)width*height>67108864) return false;
     if(!pm_add(f,s,"generic-header.bin",0,1664) || (industry && !pm_add(f,s,"industry-header.bin",1664,industry)) || (user && !pm_add(f,s,"user-data.bin",1664+industry,user))) return false;
     for(i=0;i<count;++i) {
-        const uint8_t *e=h+780+72*i; unsigned descriptor=e[20],depth=e[23],packing=dx_u16(e+24,little),samples; uint32_t eol=dx_u32(e+32,little),eoi=dx_u32(e+36,little); uint64_t fields,row;
-        if((pd && xx_pd_is_stopped(pd)) || dx_u32(e,little) || dx_u16(e+26,little) || packing>2 || eol>1048576 || eoi>1048576) return false;
+        const uint8_t *e=h+780+72*i; unsigned descriptor=e[20],depth=e[23],packing=dx_u16(e+24,little),samples; uint32_t eol=xx_data_get_u32(e+32, 4, 0, !little),eoi=xx_data_get_u32(e+36, 4, 0, !little); uint64_t fields,row;
+        if((pd && xx_pd_is_stopped(pd)) || xx_data_get_u32(e, 4, 0, !little) || dx_u16(e+26,little) || packing>2 || eol>1048576 || eoi>1048576) return false;
         if((descriptor>=1 && descriptor<=4) || descriptor==6 || descriptor==8) samples=1;
         else if(descriptor==50) samples=3;
         else if(descriptor==51 || descriptor==52) samples=4;
@@ -30,7 +30,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         else if(depth==12 && packing) row=fields*2U;
         else if(depth==16) row=fields*2U;
         else row=((fields*depth+31U)/32U)*4U;
-        sizes[i]=(row+eol)*height+eoi; starts[i]=dx_u32(e+28,little);
+        sizes[i]=(row+eol)*height+eoi; starts[i]=xx_data_get_u32(e+28, 4, 0, !little);
         if(starts[i]<image || (starts[i]&3) || starts[i]>total || sizes[i]>total-starts[i]) return false;
         for(j=0;j<i;++j) if((uint64_t)starts[i]<starts[j]+sizes[j] && (uint64_t)starts[j]<starts[i]+sizes[i]) return false;
         xx_rt_snprintf(label,sizeof(label),"element-%u-raster.dpx",i); if(!pm_add(f,s,label,starts[i],(int64_t)sizes[i])) return false;

@@ -6,6 +6,7 @@
 #include "xxfclib/formats/pc98_d88/xx_pc98_d88.h"
 #include "../asylum_amf/xx_thirteenth_media.h"
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 #define D88_MAX_BYTES (32U*1024U*1024U)
 #define D88_MAX_DISKS 8U
 #define D88_MAX_SECTORS 8192U
@@ -63,18 +64,18 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         uint32_t disk_sector_start=all_sectors; bool raw=true;
         char name[64];
         TM_NEED(disk_no<D88_MAX_DISKS&&tm_span(&b,disk_at,672U));
-        disk_size=pm_le32(b.p+(size_t)disk_at+28U);
+        disk_size=xx_data_get_u32(b.p+(size_t)disk_at+28U, 4, 0, false);
         TM_NEED(disk_size>=672U&&disk_size<=D88_MAX_BYTES&&
                 tm_span(&b,disk_at,disk_size));
         for (i=0U;i<160U;++i) {
-            uint32_t t=pm_le32(b.p+(size_t)disk_at+32U+i*4U);
+            uint32_t t=xx_data_get_u32(b.p+(size_t)disk_at+32U+i*4U, 4, 0, false);
             if (t&&!first) first=t;
         }
         TM_NEED(first==672U||first==688U);
         table_count=first==688U ? 164U : 160U;
         TM_NEED(disk_size>=first);
         for (i=0U;i<table_count;++i) {
-            uint32_t t=pm_le32(b.p+(size_t)disk_at+32U+i*4U);
+            uint32_t t=xx_data_get_u32(b.p+(size_t)disk_at+32U+i*4U, 4, 0, false);
             offsets[i]=t;
             if (!t) continue;
             TM_NEED(t>=first&&t<=disk_size&&
@@ -94,7 +95,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             }
             TM_NEED(end>start&&end-start>=16U);
             at=start;
-            count=pm_le16(b.p+(size_t)disk_at+at+4U);
+            count=xx_data_get_u16(b.p+(size_t)disk_at+at+4U, 2, 0, false);
             TM_NEED(count&&count<=128U&&count<=D88_MAX_SECTORS-all_sectors);
             ++formatted;
             if (i!=expected_track) raw=false;
@@ -105,9 +106,9 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
                 const uint8_t *h; uint32_t actual,implied; uint8_t id;
                 TM_NEED(!d88_stop(pd)&&at<=end&&end-at>=16U);
                 h=b.p+(size_t)disk_at+at;
-                actual=pm_le16(h+14U); id=h[2];
+                actual=xx_data_get_u16(h+14U, 2, 0, false); id=h[2];
                 TM_NEED(h[3]<=7U&&actual<=16384U&&
-                        pm_le16(h+4U)==count&&actual<=end-at-16U);
+                        xx_data_get_u16(h+4U, 2, 0, false)==count&&actual<=end-at-16U);
                 implied=128U<<h[3];
                 if (h[0]!=i/2U||h[1]!=i%2U||id<1U||id>count||
                     (id<=128U&&slots[id])||h[7]||h[8]||actual!=implied)

@@ -3,9 +3,9 @@
 #include "../xx_fifteenth_media.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  m15_blob b={0};uint64_t at,inst,music,head,start;uint32_t ver,num,i,delta;uint8_t running=0;bool ended=false,ok=false;
- M15_NEED(m15_load(f,&b,pd)&&m15_tag(&b,0,"CTMF",4)&&m15_span(&b,0,37));ver=pm_le16(b.p+4);M15_NEED(ver==0x100||ver==0x101);head=ver==0x100?37:40;M15_NEED(m15_span(&b,0,head)&&pm_le16(b.p+10)&&pm_le16(b.p+12));inst=pm_le16(b.p+6);music=pm_le16(b.p+8);num=ver==0x100?b.p[36]:pm_le16(b.p+36);M15_NEED(num&&num<=128&&inst>=head&&music>=inst&&num*16U<=music-inst&&m15_span(&b,inst,num*16U)&&music<b.n);
+ M15_NEED(m15_load(f,&b,pd)&&m15_tag(&b,0,"CTMF",4)&&m15_span(&b,0,37));ver=xx_data_get_u16(b.p+4, 2, 0, false);M15_NEED(ver==0x100||ver==0x101);head=ver==0x100?37:40;M15_NEED(m15_span(&b,0,head)&&xx_data_get_u16(b.p+10, 2, 0, false)&&xx_data_get_u16(b.p+12, 2, 0, false));inst=xx_data_get_u16(b.p+6, 2, 0, false);music=xx_data_get_u16(b.p+8, 2, 0, false);num=ver==0x100?b.p[36]:xx_data_get_u16(b.p+36, 2, 0, false);M15_NEED(num&&num<=128&&inst>=head&&music>=inst&&num*16U<=music-inst&&m15_span(&b,inst,num*16U)&&music<b.n);
  for(i=0;i<16;++i)M15_NEED(b.p[20+i]<=1);
- for(i=0;i<3;++i){uint64_t z=pm_le16(b.p+14+i*2);if(z)M15_NEED(z>=head&&z<inst&&m15_z(&b,&z,inst));}
+ for(i=0;i<3;++i){uint64_t z=xx_data_get_u16(b.p+14+i*2, 2, 0, false);if(z)M15_NEED(z>=head&&z<inst&&m15_z(&b,&z,inst));}
  M15_NEED(m15_emit(f,s,&b,"descriptor.cmf",0,head));if(inst>head)M15_NEED(m15_emit(f,s,&b,"metadata.cmf",head,inst-head));for(i=0;i<num;++i)M15_NEED(m15_emit(f,s,&b,"instrument.cmf",inst+i*16,16));if(music>inst+num*16U)M15_NEED(m15_emit(f,s,&b,"instrument-padding.cmf",inst+num*16U,music-inst-num*16U));
  at=music;while(at<b.n){uint8_t c;unsigned need;M15_NEED(m15_vlq(&b,&at,&delta)&&m15_span(&b,at,1)&&m15_work(&b,1));c=b.p[(size_t)at];if(c&128){++at;if(c<240)running=c;else running=0;}else{M15_NEED(running);c=running;}if(c<240){M15_NEED(c>=128);need=(c&240)==192||(c&240)==208?1:2;M15_NEED(m15_span(&b,at,need));for(i=0;i<need;++i)M15_NEED(b.p[(size_t)(at+i)]<128);at+=need;}
  else if(c==240||c==247){M15_NEED(m15_vlq(&b,&at,&delta)&&m15_span(&b,at,delta));at+=delta;}

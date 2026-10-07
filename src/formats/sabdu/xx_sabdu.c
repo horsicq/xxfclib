@@ -41,6 +41,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef SABDU
 #define XX_SABDU_FILE_TYPE XX_FILE_TYPE_SABDU
@@ -76,24 +77,6 @@ typedef struct xx_sabdu_stream_s {
 static void xx_sabdu_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint16_t xx_sabdu_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t xx_sabdu_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static XXFC_MAYBE_UNUSED uint16_t xx_sabdu_be16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[1] | ((uint16_t)data[0] << 8));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t xx_sabdu_be32(const uint8_t *data) {
-    return (uint32_t)data[3] | ((uint32_t)data[2] << 8) |
-           ((uint32_t)data[1] << 16) | ((uint32_t)data[0] << 24);
-}
 
 static bool xx_sabdu_read_at(Abstractformat *self, int64_t offset,
                               uint8_t *buffer, size_t size) {
@@ -241,11 +224,11 @@ static xx_sabdu_stream *xx_sabdu_parse(Abstractformat *self,
         return NULL;
     }
 
-    cylinders = (int64_t)xx_sabdu_le16(head + 30);
-    heads = (int64_t)xx_sabdu_le16(head + 32);
-    sectors = (int64_t)xx_sabdu_le16(head + 34);
-    sector_size = (int64_t)xx_sabdu_le16(head + 42);
-    track_size = (int64_t)xx_sabdu_le16(head + 44);
+    cylinders = (int64_t)xx_data_get_u16(head + 30, 2, 0, false);
+    heads = (int64_t)xx_data_get_u16(head + 32, 2, 0, false);
+    sectors = (int64_t)xx_data_get_u16(head + 34, 2, 0, false);
+    sector_size = (int64_t)xx_data_get_u16(head + 42, 2, 0, false);
+    track_size = (int64_t)xx_data_get_u16(head + 44, 2, 0, false);
     payload = span - XX_SABDU_HEADER_SIZE;
     /* The geometry is the consistency net that catches a truncated or padded
      * image: every field is range checked, the declared track size must equal

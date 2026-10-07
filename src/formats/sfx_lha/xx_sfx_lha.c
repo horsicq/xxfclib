@@ -9,22 +9,10 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/rt/xx_rt.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 static bool sfx_lha_stop(xx_pd_struct *pd) {
     return pd && xx_pd_is_stopped(pd);
-}
-
-static uint16_t sfx_lha_le16(const uint8_t *p) {
-    return (uint16_t)(p[0] | (uint16_t)(p[1] << 8));
-}
-static uint32_t sfx_lha_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
-           ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
-
-static uint32_t sfx_lha_be32(const uint8_t *p) {
-    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
-           ((uint32_t)p[2] << 8) | p[3];
 }
 
 static int64_t sfx_lha_available(Abstractformat *f) {
@@ -88,7 +76,7 @@ static bool sfx_lha_try_atari_tail(xx_sfx_lha *r, int64_t at, int64_t limit,
         prefix[20] != 0U ||
         xx_rt_memcmp(prefix + 2, "-lz5-", 5U) != 0) return false;
     header_size = (size_t)prefix[0] + 2U;
-    packed = sfx_lha_le32(prefix + 7);
+    packed = xx_data_get_u32(prefix + 7, 4, 0, false);
     if (header_size < 24U || header_size > (size_t)(limit - at) ||
         packed > (uint64_t)(limit - at - (int64_t)header_size)) return false;
     archive_span = (int64_t)header_size + (int64_t)packed;
@@ -161,9 +149,9 @@ static bool sfx_lha_ensure(xx_sfx_lha *r, xx_pd_struct *pd) {
     limit = sfx_lha_available(f);
     if (limit < 64 || !sfx_lha_read(f, 0, h, sizeof(h))) return false;
     if (!xx_rt_memcmp(h, "MZ", 2)) {
-        uint64_t paragraphs = (uint64_t)sfx_lha_le16(h + 8) * 16U;
-        uint64_t pages = sfx_lha_le16(h + 4);
-        uint64_t last = sfx_lha_le16(h + 2);
+        uint64_t paragraphs = (uint64_t)xx_data_get_u16(h + 8, 2, 0, false) * 16U;
+        uint64_t pages = xx_data_get_u16(h + 4, 2, 0, false);
+        uint64_t last = xx_data_get_u16(h + 2, 2, 0, false);
         uint64_t image;
         if (paragraphs < 28 || paragraphs > 65536 || pages == 0 || last > 511)
             return false;
@@ -180,7 +168,7 @@ static bool sfx_lha_ensure(xx_sfx_lha *r, xx_pd_struct *pd) {
         /* Atari ST GEMDOS executables put the archive in the data section.
          * The fixed 28-byte header declares the text section immediately
          * before it.  A complete LHA parse still validates the candidate. */
-        uint64_t text_size = sfx_lha_be32(h + 2);
+        uint64_t text_size = xx_data_get_u32(h + 2, 4, 0, true);
         if (text_size > (uint64_t)limit - 28U) return false;
         start = 28 + (int64_t)text_size;
         if (sfx_lha_try_at(r, start, limit, pd) ||

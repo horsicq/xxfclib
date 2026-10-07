@@ -48,6 +48,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef BATTLEISLE
 #define XX_BATTLEISLE_FILE_TYPE XX_FILE_TYPE_BATTLEISLE
@@ -84,15 +85,6 @@ typedef struct xx_battleisle_stream_s {
 static void xx_battleisle_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint16_t xx_battleisle_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_battleisle_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static bool xx_battleisle_read_at(Abstractformat *self, int64_t offset,
                                   uint8_t *buffer, size_t size) {
@@ -203,7 +195,7 @@ static xx_battleisle_stream *xx_battleisle_parse(Abstractformat *self,
 
     /* The directory pointer is the first thing read from the file and the
      * first thing bounded: everything downstream is derived from it. */
-    directory_offset = (int64_t)xx_battleisle_le32(head);
+    directory_offset = (int64_t)xx_data_get_u32(head, 4, 0, false);
     if (directory_offset < XX_BATTLEISLE_HEADER_SIZE ||
         directory_offset >= span) {
         return NULL;
@@ -218,7 +210,7 @@ static xx_battleisle_stream *xx_battleisle_parse(Abstractformat *self,
      * with the directory is not this format. */
     data_start = XX_BATTLEISLE_HEADER_SIZE;
     if (xx_rt_memcmp(head + 4, "TCT ", 4U) == 0) {
-        if ((uint64_t)xx_battleisle_le16(head + 8) != count) return NULL;
+        if ((uint64_t)xx_data_get_u16(head + 8, 2, 0, false) != count) return NULL;
         data_start = XX_BATTLEISLE_SUB_HEADER_SIZE;
     }
     if (data_start >= directory_offset) return NULL;
@@ -246,7 +238,7 @@ static xx_battleisle_stream *xx_battleisle_parse(Abstractformat *self,
     for (index = 0U; index < count; ++index) {
         const uint8_t *entry =
             directory + (size_t)(index * XX_BATTLEISLE_ENTRY_SIZE);
-        uint32_t offset = xx_battleisle_le32(entry + XX_BATTLEISLE_NAME_SIZE);
+        uint32_t offset = xx_data_get_u32(entry + XX_BATTLEISLE_NAME_SIZE, 4, 0, false);
         int64_t end;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
@@ -264,10 +256,10 @@ static xx_battleisle_stream *xx_battleisle_parse(Abstractformat *self,
         previous = offset;
 
         end = (index + 1U < count)
-                  ? (int64_t)xx_battleisle_le32(
+                  ? (int64_t)xx_data_get_u32(
                         directory +
                         (size_t)((index + 1U) * XX_BATTLEISLE_ENTRY_SIZE) +
-                        XX_BATTLEISLE_NAME_SIZE)
+                        XX_BATTLEISLE_NAME_SIZE, 4, 0, false)
                   : directory_offset;
         if (end > directory_offset || end <= (int64_t)offset) goto fail;
 

@@ -44,6 +44,7 @@
 #include "xxfclib/algo/hzl/xx_hzl.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_JBF_COPY_CHUNK (64 * 1024)
 
@@ -154,8 +155,6 @@ static bool xx_jbf_add(xx_jbf_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_jbf_le16(const uint8_t *data);
-static uint32_t xx_jbf_le32(const uint8_t *data);
 static bool xx_jbf_name_ok(const uint8_t *field, size_t *out_length);
 static xx_jbf_stream *xx_jbf_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_jbf_decode(Abstractformat *self, const xx_jbf_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
@@ -166,15 +165,6 @@ static bool xx_jbf_decode(Abstractformat *self, const xx_jbf_member *member, uin
  * start in the same state, which makes them a usable first filter - but they
  * are a property of the codec, not a container header, so they cannot be the
  * format's defence on their own. */
-
-static uint16_t xx_jbf_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_jbf_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* The name occupies the full 13-byte field: NUL terminated, NUL padded, and
  * no stale byte behind the terminator. */
@@ -269,9 +259,9 @@ static xx_jbf_stream *xx_jbf_parse(Abstractformat *self, xx_pd_struct *pd) {
 
         /* Signed on purpose: a negative field is corruption, not a huge
          * member. */
-        compressed_size = (int64_t)(int32_t)xx_jbf_le32(entry + 0x0d);
-        uncompressed_size = (int64_t)(int32_t)xx_jbf_le32(entry + 0x11);
-        data_offset = (int64_t)(int32_t)xx_jbf_le32(entry + 0x15);
+        compressed_size = (int64_t)(int32_t)xx_data_get_u32(entry + 0x0d, 4, 0, false);
+        uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(entry + 0x11, 4, 0, false);
+        data_offset = (int64_t)(int32_t)xx_data_get_u32(entry + 0x15, 4, 0, false);
         if (compressed_size < 0 || uncompressed_size < 0 || data_offset < 0) {
             goto fail;
         }
@@ -305,11 +295,11 @@ static xx_jbf_stream *xx_jbf_parse(Abstractformat *self, xx_pd_struct *pd) {
         for (index = 0; index < count; ++index) {
             const uint8_t *entry = directory + index * XX_JBF_ENTRY_SIZE;
             if (placed[index]) continue;
-            if ((int64_t)(int32_t)xx_jbf_le32(entry + 0x15) != expected) {
+            if ((int64_t)(int32_t)xx_data_get_u32(entry + 0x15, 4, 0, false) != expected) {
                 continue;
             }
             placed[index] = 1U;
-            expected += (int64_t)(int32_t)xx_jbf_le32(entry + 0x0d);
+            expected += (int64_t)(int32_t)xx_data_get_u32(entry + 0x0d, 4, 0, false);
             found = true;
             break;
         }
@@ -340,9 +330,9 @@ static xx_jbf_stream *xx_jbf_parse(Abstractformat *self, xx_pd_struct *pd) {
         }
         buffer[name_length] = '\0';
 
-        compressed_size = (int64_t)(int32_t)xx_jbf_le32(entry + 0x0d);
-        uncompressed_size = (int64_t)(int32_t)xx_jbf_le32(entry + 0x11);
-        data_offset = (int64_t)(int32_t)xx_jbf_le32(entry + 0x15);
+        compressed_size = (int64_t)(int32_t)xx_data_get_u32(entry + 0x0d, 4, 0, false);
+        uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(entry + 0x11, 4, 0, false);
+        data_offset = (int64_t)(int32_t)xx_data_get_u32(entry + 0x15, 4, 0, false);
         if (uncompressed_size == 0) {
             /* Zero declared plaintext means the payload was stored, so the
              * stream bytes are the member; publishing the two sizes as equal
@@ -374,8 +364,8 @@ static xx_jbf_stream *xx_jbf_parse(Abstractformat *self, xx_pd_struct *pd) {
         member.method = method;
         /* DOS date/time packed date-high / time-low. The entry stores the
          * time word FIRST and the date word second. */
-        member.timestamp = ((uint64_t)xx_jbf_le16(entry + 0x1d) << 16) |
-                           (uint64_t)xx_jbf_le16(entry + 0x1b);
+        member.timestamp = ((uint64_t)xx_data_get_u16(entry + 0x1d, 2, 0, false) << 16) |
+                           (uint64_t)xx_data_get_u16(entry + 0x1b, 2, 0, false);
         /* The format has no directory entries and no attribute field. */
         member.is_folder = false;
         /* The u16 at +0x19 is a checksum whose algorithm is not recoverable

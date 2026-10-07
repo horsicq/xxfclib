@@ -49,6 +49,7 @@
 #include "xxfclib/algo/dcl/xx_dcl.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef AGIS
 #define XX_AGIS_FILE_TYPE XX_FILE_TYPE_AGIS
@@ -94,24 +95,6 @@ typedef struct xx_agis_stream_s {
 static void xx_agis_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static XXFC_MAYBE_UNUSED uint16_t xx_agis_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_agis_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static XXFC_MAYBE_UNUSED uint16_t xx_agis_be16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[1] | ((uint16_t)data[0] << 8));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t xx_agis_be32(const uint8_t *data) {
-    return (uint32_t)data[3] | ((uint32_t)data[2] << 8) |
-           ((uint32_t)data[1] << 16) | ((uint32_t)data[0] << 24);
-}
 
 static bool xx_agis_read_at(Abstractformat *self, int64_t offset,
                               uint8_t *buffer, size_t size) {
@@ -273,8 +256,8 @@ static xx_agis_stream *xx_agis_parse(Abstractformat *self,
         method = header[5];
         if (!xx_agis_method_known(method)) goto fail;
 
-        plain = (uint64_t)xx_agis_le32(header + 10);
-        record_size = (int64_t)xx_agis_le32(header + 14);
+        plain = (uint64_t)xx_data_get_u32(header + 10, 4, 0, false);
+        record_size = (int64_t)xx_data_get_u32(header + 14, 4, 0, false);
         /* The record size covers its own header; bound it against what is
          * left of the file before the cursor is moved by it. */
         if (record_size < XX_AGIS_HEADER_SIZE + 1 ||
@@ -301,7 +284,7 @@ static xx_agis_stream *xx_agis_parse(Abstractformat *self,
         member.packed_size = record_size - XX_AGIS_HEADER_SIZE;
         member.unpacked_size = plain;
         member.method = method;
-        member.crc32 = xx_agis_le32(header + 6);
+        member.crc32 = xx_data_get_u32(header + 6, 4, 0, false);
         member.has_crc = true;
 
         if (method == XX_AGIS_METHOD_STORED) {

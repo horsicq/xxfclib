@@ -100,6 +100,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the file-type constant resolves to UNKNOWN until the enumerator
@@ -149,18 +150,6 @@ typedef struct is5_stream_s {
     int64_t archive_size;
     uint32_t major_version;
 } is5_stream;
-
-static uint16_t is5_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t is5_le32(const uint8_t *bytes) {
-    return (uint32_t)is5_le16(bytes) | ((uint32_t)is5_le16(bytes + 2U) << 16U);
-}
-
-static uint64_t is5_le64(const uint8_t *bytes) {
-    return (uint64_t)is5_le32(bytes) | ((uint64_t)is5_le32(bytes + 4U) << 32U);
-}
 
 static bool is5_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -295,7 +284,7 @@ static char *is5_member_path(const uint8_t *table, uint32_t table_size,
     uint32_t offset;
     char *directory, *path;
     if (!leaf || index >= directory_count) return leaf;
-    offset = is5_le32(table + (size_t)index * 4U);
+    offset = xx_data_get_u32(table + (size_t)index * 4U, 4, 0, false);
     if (offset >= table_size || table[offset] == 0U) return leaf;
     directory = is5_table_name(table, table_size, offset);
     if (!directory) return leaf;
@@ -327,7 +316,7 @@ static bool is5_parse(Abstractformat *format, is5_stream **result) {
     if (size < (int64_t)IS5_COMMON_HEADER_SIZE ||
         !is5_read_at(format->device, format->base_address, common,
                      sizeof(common)) ||
-        is5_le32(common) != IS5_SIGNATURE)
+        xx_data_get_u32(common, 4, 0, false) != IS5_SIGNATURE)
         return false;
     /* The volume header follows the common header.  A file too small to hold
      * one is a header with no data area, which is exactly what the absent
@@ -336,9 +325,9 @@ static bool is5_parse(Abstractformat *format, is5_stream **result) {
         is5_read_at(format->device,
                     format->base_address + (int64_t)IS5_COMMON_HEADER_SIZE,
                     volume, sizeof(volume))) {
-        volume_data_offset = is5_le32(volume);
-        first_file = is5_le32(volume + 8U);
-        last_file = is5_le32(volume + 12U);
+        volume_data_offset = xx_data_get_u32(volume, 4, 0, false);
+        first_file = xx_data_get_u32(volume + 8U, 4, 0, false);
+        last_file = xx_data_get_u32(volume + 12U, 4, 0, false);
         volume_has_data = (int64_t)volume_data_offset < size;
         /* A zeroed last_file_index carries no information; only a volume
          * header that names a real range is allowed to exclude members. */
@@ -346,9 +335,9 @@ static bool is5_parse(Abstractformat *format, is5_stream **result) {
     } else {
         volume_has_data = false;
     }
-    version = is5_le32(common + 4U);
-    descriptor_offset = is5_le32(common + 12U);
-    descriptor_size = is5_le32(common + 16U);
+    version = xx_data_get_u32(common + 4U, 4, 0, false);
+    descriptor_offset = xx_data_get_u32(common + 12U, 4, 0, false);
+    descriptor_size = xx_data_get_u32(common + 16U, 4, 0, false);
     major = ((version >> 24U) == 1U) ? ((version >> 12U) & 0x0FU) : 0U;
     if ((int64_t)descriptor_offset > size ||
         (int64_t)descriptor_size > size - (int64_t)descriptor_offset ||
@@ -361,11 +350,11 @@ static bool is5_parse(Abstractformat *format, is5_stream **result) {
                                      : IS5_DESCRIPTOR_READ_SIZE))
         return false;
 
-    table_offset = is5_le32(descriptor + 0x0CU);
-    table_size = is5_le32(descriptor + 0x14U);
-    directory_count = is5_le32(descriptor + 0x1CU);
-    file_count = is5_le32(descriptor + 0x28U);
-    table_offset2 = is5_le32(descriptor + 0x2CU);
+    table_offset = xx_data_get_u32(descriptor + 0x0CU, 4, 0, false);
+    table_size = xx_data_get_u32(descriptor + 0x14U, 4, 0, false);
+    directory_count = xx_data_get_u32(descriptor + 0x1CU, 4, 0, false);
+    file_count = xx_data_get_u32(descriptor + 0x28U, 4, 0, false);
+    table_offset2 = xx_data_get_u32(descriptor + 0x2CU, 4, 0, false);
 
     /* The file table is the one allocation this header can influence, so it
      * is bounded against the real file size and against a fixed ceiling
@@ -408,26 +397,26 @@ static bool is5_parse(Abstractformat *format, is5_stream **result) {
             entry_offset = table_offset2 + index * IS5_NEW_DESCRIPTOR_SIZE;
             entry = table + entry_offset;
             xx_mem_zero(&member, sizeof(member));
-            member.flags = is5_le16(entry);
-            unpacked = is5_le64(entry + 2U);
-            packed = is5_le64(entry + 10U);
-            data_offset = is5_le64(entry + 18U);
-            name_offset = is5_le32(entry + 58U);
-            member.directory_index = is5_le16(entry + 62U);
+            member.flags = xx_data_get_u16(entry, 2, 0, false);
+            unpacked = xx_data_get_u64(entry + 2U, 8, 0, false);
+            packed = xx_data_get_u64(entry + 10U, 8, 0, false);
+            data_offset = xx_data_get_u64(entry + 18U, 8, 0, false);
+            name_offset = xx_data_get_u32(entry + 58U, 4, 0, false);
+            member.directory_index = xx_data_get_u16(entry + 62U, 2, 0, false);
             member.header_size = IS5_NEW_DESCRIPTOR_SIZE;
         } else {
-            entry_offset = is5_le32(table + (directory_count + index) * 4U);
+            entry_offset = xx_data_get_u32(table + (directory_count + index) * 4U, 4, 0, false);
             if (entry_offset > table_size ||
                 table_size - entry_offset < IS5_OLD_DESCRIPTOR_SIZE)
                 goto fail;
             entry = table + entry_offset;
             xx_mem_zero(&member, sizeof(member));
-            name_offset = is5_le32(entry);
-            member.directory_index = is5_le32(entry + 4U);
-            member.flags = is5_le16(entry + 8U);
-            unpacked = is5_le32(entry + 10U);
-            packed = is5_le32(entry + 14U);
-            data_offset = is5_le32(entry + 38U);
+            name_offset = xx_data_get_u32(entry, 4, 0, false);
+            member.directory_index = xx_data_get_u32(entry + 4U, 4, 0, false);
+            member.flags = xx_data_get_u16(entry + 8U, 2, 0, false);
+            unpacked = xx_data_get_u32(entry + 10U, 4, 0, false);
+            packed = xx_data_get_u32(entry + 14U, 4, 0, false);
+            data_offset = xx_data_get_u32(entry + 38U, 4, 0, false);
             member.header_size = IS5_OLD_DESCRIPTOR_SIZE;
         }
         member.header_offset = format->base_address +
@@ -543,7 +532,7 @@ static bool is5_inflate_chunks(const uint8_t *packed, size_t packed_size,
         size_t chunk;
         size_t chunk_written = 0U;
         if (packed_size - read < 2U) return false;
-        chunk = (size_t)is5_le16(packed + read);
+        chunk = (size_t)xx_data_get_u16(packed + read, 2, 0, false);
         read += 2U;
         if (chunk == 0U || chunk > packed_size - read) return false;
         /* Each chunk is a raw deflate stream the packer ends without a final

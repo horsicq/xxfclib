@@ -5,25 +5,26 @@
  */
 #include "xxfclib/formats/nintendo_pfs0/xx_nintendo_pfs0.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static XXFC_MAYBE_UNUSED uint16_t r16(const uint8_t *p,bool be) { return be ? pm_be16(p) : pm_le16(p); }
-static XXFC_MAYBE_UNUSED uint32_t r32(const uint8_t *p,bool be) { return be ? pm_be32(p) : pm_le32(p); }
-static uint64_t r64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint16_t r16(const uint8_t *p,bool be) { return be ? xx_data_get_u16(p, 2, 0, true) : xx_data_get_u16(p, 2, 0, false); }
+static XXFC_MAYBE_UNUSED uint32_t r32(const uint8_t *p,bool be) { return be ? xx_data_get_u32(p, 4, 0, true) : xx_data_get_u32(p, 4, 0, false); }
+static uint64_t r64(const uint8_t *p,bool be) { return be ? ((uint64_t)xx_data_get_u32(p, 4, 0, true)<<32)|xx_data_get_u32(p+4, 4, 0, true) : ((uint64_t)xx_data_get_u32(p+4, 4, 0, false)<<32)|xx_data_get_u32(p, 4, 0, false); }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[16],e[64],c; uint32_t count,strings,i; uint64_t table,data,end;
-    if(!pm_read(f,0,h,16) || xx_rt_memcmp(h,"PFS0",4) || pm_le32(h+12)) return false;
-    count=pm_le32(h+4); strings=pm_le32(h+8); if(count>65536 || strings>16U*1024U*1024U) return false;
+    if(!pm_read(f,0,h,16) || xx_rt_memcmp(h,"PFS0",4) || xx_data_get_u32(h+12, 4, 0, false)) return false;
+    count=xx_data_get_u32(h+4, 4, 0, false); strings=xx_data_get_u32(h+8, 4, 0, false); if(count>65536 || strings>16U*1024U*1024U) return false;
     table=16+(uint64_t)count*24; data=table+strings;
     if(data>(uint64_t)pm_available(f) || (count && !strings)) { return false; } end=data;
     for(i=0;i<count;++i) {
         uint64_t off,size,j; uint32_t n; bool ended=false; char label[40];
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,16+(int64_t)i*24,e,24)) return false;
-        off=r64(e,false); size=r64(e+8,false); n=pm_le32(e+16);
+        off=r64(e,false); size=r64(e+8,false); n=xx_data_get_u32(e+16, 4, 0, false);
         if(n>=strings || off>(uint64_t)pm_available(f)-data || size>(uint64_t)pm_available(f)-data-off) return false;
         for(j=n;j<strings;++j) { if(!pm_read(f,(int64_t)(table+j),&c,1)) return false; if(!c) { ended=true; break; } }
         if(!ended) return false;
-        if(pm_le32(e+20)) return false;
+        if(xx_data_get_u32(e+20, 4, 0, false)) return false;
         xx_rt_snprintf(label,sizeof(label),"file-%u.bin",(unsigned)i);
         if(!pm_add(f,s,label,(int64_t)(data+off),(int64_t)size)) return false;
         if(data+off+size>end) end=data+off+size;

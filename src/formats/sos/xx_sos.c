@@ -37,6 +37,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_SOS_COPY_CHUNK (64 * 1024)
 
@@ -183,11 +184,6 @@ static bool xx_sos_decode(Abstractformat *self,
 #define XX_SOS_MAX_DOS_FLAG 5
 #define XX_SOS_MAX_MEMBERS 100000
 
-static uint32_t xx_sos_be32(const uint8_t *data) {
-    return ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16) |
-           ((uint32_t)data[2] << 8) | (uint32_t)data[3];
-}
-
 /* The name occupies the whole 24-byte field when it is that long, so there is
  * not always a NUL to stop at. */
 static size_t xx_sos_name_length(const uint8_t *record) {
@@ -278,8 +274,8 @@ static xx_sos_stream *xx_sos_parse(Abstractformat *self, xx_pd_struct *pd) {
 
         /* Both fields are signed 32-bit in the original, so a word with the
          * top bit set is a negative value, not a four-gigabyte one. */
-        data_offset = (int64_t)(int32_t)xx_sos_be32(record);
-        size = (int64_t)(int32_t)xx_sos_be32(record + 4);
+        data_offset = (int64_t)(int32_t)xx_data_get_u32(record, 4, 0, true);
+        size = (int64_t)(int32_t)xx_data_get_u32(record + 4, 4, 0, true);
         length = xx_sos_name_length(record);
         /* A zero data offset or an empty name ends the table. Both are a
          * clean stop in the original, not an error. */

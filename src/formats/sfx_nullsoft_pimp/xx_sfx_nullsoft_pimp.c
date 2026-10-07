@@ -30,6 +30,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* xxfc_defs.h is shared and is not edited from here, so the file-type
  * constant is resolved through the alias macro that the enumerator defines. */
@@ -74,11 +75,6 @@
 #define PIMP_UNSIZED_TOTAL_CAP UINT64_C(0x10000000)
 
 /* --- small helpers --------------------------------------------------------- */
-
-static uint32_t pimp_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
 
 static uint32_t pimp_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
@@ -419,7 +415,7 @@ static bool pimp_walk(xx_io_device *device, int64_t base, int64_t size,
         if (size - position < 4 ||
             !pimp_read_at(device, base + position, head, sizeof(head)))
             return false;
-        name_size = pimp_le32(head);
+        name_size = xx_data_get_u32(head, 4, 0, false);
         if (name_size < PIMP_MIN_NAME || name_size > PIMP_MAX_NAME)
             return false;
         need = (size_t)name_size + sizes + 2U;
@@ -429,8 +425,8 @@ static bool pimp_walk(xx_io_device *device, int64_t base, int64_t size,
         if (record[name_size - 1U] != 0U) return false;
         for (byte = 0U; byte + 1U < name_size; ++byte)
             if (record[byte] < 0x20U || record[byte] == 0x7fU) return false;
-        packed = pimp_le32(record + name_size);
-        if (raw_sizes) raw = pimp_le32(record + name_size + 4U);
+        packed = xx_data_get_u32(record + name_size, 4, 0, false);
+        if (raw_sizes) raw = xx_data_get_u32(record + name_size + 4U, 4, 0, false);
         data = position + 4 + (int64_t)name_size + (int64_t)sizes;
         if (packed < PIMP_MIN_PACKED || (int64_t)packed > size - data ||
             !pimp_zlib_header_ok(record + name_size + sizes))
@@ -463,7 +459,7 @@ static bool pimp_command(xx_io_device *device, int64_t base, int64_t size,
     uint32_t length;
     if (size - at < 4 || !pimp_read_at(device, base + at, head, sizeof(head)))
         return false;
-    length = pimp_le32(head);
+    length = xx_data_get_u32(head, 4, 0, false);
     if (length < 1U || length > PIMP_MAX_COMMAND ||
         (int64_t)length > size - at - 4 ||
         !pimp_read_at(device, base + at + 4 + (int64_t)length - 1, &last, 1U) ||
@@ -485,7 +481,7 @@ static bool pimp_overlay(xx_io_device *device, int64_t base, int64_t size,
         !pimp_read_at(device, base, dos, sizeof(dos)) || dos[0] != 'M' ||
         dos[1] != 'Z')
         return false;
-    lfanew = (int64_t)pimp_le32(dos + 0x3c);
+    lfanew = (int64_t)xx_data_get_u32(dos + 0x3c, 4, 0, false);
     if (lfanew < 4 || lfanew > PIMP_MAX_LFANEW || lfanew > size - 24 ||
         !pimp_read_at(device, base + lfanew, nt, sizeof(nt)) || nt[0] != 'P' ||
         nt[1] != 'E' || nt[2] != 0U || nt[3] != 0U)
@@ -499,8 +495,8 @@ static bool pimp_overlay(xx_io_device *device, int64_t base, int64_t size,
         return false;
     for (index = 0U; index < sections; ++index) {
         const uint8_t *row = table + index * 40U;
-        int64_t raw_size = (int64_t)pimp_le32(row + 16);
-        int64_t raw_offset = (int64_t)pimp_le32(row + 20);
+        int64_t raw_size = (int64_t)xx_data_get_u32(row + 16, 4, 0, false);
+        int64_t raw_offset = (int64_t)xx_data_get_u32(row + 20, 4, 0, false);
         if (raw_size == 0) continue;
         if (raw_offset > size || raw_size > size - raw_offset) return false;
         if (raw_offset + raw_size > end) end = raw_offset + raw_size;
@@ -547,8 +543,8 @@ static bool pimp_scan(Abstractformat *format, pimp_info *info,
         return false;
     xx_rt_memcpy(info->text_fields, fixed, sizeof(info->text_fields));
     for (layout = 2U; layout >= 1U; --layout) {
-        uint32_t count = pimp_le32(fixed + 2U * PIMP_TEXT_FIELD +
-                                   (layout == 2U ? 4U : 0U));
+        uint32_t count = xx_data_get_u32(fixed + 2U * PIMP_TEXT_FIELD +
+                                   (layout == 2U ? 4U : 0U), 4, 0, false);
         int64_t members_at = block + 2 * (int64_t)PIMP_TEXT_FIELD +
                              (layout == 2U ? 8 : 4);
         int64_t command_at = 0;

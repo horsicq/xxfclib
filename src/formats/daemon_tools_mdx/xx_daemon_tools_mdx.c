@@ -39,6 +39,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef DAEMON_TOOLS_MDX
 #define XX_DAEMON_TOOLS_MDX_FILE_TYPE XX_FILE_TYPE_DAEMON_TOOLS_MDX
@@ -74,26 +75,6 @@
 
 /* ---------------------------------------------------------------------- */
 /* Little-endian helpers                                                   */
-
-static uint16_t mdx_le16(const uint8_t *p) {
-    return (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
-}
-
-static uint32_t mdx_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
-           ((uint32_t)p[3] << 24);
-}
-
-static uint64_t mdx_le64(const uint8_t *p) {
-    return (uint64_t)mdx_le32(p) | ((uint64_t)mdx_le32(p + 4) << 32);
-}
-
-static void mdx_put_le32(uint8_t *p, uint32_t v) {
-    p[0] = (uint8_t)v;
-    p[1] = (uint8_t)(v >> 8);
-    p[2] = (uint8_t)(v >> 16);
-    p[3] = (uint8_t)(v >> 24);
-}
 
 static bool mdx_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -180,7 +161,7 @@ static uint32_t mdx_rmd_f(unsigned round, uint32_t x, uint32_t y, uint32_t z) {
 static void mdx_rmd_compress(uint32_t h[5], const uint8_t block[64]) {
     uint32_t x[16], al, bl, cl, dl, el, ar, br, cr, dr, er, t;
     unsigned j;
-    for (j = 0; j < 16U; ++j) x[j] = mdx_le32(block + 4U * j);
+    for (j = 0; j < 16U; ++j) x[j] = xx_data_get_u32(block + 4U * j, 4, 0, false);
     al = ar = h[0];
     bl = br = h[1];
     cl = cr = h[2];
@@ -247,7 +228,7 @@ static void mdx_rmd_final(mdx_rmd *c, uint8_t out[20]) {
     while (c->used != 56U) mdx_rmd_update(c, &zero, 1U);
     for (i = 0; i < 8U; ++i) len[i] = (uint8_t)(bits >> (8U * i));
     mdx_rmd_update(c, len, 8U);
-    for (i = 0; i < 5U; ++i) mdx_put_le32(out + 4U * i, c->h[i]);
+    for (i = 0; i < 5U; ++i) xx_data_set_u32(out + 4U * i, 4, 0, c->h[i], false);
 }
 
 void xx_daemon_tools_mdx_rmd160(const void *data, size_t size,
@@ -336,12 +317,12 @@ static void mdx_salt_password(const uint8_t salt[MDX_SALT],
     uint32_t modifier = mdx_edc(salt, MDX_SALT) ^ 0x567372FFU;
     unsigned i, b;
     for (i = 0; i < MDX_SALT / 4U; ++i) {
-        uint32_t v = mdx_le32(salt + 4U * i);
+        uint32_t v = xx_data_get_u32(salt + 4U * i, 4, 0, false);
         modifier = modifier * 0x35E85A6DU + 0x1548DCE9U;
         v ^= modifier ^ 0xEC564717U;
         for (b = 0; b < 4U; ++b)
             if (((v >> (8U * b)) & 0xFFU) == 0U) v |= 0x5FU << (8U * b);
-        mdx_put_le32(password + 4U * i, v);
+        xx_data_set_u32(password + 4U * i, 4, 0, v, false);
     }
 }
 
@@ -478,8 +459,8 @@ static bool mdx_open_key_header(uint8_t header[MDX_KEY_HEADER],
     }
     xx_rt_memset(master, 0, sizeof(master));
     if (!ok || xx_rt_memcmp(work + 68, "EURT", 4U) != 0 ||
-        mdx_le16(work + 74) != MDX_KEY_DATA ||
-        mdx_le32(work + 64) != mdx_crc32(work + 80, MDX_KEY_DATA)) {
+        xx_data_get_u16(work + 74, 2, 0, false) != MDX_KEY_DATA ||
+        xx_data_get_u32(work + 64, 4, 0, false) != mdx_crc32(work + 80, MDX_KEY_DATA)) {
         xx_rt_memset(work, 0, sizeof(work));
         return false;
     }
@@ -567,14 +548,14 @@ static bool mdx_layout_read(Abstractformat *format, mdx_layout *out) {
     if (xx_rt_memcmp(out->header, "MEDIA DESCRIPTOR", 16U) != 0 ||
         out->header[16] != 2U)
         return false;
-    key_field = mdx_le32(out->header + 44);
+    key_field = xx_data_get_u32(out->header + 44, 4, 0, false);
     if (key_field == 0xFFFFFFFFU) {
         uint8_t loc[16];
         uint64_t offset, length;
         if (!mdx_read_at(format->device, base + MDX_FILE_HEADER, loc, 16U))
             return false;
-        offset = mdx_le64(loc);
-        length = mdx_le64(loc + 8);
+        offset = xx_data_get_u64(loc, 8, 0, false);
+        length = xx_data_get_u64(loc + 8, 8, 0, false);
         if (offset < MDX_FILE_HEADER + 16U || length <= MDX_SALT ||
             length > (uint64_t)MDX_MAX_DESCRIPTOR + MDX_SALT ||
             offset > (uint64_t)size || length > (uint64_t)size - offset ||
@@ -612,8 +593,8 @@ static bool mdx_primary_key(Abstractformat *format, const mdx_layout *layout,
     ok = mdx_open_key_header(key, password, sizeof(password), true);
     xx_rt_memset(password, 0, sizeof(password));
     if (!ok) return false;
-    packed = mdx_le32(key + 336);
-    plain = mdx_le32(key + 340);
+    packed = xx_data_get_u32(key + 336, 4, 0, false);
+    plain = xx_data_get_u32(key + 340, 4, 0, false);
     if (packed == 0U || plain < MDX_DESC_HEADER - MDX_PREFIX ||
         plain > MDX_MAX_DESCRIPTOR ||
         (((uint64_t)packed + 15U) & ~(uint64_t)15U) != layout->descriptor_size)
@@ -695,7 +676,7 @@ static bool mdx_read_file_name(const uint8_t *desc, uint64_t desc_size,
         uint16_t u;
         if ((uint64_t)offset + 2U * n + 2U > desc_size || n >= MDX_FILE_NAME_MAX - 1U)
             return false;
-        u = mdx_le16(desc + offset + 2U * n);
+        u = xx_data_get_u16(desc + offset + 2U * n, 2, 0, false);
         if (u == 0U) break;
         out[n++] = (u >= 0x20U && u < 0x7FU) ? (char)u : '_';
     }
@@ -719,11 +700,11 @@ static bool mdx_parse_descriptor(mdx_image *image, const uint8_t *desc,
                                  int64_t data_total) {
     uint32_t sessions, sessions_offset, s, key_offset;
     if (desc_size < MDX_DESC_HEADER) return false;
-    image->medium_type = mdx_le16(desc + 18);
-    sessions = mdx_le16(desc + 20);
+    image->medium_type = xx_data_get_u16(desc + 18, 2, 0, false);
+    sessions = xx_data_get_u16(desc + 20, 2, 0, false);
     image->sessions = (uint16_t)sessions;
-    sessions_offset = mdx_le32(desc + 80);
-    key_offset = mdx_le32(desc + 88);
+    sessions_offset = xx_data_get_u32(desc + 80, 4, 0, false);
+    key_offset = xx_data_get_u32(desc + 88, 4, 0, false);
     if (image->medium_type != 0U && image->medium_type != 3U) return false;
     if (sessions == 0U || sessions > MDX_MAX_SESSIONS ||
         sessions_offset < MDX_DESC_HEADER ||
@@ -739,23 +720,23 @@ static bool mdx_parse_descriptor(mdx_image *image, const uint8_t *desc,
     if (!image->footers) return false;
     for (s = 0; s < sessions; ++s) {
         const uint8_t *sb = desc + sessions_offset + (uint64_t)s * MDX_SESSION_SIZE;
-        uint32_t blocks = sb[10], tracks_offset = mdx_le32(sb + 20), b;
+        uint32_t blocks = sb[10], tracks_offset = xx_data_get_u32(sb + 20, 4, 0, false), b;
         if (tracks_offset < MDX_DESC_HEADER ||
             !mdx_in(tracks_offset, (uint64_t)blocks * MDX_TRACK_SIZE, desc_size))
             return false;
         for (b = 0; b < blocks; ++b) {
             const uint8_t *tb = desc + tracks_offset + (uint64_t)b * MDX_TRACK_SIZE;
             uint32_t point = tb[4], audio = 0U, main_size, sub_size = 0U,
-                     declared = mdx_le16(tb + 16), footers, footers_offset, f;
-            uint64_t start = mdx_le64(tb + 40), total_sectors = 0U;
+                     declared = xx_data_get_u16(tb + 16, 2, 0, false), footers, footers_offset, f;
+            uint64_t start = xx_data_get_u64(tb + 40, 8, 0, false), total_sectors = 0U;
             mdx_track *track;
             uint32_t k;
             if (point == 0U || point > 99U) continue; /* lead-in entries */
             if (image->track_count >= MDX_MAX_TRACKS) return false;
             for (k = 0; k < image->track_count; ++k)
                 if (image->tracks[k].point == point) return false;
-            footers = mdx_le32(tb + 48);
-            footers_offset = mdx_le32(tb + 52);
+            footers = xx_data_get_u32(tb + 48, 4, 0, false);
+            footers_offset = xx_data_get_u32(tb + 52, 4, 0, false);
             if (footers == 0U || footers > MDX_MAX_FOOTERS_PER_TRACK ||
                 footers_offset < MDX_DESC_HEADER ||
                 image->footer_count + footers > MDX_MAX_FOOTERS ||
@@ -780,7 +761,7 @@ static bool mdx_parse_descriptor(mdx_image *image, const uint8_t *desc,
             track = &image->tracks[image->track_count];
             xx_mem_zero(track, sizeof(*track));
             track->point = point;
-            track->session = mdx_le16(sb + 8);
+            track->session = xx_data_get_u16(sb + 8, 2, 0, false);
             track->mode = (uint8_t)(tb[0] & 7U);
             track->stored_size = main_size + sub_size;
             track->footer_first = image->footer_count;
@@ -791,12 +772,12 @@ static bool mdx_parse_descriptor(mdx_image *image, const uint8_t *desc,
             for (f = 0; f < footers; ++f) {
                 const uint8_t *fb = desc + footers_offset + (uint64_t)f * MDX_FOOTER_SIZE;
                 mdx_footer *footer = &image->footers[image->footer_count + f];
-                uint64_t sectors = mdx_le64(fb + 16);
+                uint64_t sectors = xx_data_get_u64(fb + 16, 8, 0, false);
                 if (sectors > MDX_MAX_SECTORS) return false;
                 footer->sectors = sectors;
                 footer->compressed = (fb[4] & 1U) != 0;
-                footer->group = mdx_le32(fb + 12);
-                footer->table_offset = mdx_le64(fb + 24);
+                footer->group = xx_data_get_u32(fb + 12, 4, 0, false);
+                footer->table_offset = xx_data_get_u64(fb + 24, 8, 0, false);
                 if (footer->compressed &&
                     (footer->group == 0U || footer->group > MDX_MAX_GROUP))
                     return false;
@@ -814,7 +795,7 @@ static bool mdx_parse_descriptor(mdx_image *image, const uint8_t *desc,
                 } else {
                     char name[MDX_FILE_NAME_MAX];
                     uint32_t n;
-                    if (!mdx_read_file_name(desc, desc_size, mdx_le32(fb), name))
+                    if (!mdx_read_file_name(desc, desc_size, xx_data_get_u32(fb, 4, 0, false), name))
                         return false;
                     for (n = 0; n < image->file_count; ++n)
                         if (xx_str_cmp(image->files[n], name) == 0) break;
@@ -864,8 +845,8 @@ static mdx_image *mdx_load(Abstractformat *format) {
     xx_mem_zero(&layout, sizeof(layout));
     if (!mdx_layout_read(format, &layout) || !mdx_primary_key(format, &layout, key))
         return NULL;
-    packed = mdx_le32(key + 336);
-    plain = mdx_le32(key + 340);
+    packed = xx_data_get_u32(key + 336, 4, 0, false);
+    plain = xx_data_get_u32(key + 340, 4, 0, false);
     raw = (uint8_t *)xx_mem_alloc((size_t)layout.descriptor_size);
     desc = (uint8_t *)xx_mem_calloc(1U, (size_t)plain + MDX_PREFIX);
     image = (mdx_image *)xx_mem_calloc(1U, sizeof(*image));
@@ -898,7 +879,7 @@ static mdx_image *mdx_load(Abstractformat *format) {
                               xx_io_total_size(format->device)))
         goto done;
     if (image->data_encrypted) {
-        uint32_t key_offset = mdx_le32(desc + 88);
+        uint32_t key_offset = xx_data_get_u32(desc + 88, 4, 0, false);
         image->data_key = mdx_data_key(image, desc + key_offset);
     }
     ok = true;
@@ -990,7 +971,7 @@ static bool mdx_copy_grouped(const mdx_image *image, xx_io_device *device,
         goto done;
     cursor = footer->data_offset;
     for (g = 0; g < groups; ++g) {
-        uint16_t value = mdx_le16((const uint8_t *)&table[g]);
+        uint16_t value = xx_data_get_u16((const uint8_t *)&table[g], 2, 0, false);
         uint64_t first = g * footer->group;
         uint32_t count = footer->group;
         size_t bytes;

@@ -11,6 +11,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_cri_afs_MAX_MEMBERS 1000000U
 typedef struct xx_cri_afs_member_s {
@@ -33,16 +34,6 @@ typedef struct xx_cri_afs_stream_s {
 } xx_cri_afs_stream;
 static void xx_cri_afs_vtable_destroy(Abstractformat *self);
 
-static inline uint16_t xx_cri_afs_u16(const uint8_t *p, bool be) {
-    return be ? (uint16_t)(((uint16_t)p[0] << 8) | p[1])
-              : (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
-}
-static inline uint32_t xx_cri_afs_u32(const uint8_t *p, bool be) {
-    return be ? ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
-                ((uint32_t)p[2] << 8) | p[3]
-              : p[0] | ((uint32_t)p[1] << 8) |
-                ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
 static bool xx_cri_afs_range_within(int64_t span, int64_t offset, int64_t size) {
     return offset >= 0 && size >= 0 && offset <= span && size <= span-offset;
 }
@@ -219,18 +210,18 @@ static xx_cri_afs_stream *xx_cri_afs_parse(Abstractformat *self,xx_pd_struct *pd
     uint8_t h[8],entry[8],toc[8]; uint32_t count,i;
     int64_t table_end,first=span,toc_off=0,toc_size=0;
     if(!xx_cri_afs_read_rel(self,span,0,h,sizeof(h)) || xx_rt_memcmp(h,"AFS\0",4U)) goto fail;
-    count=xx_cri_afs_u32(h+4,false); table_end=8+(int64_t)count*8;
+    count=xx_data_get_u32(h+4, 4, 0, false); table_end=8+(int64_t)count*8;
     if(count>XX_cri_afs_MAX_MEMBERS || table_end>span) goto fail;
     s->archive_size=table_end;
     for(i=0;i<count;++i) {
         if(!xx_cri_afs_read_rel(self,span,8+(int64_t)i*8,entry,sizeof(entry))) goto fail;
-        if(xx_cri_afs_u32(entry,false) && (int64_t)xx_cri_afs_u32(entry,false)<first) first=xx_cri_afs_u32(entry,false);
+        if(xx_data_get_u32(entry, 4, 0, false) && (int64_t)xx_data_get_u32(entry, 4, 0, false)<first) first=xx_data_get_u32(entry, 4, 0, false);
     }
     /* Filename TOC pointer may follow the index or sit just before first data. */
     if(first>=table_end+8 && xx_cri_afs_read_rel(self,span,table_end,toc,sizeof(toc))) {
-        toc_off=xx_cri_afs_u32(toc,false); toc_size=xx_cri_afs_u32(toc+4,false);
+        toc_off=xx_data_get_u32(toc, 4, 0, false); toc_size=xx_data_get_u32(toc+4, 4, 0, false);
         if(!toc_off && first>=8 && xx_cri_afs_read_rel(self,span,first-8,toc,sizeof(toc))) {
-            toc_off=xx_cri_afs_u32(toc,false); toc_size=xx_cri_afs_u32(toc+4,false);
+            toc_off=xx_data_get_u32(toc, 4, 0, false); toc_size=xx_data_get_u32(toc+4, 4, 0, false);
         }
         if(toc_off || toc_size) {
             if(toc_off<table_end || toc_size<(int64_t)count*48 ||
@@ -241,7 +232,7 @@ static xx_cri_afs_stream *xx_cri_afs_parse(Abstractformat *self,xx_pd_struct *pd
     for(i=0;i<count;++i) {
         char name[64]; int64_t off,size;
         if((pd && xx_pd_is_stopped(pd)) || !xx_cri_afs_read_rel(self,span,8+(int64_t)i*8,entry,sizeof(entry))) goto fail;
-        off=xx_cri_afs_u32(entry,false); size=xx_cri_afs_u32(entry+4,false);
+        off=xx_data_get_u32(entry, 4, 0, false); size=xx_data_get_u32(entry+4, 4, 0, false);
         xx_rt_snprintf(name,sizeof(name),"%06u.bin",i);
         if(toc_off) {
             uint8_t filename[32];

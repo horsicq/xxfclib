@@ -30,6 +30,7 @@
 #include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_LZ4_FRAME_MAGIC UINT32_C(0x184D2204)
 #define XX_LZ4_SKIP_MAGIC  UINT32_C(0x184D2A50)
@@ -39,16 +40,6 @@
 #define XXH32_PRIME3 UINT32_C(3266489917)
 #define XXH32_PRIME4 UINT32_C(668265263)
 #define XXH32_PRIME5 UINT32_C(374761393)
-
-static uint32_t xx_lz4_read32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
-           ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
-
-static uint64_t xx_lz4_read64(const uint8_t *p) {
-    return (uint64_t)xx_lz4_read32(p) |
-           ((uint64_t)xx_lz4_read32(p + 4) << 32);
-}
 
 static uint32_t xx_lz4_rotl32(uint32_t value, unsigned count) {
     return (value << count) | (value >> (32U - count));
@@ -72,10 +63,10 @@ static uint32_t xx_lz4_xxh32(const uint8_t *data, size_t size) {
         uint32_t lane3 = 0;
         uint32_t lane4 = 0U - XXH32_PRIME1;
         do {
-            lane1 = xx_lz4_xxh_round(lane1, xx_lz4_read32(cursor));
-            lane2 = xx_lz4_xxh_round(lane2, xx_lz4_read32(cursor + 4));
-            lane3 = xx_lz4_xxh_round(lane3, xx_lz4_read32(cursor + 8));
-            lane4 = xx_lz4_xxh_round(lane4, xx_lz4_read32(cursor + 12));
+            lane1 = xx_lz4_xxh_round(lane1, xx_data_get_u32(cursor, 4, 0, false));
+            lane2 = xx_lz4_xxh_round(lane2, xx_data_get_u32(cursor + 4, 4, 0, false));
+            lane3 = xx_lz4_xxh_round(lane3, xx_data_get_u32(cursor + 8, 4, 0, false));
+            lane4 = xx_lz4_xxh_round(lane4, xx_data_get_u32(cursor + 12, 4, 0, false));
             cursor += 16;
         } while (cursor <= limit);
         hash = xx_lz4_rotl32(lane1, 1) + xx_lz4_rotl32(lane2, 7) +
@@ -86,7 +77,7 @@ static uint32_t xx_lz4_xxh32(const uint8_t *data, size_t size) {
 
     hash += (uint32_t)size;
     while ((size_t)(end - cursor) >= 4U) {
-        hash += xx_lz4_read32(cursor) * XXH32_PRIME3;
+        hash += xx_data_get_u32(cursor, 4, 0, false) * XXH32_PRIME3;
         hash = xx_lz4_rotl32(hash, 17) * XXH32_PRIME4;
         cursor += 4;
     }
@@ -250,12 +241,12 @@ static bool xx_lz4_decompress_frames_impl(const void *source,
         bool content_checksum;
 
         if ((size_t)(end - input) < 4U) return false;
-        magic = xx_lz4_read32(input);
+        magic = xx_data_get_u32(input, 4, 0, false);
         input += 4;
         if ((magic & UINT32_C(0xFFFFFFF0)) == XX_LZ4_SKIP_MAGIC) {
             uint32_t skip_size;
             if ((size_t)(end - input) < 4U) return false;
-            skip_size = xx_lz4_read32(input);
+            skip_size = xx_data_get_u32(input, 4, 0, false);
             input += 4;
             if ((size_t)(end - input) < (size_t)skip_size) return false;
             input += skip_size;
@@ -280,7 +271,7 @@ static bool xx_lz4_decompress_frames_impl(const void *source,
 
         if (has_content_size) {
             if ((size_t)(end - input) < 8U) return false;
-            content_size = xx_lz4_read64(input);
+            content_size = xx_data_get_u64(input, 8, 0, false);
             input += 8;
         }
         if ((flags & 1U) != 0U) {
@@ -305,7 +296,7 @@ static bool xx_lz4_decompress_frames_impl(const void *source,
             size_t history_size;
 
             if ((size_t)(end - input) < 4U) return false;
-            stored_size = xx_lz4_read32(input);
+            stored_size = xx_data_get_u32(input, 4, 0, false);
             input += 4;
             if (stored_size == 0U) break;
             uncompressed = (stored_size & UINT32_C(0x80000000)) != 0U;
@@ -318,7 +309,7 @@ static bool xx_lz4_decompress_frames_impl(const void *source,
             input += block_size;
             if (block_checksum) {
                 if ((size_t)(end - input) < 4U ||
-                    xx_lz4_read32(input) != xx_lz4_xxh32(block_data, block_size)) {
+                    xx_data_get_u32(input, 4, 0, false) != xx_lz4_xxh32(block_data, block_size)) {
                     return false;
                 }
                 input += 4;
@@ -354,7 +345,7 @@ static bool xx_lz4_decompress_frames_impl(const void *source,
 
         if (content_checksum) {
             if ((size_t)(end - input) < 4U ||
-                xx_lz4_read32(input) != xx_lz4_xxh32(
+                xx_data_get_u32(input, 4, 0, false) != xx_lz4_xxh32(
                     output + frame_output_start,
                     output_position - frame_output_start)) {
                 return false;

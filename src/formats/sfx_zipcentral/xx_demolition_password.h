@@ -84,17 +84,17 @@ static bool w5_demo_imports(w5_demo_image *image, uint32_t rva,
         unsigned j;
         if (wg_stop(pd) || (uint64_t)rva + d * 20U > UINT32_MAX ||
             !(descriptor = w5_demo_rva(image, rva + d * 20U, 20))) return false;
-        if (!pm_le32(descriptor) && !pm_le32(descriptor + 4) &&
-            !pm_le32(descriptor + 8) && !pm_le32(descriptor + 12) &&
-            !pm_le32(descriptor + 16))
+        if (!xx_data_get_u32(descriptor, 4, 0, false) && !xx_data_get_u32(descriptor + 4, 4, 0, false) &&
+            !xx_data_get_u32(descriptor + 8, 4, 0, false) && !xx_data_get_u32(descriptor + 12, 4, 0, false) &&
+            !xx_data_get_u32(descriptor + 16, 4, 0, false))
             return found_open && found_delete && found_destructor;
-        if (!w5_demo_string(image, pm_le32(descriptor + 12), dll, sizeof(dll)))
+        if (!w5_demo_string(image, xx_data_get_u32(descriptor + 12, 4, 0, false), dll, sizeof(dll)))
             return false;
         core = !xx_str_icmp(dll, "Core.dll");
         stl = !xx_str_icmp(dll, "MSVCP71.dll") ||
               !xx_str_icmp(dll, "MSVCP90.dll");
-        source = pm_le32(descriptor);
-        target = pm_le32(descriptor + 16);
+        source = xx_data_get_u32(descriptor, 4, 0, false);
+        target = xx_data_get_u32(descriptor + 16, 4, 0, false);
         if (!source) source = target;
         if (!source || !target) return false;
         for (j = 0; j < 4096U && total < 4096U; ++j, ++total) {
@@ -105,7 +105,7 @@ static bool w5_demo_imports(w5_demo_image *image, uint32_t rva,
                 (uint64_t)target + j * 4U > UINT32_MAX ||
                 !(thunk = w5_demo_rva(image, source + j * 4U, 4)) ||
                 !w5_demo_rva(image, target + j * 4U, 4)) return false;
-            name_rva = pm_le32(thunk);
+            name_rva = xx_data_get_u32(thunk, 4, 0, false);
             if (!name_rva) { ended = true; break; }
             if (name_rva & UINT32_C(0x80000000)) continue;
             if (name_rva > UINT32_MAX - 2U ||
@@ -150,13 +150,13 @@ static bool w5_demo_argument(const w5_demo_image *image,
     if (!w5_demo_span(section->size, at, 16)) return false;
     /* ZipFile::password at +0x20, imported assignment from const char*. */
     if (!xx_rt_memcmp(b + at + 5, "\x83\xc1\x20\xff\x15", 5) &&
-        w5_demo_slot(image->assign, image->assigns, pm_le32(b + at + 10)))
+        w5_demo_slot(image->assign, image->assigns, xx_data_get_u32(b + at + 10, 4, 0, false)))
         return true;
     /* Stack string constructed from const char*, then copied from the same
      * stack slot into ZipFile::password. The push adjusts ESP by four. */
     if (!xx_rt_memcmp(b + at + 5, "\x8d\x4c\x24", 3) && b[at + 8] >= 4U &&
         !xx_rt_memcmp(b + at + 9, "\xff\x15", 2) &&
-        w5_demo_slot(image->construct, image->constructs, pm_le32(b + at + 11))) {
+        w5_demo_slot(image->construct, image->constructs, xx_data_get_u32(b + at + 11, 4, 0, false))) {
         stop = section->size - at > 4096U ? at + 4096U : section->size;
         for (i = at + 15U; i + 14U <= stop; ++i) {
             unsigned reg;
@@ -166,7 +166,7 @@ static bool w5_demo_argument(const w5_demo_image *image,
             reg = (b[i + 1] >> 3) & 7U;
             if (b[i + 4] == 0x50U + reg &&
                 !xx_rt_memcmp(b + i + 5, "\x83\xc1\x20\xff\x15", 5) &&
-                w5_demo_slot(image->copy, image->copies, pm_le32(b + i + 10)))
+                w5_demo_slot(image->copy, image->copies, xx_data_get_u32(b + i + 10, 4, 0, false)))
                 return true;
         }
     }
@@ -174,10 +174,10 @@ static bool w5_demo_argument(const w5_demo_image *image,
      * Require the observed source+length std::string routine, not any call. */
     if (at >= 2U && b[at - 2] == 0x6aU && b[at - 1] == length &&
         !xx_rt_memcmp(b + at + 5, "\x8d\x8e", 2) &&
-        pm_le32(b + at + 7) >= 0x100U && pm_le32(b + at + 7) <= 0x400U &&
+        xx_data_get_u32(b + at + 7, 4, 0, false) >= 0x100U && xx_data_get_u32(b + at + 7, 4, 0, false) <= 0x400U &&
         b[at + 11] == 0xe8U) {
         int64_t target = (int64_t)section->rva + at + 16U +
-                         (int32_t)pm_le32(b + at + 12);
+                         (int32_t)xx_data_get_u32(b + at + 12, 4, 0, false);
         const uint8_t *callee;
         if (target >= 0 && target <= UINT32_MAX &&
             w5_demo_executable(image, (uint32_t)target, 10) &&
@@ -203,27 +203,27 @@ static void w5_demo_locate(Abstractformat *f, w5_demo_state *state,
     xx_mem_zero(&image, sizeof(image));
     image.bytes = stub;
     image.size = (size_t)low;
-    pe = pm_le32(head + 60);
+    pe = xx_data_get_u32(head + 60, 4, 0, false);
     if (!w5_demo_span(image.size, pe, 24) ||
-        xx_rt_memcmp(stub + pe, "PE\0\0", 4) || pm_le16(stub + pe + 4) != 0x14cU)
+        xx_rt_memcmp(stub + pe, "PE\0\0", 4) || xx_data_get_u16(stub + pe + 4, 2, 0, false) != 0x14cU)
         goto done;
-    image.count = pm_le16(stub + pe + 6);
-    optional = pm_le16(stub + pe + 20);
+    image.count = xx_data_get_u16(stub + pe + 6, 2, 0, false);
+    optional = xx_data_get_u16(stub + pe + 20, 2, 0, false);
     if (!image.count || image.count > 32U || optional < 224U ||
         !w5_demo_span(image.size, (uint64_t)pe + 24U, optional) ||
-        pm_le16(stub + pe + 24) != 0x10bU ||
-        pm_le32(stub + pe + 24 + 92) < 2U) goto done;
-    image.base = pm_le32(stub + pe + 24 + 28);
-    import_rva = pm_le32(stub + pe + 24 + 104);
-    import_bytes = pm_le32(stub + pe + 24 + 108);
+        xx_data_get_u16(stub + pe + 24, 2, 0, false) != 0x10bU ||
+        xx_data_get_u32(stub + pe + 24 + 92, 4, 0, false) < 2U) goto done;
+    image.base = xx_data_get_u32(stub + pe + 24 + 28, 4, 0, false);
+    import_rva = xx_data_get_u32(stub + pe + 24 + 104, 4, 0, false);
+    import_bytes = xx_data_get_u32(stub + pe + 24 + 108, 4, 0, false);
     table = pe + 24U + optional;
     if (!w5_demo_span(image.size, table, image.count * 40U)) goto done;
     for (i = 0; i < image.count; ++i) {
         const uint8_t *row = stub + table + i * 40U;
         w5_demo_section *s = &image.sections[i];
-        s->rva = pm_le32(row + 12); s->virtual_size = pm_le32(row + 8);
-        s->raw = pm_le32(row + 20); s->size = pm_le32(row + 16);
-        s->flags = pm_le32(row + 36);
+        s->rva = xx_data_get_u32(row + 12, 4, 0, false); s->virtual_size = xx_data_get_u32(row + 8, 4, 0, false);
+        s->raw = xx_data_get_u32(row + 20, 4, 0, false); s->size = xx_data_get_u32(row + 16, 4, 0, false);
+        s->flags = xx_data_get_u32(row + 36, 4, 0, false);
         s->rdata = !xx_rt_memcmp(row, ".rdata\0\0", 8) &&
                    (s->flags & UINT32_C(0xe0000000)) == UINT32_C(0x40000000) &&
                    s->size <= 65536U;
@@ -249,7 +249,7 @@ static void w5_demo_locate(Abstractformat *f, w5_demo_state *state,
             size_t length, string_limit = 0;
             bool in_rdata = false;
             if (!(at & 4095U) && wg_stop(pd)) goto done;
-            if (b[at] != 0x68U || (va = pm_le32(b + at + 1)) < image.base) continue;
+            if (b[at] != 0x68U || (va = xx_data_get_u32(b + at + 1, 4, 0, false)) < image.base) continue;
             for (j = 0; j < image.count; ++j) {
                 const w5_demo_section *s = &image.sections[j];
                 if (s->rdata && va - image.base >= s->rva &&

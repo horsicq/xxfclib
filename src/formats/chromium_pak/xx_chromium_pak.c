@@ -4,6 +4,7 @@
  */
 #include "xxfclib/formats/chromium_pak/xx_chromium_pak.h"
 #include "../ue2_indexed.h"
+#include "xxfclib/data/xx_data.h"
 #ifdef CHROMIUM_PAK
 #define UE2_CHROMIUM_TYPE XX_FILE_TYPE_CHROMIUM_PAK
 #else
@@ -18,10 +19,10 @@ static ue2_index *chromium_parse(Abstractformat *f, uint32_t *version_out, uint3
     int64_t total = f && f->device ? xx_io_total_size(f->device) : -1;
     if (!f || f->base_address < 0 || !ue2_range(total, f->base_address, 9) ||
         !ue2_read(f, f->base_address, h, 9)) return NULL;
-    version = ue2_u32(h);
-    if (version == 4) { count = ue2_u32(h + 4); encoding = h[8]; aliases = 0; header = 9; }
+    version = xx_data_get_u32(h, 4, 0, false);
+    if (version == 4) { count = xx_data_get_u32(h + 4, 4, 0, false); encoding = h[8]; aliases = 0; header = 9; }
     else if (version == 5 && ue2_read(f, f->base_address, h, 12)) {
-        encoding = h[4]; count = ue2_u16(h + 8); aliases = ue2_u16(h + 10); header = 12;
+        encoding = h[4]; count = xx_data_get_u16(h + 8, 2, 0, false); aliases = xx_data_get_u16(h + 10, 2, 0, false); header = 12;
         if (h[5] || h[6] || h[7]) return NULL;
     } else return NULL;
     if (encoding > 2 || count > 65535U || count + aliases > 65535U) return NULL;
@@ -31,25 +32,25 @@ static ue2_index *chromium_parse(Abstractformat *f, uint32_t *version_out, uint3
     index = (ue2_index *)xx_mem_calloc(1, sizeof(*index));
     if (!table || !index || !ue2_read(f, f->base_address + header, table, (size_t)directory_size)) goto fail;
     xx_mem_zero(used, sizeof(used));
-    first = ue2_u32(table + 2); end = ue2_u32(table + (size_t)count * 6 + 2);
-    if (first != header + directory_size || ue2_u16(table + (size_t)count * 6) != 0 ||
+    first = xx_data_get_u32(table + 2, 4, 0, false); end = xx_data_get_u32(table + (size_t)count * 6 + 2, 4, 0, false);
+    if (first != header + directory_size || xx_data_get_u16(table + (size_t)count * 6, 2, 0, false) != 0 ||
         end < first || !ue2_range(total, f->base_address, end)) goto fail;
     for (i = 0; i < count + aliases; ++i) {
         uint32_t id, offset, next;
         char name[48];
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         if (i < count) {
-            id = ue2_u16(table + (size_t)i * 6); offset = ue2_u32(table + (size_t)i * 6 + 2);
-            next = ue2_u32(table + ((size_t)i + 1) * 6 + 2);
+            id = xx_data_get_u16(table + (size_t)i * 6, 2, 0, false); offset = xx_data_get_u32(table + (size_t)i * 6 + 2, 4, 0, false);
+            next = xx_data_get_u32(table + ((size_t)i + 1) * 6 + 2, 4, 0, false);
             if (!id || (i && id <= previous_id)) goto fail;
             previous_id = id;
         } else {
             const uint8_t *a = table + ((size_t)count + 1) * 6 + (size_t)(i - count) * 4;
-            uint32_t slot = ue2_u16(a + 2);
-            id = ue2_u16(a);
+            uint32_t slot = xx_data_get_u16(a + 2, 2, 0, false);
+            id = xx_data_get_u16(a, 2, 0, false);
             if (!id || slot >= count) goto fail;
-            offset = ue2_u32(table + (size_t)slot * 6 + 2);
-            next = ue2_u32(table + ((size_t)slot + 1) * 6 + 2);
+            offset = xx_data_get_u32(table + (size_t)slot * 6 + 2, 4, 0, false);
+            next = xx_data_get_u32(table + ((size_t)slot + 1) * 6 + 2, 4, 0, false);
         }
         if ((used[id >> 3] & (1U << (id & 7))) || offset < first || next < offset || next > end) goto fail;
         used[id >> 3] |= (uint8_t)(1U << (id & 7));

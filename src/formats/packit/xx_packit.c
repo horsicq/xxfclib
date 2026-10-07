@@ -33,6 +33,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_PACKIT_COPY_CHUNK (64 * 1024)
 
@@ -163,15 +164,6 @@ static const uint8_t XX_PACKIT_SIGNATURE[XX_PACKIT_SIGNATURE_SIZE] = {
     'P', 'A', 'C', 'K', 'I', 'T', ' ', 'b',
     'y', ' ', 'M', 'J', 'P', 0x0DU, 0x0AU, 0x1AU};
 
-static uint16_t xx_packit_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_packit_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
 static xx_packit_stream *xx_packit_parse(Abstractformat *self,
                                          xx_pd_struct *pd) {
     xx_packit_stream *stream;
@@ -219,7 +211,7 @@ static xx_packit_stream *xx_packit_parse(Abstractformat *self,
                                2U)) {
             goto fail;
         }
-        tag = xx_packit_le16(tag_bytes);
+        tag = xx_data_get_u16(tag_bytes, 2, 0, false);
         if (tag == XX_PACKIT_TAG_END) {
             offset += 2;
             terminated = true;
@@ -234,8 +226,8 @@ static xx_packit_stream *xx_packit_parse(Abstractformat *self,
                                sizeof(header))) {
             goto fail;
         }
-        size = (int64_t)(int32_t)xx_packit_le32(header + 2);
-        size_copy = (int64_t)(int32_t)xx_packit_le32(header + 6);
+        size = (int64_t)(int32_t)xx_data_get_u32(header + 2, 4, 0, false);
+        size_copy = (int64_t)(int32_t)xx_data_get_u32(header + 6, 4, 0, false);
         /* Both copies must agree. */
         if (size < 0 || size_copy < 0 || size != size_copy) goto fail;
         name_length = header[18];
@@ -263,8 +255,8 @@ static xx_packit_stream *xx_packit_parse(Abstractformat *self,
                              (int64_t)name_length + 1;
         member.data_offset =
             self->base_address + name_offset + (int64_t)name_length + 1;
-        member.timestamp = (uint64_t)xx_packit_le16(header + 10) |
-                           ((uint64_t)xx_packit_le16(header + 12) << 16);
+        member.timestamp = (uint64_t)xx_data_get_u16(header + 10, 2, 0, false) |
+                           ((uint64_t)xx_data_get_u16(header + 12, 2, 0, false) << 16);
 
         if (name_offset + (int64_t)name_length + 1 + size > span) {
             /* Cut off by the end of the file. The reference publishes what

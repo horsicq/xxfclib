@@ -25,6 +25,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: picks up the real file type as soon as ADF is
  * registered in xxfc_defs.h. */
@@ -221,12 +222,6 @@ static ssize_t gb_adf_write(xx_io_device *device, const void *buffer, size_t siz
     return (ssize_t)done;
 }
 
-
-static uint32_t adf_be32(const uint8_t *bytes) {
-    return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
-           ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3];
-}
-
 static bool adf_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     const size_t file_io_capacity = gb_adf_capacity();
@@ -256,7 +251,7 @@ static bool adf_checksum_ok(const uint8_t *block) {
     uint32_t sum = 0U;
     size_t index;
     for (index = 0U; index < ADF_BSIZE; index += 4U)
-        sum += adf_be32(block + index);
+        sum += xx_data_get_u32(block + index, 4, 0, true);
     return sum == 0U;
 }
 
@@ -270,11 +265,11 @@ static bool adf_pointer_ok(const adf_volume *volume, uint32_t block) {
 /* Volume                                                                  */
 
 static bool adf_root_ok(const uint8_t *block) {
-    return adf_be32(block + ADF_OFF_TYPE) == ADF_T_HEADER &&
-           adf_be32(block + ADF_OFF_KEY) == 0U &&
-           adf_be32(block + ADF_OFF_HIGH_SEQ) == 0U &&
-           adf_be32(block + ADF_OFF_HT_SIZE) == ADF_HT_SIZE &&
-           adf_be32(block + ADF_OFF_SEC_TYPE) == ADF_ST_ROOT &&
+    return xx_data_get_u32(block + ADF_OFF_TYPE, 4, 0, true) == ADF_T_HEADER &&
+           xx_data_get_u32(block + ADF_OFF_KEY, 4, 0, true) == 0U &&
+           xx_data_get_u32(block + ADF_OFF_HIGH_SEQ, 4, 0, true) == 0U &&
+           xx_data_get_u32(block + ADF_OFF_HT_SIZE, 4, 0, true) == ADF_HT_SIZE &&
+           xx_data_get_u32(block + ADF_OFF_SEC_TYPE, 4, 0, true) == ADF_ST_ROOT &&
            block[ADF_OFF_NAME] <= ADF_NAME_MAX && adf_checksum_ok(block);
 }
 
@@ -764,8 +759,8 @@ static bool adf_listing_full(const adf_stream *stream) {
 }
 
 static int64_t adf_timestamp(const uint8_t *field) {
-    uint32_t days = adf_be32(field), minutes = adf_be32(field + 4U),
-             ticks = adf_be32(field + 8U);
+    uint32_t days = xx_data_get_u32(field, 4, 0, true), minutes = xx_data_get_u32(field + 4U, 4, 0, true),
+             ticks = xx_data_get_u32(field + 8U, 4, 0, true);
     if (minutes >= 1440U || ticks >= 3000U || days > 0x7FFFFFU) return -1;
     return ADF_EPOCH + (int64_t)days * 86400 + (int64_t)minutes * 60 +
            (int64_t)(ticks / 50U);
@@ -774,9 +769,9 @@ static int64_t adf_timestamp(const uint8_t *field) {
 /* A header block of the tree: type 2, its own number as key, the expected
  * secondary type set, a matching checksum. */
 static bool adf_entry_ok(const uint8_t *block, uint32_t number) {
-    uint32_t secondary = adf_be32(block + ADF_OFF_SEC_TYPE);
-    return adf_be32(block + ADF_OFF_TYPE) == ADF_T_HEADER &&
-           adf_be32(block + ADF_OFF_KEY) == number &&
+    uint32_t secondary = xx_data_get_u32(block + ADF_OFF_SEC_TYPE, 4, 0, true);
+    return xx_data_get_u32(block + ADF_OFF_TYPE, 4, 0, true) == ADF_T_HEADER &&
+           xx_data_get_u32(block + ADF_OFF_KEY, 4, 0, true) == number &&
            (secondary == ADF_ST_USERDIR || secondary == ADF_ST_FILE ||
             secondary == ADF_ST_SOFTLINK || secondary == ADF_ST_LINKFILE ||
             secondary == ADF_ST_LINKDIR) &&
@@ -787,9 +782,9 @@ static bool adf_file_header_ok(const adf_volume *volume, uint32_t number,
                                uint8_t *block) {
     return adf_pointer_ok(volume, number) &&
            adf_read_block(volume, number, block) &&
-           adf_be32(block + ADF_OFF_TYPE) == ADF_T_HEADER &&
-           adf_be32(block + ADF_OFF_KEY) == number &&
-           adf_be32(block + ADF_OFF_SEC_TYPE) == ADF_ST_FILE &&
+           xx_data_get_u32(block + ADF_OFF_TYPE, 4, 0, true) == ADF_T_HEADER &&
+           xx_data_get_u32(block + ADF_OFF_KEY, 4, 0, true) == number &&
+           xx_data_get_u32(block + ADF_OFF_SEC_TYPE, 4, 0, true) == ADF_ST_FILE &&
            adf_checksum_ok(block);
 }
 
@@ -811,13 +806,13 @@ static bool adf_entry_text(const adf_volume *volume, const uint8_t *block,
         if (comment_size != 0U && 2U + name_size + comment_size <= ADF_LN_FIELD) {
             *comment = adf_utf8_copy(field + 2U + name_size, comment_size);
         } else if (comment_size == 0U) {
-            uint32_t comment_block = adf_be32(block + ADF_LN_COMMENT_BLOCK);
+            uint32_t comment_block = xx_data_get_u32(block + ADF_LN_COMMENT_BLOCK, 4, 0, true);
             uint8_t extra[ADF_BSIZE];
             if (comment_block != 0U && adf_pointer_ok(volume, comment_block) &&
                 adf_read_block(volume, comment_block, extra) &&
-                adf_be32(extra) == ADF_T_COMMENT &&
-                adf_be32(extra + 4U) == comment_block &&
-                adf_be32(extra + 8U) == number && adf_checksum_ok(extra) &&
+                xx_data_get_u32(extra, 4, 0, true) == ADF_T_COMMENT &&
+                xx_data_get_u32(extra + 4U, 4, 0, true) == comment_block &&
+                xx_data_get_u32(extra + 8U, 4, 0, true) == number && adf_checksum_ok(extra) &&
                 extra[24] != 0U && extra[24] <= ADF_COMMENT_MAX)
                 *comment = adf_utf8_copy(extra + 25U, extra[24]);
         }
@@ -853,9 +848,9 @@ static void adf_settle_type(adf_volume *volume, uint32_t header,
         first == volume->root || first == header ||
         !adf_read_block(volume, first, data))
         return;
-    size = adf_be32(data + 12U);
-    ofs = adf_be32(data) == ADF_T_DATA && adf_be32(data + 4U) == header &&
-          adf_be32(data + 8U) == 1U && size != 0U && size <= ADF_OFS_PAYLOAD &&
+    size = xx_data_get_u32(data + 12U, 4, 0, true);
+    ofs = xx_data_get_u32(data, 4, 0, true) == ADF_T_DATA && xx_data_get_u32(data + 4U, 4, 0, true) == header &&
+          xx_data_get_u32(data + 8U, 4, 0, true) == 1U && size != 0U && size <= ADF_OFS_PAYLOAD &&
           adf_checksum_ok(data);
     volume->ffs = !ofs;
     volume->dos_type = ofs ? 0U : 1U;
@@ -872,7 +867,7 @@ static bool adf_visit(uint8_t *visited, uint32_t block) {
 static void adf_load_table(adf_frame *frame, const uint8_t *block) {
     size_t index;
     for (index = 0U; index < ADF_HT_SIZE; ++index)
-        frame->table[index] = adf_be32(block + ADF_OFF_TABLE + index * 4U);
+        frame->table[index] = xx_data_get_u32(block + ADF_OFF_TABLE + index * 4U, 4, 0, true);
     frame->slot = 0U;
     frame->next = 0U;
 }
@@ -929,28 +924,28 @@ static bool adf_parse(Abstractformat *format, adf_stream **result,
             !adf_visit(visited, number) ||
             !adf_read_block(&stream->volume, number, block) ||
             !adf_entry_ok(block, number) ||
-            adf_be32(block + ADF_OFF_PARENT) != frame->block)
+            xx_data_get_u32(block + ADF_OFF_PARENT, 4, 0, true) != frame->block)
             continue;
-        frame->next = adf_be32(block + ADF_OFF_HASH_CHAIN);
+        frame->next = xx_data_get_u32(block + ADF_OFF_HASH_CHAIN, 4, 0, true);
         xx_mem_zero(&member, sizeof(member));
         member.header = number;
         member.parent = frame->member;
-        member.protect = adf_be32(block + ADF_OFF_PROTECT);
+        member.protect = xx_data_get_u32(block + ADF_OFF_PROTECT, 4, 0, true);
         if (!adf_entry_text(&stream->volume, block, number, &leaf,
                             &member.comment, &member.timestamp))
             continue;
-        secondary = adf_be32(block + ADF_OFF_SEC_TYPE);
+        secondary = xx_data_get_u32(block + ADF_OFF_SEC_TYPE, 4, 0, true);
         if (secondary == ADF_ST_USERDIR || secondary == ADF_ST_LINKDIR) {
             member.kind = ADF_KIND_FOLDER;
         } else if (secondary == ADF_ST_FILE) {
             member.kind = ADF_KIND_FILE;
             member.data = number;
-            member.first = adf_be32(block + ADF_OFF_TABLE_LAST);
-            member.size = adf_be32(block + ADF_OFF_BYTE_SIZE);
+            member.first = xx_data_get_u32(block + ADF_OFF_TABLE_LAST, 4, 0, true);
+            member.size = xx_data_get_u32(block + ADF_OFF_BYTE_SIZE, 4, 0, true);
             if (member.size != 0U)
                 adf_settle_type(&stream->volume, number, member.first);
         } else if (secondary == ADF_ST_LINKFILE) {
-            uint32_t real = adf_be32(block + ADF_OFF_REAL_ENTRY);
+            uint32_t real = xx_data_get_u32(block + ADF_OFF_REAL_ENTRY, 4, 0, true);
             if (!adf_file_header_ok(&stream->volume, real, target)) {
                 xx_mem_free(leaf);
                 adf_member_cleanup(&member);
@@ -958,8 +953,8 @@ static bool adf_parse(Abstractformat *format, adf_stream **result,
             }
             member.kind = ADF_KIND_FILE;
             member.data = real;
-            member.first = adf_be32(target + ADF_OFF_TABLE_LAST);
-            member.size = adf_be32(target + ADF_OFF_BYTE_SIZE);
+            member.first = xx_data_get_u32(target + ADF_OFF_TABLE_LAST, 4, 0, true);
+            member.size = xx_data_get_u32(target + ADF_OFF_BYTE_SIZE, 4, 0, true);
         } else {
             size_t length = 0U;
             while (length < ADF_LINK_PATH_MAX &&
@@ -1071,7 +1066,7 @@ static bool adf_copy_file(const adf_volume *volume, uint32_t header,
     uint32_t sequence = 1U, hops = 0U, current = header;
     uint32_t tortoise = header, power = 1U, run = 0U;
     if (!adf_file_header_ok(volume, header, table)) return false;
-    remaining = adf_be32(table + ADF_OFF_BYTE_SIZE);
+    remaining = xx_data_get_u32(table + ADF_OFF_BYTE_SIZE, 4, 0, true);
     if (remaining != expected ||
         remaining > (uint64_t)volume->blocks * ADF_BSIZE)
         return false;
@@ -1079,7 +1074,7 @@ static bool adf_copy_file(const adf_volume *volume, uint32_t header,
         uint32_t slot;
         for (slot = 0U; slot < ADF_HT_SIZE && remaining != 0U; ++slot) {
             uint32_t pointer =
-                adf_be32(table + ADF_OFF_TABLE_LAST - slot * 4U);
+                xx_data_get_u32(table + ADF_OFF_TABLE_LAST - slot * 4U, 4, 0, true);
             size_t take;
             if (!adf_pointer_ok(volume, pointer) || pointer == volume->root ||
                 pointer == header || pointer == current ||
@@ -1089,10 +1084,10 @@ static bool adf_copy_file(const adf_volume *volume, uint32_t header,
                 take = remaining < ADF_BSIZE ? (size_t)remaining : ADF_BSIZE;
                 if (!adf_sink_put(sink, data, take)) return false;
             } else {
-                uint32_t size = adf_be32(data + 12U);
-                if (adf_be32(data) != ADF_T_DATA ||
-                    adf_be32(data + 4U) != header ||
-                    adf_be32(data + 8U) != sequence || size == 0U ||
+                uint32_t size = xx_data_get_u32(data + 12U, 4, 0, true);
+                if (xx_data_get_u32(data, 4, 0, true) != ADF_T_DATA ||
+                    xx_data_get_u32(data + 4U, 4, 0, true) != header ||
+                    xx_data_get_u32(data + 8U, 4, 0, true) != sequence || size == 0U ||
                     size > ADF_OFS_PAYLOAD || !adf_checksum_ok(data))
                     return false;
                 take = (uint64_t)size < remaining ? (size_t)size
@@ -1106,7 +1101,7 @@ static bool adf_copy_file(const adf_volume *volume, uint32_t header,
         if (remaining == 0U) break;
         if (pd && xx_pd_is_stopped(pd)) return false;
         /* Extension (list) block: type 16, its own key, parent = header. */
-        current = adf_be32(table + ADF_OFF_EXTENSION);
+        current = xx_data_get_u32(table + ADF_OFF_EXTENSION, 4, 0, true);
         if (current == tortoise) return false;
         if (++run == power) {
             tortoise = current;
@@ -1115,10 +1110,10 @@ static bool adf_copy_file(const adf_volume *volume, uint32_t header,
         }
         if (++hops > volume->blocks || !adf_pointer_ok(volume, current) ||
             !adf_read_block(volume, current, table) ||
-            adf_be32(table + ADF_OFF_TYPE) != ADF_T_LIST ||
-            adf_be32(table + ADF_OFF_KEY) != current ||
-            adf_be32(table + ADF_OFF_PARENT) != header ||
-            adf_be32(table + ADF_OFF_SEC_TYPE) != ADF_ST_FILE ||
+            xx_data_get_u32(table + ADF_OFF_TYPE, 4, 0, true) != ADF_T_LIST ||
+            xx_data_get_u32(table + ADF_OFF_KEY, 4, 0, true) != current ||
+            xx_data_get_u32(table + ADF_OFF_PARENT, 4, 0, true) != header ||
+            xx_data_get_u32(table + ADF_OFF_SEC_TYPE, 4, 0, true) != ADF_ST_FILE ||
             !adf_checksum_ok(table))
             return false;
     }

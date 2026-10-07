@@ -27,6 +27,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* REGISTRATION PENDING.  xxfc_defs.h carries no XX_FILE_TYPE_SLS yet and this
  * port must not edit that shared header.  Delete this block when the enum is
@@ -63,11 +64,6 @@ typedef struct xx_sls_stream_s {
 static void xx_sls_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint32_t xx_sls_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static bool xx_sls_read_at(Abstractformat *self, int64_t offset,
                            uint8_t *buffer, size_t size) {
@@ -159,7 +155,7 @@ static xx_sls_stream *xx_sls_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (xx_rt_memcmp(header, magic, sizeof(magic)) != 0) return NULL;
 
     /* Written as u32, read signed, exactly as the reference does. */
-    uncompressed_size = (int64_t)(int32_t)xx_sls_le32(header + XX_SLS_MAGIC_SIZE);
+    uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(header + XX_SLS_MAGIC_SIZE, 4, 0, false);
     if (uncompressed_size <= 0) return NULL;
     if (uncompressed_size > XX_SLS_MAX_UNCOMPRESSED) return NULL;
 

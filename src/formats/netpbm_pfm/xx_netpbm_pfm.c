@@ -14,7 +14,7 @@ static bool tg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
  while(p<end){uint8_t c=b[p++];if(c>='0'&&c<='9'){nonzero|=c!='0';++digits;if(digits>32)return false;}else if(c=='.'&&!dot&&!exp){dot=true;}else if((c=='e'||c=='E')&&!exp&&digits){int32_t e;bool sign=false;exp=true;if(p<end&&(b[p]=='+'||b[p]=='-')){sign=b[p]=='-';++p;}if(!tg_ints(b,p,end,&e,1)||e<0||e>38)return false;exponent=sign?-e:e;p=end;}else return false;}
  if(!digits||!nonzero||exponent>38||exponent<-38)return false;
  values=(uint64_t)(uint32_t)dim[0]*(uint32_t)dim[1]*(b[1]=='F'?3U:1U);p=text.p;if(values>16777216||!tg_span(p,values*4,n)||p+values*4!=n)return false;
- for(i=0;i<values;++i){uint32_t v;if((i&1023)==0&&tg_stop(pd))return false;v=negative?pm_le32(b+p+i*4):pm_be32(b+p+i*4);if((v&0x7f800000U)==0x7f800000U)return false;}
+ for(i=0;i<values;++i){uint32_t v;if((i&1023)==0&&tg_stop(pd))return false;v=negative?xx_data_get_u32(b+p+i*4, 4, 0, false):xx_data_get_u32(b+p+i*4, 4, 0, true);if((v&0x7f800000U)==0x7f800000U)return false;}
  if(!tg_emit(f,s,"pfm-header.bin",0,p,n)||!tg_emit(f,s,"float-raster.bin",p,n-p,n)) {return false; } s->size=(int64_t)n;return true;
 }
 

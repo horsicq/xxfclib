@@ -44,6 +44,7 @@
 #include "xxfclib/algo/dcl/xx_dcl.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_FLD_COPY_CHUNK (64 * 1024)
 
@@ -150,8 +151,6 @@ static bool xx_fld_add(xx_fld_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_fld_le16(const uint8_t *data);
-static uint32_t xx_fld_le32(const uint8_t *data);
 static bool xx_fld_name_valid(const uint8_t *raw);
 static char *xx_fld_name_build(const uint8_t *raw, size_t fallback_index);
 static xx_fld_stream *xx_fld_parse(Abstractformat *self, xx_pd_struct *pd);
@@ -160,15 +159,6 @@ static bool xx_fld_decode(Abstractformat *self, const xx_fld_member *member, uin
 
 /* 12 raw bytes, each escaping to at most "%XX", plus room for the synthetic
  * "recordNNNNN" fallback and a NUL. */
-
-static uint16_t xx_fld_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_fld_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* Every byte of the 12-byte field must be 0x20 or above, and the field must
  * not be entirely spaces. Bytes above 0x7E are deliberately permitted: the
@@ -297,11 +287,11 @@ static xx_fld_stream *xx_fld_parse(Abstractformat *self, xx_pd_struct *pd) {
         if (!xx_fld_name_valid(record + XX_FLD_NAME_OFFSET)) break;
 
         compressed_size =
-            (int64_t)(int32_t)xx_fld_le32(record + 0x0D);
+            (int64_t)(int32_t)xx_data_get_u32(record + 0x0D, 4, 0, false);
         uncompressed_size =
-            (int64_t)(int32_t)xx_fld_le32(record + 0x11);
-        dos_time = xx_fld_le16(record + 0x15);
-        dos_date = xx_fld_le16(record + 0x17);
+            (int64_t)(int32_t)xx_data_get_u32(record + 0x11, 4, 0, false);
+        dos_time = xx_data_get_u16(record + 0x15, 2, 0, false);
+        dos_date = xx_data_get_u16(record + 0x17, 2, 0, false);
         method = (uint32_t)record[0x19];
 
         if (compressed_size < 0 || uncompressed_size < 0) break;

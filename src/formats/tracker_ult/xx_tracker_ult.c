@@ -18,8 +18,8 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(!fd_get(&c,h,48) || xx_rt_memcmp(h,"MAS_UTrack_V004",15) || !fd_skip(&c,(uint64_t)h[47]*32) || !fd_get(&c,b,1) || (samples=b[0])>64) return false;
     if(!sm_emit(f,s,"ult-descriptor.bin",0,c.at,&measured)) return false;
     for(i=0;i<samples;++i) { uint32_t a,z,first,last,flags; start=c.at; if(!fd_get(&c,b,66)) return false;
-        a=pm_le32(b+44); z=pm_le32(b+48); first=pm_le32(b+52); last=pm_le32(b+56); flags=b[61];
-        if(first>last || last>16777216 || last-first>262144 || (flags!=0 && flags!=4 && flags!=8 && flags!=12 && flags!=20 && flags!=24 && flags!=28) || !pm_le16(b+62)) return false;
+        a=xx_data_get_u32(b+44, 4, 0, false); z=xx_data_get_u32(b+48, 4, 0, false); first=xx_data_get_u32(b+52, 4, 0, false); last=xx_data_get_u32(b+56, 4, 0, false); flags=b[61];
+        if(first>last || last>16777216 || last-first>262144 || (flags!=0 && flags!=4 && flags!=8 && flags!=12 && flags!=20 && flags!=24 && flags!=28) || !xx_data_get_u16(b+62, 2, 0, false)) return false;
         length[i]=last-first; if(!sm_loop(a,z,length[i],!!(flags&8))) return false; if(flags&4) length[i]*=2;
         xx_rt_snprintf(label,sizeof(label),"sample-%u-descriptor.bin",i+1); if(!sm_emit(f,s,label,start,66,&measured)) return false;
     }

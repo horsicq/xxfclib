@@ -5,22 +5,23 @@
  */
 #include "xxfclib/formats/sony_psarc/xx_sony_psarc.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static XXFC_MAYBE_UNUSED uint16_t r16(const uint8_t *p,bool be) { return be ? pm_be16(p) : pm_le16(p); }
-static XXFC_MAYBE_UNUSED uint32_t r32(const uint8_t *p,bool be) { return be ? pm_be32(p) : pm_le32(p); }
-static XXFC_MAYBE_UNUSED uint64_t r64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint16_t r16(const uint8_t *p,bool be) { return be ? xx_data_get_u16(p, 2, 0, true) : xx_data_get_u16(p, 2, 0, false); }
+static XXFC_MAYBE_UNUSED uint32_t r32(const uint8_t *p,bool be) { return be ? xx_data_get_u32(p, 4, 0, true) : xx_data_get_u32(p, 4, 0, false); }
+static XXFC_MAYBE_UNUSED uint64_t r64(const uint8_t *p,bool be) { return be ? ((uint64_t)xx_data_get_u32(p, 4, 0, true)<<32)|xx_data_get_u32(p+4, 4, 0, true) : ((uint64_t)xx_data_get_u32(p+4, 4, 0, false)<<32)|xx_data_get_u32(p, 4, 0, false); }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[32],e[30],b[2]; uint32_t toc,count,block,i,zcount; uint64_t end;
-    if(!pm_read(f,0,h,32) || xx_rt_memcmp(h,"PSAR",4) || pm_be32(h+4)!=0x10004 || xx_rt_memcmp(h+8,"zlib",4) ||
-       pm_be32(h+16)!=30 || pm_be32(h+24)!=65536 || (pm_be32(h+28)&~3U)) return false;
-    toc=pm_be32(h+12); count=pm_be32(h+20); block=65536;
+    if(!pm_read(f,0,h,32) || xx_rt_memcmp(h,"PSAR",4) || xx_data_get_u32(h+4, 4, 0, true)!=0x10004 || xx_rt_memcmp(h+8,"zlib",4) ||
+       xx_data_get_u32(h+16, 4, 0, true)!=30 || xx_data_get_u32(h+24, 4, 0, true)!=65536 || (xx_data_get_u32(h+28, 4, 0, true)&~3U)) return false;
+    toc=xx_data_get_u32(h+12, 4, 0, true); count=xx_data_get_u32(h+20, 4, 0, true); block=65536;
     if(!count || count>65536 || toc<32+(uint64_t)count*30 || toc>pm_available(f) || (toc-32-count*30)&1) return false;
     zcount=(toc-32-count*30)/2; end=toc;
     for(i=0;i<count;++i) {
         uint64_t size=0,off=0,j,left; uint32_t index; char label[40];
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,32+(int64_t)i*30,e,30)) return false;
-        index=pm_be32(e+16);
+        index=xx_data_get_u32(e+16, 4, 0, true);
         for(j=0;j<5;++j) { size=(size<<8)|e[20+j]; off=(off<<8)|e[25+j]; }
         if(off<toc || off>(uint64_t)pm_available(f) || size>(uint64_t)pm_available(f)-off ||
            index>zcount || (size+block-1)/block>zcount-index) return false;
@@ -28,7 +29,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         for(j=0;left;++j) {
             uint32_t actual,want=left>block ? block : (uint32_t)left;
             if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,32+(int64_t)count*30+((int64_t)index+j)*2,b,2)) return false;
-            actual=pm_be16(b); if(!actual) actual=block;
+            actual=xx_data_get_u16(b, 2, 0, true); if(!actual) actual=block;
             /* Stored PSARC blocks have their uncompressed size in the table.
              * A smaller block denotes compressed data and is rejected. */
             if(actual!=want) { return false; } left-=want;

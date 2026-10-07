@@ -6,6 +6,7 @@
 #include "xxfclib/formats/qoi/xx_qoi.h"
 #include "../xx_payload_members.h"
 #include "xxfclib/global/xx_global.h"
+#include "xxfclib/data/xx_data.h"
 
 typedef struct qo_bytes { Abstractformat *f; xx_pd_struct *pd; int64_t pos,end,begin; size_t n,capacity; uint8_t *buf; } qo_bytes;
 static bool qo_byte(qo_bytes *r,uint8_t *b) {
@@ -17,7 +18,7 @@ static bool qo_byte(qo_bytes *r,uint8_t *b) {
 static bool qo_finish(qo_bytes *r,bool result) { xx_mem_free(r->buf); return result; }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[14],index[64][4],pixel[4]={0,0,0,255},marker[8]; uint64_t pixels,done=0; qo_bytes r;
-    if(!pm_read(f,0,h,14) || xx_rt_memcmp(h,"qoif",4) || !pm_be32(h+4) || !pm_be32(h+8) || (h[12]!=3 && h[12]!=4) || h[13]>1 || (pixels=(uint64_t)pm_be32(h+4)*pm_be32(h+8))>16777216) return false;
+    if(!pm_read(f,0,h,14) || xx_rt_memcmp(h,"qoif",4) || !xx_data_get_u32(h+4, 4, 0, true) || !xx_data_get_u32(h+8, 4, 0, true) || (h[12]!=3 && h[12]!=4) || h[13]>1 || (pixels=(uint64_t)xx_data_get_u32(h+4, 4, 0, true)*xx_data_get_u32(h+8, 4, 0, true))>16777216) return false;
     xx_mem_zero(index,sizeof(index)); xx_mem_zero(&r,sizeof(r)); r.f=f; r.pd=pd; r.pos=14; r.end=pm_available(f); r.begin=-1;
     r.capacity=xx_get_file_buffer_size(); if(r.capacity>(SIZE_MAX>>1)) r.capacity=SIZE_MAX>>1;
     if(r.end<r.pos) return false;

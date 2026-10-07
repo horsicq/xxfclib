@@ -64,6 +64,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef VHDDYNAMIC
 #define XX_VHDDYNAMIC_FILE_TYPE XX_FILE_TYPE_VHDDYNAMIC
@@ -114,16 +115,6 @@ static void vhddynamic_stream_free(void *opaque) {
     if (!stream) return;
     xx_nested_fat_free(stream->nested);
     xx_mem_free(stream);
-}
-
-static uint32_t vhddynamic_be32(const uint8_t *b) {
-    return ((uint32_t)b[0] << 24U) | ((uint32_t)b[1] << 16U) |
-           ((uint32_t)b[2] << 8U) | (uint32_t)b[3];
-}
-
-static uint64_t vhddynamic_be64(const uint8_t *b) {
-    return ((uint64_t)vhddynamic_be32(b) << 32U) |
-           (uint64_t)vhddynamic_be32(b + 4U);
 }
 
 static bool vhddynamic_read_at(xx_io_device *device, int64_t offset,
@@ -228,14 +219,14 @@ static bool vhddynamic_checksum_ok(const uint8_t *data, size_t size,
         if (at >= field && at < field + 4U) continue;
         sum += data[at];
     }
-    return vhddynamic_be32(data + field) == (uint32_t)~sum;
+    return xx_data_get_u32(data + field, 4, 0, true) == (uint32_t)~sum;
 }
 
 static bool vhddynamic_footer_ok(const uint8_t *footer) {
-    uint32_t features = vhddynamic_be32(footer + 8U);
+    uint32_t features = xx_data_get_u32(footer + 8U, 4, 0, true);
     return xx_rt_memcmp(footer, "conectix", 8U) == 0 &&
            (features & ~UINT32_C(3)) == 0U && (features & 2U) != 0U &&
-           vhddynamic_be32(footer + 12U) == 0x00010000U &&
+           xx_data_get_u32(footer + 12U, 4, 0, true) == 0x00010000U &&
            vhddynamic_checksum_ok(footer, VHDDYNAMIC_FOOTER_SIZE, 64U);
 }
 
@@ -284,10 +275,10 @@ static bool vhddynamic_parse(Abstractformat *format, vhddynamic_info *info) {
         !vhddynamic_footer_ok(footer))
         return false;
 
-    info->disk_size = vhddynamic_be64(footer + 48U);
-    info->disk_type = vhddynamic_be32(footer + 60U);
-    info->timestamp = vhddynamic_be32(footer + 24U);
-    data_offset = vhddynamic_be64(footer + 16U);
+    info->disk_size = xx_data_get_u64(footer + 48U, 8, 0, true);
+    info->disk_type = xx_data_get_u32(footer + 60U, 4, 0, true);
+    info->timestamp = xx_data_get_u32(footer + 24U, 4, 0, true);
+    data_offset = xx_data_get_u64(footer + 16U, 8, 0, true);
     if (info->disk_size == 0U || info->disk_size > VHDDYNAMIC_MAX_DISK ||
         (info->disk_size % 512U) != 0U)
         return false;
@@ -313,9 +304,9 @@ static bool vhddynamic_parse(Abstractformat *format, vhddynamic_info *info) {
     if (!vhddynamic_read_at(format->device, info->base, front,
                             sizeof(front)) ||
         !vhddynamic_footer_ok(front) ||
-        vhddynamic_be32(front + 60U) != info->disk_type ||
-        vhddynamic_be64(front + 48U) != info->disk_size ||
-        vhddynamic_be64(front + 16U) != data_offset)
+        xx_data_get_u32(front + 60U, 4, 0, true) != info->disk_type ||
+        xx_data_get_u64(front + 48U, 8, 0, true) != info->disk_size ||
+        xx_data_get_u64(front + 16U, 8, 0, true) != data_offset)
         return false;
 
     info->header_offset = data_offset;
@@ -327,14 +318,14 @@ static bool vhddynamic_parse(Abstractformat *format, vhddynamic_info *info) {
                             info->base + (int64_t)data_offset, dynamic,
                             VHDDYNAMIC_DYNHDR_SIZE) ||
         xx_rt_memcmp(dynamic, "cxsparse", 8U) != 0 ||
-        vhddynamic_be64(dynamic + 8U) != UINT64_MAX ||
-        vhddynamic_be32(dynamic + 24U) != 0x00010000U ||
+        xx_data_get_u64(dynamic + 8U, 8, 0, true) != UINT64_MAX ||
+        xx_data_get_u32(dynamic + 24U, 4, 0, true) != 0x00010000U ||
         !vhddynamic_checksum_ok(dynamic, VHDDYNAMIC_DYNHDR_SIZE, 36U))
         return false;
 
-    info->bat_offset = vhddynamic_be64(dynamic + 16U);
-    info->entries = vhddynamic_be32(dynamic + 28U);
-    info->block_size = vhddynamic_be32(dynamic + 32U);
+    info->bat_offset = xx_data_get_u64(dynamic + 16U, 8, 0, true);
+    info->entries = xx_data_get_u32(dynamic + 28U, 4, 0, true);
+    info->block_size = xx_data_get_u32(dynamic + 32U, 4, 0, true);
     if (!vhddynamic_power_of_two(info->block_size) ||
         info->block_size < 512U || info->block_size > VHDDYNAMIC_MAX_BLOCK ||
         info->entries == 0U || info->entries > VHDDYNAMIC_MAX_ENTRIES ||
@@ -399,7 +390,7 @@ static bool vhddynamic_emit(Abstractformat *format,
                                         table, (size_t)slice_count * 4U))
                     goto done;
             }
-            entry = vhddynamic_be32(table + (index - slice_start) * 4U);
+            entry = xx_data_get_u32(table + (index - slice_start) * 4U, 4, 0, true);
             if (entry == 0xffffffffU) continue;
             left = info->disk_size - index * (uint64_t)info->block_size;
             output = left < info->block_size ? left : info->block_size;
@@ -432,7 +423,7 @@ static bool vhddynamic_emit(Abstractformat *format,
                                     table, (size_t)slice_count * 4U))
                 goto done;
         }
-        entry = vhddynamic_be32(table + (index - slice_start) * 4U);
+        entry = xx_data_get_u32(table + (index - slice_start) * 4U, 4, 0, true);
         if (entry == 0xffffffffU) {
             if (!vhddynamic_write_zeros(destination, output, pd)) goto done;
             produced += output;
@@ -641,8 +632,8 @@ static xx_io_device *vhddynamic_guest_open(Abstractformat *format,
                                 info->base + (int64_t)info->bat_offset,
                                 guest->map, (size_t)needed * 4U)) goto fail;
         for (index = 0U; index < (size_t)needed; ++index)
-            guest->map[index] = vhddynamic_be32(
-                (const uint8_t *)guest->map + index * 4U);
+            guest->map[index] = xx_data_get_u32(
+                (const uint8_t *)guest->map + index * 4U, 4, 0, true);
     }
     guest->device.read = vhddynamic_guest_read;
     guest->device.seek = vhddynamic_guest_seek;

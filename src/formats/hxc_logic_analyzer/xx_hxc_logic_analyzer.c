@@ -5,7 +5,7 @@
 /* Explicit sampled8-bit signal import: falling data edges become LE32 sample
  * deltas; falling index edges become LE32 absolute sample positions. */
 static bool la_scan(Abstractformat *f,xx_pd_struct *pd,uint8_t *pulse,uint8_t *index,uint32_t *np,uint32_t *ni){xx_disk_additions_info *r=(xx_disk_additions_info *)f;uint8_t buffer[16384],old=0;uint64_t at=0,n=(uint64_t)pm_available(f);uint32_t pc=0,ic=0,last=0;unsigned d=1U<<r->data_bit,x=1U<<r->index_bit;
- while(at<n){size_t count=n-at>sizeof(buffer)?sizeof(buffer):(size_t)(n-at),i;if(!da_read(f,at,buffer,count,pd))return false;for(i=0;i<count;++i){uint32_t pos=(uint32_t)(at+i);uint8_t now=buffer[i];if((old&d)&&!(now&d)){if(pulse)hx_put32(pulse+pc*4U,pos-last);last=pos;++pc;}if((old&x)&&!(now&x)){if(index)hx_put32(index+ic*4U,pos);++ic;}old=now;}at+=count;}
+ while(at<n){size_t count=n-at>sizeof(buffer)?sizeof(buffer):(size_t)(n-at),i;if(!da_read(f,at,buffer,count,pd))return false;for(i=0;i<count;++i){uint32_t pos=(uint32_t)(at+i);uint8_t now=buffer[i];if((old&d)&&!(now&d)){if(pulse)xx_data_set_u32(pulse+pc*4U, 4, 0, pos-last, false);last=pos;++pc;}if((old&x)&&!(now&x)){if(index)xx_data_set_u32(index+ic*4U, 4, 0, pos, false);++ic;}old=now;}at+=count;}
  *np=pc;*ni=ic;return da_poll(pd);
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd){xx_disk_additions_info *r=(xx_disk_additions_info *)f;uint64_t n=(uint64_t)pm_available(f);uint32_t pc=0,ic=0,a,b;uint8_t *pulse=NULL,*index=NULL;hx_blob blob;bool ok=false;char info[256];

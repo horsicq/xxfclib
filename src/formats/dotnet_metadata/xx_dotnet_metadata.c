@@ -5,19 +5,20 @@
  */
 #include "xxfclib/formats/dotnet_metadata/xx_dotnet_metadata.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[16],d[8],v[256],b; uint32_t len; uint16_t count; uint64_t total; int64_t at; unsigned i,j;
     char names[64][33]; uint32_t offsets[64],sizes[64];
-    if(!pm_read(f,0,h,16) || xx_rt_memcmp(h,"BSJB",4) || pm_le16(h+4)!=1 || pm_le16(h+6)!=1 || pm_le32(h+8)) return false;
-    len=pm_le32(h+12); if(!len || len>256 || len%4 || !pm_read(f,16,v,len)) return false;
+    if(!pm_read(f,0,h,16) || xx_rt_memcmp(h,"BSJB",4) || xx_data_get_u16(h+4, 2, 0, false)!=1 || xx_data_get_u16(h+6, 2, 0, false)!=1 || xx_data_get_u32(h+8, 4, 0, false)) return false;
+    len=xx_data_get_u32(h+12, 4, 0, false); if(!len || len>256 || len%4 || !pm_read(f,16,v,len)) return false;
     for(i=0;i<len && v[i];++i) {} if(i==len) return false;
-    at=16+len; if(!pm_read(f,at,h,4) || pm_le16(h)) return false;
-    count=pm_le16(h+2); at+=4; if(!count || count>64) return false;
+    at=16+len; if(!pm_read(f,at,h,4) || xx_data_get_u16(h, 2, 0, false)) return false;
+    count=xx_data_get_u16(h+2, 2, 0, false); at+=4; if(!count || count>64) return false;
     for(i=0;i<count;++i) {
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,at,d,8)) return false;
-        offsets[i]=pm_le32(d); sizes[i]=pm_le32(d+4); at+=8;
+        offsets[i]=xx_data_get_u32(d, 4, 0, false); sizes[i]=xx_data_get_u32(d+4, 4, 0, false); at+=8;
         for(j=0;j<33;++j) { if(j==32 || !pm_read(f,at++,&b,1)) return false; names[i][j]=(char)b; if(!b) break; if(b<32 || b>126 || b=='/' || b=='\\' || b==':') return false; }
         if(!j) { return false; } at=(at+3)&~INT64_C(3);
         for(j=0;j<i;++j) if(!xx_rt_strcmp(names[j],names[i])) return false;

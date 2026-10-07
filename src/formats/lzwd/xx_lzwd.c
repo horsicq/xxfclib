@@ -41,6 +41,7 @@
 #include "xxfclib/algo/lzwvariants/xx_lzwvariants.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_LZWD_COPY_CHUNK (64 * 1024)
 
@@ -152,8 +153,6 @@ static bool xx_lzwd_add(xx_lzwd_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_lzwd_le16(const uint8_t *data);
-static uint32_t xx_lzwd_le32(const uint8_t *data);
 static xx_lzwd_stream *xx_lzwd_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_lzwd_decode(Abstractformat *self, const xx_lzwd_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
@@ -169,15 +168,6 @@ static bool xx_lzwd_decode(Abstractformat *self, const xx_lzwd_member *member, u
  * container's own file name, so the single record gets a fixed placeholder.
  * It is deliberately extension-less: inventing one would be a claim about
  * content the container never makes. */
-
-static uint16_t xx_lzwd_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_lzwd_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static xx_lzwd_stream *xx_lzwd_parse(Abstractformat *self, xx_pd_struct *pd) {
     xx_lzwd_stream *stream;
@@ -209,10 +199,10 @@ static xx_lzwd_stream *xx_lzwd_parse(Abstractformat *self, xx_pd_struct *pd) {
      * "part of the data" - it is not: it is the top eight bits of the
      * nine-bit CLEAR that opens every stream, and dropping it costs a
      * quarter of the discrimination. */
-    if (xx_lzwd_le32(probe + XX_LZWD_MAGIC_OFFSET) != XX_LZWD_MAGIC) {
+    if (xx_data_get_u32(probe + XX_LZWD_MAGIC_OFFSET, 4, 0, false) != XX_LZWD_MAGIC) {
         return NULL;
     }
-    if (xx_lzwd_le16(probe + XX_LZWD_VERSION_OFFSET) !=
+    if (xx_data_get_u16(probe + XX_LZWD_VERSION_OFFSET, 2, 0, false) !=
         (uint16_t)XX_LZWD_VERSION) {
         return NULL;
     }
@@ -221,7 +211,7 @@ static xx_lzwd_stream *xx_lzwd_parse(Abstractformat *self, xx_pd_struct *pd) {
         return NULL;
     }
 
-    raw_size = xx_lzwd_le32(probe);
+    raw_size = xx_data_get_u32(probe, 4, 0, false);
     /* The reference reads the length as a signed int32 and refuses a
      * negative one, so the top bit being set is a rejection rather than a
      * two-gigabyte member. */

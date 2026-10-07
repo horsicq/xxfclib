@@ -26,6 +26,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -124,15 +125,6 @@ typedef struct ipak_stream_s {
     int64_t archive_size;
     int64_t table_size;
 } ipak_stream;
-
-static uint16_t ipak_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t ipak_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
 
 static bool ipak_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
@@ -565,8 +557,8 @@ static bool ipak_parse_layout(Abstractformat *format, ipak_stream **result,
         return false;
     /* Slot 0 is a hard zero in every known archive.  It is the only fixed
      * byte pattern this headerless format has, so it stays a reject. */
-    if (ipak_le32(prefix) != 0U) return false;
-    table_size = (int64_t)ipak_le32(prefix + 4U);
+    if (xx_data_get_u32(prefix, 4, 0, false) != 0U) return false;
+    table_size = (int64_t)xx_data_get_u32(prefix + 4U, 4, 0, false);
     if (table_size < IPAK_MIN_TABLE_SIZE || (table_size % 4) != 0) return false;
     if (!ipak_range_within(size, 0, table_size)) return false;
     if (table_size + IPAK_RECORD_HEADER_SIZE > size) return false;
@@ -582,7 +574,7 @@ static bool ipak_parse_layout(Abstractformat *format, ipak_stream **result,
     /* Slot -> record offset is many-to-one.  A slot may repeat and may point
      * backwards, but never into the table and never past the file. */
     for (index = 1U; index < slot_count; ++index) {
-        uint32_t slot = ipak_le32(table + index * 4U);
+        uint32_t slot = xx_data_get_u32(table + index * 4U, 4, 0, false);
         if (slot == 0U) continue;
         if ((int64_t)slot < table_size || (int64_t)slot >= size) goto fail;
         slots[used_slots].offset = slot;
@@ -654,12 +646,12 @@ static bool ipak_parse_layout(Abstractformat *format, ipak_stream **result,
         }
         record_offset = position + header_shift;
         record = probe + header_shift;
-        extra_size = (int64_t)ipak_le32(record);
-        packed_size = (int64_t)ipak_le32(record + 4U);
-        unpacked_size = (int64_t)ipak_le32(record + 8U);
+        extra_size = (int64_t)xx_data_get_u32(record, 4, 0, false);
+        packed_size = (int64_t)xx_data_get_u32(record + 4U, 4, 0, false);
+        unpacked_size = (int64_t)xx_data_get_u32(record + 8U, 4, 0, false);
         method = record[12];
         info = record[13];
-        descriptor_size = (int64_t)ipak_le16(record + 14U);
+        descriptor_size = (int64_t)xx_data_get_u16(record + 14U, 2, 0, false);
         if (!ipak_is_known_method(method)) goto fail;
         /* The info byte is the codec parameter slot of the engine's own
          * loader.  It is zero on every reference record; a non-zero value
@@ -731,8 +723,8 @@ static bool ipak_parse_layout(Abstractformat *format, ipak_stream **result,
          * members whose bytes 7-Zip's own implode decoder reproduces exactly.
          * It is neither verified nor published; only the DOS stamp is kept. */
         if (header_shift != 0) {
-            member.dos_time = ipak_le16(probe + 10U);
-            member.dos_date = ipak_le16(probe + 12U);
+            member.dos_time = xx_data_get_u16(probe + 10U, 2, 0, false);
+            member.dos_date = xx_data_get_u16(probe + 12U, 2, 0, false);
         }
         if (unpacked_size > 0) any_payload = true;
         if (!ipak_add_member(stream, &member)) goto fail;
@@ -974,9 +966,9 @@ bool xx_infogramesft_test_magic(const uint8_t *magic, size_t magic_size,
     size_t slots, index, record;
     if (!magic || magic_size < 12U ||
         total_size < (int64_t)IPAK_MIN_FILE_SIZE ||
-        ipak_le32(magic) != 0U)
+        xx_data_get_u32(magic, 4, 0, false) != 0U)
         return false;
-    table_size = ipak_le32(magic + 4U);
+    table_size = xx_data_get_u32(magic + 4U, 4, 0, false);
     if (table_size < (uint32_t)IPAK_MIN_TABLE_SIZE || (table_size & 3U) != 0U ||
         (int64_t)table_size + IPAK_RECORD_HEADER_SIZE > total_size ||
         table_size / 4U - 1U > (uint32_t)IPAK_MAX_ENTRIES)
@@ -984,7 +976,7 @@ bool xx_infogramesft_test_magic(const uint8_t *magic, size_t magic_size,
     slots = (size_t)(table_size / 4U);
     if (slots > magic_size / 4U) slots = magic_size / 4U;
     for (index = 2U; index < slots; ++index) {
-        uint32_t slot = ipak_le32(magic + index * 4U);
+        uint32_t slot = xx_data_get_u32(magic + index * 4U, 4, 0, false);
         if (slot != 0U && (slot < table_size || (int64_t)slot >= total_size))
             return false;
     }

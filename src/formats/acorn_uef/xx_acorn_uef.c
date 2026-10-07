@@ -4,10 +4,11 @@
  */
 #include "xxfclib/formats/acorn_uef/xx_acorn_uef.h"
 #include "../snes_spc/xx_tenth_retro.h"
+#include "xxfclib/data/xx_data.h"
 static bool read_components(Abstractformat *f,pm_stream *s,th_blob *b) {
  const uint8_t *p=b->p;uint32_t a=12,count=0;bool data=false;
- if(b->n<19 || xx_rt_memcmp(p,"UEF File!\0",10) || pm_le16(p+10)!=10 || !th_emit(f,s,b,"tape-descriptor.bin",0,12)) return false;
- while(a<b->n) {uint32_t z;unsigned type;char name[64];if(!th_poll(b) || ++count>2048 || !th_range(b,a,6)) return false;type=pm_le16(p+a);z=pm_le32(p+a+2);if(!th_range(b,a+6,z)) return false;
+ if(b->n<19 || xx_rt_memcmp(p,"UEF File!\0",10) || xx_data_get_u16(p+10, 2, 0, false)!=10 || !th_emit(f,s,b,"tape-descriptor.bin",0,12)) return false;
+ while(a<b->n) {uint32_t z;unsigned type;char name[64];if(!th_poll(b) || ++count>2048 || !th_range(b,a,6)) return false;type=xx_data_get_u16(p+a, 2, 0, false);z=xx_data_get_u32(p+a+2, 4, 0, false);if(!th_range(b,a+6,z)) return false;
   switch(type) {
    case 0:if(!z || p[a+6+z-1]) return false;break;
    case 0x100:if(!z) return false;data=true;break;

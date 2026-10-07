@@ -6,6 +6,7 @@
  */
 #include "xxfclib/formats/virtual98/xx_virtual98.h"
 #include "../wux/xx_disk_containers_native.h"
+#include "xxfclib/data/xx_data.h"
 
 #ifdef VIRTUAL98
 #define DC_FILE_TYPE XX_FILE_TYPE_VIRTUAL98
@@ -21,8 +22,8 @@ static bool dc_parse(Abstractformat *f, dc_image *image,
     (void)options;
     if (!dc_read(f, image, 0U, header, sizeof(header), pd) ||
         xx_rt_memcmp(header, "VHD1.00\0", 8U)) return false;
-    sector_size = dc_le16(header + 142U);
-    sectors = dc_le32(header + 148U);
+    sector_size = xx_data_get_u16(header + 142U, 2, 0, false);
+    sectors = xx_data_get_u32(header + 148U, 4, 0, false);
     if (!sectors || sector_size < 128U || sector_size > 16384U ||
         (sector_size & (sector_size - 1U))) return false;
     size = (uint64_t)sectors * sector_size;

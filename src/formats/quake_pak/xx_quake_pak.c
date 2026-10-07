@@ -11,6 +11,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_quake_pak_MAX_MEMBERS 1000000U
 typedef struct xx_quake_pak_member_s {
@@ -33,16 +34,6 @@ typedef struct xx_quake_pak_stream_s {
 } xx_quake_pak_stream;
 static void xx_quake_pak_vtable_destroy(Abstractformat *self);
 
-static inline uint16_t xx_quake_pak_u16(const uint8_t *p, bool be) {
-    return be ? (uint16_t)(((uint16_t)p[0] << 8) | p[1])
-              : (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
-}
-static inline uint32_t xx_quake_pak_u32(const uint8_t *p, bool be) {
-    return be ? ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
-                ((uint32_t)p[2] << 8) | p[3]
-              : p[0] | ((uint32_t)p[1] << 8) |
-                ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
 static bool xx_quake_pak_range_within(int64_t span, int64_t offset, int64_t size) {
     return offset >= 0 && size >= 0 && offset <= span && size <= span-offset;
 }
@@ -218,7 +209,7 @@ static xx_quake_pak_stream *xx_quake_pak_parse(Abstractformat *self,xx_pd_struct
 
     uint8_t h[12],entry[64]; uint32_t count,i; int64_t table,bytes;
     if(!xx_quake_pak_read_rel(self,span,0,h,sizeof(h)) || xx_rt_memcmp(h,"PACK",4U)) goto fail;
-    table=xx_quake_pak_u32(h+4,false); bytes=xx_quake_pak_u32(h+8,false);
+    table=xx_data_get_u32(h+4, 4, 0, false); bytes=xx_data_get_u32(h+8, 4, 0, false);
     if(table<12 || bytes%64 || !xx_quake_pak_range_within(span,table,bytes)) goto fail;
     count=(uint32_t)(bytes/64); if(count>XX_quake_pak_MAX_MEMBERS) goto fail;
     s->archive_size=table+bytes;
@@ -226,7 +217,7 @@ static xx_quake_pak_stream *xx_quake_pak_parse(Abstractformat *self,xx_pd_struct
         char name[57]; int64_t off,size;
         if((pd && xx_pd_is_stopped(pd)) || !xx_quake_pak_read_rel(self,span,table+(int64_t)i*64,entry,sizeof(entry)) ||
            !xx_quake_pak_fixed_name(entry,56U,name)) goto fail;
-        off=xx_quake_pak_u32(entry+56,false); size=xx_quake_pak_u32(entry+60,false);
+        off=xx_data_get_u32(entry+56, 4, 0, false); size=xx_data_get_u32(entry+60, 4, 0, false);
         if(!xx_quake_pak_range_within(span,off,size) || (size && off<12) ||
            (size && off<table+bytes && off+size>table) ||
            !xx_quake_pak_add_member(self,s,name,table+(int64_t)i*64,64,off,size,false)) goto fail;

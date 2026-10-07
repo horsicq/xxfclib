@@ -44,6 +44,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef JASC
 #define XX_JASC_FILE_TYPE XX_FILE_TYPE_JASC
@@ -78,15 +79,6 @@ typedef struct jasc_stream_s {
     size_t index;
     int64_t archive_size;
 } jasc_stream;
-
-static uint16_t jasc_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t jasc_le32(const uint8_t *bytes) {
-    return (uint32_t)jasc_le16(bytes) |
-           ((uint32_t)jasc_le16(bytes + 2U) << 16U);
-}
 
 static bool jasc_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
@@ -195,8 +187,8 @@ static bool jasc_parse(Abstractformat *format, jasc_stream **result) {
          * must agree, which is what stands in for a magic number here. */
         if (name_length == 0U ||
             fixed[0] != (uint8_t)(name_length + JASC_HEADER_BIAS)) goto fail;
-        packed = jasc_le32(fixed + 2U);
-        unpacked = jasc_le32(fixed + 6U);
+        packed = xx_data_get_u32(fixed + 2U, 4, 0, false);
+        unpacked = xx_data_get_u32(fixed + 6U, 4, 0, false);
         header_size = JASC_HEADER_FIXED + (int64_t)name_length;
         if (size - cursor < header_size) goto fail;
         if (!jasc_read_at(format->device,
@@ -215,8 +207,8 @@ static bool jasc_parse(Abstractformat *format, jasc_stream **result) {
         member.data_offset = format->base_address + data_offset;
         member.packed_size = (int64_t)packed;
         member.unpacked_size = unpacked;
-        member.unix_time = jasc_le32(fixed + 10U);
-        member.crc16 = jasc_le16(fixed + 14U);
+        member.unix_time = xx_data_get_u32(fixed + 10U, 4, 0, false);
+        member.crc16 = xx_data_get_u16(fixed + 14U, 2, 0, false);
         member.check = fixed[1];
         if (!jasc_add_member(stream, &member)) {
             xx_str_free(member.name);

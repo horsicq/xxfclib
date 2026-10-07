@@ -26,6 +26,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -134,11 +135,6 @@ typedef struct pd_frame_s {
 
 static uint32_t pd_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
-}
-
-static uint32_t pd_le24(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U);
 }
 
 static bool pd_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -498,7 +494,7 @@ static bool pd_add_file(pd_list *list, const uint8_t *entry,
         member.storage = (uint8_t)storage;
         member.key = pd_le16(entry + PD_E_KEY);
         member.blocks_used = pd_le16(entry + PD_E_BLOCKS);
-        member.eof = pd_le24(entry + PD_E_EOF);
+        member.eof = xx_data_get_u24(entry + PD_E_EOF, 3, 0, false);
         if (member.key != 0U && member.key < volume->total_blocks)
             member.data_offset =
                 volume->base + pd_block_offset(volume, member.key, 0U);
@@ -517,7 +513,7 @@ static bool pd_add_file(pd_list *list, const uint8_t *entry,
         member.storage = extended[0];
         member.key = pd_le16(extended + 1U);
         member.blocks_used = pd_le16(extended + 3U);
-        member.eof = pd_le24(extended + 5U);
+        member.eof = xx_data_get_u24(extended + 5U, 3, 0, false);
         member.damaged = !pd_fork_storage(member.storage);
         if (member.key != 0U && member.key < volume->total_blocks)
             member.data_offset =
@@ -527,7 +523,7 @@ static bool pd_add_file(pd_list *list, const uint8_t *entry,
         resource.storage = extended[PD_HALF];
         resource.key = pd_le16(extended + PD_HALF + 1U);
         resource.blocks_used = pd_le16(extended + PD_HALF + 3U);
-        resource.eof = pd_le24(extended + PD_HALF + 5U);
+        resource.eof = xx_data_get_u24(extended + PD_HALF + 5U, 3, 0, false);
         resource.damaged = !pd_fork_storage(resource.storage);
         resource.data_offset =
             (resource.key != 0U && resource.key < volume->total_blocks)
@@ -652,7 +648,7 @@ static bool pd_walk(pd_list *list, const uint8_t *key_block, xx_pd_struct *pd) {
         if (storage == 4U && frame->folder == SIZE_MAX &&
             entry[PD_E_TYPE] == 0xefU) {
             uint32_t key=pd_le16(entry+PD_E_KEY), blocks=pd_le16(entry+PD_E_BLOCKS);
-            uint32_t bytes=pd_le24(entry+PD_E_EOF);
+            uint32_t bytes=xx_data_get_u24(entry+PD_E_EOF, 3, 0, false);
             if(key>=3U && blocks && key<volume->total_blocks &&
                blocks<=volume->total_blocks-key && bytes<=(uint64_t)blocks*PD_BLOCK)
                 continue;

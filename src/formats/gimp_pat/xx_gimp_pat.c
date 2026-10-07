@@ -9,8 +9,8 @@
 static bool sm_gimp(Abstractformat *f,uint64_t at,uint64_t end,bool pattern,uint64_t *header,uint64_t *stop,xx_pd_struct *pd) {
     uint8_t h[28],name[4096]; uint32_t hs,w,height,channels,fixed=pattern ? 24:28; uint64_t pixels,bytes; size_t i,n;
     if(fd_stop(pd) || !fd_range(at,fixed,end) || !pm_read(f,(int64_t)at,h,fixed)) return false;
-    hs=pm_be32(h); w=pm_be32(h+8); height=pm_be32(h+12); channels=pm_be32(h+16);
-    if(pm_be32(h+4)!=(pattern ? 1U:2U) || xx_rt_memcmp(h+20,pattern ? "GPAT":"GIMP",4) || hs<=fixed || hs-fixed>4096 || !w || !height || w>32768 || height>32768 || channels<1 || channels>4 || (!pattern && channels!=1 && channels!=4)) return false;
+    hs=xx_data_get_u32(h, 4, 0, true); w=xx_data_get_u32(h+8, 4, 0, true); height=xx_data_get_u32(h+12, 4, 0, true); channels=xx_data_get_u32(h+16, 4, 0, true);
+    if(xx_data_get_u32(h+4, 4, 0, true)!=(pattern ? 1U:2U) || xx_rt_memcmp(h+20,pattern ? "GPAT":"GIMP",4) || hs<=fixed || hs-fixed>4096 || !w || !height || w>32768 || height>32768 || channels<1 || channels>4 || (!pattern && channels!=1 && channels!=4)) return false;
     if(!fd_mul(w,height,&pixels) || pixels>67108864 || !fd_mul(pixels,channels,&bytes) || bytes>268435456 || !fd_range(at,hs+bytes,end)) return false;
     n=hs-fixed; if(!pm_read(f,(int64_t)at+fixed,name,n) || name[n-1] || !fourth_utf8(name,n-1,pd)) return false;
     for(i=0;i<n-1;++i) if(!name[i]) return false;

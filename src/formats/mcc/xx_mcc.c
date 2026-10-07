@@ -53,6 +53,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef MCC
 #define XX_MCC_FILE_TYPE XX_FILE_TYPE_MCC
@@ -85,14 +86,6 @@ typedef struct mcc_stream_s {
     size_t index;
     int64_t archive_size;
 } mcc_stream;
-
-static uint16_t mcc_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t mcc_le32(const uint8_t *bytes) {
-    return (uint32_t)mcc_le16(bytes) | ((uint32_t)mcc_le16(bytes + 2U) << 16U);
-}
 
 static bool mcc_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -302,8 +295,8 @@ static bool mcc_parse(Abstractformat *format, mcc_stream **result) {
                          header, sizeof(header)) ||
             xx_rt_memcmp(header, "MCC", 3U) != 0) goto fail;
         method = header[3];
-        unpacked = mcc_le32(header + 4U);
-        packed = mcc_le32(header + 8U);
+        unpacked = xx_data_get_u32(header + 4U, 4, 0, false);
+        packed = xx_data_get_u32(header + 8U, 4, 0, false);
         name_length = header[21];
         if (method != MCC_METHOD_STORE && method != MCC_METHOD_PACKED)
             goto fail;
@@ -317,8 +310,8 @@ static bool mcc_parse(Abstractformat *format, mcc_stream **result) {
         if (!member.name) goto fail;
         member.method = method;
         member.attributes = header[13];
-        member.dos_time = mcc_le32(header + 15U);
-        member.checksum = mcc_le16(header + 19U);
+        member.dos_time = xx_data_get_u32(header + 15U, 4, 0, false);
+        member.checksum = xx_data_get_u16(header + 19U, 2, 0, false);
         member.key = header[12];
         member.header_offset = format->base_address + cursor;
         member.data_offset = format->base_address + cursor + MCC_HEADER_SIZE;

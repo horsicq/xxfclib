@@ -6,15 +6,12 @@
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/data/xx_pd.h"
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #define FEAD_PNG_TAG 0x504e4700U
 #define FEAD_ZLIB_TAG 0x5a4c4942U
 #define FEAD_CAB_TAG 0x43414200U
 
-static uint16_t fr_u16(const uint8_t *p)
-{ return (uint16_t)((uint16_t)p[0] | (uint16_t)p[1] << 8); }
-static uint32_t fr_u32(const uint8_t *p)
-{ return (uint32_t)p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24; }
 static bool fr_live(const fead_restore_context *c)
 { return !xx_pd_is_stopped(c->pd); }
 static const fead_resource *fr_resource(const fead_restore_context *c, uint32_t tag, uint32_t id)
@@ -57,7 +54,7 @@ static bool fr_copy(const fead_restore_context *c, uint8_t *out, size_t capacity
 static bool fr_word(const fead_resource *r, size_t *p, uint32_t *v)
 {
  if (*p > r->size || r->size - *p < 4) return false;
- *v = fr_u32(r->data + *p); *p += 4; return true;
+ *v = xx_data_get_u32(r->data + *p, 4, 0, false); *p += 4; return true;
 }
 
 static bool fr_png(const fead_restore_context *c, const uint8_t *in, size_t n,
@@ -102,8 +99,8 @@ static bool fr_zlib(const fead_restore_context *c, const uint8_t *in, size_t n,
   uint8_t checksum[4];
   if (!fr_live(c) || r->size - p < 13) return false;
   /* The leading u16 is an opaque encoder ID, unused by the original inverse. */
-  gap = fr_u32(r->data + p + 2); plain = fr_u32(r->data + p + 6);
-  params = fr_u16(r->data + p + 10); patched = r->data[p + 12]; p += 13;
+  gap = xx_data_get_u32(r->data + p + 2, 4, 0, false); plain = xx_data_get_u32(r->data + p + 6, 4, 0, false);
+  params = xx_data_get_u16(r->data + p + 10, 2, 0, false); patched = r->data[p + 12]; p += 13;
   if (patched > 1) return false;
   if (patched) {
    if (r->size - p < 11) return false;
@@ -240,36 +237,36 @@ static bool fr_cab(const fead_restore_context *c, size_t first, size_t last,
  if (input_end < start) return false;
  input_n = input_end - start;
  if (input_n < 2 || !fr_live(c)) return false;
- id = fr_u16(source); meta = fr_resource(c, FEAD_CAB_TAG, id);
+ id = xx_data_get_u16(source, 2, 0, false); meta = fr_resource(c, FEAD_CAB_TAG, id);
  /* Original CAB optimiser mode -1, one carrier skip, no extra lists. Mode0
   * uses the same raw folder layout and is accepted when the header agrees. */
  if (!meta || !meta->data || meta->size != 16 ||
-     (fr_u32(meta->data) != UINT32_MAX && fr_u32(meta->data) != 0) ||
-     fr_u32(meta->data + 4) != 1 || fr_u32(meta->data + 12) != 0) return false;
- prefix = fr_u32(meta->data + 8);
+     (xx_data_get_u32(meta->data, 4, 0, false) != UINT32_MAX && xx_data_get_u32(meta->data, 4, 0, false) != 0) ||
+     xx_data_get_u32(meta->data + 4, 4, 0, false) != 1 || xx_data_get_u32(meta->data + 12, 4, 0, false) != 0) return false;
+ prefix = xx_data_get_u32(meta->data + 8, 4, 0, false);
  if (prefix > input_n - 2 || input_n - 2 - prefix < 36) return false;
- header = source + 2 + prefix; header_n = fr_u32(header + 12);
- original_n = fr_u32(header + 8); suffix = fr_u32(header + 20);
- folders = fr_u16(header + 26); files = fr_u16(header + 28);
- if (xx_mem_compare(header, "_SCF", 4) || fr_u32(header + 4) != 3 ||
-     header[24] != 3 || header[25] != 1 || fr_u16(header + 30) != 0 ||
+ header = source + 2 + prefix; header_n = xx_data_get_u32(header + 12, 4, 0, false);
+ original_n = xx_data_get_u32(header + 8, 4, 0, false); suffix = xx_data_get_u32(header + 20, 4, 0, false);
+ folders = xx_data_get_u16(header + 26, 2, 0, false); files = xx_data_get_u16(header + 28, 2, 0, false);
+ if (xx_mem_compare(header, "_SCF", 4) || xx_data_get_u32(header + 4, 4, 0, false) != 3 ||
+     header[24] != 3 || header[25] != 1 || xx_data_get_u16(header + 30, 2, 0, false) != 0 ||
      !folders || !files || header_n < 36U + (size_t)folders * 8U ||
      header_n > input_n - 2 - prefix || original_n < header_n ||
      (uint64_t)prefix + original_n + suffix != member->size ||
-     fr_u32(header + 16) != 36U + (uint32_t)folders * 8U ||
+     xx_data_get_u32(header + 16, 4, 0, false) != 36U + (uint32_t)folders * 8U ||
      c->actions[first].end < start + 2 + prefix + header_n) return false;
  folder_bytes = (size_t)folders * sizeof(*ends);
  ends = (uint64_t *)fr_alloc(c, folder_bytes);
  if (!ends) return false;
  xx_mem_zero(ends, folder_bytes);
- p = fr_u32(header + 16);
+ p = xx_data_get_u32(header + 16, 4, 0, false);
  for (i = 0; i < files; ++i) {
   uint32_t n, off;
   uint16_t folder, attrs;
   size_t name;
   if (!fr_live(c) || p > header_n || header_n - p < 16) goto done;
-  n = fr_u32(header + p); off = fr_u32(header + p + 4);
-  folder = fr_u16(header + p + 8); attrs = fr_u16(header + p + 14); p += 16; name = p;
+  n = xx_data_get_u32(header + p, 4, 0, false); off = xx_data_get_u32(header + p + 4, 4, 0, false);
+  folder = xx_data_get_u16(header + p + 8, 2, 0, false); attrs = xx_data_get_u16(header + p + 14, 2, 0, false); p += 16; name = p;
   while (p < header_n && header[p]) ++p;
   if (p == header_n || folder >= folders || !fr_cab_name_ok(header + name, p - name, attrs)) goto done;
   if ((uint64_t)off + n > ends[folder]) ends[folder] = (uint64_t)off + n;
@@ -277,9 +274,9 @@ static bool fr_cab(const fead_restore_context *c, size_t first, size_t last,
  }
  if (p != header_n) goto done;
  for (i = 0; i < folders; ++i) {
-  uint32_t packed_start = fr_u32(header + 36U + i * 8U);
-  uint16_t blocks = fr_u16(header + 40U + i * 8U);
-  uint16_t method = fr_u16(header + 42U + i * 8U);
+  uint32_t packed_start = xx_data_get_u32(header + 36U + i * 8U, 4, 0, false);
+  uint16_t blocks = xx_data_get_u16(header + 40U + i * 8U, 2, 0, false);
+  uint16_t method = xx_data_get_u16(header + 42U + i * 8U, 2, 0, false);
   if (ends[i] > UINT32_MAX || packed_start < header_n || packed_start >= original_n ||
       (method & 15U) > 3U || (ends[i] + 32767U) / 32768U != blocks ||
       ends[i] > SIZE_MAX - body_n) goto done;
@@ -322,11 +319,11 @@ static bool fr_cab(const fead_restore_context *c, size_t first, size_t last,
  { uint64_t base = 0;
   for (i = 0; i < folders; ++i) { uint64_t n = ends[i]; ends[i] = base; base += n; }
  }
- p = fr_u32(header + 16);
+ p = xx_data_get_u32(header + 16, 4, 0, false);
  for (i = 0; i < files; ++i) {
-  uint32_t n = fr_u32(header + p), off = fr_u32(header + p + 4);
-  uint16_t folder = fr_u16(header + p + 8), date = fr_u16(header + p + 10);
-  uint16_t time = fr_u16(header + p + 12), attrs = fr_u16(header + p + 14);
+  uint32_t n = xx_data_get_u32(header + p, 4, 0, false), off = xx_data_get_u32(header + p + 4, 4, 0, false);
+  uint16_t folder = xx_data_get_u16(header + p + 8, 2, 0, false), date = xx_data_get_u16(header + p + 10, 2, 0, false);
+  uint16_t time = xx_data_get_u16(header + p + 12, 2, 0, false), attrs = xx_data_get_u16(header + p + 14, 2, 0, false);
   size_t name, offset;
   p += 16; name = p; while (p < header_n && header[p]) ++p;
   offset = (size_t)ends[folder] + off;

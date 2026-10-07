@@ -35,6 +35,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef NEC_PC_98_FDI
 #define XX_NEC_PC_98_FDI_FILE_TYPE XX_FILE_TYPE_NEC_PC_98_FDI
@@ -68,11 +69,6 @@ typedef struct necfdi_stream_s {
     size_t count;
     size_t index;
 } necfdi_stream;
-
-static uint32_t necfdi_le32(const uint8_t *b) {
-    return (uint32_t)b[0] | ((uint32_t)b[1] << 8U) | ((uint32_t)b[2] << 16U) |
-           ((uint32_t)b[3] << 24U);
-}
 
 static bool necfdi_read_at(xx_io_device *device, int64_t offset, void *buffer,
                            size_t size) {
@@ -111,16 +107,16 @@ static bool necfdi_parse(Abstractformat *format, necfdi_geometry *out) {
     if (size < (int64_t)NECFDI_MIN_HEADER ||
         !necfdi_read_at(format->device, format->base_address, header,
                         sizeof(header)) ||
-        necfdi_le32(header) != 0U)
+        xx_data_get_u32(header, 4, 0, false) != 0U)
         return false;
     xx_mem_zero(&geometry, sizeof(geometry));
-    geometry.fdd_type = necfdi_le32(header + 0x04U);
-    geometry.header_size = necfdi_le32(header + 0x08U);
-    data_size = necfdi_le32(header + 0x0CU);
-    geometry.sector_size = necfdi_le32(header + 0x10U);
-    geometry.sectors = necfdi_le32(header + 0x14U);
-    geometry.heads = necfdi_le32(header + 0x18U);
-    geometry.cylinders = necfdi_le32(header + 0x1CU);
+    geometry.fdd_type = xx_data_get_u32(header + 0x04U, 4, 0, false);
+    geometry.header_size = xx_data_get_u32(header + 0x08U, 4, 0, false);
+    data_size = xx_data_get_u32(header + 0x0CU, 4, 0, false);
+    geometry.sector_size = xx_data_get_u32(header + 0x10U, 4, 0, false);
+    geometry.sectors = xx_data_get_u32(header + 0x14U, 4, 0, false);
+    geometry.heads = xx_data_get_u32(header + 0x18U, 4, 0, false);
+    geometry.cylinders = xx_data_get_u32(header + 0x1CU, 4, 0, false);
     if (geometry.header_size < NECFDI_MIN_HEADER ||
         geometry.header_size > NECFDI_MAX_HEADER ||
         !necfdi_sector_size_valid(geometry.sector_size) ||

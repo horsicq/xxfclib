@@ -5,7 +5,7 @@
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[32],d[32],b; uint32_t records,i,fields,total=1; uint16_t header,row; uint64_t bytes,end; char names[1024][12];
-    if(!pm_read(f,0,h,32) || h[0]!=3 || h[2]<1 || h[2]>12 || h[3]<1 || h[3]>31 || h[14] || h[15] || (records=pm_le32(h+4))>65534 || !(row=pm_le16(h+10)) || (header=pm_le16(h+8))<65 || (header-33)%32) return false;
+    if(!pm_read(f,0,h,32) || h[0]!=3 || h[2]<1 || h[2]>12 || h[3]<1 || h[3]>31 || h[14] || h[15] || (records=xx_data_get_u32(h+4, 4, 0, false))>65534 || !(row=xx_data_get_u16(h+10, 2, 0, false)) || (header=xx_data_get_u16(h+8, 2, 0, false))<65 || (header-33)%32) return false;
     fields=(header-33)/32; if(fields>1024) return false;
     for(i=0;i<fields;++i) { unsigned j,k; if(fd_stop(pd) || !pm_read(f,32+i*32,d,32) || !d[0] || !d[16] || d[17]>=d[16]) return false;
         for(j=0;j<11 && d[j];++j) { if(d[j]<32 || d[j]>126) return false; } if(j==11) return false;

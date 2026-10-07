@@ -33,6 +33,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -77,11 +78,6 @@ typedef struct lz4demo_stream_s {
     size_t index;
     size_t count;
 } lz4demo_stream;
-
-static uint32_t lz4demo_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
 
 static bool lz4demo_read_at(xx_io_device *device, int64_t offset,
                             void *buffer, size_t size) {
@@ -163,14 +159,14 @@ static int lz4demo_next_block(lz4demo_window *window, int64_t *position,
         if (++*chain > (uint64_t)LZ4DEMO_MAX_CHAIN ||
             !lz4demo_fetch(window, *position, header, sizeof(header)))
             return -1;
-        word = lz4demo_le32(header);
+        word = xx_data_get_u32(header, 4, 0, false);
         *position += 4;
         if (word == LZ4DEMO_MAGIC) continue;
         if (word >= LZ4DEMO_SKIP_MAGIC_LOW && word <= LZ4DEMO_SKIP_MAGIC_HIGH) {
             /* A skippable frame: its length word, then that many bytes. */
             if (!lz4demo_fetch(window, *position, header, sizeof(header)))
                 return -1;
-            declared = (int64_t)lz4demo_le32(header);
+            declared = (int64_t)xx_data_get_u32(header, 4, 0, false);
             *position += 4;
             if (declared > window->size - *position) return -1;
             *position += declared;
@@ -287,7 +283,7 @@ static bool lz4demo_parse(Abstractformat *format, lz4demo_context *out,
     if (size < 4 ||
         !lz4demo_read_at(format->device, format->base_address, magic,
                          sizeof(magic))) return false;
-    if (lz4demo_le32(magic) != LZ4DEMO_MAGIC) return false;
+    if (xx_data_get_u32(magic, 4, 0, false) != LZ4DEMO_MAGIC) return false;
     xx_mem_zero(&context, sizeof(context));
     context.input_size = size;
     context.archive_size = size;

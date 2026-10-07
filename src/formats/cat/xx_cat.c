@@ -20,6 +20,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef CAT
 #define XX_CAT_FILE_TYPE XX_FILE_TYPE_CAT
@@ -48,14 +49,6 @@ typedef struct cat_stream_s {
     size_t index;
     int64_t archive_size;
 } cat_stream;
-
-static uint16_t cat_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t cat_le32(const uint8_t *bytes) {
-    return (uint32_t)cat_le16(bytes) | ((uint32_t)cat_le16(bytes + 2U) << 16U);
-}
 
 static bool cat_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -202,7 +195,7 @@ static bool cat_parse(Abstractformat *format, cat_stream **result) {
         !cat_read_at(format->device, format->base_address, header,
                      sizeof(header)))
         return false;
-    count = cat_le16(header);
+    count = xx_data_get_u16(header, 2, 0, false);
     /* Bound the directory against the real file before allocating it. */
     if (count == 0U || count > CAT_MAX_MEMBERS ||
         (int64_t)count > (size - 2) / (int64_t)CAT_ENTRY_SIZE)
@@ -224,8 +217,8 @@ static bool cat_parse(Abstractformat *format, cat_stream **result) {
     for (index = 0U; index < count; ++index) {
         const uint8_t *entry = directory + (size_t)index * CAT_ENTRY_SIZE;
         cat_member member;
-        uint32_t member_size = cat_le32(entry + 16U);
-        uint32_t member_offset = cat_le32(entry + 20U);
+        uint32_t member_size = xx_data_get_u32(entry + 16U, 4, 0, false);
+        uint32_t member_offset = xx_data_get_u32(entry + 20U, 4, 0, false);
         if (!cat_plausible_raw_name(entry, CAT_NAME_SIZE)) goto fail;
         /* The contiguity chain is the whole signature; a gap, an overlap or a
          * member that runs past the end all mean this is not a .CAT. */
@@ -240,7 +233,7 @@ static bool cat_parse(Abstractformat *format, cat_stream **result) {
         member.data_offset = format->base_address + (int64_t)member_offset;
         member.packed_size = (int64_t)member_size;
         member.unpacked_size = member_size;
-        member.dos_time = cat_le32(entry + 12U);
+        member.dos_time = xx_data_get_u32(entry + 12U, 4, 0, false);
         if (!cat_add_member(stream, &member)) {
             xx_str_free(member.name);
             goto fail;

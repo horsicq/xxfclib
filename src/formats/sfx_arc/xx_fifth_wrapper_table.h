@@ -15,13 +15,13 @@ typedef void (*w5_close)(Abstractformat *);
 static XXFC_MAYBE_UNUSED bool w5_carrier(Abstractformat *f,bool atari_only,int64_t *low,xx_pd_struct *pd) {
     uint8_t h[64]; int64_t limit=pm_available(f),overlay,cab,cabend; uint64_t image,headers;
     if(limit<28 || !pm_read(f,0,h,28)) return false;
-    if(h[0]==0x60 && h[1]==0x1a) { uint64_t text=pm_be32(h+2),data=pm_be32(h+6),symbols=pm_be32(h+14); uint16_t absolute=pm_be16(h+26);
+    if(h[0]==0x60 && h[1]==0x1a) { uint64_t text=xx_data_get_u32(h+2, 4, 0, true),data=xx_data_get_u32(h+6, 4, 0, true),symbols=xx_data_get_u32(h+14, 4, 0, true); uint16_t absolute=xx_data_get_u16(h+26, 2, 0, true);
         if(!text || absolute>1 || !wg_range(limit,28,text+data+symbols)) { return false; } *low=28; return true;
     }
     if(atari_only || xx_rt_memcmp(h,"MZ",2) || limit<64 || !pm_read(f,0,h,64)) return false;
-    headers=(uint64_t)pm_le16(h+8)*16; image=pm_le16(h+4); if(!image || pm_le16(h+2)>511 || headers<28) return false;
-    image=(image-1)*512+(pm_le16(h+2) ? pm_le16(h+2) : 512);
-    if(headers>image || image>(uint64_t)limit || (uint64_t)pm_le16(h+24)+4U*pm_le16(h+6)>headers) return false;
+    headers=(uint64_t)xx_data_get_u16(h+8, 2, 0, false)*16; image=xx_data_get_u16(h+4, 2, 0, false); if(!image || xx_data_get_u16(h+2, 2, 0, false)>511 || headers<28) return false;
+    image=(image-1)*512+(xx_data_get_u16(h+2, 2, 0, false) ? xx_data_get_u16(h+2, 2, 0, false) : 512);
+    if(headers>image || image>(uint64_t)limit || (uint64_t)xx_data_get_u16(h+24, 2, 0, false)+4U*xx_data_get_u16(h+6, 2, 0, false)>headers) return false;
     if(wg_pe(f,&overlay,&cab,&cabend,pd)) *low=overlay; else *low=(int64_t)image;
     return *low<=limit;
 }

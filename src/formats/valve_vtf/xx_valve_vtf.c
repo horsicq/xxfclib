@@ -5,18 +5,19 @@
  */
 #include "xxfclib/formats/valve_vtf/xx_valve_vtf.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static XXFC_MAYBE_UNUSED uint16_t r16(const uint8_t *p,bool be) { return be ? pm_be16(p) : pm_le16(p); }
-static XXFC_MAYBE_UNUSED uint32_t r32(const uint8_t *p,bool be) { return be ? pm_be32(p) : pm_le32(p); }
-static XXFC_MAYBE_UNUSED uint64_t r64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint16_t r16(const uint8_t *p,bool be) { return be ? xx_data_get_u16(p, 2, 0, true) : xx_data_get_u16(p, 2, 0, false); }
+static XXFC_MAYBE_UNUSED uint32_t r32(const uint8_t *p,bool be) { return be ? xx_data_get_u32(p, 4, 0, true) : xx_data_get_u32(p, 4, 0, false); }
+static XXFC_MAYBE_UNUSED uint64_t r64(const uint8_t *p,bool be) { return be ? ((uint64_t)xx_data_get_u32(p, 4, 0, true)<<32)|xx_data_get_u32(p+4, 4, 0, true) : ((uint64_t)xx_data_get_u32(p+4, 4, 0, false)<<32)|xx_data_get_u32(p, 4, 0, false); }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[65]; uint32_t minor,header,w,height,depth=1,frames,levels,format,lowformat,i,j,faces=1; int64_t at; uint64_t n;
-    if(!pm_read(f,0,h,63) || xx_rt_memcmp(h,"VTF\0",4) || pm_le32(h+4)!=7 || (minor=pm_le32(h+8))>2) return false;
-    header=pm_le32(h+12); w=pm_le16(h+16); height=pm_le16(h+18); frames=pm_le16(h+24); levels=h[56]; format=pm_le32(h+52); lowformat=pm_le32(h+57);
+    if(!pm_read(f,0,h,63) || xx_rt_memcmp(h,"VTF\0",4) || xx_data_get_u32(h+4, 4, 0, false)!=7 || (minor=xx_data_get_u32(h+8, 4, 0, false))>2) return false;
+    header=xx_data_get_u32(h+12, 4, 0, false); w=xx_data_get_u16(h+16, 2, 0, false); height=xx_data_get_u16(h+18, 2, 0, false); frames=xx_data_get_u16(h+24, 2, 0, false); levels=h[56]; format=xx_data_get_u32(h+52, 4, 0, false); lowformat=xx_data_get_u32(h+57, 4, 0, false);
     if(!w || !height || !frames || !levels || levels>16 || header<(minor==2 ? 65U : 63U) || header>4096 || header>pm_available(f)) return false;
-    if(minor==2) { if(!pm_read(f,63,h+63,2) || !(depth=pm_le16(h+63))) return false; }
-    if(pm_le32(h+20)&0x4000) { if(w!=height || depth!=1) return false; faces=pm_le16(h+26)==0xffff ? 6 : 7; }
+    if(minor==2) { if(!pm_read(f,63,h+63,2) || !(depth=xx_data_get_u16(h+63, 2, 0, false))) return false; }
+    if(xx_data_get_u32(h+20, 4, 0, false)&0x4000) { if(w!=height || depth!=1) return false; faces=xx_data_get_u16(h+26, 2, 0, false)==0xffff ? 6 : 7; }
     if((uint64_t)frames*faces*levels>65536 || format>15 || (format!=0 && format!=2 && format!=3 && format!=12 && format!=13 && format!=14 && format!=15)) return false;
     at=header;
     if(h[61] || h[62]) {

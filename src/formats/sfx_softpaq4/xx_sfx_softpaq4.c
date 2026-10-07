@@ -50,18 +50,18 @@ static bool sp4_zip_legacy(Abstractformat *f, int64_t start, int64_t end,
     lower = size > 65557U ? size - 65557U : 0U;
     for (eocd = size - 22U;; --eocd) {
         if (!xx_rt_memcmp(bytes + eocd, "PK\x05\x06", 4U) &&
-            eocd + 22U + pm_le16(bytes + eocd + 20U) == size) {
+            eocd + 22U + xx_data_get_u16(bytes + eocd + 20U, 2, 0, false) == size) {
             found = true;
             break;
         }
         if (eocd == lower || (pd && xx_pd_is_stopped(pd))) break;
     }
-    if (!found || pm_le16(bytes + eocd + 4U) != 0U ||
-        pm_le16(bytes + eocd + 6U) != 0U ||
-        (count = pm_le16(bytes + eocd + 8U)) == 0U ||
-        count != pm_le16(bytes + eocd + 10U)) goto done;
-    dir_size = pm_le32(bytes + eocd + 12U);
-    dir_offset = pm_le32(bytes + eocd + 16U);
+    if (!found || xx_data_get_u16(bytes + eocd + 4U, 2, 0, false) != 0U ||
+        xx_data_get_u16(bytes + eocd + 6U, 2, 0, false) != 0U ||
+        (count = xx_data_get_u16(bytes + eocd + 8U, 2, 0, false)) == 0U ||
+        count != xx_data_get_u16(bytes + eocd + 10U, 2, 0, false)) goto done;
+    dir_size = xx_data_get_u32(bytes + eocd + 12U, 4, 0, false);
+    dir_offset = xx_data_get_u32(bytes + eocd + 16U, 4, 0, false);
     if (dir_size > eocd) goto done;
     dir = eocd - dir_size;
     bias = (int64_t)dir - (int64_t)dir_offset;
@@ -74,19 +74,19 @@ static bool sp4_zip_legacy(Abstractformat *f, int64_t start, int64_t end,
         if (cursor > eocd || eocd - cursor < 46U ||
             xx_rt_memcmp(bytes + cursor, "PK\x01\x02", 4U)) goto done;
         central = bytes + cursor;
-        record = 46U + pm_le16(central + 28U) +
-                 pm_le16(central + 30U) + pm_le16(central + 32U);
-        if (!pm_le16(central + 28U) || record > eocd - cursor ||
+        record = 46U + xx_data_get_u16(central + 28U, 2, 0, false) +
+                 xx_data_get_u16(central + 30U, 2, 0, false) + xx_data_get_u16(central + 32U, 2, 0, false);
+        if (!xx_data_get_u16(central + 28U, 2, 0, false) || record > eocd - cursor ||
             bias < 0 ||
-            (int64_t)pm_le32(central + 42U) > INT64_MAX - bias)
+            (int64_t)xx_data_get_u32(central + 42U, 4, 0, false) > INT64_MAX - bias)
             goto done;
-        local = bias + pm_le32(central + 42U);
+        local = bias + xx_data_get_u32(central + 42U, 4, 0, false);
         if (local < 0 || local > (int64_t)dir ||
             (int64_t)dir - local < 30 ||
             xx_rt_memcmp(bytes + local, "PK\x03\x04", 4U)) goto done;
-        flags = pm_le16(central + 8U);
-        local_flags = pm_le16(bytes + local + 6U);
-        method = pm_le16(central + 10U);
+        flags = xx_data_get_u16(central + 8U, 2, 0, false);
+        local_flags = xx_data_get_u16(bytes + local + 6U, 2, 0, false);
+        method = xx_data_get_u16(central + 10U, 2, 0, false);
         if (local_flags != flags) {
             if (method != 8U || (flags & 2U) ||
                 local_flags != (uint16_t)(flags | 2U)) goto done;
@@ -147,7 +147,7 @@ static bool sp4_candidate(Abstractformat *f, pm_stream *stream, int64_t marker,
         !pm_read(f, marker, descriptor, sizeof(descriptor)) ||
         xx_rt_memcmp(descriptor, "!3PS", 4U))
         return false;
-    flags = pm_le32(descriptor + 4U);
+    flags = xx_data_get_u32(descriptor + 4U, 4, 0, false);
     if (flags == 0U) {
         count = 4U;
         first = 8U;
@@ -159,8 +159,8 @@ static bool sp4_candidate(Abstractformat *f, pm_stream *stream, int64_t marker,
     } else return false;
     for (i = 0U; i < count; ++i) {
         const uint8_t *entry = descriptor + first + i * 8U;
-        records[i].size = pm_le32(entry);
-        records[i].offset = pm_le32(entry + 4U);
+        records[i].size = xx_data_get_u32(entry, 4, 0, false);
+        records[i].offset = xx_data_get_u32(entry + 4U, 4, 0, false);
         if (records[i].offset > (uint64_t)limit ||
             records[i].size > (uint64_t)limit - records[i].offset)
             return false;
@@ -232,14 +232,14 @@ static bool pm_parse(Abstractformat *f, pm_stream *stream, xx_pd_struct *pd) {
     bool okay = false;
     if (limit < 128 || limit > UINT32_MAX ||
         !pm_read(f, 0, mz, sizeof(mz)) ||
-        xx_rt_memcmp(mz, "MZ", 2U) || pm_le16(mz + 4U) == 0U ||
-        pm_le16(mz + 2U) > 511U)
+        xx_rt_memcmp(mz, "MZ", 2U) || xx_data_get_u16(mz + 4U, 2, 0, false) == 0U ||
+        xx_data_get_u16(mz + 2U, 2, 0, false) > 511U)
         return false;
-    headers = (uint64_t)pm_le16(mz + 8U) * 16U;
-    image = ((uint64_t)pm_le16(mz + 4U) - 1U) * 512U +
-            (pm_le16(mz + 2U) ? pm_le16(mz + 2U) : 512U);
-    relocation_end = (uint64_t)pm_le16(mz + 24U) +
-                     4U * pm_le16(mz + 6U);
+    headers = (uint64_t)xx_data_get_u16(mz + 8U, 2, 0, false) * 16U;
+    image = ((uint64_t)xx_data_get_u16(mz + 4U, 2, 0, false) - 1U) * 512U +
+            (xx_data_get_u16(mz + 2U, 2, 0, false) ? xx_data_get_u16(mz + 2U, 2, 0, false) : 512U);
+    relocation_end = (uint64_t)xx_data_get_u16(mz + 24U, 2, 0, false) +
+                     4U * xx_data_get_u16(mz + 6U, 2, 0, false);
     if (headers < 28U || headers > image || image >= (uint64_t)limit ||
         relocation_end > headers || image > SP4_SCAN_MAX)
         return false;

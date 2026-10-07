@@ -5,8 +5,9 @@
  */
 #include "xxfclib/formats/renpy_rpa/xx_renpy_rpa.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static XXFC_MAYBE_UNUSED uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)xx_data_get_u32(p, 4, 0, true)<<32)|xx_data_get_u32(p+4, 4, 0, true) : ((uint64_t)xx_data_get_u32(p+4, 4, 0, false)<<32)|xx_data_get_u32(p, 4, 0, false); }
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uint64_t n,uint64_t total) {
     size_t i;
@@ -28,14 +29,14 @@ static bool memo(rp *r) { if(r->at>=r->size) return false; if(r->p[r->at]=='q') 
 static bool integer(rp *r,uint64_t *v) {
     uint8_t op,n; size_t i; if(r->at>=r->size) return false; op=r->p[r->at++];
     if(op=='K') { if(r->at>=r->size) return false; *v=r->p[r->at++]; return true; }
-    if(op=='M') { if(r->size-r->at<2) return false; *v=pm_le16(r->p+r->at); r->at+=2; return true; }
-    if(op=='J') { if(r->size-r->at<4 || r->p[r->at+3]&128) return false; *v=pm_le32(r->p+r->at); r->at+=4; return true; }
+    if(op=='M') { if(r->size-r->at<2) return false; *v=xx_data_get_u16(r->p+r->at, 2, 0, false); r->at+=2; return true; }
+    if(op=='J') { if(r->size-r->at<4 || r->p[r->at+3]&128) return false; *v=xx_data_get_u32(r->p+r->at, 4, 0, false); r->at+=4; return true; }
     if(op!=0x8a || r->at>=r->size) { return false; } n=r->p[r->at++]; if(!n || n>8 || r->size-r->at<n || r->p[r->at+n-1]&128) return false;
     *v=0; for(i=0;i<n;++i) *v|=(uint64_t)r->p[r->at+i]<<(i*8); r->at+=n; return true;
 }
 static bool keyname(rp *r) {
     uint8_t op; uint32_t n; if(r->at>=r->size) return false; op=r->p[r->at++];
-    if(op=='X' || op=='T') { if(r->size-r->at<4) return false; n=pm_le32(r->p+r->at); r->at+=4; }
+    if(op=='X' || op=='T') { if(r->size-r->at<4) return false; n=xx_data_get_u32(r->p+r->at, 4, 0, false); r->at+=4; }
     else if(op=='U') { if(r->at>=r->size) return false; n=r->p[r->at++]; } else return false;
     if(!n || n>4096 || r->size-r->at<n) { return false; } r->at+=n; return memo(r);
 }
@@ -51,7 +52,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     packed=(uint8_t *)xx_mem_alloc(n); plain=(uint8_t *)xx_mem_alloc(8U*1024U*1024U); if(!packed || !plain || !pm_read(f,(int64_t)index,packed,n) || !xx_zlib_stream_header_is_valid(packed,n)) goto done;
     out=xx_io_mem_open(plain,8U*1024U*1024U); if(!out) goto done;
     ok=xx_deflate_unpack_memory_to_device_ex(packed+2,n-2,out,&used,false,pd); written=(size_t)xx_io_tell(out); xx_io_close(out); out=NULL;
-    if(!ok || used>n-6 || xx_zlib_stream_adler32(plain,written)!=pm_be32(packed+2+used)) { ok=false; goto done; } ok=false;
+    if(!ok || used>n-6 || xx_zlib_stream_adler32(plain,written)!=xx_data_get_u32(packed+2+used, 4, 0, true)) { ok=false; goto done; } ok=false;
     r.p=plain; r.size=written; r.at=0;
     if(!rb(&r,0x80) || !rb(&r,2) || !rb(&r,'}') || !memo(&r)) goto done;
     batch=r.at<r.size && r.p[r.at]=='('; if(batch) ++r.at;

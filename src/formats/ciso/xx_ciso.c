@@ -36,6 +36,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef CISO
 #define XX_CISO_FILE_TYPE XX_FILE_TYPE_CISO
@@ -105,27 +106,6 @@ static bool ciso_prefix_iso_record(xx_archive_record_state *state) {
                                                   prefixed);
     xx_str_free(prefixed);
     return result;
-}
-
-static uint16_t ciso_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static uint32_t ciso_le32(const uint8_t *b) {
-    return (uint32_t)ciso_le16(b) | ((uint32_t)ciso_le16(b + 2U) << 16U);
-}
-
-static uint64_t ciso_le64(const uint8_t *b) {
-    return (uint64_t)ciso_le32(b) | ((uint64_t)ciso_le32(b + 4U) << 32U);
-}
-
-static uint32_t ciso_be32(const uint8_t *b) {
-    return ((uint32_t)b[0] << 24U) | ((uint32_t)b[1] << 16U) |
-           ((uint32_t)b[2] << 8U) | (uint32_t)b[3];
-}
-
-static XXFC_MAYBE_UNUSED uint64_t ciso_be64(const uint8_t *b) {
-    return ((uint64_t)ciso_be32(b) << 32U) | (uint64_t)ciso_be32(b + 4U);
 }
 
 static bool ciso_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -364,9 +344,9 @@ static bool ciso_parse_dax(Abstractformat *format, ciso_stream **result) {
     if (size < (int64_t)sizeof(header) ||
         !ciso_read_at(format->device, format->base_address, header, sizeof(header)) ||
         xx_rt_memcmp(header, "DAX\0", 4U) != 0) return false;
-    plain_size = ciso_le32(header + 4U);
-    version = ciso_le32(header + 8U);
-    areas = ciso_le32(header + 12U);
+    plain_size = xx_data_get_u32(header + 4U, 4, 0, false);
+    version = xx_data_get_u32(header + 8U, 4, 0, false);
+    areas = xx_data_get_u32(header + 12U, 4, 0, false);
     if (!plain_size || (plain_size & 2047U) != 0U || version > 1U ||
         (version == 0U && areas) ||
         (frames = ((uint64_t)plain_size + 8191U) / 8192U) > CISO_MAX_BLOCKS ||
@@ -426,19 +406,19 @@ static bool ciso_parse(Abstractformat *format, ciso_stream **result) {
         return false;
 
     if (xx_rt_memcmp(header, "ZISO", 4U) == 0) {
-        if (header[20] != 1U || ciso_le32(header + 4U) != CISO_HEADER_SIZE ||
+        if (header[20] != 1U || xx_data_get_u32(header + 4U, 4, 0, false) != CISO_HEADER_SIZE ||
             header[22] != 0U || header[23] != 0U) return false;
         variant = 3U;
     } else if (header[20] == 2U) {
-        if (ciso_le32(header + 4U) != CISO_HEADER_SIZE ||
+        if (xx_data_get_u32(header + 4U, 4, 0, false) != CISO_HEADER_SIZE ||
             header[22] != 0U || header[23] != 0U) return false;
         variant = 2U;
     } else if (header[20] <= 1U) {
         variant = 1U;
     } else return false;
 
-    uncompressed = ciso_le64(header + 8U);
-    block_size = ciso_le32(header + 16U);
+    uncompressed = xx_data_get_u64(header + 8U, 8, 0, false);
+    block_size = xx_data_get_u32(header + 16U, 4, 0, false);
     align = header[21];
     if (uncompressed == 0U || block_size == 0U ||
         block_size > CISO_MAX_BLOCK_SIZE || align > 31U ||
@@ -498,7 +478,7 @@ static bool ciso_write_dax_member(Abstractformat *format, ciso_stream *stream,
                       table, (size_t)table_bytes)) goto done;
     for (frame = 0U; frame < areas; ++frame) {
         const uint8_t *area = table + frames * 6U + frame * 8U;
-        uint32_t start = ciso_le32(area), count = ciso_le32(area + 4U);
+        uint32_t start = xx_data_get_u32(area, 4, 0, false), count = xx_data_get_u32(area + 4U, 4, 0, false);
         uint64_t j;
         if (!count || start >= frames || count > frames - start) goto done;
         for (j = start; j < (uint64_t)start + count; ++j) {
@@ -507,8 +487,8 @@ static bool ciso_write_dax_member(Abstractformat *format, ciso_stream *stream,
         }
     }
     for (frame = 0U; frame < frames; ++frame) {
-        uint32_t start = ciso_le32(table + frame * 4U);
-        uint32_t length = ciso_le16(table + frames * 4U + frame * 2U);
+        uint32_t start = xx_data_get_u32(table + frame * 4U, 4, 0, false);
+        uint32_t length = xx_data_get_u16(table + frames * 4U + frame * 2U, 2, 0, false);
         uint64_t remaining = member->unpacked_size - frame * 8192U;
         size_t wanted = (size_t)(remaining < 8192U ? remaining : 8192U);
         size_t written = 0U;
@@ -571,8 +551,8 @@ static bool ciso_write_member(Abstractformat *format, ciso_stream *stream,
         goto done;
 
     for (block = 0U; block < blocks; ++block) {
-        uint32_t this_word = ciso_le32(index + block * 4U);
-        uint32_t next_word = ciso_le32(index + (block + 1U) * 4U);
+        uint32_t this_word = xx_data_get_u32(index + block * 4U, 4, 0, false);
+        uint32_t next_word = xx_data_get_u32(index + (block + 1U) * 4U, 4, 0, false);
         uint64_t start = (uint64_t)(this_word & 0x7fffffffU) << align;
         uint64_t end = (uint64_t)(next_word & 0x7fffffffU) << align;
         uint64_t extent;

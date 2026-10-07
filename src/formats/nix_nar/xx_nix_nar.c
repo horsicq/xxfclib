@@ -6,7 +6,7 @@
 #include "xxfclib/formats/nix_nar/xx_nix_nar.h"
 #include "../nix_nar/xx_eleventh_containers.h"
 
-static bool nr_str(nh_blob *b,uint64_t *at,uint64_t *start,uint64_t *n) {if(!nh_span(b,*at,8)) return false;*n=ec_le64(b->p+(size_t)*at);*at+=8;*start=*at;if(!nh_span(b,*at,*n)) return false;*at+=*n;return ec_pad(b,at,8);}
+static bool nr_str(nh_blob *b,uint64_t *at,uint64_t *start,uint64_t *n) {if(!nh_span(b,*at,8)) return false;*n=xx_data_get_u64(b->p+(size_t)*at, 8, 0, false);*at+=8;*start=*at;if(!nh_span(b,*at,*n)) return false;*at+=*n;return ec_pad(b,at,8);}
 static bool nr_token(nh_blob *b,uint64_t *at,const char *text) {uint64_t start,n;return nr_str(b,at,&start,&n) && n==xx_rt_strlen(text) && !xx_rt_memcmp(b->p+(size_t)start,text,(size_t)n);}
 static bool nr_node(Abstractformat *f,pm_stream *s,nh_blob *b,uint64_t *at,unsigned depth,unsigned *nodes) {
     uint64_t start,n,previous=0,previous_n=0;unsigned count=0;if(depth>32 || ++*nodes>4096 || !nr_token(b,at,"(") || !nr_token(b,at,"type") || !nr_str(b,at,&start,&n)) return false;

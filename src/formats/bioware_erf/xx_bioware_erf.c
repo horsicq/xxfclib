@@ -5,19 +5,20 @@
  */
 #include "xxfclib/formats/bioware_erf/xx_bioware_erf.h"
 #include "../bethesda_bsa/xx_game_table.h"
+#include "xxfclib/data/xx_data.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[160],key[40],r[8]; uint32_t count,kt,rt,step,i,langs,descs,dt; int64_t total=pm_available(f); uint64_t floor;
     if(!gm_read(f,total,0,h,160) || (xx_rt_memcmp(h,"ERF ",4) && xx_rt_memcmp(h,"MOD ",4) && xx_rt_memcmp(h,"HAK ",4) && xx_rt_memcmp(h,"SAV ",4))) return false;
     if(!xx_rt_memcmp(h+4,"V1.0",4)) step=24; else if(!xx_rt_memcmp(h+4,"V1.1",4)) step=40; else return false;
-    langs=pm_le32(h+8); descs=pm_le32(h+12); count=pm_le32(h+16); dt=pm_le32(h+20); kt=pm_le32(h+24); rt=pm_le32(h+28);
+    langs=xx_data_get_u32(h+8, 4, 0, false); descs=xx_data_get_u32(h+12, 4, 0, false); count=xx_data_get_u32(h+16, 4, 0, false); dt=xx_data_get_u32(h+20, 4, 0, false); kt=xx_data_get_u32(h+24, 4, 0, false); rt=xx_data_get_u32(h+28, 4, 0, false);
     if(count>65536 || langs>32 || kt<160 || rt<160 || !gm_range(total,kt,(uint64_t)count*step) || !gm_range(total,rt,(uint64_t)count*8) || (descs && (dt<160 || !gm_range(total,dt,descs)))) return false;
     floor=kt+(uint64_t)count*step; if(rt+(uint64_t)count*8>floor) floor=rt+(uint64_t)count*8;
     if(descs && (uint64_t)dt+descs>floor) { floor=(uint64_t)dt+descs; } s->size=(int64_t)floor;
     for(i=0;i<count;++i) {
         uint32_t id; if(gm_stopped(pd) || !gm_read(f,total,kt+(uint64_t)i*step,key,step)) return false;
-        id=pm_le32(key+step-8); if(id>=count || !gm_read(f,total,rt+(uint64_t)id*8,r,8)) return false;
-        if(!gm_add(f,s,"resource.bin",pm_le32(r),pm_le32(r+4),floor,total)) return false;
+        id=xx_data_get_u32(key+step-8, 4, 0, false); if(id>=count || !gm_read(f,total,rt+(uint64_t)id*8,r,8)) return false;
+        if(!gm_add(f,s,"resource.bin",xx_data_get_u32(r, 4, 0, false),xx_data_get_u32(r+4, 4, 0, false),floor,total)) return false;
     }
     return true;
 }

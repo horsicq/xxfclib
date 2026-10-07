@@ -50,6 +50,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef KPCK
 #define XX_KPCK_FILE_TYPE XX_FILE_TYPE_KPCK
@@ -95,11 +96,6 @@ typedef struct xx_kpck_stream_s {
 static void xx_kpck_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static uint32_t xx_kpck_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static bool xx_kpck_read_at(Abstractformat *self, int64_t offset,
                             uint8_t *buffer, size_t size) {
@@ -194,8 +190,8 @@ static xx_kpck_stream *xx_kpck_parse(Abstractformat *self, xx_pd_struct *pd) {
     }
     if (xx_rt_memcmp(header, "KPCK", 4U) != 0) return NULL;
 
-    raw_size = xx_kpck_le32(header + 4);
-    method = xx_kpck_le32(header + 8);
+    raw_size = xx_data_get_u32(header + 4, 4, 0, false);
+    method = xx_data_get_u32(header + 8, 4, 0, false);
     /* The method word is the kpack flag bitfield: LZMA always set, at most
      * one of the two call-trick filters, nothing else.  A word outside that
      * is not something this reader can describe or decode, so it is rejected

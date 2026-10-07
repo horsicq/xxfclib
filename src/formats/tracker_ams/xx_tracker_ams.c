@@ -6,10 +6,10 @@
 #endif
 static bool e8_parse(e8_blob*c) {
  unsigned samples,patterns,orders,chn,i;size_t p,headers;uint32_t lens[255];
- if(!e8_range(c,0,18) || !e8_eq(c,0,"Extreme",7) || c->b[8]!=1 || c->b[7]>2 || c->b[9]&0xe0 || (samples=c->b[10])>255 || !(patterns=pm_le16(c->b+11)) || patterns>1024 || !(orders=pm_le16(c->b+13)) || orders>256) {return false; } chn=(c->b[9]&31U)+1U;p=18U+pm_le16(c->b+16);
- for(i=0;i<samples;++i){uint8_t flags;if(!e8_range(c,p,17))return false;flags=c->b[p+16];lens[i]=pm_le32(c->b+p);if(flags&~0x84U || c->b[p+15]>127 || pm_le32(c->b+p+4)>pm_le32(c->b+p+8) || pm_le32(c->b+p+8)>lens[i] || ((flags&0x84) && lens[i]>E8_LIMIT/2U))return false;if(flags&0x84)lens[i]*=2U;p+=17;}
- if(!e8_strings(c,&p,1U+samples+chn+patterns) || !e8_range(c,p,2)) {return false; } {unsigned z=pm_le16(c->b+p);p+=2;if(!e8_range(c,p,z))return false;p+=z;}if(!e8_range(c,p,2U*orders))return false;for(i=0;i<orders;++i)if(pm_le16(c->b+p+2U*i)>=patterns)return false;p+=2U*orders;headers=p;if(!e8_add(c,"headers-text-orders.bin",0,headers))return false;
- for(i=0;i<patterns;++i){uint32_t z;if(!e8_range(c,p,4) || !(z=pm_le32(c->b+p)) || !e8_range(c,p+4,z))return false;if(!e8_add(c,"encoded-pattern.bin",p,4U+z))return false;p+=4U+z;}
+ if(!e8_range(c,0,18) || !e8_eq(c,0,"Extreme",7) || c->b[8]!=1 || c->b[7]>2 || c->b[9]&0xe0 || (samples=c->b[10])>255 || !(patterns=xx_data_get_u16(c->b+11, 2, 0, false)) || patterns>1024 || !(orders=xx_data_get_u16(c->b+13, 2, 0, false)) || orders>256) {return false; } chn=(c->b[9]&31U)+1U;p=18U+xx_data_get_u16(c->b+16, 2, 0, false);
+ for(i=0;i<samples;++i){uint8_t flags;if(!e8_range(c,p,17))return false;flags=c->b[p+16];lens[i]=xx_data_get_u32(c->b+p, 4, 0, false);if(flags&~0x84U || c->b[p+15]>127 || xx_data_get_u32(c->b+p+4, 4, 0, false)>xx_data_get_u32(c->b+p+8, 4, 0, false) || xx_data_get_u32(c->b+p+8, 4, 0, false)>lens[i] || ((flags&0x84) && lens[i]>E8_LIMIT/2U))return false;if(flags&0x84)lens[i]*=2U;p+=17;}
+ if(!e8_strings(c,&p,1U+samples+chn+patterns) || !e8_range(c,p,2)) {return false; } {unsigned z=xx_data_get_u16(c->b+p, 2, 0, false);p+=2;if(!e8_range(c,p,z))return false;p+=z;}if(!e8_range(c,p,2U*orders))return false;for(i=0;i<orders;++i)if(xx_data_get_u16(c->b+p+2U*i, 2, 0, false)>=patterns)return false;p+=2U*orders;headers=p;if(!e8_add(c,"headers-text-orders.bin",0,headers))return false;
+ for(i=0;i<patterns;++i){uint32_t z;if(!e8_range(c,p,4) || !(z=xx_data_get_u32(c->b+p, 4, 0, false)) || !e8_range(c,p+4,z))return false;if(!e8_add(c,"encoded-pattern.bin",p,4U+z))return false;p+=4U+z;}
  for(i=0;i<samples;++i){if(!e8_range(c,p,lens[i]))return false;if(lens[i] && !e8_add(c,"sample.bin",p,lens[i]))return false;p+=lens[i];}return p==c->n;
 }
 static bool pm_parse(Abstractformat*f,pm_stream*s,xx_pd_struct*pd) {return e8_loaded(f,s,pd,e8_parse);}

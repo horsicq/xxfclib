@@ -5,12 +5,13 @@
  */
 #include "xxfclib/formats/llvm_bitcode_wrapper/xx_llvm_bitcode_wrapper.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[20],bc[4]; uint32_t off,size; (void)pd;
-    if(!pm_read(f,0,h,20) || pm_le32(h)!=0x0b17c0de || pm_le32(h+4)!=0) return false;
-    off=pm_le32(h+8); size=pm_le32(h+12);
+    if(!pm_read(f,0,h,20) || xx_data_get_u32(h, 4, 0, false)!=0x0b17c0de || xx_data_get_u32(h+4, 4, 0, false)!=0) return false;
+    off=xx_data_get_u32(h+8, 4, 0, false); size=xx_data_get_u32(h+12, 4, 0, false);
     if(off<20 || size<4 || off>pm_available(f) || size>(uint64_t)(pm_available(f)-off) || !pm_read(f,off,bc,4) || xx_rt_memcmp(bc,"BC\xc0\xde",4)) return false;
     if(!pm_add(f,s,"module.bc",off,size)) return false;
     s->size=(int64_t)off+size; return true;

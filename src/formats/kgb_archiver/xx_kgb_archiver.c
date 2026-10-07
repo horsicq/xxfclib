@@ -31,6 +31,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* The private codec pipe operates only on this explicitly bounded blob. */
 typedef struct ac_blob {
@@ -97,15 +98,6 @@ typedef struct kgb_stream {
     uint8_t *decoded;
     bool decoded_valid;
 } kgb_stream;
-
-static uint32_t kgb_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
-           ((uint32_t)p[3] << 24);
-}
-
-static uint64_t kgb_le64(const uint8_t *p) {
-    return (uint64_t)kgb_le32(p) | ((uint64_t)kgb_le32(p + 4) << 32);
-}
 
 static bool kgb_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -268,7 +260,7 @@ static bool kgb_parse(Abstractformat *format, kgb_header *out,
     header.encrypted = head[8] != 0U;
     header.algorithm = head[9];
     header.mode = head[10];
-    header.count = kgb_le32(head + 11);
+    header.count = xx_data_get_u32(head + 11, 4, 0, false);
     if (header.count == 0U || header.count > KGB_MAX_COUNT ||
         (int64_t)header.count >
             (avail - XX_KGB_ARCHIVER_HEADER_SIZE) / XX_KGB_ARCHIVER_ENTRY_SIZE)
@@ -287,11 +279,11 @@ static bool kgb_parse(Abstractformat *format, kgb_header *out,
         size_t length;
         bool unsafe;
         if (!kgb_read_at(format->device, offset, entry, sizeof(entry)) ||
-            kgb_le32(entry) != KGB_RECORD_SIZE)
+            xx_data_get_u32(entry, 4, 0, false) != KGB_RECORD_SIZE)
             goto fail;
-        attrib = kgb_le32(record);
-        size = kgb_le64(record + 32);
-        sum = kgb_le64(entry + 4 + KGB_RECORD_SIZE);
+        attrib = xx_data_get_u32(record, 4, 0, false);
+        size = xx_data_get_u64(record + 32, 8, 0, false);
+        sum = xx_data_get_u64(entry + 4 + KGB_RECORD_SIZE, 8, 0, false);
         if ((attrib & 0xFF000000U) != 0U || size > (uint64_t)KGB_MAX_MEMBER ||
             sum > size * 255U ||
             !kgb_decode_name(record + KGB_NAME_OFFSET, name, &length, &unsafe))
@@ -305,7 +297,7 @@ static bool kgb_parse(Abstractformat *format, kgb_header *out,
             item->size = size;
             item->sum = sum;
             item->attrib = attrib;
-            item->mtime = (int64_t)kgb_le64(record + 24);
+            item->mtime = (int64_t)xx_data_get_u64(record + 24, 8, 0, false);
             item->index = index;
             item->unsafe = unsafe || !kgb_safe_name(name);
             item->data_offset = -1;
@@ -495,7 +487,7 @@ static bool kgb_decode_stream(Abstractformat *format,
         }
         if (password_size) xx_rt_memcpy(key, password, password_size);
         if (converted) xx_str_free(converted);
-        expected = kgb_le64(blob.p + begin - 8U);
+        expected = xx_data_get_u64(blob.p + begin - 8U, 8, 0, false);
         for (uint32_t block = 0U; block < packed; block += 16U) {
             if ((pd && xx_pd_is_stopped(pd)) ||
                 !xx_aes_cbc_decrypt(blob.p + begin + block, 16U, key,

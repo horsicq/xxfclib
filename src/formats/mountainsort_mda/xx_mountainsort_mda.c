@@ -5,10 +5,10 @@
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[12];nh_blob b={0};bool ok=false,wide,ended=false;uint32_t type,width,nd;uint64_t at=12,total=1,i,n;
-    if(!pm_read(f,0,h,12)) { return false; } type=0U-pm_le32(h);width=pm_le32(h+4);nd=pm_le32(h+8);wide=(nd>>31)!=0;if(wide) nd=0U-nd;
+    if(!pm_read(f,0,h,12)) { return false; } type=0U-xx_data_get_u32(h, 4, 0, false);width=xx_data_get_u32(h+4, 4, 0, false);nd=xx_data_get_u32(h+8, 4, 0, false);wide=(nd>>31)!=0;if(wide) nd=0U-nd;
     if(type<2 || type>8 || (type==2 ? width!=1:type==3 || type==5 || type==8 ? width!=4:type==4 || type==6 ? width!=2:width!=8) || nd<2 || nd>6) return false;
     NH_NEED(nh_load(f,&b,pd));
-    for(i=0;i<nd;++i) {unsigned k=wide ? 8:4;NH_NEED(nh_span(&b,at,k));n=wide ? fd_le64(b.p+(size_t)at):pm_le32(b.p+(size_t)at);at+=k;NH_NEED(n && n<=16000000 && !ended && fd_mul(total,n,&total));}
+    for(i=0;i<nd;++i) {unsigned k=wide ? 8:4;NH_NEED(nh_span(&b,at,k));n=wide ? xx_data_get_u64(b.p+(size_t)at, 8, 0, false):xx_data_get_u32(b.p+(size_t)at, 4, 0, false);at+=k;NH_NEED(n && n<=16000000 && !ended && fd_mul(total,n,&total));}
     NH_NEED(fd_mul(total,width,&n) && b.n==at+n);if(type==3 || type==7) NH_NEED(nh_floats(&b,at,n,width,false));
     NH_NEED(nh_add(f,s,&b,"header",0,at) && nh_add(f,s,&b,"array",at,n));s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;

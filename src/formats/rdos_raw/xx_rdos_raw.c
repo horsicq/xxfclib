@@ -1,10 +1,11 @@
 /* SPDX-License-Identifier: MIT. Original music framing derived independently from primary AdPlug loader. */
 #include "xxfclib/formats/rdos_raw/xx_rdos_raw.h"
 #include "../xx_sixteenth_media.h"
+#include "xxfclib/data/xx_data.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  m16_blob b={0};uint64_t at=10,start;bool stop=false,ok=false;
- M16_NEED(m16_load(f,&b,pd)&&m16_tag(&b,0,"RAWADATA",8)&&m16_span(&b,0,12)&&pm_le16(b.p+8)&&m16_emit(f,s,&b,"descriptor.raw",0,10));
- while(at<b.n){uint8_t value,command;M16_NEED(m16_span(&b,at,2)&&m16_work(&b,1));value=b.p[(size_t)at];command=b.p[(size_t)at+1];at+=2;if(value==255&&command==255){stop=true;break;}if(command==2){if(!value){M16_NEED(m16_span(&b,at,2)&&pm_le16(b.p+(size_t)at));at+=2;}else M16_NEED(value<=2);}}
+ M16_NEED(m16_load(f,&b,pd)&&m16_tag(&b,0,"RAWADATA",8)&&m16_span(&b,0,12)&&xx_data_get_u16(b.p+8, 2, 0, false)&&m16_emit(f,s,&b,"descriptor.raw",0,10));
+ while(at<b.n){uint8_t value,command;M16_NEED(m16_span(&b,at,2)&&m16_work(&b,1));value=b.p[(size_t)at];command=b.p[(size_t)at+1];at+=2;if(value==255&&command==255){stop=true;break;}if(command==2){if(!value){M16_NEED(m16_span(&b,at,2)&&xx_data_get_u16(b.p+(size_t)at, 2, 0, false));at+=2;}else M16_NEED(value<=2);}}
  M16_NEED(stop&&m16_emit(f,s,&b,"opl-commands.raw",10,at-10));if(at<b.n){start=at;M16_NEED(b.p[(size_t)at++]==26&&m16_z(&b,&at,b.n,40));if(at<b.n&&b.p[(size_t)at]==27){++at;M16_NEED(m16_z(&b,&at,b.n,40));}if(at<b.n&&b.p[(size_t)at]==28){++at;M16_NEED(m16_z(&b,&at,b.n,1023));}M16_NEED(at==b.n&&m16_emit(f,s,&b,"metadata.raw",start,at-start));}
  M16_NEED(at==b.n);s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;

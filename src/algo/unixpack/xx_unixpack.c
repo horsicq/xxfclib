@@ -5,6 +5,7 @@
 #include "xxfclib/algo/unixpack/xx_unixpack.h"
 
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_PACK_MAX_LEVEL 24U
 #define XX_PACK_MAX_SYMBOLS 257U
@@ -131,15 +132,6 @@ bool xx_unixpack_decode_raw(const uint8_t *input, size_t input_size,
                                  written, false);
 }
 
-static uint16_t xx_pack_read16le(const uint8_t *input) {
-    return (uint16_t)input[0] | (uint16_t)((uint16_t)input[1] << 8U);
-}
-
-static uint32_t xx_pack_read32be(const uint8_t *input) {
-    return ((uint32_t)input[0] << 24U) | ((uint32_t)input[1] << 16U) |
-           ((uint32_t)input[2] << 8U) | (uint32_t)input[3];
-}
-
 static bool xx_pack_build_old_tree(const uint16_t *tree, size_t tree_count,
                                    xx_pack_node *nodes, size_t *node_count,
                                    size_t node, unsigned length,
@@ -175,7 +167,7 @@ static bool xx_pack_read_old_bit(const uint8_t *input, size_t input_size,
         if (*input_pos > input_size || input_size - *input_pos < 2U) {
             return false;
         }
-        *word = xx_pack_read16le(input + *input_pos);
+        *word = xx_data_get_u16(input + *input_pos, 2, 0, false);
         *input_pos += 2U;
         *bits_left = 16U;
     }
@@ -201,7 +193,7 @@ static bool xx_pack_decode_old(const uint8_t *input, size_t input_size,
         input_size < 2U) {
         return false;
     }
-    tree_count = xx_pack_read16le(input);
+    tree_count = xx_data_get_u16(input, 2, 0, false);
     input_pos = 2U;
     if (tree_count < 2U || tree_count >= 1024U) return false;
     for (index = 0U; index < tree_count; ++index) {
@@ -210,7 +202,7 @@ static bool xx_pack_decode_old(const uint8_t *input, size_t input_size,
         value = input[input_pos++];
         if (value == UINT8_C(0xff)) {
             if (input_size - input_pos < 2U) return false;
-            tree[index] = xx_pack_read16le(input + input_pos);
+            tree[index] = xx_data_get_u16(input + input_pos, 2, 0, false);
             input_pos += 2U;
         } else {
             tree[index] = value;
@@ -256,9 +248,9 @@ bool xx_unixpack_parse_header(const void *source, size_t source_size,
     }
     old_version = input[1] == UINT8_C(0x1f);
     raw_size = old_version ?
-                   ((uint64_t)xx_pack_read16le(input + 2U) << 16U) |
-                       xx_pack_read16le(input + 4U) :
-                   xx_pack_read32be(input + 2U);
+                   ((uint64_t)xx_data_get_u16(input + 2U, 2, 0, false) << 16U) |
+                       xx_data_get_u16(input + 4U, 2, 0, false) :
+                   xx_data_get_u32(input + 2U, 4, 0, true);
     if (old_version && raw_size == 0U) return false;
     if (uncompressed_size) *uncompressed_size = raw_size;
     if (is_old_version) *is_old_version = old_version;

@@ -76,6 +76,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef WIM
 #define XX_WIM_FILE_TYPE XX_FILE_TYPE_WIM
@@ -284,18 +285,6 @@ typedef struct wim_sink_s {
 /* ---------------------------------------------------------------------- */
 /* Small helpers                                                           */
 
-static uint16_t wim_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static uint32_t wim_le32(const uint8_t *b) {
-    return (uint32_t)wim_le16(b) | ((uint32_t)wim_le16(b + 2U) << 16U);
-}
-
-static uint64_t wim_le64(const uint8_t *b) {
-    return (uint64_t)wim_le32(b) | ((uint64_t)wim_le32(b + 4U) << 32U);
-}
-
 static bool wim_is_zero_hash(const uint8_t *hash) {
     unsigned i;
     for (i = 0U; i < WIM_HASH_SIZE; ++i)
@@ -365,10 +354,10 @@ static bool wim_read_ra(wim_model *m, uint64_t offset, void *buffer,
 }
 
 static void wim_parse_reshdr(const uint8_t *raw, wim_reshdr *r) {
-    r->packed = wim_le64(raw) & UINT64_C(0x00FFFFFFFFFFFFFF);
+    r->packed = xx_data_get_u64(raw, 8, 0, false) & UINT64_C(0x00FFFFFFFFFFFFFF);
     r->flags = raw[7];
-    r->offset = wim_le64(raw + 8U);
-    r->size = wim_le64(raw + 16U);
+    r->offset = xx_data_get_u64(raw + 8U, 8, 0, false);
+    r->size = xx_data_get_u64(raw + 16U, 8, 0, false);
 }
 
 static bool wim_reshdr_fits(const wim_reshdr *r, int64_t avail) {
@@ -396,13 +385,13 @@ static bool wim_read_header(wim_model *m) {
     if (!wim_read_at(m->device, m->base, header, want, m->io_capacity) ||
         xx_rt_memcmp(header, "MSWIM\0\0\0", 8U) != 0)
         return false;
-    h->header_size = wim_le32(header + 8U);
-    h->version = wim_le32(header + 12U);
-    h->flags = wim_le32(header + 16U);
-    h->chunk_size = wim_le32(header + 20U);
-    h->part = wim_le16(header + 0x28U);
-    h->parts = wim_le16(header + 0x2AU);
-    h->image_count = wim_le32(header + 0x2CU);
+    h->header_size = xx_data_get_u32(header + 8U, 4, 0, false);
+    h->version = xx_data_get_u32(header + 12U, 4, 0, false);
+    h->flags = xx_data_get_u32(header + 16U, 4, 0, false);
+    h->chunk_size = xx_data_get_u32(header + 20U, 4, 0, false);
+    h->part = xx_data_get_u16(header + 0x28U, 2, 0, false);
+    h->parts = xx_data_get_u16(header + 0x2AU, 2, 0, false);
+    h->image_count = xx_data_get_u32(header + 0x2CU, 4, 0, false);
     if (h->header_size < WIM_HEADER_MIN || h->header_size > WIM_HEADER_MAX ||
         (int64_t)h->header_size > m->avail)
         return false;
@@ -523,9 +512,9 @@ static bool wim_load_solid_header(wim_model *m, wim_solid *sd) {
     if (sd->packed < WIM_SOLID_HEADER ||
         !wim_read_rel(m, sd->offset, head, sizeof(head)))
         return false;
-    sd->usize = wim_le64(head);
-    chunk = wim_le32(head + 8U);
-    sd->codec = wim_le32(head + 12U);
+    sd->usize = xx_data_get_u64(head, 8, 0, false);
+    chunk = xx_data_get_u32(head + 8U, 4, 0, false);
+    sd->codec = xx_data_get_u32(head + 12U, 4, 0, false);
     sd->chunk_size = chunk;
     if (chunk < 4096U || chunk > XX_WIM_CODEC_MAX_CHUNK ||
         (chunk & (chunk - 1U)) != 0U || sd->codec > XX_WIM_CODEC_LZMS ||
@@ -578,7 +567,7 @@ static bool wim_load_table(wim_model *m) {
 
     for (i = 0U, cap = 0U; i < entries; ++i) {
         const uint8_t *e = raw + i * WIM_LOOKUP_ENTRY_SIZE;
-        if ((e[7] & WIM_RES_SOLID) != 0U && wim_le64(e + 16U) == WIM_SOLID_MAGIC)
+        if ((e[7] & WIM_RES_SOLID) != 0U && xx_data_get_u64(e + 16U, 8, 0, false) == WIM_SOLID_MAGIC)
             ++cap;
     }
     m->solids = (wim_solid *)xx_mem_calloc(cap + 1U, sizeof(wim_solid));
@@ -590,7 +579,7 @@ static bool wim_load_table(wim_model *m) {
     for (i = 0U; i < entries; ++i) {
         const uint8_t *e = raw + i * WIM_LOOKUP_ENTRY_SIZE;
         wim_reshdr r;
-        uint16_t part = wim_le16(e + 24U);
+        uint16_t part = xx_data_get_u16(e + 24U, 2, 0, false);
         wim_parse_reshdr(e, &r);
         if ((r.flags & WIM_RES_SOLID) != 0U) {
             if (!in_run) {
@@ -626,7 +615,7 @@ static bool wim_load_table(wim_model *m) {
             xx_rt_memcpy(b->hash, e + 30U, WIM_HASH_SIZE);
             b->flags = r.flags;
             b->part = part;
-            b->refcount = wim_le32(e + 26U);
+            b->refcount = xx_data_get_u32(e + 26U, 4, 0, false);
             b->table_index = (uint32_t)i;
             b->offset = r.offset;
             if ((r.flags & WIM_RES_SOLID) != 0U) {
@@ -820,8 +809,8 @@ static bool wim_read_chunked_buffered(wim_model *m, uint64_t offset, uint64_t pa
                     return false;
             }
             end = entry == 4U
-                      ? wim_le32((table_capacity < entry ? single_entry : table) + (size_t)(i - cached_first) * 4U)
-                      : wim_le64((table_capacity < entry ? single_entry : table) + (size_t)(i - cached_first) * 8U);
+                      ? xx_data_get_u32((table_capacity < entry ? single_entry : table) + (size_t)(i - cached_first) * 4U, 4, 0, false)
+                      : xx_data_get_u64((table_capacity < entry ? single_entry : table) + (size_t)(i - cached_first) * 8U, 8, 0, false);
         } else {
             end = data_len;
         }
@@ -895,7 +884,7 @@ static bool wim_solid_load(wim_model *m, size_t index) {
                              want, table_end))
                 goto fail;
         }
-        csize = wim_le32(sizes + slot * 4U);
+        csize = xx_data_get_u32(sizes + slot * 4U, 4, 0, false);
         usize = i + 1U < sd->chunk_count ? sd->chunk_size
                                          : sd->usize - i * sd->chunk_size;
         sd->chunk_start[i] = sum;
@@ -1342,9 +1331,9 @@ static char *wim_component(const uint8_t *utf16, size_t units) {
     if (!s) return NULL;
     s[n++] = '_'; /* room for a device prefix; dropped below if unused */
     while (i < units) {
-        uint32_t cp = wim_le16(utf16 + 2U * i++);
+        uint32_t cp = xx_data_get_u16(utf16 + 2U * i++, 2, 0, false);
         if (cp >= 0xD800U && cp <= 0xDBFFU && i < units) {
-            uint32_t lo = wim_le16(utf16 + 2U * i);
+            uint32_t lo = xx_data_get_u16(utf16 + 2U * i, 2, 0, false);
             if (lo >= 0xDC00U && lo <= 0xDFFFU) {
                 cp = 0x10000U + ((cp - 0xD800U) << 10U) + (lo - 0xDC00U);
                 ++i;
@@ -1612,11 +1601,11 @@ static bool wim_stream_entry(wim_walk *w, uint64_t at, uint64_t *step,
     uint64_t length, aligned;
     size_t bytes;
     if (at > w->size - 8U || (at & 7U) != 0U) return false;
-    length = wim_le64(w->meta + at);
+    length = xx_data_get_u64(w->meta + at, 8, 0, false);
     if (length < WIM_STREAM_FIXED || length > w->size) return false;
     aligned = (length + 7U) & ~(uint64_t)7U;
     if (aligned > w->size - at || !wim_mark(w, at)) return false;
-    bytes = wim_le16(w->meta + at + 0x24U);
+    bytes = xx_data_get_u16(w->meta + at + 0x24U, 2, 0, false);
     if ((uint64_t)WIM_STREAM_FIXED + bytes > length || (bytes & 1U) != 0U)
         return false;
     *step = aligned;
@@ -1702,10 +1691,10 @@ static bool wim_add_named_streams(wim_walk *w, uint64_t first,
         char *component, *joined;
         bool full, named;
         /* Already validated by wim_classify; re-read without re-marking. */
-        step = (wim_le64(w->meta + at) + 7U) & ~(uint64_t)7U;
+        step = (xx_data_get_u64(w->meta + at, 8, 0, false) + 7U) & ~(uint64_t)7U;
         hash = w->meta + at + 0x10U;
         name = w->meta + at + WIM_STREAM_FIXED;
-        name_bytes = wim_le16(w->meta + at + 0x24U);
+        name_bytes = xx_data_get_u16(w->meta + at + 0x24U, 2, 0, false);
         at += step;
         if (name_bytes == 0U) continue;
         if (!holder) {
@@ -1765,12 +1754,12 @@ static bool wim_walk_image(wim_model *m, const uint8_t *meta, size_t size,
     uint32_t total;
     bool ok = true;
     if (size < 8U) return false;
-    total = wim_le32(meta);
+    total = xx_data_get_u32(meta, 4, 0, false);
     dir_start = ((uint64_t)(total < 8U ? 8U : total) + 7U) & ~(uint64_t)7U;
     if (dir_start > size || size - dir_start < WIM_DENTRY_FIXED) return false;
-    if ((wim_le32(meta + dir_start + 8U) & WIM_ATTR_DIRECTORY) == 0U)
+    if ((xx_data_get_u32(meta + dir_start + 8U, 4, 0, false) & WIM_ATTR_DIRECTORY) == 0U)
         return false;
-    root_sub = wim_le64(meta + dir_start + 0x10U);
+    root_sub = xx_data_get_u64(meta + dir_start + 0x10U, 8, 0, false);
     if (root_sub == 0U) return true;
     w.m = m;
     w.meta = meta;
@@ -1811,7 +1800,7 @@ static bool wim_walk_image(wim_model *m, const uint8_t *meta, size_t size,
             --depth;
             continue;
         }
-        length = wim_le64(meta + at);
+        length = xx_data_get_u64(meta + at, 8, 0, false);
         aligned = (length + 7U) & ~(uint64_t)7U;
         if (length > size || aligned <= 8U || length < WIM_DENTRY_FIXED ||
             aligned > size - at || !wim_mark(&w, at)) {
@@ -1819,12 +1808,12 @@ static bool wim_walk_image(wim_model *m, const uint8_t *meta, size_t size,
             continue;
         }
         d = meta + at;
-        attributes = wim_le32(d + 8U);
-        sub = wim_le64(d + 0x10U);
-        timestamp = wim_le64(d + 0x38U);
-        tag = wim_le32(d + 0x58U);
-        extra_count = wim_le16(d + 0x60U);
-        name_bytes = wim_le16(d + 0x64U);
+        attributes = xx_data_get_u32(d + 8U, 4, 0, false);
+        sub = xx_data_get_u64(d + 0x10U, 8, 0, false);
+        timestamp = xx_data_get_u64(d + 0x38U, 8, 0, false);
+        tag = xx_data_get_u32(d + 0x58U, 4, 0, false);
+        extra_count = xx_data_get_u16(d + 0x60U, 2, 0, false);
+        name_bytes = xx_data_get_u16(d + 0x64U, 2, 0, false);
         reparse = (attributes & WIM_ATTR_REPARSE) != 0U;
         if ((uint64_t)WIM_DENTRY_FIXED + name_bytes > length ||
             (name_bytes & 1U) != 0U ||
@@ -2223,11 +2212,11 @@ static bool wim_link_name(wim_model *m, const wim_member *member,
     size = (size_t)b->size;
     header = member->reparse_tag == WIM_TAG_SYMLINK ? 12U : 8U;
     if (size < header) goto fail;
-    off_a = wim_le16(*data + 4U); /* print name */
-    len_a = wim_le16(*data + 6U);
-    off_b = wim_le16(*data);      /* substitute name */
-    len_b = wim_le16(*data + 2U);
-    *relative = header == 12U && (wim_le32(*data + 8U) & 1U) != 0U;
+    off_a = xx_data_get_u16(*data + 4U, 2, 0, false); /* print name */
+    len_a = xx_data_get_u16(*data + 6U, 2, 0, false);
+    off_b = xx_data_get_u16(*data, 2, 0, false);      /* substitute name */
+    len_b = xx_data_get_u16(*data + 2U, 2, 0, false);
+    *relative = header == 12U && (xx_data_get_u32(*data + 8U, 4, 0, false) & 1U) != 0U;
     off = len_a != 0U ? off_a : off_b;
     *len = len_a != 0U ? len_a : len_b;
     if (*len == 0U || (*len & 1U) != 0U || off > size - header ||
@@ -2256,12 +2245,12 @@ static char *wim_link_text(wim_model *m, const wim_member *member,
     s = (char *)xx_mem_alloc(units * 3U + 1U);
     if (s) {
         while (i < units) {
-            uint32_t cp = wim_le16(p + 2U * i++);
+            uint32_t cp = xx_data_get_u16(p + 2U * i++, 2, 0, false);
             if (cp >= 0xD800U && cp <= 0xDBFFU && i < units &&
-                wim_le16(p + 2U * i) >= 0xDC00U &&
-                wim_le16(p + 2U * i) <= 0xDFFFU) {
+                xx_data_get_u16(p + 2U * i, 2, 0, false) >= 0xDC00U &&
+                xx_data_get_u16(p + 2U * i, 2, 0, false) <= 0xDFFFU) {
                 cp = 0x10000U + ((cp - 0xD800U) << 10U) +
-                     (wim_le16(p + 2U * i) - 0xDC00U);
+                     (xx_data_get_u16(p + 2U * i, 2, 0, false) - 0xDC00U);
                 ++i;
             } else if (cp >= 0xD800U && cp <= 0xDFFFU) {
                 cp = 0xFFFDU;
@@ -2315,13 +2304,13 @@ static char *wim_link_target(wim_model *m, const wim_member *member,
     {
         size_t units = len / 2U, start = 0U, k;
         for (k = 0U; k <= units; ++k) {
-            bool end = k == units || wim_le16(p + 2U * k) == '\\' ||
-                       wim_le16(p + 2U * k) == '/';
+            bool end = k == units || xx_data_get_u16(p + 2U * k, 2, 0, false) == '\\' ||
+                       xx_data_get_u16(p + 2U * k, 2, 0, false) == '/';
             if (!end) continue;
-            if (k - start == 1U && wim_le16(p + 2U * start) == '.') {
+            if (k - start == 1U && xx_data_get_u16(p + 2U * start, 2, 0, false) == '.') {
                 /* stays */
-            } else if (k - start == 2U && wim_le16(p + 2U * start) == '.' &&
-                       wim_le16(p + 2U * start + 2U) == '.') {
+            } else if (k - start == 2U && xx_data_get_u16(p + 2U * start, 2, 0, false) == '.' &&
+                       xx_data_get_u16(p + 2U * start + 2U, 2, 0, false) == '.') {
                 if (n == 0U) goto done; /* leaves the image */
                 while (n > 0U && out[n - 1U] != '/') --n;
                 if (n > 0U) --n;

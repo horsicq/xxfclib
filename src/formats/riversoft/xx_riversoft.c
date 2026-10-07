@@ -39,6 +39,7 @@
 #include "xxfclib/algo/dcl/xx_dcl.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_RIVERSOFT_COPY_CHUNK (64 * 1024)
 
@@ -145,8 +146,6 @@ static bool xx_riversoft_add(xx_riversoft_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_riversoft_le16(const uint8_t *data);
-static uint32_t xx_riversoft_le32(const uint8_t *data);
 static bool xx_riversoft_name_valid(const char *name, int32_t size);
 static xx_riversoft_stream *xx_riversoft_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_riversoft_decode(Abstractformat *self, const xx_riversoft_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
@@ -155,15 +154,6 @@ static bool xx_riversoft_decode(Abstractformat *self, const xx_riversoft_member 
 /* Turbo Pascal ShortString[12]: one length byte plus a fixed 12-byte body. */
 /* The record count is a u16, so it cannot exceed this; the cap keeps a later
  * widening of the field from becoming an unbounded walk. */
-
-static uint16_t xx_riversoft_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_riversoft_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* Names are DOS 8.3 names written by a Pascal program: printable ASCII with
  * the characters DOS itself forbids in a filename excluded. Nothing in the
@@ -222,7 +212,7 @@ static xx_riversoft_stream *xx_riversoft_parse(Abstractformat *self,
      * seen; they are deliberately not enforced, as a 1.2 library would still
      * have this layout. */
 
-    count = (int32_t)xx_riversoft_le16(header + XX_RIVERSOFT_COUNT_OFFSET);
+    count = (int32_t)xx_data_get_u16(header + XX_RIVERSOFT_COUNT_OFFSET, 2, 0, false);
     /* An empty library is rejected: with no records the 23-byte magic would
      * be the only thing checked, and nothing structural could be. */
     if (count <= 0 || count > XX_RIVERSOFT_MAX_MEMBERS) return NULL;
@@ -265,12 +255,12 @@ static xx_riversoft_stream *xx_riversoft_parse(Abstractformat *self,
         name_size = (int32_t)record[0];
         if (name_size < 1 || name_size > XX_RIVERSOFT_MAX_NAME) goto fail;
 
-        data_offset = (int64_t)xx_riversoft_le32(record +
-                                                 XX_RIVERSOFT_OFFSET_FIELD);
+        data_offset = (int64_t)xx_data_get_u32(record +
+                                                 XX_RIVERSOFT_OFFSET_FIELD, 4, 0, false);
         compressed_size =
-            (int64_t)xx_riversoft_le16(record + XX_RIVERSOFT_OFFSET_FIELD + 4);
+            (int64_t)xx_data_get_u16(record + XX_RIVERSOFT_OFFSET_FIELD + 4, 2, 0, false);
         uncompressed_size =
-            (int64_t)xx_riversoft_le16(record + XX_RIVERSOFT_OFFSET_FIELD + 6);
+            (int64_t)xx_data_get_u16(record + XX_RIVERSOFT_OFFSET_FIELD + 6, 2, 0, false);
 
         /* Payloads live strictly between the header and the directory: they
          * may not overlap either. Checking against directory_offset rather

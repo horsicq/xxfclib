@@ -18,7 +18,7 @@ static bool vr_aff_cache(Abstractformat *f,vr_aff_image *a,size_t index,xx_pd_st
     if(!(page->flags&1)) {
         if(page->packed!=expected || !pm_read(f,(int64_t)page->offset,a->cache,expected)) { return false; } ok=true;
     } else if((page->flags&0xF0)==0x30) {
-        uint8_t count[4]; if(page->packed!=4 || !pm_read(f,(int64_t)page->offset,count,4) || pm_be32(count)!=expected) return false;
+        uint8_t count[4]; if(page->packed!=4 || !pm_read(f,(int64_t)page->offset,count,4) || xx_data_get_u32(count, 4, 0, true)!=expected) return false;
         xx_mem_zero(a->cache,expected); ok=true;
     } else {
         uint64_t used=(uint64_t)a->capacity*sizeof(*a->pages)+a->page_size+page->packed;
@@ -26,7 +26,7 @@ static bool vr_aff_cache(Abstractformat *f,vr_aff_image *a,size_t index,xx_pd_st
         packed=(uint8_t *)xx_mem_alloc(page->packed?page->packed:1); if(!packed || !pm_read(f,(int64_t)page->offset,packed,page->packed)) goto done;
         src=xx_io_mem_open_ro(packed,page->packed); dst=xx_io_mem_open(a->cache,expected); if(!src || !dst) goto done;
         if((page->flags&0xF0)==0) { xx_zlib z; xx_zlib_init(&z,src,0); ok=xx_zlib_unpack_to_device(&z,dst,pd); xx_zlib_destroy(&z); }
-        else if((page->flags&0xF0)==0x20 && page->packed>=13 && mm_le64(packed+5)==expected && pm_le32(packed+1)<=a->memory_limit-used) {
+        else if((page->flags&0xF0)==0x20 && page->packed>=13 && xx_data_get_u64(packed+5, 8, 0, false)==expected && xx_data_get_u32(packed+1, 4, 0, false)<=a->memory_limit-used) {
             ok=xx_lzma_unpack_device(src,13,page->packed-13,packed,5,expected,dst,pd);
         }
         ok=ok && xx_io_tell(dst)==expected;
@@ -51,11 +51,11 @@ static bool vr_aff(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     { const xx_var *v=xx_format_resolve_extra_parameter(f,r->parse_options,XX_META_ID_OPT_MEMORY_LIMIT); if(v) a->memory_limit=xx_var_get_u64(v); }
     while(at<available) { uint32_t name_size,packed,flags; uint64_t segment; char name[128];
         if(!vr_poll(pd) || at>INT64_MAX || !pm_read(f,(int64_t)at,h,16) || xx_rt_memcmp(h,"AFF\0",4)) goto done;
-        name_size=pm_be32(h+4); packed=pm_be32(h+8); flags=pm_be32(h+12); segment=24+(uint64_t)name_size+packed;
-        if(name_size>=sizeof(name) || segment>available-at || !pm_read(f,(int64_t)(at+16),name,name_size) || !pm_read(f,(int64_t)(at+segment-8),tail,8) || xx_rt_memcmp(tail,"ATT\0",4) || pm_be32(tail+4)!=segment) goto done;
+        name_size=xx_data_get_u32(h+4, 4, 0, true); packed=xx_data_get_u32(h+8, 4, 0, true); flags=xx_data_get_u32(h+12, 4, 0, true); segment=24+(uint64_t)name_size+packed;
+        if(name_size>=sizeof(name) || segment>available-at || !pm_read(f,(int64_t)(at+16),name,name_size) || !pm_read(f,(int64_t)(at+segment-8),tail,8) || xx_rt_memcmp(tail,"ATT\0",4) || xx_data_get_u32(tail+4, 4, 0, true)!=segment) goto done;
         name[name_size]=0; if(xx_rt_strlen(name)!=name_size) goto done;
         if(!xx_rt_strcmp(name,"pagesize") || !xx_rt_strcmp(name,"segsize")) { if(packed || !vr_power(flags) || flags<512 || flags>64U*1024U*1024U) goto done; a->page_size=flags; }
-        else if(!xx_rt_strcmp(name,"imagesize")) { uint8_t q[8]; if(packed!=8 || flags!=2 || !pm_read(f,(int64_t)(at+16+name_size),q,8)) goto done; a->size=(uint64_t)pm_be32(q)|((uint64_t)pm_be32(q+4)<<32); }
+        else if(!xx_rt_strcmp(name,"imagesize")) { uint8_t q[8]; if(packed!=8 || flags!=2 || !pm_read(f,(int64_t)(at+16+name_size),q,8)) goto done; a->size=(uint64_t)xx_data_get_u32(q, 4, 0, true)|((uint64_t)xx_data_get_u32(q+4, 4, 0, true)<<32); }
         else if(!xx_rt_strncmp(name,"page",4) || !xx_rt_strncmp(name,"seg",3)) { const char *p=name+(!xx_rt_strncmp(name,"page",4)?4:3); uint64_t index; const char *begin=p;
             if(!vr_uint(&p,&index) || p==begin) goto done;
             if(!*p) { vr_aff_page *next; size_t cap;

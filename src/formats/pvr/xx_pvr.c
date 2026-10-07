@@ -5,15 +5,16 @@
  */
 #include "xxfclib/formats/pvr/xx_pvr.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static XXFC_MAYBE_UNUSED uint16_t r16(const uint8_t *p,bool be) { return be ? pm_be16(p) : pm_le16(p); }
-static uint32_t r32(const uint8_t *p,bool be) { return be ? pm_be32(p) : pm_le32(p); }
-static uint64_t r64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint16_t r16(const uint8_t *p,bool be) { return be ? xx_data_get_u16(p, 2, 0, true) : xx_data_get_u16(p, 2, 0, false); }
+static uint32_t r32(const uint8_t *p,bool be) { return be ? xx_data_get_u32(p, 4, 0, true) : xx_data_get_u32(p, 4, 0, false); }
+static uint64_t r64(const uint8_t *p,bool be) { return be ? ((uint64_t)xx_data_get_u32(p, 4, 0, true)<<32)|xx_data_get_u32(p+4, 4, 0, true) : ((uint64_t)xx_data_get_u32(p+4, 4, 0, false)<<32)|xx_data_get_u32(p, 4, 0, false); }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[52],b[12]; bool be; uint32_t width,height,depth,layers,faces,levels,meta,bits=0,block=0,i; uint64_t pixel; int64_t at,metaend;
-    if(!pm_read(f,0,h,52)) { return false; } be=pm_be32(h)==0x03525650;
-    if(!be && pm_le32(h)!=0x03525650) return false;
+    if(!pm_read(f,0,h,52)) { return false; } be=xx_data_get_u32(h, 4, 0, true)==0x03525650;
+    if(!be && xx_data_get_u32(h, 4, 0, false)!=0x03525650) return false;
     pixel=r64(h+8,be); height=r32(h+24,be); width=r32(h+28,be); depth=r32(h+32,be); layers=r32(h+36,be); faces=r32(h+40,be); levels=r32(h+44,be); meta=r32(h+48,be);
     if((r32(h+4,be)&~2U) || r32(h+16,be)>1 || r32(h+20,be)>13 || !width || !height || !depth || !layers || !levels ||
        width>16384 || height>16384 || depth>16384 || layers>4096 || (faces!=1 && faces!=6) || levels>32 || meta>16U*1024U*1024U) return false;

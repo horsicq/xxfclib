@@ -21,6 +21,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -109,16 +110,6 @@ static ssize_t gb_pdb_write(xx_io_device *device, const void *buffer, size_t siz
         done += (size_t)n;
     }
     return (ssize_t)done;
-}
-
-
-static uint16_t pdb_be16(const uint8_t *bytes) {
-    return (uint16_t)(((uint16_t)bytes[0] << 8U) | (uint16_t)bytes[1]);
-}
-
-static uint32_t pdb_be32(const uint8_t *bytes) {
-    return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
-           ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3];
 }
 
 static bool pdb_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -340,12 +331,12 @@ static bool pdb_parse(Abstractformat *format, pdb_stream **result) {
                      sizeof(header)))
         return false;
     if (!pdb_check_name(header)) return false;
-    attributes = pdb_be16(header + 0x20U);
+    attributes = xx_data_get_u16(header + 0x20U, 2, 0, true);
     if ((attributes & PDB_ATTR_RESERVED_MASK) != 0U) return false;
-    app_info = (int64_t)pdb_be32(header + 0x34U);
-    sort_info = (int64_t)pdb_be32(header + 0x38U);
-    type = pdb_be32(header + 0x3cU);
-    creator = pdb_be32(header + 0x40U);
+    app_info = (int64_t)xx_data_get_u32(header + 0x34U, 4, 0, true);
+    sort_info = (int64_t)xx_data_get_u32(header + 0x38U, 4, 0, true);
+    type = xx_data_get_u32(header + 0x3cU, 4, 0, true);
+    creator = xx_data_get_u32(header + 0x40U, 4, 0, true);
     /* Both 4CCs are registered ASCII identifiers on PalmOS; nothing
      * legitimate stores binary there, and requiring them is what keeps this
      * permissive "header plus offset table" shape from matching unrelated
@@ -353,7 +344,7 @@ static bool pdb_parse(Abstractformat *format, pdb_stream **result) {
     if (!pdb_is_printable_4cc(type) || !pdb_is_printable_4cc(creator))
         return false;
     resource_database = (attributes & PDB_ATTR_RESOURCE) != 0U;
-    entry_count = (int32_t)pdb_be16(header + 0x4cU);
+    entry_count = (int32_t)xx_data_get_u16(header + 0x4cU, 2, 0, true);
     if (entry_count < 1 || entry_count > PDB_MAX_ENTRIES) return false;
     entry_size = resource_database ? PDB_RESOURCE_ENTRY_SIZE
                                    : PDB_RECORD_ENTRY_SIZE;
@@ -374,7 +365,7 @@ static bool pdb_parse(Abstractformat *format, pdb_stream **result) {
                              format->base_address + PDB_HEADER_SIZE, entry,
                              (size_t)entry_size))
                 return false;
-            first = (int64_t)pdb_be32(entry + (resource_database ? 6U : 0U));
+            first = (int64_t)xx_data_get_u32(entry + (resource_database ? 6U : 0U), 4, 0, true);
         }
         if (first < header_size || first - header_size > PDB_MAX_FILLER ||
             first >= size)
@@ -417,11 +408,11 @@ static bool pdb_parse(Abstractformat *format, pdb_stream **result) {
         size_t at = 0U;
         xx_mem_zero(member, sizeof(*member));
         if (resource_database) {
-            uint32_t resource_type = pdb_be32(entry);
-            uint32_t resource_id = (uint32_t)pdb_be16(entry + 4U);
+            uint32_t resource_type = xx_data_get_u32(entry, 4, 0, true);
+            uint32_t resource_id = (uint32_t)xx_data_get_u16(entry + 4U, 2, 0, true);
             if (!pdb_is_printable_4cc(resource_type)) goto fail;
             member->kind = PDB_KIND_RESOURCE;
-            member->offset = (int64_t)pdb_be32(entry + 6U);
+            member->offset = (int64_t)xx_data_get_u32(entry + 6U, 4, 0, true);
             member->id = resource_type;
             member->attributes = resource_id;
             at += pdb_write_token(member->name + at, resource_type);
@@ -431,7 +422,7 @@ static bool pdb_parse(Abstractformat *format, pdb_stream **result) {
             keys[index] = pdb_resource_key(resource_type, resource_id, index);
         } else {
             member->kind = PDB_KIND_RECORD;
-            member->offset = (int64_t)pdb_be32(entry);
+            member->offset = (int64_t)xx_data_get_u32(entry, 4, 0, true);
             member->attributes = (uint32_t)entry[4];
             member->id = ((uint32_t)entry[5] << 16U) |
                          ((uint32_t)entry[6] << 8U) | (uint32_t)entry[7];

@@ -11,6 +11,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_valve_vpk_MAX_MEMBERS 1000000U
 typedef struct xx_valve_vpk_member_s {
@@ -33,16 +34,6 @@ typedef struct xx_valve_vpk_stream_s {
 } xx_valve_vpk_stream;
 static void xx_valve_vpk_vtable_destroy(Abstractformat *self);
 
-static inline uint16_t xx_valve_vpk_u16(const uint8_t *p, bool be) {
-    return be ? (uint16_t)(((uint16_t)p[0] << 8) | p[1])
-              : (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
-}
-static inline uint32_t xx_valve_vpk_u32(const uint8_t *p, bool be) {
-    return be ? ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
-                ((uint32_t)p[2] << 8) | p[3]
-              : p[0] | ((uint32_t)p[1] << 8) |
-                ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
 static bool xx_valve_vpk_range_within(int64_t span, int64_t offset, int64_t size) {
     return offset >= 0 && size >= 0 && offset <= span && size <= span-offset;
 }
@@ -244,19 +235,19 @@ static xx_valve_vpk_stream *xx_valve_vpk_parse(Abstractformat *self,xx_pd_struct
 
     uint8_t h[28],entry[18]; uint32_t version,tree_size; int64_t header_size,tree_end,data_end,at;
     bool finished=false;
-    if(!xx_valve_vpk_read_rel(self,span,0,h,12U) || xx_valve_vpk_u32(h,false)!=0x55AA1234U) goto fail;
-    version=xx_valve_vpk_u32(h+4,false); tree_size=xx_valve_vpk_u32(h+8,false);
+    if(!xx_valve_vpk_read_rel(self,span,0,h,12U) || xx_data_get_u32(h, 4, 0, false)!=0x55AA1234U) goto fail;
+    version=xx_data_get_u32(h+4, 4, 0, false); tree_size=xx_data_get_u32(h+8, 4, 0, false);
     if((version!=1U && version!=2U) || !tree_size) goto fail;
     header_size=version==1U?12:28;
     if(!xx_valve_vpk_read_rel(self,span,0,h,(size_t)header_size) ||
        !xx_valve_vpk_range_within(span,header_size,tree_size)) goto fail;
     tree_end=header_size+tree_size; data_end=span; s->archive_size=tree_end;
     if(version==2U) {
-        int64_t archive_size=tree_end+(int64_t)xx_valve_vpk_u32(h+12,false)+
-            xx_valve_vpk_u32(h+16,false)+xx_valve_vpk_u32(h+20,false)+xx_valve_vpk_u32(h+24,false);
-        if(archive_size>span || xx_valve_vpk_u32(h+16,false)%28U ||
-           (xx_valve_vpk_u32(h+20,false)!=0U && xx_valve_vpk_u32(h+20,false)!=48U)) goto fail;
-        data_end=tree_end+xx_valve_vpk_u32(h+12,false);
+        int64_t archive_size=tree_end+(int64_t)xx_data_get_u32(h+12, 4, 0, false)+
+            xx_data_get_u32(h+16, 4, 0, false)+xx_data_get_u32(h+20, 4, 0, false)+xx_data_get_u32(h+24, 4, 0, false);
+        if(archive_size>span || xx_data_get_u32(h+16, 4, 0, false)%28U ||
+           (xx_data_get_u32(h+20, 4, 0, false)!=0U && xx_data_get_u32(h+20, 4, 0, false)!=48U)) goto fail;
+        data_end=tree_end+xx_data_get_u32(h+12, 4, 0, false);
         s->archive_size=archive_size;
     }
     at=header_size;
@@ -275,10 +266,10 @@ static xx_valve_vpk_stream *xx_valve_vpk_parse(Abstractformat *self,xx_pd_struct
                 if(!base[0]) break;
                 record_at=at;
                 if(!xx_valve_vpk_range_within(tree_end,at,18) || !xx_valve_vpk_read_rel(self,span,at,entry,sizeof(entry))) goto fail;
-                preload=xx_valve_vpk_u16(entry+4,false); index=xx_valve_vpk_u16(entry+6,false);
-                off=xx_valve_vpk_u32(entry+8,false); size=xx_valve_vpk_u32(entry+12,false);
+                preload=xx_data_get_u16(entry+4, 2, 0, false); index=xx_data_get_u16(entry+6, 2, 0, false);
+                off=xx_data_get_u32(entry+8, 4, 0, false); size=xx_data_get_u32(entry+12, 4, 0, false);
                 at+=18;
-                if(xx_valve_vpk_u16(entry+16,false)!=0xFFFFU || !xx_valve_vpk_range_within(tree_end,at,preload)) goto fail;
+                if(xx_data_get_u16(entry+16, 2, 0, false)!=0xFFFFU || !xx_valve_vpk_range_within(tree_end,at,preload)) goto fail;
                 {
                     int printed=xx_rt_snprintf(name,sizeof(name),"%s%s%s%s%s",xx_rt_strcmp(dir," ")?dir:"",xx_rt_strcmp(dir," ")?"/":"",
                         base,xx_rt_strcmp(ext," ")?".":"",xx_rt_strcmp(ext," ")?ext:"");
@@ -295,7 +286,7 @@ static xx_valve_vpk_stream *xx_valve_vpk_parse(Abstractformat *self,xx_pd_struct
                 }
                 m=&s->items[s->count-1U];
                 m->preload_offset=self->base_address+at; m->preload_size=preload;
-                m->crc32=xx_valve_vpk_u32(entry,false); m->has_crc=true;
+                m->crc32=xx_data_get_u32(entry, 4, 0, false); m->has_crc=true;
                 m->compressed_size=(int64_t)size+preload; m->uncompressed_size=m->compressed_size;
                 if(index!=0x7FFFU) {
                     m->data_offset=off; m->data_device=volume;

@@ -5,10 +5,11 @@
  */
 #include "xxfclib/formats/dicom/xx_dicom.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 typedef struct dc_context { Abstractformat *f; pm_stream *s; xx_pd_struct *pd; bool be,implicit,encapsulated; uint32_t rows,columns,samples,bits,frames; bool pixels; unsigned dataset_ids; char sop[65],instance[65]; } dc_context;
-static uint16_t dc16(dc_context *c,const uint8_t *p) { return c->be ? pm_be16(p) : pm_le16(p); }
-static uint32_t dc32(dc_context *c,const uint8_t *p) { return c->be ? pm_be32(p) : pm_le32(p); }
+static uint16_t dc16(dc_context *c,const uint8_t *p) { return c->be ? xx_data_get_u16(p, 2, 0, true) : xx_data_get_u16(p, 2, 0, false); }
+static uint32_t dc32(dc_context *c,const uint8_t *p) { return c->be ? xx_data_get_u32(p, 4, 0, true) : xx_data_get_u32(p, 4, 0, false); }
 static bool dc_uid(Abstractformat *f,int64_t at,uint32_t size,char *text) {
     unsigned i,n=size; uint8_t b[64]; if(!size || size>64 || !pm_read(f,at,b,size)) return false;
     if(!b[n-1]) { --n; } if(!n || b[0]=='.' || b[n-1]=='.') return false;
@@ -83,8 +84,8 @@ static bool dc_data(dc_context *c,int64_t *at,int64_t end,unsigned depth,bool it
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     dc_context c; uint8_t h[16]; uint32_t meta_size,mask=0,previous=0; int64_t at=132,meta_end,limit=pm_available(f); char syntax[65];
     xx_mem_zero(&c,sizeof(c)); c.f=f; c.s=s; c.pd=pd; c.frames=1;
-    if(!pm_read(f,128,h,16) || xx_rt_memcmp(h,"DICM",4) || pm_le16(h+4)!=2 || pm_le16(h+6) || h[8]!='U' || h[9]!='L' || pm_le16(h+10)!=4) return false;
-    meta_size=pm_le32(h+12); at+=12; if(meta_size>(uint64_t)(limit-at)) return false; meta_end=at+meta_size;
+    if(!pm_read(f,128,h,16) || xx_rt_memcmp(h,"DICM",4) || xx_data_get_u16(h+4, 2, 0, false)!=2 || xx_data_get_u16(h+6, 2, 0, false) || h[8]!='U' || h[9]!='L' || xx_data_get_u16(h+10, 2, 0, false)!=4) return false;
+    meta_size=xx_data_get_u32(h+12, 4, 0, false); at+=12; if(meta_size>(uint64_t)(limit-at)) return false; meta_end=at+meta_size;
     while(at<meta_end) { uint32_t tag,n; int64_t body; bool sequence; uint8_t vr[2]; char name[48];
         if((pd && xx_pd_is_stopped(pd)) || !dc_header(&c,at,meta_end,&tag,&body,&n,&sequence,vr) || (tag>>16)!=2 || tag<=previous || n==UINT32_MAX || sequence || (vr[0]=='U' && vr[1]=='N')) { return false; } previous=tag;
         if(tag==0x00020001U) { if(n!=2 || vr[0]!='O' || vr[1]!='B' || !pm_read(f,body,h,2) || !(h[1]&1)) return false; mask|=1; }

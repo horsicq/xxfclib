@@ -42,6 +42,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_LZMA_PAYLOAD_NAME "payload"
 
@@ -62,16 +63,6 @@
 
 static void xx_lzma_vtable_destroy(Abstractformat *self);
 
-static uint32_t xx_lzma_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
-
-static uint64_t xx_lzma_le64(const uint8_t *data) {
-    return (uint64_t)xx_lzma_le32(data) |
-           ((uint64_t)xx_lzma_le32(data + 4U) << 32U);
-}
-
 /* The header grammar every stream must satisfy. */
 static bool xx_lzma_parse_header(const uint8_t *data, xx_lzma_stream_props *header) {
     unsigned value;
@@ -81,8 +72,8 @@ static bool xx_lzma_parse_header(const uint8_t *data, xx_lzma_stream_props *head
     value /= 9U;
     header->lp = value % 5U;
     header->pb = value / 5U;
-    header->dictionary_size = xx_lzma_le32(data + 1U);
-    header->declared_size = xx_lzma_le64(data + 5U);
+    header->dictionary_size = xx_data_get_u32(data + 1U, 4, 0, false);
+    header->declared_size = xx_data_get_u64(data + 5U, 8, 0, false);
     return header->declared_size == XX_LZMA_STREAM_UNKNOWN_SIZE ||
            header->declared_size < XX_LZMA_SIZE_LIMIT;
 }

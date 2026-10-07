@@ -14,6 +14,7 @@
 #include "xxfclib/rt/xx_rt.h"
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define INFTOOL_MAX_CABINET (256U * 1024U * 1024U)
 #define INFTOOL_MAX_PE (16U * 1024U * 1024U)
@@ -26,12 +27,6 @@ typedef struct inf_folder_s {
 } inf_folder;
 typedef struct inf_file_s { uint32_t at, size; uint16_t folder; } inf_file;
 
-static uint16_t inf_u16(const uint8_t *p) {
-    return (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
-}
-static uint32_t inf_u32(const uint8_t *p) {
-    return (uint32_t)inf_u16(p) | ((uint32_t)inf_u16(p + 2) << 16);
-}
 static bool inf_stop(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
 static bool inf_range(uint64_t total, uint64_t at, uint64_t size) {
     return at <= total && size <= total - at;
@@ -60,18 +55,18 @@ static bool inf_pe_extent(Abstractformat *f, uint64_t total, uint64_t at,
     unsigned i, j;
     if (!inf_range(total, at, 64) || !inf_read(f, (int64_t)at, dos, 64) ||
         dos[0] != 'M' || dos[1] != 'Z' ||
-        (pe = inf_u32(dos + 60)) < 64 || pe > 1048576 ||
+        (pe = xx_data_get_u32(dos + 60, 4, 0, false)) < 64 || pe > 1048576 ||
         !inf_range(total - at, pe, 24) ||
         !inf_read(f, (int64_t)(at + pe), coff, 24) ||
-        xx_rt_memcmp(coff, "PE\0\0", 4) || inf_u16(coff + 4) != 0x14c ||
-        !(sections = inf_u16(coff + 6)) || sections > 96 ||
-        (dll && !(inf_u16(coff + 22) & 0x2000U)) ||
-        (opt_size = inf_u16(coff + 20)) < 96 || opt_size > 4096 ||
+        xx_rt_memcmp(coff, "PE\0\0", 4) || xx_data_get_u16(coff + 4, 2, 0, false) != 0x14c ||
+        !(sections = xx_data_get_u16(coff + 6, 2, 0, false)) || sections > 96 ||
+        (dll && !(xx_data_get_u16(coff + 22, 2, 0, false) & 0x2000U)) ||
+        (opt_size = xx_data_get_u16(coff + 20, 2, 0, false)) < 96 || opt_size > 4096 ||
         !inf_range(total - at, (uint64_t)pe + 24, opt_size) ||
         !inf_read(f, (int64_t)(at + pe + 24), optional, 64) ||
-        inf_u16(optional) != 0x10b) return false;
+        xx_data_get_u16(optional, 2, 0, false) != 0x10b) return false;
     table = (uint64_t)pe + 24 + opt_size;
-    headers = inf_u32(optional + 60);
+    headers = xx_data_get_u32(optional + 60, 4, 0, false);
     if (headers < table + (uint64_t)sections * 40 ||
         headers > INFTOOL_MAX_PE || !inf_range(total - at, 0, headers) ||
         !inf_range(total - at, table, (uint64_t)sections * 40)) return false;
@@ -79,14 +74,14 @@ static bool inf_pe_extent(Abstractformat *f, uint64_t total, uint64_t at,
     for (i = 0; i < sections; ++i) {
         uint32_t size, offset;
         if (inf_stop(pd) || !inf_read(f, (int64_t)(at + table + i * 40), section, 40)) return false;
-        size = inf_u32(section + 16); offset = inf_u32(section + 20);
+        size = xx_data_get_u32(section + 16, 4, 0, false); offset = xx_data_get_u32(section + 20, 4, 0, false);
         if (!size) continue;
         if (offset < headers || !inf_range(total - at, offset, size) ||
             (uint64_t)offset + size > INFTOOL_MAX_PE) return false;
         for (j = 0; j < i; ++j) {
             uint8_t previous[8]; uint32_t ps, po;
             if (!inf_read(f, (int64_t)(at + table + j * 40 + 16), previous, 8)) return false;
-            ps = inf_u32(previous); po = inf_u32(previous + 4);
+            ps = xx_data_get_u32(previous, 4, 0, false); po = xx_data_get_u32(previous + 4, 4, 0, false);
             if (ps && offset < (uint64_t)po + ps && po < (uint64_t)offset + size) return false;
         }
         if ((uint64_t)offset + size > end) end = (uint64_t)offset + size;
@@ -97,7 +92,7 @@ static bool inf_pe_extent(Abstractformat *f, uint64_t total, uint64_t at,
 
 static uint32_t inf_checksum(const uint8_t *p, size_t size, uint32_t sum) {
     uint32_t tail = 0;
-    while (size >= 4) { sum ^= inf_u32(p); p += 4; size -= 4; }
+    while (size >= 4) { sum ^= xx_data_get_u32(p, 4, 0, false); p += 4; size -= 4; }
     while (size--) tail = (tail << 8) | *p++;
     return sum ^ tail;
 }
@@ -152,16 +147,16 @@ static bool inf_cabinet(const uint8_t *cab, size_t size, const uint8_t *inf,
     uint64_t raw_total = 0;
     bool found_inf = false, ok = false;
     if (size < 36 || xx_rt_memcmp(cab, "MSCF", 4) ||
-        inf_u32(cab + 4) || inf_u32(cab + 12) || inf_u32(cab + 20) ||
-        inf_u32(cab + 8) != size || cab[24] != 3 || cab[25] != 1 ||
-        !(nf = inf_u16(cab + 26)) || nf > 4096 ||
-        !(nn = inf_u16(cab + 28)) || nn > 65535 ||
-        (flags = inf_u16(cab + 30)) & ~7U ||
-        (files_at = inf_u32(cab + 16)) >= size) return false;
+        xx_data_get_u32(cab + 4, 4, 0, false) || xx_data_get_u32(cab + 12, 4, 0, false) || xx_data_get_u32(cab + 20, 4, 0, false) ||
+        xx_data_get_u32(cab + 8, 4, 0, false) != size || cab[24] != 3 || cab[25] != 1 ||
+        !(nf = xx_data_get_u16(cab + 26, 2, 0, false)) || nf > 4096 ||
+        !(nn = xx_data_get_u16(cab + 28, 2, 0, false)) || nn > 65535 ||
+        (flags = xx_data_get_u16(cab + 30, 2, 0, false)) & ~7U ||
+        (files_at = xx_data_get_u32(cab + 16, 4, 0, false)) >= size) return false;
     if (flags & 4) {
         unsigned reserve;
         if (!inf_range(size, at, 4)) return false;
-        reserve = inf_u16(cab + at); fr = cab[at + 2]; dr = cab[at + 3]; at += 4;
+        reserve = xx_data_get_u16(cab + at, 2, 0, false); fr = cab[at + 2]; dr = cab[at + 3]; at += 4;
         if (!inf_range(size, at, reserve)) return false;
         at += reserve;
     }
@@ -176,9 +171,9 @@ static bool inf_cabinet(const uint8_t *cab, size_t size, const uint8_t *inf,
     for (i = 0; i < nf; ++i) {
         unsigned method, bits;
         if (inf_stop(pd) || !inf_range(size, at, 8U + fr)) goto done;
-        folders[i].at = inf_u32(cab + at);
-        folders[i].blocks = inf_u16(cab + at + 4);
-        folders[i].method = inf_u16(cab + at + 6);
+        folders[i].at = xx_data_get_u32(cab + at, 4, 0, false);
+        folders[i].blocks = xx_data_get_u16(cab + at + 4, 2, 0, false);
+        folders[i].method = xx_data_get_u16(cab + at + 6, 2, 0, false);
         method = folders[i].method & 15; bits = folders[i].method >> 8;
         if (!folders[i].blocks || method > 3 ||
             ((method < 2) && folders[i].method > 1) ||
@@ -193,9 +188,9 @@ static bool inf_cabinet(const uint8_t *cab, size_t size, const uint8_t *inf,
     for (i = 0; i < nn; ++i) {
         size_t start, length;
         if (inf_stop(pd) || !inf_range(size, at, 16)) goto done;
-        files[i].size = inf_u32(cab + at);
-        files[i].at = inf_u32(cab + at + 4);
-        files[i].folder = inf_u16(cab + at + 8);
+        files[i].size = xx_data_get_u32(cab + at, 4, 0, false);
+        files[i].at = xx_data_get_u32(cab + at + 4, 4, 0, false);
+        files[i].folder = xx_data_get_u16(cab + at + 8, 2, 0, false);
         if (files[i].folder >= nf) goto done;
         at += 16; start = at;
         if (!inf_cstring(cab, size, &at, &length, true)) goto done;
@@ -209,8 +204,8 @@ static bool inf_cabinet(const uint8_t *cab, size_t size, const uint8_t *inf,
         for (j = 0; j < folders[i].blocks; ++j) {
             uint32_t checksum; unsigned packed, plain;
             if (inf_stop(pd) || !inf_range(size, p, 8U + dr)) goto done;
-            checksum = inf_u32(cab + p); packed = inf_u16(cab + p + 4);
-            plain = inf_u16(cab + p + 6);
+            checksum = xx_data_get_u32(cab + p, 4, 0, false); packed = xx_data_get_u16(cab + p + 4, 2, 0, false);
+            plain = xx_data_get_u16(cab + p + 6, 2, 0, false);
             if (!packed || !plain || plain > 32768 ||
                 !inf_range(size, p + 8U + dr, packed) ||
                 ((folders[i].method & 15) == 0 && packed != plain) ||
@@ -284,9 +279,9 @@ static bool inf_open(xx_sfx_inftool *a, xx_pd_struct *pd) {
         xx_rt_memcmp(h, "MRI", 3) || h[3] != 1 || !h[4] || !h[5] ||
         h[6] > 1 || h[16] > 1 || h[17] != 0 ||
         (!legacy && (h[18] > 1 || h[19] > 1)) ||
-        (declared = inf_u32(h + (legacy ? 18 : 20))) != total) return false;
+        (declared = xx_data_get_u32(h + (legacy ? 18 : 20), 4, 0, false)) != total) return false;
     payload_at = header_at + header_size + h[4] + h[5] + h[7] +
-                 (uint64_t)inf_u32(h + 8) + inf_u32(h + 12);
+                 (uint64_t)xx_data_get_u32(h + 8, 4, 0, false) + xx_data_get_u32(h + 12, 4, 0, false);
     if (!inf_range(total, payload_at, 36) ||
         !inf_read(f, (int64_t)(header_at + header_size + h[4]), inf, h[5])) return false;
     inf_size = h[5];

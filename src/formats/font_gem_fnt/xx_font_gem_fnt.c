@@ -6,9 +6,10 @@
  */
 #include "xxfclib/formats/font_gem_fnt/xx_font_gem_fnt.h"
 #include "../wavefront_obj/xx_eleventh_media.h"
+#include "xxfclib/data/xx_data.h"
 static bool eg_quick(Abstractformat *f,uint64_t n) {uint8_t b[88];return n>=90&&pm_read(f,0,b,88);}
-static uint16_t gm16(const uint8_t *b,bool be) {return be?pm_be16(b):pm_le16(b);}
-static uint32_t gm32(const uint8_t *b,bool be) {return be?pm_be32(b):pm_le32(b);}
+static uint16_t gm16(const uint8_t *b,bool be) {return be?xx_data_get_u16(b, 2, 0, true):xx_data_get_u16(b, 2, 0, false);}
+static uint32_t gm32(const uint8_t *b,bool be) {return be?xx_data_get_u32(b, 4, 0, true):xx_data_get_u32(b, 4, 0, false);}
 static bool gm_header(const uint8_t *b,uint64_t n,bool be) {
  uint32_t first=gm16(b+36,be),last=gm16(b+38,be),point=gm16(b+2,be),flags=gm16(b+66,be),width=gm16(b+80,be),height=gm16(b+82,be),off=gm32(b+72,be),data=gm32(b+76,be);
  return point>0&&point<256&&first<=last&&last<256&&!(flags&~15U)&&width>0&&height>0&&height<=8192&&off>=88&&data>=88&&gm32(b+84,be)==0&&eg_span(off,(uint64_t)(last-first+2)*2,n)&&eg_span(data,(uint64_t)width*height,n);

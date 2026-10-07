@@ -56,6 +56,7 @@
 #include "xxfclib/algo/lzh/xx_lzh.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_IGF2_COPY_CHUNK (64 * 1024)
 
@@ -168,8 +169,6 @@ typedef struct {
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_igf2_le16(const uint8_t *data);
-static uint32_t xx_igf2_le32(const uint8_t *data);
 static void xx_igf2_fix_name(const uint8_t *raw, size_t raw_length, char *out, size_t index);
 static bool xx_igf2_walk(Abstractformat *self, xx_pd_struct *pd, int64_t span, int64_t directory_offset, const xx_igf2_layout *layout, xx_igf2_stream *stream);
 static xx_igf2_stream *xx_igf2_parse(Abstractformat *self, xx_pd_struct *pd);
@@ -184,15 +183,6 @@ static bool xx_igf2_decode(Abstractformat *self, const xx_igf2_member *member, u
 static const xx_igf2_layout xx_igf2_layouts[2] = {
     {0x14, 0x1c, 0x24, 0x38},
     {0x10, 0x18, 0x20, 0x2c}};
-
-static uint16_t xx_igf2_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_igf2_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* Names are absolute DOS paths, so bytes outside 0x20..0x7E are NOT a
  * rejection here: the format genuinely stores a drive colon, backslashes
@@ -280,10 +270,10 @@ static bool xx_igf2_walk(Abstractformat *self, xx_pd_struct *pd, int64_t span,
         }
         /* The terminator is often truncated at EOF, so its tag is checked
          * before a whole record is required. */
-        if (xx_igf2_le16(record + 2) == XX_IGF2_END_TAG) return true;
+        if (xx_data_get_u16(record + 2, 2, 0, false) == XX_IGF2_END_TAG) return true;
         /* Every non-terminator record repeats the 0xECDB record magic; this
          * is what stops a wrong layout from walking off into data. */
-        if (xx_igf2_le16(record) != XX_IGF2_RECORD_MAGIC) return false;
+        if (xx_data_get_u16(record, 2, 0, false) != XX_IGF2_RECORD_MAGIC) return false;
         if (!xx_igf2_range_within(span, position, (int64_t)XX_IGF2_RECORD_SIZE)) {
             return false;
         }
@@ -292,9 +282,9 @@ static bool xx_igf2_walk(Abstractformat *self, xx_pd_struct *pd, int64_t span,
             return false;
         }
 
-        raw_size = (int64_t)(int32_t)xx_igf2_le32(record + layout->raw_offset);
+        raw_size = (int64_t)(int32_t)xx_data_get_u32(record + layout->raw_offset, 4, 0, false);
         packed_size =
-            (int64_t)(int32_t)xx_igf2_le32(record + layout->packed_offset);
+            (int64_t)(int32_t)xx_data_get_u32(record + layout->packed_offset, 4, 0, false);
         if (raw_size < 0 || packed_size < 0) return false;
 
         name_offset = position + layout->name_offset;
@@ -343,7 +333,7 @@ static bool xx_igf2_walk(Abstractformat *self, xx_pd_struct *pd, int64_t span,
             member.uncompressed_size = raw_size;
         }
         /* Seconds since the Unix epoch already; 0 means "no timestamp". */
-        member.timestamp = (uint64_t)xx_igf2_le32(record + layout->time_offset);
+        member.timestamp = (uint64_t)xx_data_get_u32(record + layout->time_offset, 4, 0, false);
         member.is_folder = false;
         if (!xx_igf2_add(stream, &member)) {
             xx_str_free(member.name);
@@ -380,16 +370,16 @@ static xx_igf2_stream *xx_igf2_parse(Abstractformat *self, xx_pd_struct *pd) {
                          (size_t)XX_IGF2_HEADER_SIZE)) {
         return NULL;
     }
-    if (xx_igf2_le16(header) != XX_IGF2_MAGIC) return NULL;
+    if (xx_data_get_u16(header, 2, 0, false) != XX_IGF2_MAGIC) return NULL;
     /* The stored size must be the real size: this is what makes a two byte
      * magic safe to detect on, and it also rules out an appended overlay.
      * Loosening it to "<= span" would match on any file that happens to
      * start 24 13. */
-    if ((int64_t)(int32_t)xx_igf2_le32(header + 8) != span) return NULL;
-    if ((int32_t)xx_igf2_le32(header + 0x0c) <= 0) return NULL;
+    if ((int64_t)(int32_t)xx_data_get_u32(header + 8, 4, 0, false) != span) return NULL;
+    if ((int32_t)xx_data_get_u32(header + 0x0c, 4, 0, false) <= 0) return NULL;
 
-    directory_raw = xx_igf2_le32(header + 0x20);
-    directory_not = xx_igf2_le32(header + 0x24);
+    directory_raw = xx_data_get_u32(header + 0x20, 4, 0, false);
+    directory_not = xx_data_get_u32(header + 0x24, 4, 0, false);
     if (directory_raw == 0U || directory_raw > 0x7FFFFFFFU) return NULL;
     /* The one's-complement word at 0x24 is the second half of the
      * detection: 32 bits that must invert the directory offset exactly. */
@@ -406,7 +396,7 @@ static xx_igf2_stream *xx_igf2_parse(Abstractformat *self, xx_pd_struct *pd) {
                          (size_t)XX_IGF2_RECORD_SIZE)) {
         return NULL;
     }
-    if (xx_igf2_le16(first) != XX_IGF2_RECORD_MAGIC) return NULL;
+    if (xx_data_get_u16(first, 2, 0, false) != XX_IGF2_RECORD_MAGIC) return NULL;
 
     stream = (xx_igf2_stream *)xx_mem_alloc(sizeof(*stream));
     if (!stream) return NULL;

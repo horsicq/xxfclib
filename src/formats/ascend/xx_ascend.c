@@ -35,6 +35,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ASCEND_HEADER_SIZE 12
 /* A DCL stream is at least its two header bytes plus one coded symbol. */
@@ -81,10 +82,6 @@ static bool xx_ascend_read_at(Abstractformat *self, int64_t offset,
         completed += (size_t)received;
     }
     return true;
-}
-
-static uint16_t xx_ascend_u16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
 }
 
 /*
@@ -145,12 +142,12 @@ static bool xx_ascend_probe(Abstractformat *self, xx_ascend_context *context,
         return false;
     }
 
-    year = xx_ascend_u16(prefix);
-    month = xx_ascend_u16(prefix + 2);
-    day = xx_ascend_u16(prefix + 4);
-    hour = xx_ascend_u16(prefix + 6);
-    minute = xx_ascend_u16(prefix + 8);
-    second = xx_ascend_u16(prefix + 10);
+    year = xx_data_get_u16(prefix, 2, 0, false);
+    month = xx_data_get_u16(prefix + 2, 2, 0, false);
+    day = xx_data_get_u16(prefix + 4, 2, 0, false);
+    hour = xx_data_get_u16(prefix + 6, 2, 0, false);
+    minute = xx_data_get_u16(prefix + 8, 2, 0, false);
+    second = xx_data_get_u16(prefix + 10, 2, 0, false);
     if (!xx_ascend_date_is_valid(year, month, day, hour, minute, second)) {
         return false;
     }

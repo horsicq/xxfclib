@@ -6,6 +6,7 @@
 #include "xxfclib/formats/pcx/xx_pcx.h"
 #include "../xx_payload_members.h"
 #include "xxfclib/global/xx_global.h"
+#include "xxfclib/data/xx_data.h"
 
 typedef struct fm_bytes { Abstractformat *f; xx_pd_struct *pd; int64_t pos,end,begin; size_t count,capacity; uint8_t *buffer; } fm_bytes;
 static bool fm_start(fm_bytes *r,Abstractformat *f,xx_pd_struct *pd,int64_t at,int64_t end) {
@@ -34,10 +35,10 @@ static bool fm_skip(fm_bytes *r,uint64_t n) {
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[128],b; unsigned w,height,planes,bits,stride,y; uint64_t row,expanded; fm_bytes r; int64_t raster_end;
     if(!pm_read(f,0,h,sizeof(h)) || h[0]!=10 || !(h[1]==0 || (h[1]>=2 && h[1]<=5)) || h[2]!=1 || h[64]!=0) return false;
-    bits=h[3]; planes=h[65]; stride=pm_le16(h+66);
-    if((bits!=1 && bits!=2 && bits!=4 && bits!=8) || !planes || planes>4 || !stride || (stride&1) || pm_le16(h+8)<pm_le16(h+4) || pm_le16(h+10)<pm_le16(h+6)) return false;
+    bits=h[3]; planes=h[65]; stride=xx_data_get_u16(h+66, 2, 0, false);
+    if((bits!=1 && bits!=2 && bits!=4 && bits!=8) || !planes || planes>4 || !stride || (stride&1) || xx_data_get_u16(h+8, 2, 0, false)<xx_data_get_u16(h+4, 2, 0, false) || xx_data_get_u16(h+10, 2, 0, false)<xx_data_get_u16(h+6, 2, 0, false)) return false;
     if(bits*planes>8 && !(bits==8 && (planes==3 || planes==4))) return false;
-    w=(unsigned)pm_le16(h+8)-pm_le16(h+4)+1U; height=(unsigned)pm_le16(h+10)-pm_le16(h+6)+1U;
+    w=(unsigned)xx_data_get_u16(h+8, 2, 0, false)-xx_data_get_u16(h+4, 2, 0, false)+1U; height=(unsigned)xx_data_get_u16(h+10, 2, 0, false)-xx_data_get_u16(h+6, 2, 0, false)+1U;
     row=(uint64_t)stride*planes; expanded=row*height;
     if((uint64_t)w*height>16777216U || (uint64_t)stride*8U<(uint64_t)w*bits || expanded>134217728U) return false;
     if(!fm_start(&r,f,pd,128,pm_available(f))) return false;

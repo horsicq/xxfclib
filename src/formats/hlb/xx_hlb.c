@@ -33,6 +33,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_HLB_COPY_CHUNK (64 * 1024)
 
@@ -167,11 +168,6 @@ static uint32_t xx_hlb_le16(const uint8_t *data) {
     return (uint32_t)data[0] | ((uint32_t)data[1] << 8);
 }
 
-static uint32_t xx_hlb_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
 /* The name field is NUL padded. Everything before the first NUL is the name;
  * a NUL followed by a non-NUL byte is not a shape any writer produces, and
  * refusing it is one of the structural rules that keeps random bytes from
@@ -222,7 +218,7 @@ static xx_hlb_stream *xx_hlb_parse(Abstractformat *self, xx_pd_struct *pd) {
     count = (int64_t)xx_hlb_le16(header + 2);
     if (count < 1 || count > XX_HLB_MAX_MEMBERS) return NULL;
 
-    directory_offset = (int64_t)xx_hlb_le32(header + 4);
+    directory_offset = (int64_t)xx_data_get_u32(header + 4, 4, 0, false);
     /* The directory always trails at least one payload byte. */
     if (directory_offset <= XX_HLB_HEADER_SIZE) return NULL;
     directory_size = count * XX_HLB_ENTRY_SIZE;
@@ -243,7 +239,7 @@ static xx_hlb_stream *xx_hlb_parse(Abstractformat *self, xx_pd_struct *pd) {
     }
     /* The directory repeats its own offset behind the last entry; when the
      * two disagree this is not an HLB library. */
-    if ((int64_t)xx_hlb_le32(directory + directory_size) != directory_offset) {
+    if ((int64_t)xx_data_get_u32(directory + directory_size, 4, 0, false) != directory_offset) {
         xx_mem_free(directory);
         return NULL;
     }
@@ -268,7 +264,7 @@ static xx_hlb_stream *xx_hlb_parse(Abstractformat *self, xx_pd_struct *pd) {
         size_t length = 0U;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        offset = (int64_t)(int32_t)xx_hlb_le32(entry);
+        offset = (int64_t)(int32_t)xx_data_get_u32(entry, 4, 0, false);
         /* Sizes are implicit, so strictly ascending offsets are the only
          * thing guaranteeing a positive, non-overlapping extent per member. */
         if (offset <= previous) goto fail;
@@ -276,7 +272,7 @@ static xx_hlb_stream *xx_hlb_parse(Abstractformat *self, xx_pd_struct *pd) {
         if (!xx_hlb_name_is_valid(entry + XX_HLB_NAME_OFFSET)) goto fail;
 
         end = (index + 1 < count)
-                  ? (int64_t)(int32_t)xx_hlb_le32(entry + XX_HLB_ENTRY_SIZE)
+                  ? (int64_t)(int32_t)xx_data_get_u32(entry + XX_HLB_ENTRY_SIZE, 4, 0, false)
                   : directory_offset;
         size = end - offset;
         if (size <= 0 || !xx_hlb_range_within(span, offset, size)) goto fail;

@@ -6,6 +6,7 @@
 #define XX_TWELFTH_B_H
 #include "../xx_payload_members.h"
 #include "xxfclib/algo/crc/xx_crc.h"
+#include "xxfclib/data/xx_data.h"
 static bool tb_parse(Abstractformat *,pm_stream *,const uint8_t *,uint64_t,xx_pd_struct *);
 static bool tb_quick(Abstractformat *,uint64_t);
 static __inline bool tb_span(uint64_t p,uint64_t z,uint64_t n) {return p<=n && z<=n-p;}
@@ -17,10 +18,10 @@ static __inline bool tb_cover(Abstractformat *f,pm_stream *s,const char *label,u
 static __inline bool tb_f32(uint32_t u) {return (u&0x7f800000U)!=0x7f800000U;}
 typedef struct tb_bin {const uint8_t *b;uint64_t p,n;xx_pd_struct *pd;} tb_bin;
 static __inline bool tb_take(tb_bin *q,uint64_t n,const uint8_t **value) {if(tb_stop(q->pd)||!tb_span(q->p,n,q->n))return false;if(value)*value=q->b+q->p;q->p+=n;return true;}
-static __inline bool tb_count(tb_bin *q,uint32_t maximum,uint32_t *value) {const uint8_t *p;if(!tb_take(q,4,&p))return false;*value=pm_le32(p);return *value<=maximum;}
-static __inline bool tb_floats(tb_bin *q,unsigned count) {const uint8_t *p;unsigned i;if(!tb_take(q,(uint64_t)count*4,&p))return false;for(i=0;i<count;++i)if(!tb_f32(pm_le32(p+i*4)))return false;return true;}
-static __inline bool tb_float(tb_bin *q,double *value) {const uint8_t *p;union {uint32_t u;float f;} v;if(!tb_take(q,4,&p)||!tb_f32(v.u=pm_le32(p)))return false;*value=v.f;return true;}
-static __inline bool tb_index(tb_bin *q,unsigned size,bool unsign,int32_t *value) {const uint8_t *p;uint32_t u;if(!tb_take(q,size,&p))return false;u=size==1?p[0]:size==2?pm_le16(p):pm_le32(p);if(!unsign&&size<4&&(u&(1U<<(size*8-1))))u|=~0U<<(size*8);if(unsign&&u>0x7fffffffU)return false;*value=(int32_t)u;return unsign||*value>=-1;}
+static __inline bool tb_count(tb_bin *q,uint32_t maximum,uint32_t *value) {const uint8_t *p;if(!tb_take(q,4,&p))return false;*value=xx_data_get_u32(p, 4, 0, false);return *value<=maximum;}
+static __inline bool tb_floats(tb_bin *q,unsigned count) {const uint8_t *p;unsigned i;if(!tb_take(q,(uint64_t)count*4,&p))return false;for(i=0;i<count;++i)if(!tb_f32(xx_data_get_u32(p+i*4, 4, 0, false)))return false;return true;}
+static __inline bool tb_float(tb_bin *q,double *value) {const uint8_t *p;union {uint32_t u;float f;} v;if(!tb_take(q,4,&p)||!tb_f32(v.u=xx_data_get_u32(p, 4, 0, false)))return false;*value=v.f;return true;}
+static __inline bool tb_index(tb_bin *q,unsigned size,bool unsign,int32_t *value) {const uint8_t *p;uint32_t u;if(!tb_take(q,size,&p))return false;u=size==1?p[0]:size==2?xx_data_get_u16(p, 2, 0, false):xx_data_get_u32(p, 4, 0, false);if(!unsign&&size<4&&(u&(1U<<(size*8-1))))u|=~0U<<(size*8);if(unsign&&u>0x7fffffffU)return false;*value=(int32_t)u;return unsign||*value>=-1;}
 typedef struct tb_ids {uint32_t *values,size,work;} tb_ids;
 static __inline bool tb_ids_init(tb_ids *set,uint32_t count) {uint32_t size=8;while(size<count*2)size*=2;set->size=size;set->work=0;set->values=(uint32_t *)xx_mem_alloc((size_t)size*4);if(!set->values)return false;xx_mem_zero(set->values,(size_t)size*4);return true;}
 static __inline bool tb_id(tb_ids *set,uint32_t value,bool insert,xx_pd_struct *pd) {uint32_t i,start=value*2654435761U;if(!value)return false;for(i=0;i<set->size;++i){uint32_t at=(start+i)&(set->size-1);if(++set->work>16000000||tb_stop(pd))return false;if(!set->values[at]){if(!insert)return false;set->values[at]=value;return true;}if(set->values[at]==value)return !insert;}return false;}

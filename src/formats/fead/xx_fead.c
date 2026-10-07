@@ -6,6 +6,7 @@
 #include "../ue2_indexed.h"
 #include "../../algo/lzma/xx_lzma_internal.h"
 #include "fead_bcj2.h"
+#include "xxfclib/data/xx_data.h"
 #define FI_TYPE ((xx_file_type_t)2768)
 #define FI_LIMIT (UINT64_C(512)*1024*1024)
 #define FI_DATA_LIMIT (UINT64_C(256)*1024*1024)
@@ -59,14 +60,14 @@ static int64_t fi_header(xx_io_device *d,int64_t base) {
     int64_t total=xx_io_total_size(d),at=base,end;
     if(!ue2_range(total,base,18)||!fi_read_at(d,base,h,18))return -1;
     if(h[0]=='M'&&h[1]=='Z') {
-        if(!fi_read_at(d,base,h,64)) {return -1; } peoff=ue2_u32(h+60);
+        if(!fi_read_at(d,base,h,64)) {return -1; } peoff=xx_data_get_u32(h+60, 4, 0, false);
         if(peoff>16U*1024U*1024U||!ue2_range(total-base,peoff,24)||!fi_read_at(d,base+peoff,pe,24)||xx_rt_memcmp(pe,"PE\0\0",4))return -1;
-        count=ue2_u16(pe+6);optional=ue2_u16(pe+20);
+        count=xx_data_get_u16(pe+6, 2, 0, false);optional=xx_data_get_u16(pe+20, 2, 0, false);
         if(!count||count>96||optional<64||optional>4096||!ue2_range(total-base,(int64_t)peoff+24,(int64_t)optional+count*40)||!fi_read_at(d,base+peoff+24+60,h,4))return -1;
-        end=ue2_u32(h);if(end>total-base)return -1;
+        end=xx_data_get_u32(h, 4, 0, false);if(end>total-base)return -1;
         for(i=0;i<count;i++) {
             uint64_t finish;if(!fi_read_at(d,base+peoff+24+optional+i*40,section,40))return -1;
-            finish=(uint64_t)ue2_u32(section+20)+ue2_u32(section+16);if(finish>(uint64_t)(total-base))return -1;
+            finish=(uint64_t)xx_data_get_u32(section+20, 4, 0, false)+xx_data_get_u32(section+16, 4, 0, false);if(finish>(uint64_t)(total-base))return -1;
             if((int64_t)finish>end)end=(int64_t)finish;
         }
         at=base+end;if(!fi_read_at(d,at,h,18))return -1;
@@ -79,7 +80,7 @@ static const uint8_t *fi_take(fi_cursor *c,size_t n) {
     const uint8_t *p;if(n>c->size-c->at)return NULL;p=c->bytes+c->at;c->at+=n;return p;
 }
 static bool fi_byte(fi_cursor *c,unsigned *n) {const uint8_t *p=fi_take(c,1);if(!p)return false;*n=*p;return true;}
-static bool fi_dword(fi_cursor *c,uint32_t *n) {const uint8_t *p=fi_take(c,4);if(!p)return false;*n=ue2_u32(p);return true;}
+static bool fi_dword(fi_cursor *c,uint32_t *n) {const uint8_t *p=fi_take(c,4);if(!p)return false;*n=xx_data_get_u32(p, 4, 0, false);return true;}
 static bool fi_lzma(const uint8_t *input,size_t available,uint8_t *output,size_t size,unsigned exponent,size_t *consumed,xx_pd_struct *pd) {
     lzma_props props={3,0,2,0};lzma_range_dec rd;size_t written=0;bool ok;
     *consumed=0;if(!size)return true;if(exponent<12||exponent>26)return false;props.dict_size=UINT32_C(1)<<exponent;
@@ -95,7 +96,7 @@ static bool fi_select(fi_cursor *main,fi_cursor *out,fi_index *ix,unsigned *next
 static char *fi_name(fi_cursor *c,unsigned encoding,uint64_t owned,uint64_t workspace,uint64_t budget) {
     unsigned units=0,i;const uint8_t *p;char *out;
     if(encoding!=1&&encoding!=3)return NULL;
-    p=fi_take(c,encoding==1?1:2);if(!p)return NULL;units=encoding==1?*p:ue2_u16(p);
+    p=fi_take(c,encoding==1?1:2);if(!p)return NULL;units=encoding==1?*p:xx_data_get_u16(p, 2, 0, false);
     if(!units||units>8192||!fi_room(owned,workspace,budget,(uint64_t)units+1)||!(p=fi_take(c,units)))return NULL;
     out=(char*)xx_mem_alloc((size_t)units+1);if(!out)return NULL;
     for(i=0;i<units;i++){if(p[i]<32||p[i]>=128){xx_mem_free(out);return NULL;}out[i]=p[i]=='\\'?'/':(char)p[i];}out[units]=0;
@@ -119,15 +120,15 @@ static bool fi_resource_table(fi_index *ix,fi_cursor *c,uint64_t workspace,uint6
     if(!fi_dword(c,&total))return false;
     for(i=0;i<count;i++) {
         fead_resource *r=&ix->resources[i];if(!fi_dword(c,&n)||!(p=fi_take(c,n)))return false;
-        r->tag=ue2_u32(p);r->id=ue2_u32(p+4);r->data=p+8;r->size=n-8;
+        r->tag=xx_data_get_u32(p, 4, 0, false);r->id=xx_data_get_u32(p+4, 4, 0, false);r->data=p+8;r->size=n-8;
         if(r->tag==UINT32_C(0x41504f53)) {
             size_t j;if(action||!r->size||(r->size%8))return false;action=r->size/8;
             if(!fi_room(ix->owned,workspace,budget,action*sizeof(*ix->actions)))return false;
             ix->actions=(fead_action*)xx_mem_calloc(action,sizeof(*ix->actions));if(!ix->actions)return false;
             ix->action_count=action;ix->owned+=action*sizeof(*ix->actions);
             for(j=0;j<action;j++) {
-                uint32_t start=ue2_u32(r->data+j*8),end=j+1<action?ue2_u32(r->data+(j+1)*8):ix->output[3];
-                unsigned type=ue2_u32(r->data+j*8+4);
+                uint32_t start=xx_data_get_u32(r->data+j*8, 4, 0, false),end=j+1<action?xx_data_get_u32(r->data+(j+1)*8, 4, 0, false):ix->output[3];
+                unsigned type=xx_data_get_u32(r->data+j*8+4, 4, 0, false);
                 if(start>end||end>ix->output[3]||(!j&&start)||(type!=0&&type!=2&&type!=5&&type!=7&&type!=18&&type!=29))return false;
                 ix->actions[j].end=end;ix->actions[j].type=type;
             }
@@ -140,7 +141,7 @@ static fi_index *fi_parse(Abstractformat *f,const xx_list_s *opts,xx_pd_struct *
     uint8_t h[18],*tail=NULL;size_t tail_size,i,used;fi_index *ix=NULL;fi_cursor c,section;uint32_t n,sum;unsigned next=0,tag,encoding;
     uint64_t budget=fi_budget(f,opts),owned=0;
     if((pd&&xx_pd_is_stopped(pd))||(at=fi_header(f->device,f->base_address))<0||!fi_masked_read(f->device,at,h,18))goto bad;
-    n=ue2_u32(h+10);if(n>FI_PACKED_LIMIT||!ue2_range(total,at+18,n))goto bad;
+    n=xx_data_get_u32(h+10, 4, 0, false);if(n>FI_PACKED_LIMIT||!ue2_range(total,at+18,n))goto bad;
     tail_size=(size_t)(total-at-18-n);if(tail_size<40||tail_size>FI_META_LIMIT||tail_size>budget||FI_CODEC_RESERVE+(UINT64_C(1)<<20)>budget-tail_size)goto bad;
     tail=(uint8_t*)xx_mem_alloc(tail_size);ix=(fi_index*)xx_mem_calloc(1,sizeof(*ix));if(!tail||!ix||!fi_masked_read_pd(f->device,at+18+n,tail,tail_size,pd))goto bad;
     ix->stream=at+18;ix->records.size=total-f->base_address;ix->owned=sizeof(*ix);ix->source_device=f->device;ix->source_base=f->base_address;c.bytes=tail;c.size=tail_size;c.at=0;
@@ -153,7 +154,7 @@ static fi_index *fi_parse(Abstractformat *f,const xx_list_s *opts,xx_pd_struct *
     }
     if(!fi_byte(&c,&tag)||tag!=4||!fi_byte(&c,&tag)||tag!=6)goto bad;
     sum=0;for(i=0;i<4;i++){if(!fi_dword(&c,&ix->packed[i])||ix->packed[i]>FI_PACKED_LIMIT-sum)goto bad;sum+=ix->packed[i];}
-    if(sum!=ue2_u32(h+10)||!fi_byte(&c,&tag)||tag!=7)goto bad;
+    if(sum!=xx_data_get_u32(h+10, 4, 0, false)||!fi_byte(&c,&tag)||tag!=7)goto bad;
     for(i=0;i<3;i++)if(!fi_byte(&c,&ix->exponent[i])||ix->exponent[i]<12||ix->exponent[i]>26)goto bad;
     sum=0;for(i=0;i<4;i++){if(!fi_dword(&c,&ix->output[i])||ix->output[i]>FI_DATA_LIMIT)goto bad;if(i<3){if(ix->output[i]>FI_DATA_LIMIT-sum)goto bad;sum+=ix->output[i];}}
     if(sum!=ix->output[3]||!sum||!fi_byte(&c,&tag)||tag||!fi_byte(&c,&tag)||tag!=5||!fi_dword(&c,&n)||!n||n>100000)goto bad;
@@ -167,7 +168,7 @@ static fi_index *fi_parse(Abstractformat *f,const xx_list_s *opts,xx_pd_struct *
     if(section.at!=section.size||!fi_select(&c,&section,ix,&next))goto bad;
     for(i=0;i<n;i++)if(!(ix->outer[i].flags&0x10)&&!fi_dword(&section,&ix->outer[i].size))goto bad;
     if(section.at!=section.size||!fi_select(&c,&section,ix,&next))goto bad;
-    for(i=0;i<n;i++){const uint8_t *p=fi_take(&section,8);if(!p)goto bad;ix->outer[i].filetime=ue2_u64(p);}
+    for(i=0;i<n;i++){const uint8_t *p=fi_take(&section,8);if(!p)goto bad;ix->outer[i].filetime=xx_data_get_u64(p, 8, 0, false);}
     if(section.at!=section.size||!fi_select(&c,&section,ix,&next))goto bad;
     for(i=1;i<n;i++){uint32_t delta;if(!fi_dword(&section,&delta)||delta)goto bad;}
     if(section.at!=section.size||!fi_byte(&c,&tag)||tag!=0x10||!fi_select(&c,&section,ix,&next)||!fi_resource_table(ix,&section,tail_size,budget)||next!=6)goto bad;

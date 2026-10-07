@@ -1,10 +1,11 @@
 /* SPDX-License-Identifier: MIT. Original validated encoded components; no playback. */
 #include "xxfclib/formats/dosbox_dro/xx_dosbox_dro.h"
 #include "../xx_fourteenth_media.h"
+#include "xxfclib/data/xx_data.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
  fm_blob b={0};uint64_t at,size,end,duration=0;uint32_t count,ms,i;uint8_t shortdelay,longdelay,map;bool ok=false;
- FM_NEED(fm_load(f,&b,pd)&&fm_span(&b,0,26)&&fm_tag(&b,0,"DBRAWOPL",8)&&pm_le16(b.p+8)==2&&pm_le16(b.p+10)==0);count=pm_le32(b.p+12);ms=pm_le32(b.p+16);shortdelay=b.p[23];longdelay=b.p[24];map=b.p[25];
+ FM_NEED(fm_load(f,&b,pd)&&fm_span(&b,0,26)&&fm_tag(&b,0,"DBRAWOPL",8)&&xx_data_get_u16(b.p+8, 2, 0, false)==2&&xx_data_get_u16(b.p+10, 2, 0, false)==0);count=xx_data_get_u32(b.p+12, 4, 0, false);ms=xx_data_get_u32(b.p+16, 4, 0, false);shortdelay=b.p[23];longdelay=b.p[24];map=b.p[25];
  FM_NEED(count&&count<=1000000&&b.p[20]<=2&&!b.p[21]&&!b.p[22]&&map&&map<=128&&shortdelay!=longdelay&&shortdelay>=map&&longdelay>=map&&fm_span(&b,26,map));at=26+map;size=(uint64_t)count*2;FM_NEED(fm_span(&b,at,size));end=at+size;
  for(i=0;i<count;++i){const uint8_t *q=b.p+(size_t)at+i*2;FM_NEED(fm_work(&b,1));if(q[0]==shortdelay)duration+=(uint64_t)q[1]+1;else if(q[0]==longdelay)duration+=((uint64_t)q[1]+1)*256;else FM_NEED((q[0]&127)<map&&(b.p[20]!=0||!(q[0]&128)));}FM_NEED(duration==ms);
  FM_NEED(fm_emit(f,s,&b,"descriptor.dro",0,26)&&fm_emit(f,s,&b,"register-map.dro",26,map)&&fm_emit(f,s,&b,"register-data.dro",at,size));

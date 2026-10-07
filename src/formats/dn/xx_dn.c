@@ -8,6 +8,7 @@
  */
 #include "xxfclib/formats/dn/xx_dn.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 #define DN_MAX_RECORDS 4096U
 #define DN_MAX_NAME 512U
@@ -364,9 +365,9 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
             !pm_read(format, pos, header, 30U)) goto done;
         if (xx_rt_memcmp(header, data_magic, 4U) != 0) break;
         if (count >= DN_MAX_RECORDS) goto done;
-        packed = pm_le32(header + 18U);
-        raw = pm_le32(header + 22U);
-        name_size = pm_le16(header + 28U);
+        packed = xx_data_get_u32(header + 18U, 4, 0, false);
+        raw = xx_data_get_u32(header + 22U, 4, 0, false);
+        name_size = xx_data_get_u16(header + 28U, 2, 0, false);
         if (packed == 0U || raw == 0U ||
             packed > DN_MAX_PACKED || raw > DN_MAX_PLAIN ||
             name_size == 0U || name_size > DN_MAX_NAME ||
@@ -400,9 +401,9 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream,
             !pm_read(format, pos, header, 46U) ||
             xx_rt_memcmp(header, dir_magic, 4U) != 0)
             goto done;
-        name_size = pm_le16(header + 30U);
+        name_size = xx_data_get_u16(header + 30U, 2, 0, false);
         if (name_size != rows[i].name_size ||
-            (int64_t)pm_le32(header + 42U) != rows[i].header_offset ||
+            (int64_t)xx_data_get_u32(header + 42U, 4, 0, false) != rows[i].header_offset ||
             name_size > span - pos - 46 ||
             !pm_read(format, pos + 46, name, name_size) ||
             xx_rt_memcmp(name, rows[i].name, name_size) != 0)

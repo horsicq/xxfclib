@@ -56,6 +56,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested. */
@@ -332,16 +333,6 @@ static bool lzma86_read_exact_at(xx_io_device *device, int64_t offset,
     return true;
 }
 
-static uint32_t lzma86_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
-
-static uint64_t lzma86_le64(const uint8_t *data) {
-    return (uint64_t)lzma86_le32(data) |
-           ((uint64_t)lzma86_le32(data + 4U) << 32U);
-}
-
 /* 7-Zip's dictionary test (1, 2^n, 3 * 2^n, all ones) plus the whole-MiB
  * sizes of 2 MiB and more that the LZMA SDK encoder writes. */
 static bool lzma86_dictionary_ok(uint32_t size) {
@@ -366,8 +357,8 @@ static bool lzma86_parse_header(const uint8_t *data, lzma86_header *header) {
     value /= 9U;
     header->lp = value % 5U;
     header->pb = value / 5U;
-    header->dictionary_size = lzma86_le32(data + 2U);
-    header->declared_size = lzma86_le64(data + 6U);
+    header->dictionary_size = xx_data_get_u32(data + 2U, 4, 0, false);
+    header->declared_size = xx_data_get_u64(data + 6U, 8, 0, false);
     return lzma86_dictionary_ok(header->dictionary_size) &&
            (header->declared_size == XX_LZMA86_UNKNOWN_SIZE ||
             header->declared_size < XX_LZMA86_SIZE_LIMIT);

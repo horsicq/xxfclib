@@ -41,6 +41,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef SHRINKWRAP
 #define XX_SHRINKWRAP_FILE_TYPE XX_FILE_TYPE_SHRINKWRAP
@@ -75,15 +76,6 @@ typedef struct sw_stream_s {
     uint8_t format_byte;
 } sw_stream;
 
-static uint16_t sw_be16(const uint8_t *bytes) {
-    return (uint16_t)(((uint16_t)bytes[0] << 8U) | bytes[1]);
-}
-
-static uint32_t sw_be32(const uint8_t *bytes) {
-    return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
-           ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3];
-}
-
 static bool sw_read_at(xx_io_device *device, int64_t offset, void *buffer,
                        size_t size) {
     size_t done = 0U;
@@ -104,7 +96,7 @@ static uint32_t sw_checksum(const uint8_t *data, size_t size) {
     uint32_t sum = 0U;
     size_t index;
     for (index = 0U; index + 1U < size; index += 2U) {
-        sum = (sum + (uint32_t)sw_be16(data + index)) & UINT32_C(0xFFFFFFFF);
+        sum = (sum + (uint32_t)xx_data_get_u16(data + index, 2, 0, true)) & UINT32_C(0xFFFFFFFF);
         sum = (sum >> 1U) | ((sum & 1U) << 31U);
     }
     return sum;
@@ -158,7 +150,7 @@ static bool sw_parse(Abstractformat *format, sw_stream **result) {
                     sizeof(header)))
         return false;
 
-    if (sw_be16(header + 0x52) != SW_PRIVATE) return false;
+    if (xx_data_get_u16(header + 0x52, 2, 0, true) != SW_PRIVATE) return false;
     if (header[0] > SW_NAME_MAX) return false;
     disk_format = header[0x50];
     format_byte = header[0x51];
@@ -167,8 +159,8 @@ static bool sw_parse(Abstractformat *format, sw_stream **result) {
         format_byte != 0x24U)
         return false;
 
-    data_size = (int64_t)sw_be32(header + 0x40);
-    tag_size = (int64_t)sw_be32(header + 0x44);
+    data_size = (int64_t)xx_data_get_u32(header + 0x40, 4, 0, true);
+    tag_size = (int64_t)xx_data_get_u32(header + 0x44, 4, 0, true);
     /* Bound both declared extents against the file before anything is read. */
     if (data_size <= 0 || data_size > SW_MAX_DATA ||
         (data_size % SW_SECTOR_SIZE) != 0)
@@ -189,7 +181,7 @@ static bool sw_parse(Abstractformat *format, sw_stream **result) {
     if (!stream->items[0].name) goto fail;
     stream->items[0].data_offset = format->base_address + SW_HEADER_SIZE;
     stream->items[0].size = data_size;
-    stream->items[0].checksum = sw_be32(header + 0x48);
+    stream->items[0].checksum = xx_data_get_u32(header + 0x48, 4, 0, true);
     stream->items[0].checksum_skip = 0;
     stream->items[0].is_tags = false;
     stream->count = 1U;
@@ -200,7 +192,7 @@ static bool sw_parse(Abstractformat *format, sw_stream **result) {
         stream->items[1].data_offset =
             format->base_address + SW_HEADER_SIZE + data_size;
         stream->items[1].size = tag_size;
-        stream->items[1].checksum = sw_be32(header + 0x4C);
+        stream->items[1].checksum = xx_data_get_u32(header + 0x4C, 4, 0, true);
         /* The format excludes the first sector's twelve tag bytes. */
         stream->items[1].checksum_skip = (tag_size > 12) ? 12 : tag_size;
         stream->items[1].is_tags = true;

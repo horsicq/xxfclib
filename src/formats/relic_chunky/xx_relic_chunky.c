@@ -5,6 +5,7 @@
  */
 #include "xxfclib/formats/relic_chunky/xx_relic_chunky.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool overlap(uint64_t a,uint64_t n,uint64_t b,uint64_t m) { return n && m && a<b+m && b<a+n; }
@@ -18,8 +19,8 @@ static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uin
 static bool chunky_nodes(Abstractformat *f,pm_stream *s,uint64_t at,uint64_t end,uint64_t total,unsigned depth,unsigned *count,xx_pd_struct *pd) {
     uint8_t h[28],name[4096]; uint32_t n,size,i; uint64_t next; char label[40];
     if(depth>32) { return false; } while(at<end) {
-      if(++*count>4096 || !take(f,&at,end,h,28,pd) || (xx_rt_memcmp(h,"FOLD",4) && xx_rt_memcmp(h,"DATA",4)) || !pm_le32(h+8) || pm_le32(h+8)>65535) return false;
-      for(i=4;i<8;++i) { if(h[i]<32 || h[i]>126) return false; } size=pm_le32(h+12); n=pm_le32(h+16);
+      if(++*count>4096 || !take(f,&at,end,h,28,pd) || (xx_rt_memcmp(h,"FOLD",4) && xx_rt_memcmp(h,"DATA",4)) || !xx_data_get_u32(h+8, 4, 0, false) || xx_data_get_u32(h+8, 4, 0, false)>65535) return false;
+      for(i=4;i<8;++i) { if(h[i]<32 || h[i]>126) return false; } size=xx_data_get_u32(h+12, 4, 0, false); n=xx_data_get_u32(h+16, 4, 0, false);
       if(n>4096 || !take(f,&at,end,name,n,pd) || !span(at,size,end)) { return false; } for(i=0;i<n;++i) if(name[i]>127 || (name[i]<32 && name[i])) return false; next=at+size;
       if(!xx_rt_memcmp(h,"FOLD",4)) { if(!chunky_nodes(f,s,at,next,total,depth+1,count,pd)) return false; }
       else { xx_rt_snprintf(label,sizeof(label),"chunk-%c%c%c%c.bin",h[4],h[5],h[6],h[7]); if(!emit(f,s,label,at,size,total)) return false; } at=next;
@@ -29,7 +30,7 @@ static bool chunky_nodes(Abstractformat *f,pm_stream *s,uint64_t at,uint64_t end
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[36]; uint64_t total=(uint64_t)pm_available(f); unsigned count=0;
-    if(!pm_read(f,0,h,36) || xx_rt_memcmp(h,"Relic Chunky\r\n\x1a\0",16) || pm_le32(h+16)!=3 || pm_le32(h+20)!=1 || pm_le32(h+24)!=36 || pm_le32(h+28)!=28 || pm_le32(h+32)!=1 || !chunky_nodes(f,s,36,total,total,0,&count,pd) || !s->count) return false;
+    if(!pm_read(f,0,h,36) || xx_rt_memcmp(h,"Relic Chunky\r\n\x1a\0",16) || xx_data_get_u32(h+16, 4, 0, false)!=3 || xx_data_get_u32(h+20, 4, 0, false)!=1 || xx_data_get_u32(h+24, 4, 0, false)!=36 || xx_data_get_u32(h+28, 4, 0, false)!=28 || xx_data_get_u32(h+32, 4, 0, false)!=1 || !chunky_nodes(f,s,36,total,total,0,&count,pd) || !s->count) return false;
     s->size=(int64_t)total; return true;
 
 }

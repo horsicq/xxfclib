@@ -17,7 +17,7 @@ static bool nc_attrs(fd_cursor *c) { uint32_t count,i; if(!nc_list(c,12,1024,&co
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[8]; fd_cursor c={f,8,(uint64_t)pm_available(f),pd,0}; uint32_t records,dims,vars,i,j,lens[128],recordvars=0; int unlimited=-1; nc_var *v=NULL; uint64_t stride=0,end=8; bool result=false;
-    if(!pm_read(f,0,h,8) || xx_rt_memcmp(h,"CDF",3) || (h[3]!=1 && h[3]!=2) || (records=pm_be32(h+4))>65535 || !nc_list(&c,10,128,&dims)) return false;
+    if(!pm_read(f,0,h,8) || xx_rt_memcmp(h,"CDF",3) || (h[3]!=1 && h[3]!=2) || (records=xx_data_get_u32(h+4, 4, 0, true))>65535 || !nc_list(&c,10,128,&dims)) return false;
     for(i=0;i<dims;++i) { char name[256]; if(!nc_name(&c,name) || !fd_be(&c,&lens[i]) || lens[i]>INT32_MAX) return false; if(!lens[i]) { if(unlimited>=0) return false; unlimited=(int)i; } }
     if(!nc_attrs(&c) || !nc_list(&c,11,256,&vars) || !vars) return false;
     v=(nc_var *)xx_mem_alloc(vars*sizeof(*v)); if(!v) return false; xx_mem_zero(v,vars*sizeof(*v));
@@ -27,7 +27,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             if(id==(uint32_t)unlimited) v[i].record=true; else if(!fd_mul(elems,lens[id],&elems)) goto done;
         }
         if(!nc_attrs(&c) || !fd_be(&c,&type) || !(width=nc_width(type)) || !fd_be(&c,&padded) || !fd_mul(elems,width,&v[i].bytes) || v[i].bytes>UINT32_MAX-3 || (padded!=((v[i].bytes+3)&~3ULL) && (!v[i].record || padded!=v[i].bytes)) || !fd_get(&c,begin,h[3]==1 ? 4:8)) goto done;
-        v[i].at=h[3]==1 ? pm_be32(begin):fd_be64(begin); v[i].padded=padded;
+        v[i].at=h[3]==1 ? xx_data_get_u32(begin, 4, 0, true):xx_data_get_u64(begin, 8, 0, true); v[i].padded=padded;
         if(v[i].at&3) { goto done; } if(v[i].record) { ++recordvars; stride+=padded; }
         for(j=0;j<i;++j) if(!xx_rt_strcmp(v[i].name,v[j].name)) goto done;
     }

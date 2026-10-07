@@ -3,14 +3,14 @@
 #include "xxfclib/formats/spss_sav/xx_spss_sav.h"
 #include "../xx_fifth_data.h"
 
-static bool sv_i(fd_cursor *c,bool be,uint32_t *v) { uint8_t b[4]; if(!fd_get(c,b,4)) return false; *v=fd_u32(b,be); return true; }
+static bool sv_i(fd_cursor *c,bool be,uint32_t *v) { uint8_t b[4]; if(!fd_get(c,b,4)) return false; *v=xx_data_get_u32(b, 4, 0, be); return true; }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[176]; bool be; uint32_t slots,cases,variables=0,continuations=0,tag; fd_cursor c={f,176,(uint64_t)pm_available(f),pd,0}; uint64_t bytes;
     if(!pm_read(f,0,h,176) || xx_rt_memcmp(h,"$FL2",4)) return false;
-    be=pm_be32(h+64)==2; if(fd_u32(h+64,be)!=2 || fd_u32(h+72,be)!=0 || !(slots=fd_u32(h+68,be)) || slots>4096 || (cases=fd_u32(h+80,be))>65535 || fd_u32(h+76,be)>slots) return false;
+    be=xx_data_get_u32(h+64, 4, 0, true)==2; if(xx_data_get_u32(h+64, 4, 0, be)!=2 || xx_data_get_u32(h+72, 4, 0, be)!=0 || !(slots=xx_data_get_u32(h+68, 4, 0, be)) || slots>4096 || (cases=xx_data_get_u32(h+80, 4, 0, be))>65535 || xx_data_get_u32(h+76, 4, 0, be)>slots) return false;
     for(;;) { if(!sv_i(&c,be,&tag)) return false;
         if(tag==2) { uint8_t v[28]; uint32_t type,label,missing; if(variables>=slots || !fd_get(&c,v,28)) return false;
-            type=fd_u32(v,be); label=fd_u32(v+4,be); missing=fd_u32(v+8,be);
+            type=xx_data_get_u32(v, 4, 0, be); label=xx_data_get_u32(v+4, 4, 0, be); missing=xx_data_get_u32(v+8, 4, 0, be);
             if(label>1 || ((int32_t)missing<-3 || (int32_t)missing>3)) return false;
             if(continuations) { if(type!=UINT32_MAX || label || missing) return false; --continuations; }
             else { if(type>255 || !v[20] || v[20]==' ') return false; if(type>8) continuations=(type+7)/8-1; }

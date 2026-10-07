@@ -33,6 +33,7 @@
 #include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_BR_LITERAL_SYMBOLS 256U
 #define XX_BR_COMMAND_SYMBOLS 704U
@@ -1446,20 +1447,11 @@ error:
     return false;
 }
 
-static uint16_t xx_br_read16(const uint8_t *data) {
-    return (uint16_t)data[0] | (uint16_t)((uint16_t)data[1] << 8U);
-}
-
-static uint32_t xx_br_read32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
-
 static bool xx_br_is_mt_header(const uint8_t *source, size_t source_size) {
     return source_size >= 16U &&
-           xx_br_read32(source) == UINT32_C(0x184D2A50) &&
-           xx_br_read32(source + 4U) == UINT32_C(8) &&
-           xx_br_read16(source + 12U) == UINT16_C(0x5242);
+           xx_data_get_u32(source, 4, 0, false) == UINT32_C(0x184D2A50) &&
+           xx_data_get_u32(source + 4U, 4, 0, false) == UINT32_C(8) &&
+           xx_data_get_u16(source + 12U, 2, 0, false) == UINT16_C(0x5242);
 }
 
 bool xx_brotli_decompress_memory(const void *source, size_t source_size,
@@ -1495,8 +1487,8 @@ bool xx_brotli_decompress_memory(const void *source, size_t source_size,
         if (!xx_br_is_mt_header(header, source_size - input_position)) {
             return false;
         }
-        compressed_size = xx_br_read32(header + 8U);
-        frame_limit = (size_t)xx_br_read16(header + 14U) << 16U;
+        compressed_size = xx_data_get_u32(header + 8U, 4, 0, false);
+        frame_limit = (size_t)xx_data_get_u16(header + 14U, 2, 0, false) << 16U;
         input_position += 16U;
         if ((size_t)compressed_size > source_size - input_position ||
             output_position > destination_size) {
@@ -1587,8 +1579,8 @@ bool xx_brotli_decompress_alloc(const void *source, size_t source_size,
             goto error;
         }
         header = input + input_position;
-        compressed_size = xx_br_read32(header + 8U);
-        frame_limit = (size_t)xx_br_read16(header + 14U) << 16U;
+        compressed_size = xx_data_get_u32(header + 8U, 4, 0, false);
+        frame_limit = (size_t)xx_data_get_u16(header + 14U, 2, 0, false) << 16U;
         input_position += 16U;
         if (frame_limit == 0U ||
             (size_t)compressed_size > source_size - input_position ||

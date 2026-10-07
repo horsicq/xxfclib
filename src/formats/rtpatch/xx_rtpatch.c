@@ -63,6 +63,7 @@
 #include "xxfclib/algo/rtpatch/xx_rtpatch.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_RTPATCH_COPY_CHUNK (64 * 1024)
 
@@ -176,8 +177,6 @@ static bool xx_rtpatch_add(xx_rtpatch_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_rtpatch_le16(const uint8_t *data);
-static uint32_t xx_rtpatch_le32(const uint8_t *data);
 static bool xx_rtpatch_version_supported(uint16_t version);
 static bool xx_rtpatch_fixed_descriptor(uint16_t version);
 static bool xx_rtpatch_dos_valid(uint16_t date, uint16_t time);
@@ -196,15 +195,6 @@ static bool xx_rtpatch_decode(Abstractformat *self, const xx_rtpatch_member *mem
 
 /* How far back of a stream the 4.x/6.x long name may start. The name is a
  * counted string of at most 255 bytes, so 256 covers every spelling. */
-
-static uint16_t xx_rtpatch_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_rtpatch_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static bool xx_rtpatch_version_supported(uint16_t version) {
     return version == 110U || version == 200U || version == 211U ||
@@ -292,10 +282,10 @@ static bool xx_rtpatch_descriptor(const uint8_t *data, int64_t size,
     field = data + offset;
     if (!xx_rtpatch_safe_name(field, 14U, true, out_name)) return false;
 
-    attributes = xx_rtpatch_le16(field + 14);
-    stored_size = xx_rtpatch_le32(field + 16);
-    date = xx_rtpatch_le16(field + 20);
-    time = xx_rtpatch_le16(field + 22);
+    attributes = xx_data_get_u16(field + 14, 2, 0, false);
+    stored_size = xx_data_get_u32(field + 16, 4, 0, false);
+    date = xx_data_get_u16(field + 20, 2, 0, false);
+    time = xx_data_get_u16(field + 22, 2, 0, false);
     /* Read-only, hidden, system and archive in any combination. What a
      * member descriptor must never carry is the volume-label or directory
      * bit, and compressed data mimicking a descriptor almost always sets
@@ -345,8 +335,8 @@ static bool xx_rtpatch_whole_file(const uint8_t *data, int64_t size,
         return false;
     }
     if (data[descriptor_offset - 9] != 1U) return false;
-    stated_size = xx_rtpatch_le32(data + descriptor_offset - 8);
-    compressed = xx_rtpatch_le32(data + descriptor_offset - 4);
+    stated_size = xx_data_get_u32(data + descriptor_offset - 8, 4, 0, false);
+    compressed = xx_data_get_u32(data + descriptor_offset - 4, 4, 0, false);
     if ((int64_t)stated_size != uncompressed_size) return false;
     if (compressed < XX_RTPATCH_STREAM_MIN_SIZE ||
         (int64_t)compressed > size - stream_offset) {
@@ -453,9 +443,9 @@ static bool xx_rtpatch_delta_fill(const uint8_t *data, int64_t size,
     if (header < 0 && data[descriptor_offset - 9] == 1U)
         header = descriptor_offset - 8;
     if (header < 0 || header > size - 8 ||
-        (int64_t)xx_rtpatch_le32(data + header) != program_size) return false;
+        (int64_t)xx_data_get_u32(data + header, 4, 0, false) != program_size) return false;
 
-    *out_compressed = (int64_t)xx_rtpatch_le32(data + header + 4);
+    *out_compressed = (int64_t)xx_data_get_u32(data + header + 4, 4, 0, false);
     if (!xx_rtpatch_delta_payload_proved(data, size, stream_offset,
                                           uncompressed_size,
                                           *out_compressed, pd)) return false;
@@ -518,14 +508,14 @@ static bool xx_rtpatch_inline_whole(const uint8_t *data, int64_t size,
                     if (data[i] != 0U) zeros = false;
                 if (!zeros) continue;
             }
-            unpacked = (int64_t)xx_rtpatch_le32(data + header);
-            packed = (int64_t)xx_rtpatch_le32(data + header + 4);
+            unpacked = (int64_t)xx_data_get_u32(data + header, 4, 0, false);
+            packed = (int64_t)xx_data_get_u32(data + header + 4, 4, 0, false);
             if (unpacked <= 0 || unpacked > XX_RTPATCH_MAX_SCAN ||
                 packed < XX_RTPATCH_STREAM_MIN_SIZE ||
                 packed > size - stream_offset) continue;
             if (gap == 9) {
                 int64_t i;
-                if (xx_rtpatch_le32(data + end) != (uint32_t)unpacked)
+                if (xx_data_get_u32(data + end, 4, 0, false) != (uint32_t)unpacked)
                     continue;
                 for (i = end + 4; i < name_offset; ++i)
                     if (data[i] != 0U) break;
@@ -533,7 +523,7 @@ static bool xx_rtpatch_inline_whole(const uint8_t *data, int64_t size,
             } else {
                 int64_t i;
                 if (data[end] != 0x60U ||
-                    xx_rtpatch_le32(data + end + 1) != (uint32_t)unpacked)
+                    xx_data_get_u32(data + end + 1, 4, 0, false) != (uint32_t)unpacked)
                     continue;
                 for (i = end + 5; i < name_offset; ++i)
                     if (data[i] != 0U) break;
@@ -603,10 +593,10 @@ static bool xx_rtpatch_v400_delta_fill(const uint8_t *data, int64_t size,
             xx_str_icmp(source_short, source_long) ||
             xx_str_icmp(source_long, destination_name) ||
             data[header - 2] != 1U || data[header - 1] != 1U ||
-            xx_rtpatch_le32(data + header) !=
+            xx_data_get_u32(data + header, 4, 0, false) !=
                 (uint32_t)(destination_size + XX_RTPATCH_DELTA_OVERHEAD))
             continue;
-        packed = (int64_t)xx_rtpatch_le32(data + header + 4);
+        packed = (int64_t)xx_data_get_u32(data + header + 4, 4, 0, false);
         if (!xx_rtpatch_delta_payload_proved(data, size, stream_offset,
                                               destination_size, packed, pd))
             continue;
@@ -632,7 +622,7 @@ static bool xx_rtpatch_string_list(const uint8_t *data, int64_t size,
     *out_decoded = 0;
     *out_directory = false;
     if (offset < 0 || offset > size - 2) return false;
-    count = (uint32_t)xx_rtpatch_le16(data + offset);
+    count = (uint32_t)xx_data_get_u16(data + offset, 2, 0, false);
     if (count == 0U || count > (uint32_t)XX_RTPATCH_MAX_LIST_ITEMS) {
         return false;
     }
@@ -738,7 +728,7 @@ static xx_rtpatch_stream *xx_rtpatch_parse(Abstractformat *self,
     }
     if (pd && xx_pd_is_stopped(pd)) goto fail;
 
-    version = xx_rtpatch_le16(data + 2);
+    version = xx_data_get_u16(data + 2, 2, 0, false);
     if (data[0] != 'K' || data[1] != '*' ||
         !xx_rtpatch_version_supported(version)) {
         goto fail;
@@ -757,8 +747,8 @@ static xx_rtpatch_stream *xx_rtpatch_parse(Abstractformat *self,
         /* 3.20 and 4.00 carry package totals at 0x0c and 0x10 and the
          * builder's fixed 4 at 0x18, while the reserved u32 at 0x14 still
          * reads zero. */
-        if (xx_rtpatch_le32(data + 0x14) != 0U ||
-            xx_rtpatch_le16(data + 0x18) != 4U) {
+        if (xx_data_get_u32(data + 0x14, 4, 0, false) != 0U ||
+            xx_data_get_u16(data + 0x18, 2, 0, false) != 4U) {
             goto fail;
         }
     }
@@ -966,7 +956,7 @@ static xx_rtpatch_stream *xx_rtpatch_parse(Abstractformat *self,
                                         &decoded, &directory) ||
                 directory || decoded <= 0 || decoded > 65536 ||
                 end > first_record || end > span - 2) continue;
-            flag = xx_rtpatch_le16(data + end);
+            flag = xx_data_get_u16(data + end, 2, 0, false);
             if ((flag & 0x0004U) == 0U ||
                 (flag & 0xf000U) == 0x1000U) continue;
             banner_at = candidate;

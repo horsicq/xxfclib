@@ -6,6 +6,7 @@
  */
 #include "xxfclib/formats/terragen_ter/xx_terragen_ter.h"
 #include "../wavefront_obj/xx_eleventh_media.h"
+#include "xxfclib/data/xx_data.h"
 static bool eg_quick(Abstractformat *f,uint64_t n) {uint8_t b[16];return n>=40&&pm_read(f,0,b,16)&&eg_tag(b,"TERRAGENTERRAIN ",16);}
 static bool eg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  uint64_t p=16;uint32_t seen=0,w=0,h=0,size=0;bool height=false;
@@ -14,12 +15,12 @@ static bool eg_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
   if(eg_stop(pd)||!eg_span(p,4,n))return false;
   if(eg_tag(b+p,"EOF ",4)){p+=4;if(p!=n||!height)return false;if(!eg_emit(f,s,"terminator.ter",start,4,n))return false;s->size=(int64_t)n;return true;}
   if(height)return false;
-  if(eg_tag(b+p,"SIZE",4)){bit=1;z=8;label="size.ter";if(!eg_span(p,z,n)||!eg_zero(b+p+6,2))return false;size=pm_le16(b+p+4)+1U;}
-  else if(eg_tag(b+p,"XPTS",4)){bit=2;z=8;label="width.ter";if(!(seen&1)||!eg_span(p,z,n)||!eg_zero(b+p+6,2)||(w=pm_le16(b+p+4))==0)return false;}
-  else if(eg_tag(b+p,"YPTS",4)){bit=4;z=8;label="height.ter";if(!(seen&1)||!eg_span(p,z,n)||!eg_zero(b+p+6,2)||(h=pm_le16(b+p+4))==0)return false;}
-  else if(eg_tag(b+p,"SCAL",4)){unsigned i;bit=8;z=16;label="scale.ter";if(!eg_span(p,z,n))return false;for(i=0;i<3;++i){uint32_t u=pm_le32(b+p+4+i*4);if(!eg_f32(u)||(u&0x80000000U)||!(u&0x7fffffffU))return false;}}
-  else if(eg_tag(b+p,"CRAD",4)){uint32_t u;bit=16;z=8;label="radius.ter";if(!eg_span(p,z,n)||!eg_f32(u=pm_le32(b+p+4))||(u&0x80000000U)||!(u&0x7fffffffU))return false;}
-  else if(eg_tag(b+p,"CRVM",4)){bit=32;z=8;label="curve-mode.ter";if(!eg_span(p,z,n)||pm_le32(b+p+4)>1)return false;}
+  if(eg_tag(b+p,"SIZE",4)){bit=1;z=8;label="size.ter";if(!eg_span(p,z,n)||!eg_zero(b+p+6,2))return false;size=xx_data_get_u16(b+p+4, 2, 0, false)+1U;}
+  else if(eg_tag(b+p,"XPTS",4)){bit=2;z=8;label="width.ter";if(!(seen&1)||!eg_span(p,z,n)||!eg_zero(b+p+6,2)||(w=xx_data_get_u16(b+p+4, 2, 0, false))==0)return false;}
+  else if(eg_tag(b+p,"YPTS",4)){bit=4;z=8;label="height.ter";if(!(seen&1)||!eg_span(p,z,n)||!eg_zero(b+p+6,2)||(h=xx_data_get_u16(b+p+4, 2, 0, false))==0)return false;}
+  else if(eg_tag(b+p,"SCAL",4)){unsigned i;bit=8;z=16;label="scale.ter";if(!eg_span(p,z,n))return false;for(i=0;i<3;++i){uint32_t u=xx_data_get_u32(b+p+4+i*4, 4, 0, false);if(!eg_f32(u)||(u&0x80000000U)||!(u&0x7fffffffU))return false;}}
+  else if(eg_tag(b+p,"CRAD",4)){uint32_t u;bit=16;z=8;label="radius.ter";if(!eg_span(p,z,n)||!eg_f32(u=xx_data_get_u32(b+p+4, 4, 0, false))||(u&0x80000000U)||!(u&0x7fffffffU))return false;}
+  else if(eg_tag(b+p,"CRVM",4)){bit=32;z=8;label="curve-mode.ter";if(!eg_span(p,z,n)||xx_data_get_u32(b+p+4, 4, 0, false)>1)return false;}
   else if(eg_tag(b+p,"ALTW",4)){uint64_t cells;if(!(seen&1))return false;if(!w)w=size;if(!h)h=size;if((w<h?w:h)!=size)return false;cells=(uint64_t)w*h;if(!cells||cells>16777216)return false;z=8+cells*2;z=(z+3)&~3ULL;label="heightfield.ter";bit=64;height=true;if(!eg_span(p,z,n)||!eg_zero(b+p+8+cells*2,z-8-cells*2))return false;}
   else return false;
   if((seen&bit)||!eg_span(p,z,n)||!eg_emit(f,s,label,start,z,n)) {return false; } seen|=bit;p+=z;

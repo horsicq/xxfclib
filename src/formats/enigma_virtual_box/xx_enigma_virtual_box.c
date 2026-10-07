@@ -6,6 +6,7 @@
 #include "xxfclib/formats/enigma_virtual_box/xx_enigma_virtual_box.h"
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "../ue2_indexed.h"
+#include "xxfclib/data/xx_data.h"
 #ifdef ENIGMA_VIRTUAL_BOX
 #define UE2_ENIGMA_TYPE XX_FILE_TYPE_ENIGMA_VIRTUAL_BOX
 #else
@@ -29,12 +30,12 @@ static bool evb_name(evb_parser *p, char *name, size_t capacity, uint8_t *type) 
     while (units++ < 2048) {
         uint32_t value;
         if (!ue2_read(p->format, p->cursor, word, 2)) return false;
-        p->cursor += 2; value = ue2_u16(word);
+        p->cursor += 2; value = xx_data_get_u16(word, 2, 0, false);
         if (!value) break;
         if (value >= 0xd800 && value <= 0xdbff) {
             uint32_t low;
             if (!ue2_read(p->format, p->cursor, word, 2)) return false;
-            p->cursor += 2; low = ue2_u16(word);
+            p->cursor += 2; low = xx_data_get_u16(word, 2, 0, false);
             if (low < 0xdc00 || low > 0xdfff) return false;
             value = 0x10000U + ((value - 0xd800U) << 10) + low - 0xdc00U;
         } else if (value >= 0xdc00 && value <= 0xdfff) return false;
@@ -63,7 +64,7 @@ static bool evb_nodes(evb_parser *p, uint32_t count, const char *prefix, unsigne
         bool result = false;
         if ((p->pd && xx_pd_is_stopped(p->pd)) || ++p->nodes > UE2_INDEX_LIMIT ||
             !ue2_read(p->format, origin, header, 16)) return false;
-        node_size = ue2_u32(header); children = ue2_u32(header + 12); p->cursor += 16;
+        node_size = xx_data_get_u32(header, 4, 0, false); children = xx_data_get_u32(header + 12, 4, 0, false); p->cursor += 16;
         if (!evb_name(p, name, sizeof(name), &type) || (type != 2 && type != 3) ||
             xx_rt_strchr(name, '/') || xx_rt_strchr(name, '\\') || xx_rt_strchr(name, ':')) return false;
         if (depth == 0 && type == 3 && !xx_rt_strcmp(name, "%DEFAULT FOLDER%")) name[0] = 0;
@@ -89,12 +90,12 @@ static bool evb_nodes(evb_parser *p, uint32_t count, const char *prefix, unsigne
                 if (node_size < 45 || !ue2_range(p->total, origin, (int64_t)node_size + 4)) goto done;
                 end = origin + node_size + 4;
                 if (end - 49 < p->cursor || !ue2_read(p->format, end - 49, optional, 49)) goto done;
-                original = ue2_u32(optional + 2); stored = ue2_u32(optional + 41); data = end;
+                original = xx_data_get_u32(optional + 2, 4, 0, false); stored = xx_data_get_u32(optional + 41, 4, 0, false); data = end;
                 if (!ue2_range(p->total, data, stored)) goto done;
                 p->cursor = data + stored;
             } else {
                 if (!ue2_range(p->table_end, p->cursor, 53) || !ue2_read(p->format, p->cursor, optional, 53)) goto done;
-                original = ue2_u32(optional + 2); stored = ue2_u32(optional + 49); p->cursor += 53;
+                original = xx_data_get_u32(optional + 2, 4, 0, false); stored = xx_data_get_u32(optional + 49, 4, 0, false); p->cursor += 53;
                 data = p->payload;
                 if (!ue2_range(p->total, data, stored)) goto done;
                 p->payload += stored;
@@ -111,8 +112,8 @@ static ue2_index *evb_at(Abstractformat *f, int64_t start, bool legacy, xx_pd_st
     uint8_t header[80];
     evb_parser p;
     uint32_t size, roots;
-    if (!ue2_read(f, start, header, sizeof(header)) || xx_rt_memcmp(header, "EVB\0", 4) || ue2_u32(header + 4) != 64) return NULL;
-    size = ue2_u32(header + 64); roots = ue2_u32(header + 76);
+    if (!ue2_read(f, start, header, sizeof(header)) || xx_rt_memcmp(header, "EVB\0", 4) || xx_data_get_u32(header + 4, 4, 0, false) != 64) return NULL;
+    size = xx_data_get_u32(header + 64, 4, 0, false); roots = xx_data_get_u32(header + 76, 4, 0, false);
     if (!roots || roots > 65536U) return NULL;
     xx_mem_zero(&p, sizeof(p)); p.format = f; p.total = xx_io_total_size(f->device);
     p.pd = pd; p.legacy = legacy;
@@ -232,7 +233,7 @@ static bool evb_unpack(Abstractformat *f, xx_archive_record_state *state, xx_pd_
     if (m->size == m->original_size || m->is_folder) return ue2_unpack(f, state, pd);
     if (m->original_size < 0 || m->original_size > EVB_MEMBER_LIMIT || m->size < 12 ||
         !ue2_read(f, m->offset, head, 8)) return false;
-    block_size = ue2_u32(head);
+    block_size = xx_data_get_u32(head, 4, 0, false);
     if (block_size < 12 || block_size > 1024U * 1024U || block_size >= (uint64_t)m->size ||
         (block_size - 12) % 12) return false;
     count = (block_size - 12) / 12 + 1;
@@ -241,7 +242,7 @@ static bool evb_unpack(Abstractformat *f, xx_archive_record_state *state, xx_pd_
     if (!sizes || !out || !ue2_read(f, m->offset + 8, sizes, block_size - 8)) goto cleanup;
     cursor = m->offset + block_size; remaining = m->size - block_size;
     for (i = 0; i < count; ++i) {
-        uint32_t take = ue2_u32(sizes + (size_t)i * 12); size_t produced = 0;
+        uint32_t take = xx_data_get_u32(sizes + (size_t)i * 12, 4, 0, false); size_t produced = 0;
         const uint8_t *data; size_t data_size;
         if ((pd && xx_pd_is_stopped(pd)) || !take || take > EVB_CHUNK_LIMIT || take > remaining) goto cleanup;
         if (take > packed_capacity) {
@@ -252,14 +253,14 @@ static bool evb_unpack(Abstractformat *f, xx_archive_record_state *state, xx_pd_
         data = packed; data_size = take;
         /* Optional AP32 wrapper includes two CRC32 checks and exact sizes. */
         if (take >= 24 && !xx_rt_memcmp(packed, "AP32", 4)) {
-            uint32_t header_size = ue2_u32(packed + 4), input_size = ue2_u32(packed + 8);
+            uint32_t header_size = xx_data_get_u32(packed + 4, 4, 0, false), input_size = xx_data_get_u32(packed + 8, 4, 0, false);
             if (header_size < 24 || header_size > take || input_size != take - header_size ||
-                xx_crc32(XX_CRC_TYPE_CRC32_ISO_HDLC, packed + header_size, input_size) != ue2_u32(packed + 12)) goto cleanup;
+                xx_crc32(XX_CRC_TYPE_CRC32_ISO_HDLC, packed + header_size, input_size) != xx_data_get_u32(packed + 12, 4, 0, false)) goto cleanup;
             data = packed + header_size; data_size = input_size;
         }
         if (!evb_aplib(data, data_size, out + done, (size_t)m->original_size - done, &produced, pd)) goto cleanup;
-        if (data != packed && (produced != ue2_u32(packed + 16) ||
-            xx_crc32(XX_CRC_TYPE_CRC32_ISO_HDLC, out + done, produced) != ue2_u32(packed + 20))) goto cleanup;
+        if (data != packed && (produced != xx_data_get_u32(packed + 16, 4, 0, false) ||
+            xx_crc32(XX_CRC_TYPE_CRC32_ISO_HDLC, out + done, produced) != xx_data_get_u32(packed + 20, 4, 0, false))) goto cleanup;
         done += produced; cursor += take; remaining -= take;
     }
     if (remaining || done != (size_t)m->original_size) goto cleanup;

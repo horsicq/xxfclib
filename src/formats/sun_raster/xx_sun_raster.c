@@ -5,11 +5,12 @@
  */
 #include "xxfclib/formats/sun_raster/xx_sun_raster.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[32]; uint32_t w,height,depth,size,type,maptype,map; uint64_t row,raw,done=0; int64_t at,end,body;
-    if(!pm_read(f,0,h,32) || pm_be32(h)!=0x59A66A95U || !(w=pm_be32(h+4)) || !(height=pm_be32(h+8))) return false;
-    depth=pm_be32(h+12); size=pm_be32(h+16); type=pm_be32(h+20); maptype=pm_be32(h+24); map=pm_be32(h+28);
+    if(!pm_read(f,0,h,32) || xx_data_get_u32(h, 4, 0, true)!=0x59A66A95U || !(w=xx_data_get_u32(h+4, 4, 0, true)) || !(height=xx_data_get_u32(h+8, 4, 0, true))) return false;
+    depth=xx_data_get_u32(h+12, 4, 0, true); size=xx_data_get_u32(h+16, 4, 0, true); type=xx_data_get_u32(h+20, 4, 0, true); maptype=xx_data_get_u32(h+24, 4, 0, true); map=xx_data_get_u32(h+28, 4, 0, true);
     if((depth!=1 && depth!=8 && depth!=24 && depth!=32) || type>3 || maptype>2 || (maptype==0 && map) || (maptype==1 && (map%3 || map/3>256))) return false;
     row=((uint64_t)w*depth+15)/16*2; if(row>(uint64_t)INT64_MAX/height) return false; raw=row*height; body=32+(int64_t)map;
     if(body>pm_available(f)) return false;

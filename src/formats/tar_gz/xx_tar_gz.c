@@ -10,6 +10,7 @@
 #include "xxfclib/memory/xx_memory.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 static void xx_tar_gz_vtable_destroy(Abstractformat *self);
 
@@ -104,13 +105,6 @@ static bool xx_tar_gz_write_all(xx_io_device *device, const void *data,
     return true;
 }
 
-static void xx_tar_gz_put_u32le(uint8_t *destination, uint32_t value) {
-    destination[0] = (uint8_t)value;
-    destination[1] = (uint8_t)(value >> 8U);
-    destination[2] = (uint8_t)(value >> 16U);
-    destination[3] = (uint8_t)(value >> 24U);
-}
-
 static bool xx_tar_gz_encode(Abstractformat *outer,
                              const xx_list_s *options,
                              xx_io_device *tar_source, int64_t tar_size,
@@ -141,8 +135,8 @@ static bool xx_tar_gz_encode(Abstractformat *outer,
         deflate_size > INT64_MAX - 18) {
         return false;
     }
-    xx_tar_gz_put_u32le(trailer, crc32);
-    xx_tar_gz_put_u32le(trailer + 4U, (uint32_t)tar_size);
+    xx_data_set_u32(trailer, 4, 0, crc32, false);
+    xx_data_set_u32(trailer + 4U, 4, 0, (uint32_t)tar_size, false);
     if (!xx_tar_gz_write_all(outer->device, trailer, sizeof(trailer))) {
         return false;
     }

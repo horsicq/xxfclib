@@ -36,6 +36,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and not edited from here,
  * so the alias macro that sits next to the enumerator is tested instead. */
@@ -103,10 +104,6 @@ static uint32_t sbx_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static uint32_t sbx_le32(const uint8_t *bytes) {
-    return sbx_le16(bytes) | (sbx_le16(bytes + 2U) << 16U);
-}
-
 static bool sbx_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     size_t done = 0U;
@@ -159,14 +156,14 @@ static bool sbx_read_record(xx_io_device *device, int64_t base,
         return false;
     /* Signed on purpose: a size with the top bit set is corrupt, not a
      * two-gigabyte record. */
-    size = (int64_t)(int32_t)sbx_le32(head + 4);
+    size = (int64_t)(int32_t)xx_data_get_u32(head + 4, 4, 0, false);
     name_length = head[0x0d];
     if (name_length == 0U || size < (int64_t)name_length + SBX_OVERHEAD ||
         size > available - offset ||
         !sbx_read_at(device, base + offset + SBX_HEAD, tail,
                      (size_t)name_length + 4U))
         return false;
-    unpacked = (int64_t)(int32_t)sbx_le32(tail + name_length);
+    unpacked = (int64_t)(int32_t)xx_data_get_u32(tail + name_length, 4, 0, false);
     packed = size - (int64_t)name_length - SBX_OVERHEAD;
     if (unpacked < 0 || unpacked > SBX_MAX_MEMBER) return false;
     /* Bytes to produce and nothing to produce them from is a corrupt
@@ -284,11 +281,11 @@ static int64_t sbx_pe_image_end(xx_io_device *device, int64_t base,
     if (!sbx_read_at(device, base + table, sections,
                      (size_t)count * SBX_SECTION_SIZE))
         return 0;
-    end = sbx_le32(optional + 60);
+    end = xx_data_get_u32(optional + 60, 4, 0, false);
     for (index = 0U; index < count; ++index) {
         const uint8_t *section = sections + (size_t)index * SBX_SECTION_SIZE;
-        uint64_t raw_size = sbx_le32(section + 16);
-        uint64_t raw_pointer = sbx_le32(section + 20);
+        uint64_t raw_size = xx_data_get_u32(section + 16, 4, 0, false);
+        uint64_t raw_pointer = xx_data_get_u32(section + 20, 4, 0, false);
         if (raw_size != 0U && raw_pointer + raw_size > end)
             end = raw_pointer + raw_size;
     }
@@ -296,9 +293,9 @@ static int64_t sbx_pe_image_end(xx_io_device *device, int64_t base,
     /* Data directory 4 (security) holds a file offset, not an RVA. */
     directories = magic == 0x010bU ? 96U : 112U;
     if (optional_read >= directories + 40U &&
-        sbx_le32(optional + directories - 4U) > 4U) {
-        uint64_t certificate = sbx_le32(optional + directories + 32U);
-        uint64_t certificate_size = sbx_le32(optional + directories + 36U);
+        xx_data_get_u32(optional + directories - 4U, 4, 0, false) > 4U) {
+        uint64_t certificate = xx_data_get_u32(optional + directories + 32U, 4, 0, false);
+        uint64_t certificate_size = xx_data_get_u32(optional + directories + 36U, 4, 0, false);
         if (certificate > end && certificate_size != 0U &&
             certificate + certificate_size == (uint64_t)available)
             *limit_out = (int64_t)certificate;
@@ -381,7 +378,7 @@ static bool sbx_locate(Abstractformat *format, sbx_location *location,
         !sbx_read_at(format->device, base, dos, sizeof(dos)) ||
         dos[0] != 'M' || dos[1] != 'Z')
         return false;
-    lfanew = sbx_le32(dos + 0x3c);
+    lfanew = xx_data_get_u32(dos + 0x3c, 4, 0, false);
     if (lfanew < SBX_DOS_HEADER || lfanew > SBX_MAX_LFANEW ||
         (int64_t)lfanew > available - SBX_NE_HEADER - SBX_MIN_RECORD ||
         !sbx_read_at(format->device, base + lfanew, signature,

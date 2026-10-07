@@ -14,6 +14,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include "xx_kif_crypto_private.h"
+#include "xxfclib/data/xx_data.h"
 
 #ifdef CATSYSTEM_KIF
 #define KI_FILE_TYPE XX_FILE_TYPE_CATSYSTEM_KIF
@@ -48,14 +49,6 @@ typedef struct ki_name_key {
 
 static bool ki_stopped(xx_pd_struct *pd) {
     return pd && xx_pd_is_stopped(pd);
-}
-static uint32_t ki_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | (uint32_t)p[1] << 8U |
-           (uint32_t)p[2] << 16U | (uint32_t)p[3] << 24U;
-}
-static void ki_put32(uint8_t *p, uint32_t value) {
-    p[0] = (uint8_t)value; p[1] = (uint8_t)(value >> 8U);
-    p[2] = (uint8_t)(value >> 16U); p[3] = (uint8_t)(value >> 24U);
 }
 static bool ki_read(xx_io_device *device, int64_t at, void *buffer,
                     size_t size, xx_pd_struct *pd) {
@@ -157,7 +150,7 @@ static bool ki_header(Abstractformat *format, uint32_t *count, bool *encrypted,
     if (*available < (int64_t)sizeof(header) ||
         !ki_read(format->device, format->base_address, header, sizeof(header), pd) ||
         xx_rt_memcmp(header, "KIF\0", 4U)) return false;
-    *count = ki_le32(header + 4U);
+    *count = xx_data_get_u32(header + 4U, 4, 0, false);
     *encrypted = !xx_rt_memcmp(header + 8U, "__key__.dat\0", 11U);
     return *count > 0U && *count <= KI_MAX_COUNT;
 }
@@ -195,7 +188,7 @@ static ki_layout *ki_parse_width(Abstractformat *format, uint32_t count,
         expanded += length * 3U + 14U;
         member->name = ki_name(entry, length);
         if (!member->name) goto done;
-        offset = ki_le32(entry + width); size = ki_le32(entry + width + 4U);
+        offset = xx_data_get_u32(entry + width, 4, 0, false); size = xx_data_get_u32(entry + width + 4U, 4, 0, false);
         if ((uint64_t)offset < index_end || (uint64_t)offset > (uint64_t)available ||
             (uint64_t)size > (uint64_t)available - offset) goto done;
         member->offset = format->base_address + offset; member->size = size;
@@ -277,7 +270,7 @@ static ki_layout *ki_parse_encrypted(Abstractformat *format, uint32_t count,
     keys = (ki_name_key *)xx_mem_alloc((size_t)layout->count * sizeof(*keys));
     if (!layout->members || !keys ||
         !ki_read(format->device, format->base_address + KI_HEADER_SIZE + 68U, entry, 4U, pd)) goto done;
-    ki_put32(cipher_key, ki_mt_first(ki_le32(entry)));
+    xx_data_set_u32(cipher_key, 4, 0, ki_mt_first(xx_data_get_u32(entry, 4, 0, false)), false);
     if (!ki_bf_init(&layout->cipher, cipher_key, sizeof(cipher_key))) goto done;
     for (i = 0U; i < layout->count; ++i) {
         uint32_t ordinal = i + 1U, offset, size;
@@ -292,7 +285,7 @@ static ki_layout *ki_parse_encrypted(Abstractformat *format, uint32_t count,
         expanded += length * 3U + 14U;
         member->name = ki_name(entry, length);
         if (!member->name) goto done;
-        offset = ki_le32(entry + 64U) + ordinal; size = ki_le32(entry + 68U);
+        offset = xx_data_get_u32(entry + 64U, 4, 0, false) + ordinal; size = xx_data_get_u32(entry + 68U, 4, 0, false);
         ki_bf_decrypt(&layout->cipher, &offset, &size);
         if ((uint64_t)offset < index_end || (uint64_t)offset > (uint64_t)available ||
             (uint64_t)size > (uint64_t)available - offset) goto done;
@@ -537,10 +530,10 @@ bool xx_catsystem_kif_unpack_current_archive_record_to_device(Abstractformat *fo
             size_t at;
             uint32_t aligned = member->size & ~UINT32_C(7);
             for (at = 0U; at + 8U <= take && (uint64_t)done + at < aligned; at += 8U) {
-                uint32_t left = ki_le32(buffer + at), right = ki_le32(buffer + at + 4U);
+                uint32_t left = xx_data_get_u32(buffer + at, 4, 0, false), right = xx_data_get_u32(buffer + at + 4U, 4, 0, false);
                 if ((at & 65535U) == 0U && ki_stopped(pd)) goto done;
                 ki_bf_decrypt(&layout->cipher, &left, &right);
-                ki_put32(buffer + at, left); ki_put32(buffer + at + 4U, right);
+                xx_data_set_u32(buffer + at, 4, 0, left, false); xx_data_set_u32(buffer + at + 4U, 4, 0, right, false);
             }
         }
         while (destination && wrote < take) {

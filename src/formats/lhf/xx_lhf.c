@@ -59,11 +59,11 @@ static bool lhf_decode(ac_blob *b,const uint8_t *in,uint32_t packed,uint8_t *out
 }
 static bool lhf_parse(Abstractformat *f,pm_stream *s,ac_blob *b) {
     uint32_t at=8,end;
-    if(b->n<8U || xx_rt_memcmp(b->p,"LhF",4) || (end=pm_be32(b->p+4))!=b->n) return false;
+    if(b->n<8U || xx_rt_memcmp(b->p,"LhF",4) || (end=xx_data_get_u32(b->p+4, 4, 0, true))!=b->n) return false;
     while(at<end) {
         uint32_t packed,n,name_n,pos; char name[96];
         if(!ac_poll(b) || !ac_span(b,at,16U)) return false;
-        name_n=pm_be16(b->p+at+2); packed=pm_be32(b->p+at+4); n=pm_be32(b->p+at+8); pos=at+16U;
+        name_n=xx_data_get_u16(b->p+at+2, 2, 0, true); packed=xx_data_get_u32(b->p+at+4, 4, 0, true); n=xx_data_get_u32(b->p+at+8, 4, 0, true); pos=at+16U;
         if(!ac_span(b,pos,name_n) || !ac_name(name,sizeof(name),b->p+pos,name_n)) { return false; } pos+=name_n;
         if(!ac_span(b,pos,packed)) return false;
         if(n==UINT32_MAX) { if(packed) return false; }

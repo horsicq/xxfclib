@@ -43,6 +43,7 @@
 #include "xxfclib/algo/kolibrikpack/xx_kolibrikpack.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_KOLIBRIKPACK_COPY_CHUNK (64 * 1024)
 
@@ -150,18 +151,12 @@ static bool xx_kolibrikpack_add(xx_kolibrikpack_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint32_t xx_kolibrikpack_le32(const uint8_t *data);
 static xx_kolibrikpack_stream *xx_kolibrikpack_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_kolibrikpack_decode(Abstractformat *self, const xx_kolibrikpack_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
 
 /* The container holds exactly one stream; the cap keeps the shared shape of
  * these readers. */
-
-static uint32_t xx_kolibrikpack_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static xx_kolibrikpack_stream *xx_kolibrikpack_parse(Abstractformat *self,
                                                      xx_pd_struct *pd) {
@@ -190,8 +185,8 @@ static xx_kolibrikpack_stream *xx_kolibrikpack_parse(Abstractformat *self,
     }
     if (xx_rt_memcmp(header, magic, sizeof(magic)) != 0) return NULL;
 
-    unpacked_size = xx_kolibrikpack_le32(header + 4);
-    flags = xx_kolibrikpack_le32(header + 8);
+    unpacked_size = xx_data_get_u32(header + 4, 4, 0, false);
+    flags = xx_data_get_u32(header + 8, 4, 0, false);
 
     /* Four printable magic bytes are weak on their own; the flags dword is
      * what carries the discrimination. kpack's unpacker accepts LZMA plus at

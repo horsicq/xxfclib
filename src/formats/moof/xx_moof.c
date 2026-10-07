@@ -20,6 +20,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef MOOF
 #define XX_MOOF_FILE_TYPE XX_FILE_TYPE_MOOF
@@ -72,14 +73,6 @@
 
 /* ------------------------------------------------------------------------ */
 
-static uint16_t moof_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static uint32_t moof_le32(const uint8_t *b) {
-    return (uint32_t)moof_le16(b) | ((uint32_t)moof_le16(b + 2U) << 16U);
-}
-
 static bool moof_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
     size_t done = 0U;
@@ -127,9 +120,9 @@ static bool moof_track_source(const moof_layout *layout, uint8_t entry,
     uint64_t start, blocks, count, bytes;
     if (!layout || !out || entry >= MOOF_TRACKS) return false;
     field = layout->trks + (size_t)entry * MOOF_TRK_ENTRY;
-    start = (uint64_t)moof_le16(field) * MOOF_BLOCK;
-    blocks = (uint64_t)moof_le16(field + 2U) * MOOF_BLOCK;
-    count = moof_le32(field + 4U);
+    start = (uint64_t)xx_data_get_u16(field, 2, 0, false) * MOOF_BLOCK;
+    blocks = (uint64_t)xx_data_get_u16(field + 2U, 2, 0, false) * MOOF_BLOCK;
+    count = xx_data_get_u32(field + 4U, 4, 0, false);
     if (start == 0U || blocks == 0U || count == 0U) return false;
     bytes = flux ? count : (count + 7U) / 8U;
     if (bytes > blocks || start > (uint64_t)layout->size ||
@@ -182,7 +175,7 @@ static bool moof_layout_read(Abstractformat *format, moof_layout *out) {
         if (chunk[0] == 0U && chunk[1] == 0U && chunk[2] == 0U &&
             chunk[3] == 0U)
             break;
-        length = moof_le32(chunk + 4U);
+        length = xx_data_get_u32(chunk + 4U, 4, 0, false);
         data = position + 8;
         if ((int64_t)length > out->size - data) break;
         if (chunks == 0U) {

@@ -7,6 +7,7 @@
  */
 #include "xxfclib/formats/westwood_pak/xx_westwood_pak.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 #define XX_WESTWOOD_PAK_MAX_DIRECTORY (2U*1024U*1024U)
 
@@ -64,7 +65,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[4],*dir=NULL; uint32_t first,previous=0,total32;
     size_t at=0; int64_t total=pm_available(f); bool ok=false;
     if(total<10 || total>UINT32_MAX || !pm_read(f,0,h,4)) return false;
-    total32=(uint32_t)total; first=pm_le32(h);
+    total32=(uint32_t)total; first=xx_data_get_u32(h, 4, 0, false);
     if(first<10 || first>XX_WESTWOOD_PAK_MAX_DIRECTORY || first>total32) return false;
     dir=(uint8_t *)xx_mem_alloc(first);
     if(!dir || !pm_read(f,0,dir,first)) goto done;
@@ -72,7 +73,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         uint32_t offset; size_t name_start,len;
         char name[81]; size_t i;
         if((pd && xx_pd_is_stopped(pd)) || first-at<4) goto done;
-        offset=pm_le32(dir+at); at+=4;
+        offset=xx_data_get_u32(dir+at, 4, 0, false); at+=4;
         /* Dune II/Kyrandia v2: zero terminator, last file ends at EOF. */
         if(!offset) {
             if(at!=first || !wp_finish(s,previous,total32)) goto done;
@@ -87,7 +88,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         /* Kyrandia v3: explicit final data offset with an empty filename,
          * followed by the zero terminator. Any trailing bytes are overlay. */
         if(!dir[at]) {
-            if(!s->count || at+5U!=first || pm_le32(dir+at+1U)!=0 ||
+            if(!s->count || at+5U!=first || xx_data_get_u32(dir+at+1U, 4, 0, false)!=0 ||
                offset<previous || offset>total32 || !wp_finish(s,previous,offset)) goto done;
             s->size=offset; ok=true; goto done;
         }

@@ -59,6 +59,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the file-type constant resolves to UNKNOWN until the enumerator
@@ -115,14 +116,6 @@ typedef struct is3_stream_s {
     int64_t archive_size;
     bool payload_variant;
 } is3_stream;
-
-static uint16_t is3_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t is3_le32(const uint8_t *bytes) {
-    return (uint32_t)is3_le16(bytes) | ((uint32_t)is3_le16(bytes + 2U) << 16U);
-}
 
 static bool is3_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -277,12 +270,12 @@ static bool is3_parse_cabinet(Abstractformat *format, const uint8_t *header,
     uint32_t assigned = 0U;
     uint16_t index;
 
-    file_count = is3_le16(header + 0x0CU);
-    directory_offset = is3_le32(header + 0x29U);
-    directory_size = is3_le32(header + 0x2DU);
-    directory_count = is3_le16(header + 0x31U);
-    file_offset = is3_le32(header + 0x33U);
-    file_size = is3_le32(header + 0x37U);
+    file_count = xx_data_get_u16(header + 0x0CU, 2, 0, false);
+    directory_offset = xx_data_get_u32(header + 0x29U, 4, 0, false);
+    directory_size = xx_data_get_u32(header + 0x2DU, 4, 0, false);
+    directory_count = xx_data_get_u16(header + 0x31U, 2, 0, false);
+    file_offset = xx_data_get_u32(header + 0x33U, 4, 0, false);
+    file_size = xx_data_get_u32(header + 0x37U, 4, 0, false);
 
     /* Both tables have to be wholly inside this volume before a single byte
      * of them is read; the file and directory counts are 16-bit fields and
@@ -309,9 +302,9 @@ static bool is3_parse_cabinet(Abstractformat *format, const uint8_t *header,
         uint16_t owned, entry_size, name_size;
         uint16_t owned_index;
         if (directory_size - cursor_directory < IS3_DIR_FIXED_SIZE) goto fail;
-        owned = is3_le16(directories + cursor_directory);
-        entry_size = is3_le16(directories + cursor_directory + 2U);
-        name_size = is3_le16(directories + cursor_directory + 4U);
+        owned = xx_data_get_u16(directories + cursor_directory, 2, 0, false);
+        entry_size = xx_data_get_u16(directories + cursor_directory + 2U, 2, 0, false);
+        name_size = xx_data_get_u16(directories + cursor_directory + 4U, 2, 0, false);
         if (entry_size < IS3_DIR_FIXED_SIZE ||
             (uint32_t)entry_size > directory_size - cursor_directory ||
             (uint32_t)name_size > (uint32_t)entry_size - IS3_DIR_FIXED_SIZE ||
@@ -324,7 +317,7 @@ static bool is3_parse_cabinet(Abstractformat *format, const uint8_t *header,
             const uint8_t *entry;
             if (file_size - cursor_file < IS3_FILE_FIXED_SIZE) goto fail;
             entry = files + cursor_file;
-            entry_bytes = is3_le16(entry + 23U);
+            entry_bytes = xx_data_get_u16(entry + 23U, 2, 0, false);
             member_name_size = entry[29];
             if (entry_bytes < IS3_FILE_FIXED_SIZE ||
                 (uint32_t)entry_bytes > file_size - cursor_file ||
@@ -332,12 +325,12 @@ static bool is3_parse_cabinet(Abstractformat *format, const uint8_t *header,
                     (uint32_t)entry_bytes - IS3_FILE_FIXED_SIZE)
                 goto fail;
             xx_mem_zero(&member, sizeof(member));
-            member.unpacked_size = is3_le32(entry + 3U);
-            member.dos_time = is3_le32(entry + 15U);
-            member.attributes = is3_le32(entry + 19U);
-            member.volume = is3_le16(entry + 25U);
+            member.unpacked_size = xx_data_get_u32(entry + 3U, 4, 0, false);
+            member.dos_time = xx_data_get_u32(entry + 15U, 4, 0, false);
+            member.attributes = xx_data_get_u32(entry + 19U, 4, 0, false);
+            member.volume = xx_data_get_u16(entry + 25U, 2, 0, false);
             is3_set_extent(&member, format->base_address, size,
-                           is3_le32(entry + 11U), is3_le32(entry + 7U));
+                           xx_data_get_u32(entry + 11U, 4, 0, false), xx_data_get_u32(entry + 7U, 4, 0, false));
             member.method = (member.unpacked_size ==
                              (uint64_t)member.packed_size)
                                 ? IS3_METHOD_STORE
@@ -375,7 +368,7 @@ static bool is3_parse_payload(Abstractformat *format, const uint8_t *header,
     uint32_t index;
     int64_t first_data = -1;
 
-    count = is3_le32(header + 0x4EU);
+    count = xx_data_get_u32(header + 0x4EU, 4, 0, false);
     if (count == 0U || count > IS3_MAX_MEMBERS) return false;
     /* The table runs from the header to the first payload byte.  Its extent is
      * not stored, so the rest of the volume is the only safe upper bound and
@@ -402,13 +395,13 @@ static bool is3_parse_payload(Abstractformat *format, const uint8_t *header,
         uint32_t entry_start = cursor;
         if (table_size - cursor < IS3_INST_FIXED_SIZE) goto fail;
         xx_mem_zero(&member, sizeof(member));
-        member.unpacked_size = is3_le32(table + cursor + 8U);
+        member.unpacked_size = xx_data_get_u32(table + cursor + 8U, 4, 0, false);
         is3_set_extent(&member, format->base_address, size,
-                       is3_le32(table + cursor), is3_le32(table + cursor + 4U));
+                       xx_data_get_u32(table + cursor, 4, 0, false), xx_data_get_u32(table + cursor + 4U, 4, 0, false));
         member.method = (member.unpacked_size == (uint64_t)member.packed_size)
                             ? IS3_METHOD_STORE
                             : IS3_METHOD_DCL;
-        name_size = is3_le16(table + cursor + (IS3_INST_FIXED_SIZE - 2U));
+        name_size = xx_data_get_u16(table + cursor + (IS3_INST_FIXED_SIZE - 2U), 2, 0, false);
         cursor += IS3_INST_FIXED_SIZE;
         if (name_size > IS3_MAX_NAME || (uint32_t)name_size > table_size - cursor)
             goto fail;
@@ -419,7 +412,7 @@ static bool is3_parse_payload(Abstractformat *format, const uint8_t *header,
             xx_str_free(member.name);
             goto fail;
         }
-        alias_size = is3_le16(table + cursor);
+        alias_size = xx_data_get_u16(table + cursor, 2, 0, false);
         cursor += 2U;
         if (alias_size > IS3_MAX_NAME || (uint32_t)alias_size > table_size - cursor) {
             xx_str_free(member.name);
@@ -468,12 +461,12 @@ static bool is3_parse(Abstractformat *format, is3_stream **result) {
                      size < (int64_t)sizeof(header) ? IS3_HEADER_SIZE
                                                     : sizeof(header)))
         return false;
-    signature = is3_le32(header);
+    signature = xx_data_get_u32(header, 4, 0, false);
     if (signature != IS3_SIGNATURE && signature != IS3_INST_SIGNATURE)
         return false;
     if (signature == IS3_INST_SIGNATURE &&
         (size < (int64_t)IS3_INST_HEADER_SIZE ||
-         is3_le32(header + 4U) != IS3_INST_VERSION))
+         xx_data_get_u32(header + 4U, 4, 0, false) != IS3_INST_VERSION))
         return false;
     stream = (is3_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;

@@ -14,6 +14,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef FSS
 #define XX_FSS_FILE_TYPE XX_FILE_TYPE_FSS
@@ -48,24 +49,6 @@ typedef struct xx_fss_stream_s {
 static void xx_fss_vtable_destroy(Abstractformat *self);
 
 /* ------------------------------------------------------------- helpers -- */
-
-static XXFC_MAYBE_UNUSED uint16_t xx_fss_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_fss_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static XXFC_MAYBE_UNUSED uint16_t xx_fss_be16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[1] | ((uint16_t)data[0] << 8));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t xx_fss_be32(const uint8_t *data) {
-    return (uint32_t)data[3] | ((uint32_t)data[2] << 8) |
-           ((uint32_t)data[1] << 16) | ((uint32_t)data[0] << 24);
-}
 
 static bool xx_fss_read_at(Abstractformat *self, int64_t offset,
                               uint8_t *buffer, size_t size) {
@@ -239,8 +222,8 @@ static xx_fss_stream *xx_fss_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (data_start >= span ||
         !xx_fss_read_at(self,self->base_address + data_start - 8,
                         sentinel,sizeof(sentinel)) ||
-        xx_fss_le32(sentinel) != (uint32_t)span ||
-        xx_fss_le32(sentinel+4) != 0U ||
+        xx_data_get_u32(sentinel, 4, 0, false) != (uint32_t)span ||
+        xx_data_get_u32(sentinel+4, 4, 0, false) != 0U ||
         !xx_fss_read_at(self,self->base_address + table_start,
                         previous,sizeof(previous))) return NULL;
     stream = (xx_fss_stream *)xx_mem_calloc(1U,sizeof(*stream));
@@ -254,10 +237,10 @@ static xx_fss_stream *xx_fss_parse(Abstractformat *self, xx_pd_struct *pd) {
             !xx_fss_read_at(self,self->base_address+table_start+
                             (int64_t)i*74,entry,sizeof(entry)))
             goto fail;
-        offset=(int64_t)xx_fss_le32(entry);
-        size=(int64_t)xx_fss_le32(entry+4);
-        prev_offset=(int64_t)xx_fss_le32(previous);
-        prev_size=(int64_t)xx_fss_le32(previous+4);
+        offset=(int64_t)xx_data_get_u32(entry, 4, 0, false);
+        size=(int64_t)xx_data_get_u32(entry+4, 4, 0, false);
+        prev_offset=(int64_t)xx_data_get_u32(previous, 4, 0, false);
+        prev_size=(int64_t)xx_data_get_u32(previous+4, 4, 0, false);
         if (size && (previous[8] != 0x10U || offset != running ||
                      offset != prev_offset + prev_size ||
                      offset < data_start || offset > span || size > span-offset))

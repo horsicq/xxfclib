@@ -41,6 +41,7 @@
 #include "xxfclib/algo/qda/xx_qda.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_QDA_COPY_CHUNK (64 * 1024)
 
@@ -144,17 +145,11 @@ static bool xx_qda_add(xx_qda_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint32_t xx_qda_le32(const uint8_t *data);
 static xx_qda_stream *xx_qda_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_qda_decode(Abstractformat *self, const xx_qda_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
 
 /* The archive-wide flag, published per member unchanged. */
-
-static uint32_t xx_qda_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static xx_qda_stream *xx_qda_parse(Abstractformat *self, xx_pd_struct *pd) {
     xx_qda_stream *stream = NULL;
@@ -190,14 +185,14 @@ static xx_qda_stream *xx_qda_parse(Abstractformat *self, xx_pd_struct *pd) {
      * boolean stored in 32 bits and the word at 0x0c is always zero. Those
      * are the checks a later reader will be tempted to drop, and dropping
      * them makes any file containing the text "QDA0" at offset 4 match. */
-    flag = xx_qda_le32(header);
+    flag = xx_data_get_u32(header, 4, 0, false);
     if (flag > 1U) return NULL;
-    if (xx_qda_le32(header + 0x0c) != 0U) return NULL;
+    if (xx_data_get_u32(header + 0x0c, 4, 0, false) != 0U) return NULL;
 
     /* The count is read as a signed 32-bit value by the reference, so the
      * top bit set is nonsense rather than a two-billion-entry directory. */
-    if (xx_qda_le32(header + 8) > 0x7fffffffU) return NULL;
-    count = (int64_t)xx_qda_le32(header + 8);
+    if (xx_data_get_u32(header + 8, 4, 0, false) > 0x7fffffffU) return NULL;
+    count = (int64_t)xx_data_get_u32(header + 8, 4, 0, false);
     /* Zero entries is reported as "not a QDA", not as an empty archive:
      * nothing else in the header is strong enough to accept on alone. */
     if (count < 1 || count > XX_QDA_MAX_MEMBERS) return NULL;
@@ -230,12 +225,12 @@ static xx_qda_stream *xx_qda_parse(Abstractformat *self, xx_pd_struct *pd) {
 
         /* All three are written as u32 but read back as signed by the
          * reference, so the top bit set is a malformed entry. */
-        if (xx_qda_le32(entry) > 0x7fffffffU) goto fail;
-        if (xx_qda_le32(entry + 4) > 0x7fffffffU) goto fail;
-        if (xx_qda_le32(entry + 8) > 0x7fffffffU) goto fail;
-        data_offset = (int64_t)xx_qda_le32(entry);
-        compressed_size = (int64_t)xx_qda_le32(entry + 4);
-        uncompressed_size = (int64_t)xx_qda_le32(entry + 8);
+        if (xx_data_get_u32(entry, 4, 0, false) > 0x7fffffffU) goto fail;
+        if (xx_data_get_u32(entry + 4, 4, 0, false) > 0x7fffffffU) goto fail;
+        if (xx_data_get_u32(entry + 8, 4, 0, false) > 0x7fffffffU) goto fail;
+        data_offset = (int64_t)xx_data_get_u32(entry, 4, 0, false);
+        compressed_size = (int64_t)xx_data_get_u32(entry + 4, 4, 0, false);
+        uncompressed_size = (int64_t)xx_data_get_u32(entry + 8, 4, 0, false);
         if (uncompressed_size > XX_QDA_MAX_DECODED) goto fail;
 
         /* The stream's length comes from the ARCHIVE's flag: in a stored

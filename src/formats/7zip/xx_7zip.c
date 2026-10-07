@@ -40,6 +40,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <wchar.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_7ZIP_MAX_HEADER_SIZE  (64U * 1024U * 1024U)
 #define XX_7ZIP_MAX_ITEMS        262144U
@@ -227,18 +228,6 @@ static void xx_7zip_buffer_device_init(xx_7zip_buffer_device *sink,
     sink->device.priv = sink;
 }
 
-static uint32_t xx_7zip_read_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
-           ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
-
-static uint64_t xx_7zip_read_le64(const uint8_t *p) {
-    uint64_t value = 0;
-    unsigned i;
-    for (i = 0; i < 8; ++i) value |= ((uint64_t)p[i]) << (8U * i);
-    return value;
-}
-
 static bool xx_7zip_u64_add(uint64_t a, uint64_t b, uint64_t *out) {
     if (!out || UINT64_MAX - a < b) return false;
     *out = a + b;
@@ -266,14 +255,14 @@ static bool xx_7zip_reader_u8(xx_7zip_reader *r, uint8_t *value) {
 
 static bool xx_7zip_reader_u32(xx_7zip_reader *r, uint32_t *value) {
     if (!r || !value || r->size - r->pos < 4U) return false;
-    *value = xx_7zip_read_le32(r->data + r->pos);
+    *value = xx_data_get_u32(r->data + r->pos, 4, 0, false);
     r->pos += 4U;
     return true;
 }
 
 static bool xx_7zip_reader_u64_real(xx_7zip_reader *r, uint64_t *value) {
     if (!r || !value || r->size - r->pos < 8U) return false;
-    *value = xx_7zip_read_le64(r->data + r->pos);
+    *value = xx_data_get_u64(r->data + r->pos, 8, 0, false);
     r->pos += 8U;
     return true;
 }
@@ -466,7 +455,7 @@ static bool xx_7zip_coder_supported(const xx_7zip_coder *coder) {
         return coder->properties_size == 0U;
     if (coder->method == XX_7ZIP_METHOD_PPMD7) {
         memory_size = coder->properties_size == 5U
-            ? xx_7zip_read_le32(coder->properties + 1U) : 0U;
+            ? xx_data_get_u32(coder->properties + 1U, 4, 0, false) : 0U;
         return coder->properties_size == 5U && coder->properties[0] >= 2U &&
                coder->properties[0] <= 64U &&
                memory_size >= XX_PPMD7_MIN_MEM_SIZE &&
@@ -1418,11 +1407,11 @@ static bool xx_7zip_read_start_header(Abstractformat *self, uint8_t header[XX_7Z
                                XX_7ZIP_SIGNATURE_HEADER_SIZE) ||
         xx_rt_memcmp(header, XX_7ZIP_SIGNATURE, XX_7ZIP_SIGNATURE_SIZE) != 0 ||
         header[6] != 0) return false;
-    start_crc = xx_7zip_read_le32(header + 8);
+    start_crc = xx_data_get_u32(header + 8, 4, 0, false);
     if (xx_crc32(XX_CRC_TYPE_CRC32, header + 12, 20U) != start_crc) return false;
-    relative_offset = xx_7zip_read_le64(header + 12);
-    *next_size = xx_7zip_read_le64(header + 20);
-    *next_crc = xx_7zip_read_le32(header + 28);
+    relative_offset = xx_data_get_u64(header + 12, 8, 0, false);
+    *next_size = xx_data_get_u64(header + 20, 8, 0, false);
+    *next_crc = xx_data_get_u32(header + 28, 4, 0, false);
     if (*next_size > XX_7ZIP_MAX_HEADER_SIZE ||
         (*next_size == 0 && (relative_offset != 0 || *next_crc != 0)) ||
         !xx_7zip_u64_add(XX_7ZIP_SIGNATURE_HEADER_SIZE, relative_offset, &absolute_offset) ||

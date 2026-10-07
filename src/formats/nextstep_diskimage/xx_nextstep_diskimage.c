@@ -9,6 +9,7 @@
 #include "xxfclib/strings/xx_string.h"
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef NEXTSTEP_DISKIMAGE
 #define NS_FILE_TYPE XX_FILE_TYPE_NEXTSTEP_DISKIMAGE
@@ -27,13 +28,6 @@ typedef struct ns_layout_s {
     int64_t archive_size;
 } ns_layout;
 
-static uint16_t ns_be16(const uint8_t *p) {
-    return (uint16_t)(((uint16_t)p[0] << 8) | p[1]);
-}
-static uint32_t ns_be32(const uint8_t *p) {
-    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
-           ((uint32_t)p[2] << 8) | p[3];
-}
 static bool ns_stopped(xx_pd_struct *pd) {
     return pd && xx_pd_is_stopped(pd);
 }
@@ -70,16 +64,16 @@ static bool ns_parse(Abstractformat *f, ns_layout *layout, xx_pd_struct *pd) {
     if (total < f->base_address ||
         total - f->base_address < (int64_t)(NS_HEADER + NS_SECTOR) ||
         !ns_read(f->device, f->base_address, h, sizeof(h))) return false;
-    total_sectors = ns_be32(h + 0x2A);
-    image_size = ns_be32(h + 0x16);
-    geometry = (uint64_t)ns_be32(h + 0x06) * ns_be32(h + 0x0A) *
-               ns_be32(h + 0x24);
-    if (!ns_be32(h) || ns_be32(h) > 16U || ns_be16(h + 4) != NS_SECTOR ||
-        ns_be16(h + 0x22) != NS_SECTOR ||
-        ns_be32(h + 0x1E) != NS_SECTOR || ns_be32(h + 0x1A) != 1U ||
-        !ns_be32(h + 0x06) || ns_be32(h + 0x06) > 65535U ||
-        !ns_be32(h + 0x0A) || ns_be32(h + 0x0A) > 255U ||
-        !ns_be32(h + 0x24) || ns_be32(h + 0x24) > 255U ||
+    total_sectors = xx_data_get_u32(h + 0x2A, 4, 0, true);
+    image_size = xx_data_get_u32(h + 0x16, 4, 0, true);
+    geometry = (uint64_t)xx_data_get_u32(h + 0x06, 4, 0, true) * xx_data_get_u32(h + 0x0A, 4, 0, true) *
+               xx_data_get_u32(h + 0x24, 4, 0, true);
+    if (!xx_data_get_u32(h, 4, 0, true) || xx_data_get_u32(h, 4, 0, true) > 16U || xx_data_get_u16(h + 4, 2, 0, true) != NS_SECTOR ||
+        xx_data_get_u16(h + 0x22, 2, 0, true) != NS_SECTOR ||
+        xx_data_get_u32(h + 0x1E, 4, 0, true) != NS_SECTOR || xx_data_get_u32(h + 0x1A, 4, 0, true) != 1U ||
+        !xx_data_get_u32(h + 0x06, 4, 0, true) || xx_data_get_u32(h + 0x06, 4, 0, true) > 65535U ||
+        !xx_data_get_u32(h + 0x0A, 4, 0, true) || xx_data_get_u32(h + 0x0A, 4, 0, true) > 255U ||
+        !xx_data_get_u32(h + 0x24, 4, 0, true) || xx_data_get_u32(h + 0x24, 4, 0, true) > 255U ||
         !total_sectors || geometry != total_sectors ||
         image_size != total_sectors * NS_SECTOR ||
         image_size > (uint64_t)(total - f->base_address - NS_HEADER))

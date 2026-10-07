@@ -6,10 +6,10 @@
 #endif
 static bool e8_parse(e8_blob*c) {
  size_t p=388;unsigned patterns,orders,chn,i;uint16_t version;
- if(!e8_range(c,0,388) || !e8_eq(c,0,"MT20",4) || (version=pm_le16(c->b+8))<0x200 || version>0x201 || !(orders=pm_le16(c->b+106)) || orders>256 || pm_le16(c->b+108)>=orders || !(patterns=pm_le16(c->b+110)) || patterns>256 || !(chn=pm_le16(c->b+112)) || chn>64 || pm_le32(c->b+118) || pm_le16(c->b+122) || pm_le16(c->b+124) || pm_le16(c->b+382) || pm_le32(c->b+384))return false;
+ if(!e8_range(c,0,388) || !e8_eq(c,0,"MT20",4) || (version=xx_data_get_u16(c->b+8, 2, 0, false))<0x200 || version>0x201 || !(orders=xx_data_get_u16(c->b+106, 2, 0, false)) || orders>256 || xx_data_get_u16(c->b+108, 2, 0, false)>=orders || !(patterns=xx_data_get_u16(c->b+110, 2, 0, false)) || patterns>256 || !(chn=xx_data_get_u16(c->b+112, 2, 0, false)) || chn>64 || xx_data_get_u32(c->b+118, 4, 0, false) || xx_data_get_u16(c->b+122, 2, 0, false) || xx_data_get_u16(c->b+124, 2, 0, false) || xx_data_get_u16(c->b+382, 2, 0, false) || xx_data_get_u32(c->b+384, 4, 0, false))return false;
  for(i=0;i<orders;++i) {if(c->b[126+i]>=patterns)return false; } if(!e8_add(c,"headers-orders.bin",0,p))return false;
- for(i=0;i<patterns;++i){uint32_t z;unsigned rows;size_t n;if(!e8_range(c,p,6) || !(rows=pm_le16(c->b+p)) || rows>1024 || (z=pm_le32(c->b+p+2))!=(uint32_t)(rows*chn*7U))return false;n=(z+1U)&~1U;if(!e8_add(c,"pattern.bin",p,6U+n))return false;if(n>z && c->b[p+6+z])return false;p+=6U+n;}
- {size_t start=p;for(i=0;i<511;++i){if(!e8_range(c,p,36) || pm_le32(c->b+p+32))return false;p+=36;}if(!e8_add(c,"empty-instrument-sample-slots.bin",start,p-start))return false;}
+ for(i=0;i<patterns;++i){uint32_t z;unsigned rows;size_t n;if(!e8_range(c,p,6) || !(rows=xx_data_get_u16(c->b+p, 2, 0, false)) || rows>1024 || (z=xx_data_get_u32(c->b+p+2, 4, 0, false))!=(uint32_t)(rows*chn*7U))return false;n=(z+1U)&~1U;if(!e8_add(c,"pattern.bin",p,6U+n))return false;if(n>z && c->b[p+6+z])return false;p+=6U+n;}
+ {size_t start=p;for(i=0;i<511;++i){if(!e8_range(c,p,36) || xx_data_get_u32(c->b+p+32, 4, 0, false))return false;p+=36;}if(!e8_add(c,"empty-instrument-sample-slots.bin",start,p-start))return false;}
  return p==c->n;
 }
 static bool pm_parse(Abstractformat*f,pm_stream*s,xx_pd_struct*pd) {return e8_loaded(f,s,pd,e8_parse);}

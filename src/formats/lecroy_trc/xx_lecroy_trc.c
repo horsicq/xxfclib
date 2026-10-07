@@ -7,9 +7,9 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[346];nh_blob b={0};bool be,ok=false;uint64_t at=0;uint32_t sizes[8],count,width;unsigned i;
     if(!pm_read(f,0,h,sizeof(h)) || xx_rt_memcmp(h,"WAVEDESC",8) || xx_rt_memcmp(h+16,"LECROY_2_3",10)) return false;
     if(h[34]==1 && h[35]==0) be=false;else if(!h[34] && !h[35]) be=true;else return false;
-    NH_NEED(fd_u16(h+32,be)<=1 && !fd_u32(h+44,be) && !fd_u32(h+56,be) && !fd_u32(h+68,be) && !fd_u32(h+72,be));width=fd_u16(h+32,be)+1;count=fd_u32(h+116,be);
-    sizes[0]=fd_u32(h+36,be);sizes[1]=fd_u32(h+40,be);sizes[2]=fd_u32(h+48,be);sizes[3]=fd_u32(h+52,be);sizes[4]=fd_u32(h+60,be);sizes[5]=fd_u32(h+64,be);
-    NH_NEED(sizes[0]>=346 && sizes[0]<=65536 && count && sizes[4]==(uint64_t)count*width && (!sizes[5] || sizes[5]==sizes[4]) && sizes[2]%16==0 && sizes[3]%8==0 && fd_u32(h+144,be) && nh_load(f,&b,pd));
+    NH_NEED(xx_data_get_u16(h+32, 2, 0, be)<=1 && !xx_data_get_u32(h+44, 4, 0, be) && !xx_data_get_u32(h+56, 4, 0, be) && !xx_data_get_u32(h+68, 4, 0, be) && !xx_data_get_u32(h+72, 4, 0, be));width=xx_data_get_u16(h+32, 2, 0, be)+1;count=xx_data_get_u32(h+116, 4, 0, be);
+    sizes[0]=xx_data_get_u32(h+36, 4, 0, be);sizes[1]=xx_data_get_u32(h+40, 4, 0, be);sizes[2]=xx_data_get_u32(h+48, 4, 0, be);sizes[3]=xx_data_get_u32(h+52, 4, 0, be);sizes[4]=xx_data_get_u32(h+60, 4, 0, be);sizes[5]=xx_data_get_u32(h+64, 4, 0, be);
+    NH_NEED(sizes[0]>=346 && sizes[0]<=65536 && count && sizes[4]==(uint64_t)count*width && (!sizes[5] || sizes[5]==sizes[4]) && sizes[2]%16==0 && sizes[3]%8==0 && xx_data_get_u32(h+144, 4, 0, be) && nh_load(f,&b,pd));
     NH_NEED(nh_floats(&b,156,8,4,be) && nh_floats(&b,176,4,4,be) && nh_floats(&b,180,16,8,be));
     for(i=0;i<6;++i) {static const char *labels[]={"descriptor","user-text","trigger-times","ris-times","wave1","wave2"};if(sizes[i]) {NH_NEED(nh_span(&b,at,sizes[i]));if(i==2 || i==3) NH_NEED(nh_floats(&b,at,sizes[i],8,be));NH_NEED(nh_add(f,s,&b,labels[i],at,sizes[i]));}at+=sizes[i];}
     NH_NEED(at==b.n);s->size=(int64_t)b.n;ok=true;

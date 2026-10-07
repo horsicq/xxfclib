@@ -7,20 +7,21 @@
  */
 #include "xxfclib/formats/atari_st_msa/xx_atari_st_msa.h"
 #include "../vice_x64/xx_ninth_retro.h"
+#include "xxfclib/data/xx_data.h"
 
 static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
  uint32_t sectors,heads,start,end,at=10,t,h,raw; char name[48];
- if(!nh_range(b,0,10) || pm_be16(b->p)!=0x0e0f || !(sectors=pm_be16(b->p+2)) || sectors>36 || pm_be16(b->p+4)>1 || (start=pm_be16(b->p+6))>(end=pm_be16(b->p+8)) || end>85 || !nh_emit(f,s,b,"disk-descriptor.bin",0,10)) return false;
- heads=pm_be16(b->p+4)+1U; raw=sectors*512U;
+ if(!nh_range(b,0,10) || xx_data_get_u16(b->p, 2, 0, true)!=0x0e0f || !(sectors=xx_data_get_u16(b->p+2, 2, 0, true)) || sectors>36 || xx_data_get_u16(b->p+4, 2, 0, true)>1 || (start=xx_data_get_u16(b->p+6, 2, 0, true))>(end=xx_data_get_u16(b->p+8, 2, 0, true)) || end>85 || !nh_emit(f,s,b,"disk-descriptor.bin",0,10)) return false;
+ heads=xx_data_get_u16(b->p+4, 2, 0, true)+1U; raw=sectors*512U;
  for(t=start;t<=end;++t) for(h=0;h<heads;++h) {
   uint32_t packed,p=0,w=0; uint8_t *data;
-  if(!nh_range(b,at,2) || !(packed=pm_be16(b->p+at)) || packed>raw || !nh_range(b,at+2,packed)) { return false; } at+=2;
+  if(!nh_range(b,at,2) || !(packed=xx_data_get_u16(b->p+at, 2, 0, true)) || packed>raw || !nh_range(b,at+2,packed)) { return false; } at+=2;
   xx_rt_snprintf(name,sizeof(name),"track-%u-side-%u.bin",t,h);
   if(packed==raw) { if(!nh_emit(f,s,b,name,at,raw)) return false; }
   else {
    data=(uint8_t *)xx_mem_alloc(raw); if(!data) return false;
    while(p<packed) { uint32_t count=1; uint8_t v=b->p[at+p++]; if(!nh_poll(b)) { xx_mem_free(data); return false; }
-    if(v==0xe5) { if(packed-p<3) { xx_mem_free(data); return false; } v=b->p[at+p]; count=pm_be16(b->p+at+p+1); p+=3; }
+    if(v==0xe5) { if(packed-p<3) { xx_mem_free(data); return false; } v=b->p[at+p]; count=xx_data_get_u16(b->p+at+p+1, 2, 0, true); p+=3; }
     if(!count || count>raw-w) { xx_mem_free(data); return false; } xx_rt_memset(data+w,v,count); w+=count;
    }
    if(w!=raw) { xx_mem_free(data); return false; } if(!nh_memory(f,s,b,name,at,data,raw)) return false;

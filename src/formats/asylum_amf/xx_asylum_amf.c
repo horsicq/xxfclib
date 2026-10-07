@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT. Original validated components; no playback/emulation. */
 #include "xxfclib/formats/asylum_amf/xx_asylum_amf.h"
 #include "../asylum_amf/xx_thirteenth_media.h"
+#include "xxfclib/data/xx_data.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
  tm_blob b={0};uint64_t at;uint32_t ni,np,no,i,j,len[64];bool ok=false;
@@ -8,7 +9,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
  ni=b.p[34];np=b.p[35];no=b.p[36];TM_NEED(b.p[32]&&b.p[32]<=31&&b.p[33]>=32&&ni&&ni<=64&&np&&no&&b.p[37]<no);
  for(i=0;i<no;++i)TM_NEED(b.p[38+i]<np);
  TM_NEED(tm_emit(f,s,&b,"descriptor.amf",0,38)&&tm_emit(f,s,&b,"orders.amf",38,256));
- for(i=0;i<ni;++i){const uint8_t *q=b.p+294+i*37;uint32_t a=pm_le32(q+29),z=pm_le32(q+33);len[i]=pm_le32(q+25);TM_NEED(len[i]<131072&&q[22]<=15&&q[23]<=64&&a<=len[i]&&z<=len[i]-a);}
+ for(i=0;i<ni;++i){const uint8_t *q=b.p+294+i*37;uint32_t a=xx_data_get_u32(q+29, 4, 0, false),z=xx_data_get_u32(q+33, 4, 0, false);len[i]=xx_data_get_u32(q+25, 4, 0, false);TM_NEED(len[i]<131072&&q[22]<=15&&q[23]<=64&&a<=len[i]&&z<=len[i]-a);}
  TM_NEED(tm_emit(f,s,&b,"instruments.amf",294,2368));at=2662;
  for(i=0;i<np;++i){TM_NEED(tm_span(&b,at,2048));for(j=0;j<512;++j){const uint8_t *q=b.p+(size_t)at+j*4;TM_NEED(tm_work(&b,1)&&q[0]<=114&&q[1]<=ni);}TM_NEED(tm_emit(f,s,&b,"pattern.amf",at,2048));at+=2048;}
  for(i=0;i<ni;++i)if(len[i]>1){TM_NEED(tm_emit(f,s,&b,"sample.pcm8",at,len[i]));at+=len[i];}

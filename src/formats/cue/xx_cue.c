@@ -27,6 +27,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -212,22 +213,8 @@ static bool cue_read_at(xx_io_device *device, int64_t offset, void *buffer,
     return true;
 }
 
-static uint32_t cue_le32(const uint8_t *b) {
-    return (uint32_t)b[0] | ((uint32_t)b[1] << 8U) | ((uint32_t)b[2] << 16U) |
-           ((uint32_t)b[3] << 24U);
-}
-
 static uint32_t cue_le16(const uint8_t *b) {
     return (uint32_t)b[0] | ((uint32_t)b[1] << 8U);
-}
-
-static uint64_t cue_le64(const uint8_t *b) {
-    return (uint64_t)cue_le32(b) | ((uint64_t)cue_le32(b + 4U) << 32U);
-}
-
-static uint32_t cue_be32(const uint8_t *b) {
-    return ((uint32_t)b[0] << 24U) | ((uint32_t)b[1] << 16U) |
-           ((uint32_t)b[2] << 8U) | (uint32_t)b[3];
 }
 
 static uint32_t cue_be16(const uint8_t *b) {
@@ -701,24 +688,24 @@ static bool cue_wave_locate(xx_io_device *device, int64_t total, int64_t *base,
         return false;
     rf64 = xx_rt_memcmp(head, "RF64", 4U) == 0;
     if (!rf64 && xx_rt_memcmp(head, "RIFF", 4U) != 0) return false;
-    if (rf64 && cue_le32(head + 4U) != UINT32_MAX) return false;
+    if (rf64 && xx_data_get_u32(head + 4U, 4, 0, false) != UINT32_MAX) return false;
     for (count = 0U; count < CUE_WAVE_MAX_CHUNKS && position <= total - 8;
          ++count) {
         int64_t body = position + 8, length;
         if (!cue_read_at(device, position, chunk, sizeof(chunk))) return false;
-        length = (int64_t)cue_le32(chunk + 4);
+        length = (int64_t)xx_data_get_u32(chunk + 4, 4, 0, false);
         if (rf64 && count == 0U) {
             if (xx_rt_memcmp(chunk, "ds64", 4U) != 0 ||
                 length < 28 || length > total - body ||
                 !cue_read_at(device, body, ds64, sizeof(ds64))) return false;
-            riff_size64 = cue_le64(ds64);
-            data_size64 = cue_le64(ds64 + 8U);
+            riff_size64 = xx_data_get_u64(ds64, 8, 0, false);
+            data_size64 = xx_data_get_u64(ds64 + 8U, 8, 0, false);
             if (riff_size64 > (uint64_t)INT64_MAX - 8U ||
                 riff_size64 + 8U != (uint64_t)total ||
                 data_size64 > (uint64_t)INT64_MAX ||
                 (data_size64 & 3U) != 0U ||
-                cue_le64(ds64 + 16U) != data_size64 / 4U ||
-                cue_le32(ds64 + 24U) > ((uint32_t)length - 28U) / 12U)
+                xx_data_get_u64(ds64 + 16U, 8, 0, false) != data_size64 / 4U ||
+                xx_data_get_u32(ds64 + 24U, 4, 0, false) > ((uint32_t)length - 28U) / 12U)
                 return false;
             have_ds64 = true;
         } else if (xx_rt_memcmp(chunk, "fmt ", 4U) == 0) {
@@ -733,7 +720,7 @@ static bool cue_wave_locate(xx_io_device *device, int64_t total, int64_t *base,
                 return false;
             if ((tag != 1U && tag != 0xFFFEU) ||
                 cue_le16(format_chunk + 2) != 2U ||
-                cue_le32(format_chunk + 4) != 44100U ||
+                xx_data_get_u32(format_chunk + 4, 4, 0, false) != 44100U ||
                 cue_le16(format_chunk + 12) != 4U ||
                 cue_le16(format_chunk + 14) != 16U)
                 return false;
@@ -773,13 +760,13 @@ static bool cue_aiff_locate(xx_io_device *device, int64_t total, int64_t *base,
         xx_rt_memcmp(head, "FORM", 4U) != 0) return false;
     aifc = xx_rt_memcmp(head + 8, "AIFC", 4U) == 0;
     if (!aifc && xx_rt_memcmp(head + 8, "AIFF", 4U) != 0) return false;
-    end = 8 + (int64_t)cue_be32(head + 4);
+    end = 8 + (int64_t)xx_data_get_u32(head + 4, 4, 0, true);
     if (end < 12 || end > total) return false;
     for (count = 0U; count < CUE_WAVE_MAX_CHUNKS && position <= end - 8;
          ++count) {
         int64_t body = position + 8, length;
         if (!cue_read_at(device, position, chunk, sizeof(chunk))) return false;
-        length = (int64_t)cue_be32(chunk + 4);
+        length = (int64_t)xx_data_get_u32(chunk + 4, 4, 0, true);
         if (length > end - body) return false;
         if (xx_rt_memcmp(chunk, "COMM", 4U) == 0) {
             if (have_common || length < (aifc ? 22 : 18) ||
@@ -788,7 +775,7 @@ static bool cue_aiff_locate(xx_io_device *device, int64_t total, int64_t *base,
                 xx_rt_memcmp(common + 8, rate_44100, 10U) != 0 ||
                 (aifc && xx_rt_memcmp(common + 18, "NONE", 4U) != 0 &&
                  xx_rt_memcmp(common + 18, "sowt", 4U) != 0)) return false;
-            frames = cue_be32(common + 2);
+            frames = xx_data_get_u32(common + 2, 4, 0, true);
             if (!frames) return false;
             have_common = true;
         } else if (xx_rt_memcmp(chunk, "SSND", 4U) == 0) {
@@ -796,8 +783,8 @@ static bool cue_aiff_locate(xx_io_device *device, int64_t total, int64_t *base,
             if (sound_base >= 0 || length < 8 ||
                 !cue_read_at(device, body, sound, sizeof(sound)))
                 return false;
-            offset = cue_be32(sound);
-            if (cue_be32(sound + 4) != 0U || offset > (uint64_t)length - 8U)
+            offset = xx_data_get_u32(sound, 4, 0, true);
+            if (xx_data_get_u32(sound + 4, 4, 0, true) != 0U || offset > (uint64_t)length - 8U)
                 return false;
             sound_base = body + 8 + offset;
             sound_size = length - 8 - offset;

@@ -22,6 +22,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_CPIO_NEWC_HEADER_SIZE 110U
 #define XX_CPIO_ODC_HEADER_SIZE 76U
@@ -133,14 +134,9 @@ static bool cpio_read_at(xx_io_device *device, int64_t offset, void *buffer,
     return true;
 }
 
-static uint16_t cpio_read16(const uint8_t *data, bool big_endian) {
-    return big_endian ? (uint16_t)(((uint16_t)data[0] << 8U) | data[1])
-                      : (uint16_t)(data[0] | ((uint16_t)data[1] << 8U));
-}
-
 static uint32_t cpio_read32(const uint8_t *data, bool big_endian) {
-    uint16_t high = cpio_read16(data, big_endian);
-    uint16_t low = cpio_read16(data + 2U, big_endian);
+    uint16_t high = xx_data_get_u16(data, 2, 0, big_endian);
+    uint16_t low = xx_data_get_u16(data + 2U, 2, 0, big_endian);
     return ((uint32_t)high << 16U) | low;
 }
 
@@ -584,14 +580,14 @@ static bool cpio_parse_record(Abstractformat *format, int64_t relative_offset,
             !cpio_parse_hex(header + 99U, 16U, &data_size)) return false;
     } else {
         bool big_endian = variant == XX_CPIO_VARIANT_BINARY_BE;
-        if (cpio_read16(header, big_endian) != UINT16_C(0x71C7)) return false;
-        member->mode = cpio_read16(header + 6U, big_endian);
-        member->uid = cpio_read16(header + 8U, big_endian);
-        member->gid = cpio_read16(header + 10U, big_endian);
-        member->nlink = cpio_read16(header + 12U, big_endian);
-        member->rdev = cpio_read16(header + 14U, big_endian);
+        if (xx_data_get_u16(header, 2, 0, big_endian) != UINT16_C(0x71C7)) return false;
+        member->mode = xx_data_get_u16(header + 6U, 2, 0, big_endian);
+        member->uid = xx_data_get_u16(header + 8U, 2, 0, big_endian);
+        member->gid = xx_data_get_u16(header + 10U, 2, 0, big_endian);
+        member->nlink = xx_data_get_u16(header + 12U, 2, 0, big_endian);
+        member->rdev = xx_data_get_u16(header + 14U, 2, 0, big_endian);
         member->mtime = cpio_read32(header + 16U, big_endian);
-        name_size = cpio_read16(header + 20U, big_endian);
+        name_size = xx_data_get_u16(header + 20U, 2, 0, big_endian);
         data_size = cpio_read32(header + 22U, big_endian);
         binary = true;
     }
@@ -707,11 +703,6 @@ static void cpio_stream_free(void *pointer) {
     xx_mem_free(stream);
 }
 
-static uint32_t cpio_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
-
 static bool cpio_solaris_present(Abstractformat *format) {
     uint8_t magic[4];
     return format && format->device && format->base_address >= 0 &&
@@ -784,7 +775,7 @@ static bool cpio_solaris_load(Abstractformat *format, cpio_stream *stream,
             header[3] != 'L') {
             break;
         }
-        payload_size = (int64_t)cpio_le32(header + 4U);
+        payload_size = (int64_t)xx_data_get_u32(header + 4U, 4, 0, false);
         body = position + (int64_t)XX_CPIO_SOLARIS_BLOCK;
         if (payload_size < (int64_t)XX_CPIO_SOLARIS_TG_SIZE ||
             body > available || payload_size > available - body) {
@@ -796,8 +787,8 @@ static bool cpio_solaris_load(Abstractformat *format, cpio_stream *stream,
             header[3] != 'G') {
             goto fail;
         }
-        block_count = cpio_le32(header + 4U);
-        block_size = cpio_le32(header + 8U);
+        block_count = xx_data_get_u32(header + 4U, 4, 0, false);
+        block_size = xx_data_get_u32(header + 8U, 4, 0, false);
         if (block_count == 0U || block_count > XX_CPIO_SOLARIS_MAX_BLOCKS ||
             block_size == 0U || block_size > XX_CPIO_SOLARIS_MAX_BLOCK_SIZE) {
             goto fail;
@@ -817,9 +808,9 @@ static bool cpio_solaris_load(Abstractformat *format, cpio_stream *stream,
         for (entry = 0U; entry < block_count; ++entry) {
             const uint8_t *item = table + (size_t)entry *
                                               XX_CPIO_SOLARIS_ENTRY_SIZE;
-            uint32_t plain = cpio_le32(item);
-            uint32_t packed = cpio_le32(item + 4U);
-            uint32_t offset = cpio_le32(item + 8U);
+            uint32_t plain = xx_data_get_u32(item, 4, 0, false);
+            uint32_t packed = xx_data_get_u32(item + 4U, 4, 0, false);
+            uint32_t offset = xx_data_get_u32(item + 8U, 4, 0, false);
             if (plain == 0U || plain > block_size || packed == 0U ||
                 (int64_t)offset < (int64_t)XX_CPIO_SOLARIS_TG_SIZE +
                                       table_size ||
@@ -849,9 +840,9 @@ static bool cpio_solaris_load(Abstractformat *format, cpio_stream *stream,
         for (entry = 0U; entry < block_count; ++entry) {
             const uint8_t *item = table + (size_t)entry *
                                               XX_CPIO_SOLARIS_ENTRY_SIZE;
-            uint32_t plain = cpio_le32(item);
-            uint32_t packed = cpio_le32(item + 4U);
-            uint32_t offset = cpio_le32(item + 8U);
+            uint32_t plain = xx_data_get_u32(item, 4, 0, false);
+            uint32_t packed = xx_data_get_u32(item + 4U, 4, 0, false);
+            uint32_t offset = xx_data_get_u32(item + 8U, 4, 0, false);
             size_t produced = 0U;
             if ((pd && xx_pd_is_stopped(pd)) ||
                 !xx_deflate_unpack_device_to_memory(

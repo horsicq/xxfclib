@@ -7,13 +7,14 @@
  */
 #include "xxfclib/formats/audio_wwise_wem/xx_audio_wwise_wem.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 #ifndef XX_FILE_TYPE_AUDIO_WWISE_WEM
 #define XX_FILE_TYPE_AUDIO_WWISE_WEM ((xx_file_type_t)1521)
 #endif
 
-static uint16_t ww16(const uint8_t *p,bool be) { return be ? pm_be16(p):pm_le16(p); }
-static uint32_t ww32(const uint8_t *p,bool be) { return be ? pm_be32(p):pm_le32(p); }
+static uint16_t ww16(const uint8_t *p,bool be) { return be ? xx_data_get_u16(p, 2, 0, true):xx_data_get_u16(p, 2, 0, false); }
+static uint32_t ww32(const uint8_t *p,bool be) { return be ? xx_data_get_u32(p, 4, 0, true):xx_data_get_u32(p, 4, 0, false); }
 static bool ww_tag(const uint8_t *p,const char *tag) { return !xx_rt_memcmp(p,tag,4); }
 static bool ww_printable(const uint8_t *p) { unsigned i; for(i=0;i<4;++i) if(p[i]<0x20 || p[i]>0x7e) return false; return true; }
 static bool ww_codec(unsigned v)

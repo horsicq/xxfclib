@@ -14,6 +14,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -34,11 +35,6 @@ typedef struct bagf_stream_s {
     uint32_t opaque_24;
     bool consumed;
 } bagf_stream;
-
-static uint32_t bagf_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
 
 static bool bagf_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
@@ -111,11 +107,11 @@ static bool bagf_parse(Abstractformat *format, bagf_stream **result,
         return false;
     /* U3's version test, byte for byte. */
     if (header[4] != XX_BAGF_VERSION || header[5] != 0U) return false;
-    if (bagf_le32(header + 8) == 0U ||
-        (bagf_le32(header + 8) & 0x80000000U) != 0U)
+    if (xx_data_get_u32(header + 8, 4, 0, false) == 0U ||
+        (xx_data_get_u32(header + 8, 4, 0, false) & 0x80000000U) != 0U)
         return false;
 
-    data_size = bagf_le32(header + 0x28);
+    data_size = xx_data_get_u32(header + 0x28, 4, 0, false);
     /* The declared payload must fit in the real file before it is used. */
     if ((int64_t)data_size > span - (int64_t)XX_BAGF_HEADER_SIZE) return false;
 
@@ -132,9 +128,9 @@ static bool bagf_parse(Abstractformat *format, bagf_stream **result,
         stream->comment[0] = 0;
     stream->data_offset = format->base_address + (int64_t)XX_BAGF_HEADER_SIZE;
     stream->data_size = (int64_t)data_size;
-    stream->opaque_08 = bagf_le32(header + 8);
-    stream->opaque_20 = bagf_le32(header + 0x20);
-    stream->opaque_24 = bagf_le32(header + 0x24);
+    stream->opaque_08 = xx_data_get_u32(header + 8, 4, 0, false);
+    stream->opaque_20 = xx_data_get_u32(header + 0x20, 4, 0, false);
+    stream->opaque_24 = xx_data_get_u32(header + 0x24, 4, 0, false);
     stream->consumed = false;
     *result = stream;
     return true;

@@ -27,6 +27,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: picks up the real file type as soon as the
  * enumerator (and its alias macro) exist in xxfc_defs.h. */
@@ -89,11 +90,6 @@ static const char ardi_tail_suffix[] = "-Daniel Valot"; /* then 0x00 */
 
 static uint32_t ardi_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
-}
-
-static uint32_t ardi_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
 }
 
 static bool ardi_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -164,12 +160,12 @@ static bool ardi_accept(Abstractformat *format, ardi_context *context,
                       sizeof(r)))
         return false;
     if (ardi_le16(r + ARDI_OFF_SIGNATURE) != ARDI_SIGNATURE ||
-        ardi_le32(r + ARDI_OFF_CONSTANT) != ARDI_CONSTANT ||
+        xx_data_get_u32(r + ARDI_OFF_CONSTANT, 4, 0, false) != ARDI_CONSTANT ||
         r[ARDI_OFF_ZERO] != 0U ||
         ardi_le16(r + ARDI_OFF_BPS) != ARDI_BYTES_PER_SECTOR)
         return false;
     total = ardi_le16(r + ARDI_OFF_TOTAL);
-    packed = ardi_le32(r + ARDI_OFF_PACKED);
+    packed = xx_data_get_u32(r + ARDI_OFF_PACKED, 4, 0, false);
     if (total == 0U || packed == 0U) return false;
     /* record <= trailer - 0x34, so this cannot overflow. */
     if (record + (int64_t)ARDI_RECORD_SIZE + (int64_t)packed !=
@@ -180,7 +176,7 @@ static bool ardi_accept(Abstractformat *format, ardi_context *context,
     context->stream_size = (int64_t)packed;
     context->total_sectors = (uint16_t)total;
     context->image_size = (uint64_t)total * ARDI_BYTES_PER_SECTOR;
-    context->image_crc = ardi_le32(r + ARDI_OFF_CRC);
+    context->image_crc = xx_data_get_u32(r + ARDI_OFF_CRC, 4, 0, false);
     context->media = r[ARDI_OFF_MEDIA];
     context->sectors_per_track = (uint16_t)ardi_le16(r + ARDI_OFF_SPT);
     context->heads = (uint16_t)ardi_le16(r + ARDI_OFF_HEADS);
@@ -197,7 +193,7 @@ static int64_t ardi_ne_end(Abstractformat *format, const ardi_context *context) 
     uint32_t count, shift, index;
     if (!ardi_read_at(format->device, format->base_address, mz, sizeof(mz)))
         return -1;
-    header = (int64_t)ardi_le32(mz + 0x3C);
+    header = (int64_t)xx_data_get_u32(mz + 0x3C, 4, 0, false);
     if (header < ARDI_MZ_HEADER ||
         header > context->trailer - (int64_t)ARDI_NE_HEADER)
         return -1;
@@ -382,7 +378,7 @@ static int ardi_prologue_walk(ardi_sink *sink) {
         }
         if (sink->records >= ARDI_MAX_PROLOGUE_RECORDS) return -1;
         if (sink->fill - sink->cursor < 5U) return 0;
-        length = ardi_le32(sink->prologue + sink->cursor + 1U);
+        length = xx_data_get_u32(sink->prologue + sink->cursor + 1U, 4, 0, false);
         /* cursor + 5 + length must leave room for the 0xFF tag. */
         if ((uint64_t)length >=
             (uint64_t)ARDI_MAX_PROLOGUE - sink->cursor - 5U)
@@ -511,7 +507,7 @@ static int64_t ardi_measure(Abstractformat *format, const ardi_context *context,
             uint8_t tag = sink.prologue[cursor];
             size_t length;
             if (tag == ARDI_PROLOGUE_END) break;
-            length = (size_t)ardi_le32(sink.prologue + cursor + 1U);
+            length = (size_t)xx_data_get_u32(sink.prologue + cursor + 1U, 4, 0, false);
             if (length > sink.prologue_size - cursor - 5U) break;
             if (tag == ARDI_TAG_TEXT && length > 4U) {
                 ardi_copy_label(label, sink.prologue + cursor + 9U,

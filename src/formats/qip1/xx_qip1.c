@@ -44,6 +44,7 @@
 #include "xxfclib/algo/dcl/xx_dcl.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_QIP1_COPY_CHUNK (64 * 1024)
 
@@ -147,23 +148,12 @@ static bool xx_qip1_add(xx_qip1_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_qip1_le16(const uint8_t *data);
-static uint32_t xx_qip1_le32(const uint8_t *data);
 static bool xx_qip1_name_valid(const char *name);
 static xx_qip1_stream *xx_qip1_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_qip1_decode(Abstractformat *self, const xx_qip1_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
 
 /* 1 GB sanity cap on the stated uncompressed size, as in the reference. */
-
-static uint16_t xx_qip1_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_qip1_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* DOS 8.3 names: printable ASCII only, and none of the characters a path
  * cannot carry. The format genuinely permits 0x20 (space) inside a name, so
@@ -225,14 +215,14 @@ static xx_qip1_stream *xx_qip1_parse(Abstractformat *self, xx_pd_struct *pd) {
 
         /* Two magic bytes alone are near-worthless; it is the chain below
          * that carries the detection. */
-        if (xx_qip1_le16(record) != XX_QIP1_MAGIC) goto fail;
+        if (xx_data_get_u16(record, 2, 0, false) != XX_QIP1_MAGIC) goto fail;
         /* Zero in every record of the corpus, and the cheapest extra bit of
          * signal the record offers. */
-        if (xx_qip1_le16(record + 2) != 0U) goto fail;
+        if (xx_data_get_u16(record + 2, 2, 0, false) != 0U) goto fail;
 
-        compressed_size = (int64_t)(int32_t)xx_qip1_le32(record + 4);
-        sequence = xx_qip1_le16(record + 8);
-        uncompressed_size = (int64_t)(int32_t)xx_qip1_le32(record + 15);
+        compressed_size = (int64_t)(int32_t)xx_data_get_u32(record + 4, 4, 0, false);
+        sequence = xx_data_get_u16(record + 8, 2, 0, false);
+        uncompressed_size = (int64_t)(int32_t)xx_data_get_u32(record + 15, 4, 0, false);
         if (compressed_size < 0 || uncompressed_size < 0 ||
             uncompressed_size > XX_QIP1_MAX_UNCOMPRESSED) {
             goto fail;
@@ -280,8 +270,8 @@ static xx_qip1_stream *xx_qip1_parse(Abstractformat *self, xx_pd_struct *pd) {
         }
         /* Raw MS-DOS time and date, packed time | (date << 16); there is no
          * CRC anywhere in the record. */
-        member.timestamp = (uint64_t)xx_qip1_le16(record + 11) |
-                           ((uint64_t)xx_qip1_le16(record + 13) << 16);
+        member.timestamp = (uint64_t)xx_data_get_u16(record + 11, 2, 0, false) |
+                           ((uint64_t)xx_data_get_u16(record + 13, 2, 0, false) << 16);
         member.is_folder = false;
         if (!xx_qip1_add(stream, &member)) {
             xx_str_free(member.name);

@@ -128,12 +128,12 @@ typedef enum xx_pe_data_struct_id_e {
     XX_PE_DATA_STRUCT_DELAY_IMPORT_DESCRIPTOR,
     XX_PE_DATA_STRUCT_IAT32,
     XX_PE_DATA_STRUCT_IAT64,
-    XX_PE_DATA_STRUCT_COR20_HEADER,
-    XX_PE_DATA_STRUCT_CLR_METADATA_ROOT,
-    XX_PE_DATA_STRUCT_CLR_METADATA_STORAGE_HEADER,
-    XX_PE_DATA_STRUCT_CLR_STREAM_HEADER,
-    XX_PE_DATA_STRUCT_CLR_VTABLE_FIXUP,
-    XX_PE_DATA_STRUCT_CLR_RAW,
+    XX_PE_DATA_STRUCT_RESERVED_112,
+    XX_PE_DATA_STRUCT_RESERVED_113,
+    XX_PE_DATA_STRUCT_RESERVED_114,
+    XX_PE_DATA_STRUCT_RESERVED_115,
+    XX_PE_DATA_STRUCT_RESERVED_116,
+    XX_PE_DATA_STRUCT_RESERVED_117,
     XX_PE_DATA_STRUCT_RESERVED_DIRECTORY_RAW,
     XX_PE_DATA_STRUCT_ARM32_XDATA_HEADER,
     XX_PE_DATA_STRUCT_ARM32_EPILOG_SCOPE,
@@ -208,6 +208,33 @@ XXFC_API int64_t xx_pe_get_format_size(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API uint64_t xx_pe_get_number_of_imports(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API uint64_t xx_pe_get_number_of_exports(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API uint64_t xx_pe_get_number_of_resources(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_pe_get_number_of_metadata(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API uint64_t xx_pe_get_number_of_symbols(Abstractformat *self, xx_pd_struct *pd);
+
+XXFC_API xx_symbol_state *xx_pe_create_symbols_reading(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API const xx_symbol_record *xx_pe_get_current_symbol(Abstractformat *self, xx_symbol_state *state);
+XXFC_API bool xx_pe_symbol_move_to_next(Abstractformat *self, xx_symbol_state *state, xx_pd_struct *pd);
+XXFC_API void xx_pe_free_symbols_reading(Abstractformat *self, xx_symbol_state *state);
+
+XXFC_API xx_import_state *xx_pe_create_imports_reading(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API const xx_import_record *xx_pe_get_current_import(Abstractformat *self, xx_import_state *state);
+XXFC_API bool xx_pe_import_move_to_next(Abstractformat *self, xx_import_state *state, xx_pd_struct *pd);
+XXFC_API void xx_pe_free_imports_reading(Abstractformat *self, xx_import_state *state);
+
+XXFC_API xx_export_state *xx_pe_create_exports_reading(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API const xx_export_record *xx_pe_get_current_export(Abstractformat *self, xx_export_state *state);
+XXFC_API bool xx_pe_export_move_to_next(Abstractformat *self, xx_export_state *state, xx_pd_struct *pd);
+XXFC_API void xx_pe_free_exports_reading(Abstractformat *self, xx_export_state *state);
+
+XXFC_API xx_resource_state *xx_pe_create_resources_reading(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API const xx_resource_record *xx_pe_get_current_resource(Abstractformat *self, xx_resource_state *state);
+XXFC_API bool xx_pe_resource_move_to_next(Abstractformat *self, xx_resource_state *state, xx_pd_struct *pd);
+XXFC_API void xx_pe_free_resources_reading(Abstractformat *self, xx_resource_state *state);
+
+XXFC_API xx_metadata_state *xx_pe_create_metadata_reading(Abstractformat *self, xx_pd_struct *pd);
+XXFC_API const xx_metadata_record *xx_pe_get_current_metadata(Abstractformat *self, xx_metadata_state *state);
+XXFC_API bool xx_pe_metadata_move_to_next(Abstractformat *self, xx_metadata_state *state, xx_pd_struct *pd);
+XXFC_API void xx_pe_free_metadata_reading(Abstractformat *self, xx_metadata_state *state);
 XXFC_API bool xx_pe_get_memory_map(Abstractformat *self,
                                    xx_memory_map_mode_t mode,
                                    xx_memory_map *output,

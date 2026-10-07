@@ -53,6 +53,7 @@
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/algo/deflate/xx_deflate.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_TGCF_COPY_CHUNK (64 * 1024)
 
@@ -161,9 +162,6 @@ static bool xx_tgcf_add(xx_tgcf_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_tgcf_be16(const uint8_t *data);
-static uint32_t xx_tgcf_be32(const uint8_t *data);
-static uint16_t xx_tgcf_le16(const uint8_t *data);
 static char *xx_tgcf_make_name(const uint8_t *raw, size_t length);
 static xx_tgcf_stream *xx_tgcf_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_tgcf_decode(Abstractformat *self, const xx_tgcf_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
@@ -173,20 +171,6 @@ static bool xx_tgcf_decode(Abstractformat *self, const xx_tgcf_member *member, u
  * fewer bytes than this remain. */
 /* Two names, the flag byte and the trailing offsets all live in one window
  * read after the fixed part of a record. */
-
-static uint16_t xx_tgcf_be16(const uint8_t *data) {
-    return (uint16_t)(((uint16_t)data[0] << 8) | (uint16_t)data[1]);
-}
-
-static uint32_t xx_tgcf_be32(const uint8_t *data) {
-    return ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16) |
-           ((uint32_t)data[2] << 8) | (uint32_t)data[3];
-}
-
-/* Only the two u16s at 0x0c and 0x0e of a record are little-endian. */
-static uint16_t xx_tgcf_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
 
 /* Stored names are absolute Windows paths ("F:\DOCS\A.TXT"), which cannot be
  * recreated as such: fold the separators, drop the drive and the leading
@@ -241,14 +225,14 @@ static xx_tgcf_stream *xx_tgcf_parse(Abstractformat *self, xx_pd_struct *pd) {
      * against a false positive: only three builds of the writer ever
      * existed, so an unrecognised version is noise, not a newer archive.
      * Do not relax this into a range or a minimum. */
-    version = xx_tgcf_be16(header + 6);
+    version = xx_data_get_u16(header + 6, 2, 0, true);
     if (version != 0x0130U && version != 0x0140U && version != 0x0160U) {
         return NULL;
     }
     /* One version bit decides two different container layouts; see below. */
     extended = version >= (uint32_t)XX_TGCF_EXTENDED_FROM;
 
-    volume_name_length = (int64_t)xx_tgcf_be16(header + 0x1a);
+    volume_name_length = (int64_t)xx_data_get_u16(header + 0x1a, 2, 0, true);
     if (volume_name_length == 0 || volume_name_length > 0x400) return NULL;
     if (!xx_tgcf_range_within(span, XX_TGCF_HEADER_SIZE,
                               volume_name_length)) {
@@ -264,7 +248,7 @@ static xx_tgcf_stream *xx_tgcf_parse(Abstractformat *self, xx_pd_struct *pd) {
                              sizeof(pointer_field))) {
             return NULL;
         }
-        list_start = (int64_t)xx_tgcf_be32(pointer_field);
+        list_start = (int64_t)xx_data_get_u32(pointer_field, 4, 0, true);
         offset += 4;
     }
     offset += 4; /* header CRC */
@@ -319,11 +303,11 @@ static xx_tgcf_stream *xx_tgcf_parse(Abstractformat *self, xx_pd_struct *pd) {
          * next four bytes are not "TGCF". */
         if (xx_rt_memcmp(window, magic, sizeof(magic)) != 0) break;
 
-        split = xx_tgcf_le16(window + 0x0c);
-        method = xx_tgcf_le16(window + 0x0e);
-        timestamp = xx_tgcf_be32(window + 0x10);
-        compressed_size = (int64_t)xx_tgcf_be32(window + 0x14);
-        uncompressed_size = (int64_t)xx_tgcf_be32(window + 0x18);
+        split = xx_data_get_u16(window + 0x0c, 2, 0, false);
+        method = xx_data_get_u16(window + 0x0e, 2, 0, false);
+        timestamp = xx_data_get_u32(window + 0x10, 4, 0, true);
+        compressed_size = (int64_t)xx_data_get_u32(window + 0x14, 4, 0, true);
+        uncompressed_size = (int64_t)xx_data_get_u32(window + 0x18, 4, 0, true);
         /* 0x1c member CRC and 0x20 attributes are not carried by a member. */
 
         cursor = XX_TGCF_RECORD_SIZE;
@@ -358,7 +342,7 @@ static xx_tgcf_stream *xx_tgcf_parse(Abstractformat *self, xx_pd_struct *pd) {
 
         if (extended) {
             if ((cursor + 4) > read_size) break;
-            payload_offset = (int64_t)xx_tgcf_be32(window + cursor);
+            payload_offset = (int64_t)xx_data_get_u32(window + cursor, 4, 0, true);
             cursor += 4;
         }
         cursor += 4; /* record CRC */

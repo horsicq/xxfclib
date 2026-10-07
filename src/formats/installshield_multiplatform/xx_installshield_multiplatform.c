@@ -26,6 +26,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: the enumerator lives in the shared xxfc_defs.h,
  * so its alias macro is tested and the real type is picked up as soon as
@@ -77,11 +78,6 @@ typedef struct ismp_index_s {
 
 static uint32_t ismp_be16(const uint8_t *bytes) {
     return ((uint32_t)bytes[0] << 8U) | (uint32_t)bytes[1];
-}
-
-static uint32_t ismp_be32(const uint8_t *bytes) {
-    return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
-           ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3];
 }
 
 static bool ismp_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -430,9 +426,9 @@ static bool ismp_parse(Abstractformat *format, ismp_index **out,
         !ismp_read_at(format->device,
                       format->base_address + size - (int64_t)ISMP_FOOTER,
                       footer, sizeof(footer)) ||
-        ismp_be32(footer + 4U) != XX_INSTALLSHIELD_MULTIPLATFORM_MAGIC)
+        xx_data_get_u32(footer + 4U, 4, 0, true) != XX_INSTALLSHIELD_MULTIPLATFORM_MAGIC)
         return false;
-    index_offset = (int64_t)ismp_be32(footer);
+    index_offset = (int64_t)xx_data_get_u32(footer, 4, 0, true);
     if (index_offset > size - (int64_t)(ISMP_FOOTER + ISMP_COUNT_SIZE +
                                         ISMP_ENTRY_MIN))
         return false;
@@ -441,7 +437,7 @@ static bool ismp_parse(Abstractformat *format, ismp_index **out,
         !ismp_read_at(format->device, format->base_address + index_offset,
                       count_bytes, sizeof(count_bytes)))
         return false;
-    count = ismp_be32(count_bytes);
+    count = xx_data_get_u32(count_bytes, 4, 0, true);
     if (count == 0U || count > ISMP_MAX_COUNT ||
         (int64_t)count * (int64_t)ISMP_ENTRY_MIN >
             region - (int64_t)ISMP_COUNT_SIZE)
@@ -466,8 +462,8 @@ static bool ismp_parse(Abstractformat *format, ismp_index **out,
         uint64_t extra = 0U;
         if ((size_t)region - position < ISMP_ENTRY_FIXED) goto done;
         fixed = buffer + position;
-        member_size = ismp_be32(fixed + 5U);
-        offset = ismp_be32(fixed + 9U);
+        member_size = xx_data_get_u32(fixed + 5U, 4, 0, true);
+        offset = xx_data_get_u32(fixed + 9U, 4, 0, true);
         name_length = ismp_be16(fixed + 13U);
         position += ISMP_ENTRY_FIXED;
         /* The name and the flag byte after it. */
@@ -491,8 +487,8 @@ static bool ismp_parse(Abstractformat *format, ismp_index **out,
         ++position;
         if (has_extra) {
             if ((size_t)region - position < ISMP_EXTRA) goto done;
-            extra = ((uint64_t)ismp_be32(buffer + position) << 32U) |
-                    (uint64_t)ismp_be32(buffer + position + 4U);
+            extra = ((uint64_t)xx_data_get_u32(buffer + position, 4, 0, true) << 32U) |
+                    (uint64_t)xx_data_get_u32(buffer + position + 4U, 4, 0, true);
             position += ISMP_EXTRA;
         }
         if (index) {
@@ -503,7 +499,7 @@ static bool ismp_parse(Abstractformat *format, ismp_index **out,
             member->data_offset = format->base_address + (int64_t)offset;
             member->size = (int64_t)member_size;
             member->type = fixed[0];
-            member->id = ismp_be32(fixed + 1U);
+            member->id = xx_data_get_u32(fixed + 1U, 4, 0, true);
             member->has_extra = has_extra;
             member->extra = extra;
             member->safe = safe && ismp_name_safe(member->name);
@@ -585,7 +581,7 @@ bool xx_installshield_multiplatform_has_footer(xx_io_device *device) {
     if (total >= XX_INSTALLSHIELD_MULTIPLATFORM_FOOTER_SIZE &&
         ismp_read_at(device, total - (int64_t)sizeof(magic), magic,
                       sizeof(magic)))
-        matches = ismp_be32(magic) == XX_INSTALLSHIELD_MULTIPLATFORM_MAGIC;
+        matches = xx_data_get_u32(magic, 4, 0, true) == XX_INSTALLSHIELD_MULTIPLATFORM_MAGIC;
     if (xx_io_seek64(device, position, SEEK_SET) != 0) return false;
     return matches;
 }

@@ -21,10 +21,10 @@ static bool w5_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     int64_t limit=pm_available(f),low,begin,ecd,dir;size_t n,i;uint8_t *b;bool ok=false;
     if(!w5_zip_carrier(f,&low,pd) || limit<22) { return false; } begin=limit>65557 ? limit-65557:0;n=(size_t)(limit-begin);b=(uint8_t *)xx_mem_alloc(n);if(!b || !pm_read(f,begin,b,n)) { if(b) xx_mem_free(b);return false; }
     for(i=n-21;i>0;--i) { size_t p=i-1;uint32_t bytes,offset;int64_t at;if(wg_stop(pd)) break;
-        if(xx_rt_memcmp(b+p,"PK\5\6",4) || p+22+pm_le16(b+p+20)!=n || pm_le16(b+p+4) || pm_le16(b+p+6) || !pm_le16(b+p+10) || pm_le16(b+p+10)==65535 || pm_le16(b+p+8)!=pm_le16(b+p+10)) continue;
-        ecd=begin+(int64_t)p;bytes=pm_le32(b+p+12);offset=pm_le32(b+p+16);if(bytes>(uint64_t)ecd || offset==UINT32_MAX) continue;dir=ecd-bytes;at=dir-offset;
-        if(at<0 || (at && at<low) || pm_le16(b+p+10)>4096) continue;
-        { unsigned j;int64_t cp=dir;bool valid=true;uint8_t cd[46];for(j=0;j<pm_le16(b+p+10);++j) { int64_t local;if(wg_stop(pd) || cp>ecd-46 || !pm_read(f,cp,cd,46) || xx_rt_memcmp(cd,"PK\1\2",4)) { valid=false;break; }if(pm_le32(cd+42)>(uint64_t)(limit-at)) { valid=false;break; }local=at+pm_le32(cd+42);if(local<low || (uint64_t)46+pm_le16(cd+28)+pm_le16(cd+30)+pm_le16(cd+32)>(uint64_t)(ecd-cp)) { valid=false;break; }cp+=46+pm_le16(cd+28)+pm_le16(cd+30)+pm_le16(cd+32); }if(!valid || cp!=ecd) continue; }
+        if(xx_rt_memcmp(b+p,"PK\5\6",4) || p+22+xx_data_get_u16(b+p+20, 2, 0, false)!=n || xx_data_get_u16(b+p+4, 2, 0, false) || xx_data_get_u16(b+p+6, 2, 0, false) || !xx_data_get_u16(b+p+10, 2, 0, false) || xx_data_get_u16(b+p+10, 2, 0, false)==65535 || xx_data_get_u16(b+p+8, 2, 0, false)!=xx_data_get_u16(b+p+10, 2, 0, false)) continue;
+        ecd=begin+(int64_t)p;bytes=xx_data_get_u32(b+p+12, 4, 0, false);offset=xx_data_get_u32(b+p+16, 4, 0, false);if(bytes>(uint64_t)ecd || offset==UINT32_MAX) continue;dir=ecd-bytes;at=dir-offset;
+        if(at<0 || (at && at<low) || xx_data_get_u16(b+p+10, 2, 0, false)>4096) continue;
+        { unsigned j;int64_t cp=dir;bool valid=true;uint8_t cd[46];for(j=0;j<xx_data_get_u16(b+p+10, 2, 0, false);++j) { int64_t local;if(wg_stop(pd) || cp>ecd-46 || !pm_read(f,cp,cd,46) || xx_rt_memcmp(cd,"PK\1\2",4)) { valid=false;break; }if(xx_data_get_u32(cd+42, 4, 0, false)>(uint64_t)(limit-at)) { valid=false;break; }local=at+xx_data_get_u32(cd+42, 4, 0, false);if(local<low || (uint64_t)46+xx_data_get_u16(cd+28, 2, 0, false)+xx_data_get_u16(cd+30, 2, 0, false)+xx_data_get_u16(cd+32, 2, 0, false)>(uint64_t)(ecd-cp)) { valid=false;break; }cp+=46+xx_data_get_u16(cd+28, 2, 0, false)+xx_data_get_u16(cd+30, 2, 0, false)+xx_data_get_u16(cd+32, 2, 0, false); }if(!valid || cp!=ecd) continue; }
         if(at) { uint8_t local[4];if(!pm_read(f,at,local,4) || xx_rt_memcmp(local,"PK\3\4",4)) continue; }if(!wg_zip(f,at,limit,pd)) continue;ok=w6_component(f,s,at,limit-at,"payload.zip");break;
     }xx_mem_free(b);return ok;
 }
@@ -84,24 +84,24 @@ static bool w5_absolute_directory(Abstractformat *f, int64_t low, int64_t dir,
         uint32_t packed, raw, crc;
         int64_t at, record, end;
         if (wg_stop(pd) || cp > eocd - 46 || !pm_read(f, cp, cd, sizeof(cd)) ||
-            xx_rt_memcmp(cd, "PK\1\2", 4) || pm_le16(cd + 34)) goto done;
-        fn = pm_le16(cd + 28);
-        extra = pm_le16(cd + 30);
-        comment = pm_le16(cd + 32);
+            xx_rt_memcmp(cd, "PK\1\2", 4) || xx_data_get_u16(cd + 34, 2, 0, false)) goto done;
+        fn = xx_data_get_u16(cd + 28, 2, 0, false);
+        extra = xx_data_get_u16(cd + 30, 2, 0, false);
+        comment = xx_data_get_u16(cd + 32, 2, 0, false);
         record = 46 + (int64_t)fn + extra + comment;
-        packed = pm_le32(cd + 20);
-        raw = pm_le32(cd + 24);
-        crc = pm_le32(cd + 16);
-        at = (int64_t)pm_le32(cd + 42);
-        flags = pm_le16(cd + 8);
+        packed = xx_data_get_u32(cd + 20, 4, 0, false);
+        raw = xx_data_get_u32(cd + 24, 4, 0, false);
+        crc = xx_data_get_u32(cd + 16, 4, 0, false);
+        at = (int64_t)xx_data_get_u32(cd + 42, 4, 0, false);
+        flags = xx_data_get_u16(cd + 8, 2, 0, false);
         if (!fn || record > eocd - cp || packed == UINT32_MAX ||
             raw == UINT32_MAX || at < low || at > dir - 30 ||
             !pm_read(f, at, local, sizeof(local)) ||
             xx_rt_memcmp(local, "PK\3\4", 4)) goto done;
-        lfn = pm_le16(local + 26);
-        lextra = pm_le16(local + 28);
-        local_flags = pm_le16(local + 6);
-        if (lfn != fn || pm_le16(local + 8) != pm_le16(cd + 10) ||
+        lfn = xx_data_get_u16(local + 26, 2, 0, false);
+        lextra = xx_data_get_u16(local + 28, 2, 0, false);
+        local_flags = xx_data_get_u16(local + 6, 2, 0, false);
+        if (lfn != fn || xx_data_get_u16(local + 8, 2, 0, false) != xx_data_get_u16(cd + 10, 2, 0, false) ||
             ((local_flags ^ flags) & 0x0049U) ||
             (uint64_t)30 + lfn + lextra + packed > (uint64_t)(dir - at) ||
             !w5_legacy_same_name(f, at + 30, cp + 46, fn, at,
@@ -114,13 +114,13 @@ static bool w5_absolute_directory(Abstractformat *f, int64_t low, int64_t dir,
             if (!xx_rt_memcmp(marker, "PK\7\10", 4)) end += 4;
             if (dir - end < 12 || !pm_read(f, end, descriptor,
                                            sizeof(descriptor)) ||
-                pm_le32(descriptor) != crc ||
-                pm_le32(descriptor + 4) != packed ||
-                pm_le32(descriptor + 8) != raw) goto done;
+                xx_data_get_u32(descriptor, 4, 0, false) != crc ||
+                xx_data_get_u32(descriptor + 4, 4, 0, false) != packed ||
+                xx_data_get_u32(descriptor + 8, 4, 0, false) != raw) goto done;
             end += 12;
-        } else if (pm_le32(local + 14) != crc ||
-                   pm_le32(local + 18) != packed ||
-                   pm_le32(local + 22) != raw) goto done;
+        } else if (xx_data_get_u32(local + 14, 4, 0, false) != crc ||
+                   xx_data_get_u32(local + 18, 4, 0, false) != packed ||
+                   xx_data_get_u32(local + 22, 4, 0, false) != raw) goto done;
         ranges[j].lo = at;
         ranges[j].hi = end;
         if (at < minimum) minimum = at;
@@ -157,13 +157,13 @@ static bool w5_absolute_ensure(xx_sfx_zipcentral *r, xx_pd_struct *pd) {
         uint32_t bytes, offset;
         if (wg_stop(pd)) break;
         if (xx_rt_memcmp(tail + p, "PK\5\6", 4) ||
-            p + 22 + pm_le16(tail + p + 20) != n ||
-            pm_le16(tail + p + 4) || pm_le16(tail + p + 6) ||
-            !(count = pm_le16(tail + p + 10)) ||
-            count != pm_le16(tail + p + 8)) continue;
+            p + 22 + xx_data_get_u16(tail + p + 20, 2, 0, false) != n ||
+            xx_data_get_u16(tail + p + 4, 2, 0, false) || xx_data_get_u16(tail + p + 6, 2, 0, false) ||
+            !(count = xx_data_get_u16(tail + p + 10, 2, 0, false)) ||
+            count != xx_data_get_u16(tail + p + 8, 2, 0, false)) continue;
         eocd = begin + (int64_t)p;
-        bytes = pm_le32(tail + p + 12);
-        offset = pm_le32(tail + p + 16);
+        bytes = xx_data_get_u32(tail + p + 12, 4, 0, false);
+        offset = xx_data_get_u32(tail + p + 16, 4, 0, false);
         if (bytes > (uint64_t)eocd || offset == UINT32_MAX) continue;
         dir = eocd - bytes;
         if (dir != (int64_t)offset ||
@@ -397,11 +397,11 @@ static bool w5_normalize_record(xx_sfx_zipcentral *r,
     local = record->header_offset;
     if (wg_stop(pd) || !w5_read_device(device, local, header, sizeof(header)) ||
         xx_rt_memcmp(header, "PK\3\4", 4)) return false;
-    length = pm_le16(header + 26);
-    if (!length || length > 4096U || (pm_le16(header + 6) & 0x0800U))
+    length = xx_data_get_u16(header + 26, 2, 0, false);
+    if (!length || length > 4096U || (xx_data_get_u16(header + 6, 2, 0, false) & 0x0800U))
         return true;
     if (record->data_offset != local + 30 + (int64_t)length +
-                               pm_le16(header + 28) ||
+                               xx_data_get_u16(header + 28, 2, 0, false) ||
         !w5_read_device(device, local + 30, name, length)) return false;
     for (i = 0U; i < length; ++i) {
         if (wg_stop(pd) || name[i] == 0U) return false;

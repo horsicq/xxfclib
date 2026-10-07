@@ -38,6 +38,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef TNEF
 #define XX_TNEF_FILE_TYPE XX_FILE_TYPE_TNEF
@@ -129,15 +130,6 @@ typedef struct tnef_sink_s {
     const uint8_t **body;
     int64_t *body_size;
 } tnef_sink;
-
-static uint16_t tnef_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t tnef_le32(const uint8_t *bytes) {
-    return (uint32_t)tnef_le16(bytes) |
-           ((uint32_t)tnef_le16(bytes + 2U) << 16U);
-}
 
 static bool tnef_read_at(xx_io_device *device, int64_t offset, void *buffer,
                          size_t size) {
@@ -276,9 +268,9 @@ static bool tnef_decompress_rtf(const uint8_t *stream, int64_t stream_size,
     int32_t init_size, write;
     int64_t end, position;
     if (stream_size < 16) return false;
-    compressed_size = tnef_le32(stream);
-    raw_size = tnef_le32(stream + 4U);
-    compression_type = tnef_le32(stream + 8U);
+    compressed_size = xx_data_get_u32(stream, 4, 0, false);
+    raw_size = xx_data_get_u32(stream + 4U, 4, 0, false);
+    compression_type = xx_data_get_u32(stream + 8U, 4, 0, false);
     if ((int64_t)raw_size > TNEF_MAX_BODY_SIZE) return false;
     if (compression_type == TNEF_LZFU_UNCOMPRESSED) {
         int64_t available = stream_size - 16;
@@ -708,7 +700,7 @@ static bool tnef_scan_properties(const uint8_t *stream, int64_t stream_size,
                                  const tnef_sink *sink) {
     int64_t property_count, position, property;
     if (stream_size < 4) return false;
-    property_count = (int64_t)tnef_le32(stream);
+    property_count = (int64_t)xx_data_get_u32(stream, 4, 0, false);
     if (property_count < 0 || property_count > TNEF_MAX_VALUE_COUNT)
         return false;
     position = 4;
@@ -718,21 +710,21 @@ static bool tnef_scan_properties(const uint8_t *stream, int64_t stream_size,
         int32_t fixed_size;
         int64_t value_count, value;
         if (position + 4 > stream_size) break;
-        type = tnef_le16(stream + position);
-        id = tnef_le16(stream + position + 2);
+        type = xx_data_get_u16(stream + position, 2, 0, false);
+        id = xx_data_get_u16(stream + position + 2, 2, 0, false);
         position += 4;
         if (id >= 0x8000U) {
             uint32_t kind;
             if (position + 20 > stream_size) break;
             position += 16;
-            kind = tnef_le32(stream + position);
+            kind = xx_data_get_u32(stream + position, 4, 0, false);
             position += 4;
             if (kind == 0U) {
                 position += 4;
             } else if (kind == 1U) {
                 int64_t name_length, padded_name;
                 if (position + 4 > stream_size) break;
-                name_length = (int64_t)tnef_le32(stream + position);
+                name_length = (int64_t)xx_data_get_u32(stream + position, 4, 0, false);
                 padded_name = tnef_pad4(name_length);
                 if (padded_name < 0) break;
                 position += 4 + padded_name;
@@ -747,7 +739,7 @@ static bool tnef_scan_properties(const uint8_t *stream, int64_t stream_size,
         value_count = 1;
         if (multi || variable) {
             if (position + 4 > stream_size) break;
-            value_count = (int64_t)tnef_le32(stream + position);
+            value_count = (int64_t)xx_data_get_u32(stream + position, 4, 0, false);
             position += 4;
         }
         if (value_count < 0 || value_count > TNEF_MAX_VALUE_COUNT) break;
@@ -761,7 +753,7 @@ static bool tnef_scan_properties(const uint8_t *stream, int64_t stream_size,
             if (variable) {
                 int64_t length, value_offset, value_size, padded;
                 if (position + 4 > stream_size) return true;
-                length = (int64_t)tnef_le32(stream + position);
+                length = (int64_t)xx_data_get_u32(stream + position, 4, 0, false);
                 position += 4;
                 if (length < 0 || position + length > stream_size) return true;
                 value_offset = position;
@@ -837,7 +829,7 @@ static bool tnef_parse(Abstractformat *format, tnef_stream **result) {
     if (!data) return false;
     if (!tnef_read_at(format->device, format->base_address, data,
                       (size_t)size) ||
-        tnef_le32(data) != TNEF_SIGNATURE || tnef_le16(data + 4U) == 0U) {
+        xx_data_get_u32(data, 4, 0, false) != TNEF_SIGNATURE || xx_data_get_u16(data + 4U, 2, 0, false) == 0U) {
         xx_mem_free(data);
         return false;
     }
@@ -858,8 +850,8 @@ static bool tnef_parse(Abstractformat *format, tnef_stream **result) {
         int64_t at;
         if (stream->count >= TNEF_MAX_MEMBERS) break;
         level = data[offset];
-        att_id = tnef_le32(data + offset + 1);
-        raw_length = tnef_le32(data + offset + 5);
+        att_id = xx_data_get_u32(data + offset + 1, 4, 0, false);
+        raw_length = xx_data_get_u32(data + offset + 5, 4, 0, false);
         if (raw_length > (uint32_t)INT32_MAX) break;
         length = (int64_t)raw_length;
         body_offset = offset + TNEF_ATTRIBUTE_HEADER_SIZE;
@@ -870,7 +862,7 @@ static bool tnef_parse(Abstractformat *format, tnef_stream **result) {
         checksum_offset = body_offset + length;
         if (checksum_offset + TNEF_CHECKSUM_SIZE > size) break;
         for (at = 0; at < length; ++at) sum += data[body_offset + at];
-        if ((uint16_t)(sum & 0xFFFFU) != tnef_le16(data + checksum_offset))
+        if ((uint16_t)(sum & 0xFFFFU) != xx_data_get_u16(data + checksum_offset, 2, 0, false))
             break;
         ++valid_attributes;
         offset = checksum_offset + TNEF_CHECKSUM_SIZE;

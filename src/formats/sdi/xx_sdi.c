@@ -6,6 +6,7 @@
  */
 #include "xxfclib/formats/sdi/xx_sdi.h"
 #include "../wux/xx_disk_containers_native.h"
+#include "xxfclib/data/xx_data.h"
 
 #ifdef SDI
 #define DC_FILE_TYPE XX_FILE_TYPE_SDI
@@ -25,12 +26,12 @@ static bool dc_parse(Abstractformat *f, dc_image *image,
         xx_rt_memcmp(header, "$SDI0001", 8U)) return false;
     for (i = 0U; i < sizeof(header); ++i) checksum += header[i];
     if ((checksum & 255U) != 0U) return false;
-    page = dc_le64(header + 0x70U);
+    page = xx_data_get_u64(header + 0x70U, 8, 0, false);
     if (!page || page > 2048U) return false;
     page *= 512U;
     if (!dc_span(page, page, image->available)) return false;
-    boot_at = dc_le64(header + 0x10U);
-    boot_size = dc_le64(header + 0x18U);
+    boot_at = xx_data_get_u64(header + 0x10U, 8, 0, false);
+    boot_size = xx_data_get_u64(header + 0x18U, 8, 0, false);
     if ((boot_at == 0U) != (boot_size == 0U) ||
         (boot_size && (!dc_span(boot_at, boot_size, image->available) || boot_at < 2U * page)))
         return false;
@@ -49,10 +50,10 @@ static bool dc_parse(Abstractformat *f, dc_image *image,
         }
         if (!dc_zero(entry + length, 8U - length) || !length) return false;
         while (length && type[length - 1U] == ' ') --length;
-        if (!length || dc_le64(entry + 8U) != 0U || !dc_zero(entry + 40U, 24U)) return false;
+        if (!length || xx_data_get_u64(entry + 8U, 8, 0, false) != 0U || !dc_zero(entry + 40U, 24U)) return false;
         type[length] = '\0';
-        offset = dc_le64(entry + 16U);
-        size = dc_le64(entry + 24U);
+        offset = xx_data_get_u64(entry + 16U, 8, 0, false);
+        size = xx_data_get_u64(entry + 24U, 8, 0, false);
         if (offset < 2U * page || !dc_span(offset, size, image->available) || size > DC_MAX_IMAGE_SIZE)
             return false;
         for (j = 0U; j < image->count; ++j) {

@@ -61,6 +61,7 @@
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/algo/ivt/xx_ivt.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_IVT_COPY_CHUNK (64 * 1024)
 
@@ -169,8 +170,6 @@ static bool xx_ivt_add(xx_ivt_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_ivt_le16(const uint8_t *data);
-static uint32_t xx_ivt_le32(const uint8_t *data);
 static bool xx_ivt_is_system_name(const char *name, int64_t length);
 static char *xx_ivt_make_name(const uint8_t *raw, int64_t length);
 static bool xx_ivt_read_leb128(const uint8_t *page, int64_t *position, int64_t *result);
@@ -185,15 +184,6 @@ static const char *const xx_ivt_system_names[] = {
     "KeywordInfo", "KeywordList", "KeywordLookup", "STRINGS",
     "TOCIDX",    "TOPICS",     "TitleInformation", "URLTREE",
     "charmap",   "ftindex",    "source.toc",       "stoplist"};
-
-static uint16_t xx_ivt_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_ivt_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 static bool xx_ivt_is_system_name(const char *name, int64_t length) {
     size_t count = sizeof(xx_ivt_system_names) /
@@ -305,8 +295,8 @@ static bool xx_ivt_walk_tree(xx_ivt_tree *tree, uint32_t ordinal,
             tree->format->base_address + tree->pages_offset +
                 (int64_t)ordinal * XX_IVT_PAGE_SIZE,
             page, XX_IVT_PAGE_SIZE)) goto done;
-    unused = xx_ivt_le16(page);
-    count = xx_ivt_le16(page + 2);
+    unused = xx_data_get_u16(page, 2, 0, false);
+    count = xx_data_get_u16(page + 2, 2, 0, false);
     if (count == 0U || unused > XX_IVT_PAGE_SIZE - 12) goto done;
     if (depth == 0U) {
         size_t length = page[12];
@@ -317,7 +307,7 @@ static bool xx_ivt_walk_tree(xx_ivt_tree *tree, uint32_t ordinal,
         ok = true;
         goto done;
     }
-    if (!xx_ivt_walk_tree(tree, xx_ivt_le32(page + 4), depth - 1U,
+    if (!xx_ivt_walk_tree(tree, xx_data_get_u32(page + 4, 4, 0, false), depth - 1U,
                            first_key, first_size)) goto done;
     position = 8;
     for (index = 0U; index < count; ++index) {
@@ -330,7 +320,7 @@ static bool xx_ivt_walk_tree(xx_ivt_tree *tree, uint32_t ordinal,
                 (size_t)(XX_IVT_PAGE_SIZE - position)) goto done;
         xx_mem_copy(key, page + position, length);
         position += (int64_t)length;
-        child = xx_ivt_le32(page + position);
+        child = xx_data_get_u32(page + position, 4, 0, false);
         position += 4;
         if (!xx_ivt_walk_tree(tree, child, depth - 1U,
                                child_key, &child_size) ||
@@ -376,9 +366,9 @@ static xx_ivt_stream *xx_ivt_parse(Abstractformat *self, xx_pd_struct *pd) {
                         sizeof(file_header))) {
         return NULL;
     }
-    if (xx_ivt_le32(file_header) != XX_IVT_MAGIC) return NULL;
+    if (xx_data_get_u32(file_header, 4, 0, false) != XX_IVT_MAGIC) return NULL;
 
-    directory_offset = (int64_t)(int32_t)xx_ivt_le32(file_header + 4);
+    directory_offset = (int64_t)(int32_t)xx_data_get_u32(file_header + 4, 4, 0, false);
     /* The directory cannot start inside the header that announces it, and it
      * must leave room for its own b-tree header. */
     if (directory_offset < XX_IVT_FILE_HEADER_SIZE ||
@@ -392,12 +382,12 @@ static xx_ivt_stream *xx_ivt_parse(Abstractformat *self, xx_pd_struct *pd) {
     /* The second magic, and the page size that the whole page arithmetic
      * below depends on. A file that satisfies both and then fails the entry
      * accounting is malformed, not merely a different format. */
-    if (xx_ivt_le16(btree) != (uint16_t)XX_IVT_BTREE_MAGIC) return NULL;
-    if (xx_ivt_le16(btree + 4) != (uint16_t)XX_IVT_PAGE_SIZE) return NULL;
+    if (xx_data_get_u16(btree, 2, 0, false) != (uint16_t)XX_IVT_BTREE_MAGIC) return NULL;
+    if (xx_data_get_u16(btree + 4, 2, 0, false) != (uint16_t)XX_IVT_PAGE_SIZE) return NULL;
 
-    total_pages = (int64_t)(int32_t)xx_ivt_le32(btree + 0x26);
-    levels = xx_ivt_le16(btree + 0x2A);
-    total_entries = (int64_t)(int32_t)xx_ivt_le32(btree + 0x2C);
+    total_pages = (int64_t)(int32_t)xx_data_get_u32(btree + 0x26, 4, 0, false);
+    levels = xx_data_get_u16(btree + 0x2A, 2, 0, false);
+    total_entries = (int64_t)(int32_t)xx_data_get_u32(btree + 0x2C, 4, 0, false);
     if (total_pages <= 0 || total_pages > XX_IVT_MAX_PAGES) return NULL;
     if (total_entries <= 0 || total_entries > XX_IVT_MAX_MEMBERS) return NULL;
     if (levels == 0U || levels > 32U || levels > total_pages) return NULL;
@@ -424,10 +414,10 @@ static xx_ivt_stream *xx_ivt_parse(Abstractformat *self, xx_pd_struct *pd) {
     {
         uint8_t first_key[255];
         size_t first_size;
-        if (!xx_ivt_walk_tree(&tree, xx_ivt_le32(btree + 0x1e),
+        if (!xx_ivt_walk_tree(&tree, xx_data_get_u32(btree + 0x1e, 4, 0, false),
                                levels - 1U, first_key, &first_size) ||
             tree.visited_count != tree.pages || tree.leaf_count == 0U ||
-            tree.leaves[tree.leaf_count - 1U] != xx_ivt_le32(btree + 0x1a))
+            tree.leaves[tree.leaf_count - 1U] != xx_data_get_u32(btree + 0x1a, 4, 0, false))
             goto fail;
     }
 
@@ -446,11 +436,11 @@ static xx_ivt_stream *xx_ivt_parse(Abstractformat *self, xx_pd_struct *pd) {
                             page, (size_t)XX_IVT_PAGE_SIZE)) {
             goto fail;
         }
-        unused = (int64_t)xx_ivt_le16(page);
-        entry_count = (int64_t)xx_ivt_le16(page + 2);
-        if (xx_ivt_le32(page + 4) !=
+        unused = (int64_t)xx_data_get_u16(page, 2, 0, false);
+        entry_count = (int64_t)xx_data_get_u16(page + 2, 2, 0, false);
+        if (xx_data_get_u32(page + 4, 4, 0, false) !=
                 (leaf_ordinal ? tree.leaves[leaf_ordinal - 1U] : UINT32_MAX) ||
-            xx_ivt_le32(page + 8) !=
+            xx_data_get_u32(page + 8, 4, 0, false) !=
                 (leaf_ordinal + 1U < tree.leaf_count
                     ? tree.leaves[leaf_ordinal + 1U] : UINT32_MAX)) goto fail;
         if (unused > XX_IVT_PAGE_SIZE - XX_IVT_NODE_HEADER_SIZE) goto fail;

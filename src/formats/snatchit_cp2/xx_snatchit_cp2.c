@@ -10,6 +10,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef SNATCHIT_CP2
 #define CP2_FILE_TYPE XX_FILE_TYPE_SNATCHIT_CP2
@@ -39,9 +40,6 @@ typedef struct cp2_view_s {
     unsigned cylinders,heads,sectors,track_count,sector_count;
 } cp2_view;
 
-static uint16_t cp2_le16(const uint8_t *p) {
-    return (uint16_t)((uint16_t)p[0]|((uint16_t)p[1]<<8));
-}
 static bool cp2_read_at(xx_io_device *d,int64_t at,void *bytes,
                         size_t count,xx_pd_struct *pd) {
     size_t done=0U;
@@ -126,7 +124,7 @@ static bool cp2_parse(Abstractformat *f,cp2_view **out,xx_pd_struct *pd) {
         if (length-position<4U ||
             !cp2_read_at(f->device,f->base_address+(int64_t)position,
                          word,2U,pd)) goto done;
-        header_bytes=cp2_le16(word);
+        header_bytes=xx_data_get_u16(word, 2, 0, false);
         if (header_bytes<CP2_TRACK_BYTES+1U ||
             header_bytes>CP2_MAX_SEGMENT_HEADER ||
             (header_bytes-1U)%CP2_TRACK_BYTES!=0U ||
@@ -140,7 +138,7 @@ static bool cp2_parse(Abstractformat *f,cp2_view **out,xx_pd_struct *pd) {
             !cp2_read_at(f->device,
                          f->base_address+(int64_t)position+2+header_bytes,
                          word,2U,pd)) goto done;
-        data_bytes=cp2_le16(word);
+        data_bytes=xx_data_get_u16(word, 2, 0, false);
         data_start=position+4U+header_bytes;
         next=data_start+data_bytes;
         if (next>length || data_bytes==0U ||
@@ -164,7 +162,7 @@ static bool cp2_parse(Abstractformat *f,cp2_view **out,xx_pd_struct *pd) {
             for (sector=0U;sector<count;++sector) {
                 const uint8_t *s=t+3U+sector*16U;
                 unsigned id=s[6],size_code=s[7];
-                uint16_t biased=cp2_le16(s+8U);
+                uint16_t biased=xx_data_get_u16(s+8U, 2, 0, false);
                 unsigned data_offset;
                 size_t key,slot;
                 if (s[0] || s[1] || s[2] || s[3] ||

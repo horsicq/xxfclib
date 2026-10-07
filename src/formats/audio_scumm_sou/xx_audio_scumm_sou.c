@@ -7,6 +7,7 @@
  */
 #include "xxfclib/formats/audio_scumm_sou/xx_audio_scumm_sou.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 #ifndef XX_FILE_TYPE_AUDIO_SCUMM_SOU
 #define XX_FILE_TYPE_AUDIO_SCUMM_SOU ((xx_file_type_t)1522)
@@ -20,7 +21,7 @@ static bool sou_voc(Abstractformat *f,uint64_t at,uint64_t limit,uint64_t *end,x
     uint16_t version,checksum,header_size;
     if (at>limit || limit-at<26 || !pm_read(f,(int64_t)at,h,sizeof(h)) ||
         xx_rt_memcmp(h,"Creative Voice File",19) || h[19]!=0x1a) return false;
-    header_size=pm_le16(h+20); version=pm_le16(h+22); checksum=pm_le16(h+24);
+    header_size=xx_data_get_u16(h+20, 2, 0, false); version=xx_data_get_u16(h+22, 2, 0, false); checksum=xx_data_get_u16(h+24, 2, 0, false);
     if (header_size<26 || header_size>256 || header_size>limit-at ||
         (uint16_t)(~version+0x1234U)!=checksum) return false;
     p=at+header_size;
@@ -46,7 +47,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd)
     char label[48];
     int64_t available=pm_available(f);
     if (available<8 || !pm_read(f,0,header,8) ||
-        xx_rt_memcmp(header,"SOU ",4) || pm_be32(header+4)) return false;
+        xx_rt_memcmp(header,"SOU ",4) || xx_data_get_u32(header+4, 4, 0, true)) return false;
     limit=(uint64_t)available;
     while (p<limit) {
         uint32_t vctl_size;
@@ -54,7 +55,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd)
         if (pd && xx_pd_is_stopped(pd)) return false;
         if (limit-p<8 || !pm_read(f,(int64_t)p,ch,8) ||
             (xx_rt_memcmp(ch,"VCTL",4) && xx_rt_memcmp(ch,"VTTL",4))) return false;
-        vctl_size=pm_be32(ch+4);
+        vctl_size=xx_data_get_u32(ch+4, 4, 0, true);
         if (vctl_size<8 || vctl_size>1024 || (vctl_size&1U) || vctl_size>limit-p ||
             voices>=2048U) return false;
         (void)xx_rt_snprintf(label,sizeof(label),"voice-%04u-sync.bin",voices);
@@ -62,7 +63,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd)
         p+=vctl_size;
         if (p==limit) break; /* Some MONSTER.SOU files end with an unpaired VCTL. */
         if (limit-p>=8 && pm_read(f,(int64_t)p,ch,8) && !xx_rt_memcmp(ch,"VTLK",4)) {
-            uint32_t vt_size=pm_be32(ch+4);
+            uint32_t vt_size=xx_data_get_u32(ch+4, 4, 0, true);
             if (vt_size<34 || vt_size>limit-p) return false;
             voc_at=p+8;
             if (!sou_voc(f,voc_at,p+vt_size,&voc_end,pd)) return false;

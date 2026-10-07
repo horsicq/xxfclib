@@ -4,6 +4,7 @@
  */
 #include "xxfclib/formats/ue2_documents/xx_ue2_documents.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
 typedef struct doc_bytes { uint8_t *p; size_t n, cap, limit; } doc_bytes;
 static bool doc_append(doc_bytes *b, const void *p, size_t n) {
@@ -43,24 +44,23 @@ static bool doc_escape_po(doc_bytes *b,const uint8_t *p,size_t n) {
     }
     return doc_text(b,"\"\n");
 }
-static uint32_t doc_u32(const uint8_t *p,bool little) { return little ? pm_le32(p) : pm_be32(p); }
 static bool doc_mo(Abstractformat *f,pm_stream *s,const uint8_t *p,size_t n,xx_pd_struct *pd) {
     uint32_t count,orig,trans,hash_count,hash; bool little; size_t i; doc_bytes out={0}; bool ok=false;
     if(n<28) return false;
-    little=pm_le32(p)==0x950412deU;
-    if(!little && pm_be32(p)!=0x950412deU) return false;
+    little=xx_data_get_u32(p, 4, 0, false)==0x950412deU;
+    if(!little && xx_data_get_u32(p, 4, 0, true)!=0x950412deU) return false;
     /* Major revision 1 adds system-dependent strings. Refuse rather than
      * silently lose messages. All major revision 0 catalogs are represented. */
-    if(doc_u32(p+4,little)>>16) return false;
-    count=doc_u32(p+8,little); orig=doc_u32(p+12,little); trans=doc_u32(p+16,little);
-    hash_count=doc_u32(p+20,little); hash=doc_u32(p+24,little);
+    if(xx_data_get_u32(p+4, 4, 0, !little)>>16) return false;
+    count=xx_data_get_u32(p+8, 4, 0, !little); orig=xx_data_get_u32(p+12, 4, 0, !little); trans=xx_data_get_u32(p+16, 4, 0, !little);
+    hash_count=xx_data_get_u32(p+20, 4, 0, !little); hash=xx_data_get_u32(p+24, 4, 0, !little);
     if(count>1000000 || orig>n || trans>n || (uint64_t)count*8>n-orig || (uint64_t)count*8>n-trans ||
        (hash_count && (hash>n || (uint64_t)hash_count*4>n-hash))) return false;
-    for(i=0;i<hash_count;++i) if(doc_u32(p+hash+i*4,little)>count) return false;
+    for(i=0;i<hash_count;++i) if(xx_data_get_u32(p+hash+i*4, 4, 0, !little)>count) return false;
     out.limit=doc_limit(f)/2;
     for(i=0;i<count;++i) {
-        uint32_t al=doc_u32(p+orig+i*8,little),ao=doc_u32(p+orig+i*8+4,little);
-        uint32_t bl=doc_u32(p+trans+i*8,little),bo=doc_u32(p+trans+i*8+4,little);
+        uint32_t al=xx_data_get_u32(p+orig+i*8, 4, 0, !little),ao=xx_data_get_u32(p+orig+i*8+4, 4, 0, !little);
+        uint32_t bl=xx_data_get_u32(p+trans+i*8, 4, 0, !little),bo=xx_data_get_u32(p+trans+i*8+4, 4, 0, !little);
         const uint8_t *a,*b; size_t context=0,plural=0,j,pos=0,index=0; char label[48];
         if((pd && xx_pd_is_stopped(pd)) || ao>=n || bo>=n || al>=n-ao || bl>=n-bo || p[ao+al] || p[bo+bl]) goto done;
         a=p+ao; b=p+bo;
@@ -115,9 +115,9 @@ static bool doc_utf16_xml(doc_bytes *b,const uint8_t *p,size_t n) {
     size_t i; uint8_t utf[4];
     if(n&1) return false;
     for(i=0;i<n;i+=2) {
-        uint32_t c=pm_be16(p+i); size_t bytes;
+        uint32_t c=xx_data_get_u16(p+i, 2, 0, true); size_t bytes;
         if(c>=0xd800 && c<=0xdbff) {
-            uint32_t low; if(i+4>n || (low=pm_be16(p+i+2))<0xdc00 || low>0xdfff) return false;
+            uint32_t low; if(i+4>n || (low=xx_data_get_u16(p+i+2, 2, 0, true))<0xdc00 || low>0xdfff) return false;
             c=0x10000+((c-0xd800)<<10)+(low-0xdc00); i+=2;
         } else if(c>=0xdc00 && c<=0xdfff) return false;
         if(c<0x80) { utf[0]=(uint8_t)c; bytes=1; }
@@ -135,7 +135,7 @@ static bool doc_qm(Abstractformat *f,pm_stream *s,const uint8_t *p,size_t n,xx_p
     if(n<16 || xx_rt_memcmp(p,magic,16)) return false;
     while(at<n) {
         uint8_t tag; uint32_t len;
-        if(n-at<5) { return false; } tag=p[at++]; len=pm_be32(p+at); at+=4;
+        if(n-at<5) { return false; } tag=p[at++]; len=xx_data_get_u32(p+at, 4, 0, true); at+=4;
         if(len>n-at || !tag) return false;
         if(tag==0x42) { if(hashes) return false; hashes=p+at; hn=len; }
         if(tag==0x69) { if(messages) return false; messages=p+at; mn=len; }
@@ -147,13 +147,13 @@ static bool doc_qm(Abstractformat *f,pm_stream *s,const uint8_t *p,size_t n,xx_p
     if(!doc_text(&out,"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<TS version=\"2.1\" language=\"") ||
        !doc_xml(&out,language,ln) || !doc_text(&out,"\">\n")) goto done;
     for(i=0;i<hn;i+=8) {
-        uint32_t offset=pm_be32(hashes+i+4); size_t cursor=offset,j; bool end=false; char id[64];
+        uint32_t offset=xx_data_get_u32(hashes+i+4, 4, 0, true); size_t cursor=offset,j; bool end=false; char id[64];
         if(offset>=mn || (pd && xx_pd_is_stopped(pd))) goto done;
         m.count=0;
         while(cursor<mn) {
             uint8_t tag=messages[cursor++]; uint32_t len;
             if(tag==1) { end=true; break; }
-            if(mn-cursor<4) { goto done; } len=pm_be32(messages+cursor); cursor+=4;
+            if(mn-cursor<4) { goto done; } len=xx_data_get_u32(messages+cursor, 4, 0, true); cursor+=4;
             if(tag==5) continue;
             if(len==UINT32_MAX) len=0;
             if(len>mn-cursor) goto done;
@@ -166,7 +166,7 @@ static bool doc_qm(Abstractformat *f,pm_stream *s,const uint8_t *p,size_t n,xx_p
         }
         if(!end || !m.count) goto done;
         if(!doc_text(&out,"<context><name>") || !(m.c16?doc_utf16_xml(&out,m.context,m.cn):doc_xml(&out,m.context,m.cn)) || !doc_text(&out,"</name>\n")) goto done;
-        xx_rt_snprintf(id,sizeof(id),"<message id=\"qm-%08x\"%s><source>",pm_be32(hashes+i),m.count>1?" numerus=\"yes\"":"");
+        xx_rt_snprintf(id,sizeof(id),"<message id=\"qm-%08x\"%s><source>",xx_data_get_u32(hashes+i, 4, 0, true),m.count>1?" numerus=\"yes\"":"");
         if(!doc_text(&out,id) || !(m.s16?doc_utf16_xml(&out,m.source,m.sn):doc_xml(&out,m.source,m.sn)) || !doc_text(&out,"</source>")) goto done;
         if(m.mn && (!doc_text(&out,"<comment>") || !doc_xml(&out,m.comment,m.mn) || !doc_text(&out,"</comment>"))) goto done;
         if(!doc_text(&out,"<translation>")) goto done;
@@ -317,40 +317,40 @@ done: xx_mem_free(data.p); return ok;
 static bool doc_hlp(Abstractformat *f,pm_stream *s,const uint8_t *p,size_t n,xx_pd_struct *pd) {
     uint32_t dir,size,reserved,used;const uint8_t *h,*pages;uint16_t page_size,count,root,levels,cur,previous=0xffff;
     uint8_t *seen=NULL;size_t i,listed=0;char last[256]={0};bool ok=false;
-    if(n<16 || pm_le32(p)!=0x00035f3fU)return false;
-    dir=pm_le32(p+4);size=pm_le32(p+12);
+    if(n<16 || xx_data_get_u32(p, 4, 0, false)!=0x00035f3fU)return false;
+    dir=xx_data_get_u32(p+4, 4, 0, false);size=xx_data_get_u32(p+12, 4, 0, false);
     if(size>n || size<16 || dir<16 || dir>size || size-dir<47)return false;
-    reserved=pm_le32(p+dir);used=pm_le32(p+dir+4);
+    reserved=xx_data_get_u32(p+dir, 4, 0, false);used=xx_data_get_u32(p+dir+4, 4, 0, false);
     if(reserved>size-dir || reserved<47 || used>reserved-9 || used<38)return false;
-    h=p+dir+9;if(pm_le16(h)!=0x293b)return false;
-    page_size=pm_le16(h+4);root=pm_le16(h+26);count=pm_le16(h+30);levels=pm_le16(h+32);
+    h=p+dir+9;if(xx_data_get_u16(h, 2, 0, false)!=0x293b)return false;
+    page_size=xx_data_get_u16(h+4, 2, 0, false);root=xx_data_get_u16(h+26, 2, 0, false);count=xx_data_get_u16(h+30, 2, 0, false);levels=xx_data_get_u16(h+32, 2, 0, false);
     if(page_size<64 || page_size>32768 || !count || root>=count || !levels || levels>64 || (uint64_t)page_size*count>used-38)return false;
     pages=h+38;seen=(uint8_t *)xx_mem_calloc(count,1);if(!seen)return false;
     cur=root;
     for(i=1;i<levels;++i) {
         const uint8_t *page=pages+(size_t)cur*page_size;
-        if(cur>=count || seen[cur] || pm_le16(page)>page_size-6)goto done;
-        seen[cur]=1;cur=pm_le16(page+4);if(cur>=count)goto done;
+        if(cur>=count || seen[cur] || xx_data_get_u16(page, 2, 0, false)>page_size-6)goto done;
+        seen[cur]=1;cur=xx_data_get_u16(page+4, 2, 0, false);if(cur>=count)goto done;
     }
     while(cur!=0xffff) {
         const uint8_t *page;size_t at=8,end;uint16_t entries,next,j;
         if(cur>=count || seen[cur] || (pd && xx_pd_is_stopped(pd)))goto done;
-        seen[cur]=1;page=pages+(size_t)cur*page_size;entries=pm_le16(page+2);next=pm_le16(page+6);
-        if(pm_le16(page)>page_size-8 || pm_le16(page+4)!=previous) {goto done; } end=page_size-pm_le16(page);
+        seen[cur]=1;page=pages+(size_t)cur*page_size;entries=xx_data_get_u16(page+2, 2, 0, false);next=xx_data_get_u16(page+6, 2, 0, false);
+        if(xx_data_get_u16(page, 2, 0, false)>page_size-8 || xx_data_get_u16(page+4, 2, 0, false)!=previous) {goto done; } end=page_size-xx_data_get_u16(page, 2, 0, false);
         for(j=0;j<entries;++j) {
             size_t start=at,len;uint32_t offset,allocation,bytes;char name[256];
             while(at<end && page[at]) {++at; } len=at-start;
             if(!len || len>=sizeof(name) || at>=end || end-at<5)goto done;
-            xx_rt_memcpy(name,page+start,len);name[len]=0;offset=pm_le32(page+at+1);at+=5;
+            xx_rt_memcpy(name,page+start,len);name[len]=0;offset=xx_data_get_u32(page+at+1, 4, 0, false);at+=5;
             if(last[0] && xx_rt_strcmp(last,name)>=0) {goto done; } xx_rt_memcpy(last,name,len+1);
             if(offset<16 || offset>size || size-offset<9)goto done;
-            allocation=pm_le32(p+offset);bytes=pm_le32(p+offset+4);
+            allocation=xx_data_get_u32(p+offset, 4, 0, false);bytes=xx_data_get_u32(p+offset+4, 4, 0, false);
             if(allocation<9 || allocation>size-offset || bytes>allocation-9 || !pm_add(f,s,name,offset+9,bytes))goto done;
             if(++listed>1000000)goto done;
         }
         if(at!=end) {goto done; } previous=cur;cur=next;
     }
-    if(listed!=pm_le32(h+34))goto done;
+    if(listed!=xx_data_get_u32(h+34, 4, 0, false))goto done;
     s->size=size;ok=true;
 done:xx_mem_free(seen);return ok;
 }
@@ -375,9 +375,9 @@ xx_file_type_t xx_ue2_documents_detect_device(xx_io_device *d) {
     if(!d || (size=xx_io_size(d))<16) return type;
     cursor=xx_io_tell(d); n=size<(int64_t)sizeof(h)?(size_t)size:sizeof(h);
     if(xx_io_seek64(d,0,SEEK_SET)!=0 || xx_io_read(d,h,n)!=(ssize_t)n) goto done;
-    if(pm_le32(h)==0x950412deU || pm_be32(h)==0x950412deU) type=XX_FILE_TYPE_GNU_GETTEXT_MO;
-    else if(pm_le32(h)==0x00035f3fU)type=XX_FILE_TYPE_WINDOWS_HELP;
-    else if(pm_be32(h)==0x3cb86418U && pm_be32(h+4)==0xcaef9c95U && pm_be32(h+8)==0xcd211cbfU && pm_be32(h+12)==0x60a1bdddU) type=XX_FILE_TYPE_QT_QM;
+    if(xx_data_get_u32(h, 4, 0, false)==0x950412deU || xx_data_get_u32(h, 4, 0, true)==0x950412deU) type=XX_FILE_TYPE_GNU_GETTEXT_MO;
+    else if(xx_data_get_u32(h, 4, 0, false)==0x00035f3fU)type=XX_FILE_TYPE_WINDOWS_HELP;
+    else if(xx_data_get_u32(h, 4, 0, true)==0x3cb86418U && xx_data_get_u32(h+4, 4, 0, true)==0xcaef9c95U && xx_data_get_u32(h+8, 4, 0, true)==0xcd211cbfU && xx_data_get_u32(h+12, 4, 0, true)==0x60a1bdddU) type=XX_FILE_TYPE_QT_QM;
     else {
         size_t at=0;
         while(at<n) {

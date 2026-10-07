@@ -5,8 +5,9 @@
  */
 #include "xxfclib/formats/valve_hpak/xx_valve_hpak.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 
-static XXFC_MAYBE_UNUSED uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)pm_be32(p)<<32)|pm_be32(p+4) : ((uint64_t)pm_le32(p+4)<<32)|pm_le32(p); }
+static XXFC_MAYBE_UNUSED uint64_t g64(const uint8_t *p,bool be) { return be ? ((uint64_t)xx_data_get_u32(p, 4, 0, true)<<32)|xx_data_get_u32(p+4, 4, 0, true) : ((uint64_t)xx_data_get_u32(p+4, 4, 0, false)<<32)|xx_data_get_u32(p, 4, 0, false); }
 static bool span(uint64_t at,uint64_t n,uint64_t total) { return at<=total && n<=total-at; }
 static bool emit(Abstractformat *f,pm_stream *s,const char *name,uint64_t at,uint64_t n,uint64_t total) {
     size_t i;
@@ -24,13 +25,13 @@ static XXFC_MAYBE_UNUSED bool zname(Abstractformat *f,uint64_t at,uint64_t end) 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
 
     uint8_t h[12],b[4],e[144],digest[16]; uint32_t dir,count,i; uint64_t total=(uint64_t)pm_available(f),end;
-    if(!pm_read(f,0,h,12) || xx_rt_memcmp(h,"HPAK",4) || pm_le32(h+4)!=1) return false;
-    dir=pm_le32(h+8); if(dir<12 || !pm_read(f,dir,b,4)) return false; count=pm_le32(b);
+    if(!pm_read(f,0,h,12) || xx_rt_memcmp(h,"HPAK",4) || xx_data_get_u32(h+4, 4, 0, false)!=1) return false;
+    dir=xx_data_get_u32(h+8, 4, 0, false); if(dir<12 || !pm_read(f,dir,b,4)) return false; count=xx_data_get_u32(b, 4, 0, false);
     if(!count || count>4096 || !span((uint64_t)dir+4,(uint64_t)count*144,total)) { return false; } end=(uint64_t)dir+4+(uint64_t)count*144;
     for(i=0;i<count;++i) { uint64_t at,n; unsigned j; char label[40];
         if((pd && xx_pd_is_stopped(pd)) || !pm_read(f,(int64_t)dir+4+(int64_t)i*144,e,144)) return false;
-        for(j=0;j<64 && e[j];++j) {} if(!j || j==64 || pm_le32(e+64)>6) return false;
-        at=pm_le32(e+136); n=pm_le32(e+140); if(at<12 || !n || n>=0x20000 || pm_le32(e+72)!=n || !span(at,n,dir)) return false;
+        for(j=0;j<64 && e[j];++j) {} if(!j || j==64 || xx_data_get_u32(e+64, 4, 0, false)>6) return false;
+        at=xx_data_get_u32(e+136, 4, 0, false); n=xx_data_get_u32(e+140, 4, 0, false); if(at<12 || !n || n>=0x20000 || xx_data_get_u32(e+72, 4, 0, false)!=n || !span(at,n,dir)) return false;
         if(!xx_hash_device(XX_HASH_MD5,f->device,f->base_address+(int64_t)at,(int64_t)n,digest,16,pd) || !xx_hash_equal(digest,e+77,16)) return false;
         xx_rt_snprintf(label,sizeof(label),"resource-%u.bin",i); if(!emit(f,s,label,at,n,end)) return false; }
     s->size=(int64_t)end; return true;

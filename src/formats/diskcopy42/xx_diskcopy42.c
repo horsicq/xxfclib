@@ -13,6 +13,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 #ifdef DISKCOPY42
 #define DC_TYPE XX_FILE_TYPE_DISKCOPY42
 #else
@@ -34,13 +35,9 @@ typedef struct dc_cursor_s {
     xx_archive_record_state *prodos_state;
 } dc_cursor;
 static bool dc_stop(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
-static uint32_t dc_be32(const uint8_t *p) {
-    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
-           ((uint32_t)p[2] << 8) | p[3];
-}
 static void dc_release(dc_view *v) { if (v && !--v->refs) xx_mem_free(v); }
 static bool dc_header_valid(const uint8_t *h) {
-    uint32_t data=dc_be32(h+64U), tags=dc_be32(h+68U), expected;
+    uint32_t data=xx_data_get_u32(h+64U, 4, 0, true), tags=xx_data_get_u32(h+68U, 4, 0, true), expected;
     if (h[0] > 63U || h[82] != 1U || h[83] != 0U) return false;
     switch (h[80]) {
     case 0U: expected=409600U; break;
@@ -50,9 +47,9 @@ static bool dc_header_valid(const uint8_t *h) {
     default: return false;
     }
     if (data != expected) return false;
-    if (h[80] >= 2U) return tags == 0U && dc_be32(h+76U) == 0U;
+    if (h[80] >= 2U) return tags == 0U && xx_data_get_u32(h+76U, 4, 0, true) == 0U;
     if (tags != 0U && tags != data/512U*DC_TAG_UNIT) return false;
-    return tags != 0U || dc_be32(h+76U) == 0U;
+    return tags != 0U || xx_data_get_u32(h+76U, 4, 0, true) == 0U;
 }
 static bool dc_read(xx_io_device *d, int64_t pos, uint8_t *p,
                     size_t n, xx_pd_struct *pd) {
@@ -89,13 +86,13 @@ static dc_view *dc_parse(Abstractformat *f, xx_pd_struct *pd) {
     if (saved<0 || total<f->base_address ||
         total-f->base_address<DC_HEADER ||
         !dc_read(d,f->base_address,h,sizeof(h),pd) || !dc_header_valid(h)) goto done;
-    data=dc_be32(h+64U); tags=dc_be32(h+68U);
+    data=xx_data_get_u32(h+64U, 4, 0, true); tags=xx_data_get_u32(h+68U, 4, 0, true);
     if (total-f->base_address!=(int64_t)DC_HEADER+data+tags ||
         !dc_checksum(d,f->base_address+DC_HEADER,data,&sum,pd) ||
-        sum!=dc_be32(h+72U)) goto done;
+        sum!=xx_data_get_u32(h+72U, 4, 0, true)) goto done;
     if (tags && (!dc_checksum(d,f->base_address+DC_HEADER+data+DC_TAG_UNIT,
                               tags-DC_TAG_UNIT,&sum,pd) ||
-                 sum!=dc_be32(h+76U))) goto done;
+                 sum!=xx_data_get_u32(h+76U, 4, 0, true))) goto done;
     v=(dc_view *)xx_mem_calloc(1U,sizeof(*v)); if (!v) goto done;
     v->refs=1U; v->base=f->base_address; v->data_size=data;
     v->tag_size=tags; v->size=DC_HEADER+(int64_t)data+tags;

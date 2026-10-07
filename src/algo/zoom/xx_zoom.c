@@ -8,6 +8,7 @@
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/algo/zoom/xx_zoom.h"
+#include "xxfclib/data/xx_data.h"
 
 #define ZOOM_HEADER_SIZE 0x4c
 #define ZOOM_CHUNK_HEADER_SIZE 42
@@ -413,12 +414,6 @@ static uint32_t zoom_be16(const uint8_t *p)
     return ((uint32_t)p[0] << 8) | (uint32_t)p[1];
 }
 
-static uint32_t zoom_be32(const uint8_t *p)
-{
-    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
-           ((uint32_t)p[2] << 8) | (uint32_t)p[3];
-}
-
 static int32_t zoom_popcount(uint32_t mask)
 {
     int32_t result = 0;
@@ -451,7 +446,7 @@ static bool zoom_parse_header(const uint8_t *file, size_t size,
     nlast = file[5];
     if (nlast < nfirst) return false;
 
-    note = (size_t)zoom_be32(file + 0x1c);
+    note = (size_t)xx_data_get_u32(file + 0x1c, 4, 0, true);
 
     offset = ZOOM_HEADER_SIZE;
     if (note != 0) {
@@ -536,7 +531,7 @@ static bool zoom_image_core(zoom_ctx *ctx, const uint8_t *input,
 
         for (i = 0; i < ZOOM_SLOTS; ++i) {
             cyl[i] = record[i];
-            mask[i] = zoom_be32(record + 6 + (i * 4));
+            mask[i] = xx_data_get_u32(record + 6 + (i * 4), 4, 0, true);
         }
         packed_size = (size_t)zoom_be16(record + 0x1a);
         middle_size = (size_t)zoom_be16(record + 0x1c);

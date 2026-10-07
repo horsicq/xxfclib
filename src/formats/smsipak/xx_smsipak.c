@@ -38,6 +38,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef SMSIPAK
 #define XX_SMSIPAK_FILE_TYPE XX_FILE_TYPE_SMSIPAK
@@ -72,15 +73,6 @@ typedef struct smsipak_stream_s {
     size_t index;
     int64_t archive_size;
 } smsipak_stream;
-
-static uint16_t smsipak_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t smsipak_le32(const uint8_t *bytes) {
-    return (uint32_t)smsipak_le16(bytes) |
-           ((uint32_t)smsipak_le16(bytes + 2U) << 16U);
-}
 
 static bool smsipak_read_at(xx_io_device *device, int64_t offset, void *buffer,
                             size_t size) {
@@ -172,11 +164,11 @@ static bool smsipak_parse(Abstractformat *format, smsipak_stream **result) {
         !smsipak_read_at(format->device, format->base_address, header,
                          sizeof(header)) ||
         xx_rt_memcmp(header, "SMSIPAK ", 8U) != 0 ||
-        smsipak_le16(header + 8U) != SMSIPAK_STAMP)
+        xx_data_get_u16(header + 8U, 2, 0, false) != SMSIPAK_STAMP)
         return false;
 
     /* +10 is where the members stop, not the file size. */
-    member_end = (int64_t)smsipak_le32(header + 10U);
+    member_end = (int64_t)xx_data_get_u32(header + 10U, 4, 0, false);
     if (member_end <= SMSIPAK_HEADER_SIZE || member_end > size) return false;
 
     stream = (smsipak_stream *)xx_mem_calloc(1U, sizeof(*stream));
@@ -190,14 +182,14 @@ static bool smsipak_parse(Abstractformat *format, smsipak_stream **result) {
             !smsipak_read_at(format->device, format->base_address + cursor,
                              record, sizeof(record)))
             goto fail;
-        if (smsipak_le16(record + 32U) != 0U) goto fail;
+        if (xx_data_get_u16(record + 32U, 2, 0, false) != 0U) goto fail;
         xx_mem_zero(&member, sizeof(member));
         member.method = record[23];
         if (member.method != SMSIPAK_METHOD_DCL &&
             member.method != SMSIPAK_METHOD_STORE)
             goto fail;
-        unpacked = (int32_t)smsipak_le32(record + 24U);
-        packed = (int32_t)smsipak_le32(record + 28U);
+        unpacked = (int32_t)xx_data_get_u32(record + 24U, 4, 0, false);
+        packed = (int32_t)xx_data_get_u32(record + 28U, 4, 0, false);
         if (unpacked < 0 || packed < 0) goto fail;
         /* Bound the payload against the member area before it is trusted. */
         if (member_end - (cursor + SMSIPAK_RECORD_SIZE) < (int64_t)packed)
@@ -210,10 +202,10 @@ static bool smsipak_parse(Abstractformat *format, smsipak_stream **result) {
             xx_str_free(member.name);
             goto fail;
         }
-        member.dos_time = ((uint32_t)smsipak_le16(record + 13U) << 16U) |
-                          (uint32_t)smsipak_le16(record + 15U);
-        member.crc32 = smsipak_le32(record + 17U);
-        member.attributes = smsipak_le16(record + 21U);
+        member.dos_time = ((uint32_t)xx_data_get_u16(record + 13U, 2, 0, false) << 16U) |
+                          (uint32_t)xx_data_get_u16(record + 15U, 2, 0, false);
+        member.crc32 = xx_data_get_u32(record + 17U, 4, 0, false);
+        member.attributes = xx_data_get_u16(record + 21U, 2, 0, false);
         member.header_offset = format->base_address + cursor;
         member.data_offset = member.header_offset + SMSIPAK_RECORD_SIZE;
         member.packed_size = (int64_t)packed;
@@ -238,11 +230,11 @@ static bool smsipak_parse(Abstractformat *format, smsipak_stream **result) {
             smsipak_read_at(format->device, format->base_address + member_end,
                             index, (size_t)index_size)) {
             size_t i;
-            valid = smsipak_le32(index) == 0U &&
-                    (size_t)smsipak_le16(index + 4U) == stream->count;
+            valid = xx_data_get_u32(index, 4, 0, false) == 0U &&
+                    (size_t)xx_data_get_u16(index + 4U, 2, 0, false) == stream->count;
             for (i = 0U; valid && i < stream->count; ++i) {
-                int64_t offset = (int64_t)smsipak_le32(
-                    index + SMSIPAK_INDEX_HEADER_SIZE + i * 4U);
+                int64_t offset = (int64_t)xx_data_get_u32(
+                    index + SMSIPAK_INDEX_HEADER_SIZE + i * 4U, 4, 0, false);
                 if (format->base_address + offset !=
                     stream->items[i].header_offset)
                     valid = false;

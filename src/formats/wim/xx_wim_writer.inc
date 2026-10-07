@@ -9,6 +9,7 @@
  * CPP/7zip/Archive/Wim/WimIn.cpp. No source from those projects is included.
  */
 #include "xx_wim_compressor_pipe.inc"
+#include "xxfclib/data/xx_data.h"
 #define WIMW_MAX_ENTRIES 65536U
 #define WIMW_MAX_METADATA (64U * 1024U * 1024U)
 
@@ -105,8 +106,8 @@ static bool wimw_component(const uint8_t *text, size_t size,
             wimw_le(output + done, code, 2); done += 2;
         }
     }
-    if (!done || (done == 2 && wim_le16(output) == '.') ||
-        (done == 4 && wim_le16(output) == '.' && wim_le16(output + 2) == '.')) return false;
+    if (!done || (done == 2 && xx_data_get_u16(output, 2, 0, false) == '.') ||
+        (done == 4 && xx_data_get_u16(output, 2, 0, false) == '.' && xx_data_get_u16(output + 2, 2, 0, false) == '.')) return false;
     *output_size = done;
     return true;
 }

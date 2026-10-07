@@ -16,6 +16,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef IMD
 #define XX_IMD_FILE_TYPE XX_FILE_TYPE_IMD
@@ -43,14 +44,6 @@ typedef struct imd_stream_s {
     size_t index;
     int64_t archive_size;
 } imd_stream;
-
-static uint16_t imd_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static XXFC_MAYBE_UNUSED uint32_t imd_le32(const uint8_t *b) {
-    return (uint32_t)imd_le16(b) | ((uint32_t)imd_le16(b + 2U) << 16U);
-}
 
 static bool imd_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -178,7 +171,7 @@ static bool imd_track(const uint8_t *data, size_t size, size_t *cursor,
         uint32_t sector_size = fixed_size;
         uint8_t status;
         if (sizes_position != 0U)
-            sector_size = imd_le16(data + sizes_position + index * 2U);
+            sector_size = xx_data_get_u16(data + sizes_position + index * 2U, 2, 0, false);
         if (sector_size == 0U || sector_size > IMD_MAX_SECTOR_SIZE) return false;
         if (size - position < 1U) return false;
         status = data[position++];

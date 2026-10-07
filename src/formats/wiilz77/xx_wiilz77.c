@@ -15,6 +15,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_WIILZ77_PAYLOAD_NAME "payload"
 #define XX_WIILZ77_IMD5_SIZE 32U
@@ -32,11 +33,6 @@ typedef struct xx_wiilz77_context_s {
 } xx_wiilz77_context;
 
 static void xx_wiilz77_vtable_destroy(Abstractformat *self);
-
-static uint32_t xx_wiilz77_read32be(const uint8_t *data) {
-    return ((uint32_t)data[0] << 24U) | ((uint32_t)data[1] << 16U) |
-           ((uint32_t)data[2] << 8U) | (uint32_t)data[3];
-}
 
 static bool xx_wiilz77_read_exact_at(xx_io_device *device, int64_t offset,
                                       void *data, size_t size) {
@@ -95,7 +91,7 @@ static bool xx_wiilz77_parse_member(const uint8_t *input, size_t input_size,
         xx_rt_memcmp(input, "IMD5", 4U) == 0) {
         lz_offset = XX_WIILZ77_IMD5_SIZE;
         context->has_imd5_wrapper = true;
-        context->imd5_declared_size = xx_wiilz77_read32be(input + 4U);
+        context->imd5_declared_size = xx_data_get_u32(input + 4U, 4, 0, true);
     }
     if (lz_offset > input_size ||
         !xx_wiilz77_parse_header(input + lz_offset, input_size - lz_offset,

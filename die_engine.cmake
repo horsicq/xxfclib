@@ -52,6 +52,15 @@ set(XXFC_DIE_ENGINE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/pdf/xxpdf.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/pdf/xxpdf_decode.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/pe/xx_pe_inspect.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/formats/pe/xx_pe_stream_symbols.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/formats/pe/xx_pe_stream_coff.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/formats/pe/xx_pe_stream_metadata.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/formats/pe/xx_pe_stream_common.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/formats/pe/xx_pe.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/formats/pe/xx_pe_data.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/formats/dotnet/xx_dotnet.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/formats/dotnet/xx_dotnet_inspect.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/formats/dotnet/xx_dotnet_data.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/png/xx_png.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/pyc/xx_pyc.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/tar/xx_tar.c
@@ -66,6 +75,7 @@ set(XXFC_DIE_ENGINE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/xx_data_signature.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/xx_memory_map.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/xx_format_base.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/formats/xx_format_streams.c
 
     # Algorithms
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/aes/xx_aes.c

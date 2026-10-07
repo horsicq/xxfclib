@@ -5,6 +5,7 @@
  */
 #include "xxfclib/formats/hmi_midi/xx_hmi_midi.h"
 #include "../xx_payload_members.h"
+#include "xxfclib/data/xx_data.h"
 #ifndef HMI_MIDI
 #define XX_FILE_TYPE_HMI_MIDI ((xx_file_type_t)1540)
 #endif
@@ -22,13 +23,13 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     for(i=0;i<count;++i) {
         if((pd && xx_pd_is_stopped(pd)) ||
            !pm_read(f,370+(int64_t)i*4,entry,sizeof(entry))) return false;
-        offsets[i]=pm_le32(entry);
+        offsets[i]=xx_data_get_u32(entry, 4, 0, false);
         if((int64_t)offsets[i]<table_end ||
            (i && offsets[i]<=offsets[i-1]) ||
            (int64_t)offsets[i]>available-(int64_t)sizeof(th) ||
            !pm_read(f,offsets[i],th,sizeof(th)) ||
            xx_rt_memcmp(th,"HMI-MIDITRACK",13)) return false;
-        header_length=pm_le32(th+0x57);
+        header_length=xx_data_get_u32(th+0x57, 4, 0, false);
         if(header_length<sizeof(th) ||
            (uint64_t)header_length>=(uint64_t)(available-offsets[i])) return false;
     }
@@ -37,7 +38,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         int64_t end=i+1<count ? offsets[i+1] : available;
         if(end-offsets[i]<(int64_t)sizeof(th)) return false;
         if(!pm_read(f,offsets[i]+0x57,entry,4) ||
-           pm_le32(entry)>=(uint64_t)(end-offsets[i])) return false;
+           xx_data_get_u32(entry, 4, 0, false)>=(uint64_t)(end-offsets[i])) return false;
         xx_rt_snprintf(name,sizeof(name),"track-%03u.hmi",(unsigned)i);
         if(!pm_add(f,s,name,offsets[i],end-offsets[i])) return false;
     }

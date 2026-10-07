@@ -33,6 +33,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef UIF
 #define XX_UIF_FILE_TYPE XX_FILE_TYPE_UIF
@@ -90,19 +91,6 @@ typedef struct uif_stream_s {
     uif_context context;
     size_t index;
 } uif_stream;
-
-static uint16_t uif_le16(const uint8_t *b) {
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8U));
-}
-
-static uint32_t uif_le32(const uint8_t *b) {
-    return (uint32_t)b[0] | ((uint32_t)b[1] << 8U) | ((uint32_t)b[2] << 16U) |
-           ((uint32_t)b[3] << 24U);
-}
-
-static uint64_t uif_le64(const uint8_t *b) {
-    return (uint64_t)uif_le32(b) | ((uint64_t)uif_le32(b + 4U) << 32U);
-}
 
 static bool uif_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -212,7 +200,7 @@ static bool uif_unpack_memory(uint16_t version, const uint8_t *input,
         xx_rt_memcpy(props, input + 1U, sizeof(props));
         /* The whole run is in memory, so no match reaches further back than
          * its size: a larger dictionary is never needed. */
-        dictionary = uif_le32(props + 1U);
+        dictionary = xx_data_get_u32(props + 1U, 4, 0, false);
         if (dictionary > output_size) {
             uint32_t clamp = output_size < 4096U ? 4096U : (uint32_t)output_size;
             props[1] = (uint8_t)clamp;
@@ -240,8 +228,8 @@ static bool uif_unpack_memory(uint16_t version, const uint8_t *input,
 static bool uif_section_stored(const uint8_t *header, uint32_t size_base,
                                uint64_t plain, uint64_t *stored,
                                bool *packed) {
-    uint32_t size = uif_le32(header + 4U);
-    *packed = uif_le32(header + 8U) != 0U;
+    uint32_t size = xx_data_get_u32(header + 4U, 4, 0, false);
+    *packed = xx_data_get_u32(header + 8U, 4, 0, false) != 0U;
     if (*packed) {
         if (size < size_base) return false;
         *stored = (uint64_t)size - size_base;
@@ -306,7 +294,7 @@ static void uif_parse_raw_sections(uif_context *context, xx_io_device *device,
         !uif_read_at(device, context->base + (int64_t)position, header,
                      UIF_SECTION_HEADER) ||
         xx_rt_memcmp(header, "blms", 4U) != 0 ||
-        !uif_section_stored(header, 8U, uif_le32(header + 12U), &stored,
+        !uif_section_stored(header, 8U, xx_data_get_u32(header + 12U, 4, 0, false), &stored,
                             &packed))
         return;
     position += UIF_SECTION_HEADER;
@@ -317,9 +305,9 @@ static void uif_parse_raw_sections(uif_context *context, xx_io_device *device,
                      sizeof(header)))
         return;
     /* uif2iso takes the format word even when the signature is off. */
-    context->output_format = uif_le32(header + UIF_SECTION_HEADER);
+    context->output_format = xx_data_get_u32(header + UIF_SECTION_HEADER, 4, 0, false);
     if (xx_rt_memcmp(header, "blss", 4U) != 0) return;
-    plain = uif_le32(header + 12U);
+    plain = xx_data_get_u32(header + 12U, 4, 0, false);
     if (plain == 0U || context->output_format == 0U ||
         context->output_format == 4U || context->output_format > 4U ||
         !uif_section_stored(header, 12U, plain, &stored, &packed))
@@ -335,8 +323,8 @@ static void uif_parse_raw_sections(uif_context *context, xx_io_device *device,
                 xx_mem_free(blob);
                 return;
             }
-            ccd = uif_le32(blob);
-            sub = uif_le32(blob + 4U);
+            ccd = xx_data_get_u32(blob, 4, 0, false);
+            sub = xx_data_get_u32(blob + 4U, 4, 0, false);
             if (ccd > plain - 8U || sub > plain - 8U - ccd) {
                 xx_mem_free(blob);
                 return;
@@ -374,11 +362,11 @@ static bool uif_walk(uif_context *context, xx_pd_struct *pd) {
     context->max_zsize = 0U;
     for (index = 0U; index < context->entry_count; ++index) {
         const uint8_t *entry = context->table + (size_t)index * UIF_ENTRY;
-        uint64_t offset = uif_le64(entry);
-        uint32_t zsize = uif_le32(entry + 8U);
-        uint32_t sector = uif_le32(entry + 12U);
-        uint32_t count = uif_le32(entry + 16U);
-        uint32_t type = uif_le32(entry + 20U);
+        uint64_t offset = xx_data_get_u64(entry, 8, 0, false);
+        uint32_t zsize = xx_data_get_u32(entry + 8U, 4, 0, false);
+        uint32_t sector = xx_data_get_u32(entry + 12U, 4, 0, false);
+        uint32_t count = xx_data_get_u32(entry + 16U, 4, 0, false);
+        uint32_t type = xx_data_get_u32(entry + 20U, 4, 0, false);
         uint32_t bytes;
         if ((index & 0xFFFFU) == 0U && pd && xx_pd_is_stopped(pd)) return false;
         if (count == 0U || count > max_count || sector < next_sector ||
@@ -434,12 +422,12 @@ static bool uif_parse(Abstractformat *format, uif_context *out, bool keep,
                      UIF_TRAILER) ||
         xx_rt_memcmp(trailer, "bbis", 4U) != 0)
         return false;
-    context.version = uif_le16(trailer + 8U);
-    context.image_type = uif_le16(trailer + 10U);
-    context.sectors = uif_le32(trailer + 16U);
-    context.sector_size = uif_le32(trailer + 20U);
-    context.lastdiff = uif_le32(trailer + 24U);
-    context.blhr_offset = uif_le64(trailer + 28U);
+    context.version = xx_data_get_u16(trailer + 8U, 2, 0, false);
+    context.image_type = xx_data_get_u16(trailer + 10U, 2, 0, false);
+    context.sectors = xx_data_get_u32(trailer + 16U, 4, 0, false);
+    context.sector_size = xx_data_get_u32(trailer + 20U, 4, 0, false);
+    context.lastdiff = xx_data_get_u32(trailer + 24U, 4, 0, false);
+    context.blhr_offset = xx_data_get_u64(trailer + 28U, 8, 0, false);
     limit = (uint64_t)context.input_size - UIF_TRAILER;
     if (context.sectors == 0U || context.sector_size == 0U ||
         context.sector_size > UIF_MAX_SECTOR_SIZE ||
@@ -467,7 +455,7 @@ static bool uif_parse(Abstractformat *format, uif_context *out, bool keep,
         *out = context;
         return true;
     }
-    context.entry_count = uif_le32(header + 12U);
+    context.entry_count = xx_data_get_u32(header + 12U, 4, 0, false);
     if (context.entry_count == 0U || context.entry_count > UIF_MAX_ENTRIES)
         return false;
     plain = (uint64_t)context.entry_count * UIF_ENTRY;
@@ -587,11 +575,11 @@ static bool uif_rebuild(Abstractformat *format, const uif_context *context,
     if (!plain || !packed) goto done;
     for (index = 0U; index < context->entry_count; ++index) {
         const uint8_t *entry = context->table + (size_t)index * UIF_ENTRY;
-        uint64_t offset = uif_le64(entry);
-        uint32_t zsize = uif_le32(entry + 8U);
-        uint32_t sector = uif_le32(entry + 12U);
-        uint32_t count = uif_le32(entry + 16U);
-        uint32_t type = uif_le32(entry + 20U);
+        uint64_t offset = xx_data_get_u64(entry, 8, 0, false);
+        uint32_t zsize = xx_data_get_u32(entry + 8U, 4, 0, false);
+        uint32_t sector = xx_data_get_u32(entry + 12U, 4, 0, false);
+        uint32_t count = xx_data_get_u32(entry + 16U, 4, 0, false);
+        uint32_t type = xx_data_get_u32(entry + 20U, 4, 0, false);
         uint32_t bytes = count * context->sector_size;
         uint64_t start = (uint64_t)sector * context->sector_size;
         uint64_t keep = bytes;

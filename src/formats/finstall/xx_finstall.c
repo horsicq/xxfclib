@@ -26,6 +26,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested; this
@@ -100,11 +101,6 @@ typedef struct fi_stream {
     uint32_t count;
     uint32_t index;
 } fi_stream;
-
-static uint32_t fi_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
 
 static uint32_t fi_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
@@ -364,7 +360,7 @@ static bool fi_scan(Abstractformat *format, fi_layout *layout,
         header[FI_VERSION_AT] < '0' || header[FI_VERSION_AT] > '9')
         return false;
     result.version = (char)header[FI_VERSION_AT];
-    result.capacity = fi_le32(header + FI_CAPACITY_AT);
+    result.capacity = xx_data_get_u32(header + FI_CAPACITY_AT, 4, 0, false);
     result.count = fi_le16(header + FI_COUNT_AT);
     if (result.count == 0U) return false;
     result.directory_end =
@@ -381,8 +377,8 @@ static bool fi_scan(Abstractformat *format, fi_layout *layout,
             return false;
         for (slot = 0U; slot < chunk; ++slot, ++index) {
             const uint8_t *entry = batch + (size_t)slot * FI_ENTRY;
-            int64_t offset = (int64_t)fi_le32(entry);
-            uint32_t size = fi_le32(entry + 4U);
+            int64_t offset = (int64_t)xx_data_get_u32(entry, 4, 0, false);
+            uint32_t size = xx_data_get_u32(entry + 4U, 4, 0, false);
             /* The first entry's data follows the directory; later entries
              * start at or after the end of the previous one. */
             if (index == 0U ? offset != result.directory_end

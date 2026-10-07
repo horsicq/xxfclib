@@ -14,6 +14,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ZSTD_PAYLOAD_NAME "payload"
 #define XX_ZSTD_MAGIC UINT32_C(0xFD2FB528)
@@ -24,16 +25,6 @@
 #define XX_ZSTD_MAX_STREAM_SIZE ((uint64_t)1024U * 1024U * 1024U)
 
 static void xx_zstd_vtable_destroy(Abstractformat *self);
-
-static uint32_t xx_zstd_read_u32le(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
-
-static uint32_t xx_zstd_read_u24le(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U);
-}
 
 static bool xx_zstd_read_exact_at(xx_io_device *device, int64_t offset,
                                   void *data, size_t size) {
@@ -108,12 +99,12 @@ static bool xx_zstd_scan_frames(const uint8_t *source, size_t size,
         bool last_block = false;
 
         if ((size_t)(end - cursor) < 4U) return false;
-        magic = xx_zstd_read_u32le(cursor);
+        magic = xx_data_get_u32(cursor, 4, 0, false);
         cursor += 4U;
         if ((magic & UINT32_C(0xFFFFFFF0)) == XX_ZSTD_SKIP_MAGIC) {
             uint32_t skipped_size;
             if ((size_t)(end - cursor) < 4U) return false;
-            skipped_size = xx_zstd_read_u32le(cursor);
+            skipped_size = xx_data_get_u32(cursor, 4, 0, false);
             cursor += 4U;
             if (!xx_zstd_take(&cursor, end, (size_t)skipped_size)) {
                 return false;
@@ -159,7 +150,7 @@ static bool xx_zstd_scan_frames(const uint8_t *source, size_t size,
             size_t block_size;
             size_t encoded_size;
             if ((size_t)(end - cursor) < 3U) return false;
-            header = xx_zstd_read_u24le(cursor);
+            header = xx_data_get_u24(cursor, 3, 0, false);
             cursor += 3U;
             last_block = (header & 1U) != 0U;
             block_type = (header >> 1U) & 3U;

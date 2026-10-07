@@ -10,6 +10,7 @@
 #include "xxfclib/algo/lzma/xx_lzma.h"
 #include "xxfclib/algo/hash/xx_hash.h"
 #include "xxfclib/algo/crc/xx_crc.h"
+#include "xxfclib/data/xx_data.h"
 #define BR_TYPE XX_FILE_TYPE_BITROCK
 #define BR_MAX_PAGE (64U*1024U*1024U)
 #define BR_MAX_INDEX BR_MAX_PAGE
@@ -24,8 +25,6 @@ typedef struct br_blob { uint8_t *data;size_t size,capacity;uint64_t *used,limit
 typedef struct br_cache { br_blob bytes;bool ready; } br_cache;
 typedef struct br_state { ue2_state reading;const br_index *index;br_cache *cache;uint64_t used,limit; } br_state;
 typedef struct br_cursor { const uint8_t *data;size_t size,at;uint32_t blocks; br_index *index;xx_pd_struct *pd; } br_cursor;
-static uint32_t br_be32(const uint8_t *p) { return (uint32_t)p[0]<<24|(uint32_t)p[1]<<16|(uint32_t)p[2]<<8|p[3]; }
-static uint64_t br_be64(const uint8_t *p) { return (uint64_t)br_be32(p)<<32|br_be32(p+4); }
 static bool br_fail(xx_pd_struct *pd,const char *why) { xx_pd_set_error(pd,1,why);return false; }
 static void br_release_blob(br_blob *blob) {
     if(blob->data){xx_mem_free(blob->data);if(blob->used)*blob->used-=blob->capacity;}blob->data=NULL;blob->size=blob->capacity=0;
@@ -45,14 +44,14 @@ static bool br_decode_blob(const uint8_t *raw,size_t n,br_blob *out,xx_pd_struct
     if(raw[0]==1)workspace=512*1024U;
     else if(raw[0]==2)workspace=16*1024*1024U;
     else if(raw[0]==255){uint32_t dictionary,property;if(n<14||raw[1]>=225)return br_fail(pd,"BitRock encrypted/custom page is unsupported");
-        dictionary=ue2_u32(raw+2);property=raw[1];workspace=(uint64_t)dictionary+((uint64_t)0x300<<((property%9)+((property/9)%5)))*2+128*1024U;
+        dictionary=xx_data_get_u32(raw+2, 4, 0, false);property=raw[1];workspace=(uint64_t)dictionary+((uint64_t)0x300<<((property%9)+((property/9)%5)))*2+128*1024U;
         if(workspace>BR_MEMORY)return br_fail(pd,"BitRock LZMA dictionary exceeds memory limit");
     }else return br_fail(pd,"BitRock encrypted/custom page compression is unsupported");
     if(*out->used>out->limit||workspace>out->limit-*out->used)return br_fail(pd,"BitRock decoder exceeds archive memory limit");
     *out->used+=workspace;
     if(raw[0]==1)result=xx_deflate_unpack_memory_to_device_ex(raw+1,n-1,&sink,&consumed,false,pd)&&consumed==n-1;
     else if(raw[0]==2){if(n>=9)result=xx_bzip2_unpack_memory_to_device_ex(raw+5,n-5,&sink,&consumed,pd)&&consumed==n-5;}
-    else {uint64_t size=ue2_u64(raw+6);if(size==UINT64_MAX||size<=BR_MAX_PAGE)result=xx_lzma_unpack_memory_to_device(raw+14,n-14,raw+1,5,size==UINT64_MAX?-1:(int64_t)size,&sink,pd);}
+    else {uint64_t size=xx_data_get_u64(raw+6, 8, 0, false);if(size==UINT64_MAX||size<=BR_MAX_PAGE)result=xx_lzma_unpack_memory_to_device(raw+14,n-14,raw+1,5,size==UINT64_MAX?-1:(int64_t)size,&sink,pd);}
     *out->used-=workspace;
     return result&&!out->failed&&!(pd&&xx_pd_is_stopped(pd));
 }
@@ -87,7 +86,7 @@ static bool br_add_item(br_cursor *c,const char *name,uint64_t mtime,uint32_t bl
     item=&ix->items[ix->records.count];item->mtime=mtime;item->count=blocks;
     if(blocks){item->blocks=xx_mem_calloc(blocks,sizeof(*item->blocks));if(!item->blocks)return false;}
     for(i=0;i<blocks;++i){br_block *b=&item->blocks[i];if(!br_take(c,12,&p))goto failed;
-        b->page=br_be32(p);b->offset=br_be32(p+4);b->size=br_be32(p+8);
+        b->page=xx_data_get_u32(p, 4, 0, true);b->offset=xx_data_get_u32(p+4, 4, 0, true);b->size=xx_data_get_u32(p+8, 4, 0, true);
         if(b->page>=ix->page_count||b->offset>BR_MAX_PAGE||b->size>BR_MAX_PAGE-b->offset)goto failed;
         size+=b->size;compressed+=ix->pages[b->page].stored;if(size>INT64_MAX||compressed>INT64_MAX)goto failed;}
     if(!ue2_add(&ix->records,name,-1,(int64_t)compressed,0))goto failed;
@@ -97,12 +96,12 @@ failed:
     xx_mem_free(item->blocks);item->blocks=NULL;item->count=0;return false;
 }
 static bool br_read_dir(br_cursor *c,const char *prefix,unsigned depth) {
-    const uint8_t *p;uint32_t count,i;if(depth>64||!br_take(c,4,&p))return false;count=br_be32(p);
+    const uint8_t *p;uint32_t count,i;if(depth>64||!br_take(c,4,&p))return false;count=xx_data_get_u32(p, 4, 0, true);
     if(count>BR_MAX_COUNT-c->index->records.count)return false;
     for(i=0;i<count;++i){unsigned n;char component[256],*full;uint64_t time;uint32_t blocks;bool ok;
         if((c->pd&&xx_pd_is_stopped(c->pd))||!br_take(c,1,&p)) {return false; } n=*p;
         if(!n||!br_take(c,(size_t)n+1,&p)||p[n]||xx_rt_memchr(p,0,n)) {return false; } xx_rt_memcpy(component,p,n);component[n]=0;
-        if(!br_component(component)||!br_take(c,12,&p)) {return false; } time=br_be64(p);blocks=br_be32(p+8);
+        if(!br_component(component)||!br_take(c,12,&p)) {return false; } time=xx_data_get_u64(p, 8, 0, true);blocks=xx_data_get_u32(p+8, 4, 0, true);
         full=prefix&&prefix[0]?xx_str_concat3(prefix,"/",component):xx_str_dup(component);if(!full)return false;
         if(xx_rt_strlen(full)>16384){xx_str_free(full);return false;}
         ok=br_add_item(c,full,time,blocks==UINT32_MAX?0:blocks,blocks==UINT32_MAX);
@@ -146,21 +145,21 @@ done:
 static br_index *br_at_end(Abstractformat *f,int64_t end,xx_pd_struct *pd) {
     uint8_t suffix[16],*table=NULL,*raw=NULL;uint32_t count,size,i;uint64_t directory,stored=0,used=0;int64_t start;bool ok=false;br_blob decoded={0};br_index *ix=NULL;br_cursor cursor;
     if(end<16||!ue2_read(f,f->base_address+end-16,suffix,16)||xx_rt_memcmp(suffix+9,"CFS0002",7))return NULL;
-    size=br_be32(suffix);count=br_be32(suffix+4);directory=(uint64_t)size+(uint64_t)count*20+16;
+    size=xx_data_get_u32(suffix, 4, 0, true);count=xx_data_get_u32(suffix+4, 4, 0, true);directory=(uint64_t)size+(uint64_t)count*20+16;
     if(!size||size>BR_MAX_INDEX||count>BR_MAX_COUNT||directory>(uint64_t)end) {return NULL; } start=end-(int64_t)directory;
     ix=xx_mem_calloc(1,sizeof(*ix));table=xx_mem_alloc(count?(size_t)count*20:1);raw=xx_mem_alloc(size);
     if(!ix||!table||!raw||!ue2_read(f,f->base_address+start,table,(size_t)count*20)||!ue2_read(f,f->base_address+end-16-size,raw,size))goto done;
     ix->page_count=count;ix->metadata=sizeof(*ix)+(uint64_t)count*sizeof(br_page);if(count){ix->pages=xx_mem_calloc(count,sizeof(*ix->pages));if(!ix->pages)goto done;}
-    for(i=0;i<count;++i){stored+=br_be32(table+(size_t)count*16+i*4);if(stored>(uint64_t)start)goto done;}
+    for(i=0;i<count;++i){stored+=xx_data_get_u32(table+(size_t)count*16+i*4, 4, 0, true);if(stored>(uint64_t)start)goto done;}
     start-=(int64_t)stored;
-    for(i=0;i<count;++i){br_page *page=&ix->pages[i];page->offset=f->base_address+start;page->stored=br_be32(table+(size_t)count*16+i*4);xx_rt_memcpy(page->digest,table+i*16,16);
+    for(i=0;i<count;++i){br_page *page=&ix->pages[i];page->offset=f->base_address+start;page->stored=xx_data_get_u32(table+(size_t)count*16+i*4, 4, 0, true);xx_rt_memcpy(page->digest,table+i*16,16);
         if(page->stored>BR_MAX_PAGE) {goto done; } start+=page->stored;}
     used=(uint64_t)size+(uint64_t)count*(20+sizeof(br_page));decoded.used=&used;decoded.limit=BR_MEMORY;
     if(!br_decode_blob(raw,size,&decoded,pd)||decoded.size<12||xx_rt_memcmp(decoded.data,"CFS2.200",8))goto done;
     xx_rt_memset(&cursor,0,sizeof(cursor));cursor.data=decoded.data;cursor.size=decoded.size;cursor.at=8;cursor.index=ix;cursor.pd=pd;
     if(!br_read_dir(&cursor,"",0))goto done;
-    if(cursor.at<cursor.size){const uint8_t *p;uint32_t meta,j;if(!br_take(&cursor,4,&p))goto done;meta=br_be32(p);if(meta>BR_MAX_COUNT)goto done;
-        for(j=0;j<meta;++j){uint32_t n;if(!br_take(&cursor,4,&p))goto done;n=br_be32(p);if(!n||!br_take(&cursor,n,&p)||!xx_rt_memchr(p,0,n))goto done;}}
+    if(cursor.at<cursor.size){const uint8_t *p;uint32_t meta,j;if(!br_take(&cursor,4,&p))goto done;meta=xx_data_get_u32(p, 4, 0, true);if(meta>BR_MAX_COUNT)goto done;
+        for(j=0;j<meta;++j){uint32_t n;if(!br_take(&cursor,4,&p))goto done;n=xx_data_get_u32(p, 4, 0, true);if(!n||!br_take(&cursor,n,&p)||!xx_rt_memchr(p,0,n))goto done;}}
     if(cursor.at!=cursor.size||!br_stitch(ix))goto done;
     ix->records.size=end;ix->metadata=sizeof(*ix)+(uint64_t)count*sizeof(br_page)+(uint64_t)ix->item_capacity*sizeof(br_item)+(uint64_t)ix->records.capacity*sizeof(ue2_member);
     for(i=0;i<ix->records.count;++i)ix->metadata+=(uint64_t)ix->items[i].count*sizeof(br_block)+xx_rt_strlen(ix->records.members[i].name)+1;
@@ -228,7 +227,7 @@ static bool br_page_get(Abstractformat *f,br_state *s,uint32_t n,xx_pd_struct *p
     ok=ue2_read(f,page->offset,raw,page->stored)&&br_decode_blob(raw,page->stored,&cache->bytes,pd);
     s->used-=page->stored;xx_mem_free(raw);
     if(ok){if(!xx_rt_memcmp(page->digest,"\0\0\0\0\0\0\0\0",8)){
-            uint32_t crc=xx_crc32_calc(0,cache->bytes.data,cache->bytes.size);ok=br_be32(page->digest+8)==cache->bytes.size&&br_be32(page->digest+12)==crc;
+            uint32_t crc=xx_crc32_calc(0,cache->bytes.data,cache->bytes.size);ok=xx_data_get_u32(page->digest+8, 4, 0, true)==cache->bytes.size&&xx_data_get_u32(page->digest+12, 4, 0, true)==crc;
         }else ok=xx_md5_memory(cache->bytes.data,cache->bytes.size,digest)&&!xx_rt_memcmp(digest,page->digest,16);}
     if(!ok){br_release_blob(&cache->bytes);return br_fail(pd,"BitRock page is damaged, encrypted, unsupported or exceeds archive memory limit");}
     cache->ready=true;return true;

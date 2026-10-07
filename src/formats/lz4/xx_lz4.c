@@ -13,6 +13,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_LZ4_PAYLOAD_NAME "payload"
 #define XX_LZ4_FRAME_MAGIC UINT32_C(0x184D2204)
@@ -27,16 +28,6 @@
 
 static void xx_lz4_vtable_destroy(Abstractformat *self);
 
-static uint32_t xx_lz4_read_u32le(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8U) |
-           ((uint32_t)data[2] << 16U) | ((uint32_t)data[3] << 24U);
-}
-
-static uint64_t xx_lz4_read_u64le(const uint8_t *data) {
-    return (uint64_t)xx_lz4_read_u32le(data) |
-           ((uint64_t)xx_lz4_read_u32le(data + 4U) << 32U);
-}
-
 static uint32_t xx_lz4_rotl32(uint32_t value, unsigned count) {
     return (value << count) | (value >> (32U - count));
 }
@@ -47,7 +38,7 @@ static uint32_t xx_lz4_xxh32(const uint8_t *data, size_t size) {
     uint32_t hash = XX_LZ4_XXH_PRIME5 + (uint32_t)size;
     size_t offset = 0U;
     while (size - offset >= 4U) {
-        hash += xx_lz4_read_u32le(data + offset) * XX_LZ4_XXH_PRIME3;
+        hash += xx_data_get_u32(data + offset, 4, 0, false) * XX_LZ4_XXH_PRIME3;
         hash = xx_lz4_rotl32(hash, 17U) * XX_LZ4_XXH_PRIME4;
         offset += 4U;
     }
@@ -132,12 +123,12 @@ static bool xx_lz4_scan_frames(const uint8_t *source, size_t size,
         bool content_checksum;
 
         if ((size_t)(end - cursor) < 4U) return false;
-        magic = xx_lz4_read_u32le(cursor);
+        magic = xx_data_get_u32(cursor, 4, 0, false);
         cursor += 4U;
         if ((magic & UINT32_C(0xFFFFFFF0)) == XX_LZ4_SKIP_MAGIC) {
             uint32_t skipped_size;
             if ((size_t)(end - cursor) < 4U) return false;
-            skipped_size = xx_lz4_read_u32le(cursor);
+            skipped_size = xx_data_get_u32(cursor, 4, 0, false);
             cursor += 4U;
             if (!xx_lz4_take(&cursor, end, (size_t)skipped_size)) {
                 return false;
@@ -164,7 +155,7 @@ static bool xx_lz4_scan_frames(const uint8_t *source, size_t size,
         content_size = 0U;
         if ((flags & UINT8_C(0x08)) != 0U) {
             if ((size_t)(end - cursor) < 8U) return false;
-            content_size = xx_lz4_read_u64le(cursor);
+            content_size = xx_data_get_u64(cursor, 8, 0, false);
             cursor += 8U;
         } else {
             all_sized = false;
@@ -187,7 +178,7 @@ static bool xx_lz4_scan_frames(const uint8_t *source, size_t size,
             uint32_t stored_size;
             size_t block_size;
             if ((size_t)(end - cursor) < 4U) return false;
-            stored_size = xx_lz4_read_u32le(cursor);
+            stored_size = xx_data_get_u32(cursor, 4, 0, false);
             cursor += 4U;
             if (stored_size == 0U) break;
             block_size = (size_t)(stored_size & UINT32_C(0x7FFFFFFF));

@@ -4,6 +4,7 @@
  */
 /* Primary: https://www.rfc-editor.org/rfc/rfc4511.html */
 #include "xxfclib/formats/ldap_message/xx_ldap_message.h"
+#include "xxfclib/data/xx_data.h"
 #include "../xx_thirteenth_wrappers.h"
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd){nh_blob b;cm_tlv msg,id,op,x,y,z;uint64_t at=0,p,q,k,v,messageid=0,code;unsigned entries=0,attrs=0;bool doneop=false,ok=false;if(!nh_load(f,&b,pd))return false;while(at<b.n){uint64_t start=at;NH_NEED(!doneop&&cm_take(&b,&at,b.n,48,&msg));p=msg.value;NH_NEED(cm_take(&b,&p,msg.end,2,&id)&&th_uint(&b,&id,&v)&&v&&v<=2147483647&&(messageid==0||v==messageid));messageid=v;NH_NEED(cm_read(&b,&p,msg.end,&op)&&p==msg.end&&(op.tag==100||op.tag==101)&&nh_add(f,s,&b,"ldap-envelope",start,op.value-start));q=op.value;

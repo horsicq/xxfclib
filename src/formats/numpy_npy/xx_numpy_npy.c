@@ -30,7 +30,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[12],*header=NULL; uint32_t len,prefix; np_text t; unsigned keys=0,dim=0; uint64_t elements=1,item=0,bytes; bool result=false;
     if(!pm_read(f,0,h,10) || xx_rt_memcmp(h,"\x93NUMPY",6) || h[7] || h[6]<1 || h[6]>3) return false;
     prefix=h[6]==1 ? 10:12; if(prefix==12 && !pm_read(f,0,h,12)) return false;
-    len=prefix==10 ? pm_le16(h+8):pm_le32(h+8);
+    len=prefix==10 ? xx_data_get_u16(h+8, 2, 0, false):xx_data_get_u32(h+8, 4, 0, false);
     if(!len || len>65536 || !fd_range(prefix,len,(uint64_t)pm_available(f)) || (prefix+len)%16) return false;
     header=(uint8_t *)xx_mem_alloc(len); if(!header || !pm_read(f,prefix,header,len) || header[len-1]!='\n') goto done;
     t.p=header; t.at=0; t.n=len; if(!np_char(&t,'{')) goto done;

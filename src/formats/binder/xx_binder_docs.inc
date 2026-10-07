@@ -8,21 +8,6 @@
 #define BINDER_DOC_MINI 64U
 #define BINDER_DOC_FATSECT UINT32_C(0xFFFFFFFD)
 
-static void binder_doc_put16(uint8_t *at, uint16_t value) {
-    at[0] = (uint8_t)value;
-    at[1] = (uint8_t)(value >> 8U);
-}
-
-static void binder_doc_put32(uint8_t *at, uint32_t value) {
-    binder_doc_put16(at, (uint16_t)value);
-    binder_doc_put16(at + 2U, (uint16_t)(value >> 16U));
-}
-
-static void binder_doc_put64(uint8_t *at, uint64_t value) {
-    binder_doc_put32(at, (uint32_t)value);
-    binder_doc_put32(at + 4U, (uint32_t)(value >> 32U));
-}
-
 static const binder_member *binder_doc_source_member(
     const binder_stream *stream, uint32_t directory_index) {
     size_t index;
@@ -48,13 +33,13 @@ static bool binder_doc_mark(const binder_stream *stream, uint32_t index,
     if (type != BINDER_TYPE_STORAGE && type != BINDER_TYPE_STREAM)
         return false;
     selected[index] = 1U;
-    if (!binder_doc_mark(stream, binder_le32(entry + 0x44U), selected,
+    if (!binder_doc_mark(stream, xx_data_get_u32(entry + 0x44U, 4, 0, false), selected,
                          depth + 1U) ||
-        !binder_doc_mark(stream, binder_le32(entry + 0x48U), selected,
+        !binder_doc_mark(stream, xx_data_get_u32(entry + 0x48U, 4, 0, false), selected,
                          depth + 1U))
         return false;
     return type != BINDER_TYPE_STORAGE ||
-           binder_doc_mark(stream, binder_le32(entry + 0x4CU), selected,
+           binder_doc_mark(stream, xx_data_get_u32(entry + 0x4CU, 4, 0, false), selected,
                            depth + 1U);
 }
 
@@ -63,7 +48,7 @@ static void binder_doc_set_fat(uint8_t *output, uint32_t fat_start,
     size_t offset = (size_t)BINDER_DOC_SECTOR +
                     (size_t)fat_start * BINDER_DOC_SECTOR +
                     (size_t)sector * 4U;
-    binder_doc_put32(output + offset, value);
+    xx_data_set_u32(output + offset, 4, 0, value, false);
 }
 
 static bool binder_doc_build(const binder_stream *stream, uint32_t storage,
@@ -90,7 +75,7 @@ static bool binder_doc_build(const binder_stream *stream, uint32_t storage,
     selected = (uint8_t *)xx_mem_calloc(stream->entry_count, 1U);
     if (!selected) return false;
     selected[0] = 1U;
-    if (!binder_doc_mark(stream, binder_le32(source_root + 0x4CU),
+    if (!binder_doc_mark(stream, xx_data_get_u32(source_root + 0x4CU, 4, 0, false),
                          selected, 0U))
         goto fail;
 
@@ -155,13 +140,13 @@ static bool binder_doc_build(const binder_stream *stream, uint32_t storage,
         size_t at;
         for (at = 0U; at < sizeof(root_name) - 1U; ++at)
             directory[at * 2U] = (uint8_t)root_name[at];
-        binder_doc_put16(directory + 0x40U,
-                         (uint16_t)(sizeof(root_name) * 2U));
+        xx_data_set_u16(directory + 0x40U, 2, 0,
+                         (uint16_t)(sizeof(root_name) * 2U), false);
     }
     directory[0x42U] = BINDER_TYPE_ROOT;
     directory[0x43U] = 1U;
-    binder_doc_put32(directory + 0x44U, BINDER_FREESECT);
-    binder_doc_put32(directory + 0x48U, BINDER_FREESECT);
+    xx_data_set_u32(directory + 0x44U, 4, 0, BINDER_FREESECT, false);
+    xx_data_set_u32(directory + 0x48U, 4, 0, BINDER_FREESECT, false);
 
     regular_at = dir_sectors;
     mini_stream_at = regular_at + (uint32_t)large_sectors;
@@ -191,8 +176,8 @@ static bool binder_doc_build(const binder_stream *stream, uint32_t storage,
         member = binder_doc_source_member(stream, (uint32_t)index);
         if (!member) goto fail;
         if (member->size == 0U) {
-            binder_doc_put32(entry + 0x74U, BINDER_ENDOFCHAIN);
-            binder_doc_put64(entry + 0x78U, 0U);
+            xx_data_set_u32(entry + 0x74U, 4, 0, BINDER_ENDOFCHAIN, false);
+            xx_data_set_u64(entry + 0x78U, 8, 0, 0U, false);
             continue;
         }
         unit = member->size < 4096U ? BINDER_DOC_MINI : BINDER_DOC_SECTOR;
@@ -206,12 +191,12 @@ static bool binder_doc_build(const binder_stream *stream, uint32_t storage,
                                         member->size, destination))
                 goto fail;
             for (uint32_t part = 0U; part < count; ++part)
-                binder_doc_put32(output + BINDER_DOC_SECTOR +
+                xx_data_set_u32(output + BINDER_DOC_SECTOR +
                                   (size_t)minifat_at * BINDER_DOC_SECTOR +
-                                  (size_t)(mini_at + part) * 4U,
+                                  (size_t)(mini_at + part) * 4U, 4, 0,
                                   part + 1U < count
                                       ? mini_at + part + 1U
-                                      : BINDER_ENDOFCHAIN);
+                                      : BINDER_ENDOFCHAIN, false);
             mini_at += count;
         } else {
             uint8_t *destination = output + BINDER_DOC_SECTOR +
@@ -227,8 +212,8 @@ static bool binder_doc_build(const binder_stream *stream, uint32_t storage,
                                        : BINDER_ENDOFCHAIN);
             regular_at += count;
         }
-        binder_doc_put32(entry + 0x74U, first);
-        binder_doc_put64(entry + 0x78U, member->size);
+        xx_data_set_u32(entry + 0x74U, 4, 0, first, false);
+        xx_data_set_u64(entry + 0x78U, 8, 0, member->size, false);
     }
     if (regular_at != mini_stream_at || mini_at != mini_sectors) goto fail;
     for (index = 0U; index < mini_stream_sectors; ++index)
@@ -244,28 +229,28 @@ static bool binder_doc_build(const binder_stream *stream, uint32_t storage,
     for (index = 0U; index < fat_sectors; ++index)
         binder_doc_set_fat(output, fat_at, fat_at + (uint32_t)index,
                            BINDER_DOC_FATSECT);
-    binder_doc_put32(directory + 0x74U,
-                     mini_stream_sectors ? mini_stream_at : BINDER_ENDOFCHAIN);
-    binder_doc_put64(directory + 0x78U, mini_sectors * BINDER_DOC_MINI);
+    xx_data_set_u32(directory + 0x74U, 4, 0,
+                     mini_stream_sectors ? mini_stream_at : BINDER_ENDOFCHAIN, false);
+    xx_data_set_u64(directory + 0x78U, 8, 0, mini_sectors * BINDER_DOC_MINI, false);
 
     xx_mem_copy(output, cfb_magic, sizeof(cfb_magic));
-    binder_doc_put16(output + 0x18U, 0x003EU);
-    binder_doc_put16(output + 0x1AU, 3U);
-    binder_doc_put16(output + 0x1CU, 0xFFFEU);
-    binder_doc_put16(output + 0x1EU, 9U);
-    binder_doc_put16(output + 0x20U, 6U);
-    binder_doc_put32(output + 0x2CU, fat_sectors);
-    binder_doc_put32(output + 0x30U, 0U);
-    binder_doc_put32(output + 0x38U, 4096U);
-    binder_doc_put32(output + 0x3CU,
-                     minifat_sectors ? minifat_at : BINDER_ENDOFCHAIN);
-    binder_doc_put32(output + 0x40U, minifat_sectors);
-    binder_doc_put32(output + 0x44U, BINDER_ENDOFCHAIN);
-    binder_doc_put32(output + 0x48U, 0U);
+    xx_data_set_u16(output + 0x18U, 2, 0, 0x003EU, false);
+    xx_data_set_u16(output + 0x1AU, 2, 0, 3U, false);
+    xx_data_set_u16(output + 0x1CU, 2, 0, 0xFFFEU, false);
+    xx_data_set_u16(output + 0x1EU, 2, 0, 9U, false);
+    xx_data_set_u16(output + 0x20U, 2, 0, 6U, false);
+    xx_data_set_u32(output + 0x2CU, 4, 0, fat_sectors, false);
+    xx_data_set_u32(output + 0x30U, 4, 0, 0U, false);
+    xx_data_set_u32(output + 0x38U, 4, 0, 4096U, false);
+    xx_data_set_u32(output + 0x3CU, 4, 0,
+                     minifat_sectors ? minifat_at : BINDER_ENDOFCHAIN, false);
+    xx_data_set_u32(output + 0x40U, 4, 0, minifat_sectors, false);
+    xx_data_set_u32(output + 0x44U, 4, 0, BINDER_ENDOFCHAIN, false);
+    xx_data_set_u32(output + 0x48U, 4, 0, 0U, false);
     xx_rt_memset(output + 0x4CU, 0xFF, 109U * 4U);
     for (index = 0U; index < fat_sectors; ++index)
-        binder_doc_put32(output + 0x4CU + index * 4U,
-                         fat_at + (uint32_t)index);
+        xx_data_set_u32(output + 0x4CU + index * 4U, 4, 0,
+                         fat_at + (uint32_t)index, false);
 
     xx_mem_free(selected);
     *result = output;
@@ -290,7 +275,7 @@ static uint32_t binder_doc_storage_index(const binder_stream *stream,
         char name[BINDER_DIR_NAME_SIZE * 2U + 4U];
         size_t bytes;
         if (entry[0x42U] != BINDER_TYPE_STORAGE) continue;
-        name_length = binder_le16(entry + 0x40U);
+        name_length = xx_data_get_u16(entry + 0x40U, 2, 0, false);
         if (name_length < 2U || name_length > BINDER_DIR_NAME_SIZE ||
             (name_length & 1U) != 0U)
             continue;
@@ -368,8 +353,8 @@ static bool binder_add_virtual_documents(binder_stream *stream) {
             : !binder_read_fat_chain(stream, binder->start_sector,
                                      binder->size, blob))
         goto done;
-    count = binder_le32(blob + 36U);
-    cursor = binder_le32(blob);
+    count = xx_data_get_u32(blob + 36U, 4, 0, false);
+    cursor = xx_data_get_u32(blob, 4, 0, false);
     if (count == 0U || count > BINDER_DOC_MAX_COUNT ||
         cursor < 100U || cursor > blob_size)
         goto done;
@@ -382,9 +367,9 @@ static bool binder_add_virtual_documents(binder_stream *stream) {
         uint8_t *document = NULL;
         size_t document_size = 0U;
         if (blob_size - cursor < 56U) break;
-        entry_size = binder_le32(blob + cursor);
-        storage_id = binder_le32(blob + cursor + 24U);
-        title_size = binder_le32(blob + cursor + 52U);
+        entry_size = xx_data_get_u32(blob + cursor, 4, 0, false);
+        storage_id = xx_data_get_u32(blob + cursor + 24U, 4, 0, false);
+        title_size = xx_data_get_u32(blob + cursor + 52U, 4, 0, false);
         if (entry_size < 56U || entry_size > blob_size - cursor ||
             title_size < 2U || title_size > 512U ||
             (title_size & 1U) != 0U || title_size > entry_size - 56U)

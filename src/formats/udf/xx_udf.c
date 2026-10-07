@@ -21,6 +21,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 /* A UDF image recorded in a file uses 2048 byte logical sectors; the Volume
  * Recognition Sequence at 32768 is defined in terms of them and OSTA UDF
@@ -123,20 +124,6 @@ static void xx_udf_vtable_destroy(Abstractformat *self);
 /* Primitives                                                          */
 /* ------------------------------------------------------------------ */
 
-static uint16_t xx_udf_read16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_udf_read32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
-
-static uint64_t xx_udf_read64(const uint8_t *data) {
-    return (uint64_t)xx_udf_read32(data) |
-           ((uint64_t)xx_udf_read32(data + 4U) << 32);
-}
-
 static bool xx_udf_read_at(xx_io_device *device, int64_t offset, void *data,
                            size_t size) {
     uint8_t *out = (uint8_t *)data;
@@ -201,12 +188,12 @@ static bool xx_udf_check_tag(Abstractformat *self, int64_t offset,
         !xx_udf_read_at(self->device, offset, tag_bytes, sizeof(tag_bytes))) {
         return false;
     }
-    decoded.identifier = xx_udf_read16(tag_bytes);
-    decoded.version = xx_udf_read16(tag_bytes + 2U);
-    decoded.serial = xx_udf_read16(tag_bytes + 6U);
-    decoded.crc = xx_udf_read16(tag_bytes + 8U);
-    decoded.crc_length = xx_udf_read16(tag_bytes + 10U);
-    decoded.location = xx_udf_read32(tag_bytes + 12U);
+    decoded.identifier = xx_data_get_u16(tag_bytes, 2, 0, false);
+    decoded.version = xx_data_get_u16(tag_bytes + 2U, 2, 0, false);
+    decoded.serial = xx_data_get_u16(tag_bytes + 6U, 2, 0, false);
+    decoded.crc = xx_data_get_u16(tag_bytes + 8U, 2, 0, false);
+    decoded.crc_length = xx_data_get_u16(tag_bytes + 10U, 2, 0, false);
+    decoded.location = xx_data_get_u32(tag_bytes + 12U, 4, 0, false);
     if (decoded.identifier != expected_identifier) return false;
     /* ECMA-167 4/7.2.2: version 2 (2nd edition, UDF <= 2.01) or 3 (3rd
      * edition, UDF 2.50/2.60). */
@@ -589,8 +576,8 @@ static bool xx_udf_read_anchor(Abstractformat *self, int64_t offset,
                         sizeof(extent))) {
         return false;
     }
-    length = xx_udf_read32(extent);
-    location = xx_udf_read32(extent + 4U);
+    length = xx_data_get_u32(extent, 4, 0, false);
+    location = xx_data_get_u32(extent + 4U, 4, 0, false);
     total_size = xx_io_total_size(self->device);
     if (length == 0U || (length % XX_UDF_SECTOR_SIZE) != 0U ||
         location == 0U ||
@@ -688,7 +675,7 @@ static bool xx_udf_parse_logical_volume_descriptor(xx_udf_private *parsed,
     size_t position;
     size_t index;
     if (!parsed || !block || !fsd_block || !fsd_partition) return false;
-    parsed->block_size = xx_udf_read32(block + 212U);
+    parsed->block_size = xx_data_get_u32(block + 212U, 4, 0, false);
     /* OSTA UDF 2.2.4.2 requires the logical block size to equal the logical
      * sector size, which for an image recorded in a file is 2048. */
     if (parsed->block_size != XX_UDF_SECTOR_SIZE) {
@@ -698,14 +685,14 @@ static bool xx_udf_parse_logical_volume_descriptor(xx_udf_private *parsed,
     /* Domain Identifier: flags(1) + identifier(23) + suffix(8); for
      * "*OSTA UDF Compliant" the first two suffix bytes are the BCD revision. */
     if (xx_rt_memcmp(block + 217U, "*OSTA UDF Compliant", 19U) == 0) {
-        parsed->udf_revision = xx_udf_read16(block + 240U);
+        parsed->udf_revision = xx_data_get_u16(block + 240U, 2, 0, false);
     }
-    fsd_extent_length = xx_udf_read32(block + 248U);
+    fsd_extent_length = xx_data_get_u32(block + 248U, 4, 0, false);
     if (fsd_extent_length == 0U) return false;
-    *fsd_block = xx_udf_read32(block + 252U);
-    *fsd_partition = xx_udf_read16(block + 256U);
-    map_table_length = xx_udf_read32(block + 264U);
-    map_count = xx_udf_read32(block + 268U);
+    *fsd_block = xx_data_get_u32(block + 252U, 4, 0, false);
+    *fsd_partition = xx_data_get_u16(block + 256U, 2, 0, false);
+    map_table_length = xx_data_get_u32(block + 264U, 4, 0, false);
+    map_count = xx_data_get_u32(block + 268U, 4, 0, false);
     if (map_table_length > XX_UDF_SECTOR_SIZE - 440U) return false;
     if (map_count > XX_UDF_MAX_PARTITION_MAPS) {
         map_count = XX_UDF_MAX_PARTITION_MAPS;
@@ -726,7 +713,7 @@ static bool xx_udf_parse_logical_volume_descriptor(xx_udf_private *parsed,
          * sparable, metadata) need a remapping layer this reader does not
          * implement, so their reference stays unresolvable. */
         if (type == 1U && length >= 6U) {
-            parsed->map_numbers[index] = xx_udf_read16(block + position + 4U);
+            parsed->map_numbers[index] = xx_data_get_u16(block + position + 4U, 2, 0, false);
             parsed->map_valid[index] = true;
         } else {
             parsed->map_valid[index] = false;
@@ -747,9 +734,9 @@ static void xx_udf_parse_partition_descriptor(xx_udf_private *parsed,
     if (!parsed || !block || parsed->partition_count >= XX_UDF_MAX_PARTITIONS) {
         return;
     }
-    partition.number = xx_udf_read16(block + 22U);
-    partition.start = xx_udf_read32(block + 188U);
-    partition.length = xx_udf_read32(block + 192U);
+    partition.number = xx_data_get_u16(block + 22U, 2, 0, false);
+    partition.start = xx_data_get_u32(block + 188U, 4, 0, false);
+    partition.length = xx_data_get_u32(block + 192U, 4, 0, false);
     if (partition.length == 0U) return;
     for (index = 0U; index < parsed->partition_count; ++index) {
         if (parsed->partitions[index].number == partition.number) return;
@@ -802,7 +789,7 @@ static bool xx_udf_scan_volume_descriptor_sequence(Abstractformat *self,
             !xx_udf_read_at(self->device, offset, block, sizeof(block))) {
             break;
         }
-        identifier = xx_udf_read16(block);
+        identifier = xx_data_get_u16(block, 2, 0, false);
         if (identifier == XX_UDF_TAG_TERMINATING_DESCRIPTOR) break;
         /* An unreadable or corrupt descriptor ends the sequence rather than
          * failing the whole volume: the descriptors this reader needs may well
@@ -895,15 +882,15 @@ static xx_udf_extent_result xx_udf_resolve_extents(
                             descriptor_size)) {
             return XX_UDF_EXTENT_ERROR;
         }
-        raw_length = xx_udf_read32(descriptor);
+        raw_length = xx_data_get_u32(descriptor, 4, 0, false);
         extent_type = raw_length >> 30;
         extent_length = raw_length & 0x3FFFFFFFU;
         if (extent_length == 0U) break;
         /* Type 1/2 are allocated-but-not-recorded and unallocated extents,
          * type 3 points at a continuation Allocation Extent Descriptor. */
         if (extent_type != 0U) return XX_UDF_EXTENT_UNSUPPORTED;
-        block = xx_udf_read32(descriptor + 4U);
-        partition = (descriptor_size == 16U) ? xx_udf_read16(descriptor + 8U)
+        block = xx_data_get_u32(descriptor + 4U, 4, 0, false);
+        partition = (descriptor_size == 16U) ? xx_data_get_u16(descriptor + 8U, 2, 0, false)
                                              : home_partition;
         if (!xx_udf_lba_to_offset(self, parsed, partition, block,
                                   &extent_offset) ||
@@ -968,7 +955,7 @@ static bool xx_udf_read_file_entry(Abstractformat *self,
         !xx_udf_read_at(self->device, offset, header, sizeof(header))) {
         return false;
     }
-    identifier = xx_udf_read16(header);
+    identifier = xx_data_get_u16(header, 2, 0, false);
     if (identifier != XX_UDF_TAG_FILE_ENTRY &&
         identifier != XX_UDF_TAG_EXTENDED_FILE_ENTRY) {
         return false;
@@ -976,17 +963,17 @@ static bool xx_udf_read_file_entry(Abstractformat *self,
     if (!xx_udf_check_tag(self, offset, identifier, false, NULL)) return false;
     /* ICB tag at 16: 12 FileType, 18 Flags (both relative to the ICB tag). */
     entry->file_type = header[16U + 11U];
-    icb_flags = xx_udf_read16(header + 16U + 18U);
+    icb_flags = xx_data_get_u16(header + 16U + 18U, 2, 0, false);
     entry->allocation_type = (uint8_t)(icb_flags & 0x07U);
-    entry->information_length = xx_udf_read64(header + 56U);
+    entry->information_length = xx_data_get_u64(header + 56U, 8, 0, false);
     if (identifier == XX_UDF_TAG_FILE_ENTRY) {
         fixed_size = 176U;
-        extended_attributes_length = xx_udf_read32(header + 168U);
-        entry->ad_length = xx_udf_read32(header + 172U);
+        extended_attributes_length = xx_data_get_u32(header + 168U, 4, 0, false);
+        entry->ad_length = xx_data_get_u32(header + 172U, 4, 0, false);
     } else {
         fixed_size = 216U;
-        extended_attributes_length = xx_udf_read32(header + 208U);
-        entry->ad_length = xx_udf_read32(header + 212U);
+        extended_attributes_length = xx_data_get_u32(header + 208U, 4, 0, false);
+        entry->ad_length = xx_data_get_u32(header + 212U, 4, 0, false);
     }
     /* ECMA-167 4/14.9: a File Entry is recorded in a single logical block, so
      * both variable areas have to fit in what is left of it. */
@@ -1046,7 +1033,7 @@ static bool xx_udf_walk_directory_data(Abstractformat *self,
         /* A directory extent is padded with zeroes once the descriptors end;
          * anything that is not a valid File Identifier Descriptor terminates
          * this extent rather than the whole walk. */
-        if (xx_udf_read16(header) != XX_UDF_TAG_FILE_IDENTIFIER_DESCRIPTOR ||
+        if (xx_data_get_u16(header, 2, 0, false) != XX_UDF_TAG_FILE_IDENTIFIER_DESCRIPTOR ||
             !xx_udf_check_tag(self, descriptor_offset,
                               XX_UDF_TAG_FILE_IDENTIFIER_DESCRIPTOR, false,
                               NULL)) {
@@ -1054,10 +1041,10 @@ static bool xx_udf_walk_directory_data(Abstractformat *self,
         }
         characteristics = header[18];
         identifier_length = header[19];
-        icb_length = xx_udf_read32(header + 20U);
-        child_block = xx_udf_read32(header + 24U);
-        child_partition = xx_udf_read16(header + 28U);
-        implementation_length = xx_udf_read16(header + 36U);
+        icb_length = xx_data_get_u32(header + 20U, 4, 0, false);
+        child_block = xx_data_get_u32(header + 24U, 4, 0, false);
+        child_partition = xx_data_get_u16(header + 28U, 2, 0, false);
+        implementation_length = xx_data_get_u16(header + 36U, 2, 0, false);
         descriptor_size = 38 + (int64_t)implementation_length +
                           (int64_t)identifier_length;
         padded_size = (descriptor_size + 3) & ~(int64_t)3;
@@ -1215,9 +1202,9 @@ static bool xx_udf_parse(Abstractformat *self, xx_udf_private *parsed,
         !xx_udf_read_at(self->device, fsd_offset, file_set, sizeof(file_set))) {
         goto fail;
     }
-    root_extent_length = xx_udf_read32(file_set + 400U);
-    root_block = xx_udf_read32(file_set + 404U);
-    root_partition = xx_udf_read16(file_set + 408U);
+    root_extent_length = xx_data_get_u32(file_set + 400U, 4, 0, false);
+    root_block = xx_data_get_u32(file_set + 404U, 4, 0, false);
+    root_partition = xx_data_get_u16(file_set + 408U, 2, 0, false);
     if (root_extent_length == 0U ||
         !xx_udf_lba_to_offset(self, parsed, root_partition, root_block,
                               &root_offset)) {

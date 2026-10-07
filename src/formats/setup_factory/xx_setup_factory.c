@@ -30,6 +30,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder: xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested; this
@@ -190,11 +191,6 @@ typedef struct sf_stream_s {
 
 static uint32_t sf_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
-}
-
-static uint32_t sf_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
 }
 
 static bool sf_read_at(xx_io_device *device, int64_t offset, void *buffer,
@@ -453,7 +449,7 @@ static bool sf_find_overlay(Abstractformat *format, int64_t size,
     if (size < SF_MIN_FILE || !sf_read_at(format->device, base, header, 64U) ||
         header[0] != 'M' || header[1] != 'Z')
         return false;
-    nt_offset = (int64_t)sf_le32(header + 0x3C);
+    nt_offset = (int64_t)xx_data_get_u32(header + 0x3C, 4, 0, false);
     if (nt_offset < 4 || nt_offset > size - 26 ||
         !sf_read_at(format->device, base + nt_offset, nt, sizeof(nt)) ||
         xx_rt_memcmp(nt, "PE\0\0", 4U) != 0)
@@ -473,8 +469,8 @@ static bool sf_find_overlay(Abstractformat *format, int64_t size,
         return false;
     for (index = 0U; index < sections; ++index) {
         const uint8_t *row = table + index * SF_SECTION_SIZE;
-        int64_t raw_size = (int64_t)sf_le32(row + 16U);
-        int64_t raw_offset = (int64_t)sf_le32(row + 20U);
+        int64_t raw_size = (int64_t)xx_data_get_u32(row + 16U, 4, 0, false);
+        int64_t raw_offset = (int64_t)xx_data_get_u32(row + 20U, 4, 0, false);
         if (raw_size == 0) continue;
         if (raw_offset > size || raw_size > size - raw_offset) return false;
         if (raw_offset + raw_size > end) end = raw_offset + raw_size;
@@ -547,7 +543,7 @@ static bool sf_locate_installer(Abstractformat *format, sf_locate *out) {
                     header, sizeof(header)) ||
         xx_rt_memcmp(header, sf_magic, sizeof(sf_magic)) != 0)
         return false;
-    located.engine_count = sf_le32(header + 8U);
+    located.engine_count = xx_data_get_u32(header + 8U, 4, 0, false);
     if (located.engine_count == 0U || located.engine_count > SF_MAX_ENGINES)
         return false;
     cursor = located.overlay + SF_OVERLAY_HEADER;
@@ -563,7 +559,7 @@ static bool sf_locate_installer(Abstractformat *format, sf_locate *out) {
                 sf_read_at(format->device, format->base_address + cursor,
                            record, SF_LONG_NAME + 8U) &&
                 sf_engine_name(record, SF_LONG_NAME, &name_length) &&
-                sf_le32(record + SF_LONG_NAME) != 0U) {
+                xx_data_get_u32(record + SF_LONG_NAME, 4, 0, false) != 0U) {
                 field = SF_LONG_NAME;
                 located.layout = XX_SETUP_FACTORY_LAYOUT_LONG;
             } else {
@@ -576,14 +572,14 @@ static bool sf_locate_installer(Abstractformat *format, sf_locate *out) {
                         field + 8U) ||
             !sf_engine_name(record, field, &name_length))
             return false;
-        packed = sf_le32(record + field);
+        packed = xx_data_get_u32(record + field, 4, 0, false);
         data = cursor + (int64_t)field + 8;
         if (packed == 0U || (int64_t)packed > located.size - data) return false;
         if (!have_manifest && sf_same_ascii(record, name_length, "irsetup.dat")) {
             if (packed < 3U || packed > SF_MANIFEST_MAX_PACKED) return false;
             located.manifest_offset = data;
             located.manifest_packed = packed;
-            located.manifest_crc = sf_le32(record + field + 4U);
+            located.manifest_crc = xx_data_get_u32(record + field + 4U, 4, 0, false);
             have_manifest = true;
         }
         sf_note_version(record, name_length, located.version);
@@ -637,7 +633,7 @@ static bool sf_take_string(sf_cursor *cursor, const uint8_t **text,
         if (!sf_take_u16(cursor, &value)) return false;
         if (value == 0xFFFFU) {
             if (!sf_take(cursor, 4U, &view)) return false;
-            value = sf_le32(view);
+            value = xx_data_get_u32(view, 4, 0, false);
         } else if (value == 0xFFFEU) {
             return false; /* a Unicode CString marker: not this schema */
         }
@@ -688,8 +684,8 @@ static bool sf_take_entry(sf_cursor *cursor, uint32_t layout, bool first,
         !sf_take_string(cursor, NULL, NULL) ||
         !sf_take_string(cursor, NULL, NULL) || !sf_take(cursor, 43U, &block))
         return false;
-    entry->raw_size = sf_le32(block + 1U);
-    entry->mtime = sf_le32(block + 10U);
+    entry->raw_size = xx_data_get_u32(block + 1U, 4, 0, false);
+    entry->mtime = xx_data_get_u32(block + 10U, 4, 0, false);
     if (!sf_take_string(cursor, &entry->destination,
                         &entry->destination_length) ||
         !sf_take(cursor, 5U, NULL) || !sf_take_string(cursor, NULL, NULL))
@@ -704,15 +700,15 @@ static bool sf_take_entry(sf_cursor *cursor, uint32_t layout, bool first,
         for (index = 0U; index < extra; ++index)
             if (!sf_take_string(cursor, NULL, NULL)) return false;
         if (!sf_take(cursor, 45U, &block)) return false;
-        entry->packed_size = sf_le32(block);
-        entry->crc = sf_le32(block + 4U);
+        entry->packed_size = xx_data_get_u32(block, 4, 0, false);
+        entry->crc = xx_data_get_u32(block + 4U, 4, 0, false);
         entry->method = block[8];
     } else {
         if (!sf_take(cursor, 9U, NULL) || !sf_take_string(cursor, NULL, NULL) ||
             !sf_take(cursor, 68U, &block))
             return false;
-        entry->packed_size = sf_le32(block + 23U);
-        entry->crc = sf_le32(block + 27U);
+        entry->packed_size = xx_data_get_u32(block + 23U, 4, 0, false);
+        entry->crc = xx_data_get_u32(block + 27U, 4, 0, false);
         entry->method = block[31];
     }
     return true;

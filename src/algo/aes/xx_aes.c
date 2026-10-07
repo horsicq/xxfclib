@@ -23,6 +23,7 @@
 #include "xx_aes_internal.h"
 #include "xxfclib/algo/sha/xx_sha.h"
 #include "../../io/platforms/xx_io_platform.h"
+#include "xxfclib/data/xx_data.h"
 
 static void xx_crypto_clear(void *data, size_t size) {
     volatile uint8_t *bytes = (volatile uint8_t *)data;
@@ -48,13 +49,6 @@ static void xx_bytes_copy(uint8_t *destination, const uint8_t *source, size_t si
 
 static uint32_t xx_rotate_left32(uint32_t value, unsigned int count) {
     return (value << count) | (value >> (32U - count));
-}
-
-static uint32_t xx_load_be32(const uint8_t *data) {
-    return ((uint32_t)data[0] << 24U) |
-           ((uint32_t)data[1] << 16U) |
-           ((uint32_t)data[2] << 8U) |
-           (uint32_t)data[3];
 }
 
 static uint8_t xx_aes_xtime(uint8_t value) {
@@ -623,7 +617,7 @@ bool xx_aes_cbc_decrypt(const uint8_t *input, size_t input_size,
 static void xx_rar3_password_block(uint8_t block[64]) {
     uint32_t schedule[80];
     unsigned i, byte;
-    for (i = 0; i < 16U; ++i) schedule[i] = xx_load_be32(block + i * 4U);
+    for (i = 0; i < 16U; ++i) schedule[i] = xx_data_get_u32(block + i * 4U, 4, 0, true);
     for (i = 16U; i < 80U; ++i)
         schedule[i] = xx_rotate_left32(schedule[i - 3U] ^ schedule[i - 8U] ^
                                        schedule[i - 14U] ^ schedule[i - 16U], 1U);

@@ -102,7 +102,7 @@ static bool crunch_parse(Abstractformat *f,pm_stream *s,ac_blob *b) {
     if(b->p[at+2U]==0U) {
         if(!ac_span(b,start+used,2U)) { ac_release(b,out,cap); return false; }
         for(i=0;i<n;++i) sum+=out[i];
-        if((uint16_t)sum!=pm_le16(b->p+start+used)) { ac_release(b,out,cap); return ac_error(b,"CP/M Crunch checksum mismatch"); }
+        if((uint16_t)sum!=xx_data_get_u16(b->p+start+used, 2, 0, false)) { ac_release(b,out,cap); return ac_error(b,"CP/M Crunch checksum mismatch"); }
         used+=2U;
     }
     if(b->n-start-used>127U) { ac_release(b,out,cap); return false; }

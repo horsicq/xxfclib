@@ -16,6 +16,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 
 #define PDP11AR_MAGIC_SIZE 2U
 #define PDP11AR_HEADER_SIZE 26U
@@ -49,10 +50,6 @@ typedef struct pdp11ar_stream_s {
     size_t index;
     int64_t archive_size;
 } pdp11ar_stream;
-
-static uint16_t pdp11ar_le16(const uint8_t *bytes) {
-    return (uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U);
-}
 
 static uint32_t pdp11ar_middle32(const uint8_t *bytes) {
     return ((uint32_t)bytes[1] << 24U) | ((uint32_t)bytes[0] << 16U) |
@@ -186,7 +183,7 @@ static bool pdp11ar_parse(Abstractformat *format, pdp11ar_stream **result,
     if (size < (int64_t)(PDP11AR_MAGIC_SIZE + PDP11AR_HEADER_SIZE) ||
         !pdp11ar_read_at(format->device, format->base_address, magic,
                          sizeof(magic)) ||
-        pdp11ar_le16(magic) != 0xff65U)
+        xx_data_get_u16(magic, 2, 0, false) != 0xff65U)
         return false;
     stream = (pdp11ar_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;
@@ -212,7 +209,7 @@ static bool pdp11ar_parse(Abstractformat *format, pdp11ar_stream **result,
         }
         xx_rt_memset(&member, 0, sizeof(member));
         member.name = pdp11ar_name(header);
-        member.mode = pdp11ar_le16(header + 20U);
+        member.mode = xx_data_get_u16(header + 20U, 2, 0, false);
         if (!member.name || !pdp11ar_regular_mode(member.mode)) {
             if (member.name) xx_mem_free(member.name);
             goto done;

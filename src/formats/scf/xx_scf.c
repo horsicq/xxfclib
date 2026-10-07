@@ -25,6 +25,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 
 #ifdef SCF
 #define XX_SCF_FILE_TYPE XX_FILE_TYPE_SCF
@@ -53,14 +54,6 @@ typedef struct scf_stream_s {
     size_t index;
     int64_t archive_size;
 } scf_stream;
-
-static uint16_t scf_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
-
-static uint32_t scf_le32(const uint8_t *bytes) {
-    return (uint32_t)scf_le16(bytes) | ((uint32_t)scf_le16(bytes + 2U) << 16U);
-}
 
 static bool scf_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
@@ -205,7 +198,7 @@ static bool scf_parse(Abstractformat *format, scf_stream **result) {
     if (size < (int64_t)(SCF_HEADER_SIZE + SCF_ENTRY_SIZE) ||
         !scf_read_at(format->device, format->base_address, header,
                      sizeof(header)) ||
-        scf_le32(header) != SCF_SIGNATURE)
+        xx_data_get_u32(header, 4, 0, false) != SCF_SIGNATURE)
         return false;
     stream = (scf_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;
@@ -220,8 +213,8 @@ static bool scf_parse(Abstractformat *format, scf_stream **result) {
                          sizeof(entry)))
             goto fail;
         if (!scf_plausible_raw_name(entry, SCF_NAME_SIZE)) goto fail;
-        packed = scf_le32(entry + 14U);
-        unpacked = scf_le32(entry + 18U);
+        packed = xx_data_get_u32(entry + 14U, 4, 0, false);
+        unpacked = xx_data_get_u32(entry + 18U, 4, 0, false);
         /* Bound the declared packed length against what is really left. */
         if ((int64_t)packed > size - cursor - (int64_t)SCF_ENTRY_SIZE)
             goto fail;
@@ -240,8 +233,8 @@ static bool scf_parse(Abstractformat *format, scf_stream **result) {
         member.data_offset = member.header_offset + (int64_t)SCF_ENTRY_SIZE;
         member.packed_size = (int64_t)packed;
         member.unpacked_size = unpacked;
-        member.dos_time = ((uint32_t)scf_le16(entry + 22U) << 16U) |
-                          scf_le16(entry + 24U);
+        member.dos_time = ((uint32_t)xx_data_get_u16(entry + 22U, 2, 0, false) << 16U) |
+                          xx_data_get_u16(entry + 24U, 2, 0, false);
         if (!scf_add_member(stream, &member)) {
             xx_str_free(member.name);
             goto fail;

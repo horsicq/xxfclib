@@ -50,6 +50,7 @@
 #include "xxfclib/algo/crc/xx_crc.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_HA_COPY_CHUNK (64 * 1024)
 
@@ -160,8 +161,6 @@ static bool xx_ha_add(xx_ha_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_ha_le16(const uint8_t *data);
-static uint32_t xx_ha_le32(const uint8_t *data);
 static bool xx_ha_read_field(Abstractformat *self, int64_t span, int64_t *cursor, uint8_t *buffer, size_t *length);
 static char *xx_ha_make_name(const uint8_t *directory, size_t directory_size, const uint8_t *file, size_t file_size);
 static xx_ha_stream *xx_ha_parse(Abstractformat *self, xx_pd_struct *pd);
@@ -175,15 +174,6 @@ static bool xx_ha_decode(Abstractformat *self, const xx_ha_member *member, uint8
 /* The fixed part, both NUL terminators and the machine byte: the constant
  * addend in header_size = 20 + directory + name + machine. */
 /* 0xFF inside the directory field is HA's path separator, not a character. */
-
-static uint16_t xx_ha_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
-
-static uint32_t xx_ha_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* Read one NUL-terminated field, a byte at a time. The two fields are
  * variable length and nothing ahead of them says how long they are, so the
@@ -276,7 +266,7 @@ static xx_ha_stream *xx_ha_parse(Abstractformat *self, xx_pd_struct *pd) {
         return NULL;
     }
     if (header[0] != (uint8_t)'H' || header[1] != (uint8_t)'A') return NULL;
-    count = (int64_t)xx_ha_le16(header + 2);
+    count = (int64_t)xx_data_get_u16(header + 2, 2, 0, false);
     /* An archive with no members is not an archive; the count is the only
      * thing bounding the walk, since no member stores the next one's
      * offset. */
@@ -312,8 +302,8 @@ static xx_ha_stream *xx_ha_parse(Abstractformat *self, xx_pd_struct *pd) {
         }
 
         type = entry[0];
-        packed_raw = xx_ha_le32(entry + 1);
-        original_raw = xx_ha_le32(entry + 5);
+        packed_raw = xx_data_get_u32(entry + 1, 4, 0, false);
+        original_raw = xx_data_get_u32(entry + 5, 4, 0, false);
         /* HA's own writer treats both size fields as signed 32-bit, so a
          * value with the top bit set is not a 3 GiB member, it is
          * nonsense. */
@@ -363,8 +353,8 @@ static xx_ha_stream *xx_ha_parse(Abstractformat *self, xx_pd_struct *pd) {
             member.compressed_size = packed;
             member.uncompressed_size = original;
             member.method = (uint32_t)method;
-            member.crc32 = xx_ha_le32(entry + 9U);
-            member.timestamp = (uint64_t)xx_ha_le32(entry + 13);
+            member.crc32 = xx_data_get_u32(entry + 9U, 4, 0, false);
+            member.timestamp = (uint64_t)xx_data_get_u32(entry + 13, 4, 0, false);
             member.is_folder = (method == XX_HA_METHOD_DIR1) ||
                                (method == XX_HA_METHOD_DIR2);
             if (member.is_folder) {

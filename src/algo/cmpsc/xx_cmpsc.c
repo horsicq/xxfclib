@@ -9,6 +9,7 @@
 #include "xxfclib/algo/deflate/xx_deflate.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/rt/xx_rt.h"
+#include "xxfclib/data/xx_data.h"
 
 #define CMPSC_HEADER_SIZE 6U
 #define CMPSC_ENTRY_SIZE 8U
@@ -21,11 +22,6 @@ typedef struct cmpsc_bits {
     uint32_t bits;
     unsigned count;
 } cmpsc_bits;
-
-static uint32_t cmpsc_le32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8U) |
-           ((uint32_t)p[2] << 16U) | ((uint32_t)p[3] << 24U);
-}
 
 static bool cmpsc_get_symbol(cmpsc_bits *reader, unsigned width,
                               unsigned *symbol) {
@@ -129,7 +125,7 @@ bool xx_cmpsc_zip_decode_memory(const uint8_t *input, size_t input_size,
         return false;
     entries = (size_t)1U << width;
     dictionary_size = entries * CMPSC_ENTRY_SIZE;
-    stored_dictionary_size = cmpsc_le32(input + 2U);
+    stored_dictionary_size = xx_data_get_u32(input + 2U, 4, 0, false);
     if (stored_dictionary_size == 0U ||
         stored_dictionary_size > input_size - CMPSC_HEADER_SIZE)
         return false;

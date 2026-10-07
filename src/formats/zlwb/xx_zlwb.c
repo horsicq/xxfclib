@@ -65,6 +65,7 @@
 #include "xxfclib/algo/deflate/xx_deflate.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_ZLWB_COPY_CHUNK (64 * 1024)
 
@@ -261,17 +262,9 @@ static bool xx_zlwb_add(xx_zlwb_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint32_t xx_zlwb_le32(const uint8_t *data);
 static char *xx_zlwb_short_string(const uint8_t *record, size_t record_size, size_t offset);
 static xx_zlwb_stream *xx_zlwb_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_zlwb_decode(Abstractformat *self, const xx_zlwb_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
-
-
-
-static uint32_t xx_zlwb_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* Delphi ShortString: a length byte and that many characters, no terminator.
  * The name is the only text in the record, so it is also the last sanity
@@ -325,11 +318,11 @@ static xx_zlwb_stream *xx_zlwb_parse(Abstractformat *self, xx_pd_struct *pd) {
     /* The 0x1a and the version are part of the signature, not decoration:
      * four magic letters alone match far too much. */
     if (header[4] != 0x1aU) return NULL;
-    if (xx_zlwb_le32(header + 5) != 1U) return NULL;
+    if (xx_data_get_u32(header + 5, 4, 0, false) != 1U) return NULL;
 
     /* Both fields are written as signed 32-bit by the producer. */
-    count = (int64_t)(int32_t)xx_zlwb_le32(header + 0x12);
-    directory_offset = (int64_t)(int32_t)xx_zlwb_le32(header + 0x16);
+    count = (int64_t)(int32_t)xx_data_get_u32(header + 0x12, 4, 0, false);
+    directory_offset = (int64_t)(int32_t)xx_data_get_u32(header + 0x16, 4, 0, false);
     if (count < 0 || count > XX_ZLWB_MAX_MEMBERS) return NULL;
 
     stream = (xx_zlwb_stream *)xx_mem_alloc(sizeof(*stream));
@@ -359,8 +352,8 @@ static xx_zlwb_stream *xx_zlwb_parse(Abstractformat *self, xx_pd_struct *pd) {
                              sizeof(blob_header))) {
             goto fail;
         }
-        blob_size = (int64_t)(int32_t)xx_zlwb_le32(blob_header + 4);
-        record_size = (int64_t)(int32_t)xx_zlwb_le32(blob_header + 8);
+        blob_size = (int64_t)(int32_t)xx_data_get_u32(blob_header + 4, 4, 0, false);
+        record_size = (int64_t)(int32_t)xx_data_get_u32(blob_header + 8, 4, 0, false);
         if (blob_size <= 0 || blob_size > XX_ZLWB_MAX_BLOB_SIZE) goto fail;
         /* The record size is not a hint, it names the layout: any other value
          * means the bytes being walked are not a ZLWB directory. */
@@ -400,10 +393,10 @@ static xx_zlwb_stream *xx_zlwb_parse(Abstractformat *self, xx_pd_struct *pd) {
 
         if (record_size == XX_ZLWB_RECORD_SHORT) {
             name = xx_zlwb_short_string(record, (size_t)record_size, 0x000U);
-            data_offset = (int64_t)(int32_t)xx_zlwb_le32(record + 0x100);
-            compressed_size = (int64_t)(int32_t)xx_zlwb_le32(record + 0x104);
+            data_offset = (int64_t)(int32_t)xx_data_get_u32(record + 0x100, 4, 0, false);
+            compressed_size = (int64_t)(int32_t)xx_data_get_u32(record + 0x104, 4, 0, false);
             uncompressed_size =
-                (int64_t)(int32_t)xx_zlwb_le32(record + 0x108);
+                (int64_t)(int32_t)xx_data_get_u32(record + 0x108, 4, 0, false);
         } else {
             /* The record names the member twice: the path field is the
              * installer destination and the name field is the member itself.
@@ -422,10 +415,10 @@ static xx_zlwb_stream *xx_zlwb_parse(Abstractformat *self, xx_pd_struct *pd) {
             if (!name) name = xx_zlwb_build_name(NULL, leaf);
             xx_str_free(full);
             xx_str_free(bare);
-            data_offset = (int64_t)(int32_t)xx_zlwb_le32(record + 0x218);
-            compressed_size = (int64_t)(int32_t)xx_zlwb_le32(record + 0x21c);
+            data_offset = (int64_t)(int32_t)xx_data_get_u32(record + 0x218, 4, 0, false);
+            compressed_size = (int64_t)(int32_t)xx_data_get_u32(record + 0x21c, 4, 0, false);
             uncompressed_size =
-                (int64_t)(int32_t)xx_zlwb_le32(record + 0x220);
+                (int64_t)(int32_t)xx_data_get_u32(record + 0x220, 4, 0, false);
         }
         if (!name) goto fail;
         if (data_offset < 0 || compressed_size < 0 ||

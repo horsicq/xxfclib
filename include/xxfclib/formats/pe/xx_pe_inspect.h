@@ -19,7 +19,7 @@
  * SOFTWARE.
  */
 
-/* xpe.h - Portable Executable parser. */
+/* Native PE inspection helpers used by DIE and other metadata queries. */
 
 #ifndef XXFCLIB_PE_INSPECT_H
 #define XXFCLIB_PE_INSPECT_H
@@ -43,7 +43,6 @@ extern "C" {
 #define XX_PE_INSPECT_DIR_LOADCONFIG 10
 #define XX_PE_INSPECT_DIR_IAT 12
 #define XX_PE_INSPECT_DIR_DELAYIMPORT 13
-#define XX_PE_INSPECT_DIR_COMHEADER 14
 
 /* Import-walk budgets, mirroring xx_pe_inspection::getImports. */
 #define XX_PE_INSPECT_MAX_POSITIONS_PER_LIBRARY 16384
@@ -96,92 +95,6 @@ typedef struct {
     char *pKey;   /* e.g. "FileVersion" */
     char *pValue; /* e.g. "3.13.3.0"    */
 } xx_pe_inspect_version_record;
-
-/* ------------------------------------------------------- .NET metadata --- */
-
-/* Metadata table indices (ECMA-335 II.22). */
-#define XX_PE_MDT_Module        0x00
-#define XX_PE_MDT_TypeRef       0x01
-#define XX_PE_MDT_TypeDef       0x02
-#define XX_PE_MDT_Field         0x04
-#define XX_PE_MDT_MethodPtr     0x05
-#define XX_PE_MDT_MethodDef     0x06
-#define XX_PE_MDT_ParamPtr      0x07
-#define XX_PE_MDT_Param         0x08
-#define XX_PE_MDT_InterfaceImpl 0x09
-#define XX_PE_MDT_MemberRef     0x0A
-#define XX_PE_MDT_Constant      0x0B
-#define XX_PE_MDT_CustomAttribute 0x0C
-#define XX_PE_MDT_FieldMarshal  0x0D
-#define XX_PE_MDT_DeclSecurity  0x0E
-#define XX_PE_MDT_ClassLayout   0x0F
-#define XX_PE_MDT_FieldLayout   0x10
-#define XX_PE_MDT_StandAloneSig 0x11
-#define XX_PE_MDT_EventMap      0x12
-#define XX_PE_MDT_EventPtr      0x13
-#define XX_PE_MDT_Event         0x14
-#define XX_PE_MDT_PropertyMap   0x15
-#define XX_PE_MDT_PropertyPtr   0x16
-#define XX_PE_MDT_Property      0x17
-#define XX_PE_MDT_MethodSemantics 0x18
-#define XX_PE_MDT_MethodImpl    0x19
-#define XX_PE_MDT_ModuleRef     0x1A
-#define XX_PE_MDT_TypeSpec      0x1B
-#define XX_PE_MDT_ImplMap       0x1C
-#define XX_PE_MDT_FieldRVA      0x1D
-#define XX_PE_MDT_ENCLog        0x1E
-#define XX_PE_MDT_ENCMap        0x1F
-#define XX_PE_MDT_Assembly      0x20
-#define XX_PE_MDT_AssemblyProcessor 0x21
-#define XX_PE_MDT_AssemblyOS    0x22
-#define XX_PE_MDT_AssemblyRef   0x23
-#define XX_PE_MDT_AssemblyRefProcessor 0x24
-#define XX_PE_MDT_AssemblyRefOS 0x25
-#define XX_PE_MDT_File          0x26
-#define XX_PE_MDT_ExportedType  0x27
-#define XX_PE_MDT_ManifestResource 0x28
-#define XX_PE_MDT_NestedClass   0x29
-#define XX_PE_MDT_GenericParam  0x2A
-#define XX_PE_MDT_MethodSpec    0x2B
-#define XX_PE_MDT_GenericParamConstraint 0x2C
-
-typedef struct {
-    int bValid;
-
-    int64_t nMetaOffset;   /* metadata root                     */
-    int64_t nTablesOffset; /* "#~" / "#-" stream                */
-    int64_t nTablesSize;
-    int64_t nStringsOffset;
-    int64_t nStringsSize;
-    int64_t nBlobOffset;
-    int64_t nBlobSize;
-    int64_t nGuidOffset;
-    int64_t nGuidSize;
-    int64_t nUSOffset;
-    int64_t nUSSize;
-
-    uint32_t nEntryPointRVA;
-
-    uint32_t pRows[64];         /* row counts                        */
-    int pElementSize[64];     /* bytes per row                     */
-    int64_t pTableOffset[64];  /* absolute file offset of each table */
-    int pIndexSize[64];       /* 2 or 4 for a simple table index   */
-
-    int nStringIndexSize;
-    int nGuidIndexSize;
-    int nBlobIndexSize;
-    int nResolutionScopeSize;
-    int nTypeDefOrRefSize;
-    int nMemberRefParentSize;
-    int nHasConstantSize;
-    int nHasCustomAttributeSize;
-    int nCustomAttributeTypeSize;
-    int nHasFieldMarshalSize;
-    int nHasDeclSecuritySize;
-    int nHasSemanticsSize;
-    int nMethodDefOrRefSize;
-    int nMemberForwardedSize;
-} xx_pe_inspect_cli;
 
 typedef struct {
     xx_executable_input *pInput;
@@ -261,15 +174,6 @@ typedef struct {
 
     char *pManifest;
 
-    /* .NET */
-    int bIsNet;
-    char *pNetVersion;
-    char **ppNetAnsiStrings;
-    int nNetAnsiCount;
-    char **ppNetUnicodeStrings;
-    int nNetUnicodeCount;
-    xx_pe_inspect_cli cli;
-
     int64_t nEntryPointOffset;
     uint64_t nEntryPointAddress;
     int64_t nOverlayOffset;
@@ -279,8 +183,9 @@ typedef struct {
     uint64_t nImportHash64;
 } xx_pe_inspection;
 
-/* Independent native inspection for callers that do not need the full reader
- * vtable. Borrows device; state owns a read-only view. */
+/* Borrows device; state owns a read-only view, strings and arrays. Initialize
+ * state to zero, free before reuse, and keep the parent device open while using
+ * the state. Reported offsets are relative to the supplied base. */
 XXFC_API int xx_pe_inspect_analyze_from_device(xx_pe_inspection *state,
     xx_io_device *device, int64_t base, xx_pd_struct *pd);
 
@@ -290,16 +195,6 @@ XXFC_API void xx_pe_inspect_free(xx_pe_inspection *pPE);
 XXFC_API const char *xx_pe_inspect_debug_type_name(uint32_t nType);
 XXFC_API int xx_pe_inspect_section_number_by_rva(xx_pe_inspection *pPE, uint32_t nRVA);
 XXFC_API int64_t xx_pe_inspect_rva_to_offset(xx_pe_inspection *pPE, uint32_t nRVA);
-
-/* .NET metadata queries. All return neutral values when the file has no
- * usable CLI metadata.                                                     */
-XXFC_API int xx_pe_inspect_net_type_present(xx_pe_inspection *pPE, const char *pNamespace, const char *pTypeName);
-XXFC_API int xx_pe_inspect_net_method_present(xx_pe_inspection *pPE, const char *pNamespace, const char *pTypeName, const char *pMethodName);
-XXFC_API int xx_pe_inspect_net_field_present(xx_pe_inspection *pPE, const char *pNamespace, const char *pTypeName, const char *pFieldName);
-XXFC_API int xx_pe_inspect_net_global_cctor_present(xx_pe_inspection *pPE);
-/* Both return a newly allocated string (possibly empty). */
-XXFC_API char *xx_pe_inspect_net_module_name(xx_pe_inspection *pPE);
-XXFC_API char *xx_pe_inspect_net_assembly_name(xx_pe_inspection *pPE);
 
 #ifdef __cplusplus
 }

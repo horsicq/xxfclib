@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include "xx_hfsplus_unicode.h"
 #include "xx_hfsplus_hostfold.h"
+#include "xxfclib/data/xx_data.h"
 #ifdef HFSPLUS
 #define HP_TYPE XX_FILE_TYPE_HFSPLUS
 #else
@@ -66,9 +67,6 @@ typedef struct hp_tree_s {
     uint8_t *bitmap, *visited;
     uint32_t previous[9], next[9];
 } hp_tree;
-static uint16_t hp_u16(const uint8_t *p) { return (uint16_t)((p[0] << 8) | p[1]); }
-static uint32_t hp_u32(const uint8_t *p) { return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | p[3]; }
-static uint64_t hp_u64(const uint8_t *p) { return ((uint64_t)hp_u32(p) << 32) | hp_u32(p + 4); }
 static bool hp_stopped(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
 static bool hp_work(hp_view *v, xx_pd_struct *pd) { return !hp_stopped(pd) && ++v->work <= HP_WORK; }
 static bool hp_bit(const uint8_t *map, uint32_t n) { return (map[n / 8U] & (0x80U >> (n % 8U))) != 0U; }
@@ -120,8 +118,8 @@ static bool hp_fork_read(hp_view *v, const hp_fork *fork, uint64_t offset, void 
 }
 static bool hp_name_read(const uint8_t *raw, size_t size, hp_name *name) {
     size_t i;
-    if (size < 2U || (name->length = hp_u16(raw)) > 255U || (size_t)name->length * 2U > size - 2U) return false;
-    for (i = 0U; i < name->length; ++i) name->text[i] = hp_u16(raw + 2U + i * 2U);
+    if (size < 2U || (name->length = xx_data_get_u16(raw, 2, 0, true)) > 255U || (size_t)name->length * 2U > size - 2U) return false;
+    for (i = 0U; i < name->length; ++i) name->text[i] = xx_data_get_u16(raw + 2U + i * 2U, 2, 0, true);
     for (i = 0U; i < name->length; ++i) {
         uint16_t c = name->text[i];
         if (c >= 0xD800U && c <= 0xDBFFU) { if (++i >= name->length || name->text[i] < 0xDC00U || name->text[i] > 0xDFFFU) return false; }
@@ -156,22 +154,22 @@ static int hp_key_compare(const hp_key *a, const hp_key *b, unsigned type, bool 
 static bool hp_key_read(const hp_tree *tree, const uint8_t *raw, size_t size, bool index, hp_key *key, size_t *payload) {
     size_t length;
     if (size < 2U) return false;
-    length = hp_u16(raw); xx_mem_zero(key, sizeof(*key));
+    length = xx_data_get_u16(raw, 2, 0, true); xx_mem_zero(key, sizeof(*key));
     *payload = (index && !(tree->attributes & 4U) ? tree->max_key : length) + 2U;
     if (*payload > size || (length & 1U) || length > tree->max_key) return false;
     if (tree->type == 1U) {
         if (length < 6U || length > 516U || !hp_name_read(raw + 6U, length - 4U, &key->name) || length != 6U + (size_t)key->name.length * 2U) return false;
-        key->id = hp_u32(raw + 2U);
+        key->id = xx_data_get_u32(raw + 2U, 4, 0, true);
     } else {
         if (length != 10U || (raw[2] != 0U && raw[2] != 0xFFU)) return false;
-        key->fork = raw[2]; key->id = hp_u32(raw + 4U); key->block = hp_u32(raw + 8U);
+        key->fork = raw[2]; key->id = xx_data_get_u32(raw + 4U, 4, 0, true); key->block = xx_data_get_u32(raw + 8U, 4, 0, true);
     }
     return key->id != 0U;
 }
 static bool hp_extent_valid(const hp_view *v, const uint8_t *data) {
     unsigned i; bool end = false;
     for (i = 0U; i < 8U; ++i) {
-        uint32_t start = hp_u32(data + i * 8U), count = hp_u32(data + i * 8U + 4U);
+        uint32_t start = xx_data_get_u32(data + i * 8U, 4, 0, true), count = xx_data_get_u32(data + i * 8U + 4U, 4, 0, true);
         if (!count) { if (start) return false; end = true; }
         else if (end || start >= v->units || count > v->units - start) return false;
     }
@@ -181,7 +179,7 @@ static bool hp_extent_add(hp_view *v, hp_fork *fork, const uint8_t *data, uint32
     unsigned i;
     if (!hp_extent_valid(v, data)) return false;
     for (i = 0U; i < 8U; ++i) {
-        uint32_t start = hp_u32(data + i * 8U), count = hp_u32(data + i * 8U + 4U), k;
+        uint32_t start = xx_data_get_u32(data + i * 8U, 4, 0, true), count = xx_data_get_u32(data + i * 8U + 4U, 4, 0, true), k;
         if (!count) break;
         if (*logical > target || count > target - *logical || v->run_count >= v->run_capacity) return false;
         for (k = start; k < start + count; ++k) {
@@ -218,13 +216,13 @@ static bool hp_fork_build(hp_view *v, hp_fork *fork, uint32_t id, uint8_t type, 
     return !hp_stopped(pd);
 }
 static void hp_fork_decode(hp_fork *fork, const uint8_t *raw) {
-    xx_mem_zero(fork, sizeof(*fork)); fork->size = hp_u64(raw); fork->blocks = hp_u32(raw + 12U);
+    xx_mem_zero(fork, sizeof(*fork)); fork->size = xx_data_get_u64(raw, 8, 0, true); fork->blocks = xx_data_get_u32(raw + 12U, 4, 0, true);
 }
-static uint16_t hp_offset(const hp_tree *tree, const hp_node *node, unsigned index) { return hp_u16(node->bytes + tree->node_size - 2U - index * 2U); }
+static uint16_t hp_offset(const hp_tree *tree, const hp_node *node, unsigned index) { return xx_data_get_u16(node->bytes + tree->node_size - 2U - index * 2U, 2, 0, true); }
 static bool hp_node_read(hp_tree *tree, uint32_t id, hp_node *node, xx_pd_struct *pd) {
     uint32_t i, previous = 0U, table;
     if (id >= tree->nodes || !hp_work(tree->view, pd) || !hp_fork_read(tree->view, &tree->fork, (uint64_t)id * tree->node_size, node->bytes, tree->node_size, pd)) return false;
-    node->count = hp_u16(node->bytes + 10);
+    node->count = xx_data_get_u16(node->bytes + 10, 2, 0, true);
     if (node->count > (tree->node_size - 16U) / 4U) return false;
     table = tree->node_size - 2U * (node->count + 1U);
     for (i = 0U; i <= node->count; ++i) {
@@ -238,7 +236,7 @@ static bool hp_leaf(hp_tree *tree, const hp_key *key, const uint8_t *data, size_
     hp_view *v = tree->view;
     if (tree->type == 0U) {
         hp_overflow *extra;
-        if (size != 64U || !hp_extent_valid(v, data) || !hp_u32(data + 4U) || v->overflow_count >= v->overflow_capacity || key->id < 4U ||
+        if (size != 64U || !hp_extent_valid(v, data) || !xx_data_get_u32(data + 4U, 4, 0, true) || v->overflow_count >= v->overflow_capacity || key->id < 4U ||
             (key->id < 16U && key->id != 4U && key->id != 5U && key->id != 6U && key->id != 7U && key->id != 8U) || (key->id != 5U && !key->block)) return false;
         extra = v->overflow + v->overflow_count++; extra->id = key->id; extra->fork = key->fork; extra->block = key->block;
         xx_mem_copy(extra->extents, data, 64U); return true;
@@ -246,25 +244,25 @@ static bool hp_leaf(hp_tree *tree, const hp_key *key, const uint8_t *data, size_
     if (tree->type != 1U) return false; /* Nonempty extended-attribute trees are outside this reader. */
     {
         uint16_t type;
-        if (size < 2U || (type = hp_u16(data)) < 1U || type > 4U) return false;
+        if (size < 2U || (type = xx_data_get_u16(data, 2, 0, true)) < 1U || type > 4U) return false;
         if (type >= 3U) {
             hp_thread *thread;
             if (key->name.length || size < 10U || v->thread_count >= (size_t)v->files + v->folders + 1U) return false;
             thread = v->threads + v->thread_count++;
             if (!hp_name_read(data + 8U, size - 8U, &thread->name) || !thread->name.length || size != 10U + (size_t)thread->name.length * 2U) return false;
-            thread->id = key->id; thread->parent = hp_u32(data + 4U); thread->type = type; return thread->parent != 0U;
+            thread->id = key->id; thread->parent = xx_data_get_u32(data + 4U, 4, 0, true); thread->type = type; return thread->parent != 0U;
         } else {
             hp_entry *entry; uint16_t mode;
             if (!key->name.length || size != (type == 1U ? 88U : 248U) || v->entry_count >= (size_t)v->files + v->folders + 1U) return false;
             entry = v->entries + v->entry_count++; entry->type = type; entry->parent = key->id; entry->name = key->name;
-            entry->flags = hp_u16(data + 2U); entry->id = hp_u32(data + 8U); entry->header = address; entry->record_size = (uint16_t)size;
-            mode = hp_u16(data + 42U) & 0170000U;
+            entry->flags = xx_data_get_u16(data + 2U, 2, 0, true); entry->id = xx_data_get_u32(data + 8U, 4, 0, true); entry->header = address; entry->record_size = (uint16_t)size;
+            mode = xx_data_get_u16(data + 42U, 2, 0, true) & 0170000U;
             /* Refuse protected/compressed/attribute and hard-link features before exposing any members. */
             if ((entry->flags & 0x006CU) || (data[41] & 0x20U) || (mode && mode != (type == 1U ? 0040000U : 0100000U) && !(type == 2U && mode == 0120000U))) return false;
-            if (type == 1U) entry->valence = hp_u32(data + 4U);
+            if (type == 1U) entry->valence = xx_data_get_u32(data + 4U, 4, 0, true);
             else {
-                if ((hp_u32(data + 48U) == UINT32_C(0x686C6E6B) && hp_u32(data + 52U) == UINT32_C(0x6866732B)) ||
-                    (hp_u32(data + 48U) == UINT32_C(0x66647270) && hp_u32(data + 52U) == UINT32_C(0x4D414353))) return false;
+                if ((xx_data_get_u32(data + 48U, 4, 0, true) == UINT32_C(0x686C6E6B) && xx_data_get_u32(data + 52U, 4, 0, true) == UINT32_C(0x6866732B)) ||
+                    (xx_data_get_u32(data + 48U, 4, 0, true) == UINT32_C(0x66647270) && xx_data_get_u32(data + 52U, 4, 0, true) == UINT32_C(0x4D414353))) return false;
                 hp_fork_decode(&entry->data, data + 88U); hp_fork_decode(&entry->resource, data + 168U);
                 xx_mem_copy(entry->extents, data + 104U, 64U); xx_mem_copy(entry->extents + 64U, data + 184U, 64U);
             }
@@ -279,9 +277,9 @@ static bool hp_walk_node(hp_tree *tree, uint32_t id, uint16_t height, hp_key *fi
     if (!hp_node_read(tree, id, &node, pd)) goto done;
     tree->visited[id] = 1U;
     if (!node.count || node.bytes[9] != height || node.bytes[8] != (height == 1U ? 0xFFU : 0U) ||
-        hp_u32(node.bytes + 4U) != tree->previous[height] || (tree->previous[height] && tree->next[height] != id)) goto done;
+        xx_data_get_u32(node.bytes + 4U, 4, 0, true) != tree->previous[height] || (tree->previous[height] && tree->next[height] != id)) goto done;
     if (height == 1U && !tree->previous[1] && id != tree->first) goto done;
-    tree->previous[height] = id; tree->next[height] = hp_u32(node.bytes);
+    tree->previous[height] = id; tree->next[height] = xx_data_get_u32(node.bytes, 4, 0, true);
     if (tree->next[height] >= tree->nodes) goto done;
     for (i = 0U; i < node.count; ++i) {
         size_t payload, size = hp_offset(tree, &node, i + 1U) - hp_offset(tree, &node, i);
@@ -294,7 +292,7 @@ static bool hp_walk_node(hp_tree *tree, uint32_t id, uint16_t height, hp_key *fi
             end = key;
         } else {
             hp_key child_first;
-            if (size - payload != 4U || !hp_walk_node(tree, hp_u32(record + payload), height - 1U, &child_first, &end, pd) ||
+            if (size - payload != 4U || !hp_walk_node(tree, xx_data_get_u32(record + payload, 4, 0, true), height - 1U, &child_first, &end, pd) ||
                 hp_key_compare(&child_first, &key, tree->type, tree->view->binary)) goto done;
         }
         if (!have) *first = key;
@@ -310,16 +308,16 @@ static bool hp_tree_read(hp_view *v, const hp_fork *fork, unsigned type, xx_pd_s
     uint8_t probe[120]; const uint8_t *record;
     xx_mem_zero(&tree, sizeof(tree)); xx_mem_zero(&header, sizeof(header)); xx_mem_zero(&map, sizeof(map)); tree.view = v; tree.fork = *fork; tree.type = type;
     if (!hp_fork_read(v, fork, 0U, probe, sizeof(probe), pd)) goto done;
-    tree.node_size = hp_u16(probe + 32U);
+    tree.node_size = xx_data_get_u16(probe + 32U, 2, 0, true);
     if (tree.node_size < 512U || tree.node_size > 32768U || (tree.node_size & (tree.node_size - 1U)) || fork->size % tree.node_size ||
         fork->size / tree.node_size > HP_NODES || !(tree.nodes = (uint32_t)(fork->size / tree.node_size))) goto done;
     header.bytes = (uint8_t *)xx_mem_alloc(tree.node_size); map.bytes = (uint8_t *)xx_mem_alloc(tree.node_size);
-    if (!header.bytes || !map.bytes || !hp_node_read(&tree, 0U, &header, pd) || header.bytes[8] != 1U || header.bytes[9] || hp_u32(header.bytes + 4U) || header.count != 3U ||
+    if (!header.bytes || !map.bytes || !hp_node_read(&tree, 0U, &header, pd) || header.bytes[8] != 1U || header.bytes[9] || xx_data_get_u32(header.bytes + 4U, 4, 0, true) || header.count != 3U ||
         hp_offset(&tree, &header, 1U) - hp_offset(&tree, &header, 0U) != 106U || hp_offset(&tree, &header, 2U) - hp_offset(&tree, &header, 1U) != 128U) goto done;
-    record = header.bytes + 14U; tree.depth = hp_u16(record); tree.root = hp_u32(record + 2U); tree.records = hp_u32(record + 6U);
-    tree.first = hp_u32(record + 10U); tree.last = hp_u32(record + 14U); tree.free_nodes = hp_u32(record + 26U);
-    tree.max_key = hp_u16(record + 20U); tree.attributes = hp_u32(record + 38U);
-    if (tree.max_key != (type == 1U ? 516U : (type == 0U ? 10U : 266U)) || hp_u32(record + 22U) != tree.nodes ||
+    record = header.bytes + 14U; tree.depth = xx_data_get_u16(record, 2, 0, true); tree.root = xx_data_get_u32(record + 2U, 4, 0, true); tree.records = xx_data_get_u32(record + 6U, 4, 0, true);
+    tree.first = xx_data_get_u32(record + 10U, 4, 0, true); tree.last = xx_data_get_u32(record + 14U, 4, 0, true); tree.free_nodes = xx_data_get_u32(record + 26U, 4, 0, true);
+    tree.max_key = xx_data_get_u16(record + 20U, 2, 0, true); tree.attributes = xx_data_get_u32(record + 38U, 4, 0, true);
+    if (tree.max_key != (type == 1U ? 516U : (type == 0U ? 10U : 266U)) || xx_data_get_u32(record + 22U, 4, 0, true) != tree.nodes ||
         record[36] || !(tree.attributes & 2U) || tree.depth > 8U || tree.records > HP_RECORDS || tree.root >= tree.nodes || tree.first >= tree.nodes || tree.last >= tree.nodes || tree.free_nodes >= tree.nodes ||
         (type == 1U && tree.node_size < 2048U) || (type == 2U && tree.records)) goto done;
     if (type == 1U) {
@@ -333,16 +331,16 @@ static bool hp_tree_read(hp_view *v, const hp_fork *fork, unsigned type, xx_pd_s
     if (!map_bytes || map_bytes > tree.node_size - 256U) goto done;
     covered = tree.nodes < map_bytes * 8U ? tree.nodes : map_bytes * 8U;
     xx_mem_copy(tree.bitmap, header.bytes + hp_offset(&tree, &header, 2U), (covered + 7U) / 8U);
-    map_node = hp_u32(header.bytes);
+    map_node = xx_data_get_u32(header.bytes, 4, 0, true);
     while (map_node) {
         uint32_t more;
         if (map_node >= tree.nodes || tree.visited[map_node] || covered >= tree.nodes || !hp_node_read(&tree, map_node, &map, pd) ||
-            map.bytes[8] != 2U || map.bytes[9] || map.count != 1U || hp_u32(map.bytes + 4U) != previous) goto done;
+            map.bytes[8] != 2U || map.bytes[9] || map.count != 1U || xx_data_get_u32(map.bytes + 4U, 4, 0, true) != previous) goto done;
         map_bytes = hp_offset(&tree, &map, 1U) - hp_offset(&tree, &map, 0U);
         if (!map_bytes || map_bytes > tree.node_size - 18U || (covered & 7U)) goto done;
         tree.visited[map_node] = 2U; more = tree.nodes - covered; if (more > map_bytes * 8U) more = map_bytes * 8U;
         xx_mem_copy(tree.bitmap + covered / 8U, map.bytes + 14U, (more + 7U) / 8U); covered += more;
-        previous = map_node; map_node = hp_u32(map.bytes);
+        previous = map_node; map_node = xx_data_get_u32(map.bytes, 4, 0, true);
     }
     if (covered < tree.nodes || !hp_bit(tree.bitmap, 0U)) goto done;
     if (!tree.depth) { if (type == 1U || tree.root || tree.records || tree.first || tree.last) goto done; }
@@ -572,8 +570,8 @@ static hp_view *hp_parse(Abstractformat *self, xx_pd_struct *pd) {
     v = (hp_view *)xx_mem_alloc(sizeof(*v)); if (!v) return NULL; xx_mem_zero(v, sizeof(*v));
     v->device = self->device; v->base = self->base_address; v->bytes = (uint64_t)(total - v->base);
     if (!hp_read(v, 1024U, header, sizeof(header), pd)) goto fail;
-    v->signature = hp_u16(header); v->version = hp_u16(header + 2U); v->attributes = hp_u32(header + 4U);
-    v->units = hp_u32(header + 44U); v->unit_size = hp_u32(header + 40U); v->files = hp_u32(header + 32U); v->folders = hp_u32(header + 36U);
+    v->signature = xx_data_get_u16(header, 2, 0, true); v->version = xx_data_get_u16(header + 2U, 2, 0, true); v->attributes = xx_data_get_u32(header + 4U, 4, 0, true);
+    v->units = xx_data_get_u32(header + 44U, 4, 0, true); v->unit_size = xx_data_get_u32(header + 40U, 4, 0, true); v->files = xx_data_get_u32(header + 32U, 4, 0, true); v->folders = xx_data_get_u32(header + 36U, 4, 0, true);
     if (!((v->signature == 0x482BU && v->version == 4U) || (v->signature == 0x4858U && v->version == 5U)) ||
         !(v->attributes & 0x100U) || (v->attributes & UINT32_C(0x40006800)) || !v->units || v->units > HP_UNITS ||
         v->unit_size < 512U || v->unit_size > 16U * 1024U * 1024U || (v->unit_size & (v->unit_size - 1U)) ||
@@ -606,7 +604,7 @@ static hp_view *hp_parse(Abstractformat *self, xx_pd_struct *pd) {
         if (!hp_work(v, pd) || (hp_bit(v->claimed, i) && !hp_bit(v->bitmap, i))) goto fail;
         if (!hp_bit(v->bitmap, i)) ++free_count;
     }
-    if (free_count != hp_u32(header + 48U)) goto fail;
+    if (free_count != xx_data_get_u32(header + 48U, 4, 0, true)) goto fail;
     if (!hp_fork_build(v, special + 2U, 4U, 0U, header + 288U, false, pd) || !hp_tree_read(v, special + 2U, 1U, pd) ||
         !hp_fork_build(v, special + 3U, 8U, 0U, header + 368U, false, pd) || (special[3].size && !hp_tree_read(v, special + 3U, 2U, pd)) ||
         !hp_fork_build(v, special + 4U, 7U, 0U, header + 448U, false, pd) || !hp_catalog_finish(v, pd)) goto fail;

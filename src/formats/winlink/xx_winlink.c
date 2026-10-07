@@ -55,6 +55,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/data/xx_data.h"
 
 /* The enumerator is added by the coordinator, not by this file.  Until it
  * exists the reader still compiles and simply reports UNKNOWN. */
@@ -103,10 +104,6 @@ typedef struct xx_winlink_stream_s {
 } xx_winlink_stream;
 
 /* ------------------------------------------------------------ helpers --- */
-
-static uint16_t xx_winlink_le16(const uint8_t *bytes) {
-    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
-}
 
 static bool xx_winlink_read_at(Abstractformat *self, int64_t offset,
                                void *buffer, size_t size) {
@@ -222,7 +219,7 @@ static xx_winlink_stream *xx_winlink_parse(Abstractformat *self,
         header[XX_WINLINK_SENTINEL_OFFSET + 2] != 0xffU ||
         header[XX_WINLINK_SENTINEL_OFFSET + 3] != 0xffU)
         return NULL;
-    if (!xx_winlink_date_sane(xx_winlink_le16(header + 5))) return NULL;
+    if (!xx_winlink_date_sane(xx_data_get_u16(header + 5, 2, 0, false))) return NULL;
     if (!xx_winlink_name_field_sane(header + XX_WINLINK_NAME_OFFSET,
                                     XX_WINLINK_NAME_FIELD, &name_length))
         return NULL;
@@ -235,8 +232,8 @@ static xx_winlink_stream *xx_winlink_parse(Abstractformat *self,
         xx_mem_free(stream);
         return NULL;
     }
-    stream->timestamp = ((uint32_t)xx_winlink_le16(header + 5) << 16U) |
-                        (uint32_t)xx_winlink_le16(header + 3);
+    stream->timestamp = ((uint32_t)xx_data_get_u16(header + 5, 2, 0, false) << 16U) |
+                        (uint32_t)xx_data_get_u16(header + 3, 2, 0, false);
     stream->member.timestamp = stream->timestamp;
     stream->member.header_offset = self->base_address;
     stream->member.header_size = XX_WINLINK_HEADER_SIZE;

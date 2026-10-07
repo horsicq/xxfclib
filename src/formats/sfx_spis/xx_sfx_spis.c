@@ -30,7 +30,7 @@ static bool sp_resource_name(Abstractformat *f, const sp_resource_root *root,
     size_t i, length = xx_rt_strlen(wanted);
     if (length > sizeof(data) / 2U || !sp_resource_span(root, offset, 2U) ||
         !pm_read(f, root->file_offset + offset, header, sizeof(header)) ||
-        pm_le16(header) != length ||
+        xx_data_get_u16(header, 2, 0, false) != length ||
         !sp_resource_span(root, offset + 2U, (uint32_t)(length * 2U)) ||
         !pm_read(f, root->file_offset + offset + 2U, data, length * 2U))
         return false;
@@ -49,14 +49,14 @@ static bool sp_resource_child(Abstractformat *f, const sp_resource_root *root,
     if (!sp_resource_span(root, directory, sizeof(header)) ||
         !pm_read(f, root->file_offset + directory, header, sizeof(header)))
         return false;
-    count = (uint32_t)pm_le16(header + 12) + pm_le16(header + 14);
+    count = (uint32_t)xx_data_get_u16(header + 12, 2, 0, false) + xx_data_get_u16(header + 14, 2, 0, false);
     if (count == 0U || count > 256U ||
         !sp_resource_span(root, directory + 16U, count * 8U)) return false;
     for (i = 0U; i < count; ++i) {
         uint32_t name, value;
         if (!pm_read(f, root->file_offset + directory + 16U + i * 8U,
                      entry, sizeof(entry))) return false;
-        name = pm_le32(entry); value = pm_le32(entry + 4);
+        name = xx_data_get_u32(entry, 4, 0, false); value = xx_data_get_u32(entry + 4, 4, 0, false);
         if (!(name & UINT32_C(0x80000000)) ||
             !sp_resource_name(f, root, name & UINT32_C(0x7fffffff), wanted))
             continue;
@@ -78,19 +78,19 @@ static bool sp_resource_leaf(Abstractformat *f, const sp_resource_root *root,
     if (!sp_resource_span(root, directory, sizeof(header)) ||
         !pm_read(f, root->file_offset + directory, header, sizeof(header)))
         return false;
-    count = (uint32_t)pm_le16(header + 12) + pm_le16(header + 14);
+    count = (uint32_t)xx_data_get_u16(header + 12, 2, 0, false) + xx_data_get_u16(header + 14, 2, 0, false);
     if (count == 0U || count > 64U ||
         !sp_resource_span(root, directory + 16U, count * 8U)) return false;
     for (i = 0U; i < count; ++i) {
         uint32_t value, rva, bytes;
         if (!pm_read(f, root->file_offset + directory + 16U + i * 8U,
                      entry, sizeof(entry))) return false;
-        value = pm_le32(entry + 4);
+        value = xx_data_get_u32(entry + 4, 4, 0, false);
         if (value & UINT32_C(0x80000000) ||
             !sp_resource_span(root, value, sizeof(leaf)) ||
             !pm_read(f, root->file_offset + value, leaf, sizeof(leaf)))
             return false;
-        rva = pm_le32(leaf); bytes = pm_le32(leaf + 4);
+        rva = xx_data_get_u32(leaf, 4, 0, false); bytes = xx_data_get_u32(leaf + 4, 4, 0, false);
         if (found || rva < section_rva || bytes < 21U ||
             bytes > SP_RESOURCE_MAX_SIZE ||
             rva - section_rva > section_size ||
@@ -118,23 +118,23 @@ static bool sp_pe_resource(Abstractformat *f, pm_stream *s,
 
     if (wg_stop(pd) || limit < 512 || !pm_read(f, 0, header, 64) ||
         xx_rt_memcmp(header, "MZ", 2)) return false;
-    pe = pm_le32(header + 60);
+    pe = xx_data_get_u32(header + 60, 4, 0, false);
     if (pe < 64U || pe > 1048576U || !wg_range(limit, pe, 24U) ||
         !pm_read(f, pe, header, 24) || xx_rt_memcmp(header, "PE\0\0", 4))
         return false;
-    sections = pm_le16(header + 6); optional_size = pm_le16(header + 20);
+    sections = xx_data_get_u16(header + 6, 2, 0, false); optional_size = xx_data_get_u16(header + 20, 2, 0, false);
     if (!sections || sections > 96U || optional_size < 128U ||
         optional_size > 4096U ||
         !wg_range(limit, (uint64_t)pe + 24U, optional_size) ||
         !pm_read(f, (int64_t)pe + 24, header, 64)) return false;
-    optional_magic = pm_le16(header);
+    optional_magic = xx_data_get_u16(header, 2, 0, false);
     if (optional_magic != 0x10bU && optional_magic != 0x20bU) return false;
     if (optional_size < (optional_magic == 0x10bU ? 120U : 136U))
         return false;
     if (!pm_read(f, (int64_t)pe + 24 +
                     (optional_magic == 0x10bU ? 96 : 112) + 16,
                  header, 8)) return false;
-    resource_rva = pm_le32(header); resource_size = pm_le32(header + 4);
+    resource_rva = xx_data_get_u32(header, 4, 0, false); resource_size = xx_data_get_u32(header + 4, 4, 0, false);
     if (resource_size < 16U || resource_size > SP_RESOURCE_MAX_SIZE ||
         !wg_range(limit, (uint64_t)pe + 24U + optional_size,
                   (uint64_t)sections * 40U)) return false;
@@ -142,8 +142,8 @@ static bool sp_pe_resource(Abstractformat *f, pm_stream *s,
         uint32_t rva, raw, bytes;
         if (wg_stop(pd) || !pm_read(f, (int64_t)pe + 24 + optional_size +
                                     (int64_t)i * 40, entry, 40)) return false;
-        rva = pm_le32(entry + 12); bytes = pm_le32(entry + 16);
-        raw = pm_le32(entry + 20);
+        rva = xx_data_get_u32(entry + 12, 4, 0, false); bytes = xx_data_get_u32(entry + 16, 4, 0, false);
+        raw = xx_data_get_u32(entry + 20, 4, 0, false);
         if (resource_rva < rva || resource_rva - rva > bytes ||
             resource_size > bytes - (resource_rva - rva)) continue;
         if (section_file >= 0 || !wg_range(limit, raw, bytes)) return false;
@@ -160,8 +160,8 @@ static bool sp_pe_resource(Abstractformat *f, pm_stream *s,
      * contains language leaves.  The entire selected leaf is the SPIS span. */
     if (!pm_read(f, leaf_at, blob, sizeof(blob)) ||
         xx_rt_memcmp(blob, "SPIS\x1aRLE", 8) || blob[12] != 0U ||
-        pm_le32(blob + 17) > 2U) return false;
-    raw_size = pm_le32(blob + 8);
+        xx_data_get_u32(blob + 17, 4, 0, false) > 2U) return false;
+    raw_size = xx_data_get_u32(blob + 8, 4, 0, false);
     if (raw_size < 2U || raw_size > SP_RESOURCE_MAX_PLAIN) return false;
     packed_size = (size_t)leaf_size - sizeof(blob);
     packed = (uint8_t *)xx_mem_alloc(packed_size);
@@ -188,9 +188,9 @@ static bool sp_pe_resource(Abstractformat *f, pm_stream *s,
         }
     }
     if (out != raw_size || plain[0] != 'B' || plain[1] != 'M' ||
-        pm_le32(plain + 2) != raw_size) goto done;
+        xx_data_get_u32(plain + 2, 4, 0, false) != raw_size) goto done;
     for (i = 0U; i < out; ++i) sum += plain[i];
-    if (sum != pm_le32(blob + 13) || wg_stop(pd) ||
+    if (sum != xx_data_get_u32(blob + 13, 4, 0, false) || wg_stop(pd) ||
         !pm_add(f, s, "MAINICON.bmp", leaf_at + 21, packed_size)) goto done;
     s->items[s->count - 1U].memory = plain;
     s->items[s->count - 1U].size = raw_size;
@@ -225,8 +225,8 @@ static bool sp_installus_members(Abstractformat *f, pm_stream *s,
             !xx_rt_memcmp(header, "SPIS\x1a", 5)) {
             if (segment_count && summed != declared) return false;
             if (xx_rt_memcmp(header + 5, "LZH", 3) || header[12] != 1U ||
-                pm_le32(header + 17) != 0U) return false;
-            declared = pm_le32(header + 8);
+                xx_data_get_u32(header + 17, 4, 0, false) != 0U) return false;
+            declared = xx_data_get_u32(header + 8, 4, 0, false);
             summed = 0U;
             ++segment_count;
             at += 21;
@@ -234,12 +234,12 @@ static bool sp_installus_members(Abstractformat *f, pm_stream *s,
         }
         if (!segment_count || s->count >= 128U || end - at < 25 ||
             !pm_read(f, at, header, sizeof(header))) return false;
-        name_size = pm_le16(header);
-        raw_size = pm_le32(header + 8);
-        packed_size = pm_le32(header + 12);
+        name_size = xx_data_get_u16(header, 2, 0, false);
+        raw_size = xx_data_get_u32(header + 8, 4, 0, false);
+        packed_size = xx_data_get_u32(header + 12, 4, 0, false);
         method = header[16];
-        checksum = pm_le32(header + 17);
-        flags = pm_le32(header + 21);
+        checksum = xx_data_get_u32(header + 17, 4, 0, false);
+        flags = xx_data_get_u32(header + 21, 4, 0, false);
         if (name_size == 0U || name_size >= sizeof(name_bytes) ||
             (method != 0U && method != 2U) || flags != 0U ||
             raw_size > SP_RESOURCE_MAX_PLAIN ||
@@ -301,12 +301,12 @@ static bool sp_installus_members(Abstractformat *f, pm_stream *s,
 
 static bool sp_blob(Abstractformat *f,int64_t at,int64_t end,xx_pd_struct *pd) {
     uint8_t h[25]; uint64_t total=0,declared; bool single; int64_t p=at+21;
-    if(end-at<21 || !pm_read(f,at,h,21) || xx_rt_memcmp(h,"SPIS\x1a",5) || (xx_rt_memcmp(h+5,"NON",3) && xx_rt_memcmp(h+5,"RLE",3) && xx_rt_memcmp(h+5,"LZH",3) && xx_rt_memcmp(h+5,"CUS",3) && xx_rt_memcmp(h+5,"LH5",3)) || h[12]>1 || pm_le32(h+17)>2) return false;
-    declared=pm_le32(h+8); single=h[12]==0;
-    if(single) { if(!xx_rt_memcmp(h+5,"NON",3) && !pm_le32(h+17) && (declared!=(uint64_t)(end-p) || (pm_le32(h+13) && !wg_sum(f,p,end-p,pm_le32(h+13),pd)))) return false; return p<end || !declared; }
+    if(end-at<21 || !pm_read(f,at,h,21) || xx_rt_memcmp(h,"SPIS\x1a",5) || (xx_rt_memcmp(h+5,"NON",3) && xx_rt_memcmp(h+5,"RLE",3) && xx_rt_memcmp(h+5,"LZH",3) && xx_rt_memcmp(h+5,"CUS",3) && xx_rt_memcmp(h+5,"LH5",3)) || h[12]>1 || xx_data_get_u32(h+17, 4, 0, false)>2) return false;
+    declared=xx_data_get_u32(h+8, 4, 0, false); single=h[12]==0;
+    if(single) { if(!xx_rt_memcmp(h+5,"NON",3) && !xx_data_get_u32(h+17, 4, 0, false) && (declared!=(uint64_t)(end-p) || (xx_data_get_u32(h+13, 4, 0, false) && !wg_sum(f,p,end-p,xx_data_get_u32(h+13, 4, 0, false),pd)))) return false; return p<end || !declared; }
     while(p<end) { uint16_t name; uint32_t packed,raw; if(wg_stop(pd) || end-p<25 || !pm_read(f,p,h,25)) return false;
-        name=pm_le16(h); raw=pm_le32(h+8); packed=pm_le32(h+12); if(!name || name>4096 || h[16]>4 || pm_le32(h+21)>2 || (uint64_t)25+name+packed>(uint64_t)(end-p) || (!h[16] && raw!=packed)) return false;
-        if(!h[16] && !pm_le32(h+21) && pm_le32(h+17) && !wg_sum(f,p+25+name,packed,pm_le32(h+17),pd)) { return false; } total+=raw; if(total>declared) return false; p+=25+name+packed;
+        name=xx_data_get_u16(h, 2, 0, false); raw=xx_data_get_u32(h+8, 4, 0, false); packed=xx_data_get_u32(h+12, 4, 0, false); if(!name || name>4096 || h[16]>4 || xx_data_get_u32(h+21, 4, 0, false)>2 || (uint64_t)25+name+packed>(uint64_t)(end-p) || (!h[16] && raw!=packed)) return false;
+        if(!h[16] && !xx_data_get_u32(h+21, 4, 0, false) && xx_data_get_u32(h+17, 4, 0, false) && !wg_sum(f,p+25+name,packed,xx_data_get_u32(h+17, 4, 0, false),pd)) { return false; } total+=raw; if(total>declared) return false; p+=25+name+packed;
     } return p==end && total==declared;
 }
 
@@ -324,21 +324,21 @@ static bool sp_pe_payload_end(Abstractformat *f, int64_t overlay,
     *end = limit;
     *certificate = false;
     if (!pm_read(f, 60, h, 4)) return false;
-    pe = pm_le32(h);
+    pe = xx_data_get_u32(h, 4, 0, false);
     if (!pm_read(f, pe, h, 24)) return false;
-    optional_size = pm_le16(h + 20);
+    optional_size = xx_data_get_u16(h + 20, 2, 0, false);
     if (!pm_read(f, (int64_t)pe + 24, h, 2)) return false;
-    magic = pm_le16(h);
+    magic = xx_data_get_u16(h, 2, 0, false);
     directory_base = magic == 0x10bU ? 96U : 112U;
     count_offset = directory_base - 4U;
     if (optional_size < directory_base) return true;
     if (!pm_read(f, (int64_t)pe + 24 + count_offset, h, 4)) return false;
-    directory_count = pm_le32(h);
+    directory_count = xx_data_get_u32(h, 4, 0, false);
     if (directory_count < 5U) return true;
     if (optional_size < directory_base + 40U ||
         !pm_read(f, (int64_t)pe + 24 + directory_base + 32U, h, 8))
         return false;
-    offset = pm_le32(h); bytes = pm_le32(h + 4);
+    offset = xx_data_get_u32(h, 4, 0, false); bytes = xx_data_get_u32(h + 4, 4, 0, false);
     if (!offset && !bytes) return true;
     if (!offset || bytes < 8U || (offset & 7U) || offset < overlay ||
         !wg_range(limit, offset, bytes) || (uint64_t)offset + bytes != (uint64_t)limit)
@@ -349,10 +349,10 @@ static bool sp_pe_payload_end(Abstractformat *f, int64_t overlay,
         uint64_t aligned;
         size_t pad;
         if (wg_stop(pd) || limit - at < 8 || !pm_read(f, at, h, 8)) return false;
-        length = pm_le32(h);
+        length = xx_data_get_u32(h, 4, 0, false);
         /* The supported signed layout carries PKCS#7, revision 2.0. */
-        if (length < 8U || pm_le16(h + 4) != 0x200U ||
-            pm_le16(h + 6) != 2U) return false;
+        if (length < 8U || xx_data_get_u16(h + 4, 2, 0, false) != 0x200U ||
+            xx_data_get_u16(h + 6, 2, 0, false) != 2U) return false;
         aligned = ((uint64_t)length + 7U) & ~UINT64_C(7);
         if (!wg_range(limit, (uint64_t)at, aligned)) return false;
         pad = (size_t)(aligned - length);
@@ -378,11 +378,11 @@ static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         while(at<limit) { uint32_t bytes; char name[48];
             if (certificate && limit - at <= 7 && pm_read(f, at, h, (size_t)(limit - at)) &&
                 wg_zero(h, (size_t)(limit - at))) { at = limit; break; }
-            if(wg_stop(pd) || !wg_range(limit, (uint64_t)at, 4U) || !pm_read(f,at,h,4) || (bytes=pm_le32(h))<21 || !wg_range(limit,at+4,bytes) || !sp_blob(f,at+4,at+4+bytes,pd)) return false;
+            if(wg_stop(pd) || !wg_range(limit, (uint64_t)at, 4U) || !pm_read(f,at,h,4) || (bytes=xx_data_get_u32(h, 4, 0, false))<21 || !wg_range(limit,at+4,bytes) || !sp_blob(f,at+4,at+4+bytes,pd)) return false;
             xx_rt_snprintf(name,sizeof(name),"payload-%u.spis",count++); if(!pm_add(f,s,name,at+4,bytes)) return false; at+=4+bytes; if(count>4096) return false;
         } if(!count) return false; s->size=physical; return true;
     }
-    if(!pm_read(f,0,h,64) || xx_rt_memcmp(h,"MZ",2) || pm_le32(h+60)<64 || !pm_read(f,pm_le32(h+60),h,2) || xx_rt_memcmp(h,"NE",2)) return false;
+    if(!pm_read(f,0,h,64) || xx_rt_memcmp(h,"MZ",2) || xx_data_get_u32(h+60, 4, 0, false)<64 || !pm_read(f,xx_data_get_u32(h+60, 4, 0, false),h,2) || xx_rt_memcmp(h,"NE",2)) return false;
     {
         const size_t capacity = xx_get_file_buffer_size();
         const size_t n = limit > 1048576 ? 1048576U : (size_t)limit;

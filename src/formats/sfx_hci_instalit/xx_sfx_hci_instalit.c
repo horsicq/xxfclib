@@ -30,6 +30,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -126,15 +127,6 @@ static void sh_vtable_destroy(Abstractformat *self);
 /* ------------------------------------------------------------------------ */
 /* Little helpers                                                            */
 /* ------------------------------------------------------------------------ */
-
-static uint16_t sh_u16(const uint8_t *p) {
-    return (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
-}
-
-static uint32_t sh_u32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
-           ((uint32_t)p[3] << 24);
-}
 
 static char sh_upper(char c) {
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
@@ -686,14 +678,14 @@ static void sh_ne_cleanup(sh_ne *ne) {
 static bool sh_ne_type_at(const sh_ne *ne, size_t at, uint16_t *type_id,
                           uint16_t *count, size_t *rows) {
     if (at > ne->table_size || ne->table_size - at < 2U) return false;
-    *type_id = sh_u16(ne->table + at);
+    *type_id = xx_data_get_u16(ne->table + at, 2, 0, false);
     if (*type_id == 0U) {
         *count = 0U;
         *rows = at + 2U;
         return true;
     }
     if (ne->table_size - at < 8U) return false;
-    *count = sh_u16(ne->table + at + 2U);
+    *count = xx_data_get_u16(ne->table + at + 2U, 2, 0, false);
     *rows = at + 8U;
     if ((size_t)*count * 12U > ne->table_size - *rows) return false;
     return true;
@@ -725,12 +717,12 @@ static bool sh_ne_nametable(const sh_ne *ne, uint16_t type_id, uint16_t id,
     size_t at = 0U;
     unsigned guard = 0U;
     while (ne->names && at + 6U <= ne->names_size && guard++ < 65536U) {
-        size_t size = sh_u16(ne->names + at), cursor, end, length;
+        size_t size = xx_data_get_u16(ne->names + at, 2, 0, false), cursor, end, length;
         uint16_t entry_type, entry_id;
         const char *type_name, *id_name;
         if (size < 8U || size > ne->names_size - at) break;
-        entry_type = (uint16_t)(sh_u16(ne->names + at + 2U) | 0x8000U);
-        entry_id = sh_u16(ne->names + at + 4U);
+        entry_type = (uint16_t)(xx_data_get_u16(ne->names + at + 2U, 2, 0, false) | 0x8000U);
+        entry_id = xx_data_get_u16(ne->names + at + 4U, 2, 0, false);
         end = at + size;
         cursor = at + 6U;
         type_name = (const char *)ne->names + cursor;
@@ -770,7 +762,7 @@ static bool sh_ne_load(Abstractformat *self, int64_t image_size, sh_ne *ne,
         mz[0] != 'M' || mz[1] != 'Z') {
         return false;
     }
-    lfanew = sh_u32(mz + 0x3C);
+    lfanew = xx_data_get_u32(mz + 0x3C, 4, 0, false);
     if (lfanew < 0x40U || !sh_within(image_size, lfanew, 64) ||
         !sh_read_at(self->device, self->base_address + lfanew, header,
                     sizeof(header)) ||
@@ -778,8 +770,8 @@ static bool sh_ne_load(Abstractformat *self, int64_t image_size, sh_ne *ne,
         return false;
     }
     ne->ne_offset = lfanew;
-    table_rel = sh_u16(header + 0x24);
-    names_rel = sh_u16(header + 0x26);
+    table_rel = xx_data_get_u16(header + 0x24, 2, 0, false);
+    names_rel = xx_data_get_u16(header + 0x26, 2, 0, false);
     if (names_rel <= table_rel || names_rel - table_rel < 4) return false;
     ne->table_offset = (int64_t)lfanew + table_rel;
     ne->table_size = (size_t)(names_rel - table_rel);
@@ -793,7 +785,7 @@ static bool sh_ne_load(Abstractformat *self, int64_t image_size, sh_ne *ne,
         sh_ne_cleanup(ne);
         return false;
     }
-    ne->shift = sh_u16(ne->table);
+    ne->shift = xx_data_get_u16(ne->table, 2, 0, false);
     if (ne->shift > 15U) {
         sh_ne_cleanup(ne);
         return false;
@@ -813,8 +805,8 @@ static bool sh_ne_load(Abstractformat *self, int64_t image_size, sh_ne *ne,
         if (type_id == 0U) break;
         for (row = 0U; row < count; ++row) {
             const uint8_t *entry = ne->table + rows + (size_t)row * 12U;
-            int64_t offset = (int64_t)sh_u16(entry) << ne->shift;
-            int64_t length = (int64_t)sh_u16(entry + 2U) << ne->shift;
+            int64_t offset = (int64_t)xx_data_get_u16(entry, 2, 0, false) << ne->shift;
+            int64_t length = (int64_t)xx_data_get_u16(entry + 2U, 2, 0, false) << ne->shift;
             if (sh_within(image_size, offset, length) &&
                 offset + length > ne->extent) {
                 ne->extent = offset + length;
@@ -843,11 +835,11 @@ static bool sh_ne_load(Abstractformat *self, int64_t image_size, sh_ne *ne,
     if (full) {
         /* Segments (with their relocation blocks) and the non-resident
          * name table complete the extent of the stub. */
-        uint16_t segments = sh_u16(header + 0x1C);
-        uint16_t segment_rel = sh_u16(header + 0x22);
-        unsigned align = sh_u16(header + 0x32);
-        uint32_t nonres = sh_u32(header + 0x2C);
-        uint16_t nonres_size = sh_u16(header + 0x20);
+        uint16_t segments = xx_data_get_u16(header + 0x1C, 2, 0, false);
+        uint16_t segment_rel = xx_data_get_u16(header + 0x22, 2, 0, false);
+        unsigned align = xx_data_get_u16(header + 0x32, 2, 0, false);
+        uint32_t nonres = xx_data_get_u32(header + 0x2C, 4, 0, false);
+        uint16_t nonres_size = xx_data_get_u16(header + 0x20, 2, 0, false);
         uint16_t index;
         if (align == 0U) align = 9U;
         if (nonres != 0U && sh_within(image_size, nonres, nonres_size) &&
@@ -866,16 +858,16 @@ static bool sh_ne_load(Abstractformat *self, int64_t image_size, sh_ne *ne,
                                 segment, sizeof(segment))) {
                     break;
                 }
-                if (sh_u16(segment) == 0U) continue;
-                offset = (int64_t)sh_u16(segment) << align;
-                length = sh_u16(segment + 2U) ? sh_u16(segment + 2U) : 0x10000;
+                if (xx_data_get_u16(segment, 2, 0, false) == 0U) continue;
+                offset = (int64_t)xx_data_get_u16(segment, 2, 0, false) << align;
+                length = xx_data_get_u16(segment + 2U, 2, 0, false) ? xx_data_get_u16(segment + 2U, 2, 0, false) : 0x10000;
                 end = offset + length;
-                if ((sh_u16(segment + 4U) & 0x0100U) != 0U &&
+                if ((xx_data_get_u16(segment + 4U, 2, 0, false) & 0x0100U) != 0U &&
                     sh_within(image_size, end, 2)) {
                     uint8_t relocs[2];
                     if (sh_read_at(self->device, self->base_address + end,
                                    relocs, 2U)) {
-                        end += 2 + (int64_t)sh_u16(relocs) * 8;
+                        end += 2 + (int64_t)xx_data_get_u16(relocs, 2, 0, false) * 8;
                     }
                 }
                 if (end <= image_size && end > ne->extent) ne->extent = end;
@@ -912,9 +904,9 @@ static bool sh_ne_exefiles(Abstractformat *self, int64_t image_size,
         if (!named || !sh_is_exefile(type_name)) continue;
         for (row = 0U; row < count; ++row) {
             const uint8_t *info = ne->table + rows + (size_t)row * 12U;
-            int64_t offset = (int64_t)sh_u16(info) << ne->shift;
-            int64_t length = (int64_t)sh_u16(info + 2U) << ne->shift;
-            uint16_t id = sh_u16(info + 6U);
+            int64_t offset = (int64_t)xx_data_get_u16(info, 2, 0, false) << ne->shift;
+            int64_t length = (int64_t)xx_data_get_u16(info + 2U, 2, 0, false) << ne->shift;
+            uint16_t id = xx_data_get_u16(info + 6U, 2, 0, false);
             uint8_t head[10];
             bool dcl, raw;
             uint32_t packed = 0U;
@@ -925,7 +917,7 @@ static bool sh_ne_exefiles(Abstractformat *self, int64_t image_size,
                 continue;
             }
             raw = head[0] == 'M' && head[1] == 'Z';
-            packed = sh_u32(head + 4U);
+            packed = xx_data_get_u32(head + 4U, 4, 0, false);
             dcl = !raw && head[8] <= 1U && head[9] >= 4U && head[9] <= 6U &&
                   packed >= 3U && (int64_t)packed <= length - 8;
             if (!raw && !dcl) continue;
@@ -964,7 +956,7 @@ static bool sh_ne_exefiles(Abstractformat *self, int64_t image_size,
                     entry->header_size = 8;
                     entry->data_offset = self->base_address + offset + 8;
                     entry->packed_size = (int64_t)packed;
-                    entry->crc = sh_u32(head);
+                    entry->crc = xx_data_get_u32(head, 4, 0, false);
                     entry->crc_kind = SH_CRC_32;
                     entry->method = SH_METHOD_DCL;
                 }
@@ -1035,10 +1027,10 @@ static bool sh_read_footer(Abstractformat *self, int64_t image_size,
         if (raw[index] < '0' || raw[index] > '9') return false;
     }
     footer->offset = image_size - SH_FOOTER_SIZE;
-    footer->script = sh_u32(raw + 13);
-    footer->records_end = sh_u32(raw + 17);
-    footer->pvl = sh_u32(raw + 21);
-    footer->pvm = sh_u32(raw + 25);
+    footer->script = xx_data_get_u32(raw + 13, 4, 0, false);
+    footer->records_end = xx_data_get_u32(raw + 17, 4, 0, false);
+    footer->pvl = xx_data_get_u32(raw + 21, 4, 0, false);
+    footer->pvm = xx_data_get_u32(raw + 25, 4, 0, false);
     return true;
 }
 
@@ -1117,10 +1109,10 @@ static bool sh_catalog_members(Abstractformat *self, const uint8_t *catalog,
     uint8_t first_disk = old ? catalog[0x1E] : catalog[0x20];
     for (at = 0U; at < size; at += stride) {
         const uint8_t *record = catalog + at;
-        uint32_t offset = sh_u32(record + 1U);
-        uint32_t packed = sh_u32(record + 0x14U);
+        uint32_t offset = xx_data_get_u32(record + 1U, 4, 0, false);
+        uint32_t packed = xx_data_get_u32(record + 0x14U, 4, 0, false);
         uint8_t disk = old ? record[0x1E] : record[0x20];
-        uint32_t unpacked = sh_u32(record + (old ? 0x21U : 0x23U));
+        uint32_t unpacked = xx_data_get_u32(record + (old ? 0x21U : 0x23U), 4, 0, false);
         char name[SH_REC_NAME_SIZE + 1U];
         sh_entry *entry;
         ++ordinal;
@@ -1145,14 +1137,14 @@ static bool sh_catalog_members(Abstractformat *self, const uint8_t *catalog,
         entry->unpacked_size = unpacked;
         entry->method = record[5];
         entry->attributes = record[0x13];
-        entry->dos_date = sh_u16(record + 0x18U);
-        entry->dos_time = sh_u16(record + 0x1AU);
+        entry->dos_date = xx_data_get_u16(record + 0x18U, 2, 0, false);
+        entry->dos_time = xx_data_get_u16(record + 0x1AU, 2, 0, false);
         entry->has_dos_time = true;
         if (old) {
-            entry->crc = sh_u16(record + 0x1CU);
+            entry->crc = xx_data_get_u16(record + 0x1CU, 2, 0, false);
             entry->crc_kind = SH_CRC_16;
         } else {
-            entry->crc = sh_u32(record + 0x1CU);
+            entry->crc = xx_data_get_u32(record + 0x1CU, 4, 0, false);
             entry->crc_kind = SH_CRC_32;
         }
     }
@@ -1223,7 +1215,7 @@ static bool sh_parse(Abstractformat *self, sh_layout *layout, bool full,
                     (uint32_t)((size_t)catalog_size / stride);
                 if (!is_ne) {
                     /* A volume's first member starts its data. */
-                    if (sh_u32(catalog + 1U) != 0U) goto done;
+                    if (xx_data_get_u32(catalog + 1U, 4, 0, false) != 0U) goto done;
                 }
             }
         }

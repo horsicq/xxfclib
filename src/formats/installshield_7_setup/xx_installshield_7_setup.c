@@ -25,6 +25,7 @@
 #include "xxfclib/strings/xx_string.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the alias macro defined next to the enumerator is tested instead;
@@ -156,11 +157,6 @@ static uint32_t is7_le16(const uint8_t *bytes) {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U);
 }
 
-static uint32_t is7_le32(const uint8_t *bytes) {
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
-           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
-}
-
 static bool is7_read_at(xx_io_device *device, int64_t offset, void *buffer,
                         size_t size) {
     const size_t file_io_capacity = gb_installshield_7_setup_capacity();
@@ -238,7 +234,7 @@ static bool is7_locate(Abstractformat *format, is7_layout *layout) {
         !is7_read_at(format->device, format->base_address, dos, sizeof(dos)) ||
         dos[0] != 'M' || dos[1] != 'Z')
         return false;
-    nt = (int64_t)is7_le32(dos + 0x3c);
+    nt = (int64_t)xx_data_get_u32(dos + 0x3c, 4, 0, false);
     if (nt < 4 || nt > size - IS7_PE_HEADER ||
         !is7_read_at(format->device, format->base_address + nt, pe,
                      sizeof(pe)) ||
@@ -266,8 +262,8 @@ static bool is7_locate(Abstractformat *format, is7_layout *layout) {
         return false;
     for (index = 0U; index < section_count; ++index) {
         const uint8_t *entry = sections + (size_t)index * IS7_SECTION_SIZE;
-        int64_t raw_size = (int64_t)is7_le32(entry + 16U);
-        int64_t raw_offset = (int64_t)is7_le32(entry + 20U);
+        int64_t raw_size = (int64_t)xx_data_get_u32(entry + 16U, 4, 0, false);
+        int64_t raw_offset = (int64_t)xx_data_get_u32(entry + 20U, 4, 0, false);
         if (raw_size == 0) continue;
         if (raw_offset > size || raw_size > size - raw_offset) return false;
         if (raw_offset + raw_size > overlay) overlay = raw_offset + raw_size;
@@ -285,9 +281,9 @@ static bool is7_locate(Abstractformat *format, is7_layout *layout) {
         size_t directories = magic == IS7_PE32_MAGIC ? 96U : 112U;
         size_t entry = directories + 8U * IS7_SECURITY_DIRECTORY;
         if (optional_read >= entry + 8U &&
-            is7_le32(optional + directories - 4U) > IS7_SECURITY_DIRECTORY) {
-            int64_t cert_offset = (int64_t)is7_le32(optional + entry);
-            int64_t cert_size = (int64_t)is7_le32(optional + entry + 4U);
+            xx_data_get_u32(optional + directories - 4U, 4, 0, false) > IS7_SECURITY_DIRECTORY) {
+            int64_t cert_offset = (int64_t)xx_data_get_u32(optional + entry, 4, 0, false);
+            int64_t cert_size = (int64_t)xx_data_get_u32(optional + entry + 4U, 4, 0, false);
             if (cert_offset != 0 && cert_size != 0 && cert_offset >= overlay &&
                 cert_offset <= size && cert_size == size - cert_offset) {
                 layout->limit = cert_offset;

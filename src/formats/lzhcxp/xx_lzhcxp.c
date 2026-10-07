@@ -47,6 +47,7 @@
 #include "xxfclib/algo/lzhuf/xx_lzhuf.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_LZHCXP_COPY_CHUNK (64 * 1024)
 
@@ -150,7 +151,6 @@ static bool xx_lzhcxp_add(xx_lzhcxp_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint16_t xx_lzhcxp_le16(const uint8_t *data);
 static xx_lzhcxp_stream *xx_lzhcxp_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_lzhcxp_decode(Abstractformat *self, const xx_lzhcxp_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
@@ -160,10 +160,6 @@ static bool xx_lzhcxp_decode(Abstractformat *self, const xx_lzhcxp_member *membe
  * this is the only one. */
 /* The container holds exactly one member and states no method; this number
  * is synthesised so the decode switch has something to key on. */
-
-static uint16_t xx_lzhcxp_le16(const uint8_t *data) {
-    return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
-}
 
 static xx_lzhcxp_stream *xx_lzhcxp_parse(Abstractformat *self,
                                          xx_pd_struct *pd) {
@@ -206,7 +202,7 @@ static xx_lzhcxp_stream *xx_lzhcxp_parse(Abstractformat *self,
      * fixed pattern: loosening any part of this turns the reader into a
      * two-byte match backed by an expensive trial decode. */
     if (header[3] != 0U) return NULL;
-    if ((uint32_t)(xx_lzhcxp_le16(header + 4) & 0xC03U) != 2U) return NULL;
+    if ((uint32_t)(xx_data_get_u16(header + 4, 2, 0, false) & 0xC03U) != 2U) return NULL;
 
     /* The first block plus the two magic bytes, its length byte and the
      * chain terminator. */

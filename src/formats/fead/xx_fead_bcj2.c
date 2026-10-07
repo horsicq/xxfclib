@@ -4,6 +4,7 @@
 #include "fead_bcj2.h"
 #include "xxfclib/memory/xx_memory.h"
 #include <limits.h>
+#include "xxfclib/data/xx_data.h"
 typedef struct fead_bcj2_decoder {
  const uint8_t *main_data, *call_data, *jump_data, *range_data;
  size_t main_size, call_size, jump_size, range_size;
@@ -12,10 +13,6 @@ typedef struct fead_bcj2_decoder {
  uint16_t probabilities[258];
  uint8_t previous;
 } fead_bcj2_decoder;
-static uint32_t b2_be32(const uint8_t *p)
-{ return (uint32_t)p[0] << 24 | (uint32_t)p[1] << 16 | (uint32_t)p[2] << 8 | p[3]; }
-static void b2_le32(uint8_t *p, uint32_t value)
-{ p[0]=(uint8_t)value;p[1]=(uint8_t)(value>>8);p[2]=(uint8_t)(value>>16);p[3]=(uint8_t)(value>>24); }
 static bool b2_range_byte(fead_bcj2_decoder *d, uint8_t *v)
 { if(d->range_pos>=d->range_size)return false;*v=d->range_data[d->range_pos++];return true; }
 static bool b2_bit(fead_bcj2_decoder *d, uint16_t *probability, bool *bit)
@@ -71,8 +68,8 @@ bool fead_bcj2_decode(const uint8_t *const inputs[4], const size_t sizes[4],
     if(opcode==0xe8U){target=d.call_data;position=&d.call_pos;target_size=d.call_size;}
     else{target=d.jump_data;position=&d.jump_pos;target_size=d.jump_size;}
     if(*position>target_size||target_size-*position<4||output_size-produced<4)goto done;
-    value=b2_be32(target+*position);*position+=4;d.ip+=4;value-=d.ip;
-    b2_le32(output+produced,value);produced+=4;d.previous=(uint8_t)(value>>24);continue;
+    value=xx_data_get_u32(target+*position, 4, 0, true);*position+=4;d.ip+=4;value-=d.ip;
+    xx_data_set_u32(output+produced, 4, 0, value, false);produced+=4;d.previous=(uint8_t)(value>>24);continue;
    }
   }
   d.previous=opcode;

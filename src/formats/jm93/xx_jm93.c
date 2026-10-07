@@ -42,6 +42,7 @@
 #include "xxfclib/algo/dcl/xx_dcl.h"
 
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_JM93_COPY_CHUNK (64 * 1024)
 
@@ -145,7 +146,6 @@ static bool xx_jm93_add(xx_jm93_stream *stream,
 
 /* Forward declarations: the parse and the decode
  * call into each other's helpers. */
-static uint32_t xx_jm93_le32(const uint8_t *data);
 static bool xx_jm93_name_field_valid(const uint8_t *field);
 static bool xx_jm93_name_escape(const uint8_t *field, char *out);
 static xx_jm93_stream *xx_jm93_parse(Abstractformat *self, xx_pd_struct *pd);
@@ -158,11 +158,6 @@ static bool xx_jm93_decode(Abstractformat *self, const xx_jm93_member *member, u
  * escape, plus the terminator. */
 /* The container carries exactly one member. The cap exists so the shape of
  * this reader matches every other one, not because a count is read. */
-
-static uint32_t xx_jm93_le32(const uint8_t *data) {
-    return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-}
 
 /* The 60-byte field is NUL padded. A NUL followed by a non-NUL never happens
  * in a real header, and refusing that shape is what keeps a five-byte
@@ -256,8 +251,8 @@ static xx_jm93_stream *xx_jm93_parse(Abstractformat *self, xx_pd_struct *pd) {
     if (header[4] != 0U) return NULL;
     if (!xx_jm93_name_field_valid(header + XX_JM93_NAME_OFFSET)) return NULL;
 
-    compressed_size = (int64_t)xx_jm93_le32(header + 0x41);
-    uncompressed_size = (int64_t)xx_jm93_le32(header + 0x45);
+    compressed_size = (int64_t)xx_data_get_u32(header + 0x41, 4, 0, false);
+    uncompressed_size = (int64_t)xx_data_get_u32(header + 0x45, 4, 0, false);
     /* Neither size is ever zero in a real container; an empty member is not
      * something this writer emits. */
     if (compressed_size == 0 || uncompressed_size == 0) return NULL;

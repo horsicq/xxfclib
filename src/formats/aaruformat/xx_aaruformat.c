@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "xxfclib/data/xx_data.h"
 #ifdef AARUFORMAT
 #define AF_TYPE XX_FILE_TYPE_AARUFORMAT
 #else
@@ -40,9 +41,6 @@ typedef struct af_view_s {
 } af_view;
 typedef struct af_cursor_s {af_view *view;} af_cursor;
 static bool af_stop(xx_pd_struct *pd){return pd&&xx_pd_is_stopped(pd);}
-static uint16_t af_u16(const uint8_t *p){return (uint16_t)((uint16_t)p[0]|((uint16_t)p[1]<<8));}
-static uint32_t af_u32(const uint8_t *p){return (uint32_t)p[0]|((uint32_t)p[1]<<8)|((uint32_t)p[2]<<16)|((uint32_t)p[3]<<24);}
-static uint64_t af_u64(const uint8_t *p){return (uint64_t)af_u32(p)|((uint64_t)af_u32(p+4U)<<32);}
 static uint64_t af_crc(uint64_t crc,const uint8_t *p,size_t n){
     return xx_crc64_xz_calc(crc ^ UINT64_MAX,p,n) ^ UINT64_MAX;
 }
@@ -104,28 +102,28 @@ static af_view *af_parse(Abstractformat *f,xx_pd_struct *pd){
     v->base=f->base_address;v->size=(uint64_t)(total-f->base_address);v->refs=1U;
     if(!af_rel(f->device,v,0U,head,sizeof(head),pd)||memcmp(head,"AARUFRMT",8U)||
        head[72U]!=2U||head[73U]!=0U||
-       (af_u32(head+76U)!=1U&&af_u32(head+76U)!=2U)||
+       (xx_data_get_u32(head+76U, 4, 0, false)!=1U&&xx_data_get_u32(head+76U, 4, 0, false)!=2U)||
        head[120U]<9U||head[120U]>20U||
-       af_u16(head+121U)<128U||
-       af_u64(head+123U)||af_u64(head+131U)||af_u64(head+139U))goto fail;
+       xx_data_get_u16(head+121U, 2, 0, false)<128U||
+       xx_data_get_u64(head+123U, 8, 0, false)||xx_data_get_u64(head+131U, 8, 0, false)||xx_data_get_u64(head+139U, 8, 0, false))goto fail;
     /* biggestSectorSize is uint16; 65536 is intentionally excluded. */
-    v->alignment=head[120U];v->sector_size=af_u16(head+121U);align=UINT64_C(1)<<v->alignment;
-    index_offset=af_u64(head+80U);
+    v->alignment=head[120U];v->sector_size=xx_data_get_u16(head+121U, 2, 0, false);align=UINT64_C(1)<<v->alignment;
+    index_offset=xx_data_get_u64(head+80U, 8, 0, false);
     if(index_offset<AF_HEADER||index_offset%align||index_offset>v->size||
        v->size-index_offset<AF_INDEX_HEAD||
-       !af_rel(f->device,v,index_offset,idx,sizeof(idx),pd)||af_u32(idx)!=AF_IDX3||af_u64(idx+20U))goto fail;
-    entry_count=af_u64(idx+4U);
+       !af_rel(f->device,v,index_offset,idx,sizeof(idx),pd)||xx_data_get_u32(idx, 4, 0, false)!=AF_IDX3||xx_data_get_u64(idx+20U, 8, 0, false))goto fail;
+    entry_count=xx_data_get_u64(idx+4U, 8, 0, false);
     if(entry_count<2U||entry_count>AF_INDEX_MAX||entry_count>UINT64_MAX/14U)goto fail;
     entry_bytes=entry_count*14U;
     if(entry_bytes!=v->size-index_offset-AF_INDEX_HEAD)goto fail;
     entries=(uint8_t *)xx_mem_alloc((size_t)entry_bytes);if(!entries||
        !af_rel(f->device,v,index_offset+AF_INDEX_HEAD,entries,(size_t)entry_bytes,pd))goto fail;
     crc=af_crc(UINT64_MAX,entries,(size_t)entry_bytes)^UINT64_MAX;
-    if(crc!=af_u64(idx+12U))goto fail;
-    for(i=0;i<entry_count;++i){const uint8_t *e=entries+i*14U;uint32_t type=af_u32(e);
-        if(af_u16(e+4U)!=1U)goto fail;
+    if(crc!=xx_data_get_u64(idx+12U, 8, 0, false))goto fail;
+    for(i=0;i<entry_count;++i){const uint8_t *e=entries+i*14U;uint32_t type=xx_data_get_u32(e, 4, 0, false);
+        if(xx_data_get_u16(e+4U, 2, 0, false)!=1U)goto fail;
         if(type==AF_DBLK)++nblocks;
-        else if(type==AF_DDT2){if(ddt_offset)goto fail;ddt_offset=af_u64(e+6U);}
+        else if(type==AF_DDT2){if(ddt_offset)goto fail;ddt_offset=xx_data_get_u64(e+6U, 8, 0, false);}
         else goto fail;
     }
     if(!nblocks||!ddt_offset||nblocks>AF_INDEX_MAX-1U)goto fail;
@@ -133,34 +131,34 @@ static af_view *af_parse(Abstractformat *f,xx_pd_struct *pd){
     v->block_count=nblocks;nblocks=0;
     if(ddt_offset<AF_HEADER||ddt_offset%align||ddt_offset>=index_offset||
        !af_rel(f->device,v,ddt_offset,ddt,sizeof(ddt),pd)||
-       af_u32(ddt)!=AF_DDT2||af_u16(ddt+4U)!=1U||af_u16(ddt+6U)!=0U||
-       ddt[8U]!=1U||ddt[9U]!=0U||af_u64(ddt+10U)||af_u32(ddt+18U)||
-       af_u32(ddt+30U)||af_u64(ddt+34U)||ddt[42U]!=v->alignment||
+       xx_data_get_u32(ddt, 4, 0, false)!=AF_DDT2||xx_data_get_u16(ddt+4U, 2, 0, false)!=1U||xx_data_get_u16(ddt+6U, 2, 0, false)!=0U||
+       ddt[8U]!=1U||ddt[9U]!=0U||xx_data_get_u64(ddt+10U, 8, 0, false)||xx_data_get_u32(ddt+18U, 4, 0, false)||
+       xx_data_get_u32(ddt+30U, 4, 0, false)||xx_data_get_u64(ddt+34U, 8, 0, false)||ddt[42U]!=v->alignment||
        ddt[43U]>16U||ddt[44U])goto fail;
-    v->sectors=af_u64(ddt+22U);v->data_shift=ddt[43U];v->ddt_length=af_u64(ddt+61U);
+    v->sectors=xx_data_get_u64(ddt+22U, 8, 0, false);v->data_shift=ddt[43U];v->ddt_length=xx_data_get_u64(ddt+61U, 8, 0, false);
     if(!v->sectors||v->sectors>AF_DDT_MAX/8U||
        v->sectors>UINT64_MAX/v->sector_size||
-       af_u64(ddt+45U)!=v->sectors||v->ddt_length!=v->sectors*8U||
-       af_u64(ddt+53U)!=v->ddt_length||af_u64(ddt+69U)!=af_u64(ddt+77U))goto fail;
+       xx_data_get_u64(ddt+45U, 8, 0, false)!=v->sectors||v->ddt_length!=v->sectors*8U||
+       xx_data_get_u64(ddt+53U, 8, 0, false)!=v->ddt_length||xx_data_get_u64(ddt+69U, 8, 0, false)!=xx_data_get_u64(ddt+77U, 8, 0, false))goto fail;
     v->media_size=v->sectors*v->sector_size;v->ddt_offset=ddt_offset;
     ddt_end=ddt_offset+AF_DDT_HEAD+v->ddt_length;
     if(ddt_end<ddt_offset||ddt_end>index_offset)goto fail;
     v->ddt=(uint8_t *)xx_mem_alloc((size_t)v->ddt_length);
     if(!v->ddt||!af_rel(f->device,v,ddt_offset+AF_DDT_HEAD,v->ddt,(size_t)v->ddt_length,pd))goto fail;
-    if((af_crc(UINT64_MAX,v->ddt,(size_t)v->ddt_length)^UINT64_MAX)!=af_u64(ddt+77U))goto fail;
+    if((af_crc(UINT64_MAX,v->ddt,(size_t)v->ddt_length)^UINT64_MAX)!=xx_data_get_u64(ddt+77U, 8, 0, false))goto fail;
     for(i=0;i<entry_count;++i){const uint8_t *e=entries+i*14U;uint64_t at;
         af_block *b;
-        if(af_u32(e)!=AF_DBLK)continue;
-        at=af_u64(e+6U);if(at<AF_HEADER||at%align||at>=index_offset||
-            !af_rel(f->device,v,at,bh,sizeof(bh),pd)||af_u32(bh)!=AF_DBLK||
-            af_u16(bh+4U)!=1U||af_u16(bh+6U)!=0U||
-            af_u32(bh+8U)!=v->sector_size||af_u32(bh+12U)!=af_u32(bh+16U)||
-            !af_u32(bh+16U)||af_u32(bh+16U)>AF_BLOCK_MAX||
-            af_u32(bh+16U)%v->sector_size||
-            af_u32(bh+16U)/v->sector_size>(UINT32_C(1)<<v->data_shift)||
-            af_u64(bh+20U)!=af_u64(bh+28U))goto fail;
-        b=&v->blocks[nblocks++];b->offset=at;b->length=af_u32(bh+16U);
-        b->end=at+AF_BLOCK_HEAD+b->length;b->crc=af_u64(bh+28U);
+        if(xx_data_get_u32(e, 4, 0, false)!=AF_DBLK)continue;
+        at=xx_data_get_u64(e+6U, 8, 0, false);if(at<AF_HEADER||at%align||at>=index_offset||
+            !af_rel(f->device,v,at,bh,sizeof(bh),pd)||xx_data_get_u32(bh, 4, 0, false)!=AF_DBLK||
+            xx_data_get_u16(bh+4U, 2, 0, false)!=1U||xx_data_get_u16(bh+6U, 2, 0, false)!=0U||
+            xx_data_get_u32(bh+8U, 4, 0, false)!=v->sector_size||xx_data_get_u32(bh+12U, 4, 0, false)!=xx_data_get_u32(bh+16U, 4, 0, false)||
+            !xx_data_get_u32(bh+16U, 4, 0, false)||xx_data_get_u32(bh+16U, 4, 0, false)>AF_BLOCK_MAX||
+            xx_data_get_u32(bh+16U, 4, 0, false)%v->sector_size||
+            xx_data_get_u32(bh+16U, 4, 0, false)/v->sector_size>(UINT32_C(1)<<v->data_shift)||
+            xx_data_get_u64(bh+20U, 8, 0, false)!=xx_data_get_u64(bh+28U, 8, 0, false))goto fail;
+        b=&v->blocks[nblocks++];b->offset=at;b->length=xx_data_get_u32(bh+16U, 4, 0, false);
+        b->end=at+AF_BLOCK_HEAD+b->length;b->crc=xx_data_get_u64(bh+28U, 8, 0, false);
         if(b->end<at||b->end>index_offset||
            !af_crc_range(f->device,v,at+AF_BLOCK_HEAD,b->length,b->crc,pd))goto fail;
     }
@@ -171,7 +169,7 @@ static af_view *af_parse(Abstractformat *f,xx_pd_struct *pd){
         if(b->offset<ddt_end&&b->end>ddt_offset)goto fail;
     }
     for(i=0;i<v->sectors;++i){
-        uint64_t encoded=af_u64(v->ddt+i*8U),address,ordinal;const af_block *b;
+        uint64_t encoded=xx_data_get_u64(v->ddt+i*8U, 8, 0, false),address,ordinal;const af_block *b;
         if(af_stop(pd)||(encoded>>60)!=1U)goto fail;
         encoded&=UINT64_C(0x0fffffffffffffff);
         ordinal=encoded&((UINT64_C(1)<<v->data_shift)-1U);
@@ -271,7 +269,7 @@ bool xx_aaruformat_extract_record_to_device(Abstractformat *f,xx_archive_record_
     for(i=0;i<v->block_count;++i){const af_block *b=&v->blocks[i];
         if(!af_crc_range(f->device,v,b->offset+AF_BLOCK_HEAD,b->length,b->crc,pd))return false;}
     for(i=0;i<v->sectors&&!af_stop(pd);++i){
-        uint64_t encoded=af_u64(v->ddt+i*8U)&UINT64_C(0x0fffffffffffffff);
+        uint64_t encoded=xx_data_get_u64(v->ddt+i*8U, 8, 0, false)&UINT64_C(0x0fffffffffffffff);
         uint64_t ordinal=encoded&((UINT64_C(1)<<v->data_shift)-1U);
         uint64_t address=(encoded>>v->data_shift)*align;const af_block *b=af_find(v,address);
         if(!b||ordinal>=b->length/v->sector_size||

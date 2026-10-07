@@ -11,6 +11,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include <stdio.h>
+#include "xxfclib/data/xx_data.h"
 
 #define XX_doom_wad_MAX_MEMBERS 1000000U
 typedef struct xx_doom_wad_member_s {
@@ -33,16 +34,6 @@ typedef struct xx_doom_wad_stream_s {
 } xx_doom_wad_stream;
 static void xx_doom_wad_vtable_destroy(Abstractformat *self);
 
-static inline uint16_t xx_doom_wad_u16(const uint8_t *p, bool be) {
-    return be ? (uint16_t)(((uint16_t)p[0] << 8) | p[1])
-              : (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
-}
-static inline uint32_t xx_doom_wad_u32(const uint8_t *p, bool be) {
-    return be ? ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
-                ((uint32_t)p[2] << 8) | p[3]
-              : p[0] | ((uint32_t)p[1] << 8) |
-                ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
 static bool xx_doom_wad_range_within(int64_t span, int64_t offset, int64_t size) {
     return offset >= 0 && size >= 0 && offset <= span && size <= span-offset;
 }
@@ -219,14 +210,14 @@ static xx_doom_wad_stream *xx_doom_wad_parse(Abstractformat *self,xx_pd_struct *
     uint8_t h[12],entry[16]; uint32_t count,i; int64_t table,bytes;
     if(!xx_doom_wad_read_rel(self,span,0,h,sizeof(h)) ||
        (xx_rt_memcmp(h,"IWAD",4U) && xx_rt_memcmp(h,"PWAD",4U))) goto fail;
-    count=xx_doom_wad_u32(h+4,false); table=xx_doom_wad_u32(h+8,false); bytes=(int64_t)count*16;
+    count=xx_data_get_u32(h+4, 4, 0, false); table=xx_data_get_u32(h+8, 4, 0, false); bytes=(int64_t)count*16;
     if(count>XX_doom_wad_MAX_MEMBERS || table<12 || !xx_doom_wad_range_within(span,table,bytes)) goto fail;
     s->archive_size=table+bytes;
     for(i=0;i<count;++i) {
         char name[9]; int64_t off,size;
         if((pd && xx_pd_is_stopped(pd)) || !xx_doom_wad_read_rel(self,span,table+(int64_t)i*16,entry,sizeof(entry)) ||
            (entry[8]&0x80U) || !xx_doom_wad_fixed_name(entry+8,8U,name)) goto fail;
-        off=xx_doom_wad_u32(entry,false); size=xx_doom_wad_u32(entry+4,false);
+        off=xx_data_get_u32(entry, 4, 0, false); size=xx_data_get_u32(entry+4, 4, 0, false);
         /* Marker lumps have no data and their offset has no meaning. */
         if(!size) off=0;
         if(!xx_doom_wad_range_within(span,off,size) || (size && off<12) ||

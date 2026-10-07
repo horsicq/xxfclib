@@ -14,8 +14,8 @@ static bool crx_zip_origin(Abstractformat *f,int64_t start,int64_t end,xx_pd_str
     uint8_t h[22]; int64_t at=end-22,low=end-start>65557 ? end-65557 : start;
     for(;at>=low;--at) {
         if(wg_stop(pd) || !pm_read(f,at,h,4)) return false;
-        if(xx_rt_memcmp(h,"PK\5\6",4) || !pm_read(f,at,h,22) || at+22+pm_le16(h+20)!=end) continue;
-        return (uint64_t)pm_le32(h+16)+pm_le32(h+12)==(uint64_t)(at-start);
+        if(xx_rt_memcmp(h,"PK\5\6",4) || !pm_read(f,at,h,22) || at+22+xx_data_get_u16(h+20, 2, 0, false)!=end) continue;
+        return (uint64_t)xx_data_get_u32(h+16, 4, 0, false)+xx_data_get_u32(h+12, 4, 0, false)==(uint64_t)(at-start);
     }
     return false;
 }
@@ -56,8 +56,8 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[12],*header=NULL; uint32_t size; int64_t at,length; bool ok=false;
     xx_io_device *view=NULL; xx_zip *zip=NULL; xx_io_volume volume; xx_archive_record_state *records=NULL;
     const xx_var *budget=xx_format_resolve_extra_parameter(f,NULL,XX_META_ID_OPT_MEMORY_LIMIT);
-    if(!pm_read(f,0,h,12) || xx_rt_memcmp(h,"Cr24",4) || pm_le32(h+4)!=3) return false;
-    size=pm_le32(h+8); at=12+(int64_t)size;
+    if(!pm_read(f,0,h,12) || xx_rt_memcmp(h,"Cr24",4) || xx_data_get_u32(h+4, 4, 0, false)!=3) return false;
+    size=xx_data_get_u32(h+8, 4, 0, false); at=12+(int64_t)size;
     if(!size || size>1024U*1024U || at>pm_available(f) || (budget && size>xx_var_get_u64(budget))) return false;
     header=(uint8_t *)xx_mem_alloc(size); if(!header || !pm_read(f,12,header,size) || !crx_proto(header,size,0,pd)) goto done;
     if(!pm_read(f,at,h,4) || xx_rt_memcmp(h,"PK\3\4",4)) goto done;

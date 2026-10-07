@@ -21,7 +21,7 @@ static const xx_format_search_anchor k_anchors[] = {
     { k_anchor0, sizeof(k_anchor0), 0U },
 };
 
-static const xx_file_type_t k_types[] = { XX_FILE_TYPE_PE32, XX_FILE_TYPE_PE64 };
+static const xx_file_type_t k_types[] = { XX_FILE_TYPE_PE32, XX_FILE_TYPE_PE64, XX_FILE_TYPE_DOTNET };
 
 static Abstractformat *xx_pe_search_open(xx_io_device *window) {
     xx_pe *reader = xx_pe_create(window, 0);
