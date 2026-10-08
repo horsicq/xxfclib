@@ -1,4 +1,11 @@
 /* SPDX-License-Identifier: MIT. QUAD 1.12 RAM-only retained-codec adapter. */
+/* Request POSIX before any header; a strict -std=c11 hides it otherwise. */
+#if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)
+#define _POSIX_C_SOURCE 200809L
+#endif
+#if defined(__APPLE__) && !defined(_DARWIN_C_SOURCE)
+#define _DARWIN_C_SOURCE
+#endif
 #include "xxfclib/formats/quad/xx_quad.h"
 #include "../xx_legacy_archive.h"
 #include "../xx_archive_codec_pipe.h"

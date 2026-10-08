@@ -9,4 +9,15 @@ XXFC_API void xx_hxc_mfm_destroy(xx_hxc_mfm *);
 XXFC_API void xx_hxc_mfm_free(xx_hxc_mfm *);
 XXFC_API bool xx_hxc_mfm_check_is_valid(Abstractformat *,xx_pd_struct *);
 XXFC_API bool xx_hxc_mfm_handle_base_info(Abstractformat *,xx_pd_struct *);
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#ifdef __cplusplus
+extern "C" {
+#endif
+XXFC_API bool xx_hxc_mfm_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API int64_t xx_hxc_mfm_size(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API Abstractextractor *xx_hxc_mfm_get_abstract_extractor(void);
+#ifdef __cplusplus
+}
+#endif
+/* END GENERATED ABSTRACT EXTRACTOR */
 #endif

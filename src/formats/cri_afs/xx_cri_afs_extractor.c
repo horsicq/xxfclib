@@ -63,3 +63,8 @@ xx_format_extractor xx_cri_afs_extractor = {
     xx_cri_afs_format_search_find_next,
     xx_cri_afs_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(cri_afs, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

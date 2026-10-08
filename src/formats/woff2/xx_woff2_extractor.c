@@ -16,3 +16,8 @@ static const xx_format_search_info *current(xx_format_extractor *e,xx_format_sea
 static bool next(xx_format_extractor *e,xx_format_search_state *s,xx_pd_struct *p) { (void)e; return xx_format_search_find_next(s,p); }
 static void release(xx_format_extractor *e,xx_format_search_state *s) { (void)e; xx_format_search_free(s); }
 xx_format_extractor xx_woff2_extractor={create,current,next,release};
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(woff2, desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

@@ -66,6 +66,18 @@ typedef struct xx_format_search_desc {
 /** Deepest anchor the engine accepts (offset + size), in bytes. */
 #define XX_FORMAT_SEARCH_MAX_LOOKAHEAD (1024U * 1024U)
 
+/** Validate and classify one absolute offset without scanning for candidates.
+ * Preserves the device cursor; returns false if it cannot be restored. */
+bool xx_format_search_fast_detect(const xx_format_search_desc *desc,
+                                  xx_io_device *device, int64_t base_address,
+                                  bool is_mapped);
+
+/** Measure a validated format at an absolute offset, or return -1 when the
+ * extent is unknown, invalid, or outside the device. Preserves its cursor. */
+int64_t xx_format_search_size(const xx_format_search_desc *desc,
+                              xx_io_device *device, int64_t base_address,
+                              bool is_mapped);
+
 xx_format_search_state *xx_format_search_create(const xx_format_search_desc *desc,
                                                 xx_io_device *device,
                                                 const xx_list_s *options,

@@ -70,3 +70,8 @@ xx_format_extractor xx_qcow1_extractor = {
     xx_qcow1_format_search_find_next,
     xx_qcow1_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(qcow1, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

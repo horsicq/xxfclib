@@ -2,6 +2,7 @@
 /* SPDX-License-Identifier: MIT */
 #include "xxfclib/formats/die_music/xx_die_music.h"
 #include "../../xx_format_extractor_engine.h"
+#include "../../xx_format_abstract_extractor_adapter.h"
 
 const xx_die_music_descriptor xx_die_music_tammelin_jeskolabuzz_bmx_descriptor = {
     "TAMMELIN_JESKOLABUZZ_BMX",
@@ -76,3 +77,6 @@ xx_format_extractor xx_die_music_tammelin_jeskolabuzz_bmx_extractor = {
     xx_die_music_tammelin_jeskolabuzz_bmx_next,
     xx_die_music_tammelin_jeskolabuzz_bmx_free_search
 };
+
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(
+    die_music_tammelin_jeskolabuzz_bmx, xx_die_music_tammelin_jeskolabuzz_bmx_search_desc)

@@ -53,3 +53,8 @@ static void ani_free_search(xx_format_extractor *self,
 xx_format_extractor xx_windows_ani_extractor = {
     ani_create_search, ani_current_search, ani_next_search, ani_free_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(windows_ani, ani_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

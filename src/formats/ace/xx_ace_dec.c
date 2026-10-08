@@ -249,7 +249,7 @@ static void ace_sound_adjust(ace_channel *c, int32_t sample) {
 static int ace_sound_run(ace_state *s, ace_sound *snd) {
     size_t want = (s->output_size - s->output_pos) & ~(size_t)3U, i;
     for (i = 0; i < want; ++i) {
-        unsigned ch = ace_sound_use[snd->variant][i & 3U], value;
+        unsigned ch = ace_sound_use[snd->variant][i & 3U], value = 0;
         ace_channel *c = &snd->channel[ch];
         int got = ace_sound_get(s, snd, ch, &value);
         uint8_t sample;

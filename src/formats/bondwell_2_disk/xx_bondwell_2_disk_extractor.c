@@ -50,3 +50,8 @@ xx_format_extractor xx_bondwell_2_disk_extractor = {
     xx_bondwell_2_disk_search_next, xx_bondwell_2_disk_search_free
 };
 
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(bondwell_2_disk, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

@@ -66,3 +66,8 @@ xx_format_extractor xx_xna_xnb_extractor = {
     xx_xna_xnb_format_search_find_next,
     xx_xna_xnb_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(xna_xnb, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

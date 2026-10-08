@@ -71,3 +71,8 @@ xx_format_extractor xx_lspack10_extractor = {
     xx_lspack10_format_search_find_next,
     xx_lspack10_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(lspack10, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

@@ -2,6 +2,7 @@
 /* SPDX-License-Identifier: MIT */
 #include "xxfclib/formats/die_music/xx_die_music.h"
 #include "../../xx_format_extractor_engine.h"
+#include "../../xx_format_abstract_extractor_adapter.h"
 
 const xx_die_music_descriptor xx_die_music_winterberg_speedya1system_descriptor = {
     "WINTERBERG_SPEEDYA1SYSTEM",
@@ -76,3 +77,6 @@ xx_format_extractor xx_die_music_winterberg_speedya1system_extractor = {
     xx_die_music_winterberg_speedya1system_next,
     xx_die_music_winterberg_speedya1system_free_search
 };
+
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(
+    die_music_winterberg_speedya1system, xx_die_music_winterberg_speedya1system_search_desc)

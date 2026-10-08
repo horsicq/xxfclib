@@ -47,3 +47,8 @@ static void fatx_search_free(xx_format_extractor *self,
 xx_format_extractor xx_fatx_extractor = {
     fatx_search_create, fatx_search_current, fatx_search_next, fatx_search_free
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(fatx, fatx_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

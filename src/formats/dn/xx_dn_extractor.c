@@ -48,3 +48,8 @@ static void dn_free_search(xx_format_extractor *self,
 xx_format_extractor xx_dn_extractor = {
     dn_create_search, dn_current, dn_find_next, dn_free_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(dn, dn_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

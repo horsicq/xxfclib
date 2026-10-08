@@ -70,3 +70,8 @@ xx_format_extractor xx_xamarin_compressed_assembly_extractor = {
     xx_xamarin_compressed_assembly_format_search_find_next,
     xx_xamarin_compressed_assembly_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(xamarin_compressed_assembly, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

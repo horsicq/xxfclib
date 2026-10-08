@@ -49,3 +49,8 @@ static void epf_free_search(xx_format_extractor *self,
 xx_format_extractor xx_epf_extractor = {
     epf_create_search, epf_current, epf_find_next, epf_free_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(epf, epf_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

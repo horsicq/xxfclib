@@ -47,4 +47,15 @@ XXFC_API bool xx_mwave_unpack_to_device(xx_mwave *archive,
 XXFC_API uint64_t xx_mwave_get_uncompressed_size(const xx_mwave *archive);
 XXFC_API int64_t xx_mwave_get_stream_end(const xx_mwave *archive);
 
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#ifdef __cplusplus
+extern "C" {
+#endif
+XXFC_API bool xx_mwave_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API int64_t xx_mwave_size(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API Abstractextractor *xx_mwave_get_abstract_extractor(void);
+#ifdef __cplusplus
+}
+#endif
+/* END GENERATED ABSTRACT EXTRACTOR */
 #endif

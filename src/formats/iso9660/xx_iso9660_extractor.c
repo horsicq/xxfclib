@@ -73,3 +73,8 @@ xx_format_extractor xx_iso9660_extractor = {
     xx_iso9660_format_search_find_next,
     xx_iso9660_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(iso9660, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

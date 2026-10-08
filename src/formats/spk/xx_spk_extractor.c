@@ -98,3 +98,8 @@ xx_format_extractor xx_spk_extractor = {
     xx_spk_format_search_find_next,
     xx_spk_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(spk, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

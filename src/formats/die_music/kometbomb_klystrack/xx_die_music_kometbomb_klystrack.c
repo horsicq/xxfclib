@@ -2,6 +2,7 @@
 /* SPDX-License-Identifier: MIT */
 #include "xxfclib/formats/die_music/xx_die_music.h"
 #include "../../xx_format_extractor_engine.h"
+#include "../../xx_format_abstract_extractor_adapter.h"
 
 const xx_die_music_descriptor xx_die_music_kometbomb_klystrack_descriptor = {
     "KOMETBOMB_KLYSTRACK",
@@ -76,3 +77,6 @@ xx_format_extractor xx_die_music_kometbomb_klystrack_extractor = {
     xx_die_music_kometbomb_klystrack_next,
     xx_die_music_kometbomb_klystrack_free_search
 };
+
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(
+    die_music_kometbomb_klystrack, xx_die_music_kometbomb_klystrack_search_desc)

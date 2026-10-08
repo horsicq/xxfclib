@@ -41,6 +41,105 @@ static bool xx_format_search_type_matches(const xx_format_search_desc *desc,
     return false;
 }
 
+/* Inspect one candidate on a view whose offset zero is the format start.
+ * The caller decides whether it needs the measured extent. This helper does
+ * not preserve the parent device cursor; direct callers restore it below. */
+static bool xx_format_search_probe(const xx_format_search_desc *desc,
+                                   xx_io_device *device, int64_t start,
+                                   int64_t total, bool is_mapped,
+                                   bool measure_size, xx_pd_struct *pd,
+                                   xx_file_type_t *type_out,
+                                   int64_t *size_out) {
+    xx_io_volume volume;
+    xx_io_device *window;
+    Abstractformat *format;
+    xx_file_type_t type = XX_FILE_TYPE_UNKNOWN;
+    int64_t size = -1;
+
+    if (!desc || !desc->types || !desc->type_count || !desc->open ||
+        !desc->close || !device || start < 0 || start >= total)
+        return false;
+    volume.device = device;
+    volume.offset = start;
+    volume.size = total - start;
+    window = xx_io_multivolume_open(&volume, 1U, false);
+    if (!window) return false;
+
+    format = desc->open(window);
+    if (!format) {
+        xx_io_close(window);
+        return false;
+    }
+    xx_format_set_mapped(format, is_mapped);
+    if (!xx_format_is_valid(format, pd)) {
+        desc->close(format);
+        xx_io_close(window);
+        return false;
+    }
+    if (measure_size && xx_format_handle_base_info(format, pd)) {
+        int64_t measured = xx_format_get_format_size(format, pd);
+        /* A size larger than the remaining view is not a usable extent. */
+        if (measured > 0 && measured <= volume.size) size = measured;
+    } else if (desc->reader_classifies && !measure_size) {
+        /* A classifying reader may assign its final type during base info. */
+        (void)xx_format_handle_base_info(format, pd);
+    }
+    if (desc->reader_classifies) type = format->file_type;
+    desc->close(format);
+    if (!desc->reader_classifies)
+        type = xx_format_get_file_type_device(window);
+    xx_io_close(window);
+    if (!xx_format_search_type_matches(desc, type)) return false;
+
+    if (type_out) *type_out = type;
+    if (size_out) *size_out = size;
+    return true;
+}
+
+/* The borrowed view and the detector may seek the parent. A direct callback
+ * succeeds only when its caller's cursor can be restored. */
+static bool xx_format_search_probe_direct(const xx_format_search_desc *desc,
+                                          xx_io_device *device,
+                                          int64_t base_address,
+                                          bool is_mapped,
+                                          bool measure_size,
+                                          int64_t *size_out) {
+    int64_t saved_position;
+    int64_t total;
+    int64_t size = -1;
+    bool matched = false;
+
+    if (size_out) *size_out = -1;
+    if (!device) return false;
+    saved_position = xx_io_tell(device);
+    if (saved_position < 0) return false;
+    total = xx_io_total_size(device);
+    if (base_address >= 0 && base_address < total)
+        matched = xx_format_search_probe(desc, device, base_address, total,
+                                         is_mapped, measure_size, NULL, NULL,
+                                         &size);
+    if (xx_io_seek64(device, saved_position, SEEK_SET) != 0) return false;
+    if (matched && size_out) *size_out = size;
+    return matched;
+}
+
+bool xx_format_search_fast_detect(const xx_format_search_desc *desc,
+                                  xx_io_device *device, int64_t base_address,
+                                  bool is_mapped) {
+    return xx_format_search_probe_direct(desc, device, base_address,
+                                         is_mapped, false, NULL);
+}
+
+int64_t xx_format_search_size(const xx_format_search_desc *desc,
+                              xx_io_device *device, int64_t base_address,
+                              bool is_mapped) {
+    int64_t size;
+    if (!xx_format_search_probe_direct(desc, device, base_address,
+                                        is_mapped, true, &size))
+        return -1;
+    return size;
+}
+
 /* Test one candidate start. On a find, sets the current info and moves the
  * scan past it.
  *
@@ -52,42 +151,12 @@ static bool xx_format_search_type_matches(const xx_format_search_desc *desc,
  * the format's types (so it is what detection would call it). */
 static bool xx_format_search_test(xx_format_search_state *state, int64_t start,
                                   xx_pd_struct *pd) {
-    xx_io_volume volume;
-    xx_io_device *window;
     xx_file_type_t type;
-    Abstractformat *format;
     int64_t size = -1;
 
-    if (start < 0 || start >= state->total) return false;
-    volume.device = state->device;
-    volume.offset = start;
-    volume.size = state->total - start;
-    window = xx_io_multivolume_open(&volume, 1U, false);
-    if (!window) return false;
-
-    format = state->desc->open(window);
-    if (!format) {
-        xx_io_close(window);
+    if (!xx_format_search_probe(state->desc, state->device, start,
+                                state->total, false, true, pd, &type, &size))
         return false;
-    }
-    if (!xx_format_is_valid(format, pd)) {
-        state->desc->close(format);
-        xx_io_close(window);
-        return false;
-    }
-    if (xx_format_handle_base_info(format, pd)) {
-        int64_t measured = xx_format_get_format_size(format, pd);
-        /* A size the view cannot hold is not a size. */
-        if (measured > 0 && measured <= volume.size) size = measured;
-    }
-    type = state->desc->reader_classifies ? format->file_type :
-           XX_FILE_TYPE_UNKNOWN;
-    state->desc->close(format);
-
-    if (!state->desc->reader_classifies)
-        type = xx_format_get_file_type_device(window);
-    xx_io_close(window);
-    if (!xx_format_search_type_matches(state->desc, type)) return false;
 
     state->current.file_type = type;
     state->current.offset = start;
@@ -291,4 +360,61 @@ xx_format_extractor *xx_format_extractor_at(size_t index, xx_file_type_t *type) 
     if (index >= xx_format_extractor_count()) return NULL;
     if (type) *type = g_xx_format_extractors[index].type;
     return g_xx_format_extractors[index].extractor;
+}
+
+/* Every registered legacy extractor has one Abstractextractor adapter.  Use
+ * the legacy pointer as the key: entries such as PE32/PE64 and ZIP/ZIP64 that
+ * share one search implementation also share one abstract adapter. */
+#include "xx_format_abstract_extractor_list.inc"
+#include "xx_format_reader_only_decls.inc"
+
+static const struct {
+    xx_file_type_t type;
+    xx_abstract_extractor_getter get;
+} g_xx_reader_only_abstract_extractors[] = {
+#include "xx_format_reader_only_rows.inc"
+};
+
+static Abstractextractor *xx_abstract_extractor_from_legacy(
+    const xx_format_extractor *legacy) {
+    size_t i;
+    if (!legacy) return NULL;
+    for (i = 0; i < sizeof(g_xx_abstract_extractor_getters) /
+                        sizeof(g_xx_abstract_extractor_getters[0]); ++i) {
+        if (g_xx_abstract_extractor_getters[i].legacy == legacy)
+            return g_xx_abstract_extractor_getters[i].get();
+    }
+    return NULL;
+}
+
+Abstractextractor *xx_abstract_extractor_get(xx_file_type_t type) {
+    xx_format_extractor *legacy = xx_format_extractor_get(type);
+    size_t i;
+    if (legacy) return xx_abstract_extractor_from_legacy(legacy);
+    for (i = 0; i < sizeof(g_xx_reader_only_abstract_extractors) /
+                        sizeof(g_xx_reader_only_abstract_extractors[0]); ++i) {
+        if (g_xx_reader_only_abstract_extractors[i].type == type)
+            return g_xx_reader_only_abstract_extractors[i].get();
+    }
+    return NULL;
+}
+
+size_t xx_abstract_extractor_count(void) {
+    return xx_format_extractor_count() +
+           sizeof(g_xx_reader_only_abstract_extractors) /
+               sizeof(g_xx_reader_only_abstract_extractors[0]);
+}
+
+Abstractextractor *xx_abstract_extractor_at(size_t index,
+                                            xx_file_type_t *type) {
+    size_t legacy_count = xx_format_extractor_count();
+    if (index < legacy_count)
+        return xx_abstract_extractor_from_legacy(
+            xx_format_extractor_at(index, type));
+    index -= legacy_count;
+    if (index >= sizeof(g_xx_reader_only_abstract_extractors) /
+                     sizeof(g_xx_reader_only_abstract_extractors[0]))
+        return NULL;
+    if (type) *type = g_xx_reader_only_abstract_extractors[index].type;
+    return g_xx_reader_only_abstract_extractors[index].get();
 }

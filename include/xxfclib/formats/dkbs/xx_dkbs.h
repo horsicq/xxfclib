@@ -144,4 +144,15 @@ static inline bool XDkbs_is_valid(xx_dkbs *dkbs, xx_pd_struct *pd) {
 }
 #endif
 
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#ifdef __cplusplus
+extern "C" {
+#endif
+XXFC_API bool xx_dkbs_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API int64_t xx_dkbs_size(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API Abstractextractor *xx_dkbs_get_abstract_extractor(void);
+#ifdef __cplusplus
+}
+#endif
+/* END GENERATED ABSTRACT EXTRACTOR */
 #endif /* XXFCLIB_FORMAT_DKBS_H */

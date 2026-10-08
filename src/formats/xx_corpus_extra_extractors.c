@@ -6,6 +6,7 @@
  * search engine reports a hit.
  */
 #include "xx_format_extractor_engine.h"
+#include "xx_format_abstract_extractor_adapter.h"
 #include "xxfclib/formats/fss/xx_fss.h"
 #include "xxfclib/formats/mlb_ft/xx_mlb_ft.h"
 #include "xxfclib/formats/sfx_localzip/xx_sfx_localzip.h"
@@ -47,26 +48,27 @@
     }                                                                        \
     xx_format_extractor xx_##tag##_extractor = {                            \
         tag##_create_search, tag##_current, tag##_next, tag##_free_search   \
-    }
+    };                                                                       \
+    XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(tag, tag##_search)
 
 static const uint8_t fss_magic[] = {'S', 'S', 'B', 'O', 'B', 1};
 static const xx_format_search_anchor fss_anchors[] = {
     { fss_magic, sizeof(fss_magic), 0U }
 };
-EXTRA_EXTRACTOR(fss, XX_FILE_TYPE_FSS, fss_anchors);
+EXTRA_EXTRACTOR(fss, XX_FILE_TYPE_FSS, fss_anchors)
 
 static const uint8_t mlb_ft_version[] = {6, 0};
 static const xx_format_search_anchor mlb_ft_anchors[] = {
     { mlb_ft_version, sizeof(mlb_ft_version), 2U }
 };
-EXTRA_EXTRACTOR(mlb_ft, XX_FILE_TYPE_MLB_FT, mlb_ft_anchors);
+EXTRA_EXTRACTOR(mlb_ft, XX_FILE_TYPE_MLB_FT, mlb_ft_anchors)
 
 static const uint8_t sfx_localzip_mz[] = {'M', 'Z'};
 static const xx_format_search_anchor sfx_localzip_anchors[] = {
     { sfx_localzip_mz, sizeof(sfx_localzip_mz), 0U }
 };
 EXTRA_EXTRACTOR(sfx_localzip, XX_FILE_TYPE_SFX_LOCALZIP,
-                sfx_localzip_anchors);
+                sfx_localzip_anchors)
 
 static const uint8_t thebat_msb_header[] = {
     0x40, 0, 0, 0, 0x40, 0, 0, 0, 0xff, 0xff, 0xff, 0xff
@@ -75,6 +77,6 @@ static const xx_format_search_anchor thebat_msb_anchors[] = {
     { thebat_msb_header, sizeof(thebat_msb_header), 0U }
 };
 EXTRA_EXTRACTOR(thebat_msb, XX_FILE_TYPE_THEBAT_MSB,
-                thebat_msb_anchors);
+                thebat_msb_anchors)
 
 #undef EXTRA_EXTRACTOR

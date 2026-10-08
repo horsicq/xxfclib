@@ -65,3 +65,8 @@ xx_format_extractor xx_unifont_hex_extractor = {
     xx_unifont_hex_format_search_find_next,
     xx_unifont_hex_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(unifont_hex, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

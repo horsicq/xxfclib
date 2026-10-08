@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT. Original bounded Amiga archive decoder from documented wire facts. */
 #include "xxfclib/formats/lhsfx/xx_lhsfx.h"
 #include "../xx_archive_wrappers.h"
+#include <string.h>
 static bool wrap_parse(Abstractformat *f,pm_stream *s,ac_blob *b){static const uint32_t words[5]={0x43f90000,0x00000318,0x02ec2c79,0x00000004,0x4eaefdd8};uint32_t at=0x918;
  if(!aw_stub(b,words,false)) {return false; } while(ac_span(b,at,4)){uint32_t size,packed;uint8_t *out;char name[96];if(!ac_poll(b))return false;
   if(xx_data_get_u32(b->p+at, 4, 0, true)==UINT32_MAX) {return s->count&&aw_tail(b,at+4); } at+=4;if(!ac_span(b,at,60))return false;size=xx_data_get_u32(b->p+at, 4, 0, true);packed=xx_data_get_u32(b->p+at+4, 4, 0, true);

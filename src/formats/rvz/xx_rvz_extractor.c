@@ -44,3 +44,8 @@ static void rvz_free_search(xx_format_extractor *self,
 xx_format_extractor xx_rvz_extractor = {
     rvz_create_search, rvz_current_search, rvz_next_search, rvz_free_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(rvz, rvz_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

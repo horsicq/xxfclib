@@ -100,4 +100,15 @@ XXFC_API void xx_arni_installer_container_free_archive_records_reading(
 }
 #endif
 
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#ifdef __cplusplus
+extern "C" {
+#endif
+XXFC_API bool xx_arni_installer_container_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API int64_t xx_arni_installer_container_size(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API Abstractextractor *xx_arni_installer_container_get_abstract_extractor(void);
+#ifdef __cplusplus
+}
+#endif
+/* END GENERATED ABSTRACT EXTRACTOR */
 #endif /* XXFCLIB_FORMAT_ARNI_INSTALLER_CONTAINER_H */

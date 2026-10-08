@@ -2,6 +2,7 @@
 /* SPDX-License-Identifier: MIT */
 #include "xxfclib/formats/die_music/xx_die_music.h"
 #include "../../xx_format_extractor_engine.h"
+#include "../../xx_format_abstract_extractor_adapter.h"
 
 const xx_die_music_descriptor xx_die_music_athaudia_athtune_descriptor = {
     "ATHAUDIA_ATHTUNE",
@@ -76,3 +77,6 @@ xx_format_extractor xx_die_music_athaudia_athtune_extractor = {
     xx_die_music_athaudia_athtune_next,
     xx_die_music_athaudia_athtune_free_search
 };
+
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(
+    die_music_athaudia_athtune, xx_die_music_athaudia_athtune_search_desc)

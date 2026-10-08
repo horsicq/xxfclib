@@ -66,3 +66,8 @@ xx_format_extractor xx_shrinkwrap_extractor = {
     xx_shrinkwrap_format_search_find_next,
     xx_shrinkwrap_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(shrinkwrap, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

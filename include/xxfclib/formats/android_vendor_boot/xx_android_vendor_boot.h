@@ -18,4 +18,15 @@ XXFC_API bool xx_android_vendor_boot_handle_base_info(Abstractformat *,xx_pd_str
 #ifdef __cplusplus
 }
 #endif
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#ifdef __cplusplus
+extern "C" {
+#endif
+XXFC_API bool xx_android_vendor_boot_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API int64_t xx_android_vendor_boot_size(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API Abstractextractor *xx_android_vendor_boot_get_abstract_extractor(void);
+#ifdef __cplusplus
+}
+#endif
+/* END GENERATED ABSTRACT EXTRACTOR */
 #endif

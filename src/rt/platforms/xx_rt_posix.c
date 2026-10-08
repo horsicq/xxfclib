@@ -13,16 +13,18 @@
 
 #if !defined(_WIN32)
 
-#include "xxfclib/rt/xx_rt.h"
-#include "xx_rt_platform.h"
-#include "../../io/xx_io_policy.h"
-
+/* Feature-test macros must precede every header, the project's own too:
+ * they pull in libc, whose <features.h> reads these macros only once. */
 #if !defined(_POSIX_C_SOURCE)
 #define _POSIX_C_SOURCE 200809L
 #endif
 #if defined(__APPLE__) && !defined(_DARWIN_C_SOURCE)
 #define _DARWIN_C_SOURCE 1
 #endif
+
+#include "xxfclib/rt/xx_rt.h"
+#include "xx_rt_platform.h"
+#include "../../io/xx_io_policy.h"
 
 /* Hosted build: the standard headers back the stubs. */
 #include <stdlib.h>

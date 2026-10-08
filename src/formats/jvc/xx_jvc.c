@@ -206,7 +206,7 @@ static char jvc_safe_char(uint8_t c) {
 static size_t jvc_component(const char *raw, size_t length, char *out) {
     size_t index, at = 0U;
     bool meaningful = false;
-    char tmp[64];
+    char tmp[64] = {0};
     if (length == 0U) {
         out[0] = '_';
         out[1] = 0;

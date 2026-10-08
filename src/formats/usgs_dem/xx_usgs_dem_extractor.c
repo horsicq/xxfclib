@@ -65,3 +65,8 @@ xx_format_extractor xx_usgs_dem_extractor = {
     xx_usgs_dem_format_search_find_next,
     xx_usgs_dem_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(usgs_dem, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

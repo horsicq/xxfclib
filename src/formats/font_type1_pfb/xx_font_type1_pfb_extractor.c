@@ -66,3 +66,8 @@ xx_format_extractor xx_font_type1_pfb_extractor = {
     xx_font_type1_pfb_format_search_find_next,
     xx_font_type1_pfb_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(font_type1_pfb, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

@@ -66,3 +66,8 @@ xx_format_extractor xx_qubicle_qb_extractor = {
     xx_qubicle_qb_format_search_find_next,
     xx_qubicle_qb_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(qubicle_qb, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

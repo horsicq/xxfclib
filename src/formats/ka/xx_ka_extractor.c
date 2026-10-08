@@ -48,3 +48,8 @@ static void ka_free_search(xx_format_extractor *self,
 xx_format_extractor xx_ka_extractor = {
     ka_create_search, ka_current, ka_find_next, ka_free_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(ka, ka_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

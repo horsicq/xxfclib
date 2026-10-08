@@ -66,3 +66,8 @@ xx_format_extractor xx_tex_vf_extractor = {
     xx_tex_vf_format_search_find_next,
     xx_tex_vf_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(tex_vf, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

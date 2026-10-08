@@ -76,4 +76,15 @@ XXFC_API void xx_xamarin_compressed_assembly_free_archive_records_reading(
 }
 #endif
 
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#ifdef __cplusplus
+extern "C" {
+#endif
+XXFC_API bool xx_xamarin_compressed_assembly_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API int64_t xx_xamarin_compressed_assembly_size(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API Abstractextractor *xx_xamarin_compressed_assembly_get_abstract_extractor(void);
+#ifdef __cplusplus
+}
+#endif
+/* END GENERATED ABSTRACT EXTRACTOR */
 #endif /* XXFCLIB_FORMAT_XAMARIN_COMPRESSED_ASSEMBLY_H */

@@ -2,6 +2,7 @@
 /* SPDX-License-Identifier: MIT */
 #include "xxfclib/formats/die_music/xx_die_music.h"
 #include "../../xx_format_extractor_engine.h"
+#include "../../xx_format_abstract_extractor_adapter.h"
 
 const xx_die_music_descriptor xx_die_music_dlusion_xtracker_dmf_descriptor = {
     "DLUSION_XTRACKER_DMF",
@@ -76,3 +77,6 @@ xx_format_extractor xx_die_music_dlusion_xtracker_dmf_extractor = {
     xx_die_music_dlusion_xtracker_dmf_next,
     xx_die_music_dlusion_xtracker_dmf_free_search
 };
+
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(
+    die_music_dlusion_xtracker_dmf, xx_die_music_dlusion_xtracker_dmf_search_desc)

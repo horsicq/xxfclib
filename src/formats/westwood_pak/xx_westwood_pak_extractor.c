@@ -24,3 +24,8 @@ static void free_search(xx_format_extractor *x,xx_format_search_state *s) {
     (void)x; xx_format_search_free(s);
 }
 xx_format_extractor xx_westwood_pak_extractor={create_search,current,next,free_search};
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(westwood_pak, desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

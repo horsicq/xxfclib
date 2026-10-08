@@ -66,3 +66,8 @@ xx_format_extractor xx_ej_technologies_install_extractor = {
     xx_ej_technologies_install_format_search_find_next,
     xx_ej_technologies_install_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(ej_technologies_install, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

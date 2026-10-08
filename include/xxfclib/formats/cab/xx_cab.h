@@ -24,4 +24,15 @@ XXFC_API const xx_archive_record *xx_cab_get_current_archive_record(Abstractform
 XXFC_API bool xx_cab_unpack_current_archive_record(Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
 XXFC_API bool xx_cab_archive_record_move_to_next(Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
 XXFC_API void xx_cab_free_archive_records_reading(Abstractformat *, xx_archive_record_state *);
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#ifdef __cplusplus
+extern "C" {
+#endif
+XXFC_API bool xx_cab_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API int64_t xx_cab_size(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API Abstractextractor *xx_cab_get_abstract_extractor(void);
+#ifdef __cplusplus
+}
+#endif
+/* END GENERATED ABSTRACT EXTRACTOR */
 #endif

@@ -1,6 +1,13 @@
 /* SPDX-License-Identifier: MIT. Original, bounded pipe client.
  * The separately built GPL helper is an independent executable, never linked.
  */
+/* Request POSIX before any header; a strict -std=c11 hides it otherwise. */
+#if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)
+#define _POSIX_C_SOURCE 200809L
+#endif
+#if defined(__APPLE__) && !defined(_DARWIN_C_SOURCE)
+#define _DARWIN_C_SOURCE
+#endif
 #include "xxfclib/formats/grub_backend/xx_grub_backend.h"
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/rt/xx_rt.h"

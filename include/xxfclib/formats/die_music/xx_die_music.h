@@ -31,6 +31,8 @@ XXFC_API void xx_die_music_reader_free(void *reader);
 /* DIE's original ordered rule is evaluated once for an unknown file. */
 XXFC_API xx_file_type_t xx_die_music_detect_device(xx_io_device *device);
 
+#include "xxfclib/formats/die_music/xx_die_music_abstract_extractor_decls.inc"
+
 #ifdef __cplusplus
 }
 #endif

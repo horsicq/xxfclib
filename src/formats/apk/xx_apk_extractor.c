@@ -73,3 +73,8 @@ xx_format_extractor xx_apk_extractor = {
     xx_apk_format_search_find_next,
     xx_apk_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(apk, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

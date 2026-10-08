@@ -2,6 +2,7 @@
 /* SPDX-License-Identifier: MIT */
 #include "xxfclib/formats/die_music/xx_die_music.h"
 #include "../../xx_format_extractor_engine.h"
+#include "../../xx_format_abstract_extractor_adapter.h"
 
 const xx_die_music_descriptor xx_die_music_targhan_starkos_sks_descriptor = {
     "TARGHAN_STARKOS_SKS",
@@ -76,3 +77,6 @@ xx_format_extractor xx_die_music_targhan_starkos_sks_extractor = {
     xx_die_music_targhan_starkos_sks_next,
     xx_die_music_targhan_starkos_sks_free_search
 };
+
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(
+    die_music_targhan_starkos_sks, xx_die_music_targhan_starkos_sks_search_desc)

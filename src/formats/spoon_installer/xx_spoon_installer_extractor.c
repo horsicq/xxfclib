@@ -70,3 +70,9 @@ xx_format_extractor xx_spoon_installer_extractor = {
     xx_spoon_installer_format_search_find_next,
     xx_spoon_installer_free_format_search
 };
+
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(spoon_installer, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

@@ -480,7 +480,7 @@ bool xx_jpeg_analyze(xx_jpeg *jpeg, xx_pd_struct *pd) {
         (void)xx_rt_snprintf(info->version, sizeof(info->version), "%u.%u", (unsigned)head[11], (unsigned)head[12]);
     if (!xx_hash_init(&hash, XX_HASH_MD5)) goto done;
     while (pos <= cursor.span - 2 && count <= 100000) {
-        uint8_t prefix, marker, a, b;
+        uint8_t prefix, marker, a = 0, b;
         int64_t size = 2, payload, remaining;
         if (xx_pd_is_stopped(pd)) goto done;
         if (!xx_jpeg_cursor_byte(&cursor, pos, &prefix) ||

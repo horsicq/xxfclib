@@ -77,3 +77,8 @@ xx_format_extractor xx_jboot_extractor = {
     xx_jboot_format_search_find_next,
     xx_jboot_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(jboot, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

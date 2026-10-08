@@ -66,3 +66,8 @@ xx_format_extractor xx_cal3d_skeleton_extractor = {
     xx_cal3d_skeleton_format_search_find_next,
     xx_cal3d_skeleton_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(cal3d_skeleton, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

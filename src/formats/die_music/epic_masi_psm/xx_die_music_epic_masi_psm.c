@@ -2,6 +2,7 @@
 /* SPDX-License-Identifier: MIT */
 #include "xxfclib/formats/die_music/xx_die_music.h"
 #include "../../xx_format_extractor_engine.h"
+#include "../../xx_format_abstract_extractor_adapter.h"
 
 const xx_die_music_descriptor xx_die_music_epic_masi_psm_descriptor = {
     "EPIC_MASI_PSM",
@@ -76,3 +77,6 @@ xx_format_extractor xx_die_music_epic_masi_psm_extractor = {
     xx_die_music_epic_masi_psm_next,
     xx_die_music_epic_masi_psm_free_search
 };
+
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(
+    die_music_epic_masi_psm, xx_die_music_epic_masi_psm_search_desc)

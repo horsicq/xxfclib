@@ -66,3 +66,8 @@ xx_format_extractor xx_excellon_drill_extractor = {
     xx_excellon_drill_format_search_find_next,
     xx_excellon_drill_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(excellon_drill, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

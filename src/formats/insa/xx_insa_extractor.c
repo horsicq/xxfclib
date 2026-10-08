@@ -48,3 +48,8 @@ static void insa_free_search(xx_format_extractor *self,
 xx_format_extractor xx_insa_extractor = {
     insa_create_search, insa_current, insa_find_next, insa_free_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(insa, insa_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

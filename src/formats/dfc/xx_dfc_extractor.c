@@ -45,3 +45,8 @@ static void dfc_free_search(xx_format_extractor *self,
 xx_format_extractor xx_dfc_extractor = {
     dfc_create_search, dfc_current, dfc_find_next, dfc_free_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(dfc, dfc_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

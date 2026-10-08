@@ -44,4 +44,15 @@ XXFC_API bool xx_finear_unpack_to_device(xx_finear *archive,
 XXFC_API uint64_t xx_finear_get_uncompressed_size(const xx_finear *archive);
 XXFC_API int64_t xx_finear_get_stream_end(const xx_finear *archive);
 
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#ifdef __cplusplus
+extern "C" {
+#endif
+XXFC_API bool xx_finear_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API int64_t xx_finear_size(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API Abstractextractor *xx_finear_get_abstract_extractor(void);
+#ifdef __cplusplus
+}
+#endif
+/* END GENERATED ABSTRACT EXTRACTOR */
 #endif

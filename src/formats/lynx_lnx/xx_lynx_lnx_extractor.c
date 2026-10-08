@@ -66,3 +66,8 @@ xx_format_extractor xx_lynx_lnx_extractor = {
     xx_lynx_lnx_format_search_find_next,
     xx_lynx_lnx_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(lynx_lnx, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

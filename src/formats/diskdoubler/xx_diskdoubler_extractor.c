@@ -75,3 +75,8 @@ xx_format_extractor xx_diskdoubler_extractor = {
     xx_diskdoubler_format_search_find_next,
     xx_diskdoubler_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(diskdoubler, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

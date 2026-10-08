@@ -104,3 +104,8 @@ xx_format_extractor xx_seaarc_extractor = {
     xx_seaarc_format_search_find_next,
     xx_seaarc_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(seaarc, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

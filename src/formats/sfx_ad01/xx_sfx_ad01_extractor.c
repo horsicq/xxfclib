@@ -41,3 +41,8 @@ static void free_search(xx_format_extractor *self,
 xx_format_extractor xx_sfx_ad01_extractor = {
     create_search, current, next, free_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(sfx_ad01, search)
+/* END GENERATED ABSTRACT EXTRACTOR */

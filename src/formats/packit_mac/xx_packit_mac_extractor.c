@@ -69,3 +69,8 @@ xx_format_extractor xx_packit_mac_extractor = {
     xx_packit_mac_free_format_search
 };
 
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(packit_mac, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

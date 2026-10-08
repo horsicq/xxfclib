@@ -45,3 +45,8 @@ static void nd_free_search(xx_format_extractor *self,
 xx_format_extractor xx_nextstep_diskimage_extractor = {
     nd_create_search, nd_current, nd_next, nd_free_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(nextstep_diskimage, nd_search)
+/* END GENERATED ABSTRACT EXTRACTOR */

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT. Original bounded Amiga archive decoder from documented wire facts. */
 #include "xxfclib/formats/savage/xx_savage.h"
 #include "../xx_archive_wrappers.h"
+#include <string.h>
 static bool wrap_parse(Abstractformat *f,pm_stream *s,ac_blob *b){uint32_t n;uint8_t *out;size_t wrote=0;bool ok;uint64_t workspace=32768;
  if(b->n<31||b->p[0]!=29||memcmp(b->p+2,"*SVG*",5)||xx_data_get_u32(b->p+11, 4, 0, false)!=901120U) {return false; } n=xx_data_get_u32(b->p+7, 4, 0, false);if(!n||!ac_span(b,31,n)||!aw_tail(b,31+n))return false;
  out=ac_alloc(b,901120);if(!out)return false;if(workspace>b->limit-b->used){ac_release(b,out,901120);return false;}b->used+=workspace;

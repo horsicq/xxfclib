@@ -73,3 +73,8 @@ xx_format_extractor xx_tar_lzma_extractor = {
     xx_tar_lzma_format_search_find_next,
     xx_tar_lzma_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(tar_lzma, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

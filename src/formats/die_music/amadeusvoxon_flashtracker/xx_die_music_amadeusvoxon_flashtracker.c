@@ -2,6 +2,7 @@
 /* SPDX-License-Identifier: MIT */
 #include "xxfclib/formats/die_music/xx_die_music.h"
 #include "../../xx_format_extractor_engine.h"
+#include "../../xx_format_abstract_extractor_adapter.h"
 
 const xx_die_music_descriptor xx_die_music_amadeusvoxon_flashtracker_descriptor = {
     "AMADEUSVOXON_FLASHTRACKER",
@@ -76,3 +77,6 @@ xx_format_extractor xx_die_music_amadeusvoxon_flashtracker_extractor = {
     xx_die_music_amadeusvoxon_flashtracker_next,
     xx_die_music_amadeusvoxon_flashtracker_free_search
 };
+
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(
+    die_music_amadeusvoxon_flashtracker, xx_die_music_amadeusvoxon_flashtracker_search_desc)

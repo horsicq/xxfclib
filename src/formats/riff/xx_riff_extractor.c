@@ -67,3 +67,8 @@ xx_format_extractor xx_riff_extractor = {
     xx_riff_free_format_search
 };
 
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(riff, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

@@ -45,3 +45,8 @@ static void free_search(xx_format_extractor *x, xx_format_search_state *s)
 xx_format_extractor xx_soundfont2_extractor = {
     create_search, current_search, next_search, free_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(soundfont2, desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

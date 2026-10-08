@@ -4,6 +4,7 @@
 #include "xx_legacy_archive.h"
 #include "xx_legacy_huffman.h"
 #include "xxfclib/data/xx_data.h"
+#include <string.h>
 static XXFC_MAYBE_UNUSED bool aw_stub(const ac_blob *b,const uint32_t words[5],bool mxm){static const uint32_t offsets[2][5]={{40,48,56,60,64},{60,68,76,80,84}};
  if(b->n<88||xx_data_get_u32(b->p, 4, 0, true)!=0x3f3U) {return false; } for(unsigned i=0;i<5;++i)if(xx_data_get_u32(b->p+offsets[mxm?1:0][i], 4, 0, true)!=words[i])return false;return true;
 }

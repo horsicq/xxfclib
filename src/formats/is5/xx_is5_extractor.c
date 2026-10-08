@@ -71,3 +71,8 @@ xx_format_extractor xx_is5_extractor = {
     xx_is5_format_search_find_next,
     xx_is5_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(is5, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

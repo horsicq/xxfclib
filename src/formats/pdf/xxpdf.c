@@ -302,7 +302,6 @@ static pdf_value *pdf_parse_value(pdf_cursor *c, unsigned depth) {
         return v;
     }
     if ((ch >= '0' && ch <= '9') || ch == '+' || ch == '-') {
-        int64_t start = c->pos;
         bool negative = ch == '-';
         uint64_t n, generation;
         if (negative) ++c->pos;

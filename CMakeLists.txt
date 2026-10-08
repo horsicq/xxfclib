@@ -106,6 +106,7 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/formats/audio_rifx_wave/xx_audio_rifx_wave.h
     include/xxfclib/formats/audio_shockwave_swa/xx_audio_shockwave_swa.h
     include/xxfclib/formats/die_music/xx_die_music.h
+    include/xxfclib/formats/die_music/xx_die_music_abstract_extractor_decls.inc
     include/xxfclib/formats/die_music/xx_die_music_enums.inc
     include/xxfclib/formats/acorn_adfs/xx_acorn_adfs.h
     include/xxfclib/formats/aaruformat/xx_aaruformat.h
@@ -266,6 +267,7 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/formats/xx_executable_inspect.h
     include/xxfclib/formats/xx_format_streams.h
     include/xxfclib/formats/xx_format.h
+    include/xxfclib/formats/xx_format_reader_only_abstract_extractor_decls.inc
     include/xxfclib/formats/xx_format_extractor.h
     include/xxfclib/algo/crc/xx_crc.h
     include/xxfclib/algo/hash/xx_hash.h
@@ -2018,6 +2020,7 @@ set(XXFCLIB_SOURCES
     src/formats/xx_format_catalog.c
     src/formats/xx_format_detect_fast.c
     src/formats/xx_format_extractor.c
+    src/formats/xx_format_reader_only_abstract_extractor.c
     src/formats/xx_memory_map.c
     src/formats/zip/xx_zip.c
     src/formats/zip/xx_zip_legacy_encoder.c

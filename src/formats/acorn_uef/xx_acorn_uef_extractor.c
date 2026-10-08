@@ -12,3 +12,8 @@ static const xx_format_search_info *current_search(xx_format_extractor *x,xx_for
 static bool next_search(xx_format_extractor *x,xx_format_search_state *s,xx_pd_struct *pd) { (void)x;return xx_format_search_find_next(s,pd); }
 static void free_search(xx_format_extractor *x,xx_format_search_state *s) { (void)x;xx_format_search_free(s); }
 xx_format_extractor xx_acorn_uef_extractor={create_search,current_search,next_search,free_search};
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(acorn_uef, desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

@@ -36,3 +36,8 @@ static void free_search(xx_format_extractor *self, xx_format_search_state *s) {
 xx_format_extractor xx_sfx_rsfx_extractor = {
     create_search, current, next, free_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(sfx_rsfx, desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

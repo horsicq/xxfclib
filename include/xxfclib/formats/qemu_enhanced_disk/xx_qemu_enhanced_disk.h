@@ -150,4 +150,15 @@ static inline bool XQemuEnhancedDisk_is_valid(xx_qemu_enhanced_disk *archive,
 }
 #endif
 
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#ifdef __cplusplus
+extern "C" {
+#endif
+XXFC_API bool xx_qemu_enhanced_disk_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API int64_t xx_qemu_enhanced_disk_size(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API Abstractextractor *xx_qemu_enhanced_disk_get_abstract_extractor(void);
+#ifdef __cplusplus
+}
+#endif
+/* END GENERATED ABSTRACT EXTRACTOR */
 #endif /* XXFCLIB_FORMAT_QEMU_ENHANCED_DISK_H */

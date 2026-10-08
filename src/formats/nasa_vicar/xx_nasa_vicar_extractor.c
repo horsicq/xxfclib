@@ -66,3 +66,8 @@ xx_format_extractor xx_nasa_vicar_extractor = {
     xx_nasa_vicar_format_search_find_next,
     xx_nasa_vicar_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(nasa_vicar, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

@@ -2,6 +2,7 @@
 /* SPDX-License-Identifier: MIT */
 #include "xxfclib/formats/die_music/xx_die_music.h"
 #include "../../xx_format_extractor_engine.h"
+#include "../../xx_format_abstract_extractor_adapter.h"
 
 const xx_die_music_descriptor xx_die_music_paragon5_beyond_gbtracker_mgb_descriptor = {
     "PARAGON5_BEYOND_GBTRACKER_MGB",
@@ -76,3 +77,6 @@ xx_format_extractor xx_die_music_paragon5_beyond_gbtracker_mgb_extractor = {
     xx_die_music_paragon5_beyond_gbtracker_mgb_next,
     xx_die_music_paragon5_beyond_gbtracker_mgb_free_search
 };
+
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(
+    die_music_paragon5_beyond_gbtracker_mgb, xx_die_music_paragon5_beyond_gbtracker_mgb_search_desc)

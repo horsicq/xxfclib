@@ -71,3 +71,8 @@ xx_format_extractor xx_ubi_extractor = {
     xx_ubi_format_search_find_next,
     xx_ubi_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(ubi, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

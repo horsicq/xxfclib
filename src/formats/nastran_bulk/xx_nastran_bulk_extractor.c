@@ -65,3 +65,8 @@ xx_format_extractor xx_nastran_bulk_extractor = {
     xx_nastran_bulk_format_search_find_next,
     xx_nastran_bulk_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(nastran_bulk, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

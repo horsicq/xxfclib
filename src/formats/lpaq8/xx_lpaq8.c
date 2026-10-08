@@ -1,4 +1,11 @@
 /* SPDX-License-Identifier: MIT. RAM-only LPAQ8 adapter; retained GPL codec runs separately. */
+/* Request POSIX before any header; a strict -std=c11 hides it otherwise. */
+#if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)
+#define _POSIX_C_SOURCE 200809L
+#endif
+#if defined(__APPLE__) && !defined(_DARWIN_C_SOURCE)
+#define _DARWIN_C_SOURCE
+#endif
 #include "xxfclib/formats/lpaq8/xx_lpaq8.h"
 #include "../xx_legacy_archive.h"
 #include "../xx_archive_codec_pipe.h"

@@ -67,3 +67,8 @@ xx_format_extractor xx_rad_smacker_extractor = {
     xx_rad_smacker_format_search_find_next,
     xx_rad_smacker_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(rad_smacker, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

@@ -43,3 +43,8 @@ static void ob_free_search(xx_format_extractor *self,
 xx_format_extractor xx_oberon_extractor = {
     ob_create_search, ob_current, ob_next, ob_free_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(oberon, ob_search)
+/* END GENERATED ABSTRACT EXTRACTOR */

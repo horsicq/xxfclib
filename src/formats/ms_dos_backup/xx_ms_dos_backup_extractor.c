@@ -66,3 +66,8 @@ xx_format_extractor xx_ms_dos_backup_extractor = {
     xx_ms_dos_backup_format_search_find_next,
     xx_ms_dos_backup_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(ms_dos_backup, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

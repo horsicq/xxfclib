@@ -66,3 +66,8 @@ xx_format_extractor xx_nintendo_bcsar_extractor = {
     xx_nintendo_bcsar_format_search_find_next,
     xx_nintendo_bcsar_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(nintendo_bcsar, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

@@ -53,3 +53,8 @@ static void mar_free_search(xx_format_extractor *self,
 xx_format_extractor xx_mozilla_mar_extractor = {
     mar_create_search, mar_current_search, mar_next_search, mar_free_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(mozilla_mar, mar_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

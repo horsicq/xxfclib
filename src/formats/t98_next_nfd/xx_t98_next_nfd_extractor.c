@@ -70,3 +70,8 @@ xx_format_extractor xx_t98_next_nfd_extractor = {
     xx_t98_next_nfd_format_search_find_next,
     xx_t98_next_nfd_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(t98_next_nfd, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

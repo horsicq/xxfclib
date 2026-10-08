@@ -2,6 +2,7 @@
 /* SPDX-License-Identifier: MIT */
 #include "xxfclib/formats/die_music/xx_die_music.h"
 #include "../../xx_format_extractor_engine.h"
+#include "../../xx_format_abstract_extractor_adapter.h"
 
 const xx_die_music_descriptor xx_die_music_phipps_coredesign_descriptor = {
     "PHIPPS_COREDESIGN",
@@ -76,3 +77,6 @@ xx_format_extractor xx_die_music_phipps_coredesign_extractor = {
     xx_die_music_phipps_coredesign_next,
     xx_die_music_phipps_coredesign_free_search
 };
+
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(
+    die_music_phipps_coredesign, xx_die_music_phipps_coredesign_search_desc)

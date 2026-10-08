@@ -66,3 +66,8 @@ xx_format_extractor xx_advanced_installer_bootstrapper_extractor = {
     xx_advanced_installer_bootstrapper_format_search_find_next,
     xx_advanced_installer_bootstrapper_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(advanced_installer_bootstrapper, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

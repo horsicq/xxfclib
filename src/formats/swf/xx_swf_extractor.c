@@ -59,3 +59,8 @@ xx_format_extractor xx_swf_extractor = {
     xx_swf_search_next, xx_swf_search_free
 };
 
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(swf, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

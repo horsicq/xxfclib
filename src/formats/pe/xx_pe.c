@@ -734,6 +734,145 @@ void xx_pe_free(xx_pe *pe) {
     xx_mem_free(pe);
 }
 
+static bool xx_pe_read_exact_at(xx_io_device *device, int64_t offset,
+                                void *buffer, size_t size) {
+    uint8_t *out = (uint8_t *)buffer;
+    size_t completed = 0U;
+    if (!device || !buffer || offset < 0 ||
+        size > (uint64_t)(INT64_MAX - offset) ||
+        xx_io_seek64(device, offset, SEEK_SET) != 0)
+        return false;
+    while (completed < size) {
+        ssize_t count = xx_io_read(device, out + completed, size - completed);
+        if (count <= 0 || (size_t)count > size - completed) return false;
+        completed += (size_t)count;
+    }
+    return true;
+}
+
+static uint16_t xx_pe_read_le16(const uint8_t *bytes) {
+    return (uint16_t)bytes[0] | (uint16_t)((uint16_t)bytes[1] << 8U);
+}
+
+static uint32_t xx_pe_read_le32(const uint8_t *bytes) {
+    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) |
+           ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
+}
+
+static bool xx_pe_add_offset(int64_t base, uint64_t relative,
+                             int64_t *absolute) {
+    if (!absolute || base < 0 || relative > (uint64_t)(INT64_MAX - base))
+        return false;
+    *absolute = base + (int64_t)relative;
+    return true;
+}
+
+/* This probe intentionally checks only the two PE signatures. */
+static bool xx_pe_find_nt_header(xx_io_device *device, int64_t base_address,
+                                 int64_t *nt_offset) {
+    uint8_t magic[2];
+    uint8_t pe_pointer[4];
+    uint8_t signature[4];
+    int64_t pointer_offset;
+    int64_t candidate;
+    uint32_t relative;
+    if (!device || !nt_offset ||
+        !xx_pe_read_exact_at(device, base_address, magic, sizeof(magic)) ||
+        magic[0] != 'M' || magic[1] != 'Z' ||
+        !xx_pe_add_offset(base_address, 0x3cU, &pointer_offset) ||
+        !xx_pe_read_exact_at(device, pointer_offset, pe_pointer,
+                             sizeof(pe_pointer)))
+        return false;
+    relative = xx_pe_read_le32(pe_pointer);
+    if (relative < XX_PE_DOS_HEADER_SIZE ||
+        !xx_pe_add_offset(base_address, relative, &candidate) ||
+        !xx_pe_read_exact_at(device, candidate, signature, sizeof(signature)) ||
+        signature[0] != 'P' || signature[1] != 'E' ||
+        signature[2] != 0U || signature[3] != 0U)
+        return false;
+    *nt_offset = candidate;
+    return true;
+}
+
+bool xx_pe_fast_detect(xx_io_device *device, int64_t base_address,
+                       bool is_mapped) {
+    int64_t saved_position = xx_io_tell(device);
+    int64_t nt_offset;
+    bool result;
+    (void)is_mapped;
+    result = xx_pe_find_nt_header(device, base_address, &nt_offset);
+    if (saved_position >= 0)
+        (void)xx_io_seek64(device, saved_position, SEEK_SET);
+    return result;
+}
+
+int64_t xx_pe_size(xx_io_device *device, int64_t base_address,
+                   bool is_mapped) {
+    uint8_t coff_header[20];
+    uint8_t optional_header[64];
+    uint8_t section[XX_PE_SECTION_HEADER_SIZE];
+    int64_t saved_position = xx_io_tell(device);
+    int64_t nt_offset;
+    int64_t coff_offset;
+    int64_t optional_offset;
+    int64_t section_offset;
+    int64_t current_offset;
+    int64_t result = -1;
+    uint64_t maximum;
+    uint16_t section_count;
+    uint16_t optional_size;
+    uint16_t magic;
+    uint32_t file_alignment;
+    uint16_t i;
+    (void)is_mapped; /* The requested extent is in the PE file layout. */
+    if (!xx_pe_find_nt_header(device, base_address, &nt_offset) ||
+        !xx_pe_add_offset(nt_offset, 4U, &coff_offset) ||
+        !xx_pe_read_exact_at(device, coff_offset, coff_header,
+                             sizeof(coff_header)))
+        goto done;
+    section_count = xx_pe_read_le16(coff_header + 2U);
+    optional_size = xx_pe_read_le16(coff_header + 16U);
+    if (!section_count || section_count > XX_PE_MAX_SECTIONS ||
+        optional_size < sizeof(optional_header) ||
+        !xx_pe_add_offset(nt_offset, 24U, &optional_offset) ||
+        !xx_pe_read_exact_at(device, optional_offset, optional_header,
+                             sizeof(optional_header)))
+        goto done;
+    magic = xx_pe_read_le16(optional_header);
+    if ((magic != XX_PE_MAGIC_32 && magic != XX_PE_MAGIC_64) ||
+        optional_size < (magic == XX_PE_MAGIC_64 ? 112U : 96U))
+        goto done;
+    file_alignment = xx_pe_read_le32(optional_header + 36U);
+    if (!file_alignment ||
+        !xx_pe_add_offset(optional_offset, optional_size, &section_offset))
+        goto done;
+    maximum = 0U;
+    for (i = 0U; i < section_count; ++i) {
+        uint32_t raw_size;
+        uint32_t raw_offset;
+        uint64_t aligned_size;
+        uint64_t end;
+        if (!xx_pe_add_offset(section_offset,
+                              (uint64_t)i * XX_PE_SECTION_HEADER_SIZE,
+                              &current_offset) ||
+            !xx_pe_read_exact_at(device, current_offset, section,
+                                 sizeof(section)))
+            goto done;
+        raw_size = xx_pe_read_le32(section + 16U);
+        raw_offset = xx_pe_read_le32(section + 20U);
+        if (!xx_pe_align_up(raw_size, file_alignment, &aligned_size) ||
+            aligned_size > UINT64_MAX - raw_offset)
+            goto done;
+        end = (uint64_t)raw_offset + aligned_size;
+        if (end > maximum) maximum = end;
+    }
+    if (maximum <= INT64_MAX) result = (int64_t)maximum;
+done:
+    if (saved_position >= 0)
+        (void)xx_io_seek64(device, saved_position, SEEK_SET);
+    return result;
+}
+
 bool xx_pe_check_is_valid(Abstractformat *format, xx_pd_struct *pd) {
     xx_pe_parsed parsed;
     bool result = xx_pe_parse(format, &parsed, pd);

@@ -2,6 +2,7 @@
 /* SPDX-License-Identifier: MIT */
 #include "xxfclib/formats/die_music/xx_die_music.h"
 #include "../../xx_format_extractor_engine.h"
+#include "../../xx_format_abstract_extractor_adapter.h"
 
 const xx_die_music_descriptor xx_die_music_pink_comebacktracker_cbt_descriptor = {
     "PINK_COMEBACKTRACKER_CBT",
@@ -76,3 +77,6 @@ xx_format_extractor xx_die_music_pink_comebacktracker_cbt_extractor = {
     xx_die_music_pink_comebacktracker_cbt_next,
     xx_die_music_pink_comebacktracker_cbt_free_search
 };
+
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(
+    die_music_pink_comebacktracker_cbt, xx_die_music_pink_comebacktracker_cbt_search_desc)

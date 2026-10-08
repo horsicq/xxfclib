@@ -2,6 +2,7 @@
 /* SPDX-License-Identifier: MIT */
 #include "xxfclib/formats/die_music/xx_die_music.h"
 #include "../../xx_format_extractor_engine.h"
+#include "../../xx_format_abstract_extractor_adapter.h"
 
 const xx_die_music_descriptor xx_die_music_arguru_noisetrekker_descriptor = {
     "ARGURU_NOISETREKKER",
@@ -76,3 +77,6 @@ xx_format_extractor xx_die_music_arguru_noisetrekker_extractor = {
     xx_die_music_arguru_noisetrekker_next,
     xx_die_music_arguru_noisetrekker_free_search
 };
+
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(
+    die_music_arguru_noisetrekker, xx_die_music_arguru_noisetrekker_search_desc)

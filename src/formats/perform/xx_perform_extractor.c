@@ -71,3 +71,8 @@ xx_format_extractor xx_perform_extractor = {
     xx_perform_format_search_find_next,
     xx_perform_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(perform, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

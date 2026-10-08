@@ -39,3 +39,8 @@ static void ce_free(xx_format_extractor *self, xx_format_search_state *state) {
     xx_format_search_free(state);
 }
 xx_format_extractor xx_edp_extractor = {ce_create, ce_current, ce_next, ce_free};
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(edp, ce_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

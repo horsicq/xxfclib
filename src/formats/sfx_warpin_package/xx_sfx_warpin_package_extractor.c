@@ -71,3 +71,8 @@ xx_format_extractor xx_sfx_warpin_package_extractor = {
     xx_sfx_warpin_package_format_search_find_next,
     xx_sfx_warpin_package_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(sfx_warpin_package, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

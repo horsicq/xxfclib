@@ -71,3 +71,8 @@ xx_format_extractor xx_zxzip_extractor = {
     xx_zxzip_format_search_find_next,
     xx_zxzip_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(zxzip, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

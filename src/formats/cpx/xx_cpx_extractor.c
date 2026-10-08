@@ -77,3 +77,8 @@ xx_format_extractor xx_cpx_extractor = {
     xx_cpx_format_search_find_next,
     xx_cpx_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(cpx, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

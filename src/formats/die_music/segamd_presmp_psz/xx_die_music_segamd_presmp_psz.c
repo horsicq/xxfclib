@@ -2,6 +2,7 @@
 /* SPDX-License-Identifier: MIT */
 #include "xxfclib/formats/die_music/xx_die_music.h"
 #include "../../xx_format_extractor_engine.h"
+#include "../../xx_format_abstract_extractor_adapter.h"
 
 const xx_die_music_descriptor xx_die_music_segamd_presmp_psz_descriptor = {
     "SEGAMD_PRESMP_PSZ",
@@ -76,3 +77,6 @@ xx_format_extractor xx_die_music_segamd_presmp_psz_extractor = {
     xx_die_music_segamd_presmp_psz_next,
     xx_die_music_segamd_presmp_psz_free_search
 };
+
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(
+    die_music_segamd_presmp_psz, xx_die_music_segamd_presmp_psz_search_desc)

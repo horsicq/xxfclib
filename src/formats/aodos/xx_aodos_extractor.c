@@ -71,3 +71,8 @@ xx_format_extractor xx_aodos_extractor = {
     xx_aodos_format_search_find_next,
     xx_aodos_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(aodos, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

@@ -66,3 +66,8 @@ xx_format_extractor xx_crystallography_mtz_extractor = {
     xx_crystallography_mtz_format_search_find_next,
     xx_crystallography_mtz_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(crystallography_mtz, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

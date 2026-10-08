@@ -50,3 +50,8 @@ xx_format_extractor xx_act_apricot_pc_xi_raw_extractor = {
     xx_act_apricot_pc_xi_raw_search_next, xx_act_apricot_pc_xi_raw_search_free
 };
 
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(act_apricot_pc_xi_raw, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

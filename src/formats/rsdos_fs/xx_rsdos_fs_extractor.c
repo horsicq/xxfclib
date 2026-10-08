@@ -50,3 +50,8 @@ xx_format_extractor xx_rsdos_fs_extractor = {
     xx_rsdos_fs_search_next, xx_rsdos_fs_search_free
 };
 
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(rsdos_fs, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

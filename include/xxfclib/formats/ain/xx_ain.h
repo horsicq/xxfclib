@@ -18,4 +18,15 @@ XXFC_API const xx_archive_record *xx_ain_get_current_archive_record(Abstractform
 XXFC_API bool xx_ain_unpack_current_archive_record(Abstractformat *self,xx_archive_record_state *state,xx_pd_struct *pd);
 XXFC_API bool xx_ain_archive_record_move_to_next(Abstractformat *self,xx_archive_record_state *state,xx_pd_struct *pd);
 XXFC_API void xx_ain_free_archive_records_reading(Abstractformat *self,xx_archive_record_state *state);
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#ifdef __cplusplus
+extern "C" {
+#endif
+XXFC_API bool xx_ain_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API int64_t xx_ain_size(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API Abstractextractor *xx_ain_get_abstract_extractor(void);
+#ifdef __cplusplus
+}
+#endif
+/* END GENERATED ABSTRACT EXTRACTOR */
 #endif

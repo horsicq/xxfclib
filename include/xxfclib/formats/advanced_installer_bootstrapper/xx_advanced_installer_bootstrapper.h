@@ -127,4 +127,15 @@ XXFC_API const char *xx_advanced_installer_bootstrapper_get_external_name(
 }
 #endif
 
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#ifdef __cplusplus
+extern "C" {
+#endif
+XXFC_API bool xx_advanced_installer_bootstrapper_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API int64_t xx_advanced_installer_bootstrapper_size(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API Abstractextractor *xx_advanced_installer_bootstrapper_get_abstract_extractor(void);
+#ifdef __cplusplus
+}
+#endif
+/* END GENERATED ABSTRACT EXTRACTOR */
 #endif /* XXFCLIB_FORMAT_ADVANCED_INSTALLER_BOOTSTRAPPER_H */

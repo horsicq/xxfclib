@@ -70,3 +70,9 @@ xx_format_extractor xx_sfx_ebook_compiler_executables_extractor = {
     xx_sfx_ebook_compiler_executables_format_search_find_next,
     xx_sfx_ebook_compiler_executables_free_format_search
 };
+
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(sfx_ebook_compiler_executables, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

@@ -57,3 +57,8 @@ xx_format_extractor xx_parallels_hdd_extractor = {
     xx_parallels_hdd_search_next, xx_parallels_hdd_search_free
 };
 
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(parallels_hdd, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

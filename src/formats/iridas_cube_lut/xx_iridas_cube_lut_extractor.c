@@ -65,3 +65,8 @@ xx_format_extractor xx_iridas_cube_lut_extractor = {
     xx_iridas_cube_lut_format_search_find_next,
     xx_iridas_cube_lut_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(iridas_cube_lut, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

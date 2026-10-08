@@ -60,6 +60,66 @@ typedef struct Abstractformat xx_format_t;
 typedef struct Abstractformat xx_abstract_format;
 typedef struct Abstractformat AbstractFormat;
 
+typedef struct Abstractextractor Abstractextractor;
+typedef struct Abstractextractor xx_abstract_extractor;
+typedef struct Abstractextractor AbstractExtractor;
+struct xx_format_search_state;
+struct xx_format_search_info;
+
+/**
+ * @brief Callbacks for detecting, sizing, and streaming searches for a format.
+ *
+ * The search callbacks follow the xx_format_extractor streaming contract:
+ * create positions the state on the first match, current returns a borrowed
+ * result valid until next/free, and free releases the search state.
+ */
+struct Abstractextractor {
+  /**
+   * Fast format-detection callback.
+   * @param device Associated I/O device.
+   * @param base_address Absolute device offset at which the format starts.
+   * @param is_mapped True for a memory-mapped dump.
+   * @return True if the format's fast signature check matches at base_address.
+   */
+  bool (*fast_detect)(xx_io_device *device, int64_t base_address, bool is_mapped);
+
+  /**
+   * Format-size callback, using the same device, offset, and mapping inputs.
+   * @return Size in bytes, or -1 when it cannot be determined.
+   */
+  int64_t (*size)(xx_io_device *device, int64_t base_address, bool is_mapped);
+
+  /** Start a streaming search, positioned on its first result. */
+  struct xx_format_search_state *(*create_format_search)(Abstractextractor *self, xx_io_device *device,
+                                                         const xx_list_s *options, xx_pd_struct *pd);
+  /** Borrow the current search result until the next or free call. */
+  const struct xx_format_search_info *(*get_current_format_info)(Abstractextractor *self,
+                                                                 struct xx_format_search_state *state);
+  /** Advance to the next search result. */
+  bool (*format_search_find_next)(Abstractextractor *self, struct xx_format_search_state *state,
+                                  xx_pd_struct *pd);
+  /** Release a streaming search state. */
+  void (*free_format_search)(Abstractextractor *self, struct xx_format_search_state *state);
+};
+
+/** Return the detection, size, and streaming callbacks for a supported file type.
+ * Multiple file types may share one extractor. Returns NULL for a name-only
+ * type, an unknown type, or one without a compiled implementation. */
+XXFC_API Abstractextractor *xx_abstract_extractor_get(xx_file_type_t type);
+
+/** Number of file-type rows with an abstract extractor. */
+XXFC_API size_t xx_abstract_extractor_count(void);
+
+/** Enumerate abstract extractors. Legacy extractor rows come first in the same
+ * order as xx_format_extractor_at(), followed by reader-only formats.
+ * @param index Zero-based index below xx_abstract_extractor_count().
+ * @param type Receives the file type; may be NULL.
+ * @return The extractor, or NULL when index is out of range. */
+XXFC_API Abstractextractor *xx_abstract_extractor_at(size_t index,
+                                                     xx_file_type_t *type);
+
+#include "xxfclib/formats/xx_format_reader_only_abstract_extractor_decls.inc"
+
 /* Forward declaration and types for archive record & metadata */
 /** Display label paired with a typed value. Ownership is defined by the consumer. */
 typedef struct xx_meta_string {

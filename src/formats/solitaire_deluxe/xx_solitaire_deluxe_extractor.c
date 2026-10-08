@@ -57,3 +57,8 @@ static void sd_free_search(xx_format_extractor *self,
 xx_format_extractor xx_solitaire_deluxe_extractor = {
     sd_create_search, sd_current, sd_next, sd_free_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(solitaire_deluxe, sd_search)
+/* END GENERATED ABSTRACT EXTRACTOR */

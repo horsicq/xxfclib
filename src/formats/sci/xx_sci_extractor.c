@@ -74,3 +74,8 @@ xx_format_extractor xx_sci_extractor = {
     xx_sci_format_search_find_next,
     xx_sci_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(sci, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

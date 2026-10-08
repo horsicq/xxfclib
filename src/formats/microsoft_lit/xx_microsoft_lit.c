@@ -1,5 +1,12 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT. Native reader with bounded RAM pipe transport. */
+/* Request POSIX before any header; a strict -std=c11 hides it otherwise. */
+#if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)
+#define _POSIX_C_SOURCE 200809L
+#endif
+#if defined(__APPLE__) && !defined(_DARWIN_C_SOURCE)
+#define _DARWIN_C_SOURCE
+#endif
 #include "xxfclib/formats/microsoft_lit/xx_microsoft_lit.h"
 #include "../ue2_indexed.h"
 #include "xxfclib/data/xx_data.h"

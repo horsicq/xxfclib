@@ -16,3 +16,8 @@ static const xx_format_search_info *current(xx_format_extractor *self,xx_format_
 static bool next(xx_format_extractor *self,xx_format_search_state *s,xx_pd_struct *pd) { (void)self; return xx_format_search_find_next(s,pd); }
 static void free_search(xx_format_extractor *self,xx_format_search_state *s) { (void)self; xx_format_search_free(s); }
 xx_format_extractor xx_gemdos_lha_extractor={create_search,current,next,free_search};
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(gemdos_lha, desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

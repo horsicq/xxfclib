@@ -66,3 +66,8 @@ xx_format_extractor xx_uf2_extractor = {
     xx_uf2_format_search_find_next,
     xx_uf2_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(uf2, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

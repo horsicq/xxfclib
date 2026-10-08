@@ -66,3 +66,8 @@ xx_format_extractor xx_step_part21_extractor = {
     xx_step_part21_format_search_find_next,
     xx_step_part21_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(step_part21, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */

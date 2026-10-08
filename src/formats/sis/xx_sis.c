@@ -1019,7 +1019,7 @@ static uint8_t *sisx_load_controller(sis_ctx *ctx, const sisx_field *field,
 
 static bool sisx_parse(sis_ctx *ctx) {
     sisx_field contents, field, controller;
-    sisx_field compressed_controller, data;
+    sisx_field compressed_controller = {0, 0, 0, 0}, data = {0, 0, 0, 0};
     bool have_controller = false, have_data = false;
     int64_t position, end;
     uint8_t *plain;

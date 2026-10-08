@@ -4,6 +4,13 @@
  * decoding are separate capabilities; metadata readers never claim to test
  * the filesystem's data blocks. Wire-format facts are referenced in the
  * format coverage document. */
+/* Request POSIX before any header; a strict -std=c11 hides it otherwise. */
+#if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)
+#define _POSIX_C_SOURCE 200809L
+#endif
+#if defined(__APPLE__) && !defined(_DARWIN_C_SOURCE)
+#define _DARWIN_C_SOURCE
+#endif
 #include "xxfclib/formats/volume/xx_volume.h"
 #include "../xx_mapped_members.h"
 #include "xxfclib/algo/sha/xx_sha.h"

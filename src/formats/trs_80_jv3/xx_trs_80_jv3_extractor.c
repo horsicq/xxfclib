@@ -66,3 +66,8 @@ xx_format_extractor xx_trs_80_jv3_extractor = {
     xx_trs_80_jv3_format_search_find_next,
     xx_trs_80_jv3_free_format_search
 };
+
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#include "../xx_format_abstract_extractor_adapter.h"
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(trs_80_jv3, k_desc)
+/* END GENERATED ABSTRACT EXTRACTOR */
