@@ -125,8 +125,10 @@ XXFC_API bool xx_packit_mac_huffman_decode_memory(const uint8_t *stream,
 extern "C" {
 #endif
 XXFC_API bool xx_packit_mac_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_packit_mac_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_packit_mac_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_packit_mac_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_packit_mac_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

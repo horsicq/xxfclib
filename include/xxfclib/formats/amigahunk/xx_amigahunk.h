@@ -195,8 +195,10 @@ static inline bool XAmigaHunk_handle_base_info(xx_amigahunk *amigahunk, xx_pd_st
 extern "C" {
 #endif
 XXFC_API bool xx_amigahunk_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_amigahunk_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_amigahunk_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_amigahunk_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_amigahunk_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

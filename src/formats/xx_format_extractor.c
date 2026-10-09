@@ -123,6 +123,48 @@ static bool xx_format_search_probe_direct(const xx_format_search_desc *desc,
     return matched;
 }
 
+xx_file_type_t xx_format_search_file_type(const xx_format_search_desc *desc,
+                                         xx_io_device *device,
+                                         int64_t base_address, bool is_mapped) {
+    xx_io_volume volume;
+    xx_io_device *window;
+    Abstractformat *format;
+    int64_t saved_position;
+    int64_t total;
+    xx_file_type_t type = XX_FILE_TYPE_UNKNOWN;
+
+    if (!desc || !desc->types || !desc->type_count)
+        return type;
+    if (desc->type_count == 1U) return desc->types[0];
+    if (!device || !desc->open || !desc->close) return type;
+    saved_position = xx_io_tell(device);
+    if (saved_position < 0) return type;
+    total = xx_io_total_size(device);
+    if (base_address < 0 || base_address >= total) goto done;
+
+    volume.device = device;
+    volume.offset = base_address;
+    volume.size = total - base_address;
+    window = xx_io_multivolume_open(&volume, 1U, false);
+    if (!window) goto done;
+    format = desc->open(window);
+    if (format) {
+        xx_format_set_mapped(format, is_mapped);
+        /* Ask this reader for its own variant. Global detection may instead
+         * name a derived container such as APK or JAR for a valid ZIP. */
+        if (xx_format_is_valid(format, NULL) &&
+            xx_format_handle_base_info(format, NULL) &&
+            xx_format_search_type_matches(desc, format->file_type))
+            type = format->file_type;
+        desc->close(format);
+    }
+    xx_io_close(window);
+done:
+    if (xx_io_seek64(device, saved_position, SEEK_SET) != 0)
+        return XX_FILE_TYPE_UNKNOWN;
+    return type;
+}
+
 bool xx_format_search_fast_detect(const xx_format_search_desc *desc,
                                   xx_io_device *device, int64_t base_address,
                                   bool is_mapped) {
@@ -362,15 +404,16 @@ xx_format_extractor *xx_format_extractor_at(size_t index, xx_file_type_t *type) 
     return g_xx_format_extractors[index].extractor;
 }
 
-/* Every registered legacy extractor has one Abstractextractor adapter.  Use
- * the legacy pointer as the key: entries such as PE32/PE64 and ZIP/ZIP64 that
- * share one search implementation also share one abstract adapter. */
+/* Every registered legacy extractor has one abstract extractor and detector.
+ * Use the legacy pointer as the key: entries such as PE32/PE64 and ZIP/ZIP64
+ * that share one search implementation also share their abstract adapters. */
 #include "xx_format_abstract_extractor_list.inc"
 #include "xx_format_reader_only_decls.inc"
 
 static const struct {
     xx_file_type_t type;
     xx_abstract_extractor_getter get;
+    xx_abstract_detector_getter get_detector;
 } g_xx_reader_only_abstract_extractors[] = {
 #include "xx_format_reader_only_rows.inc"
 };
@@ -417,4 +460,46 @@ Abstractextractor *xx_abstract_extractor_at(size_t index,
         return NULL;
     if (type) *type = g_xx_reader_only_abstract_extractors[index].type;
     return g_xx_reader_only_abstract_extractors[index].get();
+}
+
+static Abstractdetector *xx_abstract_detector_from_legacy(
+    const xx_format_extractor *legacy) {
+    size_t i;
+    if (!legacy) return NULL;
+    for (i = 0; i < sizeof(g_xx_abstract_extractor_getters) /
+                        sizeof(g_xx_abstract_extractor_getters[0]); ++i) {
+        if (g_xx_abstract_extractor_getters[i].legacy == legacy)
+            return g_xx_abstract_extractor_getters[i].get_detector();
+    }
+    return NULL;
+}
+
+Abstractdetector *xx_abstract_detector_get(xx_file_type_t type) {
+    xx_format_extractor *legacy = xx_format_extractor_get(type);
+    size_t i;
+    if (legacy) return xx_abstract_detector_from_legacy(legacy);
+    for (i = 0; i < sizeof(g_xx_reader_only_abstract_extractors) /
+                        sizeof(g_xx_reader_only_abstract_extractors[0]); ++i) {
+        if (g_xx_reader_only_abstract_extractors[i].type == type)
+            return g_xx_reader_only_abstract_extractors[i].get_detector();
+    }
+    return NULL;
+}
+
+size_t xx_abstract_detector_count(void) {
+    return xx_abstract_extractor_count();
+}
+
+Abstractdetector *xx_abstract_detector_at(size_t index,
+                                         xx_file_type_t *type) {
+    size_t legacy_count = xx_format_extractor_count();
+    if (index < legacy_count)
+        return xx_abstract_detector_from_legacy(
+            xx_format_extractor_at(index, type));
+    index -= legacy_count;
+    if (index >= sizeof(g_xx_reader_only_abstract_extractors) /
+                     sizeof(g_xx_reader_only_abstract_extractors[0]))
+        return NULL;
+    if (type) *type = g_xx_reader_only_abstract_extractors[index].type;
+    return g_xx_reader_only_abstract_extractors[index].get_detector();
 }

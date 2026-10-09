@@ -126,8 +126,10 @@ static inline bool XChk_is_valid(xx_chk *chk, xx_pd_struct *pd) {
 extern "C" {
 #endif
 XXFC_API bool xx_chk_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_chk_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_chk_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_chk_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_chk_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

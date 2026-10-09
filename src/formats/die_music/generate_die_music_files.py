@@ -223,9 +223,12 @@ def outputs(records: list[dict[str, object]]) -> dict[Path, str]:
             (
                 f"XXFC_API bool xx_die_music_{slug}_fast_detect(xx_io_device *device, "
                 "int64_t base_address, bool is_mapped);",
+                f"XXFC_API xx_file_type_t xx_die_music_{slug}_file_type(xx_io_device *device, "
+                "int64_t base_address, bool is_mapped);",
                 f"XXFC_API int64_t xx_die_music_{slug}_size(xx_io_device *device, "
                 "int64_t base_address, bool is_mapped);",
                 f"XXFC_API Abstractextractor *xx_die_music_{slug}_get_abstract_extractor(void);",
+                f"XXFC_API Abstractdetector *xx_die_music_{slug}_get_abstract_detector(void);",
             )
         )
         extractor_rows.append(

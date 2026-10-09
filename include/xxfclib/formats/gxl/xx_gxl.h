@@ -54,8 +54,10 @@ XXFC_API void xx_gxl_free_archive_records_reading(Abstractformat *self,
 extern "C" {
 #endif
 XXFC_API bool xx_gxl_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_gxl_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_gxl_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_gxl_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_gxl_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

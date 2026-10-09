@@ -5787,6 +5787,36 @@ size_t xx_format_get_file_type_chain(xx_file_type_t type,
     return count;
 }
 
+xx_file_type_t xx_format_get_pref_type(const xx_list_t *types) {
+    xx_file_type_t preferred = XX_FILE_TYPE_UNKNOWN;
+    size_t preferred_depth = 0U;
+    size_t index;
+
+    if (!types || types->elem_size != sizeof(xx_file_type_t) ||
+        types->count > types->capacity ||
+        types->count > SIZE_MAX / sizeof(xx_file_type_t) ||
+        (types->count && !types->data))
+        return preferred;
+
+    for (index = 0U; index < types->count; ++index) {
+        xx_file_type_t type;
+        size_t depth;
+        if (!xx_list_get(types, index, &type)) return XX_FILE_TYPE_UNKNOWN;
+        if (type == XX_FILE_TYPE_UNKNOWN ||
+            strcmp(xx_format_file_type_to_string(type), "UNKNOWN") == 0)
+            continue;
+        depth = xx_format_get_file_type_chain(type, NULL, 0U);
+        /* A managed assembly adds DOTNET after its PE32/PE64 carrier even
+         * though the width-independent parent table points to MSDOS. */
+        if (type == XX_FILE_TYPE_DOTNET) ++depth;
+        if (depth >= preferred_depth) {
+            preferred = type;
+            preferred_depth = depth;
+        }
+    }
+    return preferred;
+}
+
 xx_list_t *xx_format_get_file_types_device(xx_io_device *dev) {
     xx_file_type_t chain[XX_FILE_TYPE_CHAIN_MAX];
     xx_list_t *list = xx_list_create(sizeof(xx_file_type_t), NULL);
@@ -5818,6 +5848,58 @@ xx_list_t *xx_format_get_file_types_device(xx_io_device *dev) {
         }
     }
     return list;
+}
+
+xx_list_t *xx_format_get_file_types_detectors(
+    xx_io_device *device, int64_t base_address, bool is_mapped,
+    const xx_list_t *detectors) {
+    xx_list_t *types;
+    int64_t saved_position;
+    int64_t total;
+    size_t index;
+
+    if (detectors &&
+        (detectors->elem_size != sizeof(Abstractdetector *) ||
+         detectors->count > detectors->capacity ||
+         detectors->count > SIZE_MAX / sizeof(Abstractdetector *) ||
+         (detectors->count && !detectors->data)))
+        return NULL;
+    types = xx_list_create(sizeof(xx_file_type_t), NULL);
+    if (!types) return NULL;
+    if (!device || !detectors || !detectors->count || base_address < 0)
+        return types;
+
+    saved_position = xx_io_tell(device);
+    if (saved_position < 0) {
+        xx_list_destroy(types);
+        return NULL;
+    }
+    total = xx_io_total_size(device);
+    if (total < 0) goto failed;
+    if (base_address >= total) goto done;
+
+    for (index = 0U; index < detectors->count; ++index) {
+        Abstractdetector *detector;
+        xx_file_type_t type;
+        if (!xx_list_get(detectors, index, &detector)) goto failed;
+        if (!detector || !detector->fast_detect || !detector->file_type)
+            continue;
+        if (xx_io_seek64(device, saved_position, SEEK_SET) != 0) goto failed;
+        if (!detector->fast_detect(device, base_address, is_mapped)) continue;
+        if (xx_io_seek64(device, saved_position, SEEK_SET) != 0) goto failed;
+        type = detector->file_type(device, base_address, is_mapped);
+        if (type != XX_FILE_TYPE_UNKNOWN &&
+            !xx_list_contains(types, &type, NULL) &&
+            !xx_list_append(types, &type))
+            goto failed;
+    }
+done:
+    if (xx_io_seek64(device, saved_position, SEEK_SET) != 0) goto failed;
+    return types;
+failed:
+    (void)xx_io_seek64(device, saved_position, SEEK_SET);
+    xx_list_destroy(types);
+    return NULL;
 }
 
 #ifndef XXFC_FORMAT_DETECTION_LZMA_XZ_ONLY

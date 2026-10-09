@@ -142,8 +142,10 @@ static inline Abstractformat *xx_cue_to_format(xx_cue *archive) {
 extern "C" {
 #endif
 XXFC_API bool xx_cue_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_cue_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_cue_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_cue_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_cue_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

@@ -165,8 +165,10 @@ static inline bool XApm_is_valid(xx_apm *apm, xx_pd_struct *pd) {
 extern "C" {
 #endif
 XXFC_API bool xx_apm_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_apm_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_apm_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_apm_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_apm_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

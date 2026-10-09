@@ -72,8 +72,10 @@ static inline Abstractformat *xx_lzip_to_format(xx_lzip *archive) {
 extern "C" {
 #endif
 XXFC_API bool xx_lzip_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_lzip_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_lzip_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_lzip_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_lzip_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

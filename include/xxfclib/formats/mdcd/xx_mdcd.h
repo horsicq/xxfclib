@@ -40,8 +40,10 @@ XXFC_API void xx_mdcd_free_archive_records_reading(
 extern "C" {
 #endif
 XXFC_API bool xx_mdcd_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_mdcd_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_mdcd_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_mdcd_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_mdcd_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

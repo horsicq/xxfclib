@@ -123,8 +123,10 @@ static inline bool XDlke_is_valid(xx_dlke *dlke, xx_pd_struct *pd) {
 extern "C" {
 #endif
 XXFC_API bool xx_dlke_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_dlke_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_dlke_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_dlke_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_dlke_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

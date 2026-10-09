@@ -184,8 +184,10 @@ static inline void XTarBz2_free_archive_records_writing(
 extern "C" {
 #endif
 XXFC_API bool xx_tar_bz2_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_tar_bz2_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_tar_bz2_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_tar_bz2_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_tar_bz2_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

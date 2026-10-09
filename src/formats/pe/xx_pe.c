@@ -806,6 +806,30 @@ bool xx_pe_fast_detect(xx_io_device *device, int64_t base_address,
     return result;
 }
 
+xx_file_type_t xx_pe_file_type(xx_io_device *device, int64_t base_address,
+                              bool is_mapped) {
+    uint8_t magic_bytes[2];
+    int64_t saved_position;
+    int64_t nt_offset;
+    int64_t optional_offset;
+    xx_file_type_t type = XX_FILE_TYPE_UNKNOWN;
+    (void)is_mapped; /* The optional-header magic is identical in both layouts. */
+    if (!device) return type;
+    saved_position = xx_io_tell(device);
+    if (saved_position < 0) return type;
+    if (xx_pe_find_nt_header(device, base_address, &nt_offset) &&
+        xx_pe_add_offset(nt_offset, 24U, &optional_offset) &&
+        xx_pe_read_exact_at(device, optional_offset, magic_bytes,
+                             sizeof(magic_bytes))) {
+        uint16_t magic = xx_pe_read_le16(magic_bytes);
+        if (magic == XX_PE_MAGIC_32) type = XX_FILE_TYPE_PE32;
+        else if (magic == XX_PE_MAGIC_64) type = XX_FILE_TYPE_PE64;
+    }
+    if (xx_io_seek64(device, saved_position, SEEK_SET) != 0)
+        return XX_FILE_TYPE_UNKNOWN;
+    return type;
+}
+
 int64_t xx_pe_size(xx_io_device *device, int64_t base_address,
                    bool is_mapped) {
     uint8_t coff_header[20];

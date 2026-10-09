@@ -13,6 +13,15 @@ project(xxfclib
     LANGUAGES C
 )
 
+set(XXFC_BUILD_PROFILE "full" CACHE STRING "xxfclib source profile: full or dotnet_emul")
+set_property(CACHE XXFC_BUILD_PROFILE PROPERTY STRINGS full dotnet_emul)
+if(XXFC_BUILD_PROFILE STREQUAL "dotnet_emul")
+    include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_dotnet_emul.cmake")
+    return()
+elseif(NOT XXFC_BUILD_PROFILE STREQUAL "full")
+    message(FATAL_ERROR "Unknown XXFC_BUILD_PROFILE '${XXFC_BUILD_PROFILE}'; choose full or dotnet_emul")
+endif()
+
 # C Standard Configuration
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED OFF)
@@ -695,6 +704,7 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/formats/pe/xx_pe_inspect.h
     include/xxfclib/formats/dotnet/xx_dotnet.h
     include/xxfclib/formats/dotnet/xx_dotnet_inspect.h
+    include/xxfclib/formats/dotnet/xx_dotnet_reader.h
     include/xxfclib/formats/pe/xx_pe.h
     include/xxfclib/formats/elf/xx_elf_inspect.h
     include/xxfclib/formats/elf/xx_elf.h
@@ -1807,6 +1817,7 @@ set(XXFCLIB_SOURCES
     src/formats/pe/xx_pe_stream_common.c
     src/formats/dotnet/xx_dotnet.c
     src/formats/dotnet/xx_dotnet_inspect.c
+    src/formats/dotnet/xx_dotnet_reader.c
     src/formats/dotnet/xx_dotnet_data.c
     src/formats/dotnet/xx_dotnet_extractor.c
     src/formats/apk/xx_apk_inspect.c

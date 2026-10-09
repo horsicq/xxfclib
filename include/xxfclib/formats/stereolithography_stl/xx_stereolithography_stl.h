@@ -25,8 +25,10 @@ XXFC_API bool xx_stereolithography_stl_handle_base_info(Abstractformat *,xx_pd_s
 extern "C" {
 #endif
 XXFC_API bool xx_stereolithography_stl_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_stereolithography_stl_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_stereolithography_stl_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_stereolithography_stl_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_stereolithography_stl_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

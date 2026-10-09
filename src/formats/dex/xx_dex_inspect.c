@@ -26,78 +26,59 @@ void xx_dex_cleanup_analysis(xx_dex *dex) {
     if (!dex || !(a = (dex_analysis *)dex->analysis)) return;
     xx_list_cleanup(&a->strings); xx_list_cleanup(&a->types); xx_mem_free(a); dex->analysis = NULL;
 }
-static char *dex_string(xx_io_device *view, uint32_t offset, size_t budget, xx_pd_struct *pd) {
-    int64_t size = xx_io_total_size(view), position = offset; uint32_t units = 0;
-    unsigned i; uint8_t byte; xx_buf_t out; size_t maximum;
-    if (!offset || position >= size) return NULL;
-    for (i = 0; i < 5; ++i) {
-        if (dex_read_at(view, position++, &byte, 1) != 1 || (i == 4 && (byte & 0xF0))) return NULL;
-        units |= (uint32_t)(byte & 0x7F) << (i * 7);
-        if (!(byte & 0x80)) break;
-    }
-    if (i == 5) return NULL;
-    maximum = units > (budget - 1) / 3 ? budget : (size_t)units * 3 + 1;
-    if ((uint64_t)maximum > (uint64_t)(size - position)) maximum = (size_t)(size - position);
-    xx_buf_init(&out);
-    while (maximum && !xx_pd_is_stopped(pd)) {
-        uint8_t chunk[512]; size_t want = maximum < sizeof(chunk) ? maximum : sizeof(chunk), k;
-        if (dex_read_at(view, position, chunk, want) != (int64_t)want) break;
-        for (k = 0; k < want && chunk[k]; ++k) {}
-        if (!xx_buf_append(&out, chunk, k)) break;
-        if (k < want) return xx_buf_detach(&out, NULL);
-        maximum -= want; position += (int64_t)want;
-    }
-    /* Failed strings end analysis: charging an empty result would let many
-     * duplicate offsets rescan a large unterminated string indefinitely. */
-    xx_buf_free(&out); return NULL;
-}
 bool xx_dex_analyze(xx_dex *dex, xx_pd_struct *pd) {
-    dex_analysis *a = NULL; xx_io_device *view = NULL; int64_t total, saved;
-    uint8_t header[112]; uint32_t strings, string_offset, types, type_offset, map, i; bool be, ok = false;
+    dex_analysis *a = NULL; xx_io_device *view = NULL; int64_t saved;
+    uint32_t strings, types, map, i; bool be, ok = false;
     size_t budget = DEX_STRING_BUDGET;
     if (!dex || !dex->format.device || dex->format.base_address < 0 || xx_pd_is_stopped(pd)) return false;
     if (dex->analysis) return true;
-    total = xx_io_total_size(dex->format.device); saved = xx_io_tell(dex->format.device);
-    if (total < dex->format.base_address || total - dex->format.base_address < 112) return false;
-    view = xx_io_sub_open_ro(dex->format.device, dex->format.base_address, total - dex->format.base_address);
-    if (!view || dex_read_at(view, 0, header, sizeof(header)) != sizeof(header) || xx_rt_memcmp(header, "dex\n", 4)) goto done;
+    saved = xx_io_tell(dex->format.device);
+    if (saved < 0) return false;
+    if ((!dex->format.base_info_handled && !xx_dex_handle_base_info(&dex->format, pd)) ||
+        !xx_dex_validate_tables(dex)) goto done;
+    view = xx_io_sub_open_ro(dex->format.device, dex->format.base_address, dex->header.file_size);
+    if (!view) goto done;
     a = (dex_analysis *)xx_mem_calloc(1, sizeof(*a)); if (!a) goto done;
     xx_list_init(&a->strings, sizeof(char *), dex_string_free); xx_list_init(&a->types, sizeof(uint32_t), NULL);
-    for (i = 0; i < 3; ++i) a->version[i] = header[4 + i] ? (char)header[4 + i] : '0';
-    be = xx_io_get_u32(view, 0x28, false) == 0x78563412U;
-    strings = xx_io_get_u32(view, 0x38, be); string_offset = xx_io_get_u32(view, 0x3C, be);
-    types = xx_io_get_u32(view, 0x40, be); type_offset = xx_io_get_u32(view, 0x44, be);
-    map = xx_io_get_u32(view, 0x34, be); total = xx_io_total_size(view);
-    if (map && map <= total - 4) {
-        uint32_t count = xx_io_get_u32(view, map, be);
-        if (count > (uint64_t)(total - map - 4) / 12) count = (uint32_t)((total - map - 4) / 12);
-        if (count > 65536) count = 65536;
+    for (i = 0; i < 3; ++i) a->version[i] = (char)dex->header.magic[4 + i];
+    be = dex->is_big_endian;
+    strings = dex->header.string_ids_size; types = dex->header.type_ids_size;
+    map = dex->header.map_off;
+    if (map) {
+        uint8_t raw[4]; uint32_t count;
+        uint64_t data_end = (uint64_t)dex->header.data_off + dex->header.data_size;
+        if ((map & 3U) || map < dex->header.data_off || (uint64_t)map + 4 > data_end ||
+            dex_read_at(view, map, raw, sizeof(raw)) != sizeof(raw)) goto done;
+        count = xx_data_get_u32(raw, sizeof(raw), 0, be);
+        if (!count || count > 65536 || (uint64_t)count * 12 > data_end - map - 4) goto done;
         for (i = 0; i < count && !xx_pd_is_stopped(pd); ++i) {
-            uint16_t value = xx_io_get_u16(view, (int64_t)map + 4 + (int64_t)i * 12, be);
+            uint16_t value;
+            if (dex_read_at(view, (int64_t)map + 4 + (int64_t)i * 12, raw, 2) != 2) goto done;
+            value = xx_data_get_u16(raw, 2, 0, be);
             uint8_t bytes[2] = { (uint8_t)value, (uint8_t)(value >> 8) };
             a->hash = xx_crc32_calc(a->hash, bytes, 2);
         }
     }
     if (strings > DEX_ENTRY_LIMIT || types > DEX_ENTRY_LIMIT) goto done;
     for (i = 0; i < strings && !xx_pd_is_stopped(pd); ++i) {
-        int64_t at = (int64_t)string_offset + (int64_t)i * 4; char *text; size_t bytes;
-        if (at > total - 4) break;
-        if (budget < 2) goto done;
-        text = dex_string(view, xx_io_get_u32(view, at, be), budget, pd); if (!text) goto done;
-        bytes = xx_rt_strlen(text) + 1;
-        if (bytes > budget || !xx_list_append(&a->strings, &text)) { xx_str_free(text); goto done; }
+        xx_dex_string_info info; char *text; size_t bytes;
+        if (!xx_dex_read_string_info(dex, i, budget, &info, pd)) goto done;
+        bytes = info.byte_size + 1;
+        text = (char *)xx_mem_alloc(bytes); if (!text) goto done;
+        if (dex_read_at(view, info.data_off, text, bytes) != (int64_t)bytes ||
+            !xx_list_append(&a->strings, &text)) { xx_str_free(text); goto done; }
         budget -= bytes;
     }
     for (i = 0; i < types && !xx_pd_is_stopped(pd); ++i) {
-        int64_t at = (int64_t)type_offset + (int64_t)i * 4; uint32_t index;
-        if (at > total - 4) break;
-        index = xx_io_get_u32(view, at, be);
-        if (index < a->strings.count && !xx_list_append(&a->types, &index)) goto done;
+        xx_dex_type_id item; uint32_t index;
+        if (!xx_dex_read_type_id(dex, i, &item)) goto done;
+        index = item.descriptor_idx;
+        if (index >= a->strings.count || !xx_list_append(&a->types, &index)) goto done;
     }
     ok = !xx_pd_is_stopped(pd);
 done:
     if (view) xx_io_close(view);
-    if (saved >= 0) (void)xx_io_seek64(dex->format.device, saved, SEEK_SET);
+    if (xx_io_seek64(dex->format.device, saved, SEEK_SET) != 0) ok = false;
     if (ok) dex->analysis = a;
     else if (a) { xx_list_cleanup(&a->strings); xx_list_cleanup(&a->types); xx_mem_free(a); }
     return ok;

@@ -23,8 +23,10 @@ XXFC_API bool xx_openssh_private_key_handle_base_info(Abstractformat *,xx_pd_str
 extern "C" {
 #endif
 XXFC_API bool xx_openssh_private_key_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_openssh_private_key_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_openssh_private_key_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_openssh_private_key_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_openssh_private_key_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

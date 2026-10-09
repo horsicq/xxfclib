@@ -73,6 +73,37 @@ typedef struct xx_dex_map_item_s {
     uint32_t offset;
 } xx_dex_map_item;
 
+typedef struct xx_dex_string_id_s { uint32_t string_data_off; } xx_dex_string_id;
+typedef struct xx_dex_type_id_s { uint32_t descriptor_idx; } xx_dex_type_id;
+typedef struct xx_dex_proto_id_s {
+    uint32_t shorty_idx, return_type_idx, parameters_off;
+} xx_dex_proto_id;
+typedef struct xx_dex_field_id_s {
+    uint16_t class_idx, type_idx;
+    uint32_t name_idx;
+} xx_dex_field_id;
+typedef struct xx_dex_method_id_s {
+    uint16_t class_idx, proto_idx;
+    uint32_t name_idx;
+} xx_dex_method_id;
+typedef struct xx_dex_class_def_s {
+    uint32_t class_idx, access_flags, superclass_idx, interfaces_off;
+    uint32_t source_file_idx, annotations_off, class_data_off, static_values_off;
+} xx_dex_class_def;
+typedef struct xx_dex_code_item_s {
+    uint16_t registers_size, ins_size, outs_size, tries_size;
+    uint32_t debug_info_off, insns_size;
+    uint32_t insns_off, tries_off, handlers_off;
+} xx_dex_code_item;
+typedef struct xx_dex_string_info_s {
+    /** DEX-relative offset of the first MUTF-8 byte after the ULEB128 size. */
+    uint32_t data_off;
+    uint32_t utf16_size;
+    /** MUTF-8 byte count excluding its terminating zero. Encoded U+0000 is
+     * preserved as C0 80; surrogate code units use three-byte encodings. */
+    size_t byte_size;
+} xx_dex_string_info;
+
 typedef struct xx_dex {
     Abstractformat format;
     xx_dex_header header;
@@ -103,6 +134,35 @@ XXFC_API bool xx_dex_get_memory_map(Abstractformat *self,
 XXFC_API const xx_dex_header *xx_dex_get_header(const xx_dex *dex);
 XXFC_API uint32_t xx_dex_get_version_number(const xx_dex *dex);
 XXFC_API bool xx_dex_is_big_endian(const xx_dex *dex);
+
+/* Bounded readers require successful xx_dex_handle_base_info. Offsets are
+ * relative to the DEX header, including when base_address is nonzero.
+ * Fixed-width values honor the endian tag. Readers preserve device position
+ * and zero their output on failure. They validate local extents and index
+ * references, without verifying table ordering or executable semantics. */
+XXFC_API bool xx_dex_validate_tables(const xx_dex *dex);
+XXFC_API bool xx_dex_read_string_id(const xx_dex *dex, uint32_t index, xx_dex_string_id *out);
+XXFC_API bool xx_dex_read_type_id(const xx_dex *dex, uint32_t index, xx_dex_type_id *out);
+XXFC_API bool xx_dex_read_proto_id(const xx_dex *dex, uint32_t index, xx_dex_proto_id *out);
+XXFC_API bool xx_dex_read_field_id(const xx_dex *dex, uint32_t index, xx_dex_field_id *out);
+XXFC_API bool xx_dex_read_method_id(const xx_dex *dex, uint32_t index, xx_dex_method_id *out);
+XXFC_API bool xx_dex_read_class_def(const xx_dex *dex, uint32_t index, xx_dex_class_def *out);
+/* Offset zero represents an absent, empty type list. */
+XXFC_API bool xx_dex_read_type_list_count(const xx_dex *dex, uint32_t offset, uint32_t *out);
+XXFC_API bool xx_dex_read_type_list_item(const xx_dex *dex, uint32_t offset,
+                                        uint32_t index, uint16_t *out);
+/* Checks the header, instruction extent, zero padding, try-item extent and start of the
+ * handler list. Encoded exception handlers and bytecode are not verified. */
+XXFC_API bool xx_dex_read_code_item(const xx_dex *dex, uint32_t offset, xx_dex_code_item *out);
+/* max_bytes/capacity include the terminator and bound scanning. Validates
+ * MUTF-8, ULEB128 and the declared UTF-16 code-unit count inside data_size.
+ * Neither reader allocates. read_string requires buffer and capacity > 0;
+ * its optional out receives the same metadata as read_string_info. */
+XXFC_API bool xx_dex_read_string_info(const xx_dex *dex, uint32_t index,
+                                     size_t max_bytes, xx_dex_string_info *out, xx_pd_struct *pd);
+XXFC_API bool xx_dex_read_string(const xx_dex *dex, uint32_t index,
+                                char *buffer, size_t capacity,
+                                xx_dex_string_info *out, xx_pd_struct *pd);
 /* Cached inspection for signature queries. Strings are borrowed unless
  * documented as owned; owned strings are released with xx_str_free. */
 XXFC_API bool xx_dex_analyze(xx_dex *dex, xx_pd_struct *pd);
@@ -133,8 +193,10 @@ static inline const Abstractformat *xx_dex_to_format_const(
 extern "C" {
 #endif
 XXFC_API bool xx_dex_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_dex_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_dex_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_dex_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_dex_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

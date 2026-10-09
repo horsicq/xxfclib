@@ -105,6 +105,7 @@ static void xx_pe_abstract_free_format_search(
 }
 
 static Abstractextractor xx_pe_abstract_extractor = {
+    .file_type = xx_pe_file_type,
     .fast_detect = xx_pe_fast_detect,
     .size = xx_pe_size,
     .create_format_search = xx_pe_abstract_create_format_search,
@@ -115,4 +116,13 @@ static Abstractextractor xx_pe_abstract_extractor = {
 
 Abstractextractor *xx_pe_get_abstract_extractor(void) {
     return &xx_pe_abstract_extractor;
+}
+
+static Abstractdetector xx_pe_abstract_detector = {
+    .fast_detect = xx_pe_fast_detect,
+    .file_type = xx_pe_file_type
+};
+
+Abstractdetector *xx_pe_get_abstract_detector(void) {
+    return &xx_pe_abstract_detector;
 }

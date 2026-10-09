@@ -98,10 +98,12 @@ void xx_zip_init(xx_zip *zip, xx_io_device *dev, int64_t base_address) {
     zip->format.unpack_current_archive_record = xx_zip_unpack_current_archive_record;
     zip->format.archive_record_move_to_next = xx_zip_archive_record_move_to_next;
     zip->format.free_archive_records_reading = xx_zip_free_archive_records_reading;
+#if !defined(XXFC_PROFILE_APK_EMUL)
     zip->format.create_archive_records_writing = xx_zip_create_archive_records_writing;
     zip->format.pack_archive_record = xx_zip_pack_archive_record;
     zip->format.finalize_archive_records_writing = xx_zip_finalize_archive_records_writing;
     zip->format.free_archive_records_writing = xx_zip_free_archive_records_writing;
+#endif
     zip->format.data_struct_id_to_string = xx_zip_data_struct_id_to_string;
     zip->format.data_struct_string_to_id = xx_zip_data_struct_string_to_id;
     zip->format.create_data_structs_reading = xx_zip_create_data_structs_reading;
@@ -1299,6 +1301,7 @@ static uint16_t xx_zip_read_le16_bytes(const uint8_t *data) {
     return (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
 }
 
+#if !defined(XXFC_PROFILE_APK_EMUL)
 static bool xx_zip_parse_aes_extra(const xx_archive_record *record,
                                    xx_zip_aes_info *info) {
     const xx_var *extra_var;
@@ -1404,6 +1407,8 @@ static void xx_zip_cleanup_password(xx_zip_password *password) {
     }
     xx_mem_zero(password, sizeof(*password));
 }
+
+#endif
 
 static bool xx_zip_read_exact_at(xx_io_device *device, int64_t offset,
                                  void *buffer, size_t size) {
@@ -1677,6 +1682,7 @@ static void xx_zip_init_limit_sink(xx_io_device *device,
 
 /* ZIP method 95 carries a complete XZ stream. Expose only the compressed
  * member's byte range to the existing native XZ reader. */
+#if !defined(XXFC_PROFILE_APK_EMUL)
 typedef struct xx_zip_xz_window_s {
     xx_io_device *source;
     int64_t offset, length, position;
@@ -1813,7 +1819,12 @@ done:
     return result;
 }
 
+#endif
+
 static bool xx_zip_method_is_supported(uint16_t method) {
+#if defined(XXFC_PROFILE_APK_EMUL)
+    return method == 0 || method == 8;
+#else
     switch (method) {
         case 0:
         case 1:
@@ -1840,6 +1851,7 @@ static bool xx_zip_method_is_supported(uint16_t method) {
         default:
             return false;
     }
+#endif
 }
 
 static bool xx_zip_unpack_method_to_device_unchecked(
@@ -1858,6 +1870,15 @@ static bool xx_zip_unpack_method_to_device_unchecked(
     /* APPNOTE 4.3.8: zero-byte members have no file data. */
     if (compressed_size == 0 && uncompressed_size == 0U) return true;
 
+#if defined(XXFC_PROFILE_APK_EMUL)
+    (void)expected_size;
+    (void)flags;
+    if (method == 0)
+        return (uint64_t)compressed_size == uncompressed_size &&
+            xx_store_unpack_device(source, source_offset, compressed_size, destination, pd);
+    return method == 8 && xx_deflate_unpack_device(source, source_offset,
+        compressed_size, destination, false, pd);
+#else
     switch (method) {
         case 0:
             return (uint64_t)compressed_size == uncompressed_size &&
@@ -1957,6 +1978,7 @@ static bool xx_zip_unpack_method_to_device_unchecked(
         default:
             return false;
     }
+#endif
 }
 
 static bool xx_zip_unpack_method_to_device(xx_io_device *source,
@@ -2192,6 +2214,7 @@ bool xx_zip_has_valid_file_pattern(Abstractformat *self,
                                       false, max_size, pd);
 }
 
+#if !defined(XXFC_PROFILE_APK_EMUL)
 static bool xx_zip_unpack_encrypted_to_device(
     Abstractformat *format, const xx_archive_record_state *state,
     const xx_archive_record *record, uint16_t outer_method, uint16_t flags,
@@ -2684,6 +2707,15 @@ static xx_io_device *xx_zip_open_stage_file(const char *destination,
     return NULL;
 }
 
+#else
+static bool xx_zip_unpack_reference_to_device(Abstractformat *format,
+    const xx_archive_record_state *state, const xx_archive_record *record,
+    const uint8_t *digest, xx_io_device *destination, xx_pd_struct *pd) {
+    (void)format; (void)state; (void)record; (void)digest; (void)destination; (void)pd;
+    return false;
+}
+#endif
+
 bool xx_zip_unpack_current_archive_record_to_device(
     Abstractformat *self, xx_archive_record_state *state,
     xx_io_device *destination, xx_pd_struct *pd) {
@@ -2731,17 +2763,25 @@ bool xx_zip_unpack_current_archive_record_to_device(
     flags = (uint16_t)xx_archive_record_get_meta_u64(
         record, XX_META_ID_FLAGS, 0);
     if (is_encrypted) {
+#if defined(XXFC_PROFILE_APK_EMUL)
+        return false;
+#else
         return xx_zip_unpack_encrypted_to_device(
             self, state, record, method, flags, destination, pd) &&
             !xx_pd_is_stopped(pd);
+#endif
     }
     if (expected_crc > UINT32_MAX ||
         !xx_zip_init_verify_sink(&verified_device, &verified_sink)) return false;
     xx_zip_init_limit_sink(&limited_device, &limited_sink,
                            destination, declared_size, pd);
     verified_sink.target = &limited_device;
+#if !defined(XXFC_PROFILE_APK_EMUL)
     success = method == 92U ? xx_zip_unpack_reference_to_device(
         self, state, record, NULL, &verified_device, pd) :
+#else
+    success =
+#endif
         xx_zip_unpack_method_to_device(self->device, record->data_offset,
             record->compressed_size, method, flags, declared_size,
             &verified_device, pd);
@@ -2755,6 +2795,10 @@ bool xx_zip_unpack_current_archive_record_to_device(
 }
 
 bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+#if defined(XXFC_PROFILE_APK_EMUL)
+    (void)self; (void)state; (void)pd;
+    return false; /* The focused profile extracts only to caller devices. */
+#else
     if (!self || !self->device || !state || !state->has_record ||
         xx_pd_is_stopped(pd)) {
         return false;
@@ -2971,6 +3015,7 @@ bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_archive_recor
 
     xx_str_wfree(full_dest_w);
     return success;
+#endif
 }
 
 void xx_zip_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state) {
@@ -2985,6 +3030,7 @@ void xx_zip_free_archive_records_reading(Abstractformat *self, xx_archive_record
 /* --- Stream Archive Records Writing / Packing                          --- */
 /* ========================================================================= */
 
+#if !defined(XXFC_PROFILE_APK_EMUL)
 #define XX_ZIP_AES_EXTRA_FIELD_SIZE 11U
 #define XX_ZIP_AES_VENDOR_VERSION_AE2 2U
 
@@ -3961,6 +4007,24 @@ void xx_zip_free_archive_records_writing(Abstractformat *self, xx_archive_write_
     }
     xx_archive_write_state_free(state);
 }
+
+#else
+xx_archive_write_state *xx_zip_create_archive_records_writing(Abstractformat *self,
+    const xx_list_s *options, xx_pd_struct *pd) {
+    (void)self; (void)options; (void)pd; return NULL;
+}
+bool xx_zip_pack_archive_record(Abstractformat *self, xx_archive_write_state *state,
+    const xx_archive_record *record, xx_io_device *source, xx_pd_struct *pd) {
+    (void)self; (void)state; (void)record; (void)source; (void)pd; return false;
+}
+bool xx_zip_finalize_archive_records_writing(Abstractformat *self,
+    xx_archive_write_state *state, xx_pd_struct *pd) {
+    (void)self; (void)state; (void)pd; return false;
+}
+void xx_zip_free_archive_records_writing(Abstractformat *self, xx_archive_write_state *state) {
+    (void)self; (void)state;
+}
+#endif
 
 bool xx_zip_is_zip64(const xx_zip *zip) {
     return zip ? zip->is_zip64 : false;

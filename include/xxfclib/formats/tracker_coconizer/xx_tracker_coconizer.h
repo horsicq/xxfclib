@@ -14,8 +14,10 @@ XXFC_API bool xx_tracker_coconizer_handle_base_info(Abstractformat *,xx_pd_struc
 extern "C" {
 #endif
 XXFC_API bool xx_tracker_coconizer_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_tracker_coconizer_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_tracker_coconizer_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_tracker_coconizer_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_tracker_coconizer_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

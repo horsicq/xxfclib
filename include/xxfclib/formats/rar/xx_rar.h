@@ -202,8 +202,10 @@ static inline void XRar_free_archive_records_reading(xx_rar *rar, xx_archive_rec
 extern "C" {
 #endif
 XXFC_API bool xx_rar_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_rar_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_rar_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_rar_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_rar_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

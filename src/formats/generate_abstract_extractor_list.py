@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Build the Abstractextractor adapter map from the existing extractor list.
+"""Build the abstract extractor/detector map from the existing extractor list.
 
 The legacy registry remains the authority for type order and shared aliases.
-Run this after adding a legacy extractor and its get_abstract_extractor getter.
+Run this after adding a legacy extractor and its abstract adapter getters.
 """
 
 from pathlib import Path
@@ -25,6 +25,10 @@ def getter(name: str) -> str:
     return name.removesuffix("_extractor") + "_get_abstract_extractor"
 
 
+def detector_getter(name: str) -> str:
+    return name.removesuffix("_extractor") + "_get_abstract_detector"
+
+
 def main() -> None:
     legacy = HERE / "xx_format_extractor_list.inc"
     music_decls = HERE / "die_music" / "xx_die_music_extractor_decls.inc"
@@ -45,22 +49,27 @@ def main() -> None:
         " * aliases retain the same adapter. */",
         "",
         "typedef Abstractextractor *(*xx_abstract_extractor_getter)(void);",
+        "typedef Abstractdetector *(*xx_abstract_detector_getter)(void);",
         "",
     ]
     lines.extend(f"extern Abstractextractor *{getter(name)}(void);" for name in base)
+    lines.extend(f"extern Abstractdetector *{detector_getter(name)}(void);" for name in base)
     lines.append("#ifndef XXFC_FORMATS_ONLY")
     lines.extend(f"extern Abstractextractor *{getter(name)}(void);" for name in music)
+    lines.extend(f"extern Abstractdetector *{detector_getter(name)}(void);" for name in music)
     lines.extend([
         "#endif", "", "static const struct {",
         "    const xx_format_extractor *legacy;",
         "    xx_abstract_extractor_getter get;",
+        "    xx_abstract_detector_getter get_detector;",
         "} g_xx_abstract_extractor_getters[] = {",
     ])
-    lines.extend(f"    {{ &{name}, {getter(name)} }}," for name in base)
+    lines.extend(f"    {{ &{name}, {getter(name)}, {detector_getter(name)} }}," for name in base)
     lines.append("#ifndef XXFC_FORMATS_ONLY")
-    lines.extend(f"    {{ &{name}, {getter(name)} }}," for name in music)
+    lines.extend(f"    {{ &{name}, {getter(name)}, {detector_getter(name)} }}," for name in music)
     lines.extend(["#endif", "};", ""])
-    (HERE / "xx_format_abstract_extractor_list.inc").write_text("\n".join(lines))
+    (HERE / "xx_format_abstract_extractor_list.inc").write_bytes(
+        "\n".join(lines).encode("utf-8"))
 
 
 if __name__ == "__main__":

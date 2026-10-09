@@ -588,3 +588,283 @@ uint32_t xx_dex_get_version_number(const xx_dex *dex) {
 bool xx_dex_is_big_endian(const xx_dex *dex) {
     return dex && dex->is_big_endian;
 }
+
+static bool dex_reader_ready(const xx_dex *dex) {
+    return dex && dex->format.device && dex->format.base_info_handled &&
+        dex->format.is_valid && dex->format.base_address >= 0 &&
+        dex->header.header_size == XX_DEX_HEADER_SIZE &&
+        dex->header.file_size >= XX_DEX_HEADER_SIZE;
+}
+
+static bool dex_reader_range(const xx_dex *dex, uint64_t offset, uint64_t size,
+                              bool data_only) {
+    uint64_t end;
+    if (!dex_reader_ready(dex)) return false;
+    end = dex->header.file_size;
+    if (data_only) {
+        if (dex->header.data_off < XX_DEX_HEADER_SIZE ||
+            (dex->header.data_off & 3U) ||
+            (uint64_t)dex->header.data_off + dex->header.data_size > end ||
+            offset < dex->header.data_off) return false;
+        end = (uint64_t)dex->header.data_off + dex->header.data_size;
+    }
+    return offset <= end && size <= end - offset;
+}
+
+static bool dex_reader_read(const xx_dex *dex, uint64_t offset, void *out,
+                             size_t size, bool data_only) {
+    int64_t absolute, saved;
+    bool ok;
+    if (!out || !dex_reader_range(dex, offset, size, data_only) ||
+        !xx_dex_get_absolute_offset(&dex->format, offset, &absolute)) return false;
+    saved = xx_io_tell(dex->format.device);
+    if (saved < 0) return false;
+    ok = size == 0 || xx_dex_read_exact(dex->format.device, absolute, out, size);
+    if (xx_io_seek64(dex->format.device, saved, SEEK_SET) != 0) ok = false;
+    return ok;
+}
+
+static bool dex_reader_table(const xx_dex *dex, uint32_t offset,
+                              uint32_t count, unsigned width) {
+    if (!count) return offset == 0;
+    return offset >= XX_DEX_HEADER_SIZE && !(offset & 3U) &&
+        dex_reader_range(dex, offset, (uint64_t)count * width, false);
+}
+
+bool xx_dex_validate_tables(const xx_dex *dex) {
+    const xx_dex_header *h;
+    if (!dex_reader_ready(dex)) return false;
+    h = &dex->header;
+    return dex_reader_table(dex, h->string_ids_off, h->string_ids_size, 4) &&
+        dex_reader_table(dex, h->type_ids_off, h->type_ids_size, 4) &&
+        dex_reader_table(dex, h->proto_ids_off, h->proto_ids_size, 12) &&
+        dex_reader_table(dex, h->field_ids_off, h->field_ids_size, 8) &&
+        dex_reader_table(dex, h->method_ids_off, h->method_ids_size, 8) &&
+        dex_reader_table(dex, h->class_defs_off, h->class_defs_size, 32) &&
+        (h->data_size ? dex_reader_range(dex, h->data_off, h->data_size, true) : h->data_off == 0) &&
+        (h->link_size ? h->link_off >= XX_DEX_HEADER_SIZE &&
+            dex_reader_range(dex, h->link_off, h->link_size, false) : h->link_off == 0);
+}
+
+static bool dex_reader_item(const xx_dex *dex, uint32_t table, uint32_t count,
+                             uint32_t index, unsigned width, uint8_t *raw) {
+    return index < count && dex_reader_table(dex, table, count, width) &&
+        dex_reader_read(dex, (uint64_t)table + (uint64_t)index * width, raw, width, false);
+}
+
+#define DEX_READER_OUTPUT(out) do { if (!(out)) return false; xx_mem_zero((out), sizeof(*(out))); } while (0)
+
+bool xx_dex_read_string_id(const xx_dex *dex, uint32_t index, xx_dex_string_id *out) {
+    uint8_t raw[4]; uint32_t value;
+    DEX_READER_OUTPUT(out);
+    if (!dex_reader_ready(dex) || !dex_reader_item(dex, dex->header.string_ids_off,
+        dex->header.string_ids_size, index, sizeof(raw), raw)) return false;
+    value = xx_data_get_u32(raw, sizeof(raw), 0, dex->is_big_endian);
+    if (!dex_reader_range(dex, value, 1, true)) return false;
+    out->string_data_off = value; return true;
+}
+
+bool xx_dex_read_type_id(const xx_dex *dex, uint32_t index, xx_dex_type_id *out) {
+    uint8_t raw[4]; uint32_t value;
+    DEX_READER_OUTPUT(out);
+    if (!dex_reader_ready(dex) || !dex_reader_item(dex, dex->header.type_ids_off,
+        dex->header.type_ids_size, index, sizeof(raw), raw)) return false;
+    value = xx_data_get_u32(raw, sizeof(raw), 0, dex->is_big_endian);
+    if (value >= dex->header.string_ids_size) return false;
+    out->descriptor_idx = value; return true;
+}
+
+bool xx_dex_read_type_list_count(const xx_dex *dex, uint32_t offset, uint32_t *out) {
+    uint8_t raw[4]; uint32_t count;
+    DEX_READER_OUTPUT(out);
+    if (!dex_reader_ready(dex)) return false;
+    if (!offset) return true;
+    if ((offset & 3U) || !dex_reader_read(dex, offset, raw, sizeof(raw), true)) return false;
+    count = xx_data_get_u32(raw, sizeof(raw), 0, dex->is_big_endian);
+    if (!dex_reader_range(dex, (uint64_t)offset + 4, (uint64_t)count * 2, true)) return false;
+    *out = count; return true;
+}
+
+bool xx_dex_read_type_list_item(const xx_dex *dex, uint32_t offset,
+                               uint32_t index, uint16_t *out) {
+    uint8_t raw[2]; uint32_t count; uint16_t value;
+    DEX_READER_OUTPUT(out);
+    if (!xx_dex_read_type_list_count(dex, offset, &count) || index >= count ||
+        !dex_reader_read(dex, (uint64_t)offset + 4 + (uint64_t)index * 2, raw, 2, true)) return false;
+    value = xx_data_get_u16(raw, sizeof(raw), 0, dex->is_big_endian);
+    if (value >= dex->header.type_ids_size) return false;
+    *out = value; return true;
+}
+
+bool xx_dex_read_proto_id(const xx_dex *dex, uint32_t index, xx_dex_proto_id *out) {
+    uint8_t raw[12]; xx_dex_proto_id item; uint32_t count;
+    DEX_READER_OUTPUT(out);
+    if (!dex_reader_ready(dex) || !dex_reader_item(dex, dex->header.proto_ids_off,
+        dex->header.proto_ids_size, index, sizeof(raw), raw)) return false;
+    item.shorty_idx = xx_data_get_u32(raw, sizeof(raw), 0, dex->is_big_endian);
+    item.return_type_idx = xx_data_get_u32(raw, sizeof(raw), 4, dex->is_big_endian);
+    item.parameters_off = xx_data_get_u32(raw, sizeof(raw), 8, dex->is_big_endian);
+    if (item.shorty_idx >= dex->header.string_ids_size || item.return_type_idx >= dex->header.type_ids_size ||
+        !xx_dex_read_type_list_count(dex, item.parameters_off, &count)) return false;
+    *out = item; return true;
+}
+
+bool xx_dex_read_field_id(const xx_dex *dex, uint32_t index, xx_dex_field_id *out) {
+    uint8_t raw[8]; xx_dex_field_id item;
+    DEX_READER_OUTPUT(out);
+    if (!dex_reader_ready(dex) || !dex_reader_item(dex, dex->header.field_ids_off,
+        dex->header.field_ids_size, index, sizeof(raw), raw)) return false;
+    item.class_idx = xx_data_get_u16(raw, sizeof(raw), 0, dex->is_big_endian);
+    item.type_idx = xx_data_get_u16(raw, sizeof(raw), 2, dex->is_big_endian);
+    item.name_idx = xx_data_get_u32(raw, sizeof(raw), 4, dex->is_big_endian);
+    if (item.class_idx >= dex->header.type_ids_size || item.type_idx >= dex->header.type_ids_size ||
+        item.name_idx >= dex->header.string_ids_size) return false;
+    *out = item; return true;
+}
+
+bool xx_dex_read_method_id(const xx_dex *dex, uint32_t index, xx_dex_method_id *out) {
+    uint8_t raw[8]; xx_dex_method_id item;
+    DEX_READER_OUTPUT(out);
+    if (!dex_reader_ready(dex) || !dex_reader_item(dex, dex->header.method_ids_off,
+        dex->header.method_ids_size, index, sizeof(raw), raw)) return false;
+    item.class_idx = xx_data_get_u16(raw, sizeof(raw), 0, dex->is_big_endian);
+    item.proto_idx = xx_data_get_u16(raw, sizeof(raw), 2, dex->is_big_endian);
+    item.name_idx = xx_data_get_u32(raw, sizeof(raw), 4, dex->is_big_endian);
+    if (item.class_idx >= dex->header.type_ids_size || item.proto_idx >= dex->header.proto_ids_size ||
+        item.name_idx >= dex->header.string_ids_size) return false;
+    *out = item; return true;
+}
+
+bool xx_dex_read_class_def(const xx_dex *dex, uint32_t index, xx_dex_class_def *out) {
+    uint8_t raw[32]; xx_dex_class_def item; uint32_t count;
+    DEX_READER_OUTPUT(out);
+    if (!dex_reader_ready(dex) || !dex_reader_item(dex, dex->header.class_defs_off,
+        dex->header.class_defs_size, index, sizeof(raw), raw)) return false;
+    item.class_idx = xx_data_get_u32(raw, sizeof(raw), 0, dex->is_big_endian);
+    item.access_flags = xx_data_get_u32(raw, sizeof(raw), 4, dex->is_big_endian);
+    item.superclass_idx = xx_data_get_u32(raw, sizeof(raw), 8, dex->is_big_endian);
+    item.interfaces_off = xx_data_get_u32(raw, sizeof(raw), 12, dex->is_big_endian);
+    item.source_file_idx = xx_data_get_u32(raw, sizeof(raw), 16, dex->is_big_endian);
+    item.annotations_off = xx_data_get_u32(raw, sizeof(raw), 20, dex->is_big_endian);
+    item.class_data_off = xx_data_get_u32(raw, sizeof(raw), 24, dex->is_big_endian);
+    item.static_values_off = xx_data_get_u32(raw, sizeof(raw), 28, dex->is_big_endian);
+    if (item.class_idx >= dex->header.type_ids_size ||
+        (item.superclass_idx != UINT32_MAX && item.superclass_idx >= dex->header.type_ids_size) ||
+        (item.source_file_idx != UINT32_MAX && item.source_file_idx >= dex->header.string_ids_size) ||
+        !xx_dex_read_type_list_count(dex, item.interfaces_off, &count) ||
+        (item.annotations_off && ((item.annotations_off & 3U) || !dex_reader_range(dex, item.annotations_off, 16, true))) ||
+        (item.class_data_off && !dex_reader_range(dex, item.class_data_off, 1, true)) ||
+        (item.static_values_off && !dex_reader_range(dex, item.static_values_off, 1, true))) return false;
+    *out = item; return true;
+}
+
+bool xx_dex_read_code_item(const xx_dex *dex, uint32_t offset, xx_dex_code_item *out) {
+    uint8_t raw[16]; xx_dex_code_item item; uint64_t end;
+    DEX_READER_OUTPUT(out);
+    if ((offset & 3U) || !dex_reader_read(dex, offset, raw, sizeof(raw), true)) return false;
+    xx_mem_zero(&item, sizeof(item));
+    item.registers_size = xx_data_get_u16(raw, sizeof(raw), 0, dex->is_big_endian);
+    item.ins_size = xx_data_get_u16(raw, sizeof(raw), 2, dex->is_big_endian);
+    item.outs_size = xx_data_get_u16(raw, sizeof(raw), 4, dex->is_big_endian);
+    item.tries_size = xx_data_get_u16(raw, sizeof(raw), 6, dex->is_big_endian);
+    item.debug_info_off = xx_data_get_u32(raw, sizeof(raw), 8, dex->is_big_endian);
+    item.insns_size = xx_data_get_u32(raw, sizeof(raw), 12, dex->is_big_endian);
+    end = (uint64_t)offset + 16;
+    if (item.ins_size > item.registers_size || end > UINT32_MAX ||
+        !dex_reader_range(dex, end, (uint64_t)item.insns_size * 2, true) ||
+        (item.debug_info_off && !dex_reader_range(dex, item.debug_info_off, 1, true))) return false;
+    item.insns_off = (uint32_t)end;
+    end += (uint64_t)item.insns_size * 2;
+    if (item.tries_size) {
+        if (item.insns_size & 1U) {
+            uint8_t padding[2];
+            if (!dex_reader_read(dex, end, padding, sizeof(padding), true) || padding[0] || padding[1]) return false;
+            end += 2;
+        }
+        if (end > UINT32_MAX || !dex_reader_range(dex, end, (uint64_t)item.tries_size * 8 + 1, true)) return false;
+        item.tries_off = (uint32_t)end;
+        item.handlers_off = (uint32_t)(end + (uint64_t)item.tries_size * 8);
+    }
+    *out = item; return true;
+}
+
+typedef struct dex_string_cursor {
+    const xx_dex *dex;
+    xx_pd_struct *pd;
+    uint64_t position, end;
+    uint8_t buffer[256];
+    size_t cursor, available;
+} dex_string_cursor;
+
+static bool dex_string_byte(dex_string_cursor *cursor, uint8_t *value) {
+    if (cursor->position >= cursor->end || xx_pd_is_stopped(cursor->pd)) return false;
+    if (cursor->cursor == cursor->available) {
+        uint64_t remaining = cursor->end - cursor->position;
+        cursor->available = remaining < sizeof(cursor->buffer) ? (size_t)remaining : sizeof(cursor->buffer);
+        cursor->cursor = 0;
+        if (!dex_reader_read(cursor->dex, cursor->position, cursor->buffer, cursor->available, true)) return false;
+    }
+    *value = cursor->buffer[cursor->cursor++];
+    ++cursor->position;
+    return true;
+}
+
+bool xx_dex_read_string_info(const xx_dex *dex, uint32_t index,
+                             size_t max_bytes, xx_dex_string_info *out, xx_pd_struct *pd) {
+    xx_dex_string_id id; xx_dex_string_info info;
+    dex_string_cursor cursor; uint32_t units = 0; unsigned i;
+    DEX_READER_OUTPUT(out);
+    if (!max_bytes || xx_pd_is_stopped(pd) || !xx_dex_read_string_id(dex, index, &id)) return false;
+    xx_mem_zero(&cursor, sizeof(cursor)); xx_mem_zero(&info, sizeof(info));
+    cursor.dex = dex; cursor.pd = pd; cursor.position = id.string_data_off;
+    cursor.end = (uint64_t)dex->header.data_off + dex->header.data_size;
+    for (i = 0; i < 5; ++i) {
+        uint8_t byte;
+        if (!dex_string_byte(&cursor, &byte) || (i == 4 && (byte & 0xf0U))) return false;
+        info.utf16_size |= (uint32_t)(byte & 0x7fU) << (i * 7);
+        if (!(byte & 0x80U)) break;
+    }
+    if (i == 5 || cursor.position > UINT32_MAX) return false;
+    info.data_off = (uint32_t)cursor.position;
+    if (max_bytes < cursor.end - cursor.position) cursor.end = cursor.position + max_bytes;
+    /* Discard prefetched size bytes: scanning must honor the caller budget. */
+    cursor.cursor = cursor.available = 0;
+    for (;;) {
+        uint8_t a, b, c; uint32_t value;
+        if (!dex_string_byte(&cursor, &a)) return false;
+        if (!a) break;
+        if (units == info.utf16_size) return false;
+        if (a < 0x80U) { ++units; continue; }
+        if ((a & 0xe0U) == 0xc0U) {
+            if (!dex_string_byte(&cursor, &b) || (b & 0xc0U) != 0x80U) return false;
+            value = ((uint32_t)(a & 31U) << 6) | (b & 63U);
+            if (value < 0x80U && value != 0) return false;
+        } else if ((a & 0xf0U) == 0xe0U) {
+            if (!dex_string_byte(&cursor, &b) || !dex_string_byte(&cursor, &c) ||
+                (b & 0xc0U) != 0x80U || (c & 0xc0U) != 0x80U) return false;
+            value = ((uint32_t)(a & 15U) << 12) | ((uint32_t)(b & 63U) << 6) | (c & 63U);
+            if (value < 0x800U) return false;
+        } else return false;
+        ++units;
+    }
+    if (units != info.utf16_size || xx_pd_is_stopped(pd)) return false;
+    info.byte_size = (size_t)(cursor.position - info.data_off - 1);
+    *out = info; return true;
+}
+
+bool xx_dex_read_string(const xx_dex *dex, uint32_t index,
+                        char *buffer, size_t capacity,
+                        xx_dex_string_info *out, xx_pd_struct *pd) {
+    xx_dex_string_info info;
+    if (out) xx_mem_zero(out, sizeof(*out));
+    if (buffer && capacity) buffer[0] = 0;
+    if (!buffer || !capacity || !xx_dex_read_string_info(dex, index, capacity, &info, pd) ||
+        !dex_reader_read(dex, info.data_off, buffer, info.byte_size + 1, true) || xx_pd_is_stopped(pd)) {
+        if (buffer && capacity) buffer[0] = 0;
+        return false;
+    }
+    if (out) *out = info;
+    return true;
+}
+
+#undef DEX_READER_OUTPUT

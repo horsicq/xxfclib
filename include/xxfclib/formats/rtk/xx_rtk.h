@@ -112,8 +112,10 @@ static inline bool XRtk_is_valid(xx_rtk *rtk, xx_pd_struct *pd) {
 extern "C" {
 #endif
 XXFC_API bool xx_rtk_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_rtk_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_rtk_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_rtk_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_rtk_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

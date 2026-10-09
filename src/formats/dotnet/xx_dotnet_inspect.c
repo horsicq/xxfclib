@@ -6,6 +6,15 @@
 
 #define MD(t) XX_DOTNET_MDT_##t
 
+/* The standard heaps use only a handful of streams. Bound the directory so
+ * duplicate-name and overlap checks cannot turn a crafted header into an
+ * unbounded quadratic walk. Custom stream names remain supported. */
+#define DOTNET_MAX_STREAMS 128
+typedef struct {
+    uint32_t offset, size;
+    char name[33];
+} dotnet_stream_extent;
+
 static int coded_width(const xx_dotnet_inspect_cli *cli, unsigned bits,
                        const unsigned *tables, size_t count) {
     size_t i;
@@ -126,7 +135,9 @@ static char *heap_string(xx_dotnet_inspection *state, int64_t offset, int64_t av
     value=xx_exec_string(state->pe.pInput,offset,maximum);
     if(value && (int64_t)xx_rt_strlen(value)==maximum) {
         xx_mem_free(value);
-        if(available>=0x10000)state->pe.pInput->failed=true;
+        /* Exhausting any heap extent without NUL is malformed, including
+         * short heaps. Never replace a truncated string by a valid empty one. */
+        state->pe.pInput->failed=true;
         return xx_exec_copy_string(state->pe.pInput,"");
     }
     return value;
@@ -494,10 +505,12 @@ static int read_compressed_uint(xx_executable_input *input, int64_t offset,
     else if((first&0xC0)==0x80) {
         if(remaining<2)return 0;
         *bytes=2;*value=((uint32_t)(first&0x3F)<<8)|xx_exec_u8(input,offset+1);
+        if(*value<0x80U)return 0;
     } else if((first&0xE0)==0xC0) {
         if(remaining<4)return 0;
         *bytes=4;*value=((uint32_t)(first&0x1F)<<24)|((uint32_t)xx_exec_u8(input,offset+1)<<16)|
             ((uint32_t)xx_exec_u8(input,offset+2)<<8)|xx_exec_u8(input,offset+3);
+        if(*value<0x4000U)return 0;
     } else return 0;
     return !input->failed;
 }
@@ -547,6 +560,7 @@ static int parse_net(xx_dotnet_inspection *state) {
     xx_dotnet_inspect_cli *cli=&state->cli;
     uint32_t cor_size,meta_rva,meta_size,version_length,entry;
     uint16_t streams,i;
+    dotnet_stream_extent stream_extents[DOTNET_MAX_STREAMS];
     int64_t cor,meta,end,pos,first_stream;
     int tables=0,strings=0,us=0,blob=0,guid=0;
     cor=dotnet_rva_range(state,state->pe.pDirRVA[XX_DOTNET_INSPECT_DIR_COMHEADER],72);
@@ -566,12 +580,13 @@ static int parse_net(xx_dotnet_inspection *state) {
     if(!state->pNetVersion){input->failed=true;return 0;}
     if(version_length && !state->pNetVersion[0] && xx_exec_u8(input,meta+16))return 0;
     streams=xx_exec_u16(input,pos+2,false);pos+=4;
-    if(!streams || streams>(uint64_t)(end-pos)/12)return 0;
+    if(!streams || streams>DOTNET_MAX_STREAMS || streams>(uint64_t)(end-pos)/12)return 0;
     first_stream=end;
     for(i=0;i<streams && !input->failed && !xx_pd_is_stopped(input->pd);++i) {
         uint32_t off,size;
         char name[33];
         size_t j;
+        uint16_t previous;
         int64_t header_size,start;
         if(end-pos<12)return 0;
         off=xx_exec_u32(input,pos,false);size=xx_exec_u32(input,pos+4,false);
@@ -583,6 +598,14 @@ static int parse_net(xx_dotnet_inspection *state) {
         header_size=8+(((int64_t)j+4)&~INT64_C(3));
         if(header_size>end-pos || off>meta_size || size>meta_size-off)return 0;
         start=meta+off;
+        for(previous=0;previous<i;++previous) {
+            const dotnet_stream_extent *extent=&stream_extents[previous];
+            if(!xx_rt_strcmp(name,extent->name))return 0;
+            if(size && extent->size && (uint64_t)off<(uint64_t)extent->offset+extent->size &&
+               (uint64_t)extent->offset<(uint64_t)off+size)return 0;
+        }
+        stream_extents[i].offset=off;stream_extents[i].size=size;
+        xx_rt_memcpy(stream_extents[i].name,name,j+1);
         if(size && start<first_stream)first_stream=start;
         if(!xx_rt_strcmp(name,"#~") || !xx_rt_strcmp(name,"#-")) {
             if(tables++)return 0;
@@ -608,6 +631,7 @@ static int parse_net(xx_dotnet_inspection *state) {
     if(cli->nFlags&0x10U)cli->nEntryPointRVA=entry;
     else cli->nEntryPointToken=entry;
     parse_net_tables(state);
+    if(!cli->bValid)return 0;
     if(cli->bValid && (entry&0xFF000000U)==0x06000000U && !(cli->nFlags&0x10U)) {
         uint32_t row=entry&0xFFFFFFU;
         if(row && row<=cli->pRows[MD(MethodDef)]) {

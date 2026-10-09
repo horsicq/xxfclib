@@ -101,8 +101,10 @@ XXFC_API bool xx_wise_installation_system_unpack_record_to_device(
 extern "C" {
 #endif
 XXFC_API bool xx_wise_installation_system_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_wise_installation_system_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_wise_installation_system_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_wise_installation_system_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_wise_installation_system_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

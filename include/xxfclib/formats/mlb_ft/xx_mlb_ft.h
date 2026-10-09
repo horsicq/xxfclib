@@ -49,8 +49,10 @@ XXFC_API void xx_mlb_ft_free_archive_records_reading(
     Abstractformat *self, xx_archive_record_state *state);
 
 XXFC_API bool xx_mlb_ft_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_mlb_ft_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_mlb_ft_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_mlb_ft_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_mlb_ft_get_abstract_detector(void);
 
 #ifdef __cplusplus
 }

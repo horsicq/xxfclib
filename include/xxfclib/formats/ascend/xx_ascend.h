@@ -89,8 +89,10 @@ XXFC_API uint8_t xx_ascend_get_dictionary_bits(const xx_ascend *archive);
 extern "C" {
 #endif
 XXFC_API bool xx_ascend_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_ascend_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_ascend_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_ascend_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_ascend_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

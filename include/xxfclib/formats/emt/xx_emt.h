@@ -103,8 +103,10 @@ static inline Abstractformat *xx_emt_to_format(xx_emt *image) {
 extern "C" {
 #endif
 XXFC_API bool xx_emt_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_emt_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_emt_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_emt_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_emt_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

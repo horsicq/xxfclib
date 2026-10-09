@@ -134,8 +134,10 @@ static inline bool XGz_is_valid(xx_gz *gz, xx_pd_struct *pd) {
 extern "C" {
 #endif
 XXFC_API bool xx_gz_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_gz_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_gz_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_gz_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_gz_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

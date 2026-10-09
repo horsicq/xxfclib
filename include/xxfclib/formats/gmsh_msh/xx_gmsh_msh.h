@@ -24,8 +24,10 @@ XXFC_API bool xx_gmsh_msh_handle_base_info(Abstractformat *,xx_pd_struct *);
 extern "C" {
 #endif
 XXFC_API bool xx_gmsh_msh_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_gmsh_msh_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_gmsh_msh_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_gmsh_msh_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_gmsh_msh_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

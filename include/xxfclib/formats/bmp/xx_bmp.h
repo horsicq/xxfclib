@@ -142,8 +142,10 @@ static inline bool XBmp_is_valid(xx_bmp *bmp, xx_pd_struct *pd) {
 extern "C" {
 #endif
 XXFC_API bool xx_bmp_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_bmp_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_bmp_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_bmp_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_bmp_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

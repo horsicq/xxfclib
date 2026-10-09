@@ -42,8 +42,10 @@ XXFC_API void xx_ampk_free_archive_records_reading(
 extern "C" {
 #endif
 XXFC_API bool xx_ampk_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_ampk_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_ampk_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_ampk_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_ampk_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

@@ -54,8 +54,10 @@ static inline Abstractformat *xx_fatx_to_format(xx_fatx *v) { return v ? &v->for
 extern "C" {
 #endif
 XXFC_API bool xx_fatx_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_fatx_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_fatx_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_fatx_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_fatx_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

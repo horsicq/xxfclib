@@ -60,6 +60,19 @@ typedef struct Abstractformat xx_format_t;
 typedef struct Abstractformat xx_abstract_format;
 typedef struct Abstractformat AbstractFormat;
 
+typedef struct Abstractdetector Abstractdetector;
+typedef struct Abstractdetector xx_abstract_detector;
+typedef struct Abstractdetector AbstractDetector;
+
+/** Detection and classification callbacks for one format. */
+struct Abstractdetector {
+  /** Check the format's fast signature at an absolute device offset. */
+  bool (*fast_detect)(xx_io_device *device, int64_t base_address, bool is_mapped);
+  /** Return the fixed type without I/O, or classify a multi-type format.
+   * Returns UNKNOWN when classification fails; preserves the device cursor. */
+  xx_file_type_t (*file_type)(xx_io_device *device, int64_t base_address, bool is_mapped);
+};
+
 typedef struct Abstractextractor Abstractextractor;
 typedef struct Abstractextractor xx_abstract_extractor;
 typedef struct Abstractextractor AbstractExtractor;
@@ -100,6 +113,14 @@ struct Abstractextractor {
                                   xx_pd_struct *pd);
   /** Release a streaming search state. */
   void (*free_format_search)(Abstractextractor *self, struct xx_format_search_state *state);
+
+  /**
+   * Return the format's file type at an absolute device offset.
+   * Single-type formats return their type without inspecting the device.
+   * Formats with multiple types inspect the input and return UNKNOWN when
+   * no supported type matches. The device cursor is preserved.
+   */
+  xx_file_type_t (*file_type)(xx_io_device *device, int64_t base_address, bool is_mapped);
 };
 
 /** Return the detection, size, and streaming callbacks for a supported file type.
@@ -117,6 +138,19 @@ XXFC_API size_t xx_abstract_extractor_count(void);
  * @return The extractor, or NULL when index is out of range. */
 XXFC_API Abstractextractor *xx_abstract_extractor_at(size_t index,
                                                      xx_file_type_t *type);
+
+/** Return a format's detection callbacks, or NULL for an unsupported type.
+ * File-type aliases share the same detector. */
+XXFC_API Abstractdetector *xx_abstract_detector_get(xx_file_type_t type);
+
+/** Number of file-type rows with an abstract detector. */
+XXFC_API size_t xx_abstract_detector_count(void);
+
+/** Enumerate detectors in the same order as xx_abstract_extractor_at().
+ * @param type Receives the file type; may be NULL.
+ * @return The detector, or NULL when index is out of range. */
+XXFC_API Abstractdetector *xx_abstract_detector_at(size_t index,
+                                                 xx_file_type_t *type);
 
 #include "xxfclib/formats/xx_format_reader_only_abstract_extractor_decls.inc"
 
@@ -812,6 +846,20 @@ XXFC_API size_t xx_format_get_file_type_chain(xx_file_type_t type,
                                               size_t capacity);
 
 /**
+ * @brief Select the most specific type from a list of xx_file_type_t values.
+ *
+ * Types with deeper parent chains take precedence, independent of list order:
+ * { BINARY, MSDOS, PE64 } returns PE64. DOTNET ranks above its PE carrier.
+ * Equal-depth types use the later list entry. UNKNOWN and unrecognised values
+ * are ignored. The borrowed list is unchanged; no allocation or I/O occurs.
+ *
+ * @param types List with sizeof(xx_file_type_t) elements.
+ * @return Preferred type, or UNKNOWN for a NULL, empty, malformed list or a
+ *         list without any recognised types.
+ */
+XXFC_API xx_file_type_t xx_format_get_pref_type(const xx_list_t *types);
+
+/**
  * @brief Detect a device's file type chain, most generic first.
  *
  * For a 64-bit Windows executable the list holds XX_FILE_TYPE_BINARY,
@@ -827,6 +875,29 @@ XXFC_API size_t xx_format_get_file_type_chain(xx_file_type_t type,
  *         xx_list_destroy().
  */
 XXFC_API xx_list_t *xx_format_get_file_types_device(xx_io_device *dev);
+
+/**
+ * @brief Detect file types using a caller-supplied list of detectors.
+ *
+ * @param device Device to inspect.
+ * @param base_address Absolute device offset at which the format starts.
+ * @param is_mapped True for a memory-mapped dump.
+ * @param detectors List with sizeof(Abstractdetector *) elements. The pointers
+ *                  are borrowed; neither the list nor the detectors are changed.
+ *
+ * Each complete detector runs fast_detect first and file_type only on a match.
+ * NULL entries, missing callbacks, and UNKNOWN results are ignored. Distinct
+ * types are returned in first-match order. The device cursor is restored before
+ * every callback and before returning.
+ *
+ * @return A caller-owned list of xx_file_type_t, empty for no matches, a NULL
+ *         device/list, or an invalid offset. Returns NULL for a malformed list,
+ *         allocation failure, or an I/O position/size error. Release a returned
+ *         list with xx_list_destroy().
+ */
+XXFC_API xx_list_t *xx_format_get_file_types_detectors(
+    xx_io_device *device, int64_t base_address, bool is_mapped,
+    const xx_list_t *detectors);
 
 /**
  * @brief List every file type supported by the formats library.

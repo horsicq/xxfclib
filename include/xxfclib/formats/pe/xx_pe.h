@@ -205,12 +205,14 @@ XXFC_API void xx_pe_free(xx_pe *pe);
 /** Quickly check MZ and PE signatures at an absolute device offset. */
 XXFC_API bool xx_pe_fast_detect(xx_io_device *device, int64_t base_address,
                                 bool is_mapped);
+XXFC_API xx_file_type_t xx_pe_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 /** Return the largest section raw offset plus its FileAlignment-rounded raw size.
  * This is a file-layout extent for either is_mapped value; invalid headers return -1. */
 XXFC_API int64_t xx_pe_size(xx_io_device *device, int64_t base_address,
                             bool is_mapped);
 /** PE detection, sizing, and streaming-search callbacks. */
 XXFC_API Abstractextractor *xx_pe_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_pe_get_abstract_detector(void);
 XXFC_API bool xx_pe_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_pe_handle_base_info(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API int64_t xx_pe_get_format_size(Abstractformat *self, xx_pd_struct *pd);

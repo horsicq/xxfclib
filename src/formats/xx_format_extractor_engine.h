@@ -66,6 +66,13 @@ typedef struct xx_format_search_desc {
 /** Deepest anchor the engine accepts (offset + size), in bytes. */
 #define XX_FORMAT_SEARCH_MAX_LOOKAHEAD (1024U * 1024U)
 
+/** Return the sole declared type without inspecting the device, or validate
+ * and classify a multi-type format at an absolute offset. Preserves the cursor;
+ * returns UNKNOWN when a multi-type format cannot be classified. */
+xx_file_type_t xx_format_search_file_type(const xx_format_search_desc *desc,
+                                         xx_io_device *device,
+                                         int64_t base_address, bool is_mapped);
+
 /** Validate and classify one absolute offset without scanning for candidates.
  * Preserves the device cursor; returns false if it cannot be restored. */
 bool xx_format_search_fast_detect(const xx_format_search_desc *desc,

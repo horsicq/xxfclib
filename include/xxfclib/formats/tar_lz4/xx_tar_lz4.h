@@ -128,8 +128,10 @@ static inline bool XTarLz4_is_valid(xx_tar_lz4 *tar_lz4, xx_pd_struct *pd) {
 extern "C" {
 #endif
 XXFC_API bool xx_tar_lz4_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_tar_lz4_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_tar_lz4_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_tar_lz4_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_tar_lz4_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

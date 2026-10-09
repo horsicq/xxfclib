@@ -78,8 +78,10 @@ static inline Abstractformat *xx_squeeze1_to_format(xx_squeeze1 *archive) {
 extern "C" {
 #endif
 XXFC_API bool xx_squeeze1_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_squeeze1_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_squeeze1_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_squeeze1_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_squeeze1_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif

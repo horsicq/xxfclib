@@ -12,6 +12,11 @@
 #include "xx_format_extractor_engine.h"
 
 #define XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(name, descriptor)                       \
+  xx_file_type_t xx_##name##_file_type(xx_io_device *device, int64_t base_address,   \
+                                      bool is_mapped) {                             \
+    return xx_format_search_file_type(&(descriptor), device, base_address,           \
+                                       is_mapped);                                  \
+  }                                                                                  \
   bool xx_##name##_fast_detect(xx_io_device *device, int64_t base_address,           \
                                bool is_mapped) {                                    \
     return xx_format_search_fast_detect(&(descriptor), device, base_address,         \
@@ -43,6 +48,7 @@
     xx_format_search_free(state);                                                    \
   }                                                                                  \
   static Abstractextractor xx_##name##_abstract_extractor = {                       \
+      .file_type = xx_##name##_file_type,                                             \
       .fast_detect = xx_##name##_fast_detect,                                         \
       .size = xx_##name##_size,                                                       \
       .create_format_search = xx_##name##_abstract_create_format_search,             \
@@ -51,6 +57,12 @@
       .free_format_search = xx_##name##_abstract_free_format_search};                \
   Abstractextractor *xx_##name##_get_abstract_extractor(void) {                      \
     return &xx_##name##_abstract_extractor;                                          \
+  }                                                                                  \
+  static Abstractdetector xx_##name##_abstract_detector = {                         \
+      .fast_detect = xx_##name##_fast_detect,                                         \
+      .file_type = xx_##name##_file_type};                                            \
+  Abstractdetector *xx_##name##_get_abstract_detector(void) {                        \
+    return &xx_##name##_abstract_detector;                                           \
   }
 
 #endif /* XX_FORMAT_ABSTRACT_EXTRACTOR_ADAPTER_H */
